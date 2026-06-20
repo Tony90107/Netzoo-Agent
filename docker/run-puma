@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: run-puma -e EXPRESSION -m MOTIF -p PPI -i MIRNA -o OUTPUT [options]
+
+Run netZooPy PUMA from the Docker container.
+
+Required:
+  -e, --expression  Gene expression matrix
+  -m, --motif       TF-gene motif prior, columns: TF, Gene, Weight
+  -p, --ppi         TF-TF PPI prior, columns: TF1, TF2, Weight
+  -i, --mir         miRNA-gene prior, columns: miRNA, Gene, Weight
+  -o, --out         Output network file
+
+Optional:
+  -r, --rm_missing  Remove missing genes/TFs
+  -q, --lioness     Also write LIONESS-PUMA single-sample networks
+EOF
+  exit 0
+fi
+
+exec python "$NETZOOPY_SRC/netZooPy/puma/run_puma.py" "$@"
