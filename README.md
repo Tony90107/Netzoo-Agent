@@ -1,6 +1,6 @@
 # Network Zoo PANDA/PUMA Docker + LangGraph Agent
 
-這個專案是為了完成老師指定的三件事：
+這個專案是為了完成三件事：
 
 1. 了解 PANDA / PUMA 的 input 與 output 格式。
 2. 為 PANDA / PUMA 建立 Docker 執行環境。
