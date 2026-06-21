@@ -10,7 +10,7 @@
 
 | 檔案 | 內容 |
 |---|---|
-| [TASK_INTERPRETATION.md](TASK_INTERPRETATION.md) | 我對老師任務的邏輯整理 |
+| [TASK_INTERPRETATION.md](TASK_INTERPRETATION.md) | 此專案的邏輯整理 |
 | [PANDA_PUMA_Docker_入門.md](PANDA_PUMA_Docker_入門.md) | PANDA/PUMA input-output 與 Docker 入門 |
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
