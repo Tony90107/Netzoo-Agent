@@ -20,17 +20,26 @@ This change includes:
 - post-execution artifact validation for every local write action;
 - typed clarification, preference, recommendation, and overwrite continuations;
 - collision-safe default output names and explicit overwrite confirmation;
+- strict CONDOR completion semantics requiring both membership partitions;
+- explicit, instance-scoped runtime configuration instead of process-wide module
+  mutation;
+- streaming, atomic LIONESS-PUMA header insertion;
+- deterministic harness coverage across planning, evaluation, continuation,
+  execution, recovery, and artifact validation;
 - backward-compatible defaults for newly persisted model fields;
 - focused regression and integration tests for each behavior.
 
 This change does not include:
 
-- deployment, Docker packaging, dependency locking, or secret management;
+- deployment infrastructure, dependency locking, or secret management;
 - new NetZoo algorithms or new tool authority;
 - an LLM-based execution approver;
 - removal of the `scripts/netzoo_agent.py` compatibility facade;
 - a complete rewrite of the LangGraph topology;
 - biological quality thresholds that have not been approved as project policy.
+
+The CONDOR and LIONESS-PUMA wrapper changes in scope are local execution correctness
+changes. They do not alter container deployment topology or external infrastructure.
 
 ## Design Principles
 
@@ -118,7 +127,9 @@ Workflow checks are deliberately structural:
   values;
 - LIONESS text output must contain network identity columns and sample-specific
   numeric values consistent with the input sample count;
-- CONDOR must produce non-empty edge and summary files for the selected prefix.
+- CONDOR must produce non-empty, parseable regulator and target membership tables
+  for the selected prefix. The copied edge list and summary are supporting audit
+  artifacts, not substitutes for either membership partition.
 
 These checks do not claim biological validity. Species, cohort, identifier
 namespace, and acceptable coverage thresholds remain domain-policy concerns.
@@ -176,11 +187,86 @@ The Executor performs a final collision check immediately before launch. An
 unapproved existing explicit output fails closed even if the file appeared after
 planning.
 
+## Strict CONDOR Completion
+
+The CONDOR wrapper treats `reg_memb` and `tar_memb` as required terminal products.
+Both values must be non-empty pandas data frames and both corresponding TSV files
+must be written successfully. A method call returning normally is not sufficient
+evidence of completion.
+
+Initialization and run-method compatibility probes may continue after
+`AttributeError`, which signals that a candidate API is unavailable. Other
+exceptions are retained with method context. If all candidates fail, the wrapper
+exits non-zero and reports the collected causes rather than swallowing them.
+
+The summary and normalized edge-list files may still be emitted for diagnosis, but
+the overall command cannot return success when either membership table is missing,
+empty, malformed, or unwritable. Post-execution artifact validation independently
+rechecks both membership outputs before the agent reports success.
+
+## Instance-Scoped Runtime Configuration
+
+Runtime behavior is represented by an immutable `RuntimeConfig` value containing
+execution mode, tracing and verbosity flags, timeouts, and storage roots. The CLI
+constructs one configuration per agent session and passes it through graph,
+execution, persistence, and rendering boundaries.
+
+Core modules must not scan or mutate `sys.modules`. This prevents one test, thread,
+or concurrently running agent session from changing another session's execution
+authority or storage paths. Functions that need only part of the configuration
+receive the narrow value or dependency they use.
+
+The historical `netzoo_agent` facade remains import-compatible. Legacy assignment
+support, where required by existing callers, is isolated to a compatibility adapter
+that constructs a new configuration before a graph or command is built; it does not
+mutate already-created agents or implementation modules.
+
+## Streaming and Atomic LIONESS-PUMA Header Insertion
+
+The header helper reads only the expression row required to calculate the sample
+count and the first LIONESS output line required to detect an existing header. It
+then streams the original output into a temporary file in the same directory,
+prefixing exactly one header.
+
+The helper flushes and closes the temporary file before replacing the destination
+atomically. On failure, the original output remains intact and the temporary file
+is cleaned up. File permissions are preserved where practical. Existing headers,
+`.npy` outputs, empty inputs, and malformed expression rows retain deterministic
+behavior and receive focused tests.
+
+This removes the current whole-file `read_text` plus `write_text` path, whose peak
+memory grows with the full LIONESS network and whose in-place rewrite can leave a
+partial artifact after interruption.
+
+## Deterministic Evaluation Harness
+
+The harness uses typed scenario families rather than evaluating only Planner input
+resolution. It exercises deterministic public seams for:
+
+- router-decision repair and workflow planning;
+- Plan Evaluator approval and rejection reasons;
+- typed continuation authorization and exact-value round trips;
+- executor dispatch authorization and output-collision rechecks;
+- attempt-aware recovery and effective terminal status;
+- workflow-specific artifact validation, including both CONDOR partitions.
+
+Each scenario declares its family, inputs, expected typed status, and selected
+field-level assertions. The report includes overall and per-family pass rates,
+unsafe approvals, unnecessary questions, execution-authority violations, and
+artifact false-positive counts. A scenario cannot pass merely because free-form
+text happens to contain an expected phrase.
+
+The harness stays offline and deterministic. Unit and integration tests remain the
+source of exhaustive branch coverage; the harness provides a compact regression
+gate over the agent's major decision boundaries.
+
 ## Error and User-Interaction Semantics
 
 - Autonomous uncertainty: `needs_input`.
 - Explicit incompatible inputs: validation `failed`.
 - Invalid or empty output: artifact-validation `failed`.
+- Missing either CONDOR membership partition: command and artifact-validation
+  `failed`.
 - Recoverable first attempt followed by successful repair: terminal `completed`,
   with the first failure retained as superseded audit history.
 - Rejected overwrite: `needs_input` for a replacement output.
@@ -218,7 +304,14 @@ Tests must prove:
 12. existing default outputs receive collision-free names;
 13. explicit existing outputs require typed approval and a final pre-launch check;
 14. response-model failure still returns deterministic tool and input guidance;
-15. legacy persisted models and compatibility-facade behavior continue to work.
+15. CONDOR returns non-zero when either membership partition is unavailable and
+    reports non-`AttributeError` method failures with context;
+16. two runtime configurations coexist without cross-session mutation;
+17. LIONESS-PUMA header insertion streams through a same-directory temporary file,
+    replaces atomically, and preserves the original on injected failure;
+18. the harness reports planner, evaluator, continuation, executor, recovery, and
+    artifact-validation scenario families independently;
+19. legacy persisted models and compatibility-facade behavior continue to work.
 
 Verification consists of targeted red-green tests, the complete Python test suite,
 Ruff, formatting checks, Python compilation, and container CLI smoke tests that do
@@ -233,6 +326,13 @@ not require a live OpenRouter request.
 - No new continuation depends on parsing hidden markers from natural-language text.
 - No existing output is overwritten without deterministic renaming or explicit
   typed approval.
+- No CONDOR run is successful without valid regulator and target membership tables.
+- No core agent session can mutate another session's runtime authority or paths
+  through process-wide module scanning.
+- No LIONESS-PUMA text header operation loads the full network into memory or
+  rewrites the destination non-atomically.
+- The deterministic harness covers every execution-authority boundary, not only
+  Planner input resolution.
 - Every ready initial or continued plan passes the same code-enforced Plan Evaluator
   before Executor access.
 - Existing supported CLI workflows and legacy imports remain functional.
