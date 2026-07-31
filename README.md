@@ -1,19 +1,39 @@
 # Network Zoo PANDA/PUMA Docker + LangGraph Agent
 
-這個專案是為了完成三件事：
+這個專案目前涵蓋：
 
 1. 了解 PANDA / PUMA 的 input 與 output 格式。
 2. 為 PANDA / PUMA 建立 Docker 執行環境。
-3. 寫一個 Python script，讓使用者用自然語言描述任務，由 LLM 透過 LangChain / LangGraph 選擇正確工具，並可選擇是否執行。
+3. 以 LangGraph Planner / Executor / Evaluator 處理自然語言任務：盤點使用者輸入與 workspace 檔案、自主建立多步計畫、執行工具並評估是否繼續。
+4. 透過 Context7 MCP 自動查詢本專案相關套件的較新文件。
+5. 透過 Tavily Websearch MCP 查詢一般網頁與文獻資訊。
+6. 整理 expression 的 gene/sample row/column 方向，讀取 CSV/TSV 時會先略過前置 annotation/comment rows，並輸出 PANDA/PUMA compatible TSV。
+7. 試跑 LIONESS-PANDA、LIONESS-PUMA 與 LIONESS co-expression；LIONESS 需要無 header TSV 時，agent 可自動準備 derived expression input。
+8. 試跑 CONDOR toy bipartite network。
+9. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
+
+Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
+`apply project policy -> memory retrieval -> classify -> plan -> execute -> evaluate ->
+memory consolidation`。Evaluator 通過後可
+回到 Executor 執行下一步，可修復錯誤則走 bounded replan；缺少資料時 CLI 會留在
+同一個 resumable session 等待使用者補充。PANDA、PUMA、三種 LIONESS 與 CONDOR
+都走同一套 graph，不再由 LIONESS 專用的前置選單攔截。
 
 ## 主要文件
 
 | 檔案 | 內容 |
 |---|---|
-| [TASK_INTERPRETATION.md](TASK_INTERPRETATION.md) | 此專案的邏輯整理 |
+| [NETZOO_HARNESS_ARCHITECTURE.md](NETZOO_HARNESS_ARCHITECTURE.md) | Agent 架構、context、記憶與治理 |
 | [PANDA_PUMA_Docker_入門.md](PANDA_PUMA_Docker_入門.md) | PANDA/PUMA input-output 與 Docker 入門 |
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
+| [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
+| [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR 的 versioned YAML 規格 |
+| [NETZOO_HARNESS_ARCHITECTURE.md](NETZOO_HARNESS_ARCHITECTURE.md) | 完整系統架構、記憶設計、成熟度與關鍵缺口 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
+| [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
+| [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |
+| [NEW_TASK_COMPLETE_DEMO_GUIDE.md](NEW_TASK_COMPLETE_DEMO_GUIDE.md) | 四個新任務的完整說明、Demo 與結果驗證 |
+| [docs/archive/](docs/archive/) | 歷史進度、舊 demo 與 PR 草稿（不作為現行規格） |
 
 ## Docker 快速開始
 
@@ -57,6 +77,13 @@ run-puma \
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
 export OPENROUTER_MODEL="openai/gpt-4o-mini"
+export OPENROUTER_ROUTER_MODEL="openai/gpt-4o-mini"
+export NETZOO_RESPONSE_MODEL_ALLOWLIST="openai/gpt-4o-mini"
+export NETZOO_MAX_TASK_TOKENS=20000
+# 選用：提高 Context7 rate limit
+export CONTEXT7_API_KEY="ctx7-..."
+# Websearch MCP
+export TAVILY_API_KEY="tvly-..."
 ```
 
 讓 agent 判斷任務，但先不真的執行：
@@ -66,6 +93,39 @@ docker compose run --rm \
   -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   netzoo python scripts/netzoo_agent.py \
   --task "我要用 data/expression.tsv data/motif.tsv data/ppi.tsv 跑 PANDA，輸出到 outputs/panda.tsv"
+```
+
+檢查 project policy，不需 OpenRouter key：
+
+```bash
+python scripts/netzoo_agent.py --policy-status
+```
+
+試跑完整 LIONESS toy bundle；CLI 會逐步顯示 Planner、Executor 與 Evaluator：
+
+```bash
+docker compose run --rm netzoo python scripts/netzoo_agent.py \
+  --task "請幫我跑一次 LIONESS PANDA"
+```
+
+如果正式任務缺少路徑，即使使用 `--task` 也會留在 `補充資料 >`，不會直接結束。
+可用 `--session NAME` 固定 checkpoint id，之後用 `--resume NAME` 恢復。預設輸出為
+compact progress/result；`--verbose` 顯示完整 evidence、graph、Evaluator、memory 與
+logs，`--quiet` 則只顯示 compact 最終結果。
+
+所有 agent 輸出固定為英文，輸入可使用任何語言。成功的自動 one-shot checkpoint
+會立即刪除；pending／failed／named session 才會保留。全新互動模式不會暗中接續舊
+任務；要恢復最近的 pending session，請明確執行 `--resume latest`。舊的自動 completed session 與 logs
+預設保留 30 天後清理；任何 named 或 pending session 最長保留 180 天。
+
+長期偏好與 compact task episodes 以 `--profile` 隔離。偏好只有在使用者明確提出並
+再次回答 `yes` 後才會保存；episode 預設依狀態保留 30／60／180 天，每個 profile
+最多 200 筆與約 10 MiB，並在讀寫時自動清理。不需 API key 即可檢查、立即清理或刪除：
+
+```bash
+python scripts/netzoo_agent.py --profile alice --memory-status
+python scripts/netzoo_agent.py --memory-cleanup
+python scripts/netzoo_agent.py --profile alice --forget-memory
 ```
 
 真的執行要加 `--execute`：
@@ -89,6 +149,62 @@ docker compose run --rm \
 - `scripts/netzoo_agent.py --help` 成功
 - PANDA 使用官方 toy data 成功跑完
 - PUMA 使用官方 toy data 成功跑完
+
+## Expression 格式
+
+netZooPy 共用格式是每列一個 gene、第一欄為 gene ID、後續欄位為各 sample
+的數值。PUMA 與 legacy LIONESS 的 expression input 使用無 header TSV；本專案
+的 `run-lioness` wrapper 會替三種 LIONESS text output 都保留或補上 header。
+
+Agent 可把 sample 在 rows、gene 在 columns 的 CSV/TSV 轉置：
+
+```text
+把 data/raw.csv 的 samples×genes 整理成 PANDA 格式，
+genes 在 columns，輸出 data/expression.tsv
+```
+
+如果原始 CSV/TSV 前幾行是 annotation，例如 `# ...`、`Annotation: ...`、
+`metadata ...`，agent 會在讀檔時略過這些前置說明列，再判斷表格方向。
+輸出一律使用 tab-delimited TSV，方便接到 PANDA、PUMA 與 legacy LIONESS。
+
+## LIONESS 三種模式
+
+```bash
+run-lioness panda \
+  -e data/lioness-toy/expression.tsv \
+  -m data/lioness-toy/motif-panda.tsv \
+  -p data/lioness-toy/ppi.tsv \
+  -o outputs/lioness-toy/panda.tsv \
+  -q outputs/lioness-toy/lioness-panda.txt
+
+run-lioness puma \
+  -e data/lioness-toy/expression.tsv \
+  -m data/lioness-toy/prior-puma.tsv \
+  -p data/lioness-toy/ppi.tsv \
+  -i data/lioness-toy/mirna.txt \
+  -o outputs/lioness-toy/puma.tsv \
+  -q outputs/lioness-toy/lioness-puma.tsv
+
+run-lioness coexpression \
+  -e data/lioness-toy/expression.tsv \
+  -o outputs/lioness-toy/coexpression.tsv \
+  -q outputs/lioness-toy/lioness-coexpression.txt
+```
+
+PUMA 的 `-m` 是 TF/miRNA-to-gene 合併 prior；`-i` 是無 header、每行恰好
+一個 miRNA ID 的清單。每個 ID 都必須出現在 prior 第一欄。
+
+## CONDOR toy trial
+
+```bash
+docker compose run --rm netzoo run-condor \
+  -i data/condor-toy/bipartite.tsv \
+  -o outputs/condor-toy \
+  --prefix toy
+```
+
+CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
+weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。
 
 ## 注意
 
