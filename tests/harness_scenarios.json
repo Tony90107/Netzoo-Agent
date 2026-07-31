@@ -1,0 +1,77 @@
+[
+  {
+    "name": "lioness_panda_demo_bundle",
+    "task": "請幫我跑一次 LIONESS PANDA",
+    "decision": {
+      "action": "run_lioness_panda",
+      "in_scope": true,
+      "should_execute": true,
+      "confidence": 0.99,
+      "reason": "demo request"
+    },
+    "expected_status": "ready",
+    "expected_values": {
+      "expression_file": "data/lioness-toy/expression.tsv",
+      "motif_file": "data/lioness-toy/motif-panda.tsv",
+      "ppi_file": "data/lioness-toy/ppi.tsv"
+    }
+  },
+  {
+    "name": "lioness_formal_analysis_requires_dataset",
+    "task": "我要執行 LIONESS PANDA 分析，但尚未指定資料",
+    "decision": {
+      "action": "run_lioness_panda",
+      "in_scope": true,
+      "should_execute": true,
+      "confidence": 0.99,
+      "reason": "formal analysis"
+    },
+    "expected_status": "needs_input",
+    "expected_missing": ["expression_file", "ppi_file"]
+  },
+  {
+    "name": "puma_same_dataset_resolution",
+    "task": "我要跑 PUMA，expression 是 data/lioness-toy/expression.tsv",
+    "decision": {
+      "action": "run_puma",
+      "in_scope": true,
+      "should_execute": true,
+      "confidence": 0.99,
+      "reason": "PUMA request",
+      "expression_file": "data/lioness-toy/expression.tsv"
+    },
+    "expected_status": "ready",
+    "expected_values": {
+      "motif_file": "data/lioness-toy/prior-puma.tsv",
+      "ppi_file": "data/lioness-toy/ppi.tsv",
+      "mirna_file": "data/lioness-toy/mirna.txt"
+    }
+  },
+  {
+    "name": "condor_demo_bundle",
+    "task": "請試跑 CONDOR",
+    "decision": {
+      "action": "run_condor",
+      "in_scope": true,
+      "should_execute": true,
+      "confidence": 0.99,
+      "reason": "CONDOR demo"
+    },
+    "expected_status": "ready",
+    "expected_values": {
+      "network_file": "data/condor-toy/bipartite.tsv"
+    }
+  },
+  {
+    "name": "unsupported_variant_calling",
+    "task": "幫我使用 PANDA 找基因突變",
+    "decision": {
+      "action": "run_panda",
+      "in_scope": false,
+      "should_execute": true,
+      "confidence": 0.95,
+      "reason": "unsupported"
+    },
+    "expected_status": "respond_only"
+  }
+]

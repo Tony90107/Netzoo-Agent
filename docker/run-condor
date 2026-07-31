@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Run a small CONDOR community-detection trial from a bipartite edge list."""
+
+from __future__ import annotations
+
+import argparse
+import inspect
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+try:
+    from netzoo_table_io import read_condor_edges
+except ModuleNotFoundError:
+    project_scripts = Path(__file__).resolve().parents[1] / "scripts"
+    sys.path.insert(0, str(project_scripts))
+    from netzoo_table_io import read_condor_edges
+
+
+def read_edges(path: Path) -> pd.DataFrame:
+    try:
+        edges, info = read_condor_edges(path)
+    except (OSError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+    print(
+        f"Read {len(edges)} edges as {info.delimiter_name}; "
+        f"skipped {len(info.skiprows)} annotation/comment row(s)."
+    )
+    return edges
+
+
+def import_condor_object():
+    candidates = [
+        ("netZooPy.condor.condor", "condor_object"),
+        ("netZooPy.condor", "condor_object"),
+        ("netZooPy.condor.condor", "Condor"),
+        ("netZooPy.condor", "Condor"),
+    ]
+    errors = []
+    for module_name, attr_name in candidates:
+        try:
+            module = __import__(module_name, fromlist=[attr_name])
+            return getattr(module, attr_name)
+        except Exception as error:  # noqa: BLE001 - report every attempted API.
+            errors.append(f"{module_name}.{attr_name}: {type(error).__name__}: {error}")
+    raise SystemExit("Could not import netZooPy CONDOR API:\n" + "\n".join(errors))
+
+
+def build_condor_object(condor_class, edges: pd.DataFrame):
+    attempts = [
+        lambda: condor_class(dataframe=edges),
+        lambda: condor_class(dataframe=edges[["source", "target", "weight"]]),
+        lambda: condor_class(
+            dataframe=edges.rename(columns={"source": "reg", "target": "tar"})
+        ),
+        lambda: condor_class(edges),
+        lambda: condor_class(edges[["source", "target"]]),
+        lambda: condor_class(edges.rename(columns={"source": "reg", "target": "tar"})),
+    ]
+    signature = str(inspect.signature(condor_class))
+    errors = []
+    for attempt in attempts:
+        try:
+            return attempt()
+        except Exception as error:  # noqa: BLE001 - keep probing compatible constructors.
+            errors.append(f"{type(error).__name__}: {error}")
+    raise SystemExit(
+        "Could not construct CONDOR object. Constructor signature: "
+        f"{signature}\n" + "\n".join(errors)
+    )
+
+
+def run_condor(obj) -> None:
+    for call in (
+        lambda: obj.initial_community(method="LDN"),
+        lambda: obj.initial_community(),
+    ):
+        try:
+            call()
+            break
+        except Exception:
+            continue
+
+    for call in (
+        lambda: obj.brim(deltaQmin="def", c="def"),
+        lambda: obj.brim(),
+        lambda: obj.condor_run(),
+        lambda: obj.run(),
+    ):
+        try:
+            call()
+            return
+        except AttributeError:
+            continue
+        except Exception:
+            continue
+    raise SystemExit("CONDOR object was created, but no known run method succeeded.")
+
+
+def write_outputs(obj, edges: pd.DataFrame, output_dir: Path, prefix: str) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    edge_path = output_dir / f"{prefix}-edges.tsv"
+    edges.to_csv(edge_path, sep="\t", index=False)
+
+    wrote_membership = False
+    for attr_name in ("reg_memb", "tar_memb"):
+        value = getattr(obj, attr_name, None)
+        if isinstance(value, pd.DataFrame) and not value.empty:
+            value.to_csv(
+                output_dir / f"{prefix}-{attr_name}.tsv", sep="\t", index=False
+            )
+            wrote_membership = True
+
+    summary_path = output_dir / f"{prefix}-summary.txt"
+    with summary_path.open("w", encoding="utf-8") as handle:
+        handle.write("CONDOR trial summary\n")
+        handle.write(f"edges: {len(edges)}\n")
+        handle.write(f"sources: {edges['source'].nunique()}\n")
+        handle.write(f"targets: {edges['target'].nunique()}\n")
+        for attr_name in ("modularity", "Q", "Qcoms"):
+            if hasattr(obj, attr_name):
+                handle.write(f"{attr_name}: {getattr(obj, attr_name)}\n")
+        if not wrote_membership:
+            handle.write("membership: no pandas membership table attribute found\n")
+
+    print(f"Wrote {edge_path}")
+    print(f"Wrote {summary_path}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Run netZooPy CONDOR on a bipartite source-target-weight edge list."
+    )
+    parser.add_argument("-i", "--input", required=True, help="CSV/TSV edge list")
+    parser.add_argument("-o", "--outdir", required=True, help="Output directory")
+    parser.add_argument("--prefix", default="condor", help="Output filename prefix")
+    args = parser.parse_args()
+
+    edges = read_edges(Path(args.input))
+    condor_class = import_condor_object()
+    obj = build_condor_object(condor_class, edges)
+    run_condor(obj)
+    write_outputs(obj, edges, Path(args.outdir), args.prefix)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

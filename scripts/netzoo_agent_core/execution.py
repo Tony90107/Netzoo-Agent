@@ -1,0 +1,492 @@
+"""Allow-listed PANDA, PUMA, LIONESS, and CONDOR command adapters."""
+
+from __future__ import annotations
+
+import shlex
+from pathlib import Path
+
+
+from netzoo_table_io import (
+    read_condor_edges,
+)
+
+from .contracts import (
+    tool,
+)
+
+from .command import (
+    _run_command,
+)
+
+from .validation import (
+    _drop_common_header,
+    _inspect_panda_inputs_impl,
+    _read_checked_table,
+    _resolve_user_path,
+    _validate_expression,
+    inspect_netzoo_inputs,
+)
+
+from .preparation import (
+    convert_expression_to_coexpression,
+    format_expression_for_netzoo,
+)
+
+__all__ = [
+    "run_panda",
+    "run_puma",
+    "_expression_sample_count",
+    "_derived_lioness_expression_path",
+    "_prepare_lioness_expression",
+    "_run_lioness_command",
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_lioness_coexpression",
+    "_inspect_condor_inputs_impl",
+    "inspect_condor_inputs",
+    "run_condor",
+    "LOCAL_TOOL_EXECUTORS",
+]
+
+
+@tool
+def run_panda(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+    output_file: str,
+    with_header: bool = False,
+    extra_args: str = "",
+) -> str:
+    """Run PANDA through the container wrapper."""
+    validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
+        expression_file=expression_file,
+        motif_file=motif_file,
+        ppi_file=ppi_file,
+    )
+    if not inputs_ok:
+        return (
+            "PANDA input validation failed; no command was executed.\n\n"
+            f"{validation_report}"
+        )
+
+    command = [
+        "run-panda",
+        "-e",
+        expression_file,
+        "-m",
+        motif_file,
+        "-p",
+        ppi_file,
+        "-o",
+        output_file,
+    ]
+    if with_header or inferred_header:
+        command.append("--with_header")
+    if extra_args:
+        command.extend(shlex.split(extra_args))
+    return validation_report + "\n\n" + _run_command(command, output_file=output_file)
+
+
+@tool
+def run_puma(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+    mirna_file: str,
+    output_file: str,
+    extra_args: str = "",
+) -> str:
+    """Run PUMA using a one-regulator-per-line miRNA list."""
+    validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
+        expression_file=expression_file,
+        motif_file=motif_file,
+        ppi_file=ppi_file,
+        mirna_file=mirna_file,
+    )
+    if inferred_header:
+        return (
+            "PUMA input validation failed; no command was executed.\n\n"
+            f"{validation_report}\n"
+            "  error: legacy netZooPy PUMA does not accept an expression header; "
+            "use format_expression with with_header=false."
+        )
+    if not inputs_ok:
+        return (
+            "PUMA input validation failed; no command was executed.\n\n"
+            f"{validation_report}"
+        )
+
+    command = [
+        "run-puma",
+        "-e",
+        expression_file,
+        "-m",
+        motif_file,
+        "-p",
+        ppi_file,
+        "-i",
+        mirna_file,
+        "-o",
+        output_file,
+    ]
+    if extra_args:
+        command.extend(shlex.split(extra_args))
+    return validation_report + "\n\n" + _run_command(command, output_file=output_file)
+
+
+def _expression_sample_count(expression_file: str) -> tuple[int, bool]:
+    expression = _validate_expression(
+        _read_checked_table("expression", expression_file)
+    )
+    if expression.frame is None or expression.errors:
+        return 0, expression.has_header
+    frame, has_header = _drop_common_header(expression.frame)
+    return max(frame.shape[1] - 1, 0), has_header
+
+
+def _derived_lioness_expression_path(expression_file: str, lioness_output: str) -> Path:
+    source_path = _resolve_user_path(expression_file)
+    output_path = _resolve_user_path(lioness_output)
+    return output_path.parent / f"{source_path.stem}.lioness-expression.tsv"
+
+
+def _prepare_lioness_expression(
+    expression_file: str,
+    lioness_output: str,
+) -> tuple[str, str, int, bool, str | None]:
+    expression = _validate_expression(
+        _read_checked_table("expression", expression_file)
+    )
+    if expression.frame is None or expression.errors:
+        return expression_file, "", 0, expression.has_header, None
+
+    frame, has_header = _drop_common_header(expression.frame)
+    sample_count = max(frame.shape[1] - 1, 0)
+    needs_formatting = (
+        has_header
+        or expression.delimiter_name != "TSV"
+        or expression.skipped_annotation_rows > 0
+    )
+    if not needs_formatting:
+        return expression_file, "", sample_count, False, None
+
+    derived_path = _derived_lioness_expression_path(expression_file, lioness_output)
+    genes_axis = "auto" if has_header else "rows"
+    result = format_expression_for_netzoo.invoke(
+        {
+            "expression_file": expression_file,
+            "output_file": str(derived_path),
+            "genes_axis": genes_axis,
+            "with_header": False,
+        }
+    )
+    if "- error:" in result:
+        return (
+            expression_file,
+            result,
+            sample_count,
+            has_header,
+            "LIONESS expression auto-preparation failed.",
+        )
+
+    report = (
+        "LIONESS expression auto-preparation:\n"
+        f"- reason: {'header detected; ' if has_header else ''}"
+        f"{'non-TSV input; ' if expression.delimiter_name != 'TSV' else ''}"
+        f"{'leading annotation rows; ' if expression.skipped_annotation_rows else ''}".rstrip(
+            "; "
+        )
+        + f"\n- prepared expression: {derived_path}\n"
+        + result
+    )
+    return str(derived_path), report, sample_count, False, None
+
+
+def _run_lioness_command(
+    mode: str,
+    expression_file: str,
+    output_file: str,
+    lioness_output: str,
+    motif_file: str = "",
+    ppi_file: str = "",
+    mirna_file: str = "",
+) -> str:
+    lioness_suffix = Path(lioness_output).suffix.casefold()
+    allowed_suffixes = (
+        {".txt", ".csv", ".tsv"}
+        if mode in {"panda", "coexpression"}
+        else {".txt", ".csv", ".tsv", ".npy"}
+    )
+    if lioness_suffix not in allowed_suffixes:
+        return (
+            f"LIONESS-{mode} output extension {lioness_suffix or '(none)'} is unsupported. "
+            "Use one of: " + ", ".join(sorted(allowed_suffixes))
+        )
+
+    (
+        command_expression_file,
+        preparation_report,
+        sample_count,
+        has_header,
+        prep_error,
+    ) = _prepare_lioness_expression(expression_file, lioness_output)
+    if prep_error:
+        return prep_error + "\n\n" + preparation_report
+    if has_header:
+        return (
+            "LIONESS input validation failed; legacy PANDA/PUMA LIONESS requires "
+            "a headerless expression matrix. Run format_expression with with_header=false."
+        )
+    if sample_count < 3:
+        return (
+            "LIONESS input validation failed; at least three samples are required "
+            "so each leave-one-out correlation still has at least two samples."
+        )
+
+    if mode in {"panda", "puma"}:
+        validation_expression_file = (
+            command_expression_file
+            if Path(command_expression_file).exists()
+            else expression_file
+        )
+        validation_report, inputs_ok, _ = _inspect_panda_inputs_impl(
+            validation_expression_file,
+            motif_file,
+            ppi_file,
+            mirna_file if mode == "puma" else "",
+        )
+        if not inputs_ok:
+            return (
+                f"LIONESS-{mode.upper()} input validation failed; no command was executed.\n\n"
+                + validation_report
+            )
+    else:
+        expression = _validate_expression(
+            _read_checked_table(
+                "expression",
+                (
+                    command_expression_file
+                    if Path(command_expression_file).exists()
+                    else expression_file
+                ),
+            )
+        )
+        if expression.errors:
+            return "LIONESS co-expression input validation failed:\n- " + "\n- ".join(
+                expression.errors
+            )
+        validation_report = "Expression validation passed."
+
+    command = [
+        "run-lioness",
+        mode,
+        "-e",
+        command_expression_file,
+    ]
+    if motif_file:
+        command.extend(["-m", motif_file])
+    if ppi_file:
+        command.extend(["-p", ppi_file])
+    if mirna_file:
+        command.extend(["-i", mirna_file])
+    command.extend(["-o", output_file, "-q", lioness_output])
+    sections = [
+        section for section in [preparation_report, validation_report] if section
+    ]
+    return (
+        "\n\n".join(sections)
+        + "\n\n"
+        + _run_command(
+            command,
+            output_file=output_file,
+            additional_output_files=[lioness_output],
+        )
+    )
+
+
+@tool
+def run_lioness_panda(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+    output_file: str,
+    lioness_output: str,
+) -> str:
+    """Run aggregate PANDA plus LIONESS-PANDA sample-specific networks."""
+    return _run_lioness_command(
+        "panda",
+        expression_file,
+        output_file,
+        lioness_output,
+        motif_file,
+        ppi_file,
+    )
+
+
+@tool
+def run_lioness_puma(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+    mirna_file: str,
+    output_file: str,
+    lioness_output: str,
+) -> str:
+    """Run aggregate PUMA plus LIONESS-PUMA sample-specific networks."""
+    return _run_lioness_command(
+        "puma",
+        expression_file,
+        output_file,
+        lioness_output,
+        motif_file,
+        ppi_file,
+        mirna_file,
+    )
+
+
+@tool
+def run_lioness_coexpression(
+    expression_file: str,
+    output_file: str,
+    lioness_output: str,
+) -> str:
+    """Run aggregate Pearson and LIONESS sample-specific co-expression networks."""
+    return _run_lioness_command(
+        "coexpression",
+        expression_file,
+        output_file,
+        lioness_output,
+    )
+
+
+def _inspect_condor_inputs_impl(network_file: str) -> tuple[str, bool]:
+    check = _read_checked_table("CONDOR network", network_file)
+    location = str(check.resolved_path) if check.resolved_path else network_file
+    lines = [
+        "CONDOR input inspection:",
+        f"- input: {location}",
+        "  required format: bipartite edge list",
+        "  required columns: source, target",
+        "  optional column: numeric weight",
+        f"  delimiter: {check.delimiter_name}",
+    ]
+    if check.skipped_annotation_rows:
+        lines.append(
+            f"  annotation: skipped {check.skipped_annotation_rows} leading row(s)"
+        )
+    for note in check.notes:
+        lines.append(f"  note: {note}")
+    for warning in check.warnings:
+        lines.append(f"  warning: {warning}")
+    for error in check.errors:
+        lines.append(f"  error: {error}")
+    if check.frame is None or check.errors:
+        return "\n".join(lines), False
+
+    raw_frame, has_header = _drop_common_header(check.frame)
+    try:
+        frame, _ = read_condor_edges(location)
+    except (OSError, ValueError) as error:
+        lines.append(f"  error: {error}")
+        return "\n".join(lines), False
+
+    source_ids = frame["source"]
+    target_ids = frame["target"]
+    if raw_frame.shape[1] < 3:
+        lines.append(
+            "  note: no weight column detected; CONDOR wrapper will use weight=1."
+        )
+
+    duplicate_edges = frame[["source", "target"]].duplicated()
+    if duplicate_edges.any():
+        lines.append(
+            f"  warning: duplicate source-target pairs: {int(duplicate_edges.sum())}"
+        )
+
+    overlap = set(source_ids) & set(target_ids)
+    if overlap:
+        preview = ", ".join(sorted(overlap)[:5])
+        lines.append(
+            "  warning: source and target node IDs overlap. CONDOR expects a bipartite "
+            f"network with two node types; overlapping examples: {preview}"
+        )
+
+    lines.extend(
+        [
+            f"  header: {'detected' if has_header else 'not detected'}",
+            f"  shape: {frame.shape[0]} rows x {frame.shape[1]} columns",
+            f"  edges: {len(frame)}",
+            f"  source nodes: {source_ids.nunique()}",
+            f"  target nodes: {target_ids.nunique()}",
+        ]
+    )
+    has_errors = any("  error:" in line for line in lines)
+    return "\n".join(lines), not has_errors
+
+
+@tool
+def inspect_condor_inputs(network_file: str) -> str:
+    """Inspect a CONDOR bipartite edge list before running community detection."""
+    report, _ = _inspect_condor_inputs_impl(network_file)
+    return report
+
+
+@tool
+def run_condor(
+    network_file: str,
+    output_dir: str,
+    prefix: str = "condor",
+) -> str:
+    """Run CONDOR community detection on a bipartite source-target-weight edge list."""
+    validation_report, inputs_ok = _inspect_condor_inputs_impl(network_file)
+    if not inputs_ok:
+        return (
+            "CONDOR input validation failed; no command was executed.\n\n"
+            f"{validation_report}"
+        )
+    output_path = _resolve_user_path(output_dir)
+    command = [
+        "run-condor",
+        "-i",
+        network_file,
+        "-o",
+        str(output_path),
+        "--prefix",
+        prefix or "condor",
+    ]
+    expected_outputs = [
+        str(output_path / f"{prefix or 'condor'}-edges.tsv"),
+        str(output_path / f"{prefix or 'condor'}-summary.txt"),
+    ]
+    run_plan = "\n".join(
+        [
+            "CONDOR run plan:",
+            f"- output directory: {output_path}",
+            f"- prefix: {prefix or 'condor'}",
+        ]
+    )
+    return (
+        validation_report
+        + "\n\n"
+        + run_plan
+        + "\n\n"
+        + _run_command(
+            command,
+            additional_output_files=expected_outputs,
+        )
+    )
+
+
+LOCAL_TOOL_EXECUTORS = {
+    "inspect_inputs": inspect_netzoo_inputs,
+    "inspect_condor_inputs": inspect_condor_inputs,
+    "format_expression": format_expression_for_netzoo,
+    "convert_expression": convert_expression_to_coexpression,
+    "run_panda": run_panda,
+    "run_puma": run_puma,
+    "run_lioness_panda": run_lioness_panda,
+    "run_lioness_puma": run_lioness_puma,
+    "run_lioness_coexpression": run_lioness_coexpression,
+    "run_condor": run_condor,
+}

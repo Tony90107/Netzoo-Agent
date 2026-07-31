@@ -4,16 +4,29 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10
-  - netzoopy
   - git
   - bash
+  # netZooPy is loaded from the pinned source checkout in Dockerfile.
+  # Its runtime dependencies are explicit here so a second shadowed netZooPy
+  # package is not installed into site-packages.
+  - click
+  - h5py
+  - igraph
+  - joblib
+  - matplotlib
+  - networkx
+  - numpy<2.0
   - pandas
-  - numpy
+  - scipy
+  - statsmodels
+  - pytables
+  - pytorch
   - setuptools<81
   - pip
   - pip:
       - langchain>=1.0
       - langgraph>=1.0
-      - langchain-openrouter>=0.0.3
       - langchain-openai>=1.0
+      - langchain-mcp-adapters>=0.3,<0.4
+      - pyyaml>=6.0
       - typing-extensions>=4.12

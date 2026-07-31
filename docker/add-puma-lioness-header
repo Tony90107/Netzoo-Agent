@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Add a consistent text header to netZooPy LIONESS-PUMA output.
+
+netZooPy's LIONESS-PANDA and co-expression exports include headers, but
+LIONESS-PUMA text exports currently do not. This helper is intentionally small
+and conservative: it only touches text files, skips files that already have the
+expected header, and derives the sample column count from the headerless
+expression matrix used for the run.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+
+HEADER_PREFIX = ["regulator", "gene", "prior_weight"]
+
+
+def sample_count(expression_file: Path) -> int:
+    with expression_file.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.strip().split()
+            if parts:
+                if len(parts) < 2:
+                    raise SystemExit(
+                        f"Expression row has no sample columns: {expression_file}"
+                    )
+                return len(parts) - 1
+    raise SystemExit(f"Expression file is empty: {expression_file}")
+
+
+def add_header(expression_file: Path, lioness_file: Path) -> bool:
+    if lioness_file.suffix.casefold() == ".npy":
+        return False
+
+    text = lioness_file.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if not lines:
+        raise SystemExit(f"LIONESS-PUMA output is empty: {lioness_file}")
+
+    first_parts = lines[0].strip().split()
+    if first_parts[:3] == HEADER_PREFIX:
+        return False
+
+    n_samples = sample_count(expression_file)
+    header = " ".join([*HEADER_PREFIX, *(str(i) for i in range(1, n_samples + 1))])
+    trailing_newline = "\n" if text.endswith("\n") else ""
+    lioness_file.write_text(header + "\n" + "\n".join(lines) + trailing_newline, encoding="utf-8")
+    return True
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Add a regulator/gene/prior/sample header to LIONESS-PUMA text output."
+    )
+    parser.add_argument("expression_file")
+    parser.add_argument("lioness_file")
+    args = parser.parse_args()
+
+    add_header(Path(args.expression_file), Path(args.lioness_file))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

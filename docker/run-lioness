@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  run-lioness panda -e EXPRESSION -m MOTIF -p PPI -o PANDA_OUT -q LIONESS_OUT
+  run-lioness puma -e EXPRESSION -m PRIOR -p PPI -i MIRNA -o PUMA_OUT -q LIONESS_OUT
+  run-lioness coexpression -e EXPRESSION -o CORRELATION_OUT -q LIONESS_OUT
+
+The expression matrix must be headerless, with genes in rows and samples in columns.
+At least three samples are required.
+
+Modes:
+  panda           Legacy netZooPy PANDA followed by LIONESS-PANDA
+  puma            Legacy netZooPy PUMA followed by LIONESS-PUMA
+  coexpression    Pearson correlation followed by LIONESS co-expression
+EOF
+}
+
+mode="${1:-}"
+case "$mode" in
+  -h|--help|"")
+    usage
+    exit 0
+    ;;
+  panda)
+    shift
+    exec python "$NETZOOPY_SRC/netZooPy/panda/run_panda.py" "$@"
+    ;;
+  puma)
+    shift
+    args=("$@")
+    expression_file=""
+    lioness_file=""
+    for ((i = 0; i < ${#args[@]}; i++)); do
+      case "${args[$i]}" in
+        -e|--expression|--expression_file|--expression-file)
+          expression_file="${args[$((i + 1))]:-}"
+          ;;
+        -q|--lioness|--lioness_output|--lioness-output|--lioness_file|--lioness-file)
+          lioness_file="${args[$((i + 1))]:-}"
+          ;;
+      esac
+    done
+    python "$NETZOOPY_SRC/netZooPy/puma/run_puma.py" "${args[@]}"
+    if [[ -n "$expression_file" && -n "$lioness_file" && "${lioness_file##*.}" != "npy" ]]; then
+      add-puma-lioness-header "$expression_file" "$lioness_file"
+    fi
+    ;;
+  coexpression)
+    shift
+    exec python "$NETZOOPY_SRC/netZooPy/panda/run_panda.py" "$@"
+    ;;
+  *)
+    echo "Unknown LIONESS mode: $mode" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
