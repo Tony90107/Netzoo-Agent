@@ -12,10 +12,16 @@ import pandas as pd
 
 try:
     from netzoo_table_io import read_condor_edges
+    from netzoo_agent_core.path_safety import condor_artifact_paths
 except ModuleNotFoundError:
     project_scripts = Path(__file__).resolve().parents[1] / "scripts"
     sys.path.insert(0, str(project_scripts))
     from netzoo_table_io import read_condor_edges
+    from netzoo_agent_core.path_safety import condor_artifact_paths
+
+
+class CondorExecutionError(RuntimeError):
+    """Raised when CONDOR cannot prove that the requested run completed."""
 
 
 def read_edges(path: Path) -> pd.DataFrame:
@@ -65,67 +71,101 @@ def build_condor_object(condor_class, edges: pd.DataFrame):
             return attempt()
         except Exception as error:  # noqa: BLE001 - keep probing compatible constructors.
             errors.append(f"{type(error).__name__}: {error}")
-    raise SystemExit(
+    raise CondorExecutionError(
         "Could not construct CONDOR object. Constructor signature: "
         f"{signature}\n" + "\n".join(errors)
     )
 
 
-def run_condor(obj) -> None:
-    for call in (
-        lambda: obj.initial_community(method="LDN"),
-        lambda: obj.initial_community(),
-    ):
+def run_first_supported(phase: str, candidates) -> str:
+    """Run the first successful API candidate and preserve every failure."""
+    errors = []
+    for label, call in candidates:
         try:
             call()
-            break
-        except Exception:
-            continue
-
-    for call in (
-        lambda: obj.brim(deltaQmin="def", c="def"),
-        lambda: obj.brim(),
-        lambda: obj.condor_run(),
-        lambda: obj.run(),
-    ):
-        try:
-            call()
-            return
-        except AttributeError:
-            continue
-        except Exception:
-            continue
-    raise SystemExit("CONDOR object was created, but no known run method succeeded.")
+            return label
+        except Exception as error:  # noqa: BLE001 - all probes are reported.
+            errors.append(f"{label}: {type(error).__name__}: {error}")
+    raise CondorExecutionError(
+        f"CONDOR {phase} failed for every supported API:\n" + "\n".join(errors)
+    )
 
 
-def write_outputs(obj, edges: pd.DataFrame, output_dir: Path, prefix: str) -> None:
+def run_condor(obj) -> tuple[str, str]:
+    initialization_method = run_first_supported(
+        "initialization",
+        (
+            (
+                "initial_community(method='LDN')",
+                lambda: obj.initial_community(method="LDN"),
+            ),
+            ("initial_community()", lambda: obj.initial_community()),
+        ),
+    )
+    optimization_method = run_first_supported(
+        "optimization",
+        (
+            (
+                "brim(deltaQmin='def', c='def')",
+                lambda: obj.brim(deltaQmin="def", c="def"),
+            ),
+            ("brim()", lambda: obj.brim()),
+            ("condor_run()", lambda: obj.condor_run()),
+            ("run()", lambda: obj.run()),
+        ),
+    )
+    return initialization_method, optimization_method
+
+
+def required_memberships(obj) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return both required membership tables or fail the run."""
+    memberships = []
+    problems = []
+    for name in ("reg_memb", "tar_memb"):
+        value = getattr(obj, name, None)
+        if not isinstance(value, pd.DataFrame):
+            problems.append(f"{name} is not a pandas DataFrame")
+        elif value.empty:
+            problems.append(f"{name} is empty")
+        else:
+            memberships.append(value)
+    if problems:
+        raise CondorExecutionError("; ".join(problems))
+    return memberships[0], memberships[1]
+
+
+def write_outputs(
+    obj,
+    edges: pd.DataFrame,
+    artifact_paths: dict[str, Path],
+    *,
+    initialization_method: str,
+    optimization_method: str,
+) -> list[Path]:
+    reg_memb, tar_memb = required_memberships(obj)
+    output_dir = artifact_paths["edges.tsv"].parent
     output_dir.mkdir(parents=True, exist_ok=True)
-    edge_path = output_dir / f"{prefix}-edges.tsv"
+    edge_path = artifact_paths["edges.tsv"]
     edges.to_csv(edge_path, sep="\t", index=False)
+    reg_memb.to_csv(artifact_paths["reg_memb.tsv"], sep="\t", index=False)
+    tar_memb.to_csv(artifact_paths["tar_memb.tsv"], sep="\t", index=False)
 
-    wrote_membership = False
-    for attr_name in ("reg_memb", "tar_memb"):
-        value = getattr(obj, attr_name, None)
-        if isinstance(value, pd.DataFrame) and not value.empty:
-            value.to_csv(
-                output_dir / f"{prefix}-{attr_name}.tsv", sep="\t", index=False
-            )
-            wrote_membership = True
-
-    summary_path = output_dir / f"{prefix}-summary.txt"
+    summary_path = artifact_paths["summary.txt"]
     with summary_path.open("w", encoding="utf-8") as handle:
         handle.write("CONDOR trial summary\n")
         handle.write(f"edges: {len(edges)}\n")
         handle.write(f"sources: {edges['source'].nunique()}\n")
         handle.write(f"targets: {edges['target'].nunique()}\n")
+        handle.write(f"initialization_method: {initialization_method}\n")
+        handle.write(f"optimization_method: {optimization_method}\n")
         for attr_name in ("modularity", "Q", "Qcoms"):
             if hasattr(obj, attr_name):
                 handle.write(f"{attr_name}: {getattr(obj, attr_name)}\n")
-        if not wrote_membership:
-            handle.write("membership: no pandas membership table attribute found\n")
 
-    print(f"Wrote {edge_path}")
-    print(f"Wrote {summary_path}")
+    written = [artifact_paths[suffix] for suffix in artifact_paths]
+    for path in written:
+        print(f"Wrote {path}")
+    return written
 
 
 def main() -> int:
@@ -137,11 +177,21 @@ def main() -> int:
     parser.add_argument("--prefix", default="condor", help="Output filename prefix")
     args = parser.parse_args()
 
-    edges = read_edges(Path(args.input))
-    condor_class = import_condor_object()
-    obj = build_condor_object(condor_class, edges)
-    run_condor(obj)
-    write_outputs(obj, edges, Path(args.outdir), args.prefix)
+    try:
+        artifact_paths = condor_artifact_paths(args.outdir, args.prefix)
+        edges = read_edges(Path(args.input))
+        condor_class = import_condor_object()
+        obj = build_condor_object(condor_class, edges)
+        initialization_method, optimization_method = run_condor(obj)
+        write_outputs(
+            obj,
+            edges,
+            artifact_paths,
+            initialization_method=initialization_method,
+            optimization_method=optimization_method,
+        )
+    except (CondorExecutionError, ValueError) as error:
+        raise SystemExit(str(error)) from error
     return 0
 
 
