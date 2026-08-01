@@ -31,10 +31,6 @@ from .memory import (
     _write_private_text,
 )
 
-from .validation import (
-    _resolve_user_path,
-)
-
 from .execution import (
     LOCAL_TOOL_EXECUTORS,
 )

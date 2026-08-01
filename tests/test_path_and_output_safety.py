@@ -41,9 +41,7 @@ class PathAndOutputSafetyTests(unittest.TestCase):
         verdict = agent.evaluate_workflow_plan(plan, task)
 
         self.assertEqual(verdict.status, "rejected")
-        failed = {
-            item.criterion for item in verdict.rubric if item.result == "fail"
-        }
+        failed = {item.criterion for item in verdict.rubric if item.result == "fail"}
         self.assertIn("output_role_uniqueness", failed)
 
     def test_condor_prefix_cannot_escape_output_directory(self):

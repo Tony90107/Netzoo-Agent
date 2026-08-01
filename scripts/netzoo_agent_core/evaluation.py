@@ -496,7 +496,9 @@ def evaluate_workflow_plan(
             result=(
                 "not_applicable"
                 if action != "run_condor"
-                else "pass" if condor_path_error is None else "fail"
+                else "pass"
+                if condor_path_error is None
+                else "fail"
             ),
             detail=(
                 "This workflow does not derive CONDOR output paths."

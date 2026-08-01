@@ -131,10 +131,14 @@ def _validate_lioness(path: Path, errors: list[str]) -> int:
         except Exception as error:  # noqa: BLE001 - malformed arrays are reported.
             errors.append(f"LIONESS NumPy output could not be loaded: {error}")
             return 0
-        if array.size == 0 or array.ndim not in {2, 3} or not np.issubdtype(
-            array.dtype, np.number
+        if (
+            array.size == 0
+            or array.ndim not in {2, 3}
+            or not np.issubdtype(array.dtype, np.number)
         ):
-            errors.append("LIONESS NumPy output must be a non-empty numeric 2D/3D array")
+            errors.append(
+                "LIONESS NumPy output must be a non-empty numeric 2D/3D array"
+            )
             return 0
         return int(array.size)
     return _validate_numeric_network(path, "LIONESS text output", errors)
@@ -197,9 +201,7 @@ def validate_output_artifacts(
                 metrics["condor_tar_memberships"] = _validate_membership(
                     paths["tar_memb.tsv"], "CONDOR tar_memb", errors
                 )
-                _readable_nonempty_file(
-                    paths["summary.txt"], "CONDOR summary", errors
-                )
+                _readable_nonempty_file(paths["summary.txt"], "CONDOR summary", errors)
     else:
         if not decision.output_file:
             errors.append(f"{action} output_file is missing")
