@@ -16,6 +16,7 @@ from .contracts import (
     WorkflowStep,
 )
 from .artifact_validation import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
+from .compatibility import TOOLS, explain_panda_puma_io
 from .bundles import BundleDiscovery, discover_coherent_bundle
 from .evaluation import evaluate_step_result, evaluate_workflow_plan
 from .graph import build_graph, invoke_graph_turn
@@ -39,6 +40,7 @@ __all__ = [
     "InputEvidence",
     "PlanEvaluationResult",
     "TaskDecision",
+    "TOOLS",
     "ToolExecutionResult",
     "WorkflowPlan",
     "WorkflowStep",
@@ -49,6 +51,7 @@ __all__ = [
     "evaluate_step_result",
     "evaluate_workflow_plan",
     "effective_results",
+    "explain_panda_puma_io",
     "invoke_graph_turn",
     "resolved_output_collisions",
     "supersede_triggering_failure",
