@@ -6,6 +6,7 @@ and the command line.
 """
 
 from .contracts import (
+    ArtifactValidationResult,
     EvaluationResult,
     InputEvidence,
     PlanEvaluationResult,
@@ -14,6 +15,7 @@ from .contracts import (
     WorkflowPlan,
     WorkflowStep,
 )
+from .artifact_validation import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
 from .bundles import BundleDiscovery, discover_coherent_bundle
 from .evaluation import evaluate_step_result, evaluate_workflow_plan
 from .graph import build_graph, invoke_graph_turn
@@ -30,6 +32,8 @@ from .path_safety import (
 )
 
 __all__ = [
+    "ARTIFACT_WRITE_ACTIONS",
+    "ArtifactValidationResult",
     "EvaluationResult",
     "BundleDiscovery",
     "InputEvidence",
@@ -50,4 +54,5 @@ __all__ = [
     "supersede_triggering_failure",
     "terminal_failed",
     "validate_output_basename",
+    "validate_output_artifacts",
 ]

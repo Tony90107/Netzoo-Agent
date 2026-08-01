@@ -118,6 +118,7 @@ __all__ = [
     "NextTurnPrompt",
     "CLI_FOLLOW_UP_STARTERS",
     "strip_cli_owned_follow_up_question",
+    "ArtifactValidationResult",
     "ToolExecutionResult",
     "AgentsPolicyHeader",
     "WorkflowPolicySpec",
@@ -599,6 +600,16 @@ def strip_cli_owned_follow_up_question(text: str) -> str:
             cleaned = rendered[:start].rstrip()
             return cleaned or rendered
     return rendered
+
+
+class ArtifactValidationResult(BaseModel):
+    """Structural verification outcome for files produced by one workflow."""
+
+    ok: bool
+    artifacts: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    metrics: dict[str, int | float | str | bool] = Field(default_factory=dict)
 
 
 class ToolExecutionResult(BaseModel):

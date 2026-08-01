@@ -38,6 +38,7 @@ from .validation import (
 from .execution import (
     LOCAL_TOOL_EXECUTORS,
 )
+from .artifact_validation import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
 
 __all__ = [
     "MIN_TOOL_CONFIDENCE",
@@ -815,21 +816,22 @@ def structure_tool_result(
         or any(marker in lowered for marker in hard_failure_markers)
     )
     dry_run = "dry run only" in lowered or "dry-run" in lowered
-    status: Literal["success", "dry_run", "failed"]
-    status = "failed" if failed else "dry_run" if dry_run else "success"
-
     artifacts = _expected_artifacts(decision, action)
     metrics: dict[str, int | float | str | bool] = {}
     if exit_code is not None:
         metrics["exit_code"] = exit_code
-    verified_artifacts = 0
-    if status == "success":
-        for artifact in artifacts:
-            path = _resolve_user_path(artifact)
-            if path.exists():
-                verified_artifacts += 1
-        if artifacts:
-            metrics["verified_artifacts"] = verified_artifacts
+    if not failed and not dry_run and action in ARTIFACT_WRITE_ACTIONS:
+        artifact_check = validate_output_artifacts(action, decision)
+        metrics.update(artifact_check.metrics)
+        warning_lines.extend(artifact_check.warnings)
+        if artifact_check.ok:
+            artifacts = artifact_check.artifacts
+        else:
+            failed = True
+            error_lines.extend(artifact_check.errors)
+
+    status: Literal["success", "dry_run", "failed"]
+    status = "failed" if failed else "dry_run" if dry_run else "success"
 
     retryable = False
     recovery_hint = None
