@@ -33,6 +33,7 @@ from workflow_registry import (
 )
 
 from netzoo_agent_core import (
+    artifact_validation,
     bundles,
     cli,
     command,
@@ -68,6 +69,7 @@ from netzoo_agent_core.runtime import MUTABLE_RUNTIME_NAMES, set_runtime_value
 
 _IMPLEMENTATION_MODULES = (
     contracts,
+    artifact_validation,
     bundles,
     memory,
     outcomes,
