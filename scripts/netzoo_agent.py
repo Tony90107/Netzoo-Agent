@@ -33,6 +33,7 @@ from workflow_registry import (
 )
 
 from netzoo_agent_core import (
+    bundles,
     cli,
     command,
     contracts,
@@ -66,6 +67,7 @@ from netzoo_agent_core.runtime import MUTABLE_RUNTIME_NAMES, set_runtime_value
 
 _IMPLEMENTATION_MODULES = (
     contracts,
+    bundles,
     memory,
     outcomes,
     command,
