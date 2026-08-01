@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import shlex
+import signal
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -18,6 +21,7 @@ __all__ = [
     "_quote_command",
     "_read_bounded_process_output",
     "_run_command",
+    "_terminate_process_tree",
 ]
 
 
@@ -44,6 +48,42 @@ def _read_bounded_process_output(handle, label: str) -> str:
         + f"\n[{label} truncated; {size} bytes total]\n"
         + tail.decode("utf-8", errors="replace").strip()
     )
+
+
+def _terminate_process_tree(
+    process: subprocess.Popen,
+    grace_seconds: float = 1.0,
+) -> None:
+    """Terminate a timed-out process and every descendant in its process group."""
+    if os.name == "posix":
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            process.wait()
+            return
+
+        deadline = time.monotonic() + grace_seconds
+        while time.monotonic() < deadline:
+            try:
+                os.killpg(process.pid, 0)
+            except ProcessLookupError:
+                break
+            except PermissionError:
+                break
+            time.sleep(min(0.02, max(0.0, deadline - time.monotonic())))
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (PermissionError, ProcessLookupError):
+            pass
+    else:
+        try:
+            process.terminate()
+            process.wait(timeout=grace_seconds)
+        except ProcessLookupError:
+            pass
+        except subprocess.TimeoutExpired:
+            process.kill()
+    process.wait()
 
 
 def _run_command(
@@ -80,12 +120,11 @@ def _run_command(
         tempfile.TemporaryFile() as stderr_handle,
     ):
         try:
-            completed = subprocess.run(
+            process = subprocess.Popen(
                 command,
-                check=False,
                 stdout=stdout_handle,
                 stderr=stderr_handle,
-                timeout=timeout,
+                start_new_session=os.name == "posix",
             )
         except FileNotFoundError:
             return (
@@ -97,7 +136,17 @@ def _run_command(
                 f"Command: `{rendered}`\n"
                 f"- error: local executable is not permitted: {command[0]}"
             )
+        except OSError as error:
+            return (
+                f"Command: `{rendered}`\n"
+                "- error: local command could not be started: "
+                f"{type(error).__name__}: {error}"
+            )
+
+        try:
+            returncode = process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
+            _terminate_process_tree(process)
             rendered_timeout = f"{timeout:g}" if timeout is not None else "unknown"
             result = [
                 f"Command: `{rendered}`",
@@ -110,24 +159,18 @@ def _run_command(
             if stderr:
                 result.append("\nSTDERR before timeout:\n" + stderr)
             return "\n".join(result)
-        except OSError as error:
-            return (
-                f"Command: `{rendered}`\n"
-                "- error: local command could not be started: "
-                f"{type(error).__name__}: {error}"
-            )
         stdout = _read_bounded_process_output(stdout_handle, "STDOUT")
         stderr = _read_bounded_process_output(stderr_handle, "STDERR")
 
     result = [
         f"Command: `{rendered}`",
-        f"Exit code: {completed.returncode}",
+        f"Exit code: {returncode}",
     ]
     if stdout:
         result.append("\nSTDOUT:\n" + stdout)
     if stderr:
         result.append("\nSTDERR:\n" + stderr)
-    if completed.returncode == 0:
+    if returncode == 0:
         missing_or_stale_outputs = []
         for path in expected_outputs:
             current_path = Path(path)
