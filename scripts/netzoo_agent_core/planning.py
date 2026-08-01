@@ -30,6 +30,11 @@ from .validation import (
     _resolve_user_path,
 )
 
+from .bundles import (
+    MULTI_FILE_ACTIONS,
+    discover_coherent_bundle,
+)
+
 from .routing import (
     MIN_TOOL_CONFIDENCE,
     _default_lioness_outputs,
@@ -231,6 +236,7 @@ def build_workflow_plan(
     autonomous_values: dict[str, str] = {}
     autonomous_reasons: dict[str, str] = {}
     autonomous_sources: dict[str, str] = {}
+    autonomous_bundle_ids: dict[str, str] = {}
     if profile_model.preferences.get("reuse_last_inputs") is True:
         reused = reusable_episode_inputs(action, episode_models)
         if reused:
@@ -241,6 +247,7 @@ def build_workflow_plan(
                     autonomous_values[field_name] = value
                     autonomous_reasons[field_name] = reason
                     autonomous_sources[field_name] = "discovered"
+                    autonomous_bundle_ids[field_name] = f"reused:{reason}"
     if (
         _is_demo_request(task)
         and not _mentions_unspecified_data_directory(task)
@@ -264,6 +271,18 @@ def build_workflow_plan(
         nearby = _resolve_user_path(expression_hint).parent
     else:
         nearby = PROJECT_ROOT / "data"
+
+    if action in MULTI_FILE_ACTIONS and not autonomous_values:
+        bundle = discover_coherent_bundle(action, nearby, explicit_input_values)
+        if bundle is not None:
+            for field_name, value in bundle.values.items():
+                if field_name in explicit_input_values:
+                    continue
+                setattr(decision, field_name, value)
+                autonomous_values[field_name] = value
+                autonomous_reasons[field_name] = bundle.reason
+                autonomous_sources[field_name] = "discovered"
+                autonomous_bundle_ids[field_name] = bundle.bundle_id
 
     default_output_dir = str(
         profile_model.preferences.get("default_output_dir", "outputs/demo")
@@ -290,6 +309,7 @@ def build_workflow_plan(
                         if field_name in autonomous_values
                         else "Explicitly provided by the user or the intent parser."
                     ),
+                    bundle_id=autonomous_bundle_ids.get(field_name),
                 )
             )
             continue
@@ -344,7 +364,18 @@ def build_workflow_plan(
 
         keywords = _candidate_keywords(action, field_name)
         candidates = _find_candidate_files(keywords, nearby) if keywords else []
-        selected, reason = _choose_unambiguous_candidate(candidates, keywords, nearby)
+        if action in MULTI_FILE_ACTIONS:
+            selected = None
+            reason = (
+                "No single complete validated dataset bundle contains every "
+                "remaining required input."
+            )
+        else:
+            selected, reason = _choose_unambiguous_candidate(
+                candidates,
+                keywords,
+                nearby,
+            )
         if selected:
             setattr(decision, field_name, selected)
             evidence.append(

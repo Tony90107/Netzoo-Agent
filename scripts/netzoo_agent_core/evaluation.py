@@ -50,6 +50,7 @@ from .interpretation import (
     _mentions_unspecified_data_directory,
 )
 from .outcomes import effective_results, terminal_failed
+from .bundles import MULTI_FILE_ACTIONS
 
 __all__ = [
     "_path_literal_in_task",
@@ -141,6 +142,31 @@ def _path_hygiene_failures(plan: WorkflowPlan, decision: TaskDecision) -> list[s
         if value.endswith((".", "。")):
             failures.append(f"{field_name} has trailing sentence punctuation: {value}")
     return failures
+
+
+def _bundle_provenance_failures(
+    plan: WorkflowPlan,
+    decision: TaskDecision,
+) -> list[str]:
+    """Reject autonomous multi-file evidence that does not name one bundle."""
+    if decision.action not in MULTI_FILE_ACTIONS:
+        return []
+    discovered = [
+        item
+        for item in plan.evidence
+        if item.status == "discovered" and item.field in INPUT_ROLE_FIELDS
+    ]
+    if not discovered:
+        return []
+    if any(not item.bundle_id for item in discovered):
+        return ["autonomously discovered inputs are missing a dataset bundle id"]
+    bundle_ids = {item.bundle_id for item in discovered}
+    if len(bundle_ids) != 1:
+        return [
+            "autonomously discovered inputs mix dataset bundles: "
+            + ", ".join(sorted(bundle_ids))
+        ]
+    return []
 
 
 def _expected_plan_steps(
@@ -313,6 +339,21 @@ def evaluate_workflow_plan(
                 "Every evidence status is grounded by its declared source contract."
                 if not provenance_failures
                 else "; ".join(provenance_failures)
+            ),
+        )
+    )
+
+    bundle_failures = (
+        _bundle_provenance_failures(plan, decision) if local_data_action else []
+    )
+    rubric.append(
+        PlanRubricItem(
+            criterion="dataset_bundle_provenance",
+            result="pass" if not bundle_failures else "fail",
+            detail=(
+                "Autonomously discovered multi-file inputs share one dataset bundle."
+                if not bundle_failures
+                else "; ".join(bundle_failures)
             ),
         )
     )

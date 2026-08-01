@@ -14,6 +14,7 @@ from .contracts import (
     WorkflowPlan,
     WorkflowStep,
 )
+from .bundles import BundleDiscovery, discover_coherent_bundle
 from .evaluation import evaluate_step_result, evaluate_workflow_plan
 from .graph import build_graph, invoke_graph_turn
 from .outcomes import (
@@ -25,6 +26,7 @@ from .planning import build_workflow_plan
 
 __all__ = [
     "EvaluationResult",
+    "BundleDiscovery",
     "InputEvidence",
     "PlanEvaluationResult",
     "TaskDecision",
@@ -33,6 +35,7 @@ __all__ = [
     "WorkflowStep",
     "build_graph",
     "build_workflow_plan",
+    "discover_coherent_bundle",
     "evaluate_step_result",
     "evaluate_workflow_plan",
     "effective_results",
