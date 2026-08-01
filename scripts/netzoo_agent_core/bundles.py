@@ -128,8 +128,7 @@ def _bundle_in_directory(
         values=values,
         bundle_id=f"directory:{resolved_directory}",
         reason=(
-            "Selected one complete validated dataset bundle from "
-            f"{resolved_directory}."
+            f"Selected one complete validated dataset bundle from {resolved_directory}."
         ),
         candidates_by_field=candidates_by_field,
     )
@@ -144,8 +143,7 @@ def discover_coherent_bundle(
     if action not in MULTI_FILE_ACTIONS:
         return None
     anchor_parents = {
-        _resolve_user_path(value).parent.resolve()
-        for value in explicit_inputs.values()
+        _resolve_user_path(value).parent.resolve() for value in explicit_inputs.values()
     }
     if len(anchor_parents) > 1:
         return None

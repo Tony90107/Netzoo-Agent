@@ -43,8 +43,7 @@ def condor_artifact_paths(
     safe_prefix = validate_output_basename(prefix or "condor", "prefix")
     suffixes = ("edges.tsv", "reg_memb.tsv", "tar_memb.tsv", "summary.txt")
     paths = {
-        suffix: (root / f"{safe_prefix}-{suffix}").resolve()
-        for suffix in suffixes
+        suffix: (root / f"{safe_prefix}-{suffix}").resolve() for suffix in suffixes
     }
     if any(not path.is_relative_to(root) for path in paths.values()):
         raise ValueError("CONDOR output path escapes output_dir")
