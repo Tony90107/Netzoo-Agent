@@ -437,13 +437,17 @@ def enforce_capability_gate(
 def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
     sorted_names = sorted(names, key=len, reverse=True)
     name_pattern = "|".join(re.escape(name) for name in sorted_names)
-    pattern = (
-        rf"(?:{name_pattern})\s*(?:是|為|=|:|：|at|as|is|to)?\s*" r"([^\s，,。；;]+)"
+    pattern = re.compile(
+        rf"(?:{name_pattern})\s*(?:是|為|=|:|：|at|as|is|to)?\s*"
+        r"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)|(?P<plain>[^\s，,。；;]+))",
+        flags=re.IGNORECASE,
     )
-    match = re.search(pattern, task, flags=re.IGNORECASE)
+    match = pattern.search(task)
     if not match:
         return None
-    return match.group(1).strip().strip("'\"").rstrip(".。")
+    if match.group("quote"):
+        return match.group("quoted")
+    return match.group("plain").strip().rstrip(".。")
 
 
 def _score_candidate_file(path: Path, keywords: tuple[str, ...], nearby: Path) -> int:

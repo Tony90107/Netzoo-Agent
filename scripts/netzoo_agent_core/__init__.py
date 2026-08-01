@@ -23,6 +23,11 @@ from .outcomes import (
     terminal_failed,
 )
 from .planning import build_workflow_plan
+from .path_safety import (
+    condor_artifact_paths,
+    resolved_output_collisions,
+    validate_output_basename,
+)
 
 __all__ = [
     "EvaluationResult",
@@ -35,11 +40,14 @@ __all__ = [
     "WorkflowStep",
     "build_graph",
     "build_workflow_plan",
+    "condor_artifact_paths",
     "discover_coherent_bundle",
     "evaluate_step_result",
     "evaluate_workflow_plan",
     "effective_results",
     "invoke_graph_turn",
+    "resolved_output_collisions",
     "supersede_triggering_failure",
     "terminal_failed",
+    "validate_output_basename",
 ]

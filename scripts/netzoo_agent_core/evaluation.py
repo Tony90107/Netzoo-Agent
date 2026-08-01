@@ -51,6 +51,7 @@ from .interpretation import (
 )
 from .outcomes import effective_results, terminal_failed
 from .bundles import MULTI_FILE_ACTIONS
+from .path_safety import condor_artifact_paths, resolved_output_collisions
 
 __all__ = [
     "_path_literal_in_task",
@@ -465,6 +466,44 @@ def evaluate_workflow_plan(
                 "No planned output path overwrites a declared input path."
                 if output_safe
                 else "Output/input path collisions: " + ", ".join(collisions)
+            ),
+        )
+    )
+
+    output_role_collisions = resolved_output_collisions(decision)
+    rubric.append(
+        PlanRubricItem(
+            criterion="output_role_uniqueness",
+            result="pass" if not output_role_collisions else "fail",
+            detail=(
+                "Every populated output role resolves to a distinct path."
+                if not output_role_collisions
+                else "Output role collisions: " + "; ".join(output_role_collisions)
+            ),
+        )
+    )
+
+    condor_path_error = None
+    if action == "run_condor" and decision.output_dir:
+        try:
+            condor_artifact_paths(decision.output_dir, decision.prefix or "condor")
+        except ValueError as error:
+            condor_path_error = str(error)
+    rubric.append(
+        PlanRubricItem(
+            criterion="condor_derived_output_safety",
+            required=action == "run_condor",
+            result=(
+                "not_applicable"
+                if action != "run_condor"
+                else "pass" if condor_path_error is None else "fail"
+            ),
+            detail=(
+                "This workflow does not derive CONDOR output paths."
+                if action != "run_condor"
+                else "All CONDOR artifacts stay beneath output_dir."
+                if condor_path_error is None
+                else condor_path_error
             ),
         )
     )

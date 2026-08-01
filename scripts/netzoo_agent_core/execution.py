@@ -26,6 +26,7 @@ from .validation import (
     _validate_expression,
     inspect_netzoo_inputs,
 )
+from .path_safety import condor_artifact_paths
 
 from .preparation import (
     convert_expression_to_coexpression,
@@ -446,6 +447,14 @@ def run_condor(
             f"{validation_report}"
         )
     output_path = _resolve_user_path(output_dir)
+    artifact_paths = condor_artifact_paths(output_path, prefix or "condor")
+    resolved_input = _resolve_user_path(network_file)
+    colliding = [path for path in artifact_paths.values() if path == resolved_input]
+    if colliding:
+        raise ValueError(
+            "CONDOR output artifact would overwrite the network_file input: "
+            + str(colliding[0])
+        )
     command = [
         "run-condor",
         "-i",
@@ -455,10 +464,7 @@ def run_condor(
         "--prefix",
         prefix or "condor",
     ]
-    expected_outputs = [
-        str(output_path / f"{prefix or 'condor'}-edges.tsv"),
-        str(output_path / f"{prefix or 'condor'}-summary.txt"),
-    ]
+    expected_outputs = [str(path) for path in artifact_paths.values()]
     run_plan = "\n".join(
         [
             "CONDOR run plan:",
