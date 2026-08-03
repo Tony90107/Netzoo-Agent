@@ -19,6 +19,8 @@ from workflow_registry import (
     RecommendedAction,
 )
 
+from .trace_contracts import LLMCallUsage
+
 try:
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
     from langchain_core.tools import tool
@@ -77,6 +79,7 @@ __all__ = [
     "PROJECT_ROOT",
     "SESSION_ROOT",
     "TOOL_LOG_ROOT",
+    "TRACE_ROOT",
     "MEMORY_ROOT",
     "PROFILE_ROOT",
     "EPISODE_ROOT",
@@ -181,6 +184,9 @@ SESSION_ROOT = PROJECT_ROOT / ".netzoo" / "sessions"
 
 
 TOOL_LOG_ROOT = PROJECT_ROOT / ".netzoo" / "logs"
+
+
+TRACE_ROOT = PROJECT_ROOT / ".netzoo" / "traces"
 
 
 MEMORY_ROOT = PROJECT_ROOT / ".netzoo" / "memory"
@@ -405,6 +411,7 @@ class AgentState(TypedDict):
     retrieved_episodes: NotRequired[list[dict]]
     project_policy: NotRequired[dict]
     token_usage: NotRequired[dict]
+    run_id: NotRequired[str]
 
 
 class AgentTurnInterrupted(Exception):
@@ -486,7 +493,7 @@ class LLMUsage(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
-    calls: list[dict] = Field(default_factory=list)
+    calls: list[LLMCallUsage] = Field(default_factory=list)
     budget_tokens: int = DEFAULT_TASK_TOKEN_BUDGET
     budget_exhausted: bool = False
 
