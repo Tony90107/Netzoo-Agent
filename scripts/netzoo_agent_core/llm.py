@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 
 from .contracts import (
@@ -19,6 +20,8 @@ from .contracts import (
     TaskDecision,
     output_language_policy,
 )
+from .pricing import PriceCatalog
+from .trace_contracts import BudgetDecision, LLMCallUsage
 
 __all__ = [
     "build_routing_prompt",
@@ -27,9 +30,11 @@ __all__ = [
     "build_response_messages",
     "_estimated_tokens",
     "_message_usage",
+    "extract_provider_usage",
     "append_llm_usage",
     "structured_result_payload",
     "budget_allows_call",
+    "evaluate_budget_call",
     "validate_router_model",
     "validate_response_model",
     "build_llm",
@@ -143,28 +148,56 @@ def _estimated_tokens(text: str) -> int:
     return max(1, math.ceil(ascii_chars / 4) + non_ascii_chars)
 
 
-def _message_usage(message) -> tuple[int, int] | None:
+def extract_provider_usage(message) -> dict | None:
+    """Normalize provider tokens, request id, and actual USD cost metadata."""
     usage = getattr(message, "usage_metadata", None) or {}
-    if usage:
-        input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0))
-        output_tokens = usage.get("output_tokens", usage.get("completion_tokens", 0))
-        return int(input_tokens or 0), int(output_tokens or 0)
     metadata = getattr(message, "response_metadata", None) or {}
     token_usage = metadata.get("token_usage") or metadata.get("usage") or {}
-    if token_usage:
-        return (
-            int(
-                token_usage.get("prompt_tokens", token_usage.get("input_tokens", 0))
-                or 0
-            ),
-            int(
-                token_usage.get(
-                    "completion_tokens", token_usage.get("output_tokens", 0)
+    source = usage or token_usage
+    if not source:
+        return None
+    input_tokens = int(
+        source.get("input_tokens", source.get("prompt_tokens", 0)) or 0
+    )
+    output_tokens = int(
+        source.get("output_tokens", source.get("completion_tokens", 0)) or 0
+    )
+    input_details = source.get("input_token_details") or {}
+    cache_read_tokens = int(
+        input_details.get("cache_read", source.get("cache_read_tokens", 0)) or 0
+    )
+    cache_write_tokens = int(
+        input_details.get("cache_write", source.get("cache_write_tokens", 0)) or 0
+    )
+    raw_cost = metadata.get("cost", metadata.get("total_cost"))
+    if raw_cost is None and isinstance(token_usage, dict):
+        raw_cost = token_usage.get("cost")
+    cost_micro_usd = None
+    if raw_cost is not None:
+        try:
+            cost_micro_usd = int(
+                (Decimal(str(raw_cost)) * Decimal(1_000_000)).quantize(
+                    Decimal("1"),
+                    rounding=ROUND_HALF_UP,
                 )
-                or 0
-            ),
-        )
-    return None
+            )
+        except (InvalidOperation, ValueError) as error:
+            raise ValueError("provider cost metadata must be numeric USD") from error
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read_tokens,
+        "cache_write_tokens": cache_write_tokens,
+        "request_id": metadata.get("id") or metadata.get("request_id"),
+        "cost_micro_usd": cost_micro_usd,
+    }
+
+
+def _message_usage(message) -> tuple[int, int] | None:
+    normalized = extract_provider_usage(message)
+    if normalized is None:
+        return None
+    return normalized["input_tokens"], normalized["output_tokens"]
 
 
 def append_llm_usage(
@@ -176,32 +209,67 @@ def append_llm_usage(
     input_text: str,
     output_text: str,
     budget_tokens: int,
+    duration_ms: int = 0,
+    status: str = "success",
+    price_catalog: PriceCatalog | None = None,
 ) -> LLMUsage:
     usage = (
         LLMUsage.model_validate(current)
         if current is not None
         else LLMUsage(budget_tokens=budget_tokens)
     )
-    actual = _message_usage(response) if response is not None else None
-    if actual is None:
+    provider = extract_provider_usage(response) if response is not None else None
+    if provider is None:
         input_tokens = _estimated_tokens(input_text)
         output_tokens = _estimated_tokens(output_text) if output_text else 0
-        estimated = True
+        cache_read_tokens = 0
+        cache_write_tokens = 0
+        usage_provenance = "estimated"
+        provider_request_id = None
+        actual_cost = None
     else:
-        input_tokens, output_tokens = actual
-        estimated = False
-    call = {
-        "role": role,
-        "model": model,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "total_tokens": input_tokens + output_tokens,
-        "estimated": estimated,
-    }
+        input_tokens = provider["input_tokens"]
+        output_tokens = provider["output_tokens"]
+        cache_read_tokens = provider["cache_read_tokens"]
+        cache_write_tokens = provider["cache_write_tokens"]
+        usage_provenance = "actual"
+        provider_request_id = provider["request_id"]
+        actual_cost = provider["cost_micro_usd"]
+    snapshot = (price_catalog or PriceCatalog.from_environment()).snapshot(model)
+    if actual_cost is not None:
+        cost_provenance = "actual"
+        cost_micro_usd = actual_cost
+        stored_snapshot = None
+    elif snapshot.provenance == "estimated":
+        input_cost = input_tokens * snapshot.input_micro_usd_per_million
+        output_cost = output_tokens * snapshot.output_micro_usd_per_million
+        cost_micro_usd = (input_cost + output_cost + 500_000) // 1_000_000
+        cost_provenance = "estimated"
+        stored_snapshot = snapshot
+    else:
+        cost_provenance = "unavailable"
+        cost_micro_usd = None
+        stored_snapshot = None
+    call = LLMCallUsage(
+        role=role,
+        model=model,
+        provider_request_id=provider_request_id,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_read_tokens=cache_read_tokens,
+        cache_write_tokens=cache_write_tokens,
+        total_tokens=input_tokens + output_tokens,
+        usage_provenance=usage_provenance,
+        cost_provenance=cost_provenance,
+        cost_micro_usd=cost_micro_usd,
+        price_snapshot=stored_snapshot,
+        duration_ms=duration_ms,
+        status=status,
+    )
     usage.calls.append(call)
     usage.input_tokens += input_tokens
     usage.output_tokens += output_tokens
-    usage.total_tokens += call["total_tokens"]
+    usage.total_tokens += call.total_tokens
     usage.budget_tokens = budget_tokens
     usage.budget_exhausted = usage.total_tokens >= budget_tokens
     return usage
@@ -228,10 +296,47 @@ def budget_allows_call(
     reserved_output_tokens: int,
     budget_tokens: int,
 ) -> bool:
+    decision = evaluate_budget_call(
+        usage,
+        estimated_input_tokens=_estimated_tokens(input_text),
+        reserved_output_tokens=reserved_output_tokens,
+        budget_tokens=budget_tokens,
+        reserve_tokens=0,
+        allow_reserve=True,
+    )
+    return decision.status != "blocked"
+
+
+def evaluate_budget_call(
+    usage: LLMUsage | dict | None,
+    *,
+    estimated_input_tokens: int,
+    reserved_output_tokens: int,
+    budget_tokens: int,
+    reserve_tokens: int = 1_500,
+    allow_reserve: bool = False,
+) -> BudgetDecision:
     consumed = LLMUsage.model_validate(usage).total_tokens if usage is not None else 0
-    return (
-        consumed + _estimated_tokens(input_text) + reserved_output_tokens
-        <= budget_tokens
+    ceiling = budget_tokens if allow_reserve else max(0, budget_tokens - reserve_tokens)
+    projected = consumed + estimated_input_tokens + reserved_output_tokens
+    warning_70_tokens = math.ceil(budget_tokens * 0.70)
+    warning_85_tokens = math.ceil(budget_tokens * 0.85)
+    if projected > ceiling:
+        status = "blocked"
+    elif projected >= warning_85_tokens:
+        status = "warning_85"
+    elif projected >= warning_70_tokens:
+        status = "warning_70"
+    else:
+        status = "allowed"
+    return BudgetDecision(
+        status=status,
+        consumed_tokens=consumed,
+        estimated_input_tokens=estimated_input_tokens,
+        reserved_output_tokens=reserved_output_tokens,
+        projected_tokens=projected,
+        hard_limit_tokens=budget_tokens,
+        reserve_tokens=reserve_tokens,
     )
 
 

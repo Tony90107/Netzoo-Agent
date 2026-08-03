@@ -34,6 +34,7 @@ from .path_safety import (
 from .trace_contracts import TraceEvent
 from .trace_store import LocalTraceStore, TraceIntegrityError
 from .tracing import NullTraceRecorder, TraceRecorder
+from .pricing import PriceCatalog
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -63,6 +64,7 @@ __all__ = [
     "validate_output_artifacts",
     "LocalTraceStore",
     "NullTraceRecorder",
+    "PriceCatalog",
     "TraceEvent",
     "TraceIntegrityError",
     "TraceRecorder",

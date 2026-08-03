@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 
 from workflow_registry import (
@@ -79,18 +80,20 @@ from .evaluation import (
 )
 
 from .llm import (
+    _estimated_tokens,
     append_llm_usage,
-    budget_allows_call,
     build_llm,
     build_response_messages,
     build_router_messages,
     build_routing_prompt,
+    evaluate_budget_call,
     latest_user_task,
     structured_result_payload,
     validate_response_model,
     validate_router_model,
 )
 from .outcomes import supersede_triggering_failure
+from .pricing import PriceCatalog
 from .tracing import NullTraceRecorder, TraceRecorder
 
 __all__ = [
@@ -123,6 +126,7 @@ def build_graph(
     episode_store = episode_store or EpisodeStore()
     project_policy = project_policy or ProjectPolicyLoader(PROJECT_ROOT).load()
     recorder = trace_recorder or NullTraceRecorder()
+    price_catalog = PriceCatalog.from_environment()
     ProjectPolicyLoader._validate_against_code(project_policy.workflows)
     router_model_name = validate_router_model(router_model_name or DEFAULT_ROUTER_MODEL)
     model_name = validate_response_model(model_name)
@@ -195,6 +199,49 @@ Websearch MCP lookup is read-only and is allowed in either mode.
     def record(state: AgentState, event_type: str, node: str, payload: dict) -> None:
         recorder.append(state.get("run_id"), event_type, node, payload)
 
+    def preflight_budget(
+        state: AgentState,
+        *,
+        role: str,
+        model: str,
+        input_text: str,
+        reserved_output_tokens: int,
+        allow_reserve: bool,
+    ):
+        decision = evaluate_budget_call(
+            state.get("token_usage"),
+            estimated_input_tokens=_estimated_tokens(input_text),
+            reserved_output_tokens=reserved_output_tokens,
+            budget_tokens=task_token_budget,
+            allow_reserve=allow_reserve,
+        )
+        emitted = list(state.get("budget_warnings", []))
+        if decision.status in {"warning_70", "warning_85"}:
+            if decision.status not in emitted:
+                record(
+                    state,
+                    "budget.warning",
+                    role,
+                    {
+                        "role": role,
+                        "model": model,
+                        **decision.model_dump(),
+                    },
+                )
+                emitted.append(decision.status)
+        elif decision.status == "blocked":
+            record(
+                state,
+                "budget.blocked",
+                role,
+                {
+                    "role": role,
+                    "model": model,
+                    **decision.model_dump(),
+                },
+            )
+        return decision, emitted
+
     def apply_project_policy(state: AgentState):
         _trace(
             "policy",
@@ -248,12 +295,15 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             separators=(",", ":"),
         )
         current_usage = state.get("token_usage")
-        if not budget_allows_call(
-            current_usage,
+        budget_decision, budget_warnings = preflight_budget(
+            state,
+            role="router",
+            model=router_model_name,
             input_text=router_input_text,
             reserved_output_tokens=router_max_tokens,
-            budget_tokens=task_token_budget,
-        ):
+            allow_reserve=False,
+        )
+        if budget_decision.status == "blocked":
             usage = (
                 LLMUsage.model_validate(current_usage)
                 if current_usage
@@ -281,7 +331,11 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             return {
                 "decision": decision.model_dump(),
                 "token_usage": usage.model_dump(),
+                "budget_warnings": budget_warnings,
             }
+        call_started_ns = time.monotonic_ns()
+        call_status = "success"
+        reason_code = "provider"
         try:
             structured = router.invoke(messages)
             parsed_decision, raw_message = structured_result_payload(structured)
@@ -295,11 +349,15 @@ Websearch MCP lookup is read-only and is allowed in either mode.
                 input_text=router_input_text,
                 output_text=decision.model_dump_json(),
                 budget_tokens=task_token_budget,
+                duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
+                price_catalog=price_catalog,
             )
         except BaseException as error:
             if _is_fatal_exception(error):
                 raise
             decision = deterministic_router_fallback(user_task, error)
+            call_status = "failed"
+            reason_code = "deterministic_fallback"
             usage = append_llm_usage(
                 current_usage,
                 role="router",
@@ -307,12 +365,21 @@ Websearch MCP lookup is read-only and is allowed in either mode.
                 input_text=router_input_text,
                 output_text="",
                 budget_tokens=task_token_budget,
+                duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
+                status=call_status,
+                price_catalog=price_catalog,
             )
             _trace(
                 "intent",
                 "Router provider failed; deterministic fallback selected",
                 type(error).__name__,
             )
+        record(
+            state,
+            "llm.completed",
+            "classify",
+            usage.calls[-1].model_dump(mode="json"),
+        )
         _trace(
             "intent",
             f"Classified as {decision.action}",
@@ -327,17 +394,14 @@ Websearch MCP lookup is read-only and is allowed in either mode.
                 "confidence": decision.confidence,
                 "in_scope": decision.in_scope,
                 "reason": decision.reason,
-                "reason_code": (
-                    "deterministic_fallback"
-                    if getattr(decision, "fallback_used", False)
-                    else "provider"
-                ),
+                "reason_code": reason_code,
                 "recommended_actions": decision.recommended_actions,
             },
         )
         return {
             "decision": decision.model_dump(),
             "token_usage": usage.model_dump(),
+            "budget_warnings": budget_warnings,
         }
 
     def plan_task(state: AgentState):
@@ -671,12 +735,15 @@ Websearch MCP lookup is read-only and is allowed in either mode.
         )
         response_input_text = "\n".join(str(message.content) for message in context)
         current_usage = state.get("token_usage")
-        if not budget_allows_call(
-            current_usage,
+        budget_decision, budget_warnings = preflight_budget(
+            state,
+            role="response",
+            model=model_name,
             input_text=response_input_text,
             reserved_output_tokens=response_max_tokens,
-            budget_tokens=task_token_budget,
-        ):
+            allow_reserve=True,
+        )
+        if budget_decision.status == "blocked":
             usage = LLMUsage.model_validate(
                 current_usage or {"budget_tokens": task_token_budget}
             )
@@ -690,6 +757,7 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             _trace("evaluate", "Response model skipped at the task token budget")
         else:
             usage = None
+        call_started_ns = time.monotonic_ns()
         try:
             if usage is None:
                 response = response_llm.invoke(context)
@@ -701,6 +769,17 @@ Websearch MCP lookup is read-only and is allowed in either mode.
                     input_text=response_input_text,
                     output_text=str(response.content),
                     budget_tokens=task_token_budget,
+                    duration_ms=max(
+                        0,
+                        (time.monotonic_ns() - call_started_ns) // 1_000_000,
+                    ),
+                    price_catalog=price_catalog,
+                )
+                record(
+                    state,
+                    "llm.completed",
+                    "respond",
+                    usage.calls[-1].model_dump(mode="json"),
                 )
         except BaseException as error:
             if _is_fatal_exception(error):
@@ -726,6 +805,18 @@ Websearch MCP lookup is read-only and is allowed in either mode.
                 input_text=response_input_text,
                 output_text="",
                 budget_tokens=task_token_budget,
+                duration_ms=max(
+                    0,
+                    (time.monotonic_ns() - call_started_ns) // 1_000_000,
+                ),
+                status="failed",
+                price_catalog=price_catalog,
+            )
+            record(
+                state,
+                "llm.completed",
+                "respond",
+                usage.calls[-1].model_dump(mode="json"),
             )
         cleaned_response = strip_cli_owned_follow_up_question(str(response.content))
         if cleaned_response != str(response.content):
@@ -735,6 +826,7 @@ Websearch MCP lookup is read-only and is allowed in either mode.
         return {
             "messages": [response],
             "token_usage": usage.model_dump(),
+            "budget_warnings": budget_warnings,
         }
 
     graph = StateGraph(AgentState)
