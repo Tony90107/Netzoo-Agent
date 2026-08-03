@@ -1,6 +1,7 @@
 import sys
 import json
 import tarfile
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from netzoo_agent_core.trace_store import (  # noqa: E402
     TraceIntegrityError,
     TraceStorageError,
 )
+from netzoo_agent_core.session import cleanup_trace_storage  # noqa: E402
 
 
 def test_store_appends_a_contiguous_private_hash_chain(tmp_path: Path):
@@ -139,3 +141,24 @@ def test_partial_final_line_requires_explicit_repair_and_is_quarantined(tmp_path
     assert quarantine.read_bytes() == b'{"sequence":2'
     assert quarantine.stat().st_mode & 0o777 == 0o600
     assert store.verify_run(run_id).valid is True
+
+
+def test_trace_retention_removes_only_old_sealed_runs(tmp_path: Path):
+    root = tmp_path / "traces"
+    store = LocalTraceStore(root)
+    sealed_id = store.start_run({"session_id": "sealed", "profile_id": "default"})
+    pending_id = store.start_run({"session_id": "pending", "profile_id": "default"})
+    store.finish_run(sealed_id, "completed", {"result": "ok"})
+    store.pause_run(pending_id, {"reason": "needs_input"})
+    manifest_path = store.run_path(sealed_id) / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    old = datetime.now(timezone.utc) - timedelta(days=100)
+    manifest["finished_at"] = old.isoformat().replace("+00:00", "Z")
+    manifest["updated_at"] = manifest["finished_at"]
+    manifest_path.write_text(json.dumps(manifest))
+
+    removed = cleanup_trace_storage(90, trace_root=root)
+
+    assert removed == 1
+    assert not store.run_path(sealed_id).exists()
+    assert store.run_path(pending_id).exists()
