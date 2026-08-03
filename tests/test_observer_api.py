@@ -121,6 +121,9 @@ def test_agent_ingests_admin_shares_and_revocation_is_immediate() -> None:
     assert exchanged.status_code == 204
     assert "HttpOnly" in exchanged.headers["set-cookie"]
     assert "SameSite=strict" in exchanged.headers["set-cookie"]
+    resolved = client.get(f"/v1/share/resolve/{share['share_id']}")
+    assert resolved.status_code == 200
+    assert resolved.json()["run_id"] == str(RUN_ID)
 
     snapshot = client.get(f"/v1/share/runs/{RUN_ID}")
     assert snapshot.status_code == 200
@@ -193,3 +196,19 @@ def test_auth_and_payload_limits_fail_closed() -> None:
         ).status_code
         == 422
     )
+
+
+def test_browser_dashboard_assets_are_served_with_strict_csp() -> None:
+    client = _client()
+
+    page = client.get(f"/share/{RUN_ID}")
+    styles = client.get("/observer-assets/styles.css")
+    script = client.get("/observer-assets/app.js")
+
+    assert page.status_code == 200
+    assert "Agent 飛行記錄器" in page.text
+    assert 'id="trace-list"' in page.text
+    assert styles.status_code == 200
+    assert script.status_code == 200
+    assert "textContent" in script.text
+    assert "default-src 'self'" in page.headers["content-security-policy"]

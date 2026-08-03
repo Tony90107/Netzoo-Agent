@@ -21,6 +21,7 @@ class CollectorSettings(BaseModel):
     share_default_ttl_seconds: int = Field(default=604_800, ge=60, le=2_592_000)
     max_event_batch: int = Field(default=100, ge=1, le=100)
     max_blob_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
+    share_cookie_secure: bool = True
 
     @classmethod
     def from_environment(cls) -> "CollectorSettings":
@@ -45,4 +46,10 @@ class CollectorSettings(BaseModel):
             "NETZOO_OBSERVER_OBJECT_BUCKET",
             cls.model_fields["object_store_bucket"].default,
         )
+        secure_cookie = os.environ.get(
+            "NETZOO_OBSERVER_SHARE_COOKIE_SECURE", "true"
+        ).casefold()
+        if secure_cookie not in {"true", "false"}:
+            raise ValueError("NETZOO_OBSERVER_SHARE_COOKIE_SECURE must be true or false")
+        values["share_cookie_secure"] = secure_cookie == "true"
         return cls.model_validate(values)
