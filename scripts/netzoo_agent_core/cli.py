@@ -90,6 +90,7 @@ from .interaction import (
 )
 from .runtime import configure_runtime
 from .trace_store import LocalTraceStore
+from .trace_sync import TraceSyncWorker
 from .tracing import TraceRecorder
 
 __all__ = [
@@ -510,6 +511,21 @@ def main() -> int:
     trace_store = LocalTraceStore(TRACE_ROOT)
     trace_store.preflight()
     recorder = TraceRecorder(trace_store)
+    collector_url = os.environ.get("NETZOO_OBSERVER_URL", "").strip()
+    collector_agent_key = os.environ.get("NETZOO_OBSERVER_AGENT_KEY", "").strip()
+    sync_worker = (
+        TraceSyncWorker(trace_store, collector_url, collector_agent_key)
+        if collector_url and collector_agent_key
+        else None
+    )
+    synchronizing_runs: set[str] = set()
+
+    def ensure_trace_sync(active_run_id: str) -> None:
+        if sync_worker is None or active_run_id in synchronizing_runs:
+            return
+        sync_worker.start_background(active_run_id)
+        synchronizing_runs.add(active_run_id)
+
     run_id = None
     run_paused = False
     if resume_id:
@@ -527,10 +543,12 @@ def main() -> int:
                 "cli",
                 {"session_id": session_id},
             )
+            ensure_trace_sync(str(run_id))
         else:
             run_id = str(
                 recorder.start_run(session_id=session_id, profile_id=profile_id)
             )
+            ensure_trace_sync(run_id)
         if saved_plan:
             candidate = WorkflowPlan.model_validate(saved_plan)
             if candidate.status in {"needs_input", "needs_confirmation"}:
@@ -676,6 +694,7 @@ def main() -> int:
             run_id = str(
                 recorder.start_run(session_id=session_id, profile_id=profile_id)
             )
+            ensure_trace_sync(run_id)
         elif run_paused:
             recorder.append(
                 run_id,
