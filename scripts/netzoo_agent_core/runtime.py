@@ -22,6 +22,7 @@ MUTABLE_RUNTIME_NAMES = frozenset(
         "PROJECT_ROOT",
         "SESSION_ROOT",
         "TOOL_LOG_ROOT",
+        "TRACE_ROOT",
         "PROFILE_ROOT",
         "EPISODE_ROOT",
     }

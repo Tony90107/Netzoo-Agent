@@ -53,6 +53,10 @@ from netzoo_agent_core import (
     preparation,
     routing,
     session,
+    trace_contracts,
+    trace_redaction,
+    trace_store,
+    tracing,
     validation,
 )
 from netzoo_agent_core.contracts import (
@@ -88,6 +92,10 @@ _IMPLEMENTATION_MODULES = (
     llm,
     graph,
     session,
+    trace_contracts,
+    trace_redaction,
+    trace_store,
+    tracing,
     interaction,
     cli,
 )

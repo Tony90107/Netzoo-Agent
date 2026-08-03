@@ -31,6 +31,9 @@ from .path_safety import (
     resolved_output_collisions,
     validate_output_basename,
 )
+from .trace_contracts import TraceEvent
+from .trace_store import LocalTraceStore, TraceIntegrityError
+from .tracing import NullTraceRecorder, TraceRecorder
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -58,4 +61,9 @@ __all__ = [
     "terminal_failed",
     "validate_output_basename",
     "validate_output_artifacts",
+    "LocalTraceStore",
+    "NullTraceRecorder",
+    "TraceEvent",
+    "TraceIntegrityError",
+    "TraceRecorder",
 ]
