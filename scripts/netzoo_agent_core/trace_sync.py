@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -51,10 +52,15 @@ class TraceSyncWorker:
         agent_id: str = "netzoo-agent",
         batch_size: int = 100,
         max_attempts: int = 4,
+        allow_insecure: bool = False,
         sleeper: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
     ) -> None:
-        if not collector_url.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+        parsed_url = urlparse(collector_url)
+        loopback = parsed_url.hostname in {"localhost", "127.0.0.1", "::1"}
+        if parsed_url.scheme != "https" and not (
+            parsed_url.scheme == "http" and (loopback or allow_insecure)
+        ):
             raise ValueError("collector URL must use HTTPS except on loopback")
         if not 1 <= batch_size <= 100:
             raise ValueError("sync batch size must be between 1 and 100")

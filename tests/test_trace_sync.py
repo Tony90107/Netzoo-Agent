@@ -3,9 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
+import pytest
 
 from netzoo_agent_core.trace_store import LocalTraceStore
 from netzoo_agent_core.trace_sync import SyncStatus, TraceSyncWorker
+
+
+def test_remote_plain_http_requires_explicit_private_network_opt_in(tmp_path: Path):
+    store = LocalTraceStore(tmp_path / "traces")
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        TraceSyncWorker(store, "http://observer.example", "agent-key")
 
 
 def _three_event_run(tmp_path: Path):
