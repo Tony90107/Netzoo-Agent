@@ -375,6 +375,29 @@ class ObserverRepository:
             if not verify_credential(token, pepper, access.token_hash):
                 raise ShareAccessError("access session is invalid")
 
+    def resolve_access_session(
+        self,
+        session_id: UUID | str,
+        token: str,
+        *,
+        pepper: str,
+        share_id: UUID | str,
+        now: datetime | None = None,
+    ) -> UUID:
+        checked_at = _utc(now or datetime.now(timezone.utc))
+        with self._session_factory() as session:
+            access = session.get(ObserverAccessSession, str(session_id))
+            if access is None or access.share_id != str(share_id):
+                raise ShareAccessError("access session is invalid")
+            share = session.get(ObserverShare, access.share_id)
+            if share is None or share.revoked_at is not None or access.revoked_at is not None:
+                raise ShareAccessError("access session was revoked")
+            if _utc(share.expires_at) <= checked_at or _utc(access.expires_at) <= checked_at:
+                raise ShareAccessError("access session expired")
+            if not verify_credential(token, pepper, access.token_hash):
+                raise ShareAccessError("access session is invalid")
+            return UUID(access.run_id)
+
 
 __all__ = [
     "BlobRecord",

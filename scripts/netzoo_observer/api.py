@@ -8,12 +8,13 @@ import hmac
 import json
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Annotated, AsyncIterator, Literal
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from .blob_store import BlobStore
@@ -31,6 +32,7 @@ from .settings import CollectorSettings
 
 
 SHARE_COOKIE = "netzoo_share_session"
+DASHBOARD_ROOT = Path(__file__).with_name("dashboard")
 
 
 class ShareCreateRequest(BaseModel):
@@ -76,7 +78,14 @@ def create_app(
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["Content-Security-Policy"] = "default-src 'none'"
+        if request.url.path.startswith(("/share/", "/observer-assets/")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self'; style-src 'self'; "
+                "connect-src 'self'; img-src 'self' data:; object-src 'none'; "
+                "base-uri 'none'; frame-ancestors 'none'"
+            )
+        else:
+            response.headers["Content-Security-Policy"] = "default-src 'none'"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
@@ -101,16 +110,20 @@ def create_app(
     def require_share(request: Request, run_id: UUID) -> None:
         if _bearer_token(request) is not None:
             raise HTTPException(status_code=403, detail="service keys cannot read shared runs")
-        raw_cookie = request.cookies.get(SHARE_COOKIE, "")
-        raw_session_id, separator, token = raw_cookie.partition(".")
-        if not separator:
-            raise HTTPException(status_code=401, detail="share session required")
+        raw_session_id, token = share_cookie(request)
         try:
             repository.validate_access_session(
                 UUID(raw_session_id), token, pepper=pepper, run_id=run_id
             )
         except (ValueError, ShareAccessError) as error:
             raise HTTPException(status_code=401, detail="share session is invalid") from error
+
+    def share_cookie(request: Request) -> tuple[str, str]:
+        raw_cookie = request.cookies.get(SHARE_COOKIE, "")
+        raw_session_id, separator, token = raw_cookie.partition(".")
+        if not separator:
+            raise HTTPException(status_code=401, detail="share session required")
+        return raw_session_id, token
 
     @app.exception_handler(RunNotFoundError)
     async def run_not_found(_request: Request, error: RunNotFoundError):
@@ -137,6 +150,22 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/share/{share_id}", include_in_schema=False)
+    def dashboard(share_id: UUID):
+        del share_id
+        return FileResponse(DASHBOARD_ROOT / "index.html", media_type="text/html")
+
+    @app.get("/observer-assets/styles.css", include_in_schema=False)
+    def dashboard_styles():
+        return FileResponse(DASHBOARD_ROOT / "styles.css", media_type="text/css")
+
+    @app.get("/observer-assets/app.js", include_in_schema=False)
+    def dashboard_script():
+        return FileResponse(
+            DASHBOARD_ROOT / "app.js",
+            media_type="application/javascript",
+        )
 
     @app.post("/v1/runs", status_code=201)
     def create_run(request: RunCreate, _scope: None = Depends(require_agent)):
@@ -201,12 +230,28 @@ def create_app(
             SHARE_COOKIE,
             f"{access.session_id}.{access.token}",
             expires=access.expires_at,
-            secure=True,
+            secure=settings.share_cookie_secure,
             httponly=True,
             samesite="strict",
             path="/v1/share",
         )
         return response
+
+    @app.get("/v1/share/resolve/{share_id}")
+    def resolve_share(share_id: UUID, request: Request):
+        if _bearer_token(request) is not None:
+            raise HTTPException(status_code=403, detail="service keys cannot read shares")
+        raw_session_id, token = share_cookie(request)
+        try:
+            run_id = repository.resolve_access_session(
+                UUID(raw_session_id),
+                token,
+                pepper=pepper,
+                share_id=share_id,
+            )
+        except (ValueError, ShareAccessError) as error:
+            raise HTTPException(status_code=401, detail="share session is invalid") from error
+        return {"run_id": str(run_id)}
 
     @app.get("/v1/share/runs/{run_id}")
     def shared_run(run_id: UUID, request: Request):

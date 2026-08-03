@@ -15,6 +15,8 @@ Observer outage does not stop a NetZoo task.
 PostgreSQL and MinIO have no host ports. The API binds only to loopback by
 default. For Internet sharing, put it behind an HTTPS reverse proxy and expose
 only the API/Dashboard origin. Never expose PostgreSQL or MinIO directly.
+Keep `NETZOO_OBSERVER_SHARE_COOKIE_SECURE=true` on that HTTPS deployment. It may
+be set to `false` only for a loopback-only browser smoke test.
 
 ## Credential boundaries
 
@@ -27,6 +29,30 @@ only the API/Dashboard origin. Never expose PostgreSQL or MinIO directly.
 Rotate the Agent key by changing it on the API and all Agent instances together.
 Rotate the Admin key independently. Rotating the pepper invalidates every share
 and session; schedule that operation and issue fresh links afterward.
+
+## Create and use a viewing link
+
+After a run has synced, an administrator can create a one-hour link:
+
+```bash
+curl -X POST "https://observer.example/v1/admin/runs/RUN_ID/shares" \
+  -H "Authorization: Bearer $NETZOO_OBSERVER_ADMIN_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"expires_in_seconds":3600}'
+```
+
+Open the returned `share_path` on the same HTTPS origin. The browser exchanges
+the fragment token for a private cookie and removes the token from its address.
+The page then presents L1 whole-run milestones, L2 auditable decisions, and L3
+model/tool/artifact activity, plus search, anomaly-only filtering, playback,
+token totals, cost provenance, duration, and live SSE updates.
+
+Revoke the link immediately with:
+
+```bash
+curl -X DELETE "https://observer.example/v1/admin/shares/SHARE_ID" \
+  -H "Authorization: Bearer $NETZOO_OBSERVER_ADMIN_KEY"
+```
 
 ## Backup and retention
 
@@ -51,6 +77,6 @@ and session; schedule that operation and issue fresh links afterward.
   CSP, and nosniff headers.
 - Revoke a link immediately if it reaches the wrong recipient.
 
-The current milestone supplies the collector and live-event interface. The next
-milestone adds the dark orange browser Dashboard for L1/L2/L3 playback, token and
-cost charts, search, anomaly markers, and link management.
+The current milestone includes the dark orange browser Dashboard and secure
+share-view flow. A later management surface can replace the administrator curl
+commands without putting the Admin key into browser storage.

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>NetZoo Agent 飛行記錄器</title>
+    <link rel="stylesheet" href="/observer-assets/styles.css">
+    <script src="/observer-assets/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#trace-list">跳到事件時間軸</a>
+    <div class="ambient-grid" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div>
+          <p class="eyebrow">NETZOO / OBSERVER</p>
+          <h1>Agent 飛行記錄器</h1>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="connection-badge" class="connection-badge" data-state="loading">
+          <span class="status-dot"></span><span id="connection-label">正在驗證連結</span>
+        </span>
+        <button id="copy-run" class="quiet-button" type="button">複製 Run ID</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="mission-panel" aria-labelledby="mission-title">
+        <div class="mission-heading">
+          <p class="section-index">RUN / <span id="run-short">────────</span></p>
+          <h2 id="mission-title">等待追蹤資料</h2>
+          <p id="mission-subtitle" class="mission-subtitle">連結驗證後，會載入這趟 Agent 的完整工作軌跡。</p>
+        </div>
+        <div class="mission-state">
+          <span id="run-status" class="run-status" data-status="loading">LOADING</span>
+          <span id="integrity-label" class="integrity-label">雜湊鏈尚未載入</span>
+        </div>
+      </section>
+
+      <section class="metrics-grid" aria-label="任務摘要">
+        <article class="metric-card">
+          <span class="metric-code">Σ TOKEN</span>
+          <strong id="metric-tokens">—</strong>
+          <span id="metric-token-detail">等待模型呼叫</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-code">$ COST</span>
+          <strong id="metric-cost">—</strong>
+          <span id="metric-cost-detail">保留實際／估算來源</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-code">Δ TIME</span>
+          <strong id="metric-duration">—</strong>
+          <span id="metric-event-count">0 個事件</span>
+        </article>
+        <article class="metric-card metric-alert">
+          <span class="metric-code">! DRIFT</span>
+          <strong id="metric-anomalies">—</strong>
+          <span id="metric-anomaly-detail">正在掃描異常</span>
+        </article>
+      </section>
+
+      <section class="workspace" aria-label="三層追蹤工作區">
+        <aside class="level-rail">
+          <div class="rail-heading">
+            <p class="eyebrow">三層紀錄</p>
+            <p>從整趟任務一路鑽到工具輸入輸出。</p>
+          </div>
+          <div class="level-tabs" role="tablist" aria-label="記錄層級">
+            <button class="level-tab is-active" type="button" role="tab" aria-selected="true" data-level="l1">
+              <span class="level-code">L1</span>
+              <span><b>整趟任務</b><small>目標、結果、轉折</small></span>
+            </button>
+            <button class="level-tab" type="button" role="tab" aria-selected="false" data-level="l2">
+              <span class="level-code">L2</span>
+              <span><b>逐步決策</b><small>依據、評估、復原</small></span>
+            </button>
+            <button class="level-tab" type="button" role="tab" aria-selected="false" data-level="l3">
+              <span class="level-code">L3</span>
+              <span><b>工具軌跡</b><small>呼叫、耗時、輸出</small></span>
+            </button>
+          </div>
+          <div class="privacy-note">
+            <span aria-hidden="true">◈</span>
+            <p><b>可稽核，不暴露私密推理</b><br>此層顯示決策依據與事件，不保存模型隱藏思維鏈。</p>
+          </div>
+        </aside>
+
+        <section class="trace-stage">
+          <div class="trace-toolbar">
+            <label class="search-field">
+              <span class="visually-hidden">搜尋事件</span>
+              <span aria-hidden="true">⌕</span>
+              <input id="trace-search" type="search" placeholder="搜尋節點、事件或內容" autocomplete="off">
+            </label>
+            <button id="anomaly-filter" class="filter-button" type="button" aria-pressed="false">只看異常</button>
+            <span id="visible-count" class="visible-count">0 / 0</span>
+          </div>
+
+          <div id="trace-empty" class="trace-empty">
+            <span class="loader-ring" aria-hidden="true"></span>
+            <p id="empty-title">正在接上記錄流</p>
+            <small id="empty-detail">若連結已撤銷，這裡會顯示明確原因。</small>
+          </div>
+          <ol id="trace-list" class="trace-list" aria-live="polite"></ol>
+
+          <div class="playback-bar">
+            <button id="play-toggle" class="play-button" type="button" aria-label="播放事件">▶</button>
+            <label class="scrubber-wrap">
+              <span class="visually-hidden">回放位置</span>
+              <input id="trace-scrubber" type="range" min="0" max="0" value="0">
+            </label>
+            <span id="playback-position" class="playback-position">0 / 0</span>
+            <button id="speed-toggle" class="speed-button" type="button" aria-label="切換播放速度">1×</button>
+          </div>
+        </section>
+
+        <aside class="inspector" aria-labelledby="inspector-title">
+          <div class="inspector-heading">
+            <p class="eyebrow">EVENT INSPECTOR</p>
+            <h2 id="inspector-title">選取一個事件</h2>
+            <p id="inspector-time">—</p>
+          </div>
+          <dl class="event-facts">
+            <div><dt>序號</dt><dd id="fact-sequence">—</dd></div>
+            <div><dt>節點</dt><dd id="fact-node">—</dd></div>
+            <div><dt>層級</dt><dd id="fact-level">—</dd></div>
+            <div><dt>可見性</dt><dd id="fact-visibility">—</dd></div>
+            <div><dt>雜湊</dt><dd id="fact-hash">—</dd></div>
+          </dl>
+          <div class="payload-heading">
+            <span>事件資料</span>
+            <button id="copy-payload" class="text-button" type="button">複製 JSON</button>
+          </div>
+          <pre id="payload-view" tabindex="0">尚未選取事件</pre>
+        </aside>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
