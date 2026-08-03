@@ -91,6 +91,7 @@ from .llm import (
     validate_router_model,
 )
 from .outcomes import supersede_triggering_failure
+from .tracing import NullTraceRecorder, TraceRecorder
 
 __all__ = [
     "build_graph",
@@ -110,6 +111,7 @@ def build_graph(
     response_max_tokens: int = DEFAULT_RESPONSE_MAX_TOKENS,
     task_token_budget: int = DEFAULT_TASK_TOKEN_BUDGET,
     timeout_seconds: float = DEFAULT_LLM_TIMEOUT_SECONDS,
+    trace_recorder: TraceRecorder | None = None,
 ):
     if StateGraph is None or HumanMessage is None or SystemMessage is None:
         raise RuntimeError(
@@ -120,6 +122,7 @@ def build_graph(
     profile_store = profile_store or UserProfileStore()
     episode_store = episode_store or EpisodeStore()
     project_policy = project_policy or ProjectPolicyLoader(PROJECT_ROOT).load()
+    recorder = trace_recorder or NullTraceRecorder()
     ProjectPolicyLoader._validate_against_code(project_policy.workflows)
     router_model_name = validate_router_model(router_model_name or DEFAULT_ROUTER_MODEL)
     model_name = validate_response_model(model_name)
@@ -189,12 +192,26 @@ Websearch MCP lookup is read-only and is allowed in either mode.
 {output_language_policy()}
 """.strip()
 
-    def apply_project_policy(_state: AgentState):
+    def record(state: AgentState, event_type: str, node: str, payload: dict) -> None:
+        recorder.append(state.get("run_id"), event_type, node, payload)
+
+    def apply_project_policy(state: AgentState):
         _trace(
             "policy",
             f"Project policy loaded: version={project_policy.policy_version}, "
             f"hash={project_policy.policy_hash[:12]}",
             f"AGENTS={project_policy.agents_path}, workflows={len(project_policy.workflows)}",
+        )
+        record(
+            state,
+            "policy.loaded",
+            "apply_project_policy",
+            {
+                "policy_version": project_policy.policy_version,
+                "policy_hash": project_policy.policy_hash,
+                "agents_path": project_policy.agents_path,
+                "workflow_count": len(project_policy.workflows),
+            },
         )
         return {"project_policy": project_policy.model_dump()}
 
@@ -205,6 +222,15 @@ Websearch MCP lookup is read-only and is allowed in either mode.
         _trace(
             "memory",
             f"Memory retrieval: profile={profile.profile_id}, episodes={len(episodes)}",
+        )
+        record(
+            state,
+            "memory.retrieved",
+            "retrieve_memory",
+            {
+                "profile_id": profile.profile_id,
+                "episode_count": len(episodes),
+            },
         )
         return {
             "profile": profile.model_dump(),
@@ -238,6 +264,19 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             _trace(
                 "intent",
                 "Router call skipped because the task token budget would be exceeded",
+            )
+            record(
+                state,
+                "decision.recorded",
+                "classify",
+                {
+                    "action": decision.action,
+                    "confidence": decision.confidence,
+                    "in_scope": decision.in_scope,
+                    "reason": decision.reason,
+                    "reason_code": "budget_fallback",
+                    "recommended_actions": decision.recommended_actions,
+                },
             )
             return {
                 "decision": decision.model_dump(),
@@ -279,6 +318,23 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             f"Classified as {decision.action}",
             f"Confidence {decision.confidence:.2f} | {decision.reason}",
         )
+        record(
+            state,
+            "decision.recorded",
+            "classify",
+            {
+                "action": decision.action,
+                "confidence": decision.confidence,
+                "in_scope": decision.in_scope,
+                "reason": decision.reason,
+                "reason_code": (
+                    "deterministic_fallback"
+                    if getattr(decision, "fallback_used", False)
+                    else "provider"
+                ),
+                "recommended_actions": decision.recommended_actions,
+            },
+        )
         return {
             "decision": decision.model_dump(),
             "token_usage": usage.model_dump(),
@@ -310,6 +366,20 @@ Websearch MCP lookup is read-only and is allowed in either mode.
         _trace("plan", f"Planner: {plan.workflow} / {plan.status}", render_plan(plan))
         if plan.status == "needs_input":
             _trace("input", "The Planner requires additional input", plan.question)
+        record(
+            state,
+            "plan.created",
+            "plan",
+            {
+                "workflow": plan.workflow,
+                "objective": plan.objective,
+                "status": plan.status,
+                "steps": [step.model_dump() for step in plan.steps],
+                "missing_inputs": plan.missing_inputs,
+                "evidence": [item.model_dump() for item in plan.evidence],
+                "policy_hash": plan.policy_hash,
+            },
+        )
         return {
             "plan": plan.model_dump(),
             "decision": plan.decision,
@@ -329,6 +399,17 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             "review",
             f"Plan evaluation {evaluation.status} ({evaluation.score}/100)",
             render_plan_evaluation(evaluation),
+        )
+        plan_event_type = {
+            "approved": "plan.approved",
+            "rejected": "plan.rejected",
+            "deferred": "plan.deferred",
+        }[evaluation.status]
+        record(
+            state,
+            plan_event_type,
+            "evaluate_plan",
+            evaluation.model_dump(),
         )
         return {"plan_evaluation": evaluation.model_dump()}
 
@@ -357,6 +438,19 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",
             step.purpose,
         )
+        record(
+            state,
+            "tool.started",
+            "execute_tool",
+            {
+                "step_index": step_index,
+                "action": step.action,
+                "purpose": step.purpose,
+                "arguments": step.arguments,
+                "execution_mode": "execute" if EXECUTE_TOOLS else "dry_run",
+                "attempt_id": state.get("replan_count", 0),
+            },
+        )
         raw_result = execute_selected_tool(decision)
         result = structure_tool_result(
             step.action,
@@ -369,6 +463,12 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             "tool",
             f"{step.action} → {result.status}",
             result.summary,
+        )
+        record(
+            state,
+            "tool.completed",
+            "execute_tool",
+            result.model_dump(exclude={"raw_output"}),
         )
         return {
             "tool_result": result.model_dump(),
@@ -385,6 +485,15 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             state.get("replan_count", 0),
         )
         _trace("evaluate", f"Evaluator: {evaluation.status}", evaluation.reason)
+        record(
+            state,
+            "evaluation.recorded",
+            "evaluate",
+            {
+                "step_index": step_index,
+                **evaluation.model_dump(),
+            },
+        )
         update = {"evaluation": evaluation.model_dump()}
         if evaluation.status == "continue":
             update["current_step"] = step_index + 1
@@ -415,6 +524,16 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             "recover",
             (f"Planner recovery plan (attempt {replan_count}/{MAX_RECOVERY_ATTEMPTS})"),
             render_plan(recovered),
+        )
+        record(
+            state,
+            "recovery.selected",
+            "recover",
+            {
+                "attempt_id": replan_count,
+                "next_step": next_step,
+                "plan": recovered.model_dump(),
+            },
         )
         return {
             "plan": recovered.model_dump(),
@@ -447,6 +566,16 @@ Websearch MCP lookup is read-only and is allowed in either mode.
             "memory",
             f"Memory consolidation: recorded episode {episode.episode_id[:8]}",
             f"workflow={episode.workflow}, status={episode.status}",
+        )
+        record(
+            state,
+            "memory.consolidated",
+            "consolidate_memory",
+            {
+                "episode_id": episode.episode_id,
+                "workflow": episode.workflow,
+                "status": episode.status,
+            },
         )
         return {}
 
@@ -609,16 +738,34 @@ Websearch MCP lookup is read-only and is allowed in either mode.
         }
 
     graph = StateGraph(AgentState)
-    graph.add_node("apply_project_policy", apply_project_policy)
-    graph.add_node("retrieve_memory", retrieve_memory)
-    graph.add_node("classify", classify_task)
-    graph.add_node("plan", plan_task)
-    graph.add_node("evaluate_plan", evaluate_plan)
-    graph.add_node("execute_tool", execute_tool)
-    graph.add_node("evaluate", evaluate_result)
-    graph.add_node("recover", recover)
-    graph.add_node("consolidate_memory", consolidate_memory)
-    graph.add_node("respond", respond)
+    graph.add_node(
+        "apply_project_policy",
+        recorder.instrument_node("apply_project_policy", apply_project_policy),
+    )
+    graph.add_node(
+        "retrieve_memory",
+        recorder.instrument_node("retrieve_memory", retrieve_memory),
+    )
+    graph.add_node("classify", recorder.instrument_node("classify", classify_task))
+    graph.add_node("plan", recorder.instrument_node("plan", plan_task))
+    graph.add_node(
+        "evaluate_plan",
+        recorder.instrument_node("evaluate_plan", evaluate_plan),
+    )
+    graph.add_node(
+        "execute_tool",
+        recorder.instrument_node("execute_tool", execute_tool),
+    )
+    graph.add_node(
+        "evaluate",
+        recorder.instrument_node("evaluate", evaluate_result),
+    )
+    graph.add_node("recover", recorder.instrument_node("recover", recover))
+    graph.add_node(
+        "consolidate_memory",
+        recorder.instrument_node("consolidate_memory", consolidate_memory),
+    )
+    graph.add_node("respond", recorder.instrument_node("respond", respond))
     graph.add_edge(START, "apply_project_policy")
     graph.add_edge("apply_project_policy", "retrieve_memory")
     graph.add_edge("retrieve_memory", "classify")
