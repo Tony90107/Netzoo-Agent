@@ -8,6 +8,10 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core import session  # noqa: E402
+from netzoo_agent_core import graph as graph_module  # noqa: E402
+from netzoo_agent_core.contracts import HumanMessage, RouterDecision  # noqa: E402
+from netzoo_agent_core.graph import build_graph  # noqa: E402
+from netzoo_agent_core.memory import EpisodeStore, UserProfileStore  # noqa: E402
 from netzoo_agent_core.session import (  # noqa: E402
     load_session,
     load_session_payload,
@@ -16,6 +20,20 @@ from netzoo_agent_core.session import (  # noqa: E402
 from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
 from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
 import netzoo_agent as legacy_agent  # noqa: E402
+
+
+class DeterministicRouterLLM:
+    def with_structured_output(self, *_args, **_kwargs):
+        return self
+
+    def invoke(self, _messages):
+        return RouterDecision(
+            action="run_panda",
+            in_scope=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="Deterministic trace fixture",
+        )
 
 
 def test_session_retains_the_trace_run_id_without_changing_legacy_load_shape(
@@ -87,3 +105,50 @@ def test_trace_interfaces_are_available_from_stable_and_legacy_facades():
     assert StableRecorder is TraceRecorder
     assert legacy_agent.LocalTraceStore is LocalTraceStore
     assert legacy_agent.TraceRecorder is TraceRecorder
+
+
+@pytest.mark.skipif(
+    graph_module.StateGraph is None,
+    reason="LangGraph integration runs in the project container",
+)
+def test_graph_records_ordered_plan_tool_and_evaluation_events(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setattr(
+        graph_module,
+        "build_llm",
+        lambda *_args, **_kwargs: DeterministicRouterLLM(),
+    )
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="trace-test", profile_id="default")
+    app = build_graph(
+        "fake",
+        0.0,
+        profile_store=UserProfileStore(tmp_path / "profiles"),
+        episode_store=EpisodeStore(tmp_path / "episodes"),
+        trace_recorder=recorder,
+    )
+
+    result = app.invoke(
+        {
+            "messages": [HumanMessage(content="Run a PANDA demo")],
+            "run_id": str(run_id),
+        }
+    )
+    events = store.read_events(run_id)
+    event_types = [event.event_type for event in events]
+
+    assert "policy.loaded" in event_types
+    assert "decision.recorded" in event_types
+    assert "plan.created" in event_types
+    assert "plan.approved" in event_types
+    assert "tool.started" in event_types
+    assert "tool.completed" in event_types
+    assert "evaluation.recorded" in event_types
+    assert event_types.index("plan.created") < event_types.index("tool.started")
+    assert result["run_id"] == str(run_id)
+    assert store.verify_run(run_id).valid is True
