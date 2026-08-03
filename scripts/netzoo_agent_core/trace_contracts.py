@@ -8,7 +8,14 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 __all__ = [
@@ -164,6 +171,21 @@ class LLMCallUsage(BaseModel):
     duration_ms: int = Field(default=0, ge=0)
     status: Literal["success", "failed", "blocked"]
 
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_call(cls, value):
+        if not isinstance(value, dict) or "estimated" not in value:
+            return value
+        migrated = dict(value)
+        estimated = bool(migrated.pop("estimated"))
+        migrated.setdefault(
+            "usage_provenance",
+            "estimated" if estimated else "actual",
+        )
+        migrated.setdefault("cost_provenance", "unavailable")
+        migrated.setdefault("status", "success")
+        return migrated
+
     @model_validator(mode="after")
     def validate_totals_and_cost(self) -> "LLMCallUsage":
         if self.total_tokens != self.input_tokens + self.output_tokens:
@@ -175,6 +197,17 @@ class LLMCallUsage(BaseModel):
         if self.cost_provenance == "estimated" and self.price_snapshot is None:
             raise ValueError("estimated cost requires a price snapshot")
         return self
+
+    @computed_field
+    @property
+    def estimated(self) -> bool:
+        """Backward-compatible view used by historical callers and sessions."""
+        return self.usage_provenance != "actual"
+
+    def __getitem__(self, key: str):
+        if key == "estimated":
+            return self.estimated
+        return getattr(self, key)
 
 
 class BudgetDecision(BaseModel):
