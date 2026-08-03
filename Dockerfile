@@ -28,6 +28,7 @@ COPY docker/run-puma /usr/local/bin/run-puma
 COPY docker/run-lioness /usr/local/bin/run-lioness
 COPY docker/run-condor /usr/local/bin/run-condor
 COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
+COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
 RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-puma /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
@@ -38,7 +39,7 @@ USER $MAMBA_USER
 WORKDIR /work
 
 ENV NETZOOPY_SRC=/opt/netZooPy
-ENV PYTHONPATH=/opt/netZooPy:/opt/netzoo-harness
+ENV PYTHONPATH=/opt/netZooPy:/opt/netzoo-harness:/opt/netzoo-app/scripts
 
 ENTRYPOINT ["micromamba", "run", "-n", "netzoo"]
 CMD ["bash"]

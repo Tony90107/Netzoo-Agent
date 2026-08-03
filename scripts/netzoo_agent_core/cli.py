@@ -513,8 +513,16 @@ def main() -> int:
     recorder = TraceRecorder(trace_store)
     collector_url = os.environ.get("NETZOO_OBSERVER_URL", "").strip()
     collector_agent_key = os.environ.get("NETZOO_OBSERVER_AGENT_KEY", "").strip()
+    allow_insecure_observer = os.environ.get(
+        "NETZOO_OBSERVER_ALLOW_INSECURE", ""
+    ).casefold() in {"1", "true", "yes"}
     sync_worker = (
-        TraceSyncWorker(trace_store, collector_url, collector_agent_key)
+        TraceSyncWorker(
+            trace_store,
+            collector_url,
+            collector_agent_key,
+            allow_insecure=allow_insecure_observer,
+        )
         if collector_url and collector_agent_key
         else None
     )
