@@ -130,6 +130,10 @@ class LocalTraceStore:
         except (OSError, ValueError) as error:
             raise TraceIntegrityError(f"trace manifest is invalid: {run_id}") from error
 
+    def load_manifest(self, run_id: UUID | str) -> RunManifest:
+        """Return validated run metadata for status and synchronization clients."""
+        return self._load_manifest(run_id)
+
     def start_run(self, context: dict) -> UUID:
         self.preflight()
         session_id = str(context.get("session_id") or "").strip()
@@ -295,6 +299,49 @@ class LocalTraceStore:
             updated.model_dump(mode="json"),
         )
         return updated
+
+    def update_sync_ack(
+        self,
+        run_id: UUID | str,
+        acknowledged_sequence: int,
+        final_hash: str,
+    ) -> RunManifest:
+        """Atomically advance the cloud acknowledgement after hash validation."""
+        parsed_run_id = self._run_id(run_id)
+        local_lock = self._lock_for(parsed_run_id)
+        lock_path = self.run_path(parsed_run_id) / "events.lock"
+        with local_lock, lock_path.open("r+b") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                manifest = self._load_manifest(parsed_run_id)
+                if acknowledged_sequence < manifest.sync_ack_sequence:
+                    return manifest
+                if acknowledged_sequence > manifest.final_sequence:
+                    raise TraceIntegrityError(
+                        "sync acknowledgement exceeds the local event stream"
+                    )
+                expected_hash = ZERO_HASH
+                if acknowledged_sequence:
+                    events = self.read_events(
+                        parsed_run_id,
+                        after_sequence=acknowledged_sequence - 1,
+                    )
+                    if not events or events[0].sequence != acknowledged_sequence:
+                        raise TraceIntegrityError(
+                            "sync acknowledgement event is missing locally"
+                        )
+                    expected_hash = events[0].event_hash
+                if final_hash != expected_hash:
+                    raise TraceIntegrityError(
+                        "sync acknowledgement hash differs from the local event"
+                    )
+                return self._replace_manifest(
+                    manifest,
+                    sync_ack_sequence=acknowledged_sequence,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def pause_run(self, run_id: UUID | str, summary: dict) -> RunManifest:
         """Record a resumable pause while leaving the event stream appendable."""
