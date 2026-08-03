@@ -15,7 +15,13 @@ from netzoo_agent_core.trace_contracts import ZERO_HASH, TraceEvent
 
 from .auth import hash_credential, verify_credential
 from .contracts import BatchAck, EventBatch, RunCreate, ShareGrant
-from .models import ObserverAccessSession, ObserverEvent, ObserverRun, ObserverShare
+from .models import (
+    ObserverAccessSession,
+    ObserverBlob,
+    ObserverEvent,
+    ObserverRun,
+    ObserverShare,
+)
 
 
 class ObserverRepositoryError(RuntimeError):
@@ -50,6 +56,17 @@ class ShareAccessSession:
     run_id: UUID
     token: str
     expires_at: datetime
+
+
+@dataclass(frozen=True)
+class BlobRecord:
+    blob_id: UUID
+    run_id: UUID
+    object_key: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    visibility: str
 
 
 def _utc(value: datetime) -> datetime:
@@ -222,6 +239,46 @@ class ObserverRepository:
             )
             return [TraceEvent.model_validate(row.event_json) for row in rows]
 
+    def register_blob(self, record: BlobRecord) -> None:
+        with self._session_factory.begin() as session:
+            if session.get(ObserverRun, str(record.run_id)) is None:
+                raise RunNotFoundError(f"run {record.run_id} was not found")
+            session.add(
+                ObserverBlob(
+                    blob_id=str(record.blob_id),
+                    run_id=str(record.run_id),
+                    object_key=record.object_key,
+                    content_type=record.content_type,
+                    size_bytes=record.size_bytes,
+                    sha256=record.sha256,
+                    visibility=record.visibility,
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
+
+    def read_blob(
+        self,
+        run_id: UUID | str,
+        blob_id: UUID | str,
+        *,
+        shareable_only: bool,
+    ) -> BlobRecord:
+        with self._session_factory() as session:
+            row = session.get(ObserverBlob, str(blob_id))
+            if row is None or row.run_id != str(run_id):
+                raise RunNotFoundError("blob was not found for this run")
+            if shareable_only and row.visibility != "shareable":
+                raise RunNotFoundError("blob was not found for this run")
+            return BlobRecord(
+                blob_id=UUID(row.blob_id),
+                run_id=UUID(row.run_id),
+                object_key=row.object_key,
+                content_type=row.content_type,
+                size_bytes=row.size_bytes,
+                sha256=row.sha256,
+                visibility=row.visibility,
+            )
+
     def create_share(self, grant: ShareGrant, *, pepper: str) -> None:
         now = datetime.now(timezone.utc)
         with self._session_factory.begin() as session:
@@ -296,8 +353,31 @@ class ObserverRepository:
                 expires_at=expires_at,
             )
 
+    def validate_access_session(
+        self,
+        session_id: UUID | str,
+        token: str,
+        *,
+        pepper: str,
+        run_id: UUID | str,
+        now: datetime | None = None,
+    ) -> None:
+        checked_at = _utc(now or datetime.now(timezone.utc))
+        with self._session_factory() as session:
+            access = session.get(ObserverAccessSession, str(session_id))
+            if access is None or access.run_id != str(run_id):
+                raise ShareAccessError("access session is invalid")
+            share = session.get(ObserverShare, access.share_id)
+            if share is None or share.revoked_at is not None or access.revoked_at is not None:
+                raise ShareAccessError("access session was revoked")
+            if _utc(share.expires_at) <= checked_at or _utc(access.expires_at) <= checked_at:
+                raise ShareAccessError("access session expired")
+            if not verify_credential(token, pepper, access.token_hash):
+                raise ShareAccessError("access session is invalid")
+
 
 __all__ = [
+    "BlobRecord",
     "DigestConflictError",
     "ObserverRepository",
     "ObserverRepositoryError",
