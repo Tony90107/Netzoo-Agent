@@ -33,6 +33,7 @@ __all__ = [
     "compact_conversation",
     "save_session",
     "load_session",
+    "load_session_payload",
 ]
 
 
@@ -187,6 +188,7 @@ def save_session(
         "evaluation": state.get("evaluation"),
         "tool_results": state.get("tool_results", []),
         "token_usage": state.get("token_usage"),
+        "run_id": state.get("run_id"),
     }
     _write_json_atomic(path, payload)
     return path
@@ -197,10 +199,7 @@ def load_session(
     *,
     include_usage: bool = False,
 ) -> tuple[list, dict | None] | tuple[list, dict | None, dict | None]:
-    path = _session_path(session_id)
-    if not path.exists():
-        raise FileNotFoundError(f"Session not found: {session_id} ({path})")
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = load_session_payload(session_id)
     messages = []
     for item in payload.get("messages", []):
         cls = AIMessage if item.get("role") == "assistant" else HumanMessage
@@ -209,3 +208,11 @@ def load_session(
     if include_usage:
         return messages, plan, payload.get("token_usage")
     return messages, plan
+
+
+def load_session_payload(session_id: str) -> dict:
+    """Load the complete versioned checkpoint for CLI lifecycle decisions."""
+    path = _session_path(session_id)
+    if not path.exists():
+        raise FileNotFoundError(f"Session not found: {session_id} ({path})")
+    return json.loads(path.read_text(encoding="utf-8"))
