@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import UUID
 
 
 from .contracts import (
@@ -14,8 +17,10 @@ from .contracts import (
     DEFAULT_SESSION_HARD_RETENTION_DAYS,
     HumanMessage,
     SESSION_ROOT,
+    TRACE_ROOT,
     TOOL_LOG_ROOT,
 )
+from .trace_contracts import RunManifest
 
 from .memory import (
     _harden_private_tree,
@@ -29,6 +34,7 @@ __all__ = [
     "latest_pending_session_id",
     "resolve_resume_id",
     "cleanup_runtime_storage",
+    "cleanup_trace_storage",
     "delete_session",
     "compact_conversation",
     "save_session",
@@ -124,6 +130,42 @@ def cleanup_runtime_storage(
                     removed["logs"] += 1
             except OSError:
                 continue
+    return removed
+
+
+def cleanup_trace_storage(
+    retention_days: int = 90,
+    *,
+    trace_root: Path = TRACE_ROOT,
+) -> int:
+    """Remove only sealed trace runs older than the configured retention."""
+    root = Path(trace_root).resolve()
+    if not root.exists():
+        return 0
+    cutoff = datetime.now(timezone.utc).timestamp() - max(retention_days, 1) * 86_400
+    removed = 0
+    for candidate in root.iterdir():
+        if not candidate.is_dir():
+            continue
+        try:
+            UUID(candidate.name)
+        except ValueError:
+            continue
+        resolved = candidate.resolve()
+        if resolved.parent != root:
+            continue
+        try:
+            manifest = RunManifest.model_validate_json(
+                (resolved / "manifest.json").read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError):
+            continue
+        if not manifest.sealed or manifest.finished_at is None:
+            continue
+        if manifest.finished_at.timestamp() >= cutoff:
+            continue
+        shutil.rmtree(resolved)
+        removed += 1
     return removed
 
 

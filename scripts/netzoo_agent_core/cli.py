@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import uuid
+from pathlib import Path
 
 
 from .contracts import (
@@ -27,6 +28,7 @@ from .contracts import (
     LLMUsage,
     NextTurnPrompt,
     PROJECT_ROOT,
+    TRACE_ROOT,
     WorkflowPlan,
     _clear_transient_trace,
     _trace,
@@ -63,9 +65,11 @@ from .session import (
     _is_auto_session_id,
     _safe_session_id,
     cleanup_runtime_storage,
+    cleanup_trace_storage,
     compact_conversation,
     delete_session,
     load_session,
+    load_session_payload,
     resolve_resume_id,
     save_session,
 )
@@ -85,11 +89,31 @@ from .interaction import (
     resolve_next_turn_input,
 )
 from .runtime import configure_runtime
+from .trace_store import LocalTraceStore
+from .tracing import TraceRecorder
 
 __all__ = [
     "parse_args",
     "main",
+    "export_local_trace",
+    "local_trace_status",
 ]
+
+
+def local_trace_status(run_id: str, *, trace_root: Path = TRACE_ROOT) -> dict:
+    """Verify and summarize one local trace without an LLM or provider key."""
+    verification = LocalTraceStore(trace_root).verify_run(run_id)
+    return {"run_id": run_id, **verification.model_dump(mode="json")}
+
+
+def export_local_trace(
+    run_id: str,
+    destination: Path,
+    *,
+    trace_root: Path = TRACE_ROOT,
+) -> Path:
+    """Export one verified local audit package without overwriting a file."""
+    return LocalTraceStore(trace_root).export_run(run_id, Path(destination))
 
 
 def parse_args() -> argparse.Namespace:
@@ -228,6 +252,23 @@ def parse_args() -> argparse.Namespace:
         help="Keep an auto-generated checkpoint after a successful one-shot task.",
     )
     parser.add_argument(
+        "--trace-status",
+        metavar="RUN_ID",
+        help="Verify and summarize one local trace without calling an LLM.",
+    )
+    parser.add_argument(
+        "--trace-export",
+        nargs=2,
+        metavar=("RUN_ID", "ARCHIVE"),
+        help="Export one verified local trace package without calling an LLM.",
+    )
+    parser.add_argument(
+        "--trace-retention-days",
+        type=int,
+        default=int(os.environ.get("NETZOO_TRACE_RETENTION_DAYS", "90")),
+        help="Retention period for sealed local traces.",
+    )
+    parser.add_argument(
         "--retention-days",
         type=int,
         default=int(os.environ.get("NETZOO_RETENTION_DAYS", DEFAULT_RETENTION_DAYS)),
@@ -313,6 +354,15 @@ def main() -> int:
         print(query_web_search_first_url(args.web_url))
         return 0
 
+    if args.trace_status:
+        print(json.dumps(local_trace_status(args.trace_status), indent=2))
+        return 0
+    if args.trace_export:
+        run_id, archive = args.trace_export
+        exported = export_local_trace(run_id, Path(archive))
+        print(str(exported))
+        return 0
+
     profile_id = _safe_memory_id(args.profile)
     profile_store = UserProfileStore()
     if (
@@ -322,6 +372,7 @@ def main() -> int:
             args.episode_retention_days,
             args.episode_max_count,
             args.episode_max_mb,
+            args.trace_retention_days,
         )
         <= 0
     ):
@@ -337,6 +388,7 @@ def main() -> int:
             args.retention_days,
             args.session_hard_retention_days,
         )
+        expired_traces = cleanup_trace_storage(args.trace_retention_days)
         print(
             json.dumps(
                 {
@@ -352,6 +404,7 @@ def main() -> int:
                     ),
                     "expired_sessions": runtime_cleanup["sessions"],
                     "expired_logs": runtime_cleanup["logs"],
+                    "expired_traces": expired_traces,
                 },
                 indent=2,
             )
@@ -419,11 +472,15 @@ def main() -> int:
         args.retention_days,
         args.session_hard_retention_days,
     )
+    cleanup["traces"] = cleanup_trace_storage(args.trace_retention_days)
     if any(cleanup.values()):
         _trace(
             "done",
             "Expired runtime data was pruned",
-            f"sessions={cleanup['sessions']}, logs={cleanup['logs']}",
+            (
+                f"sessions={cleanup['sessions']}, logs={cleanup['logs']}, "
+                f"traces={cleanup['traces']}"
+            ),
         )
 
     resume_id = resolve_resume_id(args.resume, profile_id)
@@ -445,6 +502,43 @@ def main() -> int:
     except ValueError as error:
         raise SystemExit(str(error)) from error
 
+    session_id = _safe_session_id(args.session or resume_id or uuid.uuid4().hex[:8])
+    conversation = []
+    pending_plan = None
+    clarification_selections: dict[str, str] = {}
+    active_usage = None
+    trace_store = LocalTraceStore(TRACE_ROOT)
+    trace_store.preflight()
+    recorder = TraceRecorder(trace_store)
+    run_id = None
+    run_paused = False
+    if resume_id:
+        saved_payload = load_session_payload(resume_id)
+        conversation, saved_plan, active_usage = load_session(
+            resume_id,
+            include_usage=True,
+        )
+        run_id = saved_payload.get("run_id")
+        if run_id:
+            trace_store.verify_run(run_id)
+            recorder.append(
+                run_id,
+                "run.resumed",
+                "cli",
+                {"session_id": session_id},
+            )
+        else:
+            run_id = str(
+                recorder.start_run(session_id=session_id, profile_id=profile_id)
+            )
+        if saved_plan:
+            candidate = WorkflowPlan.model_validate(saved_plan)
+            if candidate.status in {"needs_input", "needs_confirmation"}:
+                pending_plan = candidate
+        _trace("done", f"Resumed session {session_id}")
+    else:
+        _trace("done", f"Session: {session_id}")
+
     app = build_graph(
         args.model,
         args.temperature,
@@ -457,24 +551,8 @@ def main() -> int:
         response_max_tokens=args.response_max_tokens,
         task_token_budget=args.max_task_tokens,
         timeout_seconds=args.llm_timeout,
+        trace_recorder=recorder,
     )
-    session_id = _safe_session_id(args.session or resume_id or uuid.uuid4().hex[:8])
-    conversation = []
-    pending_plan = None
-    clarification_selections: dict[str, str] = {}
-    active_usage = None
-    if resume_id:
-        conversation, saved_plan, active_usage = load_session(
-            resume_id,
-            include_usage=True,
-        )
-        if saved_plan:
-            candidate = WorkflowPlan.model_validate(saved_plan)
-            if candidate.status in {"needs_input", "needs_confirmation"}:
-                pending_plan = candidate
-        _trace("done", f"Resumed session {session_id}")
-    else:
-        _trace("done", f"Session: {session_id}")
 
     queued_task = args.task
     one_shot = bool(args.task) and not resume_id
@@ -594,15 +672,34 @@ def main() -> int:
             break
         if not task:
             continue
+        if run_id is None:
+            run_id = str(
+                recorder.start_run(session_id=session_id, profile_id=profile_id)
+            )
+        elif run_paused:
+            recorder.append(
+                run_id,
+                "run.resumed",
+                "cli",
+                {"session_id": session_id},
+            )
+            run_paused = False
         try:
             invocation = {
                 "messages": [*conversation, HumanMessage(content=task)],
                 "session_id": session_id,
+                "run_id": run_id,
             }
             if active_usage is not None:
                 invocation["token_usage"] = active_usage
             result = invoke_graph_turn(app, invocation)
         except AgentTurnInterrupted:
+            recorder.append(
+                run_id,
+                "run.interrupted",
+                "cli",
+                {"reason": "keyboard_interrupt"},
+            )
             _clear_transient_trace()
             print()
             print(
@@ -613,6 +710,12 @@ def main() -> int:
             )
             return 130
         except Exception as error:
+            recorder.append(
+                run_id,
+                "error.recorded",
+                "cli",
+                {"error_type": type(error).__name__, "message": str(error)},
+            )
             _clear_transient_trace()
             print(
                 _ui_text(
@@ -653,10 +756,25 @@ def main() -> int:
             print(result["messages"][-1].content)
             next_prompt = build_next_turn_prompt(result)
         if pending_plan is not None:
+            recorder.pause_run(
+                run_id,
+                {"reason": pending_plan.status},
+            )
+            run_paused = True
             continue
+        evaluation_status = (result.get("evaluation") or {}).get("status")
+        terminal_status = "failed" if evaluation_status == "failed" else "completed"
+        recorder.finish_run(
+            run_id,
+            terminal_status,
+            {
+                "evaluation_status": evaluation_status,
+                "token_usage": active_usage or {},
+            },
+        )
+        run_id = None
         active_usage = None
         if one_shot:
-            evaluation_status = (result.get("evaluation") or {}).get("status")
             if (
                 _is_auto_session_id(session_id)
                 and not args.keep_session

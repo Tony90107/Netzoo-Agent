@@ -527,6 +527,46 @@ LangChain thread pool 重複 shutdown。Router 與 response model 透過 `ChatOp
 直接連到 OpenRouter 的 OpenAI-compatible endpoint；不要改回目前會錯置 timeout 單位、
 並在 zero-retry 時啟用長時間 SDK retry 的 `ChatOpenRouter` adapter。
 
+## 本機三層 trace 基礎
+
+每趟任務會先建立 `.netzoo/traces/<run_id>/events.jsonl`，再開始下一個 Agent 邊界。
+事件使用遞增 `sequence`、`previous_hash` 與 `event_hash`，包含 graph node、typed decision、
+plan gate、tool、Evaluator、recovery、LLM usage 與 budget event。這些是可稽核的結構化
+理由與狀態差異，不是模型的隱藏 chain-of-thought。
+
+事件在第一次本機寫入前會遮蔽 API key、Authorization、cookie、password、private key
+與常見 credential。Trace 目錄權限為 `0700`，JSONL、manifest 與 quarantine 檔案為
+`0600`。雲端 Dashboard 尚未連接時，本機 JSONL 仍是完整 source of truth。
+
+不需 API key 即可驗證或匯出 trace：
+
+```bash
+python scripts/netzoo_agent.py --trace-status RUN_ID
+python scripts/netzoo_agent.py --trace-export RUN_ID audit.tar.gz
+```
+
+匯出不會覆蓋既有檔案。已 sealed 的 trace 預設保存 90 天，可用
+`--trace-retention-days` 或 `NETZOO_TRACE_RETENTION_DAYS` 調整；pending、未 sealed、
+corrupt 與 `trace_degraded` run 不會被自動刪除。
+
+每任務 token hard limit 預設是 20,000：14,000 顯示第一級警告，17,000 顯示第二級警告，
+並保留 1,500 tokens 給必要收尾。呼叫前若預測會超過可用額度，系統寫入
+`budget.blocked` 並不送出 provider request。Provider 回報的 token／cost 標示為
+`actual`；依 `NETZOO_MODEL_PRICING_JSON` 快照計算者標示為 `estimated`；沒有可信價格時
+標示為 `unavailable`，不會填入假的零成本。
+
+價格設定以 exact model name 為 key，金額單位為每百萬 tokens 的 micro-USD：
+
+```json
+{
+  "openai/gpt-4o-mini": {
+    "input_micro_usd_per_million": 150000,
+    "output_micro_usd_per_million": 600000,
+    "effective_at": "2026-08-03T00:00:00Z"
+  }
+}
+```
+
 直接給任務，但先不真的執行工具：
 
 ```bash

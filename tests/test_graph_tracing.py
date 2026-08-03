@@ -11,6 +11,7 @@ from netzoo_agent_core import session  # noqa: E402
 from netzoo_agent_core import graph as graph_module  # noqa: E402
 from netzoo_agent_core.contracts import HumanMessage, RouterDecision  # noqa: E402
 from netzoo_agent_core.graph import build_graph  # noqa: E402
+from netzoo_agent_core.cli import export_local_trace, local_trace_status  # noqa: E402
 from netzoo_agent_core.memory import EpisodeStore, UserProfileStore  # noqa: E402
 from netzoo_agent_core.session import (  # noqa: E402
     load_session,
@@ -152,3 +153,19 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
     assert event_types.index("plan.created") < event_types.index("tool.started")
     assert result["run_id"] == str(run_id)
     assert store.verify_run(run_id).valid is True
+
+
+def test_local_trace_status_and_export_need_no_model_provider(tmp_path: Path):
+    root = tmp_path / "traces"
+    recorder = TraceRecorder(LocalTraceStore(root))
+    run_id = recorder.start_run(session_id="status", profile_id="default")
+    recorder.finish_run(run_id, "completed", {"result": "ok"})
+    archive = tmp_path / "trace.tar.gz"
+
+    status = local_trace_status(str(run_id), trace_root=root)
+    exported = export_local_trace(str(run_id), archive, trace_root=root)
+
+    assert status["valid"] is True
+    assert status["status"] == "completed"
+    assert status["event_count"] == 2
+    assert exported == archive
