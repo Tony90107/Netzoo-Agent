@@ -41,6 +41,7 @@ from .contracts import (
     _display_path,
     _is_demo_request,
 )
+from .outcomes import effective_results, terminal_failed
 
 __all__ = [
     "_safe_memory_id",
@@ -309,6 +310,7 @@ def normalize_episode_memory(
     evaluation: EvaluationResult,
 ) -> dict:
     """Build workflow-agnostic memory metadata from typed harness contracts."""
+    results = effective_results(results)
     decision = TaskDecision.model_validate(plan.decision)
     required = REQUIRED_INPUTS.get(decision.action, ())
     intent_type = _episode_intent_type(decision, task)
@@ -656,6 +658,7 @@ class EpisodeStore:
         evaluation: EvaluationResult,
         replan_count: int = 0,
     ) -> Episode:
+        results = effective_results(results)
         decision = TaskDecision.model_validate(plan.decision)
         inputs = {}
         for field_name in REQUIRED_INPUTS.get(decision.action, ()):
@@ -690,7 +693,7 @@ class EpisodeStore:
             recovery_actions = [step.action for step in plan.steps]
         episode_status = (
             "failed"
-            if evaluation.status == "failed"
+            if terminal_failed(results, evaluation)
             else (
                 "dry_run"
                 if any(result.status == "dry_run" for result in results)
