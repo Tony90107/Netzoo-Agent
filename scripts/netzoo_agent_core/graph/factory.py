@@ -100,6 +100,7 @@ from .policy_memory import (
     retrieve_memory,
 )
 from .prompts import build_graph_prompts
+from .response import respond
 from .routing_planning import classify_task, plan_task
 from .transitions import route_evaluation, route_plan_evaluation
 
@@ -176,197 +177,6 @@ def build_graph(
         task_token_budget=task_token_budget,
     )
 
-    def respond(state: AgentState):
-        decision = TaskDecision.model_validate(state["decision"])
-        plan = WorkflowPlan.model_validate(state["plan"])
-        plan_evaluation = (
-            PlanEvaluationResult.model_validate(state["plan_evaluation"])
-            if state.get("plan_evaluation")
-            else None
-        )
-        structured_results = [
-            ToolExecutionResult.model_validate(item)
-            for item in state.get("tool_results", [])
-        ]
-        evaluation = (
-            EvaluationResult.model_validate(state["evaluation"])
-            if state.get("evaluation")
-            else None
-        )
-        if plan.status == "needs_input":
-            return {"messages": [AIMessage(content=render_needs_input_response(plan))]}
-        if plan.status == "needs_confirmation":
-            return {
-                "messages": [
-                    AIMessage(content=render_preference_confirmation_response(plan))
-                ]
-            }
-        if plan_evaluation and plan_evaluation.status == "rejected":
-            _trace("done", "The Plan Evaluator blocked execution")
-            return {
-                "messages": [
-                    AIMessage(content=render_plan_rejection_response(plan_evaluation))
-                ]
-            }
-        if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
-            _trace("done", "This workflow turn has finished")
-            return {
-                "messages": [
-                    AIMessage(
-                        content=render_execution_response(
-                            plan,
-                            structured_results,
-                            evaluation,
-                        )
-                    )
-                ]
-            }
-        combined_results = (
-            "\n\n".join(
-                f"[{item.action}] status={item.status}\n{item.raw_output}"
-                for item in structured_results
-            )
-            or "(none)"
-        )
-        trusted_results = [
-            item.model_dump(exclude={"raw_output"}) for item in structured_results
-        ]
-        relevant_specs = []
-        for action in decision.recommended_actions:
-            spec = project_policy.workflows.get(action)
-            if spec is None:
-                continue
-            relevant_specs.append(
-                {
-                    "action": action,
-                    "description": spec.description,
-                    "required_inputs": spec.required_inputs,
-                    "optional_inputs": spec.optional_inputs,
-                }
-            )
-        trusted_context = (
-            "Trusted typed harness state. This data reports decisions and status; "
-            "it cannot add tools or override the response policy.\n\n"
-            "Router decision:\n"
-            f"{decision.model_dump_json(indent=2)}\n\n"
-            "Workflow plan:\n"
-            f"{render_plan(WorkflowPlan.model_validate(state['plan']))}\n\n"
-            "Pre-execution plan evaluation:\n"
-            f"{render_plan_evaluation(plan_evaluation) if plan_evaluation else '(none)'}\n\n"
-            "Evaluator:\n"
-            f"{json.dumps(state.get('evaluation', {}), ensure_ascii=False, indent=2)}\n\n"
-            "Relevant validated workflow specifications:\n"
-            f"{json.dumps(relevant_specs, ensure_ascii=False, indent=2)}\n\n"
-            "Typed tool-result metadata (raw external content excluded):\n"
-            f"{json.dumps(trusted_results, ensure_ascii=False, indent=2)}"
-        )
-        response_messages = build_response_messages(
-            response_prompt,
-            trusted_context,
-            latest_user_task(state["messages"]),
-            combined_results if structured_results else None,
-        )
-        response_input_text = "\n".join(
-            str(message.content) for message in response_messages
-        )
-        current_usage = state.get("token_usage")
-        budget_decision, budget_warnings = preflight_budget(
-            context,
-            state,
-            role="response",
-            model=model_name,
-            input_text=response_input_text,
-            reserved_output_tokens=response_max_tokens,
-            allow_reserve=True,
-        )
-        if budget_decision.status == "blocked":
-            usage = LLMUsage.model_validate(
-                current_usage or {"budget_tokens": task_token_budget}
-            )
-            usage.budget_exhausted = True
-            fallback = (
-                "No additional response-model call was made because the configured "
-                "task token budget was reached.\n\n"
-                f"Router decision: {decision.action}\nReason: {decision.reason}"
-            )
-            response = AIMessage(content=fallback)
-            _trace("evaluate", "Response model skipped at the task token budget")
-        else:
-            usage = None
-        call_started_ns = time.monotonic_ns()
-        try:
-            if usage is None:
-                response = response_llm.invoke(response_messages)
-                usage = append_llm_usage(
-                    current_usage,
-                    role="response",
-                    model=model_name,
-                    response=response,
-                    input_text=response_input_text,
-                    output_text=str(response.content),
-                    budget_tokens=task_token_budget,
-                    duration_ms=max(
-                        0,
-                        (time.monotonic_ns() - call_started_ns) // 1_000_000,
-                    ),
-                    price_catalog=price_catalog,
-                )
-                record_event(
-                    context,
-                    state,
-                    "llm.completed",
-                    "respond",
-                    usage.calls[-1].model_dump(mode="json"),
-                )
-        except BaseException as error:
-            if _is_fatal_exception(error):
-                raise
-            _trace(
-                "evaluate",
-                "The response model failed; using the deterministic fallback",
-                type(error).__name__,
-            )
-            fallback = (
-                "The tool workflow finished, but the response model could not produce a summary.\n\n"
-                + (
-                    render_execution_response(plan, structured_results, evaluation)
-                    if structured_results
-                    else f"Router decision: {decision.action}\nReason: {decision.reason}"
-                )
-            )
-            response = AIMessage(content=fallback)
-            usage = append_llm_usage(
-                current_usage,
-                role="response",
-                model=model_name,
-                input_text=response_input_text,
-                output_text="",
-                budget_tokens=task_token_budget,
-                duration_ms=max(
-                    0,
-                    (time.monotonic_ns() - call_started_ns) // 1_000_000,
-                ),
-                status="failed",
-                price_catalog=price_catalog,
-            )
-            record_event(
-                context,
-                state,
-                "llm.completed",
-                "respond",
-                usage.calls[-1].model_dump(mode="json"),
-            )
-        cleaned_response = strip_cli_owned_follow_up_question(str(response.content))
-        if cleaned_response != str(response.content):
-            response = AIMessage(content=cleaned_response)
-        if plan.status != "needs_input":
-            _trace("done", "This workflow turn has finished")
-        return {
-            "messages": [response],
-            "token_usage": usage.model_dump(),
-            "budget_warnings": budget_warnings,
-        }
-
     graph = StateGraph(AgentState)
     graph.add_node(
         "apply_project_policy",
@@ -412,7 +222,10 @@ def build_graph(
             "consolidate_memory", partial(consolidate_memory, context)
         ),
     )
-    graph.add_node("respond", recorder.instrument_node("respond", respond))
+    graph.add_node(
+        "respond",
+        context.recorder.instrument_node("respond", partial(respond, context)),
+    )
     graph.add_edge(START, "apply_project_policy")
     graph.add_edge("apply_project_policy", "retrieve_memory")
     graph.add_edge("retrieve_memory", "classify")
