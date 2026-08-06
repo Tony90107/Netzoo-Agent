@@ -668,20 +668,60 @@ class CapabilityGateTests(unittest.TestCase):
             )
         )
 
-    def test_clarification_wizard_selects_each_missing_field_independently(self):
+    @staticmethod
+    def _panda_clarification_plan():
         decision = agent.TaskDecision(
             action="run_panda",
             in_scope=True,
-            should_execute=True,
+            should_execute=False,
             confidence=0.95,
             reason="formal PANDA request",
             motif_file="data/lioness-toy/motif-panda.tsv",
             output_file="outputs/demo/panda.tsv",
         )
-        plan = agent.build_workflow_plan(
-            decision,
-            "我要執行 PANDA 分析，motif 是 data/lioness-toy/motif-panda.tsv",
+        return agent.WorkflowPlan(
+            workflow="PANDA",
+            objective=decision.reason,
+            decision=decision.model_dump(),
+            evidence=[
+                agent.InputEvidence(
+                    field="expression_file",
+                    status="missing",
+                    reason="Choose the expression input.",
+                    candidates=[
+                        "data/lioness-toy/expression.tsv",
+                        "data/manual-tests/expression.tsv",
+                    ],
+                ),
+                agent.InputEvidence(
+                    field="motif_file",
+                    status="provided",
+                    value="data/lioness-toy/motif-panda.tsv",
+                    reason="Explicitly provided by the user.",
+                ),
+                agent.InputEvidence(
+                    field="ppi_file",
+                    status="missing",
+                    reason="Choose the PPI input.",
+                    candidates=[
+                        "data/lioness-toy/ppi.tsv",
+                        "data/manual-tests/ppi.tsv",
+                    ],
+                ),
+                agent.InputEvidence(
+                    field="output_file",
+                    status="defaulted",
+                    value="outputs/demo/panda.tsv",
+                    reason="The reversible project default was used.",
+                ),
+            ],
+            missing_inputs=["expression_file", "ppi_file"],
+            status="needs_input",
+            question="Provide the next missing input.",
         )
+
+    def test_clarification_wizard_selects_each_missing_field_independently(self):
+        plan = self._panda_clarification_plan()
 
         first_prompt = agent.clarification_prompt(plan)
         selections = agent.parse_clarification_assignments(
@@ -814,19 +854,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("SELECTED_FIELD=ppi_file", continuation)
 
     def test_selected_input_keeps_selected_provenance_after_replanning(self):
-        decision = agent.TaskDecision(
-            action="run_panda",
-            in_scope=True,
-            should_execute=True,
-            confidence=0.95,
-            reason="formal PANDA request",
-            motif_file="data/lioness-toy/motif-panda.tsv",
-            output_file="outputs/demo/panda.tsv",
-        )
-        plan = agent.build_workflow_plan(
-            decision,
-            "我要執行 PANDA 分析，motif 是 data/lioness-toy/motif-panda.tsv",
-        )
+        plan = self._panda_clarification_plan()
         continuation = agent.resolve_clarification(plan, "1 1")
         repaired = agent.repair_router_decision(
             agent.TaskDecision(
@@ -848,19 +876,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(statuses["ppi_file"], "selected")
 
     def test_clarification_marker_preserves_previous_action_against_reroute(self):
-        decision = agent.TaskDecision(
-            action="run_panda",
-            in_scope=True,
-            should_execute=True,
-            confidence=0.95,
-            reason="formal PANDA request",
-            motif_file="data/lioness-toy/motif-panda.tsv",
-            output_file="outputs/demo/panda.tsv",
-        )
-        plan = agent.build_workflow_plan(
-            decision,
-            "我要執行 PANDA 分析，motif 是 data/lioness-toy/motif-panda.tsv",
-        )
+        plan = self._panda_clarification_plan()
         continuation = agent.resolve_clarification(plan, "1 1")
         wrong_router_decision = agent.TaskDecision(
             action="run_lioness_panda",
