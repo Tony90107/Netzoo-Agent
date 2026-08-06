@@ -1741,6 +1741,102 @@ class CapabilityGateTests(unittest.TestCase):
             expression_evidence.value,
             recovered.decision["expression_file"],
         )
+        self.assertEqual(
+            expression_evidence.derived_from,
+            recovered.steps[index].arguments["expression_file"],
+        )
+
+    @staticmethod
+    def _recovered_puma_plan_for_provenance_tests():
+        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        decision = agent.TaskDecision(
+            action="run_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="run PUMA",
+            expression_file="expression.tsv",
+            motif_file="motif.tsv",
+            ppi_file="ppi.tsv",
+            mirna_file="mirna.txt",
+            output_file="out.tsv",
+        )
+        plan = agent.build_workflow_plan(decision, task)
+        recovered, _ = agent.recover_workflow_plan(
+            plan,
+            1,
+            agent.EvaluationResult(
+                status="replan",
+                reason="PUMA rejected an expression header.",
+                recovery_action="format_expression_headerless",
+            ),
+        )
+        return task, recovered
+
+    def assert_evidence_provenance_rejected(self, plan, task):
+        evaluation = agent.evaluate_workflow_plan(plan, task)
+
+        self.assertEqual(evaluation.status, "rejected")
+        failed = {
+            item.criterion for item in evaluation.rubric if item.result == "fail"
+        }
+        self.assertIn("evidence_provenance_contract", failed)
+
+    def test_recovery_rejects_expression_evidence_relabelled_as_discovered(self):
+        task, recovered = self._recovered_puma_plan_for_provenance_tests()
+        expression_evidence = next(
+            item for item in recovered.evidence if item.field == "expression_file"
+        )
+        expression_evidence.status = "discovered"
+        expression_evidence.bundle_id = "synthetic-recovery-bundle"
+        expression_evidence.derived_from = None
+
+        self.assert_evidence_provenance_rejected(recovered, task)
+
+    def test_recovery_rejects_duplicate_expression_evidence(self):
+        task, recovered = self._recovered_puma_plan_for_provenance_tests()
+        expression_evidence = next(
+            item for item in recovered.evidence if item.field == "expression_file"
+        )
+        duplicate = expression_evidence.model_copy(deep=True)
+        duplicate.status = "discovered"
+        duplicate.bundle_id = "synthetic-recovery-bundle"
+        duplicate.derived_from = None
+        recovered.evidence.append(duplicate)
+
+        self.assert_evidence_provenance_rejected(recovered, task)
+
+    def test_recovery_rejects_modified_format_expression_arguments(self):
+        mutations = {
+            "with_header true": lambda arguments: arguments.__setitem__(
+                "with_header", True
+            ),
+            "with_header integer zero": lambda arguments: arguments.__setitem__(
+                "with_header", 0
+            ),
+            "with_header missing": lambda arguments: arguments.pop("with_header"),
+            "genes_axis changed": lambda arguments: arguments.__setitem__(
+                "genes_axis", "rows"
+            ),
+            "genes_axis missing": lambda arguments: arguments.pop("genes_axis"),
+            "expression_file changed": lambda arguments: arguments.__setitem__(
+                "expression_file", "forged-source.tsv"
+            ),
+            "expression_file missing": lambda arguments: arguments.pop(
+                "expression_file"
+            ),
+            "output_file missing": lambda arguments: arguments.pop("output_file"),
+            "extra authority argument": lambda arguments: arguments.__setitem__(
+                "overwrite", True
+            ),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                task, recovered = self._recovered_puma_plan_for_provenance_tests()
+                mutate(recovered.steps[1].arguments)
+
+                self.assert_evidence_provenance_rejected(recovered, task)
 
     def test_initial_plan_cannot_claim_derived_input(self):
         task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"

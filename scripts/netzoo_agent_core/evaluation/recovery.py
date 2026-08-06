@@ -46,6 +46,7 @@ def recover_workflow_plan(
                 status="derived",
                 value=derived,
                 reason=recovery_reason,
+                derived_from=str(source),
             )
         )
     else:
@@ -54,6 +55,7 @@ def recover_workflow_plan(
         expression_evidence.reason = recovery_reason
         expression_evidence.candidates = []
         expression_evidence.bundle_id = None
+        expression_evidence.derived_from = str(source)
     recovery_steps = [
         WorkflowStep(
             action="format_expression",
