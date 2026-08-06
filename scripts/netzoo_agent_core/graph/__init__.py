@@ -8,6 +8,7 @@ from . import (
     prompts,
     response,
     routing_planning,
+    topology,
     transitions,
 )
 from .factory import build_graph, invoke_graph_turn
@@ -20,6 +21,7 @@ _GRAPH_IMPLEMENTATION_MODULES = (
     prompts,
     response,
     routing_planning,
+    topology,
     transitions,
 )
 
