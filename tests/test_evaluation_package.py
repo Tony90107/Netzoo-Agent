@@ -71,3 +71,42 @@ def test_runtime_overrides_reach_evaluation_child_modules():
     finally:
         legacy_agent.EXECUTE_TOOLS = original_execute
         legacy_agent.VERBOSE_OUTPUT = original_verbose
+
+
+def test_compact_response_labels_derived_input():
+    decision = legacy_agent.TaskDecision(
+        action="run_puma",
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="recovered PUMA",
+        expression_file="outputs/expression.puma-expression.tsv",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="PUMA",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        evidence=[
+            legacy_agent.InputEvidence(
+                field="expression_file",
+                status="derived",
+                value="outputs/expression.puma-expression.tsv",
+                reason="Created by bounded header-removal recovery.",
+            )
+        ],
+        steps=[
+            legacy_agent.WorkflowStep(
+                action="run_puma",
+                purpose="Retry PUMA.",
+            )
+        ],
+        status="ready",
+    )
+
+    response = evaluation.render_compact_execution_response(
+        plan,
+        [],
+        legacy_agent.EvaluationResult(status="completed", reason="done"),
+    )
+
+    assert "[derived input]" in response

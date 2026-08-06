@@ -206,6 +206,7 @@ def render_compact_execution_response(
                 "provided": "provided",
                 "selected": "selected",
                 "discovered": "auto-discovered",
+                "derived": "derived input",
                 "demo_bundle": "demo bundle",
                 "defaulted": "default",
             }.get(item.status, item.status)
