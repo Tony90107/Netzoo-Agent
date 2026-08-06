@@ -76,14 +76,8 @@ def test_ordinary_provider_error_is_not_fatal():
     assert interpretation._is_fatal_exception(TimeoutError()) is False
 
 
-def test_interpretation_is_a_package_with_temporary_core():
-    assert hasattr(interpretation, "__path__")
-    core = importlib.import_module("netzoo_agent_core.interpretation.core")
-    for name in PUBLIC_EXPORTS:
-        assert getattr(core, name) is getattr(interpretation, name)
-
-
 def test_interpretation_package_exports_only_the_existing_surface():
+    assert hasattr(interpretation, "__path__")
     assert interpretation.__all__ == PUBLIC_EXPORTS
 
 
@@ -138,3 +132,113 @@ def test_legacy_decision_patch_reaches_owner(module_name, symbol):
         assert getattr(owner, symbol) is replacement
     finally:
         setattr(legacy_agent, symbol, original)
+
+
+def test_discovery_module_is_internal_and_patchable():
+    discovery = importlib.import_module("netzoo_agent_core.interpretation.discovery")
+    assert discovery.__all__ == []
+    original = legacy_agent.discover_demo_bundle
+
+    def replacement(action):
+        return None
+
+    try:
+        legacy_agent.discover_demo_bundle = replacement
+        assert discovery.discover_demo_bundle is replacement
+    finally:
+        legacy_agent.discover_demo_bundle = original
+
+
+def test_interpretation_children_are_responsibility_sized():
+    maximum_lines = {
+        "discovery": 320,
+        "extraction": 280,
+        "hydration": 140,
+        "provider_fallback": 230,
+        "repair": 340,
+    }
+    for module_name, maximum in maximum_lines.items():
+        module = importlib.import_module(
+            f"netzoo_agent_core.interpretation.{module_name}"
+        )
+        assert len(inspect.getsource(module).splitlines()) <= maximum, module_name
+
+
+def test_temporary_interpretation_core_is_removed():
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("netzoo_agent_core.interpretation.core")
+
+
+def test_interpretation_package_uses_final_responsibility_owners():
+    owners = {
+        "discovery": (
+            "_candidate_keywords",
+            "_choose_unambiguous_candidate",
+            "_best_named_file",
+            "discover_demo_bundle",
+            "reusable_episode_inputs",
+        ),
+        "extraction": (
+            "INPUT_LABELS",
+            "_task_path",
+            "_mentions_unspecified_data_directory",
+            "_needs_lioness_mode_choice",
+            "is_versioned_documentation_request",
+            "documentation_library_for_task",
+            "extract_preference_proposals",
+        ),
+        "hydration": ("hydrate_router_decision",),
+        "provider_fallback": (
+            "deterministic_router_fallback",
+            "_is_fatal_exception",
+        ),
+        "repair": ("_lioness_mode_plan", "repair_router_decision"),
+    }
+    for module_name, names in owners.items():
+        owner = importlib.import_module(
+            f"netzoo_agent_core.interpretation.{module_name}"
+        )
+        for name in names:
+            assert getattr(interpretation, name) is getattr(owner, name)
+
+
+def test_interpretation_child_dependencies_are_acyclic_and_scoped():
+    child_names = {
+        "discovery",
+        "extraction",
+        "hydration",
+        "provider_fallback",
+        "repair",
+    }
+    dependencies = {}
+    for child_name in child_names:
+        module = importlib.import_module(
+            f"netzoo_agent_core.interpretation.{child_name}"
+        )
+        tree = ast.parse(inspect.getsource(module))
+        dependencies[child_name] = {
+            node.module
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.level == 1
+            and node.module in child_names
+        }
+    assert dependencies == {
+        "discovery": set(),
+        "extraction": set(),
+        "hydration": {"extraction"},
+        "provider_fallback": {"extraction"},
+        "repair": {"extraction"},
+    }
+
+
+def test_interpretation_package_does_not_leak_new_helpers():
+    assert interpretation.__all__ == PUBLIC_EXPORTS
+    for name in (
+        "discovery",
+        "extraction",
+        "hydration",
+        "provider_fallback",
+        "repair",
+    ):
+        assert name not in interpretation.__all__

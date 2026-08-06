@@ -1,7 +1,7 @@
 """Deterministic task hydration, repair, fallback, and input discovery."""
 
-from . import core, extraction, hydration, provider_fallback, repair
-from .core import (
+from . import discovery, extraction, hydration, provider_fallback, repair
+from .discovery import (
     _best_named_file,
     _candidate_keywords,
     _choose_unambiguous_candidate,
@@ -22,7 +22,7 @@ from .provider_fallback import deterministic_router_fallback, _is_fatal_exceptio
 from .repair import _lioness_mode_plan, repair_router_decision
 
 _INTERPRETATION_IMPLEMENTATION_MODULES = (
-    core,
+    discovery,
     extraction,
     hydration,
     provider_fallback,
