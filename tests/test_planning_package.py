@@ -94,3 +94,54 @@ def test_planning_public_surface_is_preserved():
     assert planning.__all__ == PUBLIC_EXPORTS
     for name in PUBLIC_EXPORTS:
         assert getattr(legacy_agent, name) is getattr(planning, name)
+
+
+def test_context_stage_returns_early_response_plan():
+    context_module = importlib.import_module("netzoo_agent_core.planning.context")
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=0.99,
+        reason="Explain PANDA.",
+    )
+
+    result = context_module._prepare_planning_context(
+        decision,
+        "Explain PANDA.",
+        None,
+        None,
+        None,
+    )
+
+    assert result.status == "respond_only"
+    assert decision.action == "no_tool"
+
+
+def test_context_stage_prepares_local_workflow_state():
+    context_module = importlib.import_module("netzoo_agent_core.planning.context")
+    decision = TaskDecision(
+        action="run_panda",
+        in_scope=True,
+        should_execute=True,
+        confidence=0.99,
+        reason="Run PANDA.",
+    )
+
+    result = context_module._prepare_planning_context(
+        decision,
+        "Run PANDA.",
+        None,
+        None,
+        None,
+    )
+
+    assert isinstance(result, context_module._PlanningContext)
+    assert result.action == "run_panda"
+    assert result.workflow == "PANDA"
+    assert result.required == [
+        "expression_file",
+        "motif_file",
+        "ppi_file",
+        "output_file",
+    ]

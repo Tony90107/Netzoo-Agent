@@ -69,6 +69,7 @@ from netzoo_agent_core.routing import (
 )
 from netzoo_agent_core.planning import (
     builder as planning_builder,
+    context as planning_context,
     rendering as planning_rendering,
 )
 from netzoo_agent_core.contracts import (
@@ -107,6 +108,7 @@ _IMPLEMENTATION_MODULES = (
     interpretation,
     planning,
     planning_builder,
+    planning_context,
     planning_rendering,
     evaluation,
     llm,
