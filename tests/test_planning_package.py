@@ -79,3 +79,18 @@ def test_planning_model_dump_is_characterized(case_name, decision, task, expecte
 
     assert _plan_digest(plan) == expected, case_name
     assert decision.model_dump(mode="json") == before
+
+
+PUBLIC_EXPORTS = ["build_workflow_plan", "render_plan"]
+
+
+def test_planning_is_responsibility_oriented_package():
+    assert hasattr(planning, "__path__")
+    for module_name in ("builder", "rendering"):
+        importlib.import_module(f"netzoo_agent_core.planning.{module_name}")
+
+
+def test_planning_public_surface_is_preserved():
+    assert planning.__all__ == PUBLIC_EXPORTS
+    for name in PUBLIC_EXPORTS:
+        assert getattr(legacy_agent, name) is getattr(planning, name)
