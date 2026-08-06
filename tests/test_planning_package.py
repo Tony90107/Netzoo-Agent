@@ -145,3 +145,47 @@ def test_context_stage_prepares_local_workflow_state():
         "ppi_file",
         "output_file",
     ]
+
+
+def test_evidence_stage_is_importable_and_internal():
+    evidence_module = importlib.import_module("netzoo_agent_core.planning.evidence")
+    assert evidence_module.__all__ == []
+    assert not hasattr(planning, "_build_evidence_ledger")
+
+
+def test_legacy_candidate_patch_reaches_evidence_child():
+    evidence_module = importlib.import_module("netzoo_agent_core.planning.evidence")
+    original = legacy_agent._find_candidate_files
+    calls = []
+
+    def replacement(keywords, root):
+        calls.append((keywords, root))
+        return []
+
+    try:
+        legacy_agent._find_candidate_files = replacement
+        assert evidence_module._find_candidate_files is replacement
+        plan = legacy_agent.build_workflow_plan(
+            TaskDecision(
+                action="run_condor",
+                in_scope=True,
+                should_execute=True,
+                confidence=0.99,
+                reason="Run CONDOR.",
+            ),
+            "Run CONDOR with research data.",
+        )
+        assert plan.status == "needs_input"
+        assert calls
+    finally:
+        legacy_agent._find_candidate_files = original
+
+
+def test_project_root_override_reaches_evidence_child(tmp_path):
+    evidence_module = importlib.import_module("netzoo_agent_core.planning.evidence")
+    original = legacy_agent.PROJECT_ROOT
+    try:
+        legacy_agent.PROJECT_ROOT = tmp_path
+        assert evidence_module.PROJECT_ROOT == tmp_path
+    finally:
+        legacy_agent.PROJECT_ROOT = original
