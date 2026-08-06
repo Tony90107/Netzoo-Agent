@@ -74,3 +74,14 @@ def test_fatal_provider_exceptions_are_characterized(error):
 
 def test_ordinary_provider_error_is_not_fatal():
     assert interpretation._is_fatal_exception(TimeoutError()) is False
+
+
+def test_interpretation_is_a_package_with_temporary_core():
+    assert hasattr(interpretation, "__path__")
+    core = importlib.import_module("netzoo_agent_core.interpretation.core")
+    for name in PUBLIC_EXPORTS:
+        assert getattr(core, name) is getattr(interpretation, name)
+
+
+def test_interpretation_package_exports_only_the_existing_surface():
+    assert interpretation.__all__ == PUBLIC_EXPORTS
