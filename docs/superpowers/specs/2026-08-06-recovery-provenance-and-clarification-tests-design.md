@@ -68,11 +68,15 @@ A derived evidence entry is valid only when all of these conditions hold:
 7. The derived evidence has no bundle identifier and no stale selection
    candidates.
 
-The evidence contract helper will receive enough plan and decision context to
-enforce these rules. Invalid or fabricated derived evidence will reject the plan.
-Dataset bundle validation will continue examining only genuinely discovered
-inputs, so a valid derived artifact neither needs a synthetic bundle identifier
-nor conflicts with the source dataset's bundle identity.
+The historical `_evidence_contract_failures(evidence, user_task)` signature will
+remain unchanged. It will enforce the context-free shape of derived evidence,
+while a new private validator receives the plan and decision context needed for
+the recovery-specific rules. `evaluate_workflow_plan()` will combine both
+results under the existing evidence-provenance rubric. Invalid or fabricated
+derived evidence will reject the plan. Dataset bundle validation will continue
+examining only genuinely discovered inputs, so a valid derived artifact neither
+needs a synthetic bundle identifier nor conflicts with the source dataset's
+bundle identity.
 
 ## Rendering
 
