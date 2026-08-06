@@ -8,7 +8,7 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core import session  # noqa: E402
-from netzoo_agent_core import graph as graph_module  # noqa: E402
+import netzoo_agent_core.graph.factory as graph_module  # noqa: E402
 from netzoo_agent_core.contracts import HumanMessage, RouterDecision  # noqa: E402
 from netzoo_agent_core.graph import build_graph  # noqa: E402
 from netzoo_agent_core.cli import export_local_trace, local_trace_status  # noqa: E402

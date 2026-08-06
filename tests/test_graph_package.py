@@ -43,3 +43,14 @@ def test_invoke_graph_turn_translates_keyboard_interrupt():
 
     with pytest.raises(legacy_agent.AgentTurnInterrupted):
         graph.invoke_graph_turn(InterruptedApp(), {"messages": []})
+
+
+def test_graph_is_a_package_with_factory_child():
+    assert hasattr(graph, "__path__")
+    factory = importlib.import_module("netzoo_agent_core.graph.factory")
+    assert factory.build_graph is graph.build_graph
+    assert factory.invoke_graph_turn is graph.invoke_graph_turn
+
+
+def test_graph_package_exports_only_public_entrypoints():
+    assert graph.__all__ == PUBLIC_EXPORTS
