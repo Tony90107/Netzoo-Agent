@@ -91,3 +91,36 @@ def test_record_event_uses_run_id_and_exact_payload():
     )
 
     assert calls == [("run-1", "plan.created", "plan", {"status": "ready"})]
+
+
+def test_policy_memory_and_routing_planning_modules_are_internal():
+    policy_memory = importlib.import_module("netzoo_agent_core.graph.policy_memory")
+    routing_planning = importlib.import_module(
+        "netzoo_agent_core.graph.routing_planning"
+    )
+    assert policy_memory.__all__ == []
+    assert routing_planning.__all__ == []
+    assert not hasattr(graph, "classify_task")
+    assert not hasattr(graph, "plan_task")
+
+
+def test_legacy_plan_patch_reaches_routing_planning_child():
+    routing_planning = importlib.import_module(
+        "netzoo_agent_core.graph.routing_planning"
+    )
+    original = legacy_agent.build_workflow_plan
+
+    def replacement(
+        raw_decision,
+        task,
+        profile=None,
+        retrieved_episodes=None,
+        project_policy=None,
+    ):
+        raise AssertionError("patch propagation sentinel")
+
+    try:
+        legacy_agent.build_workflow_plan = replacement
+        assert routing_planning.build_workflow_plan is replacement
+    finally:
+        legacy_agent.build_workflow_plan = original
