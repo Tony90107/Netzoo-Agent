@@ -85,3 +85,24 @@ def test_interpretation_is_a_package_with_temporary_core():
 
 def test_interpretation_package_exports_only_the_existing_surface():
     assert interpretation.__all__ == PUBLIC_EXPORTS
+
+
+def test_extraction_and_hydration_modules_are_internal():
+    extraction = importlib.import_module("netzoo_agent_core.interpretation.extraction")
+    hydration = importlib.import_module("netzoo_agent_core.interpretation.hydration")
+    assert extraction.__all__ == []
+    assert hydration.__all__ == []
+
+
+def test_legacy_hydration_patch_reaches_child():
+    hydration = importlib.import_module("netzoo_agent_core.interpretation.hydration")
+    original = legacy_agent.hydrate_router_decision
+
+    def replacement(raw_decision, task):
+        raise AssertionError("hydration patch sentinel")
+
+    try:
+        legacy_agent.hydrate_router_decision = replacement
+        assert hydration.hydrate_router_decision is replacement
+    finally:
+        legacy_agent.hydrate_router_decision = original
