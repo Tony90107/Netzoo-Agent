@@ -38,6 +38,10 @@ def _evidence_contract_failures(
         user_task
     ) and not _mentions_unspecified_data_directory(user_task)
     for item in evidence:
+        if item.status != "derived" and item.derived_from is not None:
+            failures.append(
+                f"{item.field} carries a derived source without derived status"
+            )
         if item.status == "provided":
             if not _path_literal_in_task(item.value, user_task):
                 failures.append(
@@ -65,6 +69,8 @@ def _evidence_contract_failures(
             if (
                 not item.value
                 or not item.reason
+                or not isinstance(item.derived_from, str)
+                or not item.derived_from.strip()
                 or item.bundle_id is not None
                 or item.candidates
             ):
@@ -86,10 +92,20 @@ def _derived_evidence_contract_failures(
     decision: TaskDecision,
 ) -> list[str]:
     derived = [item for item in plan.evidence if item.status == "derived"]
-    if not derived:
-        return []
-
     failures: list[str] = []
+    expression_evidence = [
+        item for item in plan.evidence if item.field == "expression_file"
+    ]
+    if plan.recovery_action == "format_expression_headerless" and (
+        len(expression_evidence) != 1
+        or expression_evidence[0].status != "derived"
+    ):
+        failures.append(
+            "PUMA header-removal recovery requires exactly one derived expression input"
+        )
+    if not derived:
+        return failures
+
     if len(derived) != 1:
         failures.append("a recovery plan must contain exactly one derived input")
     item = derived[0]
@@ -109,13 +125,26 @@ def _derived_evidence_contract_failures(
         )
     if item.value != decision.expression_file:
         failures.append("derived expression does not match the plan decision")
-    if (
-        format_step is None
-        or format_step.action != "format_expression"
-        or format_step.arguments.get("output_file") != item.value
-    ):
+    expected_arguments = {
+        "expression_file": item.derived_from,
+        "output_file": item.value,
+        "genes_axis": "auto",
+        "with_header": False,
+    }
+    arguments_match = (
+        format_step is not None
+        and format_step.action == "format_expression"
+        and set(format_step.arguments) == set(expected_arguments)
+        and format_step.arguments.get("expression_file")
+        == expected_arguments["expression_file"]
+        and format_step.arguments.get("output_file")
+        == expected_arguments["output_file"]
+        and format_step.arguments.get("genes_axis") == "auto"
+        and format_step.arguments.get("with_header") is False
+    )
+    if not arguments_match:
         failures.append(
-            "derived expression does not match the recovery format output"
+            "derived expression does not match the authorized recovery transformation"
         )
     return failures
 

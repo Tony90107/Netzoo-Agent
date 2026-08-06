@@ -516,6 +516,7 @@ class InputEvidence(BaseModel):
     reason: str
     candidates: list[str] = Field(default_factory=list)
     bundle_id: str | None = None
+    derived_from: str | None = None
 
 
 class WorkflowStep(BaseModel):
