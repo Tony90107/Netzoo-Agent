@@ -167,3 +167,131 @@ def test_legacy_response_helper_patch_reaches_response_child():
         assert response.build_response_messages is replacement
     finally:
         legacy_agent.build_response_messages = original
+
+
+class _FakeRecorder:
+    def __init__(self):
+        self.instrumented = []
+
+    def instrument_node(self, name, function):
+        self.instrumented.append(name)
+        return function
+
+
+class _FakeStateGraph:
+    instance = None
+
+    def __init__(self, state_type):
+        self.state_type = state_type
+        self.nodes = []
+        self.edges = []
+        self.conditionals = []
+        _FakeStateGraph.instance = self
+
+    def add_node(self, name, function):
+        self.nodes.append(name)
+
+    def add_edge(self, source, target):
+        self.edges.append((source, target))
+
+    def add_conditional_edges(self, source, router, mapping):
+        self.conditionals.append((source, router.__name__, mapping))
+
+    def compile(self):
+        return self
+
+
+def test_topology_is_exact_and_fully_instrumented(monkeypatch):
+    topology = importlib.import_module("netzoo_agent_core.graph.topology")
+    recorder = _FakeRecorder()
+    runtime = SimpleNamespace(recorder=recorder)
+    monkeypatch.setattr(topology, "START", "START")
+    monkeypatch.setattr(topology, "END", "END")
+
+    compiled = topology.compile_graph(runtime, graph_cls=_FakeStateGraph)
+
+    expected_nodes = [
+        "apply_project_policy",
+        "retrieve_memory",
+        "classify",
+        "plan",
+        "evaluate_plan",
+        "execute_tool",
+        "evaluate",
+        "recover",
+        "consolidate_memory",
+        "respond",
+    ]
+    assert compiled.nodes == expected_nodes
+    assert recorder.instrumented == expected_nodes
+    assert compiled.edges == [
+        ("START", "apply_project_policy"),
+        ("apply_project_policy", "retrieve_memory"),
+        ("retrieve_memory", "classify"),
+        ("classify", "plan"),
+        ("plan", "evaluate_plan"),
+        ("execute_tool", "evaluate"),
+        ("recover", "evaluate_plan"),
+        ("consolidate_memory", "respond"),
+        ("respond", "END"),
+    ]
+    assert compiled.conditionals == [
+        (
+            "evaluate_plan",
+            "route_plan_evaluation",
+            {
+                "execute_tool": "execute_tool",
+                "consolidate_memory": "consolidate_memory",
+            },
+        ),
+        (
+            "evaluate",
+            "route_evaluation",
+            {
+                "execute_tool": "execute_tool",
+                "recover": "recover",
+                "consolidate_memory": "consolidate_memory",
+            },
+        ),
+    ]
+
+
+def test_factory_is_dependency_assembly_only():
+    factory = importlib.import_module("netzoo_agent_core.graph.factory")
+    source = inspect.getsource(factory)
+    assert len(source.splitlines()) <= 150
+    assert "_GraphContext(" in source
+    assert "compile_graph(" in source
+    assert "def classify_task" not in source
+    assert "def respond" not in source
+    assert "add_edge" not in source
+
+
+def test_graph_children_remain_responsibility_sized():
+    maximum_lines = {
+        "context": 140,
+        "execution": 230,
+        "factory": 150,
+        "policy_memory": 150,
+        "prompts": 120,
+        "response": 260,
+        "routing_planning": 230,
+        "topology": 130,
+        "transitions": 70,
+    }
+    for module_name, maximum in maximum_lines.items():
+        module = importlib.import_module(f"netzoo_agent_core.graph.{module_name}")
+        assert len(inspect.getsource(module).splitlines()) <= maximum, module_name
+
+
+def test_graph_internal_helpers_do_not_leak():
+    for name in (
+        "_GraphContext",
+        "apply_project_policy",
+        "classify_task",
+        "execute_tool",
+        "respond",
+        "route_evaluation",
+        "compile_graph",
+    ):
+        assert not hasattr(graph, name)
