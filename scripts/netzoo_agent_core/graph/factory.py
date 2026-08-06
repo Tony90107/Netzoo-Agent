@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from functools import partial
 
 
 from workflow_registry import (
@@ -92,7 +93,13 @@ from ..outcomes import supersede_triggering_failure
 from ..pricing import PriceCatalog
 from ..tracing import NullTraceRecorder, TraceRecorder
 from .context import _GraphContext, preflight_budget, record_event
+from .policy_memory import (
+    apply_project_policy,
+    consolidate_memory,
+    retrieve_memory,
+)
 from .prompts import build_graph_prompts
+from .routing_planning import classify_task, plan_task
 
 __all__ = [
     "build_graph",
@@ -166,223 +173,6 @@ def build_graph(
         response_max_tokens=response_max_tokens,
         task_token_budget=task_token_budget,
     )
-
-    def apply_project_policy(state: AgentState):
-        _trace(
-            "policy",
-            f"Project policy loaded: version={project_policy.policy_version}, "
-            f"hash={project_policy.policy_hash[:12]}",
-            f"AGENTS={project_policy.agents_path}, workflows={len(project_policy.workflows)}",
-        )
-        record_event(
-            context,
-            state,
-            "policy.loaded",
-            "apply_project_policy",
-            {
-                "policy_version": project_policy.policy_version,
-                "policy_hash": project_policy.policy_hash,
-                "agents_path": project_policy.agents_path,
-                "workflow_count": len(project_policy.workflows),
-            },
-        )
-        return {"project_policy": project_policy.model_dump()}
-
-    def retrieve_memory(state: AgentState):
-        user_task = str(state["messages"][-1].content)
-        profile = profile_store.load(profile_id)
-        episodes = episode_store.search(profile_id, user_task, limit=3)
-        _trace(
-            "memory",
-            f"Memory retrieval: profile={profile.profile_id}, episodes={len(episodes)}",
-        )
-        record_event(
-            context,
-            state,
-            "memory.retrieved",
-            "retrieve_memory",
-            {
-                "profile_id": profile.profile_id,
-                "episode_count": len(episodes),
-            },
-        )
-        return {
-            "profile": profile.model_dump(),
-            "retrieved_episodes": [episode.model_dump() for episode in episodes],
-        }
-
-    def classify_task(state: AgentState):
-        _trace("intent", "Interpreting the request and capability boundaries")
-        messages = build_router_messages(routing_prompt, state["messages"])
-        user_task = latest_user_task(state["messages"])
-        router_input_text = "\n".join(str(message.content) for message in messages)
-        router_input_text += json.dumps(
-            RouterDecision.model_json_schema(),
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-        current_usage = state.get("token_usage")
-        budget_decision, budget_warnings = preflight_budget(
-            context,
-            state,
-            role="router",
-            model=router_model_name,
-            input_text=router_input_text,
-            reserved_output_tokens=router_max_tokens,
-            allow_reserve=False,
-        )
-        if budget_decision.status == "blocked":
-            usage = (
-                LLMUsage.model_validate(current_usage)
-                if current_usage
-                else LLMUsage(budget_tokens=task_token_budget)
-            )
-            usage.budget_exhausted = True
-            decision = deterministic_router_fallback(user_task)
-            _trace(
-                "intent",
-                "Router call skipped because the task token budget would be exceeded",
-            )
-            record_event(
-                context,
-                state,
-                "decision.recorded",
-                "classify",
-                {
-                    "action": decision.action,
-                    "confidence": decision.confidence,
-                    "in_scope": decision.in_scope,
-                    "reason": decision.reason,
-                    "reason_code": "budget_fallback",
-                    "recommended_actions": decision.recommended_actions,
-                },
-            )
-            return {
-                "decision": decision.model_dump(),
-                "token_usage": usage.model_dump(),
-                "budget_warnings": budget_warnings,
-            }
-        call_started_ns = time.monotonic_ns()
-        call_status = "success"
-        reason_code = "provider"
-        try:
-            structured = router.invoke(messages)
-            parsed_decision, raw_message = structured_result_payload(structured)
-            hydrated = hydrate_router_decision(parsed_decision, user_task)
-            decision = repair_router_decision(hydrated, user_task)
-            usage = append_llm_usage(
-                current_usage,
-                role="router",
-                model=router_model_name,
-                response=raw_message,
-                input_text=router_input_text,
-                output_text=decision.model_dump_json(),
-                budget_tokens=task_token_budget,
-                duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
-                price_catalog=price_catalog,
-            )
-        except BaseException as error:
-            if _is_fatal_exception(error):
-                raise
-            decision = deterministic_router_fallback(user_task, error)
-            call_status = "failed"
-            reason_code = "deterministic_fallback"
-            usage = append_llm_usage(
-                current_usage,
-                role="router",
-                model=router_model_name,
-                input_text=router_input_text,
-                output_text="",
-                budget_tokens=task_token_budget,
-                duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
-                status=call_status,
-                price_catalog=price_catalog,
-            )
-            _trace(
-                "intent",
-                "Router provider failed; deterministic fallback selected",
-                type(error).__name__,
-            )
-        record_event(
-            context,
-            state,
-            "llm.completed",
-            "classify",
-            usage.calls[-1].model_dump(mode="json"),
-        )
-        _trace(
-            "intent",
-            f"Classified as {decision.action}",
-            f"Confidence {decision.confidence:.2f} | {decision.reason}",
-        )
-        record_event(
-            context,
-            state,
-            "decision.recorded",
-            "classify",
-            {
-                "action": decision.action,
-                "confidence": decision.confidence,
-                "in_scope": decision.in_scope,
-                "reason": decision.reason,
-                "reason_code": reason_code,
-                "recommended_actions": decision.recommended_actions,
-            },
-        )
-        return {
-            "decision": decision.model_dump(),
-            "token_usage": usage.model_dump(),
-            "budget_warnings": budget_warnings,
-        }
-
-    def plan_task(state: AgentState):
-        user_task = str(state["messages"][-1].content)
-        decision = TaskDecision.model_validate(state["decision"])
-        plan = build_workflow_plan(
-            decision,
-            user_task,
-            profile=state.get("profile"),
-            retrieved_episodes=state.get("retrieved_episodes", []),
-            project_policy=state.get("project_policy"),
-        )
-        profile = UserProfile.model_validate(state.get("profile"))
-        pending_preferences = profile_store.pending(
-            profile, decision.preference_updates
-        )
-        if "PREFERENCE_CONFIRMATION_REJECTED" in user_task:
-            pending_preferences = []
-        if pending_preferences:
-            plan.status = "needs_confirmation"
-            plan.preference_proposals = pending_preferences
-            plan.question = _ui_text(
-                "Confirm whether these preferences should be saved."
-            )
-            plan.steps = []
-        _trace("plan", f"Planner: {plan.workflow} / {plan.status}", render_plan(plan))
-        if plan.status == "needs_input":
-            _trace("input", "The Planner requires additional input", plan.question)
-        record_event(
-            context,
-            state,
-            "plan.created",
-            "plan",
-            {
-                "workflow": plan.workflow,
-                "objective": plan.objective,
-                "status": plan.status,
-                "steps": [step.model_dump() for step in plan.steps],
-                "missing_inputs": plan.missing_inputs,
-                "evidence": [item.model_dump() for item in plan.evidence],
-                "policy_hash": plan.policy_hash,
-            },
-        )
-        return {
-            "plan": plan.model_dump(),
-            "decision": plan.decision,
-            "current_step": 0,
-            "tool_results": [],
-            "replan_count": 0,
-        }
 
     def evaluate_plan(state: AgentState):
         plan = WorkflowPlan.model_validate(state["plan"])
@@ -543,43 +333,6 @@ def build_graph(
             "replan_count": replan_count,
             "tool_results": [item.model_dump() for item in tool_results],
         }
-
-    def consolidate_memory(state: AgentState):
-        evaluation_data = state.get("evaluation")
-        result_data = state.get("tool_results", [])
-        if not evaluation_data or not result_data:
-            return {}
-        evaluation = EvaluationResult.model_validate(evaluation_data)
-        if evaluation.status not in {"completed", "failed"}:
-            return {}
-        plan = WorkflowPlan.model_validate(state["plan"])
-        results = [ToolExecutionResult.model_validate(item) for item in result_data]
-        task = str(state["messages"][-1].content)
-        episode = episode_store.record(
-            profile_id=profile_id,
-            task=task,
-            plan=plan,
-            results=results,
-            evaluation=evaluation,
-            replan_count=state.get("replan_count", 0),
-        )
-        _trace(
-            "memory",
-            f"Memory consolidation: recorded episode {episode.episode_id[:8]}",
-            f"workflow={episode.workflow}, status={episode.status}",
-        )
-        record_event(
-            context,
-            state,
-            "memory.consolidated",
-            "consolidate_memory",
-            {
-                "episode_id": episode.episode_id,
-                "workflow": episode.workflow,
-                "status": episode.status,
-            },
-        )
-        return {}
 
     def respond(state: AgentState):
         decision = TaskDecision.model_validate(state["decision"])
@@ -775,14 +528,24 @@ def build_graph(
     graph = StateGraph(AgentState)
     graph.add_node(
         "apply_project_policy",
-        recorder.instrument_node("apply_project_policy", apply_project_policy),
+        recorder.instrument_node(
+            "apply_project_policy", partial(apply_project_policy, context)
+        ),
     )
     graph.add_node(
         "retrieve_memory",
-        recorder.instrument_node("retrieve_memory", retrieve_memory),
+        recorder.instrument_node(
+            "retrieve_memory", partial(retrieve_memory, context)
+        ),
     )
-    graph.add_node("classify", recorder.instrument_node("classify", classify_task))
-    graph.add_node("plan", recorder.instrument_node("plan", plan_task))
+    graph.add_node(
+        "classify",
+        recorder.instrument_node("classify", partial(classify_task, context)),
+    )
+    graph.add_node(
+        "plan",
+        recorder.instrument_node("plan", partial(plan_task, context)),
+    )
     graph.add_node(
         "evaluate_plan",
         recorder.instrument_node("evaluate_plan", evaluate_plan),
@@ -798,7 +561,9 @@ def build_graph(
     graph.add_node("recover", recorder.instrument_node("recover", recover))
     graph.add_node(
         "consolidate_memory",
-        recorder.instrument_node("consolidate_memory", consolidate_memory),
+        recorder.instrument_node(
+            "consolidate_memory", partial(consolidate_memory, context)
+        ),
     )
     graph.add_node("respond", recorder.instrument_node("respond", respond))
     graph.add_edge(START, "apply_project_policy")
