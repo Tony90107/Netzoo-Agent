@@ -516,7 +516,10 @@ class InputEvidence(BaseModel):
     reason: str
     candidates: list[str] = Field(default_factory=list)
     bundle_id: str | None = None
-    derived_from: str | None = None
+    derived_from: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
 
 class WorkflowStep(BaseModel):

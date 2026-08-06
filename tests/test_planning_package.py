@@ -15,7 +15,11 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.planning as planning  # noqa: E402
-from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    InputEvidence,
+    TaskDecision,
+    WorkflowPlan,
+)
 
 
 def _plan_digest(plan) -> str:
@@ -70,6 +74,64 @@ PLANNING_CASES = (
         "14e28c7aef73fdaa791174ba182b4d7037cc033429b9217fa35434d0d2541bd6",
     ),
 )
+
+
+def test_ordinary_evidence_serialization_omits_empty_derived_source():
+    evidence = InputEvidence(
+        field="expression_file",
+        status="missing",
+        reason="Expression input is required.",
+    )
+
+    payload = evidence.model_dump()
+
+    assert "derived_from" not in payload
+    assert payload["value"] is None
+    assert payload["bundle_id"] is None
+
+
+def test_derived_evidence_serialization_retains_exact_source():
+    evidence = InputEvidence(
+        field="expression_file",
+        status="derived",
+        value="outputs/expression.puma-expression.tsv",
+        reason="Created by bounded header-removal recovery.",
+        derived_from="inputs/expression.tsv",
+    )
+
+    payload = evidence.model_dump()
+
+    assert payload["derived_from"] == "inputs/expression.tsv"
+
+
+def test_nested_evidence_serialization_conditionally_includes_derived_source():
+    plan = WorkflowPlan(
+        workflow="PUMA",
+        objective="serialize recovery provenance",
+        decision={},
+        evidence=[
+            InputEvidence(
+                field="motif_file",
+                status="provided",
+                value="inputs/motif.tsv",
+                reason="Provided by the user.",
+            ),
+            InputEvidence(
+                field="expression_file",
+                status="derived",
+                value="outputs/expression.puma-expression.tsv",
+                reason="Created by bounded header-removal recovery.",
+                derived_from="inputs/expression.tsv",
+            ),
+        ],
+        status="ready",
+    )
+
+    payload = plan.model_dump()
+
+    assert "derived_from" not in payload["evidence"][0]
+    assert payload["evidence"][1]["derived_from"] == "inputs/expression.tsv"
+    assert payload["question"] is None
 
 
 @pytest.mark.parametrize(("case_name", "decision", "task", "expected"), PLANNING_CASES)
