@@ -1734,11 +1734,85 @@ class CapabilityGateTests(unittest.TestCase):
         expression_evidence = next(
             item for item in recovered.evidence if item.field == "expression_file"
         )
-        self.assertEqual(expression_evidence.status, "discovered")
+        self.assertEqual(expression_evidence.status, "derived")
+        self.assertIsNone(expression_evidence.bundle_id)
+        self.assertEqual(expression_evidence.candidates, [])
         self.assertEqual(
             expression_evidence.value,
             recovered.decision["expression_file"],
         )
+
+    def test_initial_plan_cannot_claim_derived_input(self):
+        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        decision = agent.TaskDecision(
+            action="run_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="run PUMA",
+            expression_file="expression.tsv",
+            motif_file="motif.tsv",
+            ppi_file="ppi.tsv",
+            mirna_file="mirna.txt",
+            output_file="out.tsv",
+        )
+        plan = agent.build_workflow_plan(decision, task)
+        expression_evidence = next(
+            item for item in plan.evidence if item.field == "expression_file"
+        )
+        expression_evidence.status = "derived"
+        expression_evidence.reason = "forged recovery provenance"
+
+        evaluation = agent.evaluate_workflow_plan(plan, task)
+
+        self.assertEqual(evaluation.status, "rejected")
+        failed = {
+            item.criterion for item in evaluation.rubric if item.result == "fail"
+        }
+        self.assertIn("evidence_provenance_contract", failed)
+
+    def test_recovery_rejects_derived_output_mismatched_with_format_step(self):
+        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        decision = agent.TaskDecision(
+            action="run_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="run PUMA",
+            expression_file="expression.tsv",
+            motif_file="motif.tsv",
+            ppi_file="ppi.tsv",
+            mirna_file="mirna.txt",
+            output_file="out.tsv",
+        )
+        plan = agent.build_workflow_plan(decision, task)
+        recovered, _ = agent.recover_workflow_plan(
+            plan,
+            1,
+            agent.EvaluationResult(
+                status="replan",
+                reason="PUMA rejected an expression header.",
+                recovery_action="format_expression_headerless",
+            ),
+        )
+        recovered.steps[1].arguments["output_file"] = "outputs/forged.tsv"
+
+        evaluation = agent.evaluate_workflow_plan(recovered, task)
+
+        self.assertEqual(
+            next(
+                item for item in recovered.evidence
+                if item.field == "expression_file"
+            ).status,
+            "derived",
+        )
+        self.assertEqual(evaluation.status, "rejected")
+        failed = {
+            item.criterion for item in evaluation.rubric if item.result == "fail"
+        }
+        self.assertIn("evidence_provenance_contract", failed)
 
     def test_recovery_plan_with_unapproved_sequence_is_rejected(self):
         task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"

@@ -27,6 +27,7 @@ from ..routing import validate_task_text
 from ..validation import _resolve_user_path
 from .plan_rules import (
     _bundle_provenance_failures,
+    _derived_evidence_contract_failures,
     _evidence_contract_failures,
     _expected_plan_steps,
     _path_hygiene_failures,
@@ -141,11 +142,14 @@ def evaluate_workflow_plan(
             )
         )
 
-    provenance_failures = (
-        _evidence_contract_failures(plan.evidence, user_task)
-        if local_data_action
-        else []
-    )
+    provenance_failures = []
+    if local_data_action:
+        provenance_failures.extend(
+            _evidence_contract_failures(plan.evidence, user_task)
+        )
+        provenance_failures.extend(
+            _derived_evidence_contract_failures(plan, decision)
+        )
     rubric.append(
         PlanRubricItem(
             criterion="evidence_provenance_contract",

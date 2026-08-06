@@ -61,6 +61,16 @@ def _evidence_contract_failures(
                 failures.append(
                     f"{item.field} is marked discovered without value and discovery reason"
                 )
+        elif item.status == "derived":
+            if (
+                not item.value
+                or not item.reason
+                or item.bundle_id is not None
+                or item.candidates
+            ):
+                failures.append(
+                    f"{item.field} has malformed derived-input provenance"
+                )
         elif item.status == "defaulted":
             if item.field not in OUTPUT_ROLE_FIELDS or not item.value:
                 failures.append(
@@ -68,6 +78,45 @@ def _evidence_contract_failures(
                 )
         elif item.status == "missing" and item.value:
             failures.append(f"{item.field} is missing but still carries a value")
+    return failures
+
+
+def _derived_evidence_contract_failures(
+    plan: WorkflowPlan,
+    decision: TaskDecision,
+) -> list[str]:
+    derived = [item for item in plan.evidence if item.status == "derived"]
+    if not derived:
+        return []
+
+    failures: list[str] = []
+    if len(derived) != 1:
+        failures.append("a recovery plan must contain exactly one derived input")
+    item = derived[0]
+    index = plan.recovery_step_index
+    format_step = (
+        plan.steps[index]
+        if index is not None and 0 <= index < len(plan.steps)
+        else None
+    )
+    if (
+        plan.recovery_action != "format_expression_headerless"
+        or decision.action != "run_puma"
+        or item.field != "expression_file"
+    ):
+        failures.append(
+            "derived input is not authorized by PUMA header-removal recovery"
+        )
+    if item.value != decision.expression_file:
+        failures.append("derived expression does not match the plan decision")
+    if (
+        format_step is None
+        or format_step.action != "format_expression"
+        or format_step.arguments.get("output_file") != item.value
+    ):
+        failures.append(
+            "derived expression does not match the recovery format output"
+        )
     return failures
 
 
