@@ -1,87 +1,18 @@
-"""Deterministic task hydration, file discovery, and demo-bundle selection."""
+"""Candidate selection, coherent demo bundles, and reusable episode inputs."""
 
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
+from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
 
-from workflow_registry import (
-    LOCAL_WORKFLOW_ACTIONS,
-    REQUIRED_INPUTS,
-    workflow_name as _workflow_name,
-)
+from ..contracts import Episode, PROJECT_ROOT, _display_path
+from ..execution import _expression_sample_count, _inspect_condor_inputs_impl
+from ..routing import _score_candidate_file
+from ..validation import _inspect_panda_inputs_impl, _resolve_user_path
 
-from ..contracts import (
-    Episode,
-    InputEvidence,
-    LIONESS_MODE_QUESTION,
-    PROJECT_ROOT,
-    PreferenceProposal,
-    RouterDecision,
-    TaskDecision,
-    WorkflowPlan,
-    _display_path,
-    _is_demo_request,
-    _ui_text,
-)
-
-from ..validation import (
-    _inspect_panda_inputs_impl,
-    _resolve_user_path,
-)
-
-from ..execution import (
-    _expression_sample_count,
-    _inspect_condor_inputs_impl,
-)
-
-from ..routing import (
-    CONTEXT7_LIBRARY_ALIASES,
-    MIN_TOOL_CONFIDENCE,
-    _extract_named_path,
-    _score_candidate_file,
-    has_direct_execution_intent,
-    infer_advisory_capabilities,
-    infer_goal_capabilities,
-    inferred_execution_action,
-    is_workflow_information_request,
-    validate_task_text,
-)
-from .extraction import (
-    INPUT_LABELS,
-    _mentions_unspecified_data_directory,
-    _needs_lioness_mode_choice,
-    _task_path,
-    documentation_library_for_task,
-    extract_preference_proposals,
-    is_versioned_documentation_request,
-)
-from .hydration import hydrate_router_decision
-from .provider_fallback import deterministic_router_fallback, _is_fatal_exception
-from .repair import _lioness_mode_plan, repair_router_decision
-
-__all__ = [
-    "INPUT_LABELS",
-    "_candidate_keywords",
-    "_choose_unambiguous_candidate",
-    "_task_path",
-    "_mentions_unspecified_data_directory",
-    "_needs_lioness_mode_choice",
-    "is_versioned_documentation_request",
-    "documentation_library_for_task",
-    "extract_preference_proposals",
-    "hydrate_router_decision",
-    "_lioness_mode_plan",
-    "repair_router_decision",
-    "deterministic_router_fallback",
-    "_is_fatal_exception",
-    "_best_named_file",
-    "discover_demo_bundle",
-    "reusable_episode_inputs",
-]
-
+__all__: list[str] = []
 
 
 def _candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
@@ -124,8 +55,6 @@ def _choose_unambiguous_candidate(
         None,
         f"The top candidate scores are too close ({best_score} vs {second_score}) for safe automatic selection.",
     )
-
-
 
 
 def _best_named_file(directory: Path, keywords: tuple[str, ...]) -> Path | None:
