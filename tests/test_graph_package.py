@@ -26,6 +26,7 @@ BUILD_GRAPH_SIGNATURE = (
     "= 500, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
     "timeout_seconds: 'float' = 30.0, trace_recorder: 'TraceRecorder | None' = None)"
 )
+RESPONSE_PROMPT_SHA256 = "7a93cdf9d10628fcb8de5c7b6c292bb40c6b7b97da0e924e858fa805f9f6a8a0"
 
 
 def test_graph_public_surface_is_characterized():
@@ -54,3 +55,39 @@ def test_graph_is_a_package_with_factory_child():
 
 def test_graph_package_exports_only_public_entrypoints():
     assert graph.__all__ == PUBLIC_EXPORTS
+
+
+def test_response_prompt_is_byte_characterized(monkeypatch):
+    prompts = importlib.import_module("netzoo_agent_core.graph.prompts")
+    monkeypatch.setattr(prompts, "EXECUTE_TOOLS", False)
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+
+    result = prompts.build_graph_prompts(policy)
+
+    assert (
+        hashlib.sha256(result.response.encode("utf-8")).hexdigest()
+        == RESPONSE_PROMPT_SHA256
+    )
+    assert result.routing == legacy_agent.build_routing_prompt(policy)
+
+
+def test_record_event_uses_run_id_and_exact_payload():
+    context_module = importlib.import_module("netzoo_agent_core.graph.context")
+    calls = []
+    runtime = SimpleNamespace(
+        recorder=SimpleNamespace(
+            append=lambda run_id, event_type, node, payload: calls.append(
+                (run_id, event_type, node, payload)
+            )
+        )
+    )
+
+    context_module.record_event(
+        runtime,
+        {"run_id": "run-1"},
+        "plan.created",
+        "plan",
+        {"status": "ready"},
+    )
+
+    assert calls == [("run-1", "plan.created", "plan", {"status": "ready"})]
