@@ -189,3 +189,31 @@ def test_project_root_override_reaches_evidence_child(tmp_path):
         assert evidence_module.PROJECT_ROOT == tmp_path
     finally:
         legacy_agent.PROJECT_ROOT = original
+
+
+def test_assembly_stage_is_importable_and_internal():
+    assembly_module = importlib.import_module("netzoo_agent_core.planning.assembly")
+    assert assembly_module.__all__ == []
+    assert not hasattr(planning, "_assemble_workflow_plan")
+
+
+def test_builder_is_a_small_pipeline_orchestrator():
+    builder_module = importlib.import_module("netzoo_agent_core.planning.builder")
+    source = inspect.getsource(builder_module)
+
+    assert len(source.splitlines()) <= 80
+    assert "_prepare_planning_context" in source
+    assert "_build_evidence_ledger" in source
+    assert "_assemble_workflow_plan" in source
+    assert "discover_coherent_bundle" not in source
+    assert "_find_candidate_files" not in source
+
+
+def test_internal_planning_helpers_do_not_leak_from_facade():
+    for name in (
+        "_PlanningContext",
+        "_prepare_planning_context",
+        "_build_evidence_ledger",
+        "_assemble_workflow_plan",
+    ):
+        assert not hasattr(planning, name)

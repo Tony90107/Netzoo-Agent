@@ -67,12 +67,7 @@ from netzoo_agent_core.routing import (
     results as routing_results,
     retrieval as routing_retrieval,
 )
-from netzoo_agent_core.planning import (
-    builder as planning_builder,
-    context as planning_context,
-    evidence as planning_evidence,
-    rendering as planning_rendering,
-)
+from netzoo_agent_core.planning import assembly, builder, context, evidence, rendering
 from netzoo_agent_core.contracts import (
     AIMessage,
     END,
@@ -107,11 +102,7 @@ _IMPLEMENTATION_MODULES = (
     policy,
     pricing,
     interpretation,
-    planning,
-    planning_builder,
-    planning_context,
-    planning_evidence,
-    planning_rendering,
+    planning, assembly, builder, context, evidence, rendering,
     evaluation,
     llm,
     graph,
