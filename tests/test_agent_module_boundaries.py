@@ -69,7 +69,9 @@ class AgentModuleBoundaryTests(unittest.TestCase):
             visit(module)
 
     def test_recovery_returns_through_the_plan_evaluator(self):
-        graph_source = (CORE_ROOT / "graph.py").read_text(encoding="utf-8")
+        graph_source = (CORE_ROOT / "graph" / "factory.py").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn(
             'graph.add_edge("recover", "evaluate_plan")',
