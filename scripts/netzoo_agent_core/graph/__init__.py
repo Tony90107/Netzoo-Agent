@@ -1,14 +1,24 @@
 """LangGraph orchestration across policy, planning, execution, and evaluation."""
 
-from . import context, factory, policy_memory, prompts, routing_planning
-from .factory import build_graph, invoke_graph_turn
-
-_GRAPH_IMPLEMENTATION_MODULES = (
+from . import (
     context,
+    execution,
     factory,
     policy_memory,
     prompts,
     routing_planning,
+    transitions,
+)
+from .factory import build_graph, invoke_graph_turn
+
+_GRAPH_IMPLEMENTATION_MODULES = (
+    context,
+    execution,
+    factory,
+    policy_memory,
+    prompts,
+    routing_planning,
+    transitions,
 )
 
 __all__ = ["build_graph", "invoke_graph_turn"]

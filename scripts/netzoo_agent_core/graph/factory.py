@@ -93,6 +93,7 @@ from ..outcomes import supersede_triggering_failure
 from ..pricing import PriceCatalog
 from ..tracing import NullTraceRecorder, TraceRecorder
 from .context import _GraphContext, preflight_budget, record_event
+from .execution import evaluate_plan, evaluate_result, execute_tool, recover
 from .policy_memory import (
     apply_project_policy,
     consolidate_memory,
@@ -100,6 +101,7 @@ from .policy_memory import (
 )
 from .prompts import build_graph_prompts
 from .routing_planning import classify_task, plan_task
+from .transitions import route_evaluation, route_plan_evaluation
 
 __all__ = [
     "build_graph",
@@ -173,166 +175,6 @@ def build_graph(
         response_max_tokens=response_max_tokens,
         task_token_budget=task_token_budget,
     )
-
-    def evaluate_plan(state: AgentState):
-        plan = WorkflowPlan.model_validate(state["plan"])
-        evaluation = evaluate_workflow_plan(
-            plan,
-            str(state["messages"][-1].content),
-            state.get("project_policy"),
-        )
-        _trace(
-            "review",
-            f"Plan evaluation {evaluation.status} ({evaluation.score}/100)",
-            render_plan_evaluation(evaluation),
-        )
-        plan_event_type = {
-            "approved": "plan.approved",
-            "rejected": "plan.rejected",
-            "deferred": "plan.deferred",
-        }[evaluation.status]
-        record_event(
-            context,
-            state,
-            plan_event_type,
-            "evaluate_plan",
-            evaluation.model_dump(),
-        )
-        return {"plan_evaluation": evaluation.model_dump()}
-
-    def route_plan_evaluation(state: AgentState) -> str:
-        plan = WorkflowPlan.model_validate(state["plan"])
-        evaluation = PlanEvaluationResult.model_validate(state["plan_evaluation"])
-        return (
-            "execute_tool"
-            if evaluation.status == "approved" and plan.status == "ready" and plan.steps
-            else "consolidate_memory"
-        )
-
-    def execute_tool(state: AgentState):
-        plan = WorkflowPlan.model_validate(state["plan"])
-        step_index = state.get("current_step", 0)
-        step = plan.steps[step_index]
-        decision = TaskDecision.model_validate(plan.decision)
-        decision.action = step.action
-        decision.should_execute = True
-        decision.missing_inputs = []
-        for field_name, value in step.arguments.items():
-            if hasattr(decision, field_name):
-                setattr(decision, field_name, value)
-        _trace(
-            "tool",
-            f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",
-            step.purpose,
-        )
-        record_event(
-            context,
-            state,
-            "tool.started",
-            "execute_tool",
-            {
-                "step_index": step_index,
-                "action": step.action,
-                "purpose": step.purpose,
-                "arguments": step.arguments,
-                "execution_mode": "execute" if EXECUTE_TOOLS else "dry_run",
-                "attempt_id": state.get("replan_count", 0),
-            },
-        )
-        raw_result = execute_selected_tool(decision)
-        result = structure_tool_result(
-            step.action,
-            decision,
-            raw_result,
-            persist_log=True,
-            attempt_id=state.get("replan_count", 0),
-        )
-        _trace(
-            "tool",
-            f"{step.action} → {result.status}",
-            result.summary,
-        )
-        record_event(
-            context,
-            state,
-            "tool.completed",
-            "execute_tool",
-            result.model_dump(exclude={"raw_output"}),
-        )
-        return {
-            "tool_result": result.model_dump(),
-            "tool_results": [*state.get("tool_results", []), result.model_dump()],
-        }
-
-    def evaluate_result(state: AgentState):
-        plan = WorkflowPlan.model_validate(state["plan"])
-        step_index = state.get("current_step", 0)
-        evaluation = evaluate_step_result(
-            plan,
-            step_index,
-            state.get("tool_result", {}),
-            state.get("replan_count", 0),
-        )
-        _trace("evaluate", f"Evaluator: {evaluation.status}", evaluation.reason)
-        record_event(
-            context,
-            state,
-            "evaluation.recorded",
-            "evaluate",
-            {
-                "step_index": step_index,
-                **evaluation.model_dump(),
-            },
-        )
-        update = {"evaluation": evaluation.model_dump()}
-        if evaluation.status == "continue":
-            update["current_step"] = step_index + 1
-        return update
-
-    def route_evaluation(state: AgentState) -> str:
-        status = state["evaluation"]["status"]
-        if status == "continue":
-            return "execute_tool"
-        if status == "replan":
-            return "recover"
-        return "consolidate_memory"
-
-    def recover(state: AgentState):
-        plan = WorkflowPlan.model_validate(state["plan"])
-        evaluation = EvaluationResult.model_validate(state["evaluation"])
-        recovered, next_step = recover_workflow_plan(
-            plan,
-            state.get("current_step", 0),
-            evaluation,
-        )
-        replan_count = state.get("replan_count", 0) + 1
-        tool_results = supersede_triggering_failure(
-            state.get("tool_results", []),
-            next_attempt=replan_count,
-        )
-        _trace(
-            "recover",
-            (f"Planner recovery plan (attempt {replan_count}/{MAX_RECOVERY_ATTEMPTS})"),
-            render_plan(recovered),
-        )
-        record_event(
-            context,
-            state,
-            "recovery.selected",
-            "recover",
-            {
-                "attempt_id": replan_count,
-                "next_step": next_step,
-                "plan": recovered.model_dump(),
-            },
-        )
-        return {
-            "plan": recovered.model_dump(),
-            "decision": recovered.decision,
-            "current_step": next_step,
-            "replan_count": replan_count,
-            "tool_results": [item.model_dump() for item in tool_results],
-        }
 
     def respond(state: AgentState):
         decision = TaskDecision.model_validate(state["decision"])
@@ -548,17 +390,22 @@ def build_graph(
     )
     graph.add_node(
         "evaluate_plan",
-        recorder.instrument_node("evaluate_plan", evaluate_plan),
+        recorder.instrument_node(
+            "evaluate_plan", partial(evaluate_plan, context)
+        ),
     )
     graph.add_node(
         "execute_tool",
-        recorder.instrument_node("execute_tool", execute_tool),
+        recorder.instrument_node("execute_tool", partial(execute_tool, context)),
     )
     graph.add_node(
         "evaluate",
-        recorder.instrument_node("evaluate", evaluate_result),
+        recorder.instrument_node("evaluate", partial(evaluate_result, context)),
     )
-    graph.add_node("recover", recorder.instrument_node("recover", recover))
+    graph.add_node(
+        "recover",
+        recorder.instrument_node("recover", partial(recover, context)),
+    )
     graph.add_node(
         "consolidate_memory",
         recorder.instrument_node(

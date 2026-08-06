@@ -124,3 +124,26 @@ def test_legacy_plan_patch_reaches_routing_planning_child():
         assert routing_planning.build_workflow_plan is replacement
     finally:
         legacy_agent.build_workflow_plan = original
+
+
+def test_execution_and_transition_modules_are_internal():
+    execution = importlib.import_module("netzoo_agent_core.graph.execution")
+    transitions = importlib.import_module("netzoo_agent_core.graph.transitions")
+    assert execution.__all__ == []
+    assert transitions.__all__ == []
+    assert not hasattr(graph, "execute_tool")
+    assert not hasattr(graph, "route_evaluation")
+
+
+def test_legacy_executor_patch_reaches_graph_execution_child():
+    execution = importlib.import_module("netzoo_agent_core.graph.execution")
+    original = legacy_agent.execute_selected_tool
+
+    def replacement(decision):
+        return "patch propagation sentinel"
+
+    try:
+        legacy_agent.execute_selected_tool = replacement
+        assert execution.execute_selected_tool is replacement
+    finally:
+        legacy_agent.execute_selected_tool = original
