@@ -507,6 +507,7 @@ class InputEvidence(BaseModel):
         "provided",
         "selected",
         "discovered",
+        "derived",
         "demo_bundle",
         "defaulted",
         "missing",

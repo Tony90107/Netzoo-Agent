@@ -43,16 +43,17 @@ def recover_workflow_plan(
         plan.evidence.append(
             InputEvidence(
                 field="expression_file",
-                status="discovered",
+                status="derived",
                 value=derived,
                 reason=recovery_reason,
             )
         )
     else:
-        expression_evidence.status = "discovered"
+        expression_evidence.status = "derived"
         expression_evidence.value = derived
         expression_evidence.reason = recovery_reason
         expression_evidence.candidates = []
+        expression_evidence.bundle_id = None
     recovery_steps = [
         WorkflowStep(
             action="format_expression",
