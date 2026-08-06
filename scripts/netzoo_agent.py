@@ -60,6 +60,13 @@ from netzoo_agent_core import (
     tracing,
     validation,
 )
+from netzoo_agent_core.routing import (
+    capability as routing_capability,
+    discovery as routing_discovery,
+    dispatch as routing_dispatch,
+    results as routing_results,
+    retrieval as routing_retrieval,
+)
 from netzoo_agent_core.contracts import (
     AIMessage,
     END,
@@ -86,6 +93,11 @@ _IMPLEMENTATION_MODULES = (
     preparation,
     execution,
     routing,
+    routing_capability,
+    routing_discovery,
+    routing_retrieval,
+    routing_dispatch,
+    routing_results,
     policy,
     pricing,
     interpretation,
