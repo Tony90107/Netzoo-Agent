@@ -147,3 +147,23 @@ def test_legacy_executor_patch_reaches_graph_execution_child():
         assert execution.execute_selected_tool is replacement
     finally:
         legacy_agent.execute_selected_tool = original
+
+
+def test_response_module_is_internal():
+    response = importlib.import_module("netzoo_agent_core.graph.response")
+    assert response.__all__ == []
+    assert not hasattr(graph, "respond")
+
+
+def test_legacy_response_helper_patch_reaches_response_child():
+    response = importlib.import_module("netzoo_agent_core.graph.response")
+    original = legacy_agent.build_response_messages
+
+    def replacement(system_prompt, trusted_context, user_task, tool_result):
+        return []
+
+    try:
+        legacy_agent.build_response_messages = replacement
+        assert response.build_response_messages is replacement
+    finally:
+        legacy_agent.build_response_messages = original

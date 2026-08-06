@@ -6,6 +6,7 @@ from . import (
     factory,
     policy_memory,
     prompts,
+    response,
     routing_planning,
     transitions,
 )
@@ -17,6 +18,7 @@ _GRAPH_IMPLEMENTATION_MODULES = (
     factory,
     policy_memory,
     prompts,
+    response,
     routing_planning,
     transitions,
 )
