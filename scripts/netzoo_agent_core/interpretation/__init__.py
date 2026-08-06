@@ -1,15 +1,11 @@
 """Deterministic task hydration, repair, fallback, and input discovery."""
 
-from . import core, extraction, hydration
+from . import core, extraction, hydration, provider_fallback, repair
 from .core import (
     _best_named_file,
     _candidate_keywords,
     _choose_unambiguous_candidate,
-    _is_fatal_exception,
-    _lioness_mode_plan,
-    deterministic_router_fallback,
     discover_demo_bundle,
-    repair_router_decision,
     reusable_episode_inputs,
 )
 from .extraction import (
@@ -22,8 +18,16 @@ from .extraction import (
     is_versioned_documentation_request,
 )
 from .hydration import hydrate_router_decision
+from .provider_fallback import deterministic_router_fallback, _is_fatal_exception
+from .repair import _lioness_mode_plan, repair_router_decision
 
-_INTERPRETATION_IMPLEMENTATION_MODULES = (core, extraction, hydration)
+_INTERPRETATION_IMPLEMENTATION_MODULES = (
+    core,
+    extraction,
+    hydration,
+    provider_fallback,
+    repair,
+)
 
 __all__ = [
     "INPUT_LABELS",

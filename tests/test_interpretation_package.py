@@ -106,3 +106,35 @@ def test_legacy_hydration_patch_reaches_child():
         assert hydration.hydrate_router_decision is replacement
     finally:
         legacy_agent.hydrate_router_decision = original
+
+
+def test_repair_and_provider_fallback_modules_are_internal():
+    repair = importlib.import_module("netzoo_agent_core.interpretation.repair")
+    fallback = importlib.import_module(
+        "netzoo_agent_core.interpretation.provider_fallback"
+    )
+    assert repair.__all__ == []
+    assert fallback.__all__ == []
+
+
+@pytest.mark.parametrize(
+    ("module_name", "symbol"),
+    [
+        ("repair", "repair_router_decision"),
+        ("provider_fallback", "deterministic_router_fallback"),
+    ],
+)
+def test_legacy_decision_patch_reaches_owner(module_name, symbol):
+    owner = importlib.import_module(
+        f"netzoo_agent_core.interpretation.{module_name}"
+    )
+    original = getattr(legacy_agent, symbol)
+
+    def replacement(*args, **kwargs):
+        raise AssertionError("decision patch sentinel")
+
+    try:
+        setattr(legacy_agent, symbol, replacement)
+        assert getattr(owner, symbol) is replacement
+    finally:
+        setattr(legacy_agent, symbol, original)
