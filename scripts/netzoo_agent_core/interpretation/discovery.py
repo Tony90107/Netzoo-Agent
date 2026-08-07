@@ -8,9 +8,12 @@ from pathlib import Path
 from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
 
 from ..contracts import Episode, PROJECT_ROOT, _display_path
-from ..execution import _expression_sample_count, _inspect_condor_inputs_impl
+from ..data.inspection import (
+    expression_sample_count as _expression_sample_count,
+    inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
+)
 from ..routing import _score_candidate_file
-from ..validation import _inspect_panda_inputs_impl, _resolve_user_path
+from ..data.table_validation import _inspect_panda_inputs_impl, _resolve_user_path
 
 __all__: list[str] = []
 

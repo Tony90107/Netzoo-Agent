@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from .context import _PlanningContext
-from ..bundles import MULTI_FILE_ACTIONS, discover_coherent_bundle
+from ..data.bundles import MULTI_FILE_ACTIONS, discover_coherent_bundle
 from ..contracts import InputEvidence, OUTPUT_ROLE_FIELDS, PROJECT_ROOT, _is_demo_request
 from ..interpretation import (
     _candidate_keywords,
@@ -21,7 +21,7 @@ from ..routing import (
     _default_network_output,
     _find_candidate_files,
 )
-from ..validation import _resolve_user_path
+from ..data.paths import _resolve_user_path
 
 __all__: list[str] = []
 

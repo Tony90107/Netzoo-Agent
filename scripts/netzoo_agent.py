@@ -33,6 +33,7 @@ from netzoo_agent_core import (
     command,
     compatibility,
     contracts,
+    data,
     evaluation,
     execution,
     framework_compat,
@@ -67,6 +68,7 @@ from netzoo_agent_core.routing import (
 from netzoo_agent_core.planning import assembly, builder, context, evidence, rendering
 from netzoo_agent_core.cli import _CLI_IMPLEMENTATION_MODULES
 from netzoo_agent_core.contracts import _CONTRACT_IMPLEMENTATION_MODULES
+from netzoo_agent_core.data import _DATA_IMPLEMENTATION_MODULES
 from netzoo_agent_core.graph import _GRAPH_IMPLEMENTATION_MODULES
 from netzoo_agent_core.interpretation import _INTERPRETATION_IMPLEMENTATION_MODULES
 from netzoo_agent_core.contracts import (
@@ -86,6 +88,7 @@ _IMPLEMENTATION_MODULES = (
     framework_compat,
     presentation,
     *_CONTRACT_IMPLEMENTATION_MODULES,
+    data, *_DATA_IMPLEMENTATION_MODULES,
     artifact_validation,
     bundles,
     memory,

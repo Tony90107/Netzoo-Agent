@@ -6,9 +6,6 @@ import shlex
 from pathlib import Path
 
 
-from netzoo_table_io import (
-    read_condor_edges,
-)
 
 from .contracts import (
     tool,
@@ -18,7 +15,12 @@ from .command import (
     _run_command,
 )
 
-from .validation import (
+from .data.inspection import (
+    expression_sample_count as _expression_sample_count,
+    inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
+)
+
+from .data.table_validation import (
     _drop_common_header,
     _inspect_panda_inputs_impl,
     _read_checked_table,
@@ -26,9 +28,9 @@ from .validation import (
     _validate_expression,
     inspect_netzoo_inputs,
 )
-from .path_safety import condor_artifact_paths
+from .data.paths import condor_artifact_paths
 
-from .preparation import (
+from .data.preparation import (
     convert_expression_to_coexpression,
     format_expression_for_netzoo,
 )
@@ -136,14 +138,6 @@ def run_puma(
     return validation_report + "\n\n" + _run_command(command, output_file=output_file)
 
 
-def _expression_sample_count(expression_file: str) -> tuple[int, bool]:
-    expression = _validate_expression(
-        _read_checked_table("expression", expression_file)
-    )
-    if expression.frame is None or expression.errors:
-        return 0, expression.has_header
-    frame, has_header = _drop_common_header(expression.frame)
-    return max(frame.shape[1] - 1, 0), has_header
 
 
 def _derived_lioness_expression_path(expression_file: str, lioness_output: str) -> Path:
@@ -361,69 +355,6 @@ def run_lioness_coexpression(
     )
 
 
-def _inspect_condor_inputs_impl(network_file: str) -> tuple[str, bool]:
-    check = _read_checked_table("CONDOR network", network_file)
-    location = str(check.resolved_path) if check.resolved_path else network_file
-    lines = [
-        "CONDOR input inspection:",
-        f"- input: {location}",
-        "  required format: bipartite edge list",
-        "  required columns: source, target",
-        "  optional column: numeric weight",
-        f"  delimiter: {check.delimiter_name}",
-    ]
-    if check.skipped_annotation_rows:
-        lines.append(
-            f"  annotation: skipped {check.skipped_annotation_rows} leading row(s)"
-        )
-    for note in check.notes:
-        lines.append(f"  note: {note}")
-    for warning in check.warnings:
-        lines.append(f"  warning: {warning}")
-    for error in check.errors:
-        lines.append(f"  error: {error}")
-    if check.frame is None or check.errors:
-        return "\n".join(lines), False
-
-    raw_frame, has_header = _drop_common_header(check.frame)
-    try:
-        frame, _ = read_condor_edges(location)
-    except (OSError, ValueError) as error:
-        lines.append(f"  error: {error}")
-        return "\n".join(lines), False
-
-    source_ids = frame["source"]
-    target_ids = frame["target"]
-    if raw_frame.shape[1] < 3:
-        lines.append(
-            "  note: no weight column detected; CONDOR wrapper will use weight=1."
-        )
-
-    duplicate_edges = frame[["source", "target"]].duplicated()
-    if duplicate_edges.any():
-        lines.append(
-            f"  warning: duplicate source-target pairs: {int(duplicate_edges.sum())}"
-        )
-
-    overlap = set(source_ids) & set(target_ids)
-    if overlap:
-        preview = ", ".join(sorted(overlap)[:5])
-        lines.append(
-            "  warning: source and target node IDs overlap. CONDOR expects a bipartite "
-            f"network with two node types; overlapping examples: {preview}"
-        )
-
-    lines.extend(
-        [
-            f"  header: {'detected' if has_header else 'not detected'}",
-            f"  shape: {frame.shape[0]} rows x {frame.shape[1]} columns",
-            f"  edges: {len(frame)}",
-            f"  source nodes: {source_ids.nunique()}",
-            f"  target nodes: {target_ids.nunique()}",
-        ]
-    )
-    has_errors = any("  error:" in line for line in lines)
-    return "\n".join(lines), not has_errors
 
 
 @tool

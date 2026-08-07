@@ -6,7 +6,7 @@ import re
 import uuid
 from typing import Literal
 
-from ..artifact_validation import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
+from ..data.artifacts import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
 from ..contracts import (
     TOOL_LOG_ROOT,
     TOOL_RAW_MAX_CHARS,
