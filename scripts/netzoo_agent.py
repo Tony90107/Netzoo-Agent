@@ -68,6 +68,11 @@ from netzoo_agent_core.routing import (
     retrieval as routing_retrieval,
 )
 from netzoo_agent_core.planning import assembly, builder, context, evidence, rendering
+import netzoo_agent_core.cli.arguments as cli_arguments
+import netzoo_agent_core.cli.clarification as cli_clarification
+import netzoo_agent_core.cli.follow_up as cli_follow_up
+import netzoo_agent_core.cli.loop as cli_loop
+import netzoo_agent_core.cli.trace_commands as cli_trace_commands
 from netzoo_agent_core.graph import _GRAPH_IMPLEMENTATION_MODULES
 from netzoo_agent_core.interpretation import _INTERPRETATION_IMPLEMENTATION_MODULES
 from netzoo_agent_core.contracts import (
@@ -115,6 +120,11 @@ _IMPLEMENTATION_MODULES = (
     tracing,
     interaction,
     cli,
+    cli_arguments,
+    cli_clarification,
+    cli_follow_up,
+    cli_loop,
+    cli_trace_commands,
 )
 
 _SYMBOL_OWNERS: dict[str, types.ModuleType] = {}
