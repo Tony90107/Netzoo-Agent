@@ -13,7 +13,7 @@ from ..contracts import (
     _ui_text,
 )
 from ..outcomes import effective_results, terminal_failed
-from ..validation import _resolve_user_path
+from ..data.paths import _resolve_user_path
 
 def render_plan_evaluation(evaluation: PlanEvaluationResult) -> str:
     """Render the typed rubric as Markdown for audit; code never parses this table."""

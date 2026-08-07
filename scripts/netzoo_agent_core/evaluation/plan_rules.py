@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from ..bundles import MULTI_FILE_ACTIONS
+from ..data.bundles import MULTI_FILE_ACTIONS
 from ..contracts import (
     INPUT_ROLE_FIELDS,
     MAX_RECOVERY_ATTEMPTS,

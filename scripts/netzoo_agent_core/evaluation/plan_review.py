@@ -21,10 +21,10 @@ from ..contracts import (
     TaskDecision,
     WorkflowPlan,
 )
-from ..path_safety import condor_artifact_paths, resolved_output_collisions
+from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..policy import ProjectPolicyLoader
 from ..routing import validate_task_text
-from ..validation import _resolve_user_path
+from ..data.paths import _resolve_user_path
 from .plan_rules import (
     _bundle_provenance_failures,
     _derived_evidence_contract_failures,
