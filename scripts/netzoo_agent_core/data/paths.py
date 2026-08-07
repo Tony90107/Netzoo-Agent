@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..contracts import OUTPUT_ROLE_FIELDS, PROJECT_ROOT, TaskDecision
+from ..contracts.decisions import TaskDecision
+from ..settings import OUTPUT_ROLE_FIELDS, PROJECT_ROOT
 
 def _resolve_user_path(path: str) -> Path:
     raw = Path(path).expanduser()

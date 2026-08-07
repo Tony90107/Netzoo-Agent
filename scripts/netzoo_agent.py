@@ -56,6 +56,7 @@ from netzoo_agent_core import (
     trace_redaction,
     trace_store,
     tracing,
+    tool_adapters,
     validation,
 )
 from netzoo_agent_core.routing import (
@@ -118,6 +119,7 @@ _IMPLEMENTATION_MODULES = (
     trace_redaction,
     trace_store,
     tracing,
+    tool_adapters,
     interaction,
     cli,
     *_CLI_IMPLEMENTATION_MODULES,

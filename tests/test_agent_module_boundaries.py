@@ -114,7 +114,26 @@ class AgentModuleBoundaryTests(unittest.TestCase):
 
     def test_data_layer_does_not_depend_on_orchestration_layers(self):
         dependencies = _dependency_graph()
-        forbidden = {"cli", "evaluation", "execution", "graph", "planning"}
+        forbidden = {
+            "cli",
+            "evaluation",
+            "execution",
+            "framework_compat",
+            "graph",
+            "interpretation",
+            "planning",
+            "routing",
+            "tool_adapters",
+        }
+        pure_data_modules = {
+            "data.artifacts",
+            "data.bundles",
+            "data.discovery",
+            "data.inspection",
+            "data.paths",
+            "data.tables",
+            "data.transforms",
+        }
         violations = {
             module: sorted(
                 dependency
@@ -122,7 +141,7 @@ class AgentModuleBoundaryTests(unittest.TestCase):
                 if dependency.split(".", 1)[0] in forbidden
             )
             for module, module_dependencies in dependencies.items()
-            if module == "data" or module.startswith("data.")
+            if module in pure_data_modules
         }
         violations = {
             module: module_dependencies

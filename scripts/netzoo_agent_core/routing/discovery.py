@@ -6,6 +6,7 @@ import os
 import re
 from pathlib import Path
 
+from ..data.discovery import score_candidate_file as _score_candidate_file
 from ..contracts import PROJECT_ROOT, _display_path
 
 __all__ = [
@@ -43,28 +44,6 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
     if match.group("quote"):
         return match.group("quoted")
     return match.group("plain").strip().rstrip(".。")
-
-
-def _score_candidate_file(path: Path, keywords: tuple[str, ...], nearby: Path) -> int:
-    relative = (
-        path.relative_to(PROJECT_ROOT) if path.is_relative_to(PROJECT_ROOT) else path
-    )
-    name = path.name.casefold()
-    score = 0
-    if path.parent == nearby:
-        score += 50
-    if str(relative.parent).startswith("data"):
-        score += 10
-    if path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}:
-        score += 5
-    for keyword in keywords:
-        if keyword in name:
-            score += 20
-    if "puma" in name and "panda" in keywords:
-        score -= 25
-    if "panda" in name and "puma" in keywords:
-        score -= 25
-    return score
 
 
 def _find_candidate_files(
