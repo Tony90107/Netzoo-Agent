@@ -5,20 +5,15 @@ Implementation lives in ``netzoo_agent_core``.  Existing commands and imports ca
 continue to use this file while new code imports the smaller module that owns the
 needed behaviour.
 """
-
 from __future__ import annotations
-
 # ruff: noqa: F401 -- this facade intentionally re-exports the historical surface.
-
 import json
 import os
 import re
 import sys
 import time
 import types
-
 import pandas as pd
-
 from workflow_registry import (
     ACTION_DEFINITIONS,
     CODE_VALIDATION_STEPS,
@@ -31,7 +26,6 @@ from workflow_registry import (
     executor_arguments,
     workflow_name as _workflow_name,
 )
-
 from netzoo_agent_core import (
     artifact_validation,
     bundles,
@@ -41,6 +35,7 @@ from netzoo_agent_core import (
     contracts,
     evaluation,
     execution,
+    framework_compat,
     graph,
     interaction,
     interpretation,
@@ -50,10 +45,12 @@ from netzoo_agent_core import (
     path_safety,
     planning,
     policy,
+    presentation,
     pricing,
     preparation,
     routing,
     session,
+    settings,
     trace_contracts,
     trace_redaction,
     trace_store,
@@ -68,11 +65,8 @@ from netzoo_agent_core.routing import (
     retrieval as routing_retrieval,
 )
 from netzoo_agent_core.planning import assembly, builder, context, evidence, rendering
-import netzoo_agent_core.cli.arguments as cli_arguments
-import netzoo_agent_core.cli.clarification as cli_clarification
-import netzoo_agent_core.cli.follow_up as cli_follow_up
-import netzoo_agent_core.cli.loop as cli_loop
-import netzoo_agent_core.cli.trace_commands as cli_trace_commands
+from netzoo_agent_core.cli import _CLI_IMPLEMENTATION_MODULES
+from netzoo_agent_core.contracts import _CONTRACT_IMPLEMENTATION_MODULES
 from netzoo_agent_core.graph import _GRAPH_IMPLEMENTATION_MODULES
 from netzoo_agent_core.interpretation import _INTERPRETATION_IMPLEMENTATION_MODULES
 from netzoo_agent_core.contracts import (
@@ -86,10 +80,12 @@ from netzoo_agent_core.contracts import (
     tool,
 )
 from netzoo_agent_core.runtime import MUTABLE_RUNTIME_NAMES, set_runtime_value
-
-
 _IMPLEMENTATION_MODULES = (
     contracts,
+    settings,
+    framework_compat,
+    presentation,
+    *_CONTRACT_IMPLEMENTATION_MODULES,
     artifact_validation,
     bundles,
     memory,
@@ -120,20 +116,13 @@ _IMPLEMENTATION_MODULES = (
     tracing,
     interaction,
     cli,
-    cli_arguments,
-    cli_clarification,
-    cli_follow_up,
-    cli_loop,
-    cli_trace_commands,
+    *_CLI_IMPLEMENTATION_MODULES,
 )
-
 _SYMBOL_OWNERS: dict[str, types.ModuleType] = {}
 for _module in _IMPLEMENTATION_MODULES:
     for _name in _module.__all__:
         globals()[_name] = getattr(_module, _name)
         _SYMBOL_OWNERS[_name] = _module
-
-
 class _CompatibilityFacade(types.ModuleType):
     """Forward legacy process-wide setting overrides to their owning modules."""
 
@@ -150,10 +139,6 @@ class _CompatibilityFacade(types.ModuleType):
             super().__setattr__(name, value)
         else:
             super().__setattr__(name, value)
-
-
 sys.modules[__name__].__class__ = _CompatibilityFacade
-
-
 if __name__ == "__main__":
     raise SystemExit(cli.main())
