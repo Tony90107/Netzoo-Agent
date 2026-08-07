@@ -169,6 +169,33 @@ class AgentModuleBoundaryTests(unittest.TestCase):
             graph_source,
         )
 
+    def test_code_reading_guide_points_to_current_owner_modules(self):
+        guide_path = PROJECT_ROOT / "CODE_READING_GUIDE.md"
+        self.assertTrue(guide_path.exists(), "Add the code-reading entry point.")
+        guide = guide_path.read_text(encoding="utf-8")
+        required_paths = (
+            "scripts/netzoo_agent.py",
+            "scripts/netzoo_agent_core/cli/loop.py",
+            "scripts/netzoo_agent_core/cli/conversation.py",
+            "scripts/netzoo_agent_core/graph/topology.py",
+            "scripts/netzoo_agent_core/planning/builder.py",
+            "scripts/netzoo_agent_core/evaluation/plan_review.py",
+            "scripts/netzoo_agent_core/execution.py",
+            "scripts/netzoo_agent_core/memory/episodes.py",
+            "scripts/netzoo_agent_core/data/tables.py",
+        )
+
+        for relative_path in required_paths:
+            self.assertTrue(
+                (PROJECT_ROOT / relative_path).exists(),
+                f"Guide references a missing owner module: {relative_path}",
+            )
+            self.assertIn(
+                relative_path,
+                guide,
+                f"Guide should point readers to {relative_path}",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

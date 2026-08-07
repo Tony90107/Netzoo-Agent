@@ -23,12 +23,12 @@ memory consolidation`。Evaluator 通過後可
 
 | 檔案 | 內容 |
 |---|---|
+| [CODE_READING_GUIDE.md](CODE_READING_GUIDE.md) | 新讀者的 15 分鐘主線、問題到 owner module 地圖與修改方式 |
 | [NETZOO_HARNESS_ARCHITECTURE.md](NETZOO_HARNESS_ARCHITECTURE.md) | Agent 架構、context、記憶與治理 |
 | [PANDA_PUMA_Docker_入門.md](PANDA_PUMA_Docker_入門.md) | PANDA/PUMA input-output 與 Docker 入門 |
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
 | [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
 | [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR 的 versioned YAML 規格 |
-| [NETZOO_HARNESS_ARCHITECTURE.md](NETZOO_HARNESS_ARCHITECTURE.md) | 完整系統架構、記憶設計、成熟度與關鍵缺口 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
 | [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |

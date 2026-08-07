@@ -11,6 +11,10 @@
 - 缺少輸入、偏好確認、dry-run、失敗與 recovery 分別如何處理？
 - 每一份 Python module 負責什麼，以及新增 workflow 時應修改哪裡？
 
+若是第一次接觸這份 code，請先走
+[`CODE_READING_GUIDE.md`](CODE_READING_GUIDE.md) 的 15 分鐘主線；本文件再用來查完整設計、
+資料契約與治理細節。
+
 ---
 
 ## 1. 系統定位
@@ -62,18 +66,24 @@ scripts/
     ├── presentation.py              # 共用語言與顯示政策
     ├── data/                        # 不依賴 orchestration 的資料底層
     │   ├── paths.py                 # output path 安全與 canonicalization
-    │   ├── table_validation.py      # 表格與 biological ID validation
+    │   ├── tables.py                # 純表格與 biological ID validation
+    │   ├── transforms.py            # 純 expression/co-expression 轉換
+    │   ├── discovery.py             # 候選檔案關鍵字、評分與選擇
     │   ├── inspection.py            # neutral input inspection
     │   ├── bundles.py               # PANDA/PUMA input bundles
-    │   ├── preparation.py           # expression formatting、co-expression
     │   └── artifacts.py             # output artifact validation
-    ├── validation.py                # 舊 import 相容 facade → data.table_validation
-    ├── preparation.py               # 舊 import 相容 facade → data.preparation
+    ├── tool_adapters.py             # LangChain @tool wrappers → data 純函式
+    ├── validation.py                # 舊 import 相容 facade → data facade/tables
+    ├── preparation.py               # 舊 import 相容 facade → data facade/transforms
     ├── bundles.py                   # 舊 import 相容 facade → data.bundles
     ├── artifact_validation.py       # 舊 import 相容 facade → data.artifacts
     ├── path_safety.py               # 舊 import 相容 facade → data.paths
     ├── runtime.py                   # 舊 process-wide 設定的相容橋接
-    ├── memory.py                    # UserProfileStore、EpisodeStore
+    ├── memory/                      # 長期記憶公開 interface 與實作
+    │   ├── profiles.py              # 確認式 UserProfile 行為
+    │   ├── episodes.py              # episode search、retention 與寫入
+    │   ├── normalization.py         # 共用文字與查詢正規化
+    │   └── storage.py               # JSON persistence 與序列化
     ├── command.py                   # subprocess 與 dry-run command rendering
     ├── execution.py                 # PANDA/PUMA/LIONESS/CONDOR adapters
     ├── routing/                     # capability gate、retrieval、tool result normalization
@@ -85,7 +95,12 @@ scripts/
     ├── graph/                       # LangGraph nodes、edges、transitions、orchestration
     ├── session.py                   # resumable session 與 retention
     ├── interaction.py               # 舊 import 相容 facade → cli 子模組
-    └── cli/                         # arguments、trace、clarification、follow-up、loop
+    └── cli/                         # CLI interface 與生命週期
+        ├── arguments.py             # 參數定義
+        ├── commands.py              # policy/memory/preflight 立即命令
+        ├── bootstrap.py             # runtime dependency 組裝
+        ├── conversation.py          # one-shot/互動/resume 對話生命週期
+        └── loop.py                  # 小型 CLI coordinator
 ```
 
 拆分原則不是「每個函式一個檔案」，而是讓每個 module 隱藏一組完整行為，只暴露小而清楚
@@ -102,10 +117,10 @@ scripts/
 
 | 症狀或修改目的 | 第一個閱讀位置 | 下一層 |
 |---|---|---|
-| CLI 參數、互動流程、確認問題不正確 | `cli/` | `cli/arguments.py`、`cli/clarification.py`、`cli/loop.py` |
+| CLI 參數、互動流程、確認問題不正確 | `cli/` | `cli/arguments.py`、`cli/commands.py`、`cli/conversation.py` |
 | Router 選錯能力或 tool | `routing/` | `interpretation/`、`planning/` |
 | 缺少輸入、plan 被拒絕或 step 順序錯誤 | `planning/`、`evaluation/plan_rules.py` | `contracts/planning.py` |
-| 輸入檔案、delimiter、ID 或 output path 驗證錯誤 | `data/` | `data/table_validation.py`、`data/paths.py` |
+| 輸入檔案、delimiter、ID 或 output path 驗證錯誤 | `data/` | `data/tables.py`、`data/paths.py`、`data/discovery.py` |
 | PANDA/PUMA/LIONESS/CONDOR 命令執行錯誤 | `execution.py` | `command.py`、`data/bundles.py` |
 | LangGraph 跳錯節點或 recovery 流程錯誤 | `graph/topology.py`、`graph/transitions.py` | `evaluation/recovery.py` |
 | 回覆語言或顯示格式錯誤 | `presentation.py` | `evaluation/rendering.py`、`graph/response.py` |
