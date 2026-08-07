@@ -20,19 +20,19 @@ from .data.inspection import (
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
 
-from .data.table_validation import (
+from .data.tables import (
     _drop_common_header,
     _inspect_panda_inputs_impl,
     _read_checked_table,
     _resolve_user_path,
     _validate_expression,
-    inspect_netzoo_inputs,
 )
 from .data.paths import condor_artifact_paths
 
-from .data.preparation import (
+from .tool_adapters import (
     convert_expression_to_coexpression,
     format_expression_for_netzoo,
+    inspect_netzoo_inputs,
 )
 
 __all__ = [

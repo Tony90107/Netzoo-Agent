@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from netzoo_table_io import read_condor_edges
 
-from .table_validation import (
+from .tables import (
     _drop_common_header,
     _read_checked_table,
     _validate_expression,

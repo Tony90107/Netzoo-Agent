@@ -9,7 +9,8 @@ import pandas as pd
 
 from netzoo_table_io import read_condor_edges, read_table
 
-from ..contracts import ArtifactValidationResult, TaskDecision
+from ..contracts.decisions import TaskDecision
+from ..contracts.results import ArtifactValidationResult
 from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 

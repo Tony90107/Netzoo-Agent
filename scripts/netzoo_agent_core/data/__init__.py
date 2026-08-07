@@ -1,13 +1,14 @@
 """Workflow input, output, preparation, and artifact behavior."""
 
-from . import artifacts, bundles, inspection, paths, preparation, table_validation
+from . import artifacts, bundles, discovery, inspection, paths, tables, transforms
 
 _DATA_IMPLEMENTATION_MODULES = (
     paths,
-    table_validation,
+    discovery,
+    tables,
     inspection,
     bundles,
-    preparation,
+    transforms,
     artifacts,
 )
 

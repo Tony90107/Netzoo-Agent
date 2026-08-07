@@ -8,29 +8,19 @@ from pathlib import Path
 from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
 
 from ..contracts import Episode, PROJECT_ROOT, _display_path
+from ..data.discovery import (
+    best_named_file as _best_named_file,
+    candidate_keywords as _candidate_keywords,
+    score_candidate_file as _score_candidate_file,
+)
 from ..data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
-from ..routing import _score_candidate_file
-from ..data.table_validation import _inspect_panda_inputs_impl, _resolve_user_path
+from ..data.paths import _resolve_user_path
+from ..data.tables import _inspect_panda_inputs_impl
 
 __all__: list[str] = []
-
-
-def _candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
-    mode = "puma" if "puma" in action else "panda" if "panda" in action else ""
-    if field_name == "expression_file":
-        return ("expression", "expr")
-    if field_name == "motif_file":
-        return tuple(part for part in (mode, "motif", "prior") if part)
-    if field_name == "ppi_file":
-        return ("ppi",)
-    if field_name == "mirna_file":
-        return ("mirna", "mir")
-    if field_name == "network_file":
-        return ("condor", "bipartite", "network")
-    return ()
 
 
 def _choose_unambiguous_candidate(
@@ -58,26 +48,6 @@ def _choose_unambiguous_candidate(
         None,
         f"The top candidate scores are too close ({best_score} vs {second_score}) for safe automatic selection.",
     )
-
-
-def _best_named_file(directory: Path, keywords: tuple[str, ...]) -> Path | None:
-    candidates = [
-        path
-        for path in directory.iterdir()
-        if path.is_file()
-        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
-        and any(keyword in path.name.casefold() for keyword in keywords)
-    ]
-    if not candidates:
-        return None
-    candidates.sort(
-        key=lambda path: (
-            -_score_candidate_file(path, keywords, directory),
-            len(path.name),
-            path.name,
-        )
-    )
-    return candidates[0]
 
 
 def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:

@@ -8,11 +8,12 @@ from pathlib import Path
 
 from workflow_registry import REQUIRED_INPUTS
 
-from ..contracts import INPUT_ROLE_FIELDS, _display_path
+from ..presentation import _display_path
+from ..settings import INPUT_ROLE_FIELDS
+from .discovery import best_named_file, candidate_keywords
 from .inspection import expression_sample_count as _expression_sample_count
-from ..interpretation import _best_named_file, _candidate_keywords
 from .paths import _resolve_user_path
-from .table_validation import _inspect_panda_inputs_impl
+from .tables import _inspect_panda_inputs_impl
 
 __all__ = [
     "BundleDiscovery",
@@ -48,7 +49,7 @@ def _candidate_directories(action: str, nearby: Path) -> list[Path]:
         keyword
         for field_name in REQUIRED_INPUTS[action]
         if field_name in INPUT_ROLE_FIELDS
-        for keyword in _candidate_keywords(action, field_name)
+        for keyword in candidate_keywords(action, field_name)
     }
     directories: set[Path] = set()
     visited = 0
@@ -101,8 +102,8 @@ def _bundle_in_directory(
         if field_name in values:
             candidates_by_field[field_name] = [values[field_name]]
             continue
-        keywords = _candidate_keywords(action, field_name)
-        candidate = _best_named_file(directory, keywords)
+        keywords = candidate_keywords(action, field_name)
+        candidate = best_named_file(directory, keywords)
         if candidate is None:
             return None
         rendered = _display_path(candidate)
