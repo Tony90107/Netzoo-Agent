@@ -71,6 +71,7 @@ from netzoo_agent_core.contracts import _CONTRACT_IMPLEMENTATION_MODULES
 from netzoo_agent_core.data import _DATA_IMPLEMENTATION_MODULES
 from netzoo_agent_core.graph import _GRAPH_IMPLEMENTATION_MODULES
 from netzoo_agent_core.interpretation import _INTERPRETATION_IMPLEMENTATION_MODULES
+from netzoo_agent_core.memory import _MEMORY_IMPLEMENTATION_MODULES
 from netzoo_agent_core.contracts import (
     AIMessage,
     END,
@@ -91,7 +92,7 @@ _IMPLEMENTATION_MODULES = (
     data, *_DATA_IMPLEMENTATION_MODULES,
     artifact_validation,
     bundles,
-    memory,
+    memory, *_MEMORY_IMPLEMENTATION_MODULES,
     outcomes,
     path_safety,
     command,

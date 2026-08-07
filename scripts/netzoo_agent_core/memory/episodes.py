@@ -1,425 +1,38 @@
-"""Confirmed user preferences and bounded, profile-local episode memory."""
+"""Bounded, profile-partitioned episode repository."""
 
 from __future__ import annotations
 
-import fcntl
-import json
-import os
 import re
 import time
 import uuid
-from contextlib import contextmanager
 from pathlib import Path
 
 from pydantic import BaseModel
 
-from workflow_registry import (
-    PROFILE_PREFERENCE_KEYS,
-    REQUIRED_INPUTS,
-    WORKFLOW_MEMORY_METADATA,
-)
+from workflow_registry import REQUIRED_INPUTS
 
-from .contracts import (
+from ..contracts.decisions import TaskDecision
+from ..contracts.memory import Episode
+from ..contracts.planning import WorkflowPlan
+from ..contracts.results import EvaluationResult, ToolExecutionResult
+from ..outcomes import effective_results, terminal_failed
+from ..settings import (
     DEFAULT_EPISODE_DRY_RUN_RETENTION_DAYS,
     DEFAULT_EPISODE_FAILED_RETENTION_DAYS,
     DEFAULT_EPISODE_MAX_BYTES,
     DEFAULT_EPISODE_MAX_COUNT,
     DEFAULT_EPISODE_RETENTION_DAYS,
     EPISODE_ROOT,
-    Episode,
-    EvaluationResult,
-    INPUT_ROLE_FIELDS,
-    OUTPUT_ROLE_FIELDS,
-    PARAMETER_FIELDS,
-    PROFILE_ROOT,
-    PROJECT_ROOT,
-    PreferenceProposal,
-    TaskDecision,
-    ToolExecutionResult,
-    UserProfile,
-    WorkflowPlan,
-    _display_path,
-    _is_demo_request,
 )
-from .outcomes import effective_results, terminal_failed
+from .normalization import normalize_episode_memory
+from .storage import (
+    _ensure_private_directory,
+    _exclusive_file_lock,
+    _safe_memory_id,
+    _write_json_atomic,
+)
 
-__all__ = [
-    "_safe_memory_id",
-    "_safe_json_text",
-    "_sanitize_json_payload",
-    "_ensure_private_directory",
-    "_harden_private_tree",
-    "_exclusive_file_lock",
-    "_write_private_text",
-    "_write_json_atomic",
-    "UserProfileStore",
-    "_episode_intent_type",
-    "_meaningful_parameter_value",
-    "normalize_episode_memory",
-    "compact_episode_payload",
-    "EpisodeCleanupReport",
-    "EpisodeStore",
-]
-
-
-def _safe_memory_id(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip(".-")
-    if not cleaned:
-        raise ValueError("Memory id must contain a letter or number.")
-    return cleaned[:80]
-
-
-def _safe_json_text(value: str) -> str:
-    """Replace invalid Unicode surrogates before writing UTF-8 JSON files."""
-    return value.encode("utf-8", errors="replace").decode("utf-8")
-
-
-def _sanitize_json_payload(value):
-    if isinstance(value, str):
-        return _safe_json_text(value)
-    if isinstance(value, dict):
-        return {
-            _safe_json_text(str(key)): _sanitize_json_payload(item)
-            for key, item in value.items()
-        }
-    if isinstance(value, list):
-        return [_sanitize_json_payload(item) for item in value]
-    if isinstance(value, tuple):
-        return [_sanitize_json_payload(item) for item in value]
-    return value
-
-
-def _ensure_private_directory(path: Path) -> None:
-    """Create a local state directory and make it owner-only."""
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    path.chmod(0o700)
-
-
-def _harden_private_tree(root: Path) -> None:
-    """Repair permissions on existing local state without following symlinks."""
-    if not root.exists() or root.is_symlink():
-        return
-    root.chmod(0o700)
-    for path in root.rglob("*"):
-        if path.is_symlink():
-            continue
-        path.chmod(0o700 if path.is_dir() else 0o600)
-
-
-@contextmanager
-def _exclusive_file_lock(path: Path):
-    """Serialize local load-modify-write sequences across processes."""
-    _ensure_private_directory(path.parent)
-    descriptor = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
-    os.chmod(path, 0o600)
-    with os.fdopen(descriptor, "a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-
-
-def _write_private_text(path: Path, text: str) -> None:
-    """Write a new owner-only UTF-8 text file."""
-    _ensure_private_directory(path.parent)
-    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8", errors="replace") as handle:
-        handle.write(_safe_json_text(text))
-        handle.flush()
-        os.fsync(handle.fileno())
-
-
-def _write_json_atomic(path: Path, payload: dict) -> None:
-    """Atomically replace JSON using collision-free, owner-only files."""
-    _ensure_private_directory(path.parent)
-    temporary = path.parent / f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
-    serialized = json.dumps(
-        _sanitize_json_payload(payload),
-        ensure_ascii=False,
-        indent=2,
-    )
-    descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", errors="replace") as handle:
-            handle.write(serialized)
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary.replace(path)
-        path.chmod(0o600)
-    finally:
-        temporary.unlink(missing_ok=True)
-
-
-class UserProfileStore:
-    """Confirmed long-term preferences. Nothing is inferred or written implicitly."""
-
-    def __init__(self, root: Path | None = None):
-        self.root = root or PROFILE_ROOT
-        self.lock_path = self.root / ".profiles.lock"
-        if self.root.exists():
-            _harden_private_tree(self.root)
-
-    def path_for(self, profile_id: str) -> Path:
-        return self.root / f"{_safe_memory_id(profile_id)}.json"
-
-    def _load_unlocked(self, profile_id: str) -> UserProfile:
-        safe_profile_id = _safe_memory_id(profile_id)
-        path = self.path_for(profile_id)
-        if not path.exists():
-            return UserProfile(profile_id=safe_profile_id)
-        path.chmod(0o600)
-        try:
-            profile = UserProfile.model_validate_json(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as error:
-            raise ValueError(f"Profile memory is invalid: {path}") from error
-        if profile.profile_id != safe_profile_id:
-            raise ValueError(
-                f"Profile memory id mismatch: expected {safe_profile_id}, "
-                f"found {profile.profile_id}."
-            )
-        if profile.version != 1:
-            raise ValueError(f"Unsupported profile memory version: {profile.version}.")
-        unknown_keys = set(profile.preferences) - PROFILE_PREFERENCE_KEYS
-        if unknown_keys:
-            raise ValueError(
-                "Profile memory contains unsupported preference keys: "
-                + ", ".join(sorted(unknown_keys))
-            )
-        normalized_preferences = {}
-        for key, value in profile.preferences.items():
-            proposal = PreferenceProposal(
-                key=key,
-                value=str(value),
-                reason="Revalidated while loading local profile memory.",
-            )
-            normalized_preferences[key] = self.normalize(proposal)
-        unknown_sources = set(profile.sources) - set(normalized_preferences)
-        if unknown_sources:
-            raise ValueError(
-                "Profile memory contains sources for unknown preferences: "
-                + ", ".join(sorted(unknown_sources))
-            )
-        profile.preferences = normalized_preferences
-        profile.sources = {
-            key: _safe_json_text(str(value))[:500]
-            for key, value in profile.sources.items()
-        }
-        return profile
-
-    def load(self, profile_id: str) -> UserProfile:
-        if self.root.exists():
-            _ensure_private_directory(self.root)
-        return self._load_unlocked(profile_id)
-
-    def normalize(self, proposal: PreferenceProposal) -> str | bool | list[str]:
-        value = proposal.value.strip()
-        if proposal.key in {"allow_demo_autofill", "reuse_last_inputs"}:
-            normalized = value.casefold()
-            if normalized in {"true", "yes", "1", "on"}:
-                return True
-            if normalized in {"false", "no", "0", "off"}:
-                return False
-            raise ValueError(f"{proposal.key} must be true or false.")
-        if proposal.key == "default_output_dir":
-            raw = Path(value).expanduser()
-            resolved = (
-                raw.resolve() if raw.is_absolute() else (PROJECT_ROOT / raw).resolve()
-            )
-            allowed_root = (PROJECT_ROOT / "outputs").resolve()
-            if not resolved.is_relative_to(allowed_root):
-                raise ValueError(
-                    "default_output_dir must be inside the project outputs/ directory."
-                )
-            return _display_path(resolved)
-        if proposal.key == "preferred_workflow":
-            normalized = value.casefold().replace("-", "_").removeprefix("run_")
-            allowed = {
-                "panda",
-                "puma",
-                "lioness_panda",
-                "lioness_puma",
-                "lioness_coexpression",
-                "condor",
-            }
-            if normalized not in allowed:
-                raise ValueError(
-                    "preferred_workflow is not an allow-listed NetZoo workflow."
-                )
-            return normalized
-        raise ValueError(f"Unsupported preference key: {proposal.key}")
-
-    def pending(
-        self, profile: UserProfile, proposals: list[PreferenceProposal]
-    ) -> list[PreferenceProposal]:
-        pending = []
-        for proposal in proposals:
-            try:
-                normalized = self.normalize(proposal)
-            except ValueError:
-                continue
-            if profile.preferences.get(proposal.key) != normalized:
-                pending.append(proposal)
-        return pending
-
-    def confirm(
-        self, profile_id: str, proposals: list[PreferenceProposal]
-    ) -> UserProfile:
-        with _exclusive_file_lock(self.lock_path):
-            profile = self._load_unlocked(profile_id)
-            now = time.time()
-            for proposal in proposals:
-                profile.preferences[proposal.key] = self.normalize(proposal)
-                profile.sources[proposal.key] = proposal.reason[:500]
-            profile.updated_at = now
-            _write_json_atomic(self.path_for(profile_id), profile.model_dump())
-        return profile
-
-    def delete(self, profile_id: str) -> bool:
-        with _exclusive_file_lock(self.lock_path):
-            path = self.path_for(profile_id)
-            if not path.exists():
-                return False
-            path.unlink()
-            return True
-
-
-def _episode_intent_type(decision: TaskDecision, task: str) -> str:
-    """Prefer router intent, with deterministic fallback for older/router-less tests."""
-    if decision.intent_type != "unknown":
-        return decision.intent_type
-    if _is_demo_request(task):
-        return "demo_run"
-    if decision.action.startswith("run_"):
-        return "run_analysis"
-    if decision.action.startswith("inspect_"):
-        return "inspect_input"
-    if decision.action in {"format_expression", "convert_expression"}:
-        return "prepare_input"
-    return "unknown"
-
-
-def _meaningful_parameter_value(value) -> bool:
-    return value not in (None, False, "auto", "", [])
-
-
-def normalize_episode_memory(
-    task: str,
-    plan: WorkflowPlan,
-    results: list[ToolExecutionResult],
-    evaluation: EvaluationResult,
-) -> dict:
-    """Build workflow-agnostic memory metadata from typed harness contracts."""
-    results = effective_results(results)
-    decision = TaskDecision.model_validate(plan.decision)
-    required = REQUIRED_INPUTS.get(decision.action, ())
-    intent_type = _episode_intent_type(decision, task)
-    input_roles = [
-        field_name
-        for field_name in required
-        if field_name in INPUT_ROLE_FIELDS and getattr(decision, field_name, None)
-    ]
-    output_roles = [
-        field_name
-        for field_name in required
-        if field_name in OUTPUT_ROLE_FIELDS and getattr(decision, field_name, None)
-    ]
-    parameters = [
-        field_name
-        for field_name in sorted(PARAMETER_FIELDS)
-        if _meaningful_parameter_value(getattr(decision, field_name, None))
-    ]
-    validation_steps = [
-        step.action for step in plan.steps if step.action.startswith("inspect_")
-    ]
-    execution_steps = [
-        step.action for step in plan.steps if step.action.startswith("run_")
-    ]
-    validation_results = [
-        result for result in results if result.action.startswith("inspect_")
-    ]
-    if any(result.status == "failed" for result in validation_results):
-        validation_status = "failed"
-    elif validation_results:
-        validation_status = "passed"
-    else:
-        validation_status = "not_applicable"
-    execution_mode = (
-        "dry_run"
-        if any(result.status == "dry_run" for result in results)
-        else "executed"
-    )
-    domain_metadata = WORKFLOW_MEMORY_METADATA.get(decision.action, {})
-    tags = [
-        f"workflow:{plan.workflow.casefold()}",
-        f"action:{decision.action}",
-        f"intent:{intent_type}",
-        f"evaluation:{evaluation.status}",
-        f"mode:{execution_mode}",
-        f"validation:{validation_status}",
-        *[f"input:{field_name}" for field_name in input_roles],
-        *[f"output:{field_name}" for field_name in output_roles],
-        *[f"param:{field_name}" for field_name in parameters],
-        *[f"{key}:{value}" for key, value in sorted(domain_metadata.items()) if value],
-    ]
-    readable_workflow = plan.workflow.replace("-", " ")
-    task_summary = (
-        f"{readable_workflow} {intent_type.replace('_', ' ')}; "
-        f"mode={execution_mode}; validation={validation_status}; "
-        f"inputs={','.join(input_roles) or 'none'}."
-    )
-    return {
-        "task_summary": task_summary[:500],
-        "raw_task_excerpt": task[:500],
-        "action": decision.action,
-        "intent_type": intent_type,
-        "input_roles": input_roles,
-        "output_roles": output_roles,
-        "parameters": parameters,
-        "validation_steps": validation_steps,
-        "execution_steps": execution_steps,
-        "validation_status": validation_status,
-        "execution_mode": execution_mode,
-        "memory_tags": tags,
-        "domain_metadata": domain_metadata,
-    }
-
-
-def compact_episode_payload(episode: Episode) -> dict:
-    """Human-friendly memory-status view; verbose mode can still dump the full model."""
-    inferred_action = episode.action
-    if not inferred_action:
-        inferred_action = "run_" + episode.workflow.casefold().replace("-", "_")
-    execution_mode = (
-        "dry_run" if episode.status == "dry_run" else episode.execution_mode
-    )
-    input_roles = episode.input_roles or [
-        field_name for field_name in episode.inputs if field_name in INPUT_ROLE_FIELDS
-    ]
-    memory_tags = episode.memory_tags or [
-        f"workflow:{episode.workflow.casefold()}",
-        f"action:{inferred_action}",
-        f"status:{episode.status}",
-        f"mode:{execution_mode}",
-        *[f"input:{field_name}" for field_name in input_roles],
-    ]
-    return {
-        "episode_id": episode.episode_id,
-        "created_at": episode.created_at,
-        "workflow": episode.workflow,
-        "action": inferred_action,
-        "intent_type": episode.intent_type,
-        "status": episode.status,
-        "execution_mode": execution_mode,
-        "validation_status": episode.validation_status,
-        "input_roles": input_roles,
-        "output_roles": episode.output_roles,
-        "parameters": episode.parameters,
-        "inputs": episode.inputs,
-        "artifacts": episode.artifacts,
-        "memory_tags": memory_tags,
-        "policy_hash": episode.policy_hash,
-    }
+__all__: list[str] = []
 
 
 class EpisodeCleanupReport(BaseModel):
@@ -672,7 +285,9 @@ class EpisodeStore:
         metrics: dict[str, int | float | str | bool] = {}
         errors = []
         for result in results:
-            artifacts.extend(path for path in result.artifacts if path not in artifacts)
+            artifacts.extend(
+                path for path in result.artifacts if path not in artifacts
+            )
             if result.log_file:
                 logs.append(result.log_file)
             metrics.update(
