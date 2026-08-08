@@ -117,7 +117,7 @@ def infer_goal_capabilities(task: str) -> list[str]:
     )
     regulatory_network = bool(
         re.search(
-            r"(regulat(?:ory|ion).{0,20}network|gene.{0,12}network|"
+            r"(regulat(?:ory|ion|or).{0,20}network|gene.{0,12}network|"
             r"調控.{0,8}網路|基因.{0,8}網路|network\s+inference)",
             normalized,
             flags=re.IGNORECASE,
@@ -141,6 +141,8 @@ def infer_goal_capabilities(task: str) -> list[str]:
         return ["run_puma"]
     if sample_specific and tf and regulatory_network:
         return ["run_panda", "run_lioness_panda"]
+    if sample_specific and regulatory_network:
+        return ["run_lioness_panda", "run_lioness_puma"]
     if tf and regulatory_network:
         return ["run_panda"]
     if sample_specific and coexpression:

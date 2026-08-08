@@ -98,6 +98,11 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             action for action in router_decision.candidate_actions
             if action in allowed_actions
         ]
+        if not candidates:
+            candidates = [
+                action for action in decision.recommended_actions
+                if action in allowed_actions
+            ]
         semantic_goal = {
             "goal": router_decision.semantic_goal or "",
             "candidates": candidates,

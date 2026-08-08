@@ -15,10 +15,11 @@ import netzoo_agent_core.presentation as presentation  # noqa: E402
 
 def test_presentation_mode_is_mutable(monkeypatch):
     monkeypatch.setattr(settings, "PRESENTATION_MODE", "compact")
-
-    runtime.configure_runtime(PRESENTATION_MODE="timeline")
-
-    assert settings.PRESENTATION_MODE == "timeline"
+    try:
+        runtime.configure_runtime(PRESENTATION_MODE="timeline")
+        assert settings.PRESENTATION_MODE == "timeline"
+    finally:
+        runtime.configure_runtime(PRESENTATION_MODE="compact")
 
 
 def test_run_cli_selects_timeline_without_transient_output(monkeypatch):

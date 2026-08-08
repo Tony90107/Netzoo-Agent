@@ -38,4 +38,28 @@ def render_spec_backed_concept_answer(
     return None
 
 
-__all__ = ["render_spec_backed_concept_answer"]
+def render_ambiguous_workflow_guidance(
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Explain multiple registered candidates without inventing a selection."""
+    if not (
+        decision.in_scope
+        and decision.action == "no_tool"
+        and len(decision.recommended_actions) > 1
+    ):
+        return None
+    specs = [policy.workflows.get(action) for action in decision.recommended_actions]
+    registered = [spec for spec in specs if spec is not None]
+    if len(registered) < 2:
+        return None
+    options = "\n".join(f"- {spec.workflow}: {spec.description}" for spec in registered)
+    return _ui_text(
+        "I can match your goal to more than one registered workflow:\n"
+        f"{options}\n\n"
+        "To recommend one workflow, please clarify which regulatory relationship "
+        "you want to model. No files were inspected and no analysis ran."
+    )
+
+
+__all__ = ["render_spec_backed_concept_answer", "render_ambiguous_workflow_guidance"]
