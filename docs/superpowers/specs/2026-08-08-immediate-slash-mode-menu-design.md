@@ -19,20 +19,19 @@ requiring Enter:
 > /
 ```
 
-The terminal presents this menu:
+The terminal expands an inline menu directly below the active input prompt. It
+does not clear the current terminal content or open a separate screen:
 
 ```text
-Select NetZoo mode
-(*) Test mode — preview commands only
-( ) Execute mode — run validated commands
-
-↑/↓ move · Enter select · Esc/Ctrl-C cancel
+>
+  /test      Test mode — preview commands only
+▸ /execute   Execute mode — run validated commands
 ```
 
-The selection initially highlights the current mode. Up and down move the
-selection. Enter applies the selected mode and returns to the same prompt.
-Escape or Ctrl-C closes the menu without changing the mode, creating a task,
-or creating a trace.
+The selection initially highlights the current mode. Up, down, or Tab moves
+the selection. Enter applies the selected mode and returns to the same prompt.
+Escape or Ctrl-C collapses the inline menu without changing the mode, creating
+a task, or creating a trace.
 
 After a selection, the existing mode confirmation remains the source of
 user-visible authority feedback:
@@ -75,8 +74,9 @@ Add `prompt_toolkit` to the container's Python environment. A focused CLI input
 adapter owns terminal-specific behavior:
 
 - it creates the key binding only for an interactive real TTY;
-- it opens a two-item modal selector when `/` is pressed at an empty eligible
-  buffer;
+- it keeps the prompt and menu in one non-full-screen `prompt_toolkit`
+  application, expanding a two-item selector below the input when `/` is
+  pressed at an empty eligible buffer;
 - it returns the synthetic command `/test` or `/execute` after Enter, or a
   distinct `None` cancellation sentinel that cannot be confused with an
   ordinary empty answer;
@@ -105,7 +105,8 @@ mode. An already-selected mode is idempotent.
 
 Add deterministic tests for:
 
-1. menu options, ordering, labels, and selected default mode;
+1. inline menu options, ordering, labels, selected default mode, and the
+   absence of a full-screen dialog;
 2. mapping Enter choices to `/test` and `/execute`;
 3. real key dispatch for arrow movement plus Enter in both mode directions;
 4. Escape and Ctrl-C cancellation with no mode, pending-state, graph, trace, or
