@@ -38,6 +38,7 @@ from .follow_up import (
     resolve_next_turn_input,
 )
 from .slash_commands import handle_slash_command, render_mode_prompt
+from .terminal_input import TerminalInputReader
 
 __all__: list[str] = []
 
@@ -70,6 +71,11 @@ def run_conversation(args, runtime: CliRuntime) -> int:
     recorder = runtime.recorder
     ensure_trace_sync = runtime.ensure_trace_sync
     input_func = runtime.input_func
+    reader = TerminalInputReader(
+        input_func,
+        is_tty=sys.stdin.isatty,
+        notice=lambda message: print(_ui_text(message)),
+    )
     invoke_graph_turn_func = runtime.invoke_graph_turn_func
 
     clarification_selections: dict[str, str] = {}
@@ -104,10 +110,11 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 return 2
             if pending_plan.status == "needs_confirmation":
                 try:
-                    answer = input_func(
+                    answer = reader.read(
                         render_mode_prompt(
                             "\n" + preference_confirmation_prompt(pending_plan)
-                        )
+                        ),
+                        menu_enabled=True,
                     ).strip()
                 except (EOFError, KeyboardInterrupt):
                     print()
@@ -138,14 +145,15 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 ]
                 target_field = unresolved_fields[0] if unresolved_fields else None
                 try:
-                    answer = input_func(
+                    answer = reader.read(
                         render_mode_prompt(
                             "\n"
                             + clarification_prompt(
                                 pending_plan,
                                 clarification_selections,
                             )
-                        )
+                        ),
+                        menu_enabled=target_field not in _PATH_ANSWER_FIELDS,
                     ).strip()
                 except (EOFError, KeyboardInterrupt):
                     print()
@@ -190,8 +198,9 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if one_shot:
                 break
             try:
-                answer = input_func(
-                    f"\n{render_mode_prompt(render_next_turn_prompt(next_prompt))}\n> "
+                answer = reader.read(
+                    f"\n{render_mode_prompt(render_next_turn_prompt(next_prompt))}\n> ",
+                    menu_enabled=next_prompt.expected_field not in _PATH_ANSWER_FIELDS,
                 ).strip()
             except (EOFError, KeyboardInterrupt):
                 print()
