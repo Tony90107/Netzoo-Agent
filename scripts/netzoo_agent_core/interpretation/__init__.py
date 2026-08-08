@@ -1,6 +1,7 @@
 """Deterministic task hydration, repair, fallback, and input discovery."""
 
-from . import discovery, extraction, hydration, provider_fallback, repair
+from . import concept_answers, discovery, extraction, hydration, provider_fallback, repair
+from .concept_answers import render_spec_backed_concept_answer
 from .discovery import (
     _best_named_file,
     _candidate_keywords,
@@ -27,6 +28,7 @@ _INTERPRETATION_IMPLEMENTATION_MODULES = (
     hydration,
     provider_fallback,
     repair,
+    concept_answers,
 )
 
 __all__ = [
@@ -47,4 +49,5 @@ __all__ = [
     "_best_named_file",
     "discover_demo_bundle",
     "reusable_episode_inputs",
+    "render_spec_backed_concept_answer",
 ]
