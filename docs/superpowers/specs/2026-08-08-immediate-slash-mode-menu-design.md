@@ -49,8 +49,9 @@ supported. `/help` explains that `/` opens the mode menu.
 
 ## Prompt Scope and Path Safety
 
-The immediate `/` key binding is enabled only at the initial and ordinary
-outcome-aware prompts that are not expecting a path. It is disabled for:
+The immediate `/` key binding is enabled at the initial prompt, ordinary
+outcome-aware prompts, and preference-confirmation prompts when they are not
+expecting a path. It is disabled for:
 
 - missing-input clarification prompts whose current field is an input or output
   path role;
@@ -61,6 +62,9 @@ This preserves direct entry of absolute paths such as `/tmp`, `/output`, and
 `/work/data/expression.tsv`. In path prompts, users can continue to type the
 existing textual slash commands and submit them with Enter when they need to
 change execution mode.
+
+Opening the menu during preference confirmation changes only execution mode; it
+does not answer the pending yes/no confirmation.
 
 ## Architecture
 
