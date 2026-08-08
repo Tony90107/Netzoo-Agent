@@ -24,7 +24,7 @@
 - Modify: `scripts/netzoo_agent_core/settings.py`
 - Modify: `scripts/netzoo_agent_core/runtime.py`
 - Modify: `scripts/netzoo_agent_core/cli/arguments.py`
-- Modify: `scripts/netzoo_agent_core/cli/main.py`
+- Modify: `scripts/netzoo_agent_core/cli/loop.py`
 - Create: `tests/test_presentation_timeline.py`
 
 **Interfaces:**
@@ -38,7 +38,7 @@
 from types import SimpleNamespace
 
 from netzoo_agent_core import runtime, settings
-from netzoo_agent_core.cli.main import run_cli
+from netzoo_agent_core.cli.loop import run_cli
 
 
 def test_presentation_mode_is_mutable(monkeypatch):
@@ -49,8 +49,8 @@ def test_presentation_mode_is_mutable(monkeypatch):
 
 def test_run_cli_selects_timeline_without_transient_output(monkeypatch):
     captured = {}
-    monkeypatch.setattr("netzoo_agent_core.cli.main.configure_runtime", lambda **values: captured.update(values))
-    monkeypatch.setattr("netzoo_agent_core.cli.main.handle_preflight_command", lambda _args: 0)
+    monkeypatch.setattr("netzoo_agent_core.cli.loop.configure_runtime", lambda **values: captured.update(values))
+    monkeypatch.setattr("netzoo_agent_core.cli.loop.handle_preflight_command", lambda _args: 0)
     args = SimpleNamespace(execute=False, quiet=False, verbose=False, timeline=True, transient_trace=False, tool_timeout=30.0)
 
     assert run_cli(args) == 0
@@ -86,7 +86,7 @@ display_group.add_argument(
     help="Show concise permanent activity blocks before the final answer.",
 )
 
-# main.py
+# loop.py
 presentation_mode = "verbose" if args.verbose else "timeline" if args.timeline else "compact"
 configure_runtime(
     EXECUTE_TOOLS=args.execute,
@@ -109,7 +109,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/netzoo_agent_core/settings.py scripts/netzoo_agent_core/runtime.py scripts/netzoo_agent_core/cli/arguments.py scripts/netzoo_agent_core/cli/main.py tests/test_presentation_timeline.py
+git add scripts/netzoo_agent_core/settings.py scripts/netzoo_agent_core/runtime.py scripts/netzoo_agent_core/cli/arguments.py scripts/netzoo_agent_core/cli/loop.py tests/test_presentation_timeline.py
 git commit -m "feat: add timeline presentation mode"
 ```
 
