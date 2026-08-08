@@ -47,14 +47,14 @@ class TerminalInputReader:
             return self._input_func(prompt)
         try:
             answer = self._menu_line_reader(prompt)
+            if answer == MODE_MENU_TRIGGER:
+                return self._menu_dialog(self._default_command()) or ""
         except (EOFError, KeyboardInterrupt):
             raise
         except Exception:
             self._warn_once()
             return self._input_func(prompt)
-        if answer != MODE_MENU_TRIGGER:
-            return answer
-        return self._menu_dialog(self._default_command()) or ""
+        return answer
 
     def _default_command(self) -> str:
         return "/execute" if self._current_mode() == "EXECUTE" else "/test"
@@ -83,11 +83,42 @@ def _read_menu_line(prompt: str) -> str:
 
 def _show_mode_menu(default_command: str) -> str | None:
     """Present the available mode commands and return the selected command."""
-    from prompt_toolkit.shortcuts import radiolist_dialog
+    return _create_mode_menu(default_command).run()
 
-    return radiolist_dialog(
+
+def _create_mode_menu(default_command: str):
+    """Build the mode dialog with direct selection and cancellation keys."""
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.layout import Layout
+    from prompt_toolkit.layout.containers import HSplit
+    from prompt_toolkit.widgets import Dialog, Label, RadioList
+
+    radio_list = RadioList(values=MODE_MENU_OPTIONS, default=default_command)
+    bindings = KeyBindings()
+
+    @bindings.add("escape", eager=True)
+    @bindings.add("c-c", eager=True)
+    def _cancel(event) -> None:
+        event.app.exit(result=None)
+
+    @bindings.add("enter", eager=True)
+    def _confirm(event) -> None:
+        event.app.exit(result=radio_list.current_value)
+
+    dialog = Dialog(
         title="NetZoo mode",
-        text="Choose how validated workflow commands should run.",
-        values=MODE_MENU_OPTIONS,
-        default=default_command,
-    ).run()
+        body=HSplit(
+            [
+                Label("Choose how validated workflow commands should run."),
+                radio_list,
+            ],
+            padding=1,
+        ),
+        with_background=True,
+    )
+    return Application(
+        layout=Layout(dialog, focused_element=radio_list),
+        key_bindings=bindings,
+        full_screen=True,
+    )
