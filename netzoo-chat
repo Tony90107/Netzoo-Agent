@@ -1,4 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-docker compose run --rm -it netzoo python scripts/netzoo_agent.py --transient-trace "$@"
+# `docker compose run netzoo` still interpolates the complete Compose file.
+# The trace collector services have required secrets, even when those services
+# are not being started. Generate process-local values for an interactive agent
+# run so an older `.env` does not block the standalone chat launcher. Existing
+# user-provided values always win, and nothing is written to or printed from
+# `.env`.
+ensure_observer_env() {
+  local name
+  local value
+  for name in \
+    NETZOO_OBSERVER_CREDENTIAL_PEPPER \
+    NETZOO_OBSERVER_AGENT_KEY \
+    NETZOO_OBSERVER_ADMIN_KEY \
+    NETZOO_OBSERVER_DB_PASSWORD \
+    NETZOO_OBSERVER_OBJECT_ACCESS_KEY \
+    NETZOO_OBSERVER_OBJECT_SECRET_KEY
+  do
+    if [[ -z "${!name:-}" ]]; then
+      value="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+      export "${name}=${value}"
+    fi
+  done
+}
+
+ensure_observer_env
+
+docker compose run --rm -it netzoo python scripts/netzoo_agent.py --timeline "$@"

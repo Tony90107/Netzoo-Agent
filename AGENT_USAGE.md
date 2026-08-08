@@ -449,8 +449,10 @@ Selection > 2
 
 ## CLI progress 與 session checkpoint
 
-預設 CLI 使用 compact progress 與 compact result，只顯示對一般使用者有直接價值的
-workflow、input validation、執行／command preview 狀態、重要 inputs、outputs 與下一步：
+直接執行 `python scripts/netzoo_agent.py` 時，預設 CLI 使用 compact progress 與 compact
+result，只顯示對一般使用者有直接價值的 workflow、input validation、執行／command preview
+狀態、重要 inputs、outputs 與下一步。`./netzoo-chat` 則預設使用可讀、永久保留的 activity
+timeline，在最終結果前列出 planning、tool、result 與 evaluation 摘要：
 
 ```text
 ◆ LIONESS-PANDA · dry run
@@ -460,6 +462,12 @@ workflow、input validation、執行／command preview 狀態、重要 inputs、
 ○ Command preview ready
 ```
 
+可直接從 Python CLI 開啟同一種 timeline：
+
+```bash
+python scripts/netzoo_agent.py --timeline --task "Run LIONESS PANDA"
+```
+
 完整 evidence ledger、Router confidence、每個 LangGraph node、Evaluator decision、
 memory retrieval/consolidation、session id 與成功時的 log path 改由 `--verbose` 顯示：
 
@@ -467,14 +475,14 @@ memory retrieval/consolidation、session id 與成功時的 log path 改由 `--v
 python scripts/netzoo_agent.py --verbose --task "Run LIONESS PANDA"
 ```
 
-這些資訊是 structured state 與 tool status，不是模型私有 chain-of-thought。只想看
-compact 最終回答、不顯示進度事件則加 `--quiet`：
+Timeline 與 `--verbose` 的資訊都是 structured state、tool status 與可稽核的決策摘要，
+不是模型私有 chain-of-thought。只想看 compact 最終回答、不顯示進度事件則加 `--quiet`：
 
 ```bash
 python scripts/netzoo_agent.py --quiet --task "Run LIONESS PANDA"
 ```
 
-`--verbose` 與 `--quiet` 不能同時使用。失敗時，compact result 仍會顯示 error、必要的
+`--timeline`、`--verbose` 與 `--quiet` 不能同時使用。失敗時，compact result 仍會顯示 error、必要的
 diagnostic log 與下一步；dry-run 一定顯示實際 command，避免精簡後失去 command preview
 的核心資訊。
 
