@@ -27,7 +27,7 @@ from ..evaluation import (
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
-from ..interpretation import render_spec_backed_concept_answer
+from ..interpretation.concept_answers import render_spec_backed_concept_answer
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from .context import _GraphContext, preflight_budget, record_event
