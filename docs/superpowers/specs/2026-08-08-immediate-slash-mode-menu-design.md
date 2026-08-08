@@ -31,7 +31,8 @@ does not clear the current terminal content or open a separate screen:
 The selection initially highlights the current mode. Up, down, or Tab moves
 the selection. Enter applies the selected mode and returns to the same prompt.
 Escape or Ctrl-C collapses the inline menu without changing the mode, creating
-a task, or creating a trace.
+a task, or creating a trace; the same input buffer remains active so the user
+can continue typing immediately.
 
 After a selection, the existing mode confirmation remains the source of
 user-visible authority feedback:
@@ -77,9 +78,8 @@ adapter owns terminal-specific behavior:
 - it keeps the prompt and menu in one non-full-screen `prompt_toolkit`
   application, expanding a two-item selector below the input when `/` is
   pressed at an empty eligible buffer;
-- it returns the synthetic command `/test` or `/execute` after Enter, or a
-  distinct `None` cancellation sentinel that cannot be confused with an
-  ordinary empty answer;
+- it returns the synthetic command `/test` or `/execute` after Enter while
+  keeping a cancelled selector in the active input application;
 - it returns ordinary typed text unchanged in every other case.
 
 The adapter does not change runtime settings directly. The existing
@@ -97,9 +97,9 @@ If `prompt_toolkit` cannot be imported or initialized in a real TTY, NetZoo
 prints one concise English notice and falls back to the current line-based
 input. The agent remains usable through `/test` and `/execute` text commands.
 
-Menu cancellation is not an error. It leaves the input prompt active and does
-not call the graph, start a trace, modify a pending plan, or alter the current
-mode. An already-selected mode is idempotent.
+Menu cancellation is not an error. It collapses in place, leaves the input
+prompt active, and does not call the graph, start a trace, modify a pending
+plan, or alter the current mode. An already-selected mode is idempotent.
 
 ## Testing
 
@@ -109,8 +109,9 @@ Add deterministic tests for:
    absence of a full-screen dialog;
 2. mapping Enter choices to `/test` and `/execute`;
 3. real key dispatch for arrow movement plus Enter in both mode directions;
-4. Escape and Ctrl-C cancellation with no mode, pending-state, graph, trace, or
-   preference-confirmation change;
+4. Escape and Ctrl-C collapse with no mode, pending-state, graph, trace, or
+   preference-confirmation change, followed by ordinary text input in the same
+   prompt;
 5. menu activation only for empty, eligible interactive prompts;
 6. literal `/` preservation after nonempty text and Ctrl-V literal pass-through
    for `/test`, `/execute`, `/status`, and `/help` at an empty prompt;

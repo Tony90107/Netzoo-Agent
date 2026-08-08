@@ -323,10 +323,12 @@ def test_slash_command_does_not_confirm_preference():
     runtime.invoke_graph_turn_func.assert_not_called()
 
 
-def test_menu_cancellation_preserves_preference_confirmation_and_mode(monkeypatch):
+def test_inline_menu_collapse_does_not_answer_preference_confirmation(monkeypatch):
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     reader = Mock()
-    reader.read.side_effect = [None, "exit"]
+    # The inline selector collapses inside TerminalInputReader; conversation
+    # receives only the next submitted line, never a synthetic no answer.
+    reader.read.side_effect = ["exit"]
     monkeypatch.setattr(conversation, "TerminalInputReader", Mock(return_value=reader))
     runtime = _fake_cli_runtime(
         invoke_error=AssertionError("graph must not run"),
@@ -342,11 +344,8 @@ def test_menu_cancellation_preserves_preference_confirmation_and_mode(monkeypatc
         ) == 0
 
         assert settings.EXECUTE_TOOLS is True
-        assert reader.read.call_count == 2
-        assert all(
-            "Save these long-term preferences?" in call.args[0]
-            for call in reader.read.call_args_list
-        )
+        assert reader.read.call_count == 1
+        assert "Save these long-term preferences?" in reader.read.call_args.args[0]
         runtime.memory.profile_store.confirm.assert_not_called()
         runtime.invoke_graph_turn_func.assert_not_called()
         assert runtime.recorder.mock_calls == []
