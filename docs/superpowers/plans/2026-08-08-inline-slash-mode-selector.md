@@ -31,7 +31,7 @@
 - Produces: the same `read()` result contract, with an injected `menu_line_reader(prompt: str, default_command: str) -> str` test seam.
 - Removes: `MODE_MENU_TRIGGER`, `_show_mode_menu()`, and `_create_mode_menu()`; no caller outside this module may depend on them.
 
-- [ ] **Step 1: Write failing real-dispatch tests for the inline selector**
+- [x] **Step 1: Write failing real-dispatch tests for the inline selector**
 
   In `tests/test_terminal_input.py`, replace dialog-oriented helpers with one that sends pipe input to the inline reader. Add selection assertions and an application-construction assertion that proves the selector is not full-screen:
 
@@ -52,13 +52,13 @@
 
   Add tests for current-mode default selection, Up from `/execute`, Tab navigation, Esc and Ctrl-C collapsing before an ordinary `exit` submission, a nonempty literal slash, and Ctrl-V text-command pass-through. Update the injected-adapter tests to pass a two-argument reader and assert it receives the expected default command.
 
-- [ ] **Step 2: Run the focused tests to verify failure**
+- [x] **Step 2: Run the focused tests to verify failure**
 
   Run: `python -m pytest tests/test_terminal_input.py -q`
 
   Expected: FAIL because `_read_menu_line` does not accept a default command and the current implementation still creates a `Dialog` application.
 
-- [ ] **Step 3: Implement the non-full-screen input application**
+- [x] **Step 3: Implement the non-full-screen input application**
 
   In `scripts/netzoo_agent_core/cli/terminal_input.py`:
 
@@ -85,13 +85,13 @@
 
   Change `TerminalInputReader` to invoke `_menu_line_reader(prompt, self._default_command())` in one try block. Preserve the existing once-only fallback notice if prompt-toolkit initialization fails. The Esc/Ctrl-C selector binding must hide the selector and leave the application running rather than returning `None`.
 
-- [ ] **Step 4: Run focused tests to verify success**
+- [x] **Step 4: Run focused tests to verify success**
 
   Run: `python -m pytest tests/test_terminal_input.py -q`
 
   Expected: PASS, including real key-dispatch coverage for inline navigation and cancellation.
 
-- [ ] **Step 5: Commit the adapter change**
+- [x] **Step 5: Commit the adapter change**
 
   ```bash
   git add scripts/netzoo_agent_core/cli/terminal_input.py tests/test_terminal_input.py
@@ -109,29 +109,29 @@
 - Consumes: `TerminalInputReader.read()` synthetic command and cancellation contracts from Task 1.
 - Produces: unchanged conversation-level guarantees for preference confirmation, clarification, task prompts, and path-role inputs; accurate terminal guidance.
 
-- [ ] **Step 1: Write failing lifecycle and documentation assertions**
+- [x] **Step 1: Write failing lifecycle and documentation assertions**
 
   Extend `tests/test_cli_lifecycle.py` so an inline selector cancellation followed by `exit` at a preference prompt cannot be interpreted as a no answer, and so a selected `/execute` still reaches `handle_slash_command()` without invoking the graph or starting a trace. Add documentation assertions only if the repository has a documentation test convention; otherwise inspect the exact rendered snippets in review.
 
   Update the existing `test_menu_cancellation_preserves_preference_confirmation_and_mode` fixture to use a reader result of `exit` after the selector has been locally collapsed; assert `profile_store.confirm` is never called. Keep `test_mode_menu_selection_reuses_slash_handler_without_graph_or_trace` as the `/execute` authority-boundary regression test.
 
-- [ ] **Step 2: Run lifecycle coverage to verify the test is meaningful**
+- [x] **Step 2: Run lifecycle coverage to verify the test is meaningful**
 
   Run: `python -m pytest tests/test_cli_lifecycle.py -q`
 
   Expected: PASS if Task 1 preserved the established `None` contract; otherwise fix only the conversation boundary required to distinguish cancellation from text input.
 
-- [ ] **Step 3: Update user guidance from dialog language to inline language**
+- [x] **Step 3: Update user guidance from dialog language to inline language**
 
   In both `README.md` and `AGENT_USAGE.md`, replace any implication of a popup or separate selector with this behavior: `/` at an empty eligible prompt expands two choices beneath the prompt; arrows or Tab choose; Enter applies; Esc/Ctrl-C collapse; Ctrl-V permits textual slash commands. Keep the existing path-prompt exception and `/test`/`/execute` alternatives.
 
-- [ ] **Step 4: Run targeted regression tests and inspect docs**
+- [x] **Step 4: Run targeted regression tests and inspect docs**
 
   Run: `python -m pytest tests/test_terminal_input.py tests/test_cli_lifecycle.py tests/test_cli_slash_commands.py -q`
 
   Expected: PASS. Then run `git diff --check` and confirm both guides describe an inline selector and never call it a dialog, popup, or full-screen screen.
 
-- [ ] **Step 5: Commit lifecycle coverage and documentation**
+- [x] **Step 5: Commit lifecycle coverage and documentation**
 
   ```bash
   git add tests/test_cli_lifecycle.py README.md AGENT_USAGE.md
@@ -147,18 +147,18 @@
 - Consumes: completed Tasks 1–2.
 - Produces: evidence that inline selector behavior did not regress NetZoo’s CLI or non-terminal flows.
 
-- [ ] **Step 1: Run the full suite**
+- [x] **Step 1: Run the full suite**
 
   Run: `python -m pytest -q`
 
   Expected: all tests pass; record only pre-existing warnings separately from failures.
 
-- [ ] **Step 2: Inspect the final diff and user-owned working-tree changes**
+- [x] **Step 2: Inspect the final diff and user-owned working-tree changes**
 
   Run: `git diff --check && git status --short && git log --oneline -3`
 
   Expected: no whitespace errors; only Task 1–2 files are committed; existing user modifications remain unstaged and untouched.
 
-- [ ] **Step 3: Commit any necessary test-only follow-up**
+- [x] **Step 3: Commit any necessary test-only follow-up**
 
   If Step 1 required a narrowly scoped regression-test adjustment, commit it with the exact affected test file. Otherwise do not create an empty commit.
