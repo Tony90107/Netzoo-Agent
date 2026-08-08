@@ -36,5 +36,4 @@ def test_multiple_semantic_candidates_do_not_select_one_workflow():
     })
 
     assert prompt.continuation_action is None
-    assert "LIONESS-PANDA" in prompt.question
-    assert "LIONESS-PUMA" in prompt.question
+    assert prompt.question == "Reply with the clarification above, or describe another NetZoo goal."

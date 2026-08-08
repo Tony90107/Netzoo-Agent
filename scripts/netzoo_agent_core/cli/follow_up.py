@@ -50,7 +50,6 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     result_evaluation = state.get("evaluation")
     semantic_goal = state.get("semantic_goal") or {}
     semantic_candidates = semantic_goal.get("candidates") or []
-    unresolved_dimensions = semantic_goal.get("unresolved_dimensions") or []
 
     if plan_evaluation and plan_evaluation.status == "rejected":
         return NextTurnPrompt(
@@ -61,13 +60,10 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         )
 
     if decision.action == "no_tool" and len(semantic_candidates) > 1:
-        workflows = ", ".join(_workflow_name(action) for action in semantic_candidates)
-        clarification = ", ".join(unresolved_dimensions) or "the remaining scientific distinction"
         return NextTurnPrompt(
             kind="recommended_workflow",
             question=_ui_text(
-                f"I found multiple registered workflows that could fit: {workflows}. "
-                f"Please clarify {clarification} before I recommend or start one workflow."
+                "Reply with the clarification above, or describe another NetZoo goal."
             ),
         )
 
