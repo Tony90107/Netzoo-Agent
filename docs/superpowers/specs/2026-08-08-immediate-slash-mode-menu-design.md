@@ -23,10 +23,10 @@ The terminal presents this menu:
 
 ```text
 Select NetZoo mode
-❯ Test mode — preview commands only
-  Execute mode — run validated commands
+(*) Test mode — preview commands only
+( ) Execute mode — run validated commands
 
-↑/↓ move · Enter select · Esc cancel
+↑/↓ move · Enter select · Esc/Ctrl-C cancel
 ```
 
 The selection initially highlights the current mode. Up and down move the
@@ -45,7 +45,10 @@ Execution mode enabled. Future workflow tasks will run commands.
 ```
 
 Existing `/test`, `/execute`, `/status`, and `/help` text commands remain
-supported. `/help` explains that `/` opens the mode menu.
+supported. At an empty menu-enabled prompt, Ctrl-V inserts a literal `/` so a
+user can then type `help`, `status`, `test`, or `execute` and press Enter. A `/`
+typed after other text remains literal. `/help` explains both the immediate menu
+and this explicit text-command pass-through.
 
 ## Prompt Scope and Path Safety
 
@@ -74,8 +77,9 @@ adapter owns terminal-specific behavior:
 - it creates the key binding only for an interactive real TTY;
 - it opens a two-item modal selector when `/` is pressed at an empty eligible
   buffer;
-- it returns the synthetic command `/test` or `/execute` after Enter, or an
-  empty no-op result after cancellation;
+- it returns the synthetic command `/test` or `/execute` after Enter, or a
+  distinct `None` cancellation sentinel that cannot be confused with an
+  ordinary empty answer;
 - it returns ordinary typed text unchanged in every other case.
 
 The adapter does not change runtime settings directly. The existing
@@ -103,14 +107,18 @@ Add deterministic tests for:
 
 1. menu options, ordering, labels, and selected default mode;
 2. mapping Enter choices to `/test` and `/execute`;
-3. Escape and Ctrl-C cancellation with no mode change;
-4. menu activation only for empty, eligible interactive prompts;
-5. disabled menu binding at path-role clarification and follow-up prompts;
-6. unchanged absolute-path handling in disabled prompts;
-7. non-TTY and unavailable-TUI fallback to current text input;
-8. synthetic menu commands using the existing slash-command handler, without
+3. real key dispatch for arrow movement plus Enter in both mode directions;
+4. Escape and Ctrl-C cancellation with no mode, pending-state, graph, trace, or
+   preference-confirmation change;
+5. menu activation only for empty, eligible interactive prompts;
+6. literal `/` preservation after nonempty text and Ctrl-V literal pass-through
+   for `/test`, `/execute`, `/status`, and `/help` at an empty prompt;
+7. disabled menu binding at path-role clarification and follow-up prompts;
+8. unchanged absolute-path handling in disabled prompts;
+9. non-TTY and unavailable-TUI fallback to current text input;
+10. synthetic menu commands using the existing slash-command handler, without
    graph invocation or trace creation;
-9. Docker environment availability and current full-suite regression coverage.
+11. Docker environment availability and current full-suite regression coverage.
 
 ## Documentation
 

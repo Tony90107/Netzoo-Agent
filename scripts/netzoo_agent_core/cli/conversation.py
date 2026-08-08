@@ -110,15 +110,18 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 return 2
             if pending_plan.status == "needs_confirmation":
                 try:
-                    answer = reader.read(
+                    raw_answer = reader.read(
                         render_mode_prompt(
                             "\n" + preference_confirmation_prompt(pending_plan)
                         ),
                         menu_enabled=True,
-                    ).strip()
+                    )
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
+                if raw_answer is None:
+                    continue
+                answer = raw_answer.strip()
                 if _handle_interactive_control(answer):
                     continue
                 if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
@@ -145,7 +148,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 ]
                 target_field = unresolved_fields[0] if unresolved_fields else None
                 try:
-                    answer = reader.read(
+                    raw_answer = reader.read(
                         render_mode_prompt(
                             "\n"
                             + clarification_prompt(
@@ -154,10 +157,13 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                             )
                         ),
                         menu_enabled=target_field not in _PATH_ANSWER_FIELDS,
-                    ).strip()
+                    )
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
+                if raw_answer is None:
+                    continue
+                answer = raw_answer.strip()
                 if _handle_interactive_control(
                     answer,
                     allow_path_answer=target_field in _PATH_ANSWER_FIELDS,
@@ -198,13 +204,16 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if one_shot:
                 break
             try:
-                answer = reader.read(
+                raw_answer = reader.read(
                     f"\n{render_mode_prompt(render_next_turn_prompt(next_prompt))}\n> ",
                     menu_enabled=next_prompt.expected_field not in _PATH_ANSWER_FIELDS,
-                ).strip()
+                )
             except (EOFError, KeyboardInterrupt):
                 print()
                 break
+            if raw_answer is None:
+                continue
+            answer = raw_answer.strip()
             if _handle_interactive_control(
                 answer,
                 allow_path_answer=next_prompt.expected_field in _PATH_ANSWER_FIELDS,

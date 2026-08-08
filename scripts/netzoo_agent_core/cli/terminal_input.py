@@ -35,7 +35,7 @@ class TerminalInputReader:
         self._current_mode = current_mode
         self._tui_warning_shown = False
 
-    def read(self, prompt: str, *, menu_enabled: bool) -> str:
+    def read(self, prompt: str, *, menu_enabled: bool) -> str | None:
         if (
             not menu_enabled
             or not self._is_tty()
@@ -48,7 +48,7 @@ class TerminalInputReader:
         try:
             answer = self._menu_line_reader(prompt)
             if answer == MODE_MENU_TRIGGER:
-                return self._menu_dialog(self._default_command()) or ""
+                return self._menu_dialog(self._default_command())
         except (EOFError, KeyboardInterrupt):
             raise
         except Exception:
@@ -75,8 +75,15 @@ def _read_menu_line(prompt: str) -> str:
 
     @bindings.add("/")
     def _open_mode_menu(event) -> None:
-        if not event.app.current_buffer.text:
+        buffer = event.app.current_buffer
+        if not buffer.text:
             event.app.exit(result=MODE_MENU_TRIGGER)
+            return
+        buffer.insert_text("/")
+
+    @bindings.add("c-v")
+    def _insert_literal_slash(event) -> None:
+        event.app.current_buffer.insert_text("/")
 
     return toolkit_prompt(prompt, key_bindings=bindings)
 
@@ -104,14 +111,17 @@ def _create_mode_menu(default_command: str):
 
     @bindings.add("enter", eager=True)
     def _confirm(event) -> None:
+        # RadioList updates current_value only when its own Enter handler runs.
+        # This eager application binding must accept the highlight before exit.
+        radio_list._handle_enter()
         event.app.exit(result=radio_list.current_value)
 
     dialog = Dialog(
-        title="NetZoo mode",
+        title="Select NetZoo mode",
         body=HSplit(
             [
-                Label("Choose how validated workflow commands should run."),
                 radio_list,
+                Label("↑/↓ move · Enter select · Esc/Ctrl-C cancel"),
             ],
             padding=1,
         ),

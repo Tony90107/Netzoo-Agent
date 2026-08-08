@@ -91,7 +91,7 @@ def test_empty_slash_trigger_opens_current_mode_menu_and_returns_selection():
     dialog.assert_called_once_with("/test")
 
 
-def test_cancelled_menu_returns_empty_input_without_fallback_notice():
+def test_cancelled_menu_returns_distinct_input_without_fallback_notice():
     notice = Mock()
     reader = TerminalInputReader(
         Mock(),
@@ -102,7 +102,7 @@ def test_cancelled_menu_returns_empty_input_without_fallback_notice():
         current_mode=lambda: "EXECUTE",
     )
 
-    assert reader.read("prompt", menu_enabled=True) == ""
+    assert reader.read("prompt", menu_enabled=True) is None
     notice.assert_not_called()
 
 
@@ -171,7 +171,7 @@ class TerminalInputReader:
                  menu_dialog=None, current_mode=current_mode_label):
         ...
 
-    def read(self, prompt: str, *, menu_enabled: bool) -> str:
+    def read(self, prompt: str, *, menu_enabled: bool) -> str | None:
         if not menu_enabled or self._input_func is not input or not self._is_tty():
             return self._input_func(prompt)
         try:
@@ -183,15 +183,16 @@ class TerminalInputReader:
             return self._input_func(prompt)
         if answer != MODE_MENU_TRIGGER:
             return answer
-        selected = self._menu_dialog(self._default_command())
-        return selected or ""
+        return self._menu_dialog(self._default_command())
 ```
 
 `_menu_line_reader` lazily imports `prompt_toolkit`, configures a `/` key
 binding that exits with `MODE_MENU_TRIGGER` only when the current buffer is
-empty, and otherwise returns normal text. `_menu_dialog(default_command)` uses
-`prompt_toolkit.shortcuts.radiolist_dialog` with `MODE_MENU_OPTIONS`; it returns
-the command string or `None` on Esc/Ctrl-C. The default is `/execute` only when
+empty, inserts `/` normally when the buffer is nonempty, and binds Ctrl-V to
+insert a literal `/` at an empty prompt. `_menu_dialog(default_command)` uses a
+focused prompt-toolkit `RadioList` with `MODE_MENU_OPTIONS`; it returns the
+highlighted command string after Enter or the distinct `None` cancellation
+sentinel on Esc/Ctrl-C. The default is `/execute` only when
 `current_mode_label()` returns `EXECUTE`; otherwise it is `/test`.
 
 Do not import `prompt_toolkit` at module import time. Do not call
@@ -394,14 +395,15 @@ with:
 [TEST] What would you like to accomplish with NetZoo?
 > /
 Select NetZoo mode
-❯ Test mode — preview commands only
-  Execute mode — run validated commands
+(*) Test mode — preview commands only
+( ) Execute mode — run validated commands
 
-↑/↓ move · Enter select · Esc cancel
+↑/↓ move · Enter select · Esc/Ctrl-C cancel
 ```
 
-Then explain that `/execute` and `/test` remain typed alternatives, and that
-path prompts intentionally do not open the menu so absolute paths can be typed.
+Then explain that Ctrl-V inserts a literal `/` at an empty menu-enabled prompt
+before typing `/execute`, `/test`, `/status`, or `/help`, and that path prompts
+intentionally do not open the menu so absolute paths can be typed.
 Do not alter archived documents.
 
 - [ ] **Step 4: Run focused tests and documentation audits**
