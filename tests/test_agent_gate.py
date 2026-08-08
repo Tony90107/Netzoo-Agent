@@ -308,7 +308,8 @@ class CapabilityGateTests(unittest.TestCase):
 
         self.assertEqual(prompt.kind, "dry_run")
         self.assertIn("PANDA command preview is ready", prompt.question)
-        self.assertIn("--execute", prompt.question)
+        self.assertIn("/execute", prompt.question)
+        self.assertNotIn("--execute", prompt.question)
 
     def test_initial_prompt_describes_a_goal_instead_of_forcing_a_run(self):
         prompt = agent.initial_next_turn_prompt()
@@ -1104,7 +1105,8 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("Motif targets ↔ expression genes: 3/3", rendered)
         self.assertIn("run-lioness panda", rendered)
         self.assertIn("Planned outputs", rendered)
-        self.assertIn("rerun with --execute", rendered)
+        self.assertIn("enter /execute", rendered)
+        self.assertNotIn("rerun with --execute", rendered)
         self.assertNotIn("Step results:", rendered)
         self.assertNotIn("Evaluator:", rendered)
         self.assertNotIn(".netzoo/logs", rendered)

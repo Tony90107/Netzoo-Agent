@@ -33,8 +33,8 @@
 
 `AGENTS.md` 本文不會整段注入模型；runtime 只採用經 schema 驗證的 front matter 與
 YAML conventions。Router catalog 由 validated YAML 生成；Planner 使用完整 typed
-snapshot。這些資料不能新增工具、移除 required inputs、繞過 `--execute` 或改寫
-Executor。Python gate 永遠是最高執行權限。
+snapshot。這些資料不能新增工具、移除 required inputs、繞過 `/execute` 授權、在
+`/test` 後執行工具，或改寫 Executor。Python gate 永遠是最高執行權限。
 
 不需要 OpenRouter API key 即可檢查 effective policy：
 
@@ -203,8 +203,8 @@ expression、TF/miRNA prior、PPI、miRNA list 與輸出位置。不能再只回
 ```
 
 Router 會選擇端到端的 `run_lioness_puma`，即使句子中完全沒有提到 PUMA 或
-LIONESS。Planner 之後會解析資料與輸出、先驗證 inputs，再建立 command preview 或在
-`--execute` 模式實際執行。相反地，「幫我用這些檔案推論網路」仍過於模糊，不足以
+LIONESS。Planner 之後會解析資料與輸出、先驗證 inputs，再建立 command preview，或在
+目前互動 session 輸入 `/execute` 後實際執行。相反地，「幫我用這些檔案推論網路」仍過於模糊，不足以
 唯一對應 PANDA、PUMA 或其他 workflow，因此不會猜測執行。
 
 ## Context7 MCP：自動取得較新的套件文件
@@ -320,7 +320,7 @@ outcome 產生下一個問題：
 |---|---|
 | 推薦了本地 workflow | 詢問是否繼續該 workflow，並提示第一個 required input |
 | `needs_input` | 逐欄位顯示候選並保存選擇；全部確認後才重新規劃 |
-| command preview / dry-run | 詢問要調整 inputs、探索其他 workflow，並提示 `--execute` |
+| command preview / dry-run | 詢問要調整 inputs、探索其他 workflow，並提示在目前 session 輸入 `/execute` |
 | workflow completed | 詢問要檢查／調整結果或啟動其他 workflow |
 | tool failed | 詢問要修正 inputs 或改用其他 workflow |
 | plan rejected | 詢問要修改被拒絕的 plan 或描述不同 deliverable |
@@ -354,9 +354,10 @@ Controls: Enter/back = main prompt | exit = close
 `Would you like`、`Do you want`、`Shall I` 等開頭的重複問題，不會移除一般內容或科學
 問題。這能避免回答與 CLI 各問一次，再疊加一大段 navigation 說明，同時保留自然語氣。
 
-dry-run 的 `--execute` 是啟動時的安全授權，因此不能在目前對話中由空白 Enter 或一般
-回答靜默開啟。要實際執行 preview command，離開後使用 `./netzoo-chat --execute`；若只想
-繼續詢問或跑其他 dry-run，不需要離開，直接輸入新任務或按 Enter 回主提示即可。
+dry-run 預設維持在 `/test` 模式。只有使用者在目前互動 session 明確輸入 `/execute`
+才會開啟執行授權；空白 Enter 或一般回答不會靜默開啟，輸入 `/test` 則會立即撤銷授權。
+啟用後，重新提交 preview task 就會執行；若只想繼續詢問或跑其他 dry-run，不需要離開，
+直接輸入新任務或按 Enter 回主提示即可。
 
 ## 受治理的長期記憶
 
@@ -584,25 +585,21 @@ docker compose run --rm \
   --task "我要用 data/expression.tsv data/motif.tsv data/ppi.tsv 跑 PANDA，輸出到 outputs/panda.tsv"
 ```
 
-真的執行工具要加 `--execute`：
+真的執行必須進入互動模式，明確切換後再輸入任務：
 
 ```bash
-docker compose run --rm \
-  -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-  netzoo python scripts/netzoo_agent.py \
-  --execute \
-  --task "我要用 data/expression.tsv data/motif.tsv data/ppi.tsv 跑 PANDA，輸出到 outputs/panda.tsv"
+./netzoo-chat
 ```
 
-PUMA 範例：
-
-```bash
-docker compose run --rm \
-  -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-  netzoo python scripts/netzoo_agent.py \
-  --execute \
-  --task "我要跑 PUMA，expression 是 data/expression.tsv，motif 是 data/motif.tsv，PPI 是 data/ppi.tsv，miRNA 是 data/mir.tsv，輸出 outputs/puma.tsv"
+```text
+[TEST] What would you like to accomplish with NetZoo?
+> /execute
+Execution mode enabled. Future workflow tasks will run commands.
+[EXECUTE] What would you like to accomplish with NetZoo?
+> 我要跑 PUMA，expression 是 data/expression.tsv，motif 是 data/motif.tsv，PPI 是 data/ppi.tsv，miRNA 是 data/mir.tsv，輸出 outputs/puma.tsv
 ```
+
+`--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
 PUMA 的 `miRNA` 檔案是每行一個 regulator 名稱的清單；miRNA-target 邊應放在
 motif/prior 檔案中，清單內的名稱必須出現在 motif/prior 第一欄。
@@ -615,10 +612,12 @@ gene 在 rows、sample 在 columns，且 LIONESS 至少需要三個 samples。
 
 預設不執行工具，只回傳它會執行的 command。這是為了避免 LLM 誤解任務時直接跑很久或覆蓋 output。
 
-要真正執行才加：
+互動 session 的安全控制：
 
-```bash
---execute
+```text
+/execute
+/status
+/test
 ```
 
 ## Harness scenario evaluation

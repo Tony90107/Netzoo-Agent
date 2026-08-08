@@ -112,8 +112,8 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             kind="dry_run",
             question=_ui_text(
                 f"The {plan.workflow} command preview is ready. Would you like to "
-                "adjust its inputs or explore another workflow? Use --execute on "
-                "restart to perform the analysis."
+                "adjust its inputs or explore another workflow? Enter /execute to "
+                "enable execution in this session."
             ),
         )
 
