@@ -27,6 +27,7 @@ from ..evaluation import (
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
+from ..interpretation import render_spec_backed_concept_answer
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from .context import _GraphContext, preflight_budget, record_event
@@ -66,6 +67,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
+    concept_answer = render_spec_backed_concept_answer(
+        latest_user_task(state["messages"]), decision, context.project_policy
+    )
+    if concept_answer is not None:
+        return {"messages": [AIMessage(content=concept_answer)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
