@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import Literal
 
 from workflow_registry import LOCAL_WORKFLOW_ACTIONS, REQUIRED_INPUTS
 
@@ -25,6 +27,14 @@ __all__ = [
 
 
 MIN_TOOL_CONFIDENCE = 0.80
+
+
+@dataclass(frozen=True)
+class _GoalCapabilityMatch:
+    """A recognized goal's registered actions and their semantic relationship."""
+
+    actions: list[str]
+    relationship: Literal["single", "composition", "alternatives"]
 
 
 CONTEXT7_LIBRARY_ALIASES = {
@@ -90,8 +100,8 @@ def is_workflow_information_request(task: str) -> bool:
     )
 
 
-def infer_goal_capabilities(task: str) -> list[str]:
-    """Map a domain goal to the existing local tools without requiring tool names."""
+def infer_goal_capability_match(task: str) -> _GoalCapabilityMatch:
+    """Classify whether matching registered actions are steps or alternatives."""
     normalized = task.casefold()
     sample_specific = bool(
         re.search(
@@ -136,20 +146,25 @@ def infer_goal_capabilities(task: str) -> list[str]:
     # Recommendations describe the conceptual composition. The final item is the
     # end-to-end execution action selected when the user asks the agent to do it.
     if sample_specific and mirna and regulatory_network:
-        return ["run_puma", "run_lioness_puma"]
+        return _GoalCapabilityMatch(["run_puma", "run_lioness_puma"], "composition")
     if mirna and regulatory_network:
-        return ["run_puma"]
+        return _GoalCapabilityMatch(["run_puma"], "single")
     if sample_specific and tf and regulatory_network:
-        return ["run_panda", "run_lioness_panda"]
+        return _GoalCapabilityMatch(["run_panda", "run_lioness_panda"], "composition")
     if sample_specific and regulatory_network:
-        return ["run_lioness_panda", "run_lioness_puma"]
+        return _GoalCapabilityMatch(["run_lioness_panda", "run_lioness_puma"], "alternatives")
     if tf and regulatory_network:
-        return ["run_panda"]
+        return _GoalCapabilityMatch(["run_panda"], "single")
     if sample_specific and coexpression:
-        return ["run_lioness_coexpression"]
+        return _GoalCapabilityMatch(["run_lioness_coexpression"], "single")
     if bipartite and communities:
-        return ["run_condor"]
-    return []
+        return _GoalCapabilityMatch(["run_condor"], "single")
+    return _GoalCapabilityMatch([], "single")
+
+
+def infer_goal_capabilities(task: str) -> list[str]:
+    """Map a domain goal to the existing local tools without requiring tool names."""
+    return infer_goal_capability_match(task).actions
 
 
 def infer_advisory_capabilities(task: str) -> list[str]:
