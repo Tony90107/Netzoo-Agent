@@ -17,6 +17,7 @@ from .settings import (
     USER_VISIBLE_OUTPUT_LANGUAGE,
     VERBOSE_OUTPUT,
 )
+from .progress_summaries import render_progress_summary
 
 _TRANSIENT_TRACE_ACTIVE = False
 _TRANSIENT_TRACE_UPDATED_AT = 0.0
@@ -69,6 +70,10 @@ def _render_timeline_block(
         classified = re.fullmatch(r"Classified as (\w+)", message)
         if classified:
             action = classified.group(1).replace("_", " ")
+            if action == "no tool":
+                return render_progress_summary(
+                    "concept", {"source": "registered workflow specification"}
+                )
             return _ui_text(
                 "[Understanding request]\n"
                 f"  Decision: {action}\n"
