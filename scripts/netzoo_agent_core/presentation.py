@@ -90,6 +90,8 @@ def _render_timeline_block(
         planned = re.fullmatch(r"Planner:\s*(.+?)\s*/\s*(\w+)", message)
         if planned:
             workflow, status = planned.groups()
+            if workflow == "NO-TOOL" and status == "respond_only":
+                return None
             return _ui_text(
                 "[Preparing plan]\n"
                 f"  Workflow: {workflow} · Status: {status}"
@@ -97,6 +99,8 @@ def _render_timeline_block(
     elif stage == "review":
         review = re.fullmatch(r"Plan evaluation (\w+) \(\d+/100\)", message)
         if review:
+            if review.group(1) == "deferred":
+                return None
             return _ui_text(
                 "[Plan review]\n"
                 f"  Decision: {review.group(1)}"

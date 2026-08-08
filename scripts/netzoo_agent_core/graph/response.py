@@ -28,6 +28,7 @@ from ..evaluation import (
 )
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_spec_backed_concept_answer
+from ..interpretation.concept_answers import render_ambiguous_workflow_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from .context import _GraphContext, preflight_budget, record_event
@@ -72,6 +73,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     )
     if concept_answer is not None:
         return {"messages": [AIMessage(content=concept_answer)]}
+    ambiguous_guidance = render_ambiguous_workflow_guidance(
+        decision, context.project_policy
+    )
+    if ambiguous_guidance is not None:
+        return {"messages": [AIMessage(content=ambiguous_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
