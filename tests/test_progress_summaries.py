@@ -20,6 +20,25 @@ def test_no_tool_summary_explains_source_and_safety():
     assert "registered workflow specification" in summary
 
 
+def test_next_step_summary_explains_stable_guidance_without_tools():
+    summary = render_progress_summary(
+        "next_step", {"action": "no_tool", "in_scope": "true", "should_execute": "false"}
+    )
+
+    assert summary is not None
+    assert "registered workflow information" in summary
+    assert "without running an analysis" in summary
+
+
+def test_next_step_summary_explains_analysis_preparation():
+    summary = render_progress_summary(
+        "next_step", {"action": "run_panda", "in_scope": "true", "should_execute": "true"}
+    )
+
+    assert summary is not None
+    assert "prepare the matching registered workflow" in summary
+
+
 def test_multiple_semantic_candidates_do_not_select_one_workflow():
     decision = TaskDecision(
         action="no_tool", in_scope=True, should_execute=False,

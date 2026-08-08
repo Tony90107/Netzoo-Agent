@@ -10,6 +10,20 @@ def render_progress_summary(kind: str, facts: dict[str, str]) -> str | None:
             "or run tools. I am using the registered workflow specification as "
             "the answer source."
         )
+    if kind == "next_step":
+        if facts.get("action") == "no_tool" and facts.get("in_scope") == "true":
+            return (
+                "This is stable guidance, so I will answer from registered "
+                "workflow information without running an analysis."
+            )
+        if facts.get("should_execute") == "true":
+            return (
+                "This goal needs an analysis workflow. I will prepare the "
+                "matching registered workflow and validate its inputs."
+            )
+        if facts.get("in_scope") != "true":
+            return "This request is outside the registered NetZoo capabilities."
+        return "I will prepare the next safe step from the registered workflow policy."
     return None
 
 

@@ -87,6 +87,13 @@ def _render_timeline_block(
             )
         if message == "Interpreting the request and capability boundaries":
             return _ui_text("[Understanding request]\n  Status: Classifying the request.")
+    elif stage == "reasoning":
+        titles = {
+            "Checking registered workflow capabilities": "[Checking available workflows]",
+            "Choosing the next safe step": "[Choosing next step]",
+        }
+        if message in titles:
+            return _ui_text(f"{titles[message]}\n  {_bounded_timeline_detail(detail)}")
     elif stage == "plan":
         planned = re.fullmatch(r"Planner:\s*(.+?)\s*/\s*(\w+)", message)
         if planned:

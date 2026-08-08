@@ -115,6 +115,27 @@ def test_timeline_rewrites_no_tool_router_state_as_public_summary(monkeypatch, c
     assert "do not need to inspect files or run tools" in output
 
 
+def test_timeline_renders_public_reasoning_stages(monkeypatch, capsys):
+    _enable_timeline(monkeypatch)
+
+    presentation._trace(
+        "reasoning",
+        "Checking registered workflow capabilities",
+        "Comparing the goal with registered workflows.",
+    )
+    presentation._trace(
+        "reasoning",
+        "Choosing the next safe step",
+        "Answering from registered information without tools.",
+    )
+
+    output = capsys.readouterr().out
+    assert "[Checking available workflows]" in output
+    assert "[Choosing next step]" in output
+    assert "Comparing the goal with registered workflows." in output
+    assert "Answering from registered information without tools." in output
+
+
 def test_timeline_suppresses_setup_completion_and_unknown_events(monkeypatch, capsys):
     _enable_timeline(monkeypatch)
 
