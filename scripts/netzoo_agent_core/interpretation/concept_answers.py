@@ -22,7 +22,6 @@ def render_spec_backed_concept_answer(
     if not (
         decision.in_scope
         and decision.action == "no_tool"
-        and decision.intent_type == "answer_question"
         and _PURPOSE_PATTERN.search(task)
     ):
         return None
