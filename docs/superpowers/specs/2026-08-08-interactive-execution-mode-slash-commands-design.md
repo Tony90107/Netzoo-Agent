@@ -30,7 +30,10 @@ and session checkpoint.
 The CLI accepts only exact slash commands. A command with trailing arguments,
 such as `/execute run PANDA`, is rejected with usage guidance. Unknown slash
 commands are not treated as natural-language tasks; the CLI reports the unknown
-command and points to `/help`.
+command and points to `/help`. Absolute file paths remain valid clarification
+answers: inputs with path features such as `/work/data/expression.tsv` or
+`/expression.tsv` bypass slash-command handling and continue through the existing
+path parser.
 
 ## Safety Boundary
 
