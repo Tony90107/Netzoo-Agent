@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from .slash_commands import current_mode_label
 
-MODE_MENU_TRIGGER = "\0NETZOO_MODE_MENU\0"
 MODE_MENU_OPTIONS = (
     ("/test", "Test mode — preview commands only"),
     ("/execute", "Execute mode — run validated commands"),
@@ -14,7 +14,7 @@ MODE_MENU_OPTIONS = (
 
 
 class TerminalInputReader:
-    """Read terminal input, exposing a mode selector at an empty slash prompt."""
+    """Read terminal input, exposing an inline selector at an empty slash prompt."""
 
     def __init__(
         self,
@@ -22,8 +22,7 @@ class TerminalInputReader:
         *,
         is_tty: Callable[[], bool],
         notice: Callable[[str], None],
-        menu_line_reader: Callable[[str], str] | None = None,
-        menu_dialog: Callable[[str], str | None] | None = None,
+        menu_line_reader: Callable[[str, str], str | None] | None = None,
         current_mode: Callable[[], str] = current_mode_label,
     ) -> None:
         self._input_func = input_func
@@ -31,7 +30,6 @@ class TerminalInputReader:
         self._notice = notice
         self._menu_line_reader_is_injected = menu_line_reader is not None
         self._menu_line_reader = menu_line_reader or _read_menu_line
-        self._menu_dialog = menu_dialog or _show_mode_menu
         self._current_mode = current_mode
         self._tui_warning_shown = False
 
@@ -46,15 +44,12 @@ class TerminalInputReader:
         ):
             return self._input_func(prompt)
         try:
-            answer = self._menu_line_reader(prompt)
-            if answer == MODE_MENU_TRIGGER:
-                return self._menu_dialog(self._default_command())
+            return self._menu_line_reader(prompt, self._default_command())
         except (EOFError, KeyboardInterrupt):
             raise
         except Exception:
             self._warn_once()
             return self._input_func(prompt)
-        return answer
 
     def _default_command(self) -> str:
         return "/execute" if self._current_mode() == "EXECUTE" else "/test"
@@ -66,69 +61,84 @@ class TerminalInputReader:
         self._notice("Terminal mode selector unavailable; using plain input.")
 
 
-def _read_menu_line(prompt: str) -> str:
-    """Read one line, opening the selector when slash starts an empty buffer."""
-    from prompt_toolkit import prompt as toolkit_prompt
-    from prompt_toolkit.key_binding import KeyBindings
+def _read_menu_line(prompt: str, default_command: str) -> str:
+    """Read a line with an inline mode selector available on an empty slash."""
+    return _create_inline_mode_application(prompt, default_command).run()
 
+
+def _create_inline_mode_application(prompt: str, default_command: str):
+    """Build one normal-screen application containing the prompt and selector."""
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.filters import Condition
+    from prompt_toolkit.formatted_text import FormattedText
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.layout import Layout
+    from prompt_toolkit.layout.containers import ConditionalContainer, HSplit, Window
+    from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.widgets import TextArea
+
+    state: dict[str, Any] = {"visible": False, "selected": default_command}
+    input_field = TextArea(multiline=False, prompt=prompt)
     bindings = KeyBindings()
 
+    def _toggle_selected() -> None:
+        state["selected"] = (
+            "/execute" if state["selected"] == "/test" else "/test"
+        )
+
+    def _selector_text() -> FormattedText:
+        fragments: list[tuple[str, str]] = []
+        for command, description in MODE_MENU_OPTIONS:
+            selected = state["selected"] == command
+            marker = "▸" if selected else " "
+            style = "class:mode-menu.selected" if selected else ""
+            fragments.append((style, f"{marker} {command:<10} {description}\n"))
+        fragments.append(("class:mode-menu.hint", "  ↑/↓/Tab move · Enter select · Esc/Ctrl-C cancel"))
+        return FormattedText(fragments)
+
     @bindings.add("/")
-    def _open_mode_menu(event) -> None:
-        buffer = event.app.current_buffer
-        if not buffer.text:
-            event.app.exit(result=MODE_MENU_TRIGGER)
+    def _open_selector(event) -> None:
+        if input_field.text:
+            input_field.buffer.insert_text("/")
             return
-        buffer.insert_text("/")
+        state["visible"] = True
+        event.app.invalidate()
 
     @bindings.add("c-v")
     def _insert_literal_slash(event) -> None:
-        event.app.current_buffer.insert_text("/")
+        input_field.buffer.insert_text("/")
 
-    return toolkit_prompt(prompt, key_bindings=bindings)
+    @bindings.add("up", eager=True)
+    @bindings.add("down", eager=True)
+    @bindings.add("tab", eager=True)
+    def _move_selector(event) -> None:
+        if not state["visible"]:
+            return
+        _toggle_selected()
+        event.app.invalidate()
 
-
-def _show_mode_menu(default_command: str) -> str | None:
-    """Present the available mode commands and return the selected command."""
-    return _create_mode_menu(default_command).run()
-
-
-def _create_mode_menu(default_command: str):
-    """Build the mode dialog with direct selection and cancellation keys."""
-    from prompt_toolkit.application import Application
-    from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.layout import Layout
-    from prompt_toolkit.layout.containers import HSplit
-    from prompt_toolkit.widgets import Dialog, Label, RadioList
-
-    radio_list = RadioList(values=MODE_MENU_OPTIONS, default=default_command)
-    bindings = KeyBindings()
+    @bindings.add("enter", eager=True)
+    def _submit(event) -> None:
+        if state["visible"]:
+            event.app.exit(result=state["selected"])
+            return
+        event.app.exit(result=input_field.text)
 
     @bindings.add("escape", eager=True)
     @bindings.add("c-c", eager=True)
     def _cancel(event) -> None:
-        event.app.exit(result=None)
+        if state["visible"]:
+            state["visible"] = False
+            event.app.invalidate()
+            return
+        event.app.exit(exception=KeyboardInterrupt())
 
-    @bindings.add("enter", eager=True)
-    def _confirm(event) -> None:
-        # RadioList updates current_value only when its own Enter handler runs.
-        # This eager application binding must accept the highlight before exit.
-        radio_list._handle_enter()
-        event.app.exit(result=radio_list.current_value)
-
-    dialog = Dialog(
-        title="Select NetZoo mode",
-        body=HSplit(
-            [
-                radio_list,
-                Label("↑/↓ move · Enter select · Esc/Ctrl-C cancel"),
-            ],
-            padding=1,
-        ),
-        with_background=True,
+    selector = ConditionalContainer(
+        Window(content=FormattedTextControl(_selector_text)),
+        filter=Condition(lambda: state["visible"]),
     )
     return Application(
-        layout=Layout(dialog, focused_element=radio_list),
+        layout=Layout(HSplit([input_field, selector]), focused_element=input_field),
         key_bindings=bindings,
-        full_screen=True,
+        full_screen=False,
     )
