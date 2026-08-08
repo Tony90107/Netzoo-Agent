@@ -38,11 +38,6 @@ def parse_args() -> argparse.Namespace:
         help="Search through Websearch MCP and print only the first result URL; no LLM call.",
     )
     parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Actually run NetZooPy/CONDOR commands after validation.",
-    )
-    parser.add_argument(
         "--model",
         default=os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
         help=(

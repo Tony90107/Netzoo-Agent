@@ -107,3 +107,12 @@ def test_timeline_is_mutually_exclusive_with_quiet(monkeypatch):
         cli.parse_args()
 
     assert error.value.code == 2
+
+
+def test_execute_startup_flag_is_removed(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["netzoo_agent.py", "--execute"])
+
+    with pytest.raises(SystemExit) as error:
+        cli.parse_args()
+
+    assert error.value.code == 2
