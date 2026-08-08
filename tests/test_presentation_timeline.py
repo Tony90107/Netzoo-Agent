@@ -102,6 +102,18 @@ def test_timeline_renders_intent_plan_review_input_evaluation_and_recovery(
     assert "raw plan" not in output
 
 
+def test_timeline_rewrites_no_tool_router_state_as_public_summary(monkeypatch, capsys):
+    _enable_timeline(monkeypatch)
+
+    presentation._trace(
+        "intent", "Classified as no_tool", "Confidence 0.90 | concept question"
+    )
+
+    output = capsys.readouterr().out
+    assert "no_tool" not in output
+    assert "do not need to inspect files or run tools" in output
+
+
 def test_timeline_suppresses_setup_completion_and_unknown_events(monkeypatch, capsys):
     _enable_timeline(monkeypatch)
 
