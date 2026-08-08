@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .settings import (
     EXECUTE_TOOLS,
+    PRESENTATION_MODE,
     PROJECT_ROOT,
     TRACE_ENABLED,
     TRANSIENT_TRACE,
@@ -23,6 +24,108 @@ CLI_FOLLOW_UP_STARTERS = (
     "would you like", "do you want", "shall i", "shall we",
     "would you prefer", "should i",
 )
+
+
+def _bounded_timeline_detail(detail: str | None) -> str:
+    """Keep timeline summaries readable and bounded."""
+    if not detail:
+        return _ui_text("No additional details.")
+    collapsed = re.sub(r"\s+", " ", detail).strip()
+    if not collapsed:
+        return _ui_text("No additional details.")
+    if len(collapsed) > 240:
+        collapsed = collapsed[:237].rstrip() + "..."
+    return _ui_text(collapsed)
+
+
+def _timeline_action_label(action: str) -> str:
+    if action.startswith("inspect_"):
+        return _ui_text("Validating inputs")
+    if action.startswith("run_"):
+        workflow = action.removeprefix("run_").replace("_", "-").upper()
+        mode = "Running" if EXECUTE_TOOLS else "Preparing"
+        return _ui_text(f"{mode} {workflow}")
+    return _ui_text(action.replace("_", " ").capitalize())
+
+
+def _timeline_result_label(action: str, status: str) -> str:
+    if action.startswith("inspect_"):
+        return _ui_text(
+            "Input validation passed" if status != "failed" else "Input validation failed"
+        )
+    workflow = action.removeprefix("run_").replace("_", "-").upper()
+    if status == "success":
+        return _ui_text(f"{workflow} completed")
+    if status == "dry_run":
+        return _ui_text("Command preview ready")
+    return _ui_text(f"{workflow} failed")
+
+
+def _render_timeline_block(
+    stage: str, message: str, detail: str | None = None
+) -> str:
+    """Render only recognized structured activity summaries for the timeline."""
+    if stage == "intent":
+        classified = re.fullmatch(r"Classified as (\w+)", message)
+        if classified:
+            action = classified.group(1).replace("_", " ")
+            return _ui_text(
+                "[Understanding request]\n"
+                f"  Decision: {action}\n"
+                f"  Reason: {_bounded_timeline_detail(detail)}"
+            )
+        if message == "Interpreting the request and capability boundaries":
+            return _ui_text("[Understanding request]\n  Status: Classifying the request.")
+    elif stage == "plan":
+        planned = re.fullmatch(r"Planner:\s*(.+?)\s*/\s*(\w+)", message)
+        if planned:
+            workflow, status = planned.groups()
+            return _ui_text(
+                "[Preparing plan]\n"
+                f"  Workflow: {workflow} · Status: {status}"
+            )
+    elif stage == "review":
+        review = re.fullmatch(r"Plan evaluation (\w+) \(\d+/100\)", message)
+        if review:
+            return _ui_text(
+                "[Plan review]\n"
+                f"  Decision: {review.group(1)}"
+            )
+    elif stage == "input" and message == "The Planner requires additional input":
+        return _ui_text(
+            "[Input required]\n"
+            f"  Next step: {_bounded_timeline_detail(detail)}"
+        )
+    elif stage == "tool":
+        started = re.fullmatch(r"Executor \[\d+/\d+\]:\s*(\w+)", message)
+        if started:
+            action = started.group(1)
+            return _ui_text(
+                f"[Tool] {_timeline_action_label(action)}\n"
+                f"  Tool: {action}\n"
+                f"  Purpose: {_bounded_timeline_detail(detail)}"
+            )
+        completed = re.fullmatch(r"(\w+)\s*→\s*(success|dry_run|failed)", message)
+        if completed:
+            action, status = completed.groups()
+            return _ui_text(
+                f"[Tool result] {_timeline_result_label(action, status)}\n"
+                f"  Tool: {action}\n"
+                f"  Result: {_bounded_timeline_detail(detail)}"
+            )
+    elif stage == "evaluate":
+        evaluation = re.fullmatch(r"Evaluator:\s*(\w+)", message)
+        if evaluation:
+            return _ui_text(
+                "[Evaluating result]\n"
+                f"  Decision: {evaluation.group(1)}\n"
+                f"  Reason: {_bounded_timeline_detail(detail)}"
+            )
+    elif stage == "recover" and message.startswith("Planner recovery plan"):
+        return _ui_text("[Recovery]\n  Status: Recovery plan selected.")
+    elif stage == "done":
+        return _ui_text("[Completion]\n  Status: Activity phase finished.")
+    return _ui_text("[Agent activity]\n  Status: Activity update recorded.")
 
 def _ui_text(text: str) -> str:
     """Guard deterministic agent-authored UI text against language drift."""
@@ -64,6 +167,10 @@ def _trace_line(text: str) -> None:
 def _trace(stage: str, message: str, detail: str | None = None) -> None:
     """Emit auditable progress summaries without exposing hidden chain-of-thought."""
     if not TRACE_ENABLED:
+        return
+    if PRESENTATION_MODE == "timeline":
+        print(_render_timeline_block(stage, message, detail), flush=True)
+        print(flush=True)
         return
     symbols = {
         "intent": "◆",
@@ -208,6 +315,8 @@ def _is_demo_request(task: str) -> bool:
 __all__ = [
     "_TRANSIENT_TRACE_ACTIVE", "_TRANSIENT_TRACE_UPDATED_AT",
     "CLI_FOLLOW_UP_STARTERS", "_ui_text", "output_language_policy",
+    "_bounded_timeline_detail", "_timeline_action_label", "_timeline_result_label",
+    "_render_timeline_block",
     "_clear_transient_trace", "_trace_line", "_trace",
     "strip_cli_owned_follow_up_question", "_display_path", "_is_demo_request",
 ]
