@@ -28,6 +28,11 @@ does not clear the current terminal content or open a separate screen:
 ▸ /execute   Execute mode — run validated commands
 ```
 
+The question text and the `>` input prompt render as normal terminal lines;
+their embedded newlines must never appear as visible control notation such as
+`^J`. The selector contains only the two mode rows. It does not show a separate
+keyboard-shortcut hint line.
+
 The selection initially highlights the current mode. Up, down, or Tab moves
 the selection. Enter applies the selected mode and returns to the same prompt.
 Escape or Ctrl-C collapses the inline menu without changing the mode, creating
@@ -105,8 +110,9 @@ plan, or alter the current mode. An already-selected mode is idempotent.
 
 Add deterministic tests for:
 
-1. inline menu options, ordering, labels, selected default mode, and the
-   absence of a full-screen dialog;
+1. inline menu options, ordering, labels, selected default mode, the absence
+   of a full-screen dialog, no rendered `^J` prompt controls, and no shortcut
+   hint row;
 2. mapping Enter choices to `/test` and `/execute`;
 3. real key dispatch for arrow movement plus Enter in both mode directions;
 4. Escape and Ctrl-C collapse with no mode, pending-state, graph, trace, or
