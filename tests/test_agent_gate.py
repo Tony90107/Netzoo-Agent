@@ -210,6 +210,22 @@ class CapabilityGateTests(unittest.TestCase):
             ["run_puma", "run_lioness_puma"],
         )
 
+    def test_goal_match_marks_sample_specific_mirna_as_a_composition(self):
+        match = agent.routing_capability.infer_goal_capability_match(
+            "if i want to get sample specific mi-RNA regulator network, what tools do i need?"
+        )
+
+        self.assertEqual(match.actions, ["run_puma", "run_lioness_puma"])
+        self.assertEqual(match.relationship, "composition")
+
+    def test_goal_match_keeps_unspecified_sample_regulation_as_alternatives(self):
+        match = agent.routing_capability.infer_goal_capability_match(
+            "if i want to get a sample specific regulator network, what tools do i need?"
+        )
+
+        self.assertEqual(match.actions, ["run_lioness_panda", "run_lioness_puma"])
+        self.assertEqual(match.relationship, "alternatives")
+
     def test_recommended_workflow_gets_contextual_next_question(self):
         decision = agent.TaskDecision(
             action="no_tool",

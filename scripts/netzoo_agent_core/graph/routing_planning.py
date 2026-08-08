@@ -21,6 +21,7 @@ from ..interpretation import (
     repair_router_decision,
 )
 from ..interpretation.semantic_goal import semantic_summary_detail
+from ..routing.capability import infer_goal_capability_match
 from ..llm import (
     append_llm_usage,
     build_router_messages,
@@ -94,12 +95,12 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         hydrated = hydrate_router_decision(router_decision, user_task)
         decision = repair_router_decision(hydrated, user_task)
         allowed_actions = set(context.project_policy.workflows)
-        candidates = [action for action in router_decision.candidate_actions if action in allowed_actions]
-        relationship = "alternatives" if candidates else "single"
+        goal_match = infer_goal_capability_match(user_task)
+        candidates = [action for action in decision.recommended_actions if action in allowed_actions]
+        relationship = goal_match.relationship if goal_match.actions else "single"
         if not candidates:
-            candidates = [action for action in decision.recommended_actions if action in allowed_actions]
-            if len(candidates) > 1:
-                relationship = "composition"
+            candidates = [action for action in router_decision.candidate_actions if action in allowed_actions]
+            relationship = "alternatives" if len(candidates) > 1 else "single"
         semantic_goal = {
             "goal": router_decision.semantic_goal or "",
             "candidates": candidates,
