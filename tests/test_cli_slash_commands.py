@@ -71,6 +71,8 @@ def test_status_and_help_report_without_changing_mode():
 
     help_result = handle_slash_command("/help")
     assert help_result.handled is True
+    assert "Press / at an empty prompt to choose Test or Execute mode." in help_result.message
+    assert "Text alternatives:" in help_result.message
     for command in ("/test", "/execute", "/status", "/help"):
         assert command in help_result.message
     assert settings.EXECUTE_TOOLS is False

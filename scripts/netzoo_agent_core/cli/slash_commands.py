@@ -79,6 +79,8 @@ def handle_slash_command(
     return SlashCommandResult(
         handled=True,
         message=(
+            "Press / at an empty prompt to choose Test or Execute mode.\n"
+            "Text alternatives:\n"
             "Slash commands:\n"
             "  /test     Preview validated workflow commands without running them.\n"
             "  /execute  Run validated workflow commands for future tasks.\n"

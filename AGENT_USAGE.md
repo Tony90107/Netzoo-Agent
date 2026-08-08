@@ -593,11 +593,17 @@ docker compose run --rm \
 
 ```text
 [TEST] What would you like to accomplish with NetZoo?
-> /execute
-Execution mode enabled. Future workflow tasks will run commands.
-[EXECUTE] What would you like to accomplish with NetZoo?
-> 我要跑 PUMA，expression 是 data/expression.tsv，motif 是 data/motif.tsv，PPI 是 data/ppi.tsv，miRNA 是 data/mir.tsv，輸出 outputs/puma.tsv
+> /
+Select NetZoo mode
+❯ Test mode — preview commands only
+  Execute mode — run validated commands
+
+↑/↓ move · Enter select · Esc cancel
 ```
+
+Press `/` at an empty prompt to open this primary mode selector. `/execute` and
+`/test` remain typed alternatives. Path prompts intentionally do not open the
+menu, so absolute paths can be typed without being interpreted as commands.
 
 `--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
