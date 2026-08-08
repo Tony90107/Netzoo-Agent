@@ -242,7 +242,9 @@ def convert_expression_to_coexpression_impl(
     )
     if not execute:
         lines.append(
-            "- dry run only; validation passed but no output file was written. Add --execute to write it."
+            "- dry run only; validation passed but no output file was written. "
+            "Enter /execute in an interactive ./netzoo-chat session before submitting "
+            "the task to write it."
         )
         return "\n".join(lines)
 

@@ -130,15 +130,21 @@ python scripts/netzoo_agent.py --memory-cleanup
 python scripts/netzoo_agent.py --profile alice --forget-memory
 ```
 
-真的執行要加 `--execute`：
+真的執行必須進入互動模式，明確切換後再輸入任務：
 
 ```bash
-docker compose run --rm \
-  -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-  netzoo python scripts/netzoo_agent.py \
-  --execute \
-  --task "我要跑 PUMA，expression 是 data/expression.tsv，motif 是 data/motif.tsv，PPI 是 data/ppi.tsv，miRNA 是 data/mir.tsv，輸出 outputs/puma.tsv"
+./netzoo-chat
 ```
+
+```text
+[TEST] What would you like to accomplish with NetZoo?
+> /execute
+Execution mode enabled. Future workflow tasks will run commands.
+[EXECUTE] What would you like to accomplish with NetZoo?
+> 我要跑 PUMA，expression 是 data/expression.tsv，motif 是 data/motif.tsv，PPI 是 data/ppi.tsv，miRNA 是 data/mir.tsv，輸出 outputs/puma.tsv
+```
+
+`--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
 ## 驗證狀態
 

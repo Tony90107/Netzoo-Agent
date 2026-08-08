@@ -24,6 +24,18 @@ def process_exists(pid: int) -> bool:
 
 
 class CommandProcessTests(unittest.TestCase):
+    def test_dry_run_points_to_interactive_slash_command(self):
+        previous_execute = agent.EXECUTE_TOOLS
+        agent.EXECUTE_TOOLS = False
+        try:
+            output = agent._run_command(["run-panda", "--help"])
+        finally:
+            agent.EXECUTE_TOOLS = previous_execute
+
+        self.assertIn("interactive `./netzoo-chat` session", output)
+        self.assertIn("`/execute`", output)
+        self.assertNotIn("--execute", output)
+
     @unittest.skipUnless(os.name == "posix", "process groups require POSIX")
     def test_timeout_terminates_descendant_process(self):
         previous_execute = agent.EXECUTE_TOOLS

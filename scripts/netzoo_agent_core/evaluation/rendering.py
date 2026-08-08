@@ -273,7 +273,12 @@ def render_compact_execution_response(
         if evaluation:
             lines.extend(["", f"Next: {evaluation.reason}"])
     elif has_dry_run:
-        lines.extend(["", "Next: rerun with --execute to perform the analysis."])
+        lines.extend(
+            [
+                "",
+                "Next: enter /execute, then submit the task again to perform the analysis.",
+            ]
+        )
     return "\n".join(lines)
 
 

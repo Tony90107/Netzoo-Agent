@@ -98,7 +98,8 @@ def _run_command(
         return (
             "Dry run only. The agent selected this command but did not execute it.\n\n"
             f"```bash\n{rendered}\n```\n\n"
-            "Add `--execute` if you want the script to actually run the tool."
+            "Enter `/execute` in an interactive `./netzoo-chat` session before "
+            "submitting the task to run the tool."
         )
 
     expected_outputs = [
