@@ -8,6 +8,7 @@ from . import (
     conversation,
     follow_up,
     loop,
+    slash_commands,
     trace_commands,
 )
 from ..graph import build_graph
