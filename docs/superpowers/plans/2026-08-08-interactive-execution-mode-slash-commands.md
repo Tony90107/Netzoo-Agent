@@ -690,15 +690,27 @@ In `AGENT_USAGE.md`:
 Keep archived files under `docs/archive/` unchanged because they record historical
 behavior rather than current operating instructions.
 
-- [ ] **Step 5: Verify current code and docs contain no legacy flag guidance**
+- [ ] **Step 5: Verify current code and docs contain no positive legacy-flag guidance**
 
 Run:
 
 ```bash
-rg -n --glob '!docs/archive/**' --glob '!docs/superpowers/specs/**' --glob '!docs/superpowers/plans/**' -- '--execute' AGENTS.md README.md AGENT_USAGE.md scripts tests
+rg -n 'Add .*--execute|rerun with --execute|Use --execute|真的執行.*--execute|--execute \\' AGENTS.md README.md AGENT_USAGE.md scripts tests
 ```
 
-Expected: no matches.
+Expected: no matches. Negative regression assertions and documentation that
+explicitly says `--execute` was removed remain valid and are not prohibited by
+this check.
+
+Audit the remaining literal references:
+
+```bash
+rg -n -- '--execute' AGENTS.md README.md AGENT_USAGE.md scripts tests
+```
+
+Expected: every remaining match either verifies argparse rejection, asserts the
+old text is absent, or states that the legacy argument is unsupported. No match
+may instruct a user to run the flag.
 
 Then run:
 
