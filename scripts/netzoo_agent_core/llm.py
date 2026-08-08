@@ -81,6 +81,11 @@ Routing rules:
 8. Mixed supported and unsupported deliverables select no_tool unless the supported
    deliverable is independently and explicitly requested.
 9. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
+10. Populate semantic_goal for a recognizable scientific objective. When more than
+   one registered workflow fits, populate candidate_actions with only catalog
+   actions and unresolved_dimensions with the smallest biological distinction
+   needed to choose one. Do not reject a goal merely because that distinction is
+   not yet specified.
 
 Examples:
 - "PANDA 需要哪些 input？" -> no_tool, answer_question, recommend run_panda.

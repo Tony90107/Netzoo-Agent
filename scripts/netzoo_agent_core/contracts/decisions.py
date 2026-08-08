@@ -23,6 +23,9 @@ class RouterDecision(BaseModel):
     recommended_actions: list[RecommendedAction] = Field(
         default_factory=list, max_length=4
     )
+    semantic_goal: str | None = Field(default=None, max_length=240)
+    candidate_actions: list[RecommendedAction] = Field(default_factory=list, max_length=4)
+    unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
 
 class TaskDecision(BaseModel):
     """A capability-aware routing decision for the allow-listed NetZoo agent."""

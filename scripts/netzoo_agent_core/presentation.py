@@ -71,6 +71,11 @@ def _render_timeline_block(
         if classified:
             action = classified.group(1).replace("_", " ")
             if action == "no tool":
+                if detail and detail.startswith("Goal:"):
+                    return _ui_text(
+                        "[Understanding your request]\n"
+                        f"  {_bounded_timeline_detail(detail)}"
+                    )
                 return render_progress_summary(
                     "concept", {"source": "registered workflow specification"}
                 )
