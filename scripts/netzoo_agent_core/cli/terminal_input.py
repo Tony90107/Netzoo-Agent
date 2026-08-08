@@ -66,6 +66,22 @@ def _read_menu_line(prompt: str, default_command: str) -> str:
     return _create_inline_mode_application(prompt, default_command).run()
 
 
+def _split_inline_prompt(prompt: str) -> tuple[str, str]:
+    """Separate display-only prompt text from the one-line input prefix."""
+    question, separator, input_prefix = prompt.rpartition("\n")
+    if not separator:
+        return "", prompt
+    return question + separator, input_prefix
+
+
+def _selector_lines(selected_command: str) -> list[str]:
+    """Return the compact visible rows for the mode selector."""
+    return [
+        f"{'▸' if command == selected_command else ' '} {command:<10} {description}"
+        for command, description in MODE_MENU_OPTIONS
+    ]
+
+
 def _create_inline_mode_application(prompt: str, default_command: str):
     """Build one normal-screen application containing the prompt and selector."""
     from prompt_toolkit.application import Application
@@ -77,8 +93,9 @@ def _create_inline_mode_application(prompt: str, default_command: str):
     from prompt_toolkit.layout.controls import FormattedTextControl
     from prompt_toolkit.widgets import TextArea
 
+    question, input_prefix = _split_inline_prompt(prompt)
     state: dict[str, Any] = {"visible": False, "selected": default_command}
-    input_field = TextArea(multiline=False, prompt=prompt)
+    input_field = TextArea(multiline=False, prompt=input_prefix)
     bindings = KeyBindings()
 
     def _toggle_selected() -> None:
@@ -88,12 +105,9 @@ def _create_inline_mode_application(prompt: str, default_command: str):
 
     def _selector_text() -> FormattedText:
         fragments: list[tuple[str, str]] = []
-        for command, description in MODE_MENU_OPTIONS:
-            selected = state["selected"] == command
-            marker = "▸" if selected else " "
-            style = "class:mode-menu.selected" if selected else ""
-            fragments.append((style, f"{marker} {command:<10} {description}\n"))
-        fragments.append(("class:mode-menu.hint", "  ↑/↓/Tab move · Enter select · Esc/Ctrl-C cancel"))
+        for line in _selector_lines(state["selected"]):
+            style = "class:mode-menu.selected" if line.startswith("▸") else ""
+            fragments.append((style, line + "\n"))
         return FormattedText(fragments)
 
     @bindings.add("/")
@@ -133,12 +147,25 @@ def _create_inline_mode_application(prompt: str, default_command: str):
             return
         event.app.exit(exception=KeyboardInterrupt())
 
+    question_window = ConditionalContainer(
+        Window(
+            content=FormattedTextControl(lambda: question),
+            dont_extend_height=True,
+        ),
+        filter=Condition(lambda: bool(question)),
+    )
     selector = ConditionalContainer(
-        Window(content=FormattedTextControl(_selector_text)),
+        Window(
+            content=FormattedTextControl(_selector_text),
+            dont_extend_height=True,
+        ),
         filter=Condition(lambda: state["visible"]),
     )
     return Application(
-        layout=Layout(HSplit([input_field, selector]), focused_element=input_field),
+        layout=Layout(
+            HSplit([question_window, input_field, selector]),
+            focused_element=input_field,
+        ),
         key_bindings=bindings,
         full_screen=False,
     )

@@ -18,6 +18,8 @@ from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
     TerminalInputReader,
     _create_inline_mode_application,
     _read_menu_line,
+    _selector_lines,
+    _split_inline_prompt,
 )
 
 
@@ -33,6 +35,23 @@ def test_mode_menu_options_are_ordered_and_use_existing_commands():
         ("/test", "Test mode — preview commands only"),
         ("/execute", "Execute mode — run validated commands"),
     )
+
+
+def test_split_inline_prompt_keeps_newlines_out_of_input_prefix():
+    question, input_prefix = _split_inline_prompt(
+        "\n[TEST] What would you like to accomplish with NetZoo?\n> "
+    )
+
+    assert question == "\n[TEST] What would you like to accomplish with NetZoo?\n"
+    assert input_prefix == "> "
+    assert "\n" not in input_prefix
+
+
+def test_selector_copy_contains_only_mode_rows():
+    assert _selector_lines("/test") == [
+        "▸ /test      Test mode — preview commands only",
+        "  /execute   Execute mode — run validated commands",
+    ]
 
 
 def test_empty_slash_opens_current_mode_menu_and_returns_selection():

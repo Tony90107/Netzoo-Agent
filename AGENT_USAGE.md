@@ -596,7 +596,6 @@ docker compose run --rm \
 > /
 ▸ /test      Test mode — preview commands only
   /execute   Execute mode — run validated commands
-  ↑/↓/Tab move · Enter select · Esc/Ctrl-C cancel
 ```
 
 Press `/` at an empty prompt to expand this primary mode selector directly below
