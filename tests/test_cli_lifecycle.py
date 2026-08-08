@@ -143,6 +143,32 @@ def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
         configure_runtime(EXECUTE_TOOLS=previous)
 
 
+def test_mode_menu_selection_reuses_slash_handler_without_graph_or_trace(
+    monkeypatch, capsys
+):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    reader = Mock()
+    reader.read.side_effect = ["/execute", "exit"]
+    monkeypatch.setattr(conversation, "TerminalInputReader", Mock(return_value=reader))
+    runtime = _fake_cli_runtime(
+        invoke_error=AssertionError("graph must not run"),
+        interactive_answers=(),
+    )
+    previous = settings.EXECUTE_TOOLS
+    try:
+        configure_runtime(EXECUTE_TOOLS=False)
+
+        assert conversation.run_conversation(
+            SimpleNamespace(task=None, keep_session=False), runtime
+        ) == 0
+
+        runtime.invoke_graph_turn_func.assert_not_called()
+        runtime.recorder.start_run.assert_not_called()
+        assert "Execution mode enabled" in capsys.readouterr().out
+    finally:
+        configure_runtime(EXECUTE_TOOLS=previous)
+
+
 def test_slash_command_does_not_consume_missing_input_state():
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     plan = WorkflowPlan(
@@ -174,9 +200,8 @@ def test_slash_command_does_not_consume_missing_input_state():
     assert sum("expression_file" in prompt for prompt in prompts) == 2
 
 
-def test_single_component_absolute_path_resolves_clarification():
-    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
-    plan = WorkflowPlan(
+def _condor_missing_output_plan() -> WorkflowPlan:
+    return WorkflowPlan(
         workflow="CONDOR",
         objective="run CONDOR",
         decision=TaskDecision(
@@ -197,11 +222,15 @@ def test_single_component_absolute_path_resolves_clarification():
         missing_inputs=["output_dir"],
         status="needs_input",
     )
+
+
+def test_single_component_absolute_path_resolves_clarification():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     runtime = _fake_cli_runtime(
         invoke_error=RuntimeError("stop after captured continuation"),
         interactive_answers=["/output", "exit"],
     )
-    runtime.pending_plan = plan
+    runtime.pending_plan = _condor_missing_output_plan()
 
     assert conversation.run_conversation(
         SimpleNamespace(task=None, keep_session=False), runtime
@@ -209,6 +238,52 @@ def test_single_component_absolute_path_resolves_clarification():
     runtime.invoke_graph_turn_func.assert_called_once()
     invocation = runtime.invoke_graph_turn_func.call_args.args[1]
     assert "output_dir is /output" in invocation["messages"][-1].content
+
+
+def test_path_clarification_disables_immediate_menu(monkeypatch):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    reader = Mock()
+    reader.read.side_effect = ["/output", "exit"]
+    reader_factory = Mock(return_value=reader)
+    monkeypatch.setattr(conversation, "TerminalInputReader", reader_factory)
+    runtime = _fake_cli_runtime(
+        invoke_error=RuntimeError("captured continuation"),
+        interactive_answers=(),
+    )
+    runtime.pending_plan = _condor_missing_output_plan()
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+    assert reader.read.call_args_list[0].kwargs["menu_enabled"] is False
+    assert "output_dir is /output" in runtime.invoke_graph_turn_func.call_args.args[1][
+        "messages"
+    ][-1].content
+
+
+def test_recommended_follow_up_without_path_enables_immediate_menu(monkeypatch):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    reader = Mock()
+    reader.read.return_value = "exit"
+    monkeypatch.setattr(conversation, "TerminalInputReader", Mock(return_value=reader))
+    monkeypatch.setattr(
+        conversation,
+        "initial_next_turn_prompt",
+        lambda: conversation.NextTurnPrompt(
+            kind="recommended_workflow",
+            question="Continue with the recommended workflow?",
+            expected_field=None,
+        ),
+    )
+    runtime = _fake_cli_runtime(
+        invoke_error=AssertionError("graph must not run"),
+        interactive_answers=(),
+    )
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+    assert reader.read.call_args_list[0].kwargs["menu_enabled"] is True
 
 
 def test_slash_command_does_not_confirm_preference():
