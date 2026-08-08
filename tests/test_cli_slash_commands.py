@@ -36,6 +36,20 @@ def test_natural_language_and_absolute_paths_are_not_slash_commands():
         assert result.message == ""
 
 
+def test_single_component_absolute_paths_are_answers_in_path_context():
+    for user_input in ("/tmp", "/output"):
+        result = handle_slash_command(user_input, allow_path_answer=True)
+        assert result.handled is False
+        assert result.message == ""
+
+
+def test_known_commands_remain_commands_in_path_context():
+    result = handle_slash_command("/status", allow_path_answer=True)
+
+    assert result.handled is True
+    assert result.message == "Current mode: TEST"
+
+
 def test_execute_and_test_switch_the_process_mode_persistently():
     execute = handle_slash_command("/execute")
     assert execute.handled is True

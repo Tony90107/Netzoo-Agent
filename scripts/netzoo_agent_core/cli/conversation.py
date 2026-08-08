@@ -13,6 +13,7 @@ from ..contracts.state import (
 )
 from ..framework_compat import HumanMessage
 from ..presentation import _clear_transient_trace, _trace, _ui_text
+from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
 from ..session import (
     _is_auto_session_id,
     compact_conversation,
@@ -40,9 +41,18 @@ from .slash_commands import handle_slash_command, render_mode_prompt
 
 __all__: list[str] = []
 
+_PATH_ANSWER_FIELDS = INPUT_ROLE_FIELDS | OUTPUT_ROLE_FIELDS
 
-def _handle_interactive_control(answer: str) -> bool:
-    result = handle_slash_command(answer)
+
+def _handle_interactive_control(
+    answer: str,
+    *,
+    allow_path_answer: bool = False,
+) -> bool:
+    result = handle_slash_command(
+        answer,
+        allow_path_answer=allow_path_answer,
+    )
     if not result.handled:
         return False
     print(_ui_text(result.message))
@@ -120,6 +130,13 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     print(_ui_text("Preference changes were not saved."))
                 task = preference_continuation(pending_plan, approved)
             else:
+                unresolved_fields = [
+                    item.field
+                    for item in pending_plan.evidence
+                    if item.status == "missing"
+                    and item.field not in clarification_selections
+                ]
+                target_field = unresolved_fields[0] if unresolved_fields else None
                 try:
                     answer = input_func(
                         render_mode_prompt(
@@ -133,7 +150,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
-                if _handle_interactive_control(answer):
+                if _handle_interactive_control(
+                    answer,
+                    allow_path_answer=target_field in _PATH_ANSWER_FIELDS,
+                ):
                     continue
                 if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
                     break
@@ -144,15 +164,6 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     if mode_pending:
                         task = resolve_clarification(pending_plan, answer)
                     else:
-                        unresolved_fields = [
-                            item.field
-                            for item in pending_plan.evidence
-                            if item.status == "missing"
-                            and item.field not in clarification_selections
-                        ]
-                        target_field = (
-                            unresolved_fields[0] if unresolved_fields else None
-                        )
                         clarification_selections = parse_clarification_assignments(
                             pending_plan,
                             answer,
@@ -185,7 +196,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             except (EOFError, KeyboardInterrupt):
                 print()
                 break
-            if _handle_interactive_control(answer):
+            if _handle_interactive_control(
+                answer,
+                allow_path_answer=next_prompt.expected_field in _PATH_ANSWER_FIELDS,
+            ):
                 continue
             if follow_up_returns_to_main(next_prompt, answer):
                 next_prompt = initial_next_turn_prompt()
