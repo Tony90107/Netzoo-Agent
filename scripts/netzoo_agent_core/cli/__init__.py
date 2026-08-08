@@ -9,6 +9,7 @@ from . import (
     follow_up,
     loop,
     slash_commands,
+    terminal_input,
     trace_commands,
 )
 from ..graph import build_graph

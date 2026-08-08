@@ -62,6 +62,7 @@ def test_cli_is_a_package_with_responsibility_modules():
         "loop",
         "main",
         "slash_commands",
+        "terminal_input",
     ):
         importlib.import_module(f"netzoo_agent_core.cli.{name}")
 
