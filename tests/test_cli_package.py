@@ -61,6 +61,7 @@ def test_cli_is_a_package_with_responsibility_modules():
         "follow_up",
         "loop",
         "main",
+        "slash_commands",
     ):
         importlib.import_module(f"netzoo_agent_core.cli.{name}")
 
@@ -69,6 +70,7 @@ def test_cli_surface_and_legacy_identity_are_preserved():
     assert cli.__all__ == CLI_EXPORTS
     for name in CLI_EXPORTS:
         assert getattr(legacy_agent, name) is getattr(cli, name)
+    assert not hasattr(legacy_agent, "handle_slash_command")
     for name in ("parse_args", "main"):
         assert str(inspect.signature(getattr(cli, name))) == SIGNATURES[name]
 
