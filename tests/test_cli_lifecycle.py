@@ -174,6 +174,43 @@ def test_slash_command_does_not_consume_missing_input_state():
     assert sum("expression_file" in prompt for prompt in prompts) == 2
 
 
+def test_single_component_absolute_path_resolves_clarification():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    plan = WorkflowPlan(
+        workflow="CONDOR",
+        objective="run CONDOR",
+        decision=TaskDecision(
+            action="run_condor",
+            in_scope=True,
+            should_execute=True,
+            confidence=1.0,
+            reason="test",
+            network_file="data/network.tsv",
+        ).model_dump(),
+        evidence=[
+            InputEvidence(
+                field="output_dir",
+                status="missing",
+                reason="required",
+            )
+        ],
+        missing_inputs=["output_dir"],
+        status="needs_input",
+    )
+    runtime = _fake_cli_runtime(
+        invoke_error=RuntimeError("stop after captured continuation"),
+        interactive_answers=["/output", "exit"],
+    )
+    runtime.pending_plan = plan
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+    runtime.invoke_graph_turn_func.assert_called_once()
+    invocation = runtime.invoke_graph_turn_func.call_args.args[1]
+    assert "output_dir is /output" in invocation["messages"][-1].content
+
+
 def test_slash_command_does_not_confirm_preference():
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     plan = WorkflowPlan(

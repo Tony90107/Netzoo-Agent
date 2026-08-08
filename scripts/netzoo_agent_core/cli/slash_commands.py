@@ -33,7 +33,11 @@ def render_mode_prompt(prompt: str) -> str:
     return f"[{current_mode_label()}] {prompt}"
 
 
-def handle_slash_command(user_input: str) -> SlashCommandResult:
+def handle_slash_command(
+    user_input: str,
+    *,
+    allow_path_answer: bool = False,
+) -> SlashCommandResult:
     stripped = user_input.strip()
     if not _COMMAND_TOKEN.fullmatch(stripped):
         return SlashCommandResult(handled=False)
@@ -41,6 +45,8 @@ def handle_slash_command(user_input: str) -> SlashCommandResult:
     command, *arguments = stripped.split(maxsplit=1)
     normalized = command.casefold()
     if normalized not in _KNOWN_COMMANDS:
+        if allow_path_answer and not arguments:
+            return SlashCommandResult(handled=False)
         return SlashCommandResult(
             handled=True,
             message=(
