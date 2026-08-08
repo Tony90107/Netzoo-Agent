@@ -233,6 +233,11 @@ def parse_args() -> argparse.Namespace:
     )
     display_group = parser.add_mutually_exclusive_group()
     display_group.add_argument(
+        "--timeline",
+        action="store_true",
+        help="Show concise permanent activity blocks before the final answer.",
+    )
+    display_group.add_argument(
         "--verbose",
         action="store_true",
         help="Show the full evidence ledger, graph events, evaluator details, and log paths.",
