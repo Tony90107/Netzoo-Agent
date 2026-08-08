@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
+
+from prompt_toolkit.keys import Keys
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
     MODE_MENU_OPTIONS,
     TerminalInputReader,
+    _create_mode_menu,
 )
 
 
@@ -76,6 +80,41 @@ def test_tui_failure_notices_once_then_uses_plain_input():
         notice=notice,
         menu_line_reader=Mock(side_effect=RuntimeError("terminal unavailable")),
         menu_dialog=Mock(),
+        current_mode=lambda: "TEST",
+    )
+
+    assert reader.read("prompt", menu_enabled=True) == "/status"
+    assert reader.read("prompt", menu_enabled=True) == "/help"
+    notice.assert_called_once()
+
+
+def test_mode_menu_escape_ctrl_c_and_enter_bindings_cancel_or_confirm():
+    menu = _create_mode_menu("/execute")
+
+    for key in (Keys.Escape, Keys.ControlC):
+        app = Mock()
+        binding = menu.key_bindings.get_bindings_for_keys((key,))[0]
+
+        binding.handler(SimpleNamespace(app=app))
+
+        app.exit.assert_called_once_with(result=None)
+
+    app = Mock()
+    enter = menu.key_bindings.get_bindings_for_keys((Keys.Enter,))[0]
+    enter.handler(SimpleNamespace(app=app))
+
+    app.exit.assert_called_once_with(result="/execute")
+
+
+def test_menu_dialog_failure_notices_once_then_uses_plain_input():
+    plain_input = Mock(side_effect=["/status", "/help"])
+    notice = Mock()
+    reader = TerminalInputReader(
+        plain_input,
+        is_tty=lambda: True,
+        notice=notice,
+        menu_line_reader=Mock(return_value="\0NETZOO_MODE_MENU\0"),
+        menu_dialog=Mock(side_effect=RuntimeError("dialog unavailable")),
         current_mode=lambda: "TEST",
     )
 
