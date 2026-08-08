@@ -63,7 +63,7 @@ def _timeline_result_label(action: str, status: str) -> str:
 
 def _render_timeline_block(
     stage: str, message: str, detail: str | None = None
-) -> str:
+) -> str | None:
     """Render only recognized structured activity summaries for the timeline."""
     if stage == "intent":
         classified = re.fullmatch(r"Classified as (\w+)", message)
@@ -123,9 +123,7 @@ def _render_timeline_block(
             )
     elif stage == "recover" and message.startswith("Planner recovery plan"):
         return _ui_text("[Recovery]\n  Status: Recovery plan selected.")
-    elif stage == "done":
-        return _ui_text("[Completion]\n  Status: Activity phase finished.")
-    return _ui_text("[Agent activity]\n  Status: Activity update recorded.")
+    return None
 
 def _ui_text(text: str) -> str:
     """Guard deterministic agent-authored UI text against language drift."""
@@ -169,8 +167,10 @@ def _trace(stage: str, message: str, detail: str | None = None) -> None:
     if not TRACE_ENABLED:
         return
     if PRESENTATION_MODE == "timeline":
-        print(_render_timeline_block(stage, message, detail), flush=True)
-        print(flush=True)
+        block = _render_timeline_block(stage, message, detail)
+        if block:
+            print(block, flush=True)
+            print(flush=True)
         return
     symbols = {
         "intent": "◆",

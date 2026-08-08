@@ -102,12 +102,16 @@ def test_timeline_renders_intent_plan_review_input_evaluation_and_recovery(
     assert "raw plan" not in output
 
 
-def test_timeline_renders_safe_unknown_stage(monkeypatch, capsys):
+def test_timeline_suppresses_setup_completion_and_unknown_events(monkeypatch, capsys):
     _enable_timeline(monkeypatch)
 
-    presentation._trace("unknown", "State dump: secret", "raw private payload")
+    for stage, message in (
+        ("policy", "Project policy loaded: version=1, hash=abc"),
+        ("memory", "Memory retrieval: profile=default, episodes=0"),
+        ("done", "Session: abc123"),
+        ("done", "LLM tokens: input=1, output=2, total=3, budget=10"),
+        ("unknown", "State dump: secret"),
+    ):
+        presentation._trace(stage, message, "raw private payload")
 
-    output = capsys.readouterr().out
-    assert "[Agent activity]" in output
-    assert "raw private payload" not in output
-    assert "State dump: secret" not in output
+    assert capsys.readouterr().out == ""
