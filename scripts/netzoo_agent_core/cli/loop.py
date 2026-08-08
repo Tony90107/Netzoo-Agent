@@ -15,11 +15,23 @@ __all__: list[str] = []
 
 
 def run_cli(args) -> int:
+    presentation_mode = (
+        "verbose"
+        if args.verbose
+        else "timeline"
+        if args.timeline
+        else "compact"
+    )
     configure_runtime(
         EXECUTE_TOOLS=args.execute,
         TRACE_ENABLED=not args.quiet,
         VERBOSE_OUTPUT=args.verbose,
-        TRANSIENT_TRACE=(args.transient_trace and not args.verbose and not args.quiet),
+        PRESENTATION_MODE=presentation_mode,
+        TRANSIENT_TRACE=(
+            args.transient_trace
+            and presentation_mode == "compact"
+            and not args.quiet
+        ),
         TOOL_TIMEOUT_SECONDS=args.tool_timeout,
     )
     if (result := handle_preflight_command(args)) is not None:
