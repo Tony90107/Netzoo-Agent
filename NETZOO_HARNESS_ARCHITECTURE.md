@@ -129,19 +129,22 @@ scripts/
 `contracts/__init__.py`、`data/__init__.py`、`cli/__init__.py` 與上述舊名稱 facade 是穩定相容層；
 真正修改行為時，應進入表格列出的 owner module，不要把新邏輯放回 facade。
 
-### 2.2 舊入口為什麼保留
+### 2.2 相容入口與互動執行
 
-以下既有命令不需要改：
+以下既有 preview/status 命令維持可用：
 
 ```bash
 python scripts/netzoo_agent.py --policy-status
 python scripts/netzoo_agent.py --task "Run a PANDA demo"
-python scripts/netzoo_agent.py --execute
+./netzoo-chat
 ```
 
+`--task` 保持 preview-only；舊版 `--execute` startup argument 已移除且會被 argparse
+拒絕。只有在目前 `./netzoo-chat` session 輸入 `/execute` 後，後續 workflow task 才能
+執行；輸入 `/test` 會撤銷授權。
+
 既有程式若使用 `import netzoo_agent` 也能繼續運作。Facade 重新 export 舊名稱，並只為舊
-測試與舊 callers 保留少數 process-wide 設定同步。新程式應直接 import 所屬 module，
-例如：
+測試與舊 callers 保留少數 process-wide 設定同步。新程式應直接 import 所屬 module，例如：
 
 ```python
 from netzoo_agent_core.planning import build_workflow_plan
@@ -212,7 +215,8 @@ LangGraph state 使用 `AgentState`。主要欄位如下：
    - 跨 workflow conventions 與 workflow spec directory
 
 Python registry 是執行權限的 source of truth。YAML 和 Markdown 只能描述或收窄行為，
-不能新增 action、移除 required input 或繞過 `--execute`。
+不能新增 action、移除 required input、繞過目前 session 的 `/execute` 授權，或在
+`/test` 模式執行工具。
 
 ### 4.2 Loader 的 fail-closed 驗證
 
@@ -594,7 +598,8 @@ and bool(plan.steps)
 - 不執行分析 command。
 - `ToolExecutionResult.status = "dry_run"`。
 
-只有 CLI 明確加上 `--execute` 才執行 subprocess。
+只有使用者在目前 `./netzoo-chat` session 明確輸入 `/execute`，再提交 workflow task
+才執行 subprocess；輸入 `/test` 會回到 command preview。
 
 ### 9.3 Input validation
 
@@ -801,7 +806,7 @@ Response LLM 的重複 conversational CTA 會被清除，確保 CLI 只顯示一
 - Demo data 不能代替未指定的正式 dataset。
 - Output 不能覆寫 input。
 - Plan step 必須完整匹配 registry/spec。
-- `--execute` 是本機分析副作用的必要條件。
+- 目前互動 session 的 `/execute` 授權是本機分析副作用的必要條件；`/test` 會撤銷它。
 - External retrieval 只有 read-only reference authority。
 - Preference proposal 沒有 write authority。
 - Project policy data 不能擴張 Python authority。
