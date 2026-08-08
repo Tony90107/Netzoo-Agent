@@ -94,19 +94,17 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         hydrated = hydrate_router_decision(router_decision, user_task)
         decision = repair_router_decision(hydrated, user_task)
         allowed_actions = set(context.project_policy.workflows)
-        candidates = [
-            action for action in router_decision.candidate_actions
-            if action in allowed_actions
-        ]
+        candidates = [action for action in router_decision.candidate_actions if action in allowed_actions]
+        relationship = "alternatives" if candidates else "single"
         if not candidates:
-            candidates = [
-                action for action in decision.recommended_actions
-                if action in allowed_actions
-            ]
+            candidates = [action for action in decision.recommended_actions if action in allowed_actions]
+            if len(candidates) > 1:
+                relationship = "composition"
         semantic_goal = {
             "goal": router_decision.semantic_goal or "",
             "candidates": candidates,
             "unresolved_dimensions": router_decision.unresolved_dimensions,
+            "relationship": relationship,
         }
         usage = append_llm_usage(
             current_usage,
@@ -125,11 +123,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         decision = deterministic_router_fallback(user_task, error)
         semantic_goal = {
             "goal": "",
-            "candidates": [
-                action for action in decision.recommended_actions
-                if action in context.project_policy.workflows
-            ],
+            "candidates": [action for action in decision.recommended_actions if action in context.project_policy.workflows],
             "unresolved_dimensions": [],
+            "relationship": "composition" if len(decision.recommended_actions) > 1 else "single",
         }
         call_status = "failed"
         reason_code = "deterministic_fallback"

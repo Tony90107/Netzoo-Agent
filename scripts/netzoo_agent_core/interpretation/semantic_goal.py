@@ -9,12 +9,15 @@ from workflow_registry import workflow_name
 def public_semantic_summary(semantic_goal: dict, decision: TaskDecision) -> str:
     candidates = semantic_goal.get("candidates") or []
     unresolved = semantic_goal.get("unresolved_dimensions") or []
+    relationship = semantic_goal.get("relationship")
     display_candidates = [workflow_name(action) for action in candidates]
     goal = semantic_goal.get("goal") or ""
     if candidates and unresolved:
         prefix = f"Goal: {goal} " if goal else "I found multiple registered approaches for this goal. "
         return f"{prefix}Candidates: {', '.join(display_candidates)}. I still need: {', '.join(unresolved)}."
     if candidates:
+        if relationship == "composition":
+            return f"I found a registered workflow composition for this goal: {' → '.join(display_candidates)}."
         prefix = f"Goal: {goal} " if goal else "I found registered approaches that fit this goal. "
         return f"{prefix}Candidates: {', '.join(display_candidates)}."
     if decision.action == "no_tool":
