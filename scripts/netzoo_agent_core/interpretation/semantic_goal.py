@@ -20,3 +20,7 @@ def public_semantic_summary(semantic_goal: dict, decision: TaskDecision) -> str:
     if decision.action == "no_tool":
         return "This request does not need files or tool execution."
     return "I selected a registered workflow before proceeding."
+
+
+def semantic_summary_detail(semantic_goal: dict, decision: TaskDecision) -> dict:
+    return {"kind": "semantic_goal", "text": public_semantic_summary(semantic_goal, decision)}

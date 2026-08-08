@@ -20,7 +20,7 @@ from ..interpretation import (
     hydrate_router_decision,
     repair_router_decision,
 )
-from ..interpretation.semantic_goal import public_semantic_summary
+from ..interpretation.semantic_goal import semantic_summary_detail
 from ..llm import (
     append_llm_usage,
     build_router_messages,
@@ -159,7 +159,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "intent",
         f"Classified as {decision.action}",
-        public_semantic_summary(semantic_goal, decision),
+        semantic_summary_detail(semantic_goal, decision),
     )
     record_event(
         context,

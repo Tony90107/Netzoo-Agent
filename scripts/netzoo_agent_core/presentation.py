@@ -27,11 +27,12 @@ CLI_FOLLOW_UP_STARTERS = (
 )
 
 
-def _bounded_timeline_detail(detail: str | None) -> str:
+def _bounded_timeline_detail(detail: str | dict | None) -> str:
     """Keep timeline summaries readable and bounded."""
     if not detail:
         return _ui_text("No additional details.")
-    collapsed = re.sub(r"\s+", " ", detail).strip()
+    text = detail.get("text", "") if isinstance(detail, dict) else detail
+    collapsed = re.sub(r"\s+", " ", text).strip()
     if not collapsed:
         return _ui_text("No additional details.")
     if len(collapsed) > 240:
@@ -63,7 +64,7 @@ def _timeline_result_label(action: str, status: str) -> str:
 
 
 def _render_timeline_block(
-    stage: str, message: str, detail: str | None = None
+    stage: str, message: str, detail: str | dict | None = None
 ) -> str | None:
     """Render only recognized structured activity summaries for the timeline."""
     if stage == "intent":
@@ -71,7 +72,7 @@ def _render_timeline_block(
         if classified:
             action = classified.group(1).replace("_", " ")
             if action == "no tool":
-                if detail and detail.startswith("Goal:"):
+                if isinstance(detail, dict) and detail.get("kind") == "semantic_goal":
                     return _ui_text(
                         "[Understanding your request]\n"
                         f"  {_bounded_timeline_detail(detail)}"
@@ -176,7 +177,7 @@ def _trace_line(text: str) -> None:
         return
     print(text, flush=True)
 
-def _trace(stage: str, message: str, detail: str | None = None) -> None:
+def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
     """Emit auditable progress summaries without exposing hidden chain-of-thought."""
     if not TRACE_ENABLED:
         return
@@ -202,7 +203,8 @@ def _trace(stage: str, message: str, detail: str | None = None) -> None:
         _clear_transient_trace()
         print(f"{symbols.get(stage, '•')} {message}", flush=True)
         if detail:
-            for line in detail.splitlines():
+            rendered_detail = detail.get("text", "") if isinstance(detail, dict) else detail
+            for line in rendered_detail.splitlines():
                 print(f"  {line}", flush=True)
         return
 
