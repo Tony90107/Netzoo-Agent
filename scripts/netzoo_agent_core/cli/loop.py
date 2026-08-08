@@ -23,7 +23,7 @@ def run_cli(args) -> int:
         else "compact"
     )
     configure_runtime(
-        EXECUTE_TOOLS=args.execute,
+        EXECUTE_TOOLS=False,
         TRACE_ENABLED=not args.quiet,
         VERBOSE_OUTPUT=args.verbose,
         PRESENTATION_MODE=presentation_mode,

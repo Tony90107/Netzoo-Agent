@@ -36,8 +36,17 @@ from .follow_up import (
     render_next_turn_prompt,
     resolve_next_turn_input,
 )
+from .slash_commands import handle_slash_command, render_mode_prompt
 
 __all__: list[str] = []
+
+
+def _handle_interactive_control(answer: str) -> bool:
+    result = handle_slash_command(answer)
+    if not result.handled:
+        return False
+    print(_ui_text(result.message))
+    return True
 
 
 def run_conversation(args, runtime: CliRuntime) -> int:
@@ -59,14 +68,19 @@ def run_conversation(args, runtime: CliRuntime) -> int:
     one_shot = bool(args.task) and not runtime.resume_id
     next_prompt = initial_next_turn_prompt()
     if not args.task:
-        print(_ui_text("NetZoo agent started. Enter exit or quit to stop."))
+        print(
+            _ui_text(
+                "NetZoo agent started. Current mode: TEST. "
+                "Enter /help for controls, or exit or quit to stop."
+            )
+        )
 
     while True:
         if queued_task is not None:
             task = queued_task.strip()
             queued_task = None
         elif pending_plan is not None:
-            if not sys.stdin.isatty():
+            if not sys.stdin.isatty() and input_func is input:
                 _clear_transient_trace()
                 if pending_plan.status == "needs_confirmation":
                     print("\n" + preference_confirmation_prompt(pending_plan))
@@ -81,11 +95,15 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if pending_plan.status == "needs_confirmation":
                 try:
                     answer = input_func(
-                        "\n" + preference_confirmation_prompt(pending_plan)
+                        render_mode_prompt(
+                            "\n" + preference_confirmation_prompt(pending_plan)
+                        )
                     ).strip()
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
+                if _handle_interactive_control(answer):
+                    continue
                 if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
                     break
                 approved = answer.casefold() in {"y", "yes"}
@@ -104,15 +122,19 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             else:
                 try:
                     answer = input_func(
-                        "\n"
-                        + clarification_prompt(
-                            pending_plan,
-                            clarification_selections,
+                        render_mode_prompt(
+                            "\n"
+                            + clarification_prompt(
+                                pending_plan,
+                                clarification_selections,
+                            )
                         )
                     ).strip()
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
+                if _handle_interactive_control(answer):
+                    continue
                 if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
                     break
                 if not answer:
@@ -158,11 +180,13 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 break
             try:
                 answer = input_func(
-                    f"\n{render_next_turn_prompt(next_prompt)}\n> "
+                    f"\n{render_mode_prompt(render_next_turn_prompt(next_prompt))}\n> "
                 ).strip()
             except (EOFError, KeyboardInterrupt):
                 print()
                 break
+            if _handle_interactive_control(answer):
+                continue
             if follow_up_returns_to_main(next_prompt, answer):
                 next_prompt = initial_next_turn_prompt()
                 continue
