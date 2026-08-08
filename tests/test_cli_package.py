@@ -5,6 +5,7 @@ import inspect
 import sys
 from pathlib import Path
 
+import pytest
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -95,3 +96,12 @@ def test_representative_interaction_signatures_are_preserved():
 def test_cli_main_is_orchestration_sized():
     main_module = importlib.import_module("netzoo_agent_core.cli.main")
     assert len(inspect.getsource(main_module.main).splitlines()) <= 140
+
+
+def test_timeline_is_mutually_exclusive_with_quiet(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["netzoo_agent.py", "--timeline", "--quiet"])
+
+    with pytest.raises(SystemExit) as error:
+        cli.parse_args()
+
+    assert error.value.code == 2

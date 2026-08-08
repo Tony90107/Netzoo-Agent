@@ -110,8 +110,10 @@ docker compose run --rm netzoo python scripts/netzoo_agent.py \
 
 如果正式任務缺少路徑，即使使用 `--task` 也會留在 `補充資料 >`，不會直接結束。
 可用 `--session NAME` 固定 checkpoint id，之後用 `--resume NAME` 恢復。預設輸出為
-compact progress/result；`--verbose` 顯示完整 evidence、graph、Evaluator、memory 與
-logs，`--quiet` 則只顯示 compact 最終結果。
+可讀且會保留的 activity timeline，會在最終結果前顯示 planning、tool、result 與
+evaluation 摘要；`--verbose` 顯示完整 evidence、graph、Evaluator、memory 與 logs，
+`--quiet` 則只顯示 compact 最終結果。這些 activity entries 是可稽核的結構化摘要，不是
+模型私有 chain-of-thought。
 
 所有 agent 輸出固定為英文，輸入可使用任何語言。成功的自動 one-shot checkpoint
 會立即刪除；pending／failed／named session 才會保留。全新互動模式不會暗中接續舊
