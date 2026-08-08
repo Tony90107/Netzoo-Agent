@@ -8,7 +8,9 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
-from netzoo_agent_core.interpretation import render_spec_backed_concept_answer  # noqa: E402
+from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
+    render_spec_backed_concept_answer,
+)
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 
