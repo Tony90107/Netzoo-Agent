@@ -224,6 +224,28 @@ def _condor_missing_output_plan() -> WorkflowPlan:
     )
 
 
+def _preference_confirmation_plan() -> WorkflowPlan:
+    return WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="remember preference",
+        decision=TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            confidence=1.0,
+            reason="test",
+        ).model_dump(),
+        status="needs_confirmation",
+        preference_proposals=[
+            PreferenceProposal(
+                key="reuse_last_inputs",
+                value="true",
+                reason="explicit request",
+            )
+        ],
+    )
+
+
 def test_single_component_absolute_path_resolves_clarification():
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     runtime = _fake_cli_runtime(
@@ -288,33 +310,80 @@ def test_recommended_follow_up_without_path_enables_immediate_menu(monkeypatch):
 
 def test_slash_command_does_not_confirm_preference():
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
-    plan = WorkflowPlan(
-        workflow="NO-TOOL",
-        objective="remember preference",
-        decision=TaskDecision(
-            action="no_tool",
-            in_scope=True,
-            should_execute=False,
-            confidence=1.0,
-            reason="test",
-        ).model_dump(),
-        status="needs_confirmation",
-        preference_proposals=[
-            PreferenceProposal(
-                key="reuse_last_inputs",
-                value="true",
-                reason="explicit request",
-            )
-        ],
-    )
     runtime = _fake_cli_runtime(
         invoke_error=AssertionError("graph must not run"),
         interactive_answers=["/help", "exit"],
     )
-    runtime.pending_plan = plan
+    runtime.pending_plan = _preference_confirmation_plan()
 
     assert conversation.run_conversation(
         SimpleNamespace(task=None, keep_session=False), runtime
     ) == 0
     runtime.memory.profile_store.confirm.assert_not_called()
     runtime.invoke_graph_turn_func.assert_not_called()
+
+
+def test_menu_cancellation_preserves_preference_confirmation_and_mode(monkeypatch):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    reader = Mock()
+    reader.read.side_effect = [None, "exit"]
+    monkeypatch.setattr(conversation, "TerminalInputReader", Mock(return_value=reader))
+    runtime = _fake_cli_runtime(
+        invoke_error=AssertionError("graph must not run"),
+        interactive_answers=(),
+    )
+    runtime.pending_plan = _preference_confirmation_plan()
+    previous = settings.EXECUTE_TOOLS
+    try:
+        configure_runtime(EXECUTE_TOOLS=True)
+
+        assert conversation.run_conversation(
+            SimpleNamespace(task=None, keep_session=False), runtime
+        ) == 0
+
+        assert settings.EXECUTE_TOOLS is True
+        assert reader.read.call_count == 2
+        assert all(
+            "Save these long-term preferences?" in call.args[0]
+            for call in reader.read.call_args_list
+        )
+        runtime.memory.profile_store.confirm.assert_not_called()
+        runtime.invoke_graph_turn_func.assert_not_called()
+        assert runtime.recorder.mock_calls == []
+    finally:
+        configure_runtime(EXECUTE_TOOLS=previous)
+
+
+def test_menu_cancellation_preserves_outcome_prompt_and_mode(monkeypatch):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    outcome_prompt = conversation.NextTurnPrompt(
+        kind="completed",
+        question="Would you like to refine the completed result?",
+    )
+    monkeypatch.setattr(conversation, "initial_next_turn_prompt", lambda: outcome_prompt)
+    reader = Mock()
+    reader.read.side_effect = [None, "exit"]
+    monkeypatch.setattr(conversation, "TerminalInputReader", Mock(return_value=reader))
+    runtime = _fake_cli_runtime(
+        invoke_error=AssertionError("graph must not run"),
+        interactive_answers=(),
+    )
+    previous = settings.EXECUTE_TOOLS
+    try:
+        configure_runtime(EXECUTE_TOOLS=False)
+
+        assert conversation.run_conversation(
+            SimpleNamespace(task=None, keep_session=False), runtime
+        ) == 0
+
+        assert settings.EXECUTE_TOOLS is False
+        assert reader.read.call_count == 2
+        assert all(
+            "Would you like to refine the completed result?" in call.args[0]
+            for call in reader.read.call_args_list
+        )
+        runtime.memory.profile_store.confirm.assert_not_called()
+        runtime.invoke_graph_turn_func.assert_not_called()
+        assert runtime.recorder.mock_calls == []
+    finally:
+        configure_runtime(EXECUTE_TOOLS=previous)

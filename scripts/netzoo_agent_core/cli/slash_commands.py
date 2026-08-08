@@ -80,6 +80,7 @@ def handle_slash_command(
         handled=True,
         message=(
             "Press / at an empty prompt to choose Test or Execute mode.\n"
+            "Ctrl-V inserts a literal / there so you can type a slash command.\n"
             "Text alternatives:\n"
             "Slash commands:\n"
             "  /test     Preview validated workflow commands without running them.\n"

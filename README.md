@@ -140,15 +140,17 @@ python scripts/netzoo_agent.py --profile alice --forget-memory
 [TEST] What would you like to accomplish with NetZoo?
 > /
 Select NetZoo mode
-❯ Test mode — preview commands only
-  Execute mode — run validated commands
+(*) Test mode — preview commands only
+( ) Execute mode — run validated commands
 
-↑/↓ move · Enter select · Esc cancel
+↑/↓ move · Enter select · Esc/Ctrl-C cancel
 ```
 
-Press `/` at an empty prompt to open this primary mode selector. `/execute` and
-`/test` remain typed alternatives. Path prompts intentionally do not open the
-menu, so absolute paths can be typed without being interpreted as commands.
+Press `/` at an empty prompt to open this primary mode selector. To type a slash
+command at the same empty prompt, press Ctrl-V to insert a literal `/`, then type
+`test`, `execute`, `status`, or `help` and press Enter. A slash typed after other
+text remains literal. Path prompts intentionally do not open the menu, so
+absolute paths and slash commands can be typed normally.
 
 `--task` 是非互動 preview-only 介面，不接受 `--execute`。
 

@@ -5,15 +5,37 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+from prompt_toolkit.application.current import create_app_session
+from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.keys import Keys
+from prompt_toolkit.output import DummyOutput
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
     MODE_MENU_OPTIONS,
+    MODE_MENU_TRIGGER,
     TerminalInputReader,
     _create_mode_menu,
+    _read_menu_line,
 )
+
+
+def _dispatch_line_keys(keys: str) -> str:
+    with create_pipe_input() as pipe_input:
+        pipe_input.send_text(keys)
+        with create_app_session(input=pipe_input, output=DummyOutput()):
+            return _read_menu_line("prompt> ")
+
+
+def _dispatch_menu_keys(default_command: str, keys: str) -> str | None:
+    with create_pipe_input() as pipe_input:
+        pipe_input.send_text(keys)
+        with create_app_session(input=pipe_input, output=DummyOutput()):
+            menu = _create_mode_menu(default_command)
+            menu.ttimeoutlen = 0.01
+            return menu.run()
 
 
 def test_mode_menu_options_are_ordered_and_use_existing_commands():
@@ -39,7 +61,7 @@ def test_empty_slash_trigger_opens_current_mode_menu_and_returns_selection():
     dialog.assert_called_once_with("/test")
 
 
-def test_cancelled_menu_returns_empty_input_without_fallback_notice():
+def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
     notice = Mock()
     reader = TerminalInputReader(
         Mock(),
@@ -50,7 +72,7 @@ def test_cancelled_menu_returns_empty_input_without_fallback_notice():
         current_mode=lambda: "EXECUTE",
     )
 
-    assert reader.read("prompt", menu_enabled=True) == ""
+    assert reader.read("prompt", menu_enabled=True) is None
     notice.assert_not_called()
 
 
@@ -88,19 +110,37 @@ def test_tui_failure_notices_once_then_uses_plain_input():
     notice.assert_called_once()
 
 
-def test_mode_menu_escape_ctrl_c_and_enter_bindings_cancel_or_confirm():
+def test_immediate_slash_is_dispatched_without_enter():
+    assert _dispatch_line_keys("/") == MODE_MENU_TRIGGER
+
+
+def test_nonempty_slash_is_preserved_by_real_key_dispatch():
+    assert _dispatch_line_keys("goal/help\r") == "goal/help"
+
+
+@pytest.mark.parametrize("command", ["test", "execute", "status", "help"])
+def test_ctrl_v_pass_through_supports_every_text_command(command: str):
+    assert _dispatch_line_keys(f"\x16{command}\r") == f"/{command}"
+
+
+def test_down_then_enter_selects_execute_from_test():
+    assert _dispatch_menu_keys("/test", "\x1b[B\r") == "/execute"
+
+
+def test_up_then_enter_selects_test_from_execute():
+    assert _dispatch_menu_keys("/execute", "\x1b[A\r") == "/test"
+
+
+@pytest.mark.parametrize("key", ["\x1b", "\x03"], ids=["escape", "ctrl-c"])
+def test_escape_and_ctrl_c_cancel_through_real_key_dispatch(key: str):
+    assert _dispatch_menu_keys("/execute", key) is None
+
+
+def test_menu_enter_binding_confirms_current_highlight():
     menu = _create_mode_menu("/execute")
-
-    for key in (Keys.Escape, Keys.ControlC):
-        app = Mock()
-        binding = menu.key_bindings.get_bindings_for_keys((key,))[0]
-
-        binding.handler(SimpleNamespace(app=app))
-
-        app.exit.assert_called_once_with(result=None)
-
     app = Mock()
     enter = menu.key_bindings.get_bindings_for_keys((Keys.Enter,))[0]
+
     enter.handler(SimpleNamespace(app=app))
 
     app.exit.assert_called_once_with(result="/execute")
