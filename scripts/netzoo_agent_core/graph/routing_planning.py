@@ -22,6 +22,7 @@ from ..interpretation import (
 )
 from ..interpretation.semantic_goal import semantic_summary_detail
 from ..routing.capability import infer_goal_capability_match
+from ..progress_summaries import render_progress_summary
 from ..llm import (
     append_llm_usage,
     build_router_messages,
@@ -36,6 +37,7 @@ __all__: list[str] = []
 
 def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
+    _trace("reasoning", "Checking registered workflow capabilities", "I am comparing the requested outcome with registered workflows and their input requirements.")
     messages = build_router_messages(context.routing_prompt, state["messages"])
     user_task = latest_user_task(state["messages"])
     router_input_text = "\n".join(str(message.content) for message in messages)
@@ -158,6 +160,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         f"Classified as {decision.action}",
         semantic_summary_detail(semantic_goal, decision),
     )
+    _trace("reasoning", "Choosing the next safe step", render_progress_summary("next_step", {"action": decision.action, "in_scope": str(decision.in_scope).lower(), "should_execute": str(decision.should_execute).lower()}))
     record_event(
         context,
         state,

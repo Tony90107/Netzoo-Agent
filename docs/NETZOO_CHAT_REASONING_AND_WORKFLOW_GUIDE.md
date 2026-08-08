@@ -38,6 +38,16 @@ PUMA → LIONESS-PUMA
 
 同時移除 session 初始化、記憶體載入、完成訊號等不利於理解的雜訊。對不需要工具的問題會明確說明「未檢查檔案、未執行分析」。
 
+每個任務現在至少會依序顯示三個短區塊：
+
+```text
+[Understanding request]
+[Checking available workflows]
+[Choosing next step]
+```
+
+接著才會呈現匹配到的 workflow、計畫、工具活動或最終回答。需要執行的任務仍會保留原有的 input validation、tool start、tool result 與 evaluation 區塊。
+
 **為什麼有效**：timeline 讀取的是結構化、受 policy 驗證的事件與決策，而非請 LLM 直接公開內部思考。因此資訊可讀、可測試，也不會暴露不可靠或不應顯示的 private reasoning。
 
 ### 2. 基本概念題得到不合理的拒答
