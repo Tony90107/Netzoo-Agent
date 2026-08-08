@@ -41,12 +41,14 @@ def render_spec_backed_concept_answer(
 def render_ambiguous_workflow_guidance(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
+    semantic_goal: dict | None = None,
 ) -> str | None:
     """Explain multiple registered candidates without inventing a selection."""
     if not (
         decision.in_scope
         and decision.action == "no_tool"
         and len(decision.recommended_actions) > 1
+        and (semantic_goal or {}).get("relationship") == "alternatives"
     ):
         return None
     specs = [policy.workflows.get(action) for action in decision.recommended_actions]
@@ -62,4 +64,30 @@ def render_ambiguous_workflow_guidance(
     )
 
 
-__all__ = ["render_spec_backed_concept_answer", "render_ambiguous_workflow_guidance"]
+def render_workflow_composition_guidance(
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+    semantic_goal: dict | None = None,
+) -> str | None:
+    """Explain an ordered, registry-defined workflow composition."""
+    if not (
+        decision.in_scope
+        and decision.action == "no_tool"
+        and (semantic_goal or {}).get("relationship") == "composition"
+        and decision.recommended_actions
+    ):
+        return None
+    specs = [policy.workflows.get(action) for action in decision.recommended_actions]
+    registered = [spec for spec in specs if spec is not None]
+    if not registered:
+        return None
+    steps = "\n".join(f"- {spec.workflow}: {spec.description}" for spec in registered)
+    return _ui_text(
+        "I matched your goal to this registered workflow composition:\n"
+        f"{steps}\n\n"
+        f"The final workflow in this composition is {registered[-1].workflow}. "
+        "No files were inspected and no analysis ran."
+    )
+
+
+__all__ = ["render_spec_backed_concept_answer", "render_ambiguous_workflow_guidance", "render_workflow_composition_guidance"]

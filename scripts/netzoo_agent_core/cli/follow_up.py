@@ -50,6 +50,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     result_evaluation = state.get("evaluation")
     semantic_goal = state.get("semantic_goal") or {}
     semantic_candidates = semantic_goal.get("candidates") or []
+    semantic_relationship = semantic_goal.get("relationship")
 
     if plan_evaluation and plan_evaluation.status == "rejected":
         return NextTurnPrompt(
@@ -59,7 +60,11 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
-    if decision.action == "no_tool" and len(semantic_candidates) > 1:
+    if (
+        decision.action == "no_tool"
+        and semantic_relationship == "alternatives"
+        and len(semantic_candidates) > 1
+    ):
         return NextTurnPrompt(
             kind="recommended_workflow",
             question=_ui_text(

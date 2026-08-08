@@ -9,6 +9,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
+    render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
 )
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
@@ -41,3 +42,28 @@ def test_non_purpose_question_keeps_response_model_path():
     policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
 
     assert render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy) is None
+
+
+def test_composition_guidance_uses_registered_workflow_metadata():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="Guidance was requested.",
+        recommended_actions=["run_puma", "run_lioness_puma"],
+    )
+
+    answer = render_workflow_composition_guidance(
+        decision,
+        policy,
+        {"relationship": "composition"},
+    )
+
+    assert answer is not None
+    assert "PUMA: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA." in answer
+    assert "LIONESS-PUMA: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks." in answer
+    assert "final workflow in this composition is LIONESS-PUMA" in answer
+    assert "clarify" not in answer
