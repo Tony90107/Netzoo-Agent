@@ -29,6 +29,8 @@ from ..evaluation import (
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_spec_backed_concept_answer
 from ..interpretation.concept_answers import render_ambiguous_workflow_guidance
+from ..interpretation.concept_answers import render_capability_gap
+from ..interpretation.concept_answers import render_outcome_clarification
 from ..interpretation.concept_answers import render_workflow_composition_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
@@ -69,6 +71,12 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
+    outcome_clarification = render_outcome_clarification(decision)
+    if outcome_clarification is not None:
+        return {"messages": [AIMessage(content=outcome_clarification)]}
+    capability_gap = render_capability_gap(decision, context.project_policy)
+    if capability_gap is not None:
+        return {"messages": [AIMessage(content=capability_gap)]}
     concept_answer = render_spec_backed_concept_answer(
         latest_user_task(state["messages"]), decision, context.project_policy
     )

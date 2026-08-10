@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
+from workflow_registry import (
+    OUTPUT_CAPABILITIES,
+    REQUIRED_INPUTS,
+    workflow_name as _workflow_name,
+)
 
 from ..contracts import (
     NextTurnPrompt,
@@ -57,6 +61,39 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             kind="plan_rejected",
             question=_ui_text(
                 "Would you like to revise the rejected plan or describe a different deliverable?"
+            ),
+        )
+
+    if decision.capability_match_status == "ambiguous":
+        return NextTurnPrompt(
+            kind="clarify_outcome",
+            question=_ui_text(
+                "Reply with the clarification above, or describe another NetZoo goal."
+            ),
+        )
+
+    if (
+        decision.capability_match_status == "unsupported"
+        and decision.alternative_actions
+    ):
+        action = decision.alternative_actions[0]
+        capability = OUTPUT_CAPABILITIES[action]
+        requested_granularity = (
+            decision.requested_outcome.granularity
+            if decision.requested_outcome
+            else None
+        )
+        return NextTurnPrompt(
+            kind="alternative_outcome",
+            question=_ui_text(
+                "Reply yes if you want the supported alternative above, or describe "
+                "another goal."
+            ),
+            alternative_action=action,
+            alternative_granularity=(
+                requested_granularity
+                if requested_granularity in capability.granularities
+                else None
             ),
         )
 
@@ -191,8 +228,6 @@ def follow_up_returns_to_main(prompt: NextTurnPrompt, answer: str) -> bool:
 def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
     """Turn a short acceptance or direct path into a resumable workflow request."""
     stripped = answer.strip()
-    if not prompt.continuation_action:
-        return stripped
     normalized = stripped.casefold()
     affirmative = normalized in {
         "y",
@@ -208,6 +243,19 @@ def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
         "開始",
         "要",
     }
+    if prompt.alternative_action and affirmative:
+        granularity = (
+            f" CONFIRMED_GRANULARITY={prompt.alternative_granularity}."
+            if prompt.alternative_granularity
+            else ""
+        )
+        return (
+            f"CONFIRMED_OUTCOME_ACTION={prompt.alternative_action}.{granularity} "
+            "Explain the confirmed supported outcome and recommend its workflow. "
+            "Do not execute it yet."
+        )
+    if not prompt.continuation_action:
+        return stripped
     looks_like_path = bool(
         re.search(r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$", stripped, flags=re.IGNORECASE)
     )

@@ -11,6 +11,16 @@ def render_progress_summary(kind: str, facts: dict[str, str]) -> str | None:
             "the answer source."
         )
     if kind == "next_step":
+        if facts.get("capability_match_status") == "unsupported":
+            return (
+                "The requested result does not exactly match a registered workflow. "
+                "I will explain the capability gap without running an analysis."
+            )
+        if facts.get("capability_match_status") == "ambiguous":
+            return (
+                "The requested result is ambiguous, so I need one clarification "
+                "before selecting a workflow."
+            )
         if facts.get("action") == "no_tool" and facts.get("in_scope") == "true":
             return (
                 "This is stable guidance, so I will answer from registered "

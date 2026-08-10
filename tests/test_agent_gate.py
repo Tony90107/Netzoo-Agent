@@ -157,6 +157,36 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(gated.action, "no_tool")
         self.assertIn("does not exactly match", gated.reason)
 
+    def test_confirmed_alternative_recommends_but_does_not_execute(self):
+        decision = agent.repair_router_decision(
+            agent.TaskDecision(
+                action="no_tool",
+                in_scope=True,
+                should_execute=False,
+                intent_type="unknown",
+                confidence=0.95,
+                reason="confirmation turn",
+            ),
+            (
+                "CONFIRMED_OUTCOME_ACTION=run_lioness_puma. "
+                "CONFIRMED_GRANULARITY=sample_specific. "
+                "Explain the supported outcome. Do not execute it yet."
+            ),
+        )
+
+        self.assertEqual(decision.action, "no_tool")
+        self.assertFalse(decision.should_execute)
+        self.assertEqual(decision.capability_match_status, "exact")
+        self.assertEqual(decision.matched_actions, ["run_lioness_puma"])
+        self.assertEqual(
+            decision.recommended_actions,
+            ["run_puma", "run_lioness_puma"],
+        )
+        self.assertEqual(
+            decision.requested_outcome.granularity,
+            "sample_specific",
+        )
+
     def test_complete_panda_request_passes(self):
         result = agent.enforce_capability_gate(
             self.decision(),

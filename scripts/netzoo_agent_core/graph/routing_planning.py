@@ -160,7 +160,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         f"Classified as {decision.action}",
         semantic_summary_detail(semantic_goal, decision),
     )
-    _trace("reasoning", "Choosing the next safe step", render_progress_summary("next_step", {"action": decision.action, "in_scope": str(decision.in_scope).lower(), "should_execute": str(decision.should_execute).lower()}))
+    _trace("reasoning", "Choosing the next safe step", render_progress_summary("next_step", {"action": decision.action, "in_scope": str(decision.in_scope).lower(), "should_execute": str(decision.should_execute).lower(), "capability_match_status": decision.capability_match_status or ""}))
     record_event(
         context,
         state,
