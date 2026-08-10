@@ -2613,12 +2613,32 @@ class CapabilityGateTests(unittest.TestCase):
         policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
         capability_summary = policy.router_capability_summary()
 
-        self.assertEqual(policy.policy_version, 1)
+        self.assertEqual(policy.policy_version, 2)
         self.assertEqual(set(policy.workflows), agent.RUN_ACTIONS)
         self.assertEqual(len(policy.policy_hash), 64)
         self.assertIn("run_panda", capability_summary)
         self.assertNotIn("# NetZoo Agent Project Policy", capability_summary)
         self.assertNotIn("本檔案", capability_summary)
+
+    def test_every_workflow_policy_matches_python_output_capability(self):
+        policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+
+        for action, spec in policy.workflows.items():
+            definition = agent.ACTION_DEFINITIONS[action].output_capability
+            self.assertIsNotNone(definition)
+            self.assertEqual(spec.output_capability.operation, definition.operation)
+            self.assertEqual(
+                spec.output_capability.artifact_type,
+                definition.artifact_type,
+            )
+            self.assertEqual(
+                set(spec.output_capability.entity_types),
+                set(definition.entity_types),
+            )
+            self.assertEqual(
+                set(spec.output_capability.granularities),
+                set(definition.granularities),
+            )
 
     def test_router_prompt_is_generated_from_policy_without_input_rule_conflict(self):
         policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
@@ -2747,12 +2767,12 @@ class CapabilityGateTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 agent.validate_response_model("premium/unknown")
 
-    def test_project_policy_loader_rejects_unsupported_version(self):
+    def test_project_policy_loader_rejects_version_one_after_capability_migration(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "AGENTS.md").write_text(
                 "---\n"
-                "policy_version: 2\n"
+                "policy_version: 1\n"
                 "project: invalid\n"
                 "workflow_spec_dir: workflows\n"
                 "conventions: []\n"
@@ -2760,6 +2780,26 @@ class CapabilityGateTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaises(agent.ProjectPolicyError):
+                agent.ProjectPolicyLoader(root).load()
+
+    def test_project_policy_loader_rejects_output_capability_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copy(agent.PROJECT_ROOT / "AGENTS.md", root / "AGENTS.md")
+            shutil.copytree(agent.PROJECT_ROOT / "workflows", root / "workflows")
+            panda_path = root / "workflows" / "panda.yaml"
+            panda_path.write_text(
+                panda_path.read_text(encoding="utf-8").replace(
+                    "artifact_type: regulatory_network",
+                    "artifact_type: coexpression_network",
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                agent.ProjectPolicyError,
+                "output_capability conflict",
+            ):
                 agent.ProjectPolicyLoader(root).load()
 
     def test_project_policy_loader_rejects_yaml_that_weakens_python_requirements(self):

@@ -1,5 +1,5 @@
 ---
-policy_version: 1
+policy_version: 2
 project: network-zoo-panda-puma
 workflow_spec_dir: workflows
 conventions:

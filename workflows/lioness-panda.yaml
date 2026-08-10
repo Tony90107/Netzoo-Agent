@@ -1,4 +1,4 @@
-policy_version: 1
+policy_version: 2
 workflow: LIONESS-PANDA
 action: run_lioness_panda
 description: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.
@@ -6,6 +6,14 @@ required_inputs: [expression_file, motif_file, ppi_file, output_file, lioness_ou
 optional_inputs: []
 validation_steps: [inspect_inputs]
 execution_step: run_lioness_panda
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, gene]
+  granularities: [aggregate, sample_specific]
+  regulator_types: [tf]
+  target_types: [gene]
+  guidance_predecessors: [run_panda]
 conventions:
   - Require at least three expression samples before execution.
   - Keep aggregate and sample-specific outputs distinct from every input.

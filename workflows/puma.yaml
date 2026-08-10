@@ -1,4 +1,4 @@
-policy_version: 1
+policy_version: 2
 workflow: PUMA
 action: run_puma
 description: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.
@@ -6,6 +6,14 @@ required_inputs: [expression_file, motif_file, ppi_file, mirna_file, output_file
 optional_inputs: []
 validation_steps: [inspect_inputs]
 execution_step: run_puma
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, mirna, gene]
+  granularities: [aggregate]
+  regulator_types: [tf, mirna]
+  target_types: [gene]
+  guidance_predecessors: []
 conventions:
   - Require one miRNA identifier per line and require every miRNA in prior column one.
   - A header repair may be attempted only through the code-enforced bounded recovery.
