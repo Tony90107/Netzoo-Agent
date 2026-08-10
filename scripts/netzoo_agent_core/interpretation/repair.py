@@ -280,6 +280,4 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
 
     if raw_decision.action not in LOCAL_WORKFLOW_ACTIONS:
         return decision
-    if raw_decision.action in decision.matched_actions:
-        return decision
     return decision.model_copy(update={"action": "no_tool", "should_execute": False})

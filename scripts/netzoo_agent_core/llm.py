@@ -71,8 +71,11 @@ Routing rules:
 3. Use query_context7 only when current/version-specific documentation matters:
    versions, compatibility, CLI flags, installation, APIs, deprecations, or explicit docs.
 4. Use web_search only for explicit web/literature search or current non-package facts.
-5. Describe a recognizable scientific result in requested_outcome. Its operation
-   is the requested scientific operation, not whether the user phrased a question.
+5. Always return the requested_outcome field. For every request that asks what tool,
+   method, or workflow can obtain, prepare, validate, infer, analyze, or explain a
+   scientific result, requested_outcome must be a non-null structured description.
+   Use null only for requests with no scientific result at all, such as CLI controls.
+   Its operation is the requested scientific operation, not whether the user phrased a question.
    Use unknown and unresolved_dimensions when artifact, biological role, or
    granularity is unclear. Never reinterpret data acquisition as network inference
    merely because a related workflow exists. Deterministic code matches the outcome

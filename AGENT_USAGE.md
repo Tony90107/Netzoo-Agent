@@ -184,6 +184,10 @@ Router 現在不再以「使用者有沒有說出工具名稱」當作主要條�
 3. 這一輪是在詢問做法，還是授權 agent 立即執行。
 4. 執行所需資料能否由 Planner 安全解析；不能時才集中追問。
 
+Router 只把自然語言整理成 typed `RequestedOutcome`；Python capability matcher
+才有權把 operation、artifact、entity role 與 granularity 對到 workflow。模型提出的
+action 本身不構成推薦或執行權限。
+
 例如：
 
 ```text
@@ -195,6 +199,19 @@ Router 現在不再以「使用者有沒有說出工具名稱」當作主要條�
 LIONESS-PUMA 再建立每個 sample 的 network；接著只列出啟動該 workflow 所需的
 expression、TF/miRNA prior、PPI、miRNA list 與輸出位置。不能再只回答「蒐集資料、
 找 target、建網路、驗證」這類沒有連結到 agent capabilities 的一般步驟。
+
+但下面這個問題要求的是不同產物：
+
+```text
+if i want to get sample specific mi-RNA data, what tools do i need?
+```
+
+這會被正規化為「取得 sample-specific miRNA measurement data」，而不是網路推論。
+本專案 workflow 不負責取得這類量測資料，因此不得把 PUMA/LIONESS-PUMA 說成精確
+答案。Agent 會說明 acquisition 與 network inference 的差異，並詢問使用者是否其實
+要 sample-specific miRNA-to-gene regulatory network。此時 LIONESS-PUMA 只是
+`alternative_action`，不會進入 Planner 或 Executor；只有使用者確認改變後的產物，
+才會在下一輪成為 exact match。
 
 若改成直接指令：
 

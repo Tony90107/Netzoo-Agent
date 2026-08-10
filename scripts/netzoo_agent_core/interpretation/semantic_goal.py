@@ -45,3 +45,35 @@ def public_semantic_summary(semantic_goal: dict, decision: TaskDecision) -> str:
 
 def semantic_summary_detail(semantic_goal: dict, decision: TaskDecision) -> dict:
     return {"kind": "semantic_goal", "text": public_semantic_summary(semantic_goal, decision)}
+
+
+def outcome_routing_state(decision: TaskDecision, goal: str = "") -> dict:
+    """Build graph state from the deterministic capability-match decision."""
+    semantic_goal = {
+        "goal": goal,
+        "candidates": list(decision.recommended_actions),
+        "unresolved_dimensions": (
+            list(decision.requested_outcome.unresolved_dimensions)
+            if decision.requested_outcome
+            else []
+        ),
+        "relationship": (
+            "composition" if len(decision.recommended_actions) > 1 else "single"
+        ),
+        "match_status": decision.capability_match_status,
+    }
+    return {
+        "semantic_goal": semantic_goal,
+        "requested_outcome": (
+            decision.requested_outcome.model_dump()
+            if decision.requested_outcome
+            else None
+        ),
+        "capability_match": {
+            "status": decision.capability_match_status,
+            "matched_actions": decision.matched_actions,
+            "alternative_actions": decision.alternative_actions,
+            "mismatch_dimensions": decision.mismatch_dimensions,
+            "clarification_question": decision.clarification_question,
+        },
+    }

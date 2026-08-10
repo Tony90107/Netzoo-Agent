@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
 
 from .outcomes import CapabilityMatchStatus, RequestedOutcome
+
+
+def _require_outcome_in_transport_schema(schema: dict) -> None:
+    """Require explicit Router classification without breaking internal fixtures."""
+    required = schema.setdefault("required", [])
+    if "requested_outcome" not in required:
+        required.append("requested_outcome")
 
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
@@ -17,13 +24,21 @@ class PreferenceProposal(BaseModel):
 class RouterDecision(BaseModel):
     """Small LLM-facing interface; deterministic code hydrates execution details."""
 
+    model_config = ConfigDict(json_schema_extra=_require_outcome_in_transport_schema)
+
     action: ActionName
     in_scope: bool = True
     intent_type: IntentType = "unknown"
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=300)
     semantic_goal: str | None = Field(default=None, max_length=240)
-    requested_outcome: RequestedOutcome | None = None
+    requested_outcome: RequestedOutcome | None = Field(
+        default=None,
+        description=(
+            "Required classification field. Describe the scientific result the user "
+            "wants, or use null only when the request has no scientific result at all."
+        )
+    )
 
 class TaskDecision(BaseModel):
     """A capability-aware routing decision for the allow-listed NetZoo agent."""
