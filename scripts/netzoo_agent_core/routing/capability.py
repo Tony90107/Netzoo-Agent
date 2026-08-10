@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from workflow_registry import LOCAL_WORKFLOW_ACTIONS, REQUIRED_INPUTS
+from workflow_registry import (
+    LOCAL_WORKFLOW_ACTIONS,
+    REQUIRED_INPUTS,
+    RecommendedAction,
+    RUN_ACTIONS,
+)
 
 from ..contracts import TaskDecision
 
@@ -203,7 +209,12 @@ def has_direct_execution_intent(task: str) -> bool:
     )
 
 
-def validate_task_text(task: str, action: str) -> str | None:
+def validate_task_text(
+    task: str,
+    action: str,
+    *,
+    matched_actions: Sequence[RecommendedAction] = (),
+) -> str | None:
     """Return a rejection reason when user text cannot authorize the action."""
     normalized = task.casefold()
     for pattern in UNSUPPORTED_DELIVERABLE_PATTERNS:
@@ -216,8 +227,9 @@ def validate_task_text(task: str, action: str) -> str | None:
             "not authorizing local tool execution."
         )
 
-    inferred_action = inferred_execution_action(task)
-    semantic_execution = has_direct_execution_intent(task) and inferred_action == action
+    semantic_execution = (
+        has_direct_execution_intent(task) and action in matched_actions
+    )
 
     if action == "run_panda" and "panda" not in normalized and not semantic_execution:
         return "The task objective must specifically match PANDA before it can run."
@@ -318,8 +330,6 @@ def enforce_capability_gate(
     decision: TaskDecision, user_task: str | None = None
 ) -> TaskDecision:
     """Convert uncertain, unsupported, or incomplete decisions into no_tool."""
-    if user_task and not decision.recommended_actions:
-        decision.recommended_actions = infer_goal_capabilities(user_task)
     if decision.action == "no_tool":
         decision.should_execute = False
         return decision
@@ -337,8 +347,19 @@ def enforce_capability_gate(
     missing = sorted(set([*decision.missing_inputs, *missing]))
 
     rejection_reasons = []
+    if (
+        decision.action in RUN_ACTIONS
+        and decision.action not in decision.matched_actions
+    ):
+        rejection_reasons.append(
+            "The selected workflow does not exactly match the requested deliverable."
+        )
     if user_task:
-        task_rejection = validate_task_text(user_task, decision.action)
+        task_rejection = validate_task_text(
+            user_task,
+            decision.action,
+            matched_actions=decision.matched_actions,
+        )
         if task_rejection:
             rejection_reasons.append(task_rejection)
     if (
@@ -369,6 +390,12 @@ def enforce_capability_gate(
             confidence=decision.confidence,
             reason="；".join(rejection_reasons),
             recommended_actions=decision.recommended_actions,
+            requested_outcome=decision.requested_outcome,
+            capability_match_status=decision.capability_match_status,
+            matched_actions=decision.matched_actions,
+            alternative_actions=decision.alternative_actions,
+            mismatch_dimensions=decision.mismatch_dimensions,
+            clarification_question=decision.clarification_question,
             missing_inputs=missing,
         )
     return decision

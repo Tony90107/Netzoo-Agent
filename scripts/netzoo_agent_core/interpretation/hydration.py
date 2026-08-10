@@ -33,7 +33,10 @@ def hydrate_router_decision(
             intent_type=route.intent_type,
             confidence=route.confidence,
             reason=route.reason,
-            recommended_actions=route.recommended_actions,
+            requested_outcome=route.requested_outcome,
+            matched_actions=[],
+            recommended_actions=[],
+            alternative_actions=[],
         )
 
     for field_name in (

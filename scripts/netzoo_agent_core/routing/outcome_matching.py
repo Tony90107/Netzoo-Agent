@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 
 from workflow_registry import (
+    ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     OutputCapabilityDefinition,
     RecommendedAction,
+    RUN_ACTIONS,
 )
 
-from ..contracts import CapabilityMatch, RequestedOutcome
+from ..contracts import CapabilityMatch, RequestedOutcome, TaskDecision
 
 
 _UNKNOWN = "unknown"
@@ -180,4 +183,57 @@ def guidance_actions_for(action: RecommendedAction) -> list[RecommendedAction]:
     return [*capability.guidance_predecessors, action]
 
 
-__all__ = ["guidance_actions_for", "match_requested_outcome"]
+def named_workflow_action(task: str) -> RecommendedAction | None:
+    """Resolve an explicitly written registered workflow name, longest first."""
+    candidates = sorted(
+        RUN_ACTIONS,
+        key=lambda action: len(ACTION_DEFINITIONS[action].workflow),
+        reverse=True,
+    )
+    for action in candidates:
+        words = re.split(r"[-_\s]+", ACTION_DEFINITIONS[action].workflow.casefold())
+        pattern = r"(?<![a-z0-9])" + r"[\s_-]*".join(
+            re.escape(word) for word in words
+        ) + r"(?![a-z0-9])"
+        if re.search(pattern, task.casefold()):
+            return action
+    return None
+
+
+def apply_outcome_match(decision: TaskDecision) -> TaskDecision:
+    """Replace all workflow-match fields with deterministic registry results."""
+    if decision.requested_outcome is None:
+        return decision.model_copy(
+            update={
+                "capability_match_status": None,
+                "matched_actions": [],
+                "recommended_actions": [],
+                "alternative_actions": [],
+                "mismatch_dimensions": [],
+                "clarification_question": decision.clarification_question,
+            }
+        )
+    match = match_requested_outcome(decision.requested_outcome)
+    guidance = (
+        guidance_actions_for(match.matched_actions[0])
+        if len(match.matched_actions) == 1
+        else []
+    )
+    return decision.model_copy(
+        update={
+            "capability_match_status": match.status,
+            "matched_actions": match.matched_actions,
+            "recommended_actions": guidance,
+            "alternative_actions": match.alternative_actions,
+            "mismatch_dimensions": match.mismatch_dimensions,
+            "clarification_question": match.clarification_question,
+        }
+    )
+
+
+__all__ = [
+    "apply_outcome_match",
+    "guidance_actions_for",
+    "match_requested_outcome",
+    "named_workflow_action",
+]

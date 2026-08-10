@@ -9,12 +9,10 @@ from workflow_registry import REQUIRED_INPUTS
 from ..contracts import TaskDecision, _is_demo_request
 from ..routing import (
     has_direct_execution_intent,
-    infer_advisory_capabilities,
-    infer_goal_capabilities,
-    inferred_execution_action,
     is_workflow_information_request,
     validate_task_text,
 )
+from ..routing.outcome_matching import guidance_actions_for, named_workflow_action
 from .extraction import (
     _task_path,
     documentation_library_for_task,
@@ -27,9 +25,8 @@ __all__: list[str] = []
 def deterministic_router_fallback(
     task: str, error: BaseException | None = None
 ) -> TaskDecision:
-    """Classify obvious local run intents when the provider/router fails."""
+    """Handle explicit workflow names but never guess an unnamed scientific goal."""
     normalized = task.casefold()
-    recommendations = infer_goal_capabilities(task)
     reason = (
         "The LLM router failed, so the agent used a deterministic fallback for an "
         "explicit local workflow request."
@@ -60,52 +57,36 @@ def deterministic_router_fallback(
             confidence=1.0,
             reason=rejection,
         )
-    if is_workflow_information_request(task):
-        recommendations = infer_advisory_capabilities(task)
-        return TaskDecision(
-            action="no_tool",
-            in_scope=True,
-            should_execute=False,
-            intent_type="answer_question",
-            confidence=1.0,
-            reason=(
-                "The request asks for workflow requirements or usage information, "
-                "not local execution."
-            ),
-            recommended_actions=recommendations,
-        )
 
-    run_intent = has_direct_execution_intent(task) or re.search(
-        r"(run|execute|trial|test|demo|試跑|執行|跑|跑一次|測試|做測試|示範|分析)",
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    if not run_intent:
-        return TaskDecision(
-            action="no_tool",
-            in_scope=True,
-            should_execute=False,
-            intent_type="unknown",
-            confidence=1.0,
-            reason="The provider failed and no deterministic local workflow intent was found.",
-            recommended_actions=recommendations,
-        )
-
-    action = (
-        inferred_execution_action(task) if has_direct_execution_intent(task) else None
-    )
-    if "lioness" in normalized:
-        if "panda" in normalized:
-            action = "run_lioness_panda"
-        elif "puma" in normalized:
-            action = "run_lioness_puma"
-        elif re.search(
-            r"(co[- _]?expression|coexpression|共表現|共同表現)",
+    action = named_workflow_action(task)
+    information_request = is_workflow_information_request(task)
+    run_intent = bool(
+        has_direct_execution_intent(task)
+        or re.search(
+            r"(run|execute|trial|test|demo|試跑|執行|跑|跑一次|測試|做測試|示範|分析)",
             normalized,
             flags=re.IGNORECASE,
-        ):
-            action = "run_lioness_coexpression"
-        else:
+        )
+    )
+
+    if action and (information_request or not run_intent):
+        return TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            intent_type="answer_question" if information_request else "unknown",
+            confidence=1.0,
+            reason=(
+                "The request names a registered workflow, but does not authorize "
+                "local execution."
+            ),
+            capability_match_status="exact",
+            matched_actions=[action],
+            recommended_actions=guidance_actions_for(action),
+        )
+
+    if not action:
+        if "lioness" in normalized and run_intent:
             return TaskDecision(
                 action="no_tool",
                 in_scope=True,
@@ -114,26 +95,25 @@ def deterministic_router_fallback(
                 confidence=1.0,
                 reason="A LIONESS run was requested, but its base method is ambiguous.",
                 missing_inputs=["lioness_mode"],
+                clarification_question=(
+                    "Which LIONESS base method should be used: PANDA, PUMA, or "
+                    "co-expression?"
+                ),
             )
-    elif action is None and "panda" in normalized:
-        action = "run_panda"
-    elif action is None and "puma" in normalized:
-        action = "run_puma"
-    elif action is None and "condor" in normalized:
-        action = "run_condor"
-
-    if action is None:
         return TaskDecision(
             action="no_tool",
             in_scope=True,
             should_execute=False,
-            intent_type="unknown",
+            intent_type="answer_question" if information_request else "unknown",
             confidence=1.0,
             reason=(
-                "The provider failed and the task did not identify an allow-listed "
-                "workflow by either name or objective."
+                "The provider failed and the requested outcome could not be "
+                "normalized safely."
             ),
-            recommended_actions=recommendations,
+            clarification_question=(
+                "What result do you want NetZoo to produce: a regulatory network, "
+                "a co-expression network, or community assignments?"
+            ),
         )
 
     values = {
@@ -143,7 +123,9 @@ def deterministic_router_fallback(
         "intent_type": "demo_run" if _is_demo_request(task) else "run_analysis",
         "confidence": 1.0,
         "reason": reason,
-        "recommended_actions": recommendations,
+        "capability_match_status": "exact",
+        "matched_actions": [action],
+        "recommended_actions": guidance_actions_for(action),
         "missing_inputs": [
             field_name
             for field_name in REQUIRED_INPUTS[action]

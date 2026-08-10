@@ -32,6 +32,7 @@ HISTORICAL_EXPORTS = [
     "validate_task_text",
     "normalize_context7_library",
     "enforce_capability_gate",
+    "apply_outcome_match",
     "match_requested_outcome",
     "guidance_actions_for",
     "_extract_named_path",

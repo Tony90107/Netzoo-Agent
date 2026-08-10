@@ -26,6 +26,7 @@ class CapabilityGateTests(unittest.TestCase):
             "should_execute": True,
             "confidence": 0.95,
             "reason": "explicit PANDA request",
+            "matched_actions": ["run_panda"],
             "expression_file": "expression.tsv",
             "motif_file": "motif.tsv",
             "ppi_file": "ppi.tsv",
@@ -33,6 +34,32 @@ class CapabilityGateTests(unittest.TestCase):
         }
         values.update(overrides)
         return agent.TaskDecision(**values)
+
+    @staticmethod
+    def measurement_outcome():
+        return agent.RequestedOutcome(
+            operation="acquire",
+            artifact_type="measurement_dataset",
+            entity_types=["mirna"],
+            display_entities=["miRNA"],
+            regulator_types=[],
+            target_types=[],
+            granularity="sample_specific",
+            unresolved_dimensions=[],
+        )
+
+    @staticmethod
+    def mirna_network_outcome():
+        return agent.RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["mirna", "gene"],
+            display_entities=["miRNA", "gene"],
+            regulator_types=["mirna"],
+            target_types=["gene"],
+            granularity="sample_specific",
+            unresolved_dimensions=[],
+        )
 
     def test_agent_authored_ui_text_must_be_english(self):
         self.assertEqual(agent._ui_text("Choose a workflow."), "Choose a workflow.")
@@ -85,8 +112,8 @@ class CapabilityGateTests(unittest.TestCase):
         finally:
             agent.build_graph = original
 
-    def test_sample_specific_mirna_guidance_recommends_puma_and_lioness(self):
-        task = "if i want to get sample specfic mi-RNA, what can i do"
+    def test_sample_specific_mirna_data_is_not_promoted_to_network_guidance(self):
+        task = "if i want to get sample specific mi-RNA data, what tools do i need?"
 
         fallback = agent.deterministic_router_fallback(task, TimeoutError())
         repaired = agent.repair_router_decision(
@@ -97,14 +124,38 @@ class CapabilityGateTests(unittest.TestCase):
                 intent_type="answer_question",
                 confidence=0.99,
                 reason="Guidance requested.",
+                requested_outcome=self.measurement_outcome(),
             ),
             task,
         )
 
-        expected = ["run_puma", "run_lioness_puma"]
-        self.assertEqual(fallback.recommended_actions, expected)
-        self.assertEqual(repaired.recommended_actions, expected)
+        self.assertEqual(fallback.recommended_actions, [])
+        self.assertEqual(repaired.capability_match_status, "unsupported")
+        self.assertEqual(repaired.matched_actions, [])
+        self.assertEqual(repaired.recommended_actions, [])
+        self.assertEqual(repaired.alternative_actions[0], "run_lioness_puma")
         self.assertFalse(repaired.should_execute)
+
+    def test_router_proposed_run_cannot_bypass_outcome_mismatch(self):
+        decision = agent.TaskDecision(
+            action="run_lioness_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=1.0,
+            reason="model proposal",
+            requested_outcome=self.measurement_outcome(),
+            matched_actions=[],
+            capability_match_status="unsupported",
+        )
+
+        gated = agent.enforce_capability_gate(
+            decision,
+            "download per-sample miRNA data",
+        )
+
+        self.assertEqual(gated.action, "no_tool")
+        self.assertIn("does not exactly match", gated.reason)
 
     def test_complete_panda_request_passes(self):
         result = agent.enforce_capability_gate(
@@ -179,7 +230,7 @@ class CapabilityGateTests(unittest.TestCase):
 
     def test_unnamed_tool_request_is_blocked(self):
         result = agent.enforce_capability_gate(
-            self.decision(),
+            self.decision(matched_actions=[]),
             user_task="幫我用這些檔案推論網路",
         )
         self.assertEqual(result.action, "no_tool")
@@ -200,6 +251,7 @@ class CapabilityGateTests(unittest.TestCase):
                 intent_type="answer_question",
                 confidence=0.95,
                 reason="The user asked for guidance.",
+                requested_outcome=self.mirna_network_outcome(),
             ),
             task,
         )
@@ -427,6 +479,7 @@ class CapabilityGateTests(unittest.TestCase):
                 intent_type="unknown",
                 confidence=0.70,
                 reason="No tool name was supplied.",
+                requested_outcome=self.mirna_network_outcome(),
             ),
             task,
         )
@@ -441,7 +494,10 @@ class CapabilityGateTests(unittest.TestCase):
 
     def test_goal_repair_upgrades_partial_puma_route_to_sample_specific_workflow(self):
         decision = agent.repair_router_decision(
-            self.decision(action="run_puma"),
+            self.decision(
+                action="run_puma",
+                requested_outcome=self.mirna_network_outcome(),
+            ),
             "Please build sample-specific miRNA gene regulatory networks",
         )
 
@@ -461,6 +517,7 @@ class CapabilityGateTests(unittest.TestCase):
                 mirna_file="mirna.txt",
                 output_file="aggregate.tsv",
                 lioness_output="sample-specific.tsv",
+                matched_actions=["run_lioness_puma"],
             ),
             user_task="請幫我建立 sample-specific miRNA gene regulatory networks",
         )
@@ -3573,6 +3630,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 network_file="data/condor-toy/bipartite.tsv",
                 output_dir="outputs/condor-toy",
                 prefix="toy",
+                matched_actions=["run_condor"],
             ),
             user_task=(
                 "試跑 CONDOR，network 是 data/condor-toy/bipartite.tsv，"
