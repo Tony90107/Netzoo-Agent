@@ -60,6 +60,7 @@ def test_routing_is_responsibility_oriented_package():
         "discovery",
         "retrieval",
         "dispatch",
+        "error_adapters",
         "results",
     ):
         importlib.import_module(f"netzoo_agent_core.routing.{module_name}")

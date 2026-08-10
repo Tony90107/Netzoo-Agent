@@ -15,6 +15,11 @@ from ..contracts import (
     _display_path,
 )
 from ..memory import _ensure_private_directory, _write_private_text
+from .error_adapters import (
+    ToolErrorContext,
+    adapt_tool_error,
+    extract_reported_error_codes,
+)
 
 __all__ = [
     "_expected_artifacts",
@@ -75,6 +80,16 @@ def structure_tool_result(
         or (exit_code is not None and exit_code != 0)
         or any(marker in lowered for marker in hard_failure_markers)
     )
+    diagnosis = adapt_tool_error(
+        ToolErrorContext(
+            action=action,
+            reported_error_codes=extract_reported_error_codes(raw_output),
+            errors=error_lines,
+            exit_code=exit_code,
+        )
+    )
+    if diagnosis is not None:
+        failed = True
     dry_run = "dry run only" in lowered or "dry-run" in lowered
     artifacts = _expected_artifacts(decision, action)
     metrics: dict[str, int | float | str | bool] = {}
@@ -92,12 +107,6 @@ def structure_tool_result(
 
     status: Literal["success", "dry_run", "failed"]
     status = "failed" if failed else "dry_run" if dry_run else "success"
-
-    retryable = False
-    recovery_hint = None
-    if action == "run_puma" and "does not accept an expression header" in lowered:
-        retryable = True
-        recovery_hint = "format_expression_headerless"
 
     summary = {
         "success": "The tool completed and passed structured result checks.",
@@ -134,8 +143,9 @@ def structure_tool_result(
         metrics=metrics,
         warnings=warning_lines,
         errors=error_lines,
-        retryable=retryable,
-        recovery_hint=recovery_hint,
+        error_code=diagnosis.error_code if diagnosis else None,
+        retryable=diagnosis.retryable if diagnosis else False,
+        recovery_hint=diagnosis.recovery_action if diagnosis else None,
         log_file=log_file,
         raw_output=bounded_output,
     )
