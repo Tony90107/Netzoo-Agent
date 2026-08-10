@@ -10,6 +10,7 @@ from pathlib import Path
 from .contracts import (
     tool,
 )
+from .contracts.results import PUMA_EXPRESSION_HEADER_UNSUPPORTED
 
 from .command import (
     _run_command,
@@ -111,6 +112,7 @@ def run_puma(
         return (
             "PUMA input validation failed; no command was executed.\n\n"
             f"{validation_report}\n"
+            f"Error code: {PUMA_EXPRESSION_HEADER_UNSUPPORTED}\n"
             "  error: legacy netZooPy PUMA does not accept an expression header; "
             "use format_expression with with_header=false."
         )

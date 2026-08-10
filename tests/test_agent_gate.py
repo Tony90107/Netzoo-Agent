@@ -1693,7 +1693,9 @@ class CapabilityGateTests(unittest.TestCase):
         structured = agent.structure_tool_result(
             "run_puma",
             decision,
-            "PUMA input validation failed\n- error: legacy netZooPy PUMA does not accept an expression header",
+            "PUMA input validation failed\n"
+            "Error code: PUMA_EXPRESSION_HEADER_UNSUPPORTED\n"
+            "- error: legacy netZooPy PUMA does not accept an expression header",
         )
         previous = agent.EXECUTE_TOOLS
         agent.EXECUTE_TOOLS = True

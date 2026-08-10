@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+PUMA_EXPRESSION_HEADER_UNSUPPORTED = "PUMA_EXPRESSION_HEADER_UNSUPPORTED"
+
 class EvaluationResult(BaseModel):
     status: Literal["continue", "completed", "needs_input", "replan", "failed"]
     reason: str
@@ -49,6 +51,7 @@ class ToolExecutionResult(BaseModel):
     metrics: dict[str, int | float | str | bool] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    error_code: str | None = None
     retryable: bool = False
     recovery_hint: str | None = None
     log_file: str | None = None
