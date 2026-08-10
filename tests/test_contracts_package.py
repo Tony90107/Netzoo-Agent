@@ -91,7 +91,7 @@ HISTORICAL_EXPORTS = [
 
 SCHEMA_DIGESTS = {
     "TaskDecision": "2453a9d0b58b64913cafdee011a73e2d2944fddd64fcfbf4045051f215015aa9",
-    "RouterDecision": "c4c395de574c64eb4c06f1e9fa124f48fc0e3cdd2ac35a8194303316827586f2",
+    "RouterDecision": "3505323e3049f6583a044e1e53e294d8de7907d165f26801ebcdd503a9891788",
     "RequestedOutcome": "9958b10da7ee3c95fbec8af78da4d7d2e30f6d7df6c0191ffefba8d080287d36",
     "CapabilityMatch": "9efef1deb292c65e3c9aeb394caefe598ec23ab48bb70b95c3ebaa943bd79516",
     "WorkflowPlan": "9a57762cf8ffc4cd8e611b1d9907ef89c9d5ee1b82280ef5c2e76133b9ecfc4b",
