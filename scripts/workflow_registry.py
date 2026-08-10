@@ -56,6 +56,38 @@ PreferenceKey = Literal[
     "preferred_workflow",
 ]
 
+Operation = Literal[
+    "acquire",
+    "prepare",
+    "validate",
+    "infer",
+    "analyze",
+    "explain",
+    "unknown",
+]
+ArtifactType = Literal[
+    "measurement_dataset",
+    "expression_matrix",
+    "regulatory_network",
+    "coexpression_network",
+    "community_assignment",
+    "validation_report",
+    "unknown",
+]
+EntityType = Literal["tf", "mirna", "gene", "protein", "sample", "unknown"]
+Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
+
+
+@dataclass(frozen=True, slots=True)
+class OutputCapabilityDefinition:
+    operation: Literal["infer", "analyze"]
+    artifact_type: ArtifactType
+    entity_types: frozenset[EntityType]
+    granularities: frozenset[Granularity]
+    regulator_types: frozenset[Literal["tf", "mirna"]] = frozenset()
+    target_types: frozenset[Literal["gene"]] = frozenset()
+    guidance_predecessors: tuple[RecommendedAction, ...] = ()
+
 
 @dataclass(frozen=True, slots=True)
 class ActionDefinition:
@@ -69,6 +101,7 @@ class ActionDefinition:
     local: bool = False
     run: bool = False
     memory_metadata: Mapping[str, str] = field(default_factory=dict)
+    output_capability: OutputCapabilityDefinition | None = None
 
 
 ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
@@ -123,6 +156,14 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "panda"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "gene"}),
+            regulator_types=frozenset({"tf"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate"}),
+        ),
     ),
     "run_puma": ActionDefinition(
         "run_puma",
@@ -145,6 +186,14 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "puma"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "mirna", "gene"}),
+            regulator_types=frozenset({"tf", "mirna"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate"}),
+        ),
     ),
     "run_lioness_panda": ActionDefinition(
         "run_lioness_panda",
@@ -167,6 +216,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "lioness", "base_method": "panda"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "gene"}),
+            regulator_types=frozenset({"tf"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate", "sample_specific"}),
+            guidance_predecessors=("run_panda",),
+        ),
     ),
     "run_lioness_puma": ActionDefinition(
         "run_lioness_puma",
@@ -191,6 +249,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "lioness", "base_method": "puma"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "mirna", "gene"}),
+            regulator_types=frozenset({"tf", "mirna"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate", "sample_specific"}),
+            guidance_predecessors=("run_puma",),
+        ),
     ),
     "run_lioness_coexpression": ActionDefinition(
         "run_lioness_coexpression",
@@ -203,6 +270,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             "method_family": "lioness",
             "base_method": "coexpression",
         },
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="coexpression_network",
+            entity_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate", "sample_specific"}),
+        ),
     ),
     "run_condor": ActionDefinition(
         "run_condor",
@@ -215,6 +288,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "condor"},
+        output_capability=OutputCapabilityDefinition(
+            operation="analyze",
+            artifact_type="community_assignment",
+            entity_types=frozenset({"gene"}),
+            granularities=frozenset({"not_applicable"}),
+        ),
     ),
     "query_context7": ActionDefinition(
         "query_context7",
@@ -249,6 +328,11 @@ CODE_VALIDATION_STEPS = {
 }
 WORKFLOW_MEMORY_METADATA = {
     action: dict(ACTION_DEFINITIONS[action].memory_metadata) for action in RUN_ACTIONS
+}
+OUTPUT_CAPABILITIES = {
+    action: definition.output_capability
+    for action, definition in ACTION_DEFINITIONS.items()
+    if definition.run and definition.output_capability is not None
 }
 
 
