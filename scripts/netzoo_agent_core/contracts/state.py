@@ -28,6 +28,8 @@ class AgentState(TypedDict):
     run_id: NotRequired[str]
     budget_warnings: NotRequired[list[str]]
     semantic_goal: NotRequired[dict]
+    requested_outcome: NotRequired[dict]
+    capability_match: NotRequired[dict]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

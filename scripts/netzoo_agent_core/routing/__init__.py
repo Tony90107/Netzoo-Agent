@@ -24,7 +24,11 @@ from .discovery import (
     _find_candidate_files,
     _score_candidate_file,
 )
-from .outcome_matching import guidance_actions_for, match_requested_outcome
+from .outcome_matching import (
+    apply_outcome_match,
+    guidance_actions_for,
+    match_requested_outcome,
+)
 from .dispatch import execute_selected_tool
 from .results import (
     _diagnostic_messages,
@@ -67,6 +71,7 @@ __all__ = [
     "validate_task_text",
     "normalize_context7_library",
     "enforce_capability_gate",
+    "apply_outcome_match",
     "match_requested_outcome",
     "guidance_actions_for",
     "_extract_named_path",

@@ -71,9 +71,12 @@ Routing rules:
 3. Use query_context7 only when current/version-specific documentation matters:
    versions, compatibility, CLI flags, installation, APIs, deprecations, or explicit docs.
 4. Use web_search only for explicit web/literature search or current non-package facts.
-5. Sample-specific miRNA regulation maps to run_lioness_puma with recommendations
-   [run_puma, run_lioness_puma]. Sample-specific TF regulation maps to
-   run_lioness_panda. Sample-specific co-expression maps to run_lioness_coexpression.
+5. Describe a recognizable scientific result in requested_outcome. Its operation
+   is the requested scientific operation, not whether the user phrased a question.
+   Use unknown and unresolved_dimensions when artifact, biological role, or
+   granularity is unclear. Never reinterpret data acquisition as network inference
+   merely because a related workflow exists. Deterministic code matches the outcome
+   to workflows; your proposed action does not grant workflow authority.
 6. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
    deterministic planning can request the mode.
 7. Variant calling, mutation discovery, sequence alignment, differential expression,
@@ -81,17 +84,19 @@ Routing rules:
 8. Mixed supported and unsupported deliverables select no_tool unless the supported
    deliverable is independently and explicitly requested.
 9. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
-10. Populate semantic_goal for a recognizable scientific objective. When more than
-   one registered workflow fits, populate candidate_actions with only catalog
-   actions and unresolved_dimensions with the smallest biological distinction
-   needed to choose one. Do not reject a goal merely because that distinction is
-   not yet specified.
+10. Populate semantic_goal as a short public summary when requested_outcome is not
+   null. Preserve uncertainty rather than completing a supported goal on the user's
+   behalf.
 
 Examples:
 - "PANDA 需要哪些 input？" -> no_tool, answer_question, recommend run_panda.
 - "最新版 netZooPy PANDA CLI flags?" -> query_context7, answer_question.
 - "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA" -> run_panda, run_analysis.
-- "請建立 sample-specific miRNA regulatory networks" -> run_lioness_puma.
+- "取得每個樣本的 miRNA data" -> no_tool with requested_outcome operation=acquire,
+  artifact_type=measurement_dataset, entity_types=[mirna], granularity=sample_specific.
+- "請建立 sample-specific miRNA regulatory networks" -> requested_outcome
+  operation=infer, artifact_type=regulatory_network, regulator_types=[mirna],
+  target_types=[gene], granularity=sample_specific.
 - "搜尋最新 LIONESS 論文" -> web_search.
 - "幫我找基因突變" -> no_tool, in_scope=false.
 

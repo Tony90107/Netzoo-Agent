@@ -21,7 +21,6 @@ from ..interpretation import (
     repair_router_decision,
 )
 from ..interpretation.semantic_goal import semantic_summary_detail
-from ..routing.capability import infer_goal_capability_match
 from ..progress_summaries import render_progress_summary
 from ..llm import (
     append_llm_usage,
@@ -96,18 +95,18 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         router_decision = RouterDecision.model_validate(parsed_decision)
         hydrated = hydrate_router_decision(router_decision, user_task)
         decision = repair_router_decision(hydrated, user_task)
-        allowed_actions = set(context.project_policy.workflows)
-        goal_match = infer_goal_capability_match(user_task)
-        candidates = [action for action in decision.recommended_actions if action in allowed_actions]
-        relationship = goal_match.relationship if goal_match.actions else "single"
-        if not candidates:
-            candidates = [action for action in router_decision.candidate_actions if action in allowed_actions]
-            relationship = "alternatives" if len(candidates) > 1 else "single"
         semantic_goal = {
             "goal": router_decision.semantic_goal or "",
-            "candidates": candidates,
-            "unresolved_dimensions": router_decision.unresolved_dimensions,
-            "relationship": relationship,
+            "candidates": list(decision.recommended_actions),
+            "unresolved_dimensions": (
+                list(decision.requested_outcome.unresolved_dimensions)
+                if decision.requested_outcome
+                else []
+            ),
+            "relationship": (
+                "composition" if len(decision.recommended_actions) > 1 else "single"
+            ),
+            "match_status": decision.capability_match_status,
         }
         usage = append_llm_usage(
             current_usage,
@@ -126,9 +125,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         decision = deterministic_router_fallback(user_task, error)
         semantic_goal = {
             "goal": "",
-            "candidates": [action for action in decision.recommended_actions if action in context.project_policy.workflows],
+            "candidates": list(decision.recommended_actions),
             "unresolved_dimensions": [],
             "relationship": "composition" if len(decision.recommended_actions) > 1 else "single",
+            "match_status": decision.capability_match_status,
         }
         call_status = "failed"
         reason_code = "deterministic_fallback"
@@ -180,6 +180,18 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         "token_usage": usage.model_dump(),
         "budget_warnings": budget_warnings,
         "semantic_goal": semantic_goal,
+        "requested_outcome": (
+            decision.requested_outcome.model_dump()
+            if decision.requested_outcome
+            else None
+        ),
+        "capability_match": {
+            "status": decision.capability_match_status,
+            "matched_actions": decision.matched_actions,
+            "alternative_actions": decision.alternative_actions,
+            "mismatch_dimensions": decision.mismatch_dimensions,
+            "clarification_question": decision.clarification_question,
+        },
     }
 def plan_task(context: _GraphContext, state: AgentState) -> dict:
     user_task = str(state["messages"][-1].content)

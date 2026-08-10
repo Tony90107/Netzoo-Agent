@@ -7,6 +7,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
 
+from .outcomes import CapabilityMatchStatus, RequestedOutcome
+
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
     value: str
@@ -20,12 +22,8 @@ class RouterDecision(BaseModel):
     intent_type: IntentType = "unknown"
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=300)
-    recommended_actions: list[RecommendedAction] = Field(
-        default_factory=list, max_length=4
-    )
     semantic_goal: str | None = Field(default=None, max_length=240)
-    candidate_actions: list[RecommendedAction] = Field(default_factory=list, max_length=4)
-    unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
+    requested_outcome: RequestedOutcome | None = None
 
 class TaskDecision(BaseModel):
     """A capability-aware routing decision for the allow-listed NetZoo agent."""
@@ -49,11 +47,16 @@ class TaskDecision(BaseModel):
     recommended_actions: list[RecommendedAction] = Field(
         default_factory=list,
         description=(
-            "Allow-listed local capabilities that fit the user's goal, ordered as a "
-            "useful workflow. Populate this even when action=no_tool because the user "
-            "asked for advice rather than immediate execution."
+            "Code-owned workflow guidance sequence derived from one exact outcome "
+            "match. Router output must not populate this field."
         ),
     )
+    requested_outcome: RequestedOutcome | None = None
+    capability_match_status: CapabilityMatchStatus | None = None
+    matched_actions: list[RecommendedAction] = Field(default_factory=list)
+    alternative_actions: list[RecommendedAction] = Field(default_factory=list)
+    mismatch_dimensions: list[str] = Field(default_factory=list)
+    clarification_question: str | None = None
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     motif_file: str | None = None
