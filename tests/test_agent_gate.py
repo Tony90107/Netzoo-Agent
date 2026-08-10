@@ -1740,6 +1740,7 @@ class CapabilityGateTests(unittest.TestCase):
                 status="replan",
                 reason="PUMA rejected an expression header.",
                 recovery_action="format_expression_headerless",
+                recovery_error_code="PUMA_EXPRESSION_HEADER_UNSUPPORTED",
             ),
         )
         evaluation = agent.evaluate_workflow_plan(recovered, task)
@@ -1790,6 +1791,7 @@ class CapabilityGateTests(unittest.TestCase):
                 status="replan",
                 reason="PUMA rejected an expression header.",
                 recovery_action="format_expression_headerless",
+                recovery_error_code="PUMA_EXPRESSION_HEADER_UNSUPPORTED",
             ),
         )
         return task, recovered
@@ -1911,6 +1913,7 @@ class CapabilityGateTests(unittest.TestCase):
                 status="replan",
                 reason="PUMA rejected an expression header.",
                 recovery_action="format_expression_headerless",
+                recovery_error_code="PUMA_EXPRESSION_HEADER_UNSUPPORTED",
             ),
         )
         recovered.steps[1].arguments["output_file"] = "outputs/forged.tsv"
@@ -1953,6 +1956,7 @@ class CapabilityGateTests(unittest.TestCase):
                 status="replan",
                 reason="PUMA rejected an expression header.",
                 recovery_action="format_expression_headerless",
+                recovery_error_code="PUMA_EXPRESSION_HEADER_UNSUPPORTED",
             ),
         )
         recovered.steps[1] = agent.WorkflowStep(
