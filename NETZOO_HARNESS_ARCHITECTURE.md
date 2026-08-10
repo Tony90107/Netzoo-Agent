@@ -307,13 +307,34 @@ Router 結果依序通過：
 
 1. `hydrate_router_decision`
    - 從最新 user task deterministic parse paths、queries 與 preference proposals。
-2. `repair_router_decision`
-   - 修正已知的 LLM routing 漏判。
+   - 接收 Router 的 typed `RequestedOutcome`，但不接受 Router 提供 workflow 清單。
+2. `match_requested_outcome`
+   - 將 operation、artifact type、entity/role 與 granularity 對照 Python
+     `OutputCapabilityDefinition`。
+   - 結果只能是 `exact`、`ambiguous` 或 `unsupported`。
+   - YAML `output_capability` 必須與 Python registry 完全一致，否則 policy
+     loader fail closed。
+3. `repair_router_decision`
+   - 只有 exact match 能建立 code-owned `matched_actions`。
+   - `recommended_actions` 是用於解說的 workflow sequence；
+     `alternative_actions` 只供 capability-gap 說明，不能擴權。
    - 區分「詢問做法」和「授權立即執行」。
-   - 對 sample-specific miRNA 等 goal-first 描述映射到正確 workflow。
-3. `enforce_capability_gate`
-   - 檢查 action、scope、confidence、required fields 與 capability。
-4. Provider 失敗時使用 `deterministic_router_fallback`。
+4. `enforce_capability_gate`
+   - local run action 必須存在於 `matched_actions`，再檢查 scope、confidence、
+     required fields 與 capability。
+5. Provider 失敗時使用 conservative `deterministic_router_fallback`；它只接受
+   明示 workflow 名稱，不會從未命名的科學目標猜 workflow。
+
+權限資料流如下：
+
+```text
+Router RequestedOutcome
+    -> Pydantic validation
+    -> Python OutputCapabilityDefinition matcher
+    -> exact / ambiguous / unsupported
+    -> repair_router_decision + enforce_capability_gate
+    -> Planner only for exact matched actions
+```
 
 完整的 `TaskDecision` 才含：
 
@@ -323,6 +344,9 @@ Router 結果依序通過：
 - formatting parameters
 - docs/web query
 - preference proposals
+- requested outcome
+- capability match status
+- exact matched actions、guidance sequence 與 non-authorizing alternatives
 
 ### 6.3 Router 看見什麼
 
@@ -766,6 +790,8 @@ LIONESS 未指定 base method 時會先問：
 下一問依上一輪 structured outcome 產生：
 
 - recommended workflow
+- clarify outcome
+- alternative outcome confirmation（只確認產物，不直接執行）
 - dry-run
 - completed
 - failed

@@ -20,7 +20,7 @@ from ..interpretation import (
     hydrate_router_decision,
     repair_router_decision,
 )
-from ..interpretation.semantic_goal import semantic_summary_detail
+from ..interpretation.semantic_goal import outcome_routing_state, semantic_summary_detail
 from ..progress_summaries import render_progress_summary
 from ..llm import (
     append_llm_usage,
@@ -95,19 +95,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         router_decision = RouterDecision.model_validate(parsed_decision)
         hydrated = hydrate_router_decision(router_decision, user_task)
         decision = repair_router_decision(hydrated, user_task)
-        semantic_goal = {
-            "goal": router_decision.semantic_goal or "",
-            "candidates": list(decision.recommended_actions),
-            "unresolved_dimensions": (
-                list(decision.requested_outcome.unresolved_dimensions)
-                if decision.requested_outcome
-                else []
-            ),
-            "relationship": (
-                "composition" if len(decision.recommended_actions) > 1 else "single"
-            ),
-            "match_status": decision.capability_match_status,
-        }
+        routing_state = outcome_routing_state(
+            decision, router_decision.semantic_goal or ""
+        )
         usage = append_llm_usage(
             current_usage,
             role="router",
@@ -123,13 +113,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         if _is_fatal_exception(error):
             raise
         decision = deterministic_router_fallback(user_task, error)
-        semantic_goal = {
-            "goal": "",
-            "candidates": list(decision.recommended_actions),
-            "unresolved_dimensions": [],
-            "relationship": "composition" if len(decision.recommended_actions) > 1 else "single",
-            "match_status": decision.capability_match_status,
-        }
+        routing_state = outcome_routing_state(decision)
         call_status = "failed"
         reason_code = "deterministic_fallback"
         usage = append_llm_usage(
@@ -158,7 +142,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "intent",
         f"Classified as {decision.action}",
-        semantic_summary_detail(semantic_goal, decision),
+        semantic_summary_detail(routing_state["semantic_goal"], decision),
     )
     _trace("reasoning", "Choosing the next safe step", render_progress_summary("next_step", {"action": decision.action, "in_scope": str(decision.in_scope).lower(), "should_execute": str(decision.should_execute).lower(), "capability_match_status": decision.capability_match_status or ""}))
     record_event(
@@ -179,20 +163,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         "decision": decision.model_dump(),
         "token_usage": usage.model_dump(),
         "budget_warnings": budget_warnings,
-        "semantic_goal": semantic_goal,
-        "requested_outcome": (
-            decision.requested_outcome.model_dump()
-            if decision.requested_outcome
-            else None
-        ),
-        "capability_match": {
-            "status": decision.capability_match_status,
-            "matched_actions": decision.matched_actions,
-            "alternative_actions": decision.alternative_actions,
-            "mismatch_dimensions": decision.mismatch_dimensions,
-            "clarification_question": decision.clarification_question,
-        },
+        **routing_state,
     }
+
+
 def plan_task(context: _GraphContext, state: AgentState) -> dict:
     user_task = str(state["messages"][-1].content)
     decision = TaskDecision.model_validate(state["decision"])

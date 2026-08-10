@@ -63,6 +63,9 @@ HISTORICAL_EXPORTS = [
     "TaskDecision",
     "LLMUsage",
     "InputEvidence",
+    "RequestedOutcome",
+    "CapabilityMatch",
+    "CapabilityMatchStatus",
     "WorkflowStep",
     "WorkflowPlan",
     "EvaluationResult",
@@ -75,6 +78,7 @@ HISTORICAL_EXPORTS = [
     "ToolExecutionResult",
     "AgentsPolicyHeader",
     "WorkflowPolicySpec",
+    "WorkflowOutputCapabilitySpec",
     "ProjectPolicySnapshot",
     "UserProfile",
     "Episode",
@@ -86,11 +90,14 @@ HISTORICAL_EXPORTS = [
 ]
 
 SCHEMA_DIGESTS = {
-    "TaskDecision": "6ed618a83355ada0504f64d0f2affbed199401f41c2317b423140bea2f0f7bcc",
+    "TaskDecision": "2453a9d0b58b64913cafdee011a73e2d2944fddd64fcfbf4045051f215015aa9",
+    "RouterDecision": "c4c395de574c64eb4c06f1e9fa124f48fc0e3cdd2ac35a8194303316827586f2",
+    "RequestedOutcome": "9958b10da7ee3c95fbec8af78da4d7d2e30f6d7df6c0191ffefba8d080287d36",
+    "CapabilityMatch": "9efef1deb292c65e3c9aeb394caefe598ec23ab48bb70b95c3ebaa943bd79516",
     "WorkflowPlan": "9a57762cf8ffc4cd8e611b1d9907ef89c9d5ee1b82280ef5c2e76133b9ecfc4b",
     "InputEvidence": "0582cce8d5b06debc2e6af06b2f2c2fff9fc0d062b00ac41863442a3a11f0a8a",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "fad7dccea1cea265f99d15045768bd6c38248047419a3bd2ffb9853c66a6ea54",
+    "ProjectPolicySnapshot": "a8502c6d87e9108ae033d26584b2d7d2ca58724c3fbfd0771a6ff6149686457b",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     "Episode": "12ea309e79b9fcfc32cd4030ad5aed570eecac04a5414fdfe061dc569a82e70e",
 }
@@ -98,7 +105,7 @@ SCHEMA_DIGESTS = {
 
 def test_contracts_is_a_package_with_final_owners():
     assert hasattr(contracts, "__path__")
-    for name in ("decisions", "planning", "results", "policy", "memory", "state"):
+    for name in ("decisions", "outcomes", "planning", "results", "policy", "memory", "state"):
         importlib.import_module(f"netzoo_agent_core.contracts.{name}")
 
 
@@ -111,6 +118,7 @@ def test_contract_facade_exports_exact_historical_surface():
 def test_models_have_one_owner_and_preserve_identity():
     owners = {
         "decisions": ("PreferenceProposal", "RouterDecision", "TaskDecision"),
+        "outcomes": ("RequestedOutcome", "CapabilityMatch", "CapabilityMatchStatus"),
         "planning": ("InputEvidence", "WorkflowStep", "WorkflowPlan"),
         "results": (
             "EvaluationResult",
@@ -119,7 +127,12 @@ def test_models_have_one_owner_and_preserve_identity():
             "ArtifactValidationResult",
             "ToolExecutionResult",
         ),
-        "policy": ("AgentsPolicyHeader", "WorkflowPolicySpec", "ProjectPolicySnapshot"),
+        "policy": (
+            "AgentsPolicyHeader",
+            "WorkflowPolicySpec",
+            "WorkflowOutputCapabilitySpec",
+            "ProjectPolicySnapshot",
+        ),
         "memory": ("UserProfile", "Episode"),
         "state": (
             "AgentState",
@@ -157,7 +170,7 @@ def test_framework_and_presentation_names_have_single_owners():
 
 
 def test_contract_children_do_not_import_langgraph_directly():
-    for module_name in ("decisions", "planning", "results", "policy", "memory", "state"):
+    for module_name in ("decisions", "outcomes", "planning", "results", "policy", "memory", "state"):
         module = importlib.import_module(f"netzoo_agent_core.contracts.{module_name}")
         tree = ast.parse(inspect.getsource(module))
         imports = [
