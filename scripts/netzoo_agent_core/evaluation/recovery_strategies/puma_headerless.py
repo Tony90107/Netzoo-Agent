@@ -13,7 +13,7 @@ from ...contracts import (
     WorkflowStep,
 )
 from ...contracts.results import PUMA_EXPRESSION_HEADER_UNSUPPORTED
-from ..recovery_registry import RecoveryValidation
+from ..recovery_contracts import RecoveryValidation
 
 __all__ = ["PumaHeaderlessExpressionRecovery"]
 
