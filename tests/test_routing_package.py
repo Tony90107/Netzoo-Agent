@@ -32,6 +32,8 @@ HISTORICAL_EXPORTS = [
     "validate_task_text",
     "normalize_context7_library",
     "enforce_capability_gate",
+    "match_requested_outcome",
+    "guidance_actions_for",
     "_extract_named_path",
     "_score_candidate_file",
     "_find_candidate_files",
@@ -61,6 +63,7 @@ def test_routing_is_responsibility_oriented_package():
         "retrieval",
         "dispatch",
         "error_adapters",
+        "outcome_matching",
         "results",
     ):
         importlib.import_module(f"netzoo_agent_core.routing.{module_name}")
