@@ -29,7 +29,8 @@
 | `scripts/netzoo_agent_core/execution.py` | Emit the stable PUMA header error code with human-readable validation output |
 | `scripts/netzoo_agent_core/contracts/results.py` | Add optional result and evaluation error-code provenance |
 | `scripts/netzoo_agent_core/contracts/planning.py` | Make recovery action extensible and add optional triggering error-code provenance |
-| `scripts/netzoo_agent_core/evaluation/recovery_registry.py` | Recovery strategy protocol, immutable registry, and guarded strategy lookup |
+| `scripts/netzoo_agent_core/evaluation/recovery_contracts.py` | Strategy protocol and typed validation result shared without circular dependencies |
+| `scripts/netzoo_agent_core/evaluation/recovery_registry.py` | Immutable recovery strategy registry and guarded strategy lookup |
 | `scripts/netzoo_agent_core/evaluation/recovery_strategies/puma_headerless.py` | PUMA headerless plan mutation and recovery-specific validation |
 | `scripts/netzoo_agent_core/evaluation/recovery.py` | Stable recovery orchestration delegating through the registry |
 | `scripts/netzoo_agent_core/evaluation/plan_rules.py` | General plan rules delegating recovery validation to the selected strategy |
@@ -57,7 +58,7 @@
 - Produces: `ToolErrorDiagnosis`, `ToolErrorContext`, `ToolErrorAdapter`, `extract_reported_error_codes(raw_output) -> list[str]`, and `adapt_tool_error(context) -> ToolErrorDiagnosis | None`.
 - Produces: optional `ToolExecutionResult.error_code: str | None`.
 
-- [ ] **Step 1: Write failing adapter tests**
+- [x] **Step 1: Write failing adapter tests**
 
 ```python
 from netzoo_agent_core.contracts import TaskDecision
@@ -125,7 +126,7 @@ def test_unknown_machine_code_stops_without_recovery():
     assert result.recovery_hint is None
 ```
 
-- [ ] **Step 2: Run the adapter tests and verify red**
+- [x] **Step 2: Run the adapter tests and verify red**
 
 Run:
 
@@ -135,7 +136,7 @@ pytest tests/test_tool_error_adapters.py -q
 
 Expected: collection fails because `routing.error_adapters` and `ToolExecutionResult.error_code` do not exist.
 
-- [ ] **Step 3: Add the tool error adapter module**
+- [x] **Step 3: Add the tool error adapter module**
 
 Implement immutable Pydantic context/diagnosis models, a `Protocol`, one PUMA adapter, and a mapping protected by `MappingProxyType`:
 
@@ -170,7 +171,7 @@ class PumaToolErrorAdapter:
 
 `adapt_tool_error` iterates only adapters registered under `context.action` and returns the first diagnosis. Unknown actions and codes return `None`.
 
-- [ ] **Step 4: Emit and consume the stable machine code**
+- [x] **Step 4: Emit and consume the stable machine code**
 
 Add this separate line to the PUMA header validation output in `execution.py`:
 
@@ -186,7 +187,7 @@ retryable=diagnosis.retryable if diagnosis else False,
 recovery_hint=diagnosis.recovery_action if diagnosis else None,
 ```
 
-- [ ] **Step 5: Preserve package surfaces and run focused tests**
+- [x] **Step 5: Preserve package surfaces and run focused tests**
 
 Add `error_adapters` to the child-module import list in `tests/test_routing_package.py`; do not add new names to the historical `routing.__all__` list.
 
@@ -199,7 +200,7 @@ pytest tests/test_agent_gate.py -k 'structure_tool_result or puma_header' -q
 
 Expected: all selected tests pass except legacy tests that intentionally expect the old phrase-only recovery; update those fixtures to include the stable error-code line without weakening their assertions.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```bash
 git add scripts/netzoo_agent_core/routing/error_adapters.py scripts/netzoo_agent_core/routing/results.py scripts/netzoo_agent_core/contracts/results.py scripts/netzoo_agent_core/execution.py tests/test_tool_error_adapters.py tests/test_routing_package.py tests/test_agent_gate.py
@@ -228,7 +229,7 @@ git commit -m "refactor: adapt machine-coded tool errors"
 - Produces: optional `EvaluationResult.recovery_error_code` and `WorkflowPlan.recovery_error_code`; extensible `WorkflowPlan.recovery_action: str | None`.
 - Preserves: `recover_workflow_plan(plan, step_index, evaluation) -> tuple[WorkflowPlan, int]`.
 
-- [ ] **Step 1: Write failing registry and plan-mutation tests**
+- [x] **Step 1: Write failing registry and plan-mutation tests**
 
 Create helpers for a ready PUMA plan and assert:
 
@@ -274,7 +275,7 @@ def test_registered_strategy_builds_bounded_plan():
 
 Also test wrong action, missing error code, second attempt, malformed derived evidence, and modified format arguments.
 
-- [ ] **Step 2: Run registry tests and verify red**
+- [x] **Step 2: Run registry tests and verify red**
 
 Run:
 
@@ -284,7 +285,7 @@ pytest tests/test_recovery_registry.py -q
 
 Expected: collection fails because recovery registry and strategy modules do not exist.
 
-- [ ] **Step 3: Generalize serialized contracts and evaluator propagation**
+- [x] **Step 3: Generalize serialized contracts and evaluator propagation**
 
 Add:
 
@@ -301,7 +302,7 @@ class WorkflowPlan(BaseModel):
 
 Change `evaluate_step_result` to copy `structured.error_code` into `recovery_error_code` whenever it returns `status="replan"`.
 
-- [ ] **Step 4: Implement the registry and strategy**
+- [x] **Step 4: Implement the registry and strategy**
 
 Define `RecoveryValidation` as an immutable model containing `ok`, `detail`, `failures`, and `expected_steps`. Define a strategy protocol with `accepts`, `apply`, and `validate`. Store the PUMA strategy in a `MappingProxyType` registry.
 
@@ -316,7 +317,7 @@ The strategy must:
 - set action, error code, step index, and incremented attempt metadata;
 - return the failed step index as the resume position.
 
-- [ ] **Step 5: Delegate recovery orchestration and plan validation**
+- [x] **Step 5: Delegate recovery orchestration and plan validation**
 
 `recover_workflow_plan` must return the unchanged plan/index for missing or unregistered strategy, failed applicability, or exhausted attempts. Otherwise it calls `strategy.apply`.
 
@@ -329,7 +330,7 @@ validation = strategy.validate(plan, decision, normal_steps) if strategy else ..
 
 Initial plans with no recovery metadata continue to expect `normal_steps`. Any recovery metadata with no registered strategy fails authorization.
 
-- [ ] **Step 6: Run registry, evaluator, and forged-plan tests**
+- [x] **Step 6: Run registry, evaluator, and forged-plan tests**
 
 Run:
 
@@ -341,7 +342,7 @@ pytest tests/test_agent_module_boundaries.py -k recovery -q
 
 Expected: all selected tests pass; recovery still routes through `evaluate_plan`.
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
 ```bash
 git add scripts/netzoo_agent_core/contracts/results.py scripts/netzoo_agent_core/contracts/planning.py scripts/netzoo_agent_core/evaluation/recovery_registry.py scripts/netzoo_agent_core/evaluation/recovery_strategies scripts/netzoo_agent_core/evaluation/recovery.py scripts/netzoo_agent_core/evaluation/step_results.py scripts/netzoo_agent_core/evaluation/plan_rules.py tests/test_recovery_registry.py tests/test_evaluation_package.py tests/test_agent_gate.py
@@ -362,7 +363,7 @@ git commit -m "refactor: register bounded recovery strategies"
 - Consumes: final contracts and registries from Tasks 1 and 2.
 - Produces: intentional schema digests, verified package compatibility, and recorded verification results.
 
-- [ ] **Step 1: Confirm only intended schemas changed**
+- [x] **Step 1: Confirm only intended schemas changed**
 
 Run:
 
@@ -372,7 +373,7 @@ pytest tests/test_contracts_package.py -q
 
 Expected: only `WorkflowPlan` and `ToolExecutionResult` schema digest assertions fail. `EvaluationResult` is not currently digest-pinned. Calculate the two new SHA-256 values using the exact canonical JSON logic already in the test and update only those digest constants.
 
-- [ ] **Step 2: Run focused package and integration suites**
+- [x] **Step 2: Run focused package and integration suites**
 
 ```bash
 pytest \
@@ -389,7 +390,7 @@ pytest \
 
 Expected: all tests pass. Fix compatibility failures at the owning interface without restoring generic PUMA string matching.
 
-- [ ] **Step 3: Enforce architectural absence checks**
+- [x] **Step 3: Enforce architectural absence checks**
 
 Run:
 
@@ -402,7 +403,7 @@ rg -n 'format_expression_headerless|run_puma' \
 
 Expected: both commands return no matches. PUMA-specific behavior exists only in the PUMA adapter and registered strategy.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 ```bash
 pytest -q
@@ -410,7 +411,7 @@ pytest -q
 
 Expected: all tests pass with no new warnings attributable to this refactor.
 
-- [ ] **Step 5: Record verification and commit**
+- [x] **Step 5: Record verification and commit**
 
 Append exact focused/full-suite test counts and architectural absence-check results to this plan under `## Verification Results`, then run:
 
@@ -418,3 +419,15 @@ Append exact focused/full-suite test counts and architectural absence-check resu
 git add tests/test_contracts_package.py tests/test_planning_package.py tests/test_graph_tracing.py docs/superpowers/plans/2026-08-10-tool-error-adapters-and-recovery-registry.md
 git commit -m "test: verify recovery registry refactor"
 ```
+
+## Verification Results
+
+- Contract and planning compatibility: `22 passed`.
+- Focused adapter, registry, package, planning, evaluator, gate, and graph suite:
+  `215 passed, 12 skipped`.
+- Dependency-cycle fix verification: `19 passed`.
+- Architectural absence checks:
+  - `routing/results.py` contains no PUMA prose or action special case.
+  - `evaluation/plan_rules.py` contains no PUMA recovery special case.
+- Full suite: `394 passed, 12 skipped`.
+- The only warning is the pre-existing third-party `pytz` deprecation warning.

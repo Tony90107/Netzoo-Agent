@@ -302,8 +302,10 @@ adapter rather than generic PUMA-specific code.
 - `routing/results.py`: generic normalization and delegation to the adapter seam.
 - `contracts/results.py`: optional structured error and recovery provenance.
 - `contracts/planning.py`: extensible recovery metadata without an action literal.
-- `evaluation/recovery_registry.py`: strategy interface, immutable registry, and
-  guarded lookup.
+- `evaluation/recovery_contracts.py`: strategy interface and typed validation
+  result shared without circular dependencies.
+- `evaluation/recovery_registry.py`: immutable strategy registry and guarded
+  lookup.
 - `evaluation/recovery_strategies/puma_headerless.py`: PUMA-specific plan mutation
   and recovery-plan validation.
 - `evaluation/recovery.py`: stable orchestration interface delegating to the

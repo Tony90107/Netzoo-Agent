@@ -50,7 +50,10 @@ class WorkflowPlan(BaseModel):
     policy_hash: str | None = None
     policy_notes: list[str] = Field(default_factory=list)
     recovery_action: str | None = None
-    recovery_error_code: str | None = None
+    recovery_error_code: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
     recovery_step_index: int | None = Field(default=None, ge=0)
     recovery_attempt: int = Field(default=0, ge=0, le=MAX_RECOVERY_ATTEMPTS)
 

@@ -12,7 +12,10 @@ class EvaluationResult(BaseModel):
     status: Literal["continue", "completed", "needs_input", "replan", "failed"]
     reason: str
     recovery_action: str | None = None
-    recovery_error_code: str | None = None
+    recovery_error_code: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
 class PlanRubricItem(BaseModel):
     """One machine-readable pre-execution planning criterion."""
@@ -52,7 +55,10 @@ class ToolExecutionResult(BaseModel):
     metrics: dict[str, int | float | str | bool] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
-    error_code: str | None = None
+    error_code: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
     retryable: bool = False
     recovery_hint: str | None = None
     log_file: str | None = None

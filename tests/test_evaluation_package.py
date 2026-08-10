@@ -40,6 +40,7 @@ def test_evaluation_is_responsibility_oriented_package():
         "plan_review",
         "step_results",
         "recovery",
+        "recovery_contracts",
         "recovery_registry",
         "recovery_strategies",
         "rendering",
