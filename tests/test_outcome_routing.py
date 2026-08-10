@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -23,6 +24,20 @@ def test_router_schema_requires_an_explicit_outcome_classification():
     assert schema["properties"]["requested_outcome"]["description"].startswith(
         "Required classification field."
     )
+
+
+def test_router_rejects_a_null_requested_outcome_from_the_provider():
+    with pytest.raises(ValidationError, match="requested_outcome"):
+        RouterDecision.model_validate(
+            {
+                "action": "no_tool",
+                "in_scope": True,
+                "intent_type": "answer_question",
+                "confidence": 0.9,
+                "reason": "provider omitted the classification",
+                "requested_outcome": None,
+            }
+        )
 
 
 def mirna_network_outcome() -> RequestedOutcome:

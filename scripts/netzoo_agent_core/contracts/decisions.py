@@ -16,6 +16,17 @@ def _require_outcome_in_transport_schema(schema: dict) -> None:
     if "requested_outcome" not in required:
         required.append("requested_outcome")
 
+
+def _unclassified_requested_outcome() -> RequestedOutcome:
+    """Represent a non-scientific request without using a nullable contract."""
+    return RequestedOutcome(
+        operation="unknown",
+        artifact_type="unknown",
+        granularity="not_applicable",
+        unresolved_dimensions=["scientific outcome"],
+    )
+
+
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
     value: str
@@ -32,11 +43,12 @@ class RouterDecision(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=300)
     semantic_goal: str | None = Field(default=None, max_length=240)
-    requested_outcome: RequestedOutcome | None = Field(
-        default=None,
+    requested_outcome: RequestedOutcome = Field(
+        default_factory=_unclassified_requested_outcome,
         description=(
             "Required classification field. Describe the scientific result the user "
-            "wants, or use null only when the request has no scientific result at all."
+            "wants. For a request with no scientific result, use operation=unknown, "
+            "artifact_type=unknown, and granularity=not_applicable."
         )
     )
 

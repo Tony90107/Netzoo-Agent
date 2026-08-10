@@ -74,7 +74,8 @@ Routing rules:
 5. Always return the requested_outcome field. For every request that asks what tool,
    method, or workflow can obtain, prepare, validate, infer, analyze, or explain a
    scientific result, requested_outcome must be a non-null structured description.
-   Use null only for requests with no scientific result at all, such as CLI controls.
+   Never use null. For requests with no scientific result at all, such as CLI controls,
+   use operation=unknown, artifact_type=unknown, and granularity=not_applicable.
    Its operation is the requested scientific operation, not whether the user phrased a question.
    Use unknown and unresolved_dimensions when artifact, biological role, or
    granularity is unclear. Never reinterpret data acquisition as network inference
