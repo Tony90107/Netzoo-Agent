@@ -1,4 +1,4 @@
-policy_version: 1
+policy_version: 2
 workflow: PANDA
 action: run_panda
 description: Infer an aggregate TF-to-gene regulatory network with PANDA.
@@ -6,6 +6,14 @@ required_inputs: [expression_file, motif_file, ppi_file, output_file]
 optional_inputs: [with_header]
 validation_steps: [inspect_inputs]
 execution_step: run_panda
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, gene]
+  granularities: [aggregate]
+  regulator_types: [tf]
+  target_types: [gene]
+  guidance_predecessors: []
 conventions:
   - Use a gene-by-sample expression matrix and compatible motif and PPI identifiers.
   - Never substitute a co-expression matrix for the expression input of the current wrapper.

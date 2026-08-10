@@ -1,4 +1,4 @@
-policy_version: 1
+policy_version: 2
 workflow: CONDOR
 action: run_condor
 description: Detect communities in a validated bipartite network with CONDOR.
@@ -6,6 +6,14 @@ required_inputs: [network_file, output_dir]
 optional_inputs: [prefix]
 validation_steps: [inspect_condor_inputs]
 execution_step: run_condor
+output_capability:
+  operation: analyze
+  artifact_type: community_assignment
+  entity_types: [gene]
+  granularities: [not_applicable]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
 conventions:
   - Require source and target columns and accept an optional numeric weight column.
   - Report overlapping source and target IDs because the network should be bipartite.

@@ -5,19 +5,41 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from workflow_registry import (
+    ArtifactType,
+    EntityType,
+    Granularity,
+    RecommendedAction,
+)
 
 class AgentsPolicyHeader(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    policy_version: Literal[1]
+    policy_version: Literal[2]
     project: str = Field(min_length=1, max_length=120)
     workflow_spec_dir: str = Field(min_length=1, max_length=200)
     conventions: list[str] = Field(default_factory=list, max_length=20)
 
+class WorkflowOutputCapabilitySpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["infer", "analyze"]
+    artifact_type: ArtifactType
+    entity_types: list[EntityType] = Field(max_length=8)
+    granularities: list[Granularity] = Field(max_length=3)
+    regulator_types: list[Literal["tf", "mirna"]] = Field(
+        default_factory=list, max_length=2
+    )
+    target_types: list[Literal["gene"]] = Field(default_factory=list, max_length=1)
+    guidance_predecessors: list[RecommendedAction] = Field(
+        default_factory=list, max_length=2
+    )
+
+
 class WorkflowPolicySpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    policy_version: Literal[1]
+    policy_version: Literal[2]
     workflow: str = Field(min_length=1, max_length=80)
     action: Literal[
         "run_panda",
@@ -41,10 +63,11 @@ class WorkflowPolicySpec(BaseModel):
         "run_lioness_coexpression",
         "run_condor",
     ]
+    output_capability: WorkflowOutputCapabilitySpec
     conventions: list[str] = Field(default_factory=list, max_length=20)
 
 class ProjectPolicySnapshot(BaseModel):
-    policy_version: Literal[1]
+    policy_version: Literal[2]
     project: str
     agents_path: str
     workflow_spec_dir: str
@@ -56,10 +79,22 @@ class ProjectPolicySnapshot(BaseModel):
         """Generate the run-workflow catalog from the validated policy registry."""
         lines = []
         for action, spec in sorted(self.workflows.items()):
+            capability = spec.output_capability
             lines.append(
                 f"- {action}: {spec.description} "
+                f"Produces: operation={capability.operation}, "
+                f"artifact={capability.artifact_type}, "
+                f"entities={','.join(capability.entity_types) or 'none'}, "
+                f"regulators={','.join(capability.regulator_types) or 'none'}, "
+                f"targets={','.join(capability.target_types) or 'none'}, "
+                f"granularities={','.join(capability.granularities)}. "
                 f"Required inputs: {', '.join(spec.required_inputs)}."
             )
         return "\n".join(lines)
 
-__all__ = ['AgentsPolicyHeader', 'WorkflowPolicySpec', 'ProjectPolicySnapshot']
+__all__ = [
+    "AgentsPolicyHeader",
+    "ProjectPolicySnapshot",
+    "WorkflowOutputCapabilitySpec",
+    "WorkflowPolicySpec",
+]

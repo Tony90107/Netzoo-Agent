@@ -1,4 +1,4 @@
-policy_version: 1
+policy_version: 2
 workflow: LIONESS-COEXPRESSION
 action: run_lioness_coexpression
 description: Infer aggregate and sample-specific co-expression networks with LIONESS.
@@ -6,6 +6,14 @@ required_inputs: [expression_file, output_file, lioness_output]
 optional_inputs: []
 validation_steps: []
 execution_step: run_lioness_coexpression
+output_capability:
+  operation: infer
+  artifact_type: coexpression_network
+  entity_types: [gene]
+  granularities: [aggregate, sample_specific]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
 conventions:
   - Require at least three samples and validate expression inside the execution wrapper.
   - Keep aggregate and sample-specific outputs distinct from the expression input.

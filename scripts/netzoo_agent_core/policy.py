@@ -10,6 +10,7 @@ import yaml
 
 from workflow_registry import (
     ACTION_DEFINITIONS,
+    OutputCapabilityDefinition,
     RUN_ACTIONS,
 )
 
@@ -125,6 +126,22 @@ class ProjectPolicyLoader:
             if spec.workflow != definition.workflow:
                 raise ProjectPolicyError(
                     f"{action} workflow must be {definition.workflow}."
+                )
+            yaml_capability = OutputCapabilityDefinition(
+                operation=spec.output_capability.operation,
+                artifact_type=spec.output_capability.artifact_type,
+                entity_types=frozenset(spec.output_capability.entity_types),
+                granularities=frozenset(spec.output_capability.granularities),
+                regulator_types=frozenset(spec.output_capability.regulator_types),
+                target_types=frozenset(spec.output_capability.target_types),
+                guidance_predecessors=tuple(
+                    spec.output_capability.guidance_predecessors
+                ),
+            )
+            if yaml_capability != definition.output_capability:
+                raise ProjectPolicyError(
+                    f"{action} output_capability conflict with Python: "
+                    f"yaml={yaml_capability}, code={definition.output_capability}."
                 )
             unknown_optional = set(spec.optional_inputs) - known_fields
             overlap = set(spec.optional_inputs) & set(spec.required_inputs)

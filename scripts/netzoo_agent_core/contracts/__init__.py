@@ -58,7 +58,12 @@ from .decisions import PreferenceProposal, RouterDecision, TaskDecision
 from .memory import Episode, UserProfile
 from .outcomes import CapabilityMatch, CapabilityMatchStatus, RequestedOutcome
 from .planning import InputEvidence, WorkflowPlan, WorkflowStep
-from .policy import AgentsPolicyHeader, ProjectPolicySnapshot, WorkflowPolicySpec
+from .policy import (
+    AgentsPolicyHeader,
+    ProjectPolicySnapshot,
+    WorkflowOutputCapabilitySpec,
+    WorkflowPolicySpec,
+)
 from .results import (
     ArtifactValidationResult,
     EvaluationResult,
@@ -108,6 +113,7 @@ __all__ = [
     "PlanEvaluationResult", "NextTurnPrompt", "CLI_FOLLOW_UP_STARTERS",
     "strip_cli_owned_follow_up_question", "ArtifactValidationResult",
     "ToolExecutionResult", "AgentsPolicyHeader", "WorkflowPolicySpec",
+    "WorkflowOutputCapabilitySpec",
     "ProjectPolicySnapshot", "UserProfile", "Episode", "INPUT_ROLE_FIELDS",
     "OUTPUT_ROLE_FIELDS", "PARAMETER_FIELDS", "_display_path", "_is_demo_request",
 ]
