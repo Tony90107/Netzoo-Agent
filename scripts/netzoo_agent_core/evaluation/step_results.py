@@ -44,6 +44,7 @@ def evaluate_step_result(
                 status="replan",
                 reason="The failure is recoverable; return to the Planner to insert an approved repair step.",
                 recovery_action=structured.recovery_hint,
+                recovery_error_code=structured.error_code,
             )
         return EvaluationResult(
             status="failed",

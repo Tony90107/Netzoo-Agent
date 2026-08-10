@@ -40,6 +40,8 @@ def test_evaluation_is_responsibility_oriented_package():
         "plan_review",
         "step_results",
         "recovery",
+        "recovery_registry",
+        "recovery_strategies",
         "rendering",
     ):
         importlib.import_module(f"netzoo_agent_core.evaluation.{module_name}")

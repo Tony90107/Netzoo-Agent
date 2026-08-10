@@ -12,6 +12,7 @@ class EvaluationResult(BaseModel):
     status: Literal["continue", "completed", "needs_input", "replan", "failed"]
     reason: str
     recovery_action: str | None = None
+    recovery_error_code: str | None = None
 
 class PlanRubricItem(BaseModel):
     """One machine-readable pre-execution planning criterion."""

@@ -49,7 +49,8 @@ class WorkflowPlan(BaseModel):
     memory_notes: list[str] = Field(default_factory=list)
     policy_hash: str | None = None
     policy_notes: list[str] = Field(default_factory=list)
-    recovery_action: Literal["format_expression_headerless"] | None = None
+    recovery_action: str | None = None
+    recovery_error_code: str | None = None
     recovery_step_index: int | None = Field(default=None, ge=0)
     recovery_attempt: int = Field(default=0, ge=0, le=MAX_RECOVERY_ATTEMPTS)
 
