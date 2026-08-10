@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import LOCAL_WORKFLOW_ACTIONS, REQUIRED_INPUTS
+from workflow_registry import (
+    LOCAL_WORKFLOW_ACTIONS,
+    OUTPUT_CAPABILITIES,
+    REQUIRED_INPUTS,
+)
 
 from ..contracts import (
     InputEvidence,
     LIONESS_MODE_QUESTION,
+    RequestedOutcome,
     TaskDecision,
     WorkflowPlan,
     _is_demo_request,
@@ -103,6 +108,37 @@ def _ready_named_decision(
     return decision.model_copy(update=updates)
 
 
+def _confirmed_outcome(task: str, action: str) -> RequestedOutcome:
+    capability = OUTPUT_CAPABILITIES[action]
+    granularity_match = re.search(
+        r"CONFIRMED_GRANULARITY=([a-z_]+)",
+        task,
+        flags=re.IGNORECASE,
+    )
+    granularity = (
+        granularity_match.group(1).casefold() if granularity_match else None
+    )
+    if granularity not in capability.granularities:
+        granularity = (
+            next(iter(capability.granularities))
+            if len(capability.granularities) == 1
+            else "unknown"
+        )
+    display_labels = {"tf": "TF", "mirna": "miRNA", "gene": "gene"}
+    return RequestedOutcome(
+        operation=capability.operation,
+        artifact_type=capability.artifact_type,
+        entity_types=sorted(capability.entity_types),
+        display_entities=[
+            display_labels.get(item, item) for item in sorted(capability.entity_types)
+        ],
+        regulator_types=sorted(capability.regulator_types),
+        target_types=sorted(capability.target_types),
+        granularity=granularity,
+        unresolved_dimensions=([] if granularity != "unknown" else ["granularity"]),
+    )
+
+
 def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecision:
     """Repair under-routing while keeping execution tied to a typed exact match."""
     documentation_library = documentation_library_for_task(task)
@@ -118,6 +154,24 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
             docs_query=task[:2_000],
             preference_updates=raw_decision.preference_updates,
         )
+
+    confirmed_match = re.search(
+        r"CONFIRMED_OUTCOME_ACTION=(run_[a-z_]+)",
+        task,
+        flags=re.IGNORECASE,
+    )
+    if confirmed_match:
+        action = confirmed_match.group(1).casefold()
+        if action in OUTPUT_CAPABILITIES:
+            confirmed = raw_decision.model_copy(
+                update={"requested_outcome": _confirmed_outcome(task, action)}
+            )
+            return _ready_named_decision(
+                confirmed,
+                action,
+                should_execute=False,
+                reason="The user confirmed a supported alternative outcome.",
+            ).model_copy(update={"intent_type": "answer_question"})
 
     decision = apply_outcome_match(raw_decision)
 

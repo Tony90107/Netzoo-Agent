@@ -10,6 +10,7 @@ from typing_extensions import NotRequired, TypedDict
 from ..framework_compat import add_messages
 from ..settings import DEFAULT_TASK_TOKEN_BUDGET
 from ..trace_contracts import LLMCallUsage
+from workflow_registry import Granularity, RecommendedAction
 
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -59,9 +60,13 @@ class NextTurnPrompt(BaseModel):
         "plan_rejected",
         "unsupported",
         "retrieval",
+        "clarify_outcome",
+        "alternative_outcome",
     ]
     question: str
     continuation_action: str | None = None
     expected_field: str | None = None
+    alternative_action: RecommendedAction | None = None
+    alternative_granularity: Granularity | None = None
 
 __all__ = ['AgentState', 'AgentTurnInterrupted', 'ClarificationInputError', 'LLMUsage', 'NextTurnPrompt']
