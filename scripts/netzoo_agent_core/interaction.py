@@ -1,7 +1,6 @@
 """Compatibility facade for CLI interaction helpers."""
 
 from .cli.clarification import (
-    CLARIFICATION_FIELD_ALIASES,
     _candidate_selection,
     clarification_continuation,
     clarification_prompt,
@@ -20,7 +19,6 @@ from .cli.follow_up import (
 )
 
 __all__ = [
-    "CLARIFICATION_FIELD_ALIASES",
     "_candidate_selection",
     "parse_clarification_assignments",
     "clarification_continuation",

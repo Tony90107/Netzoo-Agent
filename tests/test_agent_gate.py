@@ -832,7 +832,6 @@ class CapabilityGateTests(unittest.TestCase):
             plan,
             "1",
             target_field="expression_file",
-            require_all=False,
         )
         second_prompt = agent.clarification_prompt(plan, selections)
         selections = agent.parse_clarification_assignments(
@@ -840,7 +839,6 @@ class CapabilityGateTests(unittest.TestCase):
             "2",
             selected=selections,
             target_field="ppi_file",
-            require_all=False,
         )
         continuation = agent.clarification_continuation(plan, selections)
 
@@ -907,7 +905,6 @@ class CapabilityGateTests(unittest.TestCase):
                         "2",
                         selected=selections,
                         target_field=field_name,
-                        require_all=False,
                     )
 
                 continuation = agent.clarification_continuation(plan, selections)
@@ -921,45 +918,42 @@ class CapabilityGateTests(unittest.TestCase):
                         continuation,
                     )
 
-    def test_clarification_accepts_multiple_field_assignments_in_one_reply(self):
-        decision = agent.TaskDecision(
-            action="run_panda",
-            in_scope=True,
-            should_execute=True,
-            confidence=0.95,
-            reason="formal PANDA request",
-            output_file="outputs/demo/panda.tsv",
-        )
-        plan = agent.WorkflowPlan(
-            workflow="PANDA",
-            objective="Run PANDA with research inputs.",
-            decision=decision.model_dump(),
-            evidence=[
-                agent.InputEvidence(
-                    field=field_name,
-                    status="missing",
-                    reason="research path required",
-                )
-                for field_name in ("expression_file", "motif_file", "ppi_file")
-            ],
-            missing_inputs=["expression_file", "motif_file", "ppi_file"],
-            status="needs_input",
-        )
+    def test_clarification_accepts_only_the_current_field(self):
+        plan = self._panda_clarification_plan()
 
-        continuation = agent.resolve_clarification(
+        selections = agent.parse_clarification_assignments(
             plan,
-            "expression_file=data/lioness-toy/expression.tsv; "
-            "motif_file=data/lioness-toy/motif-panda.tsv; "
-            "ppi_file=data/lioness-toy/ppi.tsv",
+            "expression_file=data/a.tsv ppi_file=data/b.tsv",
+            target_field="expression_file",
         )
 
-        self.assertIn("SELECTED_FIELD=expression_file", continuation)
-        self.assertIn("SELECTED_FIELD=motif_file", continuation)
-        self.assertIn("SELECTED_FIELD=ppi_file", continuation)
+        self.assertEqual(
+            selections,
+            {
+                "expression_file": (
+                    "expression_file=data/a.tsv ppi_file=data/b.tsv"
+                )
+            },
+        )
+        self.assertNotIn("ppi_file", selections)
+        prompt = agent.clarification_prompt(plan)
+        self.assertNotIn("Advanced:", prompt)
+        self.assertNotIn("field=value", prompt)
 
     def test_selected_input_keeps_selected_provenance_after_replanning(self):
         plan = self._panda_clarification_plan()
-        continuation = agent.resolve_clarification(plan, "1 1")
+        selections = agent.parse_clarification_assignments(
+            plan,
+            "1",
+            target_field="expression_file",
+        )
+        selections = agent.parse_clarification_assignments(
+            plan,
+            "1",
+            selected=selections,
+            target_field="ppi_file",
+        )
+        continuation = agent.clarification_continuation(plan, selections)
         repaired = agent.repair_router_decision(
             agent.TaskDecision(
                 action="run_panda",
@@ -981,7 +975,18 @@ class CapabilityGateTests(unittest.TestCase):
 
     def test_clarification_marker_preserves_previous_action_against_reroute(self):
         plan = self._panda_clarification_plan()
-        continuation = agent.resolve_clarification(plan, "1 1")
+        selections = agent.parse_clarification_assignments(
+            plan,
+            "1",
+            target_field="expression_file",
+        )
+        selections = agent.parse_clarification_assignments(
+            plan,
+            "1",
+            selected=selections,
+            target_field="ppi_file",
+        )
+        continuation = agent.clarification_continuation(plan, selections)
         wrong_router_decision = agent.TaskDecision(
             action="run_lioness_panda",
             in_scope=True,

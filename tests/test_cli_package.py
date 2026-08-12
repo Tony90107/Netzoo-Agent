@@ -17,7 +17,6 @@ import netzoo_agent_core.interaction as interaction  # noqa: E402
 
 CLI_EXPORTS = ["parse_args", "main", "export_local_trace", "local_trace_status"]
 INTERACTION_EXPORTS = [
-    "CLARIFICATION_FIELD_ALIASES",
     "_candidate_selection",
     "parse_clarification_assignments",
     "clarification_continuation",
@@ -38,12 +37,11 @@ SIGNATURES = {
     "main": "() -> 'int'",
     "parse_clarification_assignments": (
         "(plan: 'WorkflowPlan', answer: 'str', *, selected: "
-        "'dict[str, str] | None' = None, target_field: 'str | None' = None, "
-        "require_all: 'bool' = True) -> 'dict[str, str]'"
+        "'dict[str, str] | None' = None, target_field: 'str') -> "
+        "'dict[str, str]'"
     ),
     "clarification_prompt": (
-        "(plan: 'WorkflowPlan', selected: 'dict[str, str] | None' = None, *, "
-        "batch: 'bool' = False) -> 'str'"
+        "(plan: 'WorkflowPlan', selected: 'dict[str, str] | None' = None) -> 'str'"
     ),
     "build_next_turn_prompt": "(state: 'dict') -> 'NextTurnPrompt'",
     "resolve_next_turn_input": (
