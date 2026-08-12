@@ -1,6 +1,6 @@
 ---
 policy_version: 2
-project: network-zoo-panda-puma
+project: netzoo_agent
 workflow_spec_dir: workflows
 conventions:
   - Resolve explicitly provided paths before profile memory or workspace discovery.

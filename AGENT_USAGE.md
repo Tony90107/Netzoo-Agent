@@ -460,7 +460,7 @@ Selection > 2
 ```
 
 互動 wizard 在所有欄位選完前不會呼叫 LLM 或開始 workflow，因此 `1` 只會選擇目前
-畫面上的欄位。進階使用者仍可用 `expression_file=1 ppi_file=2` 一次完成。補充完成後
+畫面上的欄位。每次回答只會處理目前正在詢問的欄位；補充完成後
 會沿用原 workflow 重新規劃。不要對 Docker Compose 加 `-T`，因為 `-T`
 會停用互動 stdin；在 CI 等非互動環境，agent 會保存 checkpoint、回傳 exit code 2，
 並提示如何用 `--resume SESSION_ID` 繼續。
