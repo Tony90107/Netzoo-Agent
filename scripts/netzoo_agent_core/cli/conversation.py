@@ -101,7 +101,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 if pending_plan.status == "needs_confirmation":
                     print("\n" + preference_confirmation_prompt(pending_plan))
                 else:
-                    print("\n" + clarification_prompt(pending_plan, batch=True))
+                    print("\n" + clarification_prompt(pending_plan))
                 print(
                     _ui_text("Run the command again with --resume ")
                     + f"{session_id}"
@@ -183,7 +183,6 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                             answer,
                             selected=clarification_selections,
                             target_field=target_field,
-                            require_all=False,
                         )
                         still_missing = [
                             field_name
