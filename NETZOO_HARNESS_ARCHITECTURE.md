@@ -459,7 +459,7 @@ Input dataset 不可因為「workspace 剛好有 toy data」就 default。正式
 - `plan.status = "needs_input"`
 - `plan.steps = []`
 - CLI 保存 session checkpoint
-- clarification wizard 一次處理一個欄位；進階使用者也可一次輸入多個 `field=value`
+- clarification wizard 一次處理一個欄位，使用者依序提供每個缺少的 input
 
 補充答案會轉成 canonical continuation，再重新經 Router、Planner 和 Plan Evaluator，
 不是直接修改舊 plan 後跳進 Executor。
@@ -775,7 +775,7 @@ Wizard：
 
 1. 從 plan evidence 找出尚未解決欄位。
 2. 顯示候選與編號。
-3. 解析 number、path 或 `field=value`。
+3. 解析目前欄位的 number 或 path。
 4. 建立帶有 `PREVIOUS_ACTION` 和 `SELECTED_FIELD` 的 canonical continuation。
 5. 重新跑完整 graph。
 
