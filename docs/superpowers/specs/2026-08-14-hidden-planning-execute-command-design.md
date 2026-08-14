@@ -12,12 +12,12 @@ safe preview-only state, but its label is not shown in the main prompt.
   disabled.
 - The ordinary prompt is exactly `What would you like to accomplish with
   NetZoo?`; it has no `[Planning]` or `[TEST]` prefix.
-- Entering `/` at an empty ordinary prompt opens an inline slash-command input.
-  The input contains only `/` and displays a muted `execute` suffix as a
-  completion hint, so it visibly reads `/execute` without pre-filling text.
-- Pressing Enter while the completion hint is visible submits `/execute`.
-  Typing after `/` removes the hint and allows the user to enter any supported
-  slash command, including `/planning`, `/status`, and `/help`.
+- Entering `/` at an empty ordinary prompt opens an inline slash-command input
+  containing `/execute`. The `execute` portion is muted and selected as the
+  default completion.
+- Pressing Enter submits `/execute`. Typing replaces the selected completion,
+  allowing the user to enter any supported slash command, including
+  `/planning`, `/status`, and `/help`.
 - Entering `/execute` enables execution for the remainder of the current
   interactive Agent session and reports that execution is enabled.
 - Once enabled, the ordinary prompt is `[Execute] What would you like to
@@ -65,6 +65,6 @@ Update slash-command unit tests and interactive lifecycle tests to prove:
 3. `/status` uses Planning or Execute terminology.
 4. `/planning` revokes authority, restores the unprefixed prompt, and reports
    Planning mode.
-5. The empty-`/` input shows a muted `execute` completion, Enter submits
-   `/execute`, and typed slash commands remain available.
+5. The empty-`/` input selects a muted `execute` completion, Enter submits
+   `/execute`, and typed slash commands replace the completion.
 6. Starting a separate CLI session resets execution to Planning.
