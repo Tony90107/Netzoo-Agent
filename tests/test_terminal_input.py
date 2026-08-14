@@ -16,11 +16,10 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
     TerminalInputReader,
     _create_inline_mode_application,
+    _execute_suffix,
     _read_menu_line,
-    _select_default_command,
     _split_inline_prompt,
 )
-from prompt_toolkit.buffer import Buffer  # noqa: E402
 
 
 def _dispatch_line_keys(default_command: str, keys: str) -> str | None:
@@ -53,15 +52,11 @@ def test_empty_slash_opens_execute_completion_and_returns_selection():
     line_reader.assert_called_once_with("prompt\n> ", "/execute")
 
 
-def test_execute_default_is_buffer_text_with_only_its_suffix_selected():
-    buffer = Buffer()
-
-    _select_default_command(buffer, "/execute")
-
-    assert buffer.text == "/execute"
-    assert buffer.selection_state is not None
-    assert buffer.selection_state.original_cursor_position == 1
-    assert buffer.cursor_position == len("/execute")
+def test_execute_completion_shrinks_with_matching_input():
+    assert _execute_suffix("/", "/execute") == "execute"
+    assert _execute_suffix("/e", "/execute") == "xecute"
+    assert _execute_suffix("/execute", "/execute") == ""
+    assert _execute_suffix("/planning", "/execute") == ""
 
 
 def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
@@ -120,6 +115,10 @@ def test_nonempty_slash_is_preserved_by_real_key_dispatch():
 
 def test_typed_planning_command_is_not_replaced_by_execute():
     assert _dispatch_line_keys("/execute", "/planning\r") == "/planning"
+
+
+def test_matching_execute_prefix_is_completed_on_enter():
+    assert _dispatch_line_keys("/execute", "/e\r") == "/execute"
 
 
 @pytest.mark.parametrize("key", ["\x1b", "\x03"], ids=["escape", "ctrl-c"])
