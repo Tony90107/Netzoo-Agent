@@ -15,6 +15,14 @@ from workflow_registry import (
 
 
 CapabilityMatchStatus = Literal["exact", "ambiguous", "unsupported"]
+EvidenceDimension = Literal[
+    "operation",
+    "artifact_type",
+    "entity_type",
+    "regulator_type",
+    "target_type",
+    "granularity",
+]
 
 
 class RequestedOutcome(BaseModel):
@@ -43,6 +51,35 @@ class RequestedOutcome(BaseModel):
         return values
 
 
+class OutcomeEvidence(BaseModel):
+    """One bounded fact supporting an outcome hypothesis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dimension: EvidenceDimension
+    value: str = Field(min_length=1, max_length=80)
+    source: Literal["explicit", "inferred"]
+    rationale: str = Field(min_length=1, max_length=240)
+
+
+class OutcomeHypothesis(BaseModel):
+    """One possible scientific outcome plus its evidence and assumptions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: RequestedOutcome
+    confidence: float = Field(ge=0.0, le=1.0)
+    evidence: list[OutcomeEvidence] = Field(default_factory=list, max_length=12)
+    assumptions: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("assumptions")
+    @classmethod
+    def _bounded_assumptions(cls, values: list[str]) -> list[str]:
+        if any(not item.strip() or len(item) > 160 for item in values):
+            raise ValueError("assumptions must contain 1-160 characters")
+        return values
+
+
 class CapabilityMatch(BaseModel):
     """Code-owned relationship between one requested outcome and the registry."""
 
@@ -50,6 +87,9 @@ class CapabilityMatch(BaseModel):
 
     status: CapabilityMatchStatus
     matched_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
+    hypothesis_actions: list[RecommendedAction] = Field(
+        default_factory=list, max_length=6
+    )
     alternative_actions: list[RecommendedAction] = Field(
         default_factory=list, max_length=2
     )
@@ -57,4 +97,11 @@ class CapabilityMatch(BaseModel):
     clarification_question: str | None = Field(default=None, max_length=300)
 
 
-__all__ = ["CapabilityMatch", "CapabilityMatchStatus", "RequestedOutcome"]
+__all__ = [
+    "CapabilityMatch",
+    "CapabilityMatchStatus",
+    "EvidenceDimension",
+    "OutcomeEvidence",
+    "OutcomeHypothesis",
+    "RequestedOutcome",
+]

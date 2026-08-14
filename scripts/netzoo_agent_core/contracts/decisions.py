@@ -7,24 +7,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
 
-from .outcomes import CapabilityMatchStatus, RequestedOutcome
+from .outcomes import CapabilityMatchStatus, OutcomeHypothesis, RequestedOutcome
 
 
 def _require_outcome_in_transport_schema(schema: dict) -> None:
     """Require explicit Router classification without breaking internal fixtures."""
     required = schema.setdefault("required", [])
-    if "requested_outcome" not in required:
-        required.append("requested_outcome")
-
-
-def _unclassified_requested_outcome() -> RequestedOutcome:
-    """Represent a non-scientific request without using a nullable contract."""
-    return RequestedOutcome(
-        operation="unknown",
-        artifact_type="unknown",
-        granularity="not_applicable",
-        unresolved_dimensions=["scientific outcome"],
-    )
+    if "outcome_hypotheses" not in required:
+        required.append("outcome_hypotheses")
 
 
 class PreferenceProposal(BaseModel):
@@ -43,14 +33,21 @@ class RouterDecision(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=300)
     semantic_goal: str | None = Field(default=None, max_length=240)
-    requested_outcome: RequestedOutcome = Field(
-        default_factory=_unclassified_requested_outcome,
+    outcome_hypotheses: list[OutcomeHypothesis] = Field(
+        min_length=1,
+        max_length=3,
         description=(
-            "Required classification field. Describe the scientific result the user "
-            "wants. For a request with no scientific result, use operation=unknown, "
-            "artifact_type=unknown, and granularity=not_applicable."
+            "Required bounded interpretations of the scientific result. Preserve "
+            "competing interpretations instead of erasing known evidence."
         )
     )
+
+    @property
+    def requested_outcome(self) -> RequestedOutcome | None:
+        """Compatibility view until all consumers read outcome hypotheses directly."""
+        if len(self.outcome_hypotheses) != 1:
+            return None
+        return self.outcome_hypotheses[0].outcome
 
 class TaskDecision(BaseModel):
     """A capability-aware routing decision for the allow-listed NetZoo agent."""
@@ -79,8 +76,12 @@ class TaskDecision(BaseModel):
         ),
     )
     requested_outcome: RequestedOutcome | None = None
+    outcome_hypotheses: list[OutcomeHypothesis] = Field(
+        default_factory=list, max_length=3
+    )
     capability_match_status: CapabilityMatchStatus | None = None
     matched_actions: list[RecommendedAction] = Field(default_factory=list)
+    hypothesis_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
     alternative_actions: list[RecommendedAction] = Field(default_factory=list)
     mismatch_dimensions: list[str] = Field(default_factory=list)
     clarification_question: str | None = None

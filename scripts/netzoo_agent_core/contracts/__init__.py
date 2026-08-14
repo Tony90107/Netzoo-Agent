@@ -56,7 +56,14 @@ from ..settings import (
 )
 from .decisions import PreferenceProposal, RouterDecision, TaskDecision
 from .memory import Episode, UserProfile
-from .outcomes import CapabilityMatch, CapabilityMatchStatus, RequestedOutcome
+from .outcomes import (
+    CapabilityMatch,
+    CapabilityMatchStatus,
+    EvidenceDimension,
+    OutcomeEvidence,
+    OutcomeHypothesis,
+    RequestedOutcome,
+)
 from .planning import InputEvidence, WorkflowPlan, WorkflowStep
 from .policy import (
     AgentsPolicyHeader,
@@ -108,7 +115,8 @@ __all__ = [
     "_clear_transient_trace", "_trace_line", "_trace", "AgentState",
     "AgentTurnInterrupted", "ClarificationInputError", "PreferenceProposal",
     "RouterDecision", "TaskDecision", "LLMUsage", "InputEvidence",
-    "RequestedOutcome", "CapabilityMatch", "CapabilityMatchStatus",
+    "RequestedOutcome", "OutcomeEvidence", "OutcomeHypothesis",
+    "EvidenceDimension", "CapabilityMatch", "CapabilityMatchStatus",
     "WorkflowStep", "WorkflowPlan", "EvaluationResult", "PlanRubricItem",
     "PlanEvaluationResult", "NextTurnPrompt", "CLI_FOLLOW_UP_STARTERS",
     "strip_cli_owned_follow_up_question", "ArtifactValidationResult",

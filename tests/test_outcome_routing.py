@@ -9,7 +9,13 @@ from pydantic import ValidationError
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from netzoo_agent_core.contracts import RequestedOutcome, RouterDecision  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    OutcomeEvidence,
+    OutcomeHypothesis,
+    RequestedOutcome,
+    RouterDecision,
+    TaskDecision,
+)
 from netzoo_agent_core.interpretation import (  # noqa: E402
     deterministic_router_fallback,
     hydrate_router_decision,
@@ -20,14 +26,12 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
 def test_router_schema_requires_an_explicit_outcome_classification():
     schema = RouterDecision.model_json_schema()
 
-    assert "requested_outcome" in schema["required"]
-    assert schema["properties"]["requested_outcome"]["description"].startswith(
-        "Required classification field."
-    )
+    assert "outcome_hypotheses" in schema["required"]
+    assert schema["properties"]["outcome_hypotheses"]["maxItems"] == 3
 
 
-def test_router_rejects_a_null_requested_outcome_from_the_provider():
-    with pytest.raises(ValidationError, match="requested_outcome"):
+def test_router_rejects_null_outcome_hypotheses_from_the_provider():
+    with pytest.raises(ValidationError, match="outcome_hypotheses"):
         RouterDecision.model_validate(
             {
                 "action": "no_tool",
@@ -35,7 +39,7 @@ def test_router_rejects_a_null_requested_outcome_from_the_provider():
                 "intent_type": "answer_question",
                 "confidence": 0.9,
                 "reason": "provider omitted the classification",
-                "requested_outcome": None,
+                "outcome_hypotheses": None,
             }
         )
 
@@ -66,6 +70,47 @@ def mirna_measurement_outcome() -> RequestedOutcome:
     )
 
 
+def hypothesis(
+    *,
+    outcome: RequestedOutcome | None = None,
+    confidence: float = 0.9,
+    evidence: list[OutcomeEvidence] | None = None,
+    assumptions: list[str] | None = None,
+) -> OutcomeHypothesis:
+    return OutcomeHypothesis(
+        outcome=outcome or mirna_network_outcome(),
+        confidence=confidence,
+        evidence=evidence
+        or [
+            OutcomeEvidence(
+                dimension="regulator_type",
+                value="mirna",
+                source="explicit",
+                rationale="The request explicitly names miRNA.",
+            )
+        ],
+        assumptions=assumptions or [],
+    )
+
+
+def test_task_decision_keeps_hypotheses_separate_from_exact_matches():
+    item = hypothesis(assumptions=["network means regulatory network"])
+
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=0.9,
+        reason="advisory hypothesis",
+        outcome_hypotheses=[item],
+        hypothesis_actions=["run_lioness_puma"],
+    )
+
+    assert decision.requested_outcome is None
+    assert decision.matched_actions == []
+    assert decision.hypothesis_actions == ["run_lioness_puma"]
+
+
 def test_router_outcome_is_descriptive_until_deterministic_repair():
     task = "Please build sample-specific miRNA-to-gene regulatory networks"
     hydrated = hydrate_router_decision(
@@ -75,7 +120,7 @@ def test_router_outcome_is_descriptive_until_deterministic_repair():
             intent_type="run_analysis",
             confidence=0.98,
             reason="proposed route",
-            requested_outcome=mirna_network_outcome(),
+            outcome_hypotheses=[hypothesis()],
         ),
         task,
     )
@@ -129,7 +174,7 @@ def test_language_variations_cannot_promote_measurements_to_networks(task):
             intent_type="answer_question",
             confidence=0.99,
             reason="incorrect related workflow proposal",
-            requested_outcome=mirna_measurement_outcome(),
+            outcome_hypotheses=[hypothesis(outcome=mirna_measurement_outcome())],
         ),
         task,
     )
@@ -160,7 +205,7 @@ def test_language_variations_share_one_typed_network_match(task, should_execute)
             intent_type="run_analysis" if should_execute else "answer_question",
             confidence=0.99,
             reason="typed network outcome",
-            requested_outcome=mirna_network_outcome(),
+            outcome_hypotheses=[hypothesis()],
         ),
         task,
     )

@@ -37,6 +37,10 @@ class LegacyFacadeTests(unittest.TestCase):
         self.assertIn("PUMA needs", summary)
         self.assertIn("Requested topic: overview", summary)
 
+    def test_outcome_hypothesis_contracts_are_available(self):
+        self.assertTrue(hasattr(agent, "OutcomeEvidence"))
+        self.assertTrue(hasattr(agent, "OutcomeHypothesis"))
+
 
 if __name__ == "__main__":
     unittest.main()

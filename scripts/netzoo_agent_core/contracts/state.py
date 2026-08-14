@@ -30,6 +30,7 @@ class AgentState(TypedDict):
     budget_warnings: NotRequired[list[str]]
     semantic_goal: NotRequired[dict]
     requested_outcome: NotRequired[dict]
+    outcome_hypotheses: NotRequired[list[dict]]
     capability_match: NotRequired[dict]
 
 class AgentTurnInterrupted(Exception):
