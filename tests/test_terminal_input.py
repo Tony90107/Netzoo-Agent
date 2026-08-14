@@ -53,6 +53,7 @@ def test_empty_slash_opens_execute_completion_and_returns_selection():
 
 
 def test_execute_completion_shrinks_with_matching_input():
+    assert _execute_suffix("", "/execute") == ""
     assert _execute_suffix("/", "/execute") == "execute"
     assert _execute_suffix("/e", "/execute") == "xecute"
     assert _execute_suffix("/execute", "/execute") == ""

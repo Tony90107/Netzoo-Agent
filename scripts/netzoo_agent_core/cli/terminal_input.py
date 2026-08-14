@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 def _execute_suffix(text: str, command: str) -> str:
     """Return the unmatched execute suffix for a matching slash prefix."""
-    if command.casefold().startswith(text.casefold()):
+    if text.startswith("/") and command.casefold().startswith(text.casefold()):
         return command[len(text) :]
     return ""
 
