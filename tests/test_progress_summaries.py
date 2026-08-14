@@ -29,7 +29,8 @@ def test_no_tool_summary_explains_source_and_safety():
 
 def test_next_step_summary_explains_stable_guidance_without_tools():
     summary = render_progress_summary(
-        "next_step", {"action": "no_tool", "in_scope": "true", "should_execute": "false"}
+        "next_step",
+        {"action": "no_tool", "in_scope": "true", "should_execute": "false"},
     )
 
     assert summary is not None
@@ -39,7 +40,8 @@ def test_next_step_summary_explains_stable_guidance_without_tools():
 
 def test_next_step_summary_explains_analysis_preparation():
     summary = render_progress_summary(
-        "next_step", {"action": "run_panda", "in_scope": "true", "should_execute": "true"}
+        "next_step",
+        {"action": "run_panda", "in_scope": "true", "should_execute": "true"},
     )
 
     assert summary is not None
@@ -48,44 +50,63 @@ def test_next_step_summary_explains_analysis_preparation():
 
 def test_multiple_semantic_candidates_do_not_select_one_workflow():
     decision = TaskDecision(
-        action="no_tool", in_scope=True, should_execute=False,
-        intent_type="answer_question", confidence=1.0, reason="guidance",
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
     )
     plan = WorkflowPlan(
-        workflow="NO-TOOL", objective="guidance", decision=decision.model_dump(),
+        workflow="NO-TOOL",
+        objective="guidance",
+        decision=decision.model_dump(),
         status="respond_only",
     )
 
-    prompt = build_next_turn_prompt({
-        "plan": plan.model_dump(),
-        "semantic_goal": {
-            "candidates": ["run_lioness_panda", "run_lioness_puma"],
-            "relationship": "alternatives",
-        },
-    })
+    prompt = build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "candidates": ["run_lioness_panda", "run_lioness_puma"],
+                "relationship": "alternatives",
+            },
+        }
+    )
 
     assert prompt.continuation_action is None
-    assert prompt.question == "Reply with the clarification above, or describe another NetZoo goal."
+    assert (
+        prompt.question
+        == "Reply with the clarification above, or describe another NetZoo goal."
+    )
 
 
 def test_workflow_composition_recommends_its_final_registered_action():
     decision = TaskDecision(
-        action="no_tool", in_scope=True, should_execute=False,
-        intent_type="answer_question", confidence=1.0, reason="guidance",
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
         recommended_actions=["run_puma", "run_lioness_puma"],
     )
     plan = WorkflowPlan(
-        workflow="NO-TOOL", objective="guidance", decision=decision.model_dump(),
+        workflow="NO-TOOL",
+        objective="guidance",
+        decision=decision.model_dump(),
         status="respond_only",
     )
 
-    prompt = build_next_turn_prompt({
-        "plan": plan.model_dump(),
-        "semantic_goal": {
-            "candidates": ["run_puma", "run_lioness_puma"],
-            "relationship": "composition",
-        },
-    })
+    prompt = build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "candidates": ["run_puma", "run_lioness_puma"],
+                "relationship": "composition",
+            },
+        }
+    )
 
     assert prompt.continuation_action == "run_lioness_puma"
     assert "recommended LIONESS-PUMA workflow" in prompt.question
@@ -153,3 +174,20 @@ def test_ambiguous_outcome_asks_for_clarification_without_continuation():
 
     assert prompt.kind == "clarify_outcome"
     assert prompt.continuation_action is None
+
+
+def test_ambiguous_hypotheses_progress_preserves_candidate_context():
+    text = render_progress_summary(
+        "next_step",
+        {
+            "action": "no_tool",
+            "in_scope": "true",
+            "should_execute": "false",
+            "capability_match_status": "ambiguous",
+            "hypothesis_count": "3",
+        },
+    )
+
+    assert "compatible workflow" in text
+    assert "clarification" in text
+    assert "requested result is ambiguous" not in text

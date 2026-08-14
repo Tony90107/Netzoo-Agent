@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 def render_progress_summary(kind: str, facts: dict[str, str]) -> str | None:
     """Describe verified work without disclosing private reasoning."""
     if kind == "concept" and facts.get("source"):
@@ -17,6 +18,11 @@ def render_progress_summary(kind: str, facts: dict[str, str]) -> str | None:
                 "I will explain the capability gap without running an analysis."
             )
         if facts.get("capability_match_status") == "ambiguous":
+            if int(facts.get("hypothesis_count", "0")) > 0:
+                return (
+                    "I found compatible workflow hypotheses and need one "
+                    "clarification before selecting among them."
+                )
             return (
                 "The requested result is ambiguous, so I need one clarification "
                 "before selecting a workflow."
