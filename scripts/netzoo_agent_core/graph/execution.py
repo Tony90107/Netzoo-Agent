@@ -91,6 +91,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
         decision,
         raw_result,
         persist_log=True,
+        persist_execution_log=True,
         attempt_id=state.get("replan_count", 0),
         execution_started_at=execution_started_at,
     )

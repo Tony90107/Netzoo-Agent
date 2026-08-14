@@ -63,6 +63,7 @@ def structure_tool_result(
     decision: TaskDecision,
     raw_output: str,
     persist_log: bool = False,
+    persist_execution_log: bool = False,
     attempt_id: int = 0,
     execution_started_at: datetime | None = None,
 ) -> ToolExecutionResult:
@@ -137,7 +138,7 @@ def structure_tool_result(
     else:
         metrics["raw_output_truncated"] = False
     metrics["raw_output_chars"] = len(raw_output)
-    if persist_log and status != "dry_run":
+    if persist_execution_log and status != "dry_run":
         try:
             execution_log = write_execution_markdown_log(
                 decision,
