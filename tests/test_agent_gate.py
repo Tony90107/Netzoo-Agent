@@ -918,24 +918,25 @@ class CapabilityGateTests(unittest.TestCase):
                         continuation,
                     )
 
-    def test_clarification_accepts_only_the_current_field(self):
+    def test_clarification_rejects_field_assignment_syntax(self):
         plan = self._panda_clarification_plan()
+
+        with self.assertRaisesRegex(
+            agent.ClarificationInputError,
+            "candidate number or the full path",
+        ):
+            agent.parse_clarification_assignments(
+                plan,
+                "expression_file=data/a.tsv ppi_file=data/b.tsv",
+                target_field="expression_file",
+            )
 
         selections = agent.parse_clarification_assignments(
             plan,
-            "expression_file=data/a.tsv ppi_file=data/b.tsv",
+            "data/run=1.tsv",
             target_field="expression_file",
         )
-
-        self.assertEqual(
-            selections,
-            {
-                "expression_file": (
-                    "expression_file=data/a.tsv ppi_file=data/b.tsv"
-                )
-            },
-        )
-        self.assertNotIn("ppi_file", selections)
+        self.assertEqual(selections, {"expression_file": "data/run=1.tsv"})
         prompt = agent.clarification_prompt(plan)
         self.assertNotIn("Advanced:", prompt)
         self.assertNotIn("field=value", prompt)
