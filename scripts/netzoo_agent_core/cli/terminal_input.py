@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from prompt_toolkit.application.current import get_app
 from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
 from prompt_toolkit.document import Document
 from prompt_toolkit.layout.processors import AppendAutoSuggestion
@@ -95,9 +96,15 @@ def _create_inline_mode_application(prompt: str, default_command: str):
     )
     bindings = KeyBindings()
 
+    def _refresh_completion() -> None:
+        """Erase a stale muted suffix as soon as the input buffer changes."""
+        get_app().invalidate()
+
     @bindings.add("/")
     def _open_selector(event) -> None:
         input_field.buffer.insert_text("/")
+
+    input_field.buffer.on_text_changed += lambda _: _refresh_completion()
 
     @bindings.add("enter", eager=True)
     def _submit(event) -> None:
