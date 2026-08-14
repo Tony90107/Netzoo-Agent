@@ -2783,6 +2783,23 @@ class CapabilityGateTests(unittest.TestCase):
                 intent_type="run_analysis",
                 confidence=0.95,
                 reason="PANDA run",
+                outcome_hypotheses=[
+                    agent.OutcomeHypothesis(
+                        outcome=agent.RequestedOutcome(
+                            operation="infer",
+                            artifact_type="regulatory_network",
+                            entity_types=["tf", "gene"],
+                            display_entities=["TF", "gene"],
+                            regulator_types=["tf"],
+                            target_types=["gene"],
+                            granularity="aggregate",
+                            unresolved_dimensions=[],
+                        ),
+                        confidence=0.95,
+                        evidence=[],
+                        assumptions=[],
+                    )
+                ],
             ),
             (
                 "Remember that my default output directory is outputs/alice. "

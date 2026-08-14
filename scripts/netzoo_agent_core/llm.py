@@ -16,7 +16,6 @@ from .contracts import (
     ProjectPolicySnapshot,
     ROUTER_CONTEXT_MAX_CHARS,
     RouterDecision,
-    RouterDecision,
     SystemMessage,
     TaskDecision,
     output_language_policy,
@@ -80,9 +79,13 @@ Routing rules:
    those words do not by themselves make an artifact a measurement dataset. A network
    artifact and a raw measurement dataset are different outcomes. When multiple
    registered scientific interpretations remain plausible, return competing
-   hypotheses with assumptions instead of clearing known fields. For requests with no
-   scientific result, return one unknown/not_applicable hypothesis stating that fact.
-   Hypotheses describe meaning only and never authorize workflow execution.
+   hypotheses with assumptions instead of clearing known fields. Prefer one partial
+   hypothesis when interpretations share the same known dimensions and differ only in
+   an unresolved dimension; the deterministic matcher will enumerate compatible
+   workflows. Use multiple hypotheses only for genuinely incompatible meanings. For
+   requests with no scientific result, return one unknown/not_applicable hypothesis
+   stating that fact. Hypotheses describe meaning only and never authorize workflow
+   execution.
 6. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
    deterministic planning can request the mode.
 7. Variant calling, mutation discovery, sequence alignment, differential expression,
@@ -90,9 +93,8 @@ Routing rules:
 8. Mixed supported and unsupported deliverables select no_tool unless the supported
    deliverable is independently and explicitly requested.
 9. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
-10. Populate semantic_goal as a short public summary when requested_outcome is not
-   null. Preserve uncertainty rather than completing a supported goal on the user's
-   behalf.
+10. Populate semantic_goal as a short public summary of the outcome hypotheses.
+   Preserve uncertainty rather than completing a supported goal on the user's behalf.
 
 Examples:
 - "PANDA 需要哪些 input？" -> no_tool, answer_question, recommend run_panda.

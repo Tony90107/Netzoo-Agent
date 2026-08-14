@@ -12,9 +12,9 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     OutcomeHypothesis,
     RequestedOutcome,
 )
-from netzoo_agent_core.routing import (  # noqa: E402
-    guidance_actions_for,
+from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
+    guidance_actions_for,
     match_requested_outcome,
 )
 

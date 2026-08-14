@@ -27,8 +27,7 @@ _UNKNOWN = "unknown"
 def _has_unknown(outcome: RequestedOutcome) -> bool:
     return bool(
         outcome.unresolved_dimensions
-        or _UNKNOWN
-        in {outcome.operation, outcome.artifact_type, outcome.granularity}
+        or _UNKNOWN in {outcome.operation, outcome.artifact_type, outcome.granularity}
         or _UNKNOWN in outcome.entity_types
         or _UNKNOWN in outcome.regulator_types
         or _UNKNOWN in outcome.target_types
@@ -55,9 +54,7 @@ def _known_scalar_matches(requested: str, supported: str) -> bool:
     return requested == _UNKNOWN or requested == supported
 
 
-def _known_set_matches(
-    requested: Sequence[str], supported: frozenset[str]
-) -> bool:
+def _known_set_matches(requested: Sequence[str], supported: frozenset[str]) -> bool:
     known = set(requested) - {_UNKNOWN}
     return known.issubset(supported)
 
@@ -214,6 +211,25 @@ def _hypothesis_evidence_score(hypothesis: OutcomeHypothesis) -> int:
     return sum(2 if item.source == "explicit" else 1 for item in hypothesis.evidence)
 
 
+def _advisory_specificity_penalty(
+    outcome: RequestedOutcome,
+    capability: OutputCapabilityDefinition,
+) -> int:
+    """Penalize extra biological roles only when the user specified that role."""
+    requested_entities = set(outcome.entity_types) - {_UNKNOWN}
+    requested_regulators = set(outcome.regulator_types) - {_UNKNOWN}
+    requested_targets = set(outcome.target_types) - {_UNKNOWN}
+    return (
+        (len(capability.entity_types - requested_entities) if requested_entities else 0)
+        + (
+            len(capability.regulator_types - requested_regulators)
+            if requested_regulators
+            else 0
+        )
+        + (len(capability.target_types - requested_targets) if requested_targets else 0)
+    )
+
+
 def match_outcome_hypotheses(
     hypotheses: Sequence[OutcomeHypothesis],
     capabilities: Mapping[
@@ -222,7 +238,7 @@ def match_outcome_hypotheses(
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     exact: list[RecommendedAction] = []
-    advisory: list[tuple[int, int, RecommendedAction]] = []
+    advisory: list[tuple[int, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
         strict = match_requested_outcome(hypothesis.outcome, capabilities)
         if not hypothesis.assumptions and strict.status == "exact":
@@ -230,17 +246,30 @@ def match_outcome_hypotheses(
         score = _hypothesis_evidence_score(hypothesis)
         for index, (action, capability) in enumerate(capabilities.items()):
             if _partially_compatible(hypothesis.outcome, capability):
-                advisory.append((score, index, action))
+                advisory.append(
+                    (
+                        score,
+                        -_advisory_specificity_penalty(
+                            hypothesis.outcome,
+                            capability,
+                        ),
+                        index,
+                        action,
+                    )
+                )
 
     unique_exact = list(dict.fromkeys(exact))
     if len(unique_exact) == 1:
         return CapabilityMatch(status="exact", matched_actions=unique_exact)
     if advisory:
-        top_score = max(item[0] for item in advisory)
+        top_score = max(item[:2] for item in advisory)
         top_actions = [
             action
-            for score, _, action in sorted(advisory, key=lambda item: item[1])
-            if score == top_score
+            for evidence_score, specificity_score, _, action in sorted(
+                advisory,
+                key=lambda item: item[2],
+            )
+            if (evidence_score, specificity_score) == top_score
         ]
         return CapabilityMatch(
             status="ambiguous",
@@ -272,9 +301,11 @@ def named_workflow_action(task: str) -> RecommendedAction | None:
     )
     for action in candidates:
         words = re.split(r"[-_\s]+", ACTION_DEFINITIONS[action].workflow.casefold())
-        pattern = r"(?<![a-z0-9])" + r"[\s_-]*".join(
-            re.escape(word) for word in words
-        ) + r"(?![a-z0-9])"
+        pattern = (
+            r"(?<![a-z0-9])"
+            + r"[\s_-]*".join(re.escape(word) for word in words)
+            + r"(?![a-z0-9])"
+        )
         if re.search(pattern, task.casefold()):
             return action
     return None

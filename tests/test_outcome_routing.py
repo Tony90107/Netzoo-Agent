@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import sys
 from pathlib import Path
 
@@ -19,11 +20,17 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 from netzoo_agent_core.interpretation import (  # noqa: E402
     deterministic_router_fallback,
     hydrate_router_decision,
-    needs_outcome_repair,
     repair_router_decision,
+)
+from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
+    needs_outcome_repair,
     select_primary_hypothesis,
 )
-from netzoo_agent_core.llm import build_router_repair_messages  # noqa: E402
+from netzoo_agent_core.llm import (  # noqa: E402
+    build_router_repair_messages,
+    build_routing_prompt,
+)
+from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
 
 
 def test_router_schema_requires_an_explicit_outcome_classification():
@@ -31,6 +38,13 @@ def test_router_schema_requires_an_explicit_outcome_classification():
 
     assert "outcome_hypotheses" in schema["required"]
     assert schema["properties"]["outcome_hypotheses"]["maxItems"] == 3
+
+
+def test_router_budget_and_prompt_support_bounded_partial_hypotheses():
+    assert DEFAULT_ROUTER_MAX_TOKENS >= 1_200
+    source = inspect.getsource(build_routing_prompt)
+    assert "Prefer one partial" in source
+    assert "deterministic matcher will enumerate compatible" in source
 
 
 def test_router_rejects_null_outcome_hypotheses_from_the_provider():
@@ -45,6 +59,35 @@ def test_router_rejects_null_outcome_hypotheses_from_the_provider():
                 "outcome_hypotheses": None,
             }
         )
+
+
+def test_router_normalizes_a_provider_hypothesis_with_flattened_outcome_fields():
+    decision = RouterDecision.model_validate(
+        {
+            "action": "no_tool",
+            "in_scope": True,
+            "intent_type": "answer_question",
+            "confidence": 0.9,
+            "reason": "The request describes a sample-specific miRNA network.",
+            "outcome_hypotheses": [
+                {
+                    "operation": "infer",
+                    "artifact_type": "regulatory_network",
+                    "entity_types": ["mirna", "gene"],
+                    "regulator_types": ["mirna"],
+                    "target_types": ["gene"],
+                    "granularity": "sample_specific",
+                    "unresolved_dimensions": ["confirmation"],
+                    "confidence": 0.9,
+                    "evidence": [],
+                    "assumptions": ["Confirm the network interpretation."],
+                }
+            ],
+        }
+    )
+
+    assert decision.outcome_hypotheses[0].outcome.regulator_types == ["mirna"]
+    assert decision.outcome_hypotheses[0].outcome.granularity == "sample_specific"
 
 
 def mirna_network_outcome() -> RequestedOutcome:
@@ -360,3 +403,179 @@ def test_provider_failure_never_guesses_unnamed_semantic_goals(task):
     assert decision.matched_actions == []
     assert decision.recommended_actions == []
     assert decision.clarification_question is not None
+
+
+@pytest.mark.parametrize(
+    ("task", "outcome", "expected"),
+    [
+        (
+            "Which tools estimate one miRNA network for every patient?",
+            RequestedOutcome(
+                operation="infer",
+                artifact_type="regulatory_network",
+                entity_types=["mirna", "gene"],
+                display_entities=["miRNA", "gene"],
+                regulator_types=["mirna"],
+                target_types=["gene"],
+                granularity="sample_specific",
+                unresolved_dimensions=["confirmation"],
+            ),
+            ["run_lioness_puma"],
+        ),
+        (
+            "如何建立每個樣本的轉錄因子調控網路？",
+            RequestedOutcome(
+                operation="infer",
+                artifact_type="regulatory_network",
+                entity_types=["tf", "gene"],
+                display_entities=["TF", "gene"],
+                regulator_types=["tf"],
+                target_types=["gene"],
+                granularity="sample_specific",
+                unresolved_dimensions=["confirmation"],
+            ),
+            ["run_lioness_panda"],
+        ),
+        (
+            "What method gives individualized gene coexpression edges?",
+            RequestedOutcome(
+                operation="infer",
+                artifact_type="coexpression_network",
+                entity_types=["gene"],
+                display_entities=["gene"],
+                regulator_types=[],
+                target_types=[],
+                granularity="sample_specific",
+                unresolved_dimensions=["confirmation"],
+            ),
+            ["run_lioness_coexpression"],
+        ),
+    ],
+)
+def test_partial_hypotheses_generalize_across_network_families(
+    task,
+    outcome,
+    expected,
+):
+    decision = repair_router_decision(
+        TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            intent_type="answer_question",
+            confidence=0.9,
+            reason="advisory hypothesis",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=outcome,
+                    confidence=0.9,
+                    evidence=[],
+                    assumptions=["Confirm the inferred network interpretation."],
+                )
+            ],
+        ),
+        task,
+    )
+
+    assert decision.hypothesis_actions == expected
+    assert decision.matched_actions == []
+    assert decision.should_execute is False
+
+
+def test_generic_sample_network_keeps_compatible_families_unranked():
+    outcome = RequestedOutcome(
+        operation="infer",
+        artifact_type="unknown",
+        entity_types=[],
+        display_entities=[],
+        regulator_types=[],
+        target_types=[],
+        granularity="sample_specific",
+        unresolved_dimensions=["network type"],
+    )
+    decision = repair_router_decision(
+        TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            intent_type="answer_question",
+            confidence=0.9,
+            reason="network family is unknown",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=outcome,
+                    confidence=0.9,
+                    evidence=[
+                        OutcomeEvidence(
+                            dimension="granularity",
+                            value="sample_specific",
+                            source="explicit",
+                            rationale="The request explicitly asks for per-sample output.",
+                        )
+                    ],
+                    assumptions=["The requested network family is not specified."],
+                )
+            ],
+        ),
+        "if i want to get sample specific network data, what tools do i need?",
+    )
+
+    assert set(decision.hypothesis_actions) == {
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+    }
+    assert decision.matched_actions == []
+    assert decision.action == "no_tool"
+
+
+@pytest.mark.parametrize(
+    "task",
+    [
+        "I need sample-specific miRNA expression measurements, not a network.",
+        "取得每個樣本的 miRNA 原始數值，不要推論網路。",
+        "Which tool downloads per-patient microRNA abundance data?",
+    ],
+)
+def test_measurement_hypotheses_never_gain_network_authority(task):
+    decision = repair_router_decision(
+        TaskDecision(
+            action="run_lioness_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="provider proposed a related network",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=mirna_measurement_outcome(),
+                    confidence=0.99,
+                    evidence=[
+                        OutcomeEvidence(
+                            dimension="artifact_type",
+                            value="measurement_dataset",
+                            source="explicit",
+                            rationale="The request asks for measured miRNA values.",
+                        )
+                    ],
+                    assumptions=[],
+                )
+            ],
+        ),
+        task,
+    )
+
+    assert decision.hypothesis_actions == []
+    assert decision.matched_actions == []
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
+
+
+def test_motivating_sentences_are_not_production_routing_rules():
+    root = Path(__file__).parents[1] / "scripts"
+    production = "\n".join(
+        path.read_text(encoding="utf-8") for path in root.rglob("*.py")
+    ).casefold()
+
+    assert "if i want to get sample specific network data" not in production
+    assert "if i want to get sample specific mi-rna network data" not in production
