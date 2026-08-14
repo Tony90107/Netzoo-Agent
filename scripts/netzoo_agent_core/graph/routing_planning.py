@@ -18,13 +18,18 @@ from ..interpretation import (
     _is_fatal_exception,
     deterministic_router_fallback,
     hydrate_router_decision,
+    needs_outcome_repair,
     repair_router_decision,
 )
-from ..interpretation.semantic_goal import outcome_routing_state, semantic_summary_detail
+from ..interpretation.semantic_goal import (
+    outcome_routing_state,
+    semantic_summary_detail,
+)
 from ..progress_summaries import render_progress_summary
 from ..llm import (
     append_llm_usage,
     build_router_messages,
+    build_router_repair_messages,
     latest_user_task,
     structured_result_payload,
 )
@@ -36,7 +41,11 @@ __all__: list[str] = []
 
 def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
-    _trace("reasoning", "Checking registered workflow capabilities", "I am comparing the requested outcome with registered workflows and their input requirements.")
+    _trace(
+        "reasoning",
+        "Checking registered workflow capabilities",
+        "I am comparing the requested outcome with registered workflows and their input requirements.",
+    )
     messages = build_router_messages(context.routing_prompt, state["messages"])
     user_task = latest_user_task(state["messages"])
     router_input_text = "\n".join(str(message.content) for message in messages)
@@ -93,21 +102,104 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         structured = context.router.invoke(messages)
         parsed_decision, raw_message = structured_result_payload(structured)
         router_decision = RouterDecision.model_validate(parsed_decision)
-        hydrated = hydrate_router_decision(router_decision, user_task)
-        decision = repair_router_decision(hydrated, user_task)
-        routing_state = outcome_routing_state(
-            decision, router_decision.semantic_goal or ""
-        )
         usage = append_llm_usage(
             current_usage,
             role="router",
             model=context.router_model_name,
             response=raw_message,
             input_text=router_input_text,
-            output_text=decision.model_dump_json(),
+            output_text=router_decision.model_dump_json(),
             budget_tokens=context.task_token_budget,
             duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
             price_catalog=context.price_catalog,
+        )
+        if needs_outcome_repair(user_task, router_decision.outcome_hypotheses):
+            record_event(
+                context,
+                state,
+                "routing.underclassified",
+                "classify",
+                {
+                    "hypothesis_count": len(router_decision.outcome_hypotheses),
+                    "usable_evidence": False,
+                },
+            )
+            repair_messages = build_router_repair_messages(
+                context.routing_prompt,
+                user_task,
+                router_decision,
+            )
+            repair_input_text = "\n".join(
+                str(message.content) for message in repair_messages
+            )
+            repair_input_text += json.dumps(
+                RouterDecision.model_json_schema(),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            repair_state = dict(state)
+            repair_state["token_usage"] = usage.model_dump()
+            repair_state["budget_warnings"] = budget_warnings
+            repair_budget, budget_warnings = preflight_budget(
+                context,
+                repair_state,
+                role="router_repair",
+                model=context.router_model_name,
+                input_text=repair_input_text,
+                reserved_output_tokens=context.router_max_tokens,
+                allow_reserve=False,
+            )
+            if repair_budget.status != "blocked":
+                repair_started_ns = time.monotonic_ns()
+                try:
+                    repaired_structured = context.router.invoke(repair_messages)
+                    repaired_payload, repaired_raw = structured_result_payload(
+                        repaired_structured
+                    )
+                    repaired_router_decision = RouterDecision.model_validate(
+                        repaired_payload
+                    )
+                    usage = append_llm_usage(
+                        usage,
+                        role="router_repair",
+                        model=context.router_model_name,
+                        response=repaired_raw,
+                        input_text=repair_input_text,
+                        output_text=repaired_router_decision.model_dump_json(),
+                        budget_tokens=context.task_token_budget,
+                        duration_ms=max(
+                            0,
+                            (time.monotonic_ns() - repair_started_ns) // 1_000_000,
+                        ),
+                        price_catalog=context.price_catalog,
+                    )
+                    router_decision = repaired_router_decision
+                except BaseException as repair_error:
+                    if _is_fatal_exception(repair_error):
+                        raise
+                    usage = append_llm_usage(
+                        usage,
+                        role="router_repair",
+                        model=context.router_model_name,
+                        input_text=repair_input_text,
+                        output_text="",
+                        budget_tokens=context.task_token_budget,
+                        duration_ms=max(
+                            0,
+                            (time.monotonic_ns() - repair_started_ns) // 1_000_000,
+                        ),
+                        status="failed",
+                        price_catalog=context.price_catalog,
+                    )
+                    _trace(
+                        "intent",
+                        "Outcome repair failed; retaining the first safe classification",
+                        type(repair_error).__name__,
+                    )
+        hydrated = hydrate_router_decision(router_decision, user_task)
+        decision = repair_router_decision(hydrated, user_task)
+        routing_state = outcome_routing_state(
+            decision, router_decision.semantic_goal or ""
         )
     except BaseException as error:
         if _is_fatal_exception(error):
@@ -132,19 +224,36 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             "Router provider failed; deterministic fallback selected",
             type(error).__name__,
         )
-    record_event(
-        context,
-        state,
-        "llm.completed",
-        "classify",
-        usage.calls[-1].model_dump(mode="json"),
+    previous_call_count = (
+        len(LLMUsage.model_validate(current_usage).calls) if current_usage else 0
     )
+    for call in usage.calls[previous_call_count:]:
+        record_event(
+            context,
+            state,
+            "llm.completed",
+            "classify",
+            call.model_dump(mode="json"),
+        )
     _trace(
         "intent",
         f"Classified as {decision.action}",
         semantic_summary_detail(routing_state["semantic_goal"], decision),
     )
-    _trace("reasoning", "Choosing the next safe step", render_progress_summary("next_step", {"action": decision.action, "in_scope": str(decision.in_scope).lower(), "should_execute": str(decision.should_execute).lower(), "capability_match_status": decision.capability_match_status or ""}))
+    _trace(
+        "reasoning",
+        "Choosing the next safe step",
+        render_progress_summary(
+            "next_step",
+            {
+                "action": decision.action,
+                "in_scope": str(decision.in_scope).lower(),
+                "should_execute": str(decision.should_execute).lower(),
+                "capability_match_status": decision.capability_match_status or "",
+                "hypothesis_count": str(len(decision.hypothesis_actions)),
+            },
+        ),
+    )
     record_event(
         context,
         state,

@@ -27,6 +27,7 @@ from ..routing import (
 from ..routing.outcome_matching import (
     apply_outcome_match,
     guidance_actions_for,
+    match_outcome_hypotheses,
     named_workflow_action,
 )
 from .extraction import (
@@ -34,6 +35,7 @@ from .extraction import (
     documentation_library_for_task,
     is_versioned_documentation_request,
 )
+from .outcome_consistency import select_primary_hypothesis
 
 __all__: list[str] = []
 
@@ -115,9 +117,7 @@ def _confirmed_outcome(task: str, action: str) -> RequestedOutcome:
         task,
         flags=re.IGNORECASE,
     )
-    granularity = (
-        granularity_match.group(1).casefold() if granularity_match else None
-    )
+    granularity = granularity_match.group(1).casefold() if granularity_match else None
     if granularity not in capability.granularities:
         granularity = (
             next(iter(capability.granularities))
@@ -173,7 +173,27 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
                 reason="The user confirmed a supported alternative outcome.",
             ).model_copy(update={"intent_type": "answer_question"})
 
-    decision = apply_outcome_match(raw_decision)
+    if raw_decision.outcome_hypotheses:
+        match = match_outcome_hypotheses(raw_decision.outcome_hypotheses)
+        primary = select_primary_hypothesis(raw_decision.outcome_hypotheses)
+        decision = raw_decision.model_copy(
+            update={
+                "requested_outcome": primary.outcome if primary else None,
+                "capability_match_status": match.status,
+                "matched_actions": match.matched_actions,
+                "hypothesis_actions": match.hypothesis_actions,
+                "recommended_actions": (
+                    guidance_actions_for(match.matched_actions[0])
+                    if len(match.matched_actions) == 1
+                    else []
+                ),
+                "alternative_actions": match.alternative_actions,
+                "mismatch_dimensions": match.mismatch_dimensions,
+                "clarification_question": match.clarification_question,
+            }
+        )
+    else:
+        decision = apply_outcome_match(raw_decision)
 
     continuation_match = re.search(
         r"PREVIOUS_ACTION=(run_[a-z_]+)", task, flags=re.IGNORECASE

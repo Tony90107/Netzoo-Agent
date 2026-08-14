@@ -13,6 +13,7 @@ from .extraction import (
     documentation_library_for_task,
     extract_preference_proposals,
 )
+from .outcome_consistency import select_primary_hypothesis
 
 __all__: list[str] = []
 
@@ -26,6 +27,7 @@ def hydrate_router_decision(
         decision = raw_decision.model_copy(deep=True)
     else:
         route = RouterDecision.model_validate(raw_decision)
+        primary = select_primary_hypothesis(route.outcome_hypotheses)
         decision = TaskDecision(
             action=route.action,
             in_scope=route.in_scope,
@@ -33,7 +35,8 @@ def hydrate_router_decision(
             intent_type=route.intent_type,
             confidence=route.confidence,
             reason=route.reason,
-            requested_outcome=route.requested_outcome,
+            requested_outcome=primary.outcome if primary else None,
+            outcome_hypotheses=route.outcome_hypotheses,
             matched_actions=[],
             recommended_actions=[],
             alternative_actions=[],
