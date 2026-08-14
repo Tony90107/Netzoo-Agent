@@ -86,7 +86,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
     if not args.task:
         print(
             _ui_text(
-                "NetZoo agent started. Current mode: TEST. "
+                "NetZoo agent started in Planning mode. "
                 "Enter /help for controls, or exit or quit to stop."
             )
         )

@@ -135,9 +135,15 @@ def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
         runtime.invoke_graph_turn_func.assert_not_called()
         runtime.recorder.start_run.assert_not_called()
         prompts = [call.args[0] for call in runtime.input_func.call_args_list]
-        assert prompts[0].startswith("\n[TEST]")
-        assert prompts[1].startswith("\n[EXECUTE]")
-        assert "Execution mode enabled" in capsys.readouterr().out
+        assert prompts[0].startswith("\nWhat would you like to accomplish with NetZoo?")
+        assert not prompts[0].startswith("\n[")
+        assert prompts[1].startswith("\n[Execute] What would you like to accomplish with NetZoo?")
+        assert prompts[3].startswith("\nWhat would you like to accomplish with NetZoo?")
+        output = capsys.readouterr().out
+        assert "NetZoo agent started in Planning mode" in output
+        assert "Execution mode enabled" in output
+        assert "Current mode: Execute" in output
+        assert "Planning mode enabled" in output
         assert settings.EXECUTE_TOOLS is False
     finally:
         configure_runtime(EXECUTE_TOOLS=previous)
