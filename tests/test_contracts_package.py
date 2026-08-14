@@ -64,6 +64,9 @@ HISTORICAL_EXPORTS = [
     "LLMUsage",
     "InputEvidence",
     "RequestedOutcome",
+    "OutcomeEvidence",
+    "OutcomeHypothesis",
+    "EvidenceDimension",
     "CapabilityMatch",
     "CapabilityMatchStatus",
     "WorkflowStep",
@@ -90,10 +93,12 @@ HISTORICAL_EXPORTS = [
 ]
 
 SCHEMA_DIGESTS = {
-    "TaskDecision": "2453a9d0b58b64913cafdee011a73e2d2944fddd64fcfbf4045051f215015aa9",
-    "RouterDecision": "3505323e3049f6583a044e1e53e294d8de7907d165f26801ebcdd503a9891788",
+    "TaskDecision": "5964f3402dd6680376e7e20a67bc410927ae7e3c1b6e185711992a509a91395f",
+    "RouterDecision": "8de4f4728728af49d67888b4b411f71926da13af8ba21837952fbc1386ce4c71",
     "RequestedOutcome": "9958b10da7ee3c95fbec8af78da4d7d2e30f6d7df6c0191ffefba8d080287d36",
-    "CapabilityMatch": "9efef1deb292c65e3c9aeb394caefe598ec23ab48bb70b95c3ebaa943bd79516",
+    "OutcomeEvidence": "d6415b130ca1a6e4a02c5369f34b03e75ffdb87bf3aa7af1787a6491e12b5362",
+    "OutcomeHypothesis": "68d87cd2290862732e753dec11b7e5c7e7bed8c3c3f83af9b93317421e71fe9b",
+    "CapabilityMatch": "c5952a563a94fa5b5e9cfc9d1298bfc130e603f283afb61c7b89472b2ef121dd",
     "WorkflowPlan": "9a57762cf8ffc4cd8e611b1d9907ef89c9d5ee1b82280ef5c2e76133b9ecfc4b",
     "InputEvidence": "0582cce8d5b06debc2e6af06b2f2c2fff9fc0d062b00ac41863442a3a11f0a8a",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
@@ -118,7 +123,14 @@ def test_contract_facade_exports_exact_historical_surface():
 def test_models_have_one_owner_and_preserve_identity():
     owners = {
         "decisions": ("PreferenceProposal", "RouterDecision", "TaskDecision"),
-        "outcomes": ("RequestedOutcome", "CapabilityMatch", "CapabilityMatchStatus"),
+        "outcomes": (
+            "RequestedOutcome",
+            "OutcomeEvidence",
+            "OutcomeHypothesis",
+            "EvidenceDimension",
+            "CapabilityMatch",
+            "CapabilityMatchStatus",
+        ),
         "planning": ("InputEvidence", "WorkflowStep", "WorkflowPlan"),
         "results": (
             "EvaluationResult",
