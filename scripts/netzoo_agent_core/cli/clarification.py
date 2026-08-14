@@ -15,6 +15,14 @@ from ..contracts import (
 )
 from ..interpretation import INPUT_LABELS
 
+
+_FIELD_ASSIGNMENT = re.compile(
+    r"(?:^|[\s,;])(?:"
+    + "|".join(re.escape(field_name) for field_name in INPUT_LABELS)
+    + r")\s*=",
+    flags=re.IGNORECASE,
+)
+
 __all__ = [
     "_candidate_selection",
     "parse_clarification_assignments",
@@ -53,6 +61,12 @@ def parse_clarification_assignments(
         )
     stripped = answer.strip().strip("'\"")
     if stripped:
+        if _FIELD_ASSIGNMENT.search(stripped):
+            input_label = INPUT_LABELS.get(target_field, target_field)
+            raise ClarificationInputError(
+                f"Enter a candidate number or the full path for {input_label}; "
+                "do not use field=value syntax."
+            )
         assignments[target_field] = _candidate_selection(
             evidence_by_field[target_field],
             stripped,
