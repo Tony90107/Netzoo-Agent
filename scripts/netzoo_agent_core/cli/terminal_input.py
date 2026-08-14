@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 
 
-def _select_default_command(buffer, command: str) -> None:
-    """Load a command and select its suffix so typed text replaces it."""
-    buffer.text = command
-    buffer.cursor_position = 1
-    buffer.start_selection()
-    buffer.cursor_position = len(command)
+def _execute_suffix(text: str, command: str) -> str:
+    """Return the unmatched execute suffix for a matching slash prefix."""
+    if command.casefold().startswith(text.casefold()):
+        return command[len(text) :]
+    return ""
 
 
 class TerminalInputReader:
@@ -73,45 +72,53 @@ def _split_inline_prompt(prompt: str) -> tuple[str, str]:
 
 
 def _create_inline_mode_application(prompt: str, default_command: str):
-    """Build one normal-screen application with a selected slash default."""
+    """Build one normal-screen application with a shrinking slash completion."""
     from prompt_toolkit.application import Application
     from prompt_toolkit.filters import Condition
+    from prompt_toolkit.layout.processors import Processor, Transformation
     from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.keys import Keys
     from prompt_toolkit.layout import Layout
     from prompt_toolkit.layout.containers import ConditionalContainer, HSplit, Window
     from prompt_toolkit.layout.controls import FormattedTextControl
     from prompt_toolkit.styles import Style
     from prompt_toolkit.widgets import TextArea
 
+    class _ExecuteCompletionProcessor(Processor):
+        def apply_transformation(self, transformation_input):
+            suffix = _execute_suffix(
+                transformation_input.document.text,
+                default_command,
+            )
+            return Transformation(
+                transformation_input.fragments
+                + ([('class:execute-completion', suffix)] if suffix else [])
+            )
+
     question, input_prefix = _split_inline_prompt(prompt)
-    input_field = TextArea(multiline=False, prompt=input_prefix)
+    input_field = TextArea(
+        multiline=False,
+        prompt=input_prefix,
+        input_processors=[_ExecuteCompletionProcessor()],
+    )
     bindings = KeyBindings()
 
     @bindings.add("/")
     def _open_selector(event) -> None:
-        if input_field.text:
-            input_field.buffer.insert_text("/")
-            return
-        _select_default_command(input_field.buffer, default_command)
-
-    @bindings.add(
-        Keys.Any,
-        filter=Condition(lambda: input_field.buffer.selection_state is not None),
-        eager=True,
-    )
-    def _replace_selected_default(event) -> None:
-        input_field.buffer.cut_selection()
-        input_field.buffer.insert_text(event.data)
+        input_field.buffer.insert_text("/")
 
     @bindings.add("enter", eager=True)
     def _submit(event) -> None:
-        event.app.exit(result=input_field.text)
+        text = input_field.text
+        event.app.exit(
+            result=default_command
+            if default_command.casefold().startswith(text.casefold())
+            else text
+        )
 
     @bindings.add("escape", eager=True)
     @bindings.add("c-c", eager=True)
     def _cancel(event) -> None:
-        if input_field.text == default_command:
+        if input_field.text == "/":
             input_field.buffer.reset()
             event.app.invalidate()
             return
@@ -131,5 +138,5 @@ def _create_inline_mode_application(prompt: str, default_command: str):
         ),
         key_bindings=bindings,
         full_screen=False,
-        style=Style.from_dict({"selection": "fg:#777777 bg:#1e1e1e"}),
+        style=Style.from_dict({"execute-completion": "fg:#666666"}),
     )
