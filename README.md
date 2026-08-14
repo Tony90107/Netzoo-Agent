@@ -137,20 +137,21 @@ python scripts/netzoo_agent.py --profile alice --forget-memory
 ```
 
 ```text
-[TEST] What would you like to accomplish with NetZoo?
+What would you like to accomplish with NetZoo?
 > /
-▸ /test      Test mode — preview commands only
-  /execute   Execute mode — run validated commands
+▸ /execute   Execute — run validated commands for this session
 ```
 
-Press `/` at an empty prompt to expand this primary mode selector directly below
-the same prompt; it does not open a separate screen. Use arrow keys or Tab to
-choose, then press Enter. Esc or Ctrl-C only collapses the selector and leaves
-the input active. To type a slash command at the same empty prompt, press Ctrl-V
-to insert a literal `/`, then type `test`, `execute`, `status`, or `help` and
-press Enter. A slash typed after other text remains literal. Path prompts
-intentionally do not open the menu, so absolute paths and slash commands can be
-typed normally.
+Planning is the default preview-only state and has no prompt label. Press `/` at
+an empty prompt to expand the execute-only selector directly below the same
+prompt; it does not open a separate screen. Press Enter to choose `/execute`.
+Esc or Ctrl-C only collapses the selector and leaves the input active. To type
+`/test` and return future workflow tasks to preview-only Planning, press Ctrl-V
+to insert a literal `/`, then type `test` and press Enter. `/execute` remains
+active until `/test` or the session ends. A slash typed after other text remains
+literal. Path prompts intentionally do not open the menu, so absolute paths and
+slash commands can be typed normally. To interrupt analysis already running,
+use Ctrl-C; `/test` applies only after the prompt becomes available again.
 
 `--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
