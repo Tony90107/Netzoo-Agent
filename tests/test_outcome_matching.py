@@ -7,9 +7,14 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from netzoo_agent_core.contracts import RequestedOutcome  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    OutcomeEvidence,
+    OutcomeHypothesis,
+    RequestedOutcome,
+)
 from netzoo_agent_core.routing import (  # noqa: E402
     guidance_actions_for,
+    match_outcome_hypotheses,
     match_requested_outcome,
 )
 
@@ -27,6 +32,19 @@ def outcome(**updates) -> RequestedOutcome:
     }
     values.update(updates)
     return RequestedOutcome(**values)
+
+
+def advisory_hypothesis(
+    requested: RequestedOutcome,
+    *evidence: OutcomeEvidence,
+    assumptions: list[str] | None = None,
+) -> OutcomeHypothesis:
+    return OutcomeHypothesis(
+        outcome=requested,
+        confidence=0.9,
+        evidence=list(evidence),
+        assumptions=assumptions or ["One outcome dimension remains unconfirmed."],
+    )
 
 
 def test_sample_specific_mirna_regulatory_network_matches_lioness_puma():
@@ -112,3 +130,94 @@ def test_unknown_entity_dimension_cannot_match_exactly():
 
     assert result.status == "ambiguous"
     assert result.matched_actions == []
+
+
+def test_partial_mirna_sample_network_uniquely_suggests_lioness_puma():
+    result = match_outcome_hypotheses(
+        [
+            advisory_hypothesis(
+                outcome(
+                    operation="unknown",
+                    artifact_type="regulatory_network",
+                    entity_types=["mirna"],
+                    regulator_types=["mirna"],
+                    target_types=[],
+                    granularity="sample_specific",
+                    unresolved_dimensions=["operation", "target type"],
+                ),
+                OutcomeEvidence(
+                    dimension="regulator_type",
+                    value="mirna",
+                    source="explicit",
+                    rationale="The request explicitly names miRNA.",
+                ),
+                OutcomeEvidence(
+                    dimension="granularity",
+                    value="sample_specific",
+                    source="explicit",
+                    rationale="The request explicitly asks for one network per sample.",
+                ),
+            )
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert result.matched_actions == []
+    assert result.hypothesis_actions == ["run_lioness_puma"]
+
+
+def test_generic_sample_network_keeps_all_lioness_families_tied():
+    result = match_outcome_hypotheses(
+        [
+            advisory_hypothesis(
+                outcome(
+                    operation="infer",
+                    artifact_type="unknown",
+                    entity_types=[],
+                    display_entities=[],
+                    regulator_types=[],
+                    target_types=[],
+                    granularity="sample_specific",
+                    unresolved_dimensions=["network type"],
+                ),
+                OutcomeEvidence(
+                    dimension="granularity",
+                    value="sample_specific",
+                    source="explicit",
+                    rationale="The request explicitly asks for a sample-specific result.",
+                ),
+            )
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert set(result.hypothesis_actions) == {
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+    }
+
+
+def test_measurement_artifact_conflicts_with_every_network_hypothesis():
+    result = match_outcome_hypotheses(
+        [
+            advisory_hypothesis(
+                outcome(
+                    operation="acquire",
+                    artifact_type="measurement_dataset",
+                    regulator_types=[],
+                    target_types=[],
+                ),
+                OutcomeEvidence(
+                    dimension="artifact_type",
+                    value="measurement_dataset",
+                    source="explicit",
+                    rationale="The request asks for measured miRNA values.",
+                ),
+            )
+        ]
+    )
+
+    assert result.matched_actions == []
+    assert result.hypothesis_actions == []
+    assert result.status == "unsupported"

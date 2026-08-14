@@ -27,6 +27,7 @@ from .discovery import (
 from .outcome_matching import (
     apply_outcome_match,
     guidance_actions_for,
+    match_outcome_hypotheses,
     match_requested_outcome,
 )
 from .dispatch import execute_selected_tool
@@ -73,6 +74,7 @@ __all__ = [
     "enforce_capability_gate",
     "apply_outcome_match",
     "match_requested_outcome",
+    "match_outcome_hypotheses",
     "guidance_actions_for",
     "_extract_named_path",
     "_score_candidate_file",
