@@ -16,6 +16,7 @@ from .contracts import (
     ProjectPolicySnapshot,
     ROUTER_CONTEXT_MAX_CHARS,
     RouterDecision,
+    RouterDecision,
     SystemMessage,
     TaskDecision,
     output_language_policy,
@@ -27,6 +28,7 @@ __all__ = [
     "build_routing_prompt",
     "latest_user_task",
     "build_router_messages",
+    "build_router_repair_messages",
     "build_response_messages",
     "_estimated_tokens",
     "_message_usage",
@@ -71,16 +73,16 @@ Routing rules:
 3. Use query_context7 only when current/version-specific documentation matters:
    versions, compatibility, CLI flags, installation, APIs, deprecations, or explicit docs.
 4. Use web_search only for explicit web/literature search or current non-package facts.
-5. Always return the requested_outcome field. For every request that asks what tool,
-   method, or workflow can obtain, prepare, validate, infer, analyze, or explain a
-   scientific result, requested_outcome must be a non-null structured description.
-   Never use null. For requests with no scientific result at all, such as CLI controls,
-   use operation=unknown, artifact_type=unknown, and granularity=not_applicable.
-   Its operation is the requested scientific operation, not whether the user phrased a question.
-   Use unknown and unresolved_dimensions when artifact, biological role, or
-   granularity is unclear. Never reinterpret data acquisition as network inference
-   merely because a related workflow exists. Deterministic code matches the outcome
-   to workflows; your proposed action does not grant workflow authority.
+5. Return one to three outcome_hypotheses for every scientific result or tool-selection
+   request. Preserve explicit entities, biological roles, network type, and granularity
+   as evidence even when another dimension is unknown. Treat words such as data,
+   result, values, scores, or output according to the scientific object they modify;
+   those words do not by themselves make an artifact a measurement dataset. A network
+   artifact and a raw measurement dataset are different outcomes. When multiple
+   registered scientific interpretations remain plausible, return competing
+   hypotheses with assumptions instead of clearing known fields. For requests with no
+   scientific result, return one unknown/not_applicable hypothesis stating that fact.
+   Hypotheses describe meaning only and never authorize workflow execution.
 6. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
    deterministic planning can request the mode.
 7. Variant calling, mutation discovery, sequence alignment, differential expression,
@@ -96,11 +98,16 @@ Examples:
 - "PANDA 需要哪些 input？" -> no_tool, answer_question, recommend run_panda.
 - "最新版 netZooPy PANDA CLI flags?" -> query_context7, answer_question.
 - "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA" -> run_panda, run_analysis.
-- "取得每個樣本的 miRNA data" -> no_tool with requested_outcome operation=acquire,
-  artifact_type=measurement_dataset, entity_types=[mirna], granularity=sample_specific.
-- "請建立 sample-specific miRNA regulatory networks" -> requested_outcome
-  operation=infer, artifact_type=regulatory_network, regulator_types=[mirna],
-  target_types=[gene], granularity=sample_specific.
+- "取得每個樣本的 miRNA measurements" -> one hypothesis with operation=acquire,
+  artifact_type=measurement_dataset, entity_types=[mirna], granularity=sample_specific,
+  and explicit measurement evidence.
+- "Which workflow estimates individualized microRNA regulator-target edges?" -> one
+  hypothesis with operation=infer, artifact_type=regulatory_network,
+  regulator_types=[mirna], target_types=[gene], granularity=sample_specific.
+- "How can I infer one TF network per sample?" -> one regulatory-network hypothesis
+  with regulator_types=[tf] and granularity=sample_specific.
+- "Which method builds per-patient gene correlation edges?" -> one
+  coexpression_network hypothesis with granularity=sample_specific.
 - "搜尋最新 LIONESS 論文" -> web_search.
 - "幫我找基因突變" -> no_tool, in_scope=false.
 
@@ -121,6 +128,28 @@ def build_router_messages(routing_prompt: str, messages: list) -> list:
     return [
         SystemMessage(content=routing_prompt),
         HumanMessage(content=latest_user_task(messages)),
+    ]
+
+
+def build_router_repair_messages(
+    routing_prompt: str,
+    user_task: str,
+    first_decision: RouterDecision,
+) -> list:
+    """Build one bounded retry for a structurally valid but empty classification."""
+    return [
+        SystemMessage(content=routing_prompt),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+        HumanMessage(
+            content=(
+                "The first classification below erased the scientific request into "
+                "an empty outcome. Reclassify the same request once. Return one to "
+                "three evidence-bearing hypotheses, preserve explicit facts, state "
+                "assumptions, and do not grant tool authority.\n\n"
+                f"<first_classification>\n{first_decision.model_dump_json()}\n"
+                "</first_classification>"
+            )
+        ),
     ]
 
 

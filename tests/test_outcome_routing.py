@@ -19,8 +19,11 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 from netzoo_agent_core.interpretation import (  # noqa: E402
     deterministic_router_fallback,
     hydrate_router_decision,
+    needs_outcome_repair,
     repair_router_decision,
+    select_primary_hypothesis,
 )
+from netzoo_agent_core.llm import build_router_repair_messages  # noqa: E402
 
 
 def test_router_schema_requires_an_explicit_outcome_classification():
@@ -109,6 +112,71 @@ def test_task_decision_keeps_hypotheses_separate_from_exact_matches():
     assert decision.requested_outcome is None
     assert decision.matched_actions == []
     assert decision.hypothesis_actions == ["run_lioness_puma"]
+
+
+def unknown_hypothesis() -> OutcomeHypothesis:
+    return OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="unknown",
+            artifact_type="unknown",
+            granularity="not_applicable",
+            unresolved_dimensions=[],
+        ),
+        confidence=0.9,
+        evidence=[],
+        assumptions=[],
+    )
+
+
+@pytest.mark.parametrize(
+    "task",
+    [
+        "What tools can produce a sample-specific network?",
+        "哪個方法可以建立每個病人的調控網路？",
+        "How should I infer individualized co-expression edges?",
+        "Build a sample-specific regulator network for this cohort.",
+    ],
+)
+def test_scientific_tool_questions_repair_empty_classifications(task):
+    assert needs_outcome_repair(task, [unknown_hypothesis()]) is True
+
+
+def test_non_scientific_cli_question_does_not_trigger_semantic_repair():
+    assert needs_outcome_repair("How do I exit this CLI?", [unknown_hypothesis()]) is False
+
+
+def test_tied_hypotheses_have_no_primary_outcome():
+    first = hypothesis(confidence=0.9)
+    second = hypothesis(
+        confidence=0.9,
+        assumptions=["co-expression interpretation"],
+    )
+
+    assert select_primary_hypothesis([first, second]) is None
+
+
+def test_router_repair_prompt_preserves_request_and_structured_failure():
+    first_decision = RouterDecision(
+        action="no_tool",
+        in_scope=True,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="under-classified",
+        outcome_hypotheses=[unknown_hypothesis()],
+    )
+    request = "Which method can infer an individualized regulator graph?"
+
+    messages = build_router_repair_messages(
+        "validated routing policy",
+        request,
+        first_decision,
+    )
+    combined = "\n".join(str(message.content) for message in messages)
+
+    assert request in combined
+    assert "under-classified" in combined
+    assert "Return one to three evidence-bearing hypotheses" in combined
+    assert "if i want to get sample specific network data" not in combined.casefold()
 
 
 def test_router_outcome_is_descriptive_until_deterministic_repair():
