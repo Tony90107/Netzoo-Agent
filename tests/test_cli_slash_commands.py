@@ -47,35 +47,41 @@ def test_known_commands_remain_commands_in_path_context():
     result = handle_slash_command("/status", allow_path_answer=True)
 
     assert result.handled is True
-    assert result.message == "Current mode: TEST"
+    assert result.message == "Current mode: Planning"
 
 
-def test_execute_and_test_switch_the_process_mode_persistently():
+def test_execute_and_test_switch_the_session_mode_persistently():
+    assert current_mode_label() == "Planning"
+    assert render_mode_prompt("Question") == "Question"
+
     execute = handle_slash_command("/execute")
     assert execute.handled is True
     assert "Execution mode enabled" in execute.message
     assert settings.EXECUTE_TOOLS is True
-    assert current_mode_label() == "EXECUTE"
-    assert render_mode_prompt("Question") == "[EXECUTE] Question"
+    assert current_mode_label() == "Execute"
+    assert render_mode_prompt("Question") == "[Execute] Question"
 
     test = handle_slash_command("/TEST")
     assert test.handled is True
-    assert "Test mode enabled" in test.message
+    assert "Planning mode enabled" in test.message
     assert settings.EXECUTE_TOOLS is False
-    assert current_mode_label() == "TEST"
+    assert current_mode_label() == "Planning"
+    assert render_mode_prompt("Question") == "Question"
 
 
 def test_status_and_help_report_without_changing_mode():
     status = handle_slash_command("/status")
-    assert status == type(status)(handled=True, message="Current mode: TEST")
+    assert status == type(status)(handled=True, message="Current mode: Planning")
 
     help_result = handle_slash_command("/help")
     assert help_result.handled is True
-    assert "Press / at an empty prompt to choose Test or Execute mode." in help_result.message
+    assert "Press / at an empty prompt to choose Execute mode." in help_result.message
     assert "Ctrl-V inserts a literal /" in help_result.message
     assert "Text alternatives:" in help_result.message
     for command in ("/test", "/execute", "/status", "/help"):
         assert command in help_result.message
+    assert "future workflow tasks" in help_result.message
+    assert "interrupt" not in help_result.message.casefold()
     assert settings.EXECUTE_TOOLS is False
 
 

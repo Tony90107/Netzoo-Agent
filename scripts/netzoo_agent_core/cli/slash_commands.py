@@ -26,11 +26,11 @@ class SlashCommandResult:
 
 
 def current_mode_label() -> str:
-    return "EXECUTE" if settings.EXECUTE_TOOLS else "TEST"
+    return "Execute" if settings.EXECUTE_TOOLS else "Planning"
 
 
 def render_mode_prompt(prompt: str) -> str:
-    return f"[{current_mode_label()}] {prompt}"
+    return f"[Execute] {prompt}" if settings.EXECUTE_TOOLS else prompt
 
 
 def handle_slash_command(
@@ -69,7 +69,7 @@ def handle_slash_command(
         configure_runtime(EXECUTE_TOOLS=False)
         return SlashCommandResult(
             handled=True,
-            message="Test mode enabled. Future workflow tasks will only create previews.",
+            message="Planning mode enabled. Future workflow tasks will only create previews.",
         )
     if normalized == "/status":
         return SlashCommandResult(
@@ -79,11 +79,11 @@ def handle_slash_command(
     return SlashCommandResult(
         handled=True,
         message=(
-            "Press / at an empty prompt to choose Test or Execute mode.\n"
+            "Press / at an empty prompt to choose Execute mode.\n"
             "Ctrl-V inserts a literal / there so you can type a slash command.\n"
             "Text alternatives:\n"
             "Slash commands:\n"
-            "  /test     Preview validated workflow commands without running them.\n"
+            "  /test     Return future workflow tasks to preview-only Planning.\n"
             "  /execute  Run validated workflow commands for future tasks.\n"
             "  /status   Show the current execution mode.\n"
             "  /help     Show this help."
