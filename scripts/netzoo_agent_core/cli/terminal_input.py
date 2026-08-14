@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
+from prompt_toolkit.document import Document
+from prompt_toolkit.layout.processors import AppendAutoSuggestion
 
-MODE_MENU_OPTIONS = (
-    ("/execute", "Execute — run validated commands for this session"),
-)
+
+class _ExecuteAutoSuggest(AutoSuggest):
+    """Offer execute as a non-inserted completion after an empty slash."""
+
+    def get_suggestion(self, buffer, document: Document) -> Suggestion | None:
+        if document.text == "/":
+            return Suggestion("execute")
+        return None
 
 
 class TerminalInputReader:
@@ -69,19 +76,10 @@ def _split_inline_prompt(prompt: str) -> tuple[str, str]:
     return question + separator, input_prefix
 
 
-def _selector_lines(selected_command: str) -> list[str]:
-    """Return the compact visible rows for the mode selector."""
-    return [
-        f"{'▸' if command == selected_command else ' '} {command:<10} {description}"
-        for command, description in MODE_MENU_OPTIONS
-    ]
-
-
 def _create_inline_mode_application(prompt: str, default_command: str):
-    """Build one normal-screen application containing the prompt and selector."""
+    """Build one normal-screen application with inline slash completion."""
     from prompt_toolkit.application import Application
     from prompt_toolkit.filters import Condition
-    from prompt_toolkit.formatted_text import FormattedText
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.layout import Layout
     from prompt_toolkit.layout.containers import ConditionalContainer, HSplit, Window
@@ -89,41 +87,27 @@ def _create_inline_mode_application(prompt: str, default_command: str):
     from prompt_toolkit.widgets import TextArea
 
     question, input_prefix = _split_inline_prompt(prompt)
-    state: dict[str, Any] = {"visible": False, "selected": default_command}
-    input_field = TextArea(multiline=False, prompt=input_prefix)
+    input_field = TextArea(
+        multiline=False,
+        prompt=input_prefix,
+        auto_suggest=_ExecuteAutoSuggest(),
+        input_processors=[AppendAutoSuggestion()],
+    )
     bindings = KeyBindings()
-
-    def _selector_text() -> FormattedText:
-        fragments: list[tuple[str, str]] = []
-        for line in _selector_lines(state["selected"]):
-            style = "class:mode-menu.selected" if line.startswith("▸") else ""
-            fragments.append((style, line + "\n"))
-        return FormattedText(fragments)
 
     @bindings.add("/")
     def _open_selector(event) -> None:
-        if input_field.text:
-            input_field.buffer.insert_text("/")
-            return
-        state["visible"] = True
-        event.app.invalidate()
-
-    @bindings.add("c-v")
-    def _insert_literal_slash(event) -> None:
         input_field.buffer.insert_text("/")
 
     @bindings.add("enter", eager=True)
     def _submit(event) -> None:
-        if state["visible"]:
-            event.app.exit(result=state["selected"])
-            return
-        event.app.exit(result=input_field.text)
+        event.app.exit(result=default_command if input_field.text == "/" else input_field.text)
 
     @bindings.add("escape", eager=True)
     @bindings.add("c-c", eager=True)
     def _cancel(event) -> None:
-        if state["visible"]:
-            state["visible"] = False
+        if input_field.text == "/":
+            input_field.buffer.reset()
             event.app.invalidate()
             return
         event.app.exit(exception=KeyboardInterrupt())
@@ -135,16 +119,9 @@ def _create_inline_mode_application(prompt: str, default_command: str):
         ),
         filter=Condition(lambda: bool(question)),
     )
-    selector = ConditionalContainer(
-        Window(
-            content=FormattedTextControl(_selector_text),
-            dont_extend_height=True,
-        ),
-        filter=Condition(lambda: state["visible"]),
-    )
     return Application(
         layout=Layout(
-            HSplit([question_window, input_field, selector]),
+            HSplit([question_window, input_field]),
             focused_element=input_field,
         ),
         key_bindings=bindings,

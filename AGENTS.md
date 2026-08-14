@@ -39,7 +39,7 @@ front matter；本文用來解釋維護原則，不會整段送進模型。
 - 每個 ready plan 必須先通過 typed Plan Evaluator；Markdown 表格只供 audit，不是權限來源。
 - Evaluator 只能採用 Python allowlist 內、次數受限的 recovery。
 - `./netzoo-chat` 啟動時只能建立 command preview；只有使用者在目前互動 session
-  明確輸入 `/execute` 後才能執行，輸入 `/test` 會撤銷該授權。
+  明確輸入 `/execute` 後才能執行，輸入 `/planning` 會撤銷該授權。
 - 所有使用者可見 agent 輸出固定為英文。
 
 ## 維護方式

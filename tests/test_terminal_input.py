@@ -14,13 +14,13 @@ from prompt_toolkit.output import DummyOutput
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
-    MODE_MENU_OPTIONS,
     TerminalInputReader,
+    _ExecuteAutoSuggest,
     _create_inline_mode_application,
     _read_menu_line,
-    _selector_lines,
     _split_inline_prompt,
 )
+from prompt_toolkit.document import Document  # noqa: E402
 
 
 def _dispatch_line_keys(default_command: str, keys: str) -> str | None:
@@ -28,12 +28,6 @@ def _dispatch_line_keys(default_command: str, keys: str) -> str | None:
         pipe_input.send_text(keys)
         with create_app_session(input=pipe_input, output=DummyOutput()):
             return _read_menu_line("prompt> ", default_command)
-
-
-def test_mode_menu_options_are_ordered_and_use_existing_commands():
-    assert MODE_MENU_OPTIONS == (
-        ("/execute", "Execute — run validated commands for this session"),
-    )
 
 
 def test_split_inline_prompt_keeps_newlines_out_of_input_prefix():
@@ -46,13 +40,7 @@ def test_split_inline_prompt_keeps_newlines_out_of_input_prefix():
     assert "\n" not in input_prefix
 
 
-def test_selector_copy_contains_only_mode_rows():
-    assert _selector_lines("/execute") == [
-        "▸ /execute   Execute — run validated commands for this session",
-    ]
-
-
-def test_empty_slash_opens_execute_menu_and_returns_selection():
+def test_empty_slash_opens_execute_completion_and_returns_selection():
     line_reader = Mock(return_value="/execute")
     reader = TerminalInputReader(
         Mock(),
@@ -63,6 +51,14 @@ def test_empty_slash_opens_execute_menu_and_returns_selection():
 
     assert reader.read("prompt\n> ", menu_enabled=True) == "/execute"
     line_reader.assert_called_once_with("prompt\n> ", "/execute")
+
+
+def test_execute_completion_is_muted_suggestion_not_inserted_text():
+    suggestion = _ExecuteAutoSuggest().get_suggestion(Mock(), Document("/"))
+
+    assert suggestion is not None
+    assert suggestion.text == "execute"
+    assert _ExecuteAutoSuggest().get_suggestion(Mock(), Document("/planning")) is None
 
 
 def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
@@ -108,7 +104,7 @@ def test_tui_failure_notices_once_then_uses_plain_input():
     notice.assert_called_once()
 
 
-def test_empty_slash_then_enter_selects_execute_without_full_screen():
+def test_empty_slash_then_enter_submits_execute_without_full_screen():
     application = _create_inline_mode_application("prompt> ", "/execute")
 
     assert application.full_screen is False
@@ -119,9 +115,8 @@ def test_nonempty_slash_is_preserved_by_real_key_dispatch():
     assert _dispatch_line_keys("/execute", "goal/help\r") == "goal/help"
 
 
-@pytest.mark.parametrize("command", ["test", "execute", "status", "help"])
-def test_ctrl_v_pass_through_supports_every_text_command(command: str):
-    assert _dispatch_line_keys("/execute", f"\x16{command}\r") == f"/{command}"
+def test_typed_planning_command_is_not_replaced_by_execute():
+    assert _dispatch_line_keys("/execute", "/planning\r") == "/planning"
 
 
 @pytest.mark.parametrize("key", ["\x1b", "\x03"], ids=["escape", "ctrl-c"])
