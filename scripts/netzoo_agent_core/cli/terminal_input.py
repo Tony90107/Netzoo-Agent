@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from prompt_toolkit.application.current import get_app
-from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
-from prompt_toolkit.document import Document
-from prompt_toolkit.layout.processors import AppendAutoSuggestion
 
 
-class _ExecuteAutoSuggest(AutoSuggest):
-    """Offer execute as a non-inserted completion after an empty slash."""
-
-    def get_suggestion(self, buffer, document: Document) -> Suggestion | None:
-        if document.text == "/":
-            return Suggestion("execute")
-        return None
+def _select_default_command(buffer, command: str) -> None:
+    """Load a command and select its suffix so typed text replaces it."""
+    buffer.text = command
+    buffer.cursor_position = 1
+    buffer.start_selection()
+    buffer.cursor_position = len(command)
 
 
 class TerminalInputReader:
@@ -78,42 +73,45 @@ def _split_inline_prompt(prompt: str) -> tuple[str, str]:
 
 
 def _create_inline_mode_application(prompt: str, default_command: str):
-    """Build one normal-screen application with inline slash completion."""
+    """Build one normal-screen application with a selected slash default."""
     from prompt_toolkit.application import Application
     from prompt_toolkit.filters import Condition
     from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.keys import Keys
     from prompt_toolkit.layout import Layout
     from prompt_toolkit.layout.containers import ConditionalContainer, HSplit, Window
     from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.styles import Style
     from prompt_toolkit.widgets import TextArea
 
     question, input_prefix = _split_inline_prompt(prompt)
-    input_field = TextArea(
-        multiline=False,
-        prompt=input_prefix,
-        auto_suggest=_ExecuteAutoSuggest(),
-        input_processors=[AppendAutoSuggestion()],
-    )
+    input_field = TextArea(multiline=False, prompt=input_prefix)
     bindings = KeyBindings()
-
-    def _refresh_completion() -> None:
-        """Erase a stale muted suffix as soon as the input buffer changes."""
-        get_app().invalidate()
 
     @bindings.add("/")
     def _open_selector(event) -> None:
-        input_field.buffer.insert_text("/")
+        if input_field.text:
+            input_field.buffer.insert_text("/")
+            return
+        _select_default_command(input_field.buffer, default_command)
 
-    input_field.buffer.on_text_changed += lambda _: _refresh_completion()
+    @bindings.add(
+        Keys.Any,
+        filter=Condition(lambda: input_field.buffer.selection_state is not None),
+        eager=True,
+    )
+    def _replace_selected_default(event) -> None:
+        input_field.buffer.cut_selection()
+        input_field.buffer.insert_text(event.data)
 
     @bindings.add("enter", eager=True)
     def _submit(event) -> None:
-        event.app.exit(result=default_command if input_field.text == "/" else input_field.text)
+        event.app.exit(result=input_field.text)
 
     @bindings.add("escape", eager=True)
     @bindings.add("c-c", eager=True)
     def _cancel(event) -> None:
-        if input_field.text == "/":
+        if input_field.text == default_command:
             input_field.buffer.reset()
             event.app.invalidate()
             return
@@ -133,4 +131,5 @@ def _create_inline_mode_application(prompt: str, default_command: str):
         ),
         key_bindings=bindings,
         full_screen=False,
+        style=Style.from_dict({"selection": "fg:#777777 bg:#1e1e1e"}),
     )

@@ -15,12 +15,12 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.cli.terminal_input import (  # noqa: E402
     TerminalInputReader,
-    _ExecuteAutoSuggest,
     _create_inline_mode_application,
     _read_menu_line,
+    _select_default_command,
     _split_inline_prompt,
 )
-from prompt_toolkit.document import Document  # noqa: E402
+from prompt_toolkit.buffer import Buffer  # noqa: E402
 
 
 def _dispatch_line_keys(default_command: str, keys: str) -> str | None:
@@ -53,12 +53,15 @@ def test_empty_slash_opens_execute_completion_and_returns_selection():
     line_reader.assert_called_once_with("prompt\n> ", "/execute")
 
 
-def test_execute_completion_is_muted_suggestion_not_inserted_text():
-    suggestion = _ExecuteAutoSuggest().get_suggestion(Mock(), Document("/"))
+def test_execute_default_is_buffer_text_with_only_its_suffix_selected():
+    buffer = Buffer()
 
-    assert suggestion is not None
-    assert suggestion.text == "execute"
-    assert _ExecuteAutoSuggest().get_suggestion(Mock(), Document("/planning")) is None
+    _select_default_command(buffer, "/execute")
+
+    assert buffer.text == "/execute"
+    assert buffer.selection_state is not None
+    assert buffer.selection_state.original_cursor_position == 1
+    assert buffer.cursor_position == len("/execute")
 
 
 def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
