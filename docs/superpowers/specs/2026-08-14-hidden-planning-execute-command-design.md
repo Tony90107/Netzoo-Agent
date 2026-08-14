@@ -22,23 +22,28 @@ safe preview-only state, but its label is not shown in the main prompt.
 
 ## Command surface
 
-- Remove `/test`; it is no longer a supported command, help entry, or menu
-  choice.
-- `/execute` is the only command that changes execution authority.
+- `/test` returns the current session to Planning. It is available as a typed
+  slash command, but is not offered by the empty-`/` selector.
+- `/execute` grants execution authority and `/test` revokes it for future
+  workflow tasks in the current session.
 - `/status` reports `Planning` before execution is enabled and `Execute`
   afterward.
-- `/help` describes only `/execute`, `/status`, and `/help`; it must not
-  mention Test, switching back, or choosing between modes.
+- `/help` describes `/execute`, `/test`, `/status`, and `/help`; it explains
+  that `/test` returns the session to preview-only Planning.
 - Unknown commands, absolute-path answers, and commands with arguments retain
   their current parsing and error behavior.
 
 ## Runtime and safety
 
-The internal execution flag continues to be false at CLI startup and true
-only after an exact `/execute` command in the current interactive session.
+The internal execution flag continues to be false at CLI startup, becomes true
+after an exact `/execute` command, and becomes false again after an exact
+`/test` command in the current interactive session.
 All existing plan-evaluator and executor gates remain unchanged. Therefore
 Planning still produces command previews without executing analysis tools.
-The CLI must not offer a way to revoke execution authority within a session.
+`/test` only changes authority for later workflow tasks: it cannot interrupt an
+analysis tool that is already running, because the interactive prompt is not
+available while that work is in progress. `Ctrl+C` remains the mechanism for
+interrupting the current CLI process.
 
 ## Implementation boundaries
 
@@ -55,6 +60,8 @@ Update slash-command unit tests and interactive lifecycle tests to prove:
 2. `/execute` persists through subsequent prompts in that session and renders
    `[Execute]`.
 3. `/status` uses Planning or Execute terminology.
-4. `/test` is rejected as an unknown command and does not alter authority.
-5. Help exposes no Test or toggle wording.
+4. `/test` revokes authority, restores the unprefixed prompt, and reports
+   Planning mode.
+5. The empty-`/` selector offers only `/execute`, while help documents both
+   typed authority commands.
 6. Starting a separate CLI session resets execution to Planning.
