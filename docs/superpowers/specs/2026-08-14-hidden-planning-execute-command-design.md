@@ -13,7 +13,7 @@ safe preview-only state, but its label is not shown in the main prompt.
 - The ordinary prompt is exactly `What would you like to accomplish with
   NetZoo?`; it has no `[Planning]` or `[TEST]` prefix.
 - Entering `/` at an empty ordinary prompt opens the existing slash-command
-  input affordance. The available execution command is `/execute`.
+  input affordance. It shows only `▸ /execute`, with no descriptive copy.
 - Entering `/execute` enables execution for the remainder of the current
   interactive Agent session and reports that execution is enabled.
 - Once enabled, the ordinary prompt is `[Execute] What would you like to
@@ -22,14 +22,14 @@ safe preview-only state, but its label is not shown in the main prompt.
 
 ## Command surface
 
-- `/test` returns the current session to Planning. It is available as a typed
+- `/planning` returns the current session to Planning. It is available as a typed
   slash command, but is not offered by the empty-`/` selector.
-- `/execute` grants execution authority and `/test` revokes it for future
+- `/execute` grants execution authority and `/planning` revokes it for future
   workflow tasks in the current session.
 - `/status` reports `Planning` before execution is enabled and `Execute`
   afterward.
-- `/help` describes `/execute`, `/test`, `/status`, and `/help`; it explains
-  that `/test` returns the session to preview-only Planning.
+- `/help` describes `/execute`, `/planning`, `/status`, and `/help`; it explains
+  that `/planning` returns the session to preview-only Planning.
 - Unknown commands, absolute-path answers, and commands with arguments retain
   their current parsing and error behavior.
 
@@ -37,10 +37,10 @@ safe preview-only state, but its label is not shown in the main prompt.
 
 The internal execution flag continues to be false at CLI startup, becomes true
 after an exact `/execute` command, and becomes false again after an exact
-`/test` command in the current interactive session.
+`/planning` command in the current interactive session.
 All existing plan-evaluator and executor gates remain unchanged. Therefore
 Planning still produces command previews without executing analysis tools.
-`/test` only changes authority for later workflow tasks: it cannot interrupt an
+`/planning` only changes authority for later workflow tasks: it cannot interrupt an
 analysis tool that is already running, because the interactive prompt is not
 available while that work is in progress. `Ctrl+C` remains the mechanism for
 interrupting the current CLI process.
@@ -60,7 +60,7 @@ Update slash-command unit tests and interactive lifecycle tests to prove:
 2. `/execute` persists through subsequent prompts in that session and renders
    `[Execute]`.
 3. `/status` uses Planning or Execute terminology.
-4. `/test` revokes authority, restores the unprefixed prompt, and reports
+4. `/planning` revokes authority, restores the unprefixed prompt, and reports
    Planning mode.
 5. The empty-`/` selector offers only `/execute`, while help documents both
    typed authority commands.
