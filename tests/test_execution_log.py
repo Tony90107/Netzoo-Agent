@@ -46,10 +46,12 @@ def test_structured_execute_result_writes_log_but_dry_run_does_not(tmp_path: Pat
     result = structure_tool_result(
         "run_panda", decision, "Command: `run-panda -o panda.tsv`\nExit code: 1",
         persist_log=True,
+        persist_execution_log=True,
     )
     assert Path(result.metrics["execution_markdown_log"]).exists()
     dry_run = structure_tool_result(
         "run_panda", decision, "Dry run only. The agent selected this command but did not execute it.",
         persist_log=True,
+        persist_execution_log=True,
     )
     assert "execution_markdown_log" not in dry_run.metrics
