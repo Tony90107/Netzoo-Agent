@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 import re
 
 from workflow_registry import (
@@ -13,7 +13,12 @@ from workflow_registry import (
     RUN_ACTIONS,
 )
 
-from ..contracts import CapabilityMatch, RequestedOutcome, TaskDecision
+from ..contracts import (
+    CapabilityMatch,
+    OutcomeHypothesis,
+    RequestedOutcome,
+    TaskDecision,
+)
 
 
 _UNKNOWN = "unknown"
@@ -43,6 +48,34 @@ def _matches(
         and set(outcome.entity_types).issubset(capability.entity_types)
         and set(outcome.regulator_types).issubset(capability.regulator_types)
         and set(outcome.target_types).issubset(capability.target_types)
+    )
+
+
+def _known_scalar_matches(requested: str, supported: str) -> bool:
+    return requested == _UNKNOWN or requested == supported
+
+
+def _known_set_matches(
+    requested: Sequence[str], supported: frozenset[str]
+) -> bool:
+    known = set(requested) - {_UNKNOWN}
+    return known.issubset(supported)
+
+
+def _partially_compatible(
+    outcome: RequestedOutcome,
+    capability: OutputCapabilityDefinition,
+) -> bool:
+    return (
+        _known_scalar_matches(outcome.operation, capability.operation)
+        and _known_scalar_matches(outcome.artifact_type, capability.artifact_type)
+        and (
+            outcome.granularity == _UNKNOWN
+            or outcome.granularity in capability.granularities
+        )
+        and _known_set_matches(outcome.entity_types, capability.entity_types)
+        and _known_set_matches(outcome.regulator_types, capability.regulator_types)
+        and _known_set_matches(outcome.target_types, capability.target_types)
     )
 
 
@@ -177,6 +210,53 @@ def match_requested_outcome(
     )
 
 
+def _hypothesis_evidence_score(hypothesis: OutcomeHypothesis) -> int:
+    return sum(2 if item.source == "explicit" else 1 for item in hypothesis.evidence)
+
+
+def match_outcome_hypotheses(
+    hypotheses: Sequence[OutcomeHypothesis],
+    capabilities: Mapping[
+        RecommendedAction, OutputCapabilityDefinition
+    ] = OUTPUT_CAPABILITIES,
+) -> CapabilityMatch:
+    """Match complete outcomes strictly and incomplete hypotheses advisably."""
+    exact: list[RecommendedAction] = []
+    advisory: list[tuple[int, int, RecommendedAction]] = []
+    for hypothesis in hypotheses:
+        strict = match_requested_outcome(hypothesis.outcome, capabilities)
+        if not hypothesis.assumptions and strict.status == "exact":
+            exact.extend(strict.matched_actions)
+        score = _hypothesis_evidence_score(hypothesis)
+        for index, (action, capability) in enumerate(capabilities.items()):
+            if _partially_compatible(hypothesis.outcome, capability):
+                advisory.append((score, index, action))
+
+    unique_exact = list(dict.fromkeys(exact))
+    if len(unique_exact) == 1:
+        return CapabilityMatch(status="exact", matched_actions=unique_exact)
+    if advisory:
+        top_score = max(item[0] for item in advisory)
+        top_actions = [
+            action
+            for score, _, action in sorted(advisory, key=lambda item: item[1])
+            if score == top_score
+        ]
+        return CapabilityMatch(
+            status="ambiguous",
+            hypothesis_actions=list(dict.fromkeys(top_actions)),
+            clarification_question="Which compatible network result do you mean?",
+        )
+
+    first_outcome = hypotheses[0].outcome if hypotheses else None
+    if first_outcome is not None:
+        return match_requested_outcome(first_outcome, capabilities)
+    return CapabilityMatch(
+        status="ambiguous",
+        clarification_question="What scientific result do you want?",
+    )
+
+
 def guidance_actions_for(action: RecommendedAction) -> list[RecommendedAction]:
     """Expand one exact end-to-end action into its registered guidance sequence."""
     capability = OUTPUT_CAPABILITIES[action]
@@ -234,6 +314,7 @@ def apply_outcome_match(decision: TaskDecision) -> TaskDecision:
 __all__ = [
     "apply_outcome_match",
     "guidance_actions_for",
+    "match_outcome_hypotheses",
     "match_requested_outcome",
     "named_workflow_action",
 ]
