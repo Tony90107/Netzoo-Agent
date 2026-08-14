@@ -34,7 +34,7 @@
 `AGENTS.md` 本文不會整段注入模型；runtime 只採用經 schema 驗證的 front matter 與
 YAML conventions。Router catalog 由 validated YAML 生成；Planner 使用完整 typed
 snapshot。這些資料不能新增工具、移除 required inputs、繞過 `/execute` 授權、在
-`/test` 後執行工具，或改寫 Executor。Python gate 永遠是最高執行權限。
+`/planning` 後執行工具，或改寫 Executor。Python gate 永遠是最高執行權限。
 
 不需要 OpenRouter API key 即可檢查 effective policy：
 
@@ -399,7 +399,7 @@ Controls: Enter/back = main prompt | exit = close
 問題。這能避免回答與 CLI 各問一次，再疊加一大段 navigation 說明，同時保留自然語氣。
 
 dry-run 預設維持在隱藏的 Planning 模式。只有使用者在目前互動 session 明確輸入 `/execute`
-才會開啟執行授權；空白 Enter 或一般回答不會靜默開啟，輸入 `/test` 則會立即撤銷授權。
+才會開啟執行授權；空白 Enter 或一般回答不會靜默開啟，輸入 `/planning` 則會立即撤銷授權。
 啟用後，重新提交 preview task 就會執行；若只想繼續詢問或跑其他 dry-run，不需要離開，
 直接輸入新任務或按 Enter 回主提示即可。
 
@@ -638,19 +638,17 @@ docker compose run --rm \
 ```text
 What would you like to accomplish with NetZoo?
 > /
-▸ /execute   Execute — run validated commands for this session
+  execute
 ```
 
 Planning is the default preview-only state and has no prompt label. Press `/` at
-an empty prompt to expand the execute-only selector directly below the same
-prompt; it does not open a separate screen. Press Enter to choose `/execute`.
-Esc or Ctrl-C only collapses the selector and leaves the input active. To type
-`/test` and return future workflow tasks to preview-only Planning, press Ctrl-V
-to insert a literal `/`, then type `test` and press Enter. `/execute` remains
-active until `/test` or the session ends. A slash typed after other text remains
-literal. Path prompts intentionally do not open the menu, so absolute paths and
-slash commands can be typed normally. To interrupt analysis already running,
-use Ctrl-C; `/test` applies only after the prompt becomes available again.
+an empty prompt to show the muted `execute` completion; the input itself still
+contains only `/`. Press Enter to submit `/execute`, or continue typing to enter
+`/planning`, `/status`, or `/help`. `/execute` remains active until `/planning`
+or the session ends. A slash typed after other text remains literal. Path prompts
+intentionally do not open the completion, so absolute paths and slash commands
+can be typed normally. To interrupt analysis already running, use Ctrl-C;
+`/planning` applies only after the prompt becomes available again.
 
 `--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
@@ -670,7 +668,7 @@ gene 在 rows、sample 在 columns，且 LIONESS 至少需要三個 samples。
 ```text
 /execute
 /status
-/test
+/planning
 ```
 
 ## Harness scenario evaluation

@@ -124,7 +124,7 @@ def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
         configure_runtime(EXECUTE_TOOLS=False)
         runtime = _fake_cli_runtime(
             invoke_error=AssertionError("graph must not run"),
-            interactive_answers=["/execute", "/status", "/test", "exit"],
+            interactive_answers=["/execute", "/status", "/planning", "exit"],
         )
 
         result = conversation.run_conversation(

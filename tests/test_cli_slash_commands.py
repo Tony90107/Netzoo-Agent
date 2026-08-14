@@ -50,7 +50,7 @@ def test_known_commands_remain_commands_in_path_context():
     assert result.message == "Current mode: Planning"
 
 
-def test_execute_and_test_switch_the_session_mode_persistently():
+def test_execute_and_planning_switch_the_session_mode_persistently():
     assert current_mode_label() == "Planning"
     assert render_mode_prompt("Question") == "Question"
 
@@ -61,9 +61,9 @@ def test_execute_and_test_switch_the_session_mode_persistently():
     assert current_mode_label() == "Execute"
     assert render_mode_prompt("Question") == "[Execute] Question"
 
-    test = handle_slash_command("/TEST")
-    assert test.handled is True
-    assert "Planning mode enabled" in test.message
+    planning = handle_slash_command("/PLANNING")
+    assert planning.handled is True
+    assert "Planning mode enabled" in planning.message
     assert settings.EXECUTE_TOOLS is False
     assert current_mode_label() == "Planning"
     assert render_mode_prompt("Question") == "Question"
@@ -75,10 +75,9 @@ def test_status_and_help_report_without_changing_mode():
 
     help_result = handle_slash_command("/help")
     assert help_result.handled is True
-    assert "Press / at an empty prompt to choose Execute mode." in help_result.message
-    assert "Ctrl-V inserts a literal /" in help_result.message
-    assert "Text alternatives:" in help_result.message
-    for command in ("/test", "/execute", "/status", "/help"):
+    assert "Press / at an empty prompt, then Enter, to use /execute." in help_result.message
+    assert "Type after / to enter another slash command." in help_result.message
+    for command in ("/planning", "/execute", "/status", "/help"):
         assert command in help_result.message
     assert "future workflow tasks" in help_result.message
     assert "interrupt" not in help_result.message.casefold()

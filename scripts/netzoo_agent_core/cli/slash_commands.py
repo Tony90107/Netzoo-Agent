@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 _COMMAND_TOKEN = re.compile(r"^/[A-Za-z][A-Za-z0-9_-]*(?:\s+.*)?$")
-_KNOWN_COMMANDS = frozenset({"/test", "/execute", "/status", "/help"})
+_KNOWN_COMMANDS = frozenset({"/planning", "/execute", "/status", "/help"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +65,7 @@ def handle_slash_command(
             handled=True,
             message="Execution mode enabled. Future workflow tasks will run commands.",
         )
-    if normalized == "/test":
+    if normalized == "/planning":
         configure_runtime(EXECUTE_TOOLS=False)
         return SlashCommandResult(
             handled=True,
@@ -79,11 +79,10 @@ def handle_slash_command(
     return SlashCommandResult(
         handled=True,
         message=(
-            "Press / at an empty prompt to choose Execute mode.\n"
-            "Ctrl-V inserts a literal / there so you can type a slash command.\n"
-            "Text alternatives:\n"
+            "Press / at an empty prompt, then Enter, to use /execute.\n"
+            "Type after / to enter another slash command.\n"
             "Slash commands:\n"
-            "  /test     Return future workflow tasks to preview-only Planning.\n"
+            "  /planning Return future workflow tasks to preview-only Planning.\n"
             "  /execute  Run validated workflow commands for future tasks.\n"
             "  /status   Show the current execution mode.\n"
             "  /help     Show this help."
