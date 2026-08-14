@@ -12,8 +12,12 @@ safe preview-only state, but its label is not shown in the main prompt.
   disabled.
 - The ordinary prompt is exactly `What would you like to accomplish with
   NetZoo?`; it has no `[Planning]` or `[TEST]` prefix.
-- Entering `/` at an empty ordinary prompt opens the existing slash-command
-  input affordance. It shows only `▸ /execute`, with no descriptive copy.
+- Entering `/` at an empty ordinary prompt opens an inline slash-command input.
+  The input contains only `/` and displays a muted `execute` suffix as a
+  completion hint, so it visibly reads `/execute` without pre-filling text.
+- Pressing Enter while the completion hint is visible submits `/execute`.
+  Typing after `/` removes the hint and allows the user to enter any supported
+  slash command, including `/planning`, `/status`, and `/help`.
 - Entering `/execute` enables execution for the remainder of the current
   interactive Agent session and reports that execution is enabled.
 - Once enabled, the ordinary prompt is `[Execute] What would you like to
@@ -22,8 +26,7 @@ safe preview-only state, but its label is not shown in the main prompt.
 
 ## Command surface
 
-- `/planning` returns the current session to Planning. It is available as a typed
-  slash command, but is not offered by the empty-`/` selector.
+- `/planning` returns the current session to Planning.
 - `/execute` grants execution authority and `/planning` revokes it for future
   workflow tasks in the current session.
 - `/status` reports `Planning` before execution is enabled and `Execute`
@@ -62,6 +65,6 @@ Update slash-command unit tests and interactive lifecycle tests to prove:
 3. `/status` uses Planning or Execute terminology.
 4. `/planning` revokes authority, restores the unprefixed prompt, and reports
    Planning mode.
-5. The empty-`/` selector offers only `/execute`, while help documents both
-   typed authority commands.
+5. The empty-`/` input shows a muted `execute` completion, Enter submits
+   `/execute`, and typed slash commands remain available.
 6. Starting a separate CLI session resets execution to Planning.
