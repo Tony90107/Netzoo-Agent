@@ -23,7 +23,7 @@ BUILD_GRAPH_SIGNATURE = (
     "profile_store: 'UserProfileStore | None' = None, episode_store: "
     "'EpisodeStore | None' = None, project_policy: 'ProjectPolicySnapshot | None' "
     "= None, router_model_name: 'str | None' = None, router_max_tokens: 'int' "
-    "= 500, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
+    "= 1200, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
     "timeout_seconds: 'float' = 30.0, trace_recorder: 'TraceRecorder | None' = None)"
 )
 RESPONSE_PROMPT_SHA256 = "7a93cdf9d10628fcb8de5c7b6c292bb40c6b7b97da0e924e858fa805f9f6a8a0"

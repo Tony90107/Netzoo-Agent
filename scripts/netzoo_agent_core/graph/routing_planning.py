@@ -2,39 +2,20 @@
 
 from __future__ import annotations
 
-import json
-import time
-
 from ..contracts import (
     AgentState,
     LLMUsage,
-    RouterDecision,
     TaskDecision,
     UserProfile,
     _trace,
     _ui_text,
 )
-from ..interpretation import (
-    _is_fatal_exception,
-    deterministic_router_fallback,
-    hydrate_router_decision,
-    needs_outcome_repair,
-    repair_router_decision,
-)
-from ..interpretation.semantic_goal import (
-    outcome_routing_state,
-    semantic_summary_detail,
-)
+from ..interpretation.semantic_goal import semantic_summary_detail
 from ..progress_summaries import render_progress_summary
-from ..llm import (
-    append_llm_usage,
-    build_router_messages,
-    build_router_repair_messages,
-    latest_user_task,
-    structured_result_payload,
-)
+from ..llm import latest_user_task
 from ..planning import build_workflow_plan, render_plan
-from .context import _GraphContext, preflight_budget, record_event
+from .context import _GraphContext, record_event
+from .router_invocation import invoke_router
 
 __all__: list[str] = []
 
@@ -46,184 +27,12 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         "Checking registered workflow capabilities",
         "I am comparing the requested outcome with registered workflows and their input requirements.",
     )
-    messages = build_router_messages(context.routing_prompt, state["messages"])
     user_task = latest_user_task(state["messages"])
-    router_input_text = "\n".join(str(message.content) for message in messages)
-    router_input_text += json.dumps(
-        RouterDecision.model_json_schema(),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
     current_usage = state.get("token_usage")
-    budget_decision, budget_warnings = preflight_budget(
-        context,
-        state,
-        role="router",
-        model=context.router_model_name,
-        input_text=router_input_text,
-        reserved_output_tokens=context.router_max_tokens,
-        allow_reserve=False,
-    )
-    if budget_decision.status == "blocked":
-        usage = (
-            LLMUsage.model_validate(current_usage)
-            if current_usage
-            else LLMUsage(budget_tokens=context.task_token_budget)
-        )
-        usage.budget_exhausted = True
-        decision = deterministic_router_fallback(user_task)
-        _trace(
-            "intent",
-            "Router call skipped because the task token budget would be exceeded",
-        )
-        record_event(
-            context,
-            state,
-            "decision.recorded",
-            "classify",
-            {
-                "action": decision.action,
-                "confidence": decision.confidence,
-                "in_scope": decision.in_scope,
-                "reason": decision.reason,
-                "reason_code": "budget_fallback",
-                "recommended_actions": decision.recommended_actions,
-            },
-        )
-        return {
-            "decision": decision.model_dump(),
-            "token_usage": usage.model_dump(),
-            "budget_warnings": budget_warnings,
-        }
-    call_started_ns = time.monotonic_ns()
-    call_status = "success"
-    reason_code = "provider"
-    try:
-        structured = context.router.invoke(messages)
-        parsed_decision, raw_message = structured_result_payload(structured)
-        router_decision = RouterDecision.model_validate(parsed_decision)
-        usage = append_llm_usage(
-            current_usage,
-            role="router",
-            model=context.router_model_name,
-            response=raw_message,
-            input_text=router_input_text,
-            output_text=router_decision.model_dump_json(),
-            budget_tokens=context.task_token_budget,
-            duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
-            price_catalog=context.price_catalog,
-        )
-        if needs_outcome_repair(user_task, router_decision.outcome_hypotheses):
-            record_event(
-                context,
-                state,
-                "routing.underclassified",
-                "classify",
-                {
-                    "hypothesis_count": len(router_decision.outcome_hypotheses),
-                    "usable_evidence": False,
-                },
-            )
-            repair_messages = build_router_repair_messages(
-                context.routing_prompt,
-                user_task,
-                router_decision,
-            )
-            repair_input_text = "\n".join(
-                str(message.content) for message in repair_messages
-            )
-            repair_input_text += json.dumps(
-                RouterDecision.model_json_schema(),
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
-            repair_state = dict(state)
-            repair_state["token_usage"] = usage.model_dump()
-            repair_state["budget_warnings"] = budget_warnings
-            repair_budget, budget_warnings = preflight_budget(
-                context,
-                repair_state,
-                role="router_repair",
-                model=context.router_model_name,
-                input_text=repair_input_text,
-                reserved_output_tokens=context.router_max_tokens,
-                allow_reserve=False,
-            )
-            if repair_budget.status != "blocked":
-                repair_started_ns = time.monotonic_ns()
-                try:
-                    repaired_structured = context.router.invoke(repair_messages)
-                    repaired_payload, repaired_raw = structured_result_payload(
-                        repaired_structured
-                    )
-                    repaired_router_decision = RouterDecision.model_validate(
-                        repaired_payload
-                    )
-                    usage = append_llm_usage(
-                        usage,
-                        role="router_repair",
-                        model=context.router_model_name,
-                        response=repaired_raw,
-                        input_text=repair_input_text,
-                        output_text=repaired_router_decision.model_dump_json(),
-                        budget_tokens=context.task_token_budget,
-                        duration_ms=max(
-                            0,
-                            (time.monotonic_ns() - repair_started_ns) // 1_000_000,
-                        ),
-                        price_catalog=context.price_catalog,
-                    )
-                    router_decision = repaired_router_decision
-                except BaseException as repair_error:
-                    if _is_fatal_exception(repair_error):
-                        raise
-                    usage = append_llm_usage(
-                        usage,
-                        role="router_repair",
-                        model=context.router_model_name,
-                        input_text=repair_input_text,
-                        output_text="",
-                        budget_tokens=context.task_token_budget,
-                        duration_ms=max(
-                            0,
-                            (time.monotonic_ns() - repair_started_ns) // 1_000_000,
-                        ),
-                        status="failed",
-                        price_catalog=context.price_catalog,
-                    )
-                    _trace(
-                        "intent",
-                        "Outcome repair failed; retaining the first safe classification",
-                        type(repair_error).__name__,
-                    )
-        hydrated = hydrate_router_decision(router_decision, user_task)
-        decision = repair_router_decision(hydrated, user_task)
-        routing_state = outcome_routing_state(
-            decision, router_decision.semantic_goal or ""
-        )
-    except BaseException as error:
-        if _is_fatal_exception(error):
-            raise
-        decision = deterministic_router_fallback(user_task, error)
-        routing_state = outcome_routing_state(decision)
-        call_status = "failed"
-        reason_code = "deterministic_fallback"
-        usage = append_llm_usage(
-            current_usage,
-            role="router",
-            model=context.router_model_name,
-            input_text=router_input_text,
-            output_text="",
-            budget_tokens=context.task_token_budget,
-            duration_ms=max(0, (time.monotonic_ns() - call_started_ns) // 1_000_000),
-            status=call_status,
-            price_catalog=context.price_catalog,
-        )
-        _trace(
-            "intent",
-            "Router provider failed; deterministic fallback selected",
-            type(error).__name__,
-        )
+    invocation = invoke_router(context, state, user_task)
+    decision = invocation.decision
+    usage = invocation.usage
+    routing_state = invocation.routing_state
     previous_call_count = (
         len(LLMUsage.model_validate(current_usage).calls) if current_usage else 0
     )
@@ -264,14 +73,14 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             "confidence": decision.confidence,
             "in_scope": decision.in_scope,
             "reason": decision.reason,
-            "reason_code": reason_code,
+            "reason_code": invocation.reason_code,
             "recommended_actions": decision.recommended_actions,
         },
     )
     return {
         "decision": decision.model_dump(),
         "token_usage": usage.model_dump(),
-        "budget_warnings": budget_warnings,
+        "budget_warnings": invocation.budget_warnings,
         **routing_state,
     }
 

@@ -62,7 +62,7 @@ PUMA → LIONESS-PUMA
 
 **問題**：使用者用科學目標描述需求時，Agent 早期可能只說「不符合特定工具」，或顯示內部 action 名稱，無法解釋 workflow 的科學差異。
 
-**修正**：Router 可以提供暫時性的 semantic goal、候選 action 與未解決維度；系統會先過濾成 project policy 中已註冊的 action，再以 registry 的 display name 和 description 呈現。
+**修正**：Router 產生 1–3 個有證據的 `OutcomeHypothesis`，只描述 operation、artifact、entity role、granularity、證據與假設，不決定 action。通用 capability matcher 再以 project policy / registry 中的 output capability 計算 exact、ambiguous 或 unsupported；最後才用 registry 的 display name 和 description 呈現。
 
 **結果**：介面使用 `LIONESS-PUMA`、`LIONESS-PANDA` 等使用者可讀名稱，而不是 `run_lioness_puma` 這類內部 action ID。
 
@@ -77,25 +77,23 @@ Please clarify which regulatory relationship you want to model.
 
 這是不正確的，因為該組合有既定順序，不需在這兩者之間澄清選擇。
 
-**修正**：在 capability matching 層建立 `_GoalCapabilityMatch`，讓每個已辨識目標同時產生：
-
-- `actions`：已註冊 action 的順序；
-- `relationship`：`single`、`composition` 或 `alternatives`。
-
-Graph、timeline、final response 與 follow-up prompt 都使用這個關係，而不是僅以「推薦 action 數量大於一」猜測。
+**修正**：每個 workflow 在 registry 宣告自己的 `output_capability`；需要先行工具才能完成做法說明時，以 `guidance_predecessors` 宣告順序。Graph、timeline、final response 與 follow-up prompt 都從同一份結構化 metadata 取得關係，不以工具名稱、關鍵字或「推薦 action 數量大於一」猜測。
 
 **結果**：
 
 - miRNA sample-specific regulation → `PUMA → LIONESS-PUMA`（composition）
 - TF sample-specific regulation → `PANDA → LIONESS-PANDA`（composition）
-- 僅說 sample-specific regulatory network，卻未指出 TF 或 miRNA → LIONESS-PANDA / LIONESS-PUMA（alternatives，合理要求澄清）
+- sample-specific co-expression → `LIONESS-Coexpression`
+- 僅說 sample-specific network，未指出 network family → LIONESS-PANDA / LIONESS-PUMA / LIONESS-Coexpression（中立 hypotheses，合理要求澄清）
+- sample-specific miRNA measurement，而不是 network → unsupported；不得把關聯工具升格成答案或執行權限
 
 ## 執行流程
 
 ```mermaid
 flowchart TD
-    U["使用者問題"] --> M["Capability matcher\n判斷目標與 relationship"]
-    M --> R["已註冊 workflow policy / registry"]
+    U["使用者問題"] --> H["Router\n提出有證據的 outcome hypotheses"]
+    H --> M["通用 capability matcher\n比較已知維度"]
+    M <--> R["已註冊 workflow policy / registry"]
     R --> T["Timeline：公開進度摘要"]
     R --> A["Final response：workflow 說明"]
     R --> F["Follow-up：推薦最後 action 或要求澄清"]
@@ -107,13 +105,14 @@ flowchart TD
 
 你最後的測試結果具備所有預期訊號：
 
-1. **判斷正確**：顯示 `PUMA → LIONESS-PUMA`，不是二選一。
+1. **判斷正確**：miRNA regulatory-network hypothesis 顯示 `PUMA → LIONESS-PUMA`，不是二選一；未指定 network family 時則保留多候選。
 2. **過程可見**：在 `[Understanding your request]` 以短區塊說明已識別 workflow composition。
 3. **說明正確**：兩個 workflow 的描述來自已註冊的 metadata。
 4. **安全邊界正確**：顯示未檢查檔案、未執行分析。
 5. **下一步合理**：因 LIONESS-PUMA 是最後的可執行步驟，提示使用者可提供 expression matrix 或回覆 `yes`。
 
-自動驗證結果：`pytest -q` 最終通過 **344 passed、12 skipped**。
+回歸測試另外涵蓋 TF、miRNA、co-expression、未指定 network family，以及
+measurement-vs-network 的反例；不能只用單一示範句通過。
 
 ## 是否有寫死？新增工具能否有同樣效果？
 
@@ -135,16 +134,25 @@ flowchart TD
 
 1. 在 `scripts/workflow_registry.py` 註冊 action、display name、輸入與執行定義。
 2. 在 project policy 註冊 workflow description 與 required/optional inputs。
-3. 在 capability matcher 增加該科學目標的辨識規則，並宣告其 relationship：`single`、`composition` 或 `alternatives`。
+3. 在 registry / policy 宣告結構化 `output_capability`；若做法上有必要的前置 workflow，再宣告 `guidance_predecessors`。
 4. 為新目標新增測試，驗證 timeline、回答與 follow-up 都符合預期。
 
-第 3 點不是 UI 寫死，而是不可避免的領域知識：系統必須有一個可測試、可審查的地方知道「何種使用者目標應選擇何種工具，以及工具之間是替代還是步驟關係」。目前這份知識位於 capability matcher；未來若 workflow 數量增加很多，建議將這些目標與 relationship 移到 declarative policy/registry 設定檔，讓新增工具不需改 Python 邏輯。
+第 3 點是必要的領域知識，但不是 prompt-to-tool 寫死：新增 workflow 不需要在 Python
+matcher 新增「看到 miRNA 就選某工具」的分支。Router 負責從任意措辭抽取 outcome
+維度，matcher 使用相同演算法比較所有 registry entries。若未來兩個 workflow 都宣告
+sample-specific miRNA regulatory network，結果會變成多個相容候選，系統會詢問差異，
+不會因既有排序固定選第一個。
+
+測試中的英文、中文與同義改寫只是驗證泛化的 probes，不是 production routing rules。
+production code 也有 anti-hardcoding test，禁止放入最初的兩句示範 prompt。
 
 ## 相關程式位置
 
 - `scripts/netzoo_agent_core/presentation.py`：timeline 的顯示。
 - `scripts/netzoo_agent_core/graph/routing_planning.py`：將目標匹配結果帶入 agent state。
-- `scripts/netzoo_agent_core/routing/capability.py`：確定性目標匹配與 relationship 判斷。
+- `scripts/netzoo_agent_core/routing/outcome_matching.py`：依 typed outcome 維度進行通用 exact / partial / unsupported 比對。
+- `scripts/netzoo_agent_core/interpretation/outcome_consistency.py`：偵測 under-classification，必要時只允許一次 bounded repair。
+- `scripts/workflow_registry.py` 與 workflow policy YAML：宣告 output capability 與 `guidance_predecessors`。
 - `scripts/netzoo_agent_core/interpretation/semantic_goal.py`：將 action ID 轉為 registry workflow 名稱的公開摘要。
 - `scripts/netzoo_agent_core/interpretation/concept_answers.py`：registry/policy 驅動的概念、alternatives 與 composition 回答。
 - `scripts/netzoo_agent_core/cli/follow_up.py`：下一輪提示與最後 action 的延續。

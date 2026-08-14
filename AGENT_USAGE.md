@@ -184,9 +184,19 @@ Router 現在不再以「使用者有沒有說出工具名稱」當作主要條�
 3. 這一輪是在詢問做法，還是授權 agent 立即執行。
 4. 執行所需資料能否由 Planner 安全解析；不能時才集中追問。
 
-Router 只把自然語言整理成 typed `RequestedOutcome`；Python capability matcher
-才有權把 operation、artifact、entity role 與 granularity 對到 workflow。模型提出的
-action 本身不構成推薦或執行權限。
+Router 只把自然語言整理成 1–3 個 typed `OutcomeHypothesis`。每個 hypothesis 都包含
+`RequestedOutcome`、信心、語句中的明示／推論證據，以及尚待確認的假設；Python
+capability matcher 才有權把 operation、artifact、entity role 與 granularity 對到
+workflow。模型提出的 action 本身不構成推薦或執行權限。
+
+比對結果分成三種，而且權限不同：
+
+- `exact`：所有必要 outcome 維度都已確定，且 registry 中只有一個相符能力；這時才可
+  進入正常的推薦與執行閘門。
+- `ambiguous`：現有證據足以形成一個或多個相容 hypothesis，但仍缺少關鍵維度；這時
+  只顯示 registry-derived 候選與精準澄清問題，不會執行。
+- `unsupported`：使用者要求的產物和任何已註冊能力不相容；相近 workflow 只能作為
+  alternative，必須先由使用者確認更換目標。
 
 例如：
 
@@ -223,6 +233,23 @@ Router 會選擇端到端的 `run_lioness_puma`，即使句子中完全沒有提
 LIONESS。Planner 之後會解析資料與輸出、先驗證 inputs，再建立 command preview，或在
 目前互動 session 輸入 `/execute` 後實際執行。相反地，「幫我用這些檔案推論網路」仍過於模糊，不足以
 唯一對應 PANDA、PUMA 或其他 workflow，因此不會猜測執行。
+
+同一套機制也適用於未見過的措辭與其他 network family，而不是只辨識上面的範例句：
+
+- sample-specific TF regulatory network 與 TF 證據相容時，候選為 `LIONESS-PANDA`；
+- sample-specific miRNA regulatory network 與 miRNA 證據相容時，候選為
+  `LIONESS-PUMA`；其做法說明中的 `PUMA → LIONESS-PUMA` 順序來自 registry 的
+  `guidance_predecessors`；
+- sample-specific co-expression network 對到 `LIONESS-Coexpression`；
+- 只說 sample-specific network、未指定網路類型時，三個 family 都以中立候選呈現，
+  不將任何一個排成預設答案；
+- sample-specific miRNA measurement data 與 network inference 不同，不會因為同時
+  出現 `miRNA` 和 `sample-specific` 就取得 LIONESS-PUMA 的執行權限。
+
+因此 `miRNA → LIONESS-PUMA` 不是關鍵字或完整句子的 hard-coded mapping；它是目前
+registry 中唯一同時宣告 sample-specific、miRNA regulator 與 regulatory-network
+產物的 workflow。未來若另一個 workflow 宣告相同能力，matcher 會自然產生多候選並
+要求澄清，而不是繼續固定選 LIONESS-PUMA。
 
 ## Context7 MCP：自動取得較新的套件文件
 

@@ -9,7 +9,12 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core import session  # noqa: E402
 import netzoo_agent_core.graph.factory as graph_module  # noqa: E402
-from netzoo_agent_core.contracts import HumanMessage, RouterDecision  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    HumanMessage,
+    OutcomeHypothesis,
+    RequestedOutcome,
+    RouterDecision,
+)
 from netzoo_agent_core.graph import build_graph  # noqa: E402
 from netzoo_agent_core.cli import export_local_trace, local_trace_status  # noqa: E402
 from netzoo_agent_core.memory import EpisodeStore, UserProfileStore  # noqa: E402
@@ -34,7 +39,84 @@ class DeterministicRouterLLM:
             intent_type="run_analysis",
             confidence=0.99,
             reason="Deterministic trace fixture",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=RequestedOutcome(
+                        operation="infer",
+                        artifact_type="regulatory_network",
+                        entity_types=["tf", "gene"],
+                        display_entities=["TF", "gene"],
+                        regulator_types=["tf"],
+                        target_types=["gene"],
+                        granularity="aggregate",
+                        unresolved_dimensions=[],
+                    ),
+                    confidence=0.99,
+                    evidence=[],
+                    assumptions=[],
+                )
+            ],
         )
+
+
+class SequencedHypothesisRouter:
+    def __init__(self):
+        self.calls = 0
+
+    def with_structured_output(self, *_args, **_kwargs):
+        return self
+
+    def invoke(self, _messages):
+        self.calls += 1
+        if self.calls == 1:
+            return RouterDecision(
+                action="no_tool",
+                in_scope=True,
+                intent_type="answer_question",
+                confidence=0.9,
+                reason="The scientific outcome was under-classified.",
+                outcome_hypotheses=[
+                    OutcomeHypothesis(
+                        outcome=RequestedOutcome(
+                            operation="unknown",
+                            artifact_type="unknown",
+                            granularity="not_applicable",
+                            unresolved_dimensions=[],
+                        ),
+                        confidence=0.9,
+                        evidence=[],
+                        assumptions=[],
+                    )
+                ],
+            )
+        if self.calls == 2:
+            return RouterDecision(
+                action="no_tool",
+                in_scope=True,
+                intent_type="answer_question",
+                confidence=0.9,
+                reason="A sample-specific miRNA network is the supported hypothesis.",
+                outcome_hypotheses=[
+                    OutcomeHypothesis(
+                        outcome=RequestedOutcome(
+                            operation="infer",
+                            artifact_type="regulatory_network",
+                            entity_types=["mirna", "gene"],
+                            display_entities=["miRNA", "gene"],
+                            regulator_types=["mirna"],
+                            target_types=["gene"],
+                            granularity="sample_specific",
+                            unresolved_dimensions=["confirm network interpretation"],
+                        ),
+                        confidence=0.9,
+                        evidence=[],
+                        assumptions=[
+                            "network data means a regulatory-network result"
+                        ],
+                    )
+                ],
+            )
+        raise AssertionError("semantic Router repair must run at most once")
 
 
 def test_session_retains_the_trace_run_id_without_changing_legacy_load_shape(
@@ -153,6 +235,55 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
     assert event_types.index("plan.created") < event_types.index("tool.started")
     assert result["run_id"] == str(run_id)
     assert store.verify_run(run_id).valid is True
+
+
+@pytest.mark.skipif(
+    graph_module.StateGraph is None,
+    reason="LangGraph integration runs in the project container",
+)
+def test_graph_repairs_an_underclassified_outcome_once(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    router = SequencedHypothesisRouter()
+    monkeypatch.setattr(
+        graph_module,
+        "build_llm",
+        lambda *_args, **_kwargs: router,
+    )
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="repair-test", profile_id="default")
+    app = build_graph(
+        "fake",
+        0.0,
+        profile_store=UserProfileStore(tmp_path / "profiles"),
+        episode_store=EpisodeStore(tmp_path / "episodes"),
+        trace_recorder=recorder,
+    )
+
+    result = app.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content="What tools can produce a sample-specific miRNA network?"
+                )
+            ],
+            "run_id": str(run_id),
+        }
+    )
+    events = store.read_events(run_id)
+
+    assert router.calls == 2
+    assert result["decision"]["action"] == "no_tool"
+    assert result["decision"]["matched_actions"] == []
+    assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+    assert [call["role"] for call in result["token_usage"]["calls"]] == [
+        "router",
+        "router_repair",
+    ]
+    assert (
+        sum(event.event_type == "routing.underclassified" for event in events) == 1
+    )
 
 
 def test_local_trace_status_and_export_need_no_model_provider(tmp_path: Path):

@@ -5,7 +5,6 @@ from . import (
     discovery,
     extraction,
     hydration,
-    outcome_consistency,
     provider_fallback,
     repair,
 )
@@ -26,7 +25,6 @@ from .extraction import (
     is_versioned_documentation_request,
 )
 from .hydration import hydrate_router_decision
-from .outcome_consistency import needs_outcome_repair, select_primary_hypothesis
 from .provider_fallback import deterministic_router_fallback, _is_fatal_exception
 from .repair import _lioness_mode_plan, repair_router_decision
 
@@ -37,7 +35,6 @@ _INTERPRETATION_IMPLEMENTATION_MODULES = (
     provider_fallback,
     repair,
     concept_answers,
-    outcome_consistency,
 )
 
 __all__ = [
@@ -51,8 +48,6 @@ __all__ = [
     "documentation_library_for_task",
     "extract_preference_proposals",
     "hydrate_router_decision",
-    "needs_outcome_repair",
-    "select_primary_hypothesis",
     "_lioness_mode_plan",
     "repair_router_decision",
     "deterministic_router_fallback",
