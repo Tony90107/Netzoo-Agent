@@ -142,7 +142,9 @@ def test_scientific_tool_questions_repair_empty_classifications(task):
 
 
 def test_non_scientific_cli_question_does_not_trigger_semantic_repair():
-    assert needs_outcome_repair("How do I exit this CLI?", [unknown_hypothesis()]) is False
+    assert (
+        needs_outcome_repair("How do I exit this CLI?", [unknown_hypothesis()]) is False
+    )
 
 
 def test_tied_hypotheses_have_no_primary_outcome():
@@ -200,6 +202,59 @@ def test_router_outcome_is_descriptive_until_deterministic_repair():
     assert repaired.action == "run_lioness_puma"
     assert repaired.matched_actions == ["run_lioness_puma"]
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
+
+
+def test_hydration_preserves_tied_hypotheses_without_primary_outcome():
+    route = RouterDecision(
+        action="no_tool",
+        in_scope=True,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="network type is ambiguous",
+        outcome_hypotheses=[
+            hypothesis(outcome=mirna_network_outcome(), confidence=0.8),
+            hypothesis(
+                outcome=mirna_network_outcome().model_copy(
+                    update={
+                        "artifact_type": "coexpression_network",
+                        "entity_types": ["gene"],
+                        "regulator_types": [],
+                        "target_types": [],
+                    }
+                ),
+                confidence=0.8,
+            ),
+        ],
+    )
+
+    decision = hydrate_router_decision(route, "Which sample network should I infer?")
+
+    assert decision.requested_outcome is None
+    assert len(decision.outcome_hypotheses) == 2
+
+
+def test_advisory_hypothesis_cannot_authorize_execution():
+    raw = TaskDecision(
+        action="run_lioness_puma",
+        in_scope=True,
+        should_execute=True,
+        intent_type="run_analysis",
+        confidence=0.99,
+        reason="provider proposed execution",
+        outcome_hypotheses=[
+            hypothesis(assumptions=["network means regulatory network"])
+        ],
+    )
+
+    repaired = repair_router_decision(
+        raw,
+        "Build my sample-specific miRNA network",
+    )
+
+    assert repaired.action == "no_tool"
+    assert repaired.should_execute is False
+    assert repaired.matched_actions == []
+    assert repaired.hypothesis_actions == ["run_lioness_puma"]
 
 
 def test_provider_failure_does_not_guess_an_unnamed_goal():
@@ -262,7 +317,10 @@ def test_language_variations_cannot_promote_measurements_to_networks(task):
     [
         ("How do I infer per-sample miRNA-to-gene regulatory networks?", False),
         ("請建立每個樣本的微小 RNA 基因調控網路", True),
-        ("Which workflow estimates individualized microRNA regulator-target edges?", False),
+        (
+            "Which workflow estimates individualized microRNA regulator-target edges?",
+            False,
+        ),
     ],
 )
 def test_language_variations_share_one_typed_network_match(task, should_execute):
