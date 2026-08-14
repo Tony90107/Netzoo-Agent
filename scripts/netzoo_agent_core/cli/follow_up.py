@@ -31,11 +31,13 @@ __all__ = [
     "resolve_next_turn_input",
 ]
 
+
 def initial_next_turn_prompt() -> NextTurnPrompt:
     return NextTurnPrompt(
         kind="initial",
         question=_ui_text("What would you like to accomplish with NetZoo?"),
     )
+
 
 def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     """Choose the next CLI question from the completed turn's structured outcome."""
@@ -133,9 +135,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             expected_field=expected_field,
         )
 
-    if (
-        terminal_failed(results, result_evaluation)
-    ):
+    if terminal_failed(results, result_evaluation):
         return NextTurnPrompt(
             kind="failed",
             question=_ui_text(
@@ -189,6 +189,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         ),
     )
 
+
 def follow_up_declined(answer: str) -> bool:
     return answer.strip().casefold() in {
         "n",
@@ -200,6 +201,7 @@ def follow_up_declined(answer: str) -> bool:
         "先不要",
     }
 
+
 def render_next_turn_prompt(prompt: NextTurnPrompt) -> str:
     """Render navigation help without repeating it inside every outcome template."""
     if prompt.kind == "initial":
@@ -210,6 +212,7 @@ def render_next_turn_prompt(prompt: NextTurnPrompt) -> str:
             _ui_text("Controls: Enter/back = main prompt | exit = close"),
         ]
     )
+
 
 def follow_up_returns_to_main(prompt: NextTurnPrompt, answer: str) -> bool:
     if prompt.kind == "initial":
@@ -224,6 +227,7 @@ def follow_up_returns_to_main(prompt: NextTurnPrompt, answer: str) -> bool:
         "主選單",
         "新任務",
     }
+
 
 def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
     """Turn a short acceptance or direct path into a resumable workflow request."""

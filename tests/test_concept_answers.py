@@ -7,7 +7,11 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from netzoo_agent_core.contracts import RequestedOutcome, TaskDecision  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    OutcomeHypothesis,
+    RequestedOutcome,
+    TaskDecision,
+)
 from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_capability_gap,
     render_outcome_clarification,
@@ -56,7 +60,10 @@ def test_purpose_question_uses_registered_workflow_description():
 def test_non_purpose_question_keeps_response_model_path():
     policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
 
-    assert render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy) is None
+    assert (
+        render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy)
+        is None
+    )
 
 
 def test_composition_guidance_uses_registered_workflow_metadata():
@@ -78,8 +85,14 @@ def test_composition_guidance_uses_registered_workflow_metadata():
     )
 
     assert answer is not None
-    assert "PUMA: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA." in answer
-    assert "LIONESS-PUMA: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks." in answer
+    assert (
+        "PUMA: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA."
+        in answer
+    )
+    assert (
+        "LIONESS-PUMA: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks."
+        in answer
+    )
     assert "final workflow in this composition is LIONESS-PUMA" in answer
     assert "clarify" not in answer
 
@@ -123,8 +136,79 @@ def test_ambiguous_outcome_asks_only_the_validated_question():
         ),
     )
 
-    assert render_outcome_clarification(decision) == (
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+
+    assert render_outcome_clarification(decision, policy) == (
         "I cannot select a workflow until the requested result is clear. "
         "Do you want measurement data or a regulatory network?\n\n"
         "No files were inspected and no analysis ran."
     )
+
+
+def test_unique_mirna_hypothesis_explains_registry_composition_and_confirms():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="advisory hypothesis",
+        capability_match_status="ambiguous",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=RequestedOutcome(
+                    operation="infer",
+                    artifact_type="regulatory_network",
+                    entity_types=["mirna", "gene"],
+                    display_entities=["miRNA", "gene"],
+                    regulator_types=["mirna"],
+                    target_types=["gene"],
+                    granularity="sample_specific",
+                    unresolved_dimensions=["confirm network interpretation"],
+                ),
+                confidence=0.9,
+                evidence=[],
+                assumptions=["network data means a regulatory-network result"],
+            )
+        ],
+        hypothesis_actions=["run_lioness_puma"],
+        clarification_question="Is that the network result you mean?",
+    )
+
+    answer = render_outcome_clarification(decision, policy)
+
+    assert "It sounds like" in answer
+    assert "PUMA" in answer
+    assert "LIONESS-PUMA" in answer
+    assert answer.index("PUMA") < answer.index("LIONESS-PUMA")
+    assert "Is that the network result you mean?" in answer
+    assert "I cannot select a workflow" not in answer
+
+
+def test_tied_network_hypotheses_are_presented_without_priority():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="network family is ambiguous",
+        capability_match_status="ambiguous",
+        hypothesis_actions=[
+            "run_lioness_puma",
+            "run_lioness_panda",
+            "run_lioness_coexpression",
+        ],
+        clarification_question="Which network relationship do you mean?",
+    )
+
+    answer = render_outcome_clarification(decision, policy)
+
+    assert "TF-only regulatory" in answer
+    assert "TF/miRNA regulatory" in answer
+    assert "co-expression" in answer
+    assert "Which network relationship" in answer
+    for biased_word in ("best", "preferred", "recommended", "most likely"):
+        assert biased_word not in answer.casefold()

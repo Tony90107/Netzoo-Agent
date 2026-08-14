@@ -6,6 +6,7 @@ import re
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text
+from ..routing.outcome_matching import guidance_actions_for
 
 _PURPOSE_PATTERN = re.compile(
     r"\b(?:function|purpose|what\s+is|what\s+does)\b|(?:功能|用途|是什麼)",
@@ -56,9 +57,7 @@ def _requested_outcome_phrase(decision: TaskDecision) -> str:
 def _capability_phrase(spec, decision: TaskDecision) -> str:
     capability = spec.output_capability
     requested_granularity = (
-        decision.requested_outcome.granularity
-        if decision.requested_outcome
-        else None
+        decision.requested_outcome.granularity if decision.requested_outcome else None
     )
     granularity = (
         requested_granularity
@@ -70,21 +69,83 @@ def _capability_phrase(spec, decision: TaskDecision) -> str:
         regulators = "/".join(
             _ENTITY_LABELS[item] for item in capability.regulator_types
         )
-        targets = "/".join(
-            _ENTITY_LABELS[item] for item in capability.target_types
-        )
+        targets = "/".join(_ENTITY_LABELS[item] for item in capability.target_types)
         relationship = f"{regulators}-to-{targets} " if regulators and targets else ""
         return f"{prefix} {relationship}regulatory networks".strip()
     return f"{prefix} {_ARTIFACT_LABELS[capability.artifact_type]}".strip()
 
 
-def render_outcome_clarification(decision: TaskDecision) -> str | None:
-    """Ask only the clarification supplied by the validated capability match."""
+def _workflow_sequence(
+    action: str,
+    policy: ProjectPolicySnapshot,
+) -> str:
+    names = []
+    for item in guidance_actions_for(action):
+        spec = policy.workflows.get(item)
+        if spec is not None:
+            names.append(spec.workflow)
+    return " → ".join(names)
+
+
+def _network_family_label(spec) -> str:
+    capability = spec.output_capability
+    if capability.artifact_type == "coexpression_network":
+        return "Gene co-expression network"
+    if capability.artifact_type == "regulatory_network":
+        regulators = set(capability.regulator_types)
+        if regulators == {"tf"}:
+            return "TF-only regulatory network"
+        labels = "/".join(_ENTITY_LABELS[item] for item in capability.regulator_types)
+        return f"{labels} regulatory network"
+    return _ARTIFACT_LABELS[capability.artifact_type].capitalize()
+
+
+def render_outcome_clarification(
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Explain compatible hypotheses before asking one validated clarification."""
     if (
         decision.capability_match_status != "ambiguous"
         or not decision.clarification_question
     ):
         return None
+    if len(decision.hypothesis_actions) == 1:
+        action = decision.hypothesis_actions[0]
+        spec = policy.workflows.get(action)
+        if spec is not None:
+            interpretation = (
+                _requested_outcome_phrase(decision)
+                if decision.requested_outcome is not None
+                else _capability_phrase(spec, decision)
+            )
+            return _ui_text(
+                f"It sounds like you want {interpretation}.\n\n"
+                "The compatible workflow composition is "
+                f"{_workflow_sequence(action, policy)}.\n\n"
+                f"{decision.clarification_question}\n\n"
+                "No files were inspected and no analysis ran."
+            )
+    if len(decision.hypothesis_actions) > 1:
+        options = []
+        for action in decision.hypothesis_actions:
+            spec = policy.workflows.get(action)
+            if spec is None:
+                continue
+            options.append(
+                (_network_family_label(spec), _workflow_sequence(action, policy))
+            )
+        if options:
+            lines = "\n".join(
+                f"- {label}: {sequence}"
+                for label, sequence in sorted(options, key=lambda item: item[0])
+            )
+            return _ui_text(
+                "I can map this to more than one registered sample-specific "
+                f"network family:\n{lines}\n\n"
+                f"{decision.clarification_question}\n\n"
+                "No files were inspected and no analysis ran."
+            )
     return _ui_text(
         "I cannot select a workflow until the requested result is clear. "
         f"{decision.clarification_question}\n\n"
