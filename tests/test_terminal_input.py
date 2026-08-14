@@ -32,40 +32,37 @@ def _dispatch_line_keys(default_command: str, keys: str) -> str | None:
 
 def test_mode_menu_options_are_ordered_and_use_existing_commands():
     assert MODE_MENU_OPTIONS == (
-        ("/test", "Test mode — preview commands only"),
-        ("/execute", "Execute mode — run validated commands"),
+        ("/execute", "Execute — run validated commands for this session"),
     )
 
 
 def test_split_inline_prompt_keeps_newlines_out_of_input_prefix():
     question, input_prefix = _split_inline_prompt(
-        "\n[TEST] What would you like to accomplish with NetZoo?\n> "
+        "\nWhat would you like to accomplish with NetZoo?\n> "
     )
 
-    assert question == "\n[TEST] What would you like to accomplish with NetZoo?\n"
+    assert question == "\nWhat would you like to accomplish with NetZoo?\n"
     assert input_prefix == "> "
     assert "\n" not in input_prefix
 
 
 def test_selector_copy_contains_only_mode_rows():
-    assert _selector_lines("/test") == [
-        "▸ /test      Test mode — preview commands only",
-        "  /execute   Execute mode — run validated commands",
+    assert _selector_lines("/execute") == [
+        "▸ /execute   Execute — run validated commands for this session",
     ]
 
 
-def test_empty_slash_opens_current_mode_menu_and_returns_selection():
+def test_empty_slash_opens_execute_menu_and_returns_selection():
     line_reader = Mock(return_value="/execute")
     reader = TerminalInputReader(
         Mock(),
         is_tty=lambda: True,
         notice=Mock(),
         menu_line_reader=line_reader,
-        current_mode=lambda: "TEST",
     )
 
-    assert reader.read("[TEST] prompt\n> ", menu_enabled=True) == "/execute"
-    line_reader.assert_called_once_with("[TEST] prompt\n> ", "/test")
+    assert reader.read("prompt\n> ", menu_enabled=True) == "/execute"
+    line_reader.assert_called_once_with("prompt\n> ", "/execute")
 
 
 def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
@@ -75,7 +72,6 @@ def test_cancelled_menu_returns_distinct_result_without_fallback_notice():
         is_tty=lambda: True,
         notice=notice,
         menu_line_reader=Mock(return_value=None),
-        current_mode=lambda: "EXECUTE",
     )
 
     assert reader.read("prompt", menu_enabled=True) is None
@@ -90,7 +86,6 @@ def test_path_and_non_tty_prompts_use_plain_input_without_initializing_tui():
         is_tty=lambda: False,
         notice=Mock(),
         menu_line_reader=menu_line_reader,
-        current_mode=lambda: "TEST",
     )
 
     assert reader.read("path prompt", menu_enabled=True) == "/output"
@@ -106,7 +101,6 @@ def test_tui_failure_notices_once_then_uses_plain_input():
         is_tty=lambda: True,
         notice=notice,
         menu_line_reader=Mock(side_effect=RuntimeError("terminal unavailable")),
-        current_mode=lambda: "TEST",
     )
 
     assert reader.read("prompt", menu_enabled=True) == "/status"
@@ -114,32 +108,20 @@ def test_tui_failure_notices_once_then_uses_plain_input():
     notice.assert_called_once()
 
 
-def test_empty_slash_then_enter_selects_current_test_mode_without_full_screen():
-    application = _create_inline_mode_application("prompt> ", "/test")
+def test_empty_slash_then_enter_selects_execute_without_full_screen():
+    application = _create_inline_mode_application("prompt> ", "/execute")
 
     assert application.full_screen is False
-    assert _dispatch_line_keys("/test", "/\r") == "/test"
+    assert _dispatch_line_keys("/execute", "/\r") == "/execute"
 
 
 def test_nonempty_slash_is_preserved_by_real_key_dispatch():
-    assert _dispatch_line_keys("/test", "goal/help\r") == "goal/help"
+    assert _dispatch_line_keys("/execute", "goal/help\r") == "goal/help"
 
 
 @pytest.mark.parametrize("command", ["test", "execute", "status", "help"])
 def test_ctrl_v_pass_through_supports_every_text_command(command: str):
-    assert _dispatch_line_keys("/test", f"\x16{command}\r") == f"/{command}"
-
-
-def test_down_then_enter_selects_execute_from_test():
-    assert _dispatch_line_keys("/test", "/\x1b[B\r") == "/execute"
-
-
-def test_up_then_enter_selects_test_from_execute():
-    assert _dispatch_line_keys("/execute", "/\x1b[A\r") == "/test"
-
-
-def test_tab_then_enter_selects_execute_from_test():
-    assert _dispatch_line_keys("/test", "/\t\r") == "/execute"
+    assert _dispatch_line_keys("/execute", f"\x16{command}\r") == f"/{command}"
 
 
 @pytest.mark.parametrize("key", ["\x1b", "\x03"], ids=["escape", "ctrl-c"])

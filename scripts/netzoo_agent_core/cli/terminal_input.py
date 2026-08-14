@@ -5,11 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .slash_commands import current_mode_label
-
 MODE_MENU_OPTIONS = (
-    ("/test", "Test mode — preview commands only"),
-    ("/execute", "Execute mode — run validated commands"),
+    ("/execute", "Execute — run validated commands for this session"),
 )
 
 
@@ -23,14 +20,12 @@ class TerminalInputReader:
         is_tty: Callable[[], bool],
         notice: Callable[[str], None],
         menu_line_reader: Callable[[str, str], str | None] | None = None,
-        current_mode: Callable[[], str] = current_mode_label,
     ) -> None:
         self._input_func = input_func
         self._is_tty = is_tty
         self._notice = notice
         self._menu_line_reader_is_injected = menu_line_reader is not None
         self._menu_line_reader = menu_line_reader or _read_menu_line
-        self._current_mode = current_mode
         self._tui_warning_shown = False
 
     def read(self, prompt: str, *, menu_enabled: bool) -> str | None:
@@ -52,7 +47,7 @@ class TerminalInputReader:
             return self._input_func(prompt)
 
     def _default_command(self) -> str:
-        return "/execute" if self._current_mode() == "EXECUTE" else "/test"
+        return "/execute"
 
     def _warn_once(self) -> None:
         if self._tui_warning_shown:
@@ -98,11 +93,6 @@ def _create_inline_mode_application(prompt: str, default_command: str):
     input_field = TextArea(multiline=False, prompt=input_prefix)
     bindings = KeyBindings()
 
-    def _toggle_selected() -> None:
-        state["selected"] = (
-            "/execute" if state["selected"] == "/test" else "/test"
-        )
-
     def _selector_text() -> FormattedText:
         fragments: list[tuple[str, str]] = []
         for line in _selector_lines(state["selected"]):
@@ -121,15 +111,6 @@ def _create_inline_mode_application(prompt: str, default_command: str):
     @bindings.add("c-v")
     def _insert_literal_slash(event) -> None:
         input_field.buffer.insert_text("/")
-
-    @bindings.add("up", eager=True)
-    @bindings.add("down", eager=True)
-    @bindings.add("tab", eager=True)
-    def _move_selector(event) -> None:
-        if not state["visible"]:
-            return
-        _toggle_selected()
-        event.app.invalidate()
 
     @bindings.add("enter", eager=True)
     def _submit(event) -> None:
