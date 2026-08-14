@@ -25,9 +25,9 @@ if i want to get sample specific mi-RNA network data, what tools do i need?
 The second request should identify `PUMA → LIONESS-PUMA` as the uniquely compatible
 registered composition under the hypothesis that "miRNA network data" means a
 sample-specific miRNA regulatory network, then ask the user to confirm that
-interpretation. The first request may present the same composition as the leading
-hypothesis, but it must disclose that TF-only regulatory and co-expression networks
-are also supported interpretations.
+interpretation. The first request has no evidence that justifies ranking a TF/miRNA,
+TF-only, or co-expression network first, so it must present the compatible network
+families without an artificial priority and ask which relationship the user means.
 
 ## Observed Failure and Root Cause
 
@@ -150,8 +150,9 @@ class OutcomeHypothesis(BaseModel):
 
 The implementation uses the `OutcomeEvidence` and `OutcomeHypothesis` contracts shown
 above. `RouterDecision` exposes `outcome_hypotheses` with one to three items instead of
-requiring one lossy `requested_outcome`. `TaskDecision` retains `requested_outcome` as
-the validated leading hypothesis for compatibility and also stores the bounded
+requiring one lossy `requested_outcome`. `TaskDecision` retains `requested_outcome` for
+compatibility only when one hypothesis has strictly stronger semantic evidence; it is
+`None` when the best hypotheses remain tied. `TaskDecision` also stores the bounded
 `outcome_hypotheses` list for advisory rendering and audit. Lists remain small and text
 fields remain bounded to preserve predictable model output and trace size.
 
@@ -209,12 +210,9 @@ registry capability:
 - an unknown dimension contributes neither a match nor a mismatch;
 - explicit evidence weighs more than inferred evidence;
 - more supported known dimensions rank higher;
-- after evidence and conflict scores tie, the capability covering more of the
-  still-unspecified biological roles ranks higher because it makes fewer exclusions
-  on the user's behalf;
 - unsupported artifact or operation changes remain alternatives, not hypotheses;
-- stable registry order breaks otherwise equal ties but does not create false
-  certainty.
+- equal evidence and conflict scores remain tied; registry order may stabilize display
+  order but must never be described as scientific preference or greater confidence.
 
 The result model distinguishes:
 
@@ -246,27 +244,28 @@ sample-specific miRNA regulatory-network workflow. The UI explains the derived
 interpretation. It does not execute.
 
 For generic `sample-specific network data`, the evidence is insufficient to make one
-scientific network type exact. After the evidence and conflict scores tie, the breadth
-rule ranks the TF/miRNA-capable LIONESS-PUMA contract ahead of the narrower TF-only and
-co-expression contracts. The Agent therefore leads with the broad TF/miRNA regulatory
-interpretation and `PUMA → LIONESS-PUMA` as the current best hypothesis, but must
-also disclose the materially different registered alternatives:
+scientific network type exact. The compatible candidates remain tied and are presented
+without a claimed scientific ranking:
 
+- `PUMA → LIONESS-PUMA` for TF/miRNA regulatory networks;
 - `PANDA → LIONESS-PANDA` for TF-only regulatory networks;
 - `LIONESS-COEXPRESSION` for sample-specific co-expression networks.
 
-This preference is an advisory ranking among registry capabilities, not permission to
-run PUMA. If the available evidence cannot distinguish the candidates, the response
-must label the first candidate as a hypothesis rather than a selected workflow.
+Display order is stable for readability only. The response must not label the first
+item as more likely, recommended, or selected. It asks which network relationship the
+user means, and none of the tied candidates receives execution authority.
 
 ### 5. Hypothesis-led clarification rendering
 
 Replace the universal ambiguous template with a renderer that receives:
 
 - normalized hypotheses and evidence;
-- ranked compatible actions;
+- scored compatible-action groups, including unresolved ties;
 - registry workflow names, descriptions, and predecessor relationships;
 - the single unresolved assumption that most reduces ambiguity.
+
+Compatible-action groups may contain a tied top group. The renderer must preserve that
+tie and must not convert list order into a recommendation.
 
 Expected response shape:
 
@@ -290,9 +289,10 @@ The exact wording may remain registry-driven, but the response must:
 4. ask one focused confirmation question;
 5. state that no analysis ran.
 
-When multiple materially different candidates remain, the response may name them
-briefly after the leading hypothesis. It should not make the user restart the problem
-description with an abstract question such as "What artifact should NetZoo produce?"
+When multiple materially different candidates remain tied, the response names them
+briefly and asks one discriminating question. It should not make the user restart the
+problem description with an abstract question such as "What artifact should NetZoo
+produce?"
 
 ## Data Flow
 
@@ -352,8 +352,8 @@ exact outcome match
   co-expression networks.
 - Verify that `sample-specific miRNA measurements`, `miRNA expression data`, and
   explicit requests for raw data do not become network inference.
-- Verify that vague network requests lead with a hypothesis and disclose materially
-  different alternatives.
+- Verify that vague network requests preserve an unranked tie across materially
+  different compatible network families.
 
 ### End-to-end response tests
 
@@ -369,8 +369,8 @@ exact outcome match
 1. Both motivating prompts receive useful, context-preserving workflow guidance.
 2. The miRNA prompt derives `PUMA → LIONESS-PUMA` from semantic evidence and
    registry metadata rather than an exact sentence rule.
-3. Generic sample-specific network wording remains explicitly hypothetical and names
-   relevant alternative network families.
+3. Generic sample-specific network wording preserves all equally supported network
+   families without presenting one as the default or preferred tool.
 4. Measurement-data requests remain protected from false network recommendations.
 5. Partial or repaired interpretations cannot authorize execution.
 6. Existing workflow, policy, planning, evaluation, CLI, and safety tests continue to
