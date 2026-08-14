@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from ..data.artifacts import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
@@ -15,6 +16,7 @@ from ..contracts import (
     _display_path,
 )
 from ..memory import _ensure_private_directory, _write_private_text
+from ..execution_log import write_execution_markdown_log
 from .error_adapters import (
     ToolErrorContext,
     adapt_tool_error,
@@ -62,6 +64,7 @@ def structure_tool_result(
     raw_output: str,
     persist_log: bool = False,
     attempt_id: int = 0,
+    execution_started_at: datetime | None = None,
 ) -> ToolExecutionResult:
     """Normalize legacy text-returning tools into a stable executor contract."""
     lowered = raw_output.casefold()
@@ -134,6 +137,22 @@ def structure_tool_result(
     else:
         metrics["raw_output_truncated"] = False
     metrics["raw_output_chars"] = len(raw_output)
+    if persist_log and status != "dry_run":
+        try:
+            execution_log = write_execution_markdown_log(
+                decision,
+                action=action,
+                raw_output=raw_output,
+                status=status,
+                artifacts=artifacts,
+                warnings=warning_lines,
+                errors=error_lines,
+                started_at=execution_started_at,
+            )
+            if execution_log:
+                metrics["execution_markdown_log"] = execution_log
+        except OSError as error:
+            warning_lines.append(f"Execution Markdown log could not be written: {error}")
     return ToolExecutionResult(
         action=action,
         status=status,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from ..contracts import (
     AgentState,
     EXECUTE_TOOLS,
@@ -82,6 +84,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
             "attempt_id": state.get("replan_count", 0),
         },
     )
+    execution_started_at = datetime.now().astimezone()
     raw_result = execute_selected_tool(decision)
     result = structure_tool_result(
         step.action,
@@ -89,6 +92,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
         raw_result,
         persist_log=True,
         attempt_id=state.get("replan_count", 0),
+        execution_started_at=execution_started_at,
     )
     _trace(
         "tool",
