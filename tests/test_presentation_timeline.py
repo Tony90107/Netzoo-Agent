@@ -54,6 +54,9 @@ def _enable_timeline(monkeypatch) -> None:
 def _enable_state_machine(monkeypatch) -> None:
     monkeypatch.setattr(presentation, "TRACE_ENABLED", True)
     monkeypatch.setattr(presentation, "PRESENTATION_MODE", "state_machine")
+    monkeypatch.setattr(presentation, "_PROGRESS_STATE", None)
+    monkeypatch.setattr(presentation, "_PROGRESS_RENDERED_LINES", 0)
+    monkeypatch.setattr(presentation, "_PROGRESS_LAST_TEXT", None)
 
 
 def test_progress_state_marks_only_one_stage_active():
@@ -94,7 +97,41 @@ def test_public_trace_events_update_task_level_stages(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "✓ Understand request" in output
     assert "✓ Match workflow capabilities" in output
-    assert "● Choose next step — Clarification required" in output
+    assert "! Choose next step — Clarification required" in output
+
+
+def test_state_machine_redraws_on_tty(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: True)
+
+    presentation._trace("intent", "Interpreting the request and capability boundaries")
+    presentation._trace("reasoning", "Checking registered workflow capabilities")
+
+    assert "\033[3A" in capsys.readouterr().out
+
+
+def test_state_machine_uses_permanent_lines_on_non_tty(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace("intent", "Interpreting the request and capability boundaries")
+
+    output = capsys.readouterr().out
+    assert "\033[" not in output
+    assert "● Understand request" in output
+
+
+def test_state_machine_finalization_keeps_visible_output_and_resets_for_next_turn(
+    monkeypatch, capsys
+):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace("intent", "Interpreting the request and capability boundaries")
+    presentation._clear_transient_trace()
+
+    assert "● Understand request" in capsys.readouterr().out
+    assert presentation._PROGRESS_STATE is None
 
 
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):
