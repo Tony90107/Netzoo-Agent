@@ -11,6 +11,7 @@ from ..contracts.state import (
     LLMUsage,
     NextTurnPrompt,
 )
+from ..contracts import FollowUpContext
 from ..framework_compat import HumanMessage
 from ..presentation import _clear_transient_trace, _trace, _ui_text
 from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
@@ -30,8 +31,8 @@ from .clarification import (
     resolve_clarification,
 )
 from .follow_up import (
+    build_follow_up_context,
     build_next_turn_prompt,
-    follow_up_declined,
     follow_up_returns_to_main,
     initial_next_turn_prompt,
     render_next_turn_prompt,
@@ -77,12 +78,14 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         notice=lambda message: print(_ui_text(message)),
     )
     invoke_graph_turn_func = runtime.invoke_graph_turn_func
+    reply_resolver = runtime.reply_resolver
 
     clarification_selections: dict[str, str] = {}
     run_paused = False
     queued_task = args.task
     one_shot = bool(args.task) and not runtime.resume_id
     next_prompt = initial_next_turn_prompt()
+    follow_up_context: FollowUpContext | None = None
     if not args.task:
         print(
             _ui_text(
@@ -220,15 +223,82 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 continue
             if follow_up_returns_to_main(next_prompt, answer):
                 next_prompt = initial_next_turn_prompt()
+                follow_up_context = None
                 continue
             if not answer:
                 continue
-            if next_prompt.kind == "recommended_workflow" and follow_up_declined(
-                answer
-            ):
-                next_prompt = initial_next_turn_prompt()
-                continue
-            task = resolve_next_turn_input(next_prompt, answer)
+            if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
+                break
+            if next_prompt.kind != "initial" and follow_up_context is not None:
+                if run_id is None:
+                    run_id = str(
+                        recorder.start_run(
+                            session_id=session_id,
+                            profile_id=profile_id,
+                        )
+                    )
+                    ensure_trace_sync(run_id)
+                reply_result = reply_resolver.resolve(
+                    follow_up_context,
+                    answer,
+                    active_usage,
+                    run_id,
+                )
+                active_usage = reply_result.usage.model_dump()
+                resolution = reply_result.resolution
+                if resolution.kind == "needs_detail":
+                    print(
+                        _ui_text(
+                            "Please enter a concrete follow-up question, provide the "
+                            "requested input path, or describe another NetZoo goal."
+                        )
+                    )
+                    recorder.finish_run(
+                        run_id,
+                        "completed",
+                        {
+                            "interaction_status": "needs_detail",
+                            "token_usage": active_usage,
+                        },
+                    )
+                    run_id = None
+                    active_usage = None
+                    continue
+                if resolution.kind == "navigation":
+                    recorder.finish_run(
+                        run_id,
+                        "completed",
+                        {
+                            "interaction_status": "navigation",
+                            "token_usage": active_usage,
+                        },
+                    )
+                    run_id = None
+                    active_usage = None
+                    next_prompt = initial_next_turn_prompt()
+                    follow_up_context = None
+                    continue
+                task = resolve_next_turn_input(next_prompt, resolution, answer)
+                if not task:
+                    print(
+                        _ui_text(
+                            "Please enter a concrete follow-up question, provide the "
+                            "requested input path, or describe another NetZoo goal."
+                        )
+                    )
+                    recorder.finish_run(
+                        run_id,
+                        "completed",
+                        {
+                            "interaction_status": "needs_detail",
+                            "token_usage": active_usage,
+                        },
+                    )
+                    run_id = None
+                    active_usage = None
+                    continue
+            else:
+                task = answer
         if task.casefold() in {"exit", "quit", "q", "離開", "結束"}:
             break
         if not task:
@@ -319,6 +389,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         if pending_plan is None:
             print(result["messages"][-1].content)
             next_prompt = build_next_turn_prompt(result)
+            follow_up_context = build_follow_up_context(result, next_prompt, task)
         if pending_plan is not None:
             recorder.pause_run(
                 run_id,

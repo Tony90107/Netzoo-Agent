@@ -1,7 +1,7 @@
 """Stable typed contracts and compatibility exports for the NetZoo harness."""
 
 from . import decisions, interaction, memory, outcomes, planning, policy, results, state
-from ..framework_compat import (
+from ..framework_compat import (  # noqa: F401 -- historical facade attributes
     AIMessage, END, HumanMessage, START, StateGraph, SystemMessage, add_messages, tool,
 )
 from ..presentation import (
@@ -55,7 +55,7 @@ from ..settings import (
     VERBOSE_OUTPUT,
 )
 from .decisions import PreferenceProposal, RouterDecision, TaskDecision
-from .interaction import (
+from .interaction import (  # noqa: F401 -- direct imports without widening __all__
     ContextualReplyResolution,
     FollowUpContext,
     ReplyIntent,
@@ -129,9 +129,6 @@ __all__ = [
     "strip_cli_owned_follow_up_question", "ArtifactValidationResult",
     "ToolExecutionResult", "AgentsPolicyHeader", "WorkflowPolicySpec",
     "WorkflowOutputCapabilitySpec",
-    "ProjectPolicySnapshot", "ContextualReplyResolution", "FollowUpContext",
-    "ReplyIntent", "ReplyIntentDecision", "UserProfile", "Episode", "INPUT_ROLE_FIELDS",
+    "ProjectPolicySnapshot", "UserProfile", "Episode", "INPUT_ROLE_FIELDS",
     "OUTPUT_ROLE_FIELDS", "PARAMETER_FIELDS", "_display_path", "_is_demo_request",
-    "AIMessage", "HumanMessage", "SystemMessage", "StateGraph", "START", "END",
-    "add_messages", "tool",
 ]

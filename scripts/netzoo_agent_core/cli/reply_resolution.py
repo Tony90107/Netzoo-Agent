@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 import time
 
 from ..contracts import (
@@ -141,6 +142,28 @@ class ContextualReplyResolver:
         current_usage: LLMUsage | dict | None,
         run_id: str | None,
     ) -> ReplyResolutionResult:
+        if (
+            context.continuation_action is not None
+            and context.expected_field is not None
+            and re.search(
+                r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$",
+                reply.strip(),
+                flags=re.IGNORECASE,
+            )
+        ):
+            usage = (
+                LLMUsage.model_validate(current_usage)
+                if current_usage is not None
+                else LLMUsage(budget_tokens=self.task_token_budget)
+            )
+            return ReplyResolutionResult(
+                ContextualReplyResolution(
+                    kind="accept_workflow",
+                    resolved_task=reply,
+                    reason="An explicit path answers the offered input prompt.",
+                ),
+                usage,
+            )
         messages = build_reply_resolution_messages(context, reply)
         input_text = _serialized_input(messages)
         if not budget_allows_call(

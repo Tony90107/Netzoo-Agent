@@ -28,7 +28,6 @@ __all__ = [
     "initial_next_turn_prompt",
     "build_follow_up_context",
     "build_next_turn_prompt",
-    "follow_up_declined",
     "render_next_turn_prompt",
     "follow_up_returns_to_main",
     "resolve_next_turn_input",
@@ -220,18 +219,6 @@ def build_follow_up_context(
         expected_field=prompt.expected_field,
         alternative_action=prompt.alternative_action,
     )
-
-
-def follow_up_declined(answer: str) -> bool:
-    return answer.strip().casefold() in {
-        "n",
-        "no",
-        "nope",
-        "不用",
-        "不要",
-        "否",
-        "先不要",
-    }
 
 
 def render_next_turn_prompt(prompt: NextTurnPrompt) -> str:

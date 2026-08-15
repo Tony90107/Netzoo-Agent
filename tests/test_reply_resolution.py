@@ -15,14 +15,14 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 )
 
 
-def _context(*, continuation_action=None):
+def _context(*, continuation_action=None, expected_field=None):
     return FollowUpContext(
         prior_user_goal="Which tools produce sample-specific miRNA networks?",
         prompt_kind="completed",
         prompt_question="Enter a follow-up question or describe another NetZoo goal.",
         candidate_actions=["run_puma", "run_lioness_puma"],
         continuation_action=continuation_action,
-        expected_field=None,
+        expected_field=expected_field,
         alternative_action=None,
     )
 
@@ -102,6 +102,8 @@ def test_new_goal_preserves_original_user_text():
 
     assert result.resolution.kind == "new_goal"
     assert result.resolution.resolved_task == reply
+    assert result.usage.calls[-1].role == "follow_up"
+    assert result.usage.calls[-1].status == "success"
 
 
 def test_navigation_does_not_create_a_scientific_task():
@@ -114,6 +116,25 @@ def test_navigation_does_not_create_a_scientific_task():
 
     assert result.resolution.kind == "navigation"
     assert result.resolution.resolved_task is None
+
+
+def test_explicit_path_for_offered_input_bypasses_model():
+    model = Mock()
+    resolver = ContextualReplyResolver.for_test(model)
+
+    result = resolver.resolve(
+        _context(
+            continuation_action="run_lioness_puma",
+            expected_field="expression_file",
+        ),
+        "data/patient/expression.tsv",
+        None,
+        "run-1",
+    )
+
+    assert result.resolution.kind == "accept_workflow"
+    assert result.resolution.resolved_task == "data/patient/expression.tsv"
+    model.invoke.assert_not_called()
 
 
 def test_model_failure_fails_safe_and_records_failed_usage():
