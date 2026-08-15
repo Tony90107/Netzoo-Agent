@@ -162,7 +162,13 @@ def test_tool_activity_is_permanent_and_fact_grounded(monkeypatch, capsys):
     monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
 
     presentation._trace(
-        "tool", "Executor [1/1]: run_lioness_puma", "Infer selected network"
+        "tool",
+        "Executor [1/1]: run_lioness_puma",
+        {
+            "kind": "tool_activity",
+            "purpose": "Infer selected network",
+            "inputs": ["expression_file", "motif_file", "ppi_file", "mirna_file"],
+        },
     )
     presentation._trace(
         "tool", "run_lioness_puma → success", "Generated 80 networks"
@@ -170,6 +176,7 @@ def test_tool_activity_is_permanent_and_fact_grounded(monkeypatch, capsys):
 
     output = capsys.readouterr().out
     assert "Tool: run_lioness_puma" in output
+    assert "Inputs: expression_file, motif_file, ppi_file, mirna_file" in output
     assert "Result: Generated 80 networks" in output
     assert "✓ Run LIONESS-PUMA" in output
 
@@ -181,6 +188,48 @@ def test_state_machine_suppresses_unmapped_graph_events(monkeypatch, capsys):
     presentation._trace("plan", "Planner: NO-TOOL / respond_only", "private plan")
 
     assert capsys.readouterr().out == ""
+
+
+def test_state_machine_shows_verified_decision_facts_without_a_tool(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "intent",
+        "Classified as no_tool",
+        {
+            "kind": "classification",
+            "outcome": "miRNA regulatory network",
+            "workflows": ["PUMA", "LIONESS-PUMA"],
+        },
+    )
+    presentation._trace(
+        "reasoning",
+        "Choosing the next safe step",
+        {
+            "kind": "next_step",
+            "status": "clarification_required",
+            "question": "Should the result be aggregate or sample-specific?",
+            "tool_status": "No local tool has run yet.",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Understand request — miRNA regulatory network" in output
+    assert "✓ Match workflow capabilities — PUMA, LIONESS-PUMA" in output
+    assert "! Choose next step — Select aggregate or sample-specific" in output
+    assert "No local tool has run yet." in output
+
+
+def test_state_machine_truncates_live_lines_to_terminal_width(monkeypatch):
+    state = presentation.ProgressState.initial()
+    state.activate("match", "A detail that cannot fit on a narrow terminal row")
+    monkeypatch.setattr(presentation, "_terminal_columns", lambda: 32)
+
+    lines = presentation._render_progress_state(state).splitlines()
+
+    assert len(lines) == 3
+    assert all(len(line) <= 32 for line in lines)
 
 
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):

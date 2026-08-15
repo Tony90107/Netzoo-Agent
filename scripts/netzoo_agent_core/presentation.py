@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -49,6 +50,7 @@ class ProgressState:
     """Small task-level state machine for public CLI progress."""
 
     stages: dict[str, ProgressStage]
+    activity: str | None = None
 
     @classmethod
     def initial(cls) -> "ProgressState":
@@ -71,10 +73,11 @@ class ProgressState:
         stage.status = "active"
         stage.detail = detail
 
-    def complete(self, name: str) -> None:
+    def complete(self, name: str, detail: str | None = None) -> None:
         stage = self.stages[name]
         stage.status = "complete"
-        stage.detail = None
+        if detail is not None:
+            stage.detail = detail
 
     def attention(self, name: str, detail: str) -> None:
         index = _PROGRESS_STAGE_ORDER.index(name)
@@ -104,8 +107,23 @@ def _render_progress_state(state: ProgressState) -> str:
     for name in _PROGRESS_STAGE_ORDER:
         stage = state.stages[name]
         suffix = f" — {stage.detail}" if stage.detail else ""
-        lines.append(f"{symbols[stage.status]} {stage.label}{suffix}")
+        lines.append(_truncate_terminal_line(f"{symbols[stage.status]} {stage.label}{suffix}"))
+    if state.activity:
+        lines.append(_truncate_terminal_line(f"  {state.activity}"))
     return _ui_text("\n".join(lines))
+
+
+def _terminal_columns() -> int:
+    """Return a conservative terminal width for a one-row live status line."""
+    return max(20, shutil.get_terminal_size(fallback=(100, 24)).columns)
+
+
+def _truncate_terminal_line(text: str) -> str:
+    """Prevent live status lines from wrapping and breaking ANSI redraw offsets."""
+    columns = _terminal_columns()
+    if len(text) <= columns:
+        return text
+    return text[: max(1, columns - 3)].rstrip() + "..."
 
 
 def _apply_public_progress_event(
@@ -120,12 +138,36 @@ def _apply_public_progress_event(
         ("reasoning", "Checking registered workflow capabilities"): "match",
         ("reasoning", "Choosing the next safe step"): "next_step",
     }
+    if (
+        stage == "intent"
+        and message.startswith("Classified as ")
+        and isinstance(detail, dict)
+        and detail.get("kind") == "classification"
+    ):
+        outcome = str(detail.get("outcome") or "Requested outcome classified")
+        workflows = [str(item) for item in detail.get("workflows", [])]
+        state.complete("understand", outcome)
+        if workflows:
+            state.complete("match", ", ".join(workflows))
+        return True
     state_name = event_names.get((stage, message))
     if stage == "input" and message == "The Planner requires additional input":
         state.attention("next_step", "Input required")
         return True
     if state_name is None:
         return False
+    if isinstance(detail, dict) and detail.get("kind") == "next_step":
+        question = str(detail.get("question") or "")
+        tool_status = str(detail.get("tool_status") or "")
+        if question:
+            choice = re.sub(
+                r"^Should the result be\s+", "Select ", question
+            ).rstrip("?")
+            state.attention(state_name, choice)
+        else:
+            state.activate(state_name)
+        state.activity = tool_status or None
+        return True
     rendered_detail = _bounded_timeline_detail(detail) if detail else None
     if state_name == "next_step" and rendered_detail and "clarification" in (
         rendered_detail.casefold()
@@ -233,20 +275,29 @@ def _render_tool_activity(
     detail: str | dict | None,
 ) -> str:
     """Render a permanent record from an already-emitted tool event only."""
-    bounded_detail = _bounded_timeline_detail(detail)
+    purpose = (
+        _bounded_timeline_detail(detail.get("purpose"))
+        if isinstance(detail, dict) and detail.get("kind") == "tool_activity"
+        else _bounded_timeline_detail(detail)
+    )
     label = _state_machine_tool_label(action)
     if status is None:
-        return _ui_text(
-            f"● {label}\n"
-            f"  Tool: {action}\n"
-            f"  Purpose: {bounded_detail}"
-        )
+        lines = [
+            f"● {label}",
+            f"  Tool: {action}",
+            f"  Purpose: {purpose}",
+        ]
+        if isinstance(detail, dict) and detail.get("kind") == "tool_activity":
+            inputs = [str(item) for item in detail.get("inputs", [])]
+            if inputs:
+                lines.append(f"  Inputs: {', '.join(inputs)}")
+        return _ui_text("\n".join(lines))
     marker = "✓" if status in {"success", "dry_run"} else "✗"
     result_label = label if action.startswith("run_") else _timeline_result_label(action, status)
     return _ui_text(
         f"{marker} {result_label}\n"
         f"  Tool: {action}\n"
-        f"  Result: {bounded_detail}"
+        f"  Result: {purpose}"
     )
 
 
