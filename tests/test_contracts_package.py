@@ -13,6 +13,12 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent_core.contracts as contracts  # noqa: E402
+from netzoo_agent_core.contracts import WorkspaceResourceInventory  # noqa: E402
+from workflow_registry import (  # noqa: E402
+    ACTION_DEFINITIONS,
+    DISCOVERABLE_ACTIONS,
+    READ_ONLY_ACTIONS,
+)
 
 
 HISTORICAL_EXPORTS = [
@@ -63,6 +69,10 @@ HISTORICAL_EXPORTS = [
     "TaskDecision",
     "LLMUsage",
     "InputEvidence",
+    "WorkspaceDiscoveryScope",
+    "ValidatedResourceBundle",
+    "PartialResourceCandidate",
+    "WorkspaceResourceInventory",
     "RequestedOutcome",
     "OutcomeEvidence",
     "OutcomeHypothesis",
@@ -93,15 +103,15 @@ HISTORICAL_EXPORTS = [
 ]
 
 SCHEMA_DIGESTS = {
-    "TaskDecision": "5964f3402dd6680376e7e20a67bc410927ae7e3c1b6e185711992a509a91395f",
-    "RouterDecision": "561d7364b7426a91ecda6395d8bdc0d8dcc140b6dafc84948bc68ff8de419c66",
+    "TaskDecision": "b8b73f8bb43bee01610aee99692e3840d1691da044e543b5ea21635a0f0145e0",
+    "RouterDecision": "86f8adf02a15c752cb7e6b3b346e6fcd803384476746523a1779da79b4fcb191",
     "RequestedOutcome": "9958b10da7ee3c95fbec8af78da4d7d2e30f6d7df6c0191ffefba8d080287d36",
     "OutcomeEvidence": "d6415b130ca1a6e4a02c5369f34b03e75ffdb87bf3aa7af1787a6491e12b5362",
     "OutcomeHypothesis": "68d87cd2290862732e753dec11b7e5c7e7bed8c3c3f83af9b93317421e71fe9b",
     "CapabilityMatch": "c5952a563a94fa5b5e9cfc9d1298bfc130e603f283afb61c7b89472b2ef121dd",
     "WorkflowPlan": "9a57762cf8ffc4cd8e611b1d9907ef89c9d5ee1b82280ef5c2e76133b9ecfc4b",
     "InputEvidence": "0582cce8d5b06debc2e6af06b2f2c2fff9fc0d062b00ac41863442a3a11f0a8a",
-    "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
+    "ToolExecutionResult": "0416c4d5b2844e7ad40b4a50b832af51a99b4cd45ac4fff245fb22f337d6e02a",
     "ProjectPolicySnapshot": "a8502c6d87e9108ae033d26584b2d7d2ca58724c3fbfd0771a6ff6149686457b",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     "Episode": "12ea309e79b9fcfc32cd4030ad5aed570eecac04a5414fdfe061dc569a82e70e",
@@ -110,8 +120,48 @@ SCHEMA_DIGESTS = {
 
 def test_contracts_is_a_package_with_final_owners():
     assert hasattr(contracts, "__path__")
-    for name in ("decisions", "outcomes", "planning", "results", "policy", "memory", "state"):
+    for name in (
+        "decisions",
+        "outcomes",
+        "planning",
+        "results",
+        "policy",
+        "memory",
+        "resources",
+        "state",
+    ):
         importlib.import_module(f"netzoo_agent_core.contracts.{name}")
+
+
+def test_workspace_discovery_is_a_registered_read_only_action():
+    definition = ACTION_DEFINITIONS["discover_workspace_resources"]
+    assert definition.read_only is True
+    assert definition.required_inputs == ("workspace_root",)
+    assert definition.executor_fields == (
+        "workspace_root", "resource_subpath", "resource_actions"
+    )
+    assert "discover_workspace_resources" in READ_ONLY_ACTIONS
+
+
+def test_discoverable_workflows_declare_complete_specs():
+    assert DISCOVERABLE_ACTIONS
+    for action in DISCOVERABLE_ACTIONS:
+        spec = ACTION_DEFINITIONS[action].discovery
+        assert spec is not None
+        assert spec.input_roles
+        assert set(spec.input_roles) == set(spec.filename_hints)
+        assert spec.validator_ids
+
+
+def test_inventory_contract_orders_typed_result_groups():
+    inventory = WorkspaceResourceInventory(
+        scope_root=".",
+        visited_file_count=2,
+        validated_bundles=[],
+        partial_candidates=[],
+    )
+    assert inventory.truncated is False
+    assert inventory.rejected_summary == {}
 
 
 def test_contract_facade_exports_exact_historical_surface():
@@ -146,6 +196,12 @@ def test_models_have_one_owner_and_preserve_identity():
             "ProjectPolicySnapshot",
         ),
         "memory": ("UserProfile", "Episode"),
+        "resources": (
+            "WorkspaceDiscoveryScope",
+            "ValidatedResourceBundle",
+            "PartialResourceCandidate",
+            "WorkspaceResourceInventory",
+        ),
         "state": (
             "AgentState",
             "AgentTurnInterrupted",
@@ -182,7 +238,16 @@ def test_framework_and_presentation_names_have_single_owners():
 
 
 def test_contract_children_do_not_import_langgraph_directly():
-    for module_name in ("decisions", "outcomes", "planning", "results", "policy", "memory", "state"):
+    for module_name in (
+        "decisions",
+        "outcomes",
+        "planning",
+        "results",
+        "policy",
+        "memory",
+        "resources",
+        "state",
+    ):
         module = importlib.import_module(f"netzoo_agent_core.contracts.{module_name}")
         tree = ast.parse(inspect.getsource(module))
         imports = [

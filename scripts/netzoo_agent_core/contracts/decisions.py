@@ -77,6 +77,9 @@ class TaskDecision(BaseModel):
     mismatch_dimensions: list[str] = Field(default_factory=list)
     clarification_question: str | None = None
     missing_inputs: list[str] = Field(default_factory=list)
+    workspace_root: str | None = None
+    resource_subpath: str | None = None
+    resource_actions: list[RecommendedAction] = Field(default_factory=list)
     expression_file: str | None = None
     motif_file: str | None = None
     ppi_file: str | None = None

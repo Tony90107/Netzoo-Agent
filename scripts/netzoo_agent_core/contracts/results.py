@@ -62,6 +62,7 @@ class ToolExecutionResult(BaseModel):
     retryable: bool = False
     recovery_hint: str | None = None
     log_file: str | None = None
+    structured_output: dict[str, object] = Field(default_factory=dict)
     raw_output: str = ""
 
 __all__ = ['EvaluationResult', 'PlanRubricItem', 'PlanEvaluationResult', 'ArtifactValidationResult', 'ToolExecutionResult']

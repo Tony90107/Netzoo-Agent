@@ -1,6 +1,6 @@
 """Stable typed contracts and compatibility exports for the NetZoo harness."""
 
-from . import decisions, interaction, memory, outcomes, planning, policy, results, state
+from . import decisions, interaction, memory, outcomes, planning, policy, resources, results, state
 from ..framework_compat import (  # noqa: F401 -- historical facade attributes
     AIMessage, END, HumanMessage, START, StateGraph, SystemMessage, add_messages, tool,
 )
@@ -85,6 +85,12 @@ from .results import (
     PlanRubricItem,
     ToolExecutionResult,
 )
+from .resources import (
+    PartialResourceCandidate,
+    ValidatedResourceBundle,
+    WorkspaceDiscoveryScope,
+    WorkspaceResourceInventory,
+)
 from .state import (
     AgentState,
     AgentTurnInterrupted,
@@ -99,6 +105,7 @@ _CONTRACT_IMPLEMENTATION_MODULES = (
     outcomes,
     planning,
     results,
+    resources,
     policy,
     memory,
     state,
@@ -123,6 +130,8 @@ __all__ = [
     "_clear_transient_trace", "_trace_line", "_trace", "AgentState",
     "AgentTurnInterrupted", "ClarificationInputError", "PreferenceProposal",
     "RouterDecision", "TaskDecision", "LLMUsage", "InputEvidence",
+    "WorkspaceDiscoveryScope", "ValidatedResourceBundle",
+    "PartialResourceCandidate", "WorkspaceResourceInventory",
     "RequestedOutcome", "OutcomeEvidence", "OutcomeHypothesis",
     "EvidenceDimension", "CapabilityMatch", "CapabilityMatchStatus",
     "WorkflowStep", "WorkflowPlan", "EvaluationResult", "PlanRubricItem",

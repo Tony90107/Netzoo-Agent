@@ -23,6 +23,7 @@ ActionName = Literal[
     "run_lioness_puma",
     "run_lioness_coexpression",
     "run_condor",
+    "discover_workspace_resources",
     "query_context7",
     "web_search",
 ]
@@ -90,6 +91,18 @@ class OutputCapabilityDefinition:
 
 
 @dataclass(frozen=True, slots=True)
+class DiscoverySpec:
+    """Registry-owned rules for finding one workflow's input resources."""
+
+    input_roles: tuple[str, ...]
+    filename_hints: Mapping[str, tuple[str, ...]]
+    allowed_extensions: frozenset[str] = frozenset({".tsv", ".tab", ".txt", ".csv"})
+    validator_ids: tuple[str, ...] = ()
+    min_samples: int | None = None
+    ranking_hints: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ActionDefinition:
     action: ActionName
     workflow: str
@@ -102,6 +115,8 @@ class ActionDefinition:
     run: bool = False
     memory_metadata: Mapping[str, str] = field(default_factory=dict)
     output_capability: OutputCapabilityDefinition | None = None
+    read_only: bool = False
+    discovery: DiscoverySpec | None = None
 
 
 ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
@@ -164,6 +179,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
         ),
+        discovery=DiscoverySpec(
+            input_roles=("expression_file", "motif_file", "ppi_file"),
+            filename_hints={
+                "expression_file": ("expression", "expr"),
+                "motif_file": ("panda", "motif", "prior"),
+                "ppi_file": ("ppi",),
+            },
+            validator_ids=("inspect_netzoo_inputs",),
+        ),
     ),
     "run_puma": ActionDefinition(
         "run_puma",
@@ -193,6 +217,21 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf", "mirna"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+        ),
+        discovery=DiscoverySpec(
+            input_roles=(
+                "expression_file",
+                "motif_file",
+                "ppi_file",
+                "mirna_file",
+            ),
+            filename_hints={
+                "expression_file": ("expression", "expr"),
+                "motif_file": ("puma", "motif", "prior"),
+                "ppi_file": ("ppi",),
+                "mirna_file": ("mirna", "mir"),
+            },
+            validator_ids=("inspect_netzoo_inputs",),
         ),
     ),
     "run_lioness_panda": ActionDefinition(
@@ -224,6 +263,17 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
             guidance_predecessors=("run_panda",),
+        ),
+        discovery=DiscoverySpec(
+            input_roles=("expression_file", "motif_file", "ppi_file"),
+            filename_hints={
+                "expression_file": ("expression", "expr"),
+                "motif_file": ("panda", "motif", "prior"),
+                "ppi_file": ("ppi",),
+            },
+            validator_ids=("inspect_netzoo_inputs",),
+            min_samples=3,
+            ranking_hints=("lioness",),
         ),
     ),
     "run_lioness_puma": ActionDefinition(
@@ -258,6 +308,23 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             granularities=frozenset({"aggregate", "sample_specific"}),
             guidance_predecessors=("run_puma",),
         ),
+        discovery=DiscoverySpec(
+            input_roles=(
+                "expression_file",
+                "motif_file",
+                "ppi_file",
+                "mirna_file",
+            ),
+            filename_hints={
+                "expression_file": ("expression", "expr"),
+                "motif_file": ("puma", "motif", "prior"),
+                "ppi_file": ("ppi",),
+                "mirna_file": ("mirna", "mir"),
+            },
+            validator_ids=("inspect_netzoo_inputs",),
+            min_samples=3,
+            ranking_hints=("lioness",),
+        ),
     ),
     "run_lioness_coexpression": ActionDefinition(
         "run_lioness_coexpression",
@@ -275,6 +342,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="coexpression_network",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
+        ),
+        discovery=DiscoverySpec(
+            input_roles=("expression_file",),
+            filename_hints={"expression_file": ("expression", "expr")},
+            validator_ids=("inspect_expression",),
+            min_samples=3,
+            ranking_hints=("lioness",),
         ),
     ),
     "run_condor": ActionDefinition(
@@ -294,6 +368,18 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"not_applicable"}),
         ),
+        discovery=DiscoverySpec(
+            input_roles=("network_file",),
+            filename_hints={"network_file": ("condor", "bipartite", "network")},
+            validator_ids=("inspect_condor_inputs",),
+        ),
+    ),
+    "discover_workspace_resources": ActionDefinition(
+        "discover_workspace_resources",
+        "WORKSPACE-RESOURCES",
+        required_inputs=("workspace_root",),
+        executor_fields=("workspace_root", "resource_subpath", "resource_actions"),
+        read_only=True,
     ),
     "query_context7": ActionDefinition(
         "query_context7",
@@ -310,6 +396,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
 }
 
 ACTION_NAMES = frozenset(get_args(ActionName))
+READ_ONLY_ACTIONS = frozenset(
+    action for action, definition in ACTION_DEFINITIONS.items() if definition.read_only
+)
+DISCOVERABLE_ACTIONS = tuple(
+    action for action, definition in ACTION_DEFINITIONS.items() if definition.discovery is not None
+)
 PROFILE_PREFERENCE_KEYS = frozenset(get_args(PreferenceKey))
 REQUIRED_INPUTS = {
     action: definition.required_inputs
