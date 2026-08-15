@@ -176,6 +176,30 @@ def test_ambiguous_outcome_asks_for_clarification_without_continuation():
     assert prompt.continuation_action is None
 
 
+def test_ranked_advisory_outcome_does_not_force_a_clarification_prompt():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="One advisory workflow remains after Router ranking.",
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_lioness_puma"],
+        clarification_question=None,
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="answer guidance",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt({"plan": plan.model_dump()})
+
+    assert prompt.kind == "completed"
+
+
 def test_ambiguous_hypotheses_progress_preserves_candidate_context():
     text = render_progress_summary(
         "next_step",
