@@ -11,6 +11,8 @@ from workflow_registry import (
 )
 
 from ..contracts import (
+    ContextualReplyResolution,
+    FollowUpContext,
     NextTurnPrompt,
     OUTPUT_ROLE_FIELDS,
     PlanEvaluationResult,
@@ -24,6 +26,7 @@ from ..outcomes import effective_results, terminal_failed
 
 __all__ = [
     "initial_next_turn_prompt",
+    "build_follow_up_context",
     "build_next_turn_prompt",
     "follow_up_declined",
     "render_next_turn_prompt",
@@ -73,7 +76,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text(
-                "Reply with the clarification above, or describe another NetZoo goal."
+                "Enter the requested clarification or describe another NetZoo goal."
             ),
         )
 
@@ -91,8 +94,8 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="alternative_outcome",
             question=_ui_text(
-                "Reply yes if you want the supported alternative above, or describe "
-                "another goal."
+                "State whether you want the supported alternative above, or describe "
+                "another NetZoo goal."
             ),
             alternative_action=action,
             alternative_granularity=(
@@ -110,7 +113,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="recommended_workflow",
             question=_ui_text(
-                "Reply with the clarification above, or describe another NetZoo goal."
+                "Enter the requested clarification or describe another NetZoo goal."
             ),
         )
 
@@ -123,16 +126,17 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         ]
         expected_field = required_inputs[0] if required_inputs else None
         workflow = _workflow_name(action)
-        field_hint = (
-            f" or provide the {INPUT_LABELS.get(expected_field, expected_field)} path"
+        workflow_start = (
+            f"provide the {INPUT_LABELS.get(expected_field, expected_field)} path "
+            f"to start the recommended {workflow} workflow"
             if expected_field
-            else ""
+            else f"ask to start the recommended {workflow} workflow"
         )
         return NextTurnPrompt(
             kind="recommended_workflow",
             question=_ui_text(
-                f"Would you like to continue with the recommended {workflow} workflow? "
-                f"Reply yes to start{field_hint}, or type a new request."
+                f"Enter a follow-up question, {workflow_start}, or describe another "
+                "NetZoo goal."
             ),
             continuation_action=action,
             expected_field=expected_field,
@@ -187,9 +191,34 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     return NextTurnPrompt(
         kind="completed",
         question=_ui_text(
-            "Would you like to ask a follow-up about this answer or describe another "
-            "NetZoo goal?"
+            "Enter a follow-up question or describe another NetZoo goal."
         ),
+    )
+
+
+def build_follow_up_context(
+    state: dict,
+    prompt: NextTurnPrompt,
+    prior_user_goal: str,
+) -> FollowUpContext:
+    """Build trusted conversational context without prior assistant prose."""
+    plan = WorkflowPlan.model_validate(state["plan"])
+    decision = TaskDecision.model_validate(plan.decision)
+    candidates = list(
+        dict.fromkeys(
+            decision.recommended_actions
+            or decision.matched_actions
+            or decision.hypothesis_actions
+        )
+    )
+    return FollowUpContext(
+        prior_user_goal=prior_user_goal[-4000:],
+        prompt_kind=prompt.kind,
+        prompt_question=prompt.question,
+        candidate_actions=candidates,
+        continuation_action=prompt.continuation_action,
+        expected_field=prompt.expected_field,
+        alternative_action=prompt.alternative_action,
     )
 
 
@@ -232,25 +261,17 @@ def follow_up_returns_to_main(prompt: NextTurnPrompt, answer: str) -> bool:
     }
 
 
-def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
-    """Turn a short acceptance or direct path into a resumable workflow request."""
-    stripped = answer.strip()
-    normalized = stripped.casefold()
-    affirmative = normalized in {
-        "y",
-        "yes",
-        "ok",
-        "okay",
-        "start",
-        "continue",
-        "好",
-        "好的",
-        "可以",
-        "繼續",
-        "開始",
-        "要",
-    }
-    if prompt.alternative_action and affirmative:
+def resolve_next_turn_input(
+    prompt: NextTurnPrompt,
+    resolution: ContextualReplyResolution,
+    original_reply: str,
+) -> str | None:
+    """Turn validated reply intent into a bounded scientific Router task."""
+    if resolution.kind in {"follow_up", "new_goal"}:
+        return resolution.resolved_task
+    if resolution.kind != "accept_workflow":
+        return None
+    if prompt.alternative_action:
         granularity = (
             f" CONFIRMED_GRANULARITY={prompt.alternative_granularity}."
             if prompt.alternative_granularity
@@ -262,13 +283,11 @@ def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
             "Do not execute it yet."
         )
     if not prompt.continuation_action:
-        return stripped
+        return None
+    stripped = original_reply.strip()
     looks_like_path = bool(
         re.search(r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$", stripped, flags=re.IGNORECASE)
     )
-    if not affirmative and not looks_like_path:
-        return stripped
-
     continuation = (
         f"PREVIOUS_ACTION={prompt.continuation_action}. Continue the recommended "
         f"{_workflow_name(prompt.continuation_action)} workflow. The user accepted "

@@ -333,7 +333,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("recommended LIONESS-PUMA workflow", prompt.question)
         self.assertNotIn("What NetZoo task would you like to run?", prompt.question)
 
-    def test_short_yes_continues_the_recommended_workflow(self):
+    def test_structured_acceptance_continues_the_recommended_workflow(self):
         prompt = agent.NextTurnPrompt(
             kind="recommended_workflow",
             question="Continue?",
@@ -341,7 +341,14 @@ class CapabilityGateTests(unittest.TestCase):
             expected_field="expression_file",
         )
 
-        continuation = agent.resolve_next_turn_input(prompt, "yes")
+        continuation = agent.resolve_next_turn_input(
+            prompt,
+            agent.ContextualReplyResolution(
+                kind="accept_workflow",
+                reason="Accepted the concrete workflow offer.",
+            ),
+            "sounds good",
+        )
 
         self.assertIn("PREVIOUS_ACTION=run_lioness_puma", continuation)
         self.assertIn("accepted the previous capability recommendation", continuation)
@@ -356,6 +363,10 @@ class CapabilityGateTests(unittest.TestCase):
 
         continuation = agent.resolve_next_turn_input(
             prompt,
+            agent.ContextualReplyResolution(
+                kind="accept_workflow",
+                reason="Provided the requested workflow input.",
+            ),
             "data/patient/expression.tsv",
         )
 
