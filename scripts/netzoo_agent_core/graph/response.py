@@ -76,7 +76,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         context.project_policy,
     )
     if outcome_clarification is not None:
-        return {"messages": [AIMessage(content="")]}
+        return {"messages": [AIMessage(content=outcome_clarification)]}
     capability_gap = render_capability_gap(decision, context.project_policy)
     if capability_gap is not None:
         return {"messages": [AIMessage(content=capability_gap)]}
