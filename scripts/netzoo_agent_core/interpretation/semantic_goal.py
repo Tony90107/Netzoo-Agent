@@ -7,6 +7,49 @@ from ..routing.outcome_matching import guidance_actions_for
 from workflow_registry import workflow_name
 
 
+def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) -> dict:
+    """Return compact, fact-grounded classification facts for the live CLI."""
+    outcome = decision.requested_outcome
+    if outcome is None:
+        outcome_label = "Requested outcome classified"
+    elif outcome.artifact_type == "regulatory_network" and outcome.regulator_types:
+        regulator_labels = {"tf": "TF", "mirna": "miRNA"}
+        regulators = "/".join(
+            regulator_labels.get(item, item) for item in outcome.regulator_types
+        )
+        outcome_label = f"{regulators} regulatory network"
+    else:
+        outcome_label = outcome.artifact_type.replace("_", " ")
+    workflows = [
+        workflow_name(action) for action in semantic_goal.get("candidates") or []
+    ]
+    return {
+        "kind": "classification",
+        "outcome": outcome_label,
+        "workflows": list(dict.fromkeys(workflows)),
+    }
+
+
+def next_step_progress_detail(decision: TaskDecision) -> dict:
+    """Return public next-step facts without exposing private route reasoning."""
+    if decision.clarification_question:
+        return {
+            "kind": "next_step",
+            "status": "clarification_required",
+            "question": decision.clarification_question,
+            "tool_status": "No local tool has run yet.",
+        }
+    return {
+        "kind": "next_step",
+        "status": "execution_pending" if decision.should_execute else "guidance",
+        "tool_status": (
+            "Local tool execution is pending input validation."
+            if decision.should_execute
+            else "No local tool has run yet."
+        ),
+    }
+
+
 def public_semantic_summary(semantic_goal: dict, decision: TaskDecision) -> str:
     candidates = semantic_goal.get("candidates") or []
     unresolved = semantic_goal.get("unresolved_dimensions") or []

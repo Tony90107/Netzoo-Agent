@@ -68,7 +68,15 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "tool",
         f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",
-        step.purpose,
+        {
+            "kind": "tool_activity",
+            "purpose": step.purpose,
+            "inputs": [
+                field_name
+                for field_name, value in step.arguments.items()
+                if value not in (None, "")
+            ],
+        },
     )
     record_event(
         context,

@@ -10,8 +10,10 @@ from ..contracts import (
     _trace,
     _ui_text,
 )
-from ..interpretation.semantic_goal import semantic_summary_detail
-from ..progress_summaries import render_progress_summary
+from ..interpretation.semantic_goal import (
+    classification_progress_detail,
+    next_step_progress_detail,
+)
 from ..llm import latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
@@ -25,7 +27,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "reasoning",
         "Checking registered workflow capabilities",
-        "I am comparing the requested outcome with registered workflows and their input requirements.",
+        "Checking registered workflows.",
     )
     user_task = latest_user_task(state["messages"])
     current_usage = state.get("token_usage")
@@ -47,21 +49,12 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "intent",
         f"Classified as {decision.action}",
-        semantic_summary_detail(routing_state["semantic_goal"], decision),
+        classification_progress_detail(routing_state["semantic_goal"], decision),
     )
     _trace(
         "reasoning",
         "Choosing the next safe step",
-        render_progress_summary(
-            "next_step",
-            {
-                "action": decision.action,
-                "in_scope": str(decision.in_scope).lower(),
-                "should_execute": str(decision.should_execute).lower(),
-                "capability_match_status": decision.capability_match_status or "",
-                "hypothesis_count": str(len(decision.hypothesis_actions)),
-            },
-        ),
+        next_step_progress_detail(decision),
     )
     record_event(
         context,
