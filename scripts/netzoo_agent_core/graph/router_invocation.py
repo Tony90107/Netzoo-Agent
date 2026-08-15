@@ -103,7 +103,7 @@ def _invoke_repair_once(
         _trace(
             "router",
             "Router classification started",
-            {"kind": "router_activity", "status": "started"},
+            {"kind": "router_activity", "operation": "router_repair", "status": "started"},
         )
         structured = context.router.invoke(messages)
         payload, raw = structured_result_payload(structured)
@@ -111,7 +111,7 @@ def _invoke_repair_once(
         _trace(
             "router",
             "Router classification completed",
-            {"kind": "router_activity", "status": "completed"},
+            {"kind": "router_activity", "operation": "router_repair", "status": "completed", "duration_ms": max(0, (time.monotonic_ns() - started_ns) // 1_000_000)},
         )
         usage = append_llm_usage(
             usage,
@@ -139,6 +139,7 @@ def _invoke_repair_once(
             status="failed",
             price_catalog=context.price_catalog,
         )
+        _trace("router", "Router classification failed", {"kind": "router_activity", "operation": "router_repair", "status": "failed", "error_type": type(error).__name__})
         _trace(
             "intent",
             "Outcome repair failed; retaining the first safe classification",
@@ -190,7 +191,7 @@ def invoke_router(
         _trace(
             "router",
             "Router classification started",
-            {"kind": "router_activity", "status": "started"},
+            {"kind": "router_activity", "operation": "router", "status": "started"},
         )
         structured = context.router.invoke(messages)
         payload, raw = structured_result_payload(structured)
@@ -198,7 +199,7 @@ def invoke_router(
         _trace(
             "router",
             "Router classification completed",
-            {"kind": "router_activity", "status": "completed"},
+            {"kind": "router_activity", "operation": "router", "status": "completed", "duration_ms": max(0, (time.monotonic_ns() - started_ns) // 1_000_000)},
         )
         usage = append_llm_usage(
             current_usage,
@@ -262,6 +263,7 @@ def invoke_router(
             status="failed",
             price_catalog=context.price_catalog,
         )
+        _trace("router", "Router classification failed", {"kind": "router_activity", "operation": "router", "status": "failed", "error_type": type(error).__name__})
         _trace(
             "intent",
             "Router provider failed; deterministic fallback selected",
