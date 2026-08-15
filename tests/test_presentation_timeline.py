@@ -87,11 +87,7 @@ def test_progress_state_marks_only_one_stage_active():
     state = presentation.ProgressState.initial()
     state.activate("match", "Matching registered workflows")
 
-    assert presentation._render_progress_state(state) == (
-        "✓ Understand request\n"
-        "● Match workflow capabilities — Matching registered workflows\n"
-        "○ Choose next step"
-    )
+    assert presentation._render_progress_state(state) == "● Matching registered workflows…"
 
 
 def test_progress_state_marks_clarification_as_attention():
@@ -100,9 +96,7 @@ def test_progress_state_marks_clarification_as_attention():
     state.complete("match")
     state.attention("next_step", "Clarification required")
 
-    assert "! Choose next step — Clarification required" in (
-        presentation._render_progress_state(state)
-    )
+    assert "? Clarification needed\n  Clarification required" == presentation._render_progress_state(state)
 
 
 def test_public_trace_events_update_task_level_stages(monkeypatch, capsys):
@@ -119,9 +113,9 @@ def test_public_trace_events_update_task_level_stages(monkeypatch, capsys):
     )
 
     output = capsys.readouterr().out
-    assert "✓ Understand request" in output
-    assert "✓ Match workflow capabilities" in output
-    assert "! Choose next step — Clarification required" in output
+    assert "● Classifying requested outcome…" in output
+    assert "● Matching registered workflows…" in output
+    assert "? Clarification needed\n  Clarification required" in output
 
 
 def test_state_machine_redraws_on_tty(monkeypatch, capsys):
@@ -131,7 +125,7 @@ def test_state_machine_redraws_on_tty(monkeypatch, capsys):
     presentation._trace("intent", "Interpreting the request and capability boundaries")
     presentation._trace("reasoning", "Checking registered workflow capabilities")
 
-    assert "\033[3A" in capsys.readouterr().out
+    assert "\033[1A" in capsys.readouterr().out
 
 
 def test_state_machine_uses_permanent_lines_on_non_tty(monkeypatch, capsys):
@@ -142,7 +136,7 @@ def test_state_machine_uses_permanent_lines_on_non_tty(monkeypatch, capsys):
 
     output = capsys.readouterr().out
     assert "\033[" not in output
-    assert "● Understand request" in output
+    assert "● Classifying requested outcome…" in output
 
 
 def test_state_machine_finalization_keeps_visible_output_and_resets_for_next_turn(
@@ -154,7 +148,7 @@ def test_state_machine_finalization_keeps_visible_output_and_resets_for_next_tur
     presentation._trace("intent", "Interpreting the request and capability boundaries")
     presentation._clear_transient_trace()
 
-    assert "● Understand request" in capsys.readouterr().out
+    assert "● Classifying requested outcome…" in capsys.readouterr().out
     assert presentation._PROGRESS_STATE is None
 
 
@@ -216,10 +210,8 @@ def test_state_machine_shows_verified_decision_facts_without_a_tool(monkeypatch,
     )
 
     output = capsys.readouterr().out
-    assert "✓ Understand request — miRNA regulatory network" in output
-    assert "✓ Match workflow capabilities — PUMA, LIONESS-PUMA" in output
-    assert "! Choose next step — Select aggregate or sample-specific" in output
-    assert "No local tool has run yet." in output
+    assert "✓ Matched workflows — PUMA, LIONESS-PUMA" in output
+    assert "? Clarification needed\n  Select aggregate or sample-specific" in output
 
 
 def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
@@ -238,8 +230,8 @@ def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
     )
 
     output = capsys.readouterr().out
-    assert "● Understand request — Calling Router to classify the requested outcome" in output
-    assert "● Match workflow capabilities — Comparing against registered workflows" in output
+    assert "● Classifying requested outcome…" in output
+    assert "● Matching registered workflows…" in output
 
 
 def test_state_machine_keeps_deduplicated_router_repair_and_match_history(monkeypatch, capsys):
@@ -255,6 +247,15 @@ def test_state_machine_keeps_deduplicated_router_repair_and_match_history(monkey
     assert "✓ Matched workflows — PUMA, LIONESS-PUMA" in output
 
 
+def test_single_stream_hides_legacy_stage_labels(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+    presentation._trace("router", "Router classification started", {"kind": "router_activity", "operation": "router", "status": "started"})
+    output = capsys.readouterr().out
+    assert "● Classifying requested outcome…" in output
+    assert "Understand request" not in output
+
+
 def test_state_machine_truncates_live_lines_to_terminal_width(monkeypatch):
     state = presentation.ProgressState.initial()
     state.activate("match", "A detail that cannot fit on a narrow terminal row")
@@ -262,7 +263,7 @@ def test_state_machine_truncates_live_lines_to_terminal_width(monkeypatch):
 
     lines = presentation._render_progress_state(state).splitlines()
 
-    assert len(lines) == 3
+    assert len(lines) == 1
     assert all(len(line) <= 32 for line in lines)
 
 
