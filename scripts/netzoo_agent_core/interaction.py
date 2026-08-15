@@ -10,8 +10,8 @@ from .cli.clarification import (
     resolve_clarification,
 )
 from .cli.follow_up import (
+    build_follow_up_context,
     build_next_turn_prompt,
-    follow_up_declined,
     follow_up_returns_to_main,
     initial_next_turn_prompt,
     render_next_turn_prompt,
@@ -27,8 +27,8 @@ __all__ = [
     "preference_confirmation_prompt",
     "preference_continuation",
     "initial_next_turn_prompt",
+    "build_follow_up_context",
     "build_next_turn_prompt",
-    "follow_up_declined",
     "render_next_turn_prompt",
     "follow_up_returns_to_main",
     "resolve_next_turn_input",

@@ -7,13 +7,15 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable
 
+from ..contracts import ReplyIntentDecision
 from ..contracts.planning import WorkflowPlan
 from ..contracts.policy import ProjectPolicySnapshot
 from ..graph import build_graph, invoke_graph_turn
-from ..llm import validate_response_model, validate_router_model
+from ..llm import build_llm, validate_response_model, validate_router_model
 from ..memory import EpisodeStore, UserProfileStore, _safe_memory_id
 from ..policy import ProjectPolicyError, ProjectPolicyLoader
 from ..presentation import _trace
+from ..pricing import PriceCatalog
 from ..session import (
     _safe_session_id,
     cleanup_runtime_storage,
@@ -26,6 +28,7 @@ from ..settings import PROJECT_ROOT, TRACE_ROOT
 from ..trace_store import LocalTraceStore
 from ..trace_sync import TraceSyncWorker
 from ..tracing import TraceRecorder
+from .reply_resolution import ContextualReplyResolver
 
 __all__: list[str] = []
 
@@ -53,6 +56,7 @@ class CliRuntime:
     app: object
     input_func: Callable[[str], str]
     invoke_graph_turn_func: Callable[[object, dict], dict]
+    reply_resolver: ContextualReplyResolver
 
 
 def bootstrap_memory(args) -> MemoryRuntime:
@@ -202,6 +206,25 @@ def bootstrap_runtime(
         timeout_seconds=args.llm_timeout,
         trace_recorder=recorder,
     )
+    reply_llm = build_llm(
+        args.router_model,
+        0.0,
+        max_output_tokens=min(args.router_max_tokens, 256),
+        timeout_seconds=args.llm_timeout,
+    )
+    reply_model = reply_llm.with_structured_output(
+        ReplyIntentDecision,
+        method="function_calling",
+        include_raw=True,
+    )
+    reply_resolver = ContextualReplyResolver(
+        reply_model,
+        model_name=args.router_model,
+        task_token_budget=args.max_task_tokens,
+        recorder=recorder,
+        price_catalog=PriceCatalog.from_environment(),
+        max_output_tokens=min(args.router_max_tokens, 256),
+    )
     return CliRuntime(
         memory=memory_runtime,
         project_policy=policy,
@@ -217,4 +240,5 @@ def bootstrap_runtime(
         app=app,
         input_func=input,
         invoke_graph_turn_func=invoke_graph_turn,
+        reply_resolver=reply_resolver,
     )

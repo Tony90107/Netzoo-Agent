@@ -25,8 +25,8 @@ INTERACTION_EXPORTS = [
     "preference_confirmation_prompt",
     "preference_continuation",
     "initial_next_turn_prompt",
+    "build_follow_up_context",
     "build_next_turn_prompt",
-    "follow_up_declined",
     "render_next_turn_prompt",
     "follow_up_returns_to_main",
     "resolve_next_turn_input",
@@ -45,7 +45,8 @@ SIGNATURES = {
     ),
     "build_next_turn_prompt": "(state: 'dict') -> 'NextTurnPrompt'",
     "resolve_next_turn_input": (
-        "(prompt: 'NextTurnPrompt', answer: 'str') -> 'str'"
+        "(prompt: 'NextTurnPrompt', resolution: 'ContextualReplyResolution', "
+        "original_reply: 'str') -> 'str | None'"
     ),
 }
 
@@ -57,6 +58,7 @@ def test_cli_is_a_package_with_responsibility_modules():
         "trace_commands",
         "clarification",
         "follow_up",
+        "reply_resolution",
         "loop",
         "main",
         "slash_commands",

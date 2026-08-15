@@ -1,5 +1,7 @@
 """Command-line parsing and interactive NetZoo application."""
 
+# ruff: noqa: F401 -- package imports expose responsibility modules intentionally.
+
 from . import (
     arguments,
     bootstrap,
@@ -8,6 +10,7 @@ from . import (
     conversation,
     follow_up,
     loop,
+    reply_resolution,
     slash_commands,
     terminal_input,
     trace_commands,
@@ -25,6 +28,7 @@ _CLI_IMPLEMENTATION_MODULES = (
     conversation,
     follow_up,
     loop,
+    reply_resolution,
     trace_commands,
 )
 
