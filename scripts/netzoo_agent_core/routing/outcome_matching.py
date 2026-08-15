@@ -230,10 +230,12 @@ def _advisory_specificity_penalty(
     )
 
 
-def _granularity_only_question(
+def has_granularity_only_ambiguity(
     hypotheses: Sequence[OutcomeHypothesis],
-) -> str | None:
-    """Identify alternatives that preserve every requested fact except granularity."""
+) -> bool:
+    """Return whether hypotheses preserve every requested fact except granularity."""
+    if not hypotheses:
+        return False
     outcomes = [item.outcome for item in hypotheses]
     granularities = {item.granularity for item in outcomes}
     signatures = {
@@ -249,10 +251,17 @@ def _granularity_only_question(
     # A partial hypothesis (unknown granularity) and explicit granularity
     # alternatives still describe the same missing choice.  Treat that as a
     # granularity question whenever no other scientific dimension changes.
-    if (
+    return (
         granularities <= {"unknown", "aggregate", "sample_specific"}
         and len(signatures) == 1
-    ):
+    )
+
+
+def _granularity_only_question(
+    hypotheses: Sequence[OutcomeHypothesis],
+) -> str | None:
+    """Return the sole clarification when only outcome granularity differs."""
+    if has_granularity_only_ambiguity(hypotheses):
         return "Should the result be aggregate or sample-specific?"
     return None
 
@@ -375,6 +384,7 @@ def apply_outcome_match(decision: TaskDecision) -> TaskDecision:
 __all__ = [
     "apply_outcome_match",
     "guidance_actions_for",
+    "has_granularity_only_ambiguity",
     "match_outcome_hypotheses",
     "match_requested_outcome",
     "named_workflow_action",
