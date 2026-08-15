@@ -69,6 +69,5 @@ class NextTurnPrompt(BaseModel):
     expected_field: str | None = None
     alternative_action: RecommendedAction | None = None
     alternative_granularity: Granularity | None = None
-    clarification_options: list[dict[str, str]] = Field(default_factory=list)
 
 __all__ = ['AgentState', 'AgentTurnInterrupted', 'ClarificationInputError', 'LLMUsage', 'NextTurnPrompt']

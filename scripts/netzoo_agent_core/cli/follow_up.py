@@ -67,23 +67,11 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         )
 
     if decision.capability_match_status == "ambiguous":
-        options = []
-        for action in semantic_candidates:
-            capability = OUTPUT_CAPABILITIES.get(action)
-            if capability is None or len(capability.granularities) != 1:
-                continue
-            granularity = next(iter(capability.granularities))
-            options.append({
-                "action": action,
-                "granularity": granularity,
-                "label": f"{'Sample-specific' if granularity == 'sample_specific' else 'Aggregate'} — {_workflow_name(action)}",
-            })
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text(
-                "Next step: Choose network granularity"
+                "Reply with the clarification above, or describe another NetZoo goal."
             ),
-            clarification_options=options,
         )
 
     if (
@@ -218,12 +206,6 @@ def render_next_turn_prompt(prompt: NextTurnPrompt) -> str:
     """Render navigation help without repeating it inside every outcome template."""
     if prompt.kind == "initial":
         return prompt.question
-    if prompt.kind == "clarify_outcome" and prompt.clarification_options:
-        lines = [prompt.question]
-        for index, option in enumerate(prompt.clarification_options, 1):
-            lines.append(f"  [{index}] {option['label']}")
-        lines.extend(["", _ui_text("Selection > ")])
-        return "\n".join(lines)
     return "\n".join(
         [
             prompt.question,
@@ -251,17 +233,6 @@ def resolve_next_turn_input(prompt: NextTurnPrompt, answer: str) -> str:
     """Turn a short acceptance or direct path into a resumable workflow request."""
     stripped = answer.strip()
     normalized = stripped.casefold()
-    if prompt.kind == "clarify_outcome" and prompt.clarification_options:
-        if stripped.isdigit():
-            index = int(stripped) - 1
-            if 0 <= index < len(prompt.clarification_options):
-                option = prompt.clarification_options[index]
-                return (
-                    f"CONFIRMED_OUTCOME_ACTION={option['action']}. "
-                    f"CONFIRMED_GRANULARITY={option['granularity']}. "
-                    "Continue the selected registered workflow outcome."
-                )
-        return stripped
     affirmative = normalized in {
         "y",
         "yes",
