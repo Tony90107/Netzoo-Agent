@@ -27,6 +27,7 @@ _TRANSIENT_TRACE_UPDATED_AT = 0.0
 _PROGRESS_STATE: "ProgressState | None" = None
 _PROGRESS_RENDERED_LINES = 0
 _PROGRESS_LAST_TEXT: str | None = None
+_COMMITTED_ACTIVITY_KEYS: set[str] = set()
 
 _PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
 _PROGRESS_STAGE_LABELS = {
@@ -126,6 +127,22 @@ def _truncate_terminal_line(text: str) -> str:
     return text[: max(1, columns - 3)].rstrip() + "..."
 
 
+def _commit_public_activity(key: str, text: str) -> None:
+    """Keep one verified public activity visible above the live status block."""
+    if key in _COMMITTED_ACTIVITY_KEYS:
+        return
+    _commit_live_progress_block()
+    print(_truncate_terminal_line(_ui_text(text)), flush=True)
+    _COMMITTED_ACTIVITY_KEYS.add(key)
+
+
+def _activity_duration(detail: dict) -> str:
+    duration_ms = detail.get("duration_ms")
+    if not isinstance(duration_ms, int):
+        return ""
+    return f" ({duration_ms / 1000:.2f}s)"
+
+
 def _apply_public_progress_event(
     state: ProgressState,
     stage: str,
@@ -134,13 +151,34 @@ def _apply_public_progress_event(
 ) -> bool:
     """Apply only recognized public graph events to the normal progress view."""
     if isinstance(detail, dict) and detail.get("kind") == "router_activity":
+        operation = str(detail.get("operation") or "router")
         if detail.get("status") == "started":
-            state.activate(
-                "understand", "Calling Router to classify the requested outcome"
+            activity = (
+                "Refining outcome classification"
+                if operation == "router_repair"
+                else "Calling Router to classify the requested outcome"
             )
+            state.activate("understand", activity)
             return True
         if detail.get("status") == "completed":
+            label = (
+                "✓ Refined outcome classification"
+                if operation == "router_repair"
+                else "✓ Called Router — classified requested outcome"
+            )
+            _commit_public_activity(
+                f"router:{operation}:completed:{detail.get('call_id', operation)}",
+                label + _activity_duration(detail),
+            )
             state.activate("understand", "Router response received")
+            return True
+        if detail.get("status") == "failed":
+            error_type = str(detail.get("error_type") or "RouterError")
+            _commit_public_activity(
+                f"router:{operation}:failed:{detail.get('call_id', operation)}",
+                f"✗ Router classification failed — {error_type}",
+            )
+            state.fail("understand", "Router call failed")
             return True
     if isinstance(detail, dict) and detail.get("kind") == "registry_activity":
         if detail.get("status") == "started":
@@ -163,6 +201,10 @@ def _apply_public_progress_event(
         state.complete("understand", outcome)
         if workflows:
             state.complete("match", ", ".join(workflows))
+            _commit_public_activity(
+                f"workflow-match:{','.join(workflows)}",
+                f"✓ Matched workflows — {', '.join(workflows)}",
+            )
         return True
     state_name = event_names.get((stage, message))
     if stage == "input" and message == "The Planner requires additional input":
@@ -218,6 +260,7 @@ def _finalize_progress_state() -> None:
     _PROGRESS_RENDERED_LINES = 0
     _PROGRESS_LAST_TEXT = None
     _PROGRESS_STATE = None
+    _COMMITTED_ACTIVITY_KEYS.clear()
 
 
 def _commit_live_progress_block() -> None:

@@ -80,6 +80,7 @@ def _enable_state_machine(monkeypatch) -> None:
     monkeypatch.setattr(presentation, "_PROGRESS_STATE", None)
     monkeypatch.setattr(presentation, "_PROGRESS_RENDERED_LINES", 0)
     monkeypatch.setattr(presentation, "_PROGRESS_LAST_TEXT", None)
+    monkeypatch.setattr(presentation, "_COMMITTED_ACTIVITY_KEYS", set())
 
 
 def test_progress_state_marks_only_one_stage_active():
@@ -239,6 +240,19 @@ def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "● Understand request — Calling Router to classify the requested outcome" in output
     assert "● Match workflow capabilities — Comparing against registered workflows" in output
+
+
+def test_state_machine_keeps_deduplicated_router_repair_and_match_history(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+    completed = {"kind": "router_activity", "operation": "router_repair", "status": "completed", "duration_ms": 6603}
+    presentation._trace("router", "Router classification completed", completed)
+    presentation._trace("router", "Router classification completed", completed)
+    presentation._trace("intent", "Classified as no_tool", {"kind": "classification", "outcome": "miRNA regulatory network", "workflows": ["PUMA", "LIONESS-PUMA"]})
+
+    output = capsys.readouterr().out
+    assert output.count("✓ Refined outcome classification (6.60s)") == 1
+    assert "✓ Matched workflows — PUMA, LIONESS-PUMA" in output
 
 
 def test_state_machine_truncates_live_lines_to_terminal_width(monkeypatch):
