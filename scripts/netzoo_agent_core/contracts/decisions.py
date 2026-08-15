@@ -4,18 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
 
 from .outcomes import CapabilityMatchStatus, OutcomeHypothesis, RequestedOutcome
-
-
-def _require_outcome_in_transport_schema(schema: dict) -> None:
-    """Require explicit Router classification without breaking internal fixtures."""
-    required = schema.setdefault("required", [])
-    if "outcome_hypotheses" not in required:
-        required.append("outcome_hypotheses")
-
 
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
@@ -25,8 +17,6 @@ class PreferenceProposal(BaseModel):
 class RouterDecision(BaseModel):
     """Small LLM-facing interface; deterministic code hydrates execution details."""
 
-    model_config = ConfigDict(json_schema_extra=_require_outcome_in_transport_schema)
-
     action: ActionName
     in_scope: bool = True
     intent_type: IntentType = "unknown"
@@ -34,11 +24,12 @@ class RouterDecision(BaseModel):
     reason: str = Field(min_length=1, max_length=300)
     semantic_goal: str | None = Field(default=None, max_length=240)
     outcome_hypotheses: list[OutcomeHypothesis] = Field(
-        min_length=1,
+        default_factory=list,
         max_length=3,
         description=(
-            "Required bounded interpretations of the scientific result. Preserve "
-            "competing interpretations instead of erasing known evidence."
+            "Bounded interpretations of the scientific result. Preserve competing "
+            "interpretations instead of erasing known evidence. An empty list "
+            "triggers one evidence-focused Router repair."
         )
     )
 

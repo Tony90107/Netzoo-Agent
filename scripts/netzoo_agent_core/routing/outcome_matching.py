@@ -230,6 +230,33 @@ def _advisory_specificity_penalty(
     )
 
 
+def _granularity_only_question(
+    hypotheses: Sequence[OutcomeHypothesis],
+) -> str | None:
+    """Identify alternatives that preserve every requested fact except granularity."""
+    outcomes = [item.outcome for item in hypotheses]
+    granularities = {item.granularity for item in outcomes}
+    signatures = {
+        (
+            item.operation,
+            item.artifact_type,
+            tuple(sorted(item.entity_types)),
+            tuple(sorted(item.regulator_types)),
+            tuple(sorted(item.target_types)),
+        )
+        for item in outcomes
+    }
+    # A partial hypothesis (unknown granularity) and explicit granularity
+    # alternatives still describe the same missing choice.  Treat that as a
+    # granularity question whenever no other scientific dimension changes.
+    if (
+        granularities <= {"unknown", "aggregate", "sample_specific"}
+        and len(signatures) == 1
+    ):
+        return "Should the result be aggregate or sample-specific?"
+    return None
+
+
 def match_outcome_hypotheses(
     hypotheses: Sequence[OutcomeHypothesis],
     capabilities: Mapping[
@@ -274,7 +301,10 @@ def match_outcome_hypotheses(
         return CapabilityMatch(
             status="ambiguous",
             hypothesis_actions=list(dict.fromkeys(top_actions)),
-            clarification_question="Which compatible network result do you mean?",
+            clarification_question=(
+                _granularity_only_question(hypotheses)
+                or "Which compatible network result do you mean?"
+            ),
         )
 
     first_outcome = hypotheses[0].outcome if hypotheses else None

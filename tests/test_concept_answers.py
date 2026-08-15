@@ -212,3 +212,24 @@ def test_tied_network_hypotheses_are_presented_without_priority():
     assert "Which network relationship" in answer
     for biased_word in ("best", "preferred", "recommended", "most likely"):
         assert biased_word not in answer.casefold()
+
+
+def test_granularity_clarification_does_not_assume_a_sample_specific_result():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="granularity is ambiguous",
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+
+    answer = render_outcome_clarification(decision, policy)
+
+    assert "more than one compatible network result" in answer
+    assert "sample-specific network family" not in answer
+    assert "Should the result be aggregate or sample-specific?" in answer

@@ -141,8 +141,8 @@ def render_outcome_clarification(
                 for label, sequence in sorted(options, key=lambda item: item[0])
             )
             return _ui_text(
-                "I can map this to more than one registered sample-specific "
-                f"network family:\n{lines}\n\n"
+                "I can map this to more than one compatible network result:\n"
+                f"{lines}\n\n"
                 f"{decision.clarification_question}\n\n"
                 "No files were inspected and no analysis ran."
             )
