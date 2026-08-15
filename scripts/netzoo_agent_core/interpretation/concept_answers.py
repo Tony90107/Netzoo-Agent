@@ -6,7 +6,10 @@ import re
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text
-from ..routing.outcome_matching import guidance_actions_for
+from ..routing.outcome_matching import (
+    guidance_actions_for,
+    has_granularity_only_ambiguity,
+)
 
 _PURPOSE_PATTERN = re.compile(
     r"\b(?:function|purpose|what\s+is|what\s+does)\b|(?:功能|用途|是什麼)",
@@ -40,18 +43,28 @@ _GRANULARITY_LABELS = {
 _ENTITY_LABELS = {"tf": "TF", "mirna": "miRNA", "gene": "gene"}
 
 
-def _requested_outcome_phrase(decision: TaskDecision) -> str:
-    outcome = decision.requested_outcome
+def _outcome_phrase(outcome, *, include_granularity: bool = True) -> str:
     if outcome is None:
         return "the requested result"
     pieces = []
-    granularity = _GRANULARITY_LABELS[outcome.granularity]
+    granularity = (
+        _GRANULARITY_LABELS[outcome.granularity] if include_granularity else ""
+    )
     if granularity:
         pieces.append(granularity)
-    if outcome.display_entities:
-        pieces.append("/".join(outcome.display_entities))
+    entities = outcome.display_entities or [
+        _ENTITY_LABELS.get(item, item)
+        for item in outcome.entity_types
+        if item != "unknown"
+    ]
+    if entities:
+        pieces.append("/".join(entities))
     pieces.append(_ARTIFACT_LABELS[outcome.artifact_type])
     return " ".join(pieces)
+
+
+def _requested_outcome_phrase(decision: TaskDecision) -> str:
+    return _outcome_phrase(decision.requested_outcome)
 
 
 def _capability_phrase(spec, decision: TaskDecision) -> str:
@@ -114,10 +127,20 @@ def render_outcome_clarification(
         action = decision.hypothesis_actions[0]
         spec = policy.workflows.get(action)
         if spec is not None:
+            granularity_ambiguous = has_granularity_only_ambiguity(
+                decision.outcome_hypotheses
+            )
             interpretation = (
-                _requested_outcome_phrase(decision)
-                if decision.requested_outcome is not None
-                else _capability_phrase(spec, decision)
+                _outcome_phrase(
+                    decision.outcome_hypotheses[0].outcome,
+                    include_granularity=False,
+                )
+                if granularity_ambiguous
+                else (
+                    _requested_outcome_phrase(decision)
+                    if decision.requested_outcome is not None
+                    else _capability_phrase(spec, decision)
+                )
             )
             return _ui_text(
                 f"It sounds like you want {interpretation}.\n\n"

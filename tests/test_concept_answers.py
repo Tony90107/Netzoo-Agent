@@ -233,3 +233,43 @@ def test_granularity_clarification_does_not_assume_a_sample_specific_result():
     assert "more than one compatible network result" in answer
     assert "sample-specific network family" not in answer
     assert "Should the result be aggregate or sample-specific?" in answer
+
+
+def test_single_compatible_workflow_does_not_assume_an_unresolved_granularity():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    unknown = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["mirna", "gene"],
+        display_entities=[],
+        regulator_types=["mirna"],
+        target_types=["gene"],
+        granularity="unknown",
+        unresolved_dimensions=["granularity"],
+    )
+    sample_specific = unknown.model_copy(
+        update={"granularity": "sample_specific", "unresolved_dimensions": []}
+    )
+    question = "Should the result be aggregate or sample-specific?"
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.8,
+        reason="granularity is unresolved",
+        capability_match_status="ambiguous",
+        requested_outcome=sample_specific,
+        outcome_hypotheses=[
+            OutcomeHypothesis(outcome=unknown, confidence=0.8),
+            OutcomeHypothesis(outcome=sample_specific, confidence=0.7),
+        ],
+        hypothesis_actions=["run_lioness_puma"],
+        clarification_question=question,
+    )
+
+    answer = render_outcome_clarification(decision, policy)
+    leading_description = answer.split(question, maxsplit=1)[0]
+
+    assert "miRNA/gene regulatory networks" in leading_description
+    assert "sample-specific" not in leading_description
