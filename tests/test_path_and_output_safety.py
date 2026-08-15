@@ -18,6 +18,49 @@ class PathAndOutputSafetyTests(unittest.TestCase):
             "/tmp/My Study/表現 matrix.tsv",
         )
 
+    def test_natural_language_data_phrases_do_not_become_file_paths(self):
+        tasks = [
+            "if i want to get sample specific mi-RNA network data, what tools do i need?",
+            "Which workflow produces network results for each patient?",
+            "Explain the expression data requirements for PUMA.",
+        ]
+        for task in tasks:
+            with self.subTest(task=task):
+                decision = agent.hydrate_router_decision(
+                    agent.TaskDecision(
+                        action="no_tool",
+                        in_scope=True,
+                        should_execute=False,
+                        intent_type="answer_question",
+                        confidence=0.9,
+                        reason="guidance",
+                    ),
+                    task,
+                )
+                self.assertIsNone(decision.network_file)
+                self.assertIsNone(decision.expression_file)
+
+    def test_explicit_network_paths_survive_hydration(self):
+        cases = [
+            ("network_file=data/network.tsv", "data/network.tsv"),
+            ("network: data/network.tsv", "data/network.tsv"),
+            ("use data/network.tsv as the network", "data/network.tsv"),
+        ]
+        for task, expected in cases:
+            with self.subTest(task=task):
+                decision = agent.hydrate_router_decision(
+                    agent.TaskDecision(
+                        action="no_tool",
+                        in_scope=True,
+                        should_execute=False,
+                        intent_type="answer_question",
+                        confidence=0.9,
+                        reason="guidance",
+                    ),
+                    task,
+                )
+                self.assertEqual(decision.network_file, expected)
+
     def test_lioness_output_roles_must_be_distinct(self):
         task = (
             "run LIONESS coexpression with expression_file=expression.tsv "
