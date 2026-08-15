@@ -230,7 +230,10 @@ def parse_args() -> argparse.Namespace:
     display_group.add_argument(
         "--timeline",
         action="store_true",
-        help="Show concise permanent activity blocks before the final answer.",
+        help=(
+            "Use concise permanent activity blocks instead of the default live "
+            "state-machine progress display."
+        ),
     )
     display_group.add_argument(
         "--verbose",

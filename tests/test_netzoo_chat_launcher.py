@@ -20,10 +20,11 @@ class NetZooChatLauncherTests(unittest.TestCase):
         self.assertNotIn("network-zoo-panda-puma", compose)
         self.assertIn("project: netzoo_agent", policy)
 
-    def test_launcher_selects_timeline_mode_by_default(self):
+    def test_launcher_uses_default_state_machine_mode(self):
         source = LAUNCHER.read_text()
 
-        self.assertIn('scripts/netzoo_agent.py --timeline "$@"', source)
+        self.assertIn('scripts/netzoo_agent.py "$@"', source)
+        self.assertNotIn("--timeline", source)
         self.assertNotIn("--transient-trace", source)
 
     def test_launcher_supplies_ephemeral_observer_secrets_to_compose(self):
