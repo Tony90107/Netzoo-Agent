@@ -24,11 +24,6 @@ __all__: list[str] = []
 
 def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
-    _trace(
-        "reasoning",
-        "Checking registered workflow capabilities",
-        "Checking registered workflows.",
-    )
     user_task = latest_user_task(state["messages"])
     current_usage = state.get("token_usage")
     invocation = invoke_router(context, state, user_task)

@@ -100,9 +100,19 @@ def _invoke_repair_once(
 
     started_ns = time.monotonic_ns()
     try:
+        _trace(
+            "router",
+            "Router classification started",
+            {"kind": "router_activity", "status": "started"},
+        )
         structured = context.router.invoke(messages)
         payload, raw = structured_result_payload(structured)
         decision = RouterDecision.model_validate(payload)
+        _trace(
+            "router",
+            "Router classification completed",
+            {"kind": "router_activity", "status": "completed"},
+        )
         usage = append_llm_usage(
             usage,
             role="router_repair",
@@ -177,9 +187,19 @@ def invoke_router(
 
     started_ns = time.monotonic_ns()
     try:
+        _trace(
+            "router",
+            "Router classification started",
+            {"kind": "router_activity", "status": "started"},
+        )
         structured = context.router.invoke(messages)
         payload, raw = structured_result_payload(structured)
         router_decision = RouterDecision.model_validate(payload)
+        _trace(
+            "router",
+            "Router classification completed",
+            {"kind": "router_activity", "status": "completed"},
+        )
         usage = append_llm_usage(
             current_usage,
             role="router",
@@ -201,6 +221,11 @@ def invoke_router(
                 budget_warnings=budget_warnings,
             )
         hydrated = hydrate_router_decision(router_decision, user_task)
+        _trace(
+            "reasoning",
+            "Checking registered workflow capabilities",
+            {"kind": "registry_activity", "status": "started"},
+        )
         decision = repair_router_decision(hydrated, user_task)
         return _RouterInvocation(
             decision=decision,

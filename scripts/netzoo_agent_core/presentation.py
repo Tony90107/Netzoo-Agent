@@ -133,6 +133,20 @@ def _apply_public_progress_event(
     detail: str | dict | None = None,
 ) -> bool:
     """Apply only recognized public graph events to the normal progress view."""
+    if isinstance(detail, dict) and detail.get("kind") == "router_activity":
+        if detail.get("status") == "started":
+            state.activate(
+                "understand", "Calling Router to classify the requested outcome"
+            )
+            return True
+        if detail.get("status") == "completed":
+            state.activate("understand", "Router response received")
+            return True
+    if isinstance(detail, dict) and detail.get("kind") == "registry_activity":
+        if detail.get("status") == "started":
+            state.complete("understand", "Router response received")
+            state.activate("match", "Comparing against registered workflows")
+            return True
     event_names = {
         ("intent", "Interpreting the request and capability boundaries"): "understand",
         ("reasoning", "Checking registered workflow capabilities"): "match",
