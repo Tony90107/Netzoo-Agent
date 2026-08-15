@@ -458,6 +458,17 @@ class CapabilityGateTests(unittest.TestCase):
 
         self.assertEqual(agent.strip_cli_owned_follow_up_question(response), response)
 
+    def test_response_cleanup_removes_cli_owned_status_and_declarative_cta(self):
+        response = (
+            "Use PUMA followed by LIONESS-PUMA.\n\n"
+            "No tools were executed, and no files were inspected.\n\n"
+            "If you need to start, provide the required files."
+        )
+
+        cleaned = agent.strip_cli_owned_follow_up_question(response)
+
+        self.assertEqual(cleaned, "Use PUMA followed by LIONESS-PUMA.")
+
     def test_rejected_plan_gets_revision_follow_up(self):
         decision = self.decision()
         plan = agent.WorkflowPlan(

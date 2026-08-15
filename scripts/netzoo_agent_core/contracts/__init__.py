@@ -60,6 +60,7 @@ from .interaction import (  # noqa: F401 -- direct imports without widening __al
     FollowUpContext,
     ReplyIntent,
     ReplyIntentDecision,
+    WorkflowConversationFact,
 )
 from .memory import Episode, UserProfile
 from .outcomes import (

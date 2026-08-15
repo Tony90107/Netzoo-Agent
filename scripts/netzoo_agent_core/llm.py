@@ -48,7 +48,8 @@ def build_routing_prompt(project_policy: ProjectPolicySnapshot) -> str:
     return f"""
 You route one latest user request for a narrowly scoped Network Zoo agent.
 Return only the RouterDecision structure. Interpret any user language, but write
-the reason in English. Do not extract paths, preferences, or missing inputs;
+the reason in English. Keep reason under 500 characters. Do not extract paths,
+preferences, or missing inputs;
 deterministic code handles those details.
 
 Validated run-workflow catalog:
