@@ -3155,6 +3155,123 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
     @unittest.skipIf(
         agent.StateGraph is None, "LangGraph runtime is available in Docker"
     )
+    def test_explicit_sample_specific_guidance_reaches_response_llm(
+        self, build_llm
+    ):
+        motivating_request = (
+            "if i want to get sample specific mi-RNA network data,what tools do i need?"
+        )
+        captured = []
+
+        def hypothesis(granularity, confidence, assumption):
+            return agent.OutcomeHypothesis(
+                outcome=agent.RequestedOutcome(
+                    operation="infer",
+                    artifact_type="regulatory_network",
+                    entity_types=["tf", "mirna", "gene"],
+                    display_entities=["TF", "miRNA", "gene"],
+                    regulator_types=["mirna"],
+                    target_types=["gene"],
+                    granularity=granularity,
+                    unresolved_dimensions=[],
+                ),
+                confidence=confidence,
+                evidence=[
+                    agent.OutcomeEvidence(
+                        dimension="operation",
+                        value="infer",
+                        source="explicit",
+                        rationale="The user asks which tools produce the network.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="artifact_type",
+                        value="regulatory_network",
+                        source="explicit",
+                        rationale="The requested object is a miRNA network.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="granularity",
+                        value=granularity,
+                        source="explicit",
+                        rationale="The Router supplied this granularity.",
+                    ),
+                ],
+                assumptions=[assumption],
+            )
+
+        class AmbiguousRouter:
+            def invoke(self, _messages):
+                return agent.RouterDecision(
+                    action="no_tool",
+                    in_scope=True,
+                    intent_type="answer_question",
+                    confidence=0.9,
+                    reason="Two typed hypotheses were returned.",
+                    outcome_hypotheses=[
+                        hypothesis(
+                            "sample_specific",
+                            0.9,
+                            "The user has not supplied input files yet.",
+                        ),
+                        hypothesis(
+                            "aggregate",
+                            0.8,
+                            "Aggregate output may also be useful.",
+                        ),
+                    ],
+                )
+
+        class RouterProvider:
+            def with_structured_output(self, *_args, **_kwargs):
+                return AmbiguousRouter()
+
+        class GuidanceResponse:
+            def invoke(self, messages):
+                captured.extend(messages)
+                return agent.AIMessage(
+                    content=(
+                        "Use PUMA to build the aggregate regulatory network, then "
+                        "LIONESS-PUMA to estimate one network per sample.\n\n"
+                        "No files were inspected and no analysis ran."
+                    )
+                )
+
+        build_llm.side_effect = [RouterProvider(), GuidanceResponse()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+            )
+            result = app.invoke(
+                {"messages": [agent.HumanMessage(content=motivating_request)]}
+            )
+
+        self.assertEqual(
+            result["decision"]["capability_match_status"], "ambiguous"
+        )
+        self.assertEqual(result["decision"]["action"], "no_tool")
+        self.assertEqual(result["tool_results"], [])
+        self.assertIn("PUMA", result["messages"][-1].content)
+        self.assertNotIn(
+            "aggregate or sample-specific",
+            result["messages"][-1].content,
+        )
+        self.assertEqual(
+            [call["role"] for call in result["token_usage"]["calls"]],
+            ["router", "response"],
+        )
+        trusted_input = "\n".join(str(message.content) for message in captured)
+        self.assertIn(motivating_request, trusted_input)
+        self.assertIn('"action": "run_puma"', trusted_input)
+        self.assertIn('"action": "run_lioness_puma"', trusted_input)
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
     def test_graph_runs_plan_execute_evaluate_loop(self, build_llm):
         build_llm.return_value = self.FakeLLM()
         with tempfile.TemporaryDirectory() as tmp:

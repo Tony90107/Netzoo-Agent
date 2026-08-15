@@ -119,6 +119,20 @@ class SequencedHypothesisRouter:
         raise AssertionError("semantic Router repair must run at most once")
 
 
+class GuidanceResponseLLM:
+    def __init__(self):
+        self.calls = 0
+
+    def invoke(self, _messages):
+        self.calls += 1
+        return legacy_agent.AIMessage(
+            content=(
+                "Use PUMA followed by LIONESS-PUMA for sample-specific miRNA "
+                "regulatory networks. No files were inspected and no analysis ran."
+            )
+        )
+
+
 def test_session_retains_the_trace_run_id_without_changing_legacy_load_shape(
     tmp_path: Path,
     monkeypatch,
@@ -245,10 +259,12 @@ def test_graph_repairs_an_underclassified_outcome_once(tmp_path: Path, monkeypat
     monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
     monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
     router = SequencedHypothesisRouter()
+    response_llm = GuidanceResponseLLM()
+    models = iter([router, response_llm])
     monkeypatch.setattr(
         graph_module,
         "build_llm",
-        lambda *_args, **_kwargs: router,
+        lambda *_args, **_kwargs: next(models),
     )
     store = LocalTraceStore(tmp_path / "traces")
     recorder = TraceRecorder(store)
@@ -277,9 +293,11 @@ def test_graph_repairs_an_underclassified_outcome_once(tmp_path: Path, monkeypat
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+    assert response_llm.calls == 1
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "router",
         "router_repair",
+        "response",
     ]
     assert (
         sum(event.event_type == "routing.underclassified" for event in events) == 1

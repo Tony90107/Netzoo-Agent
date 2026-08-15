@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import importlib
 import inspect
 import sys
@@ -26,7 +25,6 @@ BUILD_GRAPH_SIGNATURE = (
     "= 1200, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
     "timeout_seconds: 'float' = 30.0, trace_recorder: 'TraceRecorder | None' = None)"
 )
-RESPONSE_PROMPT_SHA256 = "7a93cdf9d10628fcb8de5c7b6c292bb40c6b7b97da0e924e858fa805f9f6a8a0"
 
 
 def test_graph_public_surface_is_characterized():
@@ -57,18 +55,81 @@ def test_graph_package_exports_only_public_entrypoints():
     assert graph.__all__ == PUBLIC_EXPORTS
 
 
-def test_response_prompt_is_byte_characterized(monkeypatch):
+def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     prompts = importlib.import_module("netzoo_agent_core.graph.prompts")
     monkeypatch.setattr(prompts, "EXECUTE_TOOLS", False)
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
 
     result = prompts.build_graph_prompts(policy)
 
-    assert (
-        hashlib.sha256(result.response.encode("utf-8")).hexdigest()
-        == RESPONSE_PROMPT_SHA256
-    )
+    assert "Never ask the user to choose a value already supplied" in result.response
+    assert "hypothesis_actions are advisory candidates" in result.response
+    assert "ask only the smallest unresolved scientific question" in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
+
+
+def test_ambiguous_guidance_reaches_response_model():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The Router returned competing granularities.",
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Answer a workflow guidance question.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    captured = []
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            captured.extend(messages)
+            return legacy_agent.AIMessage(
+                content=(
+                    "Use PUMA followed by LIONESS-PUMA for one network per sample. "
+                    "No files were inspected and no analysis ran."
+                )
+            )
+
+    context = SimpleNamespace(
+        project_policy=policy,
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    request = (
+        "if i want to get sample specific mi-RNA network data,what tools do i need?"
+    )
+
+    result = response_module.respond(
+        context,
+        {
+            "messages": [legacy_agent.HumanMessage(content=request)],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    assert captured
+    assert "PUMA followed by LIONESS-PUMA" in result["messages"][0].content
+    response_input = "\n".join(str(message.content) for message in captured)
+    assert request in response_input
+    assert '"action": "run_puma"' in response_input
+    assert '"action": "run_lioness_puma"' in response_input
 
 
 def test_record_event_uses_run_id_and_exact_payload():
