@@ -377,7 +377,7 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
     """Emit auditable progress summaries without exposing hidden chain-of-thought."""
     if not TRACE_ENABLED:
         return
-    if PRESENTATION_MODE == "state_machine":
+    if PRESENTATION_MODE == "state_machine" and not TRANSIENT_TRACE:
         global _PROGRESS_STATE
         if _PROGRESS_STATE is None:
             _PROGRESS_STATE = ProgressState.initial()
@@ -399,6 +399,7 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
             print(_render_tool_activity(action, status, detail), flush=True)
             _render_or_update_progress_state(_PROGRESS_STATE)
             return
+        return
     if PRESENTATION_MODE == "timeline":
         block = _render_timeline_block(stage, message, detail)
         if block:

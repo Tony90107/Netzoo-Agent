@@ -21,6 +21,8 @@ def run_cli(args) -> int:
         else "timeline"
         if args.timeline
         else "compact"
+        if args.transient_trace
+        else "state_machine"
     )
     configure_runtime(
         EXECUTE_TOOLS=False,

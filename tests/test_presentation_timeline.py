@@ -46,6 +46,29 @@ def test_run_cli_selects_timeline_without_transient_output(monkeypatch):
     assert captured["TRANSIENT_TRACE"] is False
 
 
+def test_run_cli_uses_state_machine_by_default(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        "netzoo_agent_core.cli.loop.configure_runtime",
+        lambda **values: captured.update(values),
+    )
+    monkeypatch.setattr(
+        "netzoo_agent_core.cli.loop.handle_preflight_command",
+        lambda _args: 0,
+    )
+    args = SimpleNamespace(
+        execute=False,
+        quiet=False,
+        verbose=False,
+        timeline=False,
+        transient_trace=False,
+        tool_timeout=30.0,
+    )
+
+    assert run_cli(args) == 0
+    assert captured["PRESENTATION_MODE"] == "state_machine"
+
+
 def _enable_timeline(monkeypatch) -> None:
     monkeypatch.setattr(presentation, "TRACE_ENABLED", True)
     monkeypatch.setattr(presentation, "PRESENTATION_MODE", "timeline")
@@ -149,6 +172,15 @@ def test_tool_activity_is_permanent_and_fact_grounded(monkeypatch, capsys):
     assert "Tool: run_lioness_puma" in output
     assert "Result: Generated 80 networks" in output
     assert "✓ Run LIONESS-PUMA" in output
+
+
+def test_state_machine_suppresses_unmapped_graph_events(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace("plan", "Planner: NO-TOOL / respond_only", "private plan")
+
+    assert capsys.readouterr().out == ""
 
 
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):
