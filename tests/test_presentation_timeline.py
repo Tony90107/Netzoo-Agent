@@ -221,6 +221,26 @@ def test_state_machine_shows_verified_decision_facts_without_a_tool(monkeypatch,
     assert "No local tool has run yet." in output
 
 
+def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "router",
+        "Router classification started",
+        {"kind": "router_activity", "status": "started"},
+    )
+    presentation._trace(
+        "reasoning",
+        "Checking registered workflow capabilities",
+        {"kind": "registry_activity", "status": "started"},
+    )
+
+    output = capsys.readouterr().out
+    assert "● Understand request — Calling Router to classify the requested outcome" in output
+    assert "● Match workflow capabilities — Comparing against registered workflows" in output
+
+
 def test_state_machine_truncates_live_lines_to_terminal_width(monkeypatch):
     state = presentation.ProgressState.initial()
     state.activate("match", "A detail that cannot fit on a narrow terminal row")
