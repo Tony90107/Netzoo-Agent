@@ -23,6 +23,7 @@ from .progress_summaries import render_progress_summary
 
 _TRANSIENT_TRACE_ACTIVE = False
 _TRANSIENT_TRACE_UPDATED_AT = 0.0
+_PROGRESS_STATE: "ProgressState | None" = None
 
 _PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
 _PROGRESS_STAGE_LABELS = {
@@ -97,6 +98,26 @@ def _render_progress_state(state: ProgressState) -> str:
         suffix = f" — {stage.detail}" if stage.detail else ""
         lines.append(f"{symbols[stage.status]} {stage.label}{suffix}")
     return _ui_text("\n".join(lines))
+
+
+def _apply_public_progress_event(
+    state: ProgressState,
+    stage: str,
+    message: str,
+    detail: str | dict | None = None,
+) -> bool:
+    """Apply only recognized public graph events to the normal progress view."""
+    event_names = {
+        ("intent", "Interpreting the request and capability boundaries"): "understand",
+        ("reasoning", "Checking registered workflow capabilities"): "match",
+        ("reasoning", "Choosing the next safe step"): "next_step",
+    }
+    state_name = event_names.get((stage, message))
+    if state_name is None:
+        return False
+    rendered_detail = _bounded_timeline_detail(detail) if detail else None
+    state.activate(state_name, rendered_detail)
+    return True
 
 
 CLI_FOLLOW_UP_STARTERS = (
@@ -266,6 +287,13 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
     """Emit auditable progress summaries without exposing hidden chain-of-thought."""
     if not TRACE_ENABLED:
         return
+    if PRESENTATION_MODE == "state_machine":
+        global _PROGRESS_STATE
+        if _PROGRESS_STATE is None:
+            _PROGRESS_STATE = ProgressState.initial()
+        if _apply_public_progress_event(_PROGRESS_STATE, stage, message, detail):
+            print(_render_progress_state(_PROGRESS_STATE), flush=True)
+            return
     if PRESENTATION_MODE == "timeline":
         block = _render_timeline_block(stage, message, detail)
         if block:
