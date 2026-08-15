@@ -1,6 +1,6 @@
 """Stable typed contracts and compatibility exports for the NetZoo harness."""
 
-from . import decisions, memory, outcomes, planning, policy, results, state
+from . import decisions, interaction, memory, outcomes, planning, policy, results, state
 from ..framework_compat import (
     AIMessage, END, HumanMessage, START, StateGraph, SystemMessage, add_messages, tool,
 )
@@ -55,6 +55,12 @@ from ..settings import (
     VERBOSE_OUTPUT,
 )
 from .decisions import PreferenceProposal, RouterDecision, TaskDecision
+from .interaction import (
+    ContextualReplyResolution,
+    FollowUpContext,
+    ReplyIntent,
+    ReplyIntentDecision,
+)
 from .memory import Episode, UserProfile
 from .outcomes import (
     CapabilityMatch,
@@ -88,6 +94,7 @@ from .state import (
 
 _CONTRACT_IMPLEMENTATION_MODULES = (
     decisions,
+    interaction,
     outcomes,
     planning,
     results,
@@ -122,6 +129,9 @@ __all__ = [
     "strip_cli_owned_follow_up_question", "ArtifactValidationResult",
     "ToolExecutionResult", "AgentsPolicyHeader", "WorkflowPolicySpec",
     "WorkflowOutputCapabilitySpec",
-    "ProjectPolicySnapshot", "UserProfile", "Episode", "INPUT_ROLE_FIELDS",
+    "ProjectPolicySnapshot", "ContextualReplyResolution", "FollowUpContext",
+    "ReplyIntent", "ReplyIntentDecision", "UserProfile", "Episode", "INPUT_ROLE_FIELDS",
     "OUTPUT_ROLE_FIELDS", "PARAMETER_FIELDS", "_display_path", "_is_demo_request",
+    "AIMessage", "HumanMessage", "SystemMessage", "StateGraph", "START", "END",
+    "add_messages", "tool",
 ]
