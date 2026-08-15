@@ -69,6 +69,8 @@ def test_data_is_a_package_with_final_owners():
         "transforms",
         "preparation",
         "artifacts",
+        "resource_inventory",
+        "resource_validators",
     ):
         importlib.import_module(f"netzoo_agent_core.data.{name}")
 
@@ -129,6 +131,8 @@ def test_pure_data_owners_have_no_upward_or_framework_imports():
         "bundles",
         "paths",
         "artifacts",
+        "resource_validators",
+        "resource_inventory",
     ):
         module = importlib.import_module(f"netzoo_agent_core.data.{module_name}")
         tree = ast.parse(inspect.getsource(module))
@@ -161,6 +165,8 @@ def test_data_modules_do_not_depend_on_orchestration_or_executor():
         "bundles",
         "transforms",
         "artifacts",
+        "resource_validators",
+        "resource_inventory",
     ):
         module = importlib.import_module(f"netzoo_agent_core.data.{module_name}")
         tree = ast.parse(inspect.getsource(module))
