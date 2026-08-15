@@ -24,6 +24,8 @@ from .progress_summaries import render_progress_summary
 _TRANSIENT_TRACE_ACTIVE = False
 _TRANSIENT_TRACE_UPDATED_AT = 0.0
 _PROGRESS_STATE: "ProgressState | None" = None
+_PROGRESS_RENDERED_LINES = 0
+_PROGRESS_LAST_TEXT: str | None = None
 
 _PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
 _PROGRESS_STAGE_LABELS = {
@@ -75,10 +77,16 @@ class ProgressState:
         stage.detail = None
 
     def attention(self, name: str, detail: str) -> None:
+        index = _PROGRESS_STAGE_ORDER.index(name)
+        for earlier in _PROGRESS_STAGE_ORDER[:index]:
+            self.complete(earlier)
         self.stages[name].status = "attention"
         self.stages[name].detail = detail
 
     def fail(self, name: str, detail: str) -> None:
+        index = _PROGRESS_STAGE_ORDER.index(name)
+        for earlier in _PROGRESS_STAGE_ORDER[:index]:
+            self.complete(earlier)
         self.stages[name].status = "failed"
         self.stages[name].detail = detail
 
@@ -113,11 +121,47 @@ def _apply_public_progress_event(
         ("reasoning", "Choosing the next safe step"): "next_step",
     }
     state_name = event_names.get((stage, message))
+    if stage == "input" and message == "The Planner requires additional input":
+        state.attention("next_step", "Input required")
+        return True
     if state_name is None:
         return False
     rendered_detail = _bounded_timeline_detail(detail) if detail else None
+    if state_name == "next_step" and rendered_detail and "clarification" in (
+        rendered_detail.casefold()
+    ):
+        state.attention(state_name, rendered_detail)
+        return True
     state.activate(state_name, rendered_detail)
     return True
+
+
+def _render_or_update_progress_state(state: ProgressState) -> None:
+    """Draw the current state block in place on TTYs and safely on streams."""
+    global _PROGRESS_LAST_TEXT, _PROGRESS_RENDERED_LINES
+    rendered = _render_progress_state(state)
+    if rendered == _PROGRESS_LAST_TEXT:
+        return
+    if not sys.stdout.isatty():
+        print(rendered, flush=True)
+        _PROGRESS_LAST_TEXT = rendered
+        return
+    if _PROGRESS_RENDERED_LINES:
+        print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+        for _ in range(_PROGRESS_RENDERED_LINES):
+            print("\r\033[2K", flush=True)
+        print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+    print(rendered, flush=True)
+    _PROGRESS_RENDERED_LINES = rendered.count("\n") + 1
+    _PROGRESS_LAST_TEXT = rendered
+
+
+def _finalize_progress_state() -> None:
+    """Keep the final state visible while releasing its live redraw position."""
+    global _PROGRESS_LAST_TEXT, _PROGRESS_RENDERED_LINES, _PROGRESS_STATE
+    _PROGRESS_RENDERED_LINES = 0
+    _PROGRESS_LAST_TEXT = None
+    _PROGRESS_STATE = None
 
 
 CLI_FOLLOW_UP_STARTERS = (
@@ -266,6 +310,8 @@ def output_language_policy() -> str:
 def _clear_transient_trace() -> None:
     """Remove the temporary progress status line before printing the final answer."""
     global _TRANSIENT_TRACE_ACTIVE
+    if PRESENTATION_MODE == "state_machine":
+        _finalize_progress_state()
     if _TRANSIENT_TRACE_ACTIVE and sys.stdout.isatty():
         elapsed = time.monotonic() - _TRANSIENT_TRACE_UPDATED_AT
         if elapsed < TRANSIENT_TRACE_MIN_SECONDS:
@@ -292,7 +338,7 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
         if _PROGRESS_STATE is None:
             _PROGRESS_STATE = ProgressState.initial()
         if _apply_public_progress_event(_PROGRESS_STATE, stage, message, detail):
-            print(_render_progress_state(_PROGRESS_STATE), flush=True)
+            _render_or_update_progress_state(_PROGRESS_STATE)
             return
     if PRESENTATION_MODE == "timeline":
         block = _render_timeline_block(stage, message, detail)
