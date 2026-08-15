@@ -51,6 +51,11 @@ def _enable_timeline(monkeypatch) -> None:
     monkeypatch.setattr(presentation, "PRESENTATION_MODE", "timeline")
 
 
+def _enable_state_machine(monkeypatch) -> None:
+    monkeypatch.setattr(presentation, "TRACE_ENABLED", True)
+    monkeypatch.setattr(presentation, "PRESENTATION_MODE", "state_machine")
+
+
 def test_progress_state_marks_only_one_stage_active():
     state = presentation.ProgressState.initial()
     state.activate("match", "Matching registered workflows")
@@ -71,6 +76,25 @@ def test_progress_state_marks_clarification_as_attention():
     assert "! Choose next step — Clarification required" in (
         presentation._render_progress_state(state)
     )
+
+
+def test_public_trace_events_update_task_level_stages(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+
+    presentation._trace("intent", "Interpreting the request and capability boundaries")
+    presentation._trace(
+        "reasoning",
+        "Checking registered workflow capabilities",
+        "Matching registered workflows",
+    )
+    presentation._trace(
+        "reasoning", "Choosing the next safe step", "Clarification required"
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Understand request" in output
+    assert "✓ Match workflow capabilities" in output
+    assert "● Choose next step — Clarification required" in output
 
 
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):
