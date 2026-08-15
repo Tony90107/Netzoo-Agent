@@ -27,11 +27,7 @@ from ..evaluation import (
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
-from ..interpretation.concept_answers import render_spec_backed_concept_answer
-from ..interpretation.concept_answers import render_ambiguous_workflow_guidance
 from ..interpretation.concept_answers import render_capability_gap
-from ..interpretation.concept_answers import render_outcome_clarification
-from ..interpretation.concept_answers import render_workflow_composition_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from .context import _GraphContext, preflight_budget, record_event
@@ -71,30 +67,9 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
-    outcome_clarification = render_outcome_clarification(
-        decision,
-        context.project_policy,
-    )
-    if outcome_clarification is not None:
-        return {"messages": [AIMessage(content=outcome_clarification)]}
     capability_gap = render_capability_gap(decision, context.project_policy)
     if capability_gap is not None:
         return {"messages": [AIMessage(content=capability_gap)]}
-    concept_answer = render_spec_backed_concept_answer(
-        latest_user_task(state["messages"]), decision, context.project_policy
-    )
-    if concept_answer is not None:
-        return {"messages": [AIMessage(content=concept_answer)]}
-    ambiguous_guidance = render_ambiguous_workflow_guidance(
-        decision, context.project_policy, state.get("semantic_goal")
-    )
-    if ambiguous_guidance is not None:
-        return {"messages": [AIMessage(content=ambiguous_guidance)]}
-    composition_guidance = render_workflow_composition_guidance(
-        decision, context.project_policy, state.get("semantic_goal")
-    )
-    if composition_guidance is not None:
-        return {"messages": [AIMessage(content=composition_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
@@ -118,17 +93,29 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     trusted_results = [
         item.model_dump(exclude={"raw_output"}) for item in structured_results
     ]
+    relevant_actions = list(
+        dict.fromkeys(
+            [
+                *decision.matched_actions,
+                *decision.hypothesis_actions,
+                *decision.recommended_actions,
+                *decision.alternative_actions,
+            ]
+        )
+    )
     relevant_specs = []
-    for action in decision.recommended_actions:
+    for action in relevant_actions:
         spec = context.project_policy.workflows.get(action)
         if spec is None:
             continue
         relevant_specs.append(
             {
                 "action": action,
+                "workflow": spec.workflow,
                 "description": spec.description,
                 "required_inputs": spec.required_inputs,
                 "optional_inputs": spec.optional_inputs,
+                "output_capability": spec.output_capability.model_dump(),
             }
         )
     trusted_context = (
