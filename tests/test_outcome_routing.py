@@ -302,6 +302,30 @@ def test_hypotheses_that_differ_only_by_granularity_ask_that_dimension():
     )
 
 
+def test_higher_confidence_hypothesis_does_not_preserve_a_lower_ranked_choice():
+    aggregate = mirna_network_outcome().model_copy(
+        update={"granularity": "aggregate"}
+    )
+    result = match_outcome_hypotheses(
+        [
+            hypothesis(
+                outcome=mirna_network_outcome(),
+                confidence=0.9,
+                assumptions=["Input files have not been supplied yet."],
+            ),
+            hypothesis(
+                outcome=aggregate,
+                confidence=0.8,
+                assumptions=["Aggregate output may also be useful."],
+            ),
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert result.hypothesis_actions == ["run_lioness_puma"]
+    assert result.clarification_question is None
+
+
 def test_partial_and_sample_specific_hypotheses_still_ask_only_for_granularity():
     partial = mirna_network_outcome().model_copy(
         update={"granularity": "unknown", "unresolved_dimensions": ["granularity"]}

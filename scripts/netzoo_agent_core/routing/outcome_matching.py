@@ -274,7 +274,7 @@ def match_outcome_hypotheses(
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     exact: list[RecommendedAction] = []
-    advisory: list[tuple[int, int, int, RecommendedAction]] = []
+    advisory: list[tuple[int, float, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
         strict = match_requested_outcome(hypothesis.outcome, capabilities)
         if not hypothesis.assumptions and strict.status == "exact":
@@ -285,6 +285,7 @@ def match_outcome_hypotheses(
                 advisory.append(
                     (
                         score,
+                        hypothesis.confidence,
                         -_advisory_specificity_penalty(
                             hypothesis.outcome,
                             capability,
@@ -298,21 +299,26 @@ def match_outcome_hypotheses(
     if len(unique_exact) == 1:
         return CapabilityMatch(status="exact", matched_actions=unique_exact)
     if advisory:
-        top_score = max(item[:2] for item in advisory)
+        top_score = max(item[:3] for item in advisory)
         top_actions = [
             action
-            for evidence_score, specificity_score, _, action in sorted(
+            for evidence_score, confidence, specificity_score, _, action in sorted(
                 advisory,
-                key=lambda item: item[2],
+                key=lambda item: item[3],
             )
-            if (evidence_score, specificity_score) == top_score
+            if (evidence_score, confidence, specificity_score) == top_score
         ]
+        unique_top_actions = list(dict.fromkeys(top_actions))
         return CapabilityMatch(
             status="ambiguous",
-            hypothesis_actions=list(dict.fromkeys(top_actions)),
+            hypothesis_actions=unique_top_actions,
             clarification_question=(
-                _granularity_only_question(hypotheses)
-                or "Which compatible network result do you mean?"
+                (
+                    _granularity_only_question(hypotheses)
+                    or "Which compatible network result do you mean?"
+                )
+                if len(unique_top_actions) > 1
+                else None
             ),
         )
 

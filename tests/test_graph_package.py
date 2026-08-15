@@ -65,6 +65,10 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "Never ask the user to choose a value already supplied" in result.response
     assert "hypothesis_actions are advisory candidates" in result.response
     assert "ask only the smallest unresolved scientific question" in result.response
+    assert "Cross-check every claimed workflow output" in result.response
+    assert "Do not offer to proceed" in result.response
+    assert "Never describe an output role" in result.response
+    assert "input file" in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
 
@@ -79,8 +83,8 @@ def test_ambiguous_guidance_reaches_response_model():
         confidence=0.9,
         reason="The Router returned competing granularities.",
         capability_match_status="ambiguous",
-        hypothesis_actions=["run_puma", "run_lioness_puma"],
-        clarification_question="Should the result be aggregate or sample-specific?",
+        hypothesis_actions=["run_lioness_puma"],
+        clarification_question=None,
     )
     plan = legacy_agent.WorkflowPlan(
         workflow="NO-TOOL",
@@ -95,8 +99,7 @@ def test_ambiguous_guidance_reaches_response_model():
             captured.extend(messages)
             return legacy_agent.AIMessage(
                 content=(
-                    "Use PUMA followed by LIONESS-PUMA for one network per sample. "
-                    "No files were inspected and no analysis ran."
+                    "Use PUMA followed by LIONESS-PUMA for one network per sample."
                 )
             )
 
@@ -126,10 +129,20 @@ def test_ambiguous_guidance_reaches_response_model():
 
     assert captured
     assert "PUMA followed by LIONESS-PUMA" in result["messages"][0].content
+    assert result["messages"][0].content.endswith(
+        "No files were inspected and no analysis ran."
+    )
     response_input = "\n".join(str(message.content) for message in captured)
     assert request in response_input
     assert '"action": "run_puma"' in response_input
     assert '"action": "run_lioness_puma"' in response_input
+    assert '"ordered_actions"' in response_input
+    composition = response_input.split(
+        "Authoritative ordered workflow compositions:", maxsplit=1
+    )[1].split("Authoritative validated workflow specifications:", maxsplit=1)[0]
+    assert composition.index('"run_puma"') < composition.index('"run_lioness_puma"')
+    assert '"required_inputs": [' in response_input
+    assert '"output_roles": [' in response_input
 
 
 def test_record_event_uses_run_id_and_exact_payload():
@@ -336,6 +349,7 @@ def test_graph_children_remain_responsibility_sized():
         "policy_memory": 150,
         "prompts": 120,
         "response": 260,
+        "response_context": 120,
         "routing_planning": 230,
         "topology": 130,
         "transitions": 70,

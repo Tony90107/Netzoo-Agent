@@ -66,7 +66,10 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
-    if decision.capability_match_status == "ambiguous":
+    if (
+        decision.capability_match_status == "ambiguous"
+        and decision.clarification_question
+    ):
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text(
