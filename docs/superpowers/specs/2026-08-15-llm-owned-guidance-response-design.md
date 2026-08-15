@@ -111,10 +111,11 @@ interpret user meaning.
 ### Path extraction
 
 An input alias followed by an ordinary noun is not sufficient evidence of a path.
-`_extract_named_path()` must only return a value when the captured value is path-like
-or the alias is an explicit field assignment. Natural-language phrases such as
-`network data`, `miRNA network data`, and `expression data` must not populate file
-fields.
+The file-role-aware `_task_path()` layer must accept `_extract_named_path()` output
+only when the captured value is path-like or the alias is explicitly bound to a
+value. Keeping that check at `_task_path()` preserves the generic named-value parser
+used for non-file fields such as `prefix`. Natural-language phrases such as `network
+data`, `miRNA network data`, and `expression data` must not populate file fields.
 
 Existing explicit forms must continue to work, including:
 
