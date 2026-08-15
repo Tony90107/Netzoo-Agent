@@ -23,6 +23,10 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 )
 from netzoo_agent_core.cli.reply_resolution import ReplyResolutionResult  # noqa: E402
 from netzoo_agent_core.runtime import configure_runtime  # noqa: E402
+from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
+from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
+from netzoo_agent_core.settings import PROJECT_ROOT  # noqa: E402
+from netzoo_agent_core.tracing import NullTraceRecorder  # noqa: E402
 
 
 def _fake_cli_runtime(*, invoke_error, interactive_answers=(), reply_resolver=None):
@@ -83,6 +87,59 @@ def _guidance_result(goal: str) -> dict:
     }
 
 
+def _rendered_guidance_result(goal: str) -> dict:
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="Guidance requested.",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective=goal,
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            return AIMessage(
+                content=(
+                    "Use PUMA followed by LIONESS-PUMA.\n\n"
+                    "No tools were executed, and no files were inspected. "
+                    "If you need to start, provide the required files."
+                )
+            )
+
+    context = SimpleNamespace(
+        project_policy=ProjectPolicyLoader(PROJECT_ROOT).load(),
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=PriceCatalog.from_environment(),
+        recorder=NullTraceRecorder(),
+    )
+    state = {
+        "messages": [HumanMessage(content=goal)],
+        "decision": decision.model_dump(),
+        "plan": plan.model_dump(),
+        "tool_results": [],
+    }
+    response = response_module.respond(context, state)
+    return {
+        **state,
+        **response,
+        "messages": [state["messages"][0], response["messages"][0]],
+        "evaluation": None,
+    }
+
+
 def _resolved_reply(kind: str):
     resolver = Mock()
 
@@ -91,10 +148,39 @@ def _resolved_reply(kind: str):
         if kind == "follow_up":
             resolved_task = (
                 f"Previous NetZoo goal: {context.prior_user_goal}\n"
-                f"Current follow-up: {reply}"
+                f"User follow-up: {reply}"
             )
         elif kind == "new_goal":
             resolved_task = reply
+        return ReplyResolutionResult(
+            ContextualReplyResolution(
+                kind=kind,
+                resolved_task=resolved_task,
+                reason="Test resolution.",
+            ),
+            (
+                LLMUsage.model_validate(current_usage)
+                if current_usage is not None
+                else LLMUsage()
+            ),
+        )
+
+    resolver.resolve.side_effect = resolve
+    return resolver
+
+
+def _resolved_reply_sequence(*kinds: str):
+    resolver = Mock()
+    remaining = iter(kinds)
+
+    def resolve(context, reply, current_usage, run_id):
+        kind = next(remaining)
+        resolved_task = None
+        if kind == "follow_up":
+            resolved_task = (
+                f"Previous NetZoo goal: {context.prior_user_goal}\n"
+                f"User follow-up: {reply}"
+            )
         return ReplyResolutionResult(
             ContextualReplyResolution(
                 kind=kind,
@@ -492,4 +578,40 @@ def test_substantive_follow_up_reaches_graph_with_prior_goal_context():
     second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
     submitted = second_invocation["messages"][-1].content
     assert "Previous NetZoo goal:" in submitted
-    assert "Current follow-up: What format" in submitted
+    assert "User follow-up: What format" in submitted
+
+
+def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_output(
+    capsys,
+):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    goal = "Which tools produce sample-specific miRNA networks?"
+    follow_up = "What format should the motif prior use?"
+    resolver = _resolved_reply_sequence("needs_detail", "follow_up")
+    runtime = _fake_cli_runtime(
+        invoke_error=[
+            _rendered_guidance_result(goal),
+            _rendered_guidance_result(follow_up),
+        ],
+        interactive_answers=[goal, "certainly", follow_up, "exit"],
+        reply_resolver=resolver,
+    )
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert output.index("PUMA") < output.index("LIONESS-PUMA")
+    assert output.count("No files were inspected and no analysis ran.") == 2
+    assert "If you need to start" not in output
+    assert "Please enter a concrete follow-up question" in output
+    assert runtime.invoke_graph_turn_func.call_count == 2
+    assert resolver.resolve.call_count == 2
+    second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
+    submitted = second_invocation["messages"][-1].content
+    assert "Previous NetZoo goal:" in submitted
+    assert "User follow-up: What format" in submitted
+    prompts = [call.args[0] for call in runtime.input_func.call_args_list]
+    assert any("Enter a follow-up question" in prompt for prompt in prompts)
+    assert all("Reply yes" not in prompt for prompt in prompts)

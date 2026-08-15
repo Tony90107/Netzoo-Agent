@@ -130,6 +130,16 @@ def test_workflow_composition_recommends_its_final_registered_action():
     )
     assert context.candidate_actions == ["run_puma", "run_lioness_puma"]
     assert context.prior_user_goal.startswith("Which tools")
+    assert [item.workflow for item in context.candidate_workflows] == [
+        "PUMA",
+        "LIONESS-PUMA",
+    ]
+    assert "motif_file" in context.candidate_workflows[0].required_inputs
+    assert context.candidate_workflows[0].granularities == ["aggregate"]
+    assert context.candidate_workflows[1].granularities == [
+        "aggregate",
+        "sample_specific",
+    ]
 
 
 def test_unsupported_outcome_offers_alternative_without_execution_continuation():

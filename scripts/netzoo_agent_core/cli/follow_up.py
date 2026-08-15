@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from workflow_registry import (
+    ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     REQUIRED_INPUTS,
     workflow_name as _workflow_name,
@@ -18,6 +19,7 @@ from ..contracts import (
     PlanEvaluationResult,
     TaskDecision,
     ToolExecutionResult,
+    WorkflowConversationFact,
     WorkflowPlan,
     _ui_text,
 )
@@ -215,6 +217,19 @@ def build_follow_up_context(
         prompt_kind=prompt.kind,
         prompt_question=prompt.question,
         candidate_actions=candidates,
+        candidate_workflows=[
+            WorkflowConversationFact(
+                action=action,
+                workflow=ACTION_DEFINITIONS[action].workflow,
+                required_inputs=list(ACTION_DEFINITIONS[action].required_inputs),
+                granularities=sorted(
+                    OUTPUT_CAPABILITIES[action].granularities
+                    if action in OUTPUT_CAPABILITIES
+                    else ()
+                ),
+            )
+            for action in candidates
+        ],
         continuation_action=prompt.continuation_action,
         expected_field=prompt.expected_field,
         alternative_action=prompt.alternative_action,

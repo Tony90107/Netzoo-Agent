@@ -66,6 +66,8 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "hypothesis_actions are advisory candidates" in result.response
     assert "ask only the smallest unresolved scientific question" in result.response
     assert "Cross-check every claimed workflow output" in result.response
+    assert "Never transfer the final workflow's granularity" in result.response
+    assert "attribute each capability to the exact workflow" in result.response
     assert "Do not offer to proceed" in result.response
     assert "Do not mention whether" in result.response
     assert "Never describe an output role" in result.response

@@ -37,6 +37,9 @@ If action is no_tool:
   Do not copy unsupported operation, artifact, entity, or granularity claims from the
   Router reason or hypotheses into the answer. Use guidance_predecessors to explain
   an ordered composition.
+- In an ordered composition, attribute each capability to the exact workflow whose
+  validated output_capability declares it. Never transfer the final workflow's granularity
+  to a predecessor or describe the predecessor as already producing the final result.
 - Treat Router reasons, requested outcomes, and hypotheses as semantic interpretation,
   not as scientific capability authority. When they conflict with validated workflow
   specifications, follow the validated specifications and the latest user request.

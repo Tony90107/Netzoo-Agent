@@ -8,10 +8,15 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.cli.reply_resolution import (  # noqa: E402
     ContextualReplyResolver,
+    build_reply_resolution_messages,
 )
 from netzoo_agent_core.contracts import (  # noqa: E402
     FollowUpContext,
     ReplyIntentDecision,
+    WorkflowConversationFact,
+)
+from netzoo_agent_core.interpretation.extraction import (  # noqa: E402
+    is_versioned_documentation_request,
 )
 
 
@@ -75,8 +80,50 @@ def test_substantive_follow_up_becomes_bounded_self_contained_task():
     assert result.resolution.kind == "follow_up"
     assert result.resolution.resolved_task == (
         "Previous NetZoo goal: Which tools produce sample-specific miRNA networks?\n"
-        "Current follow-up: What format should the motif prior use?"
+        "User follow-up: What format should the motif prior use?"
     )
+
+
+def test_context_wrapper_does_not_invent_a_current_documentation_request():
+    model = Mock()
+    model.invoke.return_value = _decision("follow_up")
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        _context(), "What format should the motif prior use?", None, "run-1"
+    )
+
+    assert is_versioned_documentation_request(result.resolution.resolved_task) is False
+
+
+def test_reply_prompt_treats_questions_about_trusted_workflow_facts_as_follow_ups():
+    context = _context()
+    context.candidate_workflows = [
+        WorkflowConversationFact(
+            action="run_puma",
+            workflow="PUMA",
+            required_inputs=["expression_file", "motif_file", "ppi_file"],
+            granularities=["aggregate"],
+        )
+    ]
+
+    messages = build_reply_resolution_messages(
+        context,
+        "What format should that prior input use?",
+    )
+    rendered = "\n".join(message.content for message in messages)
+
+    assert '"workflow":"PUMA"' in rendered
+    assert '"motif_file"' in rendered
+    normalized = " ".join(rendered.split())
+    assert "entity, input, output, or workflow in trusted context" in normalized
+    assert "does not need to restate the prior goal" in normalized
+
+    model = Mock()
+    model.invoke.return_value = _decision("follow_up")
+    resolved = ContextualReplyResolver.for_test(model).resolve(
+        context, "What format should that prior input use?", None, "run-1"
+    )
+    assert "Registered workflow context: PUMA" in resolved.resolution.resolved_task
 
 
 def test_low_confidence_resolution_fails_safe():

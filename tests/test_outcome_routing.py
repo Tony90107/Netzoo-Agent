@@ -42,11 +42,29 @@ def test_router_schema_allows_a_repairable_empty_outcome_classification():
     assert schema["properties"]["outcome_hypotheses"]["maxItems"] == 3
 
 
+def test_router_reason_allows_bounded_repair_explanations():
+    reason = "r" * 450
+
+    decision = RouterDecision(
+        action="no_tool",
+        in_scope=True,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason=reason,
+    )
+
+    assert decision.reason == reason
+    assert RouterDecision.model_json_schema()["properties"]["reason"][
+        "maxLength"
+    ] == 600
+
+
 def test_router_budget_and_prompt_support_bounded_partial_hypotheses():
     assert DEFAULT_ROUTER_MAX_TOKENS >= 1_200
     source = inspect.getsource(build_routing_prompt)
     assert "Prefer one partial" in source
     assert "deterministic matcher will enumerate compatible" in source
+    assert "Keep reason under 500 characters" in source
 
 
 def test_router_repairs_an_omitted_outcome_hypothesis():
@@ -394,6 +412,28 @@ def test_provider_failure_preserves_explicit_named_workflow_information():
     assert decision.should_execute is False
     assert decision.matched_actions == ["run_puma"]
     assert decision.recommended_actions == ["run_puma"]
+
+
+def test_contextual_input_format_question_remains_stable_workflow_guidance():
+    raw = TaskDecision(
+        action="query_context7",
+        in_scope=True,
+        should_execute=True,
+        intent_type="answer_question",
+        confidence=0.85,
+        reason="Provider proposed documentation retrieval.",
+    )
+    task = (
+        "Previous NetZoo goal: Which tools produce sample-specific miRNA networks?\n"
+        "Registered workflow context: PUMA, LIONESS-PUMA\n"
+        "User follow-up: What format should the motif prior use?"
+    )
+
+    repaired = repair_router_decision(raw, task)
+
+    assert repaired.action == "no_tool"
+    assert repaired.should_execute is False
+    assert repaired.intent_type == "answer_question"
 
 
 @pytest.mark.parametrize(
