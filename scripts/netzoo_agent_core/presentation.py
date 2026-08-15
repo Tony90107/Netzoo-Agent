@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 import sys
 import time
 from pathlib import Path
+from typing import Literal
 
 from .settings import (
     EXECUTE_TOOLS,
@@ -21,6 +23,82 @@ from .progress_summaries import render_progress_summary
 
 _TRANSIENT_TRACE_ACTIVE = False
 _TRANSIENT_TRACE_UPDATED_AT = 0.0
+
+_PROGRESS_STAGE_ORDER = ("understand", "match", "next_step")
+_PROGRESS_STAGE_LABELS = {
+    "understand": "Understand request",
+    "match": "Match workflow capabilities",
+    "next_step": "Choose next step",
+}
+
+
+@dataclass(slots=True)
+class ProgressStage:
+    """One code-owned, user-visible stage in the normal CLI progress view."""
+
+    label: str
+    status: Literal["pending", "active", "complete", "attention", "failed"]
+    detail: str | None = None
+
+
+@dataclass(slots=True)
+class ProgressState:
+    """Small task-level state machine for public CLI progress."""
+
+    stages: dict[str, ProgressStage]
+
+    @classmethod
+    def initial(cls) -> "ProgressState":
+        return cls(
+            stages={
+                name: ProgressStage(label=label, status="pending")
+                for name, label in _PROGRESS_STAGE_LABELS.items()
+            }
+        )
+
+    def activate(self, name: str, detail: str | None = None) -> None:
+        index = _PROGRESS_STAGE_ORDER.index(name)
+        for earlier in _PROGRESS_STAGE_ORDER[:index]:
+            self.complete(earlier)
+        for stage_name, stage in self.stages.items():
+            if stage_name != name and stage.status == "active":
+                stage.status = "pending"
+                stage.detail = None
+        stage = self.stages[name]
+        stage.status = "active"
+        stage.detail = detail
+
+    def complete(self, name: str) -> None:
+        stage = self.stages[name]
+        stage.status = "complete"
+        stage.detail = None
+
+    def attention(self, name: str, detail: str) -> None:
+        self.stages[name].status = "attention"
+        self.stages[name].detail = detail
+
+    def fail(self, name: str, detail: str) -> None:
+        self.stages[name].status = "failed"
+        self.stages[name].detail = detail
+
+
+def _render_progress_state(state: ProgressState) -> str:
+    """Render the three public stages without graph internals or model reasoning."""
+    symbols = {
+        "pending": "○",
+        "active": "●",
+        "complete": "✓",
+        "attention": "!",
+        "failed": "✗",
+    }
+    lines = []
+    for name in _PROGRESS_STAGE_ORDER:
+        stage = state.stages[name]
+        suffix = f" — {stage.detail}" if stage.detail else ""
+        lines.append(f"{symbols[stage.status]} {stage.label}{suffix}")
+    return _ui_text("\n".join(lines))
+
+
 CLI_FOLLOW_UP_STARTERS = (
     "would you like", "do you want", "shall i", "shall we",
     "would you prefer", "should i",

@@ -51,6 +51,28 @@ def _enable_timeline(monkeypatch) -> None:
     monkeypatch.setattr(presentation, "PRESENTATION_MODE", "timeline")
 
 
+def test_progress_state_marks_only_one_stage_active():
+    state = presentation.ProgressState.initial()
+    state.activate("match", "Matching registered workflows")
+
+    assert presentation._render_progress_state(state) == (
+        "✓ Understand request\n"
+        "● Match workflow capabilities — Matching registered workflows\n"
+        "○ Choose next step"
+    )
+
+
+def test_progress_state_marks_clarification_as_attention():
+    state = presentation.ProgressState.initial()
+    state.complete("understand")
+    state.complete("match")
+    state.attention("next_step", "Clarification required")
+
+    assert "! Choose next step — Clarification required" in (
+        presentation._render_progress_state(state)
+    )
+
+
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):
     _enable_timeline(monkeypatch)
 
