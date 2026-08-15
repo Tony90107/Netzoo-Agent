@@ -164,6 +164,19 @@ def _finalize_progress_state() -> None:
     _PROGRESS_STATE = None
 
 
+def _commit_live_progress_block() -> None:
+    """Turn the live state block into terminal history before a tool record."""
+    global _PROGRESS_RENDERED_LINES
+    if not (_PROGRESS_LAST_TEXT and sys.stdout.isatty() and _PROGRESS_RENDERED_LINES):
+        return
+    print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+    for _ in range(_PROGRESS_RENDERED_LINES):
+        print("\r\033[2K", flush=True)
+    print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+    print(_PROGRESS_LAST_TEXT, flush=True)
+    _PROGRESS_RENDERED_LINES = 0
+
+
 CLI_FOLLOW_UP_STARTERS = (
     "would you like", "do you want", "shall i", "shall we",
     "would you prefer", "should i",
@@ -204,6 +217,37 @@ def _timeline_result_label(action: str, status: str) -> str:
     if status == "dry_run":
         return _ui_text("Command preview ready")
     return _ui_text(f"{workflow} failed")
+
+
+def _state_machine_tool_label(action: str) -> str:
+    """Return the code-owned task label for one verified tool action."""
+    if action.startswith("run_"):
+        workflow = action.removeprefix("run_").replace("_", "-").upper()
+        return _ui_text(f"Run {workflow}")
+    return _timeline_action_label(action)
+
+
+def _render_tool_activity(
+    action: str,
+    status: str | None,
+    detail: str | dict | None,
+) -> str:
+    """Render a permanent record from an already-emitted tool event only."""
+    bounded_detail = _bounded_timeline_detail(detail)
+    label = _state_machine_tool_label(action)
+    if status is None:
+        return _ui_text(
+            f"● {label}\n"
+            f"  Tool: {action}\n"
+            f"  Purpose: {bounded_detail}"
+        )
+    marker = "✓" if status in {"success", "dry_run"} else "✗"
+    result_label = label if action.startswith("run_") else _timeline_result_label(action, status)
+    return _ui_text(
+        f"{marker} {result_label}\n"
+        f"  Tool: {action}\n"
+        f"  Result: {bounded_detail}"
+    )
 
 
 def _render_timeline_block(
@@ -338,6 +382,21 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
         if _PROGRESS_STATE is None:
             _PROGRESS_STATE = ProgressState.initial()
         if _apply_public_progress_event(_PROGRESS_STATE, stage, message, detail):
+            _render_or_update_progress_state(_PROGRESS_STATE)
+            return
+        started = re.fullmatch(r"Executor \[\d+/\d+\]:\s*(\w+)", message)
+        completed = re.fullmatch(r"(\w+)\s*→\s*(success|dry_run|failed)", message)
+        if stage == "tool" and (started or completed):
+            action = started.group(1) if started else completed.group(1)
+            status = None if started else completed.group(2)
+            if status == "failed":
+                _PROGRESS_STATE.fail("next_step", "Tool failed")
+            elif status is None:
+                _PROGRESS_STATE.activate("next_step", _state_machine_tool_label(action))
+            else:
+                _PROGRESS_STATE.complete("next_step")
+            _commit_live_progress_block()
+            print(_render_tool_activity(action, status, detail), flush=True)
             _render_or_update_progress_state(_PROGRESS_STATE)
             return
     if PRESENTATION_MODE == "timeline":

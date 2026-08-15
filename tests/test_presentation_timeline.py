@@ -134,6 +134,23 @@ def test_state_machine_finalization_keeps_visible_output_and_resets_for_next_tur
     assert presentation._PROGRESS_STATE is None
 
 
+def test_tool_activity_is_permanent_and_fact_grounded(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "tool", "Executor [1/1]: run_lioness_puma", "Infer selected network"
+    )
+    presentation._trace(
+        "tool", "run_lioness_puma → success", "Generated 80 networks"
+    )
+
+    output = capsys.readouterr().out
+    assert "Tool: run_lioness_puma" in output
+    assert "Result: Generated 80 networks" in output
+    assert "✓ Run LIONESS-PUMA" in output
+
+
 def test_timeline_renders_permanent_tool_start(monkeypatch, capsys):
     _enable_timeline(monkeypatch)
 
