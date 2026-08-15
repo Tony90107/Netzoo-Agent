@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -30,13 +29,16 @@ from netzoo_agent_core.llm import (  # noqa: E402
     build_router_repair_messages,
     build_routing_prompt,
 )
+from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
+    match_outcome_hypotheses,
+)
 from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
 
 
-def test_router_schema_requires_an_explicit_outcome_classification():
+def test_router_schema_allows_a_repairable_empty_outcome_classification():
     schema = RouterDecision.model_json_schema()
 
-    assert "outcome_hypotheses" in schema["required"]
+    assert "outcome_hypotheses" not in schema["required"]
     assert schema["properties"]["outcome_hypotheses"]["maxItems"] == 3
 
 
@@ -47,18 +49,33 @@ def test_router_budget_and_prompt_support_bounded_partial_hypotheses():
     assert "deterministic matcher will enumerate compatible" in source
 
 
-def test_router_rejects_null_outcome_hypotheses_from_the_provider():
-    with pytest.raises(ValidationError, match="outcome_hypotheses"):
-        RouterDecision.model_validate(
-            {
-                "action": "no_tool",
-                "in_scope": True,
-                "intent_type": "answer_question",
-                "confidence": 0.9,
-                "reason": "provider omitted the classification",
-                "outcome_hypotheses": None,
-            }
-        )
+def test_router_repairs_an_omitted_outcome_hypothesis():
+    decision = RouterDecision.model_validate(
+        {
+            "action": "no_tool",
+            "in_scope": True,
+            "intent_type": "answer_question",
+            "confidence": 0.9,
+            "reason": "provider omitted the classification",
+        }
+    )
+
+    assert decision.outcome_hypotheses == []
+    assert needs_outcome_repair(decision.outcome_hypotheses) is True
+
+
+def test_router_repairs_an_empty_outcome_even_if_provider_marks_it_out_of_scope():
+    decision = RouterDecision.model_validate(
+        {
+            "action": "no_tool",
+            "in_scope": False,
+            "intent_type": "unknown",
+            "confidence": 0.9,
+            "reason": "provider incorrectly rejected the domain goal",
+        }
+    )
+
+    assert needs_outcome_repair(decision.outcome_hypotheses) is True
 
 
 def test_router_normalizes_a_provider_hypothesis_with_flattened_outcome_fields():
@@ -171,23 +188,8 @@ def unknown_hypothesis() -> OutcomeHypothesis:
     )
 
 
-@pytest.mark.parametrize(
-    "task",
-    [
-        "What tools can produce a sample-specific network?",
-        "哪個方法可以建立每個病人的調控網路？",
-        "How should I infer individualized co-expression edges?",
-        "Build a sample-specific regulator network for this cohort.",
-    ],
-)
-def test_scientific_tool_questions_repair_empty_classifications(task):
-    assert needs_outcome_repair(task, [unknown_hypothesis()]) is True
-
-
-def test_non_scientific_cli_question_does_not_trigger_semantic_repair():
-    assert (
-        needs_outcome_repair("How do I exit this CLI?", [unknown_hypothesis()]) is False
-    )
+def test_semantically_empty_classifications_always_get_one_repair_attempt():
+    assert needs_outcome_repair([unknown_hypothesis()]) is True
 
 
 def test_tied_hypotheses_have_no_primary_outcome():
@@ -274,6 +276,52 @@ def test_hydration_preserves_tied_hypotheses_without_primary_outcome():
 
     assert decision.requested_outcome is None
     assert len(decision.outcome_hypotheses) == 2
+
+
+def test_hypotheses_that_differ_only_by_granularity_ask_that_dimension():
+    aggregate = mirna_network_outcome().model_copy(
+        update={"granularity": "aggregate"}
+    )
+    sample_specific = mirna_network_outcome()
+    result = match_outcome_hypotheses(
+        [
+            hypothesis(
+                outcome=aggregate,
+                assumptions=["Granularity is not specified."],
+            ),
+            hypothesis(
+                outcome=sample_specific,
+                assumptions=["Granularity is not specified."],
+            ),
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert result.clarification_question == (
+        "Should the result be aggregate or sample-specific?"
+    )
+
+
+def test_partial_and_sample_specific_hypotheses_still_ask_only_for_granularity():
+    partial = mirna_network_outcome().model_copy(
+        update={"granularity": "unknown", "unresolved_dimensions": ["granularity"]}
+    )
+    result = match_outcome_hypotheses(
+        [
+            hypothesis(
+                outcome=partial,
+                assumptions=["The requested network granularity is unknown."],
+            ),
+            hypothesis(
+                assumptions=["The user may want a sample-specific network."],
+            ),
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert result.clarification_question == (
+        "Should the result be aggregate or sample-specific?"
+    )
 
 
 def test_advisory_hypothesis_cannot_authorize_execution():

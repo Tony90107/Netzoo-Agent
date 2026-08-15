@@ -2,20 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 
 from ..contracts import OutcomeHypothesis
-from ..routing import has_direct_execution_intent, is_workflow_information_request
 
 __all__ = ["needs_outcome_repair", "select_primary_hypothesis"]
-
-
-_TOOL_SELECTION_PATTERN = re.compile(
-    r"(?:\b(?:what|which).{0,40}\b(?:tools?|methods?|workflows?)\b|"
-    r"(?:哪個|哪些|什麼).{0,20}(?:工具|方法|workflow))",
-    flags=re.IGNORECASE | re.DOTALL,
-)
 
 
 def _has_usable_evidence(hypothesis: OutcomeHypothesis) -> bool:
@@ -32,18 +23,16 @@ def _has_usable_evidence(hypothesis: OutcomeHypothesis) -> bool:
 
 
 def needs_outcome_repair(
-    task: str,
     hypotheses: Sequence[OutcomeHypothesis],
 ) -> bool:
-    """Return True when a scientific request was collapsed into no usable facts."""
-    scientific_intent = bool(
-        is_workflow_information_request(task)
-        or has_direct_execution_intent(task)
-        or _TOOL_SELECTION_PATTERN.search(task)
-    )
-    return scientific_intent and not any(
-        _has_usable_evidence(item) for item in hypotheses
-    )
+    """Return True when a Router response has no usable semantic evidence.
+
+    This deliberately inspects the typed response shape, not terms in the user's
+    wording or the provider's `in_scope` flag.  Every under-classification gets
+    one bounded repair attempt; if that attempt also lacks evidence, later gates
+    keep the result at `no_tool`.
+    """
+    return not any(_has_usable_evidence(item) for item in hypotheses)
 
 
 def select_primary_hypothesis(

@@ -191,7 +191,7 @@ def invoke_router(
             duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
             price_catalog=context.price_catalog,
         )
-        if needs_outcome_repair(user_task, router_decision.outcome_hypotheses):
+        if needs_outcome_repair(router_decision.outcome_hypotheses):
             router_decision, usage, budget_warnings = _invoke_repair_once(
                 context,
                 state,
