@@ -96,22 +96,22 @@ class ProgressState:
 
 
 def _render_progress_state(state: ProgressState) -> str:
-    """Render the three public stages without graph internals or model reasoning."""
-    symbols = {
-        "pending": "○",
-        "active": "●",
-        "complete": "✓",
-        "attention": "!",
-        "failed": "✗",
-    }
-    lines = []
+    """Render only the one public activity currently in progress."""
     for name in _PROGRESS_STAGE_ORDER:
         stage = state.stages[name]
-        suffix = f" — {stage.detail}" if stage.detail else ""
-        lines.append(_truncate_terminal_line(f"{symbols[stage.status]} {stage.label}{suffix}"))
-    if state.activity:
-        lines.append(_truncate_terminal_line(f"  {state.activity}"))
-    return _ui_text("\n".join(lines))
+        if stage.status == "active":
+            if name == "understand":
+                text = "Refining outcome classification…" if "Refining" in (stage.detail or "") else "Classifying requested outcome…"
+            elif name == "match":
+                text = "Matching registered workflows…"
+            else:
+                text = "Preparing next step…"
+            return _ui_text(_truncate_terminal_line(f"● {text}"))
+        if stage.status == "attention":
+            return _ui_text("? Clarification needed\n  " + (stage.detail or "Choose the next step."))
+        if stage.status == "failed":
+            return _ui_text(_truncate_terminal_line(f"✗ {stage.detail or 'Operation failed'}"))
+    return ""
 
 
 def _terminal_columns() -> int:
@@ -239,6 +239,15 @@ def _render_or_update_progress_state(state: ProgressState) -> None:
     global _PROGRESS_LAST_TEXT, _PROGRESS_RENDERED_LINES
     rendered = _render_progress_state(state)
     if rendered == _PROGRESS_LAST_TEXT:
+        return
+    if not rendered:
+        if _PROGRESS_RENDERED_LINES and sys.stdout.isatty():
+            print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+            for _ in range(_PROGRESS_RENDERED_LINES):
+                print("\r\033[2K", flush=True)
+            print(f"\033[{_PROGRESS_RENDERED_LINES}A", end="", flush=True)
+        _PROGRESS_RENDERED_LINES = 0
+        _PROGRESS_LAST_TEXT = rendered
         return
     if not sys.stdout.isatty():
         print(rendered, flush=True)
