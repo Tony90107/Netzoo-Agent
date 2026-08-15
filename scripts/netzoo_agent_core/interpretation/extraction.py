@@ -26,8 +26,52 @@ INPUT_LABELS = {
 }
 
 
+_PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".npy"})
+
+
+def _looks_like_path(value: str) -> bool:
+    token = value.strip().rstrip(".。").casefold()
+    return token not in _PATHLIKE_SUFFIXES and bool(
+        "/" in token
+        or "\\" in token
+        or token.startswith((".", "~"))
+        or any(token.endswith(suffix) for suffix in _PATHLIKE_SUFFIXES)
+    )
+
+
+def _alias_pattern(aliases: tuple[str, ...]) -> str:
+    ordered = sorted(aliases, key=len, reverse=True)
+    return "|".join(re.escape(alias) for alias in ordered)
+
+
+def _has_explicit_file_binding(task: str, aliases: tuple[str, ...]) -> bool:
+    names = _alias_pattern(aliases)
+    return bool(
+        re.search(
+            rf"(?:{names})\s*(?:(?:是|為|=|:|：)|\b(?:at|as|is|to)\b|['\"])",
+            task,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def _reverse_named_path(task: str, aliases: tuple[str, ...]) -> str | None:
+    names = _alias_pattern(aliases)
+    match = re.search(
+        rf"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)|"
+        rf"(?P<plain>[^\s，,。；;]+))\s+(?:as|for)\s+(?:the\s+)?(?:{names})",
+        task,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    value = match.group("quoted") or match.group("plain")
+    cleaned = value.strip().rstrip(".。")
+    return cleaned if match.group("quote") or _looks_like_path(cleaned) else None
+
+
 def _task_path(task: str, field_name: str) -> str | None:
-    aliases = {
+    aliases_by_field = {
         "expression_file": ("expression_file", "expression", "表現矩陣", "表現資料"),
         "motif_file": ("motif_file", "motif", "prior", "先驗", "調控先驗"),
         "ppi_file": ("ppi_file", "ppi", "PPI"),
@@ -56,7 +100,16 @@ def _task_path(task: str, field_name: str) -> str | None:
             "輸出目錄",
         ),
     }
-    return _extract_named_path(task, aliases.get(field_name, (field_name,)))
+    aliases = aliases_by_field.get(field_name, (field_name,))
+    reversed_path = _reverse_named_path(task, aliases)
+    if reversed_path:
+        return reversed_path
+    parsed = _extract_named_path(task, aliases)
+    if parsed and (
+        _looks_like_path(parsed) or _has_explicit_file_binding(task, aliases)
+    ):
+        return parsed
+    return None
 
 
 def _mentions_unspecified_data_directory(task: str) -> bool:
