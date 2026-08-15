@@ -7,10 +7,12 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.progress_summaries import render_progress_summary  # noqa: E402
 from netzoo_agent_core.cli.follow_up import (  # noqa: E402
+    build_follow_up_context,
     build_next_turn_prompt,
     resolve_next_turn_input,
 )
 from netzoo_agent_core.contracts import (  # noqa: E402
+    ContextualReplyResolution,
     RequestedOutcome,
     TaskDecision,
     WorkflowPlan,
@@ -77,7 +79,7 @@ def test_multiple_semantic_candidates_do_not_select_one_workflow():
     assert prompt.continuation_action is None
     assert (
         prompt.question
-        == "Reply with the clarification above, or describe another NetZoo goal."
+        == "Enter the requested clarification or describe another NetZoo goal."
     )
 
 
@@ -110,6 +112,20 @@ def test_workflow_composition_recommends_its_final_registered_action():
 
     assert prompt.continuation_action == "run_lioness_puma"
     assert "recommended LIONESS-PUMA workflow" in prompt.question
+
+    context = build_follow_up_context(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "candidates": ["run_puma", "run_lioness_puma"],
+                "relationship": "composition",
+            },
+        },
+        prompt,
+        "Which tools produce sample-specific miRNA networks?",
+    )
+    assert context.candidate_actions == ["run_puma", "run_lioness_puma"]
+    assert context.prior_user_goal.startswith("Which tools")
 
 
 def test_unsupported_outcome_offers_alternative_without_execution_continuation():
@@ -146,7 +162,14 @@ def test_unsupported_outcome_offers_alternative_without_execution_continuation()
     assert prompt.kind == "alternative_outcome"
     assert prompt.continuation_action is None
     assert prompt.alternative_action == "run_lioness_puma"
-    continuation = resolve_next_turn_input(prompt, "yes")
+    continuation = resolve_next_turn_input(
+        prompt,
+        ContextualReplyResolution(
+            kind="accept_workflow",
+            reason="Accepted the supported alternative.",
+        ),
+        "sounds good",
+    )
     assert continuation.startswith("CONFIRMED_OUTCOME_ACTION=run_lioness_puma")
     assert "CONFIRMED_GRANULARITY=sample_specific" in continuation
     assert "PREVIOUS_ACTION" not in continuation
