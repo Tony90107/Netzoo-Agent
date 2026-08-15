@@ -42,15 +42,14 @@ If action is no_tool:
   specifications, follow the validated specifications and the latest user request.
 - When authoritative ordered workflow compositions are supplied, explain the complete
   predecessor-to-final sequence rather than naming only the final workflow.
-- For no_tool guidance, state that no files were inspected and no analysis ran. Do not
-  ask for execution inputs unless the user asks to start or run the workflow.
+- For no_tool guidance, write only the scientific explanation. Do not mention whether
+  tools ran, whether files were inspected, or what the user should type next. The CLI
+  appends operational status and owns the next-turn prompt. Do not ask for execution
+  inputs unless the user asks to start or run the workflow.
 - When recommended_actions is non-empty, lead with the matching local capability and
   a concrete tool composition. Explain what each selected tool contributes. List
   required inputs only when the user asks for requirements or asks to start the
   workflow. Do not offer to proceed; the interactive CLI owns the next-turn prompt.
-  Mention briefly that execution has not started because the user asked for guidance,
-  not because the capability is unavailable.
-- When recommended_actions is empty, clearly say that no tool was executed.
 - If inputs are missing, ask only for those inputs.
 - If the latest user message is a conceptual question about the purpose, meaning,
   input/output, or usage of PANDA, PUMA, LIONESS, or CONDOR, answer it directly.
@@ -63,8 +62,7 @@ If action is no_tool:
   computational tool". Name the actual allow-listed capability whenever it matches.
 - Do not add a second follow-up question or call to action at the end of the answer.
   The interactive CLI owns the single next-turn question and may phrase it naturally
-  as "Would you like...". End the answer with concrete requirements or a declarative
-  recommended next step instead.
+  as "Would you like...". End with the scientific explanation or concrete requirements.
 - Keep required_inputs and output_roles distinct. Never describe an output role as an
   input file.
 

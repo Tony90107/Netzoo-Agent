@@ -9,6 +9,7 @@ from netzoo_agent_core.progress_summaries import render_progress_summary  # noqa
 from netzoo_agent_core.cli.follow_up import (  # noqa: E402
     build_follow_up_context,
     build_next_turn_prompt,
+    render_next_turn_prompt,
     resolve_next_turn_input,
 )
 from netzoo_agent_core.contracts import (  # noqa: E402
@@ -112,6 +113,9 @@ def test_workflow_composition_recommends_its_final_registered_action():
 
     assert prompt.continuation_action == "run_lioness_puma"
     assert "recommended LIONESS-PUMA workflow" in prompt.question
+    rendered = render_next_turn_prompt(prompt)
+    assert rendered.startswith("Enter a follow-up question")
+    assert "reply yes" not in rendered.casefold()
 
     context = build_follow_up_context(
         {

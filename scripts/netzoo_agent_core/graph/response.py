@@ -17,7 +17,6 @@ from ..contracts import (
     ToolExecutionResult,
     WorkflowPlan,
     _trace,
-    strip_cli_owned_follow_up_question,
 )
 from ..evaluation import (
     render_execution_response,
@@ -30,6 +29,7 @@ from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_capability_gap
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
+from ..presentation import strip_cli_owned_guidance_tail
 from .context import _GraphContext, preflight_budget, record_event
 from .response_context import validated_workflow_context
 
@@ -215,11 +215,15 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
             "respond",
             usage.calls[-1].model_dump(mode="json"),
         )
-    cleaned_response = strip_cli_owned_follow_up_question(str(response.content))
+    cleaned_response = strip_cli_owned_guidance_tail(str(response.content))
     if decision.action == "no_tool" and not structured_results:
         status_footer = "No files were inspected and no analysis ran."
         if status_footer.casefold() not in cleaned_response.casefold():
-            cleaned_response = cleaned_response.rstrip() + f"\n\n{status_footer}"
+            cleaned_response = (
+                f"{cleaned_response.rstrip()}\n\n{status_footer}"
+                if cleaned_response.strip()
+                else status_footer
+            )
     if cleaned_response != str(response.content):
         response = AIMessage(content=cleaned_response)
     if plan.status != "needs_input":
