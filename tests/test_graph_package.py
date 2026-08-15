@@ -67,6 +67,7 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "ask only the smallest unresolved scientific question" in result.response
     assert "Cross-check every claimed workflow output" in result.response
     assert "Do not offer to proceed" in result.response
+    assert "Do not mention whether" in result.response
     assert "Never describe an output role" in result.response
     assert "input file" in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
@@ -143,6 +144,65 @@ def test_ambiguous_guidance_reaches_response_model():
     assert composition.index('"run_puma"') < composition.index('"run_lioness_puma"')
     assert '"required_inputs": [' in response_input
     assert '"output_roles": [' in response_input
+
+
+def test_guidance_response_removes_model_owned_status_and_cta_before_footer():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="Guidance requested.",
+        hypothesis_actions=["run_lioness_puma"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain sample-specific miRNA network tools.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            return legacy_agent.AIMessage(
+                content=(
+                    "Use PUMA followed by LIONESS-PUMA.\n\n"
+                    "No tools were executed, and no files were inspected. "
+                    "If you need to start, provide the required files."
+                )
+            )
+
+    context = SimpleNamespace(
+        project_policy=policy,
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    result = response_module.respond(
+        context,
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content="Which tools produce sample-specific miRNA networks?"
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    assert result["messages"][0].content == (
+        "Use PUMA followed by LIONESS-PUMA.\n\n"
+        "No files were inspected and no analysis ran."
+    )
 
 
 def test_record_event_uses_run_id_and_exact_payload():

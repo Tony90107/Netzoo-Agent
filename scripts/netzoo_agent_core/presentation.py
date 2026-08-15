@@ -632,21 +632,40 @@ def _trace(stage: str, message: str, detail: str | dict | None = None) -> None:
         # makes mode-selection prompts appear duplicated.
         return
 
+def _is_cli_owned_guidance_paragraph(paragraph: str) -> bool:
+    collapsed = re.sub(r"\s+", " ", paragraph).strip()
+    lowered = collapsed.casefold()
+    operational_status = bool(
+        re.search(
+            r"\bno (?:tools?|commands?) (?:were )?(?:executed|run)\b"
+            r"|\bno files? (?:were )?(?:inspected|read)\b"
+            r"|\bno analysis (?:was )?(?:run|performed)\b",
+            lowered,
+        )
+    )
+    conversational_cta = (
+        collapsed.endswith("?") and lowered.startswith(CLI_FOLLOW_UP_STARTERS)
+    ) or lowered.startswith(
+        (
+            "if you need to start",
+            "if you want to start",
+            "to start the workflow",
+        )
+    )
+    return operational_status or conversational_cta
+
+
+def strip_cli_owned_guidance_tail(text: str) -> str:
+    """Remove trailing operational status or navigation owned by the CLI."""
+    paragraphs = re.split(r"\n\s*\n", text.rstrip())
+    while paragraphs and _is_cli_owned_guidance_paragraph(paragraphs[-1]):
+        paragraphs.pop()
+    return "\n\n".join(paragraph.rstrip() for paragraph in paragraphs).rstrip()
+
+
 def strip_cli_owned_follow_up_question(text: str) -> str:
-    """Remove only a trailing conversational CTA that duplicates the CLI prompt."""
-    rendered = text.rstrip()
-    if "\n" not in rendered:
-        return rendered
-    boundaries = list(re.finditer(r"\n\s*\n", rendered))
-    starts = [boundaries[-1].end()] if boundaries else []
-    starts.append(rendered.rfind("\n") + 1)
-    for start in starts:
-        tail = re.sub(r"\s+", " ", rendered[start:]).strip()
-        lowered = tail.casefold()
-        if tail.endswith("?") and lowered.startswith(CLI_FOLLOW_UP_STARTERS):
-            cleaned = rendered[:start].rstrip()
-            return cleaned or rendered
-    return rendered
+    """Compatibility alias for the broader CLI-owned tail normalizer."""
+    return strip_cli_owned_guidance_tail(text)
 
 def _display_path(path: Path) -> str:
     try:
@@ -670,5 +689,6 @@ __all__ = [
     "_bounded_timeline_detail", "_timeline_action_label", "_timeline_result_label",
     "_render_timeline_block",
     "_clear_transient_trace", "_trace_line", "_trace",
-    "strip_cli_owned_follow_up_question", "_display_path", "_is_demo_request",
+    "strip_cli_owned_follow_up_question", "strip_cli_owned_guidance_tail",
+    "_display_path", "_is_demo_request",
 ]
