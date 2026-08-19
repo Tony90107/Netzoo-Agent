@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from datetime import datetime
@@ -13,6 +14,7 @@ from ..contracts import (
     TOOL_RAW_MAX_CHARS,
     TaskDecision,
     ToolExecutionResult,
+    WorkspaceResourceInventory,
     _display_path,
 )
 from ..memory import _ensure_private_directory, _write_private_text
@@ -28,6 +30,31 @@ __all__ = [
     "_diagnostic_messages",
     "structure_tool_result",
 ]
+
+
+_STRUCTURED_RESULT_SCHEMAS = {
+    "workspace_resource_inventory": WorkspaceResourceInventory,
+}
+_STRUCTURED_RESULT_MAX_CHARS = 1_000_000
+
+
+def _structured_output(raw_output: str) -> dict[str, object]:
+    if len(raw_output) > _STRUCTURED_RESULT_MAX_CHARS:
+        return {}
+    try:
+        candidate = json.loads(raw_output)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    if not isinstance(candidate, dict):
+        return {}
+    schema = candidate.get("schema")
+    contract = _STRUCTURED_RESULT_SCHEMAS.get(schema)
+    if contract is None:
+        return {}
+    try:
+        return contract.model_validate(candidate).model_dump()
+    except ValueError:
+        return {}
 
 
 def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
@@ -111,6 +138,7 @@ def structure_tool_result(
 
     status: Literal["success", "dry_run", "failed"]
     status = "failed" if failed else "dry_run" if dry_run else "success"
+    structured_output = _structured_output(raw_output) if status == "success" else {}
 
     summary = {
         "success": "The tool completed and passed structured result checks.",
@@ -167,5 +195,6 @@ def structure_tool_result(
         retryable=diagnosis.retryable if diagnosis else False,
         recovery_hint=diagnosis.recovery_action if diagnosis else None,
         log_file=log_file,
+        structured_output=structured_output,
         raw_output=bounded_output,
     )

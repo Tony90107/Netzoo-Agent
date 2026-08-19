@@ -32,6 +32,7 @@ from .data.paths import condor_artifact_paths
 
 from .tool_adapters import (
     convert_expression_to_coexpression,
+    discover_workspace_resources,
     format_expression_for_netzoo,
     inspect_netzoo_inputs,
 )
@@ -418,6 +419,7 @@ def run_condor(
 
 
 LOCAL_TOOL_EXECUTORS = {
+    "discover_workspace_resources": discover_workspace_resources,
     "inspect_inputs": inspect_netzoo_inputs,
     "inspect_condor_inputs": inspect_condor_inputs,
     "format_expression": format_expression_for_netzoo,

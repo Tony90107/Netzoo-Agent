@@ -2,13 +2,42 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from . import settings
+from .data.resource_inventory import inventory_workspace_resources
 from .data.tables import inspect_netzoo_inputs_report
 from .data.transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
 )
 from .framework_compat import tool
+from .settings import PROJECT_ROOT
+
+
+@tool
+def discover_workspace_resources(
+    workspace_root: str,
+    resource_subpath: str | None = None,
+    resource_actions: list[str] | None = None,
+) -> str:
+    """Inventory compatible input resources inside the NetZoo workspace read-only."""
+    project_root = PROJECT_ROOT.resolve()
+    requested_root = Path(workspace_root).expanduser().resolve()
+    if not requested_root.is_relative_to(project_root):
+        raise ValueError("workspace_root must remain inside the NetZoo workspace")
+    search_root = requested_root
+    if resource_subpath:
+        search_root = (requested_root / resource_subpath).resolve()
+    if not search_root.is_relative_to(requested_root) or not search_root.is_relative_to(
+        project_root
+    ):
+        raise ValueError("resource_subpath must remain beneath workspace_root")
+    inventory = inventory_workspace_resources(
+        search_root,
+        resource_actions or [],
+    )
+    return inventory.model_dump_json()
 
 
 @tool
@@ -58,6 +87,7 @@ def convert_expression_to_coexpression(
 
 
 __all__ = [
+    "discover_workspace_resources",
     "inspect_netzoo_inputs",
     "format_expression_for_netzoo",
     "convert_expression_to_coexpression",

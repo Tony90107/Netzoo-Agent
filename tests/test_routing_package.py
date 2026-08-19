@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.routing as routing  # noqa: E402
+from netzoo_agent_core.contracts import WorkspaceResourceInventory  # noqa: E402
 
 
 HISTORICAL_EXPORTS = [
@@ -117,3 +118,24 @@ def test_runtime_overrides_reach_routing_children(tmp_path: Path):
     finally:
         legacy_agent.PROJECT_ROOT = original_project_root
         legacy_agent.TOOL_LOG_ROOT = original_log_root
+
+
+def test_structured_result_preserves_inventory_payload():
+    raw = WorkspaceResourceInventory(
+        scope_root=".", visited_file_count=0
+    ).model_dump_json()
+    decision = legacy_agent.TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.95,
+        reason="Inspect workspace resources.",
+    )
+
+    result = routing.structure_tool_result(
+        "discover_workspace_resources", decision, raw
+    )
+
+    assert result.status == "success"
+    assert result.structured_output["schema"] == "workspace_resource_inventory"

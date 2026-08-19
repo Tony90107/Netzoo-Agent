@@ -15,6 +15,8 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as agent  # noqa: E402
+from netzoo_agent_core import tool_adapters  # noqa: E402
+from netzoo_agent_core.contracts import WorkspaceResourceInventory  # noqa: E402
 from netzoo_table_io import read_condor_edges  # noqa: E402
 
 
@@ -65,6 +67,21 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(agent._ui_text("Choose a workflow."), "Choose a workflow.")
         with self.assertRaises(ValueError):
             agent._ui_text("請選擇 workflow")
+
+    def test_discovery_tool_returns_typed_read_only_inventory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(tool_adapters, "PROJECT_ROOT", root):
+                raw = tool_adapters.discover_workspace_resources.invoke(
+                    {
+                        "workspace_root": str(root),
+                        "resource_subpath": None,
+                        "resource_actions": [],
+                    }
+                )
+
+        inventory = WorkspaceResourceInventory.model_validate_json(raw)
+        self.assertEqual(inventory.scope_root, ".")
 
     def test_output_language_policy_is_global_english_policy(self):
         policy = agent.output_language_policy()
