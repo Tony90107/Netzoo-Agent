@@ -7,6 +7,7 @@ from .context import _prepare_planning_context
 from .evidence import _build_evidence_ledger
 from ..contracts import (
     Episode,
+    FollowUpContext,
     ProjectPolicySnapshot,
     TaskDecision,
     UserProfile,
@@ -22,6 +23,7 @@ def build_workflow_plan(
     profile: UserProfile | dict | None = None,
     retrieved_episodes: list[Episode | dict] | None = None,
     project_policy: ProjectPolicySnapshot | dict | None = None,
+    interaction_context: FollowUpContext | dict | None = None,
 ) -> WorkflowPlan:
     """Turn intent into an evidence-backed, multi-step NetZoo workflow."""
     context_or_plan = _prepare_planning_context(
@@ -30,6 +32,7 @@ def build_workflow_plan(
         profile,
         retrieved_episodes,
         project_policy,
+        interaction_context,
     )
     if isinstance(context_or_plan, WorkflowPlan):
         return context_or_plan

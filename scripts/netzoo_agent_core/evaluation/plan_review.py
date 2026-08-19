@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from workflow_registry import (
     CODE_VALIDATION_STEPS,
     LOCAL_EXECUTION_ACTIONS,
+    DISCOVERABLE_ACTIONS,
+    READ_ONLY_ACTIONS,
     REQUIRED_INPUTS,
     RUN_ACTIONS,
     workflow_name as _workflow_name,
@@ -14,6 +17,7 @@ from workflow_registry import (
 
 from ..contracts import (
     INPUT_ROLE_FIELDS,
+    PROJECT_ROOT,
     OUTPUT_ROLE_FIELDS,
     PlanEvaluationResult,
     PlanRubricItem,
@@ -24,6 +28,7 @@ from ..contracts import (
 from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..policy import ProjectPolicyLoader
 from ..routing import validate_task_text
+from ..routing import MIN_TOOL_CONFIDENCE
 from ..data.paths import _resolve_user_path
 from .plan_rules import (
     _bundle_provenance_failures,
@@ -74,9 +79,12 @@ def evaluate_workflow_plan(
         )
 
     action = decision.action
+    read_only_action = action in READ_ONLY_ACTIONS
     recognized_action = action in REQUIRED_INPUTS and action != "no_tool"
     action_rejection = (
-        validate_task_text(user_task, action) if recognized_action else None
+        validate_task_text(user_task, action)
+        if recognized_action and not read_only_action
+        else None
     )
     continuation_authorized = bool(
         re.search(
@@ -88,9 +96,24 @@ def evaluate_workflow_plan(
     preference_authorized = "confirmed preferred workflow" in decision.reason.casefold()
     capability_ok = (
         recognized_action
-        and (not action_rejection or continuation_authorized or preference_authorized)
         and plan.workflow == _workflow_name(action)
-        and decision.intent_type != "answer_question"
+        and (
+            (
+                read_only_action
+                and decision.in_scope
+                and decision.intent_type == "inspect_input"
+                and decision.confidence >= MIN_TOOL_CONFIDENCE
+            )
+            or (
+                not read_only_action
+                and decision.intent_type != "answer_question"
+                and (
+                    not action_rejection
+                    or continuation_authorized
+                    or preference_authorized
+                )
+            )
+        )
     )
     rubric.append(
         PlanRubricItem(
@@ -141,6 +164,49 @@ def evaluate_workflow_plan(
                 detail="This read-only retrieval action does not use local dataset evidence.",
             )
         )
+
+    workspace_scope_ok = True
+    workspace_scope_detail = "This action does not inspect workspace resources."
+    if read_only_action:
+        expected_root = PROJECT_ROOT.resolve()
+        supplied_root = (
+            Path(decision.workspace_root).expanduser().resolve()
+            if decision.workspace_root
+            else None
+        )
+        search_root = (
+            (supplied_root / decision.resource_subpath).resolve()
+            if supplied_root is not None and decision.resource_subpath
+            else supplied_root
+        )
+        workspace_scope_ok = (
+            supplied_root == expected_root
+            and search_root is not None
+            and search_root.is_relative_to(expected_root)
+            and all(
+                candidate in DISCOVERABLE_ACTIONS
+                for candidate in decision.resource_actions
+            )
+        )
+        workspace_scope_detail = (
+            "Workspace root, optional subpath, and resource actions are code-owned and contained."
+            if workspace_scope_ok
+            else "Workspace discovery scope or candidate actions are not safely bound."
+        )
+    rubric.append(
+        PlanRubricItem(
+            criterion="workspace_scope_binding",
+            required=read_only_action,
+            result=(
+                "pass"
+                if read_only_action and workspace_scope_ok
+                else "fail"
+                if read_only_action
+                else "not_applicable"
+            ),
+            detail=workspace_scope_detail,
+        )
+    )
 
     provenance_failures = []
     if local_data_action:
@@ -279,7 +345,14 @@ def evaluate_workflow_plan(
     rubric.append(
         PlanRubricItem(
             criterion="output_non_overwrite",
-            result="pass" if output_safe else "fail",
+            required=not read_only_action,
+            result=(
+                "not_applicable"
+                if read_only_action
+                else "pass"
+                if output_safe
+                else "fail"
+            ),
             detail=(
                 "No planned output path overwrites a declared input path."
                 if output_safe
@@ -292,7 +365,14 @@ def evaluate_workflow_plan(
     rubric.append(
         PlanRubricItem(
             criterion="output_role_uniqueness",
-            result="pass" if not output_role_collisions else "fail",
+            required=not read_only_action,
+            result=(
+                "not_applicable"
+                if read_only_action
+                else "pass"
+                if not output_role_collisions
+                else "fail"
+            ),
             detail=(
                 "Every populated output role resolves to a distinct path."
                 if not output_role_collisions

@@ -7,6 +7,7 @@ import re
 from workflow_registry import (
     LOCAL_WORKFLOW_ACTIONS,
     OUTPUT_CAPABILITIES,
+    READ_ONLY_ACTIONS,
     REQUIRED_INPUTS,
 )
 
@@ -141,6 +142,20 @@ def _confirmed_outcome(task: str, action: str) -> RequestedOutcome:
 
 def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecision:
     """Repair under-routing while keeping execution tied to a typed exact match."""
+    if raw_decision.action in READ_ONLY_ACTIONS:
+        authorized = (
+            raw_decision.in_scope
+            and raw_decision.intent_type == "inspect_input"
+            and raw_decision.confidence >= MIN_TOOL_CONFIDENCE
+        )
+        return raw_decision.model_copy(
+            update={
+                "action": raw_decision.action if authorized else "no_tool",
+                "should_execute": authorized,
+                "missing_inputs": [],
+            }
+        )
+
     documentation_library = documentation_library_for_task(task)
     if is_versioned_documentation_request(task) and documentation_library:
         return TaskDecision(

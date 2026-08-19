@@ -1588,6 +1588,30 @@ class CapabilityGateTests(unittest.TestCase):
             all(item.result in {"pass", "not_applicable"} for item in evaluation.rubric)
         )
 
+    def test_discovery_plan_evaluation_is_read_only_not_analysis_execution(self):
+        task = "Can you inspect what compatible data is available?"
+        plan = agent.build_workflow_plan(
+            agent.TaskDecision(
+                action="discover_workspace_resources",
+                in_scope=True,
+                should_execute=True,
+                intent_type="inspect_input",
+                confidence=0.93,
+                reason="Inspect locally available resources.",
+            ),
+            task,
+        )
+
+        evaluation = agent.evaluate_workflow_plan(plan, task)
+
+        self.assertEqual(evaluation.status, "approved")
+        evidence_item = next(
+            item
+            for item in evaluation.rubric
+            if item.criterion == "required_input_evidence"
+        )
+        self.assertEqual(evidence_item.result, "not_applicable")
+
     def test_pre_execution_plan_evaluator_rejects_wrong_step_sequence(self):
         task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
         plan = agent.build_workflow_plan(self.decision(), task)

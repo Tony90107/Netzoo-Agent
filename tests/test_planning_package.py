@@ -15,10 +15,16 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.planning as planning  # noqa: E402
+from workflow_registry import DISCOVERABLE_ACTIONS  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
+    FollowUpContext,
     InputEvidence,
+    PROJECT_ROOT,
     TaskDecision,
     WorkflowPlan,
+)
+from netzoo_agent_core.interpretation.extraction import (  # noqa: E402
+    extract_workspace_subpath,
 )
 
 
@@ -42,7 +48,7 @@ PLANNING_CASES = (
             reason="Explain PANDA.",
         ),
         "Explain PANDA.",
-        "2d1cdad1cd10522e2542027cbf0613e9b7a491b20f31d406917fcb4ca0b790d0",
+        "32f495bef58e44b49d18264c51c5a308d6ad73967cb7f4a403e70c99888584d2",
     ),
     (
         "retrieval",
@@ -55,7 +61,7 @@ PLANNING_CASES = (
             web_query="current PANDA references",
         ),
         "Search the web for current PANDA references.",
-        "29731451fbdfd2dfd4e607ddc6ec9c96589462080eb77245a83718e971a3b914",
+        "ce0e0bc6389fc561fe67d1b980a16ac8bf37ba2394b2cc92d09b7cba141b2d37",
     ),
     (
         "explicit_panda",
@@ -71,7 +77,7 @@ PLANNING_CASES = (
             "motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv "
             "output_file=outputs/study/panda.tsv"
         ),
-        "b6ab21fd25ef6e53cdf3d7728df0aeaa370b023295a72560cc2a89c2c6ba34fe",
+        "55d531ad8944bd12a36cc314be2b6e781e5dde7c0fb496d349ddb0afea50d364",
     ),
 )
 
@@ -207,6 +213,61 @@ def test_context_stage_prepares_local_workflow_state():
         "ppi_file",
         "output_file",
     ]
+
+
+def test_resource_discovery_plan_uses_code_owned_scope_and_context_actions():
+    user_task = "Can you inspect what compatible data is available?"
+    decision = TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.93,
+        reason="Inspect locally available resources.",
+        workspace_root="/tmp/router-proposed-root",
+    )
+
+    plan = planning.build_workflow_plan(
+        decision,
+        user_task,
+        interaction_context=FollowUpContext(
+            prior_user_goal="Which tools produce sample-specific miRNA networks?",
+            prompt_kind="completed",
+            prompt_question="Enter a follow-up question.",
+            candidate_actions=["run_puma", "run_lioness_puma"],
+        ),
+    )
+
+    planned = TaskDecision.model_validate(plan.decision)
+    assert planned.workspace_root == str(PROJECT_ROOT)
+    assert planned.resource_actions == ["run_puma", "run_lioness_puma"]
+    assert [step.action for step in plan.steps] == [
+        "discover_workspace_resources"
+    ]
+    assert plan.status == "ready"
+
+
+def test_resource_discovery_without_context_uses_registry_order():
+    plan = planning.build_workflow_plan(
+        TaskDecision(
+            action="discover_workspace_resources",
+            in_scope=True,
+            should_execute=True,
+            intent_type="inspect_input",
+            confidence=0.93,
+            reason="Inspect locally available resources.",
+        ),
+        "Inspect compatible data in this workspace.",
+    )
+
+    planned = TaskDecision.model_validate(plan.decision)
+    assert planned.resource_actions == list(DISCOVERABLE_ACTIONS)
+
+
+def test_workspace_subpath_extraction_is_contained():
+    assert extract_workspace_subpath("Inspect data/lioness-toy") == "data/lioness-toy"
+    assert extract_workspace_subpath("Inspect ../outside") is None
+    assert extract_workspace_subpath("Inspect /etc") is None
 
 
 def test_evidence_stage_is_importable_and_internal():

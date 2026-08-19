@@ -6,13 +6,17 @@ import re
 from dataclasses import dataclass
 
 from workflow_registry import (
+    DISCOVERABLE_ACTIONS,
     LOCAL_WORKFLOW_ACTIONS,
+    READ_ONLY_ACTIONS,
     REQUIRED_INPUTS,
     workflow_name as _workflow_name,
 )
 
 from ..contracts import (
     Episode,
+    FollowUpContext,
+    PROJECT_ROOT,
     ProjectPolicySnapshot,
     TaskDecision,
     UserProfile,
@@ -24,6 +28,7 @@ from ..interpretation import (
     _lioness_mode_plan,
     _needs_lioness_mode_choice,
 )
+from ..interpretation.extraction import extract_workspace_subpath
 from ..policy import ProjectPolicyLoader
 from ..routing import (
     MIN_TOOL_CONFIDENCE,
@@ -56,6 +61,7 @@ def _prepare_planning_context(
     profile: UserProfile | dict | None,
     retrieved_episodes: list[Episode | dict] | None,
     project_policy: ProjectPolicySnapshot | dict | None,
+    interaction_context: FollowUpContext | dict | None = None,
 ) -> _PlanningContext | WorkflowPlan:
     decision = raw_decision.model_copy(deep=True)
     profile_model = (
@@ -80,6 +86,54 @@ def _prepare_planning_context(
     policy_hash = policy_model.policy_hash if policy_model else None
     policy_notes = []
     workflow_spec = None
+    if decision.action in READ_ONLY_ACTIONS:
+        authorized = (
+            decision.in_scope
+            and decision.intent_type == "inspect_input"
+            and decision.confidence >= MIN_TOOL_CONFIDENCE
+        )
+        if not authorized:
+            decision.action = "no_tool"
+            decision.should_execute = False
+            return WorkflowPlan(
+                workflow="NO-TOOL",
+                objective=decision.reason,
+                decision=decision.model_dump(),
+                status="respond_only",
+                memory_notes=memory_notes,
+                policy_hash=policy_hash,
+            )
+        trusted = (
+            FollowUpContext.model_validate(interaction_context)
+            if interaction_context is not None
+            else None
+        )
+        candidates = (
+            trusted.candidate_actions if trusted is not None else DISCOVERABLE_ACTIONS
+        )
+        decision.workspace_root = str(PROJECT_ROOT)
+        decision.resource_subpath = extract_workspace_subpath(task)
+        decision.resource_actions = [
+            action for action in candidates if action in DISCOVERABLE_ACTIONS
+        ]
+        decision.should_execute = True
+        decision.missing_inputs = []
+        action = decision.action
+        return WorkflowPlan(
+            workflow=_workflow_name(action),
+            objective=decision.reason,
+            decision=decision.model_dump(),
+            steps=[
+                WorkflowStep(
+                    action=action,
+                    purpose="Inventory compatible workspace resources read-only.",
+                )
+            ],
+            status="ready",
+            memory_notes=memory_notes,
+            policy_hash=policy_hash,
+        )
+
     preferred_workflow_authorized = False
     preferred_workflow = profile_model.preferences.get("preferred_workflow")
     if (

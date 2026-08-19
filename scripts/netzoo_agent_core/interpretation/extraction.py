@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
-from ..contracts import PreferenceProposal, _ui_text
+from ..contracts import PROJECT_ROOT, PreferenceProposal, _ui_text
 from ..routing import (
     CONTEXT7_LIBRARY_ALIASES,
     _extract_named_path,
@@ -27,6 +28,28 @@ INPUT_LABELS = {
 
 
 _PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".npy"})
+
+
+def extract_workspace_subpath(
+    task: str,
+    workspace_root: Path = PROJECT_ROOT,
+) -> str | None:
+    """Extract one explicit filesystem-shaped token only when it stays in workspace."""
+    root = workspace_root.expanduser().resolve()
+    candidates = re.findall(r"['\"]([^'\"]+)['\"]|([^\s，,。；;]+)", task)
+    for quoted, plain in candidates:
+        token = (quoted or plain).strip().rstrip(".。:：")
+        if not token or "://" in token or not _looks_like_path(token):
+            continue
+        path = Path(token).expanduser()
+        candidate = path.resolve() if path.is_absolute() else (root / path).resolve()
+        if not candidate.is_relative_to(root):
+            continue
+        if candidate.is_file():
+            candidate = candidate.parent
+        rendered = candidate.relative_to(root).as_posix()
+        return rendered or "."
+    return None
 
 
 def _looks_like_path(value: str) -> bool:

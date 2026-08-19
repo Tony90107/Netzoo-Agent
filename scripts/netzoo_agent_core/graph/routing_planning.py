@@ -82,6 +82,7 @@ def plan_task(context: _GraphContext, state: AgentState) -> dict:
         profile=state.get("profile"),
         retrieved_episodes=state.get("retrieved_episodes", []),
         project_policy=state.get("project_policy"),
+        interaction_context=state.get("interaction_context"),
     )
     profile = UserProfile.model_validate(state.get("profile"))
     pending_preferences = context.profile_store.pending(

@@ -267,6 +267,25 @@ def test_router_outcome_is_descriptive_until_deterministic_repair():
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
 
 
+def test_repair_preserves_semantic_read_only_discovery_route():
+    decision = TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.93,
+        reason="Inspect local workspace resources.",
+    )
+
+    repaired = repair_router_decision(
+        decision,
+        "Can you inspect what compatible data is available?",
+    )
+
+    assert repaired.action == "discover_workspace_resources"
+    assert repaired.should_execute is True
+
+
 def test_hydration_preserves_tied_hypotheses_without_primary_outcome():
     route = RouterDecision(
         action="no_tool",

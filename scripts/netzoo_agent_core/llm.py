@@ -57,6 +57,10 @@ Validated run-workflow catalog:
 {catalog}
 
 Other actions:
+- discover_workspace_resources: perform a bounded, read-only inventory when the user
+  explicitly asks to find, inspect availability of, reuse, or assess the suitability
+  of local resources in the NetZoo workspace. A path is optional for this action.
+  This action never authorizes a scientific analysis.
 - inspect_inputs: validate explicitly requested PANDA/PUMA expression, prior, and PPI inputs.
 - inspect_condor_inputs: validate an explicitly requested CONDOR bipartite edge list.
 - format_expression: reorient an expression table.
@@ -74,7 +78,10 @@ Routing rules:
 3. Use query_context7 only when current/version-specific documentation matters:
    versions, compatibility, CLI flags, installation, APIs, deprecations, or explicit docs.
 4. Use web_search only for explicit web/literature search or current non-package facts.
-5. Return one to three outcome_hypotheses for every scientific result or tool-selection
+5. Select discover_workspace_resources for an explicit local-resource discovery
+   request. Use intent_type=inspect_input and should_execute semantics; omitted paths
+   are expected because deterministic code supplies and confines the workspace scope.
+6. Return one to three outcome_hypotheses for every scientific result or tool-selection
    request. Preserve explicit entities, biological roles, network type, and granularity
    as evidence even when another dimension is unknown. Treat words such as data,
    result, values, scores, or output according to the scientific object they modify;
@@ -88,14 +95,14 @@ Routing rules:
    requests with no scientific result, return one unknown/not_applicable hypothesis
    stating that fact. Hypotheses describe meaning only and never authorize workflow
    execution.
-6. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
+7. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
    deterministic planning can request the mode.
-7. Variant calling, mutation discovery, sequence alignment, differential expression,
+8. Variant calling, mutation discovery, sequence alignment, differential expression,
    enrichment, raw FASTQ preprocessing, and protein structure analysis are unsupported.
-8. Mixed supported and unsupported deliverables select no_tool unless the supported
+9. Mixed supported and unsupported deliverables select no_tool unless the supported
    deliverable is independently and explicitly requested.
-9. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
-10. Populate semantic_goal as a short public summary of the outcome hypotheses.
+10. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
+11. Populate semantic_goal as a short public summary of the outcome hypotheses.
    Preserve uncertainty rather than completing a supported goal on the user's behalf.
 
 Examples:
