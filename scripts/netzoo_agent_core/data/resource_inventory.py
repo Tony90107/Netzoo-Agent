@@ -5,10 +5,14 @@ from __future__ import annotations
 import os
 import stat
 import time
+import errno
+from multiprocessing import get_context
+from multiprocessing.connection import Connection
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from workflow_registry import (
     ACTION_DEFINITIONS,
@@ -33,6 +37,12 @@ class InventoryLimits:
     max_returned_paths: int = 200
     max_file_bytes: int = 10_000_000
     max_duration_seconds: float = 5.0
+
+
+class _UnsafeResource(OSError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 def _contained(path: Path, root: Path) -> bool:
@@ -78,12 +88,134 @@ def _best_matching_path(
 
 
 def _relative(path: Path, root: Path) -> str:
-    rendered = path.resolve().relative_to(root).as_posix()
+    rendered = path.relative_to(root).as_posix()
     return rendered or "."
 
 
 def _expired(started: float, limits: InventoryLimits) -> bool:
     return time.monotonic() - started >= limits.max_duration_seconds
+
+
+def _read_workspace_file(path: Path, root: Path, max_bytes: int) -> bytes:
+    """Read one bounded regular file through no-follow directory descriptors."""
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise _UnsafeResource("outside_root") from exc
+    if not relative.parts:
+        raise _UnsafeResource("not_regular_file")
+    if ".." in relative.parts:
+        raise _UnsafeResource("outside_root")
+
+    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    descriptors: list[int] = []
+    try:
+        current = os.open(root, directory_flags | nofollow)
+        descriptors.append(current)
+        for part in relative.parts[:-1]:
+            current = os.open(
+                part,
+                directory_flags | nofollow,
+                dir_fd=current,
+            )
+            descriptors.append(current)
+        file_descriptor = os.open(
+            relative.parts[-1],
+            os.O_RDONLY | os.O_NONBLOCK | nofollow,
+            dir_fd=current,
+        )
+        descriptors.append(file_descriptor)
+        metadata = os.fstat(file_descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise _UnsafeResource("not_regular_file")
+        if metadata.st_size > max_bytes:
+            raise _UnsafeResource("too_large")
+        chunks: list[bytes] = []
+        remaining = max_bytes + 1
+        while remaining:
+            chunk = os.read(file_descriptor, min(64 * 1024, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        content = b"".join(chunks)
+        if len(content) > max_bytes:
+            raise _UnsafeResource("too_large")
+        return content
+    except _UnsafeResource:
+        raise
+    except OSError as exc:
+        reason = "symlink" if exc.errno == errno.ELOOP else "unreadable"
+        raise _UnsafeResource(reason) from exc
+    finally:
+        for descriptor in reversed(descriptors):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _validator_worker(
+    connection: Connection,
+    validator: ResourceValidator,
+    values: Mapping[str, str],
+    spec: DiscoverySpec,
+) -> None:
+    try:
+        connection.send(("result", validator(values, spec)))
+    except BaseException as exc:  # isolated validator failure boundary
+        connection.send(("error", type(exc).__name__))
+    finally:
+        connection.close()
+
+
+def _run_validator(
+    validator: ResourceValidator,
+    values: Mapping[str, str],
+    spec: DiscoverySpec,
+    timeout: float,
+) -> tuple[str, object]:
+    """Run a validator in a terminable worker so the inventory deadline is hard."""
+    if timeout <= 0:
+        return "timeout", None
+    context = get_context("fork")
+    receiving, sending = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_validator_worker,
+        args=(sending, validator, values, spec),
+        daemon=True,
+    )
+    process.start()
+    sending.close()
+    try:
+        remaining = max(0.0, timeout)
+        if not receiving.poll(remaining):
+            return "timeout", None
+        return receiving.recv()
+    except (EOFError, OSError):
+        return "error", "WorkerFailure"
+    finally:
+        receiving.close()
+        process.join(timeout=0.01)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+
+
+def _snapshot_values(
+    values: Mapping[str, Path],
+    root: Path,
+    max_bytes: int,
+    snapshot_root: Path,
+) -> dict[str, str]:
+    snapshots: dict[str, str] = {}
+    for index, (role, path) in enumerate(values.items()):
+        content = _read_workspace_file(path, root, max_bytes)
+        snapshot = snapshot_root / f"{index:02d}-{role}{path.suffix.casefold()}"
+        snapshot.write_bytes(content)
+        snapshots[role] = str(snapshot)
+    return snapshots
 
 
 def inventory_workspace_resources(
@@ -175,28 +307,17 @@ def inventory_workspace_resources(
             if not any(hint in filename.casefold() for hint in active_hints):
                 continue
             try:
-                metadata = path.stat()
-            except OSError:
-                rejected["unreadable"] += 1
-                continue
-            if not stat.S_ISREG(metadata.st_mode):
-                rejected["not_regular_file"] += 1
-                continue
-            size = metadata.st_size
-            if size > limits.max_file_bytes:
-                rejected["too_large"] += 1
-                truncated = True
-                stop = True
-                break
-            try:
-                with path.open("rb") as handle:
-                    handle.read(1)
-            except OSError:
-                rejected["unreadable"] += 1
+                _read_workspace_file(path, search_root, limits.max_file_bytes)
+            except _UnsafeResource as exc:
+                rejected[exc.reason] += 1
+                if exc.reason == "too_large":
+                    truncated = True
+                    stop = True
+                    break
                 continue
             files.append(path)
         if files:
-            candidate_files[directory_path.resolve()] = files
+            candidate_files[directory_path] = files
         if stop:
             break
 
@@ -224,26 +345,15 @@ def inventory_workspace_resources(
             explicit_invalid = True
             continue
         try:
-            resolved = path.resolve(strict=True)
-            metadata = resolved.stat()
-            if not stat.S_ISREG(metadata.st_mode):
-                rejected["not_regular_file"] += 1
-                explicit_invalid = True
-                continue
-            size = metadata.st_size
-            if size > limits.max_file_bytes:
-                rejected["too_large"] += 1
+            _read_workspace_file(path, search_root, limits.max_file_bytes)
+        except _UnsafeResource as exc:
+            rejected[exc.reason] += 1
+            if exc.reason == "too_large":
                 truncated = True
-                explicit_invalid = True
-                continue
-            with resolved.open("rb") as handle:
-                handle.read(1)
-        except OSError:
-            rejected["unreadable"] += 1
             explicit_invalid = True
             continue
-        explicit_paths[role] = resolved
-        explicit_parents.add(resolved.parent)
+        explicit_paths[role] = path
+        explicit_parents.add(path.parent)
 
     if explicit_invalid:
         candidate_files.clear()
@@ -321,38 +431,59 @@ def inventory_workspace_resources(
                 returned_path_count += len(rendered_inputs)
                 continue
 
-            absolute_values = {role: str(path) for role, path in present.items()}
             reasons: list[str] = []
             valid = True
-            for validator_id in spec.validator_ids:
-                if _expired(started, limits):
-                    truncated = True
-                    valid = False
-                    stop = True
-                    break
-                validator = validators.get(validator_id)
-                if validator is None:
-                    rejected["validator_unavailable"] += 1
-                    valid = False
-                    break
+            with TemporaryDirectory(prefix="netzoo-inventory-") as temporary:
                 try:
-                    accepted, reason = validator(absolute_values, spec)
-                except Exception as exc:  # Validator adapters are a failure boundary.
-                    rejected["validation_error"] += 1
-                    if len(errors) < 20:
-                        errors.append(f"validation failed: {type(exc).__name__}")
+                    snapshot_values = _snapshot_values(
+                        present,
+                        search_root,
+                        limits.max_file_bytes,
+                        Path(temporary),
+                    )
+                except _UnsafeResource as exc:
+                    rejected[exc.reason] += 1
+                    if exc.reason == "too_large":
+                        truncated = True
                     valid = False
-                    break
-                if _expired(started, limits):
-                    truncated = True
-                    valid = False
-                    stop = True
-                    break
-                if not accepted:
-                    rejected[reason or "validation_failed"] += 1
-                    valid = False
-                    break
-                reasons.append(reason)
+                if valid:
+                    for validator_id in spec.validator_ids:
+                        remaining = limits.max_duration_seconds - (
+                            time.monotonic() - started
+                        )
+                        if remaining <= 0:
+                            truncated = True
+                            valid = False
+                            stop = True
+                            break
+                        validator = validators.get(validator_id)
+                        if validator is None:
+                            rejected["validator_unavailable"] += 1
+                            valid = False
+                            break
+                        status, payload = _run_validator(
+                            validator,
+                            snapshot_values,
+                            spec,
+                            remaining,
+                        )
+                        if status == "timeout":
+                            truncated = True
+                            valid = False
+                            stop = True
+                            break
+                        if status == "error":
+                            rejected["validation_error"] += 1
+                            if len(errors) < 20:
+                                errors.append(f"validation failed: {payload}")
+                            valid = False
+                            break
+                        accepted, reason = payload
+                        if not accepted:
+                            rejected[reason or "validation_failed"] += 1
+                            valid = False
+                            break
+                        reasons.append(reason)
             if not valid:
                 continue
             if not reasons:

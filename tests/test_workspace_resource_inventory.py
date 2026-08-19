@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
@@ -180,14 +183,14 @@ def test_inventory_records_unreadable_files_without_failing_the_scan(
     unreadable = study / "alpha.tsv"
     unreadable.write_text("data\n", encoding="utf-8")
     (study / "beta.tsv").write_text("data\n", encoding="utf-8")
-    original_open = Path.open
+    original_open = os.open
 
-    def guarded_open(path, *args, **kwargs):
-        if path == unreadable:
+    def guarded_open(path, flags, mode=0o777, *, dir_fd=None):
+        if path == unreadable.name and dir_fd is not None:
             raise PermissionError("denied")
-        return original_open(path, *args, **kwargs)
+        return original_open(path, flags, mode, dir_fd=dir_fd)
 
-    monkeypatch.setattr(Path, "open", guarded_open)
+    monkeypatch.setattr(os, "open", guarded_open)
 
     result = inventory_workspace_resources(
         tmp_path,
@@ -474,19 +477,17 @@ def test_duration_limit_is_rechecked_before_candidate_validation(
 
 
 def test_inventory_discards_a_candidate_when_validation_exceeds_duration(
-    tmp_path, monkeypatch
+    tmp_path,
 ):
     (tmp_path / "alpha.tsv").write_text("data\n", encoding="utf-8")
-    current_time = [0.0]
-    monkeypatch.setattr(
-        "netzoo_agent_core.data.resource_inventory.time.monotonic",
-        lambda: current_time[0],
-    )
+    worker_pid = tmp_path / "validator.pid"
 
     def slow_validator(values, spec):
-        current_time[0] = 6.0
+        worker_pid.write_text(str(os.getpid()), encoding="utf-8")
+        time.sleep(0.5)
         return True, "validated"
 
+    started = time.monotonic()
     result = inventory_workspace_resources(
         tmp_path,
         ["format_expression"],
@@ -496,11 +497,81 @@ def test_inventory_discards_a_candidate_when_validation_exceeds_duration(
             hints={"primary": ("alpha",)},
         ),
         validators={"always_valid": slow_validator},
-        limits=InventoryLimits(max_duration_seconds=5.0),
+        limits=InventoryLimits(max_duration_seconds=0.05),
     )
+    elapsed = time.monotonic() - started
 
+    assert elapsed < 0.35
     assert result.truncated is True
     assert result.validated_bundles == []
+    pid = int(worker_pid.read_text(encoding="utf-8"))
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
+def test_validator_reads_a_bounded_snapshot_after_workspace_source_replacement(
+    tmp_path,
+):
+    source = tmp_path / "alpha.tsv"
+    source.write_bytes(b"safe\n")
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.tsv"
+    outside.write_bytes(b"x" * 64)
+
+    def replacing_validator(values, spec):
+        source.unlink()
+        source.symlink_to(outside)
+        observed = Path(values["primary"]).read_bytes()
+        return observed == b"safe\n", "bounded_snapshot"
+
+    result = inventory_workspace_resources(
+        tmp_path,
+        ["format_expression"],
+        definitions=_definitions(
+            "format_expression",
+            roles=("primary",),
+            hints={"primary": ("alpha",)},
+        ),
+        validators={"always_valid": replacing_validator},
+        limits=InventoryLimits(max_file_bytes=8),
+    )
+
+    assert result.validated_bundles[0].validation_reasons == ["bounded_snapshot"]
+    assert source.is_symlink()
+
+
+def test_descriptor_open_fails_closed_when_candidate_is_swapped_to_symlink(
+    tmp_path, monkeypatch
+):
+    source = tmp_path / "alpha.tsv"
+    source.write_bytes(b"safe\n")
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.tsv"
+    outside.write_bytes(b"outside\n")
+    original_open = os.open
+    swapped = False
+
+    def racing_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal swapped
+        if path == "alpha.tsv" and dir_fd is not None and not swapped:
+            swapped = True
+            source.unlink()
+            source.symlink_to(outside)
+        return original_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", racing_open)
+
+    result = inventory_workspace_resources(
+        tmp_path,
+        ["format_expression"],
+        definitions=_definitions(
+            "format_expression",
+            roles=("primary",),
+            hints={"primary": ("alpha",)},
+        ),
+        validators={"always_valid": lambda values, spec: (True, "validated")},
+    )
+
+    assert result.validated_bundles == []
+    assert result.rejected_summary["symlink"] == 1
 
 
 def test_inventory_never_opens_an_explicit_disallowed_extension(
