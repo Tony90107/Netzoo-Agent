@@ -71,6 +71,7 @@ class CapabilityGateTests(unittest.TestCase):
     def test_discovery_tool_returns_typed_read_only_inventory(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            (root / "nested").mkdir()
             with patch.object(tool_adapters, "PROJECT_ROOT", root):
                 raw = tool_adapters.discover_workspace_resources.invoke(
                     {
@@ -79,9 +80,18 @@ class CapabilityGateTests(unittest.TestCase):
                         "resource_actions": [],
                     }
                 )
+                narrowed_raw = tool_adapters.discover_workspace_resources.invoke(
+                    {
+                        "workspace_root": str(root),
+                        "resource_subpath": "nested",
+                        "resource_actions": [],
+                    }
+                )
 
         inventory = WorkspaceResourceInventory.model_validate_json(raw)
+        narrowed = WorkspaceResourceInventory.model_validate_json(narrowed_raw)
         self.assertEqual(inventory.scope_root, ".")
+        self.assertEqual(narrowed.scope_root, "nested")
 
     def test_output_language_policy_is_global_english_policy(self):
         policy = agent.output_language_policy()

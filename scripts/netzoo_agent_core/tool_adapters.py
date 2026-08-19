@@ -15,6 +15,25 @@ from .framework_compat import tool
 from .settings import PROJECT_ROOT
 
 
+def _prefix_inventory_paths(inventory, prefix: str):
+    if not prefix or prefix == ".":
+        return inventory
+
+    def prefixed(value: str) -> str:
+        return prefix if value == "." else f"{prefix}/{value}"
+
+    inventory.scope_root = prefix
+    for bundle in inventory.validated_bundles:
+        bundle.directory = prefixed(bundle.directory)
+        bundle.inputs = {role: prefixed(path) for role, path in bundle.inputs.items()}
+    for candidate in inventory.partial_candidates:
+        candidate.directory = prefixed(candidate.directory)
+        candidate.matched_inputs = {
+            role: prefixed(path) for role, path in candidate.matched_inputs.items()
+        }
+    return inventory
+
+
 @tool
 def discover_workspace_resources(
     workspace_root: str,
@@ -36,6 +55,10 @@ def discover_workspace_resources(
     inventory = inventory_workspace_resources(
         search_root,
         resource_actions or [],
+    )
+    inventory = _prefix_inventory_paths(
+        inventory,
+        search_root.relative_to(requested_root).as_posix(),
     )
     return inventory.model_dump_json()
 
