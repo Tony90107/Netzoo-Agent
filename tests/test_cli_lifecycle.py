@@ -145,17 +145,17 @@ def _resolved_reply(kind: str):
 
     def resolve(context, reply, current_usage, run_id):
         resolved_task = None
+        interaction_context = None
         if kind == "follow_up":
-            resolved_task = (
-                f"Previous NetZoo goal: {context.prior_user_goal}\n"
-                f"User follow-up: {reply}"
-            )
+            resolved_task = reply
+            interaction_context = context
         elif kind == "new_goal":
             resolved_task = reply
         return ReplyResolutionResult(
             ContextualReplyResolution(
                 kind=kind,
                 resolved_task=resolved_task,
+                interaction_context=interaction_context,
                 reason="Test resolution.",
             ),
             (
@@ -176,15 +176,15 @@ def _resolved_reply_sequence(*kinds: str):
     def resolve(context, reply, current_usage, run_id):
         kind = next(remaining)
         resolved_task = None
+        interaction_context = None
         if kind == "follow_up":
-            resolved_task = (
-                f"Previous NetZoo goal: {context.prior_user_goal}\n"
-                f"User follow-up: {reply}"
-            )
+            resolved_task = reply
+            interaction_context = context
         return ReplyResolutionResult(
             ContextualReplyResolution(
                 kind=kind,
                 resolved_task=resolved_task,
+                interaction_context=interaction_context,
                 reason="Test resolution.",
             ),
             (
@@ -560,7 +560,7 @@ def test_underspecified_follow_up_does_not_reinvoke_scientific_graph(capsys):
     assert "Please enter a concrete follow-up question" in capsys.readouterr().out
 
 
-def test_substantive_follow_up_reaches_graph_with_prior_goal_context():
+def test_substantive_follow_up_reaches_graph_with_separate_prior_context():
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     goal = "Which tools produce sample-specific miRNA networks?"
     follow_up = "What format should the motif prior use?"
@@ -577,8 +577,12 @@ def test_substantive_follow_up_reaches_graph_with_prior_goal_context():
 
     second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
     submitted = second_invocation["messages"][-1].content
-    assert "Previous NetZoo goal:" in submitted
-    assert "User follow-up: What format" in submitted
+    assert submitted == follow_up
+    assert second_invocation["interaction_context"]["prior_user_goal"] == goal
+    assert second_invocation["interaction_context"]["candidate_actions"] == [
+        "run_puma",
+        "run_lioness_puma",
+    ]
 
 
 def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_output(
@@ -610,8 +614,8 @@ def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_
     assert resolver.resolve.call_count == 2
     second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
     submitted = second_invocation["messages"][-1].content
-    assert "Previous NetZoo goal:" in submitted
-    assert "User follow-up: What format" in submitted
+    assert submitted == follow_up
+    assert second_invocation["interaction_context"]["prior_user_goal"] == goal
     prompts = [call.args[0] for call in runtime.input_func.call_args_list]
     assert any("Enter a follow-up question" in prompt for prompt in prompts)
     assert all("Reply yes" not in prompt for prompt in prompts)

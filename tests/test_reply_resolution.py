@@ -68,7 +68,7 @@ def test_model_acceptance_is_downgraded_without_concrete_continuation():
     assert result.resolution.resolved_task is None
 
 
-def test_substantive_follow_up_becomes_bounded_self_contained_task():
+def test_substantive_follow_up_preserves_text_and_typed_context():
     model = Mock()
     model.invoke.return_value = _decision("follow_up")
     resolver = ContextualReplyResolver.for_test(model)
@@ -78,10 +78,8 @@ def test_substantive_follow_up_becomes_bounded_self_contained_task():
     )
 
     assert result.resolution.kind == "follow_up"
-    assert result.resolution.resolved_task == (
-        "Previous NetZoo goal: Which tools produce sample-specific miRNA networks?\n"
-        "User follow-up: What format should the motif prior use?"
-    )
+    assert result.resolution.resolved_task == "What format should the motif prior use?"
+    assert result.resolution.interaction_context == _context()
 
 
 def test_context_wrapper_does_not_invent_a_current_documentation_request():
@@ -123,7 +121,37 @@ def test_reply_prompt_treats_questions_about_trusted_workflow_facts_as_follow_up
     resolved = ContextualReplyResolver.for_test(model).resolve(
         context, "What format should that prior input use?", None, "run-1"
     )
-    assert "Registered workflow context: PUMA" in resolved.resolution.resolved_task
+    assert resolved.resolution.resolved_task == "What format should that prior input use?"
+    assert resolved.resolution.interaction_context.candidate_workflows[0].workflow == "PUMA"
+
+
+def test_resource_availability_question_is_a_substantive_follow_up():
+    model = Mock()
+    model.invoke.return_value = ReplyIntentDecision(
+        kind="follow_up",
+        confidence=0.91,
+        reason="Requests local resource discovery.",
+    )
+    reply = "Could you check whether this workspace already has compatible inputs?"
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        _context(), reply, None, "run-1"
+    )
+
+    assert result.resolution.resolved_task == reply
+    assert result.resolution.interaction_context.candidate_actions
+    prompt = " ".join(
+        str(message.content) for message in model.invoke.call_args.args[0]
+    )
+    for semantic_category in (
+        "availability",
+        "inventory",
+        "local resources",
+        "example datasets",
+        "reusing existing data",
+        "suitable",
+    ):
+        assert semantic_category in prompt
 
 
 def test_low_confidence_resolution_fails_safe():

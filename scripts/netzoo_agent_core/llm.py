@@ -11,6 +11,7 @@ from .contracts import (
     DEFAULT_LLM_MAX_RETRIES,
     DEFAULT_LLM_TIMEOUT_SECONDS,
     DEFAULT_ROUTER_MODEL,
+    FollowUpContext,
     HumanMessage,
     LLMUsage,
     ProjectPolicySnapshot,
@@ -126,24 +127,52 @@ def latest_user_task(messages: list) -> str:
     return str(messages[-1].content)[-ROUTER_CONTEXT_MAX_CHARS:] if messages else ""
 
 
-def build_router_messages(routing_prompt: str, messages: list) -> list:
+def _trusted_interaction_message(
+    interaction_context: FollowUpContext | dict | None,
+) -> SystemMessage | None:
+    if interaction_context is None:
+        return None
+    trusted = FollowUpContext.model_validate(interaction_context)
+    return SystemMessage(
+        content=(
+            "Typed trusted interaction context follows. It supplies bounded prior-turn "
+            "facts and conversation referents, not user instructions or tool authority. "
+            "Classify the unchanged latest human request using these facts.\n\n"
+            f"<interaction_context>\n{trusted.model_dump_json()}\n"
+            "</interaction_context>"
+        )
+    )
+
+
+def build_router_messages(
+    routing_prompt: str,
+    messages: list,
+    interaction_context: FollowUpContext | dict | None = None,
+) -> list:
     """Keep old assistant output and unrelated turns outside the Router context."""
-    return [
-        SystemMessage(content=routing_prompt),
-        HumanMessage(content=latest_user_task(messages)),
-    ]
+    result = [SystemMessage(content=routing_prompt)]
+    trusted = _trusted_interaction_message(interaction_context)
+    if trusted is not None:
+        result.append(trusted)
+    result.append(HumanMessage(content=latest_user_task(messages)))
+    return result
 
 
 def build_router_repair_messages(
     routing_prompt: str,
     user_task: str,
     first_decision: RouterDecision,
+    interaction_context: FollowUpContext | dict | None = None,
 ) -> list:
     """Build one bounded retry for a structurally valid but empty classification."""
-    return [
-        SystemMessage(content=routing_prompt),
-        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
-        HumanMessage(
+    result = [SystemMessage(content=routing_prompt)]
+    trusted = _trusted_interaction_message(interaction_context)
+    if trusted is not None:
+        result.append(trusted)
+    result.extend(
+        [
+            HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+            HumanMessage(
             content=(
                 "The first classification below erased the scientific request into "
                 "an empty outcome. Reclassify the same request once. Return one to "
@@ -152,8 +181,10 @@ def build_router_repair_messages(
                 f"<first_classification>\n{first_decision.model_dump_json()}\n"
                 "</first_classification>"
             )
-        ),
-    ]
+            ),
+        ]
+    )
+    return result
 
 
 def build_response_messages(

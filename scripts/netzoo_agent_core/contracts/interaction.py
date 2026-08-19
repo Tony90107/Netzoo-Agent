@@ -51,6 +51,7 @@ class ContextualReplyResolution(BaseModel):
 
     kind: ReplyIntent
     resolved_task: str | None = Field(default=None, max_length=8_000)
+    interaction_context: FollowUpContext | None = None
     reason: str = Field(min_length=1, max_length=240)
 
 

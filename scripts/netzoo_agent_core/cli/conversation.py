@@ -95,6 +95,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         )
 
     while True:
+        turn_interaction_context: FollowUpContext | None = None
         if queued_task is not None:
             task = queued_task.strip()
             queued_task = None
@@ -279,6 +280,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     follow_up_context = None
                     continue
                 task = resolve_next_turn_input(next_prompt, resolution, answer)
+                turn_interaction_context = resolution.interaction_context
                 if not task:
                     print(
                         _ui_text(
@@ -324,6 +326,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             }
             if active_usage is not None:
                 invocation["token_usage"] = active_usage
+            if turn_interaction_context is not None:
+                invocation["interaction_context"] = (
+                    turn_interaction_context.model_dump()
+                )
             result = invoke_graph_turn_func(runtime.app, invocation)
         except AgentTurnInterrupted:
             recorder.append(

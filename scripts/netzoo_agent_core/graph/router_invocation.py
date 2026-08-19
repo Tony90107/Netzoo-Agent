@@ -81,6 +81,7 @@ def _invoke_repair_once(
         context.routing_prompt,
         user_task,
         first_decision,
+        state.get("interaction_context"),
     )
     input_text = _serialized_router_input(messages)
     repair_state = dict(state)
@@ -154,7 +155,11 @@ def invoke_router(
     user_task: str,
 ) -> _RouterInvocation:
     """Classify one task, allowing at most one evidence-focused repair call."""
-    messages = build_router_messages(context.routing_prompt, state["messages"])
+    messages = build_router_messages(
+        context.routing_prompt,
+        state["messages"],
+        state.get("interaction_context"),
+    )
     input_text = _serialized_router_input(messages)
     current_usage = state.get("token_usage")
     budget, budget_warnings = preflight_budget(

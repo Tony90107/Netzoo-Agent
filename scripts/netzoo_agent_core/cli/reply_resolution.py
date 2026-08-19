@@ -31,8 +31,11 @@ input, output, or workflow in trusted context is a follow_up and does not need t
 restate the prior goal. Candidate workflow facts establish valid conversation referents
 but do not authorize execution. A bare acknowledgement without a question or concrete
 requested outcome is still needs_detail when no continuation action was offered. Do
-not rewrite file paths or infer that tools ran. Use confidence below 0.80 whenever the
-reply remains ambiguous.
+not rewrite file paths or infer that tools ran. Questions about availability,
+inventory, local resources, example datasets, reusing existing data, or whether data
+is suitable are substantive resource-discovery follow-ups when they relate to the
+trusted NetZoo context. Classify by semantics, not by exact wording. Use confidence
+below 0.80 whenever the reply remains ambiguous.
 """.strip()
 
 
@@ -88,23 +91,16 @@ def _validated_resolution(
     ):
         return _needs_detail("No concrete workflow continuation was offered.")
     resolved_task = None
+    interaction_context = None
     if decision.kind == "follow_up":
-        workflow_context = ""
-        if context.candidate_workflows:
-            workflow_names = ", ".join(
-                item.workflow for item in context.candidate_workflows
-            )
-            workflow_context = f"Registered workflow context: {workflow_names}\n"
-        resolved_task = (
-            f"Previous NetZoo goal: {context.prior_user_goal}\n"
-            f"{workflow_context}"
-            f"User follow-up: {reply}"
-        )
+        resolved_task = reply
+        interaction_context = context
     elif decision.kind == "new_goal":
         resolved_task = reply
     return ContextualReplyResolution(
         kind=decision.kind,
         resolved_task=resolved_task,
+        interaction_context=interaction_context,
         reason=decision.reason,
     )
 
