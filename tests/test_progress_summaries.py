@@ -16,6 +16,8 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     ContextualReplyResolution,
     RequestedOutcome,
     TaskDecision,
+    ToolExecutionResult,
+    WorkspaceResourceInventory,
     WorkflowPlan,
 )
 
@@ -235,6 +237,39 @@ def test_ranked_advisory_outcome_does_not_force_a_clarification_prompt():
     prompt = build_next_turn_prompt({"plan": plan.model_dump()})
 
     assert prompt.kind == "completed"
+
+
+def test_workspace_inventory_owns_one_imperative_next_prompt():
+    decision = TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.95,
+        reason="Inspect workspace resources.",
+        resource_actions=["run_puma", "run_lioness_puma"],
+    )
+    plan = WorkflowPlan(
+        workflow="WORKSPACE-RESOURCES",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        status="ready",
+    )
+    inventory = WorkspaceResourceInventory(scope_root=".", visited_file_count=0)
+    result = ToolExecutionResult(
+        action="discover_workspace_resources",
+        status="success",
+        summary="Workspace inventory completed.",
+        structured_output=inventory.model_dump(),
+    )
+
+    prompt = build_next_turn_prompt(
+        {"plan": plan.model_dump(), "tool_results": [result.model_dump()]}
+    )
+
+    assert prompt.kind == "completed"
+    assert prompt.question.startswith("Enter another question")
+    assert "inside the NetZoo workspace" in prompt.question
 
 
 def test_ambiguous_hypotheses_progress_preserves_candidate_context():

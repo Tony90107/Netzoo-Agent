@@ -639,7 +639,8 @@ def _is_cli_owned_guidance_paragraph(paragraph: str) -> bool:
         re.search(
             r"\bno (?:tools?|commands?) (?:were )?(?:executed|run)\b"
             r"|\bno files? (?:were )?(?:inspected|read)\b"
-            r"|\bno analysis (?:was )?(?:run|performed)\b",
+            r"|\bno analysis (?:(?:was )?(?:run|performed)|ran)\b"
+            r"|\bworkspace files? (?:were )?inspected read-only\b",
             lowered,
         )
     )
@@ -667,6 +668,35 @@ def strip_cli_owned_follow_up_question(text: str) -> str:
     """Compatibility alias for the broader CLI-owned tail normalizer."""
     return strip_cli_owned_guidance_tail(text)
 
+
+WORKSPACE_INSPECTION_FOOTER = (
+    "Workspace files were inspected read-only; no analysis ran."
+)
+
+
+def workspace_inspection_footer(results: list) -> str | None:
+    """Render status from a successful typed result, independent of action names."""
+    for result in results:
+        status = getattr(result, "status", None)
+        payload = getattr(result, "structured_output", None)
+        if (
+            status == "success"
+            and isinstance(payload, dict)
+            and payload.get("schema") == "workspace_resource_inventory"
+        ):
+            return WORKSPACE_INSPECTION_FOOTER
+    return None
+
+
+def append_workspace_inspection_footer(text: str, results: list) -> str:
+    """Remove model-authored status/CTA text and append one canonical footer."""
+    footer = workspace_inspection_footer(results)
+    if footer is None:
+        return text
+    cleaned = re.sub(re.escape(footer), "", text, flags=re.IGNORECASE).strip()
+    cleaned = strip_cli_owned_guidance_tail(cleaned)
+    return f"{cleaned.rstrip()}\n\n{footer}" if cleaned else footer
+
 def _display_path(path: Path) -> str:
     try:
         return str(path.relative_to(PROJECT_ROOT))
@@ -690,5 +720,7 @@ __all__ = [
     "_render_timeline_block",
     "_clear_transient_trace", "_trace_line", "_trace",
     "strip_cli_owned_follow_up_question", "strip_cli_owned_guidance_tail",
+    "WORKSPACE_INSPECTION_FOOTER", "workspace_inspection_footer",
+    "append_workspace_inspection_footer",
     "_display_path", "_is_demo_request",
 ]

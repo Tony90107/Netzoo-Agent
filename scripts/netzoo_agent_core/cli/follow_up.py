@@ -62,6 +62,20 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     semantic_candidates = semantic_goal.get("candidates") or []
     semantic_relationship = semantic_goal.get("relationship")
 
+    has_workspace_inventory = any(
+        item.status == "success"
+        and item.structured_output.get("schema") == "workspace_resource_inventory"
+        for item in results
+    )
+    if has_workspace_inventory:
+        return NextTurnPrompt(
+            kind="completed",
+            question=_ui_text(
+                "Enter another question, a narrower path inside the NetZoo workspace, "
+                "or describe another NetZoo goal."
+            ),
+        )
+
     if plan_evaluation and plan_evaluation.status == "rejected":
         return NextTurnPrompt(
             kind="plan_rejected",
@@ -210,6 +224,7 @@ def build_follow_up_context(
             decision.recommended_actions
             or decision.matched_actions
             or decision.hypothesis_actions
+            or decision.resource_actions
         )
     )
     return FollowUpContext(

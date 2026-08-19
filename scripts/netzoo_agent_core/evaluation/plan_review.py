@@ -128,7 +128,7 @@ def evaluate_workflow_plan(
         )
     )
 
-    local_data_action = action in LOCAL_EXECUTION_ACTIONS
+    local_data_action = action in LOCAL_EXECUTION_ACTIONS and not read_only_action
     if local_data_action:
         evidence_by_field = {item.field: item for item in plan.evidence}
         missing_evidence = []

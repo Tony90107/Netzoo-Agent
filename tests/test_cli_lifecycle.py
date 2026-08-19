@@ -19,6 +19,9 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     LLMUsage,
     PreferenceProposal,
     TaskDecision,
+    ToolExecutionResult,
+    WorkspaceResourceInventory,
+    WorkflowStep,
     WorkflowPlan,
 )
 from netzoo_agent_core.cli.reply_resolution import ReplyResolutionResult  # noqa: E402
@@ -83,6 +86,56 @@ def _guidance_result(goal: str) -> dict:
         "plan": plan.model_dump(),
         "tool_results": [],
         "evaluation": None,
+        "token_usage": LLMUsage().model_dump(),
+    }
+
+
+def _discovery_result(goal: str) -> dict:
+    decision = TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.95,
+        reason="Inspect workspace resources.",
+        resource_actions=["run_puma", "run_lioness_puma"],
+    )
+    plan = WorkflowPlan(
+        workflow="WORKSPACE-RESOURCES",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        steps=[
+            WorkflowStep(
+                action="discover_workspace_resources",
+                purpose="Inventory compatible workspace resources read-only.",
+            )
+        ],
+        status="ready",
+    )
+    inventory = WorkspaceResourceInventory(scope_root=".", visited_file_count=1)
+    tool_result = ToolExecutionResult(
+        action="discover_workspace_resources",
+        status="success",
+        summary="Workspace inventory completed.",
+        structured_output=inventory.model_dump(),
+    )
+    return {
+        "messages": [
+            HumanMessage(content=goal),
+            AIMessage(
+                content=(
+                    "No compatible bundle was found.\n\n"
+                    "Workspace files were inspected read-only; no analysis ran."
+                )
+            ),
+        ],
+        "decision": decision.model_dump(),
+        "plan": plan.model_dump(),
+        "tool_results": [tool_result.model_dump()],
+        "evaluation": {
+            "status": "completed",
+            "reason": "Discovery completed.",
+        },
         "token_usage": LLMUsage().model_dump(),
     }
 
@@ -583,6 +636,28 @@ def test_substantive_follow_up_reaches_graph_with_separate_prior_context():
         "run_puma",
         "run_lioness_puma",
     ]
+
+
+def test_local_resource_follow_up_runs_discovery_not_needs_detail(capsys):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    goal = "Which workflow gives one miRNA network per sample?"
+    follow_up = "Could you inspect whether the workspace already has usable inputs?"
+    runtime = _fake_cli_runtime(
+        invoke_error=[_guidance_result(goal), _discovery_result(follow_up)],
+        interactive_answers=[goal, follow_up, "exit"],
+        reply_resolver=_resolved_reply("follow_up"),
+    )
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "Please enter a concrete follow-up question" not in output
+    assert "Workspace files were inspected read-only" in output
+    second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
+    assert second_invocation["messages"][-1].content == follow_up
+    assert second_invocation["interaction_context"]["candidate_actions"]
 
 
 def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_output(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 
-from workflow_registry import LOCAL_EXECUTION_ACTIONS
+from workflow_registry import LOCAL_EXECUTION_ACTIONS, READ_ONLY_ACTIONS
 
 from ..contracts import (
     AIMessage,
@@ -29,9 +29,16 @@ from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_capability_gap
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
-from ..presentation import strip_cli_owned_guidance_tail
+from ..presentation import (
+    append_workspace_inspection_footer,
+    strip_cli_owned_guidance_tail,
+    workspace_inspection_footer,
+)
 from .context import _GraphContext, preflight_budget, record_event
-from .response_context import validated_workflow_context
+from .response_context import (
+    validated_workflow_context,
+    validated_workspace_inventories,
+)
 
 __all__: list[str] = []
 
@@ -53,6 +60,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         if state.get("evaluation")
         else None
     )
+    workspace_inventories = validated_workspace_inventories(structured_results)
     if plan.status == "needs_input":
         return {"messages": [AIMessage(content=render_needs_input_response(plan))]}
     if plan.status == "needs_confirmation":
@@ -71,7 +79,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     capability_gap = render_capability_gap(decision, context.project_policy)
     if capability_gap is not None:
         return {"messages": [AIMessage(content=capability_gap)]}
-    if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
+    if (
+        decision.action in LOCAL_EXECUTION_ACTIONS
+        and decision.action not in READ_ONLY_ACTIONS
+        and structured_results
+    ):
         _trace("done", "This workflow turn has finished")
         return {
             "messages": [
@@ -84,10 +96,15 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 )
             ]
         }
+    unstructured_results = [
+        item
+        for item in structured_results
+        if item.structured_output.get("schema") != "workspace_resource_inventory"
+    ]
     combined_results = (
         "\n\n".join(
             f"[{item.action}] status={item.status}\n{item.raw_output}"
-            for item in structured_results
+            for item in unstructured_results
         )
         or "(none)"
     )
@@ -117,13 +134,15 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         "Authoritative validated workflow specifications:\n"
         f"{json.dumps(workflow_context['workflows'], ensure_ascii=False, indent=2)}\n\n"
         "Typed tool-result metadata (raw external content excluded):\n"
-        f"{json.dumps(trusted_results, ensure_ascii=False, indent=2)}"
+        f"{json.dumps(trusted_results, ensure_ascii=False, indent=2)}\n\n"
+        "Authoritative typed workspace inventories:\n"
+        f"{json.dumps([item.model_dump() for item in workspace_inventories], ensure_ascii=False, indent=2)}"
     )
     response_messages = build_response_messages(
         context.response_prompt,
         trusted_context,
         latest_user_task(state["messages"]),
-        combined_results if structured_results else None,
+        combined_results if unstructured_results else None,
     )
     response_input_text = "\n".join(
         str(message.content) for message in response_messages
@@ -216,7 +235,12 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
             usage.calls[-1].model_dump(mode="json"),
         )
     cleaned_response = strip_cli_owned_guidance_tail(str(response.content))
-    if decision.action == "no_tool" and not structured_results:
+    inspection_footer = workspace_inspection_footer(structured_results)
+    if inspection_footer is not None:
+        cleaned_response = append_workspace_inspection_footer(
+            cleaned_response, structured_results
+        )
+    elif decision.action == "no_tool" and not structured_results:
         status_footer = "No files were inspected and no analysis ran."
         if status_footer.casefold() not in cleaned_response.casefold():
             cleaned_response = (

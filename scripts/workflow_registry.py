@@ -414,7 +414,7 @@ RUN_ACTIONS = frozenset(
 LOCAL_WORKFLOW_ACTIONS = frozenset(
     action for action, definition in ACTION_DEFINITIONS.items() if definition.local
 )
-LOCAL_EXECUTION_ACTIONS = LOCAL_WORKFLOW_ACTIONS
+LOCAL_EXECUTION_ACTIONS = LOCAL_WORKFLOW_ACTIONS | READ_ONLY_ACTIONS
 CODE_VALIDATION_STEPS = {
     action: list(ACTION_DEFINITIONS[action].validation_steps) for action in RUN_ACTIONS
 }

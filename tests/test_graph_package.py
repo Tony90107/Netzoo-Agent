@@ -14,6 +14,13 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.graph as graph  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    EvaluationResult,
+    PartialResourceCandidate,
+    ToolExecutionResult,
+    ValidatedResourceBundle,
+    WorkspaceResourceInventory,
+)
 
 
 PUBLIC_EXPORTS = ["build_graph", "invoke_graph_turn"]
@@ -205,6 +212,116 @@ def test_guidance_response_removes_model_owned_status_and_cta_before_footer():
         "Use PUMA followed by LIONESS-PUMA.\n\n"
         "No files were inspected and no analysis ran."
     )
+
+
+def test_inventory_response_uses_typed_evidence_and_one_footer():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    inventory = WorkspaceResourceInventory(
+        scope_root=".",
+        visited_file_count=8,
+        truncated=True,
+        validated_bundles=[
+            ValidatedResourceBundle(
+                directory="data/study-a",
+                compatible_actions=["run_lioness_puma"],
+                inputs={
+                    "expression_file": "data/study-a/expression.tsv",
+                    "motif_file": "data/study-a/prior.tsv",
+                    "ppi_file": "data/study-a/ppi.tsv",
+                    "mirna_file": "data/study-a/mirna.txt",
+                },
+                validation_reasons=["all declared validators passed"],
+            )
+        ],
+        partial_candidates=[
+            PartialResourceCandidate(
+                directory="data/study-b",
+                action="run_lioness_puma",
+                matched_inputs={
+                    "expression_file": "data/study-b/expression.tsv"
+                },
+                missing_inputs=["motif_file", "ppi_file", "mirna_file"],
+            )
+        ],
+    )
+    decision = legacy_agent.TaskDecision(
+        action="discover_workspace_resources",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=0.95,
+        reason="Inspect workspace resources.",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="WORKSPACE-RESOURCES",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        steps=[
+            legacy_agent.WorkflowStep(
+                action="discover_workspace_resources",
+                purpose="Inventory compatible workspace resources read-only.",
+            )
+        ],
+        status="ready",
+    )
+    tool_result = ToolExecutionResult(
+        action="discover_workspace_resources",
+        status="success",
+        summary="Workspace inventory completed.",
+        structured_output=inventory.model_dump(),
+    )
+    captured = []
+
+    class DiscoveryResponse:
+        def invoke(self, messages):
+            captured.extend(messages)
+            return legacy_agent.AIMessage(
+                content=(
+                    "Validated bundle: data/study-a. Partial candidate data/study-b "
+                    "is missing motif_file, ppi_file, and mirna_file. The inventory "
+                    "was truncated."
+                )
+            )
+
+    context = SimpleNamespace(
+        project_policy=legacy_agent.ProjectPolicyLoader(
+            legacy_agent.PROJECT_ROOT
+        ).load(),
+        response_llm=DiscoveryResponse(),
+        response_prompt="Use only typed inventory evidence.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    result = response_module.respond(
+        context,
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content="Inspect available workspace resources"
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [tool_result.model_dump()],
+            "evaluation": EvaluationResult(
+                status="completed", reason="Discovery completed."
+            ).model_dump(),
+        },
+    )
+
+    text = result["messages"][0].content
+    response_input = "\n".join(str(message.content) for message in captured)
+    assert "validated" in text.casefold()
+    assert "mirna_file" in text
+    assert text.count("Workspace files were inspected read-only") == 1
+    assert "No files were inspected" not in text
+    assert '"validated_bundles"' in response_input
+    assert '"partial_candidates"' in response_input
+    assert '"truncated": true' in response_input
+    assert "raw external content" in response_input
 
 
 def test_record_event_uses_run_id_and_exact_payload():

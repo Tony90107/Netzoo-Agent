@@ -2,10 +2,35 @@
 
 from __future__ import annotations
 
-from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
+from ..contracts import (
+    OUTPUT_ROLE_FIELDS,
+    ProjectPolicySnapshot,
+    TaskDecision,
+    ToolExecutionResult,
+    WorkspaceResourceInventory,
+)
 from ..interpretation import INPUT_LABELS
 
 __all__: list[str] = []
+
+
+def validated_workspace_inventories(
+    results: list[ToolExecutionResult],
+) -> list[WorkspaceResourceInventory]:
+    """Return only successful, schema-validated workspace inventory evidence."""
+    inventories: list[WorkspaceResourceInventory] = []
+    for result in results:
+        payload = result.structured_output
+        if (
+            result.status != "success"
+            or payload.get("schema") != "workspace_resource_inventory"
+        ):
+            continue
+        try:
+            inventories.append(WorkspaceResourceInventory.model_validate(payload))
+        except ValueError:
+            continue
+    return inventories
 
 
 def validated_workflow_context(

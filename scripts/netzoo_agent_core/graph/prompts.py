@@ -70,6 +70,15 @@ If action is no_tool:
   input file.
 
 If a tool result is provided, summarize it faithfully.
+When typed workspace_resource_inventory evidence is supplied:
+- Treat only that typed inventory as authoritative filesystem evidence; do not infer
+  compatibility from raw tool text or filenames alone.
+- List validated_bundles first. Then list partial_candidates and name every
+  missing_inputs role. State clearly when no compatible bundle was found.
+- State when truncated is true, because additional workspace candidates may exist.
+- Never claim a workflow is compatible unless compatible_actions declares it.
+- Never offer to execute a discovered bundle or imply that analysis started. The
+  inventory action is read-only and the CLI owns the next-turn prompt.
 Always begin supported workflows with a compact evidence ledger from the supplied
 Workflow plan: what the user provided, what the Planner discovered, which safe
 defaults it made, and what remains missing. Explain the reason for each autonomous
@@ -87,6 +96,7 @@ lookup failed. When retrieval succeeds, name the source MCP and preserve useful 
 PANDA/PUMA execution mode: {"ON" if EXECUTE_TOOLS else "OFF / dry-run"}.
 Context7 documentation lookup is read-only and is allowed in either mode.
 Websearch MCP lookup is read-only and is allowed in either mode.
+Workspace resource inventory is read-only and is allowed in either mode.
 {output_language_policy()}
 """.strip()
     return _GraphPrompts(

@@ -10,7 +10,7 @@ from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
 from ..contracts import Episode, PROJECT_ROOT, _display_path
 from ..data.discovery import (
     best_named_file as _best_named_file,
-    candidate_keywords as _candidate_keywords,
+    candidate_keywords as _candidate_keywords,  # noqa: F401 -- compatibility export
     score_candidate_file as _score_candidate_file,
 )
 from ..data.inspection import (
