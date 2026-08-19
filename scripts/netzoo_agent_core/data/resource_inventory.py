@@ -228,6 +228,7 @@ def inventory_workspace_resources(
     limits: InventoryLimits = InventoryLimits(),
 ) -> WorkspaceResourceInventory:
     """Inventory complete and partial resource groups below ``root`` only."""
+    lexical_root = root.expanduser().absolute()
     search_root = root.expanduser().resolve()
     errors: list[str] = []
     rejected: Counter[str] = Counter()
@@ -332,6 +333,19 @@ def inventory_workspace_resources(
         path = Path(rendered).expanduser()
         if not path.is_absolute():
             path = search_root / path
+        else:
+            relative: Path | None = None
+            for accepted_root in (search_root, lexical_root):
+                try:
+                    relative = path.relative_to(accepted_root)
+                    break
+                except ValueError:
+                    continue
+            if relative is None:
+                rejected["outside_root"] += 1
+                explicit_invalid = True
+                continue
+            path = search_root / relative
         if _uses_symlink(path, search_root):
             rejected["symlink"] += 1
             explicit_invalid = True

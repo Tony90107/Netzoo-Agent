@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from workflow_registry import REQUIRED_INPUTS
+from workflow_registry import ACTION_DEFINITIONS, DISCOVERABLE_ACTIONS
 
 from ..presentation import _display_path
-from ..settings import INPUT_ROLE_FIELDS
-from .discovery import best_named_file, candidate_keywords
-from .inspection import expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
-from .tables import _inspect_panda_inputs_impl
+from .resource_inventory import inventory_workspace_resources
 
 __all__ = [
     "BundleDiscovery",
@@ -22,15 +18,10 @@ __all__ = [
 
 
 MULTI_FILE_ACTIONS = frozenset(
-    {
-        "run_panda",
-        "run_puma",
-        "run_lioness_panda",
-        "run_lioness_puma",
-    }
+    action
+    for action in DISCOVERABLE_ACTIONS
+    if len(ACTION_DEFINITIONS[action].discovery.input_roles) > 1
 )
-MAX_DIRECTORY_DEPTH = 4
-MAX_VISITED_FILES = 2_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,101 +32,6 @@ class BundleDiscovery:
     candidates_by_field: dict[str, list[str]]
 
 
-def _candidate_directories(action: str, nearby: Path) -> list[Path]:
-    root = nearby.expanduser().resolve()
-    if root.is_file():
-        root = root.parent
-    keywords = {
-        keyword
-        for field_name in REQUIRED_INPUTS[action]
-        if field_name in INPUT_ROLE_FIELDS
-        for keyword in candidate_keywords(action, field_name)
-    }
-    directories: set[Path] = set()
-    visited = 0
-    if not root.is_dir():
-        return []
-    for directory, child_directories, filenames in os.walk(
-        root,
-        topdown=True,
-        followlinks=False,
-    ):
-        directory_path = Path(directory)
-        depth = len(directory_path.relative_to(root).parts)
-        child_directories[:] = sorted(
-            child
-            for child in child_directories
-            if not (directory_path / child).is_symlink()
-        )
-        if depth >= MAX_DIRECTORY_DEPTH:
-            child_directories.clear()
-        for filename in filenames:
-            visited += 1
-            if visited > MAX_VISITED_FILES:
-                break
-            path = directory_path / filename
-            if (
-                path.is_file()
-                and not path.is_symlink()
-                and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
-                and any(keyword in filename.casefold() for keyword in keywords)
-            ):
-                directories.add(directory_path.resolve())
-        if visited > MAX_VISITED_FILES:
-            break
-    return sorted(directories, key=str)
-
-
-def _bundle_in_directory(
-    action: str,
-    directory: Path,
-    explicit_inputs: dict[str, str],
-) -> BundleDiscovery | None:
-    input_fields = [
-        field_name
-        for field_name in REQUIRED_INPUTS[action]
-        if field_name in INPUT_ROLE_FIELDS
-    ]
-    values = dict(explicit_inputs)
-    candidates_by_field: dict[str, list[str]] = {}
-    for field_name in input_fields:
-        if field_name in values:
-            candidates_by_field[field_name] = [values[field_name]]
-            continue
-        keywords = candidate_keywords(action, field_name)
-        candidate = best_named_file(directory, keywords)
-        if candidate is None:
-            return None
-        rendered = _display_path(candidate)
-        values[field_name] = rendered
-        candidates_by_field[field_name] = [rendered]
-
-    if set(values) != set(input_fields):
-        return None
-    _, valid, _ = _inspect_panda_inputs_impl(
-        values["expression_file"],
-        values["motif_file"],
-        values["ppi_file"],
-        values.get("mirna_file", ""),
-    )
-    if not valid:
-        return None
-    if "lioness" in action:
-        sample_count, _ = _expression_sample_count(values["expression_file"])
-        if sample_count < 3:
-            return None
-
-    resolved_directory = directory.resolve()
-    return BundleDiscovery(
-        values=values,
-        bundle_id=f"directory:{resolved_directory}",
-        reason=(
-            f"Selected one complete validated dataset bundle from {resolved_directory}."
-        ),
-        candidates_by_field=candidates_by_field,
-    )
-
-
 def discover_coherent_bundle(
     action: str,
     nearby: Path,
@@ -144,25 +40,49 @@ def discover_coherent_bundle(
     """Select exactly one complete compatible bundle, or decline to guess."""
     if action not in MULTI_FILE_ACTIONS:
         return None
-    anchor_parents = {
-        _resolve_user_path(value).parent.resolve() for value in explicit_inputs.values()
-    }
-    if len(anchor_parents) > 1:
-        return None
-    directories = (
-        sorted(anchor_parents, key=str)
-        if anchor_parents
-        else _candidate_directories(action, nearby)
-    )
-    valid = [
-        bundle
-        for directory in directories
-        if (
-            bundle := _bundle_in_directory(
-                action,
-                directory,
-                explicit_inputs,
-            )
+    inventory_root = nearby.expanduser()
+    if inventory_root.is_file():
+        inventory_root = inventory_root.parent
+    normalized_inputs = {
+        role: (
+            value
+            if Path(value).expanduser().is_absolute()
+            else str(_resolve_user_path(value))
         )
+        for role, value in explicit_inputs.items()
+    }
+    explicit_parents = {
+        path.parent
+        for value in normalized_inputs.values()
+        if (path := Path(value).expanduser()).is_absolute()
+    }
+    if (
+        len(explicit_parents) == 1
+        and next(iter(explicit_parents)).resolve() == inventory_root.resolve()
+    ):
+        inventory_root = next(iter(explicit_parents))
+    inventory = inventory_workspace_resources(
+        inventory_root,
+        [action],
+        explicit_inputs=normalized_inputs,
+    )
+    compatible = [
+        bundle
+        for bundle in inventory.validated_bundles
+        if action in bundle.compatible_actions
     ]
-    return valid[0] if len(valid) == 1 else None
+    if len(compatible) != 1:
+        return None
+    selected = compatible[0]
+    root = inventory_root.resolve()
+    values = {
+        role: _display_path((root / relative_path).resolve())
+        for role, relative_path in selected.inputs.items()
+    }
+    directory = (root / selected.directory).resolve()
+    return BundleDiscovery(
+        values=values,
+        bundle_id=f"directory:{directory}",
+        reason=selected.validation_reasons[0],
+        candidates_by_field={key: [value] for key, value in values.items()},
+    )

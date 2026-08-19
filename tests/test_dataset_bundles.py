@@ -8,6 +8,9 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as agent  # noqa: E402
+from netzoo_agent_core.data.resource_inventory import (  # noqa: E402
+    inventory_workspace_resources,
+)
 
 
 class DatasetBundlePlanningTests(unittest.TestCase):
@@ -85,6 +88,19 @@ class DatasetBundlePlanningTests(unittest.TestCase):
             {item.bundle_id for item in discovered},
             {f"directory:{study.resolve()}"},
         )
+
+    def test_inventory_and_planning_choose_the_same_complete_bundle(self):
+        self.write_complete_puma_bundle(self.root / "study-a")
+
+        inventory = inventory_workspace_resources(self.root, ["run_puma"])
+        bundle = agent.discover_coherent_bundle("run_puma", self.root, {})
+
+        self.assertIsNotNone(bundle)
+        planning_inputs = {
+            role: Path(path).resolve().relative_to(self.root.resolve()).as_posix()
+            for role, path in bundle.values.items()
+        }
+        self.assertEqual(planning_inputs, inventory.validated_bundles[0].inputs)
 
     def test_plan_evaluator_rejects_conflicting_discovered_bundle_ids(self):
         study = self.write_complete_puma_bundle(self.root / "study-a")
