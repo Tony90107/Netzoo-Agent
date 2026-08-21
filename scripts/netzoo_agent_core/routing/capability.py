@@ -125,6 +125,12 @@ def is_workflow_selection_request(task: str) -> bool:
 def infer_goal_capability_match(task: str) -> _GoalCapabilityMatch:
     """Classify whether matching registered actions are steps or alternatives."""
     normalized = task.casefold()
+    if re.search(
+        r"\bcobra\b|covariate.{0,32}(?:co[- ]?expression|correlation)|(?:batch|協變數).{0,32}(?:co[- ]?expression|相關)",
+        normalized,
+        re.IGNORECASE,
+    ):
+        return _GoalCapabilityMatch(["run_cobra"], "single")
     sample_specific = bool(
         re.search(
             r"(sample[\s_-]*(?:specific|spefic|specfic)|per[\s_-]*sample|"
@@ -285,6 +291,8 @@ def validate_task_text(
             flags=re.IGNORECASE,
         ):
             return "The user must explicitly request CONDOR execution or analysis."
+    if action == "run_cobra" and "cobra" not in normalized and not semantic_execution:
+        return "The user must explicitly request COBRA or covariate-aware co-expression analysis."
     if action == "inspect_condor_inputs" and "condor" not in normalized:
         return "The user must explicitly name CONDOR before inspecting its input."
     if action == "inspect_inputs" and not any(

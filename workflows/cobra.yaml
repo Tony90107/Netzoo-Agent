@@ -1,0 +1,20 @@
+policy_version: 2
+workflow: COBRA
+action: run_cobra
+description: Model covariate-associated gene co-expression with COBRA.
+required_inputs: [expression_file, design_file, output_dir]
+optional_inputs: []
+validation_steps: [inspect_cobra_inputs]
+execution_step: run_cobra
+output_capability:
+  operation: analyze
+  artifact_type: coexpression_network
+  entity_types: [gene]
+  granularities: [aggregate]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
+conventions:
+  - Expression must be a labeled gene-by-sample matrix with more genes than samples.
+  - Design rows must use exactly the expression sample IDs and numeric covariates.
+  - COBRA output is a covariate-associated covariance decomposition, not a replacement expression matrix.

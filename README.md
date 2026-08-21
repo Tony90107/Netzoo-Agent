@@ -10,6 +10,7 @@
 6. 整理 expression 的 gene/sample row/column 方向，讀取 CSV/TSV 時會先略過前置 annotation/comment rows，並輸出 PANDA/PUMA compatible TSV。
 7. 試跑 LIONESS-PANDA、LIONESS-PUMA 與 LIONESS co-expression；LIONESS 需要無 header TSV 時，agent 可自動準備 derived expression input。
 8. 試跑 CONDOR toy bipartite network。
+9. 以 COBRA 分析 sample covariates 對 gene co-expression 的影響，並輸出可重現的 covariance decomposition。
 9. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
@@ -217,6 +218,24 @@ docker compose run --rm netzoo run-condor \
   -o outputs/condor-toy \
   --prefix toy
 ```
+
+## COBRA：covariate-aware co-expression
+
+COBRA 使用有 sample header 的 gene × sample expression matrix，以及 sample × covariate
+design matrix。兩者的 sample ID 必須完全一致（順序可以不同，執行時會對齊），且 design
+covariates 必須先編碼為數值。COBRA 輸出的是 covariate-associated covariance decomposition，
+**不是**可直接取代 PANDA/PUMA/LIONESS input 的校正後 expression matrix。
+
+```bash
+docker compose run --rm netzoo run-cobra \
+  -e data/cobra-toy/expression.tsv \
+  -d data/cobra-toy/design.tsv \
+  -o outputs/cobra-toy
+```
+
+輸出資料夾包含 `manifest.json`（inputs、checksum、sample ordering）、
+`components.npz`（`psi`、`Q`、`d`、`g`）及 `summary.tsv`。在互動模式啟用 `/execute`
+後，也可以要求 agent 使用 COBRA 並提供 expression、design 與 output directory。
 
 CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
 weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。

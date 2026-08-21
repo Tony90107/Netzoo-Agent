@@ -20,6 +20,7 @@ from .data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
+from .data.cobra import inspect_cobra_inputs_impl
 
 from .data.tables import (
     _drop_common_header,
@@ -33,6 +34,7 @@ from .data.paths import condor_artifact_paths
 from .tool_adapters import (
     convert_expression_to_coexpression,
     format_expression_for_netzoo,
+    inspect_cobra_inputs,
     inspect_netzoo_inputs,
 )
 
@@ -49,6 +51,7 @@ __all__ = [
     "_inspect_condor_inputs_impl",
     "inspect_condor_inputs",
     "run_condor",
+    "run_cobra",
     "LOCAL_TOOL_EXECUTORS",
 ]
 
@@ -417,6 +420,24 @@ def run_condor(
     )
 
 
+@tool
+def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
+    """Run covariate-aware COBRA co-expression decomposition."""
+    validation_report, inputs_ok = inspect_cobra_inputs_impl(expression_file, design_file)
+    if not inputs_ok:
+        return "COBRA input validation failed; no command was executed.\n\n" + validation_report
+    output_path = _resolve_user_path(output_dir)
+    command = ["run-cobra", "-e", expression_file, "-d", design_file, "-o", str(output_path)]
+    return validation_report + "\n\n" + _run_command(
+        command,
+        additional_output_files=[
+            str(output_path / "manifest.json"),
+            str(output_path / "components.npz"),
+            str(output_path / "summary.tsv"),
+        ],
+    )
+
+
 LOCAL_TOOL_EXECUTORS = {
     "inspect_inputs": inspect_netzoo_inputs,
     "inspect_condor_inputs": inspect_condor_inputs,
@@ -428,4 +449,6 @@ LOCAL_TOOL_EXECUTORS = {
     "run_lioness_puma": run_lioness_puma,
     "run_lioness_coexpression": run_lioness_coexpression,
     "run_condor": run_condor,
+    "inspect_cobra_inputs": inspect_cobra_inputs,
+    "run_cobra": run_cobra,
 }

@@ -85,6 +85,7 @@ class TaskDecision(BaseModel):
     clarification_question: str | None = None
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
+    design_file: str | None = None
     motif_file: str | None = None
     ppi_file: str | None = None
     mirna_file: str | None = None

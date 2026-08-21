@@ -41,7 +41,7 @@ DEFAULT_EPISODE_FAILED_RETENTION_DAYS = 30
 DEFAULT_EPISODE_MAX_COUNT = 200
 DEFAULT_EPISODE_MAX_BYTES = 10 * 1024 * 1024
 INPUT_ROLE_FIELDS = {
-    "expression_file", "motif_file", "ppi_file", "mirna_file", "network_file"
+    "expression_file", "design_file", "motif_file", "ppi_file", "mirna_file", "network_file"
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
 PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis"}

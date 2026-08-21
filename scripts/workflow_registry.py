@@ -15,6 +15,7 @@ ActionName = Literal[
     "no_tool",
     "inspect_inputs",
     "inspect_condor_inputs",
+    "inspect_cobra_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -23,6 +24,7 @@ ActionName = Literal[
     "run_lioness_puma",
     "run_lioness_coexpression",
     "run_condor",
+    "run_cobra",
     "query_context7",
     "web_search",
 ]
@@ -38,6 +40,7 @@ RecommendedAction = Literal[
     "run_lioness_puma",
     "run_lioness_coexpression",
     "run_condor",
+    "run_cobra",
 ]
 
 IntentType = Literal[
@@ -119,6 +122,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "CONDOR-INPUTS",
         required_inputs=("network_file",),
         executor_fields=("network_file",),
+        local=True,
+    ),
+    "inspect_cobra_inputs": ActionDefinition(
+        "inspect_cobra_inputs",
+        "COBRA-INPUTS",
+        required_inputs=("expression_file", "design_file"),
+        executor_fields=("expression_file", "design_file"),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -293,6 +303,22 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="community_assignment",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"not_applicable"}),
+        ),
+    ),
+    "run_cobra": ActionDefinition(
+        "run_cobra",
+        "COBRA",
+        required_inputs=("expression_file", "design_file", "output_dir"),
+        executor_fields=("expression_file", "design_file", "output_dir"),
+        validation_steps=("inspect_cobra_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "cobra"},
+        output_capability=OutputCapabilityDefinition(
+            operation="analyze",
+            artifact_type="coexpression_network",
+            entity_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate"}),
         ),
     ),
     "query_context7": ActionDefinition(
