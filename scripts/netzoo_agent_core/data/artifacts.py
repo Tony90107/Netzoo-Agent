@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_lioness_puma",
         "run_lioness_coexpression",
         "run_condor",
+        "run_cobra",
     }
 )
 
@@ -176,7 +178,31 @@ def validate_output_artifacts(
             warnings=[f"No artifact contract is defined for {action}."],
         )
 
-    if action == "run_condor":
+    if action == "run_cobra":
+        if not decision.output_dir:
+            errors.append("COBRA output_dir is missing")
+        else:
+            root = _resolve_user_path(decision.output_dir)
+            manifest, components, summary = (root / "manifest.json", root / "components.npz", root / "summary.tsv")
+            artifacts = [str(manifest), str(components), str(summary)]
+            if _readable_nonempty_file(manifest, "COBRA manifest", errors):
+                try:
+                    if json.loads(manifest.read_text(encoding="utf-8")).get("method") != "COBRA":
+                        errors.append("COBRA manifest method must be COBRA")
+                except (OSError, ValueError) as error:
+                    errors.append(f"COBRA manifest is malformed: {error}")
+            if _readable_nonempty_file(components, "COBRA components", errors):
+                try:
+                    arrays = np.load(components, allow_pickle=False)
+                    if set(arrays.files) != {"psi", "Q", "d", "g"}:
+                        errors.append("COBRA components must contain psi, Q, d, and g")
+                except Exception as error:  # noqa: BLE001
+                    errors.append(f"COBRA components could not be loaded: {error}")
+            if _readable_nonempty_file(summary, "COBRA summary", errors):
+                frame = _table(summary, "COBRA summary", errors)
+                if frame is not None:
+                    metrics["cobra_components"] = int(len(frame))
+    elif action == "run_condor":
         if not decision.output_dir:
             errors.append("CONDOR output_dir is missing")
         else:

@@ -16,6 +16,7 @@ __all__: list[str] = []
 
 INPUT_LABELS = {
     "expression_file": _ui_text("expression matrix"),
+    "design_file": _ui_text("sample covariate design matrix"),
     "motif_file": _ui_text("motif/prior"),
     "ppi_file": _ui_text("PPI network"),
     "mirna_file": _ui_text("miRNA list"),
@@ -73,6 +74,7 @@ def _reverse_named_path(task: str, aliases: tuple[str, ...]) -> str | None:
 def _task_path(task: str, field_name: str) -> str | None:
     aliases_by_field = {
         "expression_file": ("expression_file", "expression", "表現矩陣", "表現資料"),
+        "design_file": ("design_file", "design", "covariates", "covariate matrix", "設計矩陣", "協變數"),
         "motif_file": ("motif_file", "motif", "prior", "先驗", "調控先驗"),
         "ppi_file": ("ppi_file", "ppi", "PPI"),
         "mirna_file": ("mirna_file", "miRNA list", "mirna list", "miRNA", "mirna"),

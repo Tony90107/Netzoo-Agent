@@ -301,23 +301,24 @@ def render_workflow_composition_guidance(
         f"   - `{field_name}`: {input_labels.get(field_name, field_name)}"
         for field_name in biological_inputs
     )
-    puma, final = registered[0], registered[-1]
+    aggregate, final = registered[0], registered[-1]
     return _ui_text(
-        "To infer a sample-specific miRNA regulatory network, use "
-        f"{puma.workflow} followed by {final.workflow}. Both workflows use the "
-        "same biological inputs:\n\n"
-        f"1. **{puma.workflow}**\n"
+        "I matched your goal to an aggregate and a sample-specific workflow. "
+        "They use the same biological inputs:\n\n"
+        f"1. **{aggregate.workflow}**\n"
         "   - **Inputs**:\n"
         f"{inputs}\n"
-        "   - **Output**: Aggregate regulatory-network output (`output_file`).\n\n"
+        "   - **Output**: Aggregate workflow output (`output_file`).\n\n"
         f"2. **{final.workflow}**\n"
         "   - **Inputs**:\n"
         f"{inputs}\n"
         "   - **Outputs**:\n"
-        "     - Aggregate regulatory-network output (`output_file`).\n"
+        "     - Aggregate workflow output (`output_file`).\n"
         "     - Sample-specific LIONESS output (`lioness_output`).\n\n"
-        f"{puma.workflow} infers the aggregate TF/miRNA-to-gene regulatory network; "
-        f"{final.workflow} derives one network per sample from that model. "
+        f"Use {aggregate.workflow} when you only need the aggregate result. "
+        f"Use {final.workflow} directly when you need the sample-specific result; "
+        "it also produces its aggregate output, so running the aggregate workflow "
+        "first is unnecessary. "
         "No files were inspected and no analysis ran."
     )
 

@@ -48,11 +48,12 @@ class WorkflowPolicySpec(BaseModel):
         "run_lioness_puma",
         "run_lioness_coexpression",
         "run_condor",
+        "run_cobra",
     ]
     description: str = Field(min_length=1, max_length=500)
     required_inputs: list[str] = Field(max_length=12)
     optional_inputs: list[str] = Field(default_factory=list, max_length=12)
-    validation_steps: list[Literal["inspect_inputs", "inspect_condor_inputs"]] = Field(
+    validation_steps: list[Literal["inspect_inputs", "inspect_condor_inputs", "inspect_cobra_inputs"]] = Field(
         default_factory=list, max_length=4
     )
     execution_step: Literal[
@@ -62,6 +63,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_lioness_puma",
         "run_lioness_coexpression",
         "run_condor",
+        "run_cobra",
     ]
     output_capability: WorkflowOutputCapabilitySpec
     conventions: list[str] = Field(default_factory=list, max_length=20)

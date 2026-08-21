@@ -39,6 +39,8 @@ def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
         ]
     if action == "run_condor" and decision.output_dir:
         return [decision.output_dir]
+    if action == "run_cobra" and decision.output_dir:
+        return [decision.output_dir]
     return []
 
 

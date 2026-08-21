@@ -91,9 +91,33 @@ def test_composition_guidance_uses_registered_workflow_metadata():
     assert "`motif_file`" in answer
     assert "`ppi_file`" in answer
     assert "`mirna_file`" in answer
-    assert "Aggregate regulatory-network output (`output_file`)" in answer
+    assert "Aggregate workflow output (`output_file`)" in answer
     assert "Sample-specific LIONESS output (`lioness_output`)" in answer
+    assert "Use LIONESS-PUMA directly" in answer
+    assert "running the aggregate workflow first is unnecessary" in answer
     assert "clarify" not in answer
+
+
+def test_composition_guidance_does_not_assume_mirna_or_puma():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="Guidance was requested.",
+        recommended_actions=["run_panda", "run_lioness_panda"],
+    )
+
+    answer = render_workflow_composition_guidance(decision, policy, None)
+
+    assert answer is not None
+    assert "**PANDA**" in answer
+    assert "**LIONESS-PANDA**" in answer
+    assert "Use LIONESS-PANDA directly" in answer
+    assert "miRNA" not in answer
+    assert "PUMA" not in answer
 
 
 def test_measurement_request_explains_gap_before_offering_network():

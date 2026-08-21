@@ -17,6 +17,7 @@ from ..data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
+from ..data.cobra import inspect_cobra_inputs_impl
 from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
 
@@ -53,6 +54,16 @@ def _choose_unambiguous_candidate(
 def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
     """Find a coherent toy dataset as a bundle, then validate cross-file compatibility."""
     data_root = PROJECT_ROOT / "data"
+    if action == "run_cobra":
+        expression = data_root / "cobra-toy" / "expression.tsv"
+        design = data_root / "cobra-toy" / "design.tsv"
+        _, ok = inspect_cobra_inputs_impl(str(expression), str(design))
+        if not ok:
+            return None
+        return (
+            {"expression_file": _display_path(expression), "design_file": _display_path(design)},
+            "Demo intent: selected the COBRA toy expression/design bundle with aligned sample IDs.",
+        )
     if action == "run_condor":
         candidates: list[tuple[int, Path]] = []
         for path in data_root.rglob("*"):
