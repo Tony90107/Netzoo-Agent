@@ -1143,6 +1143,29 @@ class CapabilityGateTests(unittest.TestCase):
             "data/official-toy/ToyExpressionData.txt",
         )
 
+    def test_cobra_natural_language_paths_outrank_demo_bundle(self):
+        decision = agent.TaskDecision(
+            action="run_cobra",
+            in_scope=True,
+            should_execute=True,
+            confidence=0.95,
+            reason="Run COBRA.",
+        )
+        task = (
+            "請使用 COBRA 分析 data/cobra-toy/expression.tsv 與 "
+            "data/cobra-toy/design.tsv，將結果輸出到 outputs/cobra-local-test。"
+        )
+
+        plan = agent.build_workflow_plan(decision, task)
+
+        assert plan.status == "ready"
+        assert plan.decision["expression_file"] == "data/cobra-toy/expression.tsv"
+        assert plan.decision["design_file"] == "data/cobra-toy/design.tsv"
+        assert plan.decision["output_dir"] == "outputs/cobra-local-test"
+        statuses = {item.field: item.status for item in plan.evidence}
+        assert statuses["expression_file"] == "provided"
+        assert statuses["design_file"] == "provided"
+
     def test_user_visible_plan_is_english_for_chinese_input(self):
         decision = agent.TaskDecision(
             action="run_lioness_panda",

@@ -14,6 +14,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 )
 from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_capability_gap,
+    render_cobra_expression_boundary,
     render_outcome_clarification,
     render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
@@ -64,6 +65,16 @@ def test_non_purpose_question_keeps_response_model_path():
         render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy)
         is None
     )
+
+
+def test_cobra_output_cannot_be_routed_as_panda_expression():
+    answer = render_cobra_expression_boundary(
+        "請將 COBRA 的結果直接當成 expression input 跑 PANDA。"
+    )
+
+    assert answer is not None
+    assert "cannot be used directly as PANDA expression input" in answer
+    assert "covariance decomposition" in answer
 
 
 def test_composition_guidance_uses_registered_workflow_metadata():

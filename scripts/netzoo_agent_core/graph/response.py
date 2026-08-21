@@ -27,6 +27,7 @@ from ..evaluation import (
 )
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_capability_gap
+from ..interpretation.concept_answers import render_cobra_expression_boundary
 from ..interpretation.concept_answers import render_workflow_composition_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
@@ -39,6 +40,9 @@ __all__: list[str] = []
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
+    cobra_boundary = render_cobra_expression_boundary(latest_user_task(state["messages"]))
+    if cobra_boundary is not None:
+        return {"messages": [AIMessage(content=cobra_boundary)]}
     plan = WorkflowPlan.model_validate(state["plan"])
     plan_evaluation = (
         PlanEvaluationResult.model_validate(state["plan_evaluation"])

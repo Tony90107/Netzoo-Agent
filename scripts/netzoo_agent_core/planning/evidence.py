@@ -26,6 +26,18 @@ from ..data.paths import _resolve_user_path
 __all__: list[str] = []
 
 
+def _cobra_unlabeled_input_paths(task: str) -> tuple[str | None, str | None]:
+    """Bind COBRA's two ordered table paths in natural-language requests."""
+    if "cobra" not in task.casefold():
+        return None, None
+    paths = re.findall(
+        r"(?<![A-Za-z0-9_.-])([A-Za-z0-9_./-]+\.(?:tsv|tab|csv|txt))(?![A-Za-z0-9_.-])",
+        task,
+        flags=re.IGNORECASE,
+    )
+    return (paths[0], paths[1]) if len(paths) >= 2 else (None, None)
+
+
 def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     decision = context.decision
     task = context.task
@@ -49,8 +61,15 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             flags=re.IGNORECASE,
         )
     )
+    cobra_expression, cobra_design = _cobra_unlabeled_input_paths(task)
     for field_name in input_fields:
-        parsed = _task_path(task, field_name)
+        parsed = _task_path(task, field_name) or (
+            cobra_expression
+            if action == "run_cobra" and field_name == "expression_file"
+            else cobra_design
+            if action == "run_cobra" and field_name == "design_file"
+            else None
+        )
         routed = getattr(decision, field_name, None)
         if parsed:
             setattr(decision, field_name, parsed)
