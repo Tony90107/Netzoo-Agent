@@ -33,6 +33,8 @@ from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
 )
 from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
+from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
+from netzoo_agent_core.settings import PROJECT_ROOT  # noqa: E402
 
 
 def test_router_schema_allows_a_repairable_empty_outcome_classification():
@@ -40,6 +42,116 @@ def test_router_schema_allows_a_repairable_empty_outcome_classification():
 
     assert "outcome_hypotheses" not in schema["required"]
     assert schema["properties"]["outcome_hypotheses"]["maxItems"] == 3
+
+
+def test_router_contract_exposes_llm_owned_candidates_and_clarification():
+    decision = RouterDecision(
+        action="no_tool",
+        selected_action="no_tool",
+        candidate_actions=["run_lioness_panda", "run_lioness_puma"],
+        in_scope=True,
+        intent_type="unknown",
+        confidence=0.55,
+        reason="The regulator type is not specified.",
+        clarification_question="Should the network model TF or miRNA regulators?",
+    )
+
+    hydrated = hydrate_router_decision(decision, "Build one network per sample")
+
+    assert hydrated.action == "no_tool"
+    assert hydrated.candidate_actions == ["run_lioness_panda", "run_lioness_puma", "no_tool"]
+    assert hydrated.clarification_question == (
+        "Should the network model TF or miRNA regulators?"
+    )
+
+
+def test_repair_does_not_replace_the_router_selected_action_from_task_keywords():
+    raw = TaskDecision(
+        action="run_puma",
+        candidate_actions=["run_puma", "run_lioness_puma"],
+        in_scope=True,
+        should_execute=True,
+        intent_type="run_analysis",
+        confidence=0.95,
+        reason="The router selected aggregate PUMA.",
+    )
+
+    repaired = repair_router_decision(
+        raw, "Build sample-specific miRNA-to-gene regulatory networks"
+    )
+
+    assert repaired.action == "run_puma"
+    assert repaired.should_execute is True
+
+
+def test_explicit_panda_name_wins_over_granularity_ambiguity():
+    raw = TaskDecision(
+        action="run_panda",
+        candidate_actions=["run_panda", "run_lioness_panda"],
+        in_scope=True,
+        should_execute=True,
+        intent_type="run_analysis",
+        confidence=0.95,
+        reason="The user explicitly requested PANDA.",
+        clarification_question="Should the result be aggregate or sample-specific?",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=RequestedOutcome(
+                    operation="infer",
+                    artifact_type="regulatory_network",
+                    entity_types=["tf", "gene"],
+                    display_entities=["TF", "gene"],
+                    regulator_types=["tf"],
+                    target_types=["gene"],
+                    granularity="unknown",
+                    unresolved_dimensions=["granularity"],
+                ),
+                confidence=0.95,
+                assumptions=["The requested granularity is unresolved."],
+            )
+        ],
+    )
+
+    repaired = repair_router_decision(
+        raw,
+        "Run PANDA using data/expression.tsv, data/motif.tsv, and data/ppi.tsv.",
+    )
+
+    assert repaired.action == "run_panda"
+    assert repaired.should_execute is True
+    assert repaired.capability_match_status == "exact"
+    assert repaired.matched_actions == ["run_panda"]
+    assert repaired.clarification_question is None
+
+
+def test_explicit_panda_request_recovers_when_router_used_no_tool_for_clarification():
+    raw = TaskDecision(
+        action="no_tool",
+        candidate_actions=["run_panda", "run_lioness_panda"],
+        in_scope=True,
+        should_execute=False,
+        intent_type="run_analysis",
+        confidence=0.95,
+        reason="The request is executable but granularity was omitted.",
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+
+    repaired = repair_router_decision(
+        raw,
+        "Run PANDA using data/expression.tsv, data/motif.tsv, and data/ppi.tsv.",
+    )
+
+    assert repaired.action == "run_panda"
+    assert repaired.should_execute is True
+    assert repaired.clarification_question is None
+
+
+def test_router_prompt_renders_registry_backed_supporting_actions():
+    prompt = build_routing_prompt(ProjectPolicyLoader(PROJECT_ROOT).load())
+
+    assert "Supporting and retrieval actions from the same validated registry:" in prompt
+    assert "- inspect_inputs: INPUTS. Required inputs: expression_file, motif_file, ppi_file" in prompt
+    assert "- web_search: WEB-SEARCH. Required inputs: web_query" in prompt
 
 
 def test_router_reason_allows_bounded_repair_explanations():
@@ -64,7 +176,7 @@ def test_router_budget_and_prompt_support_bounded_partial_hypotheses():
     source = inspect.getsource(build_routing_prompt)
     assert "Prefer one partial" in source
     assert "deterministic matcher will enumerate compatible" in source
-    assert "Keep reason under 500 characters" in source
+    assert "Keep it under 500 characters" in source
 
 
 def test_router_repairs_an_omitted_outcome_hypothesis():
@@ -244,7 +356,7 @@ def test_router_repair_prompt_preserves_request_and_structured_failure():
     assert "if i want to get sample specific network data" not in combined.casefold()
 
 
-def test_router_outcome_is_descriptive_until_deterministic_repair():
+def test_router_outcome_metadata_does_not_replace_the_router_selection():
     task = "Please build sample-specific miRNA-to-gene regulatory networks"
     hydrated = hydrate_router_decision(
         RouterDecision(
@@ -262,7 +374,7 @@ def test_router_outcome_is_descriptive_until_deterministic_repair():
     assert hydrated.recommended_actions == []
 
     repaired = repair_router_decision(hydrated, task)
-    assert repaired.action == "run_lioness_puma"
+    assert repaired.action == "run_puma"
     assert repaired.matched_actions == ["run_lioness_puma"]
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
 
@@ -366,7 +478,7 @@ def test_partial_and_sample_specific_hypotheses_still_ask_only_for_granularity()
     )
 
 
-def test_advisory_hypothesis_cannot_authorize_execution():
+def test_router_selected_action_is_preserved_when_hypothesis_is_advisory():
     raw = TaskDecision(
         action="run_lioness_puma",
         in_scope=True,
@@ -384,9 +496,8 @@ def test_advisory_hypothesis_cannot_authorize_execution():
         "Build my sample-specific miRNA network",
     )
 
-    assert repaired.action == "no_tool"
-    assert repaired.should_execute is False
-    assert repaired.matched_actions == []
+    assert repaired.action == "run_lioness_puma"
+    assert repaired.should_execute is True
     assert repaired.hypothesis_actions == ["run_lioness_puma"]
 
 
@@ -402,7 +513,7 @@ def test_provider_failure_does_not_guess_an_unnamed_goal():
     assert decision.clarification_question is not None
 
 
-def test_provider_failure_preserves_explicit_named_workflow_information():
+def test_provider_failure_does_not_infer_even_an_explicit_named_workflow():
     decision = deterministic_router_fallback(
         "What inputs does PUMA require?",
         TimeoutError(),
@@ -410,11 +521,11 @@ def test_provider_failure_preserves_explicit_named_workflow_information():
 
     assert decision.action == "no_tool"
     assert decision.should_execute is False
-    assert decision.matched_actions == ["run_puma"]
-    assert decision.recommended_actions == ["run_puma"]
+    assert decision.matched_actions == []
+    assert decision.recommended_actions == []
 
 
-def test_contextual_input_format_question_remains_stable_workflow_guidance():
+def test_contextual_input_format_question_preserves_router_docs_selection():
     raw = TaskDecision(
         action="query_context7",
         in_scope=True,
@@ -431,8 +542,8 @@ def test_contextual_input_format_question_remains_stable_workflow_guidance():
 
     repaired = repair_router_decision(raw, task)
 
-    assert repaired.action == "no_tool"
-    assert repaired.should_execute is False
+    assert repaired.action == "query_context7"
+    assert repaired.should_execute is True
     assert repaired.intent_type == "answer_question"
 
 
@@ -444,7 +555,7 @@ def test_contextual_input_format_question_remains_stable_workflow_guidance():
         "I need individual-level micro RNA measurements, not a network.",
     ],
 )
-def test_language_variations_cannot_promote_measurements_to_networks(task):
+def test_outcome_metadata_does_not_replace_router_selection_for_measurements(task):
     hydrated = hydrate_router_decision(
         RouterDecision(
             action="run_lioness_puma",
@@ -459,8 +570,8 @@ def test_language_variations_cannot_promote_measurements_to_networks(task):
 
     repaired = repair_router_decision(hydrated, task)
 
-    assert repaired.action == "no_tool"
-    assert repaired.should_execute is False
+    assert repaired.action == "run_lioness_puma"
+    assert repaired.should_execute is True
     assert repaired.capability_match_status == "unsupported"
     assert repaired.matched_actions == []
     assert repaired.recommended_actions == []
@@ -478,7 +589,7 @@ def test_language_variations_cannot_promote_measurements_to_networks(task):
         ),
     ],
 )
-def test_language_variations_share_one_typed_network_match(task, should_execute):
+def test_language_variations_preserve_the_router_selected_network_action(task, should_execute):
     hydrated = hydrate_router_decision(
         RouterDecision(
             action="run_lioness_puma",
@@ -493,8 +604,8 @@ def test_language_variations_share_one_typed_network_match(task, should_execute)
 
     repaired = repair_router_decision(hydrated, task)
 
-    assert repaired.should_execute is should_execute
-    assert repaired.action == ("run_lioness_puma" if should_execute else "no_tool")
+    assert repaired.should_execute is True
+    assert repaired.action == "run_lioness_puma"
     assert repaired.capability_match_status == "exact"
     assert repaired.matched_actions == ["run_lioness_puma"]
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
@@ -649,7 +760,7 @@ def test_generic_sample_network_keeps_compatible_families_unranked():
         "Which tool downloads per-patient microRNA abundance data?",
     ],
 )
-def test_measurement_hypotheses_never_gain_network_authority(task):
+def test_measurement_metadata_is_retained_without_reselecting_action(task):
     decision = repair_router_decision(
         TaskDecision(
             action="run_lioness_puma",
@@ -679,8 +790,8 @@ def test_measurement_hypotheses_never_gain_network_authority(task):
 
     assert decision.hypothesis_actions == []
     assert decision.matched_actions == []
-    assert decision.action == "no_tool"
-    assert decision.should_execute is False
+    assert decision.action == "run_lioness_puma"
+    assert decision.should_execute is True
 
 
 def test_motivating_sentences_are_not_production_routing_rules():

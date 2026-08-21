@@ -31,6 +31,8 @@ If action is no_tool:
 - Distinguish an aggregate predecessor workflow from the requested final result. For
   a sample-specific miRNA regulatory network, explain the validated PUMA followed by
   LIONESS-PUMA composition without asking aggregate versus sample-specific again.
+  Clarify that the CLI's `run-lioness puma` workflow encapsulates this composition
+  and does not require two separate manual commands from the user.
 - When uncertainty remains, ask only the smallest unresolved scientific question and
   do not invent additional workflow capabilities.
 - Cross-check every claimed workflow output against its validated output_capability.
@@ -70,6 +72,11 @@ If action is no_tool:
   input file.
 
 If a tool result is provided, summarize it faithfully.
+When explaining more than one matched workflow, derive each workflow's required
+inputs from the authoritative workflow specifications. List the inputs separately
+for each workflow; never say that two workflows use the same inputs unless their
+validated required-input sets are actually identical. Keep output artifacts and
+predecessor outputs separate from user-provided input files.
 Always begin supported workflows with a compact evidence ledger from the supplied
 Workflow plan: what the user provided, what the Planner discovered, which safe
 defaults it made, and what remains missing. Explain the reason for each autonomous

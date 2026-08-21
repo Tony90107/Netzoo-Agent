@@ -11,6 +11,7 @@ from netzoo_agent_core import session  # noqa: E402
 import netzoo_agent_core.graph.factory as graph_module  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
     HumanMessage,
+    LLMUsage,
     OutcomeHypothesis,
     RequestedOutcome,
     RouterDecision,
@@ -24,6 +25,7 @@ from netzoo_agent_core.session import (  # noqa: E402
     save_session,
 )
 from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
+from netzoo_agent_core.trace_contracts import LLMCallUsage  # noqa: E402
 from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
 import netzoo_agent as legacy_agent  # noqa: E402
 
@@ -152,6 +154,43 @@ def test_session_retains_the_trace_run_id_without_changing_legacy_load_shape(
     legacy = load_session("named-session", include_usage=True)
     assert payload["run_id"] == str(run_id)
     assert len(legacy) == 3
+
+
+def test_session_serializes_llm_call_uuid_as_json_string(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr(session, "SESSION_ROOT", tmp_path / "sessions")
+    call = LLMCallUsage(
+        role="router",
+        model="test-model",
+        input_tokens=3,
+        output_tokens=2,
+        total_tokens=5,
+        usage_provenance="actual",
+        status="success",
+    )
+    usage = LLMUsage(
+        input_tokens=3,
+        output_tokens=2,
+        total_tokens=5,
+        calls=[call],
+    )
+
+    save_session(
+        "uuid-usage-session",
+        [],
+        {
+            "plan": None,
+            "tool_results": [],
+            "token_usage": usage.model_dump(),
+        },
+    )
+
+    payload = load_session_payload("uuid-usage-session")
+    stored_call = payload["token_usage"]["calls"][0]
+    assert stored_call["call_id"] == str(call.call_id)
+    assert LLMUsage.model_validate(payload["token_usage"]).calls[0].call_id == call.call_id
 
 
 def test_instrumented_node_records_boundaries_without_serializing_state(tmp_path: Path):

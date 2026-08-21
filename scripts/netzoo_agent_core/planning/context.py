@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from workflow_registry import (
-    LOCAL_WORKFLOW_ACTIONS,
     REQUIRED_INPUTS,
     workflow_name as _workflow_name,
 )
@@ -20,16 +18,8 @@ from ..contracts import (
     WorkflowPolicySpec,
     WorkflowStep,
 )
-from ..interpretation import (
-    _lioness_mode_plan,
-    _needs_lioness_mode_choice,
-)
 from ..policy import ProjectPolicyLoader
-from ..routing import (
-    MIN_TOOL_CONFIDENCE,
-    enforce_capability_gate,
-    validate_task_text,
-)
+from ..routing import enforce_capability_gate
 
 __all__: list[str] = []
 
@@ -80,75 +70,12 @@ def _prepare_planning_context(
     policy_hash = policy_model.policy_hash if policy_model else None
     policy_notes = []
     workflow_spec = None
-    preferred_workflow_authorized = False
-    preferred_workflow = profile_model.preferences.get("preferred_workflow")
-    if (
-        decision.action == "no_tool"
-        and isinstance(preferred_workflow, str)
-        and re.search(
-            r"(preferred|default).{0,16}workflow|workflow.{0,16}(preferred|default)"
-            r"|偏好.{0,8}(工作流|流程)|預設.{0,8}(工作流|流程)",
-            task,
-            flags=re.IGNORECASE,
-        )
-        and re.search(r"(run|execute|start|執行|開始|跑)", task, flags=re.IGNORECASE)
-    ):
-        decision.action = f"run_{preferred_workflow}"
-        decision.in_scope = True
-        decision.should_execute = True
-        decision.confidence = max(decision.confidence, MIN_TOOL_CONFIDENCE)
-        decision.reason = (
-            f"The user explicitly requested the confirmed preferred workflow: "
-            f"{preferred_workflow}."
-        )
-        preferred_workflow_authorized = True
-        memory_notes.append(
-            f"Applied confirmed preferred_workflow={preferred_workflow}."
-        )
-    if _needs_lioness_mode_choice(task):
-        return _lioness_mode_plan(
-            decision,
-            task,
-            memory_notes=memory_notes,
-            policy_hash=policy_hash,
-        )
     action = decision.action
     workflow = _workflow_name(action)
-    if action in {"query_context7", "web_search"}:
+    if action != "no_tool":
         decision = enforce_capability_gate(decision, user_task=task)
         action = decision.action
         workflow = _workflow_name(action)
-    elif action != "no_tool":
-        rejection = (
-            None if preferred_workflow_authorized else validate_task_text(task, action)
-        )
-        reasons = []
-        if rejection:
-            reasons.append(rejection)
-        if (
-            action in LOCAL_WORKFLOW_ACTIONS
-            and decision.intent_type == "answer_question"
-        ):
-            reasons.append(
-                "The request was classified as an information question, not an execution request."
-            )
-        if not decision.in_scope:
-            reasons.append("The task is outside the NetZoo agent capability scope.")
-        if decision.confidence < MIN_TOOL_CONFIDENCE:
-            reasons.append(
-                f"Tool-selection confidence is too low ({decision.confidence:.2f})."
-            )
-        if reasons:
-            decision = TaskDecision(
-                action="no_tool",
-                in_scope=decision.in_scope,
-                should_execute=False,
-                confidence=decision.confidence,
-                reason="；".join(reasons),
-                recommended_actions=decision.recommended_actions,
-            )
-            action = "no_tool"
-            workflow = "NO-TOOL"
 
     if policy_model and action in policy_model.workflows:
         workflow_spec = policy_model.workflows[action]

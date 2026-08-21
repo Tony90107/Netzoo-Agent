@@ -16,26 +16,18 @@ from ..contracts import (
     RequestedOutcome,
     TaskDecision,
     WorkflowPlan,
-    _is_demo_request,
     _ui_text,
 )
 from ..routing import (
     MIN_TOOL_CONFIDENCE,
-    has_direct_execution_intent,
-    is_workflow_information_request,
 )
 from ..routing.outcome_matching import (
-    apply_outcome_match,
     guidance_actions_for,
     match_outcome_hypotheses,
     named_workflow_action,
 )
-from .extraction import (
-    _task_path,
-    documentation_library_for_task,
-    is_versioned_documentation_request,
-)
 from .outcome_consistency import select_primary_hypothesis
+from .extraction import _task_path
 
 __all__: list[str] = []
 
@@ -140,21 +132,11 @@ def _confirmed_outcome(task: str, action: str) -> RequestedOutcome:
 
 
 def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecision:
-    """Repair under-routing while keeping execution tied to a typed exact match."""
-    documentation_library = documentation_library_for_task(task)
-    if is_versioned_documentation_request(task) and documentation_library:
-        return TaskDecision(
-            action="query_context7",
-            in_scope=True,
-            should_execute=True,
-            intent_type="answer_question",
-            confidence=max(raw_decision.confidence, MIN_TOOL_CONFIDENCE),
-            reason="The request requires current or version-specific package documentation.",
-            library_name=documentation_library,
-            docs_query=task[:2_000],
-            preference_updates=raw_decision.preference_updates,
-        )
+    """Attach capability metadata without replacing the Router's selection.
 
+    The only action override is a CLI-generated continuation marker. It represents
+    an already approved pending plan, not a new interpretation of user language.
+    """
     confirmed_match = re.search(
         r"CONFIRMED_OUTCOME_ACTION=(run_[a-z_]+)",
         task,
@@ -172,6 +154,29 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
                 should_execute=False,
                 reason="The user confirmed a supported alternative outcome.",
             ).model_copy(update={"intent_type": "answer_question"})
+
+    # A user-named executable workflow is stronger evidence than an incomplete
+    # outcome hypothesis.  For example, PANDA is aggregate by definition;
+    # do not turn an explicit "Run PANDA" request into a generic
+    # aggregate/sample-specific question merely because the Router omitted
+    # granularity.  Restrict this override to execution actions so conceptual
+    # questions such as "What inputs does PANDA need?" remain informational.
+    explicit_action = named_workflow_action(task)
+    if (
+        explicit_action is not None
+        and explicit_action.startswith("run_")
+        and (
+            raw_decision.action.startswith("run_")
+            or raw_decision.intent_type == "run_analysis"
+        )
+        and not re.search(r"PREVIOUS_ACTION=run_[a-z_]+", task, flags=re.IGNORECASE)
+    ):
+        return _ready_named_decision(
+            raw_decision,
+            explicit_action,
+            should_execute=True,
+            reason="The user explicitly named this executable NetZoo workflow.",
+        )
 
     if raw_decision.outcome_hypotheses:
         match = match_outcome_hypotheses(raw_decision.outcome_hypotheses)
@@ -193,7 +198,7 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
             }
         )
     else:
-        decision = apply_outcome_match(raw_decision)
+        decision = raw_decision.model_copy(deep=True)
 
     continuation_match = re.search(
         r"PREVIOUS_ACTION=(run_[a-z_]+)", task, flags=re.IGNORECASE
@@ -215,89 +220,20 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
                 parsed = _task_path(task, field_name)
                 if parsed:
                     repaired[field_name] = parsed
-            repaired["missing_inputs"] = [
-                field_name
-                for field_name in REQUIRED_INPUTS.get(action, ())
-                if field_name not in {"output_file", "lioness_output", "output_dir"}
-                and not repaired.get(field_name)
-            ]
-            return TaskDecision.model_validate(repaired)
+            decision = TaskDecision.model_validate(repaired)
+            return decision.model_copy(
+                update={
+                    "missing_inputs": [
+                        field_name
+                        for field_name in REQUIRED_INPUTS.get(action, ())
+                        if field_name not in {"output_file", "lioness_output", "output_dir"}
+                        and not getattr(decision, field_name, None)
+                    ]
+                }
+            )
 
-    if decision.capability_match_status in {"ambiguous", "unsupported"}:
-        return decision.model_copy(
-            update={"action": "no_tool", "should_execute": False}
-        )
-
-    named_action = named_workflow_action(task)
-    if decision.requested_outcome is None and named_action:
-        decision = _ready_named_decision(
-            decision,
-            named_action,
-            should_execute=False,
-            reason="The user explicitly named a registered workflow.",
-        )
-
-    if is_workflow_information_request(task):
-        return decision.model_copy(
-            update={
-                "action": "no_tool",
-                "in_scope": True,
-                "should_execute": False,
-                "intent_type": "answer_question",
-                "confidence": max(decision.confidence, MIN_TOOL_CONFIDENCE),
-                "reason": (
-                    "The request asks for stable workflow requirements or usage "
-                    "guidance."
-                ),
-            }
-        )
-
-    if has_direct_execution_intent(task) and len(decision.matched_actions) == 1:
-        action = decision.matched_actions[0]
-        repaired = decision.model_dump()
-        repaired.update(
-            {
-                "action": action,
-                "in_scope": True,
-                "should_execute": True,
-                "intent_type": "demo_run" if _is_demo_request(task) else "run_analysis",
-                "confidence": max(decision.confidence, MIN_TOOL_CONFIDENCE),
-                "reason": "The requested outcome exactly matches a registered workflow.",
-            }
-        )
-        repaired["missing_inputs"] = [
-            field_name
-            for field_name in REQUIRED_INPUTS[action]
-            if not repaired.get(field_name)
-        ]
-        return TaskDecision.model_validate(repaired)
-
-    normalized = task.casefold()
-    run_intent = bool(
-        re.search(
-            r"(run|execute|trial|test|demo|試跑|執行|跑|跑一次|測試|做測試|示範|分析)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
+    if decision.clarification_question:
+        return decision.model_copy(update={"action": "no_tool", "should_execute": False})
+    return decision.model_copy(
+        update={"should_execute": decision.action != "no_tool"}
     )
-    if named_action and run_intent:
-        decision = _ready_named_decision(
-            decision,
-            named_action,
-            should_execute=True,
-            reason="The user explicitly named a registered workflow.",
-        )
-        repaired = decision.model_dump()
-        repaired["intent_type"] = (
-            "demo_run" if _is_demo_request(task) else "run_analysis"
-        )
-        repaired["missing_inputs"] = [
-            field_name
-            for field_name in REQUIRED_INPUTS[named_action]
-            if not repaired.get(field_name)
-        ]
-        return TaskDecision.model_validate(repaired)
-
-    if raw_decision.action not in LOCAL_WORKFLOW_ACTIONS:
-        return decision
-    return decision.model_copy(update={"action": "no_tool", "should_execute": False})

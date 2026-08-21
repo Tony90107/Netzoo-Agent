@@ -11,7 +11,6 @@ from workflow_registry import (
     LOCAL_WORKFLOW_ACTIONS,
     REQUIRED_INPUTS,
     RecommendedAction,
-    RUN_ACTIONS,
 )
 
 from ..contracts import TaskDecision
@@ -329,7 +328,7 @@ def normalize_context7_library(library_name: str | None) -> str | None:
 def enforce_capability_gate(
     decision: TaskDecision, user_task: str | None = None
 ) -> TaskDecision:
-    """Convert uncertain, unsupported, or incomplete decisions into no_tool."""
+    """Apply non-semantic safety checks to an LLM-owned routing selection."""
     if decision.action == "no_tool":
         decision.should_execute = False
         return decision
@@ -338,6 +337,16 @@ def enforce_capability_gate(
         decision.library_name = normalize_context7_library(decision.library_name)
         # Never let model-generated IDs bypass the library allow-list.
         decision.library_id = None
+        if decision.library_name is None:
+            return decision.model_copy(
+                update={
+                    "action": "no_tool",
+                    "should_execute": False,
+                    "clarification_question": (
+                        "Which supported library should be used for the documentation lookup?"
+                    ),
+                }
+            )
 
     missing = [
         field_name
@@ -346,56 +355,8 @@ def enforce_capability_gate(
     ]
     missing = sorted(set([*decision.missing_inputs, *missing]))
 
-    rejection_reasons = []
-    if (
-        decision.action in RUN_ACTIONS
-        and decision.action not in decision.matched_actions
-    ):
-        rejection_reasons.append(
-            "The selected workflow does not exactly match the requested deliverable."
-        )
-    if user_task:
-        task_rejection = validate_task_text(
-            user_task,
-            decision.action,
-            matched_actions=decision.matched_actions,
-        )
-        if task_rejection:
-            rejection_reasons.append(task_rejection)
-    if (
-        decision.action in LOCAL_WORKFLOW_ACTIONS
-        and decision.intent_type == "answer_question"
-    ):
-        rejection_reasons.append(
-            "The request was classified as an information question, not an execution request."
-        )
-    if not decision.in_scope:
-        rejection_reasons.append(
-            "The task is outside the NetZoo agent capability scope."
-        )
-    if not decision.should_execute:
-        rejection_reasons.append("No tool execution is required for this request.")
-    if decision.confidence < MIN_TOOL_CONFIDENCE:
-        rejection_reasons.append(
-            f"Tool-selection confidence is too low ({decision.confidence:.2f} < {MIN_TOOL_CONFIDENCE:.2f})."
-        )
-    if missing:
-        rejection_reasons.append("Missing required inputs: " + ", ".join(missing))
-
-    if rejection_reasons:
-        return TaskDecision(
-            action="no_tool",
-            in_scope=decision.in_scope,
-            should_execute=False,
-            confidence=decision.confidence,
-            reason="；".join(rejection_reasons),
-            recommended_actions=decision.recommended_actions,
-            requested_outcome=decision.requested_outcome,
-            capability_match_status=decision.capability_match_status,
-            matched_actions=decision.matched_actions,
-            alternative_actions=decision.alternative_actions,
-            mismatch_dimensions=decision.mismatch_dimensions,
-            clarification_question=decision.clarification_question,
-            missing_inputs=missing,
-        )
+    # Action membership is schema-enforced. Missing fields are planner evidence,
+    # not a reason to reinterpret the user's intent or change the selected tool.
+    decision.missing_inputs = missing
+    decision.should_execute = True
     return decision

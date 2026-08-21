@@ -17,6 +17,8 @@ from .tables import _inspect_panda_inputs_impl
 
 __all__ = [
     "BundleDiscovery",
+    "discover_bundle_candidates",
+    "discover_coherent_bundles",
     "discover_coherent_bundle",
 ]
 
@@ -39,6 +41,7 @@ class BundleDiscovery:
     bundle_id: str
     reason: str
     candidates_by_field: dict[str, list[str]]
+    missing_fields: tuple[str, ...] = ()
 
 
 def _candidate_directories(action: str, nearby: Path) -> list[Path]:
@@ -105,13 +108,31 @@ def _bundle_in_directory(
         keywords = candidate_keywords(action, field_name)
         candidate = best_named_file(directory, keywords)
         if candidate is None:
-            return None
+            continue
         rendered = _display_path(candidate)
         values[field_name] = rendered
         candidates_by_field[field_name] = [rendered]
 
-    if set(values) != set(input_fields):
-        return None
+    missing_fields = tuple(
+        field_name for field_name in input_fields if field_name not in values
+    )
+    resolved_directory = directory.resolve()
+    if missing_fields:
+        if "lioness" in action and values.get("expression_file"):
+            sample_count, _ = _expression_sample_count(values["expression_file"])
+            if sample_count < 3:
+                return None
+        return BundleDiscovery(
+            values=values,
+            bundle_id=f"directory:{resolved_directory}",
+            reason=(
+                f"Found a partial input bundle in {resolved_directory}; missing "
+                + ", ".join(missing_fields)
+                + "."
+            ),
+            candidates_by_field=candidates_by_field,
+            missing_fields=missing_fields,
+        )
     _, valid, _ = _inspect_panda_inputs_impl(
         values["expression_file"],
         values["motif_file"],
@@ -125,7 +146,6 @@ def _bundle_in_directory(
         if sample_count < 3:
             return None
 
-    resolved_directory = directory.resolve()
     return BundleDiscovery(
         values=values,
         bundle_id=f"directory:{resolved_directory}",
@@ -142,19 +162,42 @@ def discover_coherent_bundle(
     explicit_inputs: dict[str, str],
 ) -> BundleDiscovery | None:
     """Select exactly one complete compatible bundle, or decline to guess."""
+    valid = discover_coherent_bundles(action, nearby, explicit_inputs)
+    return valid[0] if len(valid) == 1 else None
+
+
+def discover_coherent_bundles(
+    action: str,
+    nearby: Path,
+    explicit_inputs: dict[str, str],
+) -> list[BundleDiscovery]:
+    """Return all complete compatible bundles for an interactive choice list."""
+    return [
+        bundle
+        for bundle in discover_bundle_candidates(action, nearby, explicit_inputs)
+        if not bundle.missing_fields
+    ]
+
+
+def discover_bundle_candidates(
+    action: str,
+    nearby: Path,
+    explicit_inputs: dict[str, str],
+) -> list[BundleDiscovery]:
+    """Return coherent complete and partial bundles without mixing directories."""
     if action not in MULTI_FILE_ACTIONS:
-        return None
+        return []
     anchor_parents = {
         _resolve_user_path(value).parent.resolve() for value in explicit_inputs.values()
     }
     if len(anchor_parents) > 1:
-        return None
+        return []
     directories = (
         sorted(anchor_parents, key=str)
         if anchor_parents
         else _candidate_directories(action, nearby)
     )
-    valid = [
+    candidates = [
         bundle
         for directory in directories
         if (
@@ -165,4 +208,7 @@ def discover_coherent_bundle(
             )
         )
     ]
-    return valid[0] if len(valid) == 1 else None
+    return sorted(
+        candidates,
+        key=lambda item: (len(item.missing_fields), item.bundle_id),
+    )

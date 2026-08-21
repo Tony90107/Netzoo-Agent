@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from ..contracts import (
     ClarificationInputError,
@@ -27,8 +28,10 @@ __all__ = [
     "_candidate_selection",
     "parse_clarification_assignments",
     "clarification_continuation",
+    "bundle_clarification_continuation",
     "resolve_clarification",
     "clarification_prompt",
+    "custom_clarification_prompt",
     "preference_confirmation_prompt",
     "preference_continuation",
 ]
@@ -78,17 +81,61 @@ def clarification_continuation(
     assignments: dict[str, str],
 ) -> str:
     decision = TaskDecision.model_validate(plan.decision)
+    carried = [
+        item
+        for item in plan.evidence
+        if item.status == "discovered" and item.value and item.bundle_id
+    ]
     selected_fields = [
-        f"{field_name} is {value}" for field_name, value in assignments.items()
+        *[f"{item.field} is {item.value}" for item in carried],
+        *[f"{field_name} is {value}" for field_name, value in assignments.items()],
     ]
     selected_markers = " ".join(
         f"SELECTED_FIELD={field_name}." for field_name in assignments
+    )
+    carried_markers = " ".join(
+        f"CARRIED_DISCOVERED_FIELD={item.field}." for item in carried
     )
     return (
         f"PREVIOUS_ACTION={decision.action}. Continue the previous {plan.workflow} task; "
         "do not treat this as a new task. "
         "Selected input: " + "; ".join(selected_fields) + ". "
-        f"{selected_markers}"
+        f"{selected_markers} {carried_markers}".rstrip()
+    )
+
+def bundle_clarification_continuation(plan: WorkflowPlan, answer: str) -> str:
+    """Apply one complete typed bundle atomically to the pending workflow."""
+    cleaned = answer.strip().strip("'\".。")
+    option = None
+    if cleaned.isdigit():
+        index = int(cleaned) - 1
+        if 0 <= index < len(plan.input_bundle_options):
+            option = plan.input_bundle_options[index]
+    else:
+        option = next(
+            (
+                item
+                for item in plan.input_bundle_options
+                if cleaned == item.directory or cleaned == item.bundle_id
+            ),
+            None,
+        )
+    if option is None:
+        raise ClarificationInputError(
+            f"The current plan has no complete bundle numbered {cleaned}."
+        )
+    missing_from_option = [
+        field_name
+        for field_name in plan.missing_inputs
+        if field_name not in option.inputs
+    ]
+    if missing_from_option:
+        raise ClarificationInputError(
+            "The selected bundle is incomplete for: " + ", ".join(missing_from_option)
+        )
+    return (
+        clarification_continuation(plan, option.inputs)
+        + f" SELECTED_BUNDLE_ID={option.bundle_id}."
     )
 
 def resolve_clarification(plan: WorkflowPlan, answer: str) -> str:
@@ -168,9 +215,11 @@ def resolve_clarification(plan: WorkflowPlan, answer: str) -> str:
     )
     return clarification_continuation(plan, assignments)
 
-def clarification_prompt(
+def _render_clarification_prompt(
     plan: WorkflowPlan,
     selected: dict[str, str] | None = None,
+    *,
+    custom: bool = False,
 ) -> str:
     mode_evidence = next(
         (
@@ -187,6 +236,21 @@ def clarification_prompt(
         lines.append(_ui_text("Selection > "))
         return "\n".join(lines)
 
+    if plan.input_bundle_options and not custom:
+        lines = [
+            _ui_text(
+                "Choose one complete input bundle, or enter custom to select files "
+                "individually."
+            )
+        ]
+        for index, option in enumerate(plan.input_bundle_options, 1):
+            lines.append(f"{index}. {option.directory}/")
+            lines.extend(
+                f"   - {Path(value).name}" for value in option.inputs.values()
+            )
+        lines.append(_ui_text("Bundle selection > "))
+        return "\n".join(lines)
+
     selected = selected or {}
     all_missing_items = [item for item in plan.evidence if item.status == "missing"]
     missing_items = [item for item in all_missing_items if item.field not in selected]
@@ -197,13 +261,28 @@ def clarification_prompt(
     completed = len(all_missing_items) - len(missing_items)
     input_label = INPUT_LABELS.get(current.field, current.field)
     input_label = input_label[:1].upper() + input_label[1:]
-    lines = [
-        _ui_text(
-            f"Select input {completed + 1} of {len(all_missing_items)}: "
-            f"{input_label} ({current.field})"
-        ),
-        _ui_text("Enter a candidate number or a full path."),
-    ]
+    lines = []
+    if custom:
+        lines.extend(
+            [
+                _ui_text(
+                    "Custom input composition: files may come from different bundles. "
+                    "Compatibility validation is required before execution."
+                ),
+                "",
+            ]
+        )
+    if not custom and not selected and plan.question:
+        lines.extend([_ui_text(plan.question), ""])
+    lines.extend(
+        [
+            _ui_text(
+                f"Select input {completed + 1} of {len(all_missing_items)}: "
+                f"{input_label} ({current.field})"
+            ),
+            _ui_text("Enter a candidate number or a full path."),
+        ]
+    )
     if selected:
         lines.append(_ui_text("Selections so far:"))
         for field_name, value in selected.items():
@@ -215,6 +294,20 @@ def clarification_prompt(
         lines.append(_ui_text("Enter the full path."))
     lines.append(_ui_text("Selection > "))
     return "\n".join(lines)
+
+def clarification_prompt(
+    plan: WorkflowPlan,
+    selected: dict[str, str] | None = None,
+) -> str:
+    """Render ordinary or complete-bundle clarification."""
+    return _render_clarification_prompt(plan, selected, custom=False)
+
+def custom_clarification_prompt(
+    plan: WorkflowPlan,
+    selected: dict[str, str] | None = None,
+) -> str:
+    """Render the explicitly requested per-field composition wizard."""
+    return _render_clarification_prompt(plan, selected, custom=True)
 
 def preference_confirmation_prompt(plan: WorkflowPlan) -> str:
     lines = [_ui_text("Save these long-term preferences? [y/N]")]

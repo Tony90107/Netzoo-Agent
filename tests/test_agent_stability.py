@@ -1,5 +1,7 @@
 import sys
+import tempfile
 import unittest
+import shutil
 from pathlib import Path
 
 
@@ -147,6 +149,128 @@ class OutcomeContractTests(unittest.TestCase):
         )
 
         self.assertEqual(result.attempt_id, 2)
+
+    def test_successful_recovery_records_completed_episode_without_old_error(self):
+        results = self.recovered_results()
+        results[0].errors = ["expression header rejected"]
+        with tempfile.TemporaryDirectory() as tmp:
+            store = agent.EpisodeStore(Path(tmp))
+
+            episode = store.record(
+                profile_id="researcher",
+                task="run PUMA",
+                plan=self.recovered_plan(),
+                results=results,
+                evaluation=agent.EvaluationResult(
+                    status="completed",
+                    reason="recovered",
+                ),
+                replan_count=1,
+            )
+
+        self.assertEqual(episode.status, "completed")
+        self.assertIsNone(episode.error_signature)
+
+
+class DatasetBundleTests(unittest.TestCase):
+    def setUp(self):
+        self.source = Path(__file__).parents[1] / "data" / "lioness-toy"
+
+    def copy(self, directory: Path, name: str) -> None:
+        directory.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(self.source / name, directory / name)
+
+    @staticmethod
+    def puma_decision(expression_file: str):
+        return agent.TaskDecision(
+            action="run_puma",
+            in_scope=True,
+            should_execute=True,
+            confidence=1.0,
+            reason="explicit PUMA request",
+            expression_file=expression_file,
+        )
+
+    def test_incomplete_directories_do_not_form_one_autonomous_bundle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.copy(root / "study-a", "expression.tsv")
+            for name in ("prior-puma.tsv", "ppi.tsv", "mirna.txt"):
+                self.copy(root / "study-b", name)
+
+            bundle = agent.discover_coherent_bundle("run_puma", root, {})
+
+        self.assertIsNone(bundle)
+
+    def test_one_complete_validated_directory_is_selected_atomically(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            study = root / "study-a"
+            for name in (
+                "expression.tsv",
+                "prior-puma.tsv",
+                "ppi.tsv",
+                "mirna.txt",
+            ):
+                self.copy(study, name)
+
+            bundle = agent.discover_coherent_bundle("run_puma", root, {})
+
+        self.assertIsNotNone(bundle)
+        self.assertEqual(
+            Path(bundle.bundle_id.removeprefix("directory:")),
+            study.resolve(),
+        )
+        self.assertEqual(
+            set(bundle.values),
+            {"expression_file", "motif_file", "ppi_file", "mirna_file"},
+        )
+
+    def test_planner_does_not_fill_an_anchored_request_from_other_datasets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            expression = root / "study-a" / "expression.tsv"
+            self.copy(expression.parent, expression.name)
+            for name in ("prior-puma.tsv", "ppi.tsv", "mirna.txt"):
+                self.copy(root / "study-b", name)
+            task = f"run PUMA with expression_file={expression}"
+
+            plan = agent.build_workflow_plan(
+                self.puma_decision(str(expression)),
+                task,
+            )
+
+        self.assertEqual(plan.status, "needs_input")
+        self.assertIn("motif_file", plan.missing_inputs)
+        self.assertIn("ppi_file", plan.missing_inputs)
+        self.assertIn("mirna_file", plan.missing_inputs)
+
+    def test_planner_applies_one_valid_bundle_with_shared_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            study = Path(tmp) / "study-a"
+            for name in (
+                "expression.tsv",
+                "prior-puma.tsv",
+                "ppi.tsv",
+                "mirna.txt",
+            ):
+                self.copy(study, name)
+            expression = study / "expression.tsv"
+            task = f"run PUMA with expression_file={expression}"
+
+            plan = agent.build_workflow_plan(
+                self.puma_decision(str(expression)),
+                task,
+            )
+
+        self.assertEqual(plan.status, "ready")
+        discovered = [
+            item for item in plan.evidence if item.status == "discovered"
+        ]
+        self.assertEqual(
+            {item.bundle_id for item in discovered},
+            {f"directory:{study.resolve()}"},
+        )
 
 
 if __name__ == "__main__":

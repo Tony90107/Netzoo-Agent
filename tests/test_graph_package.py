@@ -72,6 +72,8 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "Do not mention whether" in result.response
     assert "Never describe an output role" in result.response
     assert "input file" in result.response
+    assert "run-lioness puma" in result.response
+    assert "does not require two separate manual commands" in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
 

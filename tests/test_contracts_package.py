@@ -93,14 +93,14 @@ HISTORICAL_EXPORTS = [
 ]
 
 SCHEMA_DIGESTS = {
-    "TaskDecision": "5964f3402dd6680376e7e20a67bc410927ae7e3c1b6e185711992a509a91395f",
-    "RouterDecision": "561d7364b7426a91ecda6395d8bdc0d8dcc140b6dafc84948bc68ff8de419c66",
+    "TaskDecision": "e10184bcd07c7639926a23a789d04aa8d27e3fdd8a6872e576b5b03afa22aabb",
+    "RouterDecision": "43b17288dd56a6ef05b5aa1847373168bd98837639073e056d95d89bb3023dc6",
     "RequestedOutcome": "9958b10da7ee3c95fbec8af78da4d7d2e30f6d7df6c0191ffefba8d080287d36",
     "OutcomeEvidence": "d6415b130ca1a6e4a02c5369f34b03e75ffdb87bf3aa7af1787a6491e12b5362",
     "OutcomeHypothesis": "68d87cd2290862732e753dec11b7e5c7e7bed8c3c3f83af9b93317421e71fe9b",
     "CapabilityMatch": "c5952a563a94fa5b5e9cfc9d1298bfc130e603f283afb61c7b89472b2ef121dd",
-    "WorkflowPlan": "9a57762cf8ffc4cd8e611b1d9907ef89c9d5ee1b82280ef5c2e76133b9ecfc4b",
-    "InputEvidence": "0582cce8d5b06debc2e6af06b2f2c2fff9fc0d062b00ac41863442a3a11f0a8a",
+    "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
+    "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
     "ProjectPolicySnapshot": "a8502c6d87e9108ae033d26584b2d7d2ca58724c3fbfd0771a6ff6149686457b",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
@@ -131,7 +131,12 @@ def test_models_have_one_owner_and_preserve_identity():
             "CapabilityMatch",
             "CapabilityMatchStatus",
         ),
-        "planning": ("InputEvidence", "WorkflowStep", "WorkflowPlan"),
+        "planning": (
+            "InputBundleOption",
+            "InputEvidence",
+            "WorkflowStep",
+            "WorkflowPlan",
+        ),
         "results": (
             "EvaluationResult",
             "PlanRubricItem",

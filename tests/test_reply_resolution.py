@@ -10,8 +10,11 @@ from netzoo_agent_core.cli.reply_resolution import (  # noqa: E402
     ContextualReplyResolver,
     build_reply_resolution_messages,
 )
+from netzoo_agent_core.cli.follow_up import resolve_next_turn_input  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
+    ContextualReplyResolution,
     FollowUpContext,
+    NextTurnPrompt,
     ReplyIntentDecision,
     WorkflowConversationFact,
 )
@@ -32,11 +35,41 @@ def _context(*, continuation_action=None, expected_field=None):
     )
 
 
-def _decision(kind: str, *, confidence: float = 0.98) -> ReplyIntentDecision:
+def _outcome_clarification_context():
+    context = _context()
+    context.prompt_kind = "clarify_outcome"
+    context.prompt_question = "Should the result be aggregate or sample-specific?"
+    context.candidate_actions = ["run_panda", "run_lioness_panda"]
+    context.candidate_workflows = [
+        WorkflowConversationFact(
+            action="run_panda",
+            workflow="PANDA",
+            required_inputs=["expression_file", "motif_file", "ppi_file"],
+            granularities=["aggregate"],
+        ),
+        WorkflowConversationFact(
+            action="run_lioness_panda",
+            workflow="LIONESS-PANDA",
+            required_inputs=["expression_file", "motif_file", "ppi_file"],
+            granularities=["sample_specific"],
+        ),
+    ]
+    return context
+
+
+def _decision(
+    kind: str,
+    *,
+    confidence: float = 0.98,
+    selected_action: str | None = None,
+    selected_granularity: str | None = None,
+) -> ReplyIntentDecision:
     return ReplyIntentDecision(
         kind=kind,
         confidence=confidence,
         reason="Test classification.",
+        selected_action=selected_action,
+        selected_granularity=selected_granularity,
     )
 
 
@@ -55,6 +88,114 @@ def test_acknowledgement_without_offered_continuation_needs_detail():
     assert "Which tools produce sample-specific miRNA networks?" in rendered_input
     assert "Enter a follow-up question" in rendered_input
     assert "certainly" in rendered_input
+
+
+def test_llm_can_accept_trusted_recommended_workflow_without_repeating_guidance():
+    model = Mock()
+    model.invoke.return_value = _decision(
+        "accept_workflow",
+        selected_action="run_lioness_puma",
+    )
+    context = _context(continuation_action="run_lioness_puma")
+    context.prompt_kind = "recommended_workflow"
+    resolver = ContextualReplyResolver.for_test(model)
+
+    result = resolver.resolve(
+        context, "can you run this with the data that i have?", None, "run-1"
+    )
+
+    assert result.resolution.kind == "accept_workflow"
+    assert result.resolution.selected_action == "run_lioness_puma"
+    model.invoke.assert_called_once()
+
+
+def test_llm_may_select_only_a_workflow_from_trusted_completed_context():
+    model = Mock()
+    model.invoke.return_value = _decision(
+        "accept_workflow",
+        selected_action="run_lioness_puma",
+    )
+    context = _context()
+    context.candidate_workflows = [
+        WorkflowConversationFact(
+            action="run_lioness_puma",
+            workflow="LIONESS-PUMA",
+            required_inputs=["expression_file", "motif_file", "ppi_file", "mirna_file"],
+            granularities=["aggregate", "sample_specific"],
+        )
+    ]
+    resolver = ContextualReplyResolver.for_test(model)
+
+    result = resolver.resolve(
+        context, "can you run this with the data that i have?", None, "run-1"
+    )
+
+    assert result.resolution.kind == "accept_workflow"
+    assert result.resolution.selected_action == "run_lioness_puma"
+    model.invoke.assert_called_once()
+
+
+def test_llm_cannot_select_workflow_outside_trusted_context():
+    model = Mock()
+    model.invoke.return_value = _decision(
+        "accept_workflow",
+        selected_action="run_panda",
+    )
+    resolver = ContextualReplyResolver.for_test(model)
+
+    result = resolver.resolve(
+        _context(continuation_action="run_lioness_puma"),
+        "Use whatever workflow you think is appropriate.",
+        None,
+        "run-1",
+    )
+
+    assert result.resolution.kind == "needs_detail"
+    assert result.resolution.selected_action is None
+
+
+def test_accepted_contextual_workflow_enters_planning_instead_of_guidance():
+    prompt = NextTurnPrompt(
+        kind="completed",
+        question="Enter a follow-up question.",
+    )
+    resolution = ContextualReplyResolution(
+        kind="accept_workflow",
+        selected_action="run_lioness_puma",
+        reason="The user asked to run the selected trusted workflow.",
+    )
+
+    task = resolve_next_turn_input(
+        prompt,
+        resolution,
+        "can you run this with the data that i have?",
+    )
+
+    assert task is not None
+    assert "PREVIOUS_ACTION=run_lioness_puma" in task
+    assert "CONFIRMED_OUTCOME_ACTION" not in task
+
+
+def test_outcome_clarification_accepts_aggregate_from_trusted_context():
+    model = Mock()
+    model.invoke.return_value = _decision(
+        "accept_workflow",
+        selected_action="run_panda",
+        selected_granularity="aggregate",
+    )
+    resolver = ContextualReplyResolver.for_test(model)
+
+    result = resolver.resolve(
+        _outcome_clarification_context(),
+        "aggregate",
+        None,
+        "run-1",
+    )
+
+    assert result.resolution.kind == "accept_workflow"
+    assert result.resolution.selected_action == "run_panda"
+    assert result.resolution.selected_granularity == "aggregate"
+    model.invoke.assert_called_once()
 
 
 def test_model_acceptance_is_downgraded_without_concrete_continuation():
@@ -115,7 +256,7 @@ def test_reply_prompt_treats_questions_about_trusted_workflow_facts_as_follow_up
     assert '"workflow":"PUMA"' in rendered
     assert '"motif_file"' in rendered
     normalized = " ".join(rendered.split())
-    assert "entity, input, output, or workflow in trusted context" in normalized
+    assert "input, output, local resource, or workflow in trusted context" in normalized
     assert "does not need to restate the prior goal" in normalized
 
     model = Mock()

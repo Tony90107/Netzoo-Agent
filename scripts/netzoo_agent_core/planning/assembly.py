@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from workflow_registry import CODE_VALIDATION_STEPS
+from pathlib import Path
+
+from workflow_registry import CODE_VALIDATION_STEPS, workflow_name
 
 from .context import _PlanningContext
-from ..contracts import InputEvidence, WorkflowPlan, WorkflowStep
+from ..contracts import InputBundleOption, InputEvidence, WorkflowPlan, WorkflowStep
 
 __all__: list[str] = []
 
@@ -25,15 +27,83 @@ def _assemble_workflow_plan(
     decision.missing_inputs = missing
     decision.should_execute = not missing
     if missing:
-        question = (
-            "Please provide the next missing input. The CLI wizard will ask for "
-            "each unresolved field one at a time."
+        input_bundle_options: list[InputBundleOption] = []
+        discovered_bundle = [
+            item
+            for item in evidence
+            if item.status == "discovered" and item.bundle_id
+        ]
+        bundle_choice = next(
+            (
+                item
+                for item in evidence
+                if item.status == "missing"
+                and item.candidate_bundle_ids
+            ),
+            None,
         )
+        if bundle_choice and bundle_choice.candidates:
+            input_evidence = [
+                item
+                for item in evidence
+                if item.field not in {"output_file", "lioness_output", "output_dir"}
+            ]
+            choice_lines: list[str] = []
+            for index, value in enumerate(bundle_choice.candidates, 1):
+                inputs = {
+                    item.field: item.candidates[index - 1]
+                    for item in input_evidence
+                    if index <= len(item.candidates)
+                }
+                directory = str(Path(value).parent)
+                input_bundle_options.append(
+                    InputBundleOption(
+                        bundle_id=bundle_choice.candidate_bundle_ids[index - 1],
+                        directory=directory,
+                        inputs=inputs,
+                    )
+                )
+                choice_lines.append(f"{index}. {directory}/")
+                for item in input_evidence:
+                    if index <= len(item.candidates):
+                        choice_lines.append(
+                            f"   - {Path(item.candidates[index - 1]).name}"
+                        )
+            question = (
+                "Choose one complete input bundle before the workflow continues, "
+                "or enter custom to select files individually:\n"
+                + "\n".join(choice_lines)
+            )
+        elif discovered_bundle:
+            actions = decision.recommended_actions or [action]
+            workflow_sequence = " -> ".join(workflow_name(item) for item in actions)
+            directory = str(Path(discovered_bundle[0].value).parent)
+            files = "\n".join(
+                f"   - {Path(item.value).name}"
+                for item in discovered_bundle
+                if item.value
+            )
+            question = (
+                f"I can prepare the {workflow_sequence} workflow.\n\n"
+                "I found this available input bundle:\n\n"
+                f"1. {directory}/\n{files}\n\n"
+                "Please provide the remaining required input"
+                + ("s" if len(missing) != 1 else "")
+                + ": "
+                + ", ".join(missing)
+                + ", or choose another input bundle."
+            )
+        else:
+            question = (
+                "Please provide the next missing input. The CLI wizard will ask for "
+                "each unresolved field one at a time."
+            )
         return WorkflowPlan(
             workflow=workflow,
             objective=decision.reason,
             decision=decision.model_dump(),
             evidence=evidence,
+            input_bundle_options=input_bundle_options,
             missing_inputs=missing,
             status="needs_input",
             question=question,

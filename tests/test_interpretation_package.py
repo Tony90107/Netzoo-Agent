@@ -227,7 +227,7 @@ def test_interpretation_child_dependencies_are_acyclic_and_scoped():
         "discovery": set(),
         "extraction": set(),
         "hydration": {"extraction"},
-        "provider_fallback": {"extraction"},
+        "provider_fallback": set(),
         "repair": {"extraction"},
     }
 
