@@ -77,6 +77,40 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
 
+def test_cobra_to_panda_boundary_response_reads_latest_message():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="Explain the workflow input boundary.",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain whether COBRA output can feed PANDA.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    result = response_module.respond(
+        SimpleNamespace(),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content="請將 COBRA 的結果直接當成 expression input 跑 PANDA。"
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    assert "cannot be used directly as PANDA expression input" in result["messages"][0].content
+
+
 def test_ambiguous_guidance_reaches_response_model():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()

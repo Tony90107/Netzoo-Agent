@@ -100,6 +100,8 @@ def _task_path(task: str, field_name: str) -> str | None:
             "output directory",
             "輸出資料夾",
             "輸出目錄",
+            "輸出到",
+            "輸出",
         ),
     }
     aliases = aliases_by_field.get(field_name, (field_name,))

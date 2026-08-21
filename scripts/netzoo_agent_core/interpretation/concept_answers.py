@@ -213,6 +213,25 @@ def render_capability_gap(
     return _ui_text("\n\n".join(lines))
 
 
+def render_cobra_expression_boundary(task: str) -> str | None:
+    """Prevent a scientifically invalid COBRA-output-to-PANDA handoff."""
+    normalized = task.casefold()
+    if not (
+        "cobra" in normalized
+        and "panda" in normalized
+        and re.search(r"(?:result|output|結果|輸出).{0,80}(?:expression|表現)", normalized)
+    ):
+        return None
+    return _ui_text(
+        "COBRA output cannot be used directly as PANDA expression input. "
+        "COBRA produces a covariate-associated covariance decomposition, whereas "
+        "PANDA requires a gene-by-sample expression matrix plus a motif prior and "
+        "a PPI network. Provide an independently prepared expression matrix if you "
+        "want to run PANDA.\n\n"
+        "No files were inspected and no analysis ran."
+    )
+
+
 def render_spec_backed_concept_answer(
     task: str,
     decision: TaskDecision,
@@ -326,6 +345,7 @@ def render_workflow_composition_guidance(
 __all__ = [
     "render_ambiguous_workflow_guidance",
     "render_capability_gap",
+    "render_cobra_expression_boundary",
     "render_outcome_clarification",
     "render_spec_backed_concept_answer",
     "render_workflow_composition_guidance",
