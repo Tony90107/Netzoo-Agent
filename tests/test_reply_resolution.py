@@ -107,6 +107,10 @@ def test_llm_can_accept_trusted_recommended_workflow_without_repeating_guidance(
     assert result.resolution.kind == "accept_workflow"
     assert result.resolution.selected_action == "run_lioness_puma"
     model.invoke.assert_called_once()
+    rendered = "\n".join(
+        message.content for message in model.invoke.call_args.args[0]
+    )
+    assert "using data already in their workspace" in " ".join(rendered.split())
 
 
 def test_llm_may_select_only_a_workflow_from_trusted_completed_context():

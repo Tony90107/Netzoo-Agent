@@ -85,13 +85,13 @@ def _assemble_workflow_plan(
             )
             question = (
                 f"I can prepare the {workflow_sequence} workflow.\n\n"
-                "I found this available input bundle:\n\n"
+                "I found this partial input bundle:\n\n"
                 f"1. {directory}/\n{files}\n\n"
                 "Please provide the remaining required input"
                 + ("s" if len(missing) != 1 else "")
                 + ": "
                 + ", ".join(missing)
-                + ", or choose another input bundle."
+                + ". The wizard will ask only for these missing fields."
             )
         else:
             question = (

@@ -124,9 +124,11 @@ class DatasetBundlePlanningTests(unittest.TestCase):
         self.assertIn("ppi.tsv", plan.question)
         self.assertIn("mirna_file", plan.question)
         rendered_prompt = agent.clarification_prompt(plan)
-        self.assertIn("I found this available input bundle", rendered_prompt)
+        self.assertIn("I found this partial input bundle", rendered_prompt)
         self.assertIn("prior-puma.tsv", rendered_prompt)
         self.assertIn("mirna_file", rendered_prompt)
+        self.assertIn("wizard will ask only for these missing fields", rendered_prompt)
+        self.assertNotIn("choose another input bundle", rendered_prompt)
         discovered = {
             item.field: item for item in plan.evidence if item.status == "discovered"
         }

@@ -81,19 +81,18 @@ def test_composition_guidance_uses_registered_workflow_metadata():
     answer = render_workflow_composition_guidance(
         decision,
         policy,
-        {"relationship": "composition"},
+        None,
     )
 
     assert answer is not None
-    assert (
-        "PUMA: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA."
-        in answer
-    )
-    assert (
-        "LIONESS-PUMA: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks."
-        in answer
-    )
-    assert "final workflow in this composition is LIONESS-PUMA" in answer
+    assert "**PUMA**" in answer
+    assert "**LIONESS-PUMA**" in answer
+    assert "`expression_file`" in answer
+    assert "`motif_file`" in answer
+    assert "`ppi_file`" in answer
+    assert "`mirna_file`" in answer
+    assert "Aggregate regulatory-network output (`output_file`)" in answer
+    assert "Sample-specific LIONESS output (`lioness_output`)" in answer
     assert "clarify" not in answer
 
 
