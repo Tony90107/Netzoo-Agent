@@ -32,6 +32,10 @@ from netzoo_agent_core.llm import (  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
 )
+from netzoo_agent_core.routing.capability import (  # noqa: E402
+    is_workflow_information_request,
+    is_workflow_selection_request,
+)
 from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.settings import PROJECT_ROOT  # noqa: E402
@@ -82,6 +86,47 @@ def test_repair_does_not_replace_the_router_selected_action_from_task_keywords()
 
     assert repaired.action == "run_puma"
     assert repaired.should_execute is True
+
+
+def test_tool_selection_question_never_starts_puma_input_collection():
+    task = "if i want to get sample specific mi-RNA regulator network, what tools do i need?"
+    raw = TaskDecision(
+        action="run_puma",
+        candidate_actions=["run_puma", "run_lioness_puma"],
+        in_scope=True,
+        should_execute=True,
+        intent_type="run_analysis",
+        confidence=0.95,
+        reason="The router selected PUMA.",
+    )
+
+    repaired = repair_router_decision(raw, task)
+
+    assert is_workflow_information_request(task)
+    assert is_workflow_selection_request(task)
+    assert repaired.action == "no_tool"
+    assert repaired.should_execute is False
+    assert repaired.intent_type == "answer_question"
+    assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
+    assert repaired.missing_inputs == []
+
+
+def test_tool_selection_question_does_not_invent_workflows_without_router_candidates():
+    task = "if i want to get sample specific mi-RNA regulator network, what tools do i need?"
+    raw = TaskDecision(
+        action="no_tool",
+        candidate_actions=[],
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="The router needs more evidence.",
+    )
+
+    repaired = repair_router_decision(raw, task)
+
+    assert repaired.action == "no_tool"
+    assert repaired.recommended_actions == []
 
 
 def test_explicit_panda_name_wins_over_granularity_ambiguity():

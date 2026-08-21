@@ -273,19 +273,51 @@ def render_workflow_composition_guidance(
     if not (
         decision.in_scope
         and decision.action == "no_tool"
-        and (semantic_goal or {}).get("relationship") == "composition"
         and decision.recommended_actions
     ):
         return None
     specs = [policy.workflows.get(action) for action in decision.recommended_actions]
     registered = [spec for spec in specs if spec is not None]
-    if not registered:
+    if len(registered) < 2:
         return None
-    steps = "\n".join(f"- {spec.workflow}: {spec.description}" for spec in registered)
+    expected_actions = [
+        *registered[-1].output_capability.guidance_predecessors,
+        registered[-1].action,
+    ]
+    if list(decision.recommended_actions) != expected_actions:
+        return None
+    biological_inputs = [
+        field_name
+        for field_name in registered[-1].required_inputs
+        if field_name not in {"output_file", "lioness_output", "output_dir"}
+    ]
+    input_labels = {
+        "expression_file": "Expression matrix",
+        "motif_file": "Motif/prior",
+        "ppi_file": "PPI network",
+        "mirna_file": "miRNA list",
+    }
+    inputs = "\n".join(
+        f"   - `{field_name}`: {input_labels.get(field_name, field_name)}"
+        for field_name in biological_inputs
+    )
+    puma, final = registered[0], registered[-1]
     return _ui_text(
-        "I matched your goal to this registered workflow composition:\n"
-        f"{steps}\n\n"
-        f"The final workflow in this composition is {registered[-1].workflow}. "
+        "To infer a sample-specific miRNA regulatory network, use "
+        f"{puma.workflow} followed by {final.workflow}. Both workflows use the "
+        "same biological inputs:\n\n"
+        f"1. **{puma.workflow}**\n"
+        "   - **Inputs**:\n"
+        f"{inputs}\n"
+        "   - **Output**: Aggregate regulatory-network output (`output_file`).\n\n"
+        f"2. **{final.workflow}**\n"
+        "   - **Inputs**:\n"
+        f"{inputs}\n"
+        "   - **Outputs**:\n"
+        "     - Aggregate regulatory-network output (`output_file`).\n"
+        "     - Sample-specific LIONESS output (`lioness_output`).\n\n"
+        f"{puma.workflow} infers the aggregate TF/miRNA-to-gene regulatory network; "
+        f"{final.workflow} derives one network per sample from that model. "
         "No files were inspected and no analysis ran."
     )
 

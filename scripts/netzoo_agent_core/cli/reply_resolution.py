@@ -35,6 +35,12 @@ Candidate workflow facts establish valid conversation referents but do not autho
 execution by themselves. A bare acknowledgement without a question, selection, or
 concrete requested outcome is needs_detail. Do not rewrite file paths or infer that
 tools ran. Use confidence below 0.80 whenever the reply remains ambiguous.
+
+When a user asks to run, try, or continue a trusted workflow using data already in
+their workspace (for example, "the data that I have"), this is an accept_workflow
+request, not needs_detail. Select the appropriate action only from the trusted
+workflow candidates; the Planner will discover available datasets and ask the user
+to choose a complete bundle or provide genuinely missing files.
 """.strip()
 
 

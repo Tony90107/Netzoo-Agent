@@ -20,6 +20,7 @@ from ..contracts import (
 )
 from ..routing import (
     MIN_TOOL_CONFIDENCE,
+    is_workflow_selection_request,
 )
 from ..routing.outcome_matching import (
     guidance_actions_for,
@@ -154,6 +155,34 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
                 should_execute=False,
                 reason="The user confirmed a supported alternative outcome.",
             ).model_copy(update={"intent_type": "answer_question"})
+
+    # A question about which workflows to use must remain explanatory even when
+    # the Router selected an executable action.  The Router's candidates remain
+    # the sole source of workflow selection; this guard only withholds execution
+    # and prevents absent files from becoming an input-collection request.
+    advisory_actions = [
+        action
+        for action in raw_decision.candidate_actions
+        if action in LOCAL_WORKFLOW_ACTIONS
+    ]
+    if is_workflow_selection_request(task) and len(advisory_actions) > 1:
+        return raw_decision.model_copy(
+            update={
+                "action": "no_tool",
+                "in_scope": True,
+                "should_execute": False,
+                "intent_type": "answer_question",
+                "confidence": max(raw_decision.confidence, MIN_TOOL_CONFIDENCE),
+                "reason": "The user asked which registered workflows are needed.",
+                "capability_match_status": "exact",
+                "matched_actions": [advisory_actions[-1]],
+                "recommended_actions": advisory_actions,
+                "alternative_actions": [],
+                "mismatch_dimensions": [],
+                "clarification_question": None,
+                "missing_inputs": [],
+            }
+        )
 
     # A user-named executable workflow is stronger evidence than an incomplete
     # outcome hypothesis.  For example, PANDA is aggregate by definition;

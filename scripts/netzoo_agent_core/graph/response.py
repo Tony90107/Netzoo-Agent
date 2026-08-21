@@ -27,6 +27,7 @@ from ..evaluation import (
 )
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_capability_gap
+from ..interpretation.concept_answers import render_workflow_composition_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from ..presentation import strip_cli_owned_guidance_tail
@@ -82,6 +83,13 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     capability_gap = render_capability_gap(decision, context.project_policy)
     if capability_gap is not None:
         return {"messages": [AIMessage(content=capability_gap)]}
+    composition_guidance = render_workflow_composition_guidance(
+        decision,
+        context.project_policy,
+        state.get("semantic_goal"),
+    )
+    if composition_guidance is not None:
+        return {"messages": [AIMessage(content=composition_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {

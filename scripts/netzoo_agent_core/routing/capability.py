@@ -21,6 +21,7 @@ __all__ = [
     "UNSUPPORTED_DELIVERABLE_PATTERNS",
     "WORKFLOW_INFORMATION_PATTERNS",
     "is_workflow_information_request",
+    "is_workflow_selection_request",
     "infer_goal_capabilities",
     "infer_advisory_capabilities",
     "inferred_execution_action",
@@ -96,12 +97,28 @@ WORKFLOW_INFORMATION_PATTERNS = (
 )
 
 
+WORKFLOW_SELECTION_PATTERNS = (
+    r"\b(?:what|which)\s+(?:tools?|workflows?|methods?)\b.{0,80}\b(?:need|use)\b",
+    r"\b(?:what|which)\s+(?:tools?|workflows?|methods?)\b.{0,80}\b(?:should|can)\s+i\s+use\b",
+    r"(?:需要|要|應該用).*?(?:哪些|什麼).{0,20}(?:工具|workflow|方法)",
+    r"(?:哪些|什麼).{0,20}(?:工具|workflow|方法).*?(?:需要|要|應該用)",
+)
+
+
 def is_workflow_information_request(task: str) -> bool:
     """Return True when the user asks how/what to prepare, not to run now."""
     normalized = task.casefold()
     return any(
         re.search(pattern, normalized, flags=re.IGNORECASE | re.DOTALL)
         for pattern in WORKFLOW_INFORMATION_PATTERNS
+    )
+
+
+def is_workflow_selection_request(task: str) -> bool:
+    """Return True when the user asks which workflow to use, not how to run it."""
+    return any(
+        re.search(pattern, task, flags=re.IGNORECASE | re.DOTALL)
+        for pattern in WORKFLOW_SELECTION_PATTERNS
     )
 
 
