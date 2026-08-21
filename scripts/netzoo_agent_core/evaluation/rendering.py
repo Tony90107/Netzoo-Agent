@@ -237,10 +237,17 @@ def render_compact_execution_response(
     else:
         lines.append("✓ The workflow completed successfully.")
 
-    warnings = [warning for item in results for warning in item.warnings]
+    warnings = list(
+        dict.fromkeys(warning for item in results for warning in item.warnings)
+    )
     errors = [error for item in results for error in item.errors]
     for warning in warnings:
-        lines.append(f"Warning: {warning}")
+        # netZooPy reports its default TSV header behavior as a WARNING, but
+        # this is informational and does not indicate a failed workflow.
+        if "saved with the column names" in warning.casefold():
+            lines.append("Notice: Output format: TSV with column headers.")
+        else:
+            lines.append(f"Warning: {warning}")
     for error in errors:
         lines.append(f"Error: {error}")
 
@@ -276,7 +283,8 @@ def render_compact_execution_response(
         lines.extend(
             [
                 "",
-                "Next: enter /execute, then submit the task again to perform the analysis.",
+                "Next: enter /execute to enable execution, then confirm this "
+                "validated workflow.",
             ]
         )
     return "\n".join(lines)

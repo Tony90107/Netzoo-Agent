@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from prompt_toolkit.application.current import create_app_session
 from prompt_toolkit.input import create_pipe_input
-from prompt_toolkit.keys import Keys
 from prompt_toolkit.output import DummyOutput
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
@@ -108,6 +106,16 @@ def test_empty_slash_then_enter_submits_execute_without_full_screen():
 
     assert application.full_screen is False
     assert _dispatch_line_keys("/execute", "/\r") == "/execute"
+
+
+def test_inline_prompt_allows_long_tasks_to_wrap_instead_of_clipping():
+    application = _create_inline_mode_application("prompt> ", "/execute")
+
+    # A one-line TextArea is forced to a one-row window by prompt_toolkit,
+    # which horizontally scrolls long input.  The inline prompt must remain
+    # multiline-capable so the terminal can render wrapped task text.
+    assert application.layout.current_control.buffer.multiline()
+    assert application.layout.current_window.height.max > 1
 
 
 def test_nonempty_slash_is_preserved_by_real_key_dispatch():

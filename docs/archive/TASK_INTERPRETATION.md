@@ -1,4 +1,4 @@
-# Task 整理
+# 歷史文件：Task 整理
 
 
 ## 1. PANDA / PUMA 了解 input 跟 output
@@ -8,7 +8,7 @@
 | 工具 | Input | Output |
 |---|---|---|
 | PANDA | expression matrix、motif prior、PPI network | TF-gene regulatory network |
-| PUMA | expression matrix、motif prior、PPI network、miRNA-target prior | TF/miRNA-gene regulatory network |
+| PUMA | expression matrix、TF/miRNA-gene prior、PPI network、miRNA 名稱清單 | TF/miRNA-gene regulatory network |
 
 已完成文件：
 

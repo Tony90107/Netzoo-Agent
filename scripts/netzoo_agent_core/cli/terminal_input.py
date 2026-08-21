@@ -96,7 +96,11 @@ def _create_inline_mode_application(prompt: str, default_command: str):
 
     question, input_prefix = _split_inline_prompt(prompt)
     input_field = TextArea(
-        multiline=False,
+        # Keep the buffer multiline so long natural-language tasks can wrap in
+        # the terminal instead of being horizontally scrolled inside a fixed
+        # one-line widget.  The Enter binding below still submits the whole
+        # buffer, so this does not turn the prompt into a multi-step editor.
+        multiline=True,
         prompt=input_prefix,
         input_processors=[_ExecuteCompletionProcessor()],
     )

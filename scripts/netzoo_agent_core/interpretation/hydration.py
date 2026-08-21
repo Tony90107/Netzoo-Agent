@@ -28,13 +28,17 @@ def hydrate_router_decision(
     else:
         route = RouterDecision.model_validate(raw_decision)
         primary = select_primary_hypothesis(route.outcome_hypotheses)
+        selected_action = route.selected_action or route.action
+        candidates = list(dict.fromkeys([*route.candidate_actions, selected_action]))
         decision = TaskDecision(
-            action=route.action,
+            action=selected_action,
             in_scope=route.in_scope,
-            should_execute=route.action != "no_tool",
+            should_execute=selected_action != "no_tool",
             intent_type=route.intent_type,
             confidence=route.confidence,
             reason=route.reason,
+            candidate_actions=candidates,
+            clarification_question=route.clarification_question,
             requested_outcome=primary.outcome if primary else None,
             outcome_hypotheses=route.outcome_hypotheses,
             matched_actions=[],

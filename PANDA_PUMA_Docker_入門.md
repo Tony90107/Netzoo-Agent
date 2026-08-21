@@ -38,7 +38,7 @@ PUMA 是 PANDA 的延伸版，多加入 miRNA：
 | expression matrix | gene expression |
 | motif prior | TF-gene 先驗調控關係 |
 | PPI network | TF-TF 合作關係 |
-| miRNA target prior | miRNA-gene 先驗調控關係 |
+| miRNA target prior | 放在 motif/prior 檔中的 miRNA-gene 先驗調控關係 |
 
 PUMA 的輸出也是 regulatory network，但 regulator layer 會包含 TF 與 miRNA：
 
@@ -165,9 +165,10 @@ run-puma \
 
 同 PANDA。基因表現矩陣。
 
-### 2. `-m` motif file
+### 2. `-m` motif/prior file
 
-同 PANDA。TF-gene prior。
+可同時包含 TF-gene 與 miRNA-gene prior，每列格式都是
+`Regulator<TAB>Gene<TAB>Weight`。
 
 ### 3. `-p` PPI file
 
@@ -175,21 +176,16 @@ run-puma \
 
 ### 4. `-i` miRNA file
 
-這是 PUMA 需要的 miRNA-gene prior。概念上是：
+這是 PUMA 用來辨識哪些 regulator 屬於 miRNA 的單欄清單，每行一個名稱：
 
 ```text
-miRNA    Gene    Weight
+hsa-miR-21
+hsa-miR-34a
+hsa-miR-155
 ```
 
-範例：
-
-```tsv
-hsa-miR-21    PTEN    1
-hsa-miR-34a   BCL2    1
-hsa-miR-155   SOCS1   1
-```
-
-白話：這個檔案告訴 PUMA「哪些 miRNA 可能調控哪些 gene」。
+清單內的名稱必須出現在 motif/prior 檔案第一欄；真正的 miRNA-gene 邊放在
+`-m` 指定的 motif/prior 檔案中。
 
 ## PUMA output 格式
 
@@ -264,7 +260,7 @@ docker/run-puma
 docker compose build
 ```
 
-這一步是在照 `Dockerfile` 做出一個名叫 `netzoo-panda-puma:latest` 的環境。第一次會花比較久，因為要下載套件。
+這一步是在照 `Dockerfile` 做出一個名叫 `netzoo_agent:latest` 的環境。第一次會花比較久，因為要下載套件。
 
 ### 2. 進入 container
 
@@ -361,7 +357,7 @@ BAX
 PTEN
 ```
 
-那 motif 或 miRNA file 裡的 target gene 也要叫 `CCND1`、`BAX`、`PTEN`，不要一邊是 Ensembl ID、一邊是 gene symbol。
+那 motif/prior file 裡的 target gene 也要叫 `CCND1`、`BAX`、`PTEN`，不要一邊是 Ensembl ID、一邊是 gene symbol。
 
 ### TF 名稱要對得上
 
@@ -393,7 +389,7 @@ Motif file 裡的 TF 要能和 PPI file 裡的 TF 對上。
 
 - motif prior 太少
 - PPI 的 TF 和 motif 的 TF 對不上
-- miRNA target gene 和 expression gene 對不上
+- motif/prior 內的 miRNA target gene 和 expression gene 對不上
 
 ### 跑很久
 

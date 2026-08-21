@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from .context import _PlanningContext
-from ..data.bundles import MULTI_FILE_ACTIONS, discover_coherent_bundle
+from ..data.bundles import MULTI_FILE_ACTIONS, discover_bundle_candidates
 from ..contracts import InputEvidence, OUTPUT_ROLE_FIELDS, PROJECT_ROOT, _is_demo_request
 from ..interpretation import (
     _candidate_keywords,
@@ -42,12 +42,20 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     selected_fields = set(
         re.findall(r"SELECTED_FIELD=([a-z_]+)", task, flags=re.IGNORECASE)
     )
+    carried_discovered_fields = set(
+        re.findall(
+            r"CARRIED_DISCOVERED_FIELD=([a-z_]+)",
+            task,
+            flags=re.IGNORECASE,
+        )
+    )
     for field_name in input_fields:
         parsed = _task_path(task, field_name)
         routed = getattr(decision, field_name, None)
         if parsed:
-            explicit_input_values[field_name] = parsed
             setattr(decision, field_name, parsed)
+            if field_name not in carried_discovered_fields:
+                explicit_input_values[field_name] = parsed
         elif routed and str(routed) in task:
             explicit_input_values[field_name] = str(routed)
         elif routed:
@@ -70,6 +78,22 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     autonomous_reasons: dict[str, str] = {}
     autonomous_sources: dict[str, str] = {}
     autonomous_bundle_ids: dict[str, str] = {}
+    bundle_choices_by_field: dict[str, list[str]] = {}
+    bundle_choice_ids: list[str] = []
+    partial_bundle_selected = False
+    for field_name in carried_discovered_fields:
+        value = _task_path(task, field_name)
+        if not value:
+            continue
+        setattr(decision, field_name, value)
+        autonomous_values[field_name] = value
+        autonomous_reasons[field_name] = (
+            "Carried forward from the coherent bundle shown in the prior clarification."
+        )
+        autonomous_sources[field_name] = "discovered"
+        autonomous_bundle_ids[field_name] = (
+            f"directory:{_resolve_user_path(value).parent.resolve()}"
+        )
     if profile_model.preferences.get("reuse_last_inputs") is True:
         reused = reusable_episode_inputs(action, episode_models)
         if reused:
@@ -106,7 +130,9 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         nearby = PROJECT_ROOT / "data"
 
     if action in MULTI_FILE_ACTIONS and not autonomous_values:
-        bundle = discover_coherent_bundle(action, nearby, explicit_input_values)
+        candidates = discover_bundle_candidates(action, nearby, explicit_input_values)
+        bundles = [item for item in candidates if not item.missing_fields]
+        bundle = bundles[0] if len(bundles) == 1 else None
         if bundle is not None:
             for field_name, value in bundle.values.items():
                 if field_name in explicit_input_values:
@@ -116,6 +142,32 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 autonomous_reasons[field_name] = bundle.reason
                 autonomous_sources[field_name] = "discovered"
                 autonomous_bundle_ids[field_name] = bundle.bundle_id
+        elif len(bundles) > 1:
+            bundle_choice_ids = [item.bundle_id for item in bundles]
+            bundle_choices_by_field = {
+                field_name: [
+                    item.values[field_name]
+                    for item in bundles
+                    if item.values.get(field_name)
+                ]
+                for field_name in input_fields
+            }
+        elif candidates:
+            most_complete = max(len(item.values) for item in candidates)
+            best_partials = [
+                item for item in candidates if len(item.values) == most_complete
+            ]
+            if len(best_partials) == 1:
+                partial = best_partials[0]
+                partial_bundle_selected = True
+                for field_name, value in partial.values.items():
+                    if field_name in explicit_input_values:
+                        continue
+                    setattr(decision, field_name, value)
+                    autonomous_values[field_name] = value
+                    autonomous_reasons[field_name] = partial.reason
+                    autonomous_sources[field_name] = "discovered"
+                    autonomous_bundle_ids[field_name] = partial.bundle_id
 
     default_output_dir = str(
         profile_model.preferences.get("default_output_dir", "outputs/demo")
@@ -197,10 +249,17 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
 
         keywords = _candidate_keywords(action, field_name)
         candidates = _find_candidate_files(keywords, nearby) if keywords else []
+        if partial_bundle_selected:
+            candidates = []
+        if bundle_choices_by_field.get(field_name):
+            candidates = bundle_choices_by_field[field_name]
         if action in MULTI_FILE_ACTIONS:
             selected = None
             reason = (
-                "No single complete validated dataset bundle contains every "
+                "Multiple complete validated input bundles are available; "
+                "choose one before execution."
+                if bundle_choices_by_field
+                else "No single complete validated dataset bundle contains every "
                 "remaining required input."
             )
         else:
@@ -227,6 +286,11 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                     status="missing",
                     reason=reason,
                     candidates=candidates[:5],
+                    candidate_bundle_ids=(
+                        bundle_choice_ids[:5]
+                        if bundle_choices_by_field.get(field_name)
+                        else []
+                    ),
                 )
             )
 

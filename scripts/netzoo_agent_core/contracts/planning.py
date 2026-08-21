@@ -25,11 +25,19 @@ class InputEvidence(BaseModel):
     value: str | None = None
     reason: str
     candidates: list[str] = Field(default_factory=list)
+    candidate_bundle_ids: list[str] = Field(default_factory=list)
     bundle_id: str | None = None
     derived_from: str | None = Field(
         default=None,
         exclude_if=lambda value: value is None,
     )
+
+class InputBundleOption(BaseModel):
+    """One complete coherent input bundle offered as an atomic selection."""
+
+    bundle_id: str = Field(min_length=1, max_length=4_000)
+    directory: str = Field(min_length=1, max_length=4_000)
+    inputs: dict[str, str] = Field(min_length=1, max_length=20)
 
 class WorkflowStep(BaseModel):
     action: str
@@ -41,6 +49,7 @@ class WorkflowPlan(BaseModel):
     objective: str
     decision: dict
     evidence: list[InputEvidence] = Field(default_factory=list)
+    input_bundle_options: list[InputBundleOption] = Field(default_factory=list)
     steps: list[WorkflowStep] = Field(default_factory=list)
     missing_inputs: list[str] = Field(default_factory=list)
     status: Literal["ready", "needs_input", "needs_confirmation", "respond_only"]
@@ -57,4 +66,4 @@ class WorkflowPlan(BaseModel):
     recovery_step_index: int | None = Field(default=None, ge=0)
     recovery_attempt: int = Field(default=0, ge=0, le=MAX_RECOVERY_ATTEMPTS)
 
-__all__ = ['InputEvidence', 'WorkflowStep', 'WorkflowPlan']
+__all__ = ['InputBundleOption', 'InputEvidence', 'WorkflowStep', 'WorkflowPlan']

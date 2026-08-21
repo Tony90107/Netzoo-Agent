@@ -1,4 +1,4 @@
-# Pull Request Draft
+# Historical Snapshot: Pull Request Draft
 
 ## Title
 
@@ -61,6 +61,5 @@ docker compose run --rm netzoo run-puma \
 ## Notes
 
 - `setuptools<81` is pinned because `netZooPy` currently imports `pkg_resources`.
-- The LangGraph agent starts in interactive `/test` mode. Run `./netzoo-chat`, enter
-  `/execute`, then submit the task to run PANDA/PUMA; `/test` revokes that authorization.
+- The LangGraph agent defaults to dry-run mode. Add `--execute` to actually run PANDA/PUMA.
 - A real OpenRouter API key is required to use the LLM agent.

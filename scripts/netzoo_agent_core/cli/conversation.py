@@ -23,8 +23,10 @@ from ..session import (
 )
 from .bootstrap import CliRuntime
 from .clarification import (
+    bundle_clarification_continuation,
     clarification_continuation,
     clarification_prompt,
+    custom_clarification_prompt,
     parse_clarification_assignments,
     preference_confirmation_prompt,
     preference_continuation,
@@ -81,6 +83,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
     reply_resolver = runtime.reply_resolver
 
     clarification_selections: dict[str, str] = {}
+    custom_input_selection = False
+    preview_task: str | None = None
+    preview_workflow: str | None = None
+    execution_confirmation_task: str | None = None
     run_paused = False
     queued_task = args.task
     one_shot = bool(args.task) and not runtime.resume_id
@@ -95,7 +101,32 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         )
 
     while True:
-        if queued_task is not None:
+        if execution_confirmation_task is not None:
+            try:
+                raw_answer = reader.read(
+                    render_mode_prompt(
+                        "\nRun the validated "
+                        f"{preview_workflow or 'NetZoo'} workflow now? [y/N] "
+                    ),
+                    menu_enabled=True,
+                )
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
+            if raw_answer is None:
+                continue
+            answer = raw_answer.strip()
+            if _handle_interactive_control(answer):
+                continue
+            if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
+                break
+            if answer.casefold() not in {"y", "yes"}:
+                execution_confirmation_task = None
+                print(_ui_text("Execution cancelled; the command preview is unchanged."))
+                continue
+            task = execution_confirmation_task
+            execution_confirmation_task = None
+        elif queued_task is not None:
             task = queued_task.strip()
             queued_task = None
         elif pending_plan is not None:
@@ -143,6 +174,9 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     print(_ui_text("Preference changes were not saved."))
                 task = preference_continuation(pending_plan, approved)
             else:
+                choosing_complete_bundle = bool(
+                    pending_plan.input_bundle_options
+                ) and not custom_input_selection
                 unresolved_fields = [
                     item.field
                     for item in pending_plan.evidence
@@ -154,12 +188,23 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     raw_answer = reader.read(
                         render_mode_prompt(
                             "\n"
-                            + clarification_prompt(
-                                pending_plan,
-                                clarification_selections,
+                            + (
+                                custom_clarification_prompt(
+                                    pending_plan,
+                                    clarification_selections,
+                                )
+                                if custom_input_selection
+                                else clarification_prompt(
+                                    pending_plan,
+                                    clarification_selections,
+                                )
                             )
                         ),
-                        menu_enabled=target_field not in _PATH_ANSWER_FIELDS,
+                        menu_enabled=(
+                            True
+                            if choosing_complete_bundle
+                            else target_field not in _PATH_ANSWER_FIELDS
+                        ),
                     )
                 except (EOFError, KeyboardInterrupt):
                     print()
@@ -169,7 +214,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 answer = raw_answer.strip()
                 if _handle_interactive_control(
                     answer,
-                    allow_path_answer=target_field in _PATH_ANSWER_FIELDS,
+                    allow_path_answer=(
+                        not choosing_complete_bundle
+                        and target_field in _PATH_ANSWER_FIELDS
+                    ),
                 ):
                     continue
                 if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
@@ -177,8 +225,18 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 if not answer:
                     continue
                 try:
-                    mode_pending = "lioness_mode" in pending_plan.missing_inputs
-                    if mode_pending:
+                    if choosing_complete_bundle:
+                        if answer.casefold() == "custom":
+                            custom_input_selection = True
+                            clarification_selections = {}
+                            continue
+                        task = bundle_clarification_continuation(
+                            pending_plan,
+                            answer,
+                        )
+                        custom_input_selection = False
+                        clarification_selections = {}
+                    elif "lioness_mode" in pending_plan.missing_inputs:
                         task = resolve_clarification(pending_plan, answer)
                     else:
                         clarification_selections = parse_clarification_assignments(
@@ -216,6 +274,15 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if raw_answer is None:
                 continue
             answer = raw_answer.strip()
+            if (
+                answer.casefold() == "/execute"
+                and next_prompt.kind == "dry_run"
+                and preview_task is not None
+            ):
+                command_result = handle_slash_command(answer)
+                print(_ui_text(command_result.message))
+                execution_confirmation_task = preview_task
+                continue
             if _handle_interactive_control(
                 answer,
                 allow_path_answer=next_prompt.expected_field in _PATH_ANSWER_FIELDS,
@@ -247,12 +314,14 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 active_usage = reply_result.usage.model_dump()
                 resolution = reply_result.resolution
                 if resolution.kind == "needs_detail":
-                    print(
-                        _ui_text(
+                    next_prompt = NextTurnPrompt(
+                        kind="initial",
+                        question=_ui_text(
                             "Please enter a concrete follow-up question, provide the "
                             "requested input path, or describe another NetZoo goal."
-                        )
+                        ),
                     )
+                    follow_up_context = None
                     recorder.finish_run(
                         run_id,
                         "completed",
@@ -374,6 +443,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             plan if plan.status in {"needs_input", "needs_confirmation"} else None
         )
         clarification_selections = {}
+        custom_input_selection = False
         if active_usage:
             usage = LLMUsage.model_validate(active_usage)
             _trace(
@@ -390,6 +460,12 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             print(result["messages"][-1].content)
             next_prompt = build_next_turn_prompt(result)
             follow_up_context = build_follow_up_context(result, next_prompt, task)
+            if next_prompt.kind == "dry_run":
+                preview_task = task
+                preview_workflow = plan.workflow
+            elif next_prompt.kind == "completed":
+                preview_task = None
+                preview_workflow = None
         if pending_plan is not None:
             recorder.pause_run(
                 run_id,

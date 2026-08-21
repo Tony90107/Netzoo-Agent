@@ -23,6 +23,11 @@ RUN sed -i \
     -e 's/Lioness(panda_obj)/Lioness(panda_obj, export_filename=lioness_file)/' \
     -e '/lioness_obj\.save_lioness_results(lioness_file)/d' \
     /opt/netZooPy/netZooPy/panda/run_panda.py
+# The pinned source checkout is the runtime of record. Install it into the
+# micromamba environment so its documented `netzoopy` console entry point is
+# available to the wrapper scripts.
+RUN micromamba run -n netzoo python -m pip install --no-deps -e /opt/netZooPy \
+    && micromamba run -n netzoo netzoopy --help >/dev/null
 COPY docker/run-panda /usr/local/bin/run-panda
 COPY docker/run-puma /usr/local/bin/run-puma
 COPY docker/run-lioness /usr/local/bin/run-lioness

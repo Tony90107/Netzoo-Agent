@@ -44,6 +44,8 @@ class ReplyIntentDecision(BaseModel):
     kind: ReplyIntent
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=240)
+    selected_action: RecommendedAction | None = None
+    selected_granularity: Granularity | None = None
 
 
 class ContextualReplyResolution(BaseModel):
@@ -52,6 +54,8 @@ class ContextualReplyResolution(BaseModel):
     kind: ReplyIntent
     resolved_task: str | None = Field(default=None, max_length=8_000)
     reason: str = Field(min_length=1, max_length=240)
+    selected_action: RecommendedAction | None = None
+    selected_granularity: Granularity | None = None
 
 
 __all__ = [

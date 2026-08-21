@@ -156,9 +156,9 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="dry_run",
             question=_ui_text(
-                f"The {plan.workflow} command preview is ready. Would you like to "
-                "adjust its inputs or explore another workflow? Enter /execute to "
-                "enable execution in this session."
+                f"The {plan.workflow} command preview is ready. Enter /execute to "
+                "enable execution and confirm this validated workflow, or describe "
+                "the input changes you want."
             ),
         )
 
@@ -273,6 +273,19 @@ def resolve_next_turn_input(
         return resolution.resolved_task
     if resolution.kind != "accept_workflow":
         return None
+    if prompt.kind == "clarify_outcome":
+        if not resolution.selected_action:
+            return resolution.resolved_task
+        granularity = (
+            f" CONFIRMED_GRANULARITY={resolution.selected_granularity}."
+            if resolution.selected_granularity
+            else ""
+        )
+        return (
+            f"CONFIRMED_OUTCOME_ACTION={resolution.selected_action}.{granularity} "
+            "Explain the confirmed supported outcome and recommend its workflow. "
+            "Do not execute it yet."
+        )
     if prompt.alternative_action:
         granularity = (
             f" CONFIRMED_GRANULARITY={prompt.alternative_granularity}."
@@ -284,15 +297,16 @@ def resolve_next_turn_input(
             "Explain the confirmed supported outcome and recommend its workflow. "
             "Do not execute it yet."
         )
-    if not prompt.continuation_action:
+    selected_action = resolution.selected_action or prompt.continuation_action
+    if not selected_action:
         return None
     stripped = original_reply.strip()
     looks_like_path = bool(
         re.search(r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$", stripped, flags=re.IGNORECASE)
     )
     continuation = (
-        f"PREVIOUS_ACTION={prompt.continuation_action}. Continue the recommended "
-        f"{_workflow_name(prompt.continuation_action)} workflow. The user accepted "
+        f"PREVIOUS_ACTION={selected_action}. Continue the recommended "
+        f"{_workflow_name(selected_action)} workflow. The user accepted "
         "the previous capability recommendation."
     )
     if looks_like_path and prompt.expected_field:

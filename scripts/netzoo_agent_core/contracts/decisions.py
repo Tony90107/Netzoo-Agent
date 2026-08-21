@@ -15,14 +15,20 @@ class PreferenceProposal(BaseModel):
     reason: str
 
 class RouterDecision(BaseModel):
-    """Small LLM-facing interface; deterministic code hydrates execution details."""
+    """LLM-owned semantic routing proposal, bounded by the action allowlist."""
 
     action: ActionName
+    selected_action: ActionName | None = Field(
+        default=None,
+        description="Selected action; action remains as the migration-compatible alias.",
+    )
+    candidate_actions: list[ActionName] = Field(default_factory=list, max_length=6)
     in_scope: bool = True
     intent_type: IntentType = "unknown"
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(min_length=1, max_length=600)
     semantic_goal: str | None = Field(default=None, max_length=240)
+    clarification_question: str | None = Field(default=None, max_length=300)
     outcome_hypotheses: list[OutcomeHypothesis] = Field(
         default_factory=list,
         max_length=3,
@@ -59,6 +65,7 @@ class TaskDecision(BaseModel):
     )
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str
+    candidate_actions: list[ActionName] = Field(default_factory=list, max_length=6)
     recommended_actions: list[RecommendedAction] = Field(
         default_factory=list,
         description=(

@@ -138,7 +138,8 @@ python run_panda.py \
 - gene expression matrix
 - TF-gene motif 或 binding prior
 - TF-TF PPI network
-- miRNA-target prior，例如 TargetScan 或 miRanda 預測
+- motif/prior 檔可合併 TF-gene 與 miRNA-target prior，例如 TargetScan 或 miRanda 預測
+- 一欄式 miRNA 名稱清單，用來標示 prior 中哪些 regulator 是 miRNA
 
 **怎麼用**：R 使用 `puma()`，Python 可用 `Puma(...)` 或命令列：
 

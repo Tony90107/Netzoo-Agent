@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-
 from workflow_registry import (
     CODE_VALIDATION_STEPS,
     LOCAL_EXECUTION_ACTIONS,
@@ -23,7 +21,6 @@ from ..contracts import (
 )
 from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..policy import ProjectPolicyLoader
-from ..routing import validate_task_text
 from ..data.paths import _resolve_user_path
 from .plan_rules import (
     _bundle_provenance_failures,
@@ -75,32 +72,18 @@ def evaluate_workflow_plan(
 
     action = decision.action
     recognized_action = action in REQUIRED_INPUTS and action != "no_tool"
-    action_rejection = (
-        validate_task_text(user_task, action) if recognized_action else None
-    )
-    continuation_authorized = bool(
-        re.search(
-            rf"PREVIOUS_ACTION={re.escape(action)}\b",
-            user_task,
-            flags=re.IGNORECASE,
-        )
-    )
-    preference_authorized = "confirmed preferred workflow" in decision.reason.casefold()
     capability_ok = (
         recognized_action
-        and (not action_rejection or continuation_authorized or preference_authorized)
         and plan.workflow == _workflow_name(action)
-        and decision.intent_type != "answer_question"
     )
     rubric.append(
         PlanRubricItem(
             criterion="intent_and_capability_alignment",
             result="pass" if capability_ok else "fail",
             detail=(
-                f"Action {action} matches the authorized deliverable and workflow {plan.workflow}."
+                f"Action {action} is registered and matches workflow {plan.workflow}."
                 if capability_ok
-                else action_rejection
-                or "The action, workflow, or user intent is not execution-authorized."
+                else "The action is not registered or does not match the validated workflow."
             ),
         )
     )

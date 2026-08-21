@@ -61,6 +61,31 @@ class PathAndOutputSafetyTests(unittest.TestCase):
                 )
                 self.assertEqual(decision.network_file, expected)
 
+    def test_paths_in_natural_language_are_not_truncated_by_filename_aliases(self):
+        task = (
+            "Run PANDA using data/official-toy/ToyExpressionData.txt, "
+            "data/official-toy/ToyMotifData.txt, and "
+            "data/official-toy/ToyPPIData.txt."
+        )
+        decision = agent.hydrate_router_decision(
+            agent.TaskDecision(
+                action="run_panda",
+                in_scope=True,
+                should_execute=True,
+                intent_type="run_analysis",
+                confidence=0.95,
+                reason="explicit PANDA request",
+                expression_file="data/official-toy/ToyExpressionData.txt",
+                motif_file="data/official-toy/ToyMotifData.txt",
+                ppi_file="data/official-toy/ToyPPIData.txt",
+            ),
+            task,
+        )
+
+        assert decision.expression_file == "data/official-toy/ToyExpressionData.txt"
+        assert decision.motif_file == "data/official-toy/ToyMotifData.txt"
+        assert decision.ppi_file == "data/official-toy/ToyPPIData.txt"
+
     def test_lioness_output_roles_must_be_distinct(self):
         task = (
             "run LIONESS coexpression with expression_file=expression.tsv "

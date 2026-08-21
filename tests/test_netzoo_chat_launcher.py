@@ -12,10 +12,15 @@ LAUNCHER = REPO_ROOT / "netzoo-chat"
 class NetZooChatLauncherTests(unittest.TestCase):
     def test_active_project_identity_is_netzoo_agent(self):
         compose = (REPO_ROOT / "docker-compose.yml").read_text()
+        observer_compose = (REPO_ROOT / "docker-compose.observer.yml").read_text()
         policy = (REPO_ROOT / "AGENTS.md").read_text()
 
         self.assertIn("name: netzoo_agent", compose)
-        self.assertEqual(compose.count("image: netzoo_agent:latest"), 2)
+        self.assertEqual(
+            compose.count("image: netzoo_agent:latest")
+            + observer_compose.count("image: netzoo_agent:latest"),
+            2,
+        )
         self.assertNotIn("netzoo-panda-puma", compose)
         self.assertNotIn("network-zoo-panda-puma", compose)
         self.assertIn("project: netzoo_agent", policy)

@@ -6,6 +6,7 @@ import math
 import os
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from workflow_registry import ACTION_DEFINITIONS
 
 from .contracts import (
     DEFAULT_LLM_MAX_RETRIES,
@@ -45,25 +46,30 @@ __all__ = [
 def build_routing_prompt(project_policy: ProjectPolicySnapshot) -> str:
     """Build a compact, contradiction-free Router prompt from validated policy."""
     catalog = project_policy.router_capability_summary()
+    supporting_actions = "\n".join(
+        "- "
+        + action
+        + ": "
+        + definition.workflow
+        + ". Required inputs: "
+        + (", ".join(definition.required_inputs) or "none")
+        for action, definition in ACTION_DEFINITIONS.items()
+        if action not in project_policy.workflows and action != "no_tool"
+    )
     return f"""
 You route one latest user request for a narrowly scoped Network Zoo agent.
 Return only the RouterDecision structure. Interpret any user language, but write
-the reason in English. Keep reason under 500 characters. Do not extract paths,
-preferences, or missing inputs;
-deterministic code handles those details.
+the rationale in English. Keep it under 500 characters. Select candidate_actions
+and selected_action only from the catalog below. action must equal selected_action
+(or no_tool when clarification is necessary). Do not extract paths, preferences,
+or missing inputs; deterministic code handles those details.
 
 Validated run-workflow catalog:
 {catalog}
 
-Other actions:
-- inspect_inputs: validate explicitly requested PANDA/PUMA expression, prior, and PPI inputs.
-- inspect_condor_inputs: validate an explicitly requested CONDOR bipartite edge list.
-- format_expression: reorient an expression table.
-- convert_expression: create a gene correlation/co-expression matrix.
-- query_context7: retrieve current/version-specific docs for netZooPy, LangChain,
-  LangGraph, OpenRouter, Pydantic, pandas, or Context7.
-- web_search: retrieve explicitly requested current web or literature information.
-- no_tool: answer stable concepts/requirements in text, or reject unsupported work.
+Supporting and retrieval actions from the same validated registry:
+{supporting_actions}
+- no_tool: answer stable concepts/requirements in text, or ask one clarification.
 
 Routing rules:
 1. A direct request to run/build/infer a recognized deliverable selects its end-to-end
@@ -93,8 +99,10 @@ Routing rules:
    enrichment, raw FASTQ preprocessing, and protein structure analysis are unsupported.
 8. Mixed supported and unsupported deliverables select no_tool unless the supported
    deliverable is independently and explicitly requested.
-9. Use confidence below 0.80 when uncertain. Never claim a tool already ran.
-10. Populate semantic_goal as a short public summary of the outcome hypotheses.
+9. When context cannot distinguish eligible workflows, select no_tool and provide
+   exactly one clarification_question. Do not silently guess from a keyword.
+10. Never claim a tool already ran. Populate semantic_goal as a short public summary
+   of the outcome hypotheses.
    Preserve uncertainty rather than completing a supported goal on the user's behalf.
 
 Examples:

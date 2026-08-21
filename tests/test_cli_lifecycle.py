@@ -15,6 +15,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     AIMessage,
     ContextualReplyResolution,
     HumanMessage,
+    InputBundleOption,
     InputEvidence,
     LLMUsage,
     PreferenceProposal,
@@ -83,6 +84,38 @@ def _guidance_result(goal: str) -> dict:
         "plan": plan.model_dump(),
         "tool_results": [],
         "evaluation": None,
+        "token_usage": LLMUsage().model_dump(),
+    }
+
+
+def _workflow_result(goal: str, *, status: str) -> dict:
+    action = "run_lioness_puma"
+    decision = TaskDecision(
+        action=action,
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="test",
+        expression_file="data/expression.tsv",
+        motif_file="data/motif.tsv",
+        ppi_file="data/ppi.tsv",
+        mirna_file="data/mirna.txt",
+        output_file="outputs/aggregate.tsv",
+        lioness_output="outputs/lioness.tsv",
+    )
+    plan = WorkflowPlan(
+        workflow="LIONESS-PUMA",
+        objective=goal,
+        decision=decision.model_dump(),
+        status="ready",
+    )
+    return {
+        "messages": [HumanMessage(content=goal), AIMessage(content=status)],
+        "plan": plan.model_dump(),
+        "tool_results": [
+            {"action": action, "status": status, "summary": status}
+        ],
+        "evaluation": {"status": "completed", "reason": "done"},
         "token_usage": LLMUsage().model_dump(),
     }
 
@@ -198,6 +231,27 @@ def _resolved_reply_sequence(*kinds: str):
     return resolver
 
 
+def _accepted_workflow(action: str):
+    resolver = Mock()
+
+    def resolve(context, reply, current_usage, run_id):
+        return ReplyResolutionResult(
+            ContextualReplyResolution(
+                kind="accept_workflow",
+                selected_action=action,
+                reason="The user asked to run a trusted candidate workflow.",
+            ),
+            (
+                LLMUsage.model_validate(current_usage)
+                if current_usage is not None
+                else LLMUsage()
+            ),
+        )
+
+    resolver.resolve.side_effect = resolve
+    return resolver
+
+
 def _decision() -> TaskDecision:
     return TaskDecision(
         action="run_panda",
@@ -298,6 +352,41 @@ def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
         configure_runtime(EXECUTE_TOOLS=previous)
 
 
+def test_execute_after_preview_confirms_and_reuses_the_validated_task(capsys):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    task = "run the selected LIONESS-PUMA bundle"
+    runtime = _fake_cli_runtime(
+        invoke_error=[
+            _workflow_result(task, status="dry_run"),
+            _workflow_result(task, status="success"),
+        ],
+        interactive_answers=[task, "/execute", "yes", "exit"],
+    )
+    previous = settings.EXECUTE_TOOLS
+    try:
+        configure_runtime(EXECUTE_TOOLS=False)
+
+        assert conversation.run_conversation(
+            SimpleNamespace(task=None, keep_session=False), runtime
+        ) == 0
+
+        assert runtime.invoke_graph_turn_func.call_count == 2
+        submitted = [
+            call.args[1]["messages"][-1].content
+            for call in runtime.invoke_graph_turn_func.call_args_list
+        ]
+        assert submitted == [task, task]
+        output = capsys.readouterr().out
+        assert "Execution mode enabled" in output
+        prompts = [call.args[0] for call in runtime.input_func.call_args_list]
+        assert any(
+            "Run the validated LIONESS-PUMA workflow now? [y/N]" in prompt
+            for prompt in prompts
+        )
+    finally:
+        configure_runtime(EXECUTE_TOOLS=previous)
+
+
 def test_mode_menu_selection_reuses_slash_handler_without_graph_or_trace(
     monkeypatch, capsys
 ):
@@ -377,6 +466,96 @@ def _condor_missing_output_plan() -> WorkflowPlan:
         missing_inputs=["output_dir"],
         status="needs_input",
     )
+
+
+def _complete_bundle_choice_plan() -> WorkflowPlan:
+    fields = ("expression_file", "motif_file", "ppi_file", "mirna_file")
+    first = {
+        field_name: f"data/study-a/{field_name}.tsv" for field_name in fields
+    }
+    second = {
+        field_name: f"data/study-b/{field_name}.tsv" for field_name in fields
+    }
+    return WorkflowPlan(
+        workflow="LIONESS-PUMA",
+        objective="run LIONESS-PUMA",
+        decision=TaskDecision(
+            action="run_lioness_puma",
+            in_scope=True,
+            should_execute=False,
+            confidence=1.0,
+            reason="test",
+        ).model_dump(),
+        evidence=[
+            InputEvidence(
+                field=field_name,
+                status="missing",
+                reason="Choose one complete validated input bundle.",
+                candidates=[first[field_name], second[field_name]],
+            )
+            for field_name in fields
+        ],
+        input_bundle_options=[
+            InputBundleOption(
+                bundle_id="directory:data/study-a",
+                directory="data/study-a",
+                inputs=first,
+            ),
+            InputBundleOption(
+                bundle_id="directory:data/study-b",
+                directory="data/study-b",
+                inputs=second,
+            ),
+        ],
+        missing_inputs=list(fields),
+        status="needs_input",
+    )
+
+
+def test_complete_bundle_selection_submits_all_inputs_atomically():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    runtime = _fake_cli_runtime(
+        invoke_error=RuntimeError("captured continuation"),
+        interactive_answers=["1", "exit"],
+    )
+    runtime.pending_plan = _complete_bundle_choice_plan()
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+
+    invocation = runtime.invoke_graph_turn_func.call_args.args[1]
+    submitted = invocation["messages"][-1].content
+    for field_name in (
+        "expression_file",
+        "motif_file",
+        "ppi_file",
+        "mirna_file",
+    ):
+        assert f"{field_name} is data/study-a/{field_name}.tsv" in submitted
+        assert f"SELECTED_FIELD={field_name}" in submitted
+        assert f"data/study-b/{field_name}.tsv" not in submitted
+
+
+def test_custom_bundle_mode_opens_field_wizard_and_allows_explicit_composition():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    runtime = _fake_cli_runtime(
+        invoke_error=RuntimeError("captured continuation"),
+        interactive_answers=["custom", "1", "2", "1", "2", "exit"],
+    )
+    runtime.pending_plan = _complete_bundle_choice_plan()
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+
+    prompts = [call.args[0] for call in runtime.input_func.call_args_list]
+    assert any("Custom input composition" in prompt for prompt in prompts)
+    submitted = runtime.invoke_graph_turn_func.call_args.args[1]["messages"][-1].content
+    assert "expression_file is data/study-a/expression_file.tsv" in submitted
+    assert "motif_file is data/study-b/motif_file.tsv" in submitted
+    assert "ppi_file is data/study-a/ppi_file.tsv" in submitted
+    assert "mirna_file is data/study-b/mirna_file.tsv" in submitted
 
 
 def _preference_confirmation_plan() -> WorkflowPlan:
@@ -557,7 +736,7 @@ def test_underspecified_follow_up_does_not_reinvoke_scientific_graph(capsys):
     ) == 0
 
     assert runtime.invoke_graph_turn_func.call_count == 1
-    assert "Please enter a concrete follow-up question" in capsys.readouterr().out
+    assert "Please enter a concrete follow-up question" not in capsys.readouterr().out
 
 
 def test_substantive_follow_up_reaches_graph_with_prior_goal_context():
@@ -579,6 +758,26 @@ def test_substantive_follow_up_reaches_graph_with_prior_goal_context():
     submitted = second_invocation["messages"][-1].content
     assert "Previous NetZoo goal:" in submitted
     assert "User follow-up: What format" in submitted
+
+
+def test_run_follow_up_enters_selected_workflow_planning_without_reclassification():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    goal = "Which tools produce sample-specific miRNA networks?"
+    follow_up = "can you run this with the data that i have?"
+    runtime = _fake_cli_runtime(
+        invoke_error=[_guidance_result(goal), _guidance_result(follow_up)],
+        interactive_answers=[goal, follow_up, "exit"],
+        reply_resolver=_accepted_workflow("run_lioness_puma"),
+    )
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+
+    second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
+    submitted = second_invocation["messages"][-1].content
+    assert "PREVIOUS_ACTION=run_lioness_puma" in submitted
+    assert "CONFIRMED_OUTCOME_ACTION" not in submitted
 
 
 def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_output(
@@ -605,13 +804,12 @@ def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_
     assert output.index("PUMA") < output.index("LIONESS-PUMA")
     assert output.count("No files were inspected and no analysis ran.") == 2
     assert "If you need to start" not in output
-    assert "Please enter a concrete follow-up question" in output
+    assert "Please enter a concrete follow-up question" not in output
     assert runtime.invoke_graph_turn_func.call_count == 2
-    assert resolver.resolve.call_count == 2
+    assert resolver.resolve.call_count == 1
     second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
     submitted = second_invocation["messages"][-1].content
-    assert "Previous NetZoo goal:" in submitted
-    assert "User follow-up: What format" in submitted
+    assert submitted == follow_up
     prompts = [call.args[0] for call in runtime.input_func.call_args_list]
     assert any("Enter a follow-up question" in prompt for prompt in prompts)
     assert all("Reply yes" not in prompt for prompt in prompts)

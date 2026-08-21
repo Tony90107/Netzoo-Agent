@@ -112,7 +112,7 @@ class CapabilityGateTests(unittest.TestCase):
         finally:
             agent.build_graph = original
 
-    def test_sample_specific_mirna_data_is_not_promoted_to_network_guidance(self):
+    def test_no_tool_router_result_is_not_promoted_to_network_guidance(self):
         task = "if i want to get sample specific mi-RNA data, what tools do i need?"
 
         fallback = agent.deterministic_router_fallback(task, TimeoutError())
@@ -130,13 +130,13 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(fallback.recommended_actions, [])
-        self.assertEqual(repaired.capability_match_status, "unsupported")
+        self.assertIsNone(repaired.capability_match_status)
         self.assertEqual(repaired.matched_actions, [])
         self.assertEqual(repaired.recommended_actions, [])
-        self.assertEqual(repaired.alternative_actions[0], "run_lioness_puma")
+        self.assertEqual(repaired.alternative_actions, [])
         self.assertFalse(repaired.should_execute)
 
-    def test_router_proposed_run_cannot_bypass_outcome_mismatch(self):
+    def test_gate_preserves_router_action_when_outcome_metadata_conflicts(self):
         decision = agent.TaskDecision(
             action="run_lioness_puma",
             in_scope=True,
@@ -154,8 +154,7 @@ class CapabilityGateTests(unittest.TestCase):
             "download per-sample miRNA data",
         )
 
-        self.assertEqual(gated.action, "no_tool")
-        self.assertIn("does not exactly match", gated.reason)
+        self.assertEqual(gated.action, "run_lioness_puma")
 
     def test_confirmed_alternative_recommends_but_does_not_execute(self):
         decision = agent.repair_router_decision(
@@ -194,20 +193,20 @@ class CapabilityGateTests(unittest.TestCase):
         )
         self.assertEqual(result.action, "run_panda")
 
-    def test_out_of_scope_task_is_blocked(self):
+    def test_gate_does_not_reinterpret_router_scope(self):
         result = agent.enforce_capability_gate(
             self.decision(in_scope=False, reason="gene mutation discovery")
         )
-        self.assertEqual(result.action, "no_tool")
-        self.assertFalse(result.should_execute)
+        self.assertEqual(result.action, "run_panda")
+        self.assertTrue(result.should_execute)
 
-    def test_low_confidence_task_is_blocked(self):
+    def test_gate_does_not_reinterpret_router_confidence(self):
         result = agent.enforce_capability_gate(self.decision(confidence=0.60))
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_panda")
 
-    def test_missing_input_is_blocked(self):
+    def test_missing_input_is_preserved_for_planner_clarification(self):
         result = agent.enforce_capability_gate(self.decision(motif_file=None))
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_panda")
         self.assertIn("motif_file", result.missing_inputs)
 
     def test_conceptual_answer_never_executes(self):
@@ -221,7 +220,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(result.action, "no_tool")
         self.assertFalse(result.should_execute)
 
-    def test_requirement_question_does_not_authorize_condor_execution(self):
+    def test_gate_does_not_reclassify_a_router_selected_condor_action(self):
         result = agent.enforce_capability_gate(
             agent.TaskDecision(
                 action="run_condor",
@@ -238,32 +237,31 @@ class CapabilityGateTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.action, "no_tool")
-        self.assertFalse(result.should_execute)
-        self.assertIn("workflow requirements", result.reason)
+        self.assertEqual(result.action, "run_condor")
+        self.assertTrue(result.should_execute)
 
-    def test_requirement_question_does_not_authorize_panda_execution(self):
+    def test_gate_does_not_reclassify_a_router_selected_panda_action(self):
         result = agent.enforce_capability_gate(
             self.decision(intent_type="answer_question"),
             user_task="PANDA 需要哪些 input？",
         )
 
-        self.assertEqual(result.action, "no_tool")
-        self.assertFalse(result.should_execute)
+        self.assertEqual(result.action, "run_panda")
+        self.assertTrue(result.should_execute)
 
-    def test_mutation_request_is_blocked_even_if_router_selects_panda(self):
+    def test_gate_does_not_parse_unsupported_intent_from_task_text(self):
         result = agent.enforce_capability_gate(
             self.decision(),
             user_task="幫我使用 PANDA 工具找到基因突變",
         )
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_panda")
 
-    def test_unnamed_tool_request_is_blocked(self):
+    def test_gate_does_not_reclassify_an_unnamed_task(self):
         result = agent.enforce_capability_gate(
             self.decision(matched_actions=[]),
             user_task="幫我用這些檔案推論網路",
         )
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_panda")
 
     def test_goal_matching_recommends_local_composition_for_how_to_question(self):
         task = "假設我要做一個 sample spefic 的 mi-RNA的基因調控網路，我要怎麼做才好"
@@ -287,10 +285,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
         self.assertEqual(decision.action, "no_tool")
         self.assertEqual(decision.intent_type, "answer_question")
-        self.assertEqual(
-            decision.recommended_actions,
-            ["run_puma", "run_lioness_puma"],
-        )
+        self.assertEqual(decision.recommended_actions, [])
 
     def test_goal_match_marks_sample_specific_mirna_as_a_composition(self):
         match = agent.routing_capability.infer_goal_capability_match(
@@ -521,7 +516,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("PANDA workflow is complete", prompt.question)
         self.assertIn("inspect or refine the result", prompt.question)
 
-    def test_unnamed_specific_goal_repairs_no_tool_to_end_to_end_workflow(self):
+    def test_unnamed_specific_goal_does_not_override_router_no_tool(self):
         task = "請幫我建立 sample-specific miRNA gene regulatory networks"
         decision = agent.repair_router_decision(
             agent.TaskDecision(
@@ -536,15 +531,11 @@ class CapabilityGateTests(unittest.TestCase):
             task,
         )
 
-        self.assertEqual(decision.action, "run_lioness_puma")
-        self.assertTrue(decision.should_execute)
-        self.assertEqual(decision.intent_type, "run_analysis")
-        self.assertEqual(
-            decision.recommended_actions,
-            ["run_puma", "run_lioness_puma"],
-        )
+        self.assertEqual(decision.action, "no_tool")
+        self.assertFalse(decision.should_execute)
+        self.assertEqual(decision.recommended_actions, [])
 
-    def test_goal_repair_upgrades_partial_puma_route_to_sample_specific_workflow(self):
+    def test_goal_metadata_does_not_upgrade_the_router_selected_action(self):
         decision = agent.repair_router_decision(
             self.decision(
                 action="run_puma",
@@ -553,11 +544,7 @@ class CapabilityGateTests(unittest.TestCase):
             "Please build sample-specific miRNA gene regulatory networks",
         )
 
-        self.assertEqual(decision.action, "run_lioness_puma")
-        self.assertEqual(
-            decision.recommended_actions,
-            ["run_puma", "run_lioness_puma"],
-        )
+        self.assertEqual(decision.action, "run_puma")
 
     def test_capability_gate_accepts_unnamed_but_unambiguous_goal(self):
         result = agent.enforce_capability_gate(
@@ -592,7 +579,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(result.action, "query_context7")
         self.assertEqual(result.library_name, "netZooPy")
 
-    def test_static_workflow_inputs_use_no_tool_without_docs_retrieval(self):
+    def test_router_selected_docs_action_is_not_reclassified_from_text(self):
         repaired = agent.repair_router_decision(
             agent.TaskDecision(
                 action="query_context7",
@@ -607,11 +594,11 @@ class CapabilityGateTests(unittest.TestCase):
             "PANDA 需要哪些 input？",
         )
 
-        self.assertEqual(repaired.action, "no_tool")
+        self.assertEqual(repaired.action, "query_context7")
         self.assertEqual(repaired.intent_type, "answer_question")
-        self.assertEqual(repaired.recommended_actions, ["run_panda"])
+        self.assertEqual(repaired.recommended_actions, [])
 
-    def test_version_specific_workflow_question_uses_context7(self):
+    def test_no_tool_router_selection_is_not_upgraded_to_context7(self):
         repaired = agent.repair_router_decision(
             agent.TaskDecision(
                 action="no_tool",
@@ -624,9 +611,8 @@ class CapabilityGateTests(unittest.TestCase):
             "最新版 netZooPy 的 PANDA CLI 參數有什麼變更？",
         )
 
-        self.assertEqual(repaired.action, "query_context7")
-        self.assertEqual(repaired.library_name, "netZooPy")
-        self.assertTrue(repaired.should_execute)
+        self.assertEqual(repaired.action, "no_tool")
+        self.assertFalse(repaired.should_execute)
 
     def test_context7_rejects_non_allowlisted_library(self):
         result = agent.enforce_capability_gate(
@@ -642,7 +628,7 @@ class CapabilityGateTests(unittest.TestCase):
             user_task="How do I use unknown-package?",
         )
         self.assertEqual(result.action, "no_tool")
-        self.assertIn("library_name", result.missing_inputs)
+        self.assertIsNotNone(result.clarification_question)
 
     def test_context7_accepts_descriptive_allowed_library_name(self):
         self.assertEqual(
@@ -694,7 +680,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
         self.assertEqual(result.action, "web_search")
 
-    def test_lioness_puma_requires_all_paths(self):
+    def test_lioness_puma_missing_paths_are_left_for_planner(self):
         result = agent.enforce_capability_gate(
             agent.TaskDecision(
                 action="run_lioness_puma",
@@ -710,7 +696,7 @@ class CapabilityGateTests(unittest.TestCase):
             ),
             user_task="試跑 LIONESS PUMA",
         )
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_lioness_puma")
         self.assertIn("lioness_output", result.missing_inputs)
 
     def test_lioness_planner_autonomously_resolves_dataset_files(self):
@@ -784,8 +770,9 @@ class CapabilityGateTests(unittest.TestCase):
             agent._mentions_unspecified_data_directory("幫我跑資料夾的資料做PANDA測試")
         )
         self.assertFalse(any(item.status == "demo_bundle" for item in plan.evidence))
-        self.assertIn("Select input 1 of", prompt)
-        self.assertIn("Enter a candidate number or a full path", prompt)
+        self.assertIn("Choose one complete input bundle", prompt)
+        self.assertIn("enter custom", prompt)
+        self.assertNotIn("Select input 1 of", prompt)
 
     def test_explicit_directory_path_can_still_resolve_nearby_files(self):
         self.assertFalse(
@@ -1246,6 +1233,34 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("log: .netzoo/logs/run-panda.log", rendered)
         self.assertIn("Evaluator: completed", rendered)
 
+    def test_compact_execution_renderer_deduplicates_repeated_warnings(self):
+        decision = self.decision()
+        plan = agent.build_workflow_plan(decision, "Run PANDA")
+        repeated = "miRNA was read as whitespace-delimited text; TSV is safer."
+        inspection = agent.ToolExecutionResult(
+            action="inspect_inputs",
+            status="success",
+            summary="passed",
+            warnings=[repeated],
+        )
+        preview = agent.ToolExecutionResult(
+            action="run_panda",
+            status="dry_run",
+            summary="preview",
+            warnings=[repeated],
+        )
+
+        rendered = agent.render_execution_response(
+            plan,
+            [inspection, preview],
+            agent.EvaluationResult(status="completed", reason="done"),
+            verbose=False,
+        )
+
+        self.assertEqual(rendered.count(f"Warning: {repeated}"), 1)
+        self.assertIn("enter /execute to enable execution", rendered)
+        self.assertNotIn("submit the task again", rendered)
+
     def test_compact_trace_hides_internal_memory_and_evaluator_chatter(self):
         previous_trace = agent.TRACE_ENABLED
         previous_verbose = agent.VERBOSE_OUTPUT
@@ -1348,7 +1363,7 @@ class CapabilityGateTests(unittest.TestCase):
             ["inspect_condor_inputs", "run_condor"],
         )
 
-    def test_condor_no_tool_router_result_is_repaired_for_explicit_demo_run(self):
+    def test_condor_text_does_not_override_a_no_tool_router_result(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1363,38 +1378,29 @@ class CapabilityGateTests(unittest.TestCase):
         )
         plan = agent.build_workflow_plan(repaired, "幫我跑一次CONDOR 做測試")
 
-        self.assertEqual(repaired.action, "run_condor")
-        self.assertEqual(plan.status, "ready")
-        self.assertEqual(plan.decision["network_file"], "data/condor-toy/bipartite.tsv")
-        self.assertEqual(plan.decision["output_dir"], "outputs/condor")
-        self.assertEqual(
-            [step.action for step in plan.steps],
-            ["inspect_condor_inputs", "run_condor"],
-        )
+        self.assertEqual(repaired.action, "no_tool")
+        self.assertEqual(plan.status, "respond_only")
+        self.assertEqual(plan.steps, [])
 
-    def test_provider_fallback_classifies_explicit_panda_folder_run(self):
+    def test_provider_fallback_never_classifies_an_explicit_panda_folder_run(self):
         decision = agent.deterministic_router_fallback(
             "幫我使用資料夾的資料去 跑panda",
             RuntimeError("provider rejected structured output"),
         )
 
-        self.assertEqual(decision.action, "run_panda")
-        self.assertTrue(decision.should_execute)
-        self.assertEqual(decision.intent_type, "run_analysis")
-        self.assertIn("expression_file", decision.missing_inputs)
-        self.assertIn("motif_file", decision.missing_inputs)
-        self.assertIn("ppi_file", decision.missing_inputs)
+        self.assertEqual(decision.action, "no_tool")
+        self.assertFalse(decision.should_execute)
+        self.assertIsNotNone(decision.clarification_question)
 
-    def test_provider_fallback_keeps_lioness_without_base_method_as_clarification(self):
+    def test_provider_fallback_does_not_infer_lioness_mode(self):
         decision = agent.deterministic_router_fallback(
             "幫我跑一次 LIONESS",
             RuntimeError("provider rejected structured output"),
         )
         plan = agent.build_workflow_plan(decision, "幫我跑一次 LIONESS")
 
-        self.assertEqual(plan.workflow, "LIONESS")
-        self.assertEqual(plan.status, "needs_input")
-        self.assertEqual(plan.missing_inputs, ["lioness_mode"])
+        self.assertEqual(plan.workflow, "NO-TOOL")
+        self.assertEqual(plan.status, "respond_only")
 
     def test_condor_repair_treats_missing_input_phrase_the_same_way(self):
         raw = agent.TaskDecision(
@@ -1412,7 +1418,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(first.action, second.action)
-        self.assertEqual(first.action, "run_condor")
+        self.assertEqual(first.action, "no_tool")
 
     def test_condor_requirement_question_is_not_repaired_into_run(self):
         raw = agent.TaskDecision(
@@ -1432,7 +1438,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(repaired.action, "no_tool")
         self.assertFalse(repaired.should_execute)
 
-    def test_lioness_demo_without_base_method_asks_for_mode(self):
+    def test_lioness_text_does_not_create_a_deterministic_mode_prompt(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1443,13 +1449,8 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS 做測試")
 
-        self.assertEqual(plan.workflow, "LIONESS")
-        self.assertEqual(plan.status, "needs_input")
-        self.assertEqual(plan.missing_inputs, ["lioness_mode"])
-        self.assertEqual(len(plan.evidence[0].candidates), 3)
-        self.assertIn("LIONESS PANDA", plan.evidence[0].candidates[0])
-        self.assertIn("LIONESS PUMA", plan.evidence[0].candidates[1])
-        self.assertIn("co-expression", plan.evidence[0].candidates[2])
+        self.assertEqual(plan.workflow, "NO-TOOL")
+        self.assertEqual(plan.status, "respond_only")
 
     def test_lioness_expression_word_does_not_silently_choose_coexpression(self):
         raw = agent.TaskDecision(
@@ -1462,10 +1463,9 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS EXPRESSION做測試")
 
-        self.assertEqual(plan.status, "needs_input")
-        self.assertEqual(plan.missing_inputs, ["lioness_mode"])
+        self.assertEqual(plan.status, "ready")
 
-    def test_lioness_mode_number_resumes_the_selected_workflow(self):
+    def test_lioness_mode_number_requires_an_llm_generated_mode_prompt(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1476,19 +1476,10 @@ class CapabilityGateTests(unittest.TestCase):
         )
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS 做測試")
 
-        continuation = agent.resolve_clarification(plan, "3")
+        with self.assertRaises(agent.ClarificationInputError):
+            agent.resolve_clarification(plan, "3")
 
-        self.assertIn("run LIONESS co-expression as a demo/test", continuation)
-        self.assertIn("data/lioness-toy/expression.tsv", continuation)
-
-        rerouted = agent.repair_router_decision(raw, continuation)
-        self.assertEqual(rerouted.action, "run_lioness_coexpression")
-        self.assertEqual(
-            rerouted.expression_file,
-            "data/lioness-toy/expression.tsv",
-        )
-
-    def test_lioness_mode_prompt_lists_human_readable_choices(self):
+    def test_no_tool_plan_does_not_invent_lioness_mode_choices(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1500,13 +1491,9 @@ class CapabilityGateTests(unittest.TestCase):
 
         prompt = agent.clarification_prompt(plan)
 
-        self.assertIn("1. LIONESS PANDA", prompt)
-        self.assertIn("2. LIONESS PUMA", prompt)
-        self.assertIn("3. LIONESS co-expression", prompt)
-        self.assertIn("Selection >", prompt)
-        self.assertNotIn("選擇 >", prompt)
+        self.assertEqual(prompt, "No additional input is required.")
 
-    def test_lioness_mode_question_stays_english_for_chinese_task(self):
+    def test_no_tool_plan_has_no_deterministic_lioness_question(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1516,10 +1503,9 @@ class CapabilityGateTests(unittest.TestCase):
         )
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS做測試")
 
-        self.assertIn("Which LIONESS mode should run?", plan.question)
-        self.assertNotIn("你要執行", plan.question)
+        self.assertIsNone(plan.question)
 
-    def test_lioness_mode_prompt_ignores_stale_saved_chinese_question(self):
+    def test_no_tool_plan_does_not_resurrect_a_stale_lioness_question(self):
         raw = agent.TaskDecision(
             action="no_tool",
             in_scope=True,
@@ -1534,8 +1520,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         prompt = agent.clarification_prompt(stale_plan)
 
-        self.assertIn("Which LIONESS mode should run?", prompt)
-        self.assertNotIn("你要執行", prompt)
+        self.assertEqual(prompt, "No additional input is required.")
 
     def test_evaluator_advances_then_completes_multistep_plan(self):
         decision = agent.TaskDecision(
@@ -2436,14 +2421,8 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(passive_plan.status, "respond_only")
-        self.assertEqual(run_plan.workflow, "LIONESS-PANDA")
-        self.assertEqual(run_plan.status, "ready")
-        self.assertTrue(
-            any(
-                "preferred_workflow=lioness_panda" in note
-                for note in run_plan.memory_notes
-            )
-        )
+        self.assertEqual(run_plan.workflow, "NO-TOOL")
+        self.assertEqual(run_plan.status, "respond_only")
 
     def test_episode_store_records_compact_outcome_and_retrieves_it(self):
         decision = agent.TaskDecision(
@@ -3843,7 +3822,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             ),
             user_task="試跑 CONDOR，network 是 data/condor-toy/bipartite.tsv",
         )
-        self.assertEqual(result.action, "no_tool")
+        self.assertEqual(result.action, "run_condor")
         self.assertIn("output_dir", result.missing_inputs)
 
     def test_condor_input_inspection_passes(self):

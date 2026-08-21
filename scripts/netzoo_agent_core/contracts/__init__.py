@@ -71,6 +71,7 @@ from .outcomes import (
     OutcomeHypothesis,
     RequestedOutcome,
 )
+from .planning import InputBundleOption  # noqa: F401 -- typed internal plan detail
 from .planning import InputEvidence, WorkflowPlan, WorkflowStep
 from .policy import (
     AgentsPolicyHeader,
