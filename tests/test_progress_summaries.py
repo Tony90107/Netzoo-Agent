@@ -114,7 +114,9 @@ def test_workflow_composition_recommends_its_final_registered_action():
     assert prompt.continuation_action == "run_lioness_puma"
     assert "recommended LIONESS-PUMA workflow" in prompt.question
     rendered = render_next_turn_prompt(prompt)
-    assert rendered.startswith("Enter a follow-up question")
+    assert rendered.startswith("----------------------------------------\nNext step\n")
+    assert "Enter a follow-up question" in rendered
+    assert "Enter/back: start a new task | exit: close" in rendered
     assert "reply yes" not in rendered.casefold()
 
     context = build_follow_up_context(

@@ -429,8 +429,8 @@ class CapabilityGateTests(unittest.TestCase):
 
         rendered = agent.render_next_turn_prompt(follow_up)
 
-        self.assertIn("Controls: Enter/back = main prompt", rendered)
-        self.assertIn("exit = close", rendered)
+        self.assertIn("----------------------------------------\nNext step", rendered)
+        self.assertIn("Enter/back: start a new task | exit: close", rendered)
 
     def test_response_cleanup_removes_only_trailing_cli_owned_question(self):
         response = (
@@ -1246,7 +1246,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("Motif targets ↔ expression genes: 3/3", rendered)
         self.assertIn("run-lioness panda", rendered)
         self.assertIn("Planned outputs", rendered)
-        self.assertIn("enter /execute", rendered)
+        self.assertNotIn("Next: enter /execute", rendered)
         self.assertNotIn("rerun with --execute", rendered)
         self.assertNotIn("Step results:", rendered)
         self.assertNotIn("Evaluator:", rendered)
@@ -1297,7 +1297,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(rendered.count(f"Warning: {repeated}"), 1)
-        self.assertIn("enter /execute to enable execution", rendered)
+        self.assertNotIn("enter /execute to enable execution", rendered)
         self.assertNotIn("submit the task again", rendered)
 
     def test_compact_trace_hides_internal_memory_and_evaluator_chatter(self):
@@ -3761,7 +3761,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         self.assertIn("recommended LIONESS-PUMA workflow", prompts[1])
         self.assertEqual(prompts[1].count("Would you like"), 1)
         self.assertNotIn("What NetZoo task would you like to run?", prompts[1])
-        self.assertIn("Controls: Enter/back = main prompt", prompts[1])
+        self.assertIn("----------------------------------------\nNext step", prompts[1])
         self.assertIn("What would you like to accomplish with NetZoo?", prompts[2])
 
     @patch("netzoo_agent.build_graph")

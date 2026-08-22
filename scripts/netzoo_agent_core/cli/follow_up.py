@@ -242,8 +242,10 @@ def render_next_turn_prompt(prompt: NextTurnPrompt) -> str:
         return prompt.question
     return "\n".join(
         [
+            "----------------------------------------",
+            _ui_text("Next step"),
             prompt.question,
-            _ui_text("Controls: Enter/back = main prompt | exit = close"),
+            _ui_text("Enter/back: start a new task | exit: close"),
         ]
     )
 
