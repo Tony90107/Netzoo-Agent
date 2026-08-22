@@ -95,6 +95,21 @@ def test_input_inspection_keeps_public_log_in_workflow_summary_only(tmp_path: Pa
     assert "execution_markdown_log" not in result.metrics
 
 
+def test_workflow_specific_input_inspection_does_not_write_a_public_log(tmp_path: Path):
+    decision = TaskDecision(
+        action="run_cobra", in_scope=True, should_execute=True,
+        confidence=1.0, reason="test", output_dir=str(tmp_path),
+    )
+    result = structure_tool_result(
+        "inspect_cobra_inputs", decision,
+        "COBRA input inspection passed\nExit code: 0",
+        persist_log=True,
+        persist_execution_log=True,
+    )
+    assert result.log_file
+    assert "execution_markdown_log" not in result.metrics
+
+
 def test_execution_log_separates_notices_runtime_warnings_and_artifacts(tmp_path: Path):
     path = write_execution_markdown_log(
         _decision(str(tmp_path / "panda.tsv")),

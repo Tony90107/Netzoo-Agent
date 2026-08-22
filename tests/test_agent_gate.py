@@ -1166,6 +1166,22 @@ class CapabilityGateTests(unittest.TestCase):
         assert statuses["expression_file"] == "provided"
         assert statuses["design_file"] == "provided"
 
+    def test_cobra_uses_the_shared_default_output_directory(self):
+        decision = agent.TaskDecision(
+            action="run_cobra",
+            in_scope=True,
+            should_execute=True,
+            confidence=0.95,
+            reason="Run COBRA.",
+            expression_file="data/cobra-toy/expression.tsv",
+            design_file="data/cobra-toy/design.tsv",
+        )
+
+        plan = agent.build_workflow_plan(decision, "請用 COBRA 跑 demo 資料")
+
+        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.decision["output_dir"], "outputs/demo")
+
     def test_user_visible_plan_is_english_for_chinese_input(self):
         decision = agent.TaskDecision(
             action="run_lioness_panda",
@@ -1380,7 +1396,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(plan.status, "ready")
-        self.assertEqual(plan.decision["output_dir"], "outputs/condor")
+        self.assertEqual(plan.decision["output_dir"], "outputs/demo")
         self.assertEqual(
             [step.action for step in plan.steps],
             ["inspect_condor_inputs", "run_condor"],

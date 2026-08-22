@@ -233,9 +233,11 @@ docker compose run --rm netzoo run-cobra \
   -o outputs/cobra-toy
 ```
 
-輸出資料夾包含 `manifest.json`（inputs、checksum、sample ordering）、
-`components.npz`（`psi`、`Q`、`d`、`g`）及 `summary.tsv`。在互動模式啟用 `/execute`
-後，也可以要求 agent 使用 COBRA 並提供 expression、design 與 output directory。
+COBRA 會在指定資料夾直接產生 `manifest.json`（inputs、checksum、sample ordering）、
+`components.npz`（完整 `psi`、`Q`、`d`、`g`）及可直接閱讀的 `summary.tsv`。互動模式
+啟用 `/execute` 後，同一資料夾還會有一份 `cobra-execution-*.md` execution log；input
+inspection 不會另寫公開 log。未指定 output directory 時，所有工作流都使用既有的
+`outputs/demo/`，避免新增 workflow 專屬子資料夾。
 
 CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
 weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。
