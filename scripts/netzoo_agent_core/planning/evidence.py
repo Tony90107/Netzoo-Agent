@@ -250,11 +250,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             )
             continue
         if field_name == "output_dir" and action in {"run_condor", "run_cobra"}:
-            value = (
-                f"outputs/{'condor' if action == 'run_condor' else 'cobra'}"
-                if default_output_dir == "outputs/demo"
-                else str(Path(default_output_dir) / ("condor" if action == "run_condor" else "cobra"))
-            )
+            value = default_output_dir
             decision.output_dir = value
             evidence.append(
                 InputEvidence(

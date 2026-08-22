@@ -143,7 +143,7 @@ def structure_tool_result(
     # Input inspection is already included in the parent workflow's execution
     # report. Keep its raw private tool log for diagnostics, but avoid creating
     # a redundant public Markdown file beside the workflow output.
-    if persist_execution_log and status != "dry_run" and action != "inspect_inputs":
+    if persist_execution_log and status != "dry_run" and not action.startswith("inspect_"):
         try:
             execution_log = write_execution_markdown_log(
                 decision,

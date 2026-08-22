@@ -19,6 +19,7 @@ docker compose run --rm netzoo run-cobra \
 ```
 
 The integration verifies labeled sample alignment before converting the matrices
-to NumPy. It writes a manifest, compressed raw components and a compact summary.
-COBRA describes covariate-associated co-expression; this project does not treat
-it as an expression-correction step for PANDA, PUMA or LIONESS.
+to NumPy. It writes a manifest, compressed raw components and a compact summary;
+agent execution writes the Markdown execution log in that same directory. COBRA
+describes covariate-associated co-expression; this project does not treat it as
+an expression-correction step for PANDA, PUMA or LIONESS.
