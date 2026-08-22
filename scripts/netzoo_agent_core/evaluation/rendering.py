@@ -279,14 +279,6 @@ def render_compact_execution_response(
             lines.extend(f"- {path}" for path in log_files)
         if evaluation:
             lines.extend(["", f"Next: {evaluation.reason}"])
-    elif has_dry_run:
-        lines.extend(
-            [
-                "",
-                "Next: enter /execute to enable execution, then confirm this "
-                "validated workflow.",
-            ]
-        )
     return "\n".join(lines)
 
 

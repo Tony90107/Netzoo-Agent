@@ -101,10 +101,14 @@ def test_tui_failure_notices_once_then_uses_plain_input():
     notice.assert_called_once()
 
 
-def test_empty_slash_then_enter_submits_execute_without_full_screen():
+def test_empty_enter_submits_an_empty_answer_without_full_screen():
     application = _create_inline_mode_application("prompt> ", "/execute")
 
     assert application.full_screen is False
+    assert _dispatch_line_keys("/execute", "\r") == ""
+
+
+def test_empty_slash_then_enter_submits_execute_without_full_screen():
     assert _dispatch_line_keys("/execute", "/\r") == "/execute"
 
 

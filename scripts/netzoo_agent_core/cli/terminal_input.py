@@ -115,7 +115,7 @@ def _create_inline_mode_application(prompt: str, default_command: str):
         text = input_field.text
         event.app.exit(
             result=default_command
-            if default_command.casefold().startswith(text.casefold())
+            if text and default_command.casefold().startswith(text.casefold())
             else text
         )
 
