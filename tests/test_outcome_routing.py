@@ -22,12 +22,10 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
     repair_router_decision,
 )
 from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
-    deterministic_explicit_outcome_hypotheses,
     needs_outcome_repair,
     select_primary_hypothesis,
 )
 from netzoo_agent_core.llm import (  # noqa: E402
-    build_router_repair_messages,
     build_routing_prompt,
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
@@ -128,6 +126,31 @@ def test_tool_selection_question_does_not_invent_workflows_without_router_candid
 
     assert repaired.action == "no_tool"
     assert repaired.recommended_actions == []
+
+
+def test_typed_outcome_registry_match_overrides_router_advisory_candidates():
+    task = (
+        "If I want to infer a sample-specific miRNA regulatory network, "
+        "what tools do I need?"
+    )
+    raw = TaskDecision(
+        action="run_panda",
+        candidate_actions=["run_panda", "run_lioness_panda"],
+        in_scope=True,
+        should_execute=True,
+        intent_type="run_analysis",
+        confidence=0.95,
+        reason="The Router proposed TF workflows.",
+        outcome_hypotheses=[hypothesis()],
+    )
+
+    repaired = repair_router_decision(raw, task)
+
+    assert repaired.action == "no_tool"
+    assert repaired.should_execute is False
+    assert repaired.intent_type == "answer_question"
+    assert repaired.matched_actions == ["run_lioness_puma"]
+    assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
 
 
 def test_explicit_panda_name_wins_over_granularity_ambiguity():
@@ -254,40 +277,6 @@ def test_router_repairs_an_empty_outcome_even_if_provider_marks_it_out_of_scope(
     assert needs_outcome_repair(decision.outcome_hypotheses) is True
 
 
-def test_explicit_dimensions_recover_a_typed_outcome_without_guessing_a_workflow():
-    hypotheses = deterministic_explicit_outcome_hypotheses(
-        "If I want to get a sample-specific miRNA regulatory network, "
-        "what tools do I need?"
-    )
-
-    assert len(hypotheses) == 1
-    item = hypotheses[0]
-    assert item.outcome.operation == "infer"
-    assert item.outcome.artifact_type == "regulatory_network"
-    assert item.outcome.regulator_types == ["mirna"]
-    assert item.outcome.granularity == "sample_specific"
-    assert {evidence.dimension for evidence in item.evidence} == {
-        "operation",
-        "artifact_type",
-        "regulator_type",
-        "granularity",
-    }
-    assert match_outcome_hypotheses(hypotheses).model_dump() == {
-        "status": "exact",
-        "matched_actions": ["run_lioness_puma"],
-        "hypothesis_actions": [],
-        "alternative_actions": [],
-        "mismatch_dimensions": [],
-        "clarification_question": None,
-    }
-
-
-def test_explicit_outcome_recovery_stays_closed_when_a_dimension_is_missing():
-    assert deterministic_explicit_outcome_hypotheses(
-        "What tools do I need for a sample-specific regulatory network?"
-    ) == []
-
-
 def test_router_normalizes_a_provider_hypothesis_with_flattened_outcome_fields():
     decision = RouterDecision.model_validate(
         {
@@ -410,30 +399,6 @@ def test_tied_hypotheses_have_no_primary_outcome():
     )
 
     assert select_primary_hypothesis([first, second]) is None
-
-
-def test_router_repair_prompt_preserves_request_and_structured_failure():
-    first_decision = RouterDecision(
-        action="no_tool",
-        in_scope=True,
-        intent_type="answer_question",
-        confidence=0.9,
-        reason="under-classified",
-        outcome_hypotheses=[unknown_hypothesis()],
-    )
-    request = "Which method can infer an individualized regulator graph?"
-
-    messages = build_router_repair_messages(
-        "validated routing policy",
-        request,
-        first_decision,
-    )
-    combined = "\n".join(str(message.content) for message in messages)
-
-    assert request in combined
-    assert "under-classified" in combined
-    assert "Return one to three evidence-bearing hypotheses" in combined
-    assert "if i want to get sample specific network data" not in combined.casefold()
 
 
 def test_router_outcome_metadata_does_not_replace_the_router_selection():
@@ -628,14 +593,22 @@ def test_contextual_input_format_question_preserves_router_docs_selection():
 
 
 @pytest.mark.parametrize(
-    "task",
+    ("task", "expected_action", "should_execute"),
     [
-        "How can I obtain one miRNA dataset per patient?",
-        "我想取得每個樣本的 miRNA 原始資料，需要什麼工具？",
-        "I need individual-level micro RNA measurements, not a network.",
+        ("How can I obtain one miRNA dataset per patient?", "run_lioness_puma", True),
+        ("我想取得每個樣本的 miRNA 原始資料，需要什麼工具？", "no_tool", False),
+        (
+            "I need individual-level micro RNA measurements, not a network.",
+            "run_lioness_puma",
+            True,
+        ),
     ],
 )
-def test_outcome_metadata_does_not_replace_router_selection_for_measurements(task):
+def test_outcome_metadata_does_not_replace_router_selection_for_measurements(
+    task,
+    expected_action,
+    should_execute,
+):
     hydrated = hydrate_router_decision(
         RouterDecision(
             action="run_lioness_puma",
@@ -650,8 +623,8 @@ def test_outcome_metadata_does_not_replace_router_selection_for_measurements(tas
 
     repaired = repair_router_decision(hydrated, task)
 
-    assert repaired.action == "run_lioness_puma"
-    assert repaired.should_execute is True
+    assert repaired.action == expected_action
+    assert repaired.should_execute is should_execute
     assert repaired.capability_match_status == "unsupported"
     assert repaired.matched_actions == []
     assert repaired.recommended_actions == []

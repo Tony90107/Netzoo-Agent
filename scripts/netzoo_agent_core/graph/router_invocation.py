@@ -1,4 +1,4 @@
-"""Bounded Router invocation, under-classification repair, and budget handling."""
+"""Router invocation, semantic interpretation recovery, and budget handling."""
 
 from __future__ import annotations
 
@@ -7,10 +7,11 @@ import json
 import time
 
 from ..contracts import AgentState, LLMUsage, RouterDecision, TaskDecision, _trace
+from ..contracts.outcomes import SemanticInterpretation
 from ..interpretation.hydration import hydrate_router_decision
-from ..interpretation.outcome_consistency import (
-    deterministic_explicit_outcome_hypotheses,
-    needs_outcome_repair,
+from ..interpretation.outcome_validation import (
+    OutcomeValidation,
+    validate_outcome_hypotheses,
 )
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
@@ -21,7 +22,7 @@ from ..interpretation.semantic_goal import outcome_routing_state
 from ..llm import (
     append_llm_usage,
     build_router_messages,
-    build_router_repair_messages,
+    build_semantic_interpreter_messages,
     structured_result_payload,
 )
 from .context import _GraphContext, preflight_budget, record_event
@@ -38,10 +39,10 @@ class _RouterInvocation:
     reason_code: str
 
 
-def _serialized_router_input(messages) -> str:
+def _serialized_structured_input(messages, schema_model) -> str:
     text = "\n".join(str(message.content) for message in messages)
     return text + json.dumps(
-        RouterDecision.model_json_schema(),
+        schema_model.model_json_schema(),
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -61,12 +62,30 @@ def _validation_issue_types(error: BaseException) -> list[dict[str, object]]:
     ][:8]
 
 
-def _invoke_repair_once(
+def _fail_closed_semantic_decision(decision: RouterDecision) -> RouterDecision:
+    """Prevent unvalidated scientific meaning from authorizing a workflow."""
+    return decision.model_copy(
+        update={
+            "action": "no_tool",
+            "selected_action": "no_tool",
+            "candidate_actions": ["no_tool"],
+            "semantic_goal": None,
+            "outcome_hypotheses": [],
+            "clarification_question": (
+                decision.clarification_question
+                or "What scientific result do you want NetZoo to produce?"
+            ),
+        }
+    )
+
+
+def _invoke_semantic_interpreter_once(
     context: _GraphContext,
     state: AgentState,
     *,
     user_task: str,
     first_decision: RouterDecision,
+    validation: OutcomeValidation,
     usage: LLMUsage,
     budget_warnings: list[str],
 ) -> tuple[RouterDecision, LLMUsage, list[str]]:
@@ -78,51 +97,85 @@ def _invoke_repair_once(
         {
             "hypothesis_count": len(first_decision.outcome_hypotheses),
             "usable_evidence": False,
+            "validation_issues": list(validation.issues),
         },
     )
-    messages = build_router_repair_messages(
-        context.routing_prompt,
+    messages = build_semantic_interpreter_messages(
+        context.semantic_prompt,
         user_task,
-        first_decision,
+        validation.issues,
     )
-    input_text = _serialized_router_input(messages)
+    input_text = _serialized_structured_input(messages, SemanticInterpretation)
     repair_state = dict(state)
     repair_state["token_usage"] = usage.model_dump()
     repair_state["budget_warnings"] = budget_warnings
     budget, budget_warnings = preflight_budget(
         context,
         repair_state,
-        role="router_repair",
+        role="semantic_interpreter",
         model=context.router_model_name,
         input_text=input_text,
         reserved_output_tokens=context.router_max_tokens,
         allow_reserve=False,
     )
     if budget.status == "blocked":
-        return first_decision, usage, budget_warnings
+        return _fail_closed_semantic_decision(first_decision), usage, budget_warnings
 
     started_ns = time.monotonic_ns()
     try:
         _trace(
             "router",
             "Router classification started",
-            {"kind": "router_activity", "operation": "router_repair", "status": "started"},
+            {"kind": "router_activity", "operation": "semantic_interpreter", "status": "started"},
         )
-        structured = context.router.invoke(messages)
+        structured = context.semantic_interpreter.invoke(messages)
         payload, raw = structured_result_payload(structured)
-        decision = RouterDecision.model_validate(payload)
+        interpretation = SemanticInterpretation.model_validate(payload)
+        repaired_validation = validate_outcome_hypotheses(
+            user_task,
+            interpretation.outcome_hypotheses,
+        )
+        if not repaired_validation.valid:
+            record_event(
+                context,
+                state,
+                "routing.semantic_interpretation_rejected",
+                "classify",
+                {"issues": list(repaired_validation.issues)},
+            )
+            raise ValueError("semantic interpretation failed evidence validation")
+        record_event(
+            context,
+            state,
+            "routing.semantic_interpretation_accepted",
+            "classify",
+            {
+                "hypothesis_count": len(interpretation.outcome_hypotheses),
+                "evidence_dimensions": [
+                    sorted({item.dimension for item in hypothesis.evidence})
+                    for hypothesis in interpretation.outcome_hypotheses
+                ],
+            },
+        )
+        decision = first_decision.model_copy(
+            update={
+                "outcome_hypotheses": interpretation.outcome_hypotheses,
+                "semantic_goal": interpretation.semantic_goal,
+                "clarification_question": None,
+            }
+        )
         _trace(
             "router",
             "Router classification completed",
-            {"kind": "router_activity", "operation": "router_repair", "status": "completed", "duration_ms": max(0, (time.monotonic_ns() - started_ns) // 1_000_000)},
+            {"kind": "router_activity", "operation": "semantic_interpreter", "status": "completed", "duration_ms": max(0, (time.monotonic_ns() - started_ns) // 1_000_000)},
         )
         usage = append_llm_usage(
             usage,
-            role="router_repair",
+            role="semantic_interpreter",
             model=context.router_model_name,
             response=raw,
             input_text=input_text,
-            output_text=decision.model_dump_json(),
+            output_text=interpretation.model_dump_json(),
             budget_tokens=context.task_token_budget,
             duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
             price_catalog=context.price_catalog,
@@ -131,9 +184,19 @@ def _invoke_repair_once(
     except BaseException as error:
         if _is_fatal_exception(error):
             raise
+        record_event(
+            context,
+            state,
+            "routing.semantic_interpreter_failed",
+            "classify",
+            {
+                "error_type": type(error).__name__,
+                "validation_issues": _validation_issue_types(error),
+            },
+        )
         usage = append_llm_usage(
             usage,
-            role="router_repair",
+            role="semantic_interpreter",
             model=context.router_model_name,
             input_text=input_text,
             output_text="",
@@ -142,13 +205,13 @@ def _invoke_repair_once(
             status="failed",
             price_catalog=context.price_catalog,
         )
-        _trace("router", "Router classification failed", {"kind": "router_activity", "operation": "router_repair", "status": "failed", "error_type": type(error).__name__})
+        _trace("router", "Router classification failed", {"kind": "router_activity", "operation": "semantic_interpreter", "status": "failed", "error_type": type(error).__name__})
         _trace(
             "intent",
             "Outcome repair failed; retaining the first safe classification",
             type(error).__name__,
         )
-        return first_decision, usage, budget_warnings
+        return _fail_closed_semantic_decision(first_decision), usage, budget_warnings
 
 
 def invoke_router(
@@ -156,9 +219,9 @@ def invoke_router(
     state: AgentState,
     user_task: str,
 ) -> _RouterInvocation:
-    """Classify one task, allowing at most one evidence-focused repair call."""
+    """Classify one task, allowing at most one semantic interpretation call."""
     messages = build_router_messages(context.routing_prompt, state["messages"])
-    input_text = _serialized_router_input(messages)
+    input_text = _serialized_structured_input(messages, RouterDecision)
     current_usage = state.get("token_usage")
     budget, budget_warnings = preflight_budget(
         context,
@@ -215,34 +278,23 @@ def invoke_router(
             duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
             price_catalog=context.price_catalog,
         )
-        if needs_outcome_repair(router_decision.outcome_hypotheses):
-            router_decision, usage, budget_warnings = _invoke_repair_once(
+        validation = validate_outcome_hypotheses(
+            user_task,
+            router_decision.outcome_hypotheses,
+        )
+        if not validation.valid and router_decision.action not in {
+            "query_context7",
+            "web_search",
+        }:
+            router_decision, usage, budget_warnings = _invoke_semantic_interpreter_once(
                 context,
                 state,
                 user_task=user_task,
                 first_decision=router_decision,
+                validation=validation,
                 usage=usage,
                 budget_warnings=budget_warnings,
             )
-            if needs_outcome_repair(router_decision.outcome_hypotheses):
-                recovered = deterministic_explicit_outcome_hypotheses(user_task)
-                if recovered:
-                    router_decision = router_decision.model_copy(
-                        update={"outcome_hypotheses": recovered}
-                    )
-                    record_event(
-                        context,
-                        state,
-                        "routing.deterministic_outcome_recovered",
-                        "classify",
-                        {
-                            "hypothesis_count": len(recovered),
-                            "evidence_dimensions": [
-                                evidence.dimension
-                                for evidence in recovered[0].evidence
-                            ],
-                        },
-                    )
         hydrated = hydrate_router_decision(router_decision, user_task)
         _trace(
             "reasoning",

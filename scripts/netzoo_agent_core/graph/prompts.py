@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..contracts import EXECUTE_TOOLS, ProjectPolicySnapshot, output_language_policy
-from ..llm import build_routing_prompt
+from ..llm import build_routing_prompt, build_semantic_interpreter_prompt
 
 __all__: list[str] = []
 
@@ -13,6 +13,7 @@ __all__: list[str] = []
 @dataclass(frozen=True, slots=True)
 class _GraphPrompts:
     routing: str
+    semantic: str
     response: str
 
 
@@ -98,5 +99,6 @@ Websearch MCP lookup is read-only and is allowed in either mode.
 """.strip()
     return _GraphPrompts(
         routing=build_routing_prompt(project_policy),
+        semantic=build_semantic_interpreter_prompt(),
         response=response_prompt,
     )

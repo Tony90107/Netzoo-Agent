@@ -5,8 +5,16 @@ from __future__ import annotations
 import math
 import os
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from typing import get_args
 
-from workflow_registry import ACTION_DEFINITIONS
+from workflow_registry import (
+    ACTION_DEFINITIONS,
+    OUTPUT_CAPABILITIES,
+    ArtifactType,
+    EntityType,
+    Granularity,
+    Operation,
+)
 
 from .contracts import (
     DEFAULT_LLM_MAX_RETRIES,
@@ -28,7 +36,8 @@ __all__ = [
     "build_routing_prompt",
     "latest_user_task",
     "build_router_messages",
-    "build_router_repair_messages",
+    "build_semantic_interpreter_prompt",
+    "build_semantic_interpreter_messages",
     "build_response_messages",
     "_estimated_tokens",
     "_message_usage",
@@ -81,7 +90,8 @@ Routing rules:
 4. Use web_search only for explicit web/literature search or current non-package facts.
 5. Return one to three outcome_hypotheses for every scientific result or tool-selection
    request. Preserve explicit entities, biological roles, network type, and granularity
-   as evidence even when another dimension is unknown. Treat words such as data,
+   as evidence. Explicit evidence must quote
+   exact user text in text_span. Treat words such as data,
    result, values, scores, or output according to the scientific object they modify;
    those words do not by themselves make an artifact a measurement dataset. A network
    artifact and a raw measurement dataset are different outcomes. When multiple
@@ -142,23 +152,67 @@ def build_router_messages(routing_prompt: str, messages: list) -> list:
     ]
 
 
-def build_router_repair_messages(
-    routing_prompt: str,
+def build_semantic_interpreter_prompt() -> str:
+    """Build a workflow-independent ontology prompt for outcome interpretation."""
+    regulator_types = sorted(
+        set().union(
+            *(capability.regulator_types for capability in OUTPUT_CAPABILITIES.values())
+        )
+        | {"unknown"}
+    )
+    target_types = sorted(
+        set().union(
+            *(capability.target_types for capability in OUTPUT_CAPABILITIES.values())
+        )
+        | {"unknown"}
+    )
+    return f"""
+You are the semantic interpreter for a scientific Network Zoo request.
+Interpret only the result the user wants. Never select a workflow or action, never
+request input files, and never authorize tool execution. Return only the
+SemanticInterpretation structure.
+
+Allowed ontology values:
+- operation: {', '.join(get_args(Operation))}
+- artifact_type: {', '.join(get_args(ArtifactType))}
+- entity_type: {', '.join(get_args(EntityType))}
+- regulator_type: {', '.join(regulator_types)}
+- target_type: {', '.join(target_types)}
+- granularity: {', '.join(get_args(Granularity))}
+
+Return one to three outcome_hypotheses. Preserve every scientific dimension stated
+by the user. For every known outcome dimension, add consistent evidence. Explicit
+evidence must include text_span containing the exact phrase from the user request.
+Inferred evidence must explain the entailment and may omit text_span. If a dimension
+is genuinely missing, keep it unknown and list it in unresolved_dimensions instead
+of guessing. Multiple hypotheses are only for incompatible meanings. semantic_goal
+is a short summary of the interpreted result, not a workflow name.
+
+Words such as data, result, values, scores, and output do not by themselves mean a
+measurement dataset. Distinguish raw measurements, regulatory networks,
+co-expression networks, and community assignments by the scientific object being
+requested. A question asking which tool could produce a named scientific result
+describes that result but does not authorize execution.
+
+{output_language_policy()}
+""".strip()
+
+
+def build_semantic_interpreter_messages(
+    semantic_prompt: str,
     user_task: str,
-    first_decision: RouterDecision,
+    validation_issues: tuple[str, ...],
 ) -> list:
-    """Build one bounded retry for a structurally valid but empty classification."""
+    """Build one independent semantic retry from deterministic validation errors."""
+    issues = "\n".join(f"- {item}" for item in validation_issues[:12])
     return [
-        SystemMessage(content=routing_prompt),
+        SystemMessage(content=semantic_prompt),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
         HumanMessage(
             content=(
-                "The first classification below erased the scientific request into "
-                "an empty outcome. Reclassify the same request once. Return one to "
-                "three evidence-bearing hypotheses, preserve explicit facts, state "
-                "assumptions, and do not grant tool authority.\n\n"
-                f"<first_classification>\n{first_decision.model_dump_json()}\n"
-                "</first_classification>"
+                "The general Router did not produce a validated scientific outcome. "
+                "Interpret the original user request independently and correct these "
+                f"validation issues:\n{issues or '- missing_hypotheses'}"
             )
         ),
     ]

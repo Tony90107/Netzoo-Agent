@@ -35,7 +35,7 @@ class RouterDecision(BaseModel):
         description=(
             "Bounded interpretations of the scientific result. Preserve competing "
             "interpretations instead of erasing known evidence. An empty list "
-            "triggers one evidence-focused Router repair."
+            "triggers one workflow-independent semantic interpretation call."
         )
     )
 

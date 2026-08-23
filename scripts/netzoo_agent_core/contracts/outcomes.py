@@ -60,6 +60,7 @@ class OutcomeEvidence(BaseModel):
     dimension: EvidenceDimension
     value: str = Field(min_length=1, max_length=80)
     source: Literal["explicit", "inferred"]
+    text_span: str | None = Field(default=None, min_length=1, max_length=160)
     rationale: str = Field(min_length=1, max_length=240)
 
 
@@ -97,6 +98,22 @@ class OutcomeHypothesis(BaseModel):
         return values
 
 
+class SemanticInterpretation(BaseModel):
+    """Workflow-independent scientific meaning produced by the semantic model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    semantic_goal: str = Field(min_length=1, max_length=240)
+    outcome_hypotheses: list[OutcomeHypothesis] = Field(
+        min_length=1,
+        max_length=3,
+        description=(
+            "One to three evidence-bearing scientific outcome interpretations. "
+            "This contract cannot select workflows or authorize execution."
+        ),
+    )
+
+
 class CapabilityMatch(BaseModel):
     """Code-owned relationship between one requested outcome and the registry."""
 
@@ -121,4 +138,5 @@ __all__ = [
     "OutcomeEvidence",
     "OutcomeHypothesis",
     "RequestedOutcome",
+    "SemanticInterpretation",
 ]

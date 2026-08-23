@@ -23,10 +23,12 @@ class _GraphContext:
     recorder: TraceRecorder | NullTraceRecorder
     price_catalog: PriceCatalog
     router: Any
+    semantic_interpreter: Any
     response_llm: Any
     router_model_name: str
     response_model_name: str
     routing_prompt: str
+    semantic_prompt: str
     response_prompt: str
     router_max_tokens: int
     response_max_tokens: int
