@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from workflow_registry import (
+    ActionName,
     ArtifactType,
     EntityType,
     Granularity,
@@ -15,7 +16,7 @@ from workflow_registry import (
 )
 
 
-CapabilityMatchStatus = Literal["exact", "ambiguous", "unsupported"]
+CapabilityMatchStatus = Literal["exact", "ambiguous", "unsupported", "not_applicable"]
 EvidenceDimension = Literal[
     "operation",
     "artifact_type",
@@ -120,7 +121,7 @@ class CapabilityMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: CapabilityMatchStatus
-    matched_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
+    matched_actions: list[ActionName] = Field(default_factory=list, max_length=6)
     hypothesis_actions: list[RecommendedAction] = Field(
         default_factory=list, max_length=6
     )

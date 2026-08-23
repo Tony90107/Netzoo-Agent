@@ -11,6 +11,7 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core.contracts import (  # noqa: E402
+    IntentDecision,
     OutcomeEvidence,
     OutcomeHypothesis,
     RequestedOutcome,
@@ -20,6 +21,7 @@ from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
     validate_outcome_hypotheses,
 )
 from netzoo_agent_core.llm import build_semantic_interpreter_prompt  # noqa: E402
+from netzoo_agent_core.llm import build_intent_router_prompt  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
 )
@@ -225,6 +227,33 @@ def test_semantic_interpretation_schema_forbids_an_empty_result():
         )
 
 
+def test_non_scientific_request_has_a_valid_not_applicable_outcome():
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="unknown",
+            artifact_type="unknown",
+            entity_types=[],
+            regulator_types=[],
+            target_types=[],
+            granularity="not_applicable",
+            unresolved_dimensions=[],
+        ),
+        confidence=0.95,
+        evidence=[],
+        assumptions=[],
+    )
+
+    validation = validate_outcome_hypotheses(
+        "Remember that you may reuse my last inputs.",
+        [hypothesis],
+    )
+    match = match_outcome_hypotheses([hypothesis])
+
+    assert validation.valid is True
+    assert match.status == "not_applicable"
+    assert match.matched_actions == []
+
+
 def test_semantic_interpreter_prompt_has_no_workflow_selection_authority():
     prompt = build_semantic_interpreter_prompt()
 
@@ -233,3 +262,23 @@ def test_semantic_interpreter_prompt_has_no_workflow_selection_authority():
     assert "run_puma" not in prompt
     assert "PUMA" not in prompt
     assert "text_span" in prompt
+
+
+def test_intent_router_contract_can_only_choose_answer_or_execute():
+    schema = IntentDecision.model_json_schema()
+
+    assert set(schema["properties"]) == {"mode", "confidence", "reason"}
+    assert schema["properties"]["mode"]["enum"] == ["answer", "execute"]
+    assert "action" not in schema["properties"]
+    assert "outcome_hypotheses" not in schema["properties"]
+    assert "clarification_question" not in schema["properties"]
+
+
+def test_intent_router_prompt_has_no_semantic_or_workflow_authority():
+    prompt = build_intent_router_prompt()
+
+    assert "Choose only whether" in prompt
+    assert "Never select or name a workflow" in prompt
+    assert "outcome_hypotheses" not in prompt
+    assert "candidate_actions" not in prompt
+    assert "run_puma" not in prompt

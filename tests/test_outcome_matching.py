@@ -14,6 +14,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
+    match_semantic_request,
     guidance_actions_for,
     match_requested_outcome,
 )
@@ -221,3 +222,28 @@ def test_measurement_artifact_conflicts_with_every_network_hypothesis():
     assert result.matched_actions == []
     assert result.hypothesis_actions == []
     assert result.status == "unsupported"
+
+
+def test_registry_identifier_matches_supporting_action_without_intent_authority():
+    not_applicable = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="unknown",
+            artifact_type="unknown",
+            entity_types=[],
+            regulator_types=[],
+            target_types=[],
+            granularity="not_applicable",
+            unresolved_dimensions=[],
+        ),
+        confidence=0.99,
+        evidence=[],
+        assumptions=[],
+    )
+
+    result = match_semantic_request(
+        "Search the web with WEB-SEARCH for current PANDA references.",
+        [not_applicable],
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["web_search"]

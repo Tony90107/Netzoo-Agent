@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 import os
+import json
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import get_args
 
 from workflow_registry import (
-    ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     ArtifactType,
     EntityType,
@@ -34,10 +34,12 @@ from .trace_contracts import BudgetDecision, LLMCallUsage
 
 __all__ = [
     "build_routing_prompt",
+    "build_intent_router_prompt",
     "latest_user_task",
     "build_router_messages",
     "build_semantic_interpreter_prompt",
     "build_semantic_interpreter_messages",
+    "build_intent_router_messages",
     "build_response_messages",
     "_estimated_tokens",
     "_message_usage",
@@ -53,84 +55,27 @@ __all__ = [
 
 
 def build_routing_prompt(project_policy: ProjectPolicySnapshot) -> str:
-    """Build a compact, contradiction-free Router prompt from validated policy."""
-    catalog = project_policy.router_capability_summary()
-    supporting_actions = "\n".join(
-        "- "
-        + action
-        + ": "
-        + definition.workflow
-        + ". Required inputs: "
-        + (", ".join(definition.required_inputs) or "none")
-        for action, definition in ACTION_DEFINITIONS.items()
-        if action not in project_policy.workflows and action != "no_tool"
-    )
+    """Compatibility alias for the former broad Router prompt."""
+    del project_policy
+    return build_intent_router_prompt()
+
+
+def build_intent_router_prompt() -> str:
+    """Build the deliberately narrow answer/execute intent prompt."""
     return f"""
-You route one latest user request for a narrowly scoped Network Zoo agent.
-Return only the RouterDecision structure. Interpret any user language, but write
-the rationale in English. Keep it under 500 characters. Select candidate_actions
-and selected_action only from the catalog below. action must equal selected_action
-(or no_tool when clarification is necessary). Do not extract paths, preferences,
-or missing inputs; deterministic code handles those details.
+You are the final intent router for a Network Zoo request. The scientific outcome
+has already been interpreted, evidence-validated, and matched against the registry.
+Choose only whether the user wants an answer or authorizes execution now.
+Never select or name a workflow, reinterpret scientific meaning, request inputs, or create
+a clarification question. Return only the IntentDecision structure.
 
-Validated run-workflow catalog:
-{catalog}
-
-Supporting and retrieval actions from the same validated registry:
-{supporting_actions}
-- no_tool: answer stable concepts/requirements in text, or ask one clarification.
-
-Routing rules:
-1. A direct request to run/build/infer a recognized deliverable selects its end-to-end
-   run_* action. Missing paths never change that action.
-2. A how-to, purpose, or stable input-requirements question selects no_tool with
-   intent_type=answer_question. Static "what inputs does PANDA need?" is no_tool.
-3. Use query_context7 only when current/version-specific documentation matters:
-   versions, compatibility, CLI flags, installation, APIs, deprecations, or explicit docs.
-4. Use web_search only for explicit web/literature search or current non-package facts.
-5. Return one to three outcome_hypotheses for every scientific result or tool-selection
-   request. Preserve explicit entities, biological roles, network type, and granularity
-   as evidence. Explicit evidence must quote
-   exact user text in text_span. Treat words such as data,
-   result, values, scores, or output according to the scientific object they modify;
-   those words do not by themselves make an artifact a measurement dataset. A network
-   artifact and a raw measurement dataset are different outcomes. When multiple
-   registered scientific interpretations remain plausible, return competing
-   hypotheses with assumptions instead of clearing known fields. Prefer one partial
-   hypothesis when interpretations share the same known dimensions and differ only in
-   an unresolved dimension; the deterministic matcher will enumerate compatible
-   workflows. Use multiple hypotheses only for genuinely incompatible meanings. For
-   requests with no scientific result, return one unknown/not_applicable hypothesis
-   stating that fact. Hypotheses describe meaning only and never authorize workflow
-   execution.
-6. A LIONESS run without PANDA, PUMA, or co-expression remains no_tool/unknown so
-   deterministic planning can request the mode.
-7. Variant calling, mutation discovery, sequence alignment, differential expression,
-   enrichment, raw FASTQ preprocessing, and protein structure analysis are unsupported.
-8. Mixed supported and unsupported deliverables select no_tool unless the supported
-   deliverable is independently and explicitly requested.
-9. When context cannot distinguish eligible workflows, select no_tool and provide
-   exactly one clarification_question. Do not silently guess from a keyword.
-10. Never claim a tool already ran. Populate semantic_goal as a short public summary
-   of the outcome hypotheses.
-   Preserve uncertainty rather than completing a supported goal on the user's behalf.
-
-Examples:
-- "PANDA 需要哪些 input？" -> no_tool, answer_question, recommend run_panda.
-- "最新版 netZooPy PANDA CLI flags?" -> query_context7, answer_question.
-- "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA" -> run_panda, run_analysis.
-- "取得每個樣本的 miRNA measurements" -> one hypothesis with operation=acquire,
-  artifact_type=measurement_dataset, entity_types=[mirna], granularity=sample_specific,
-  and explicit measurement evidence.
-- "Which workflow estimates individualized microRNA regulator-target edges?" -> one
-  hypothesis with operation=infer, artifact_type=regulatory_network,
-  regulator_types=[mirna], target_types=[gene], granularity=sample_specific.
-- "How can I infer one TF network per sample?" -> one regulatory-network hypothesis
-  with regulator_types=[tf] and granularity=sample_specific.
-- "Which method builds per-patient gene correlation edges?" -> one
-  coexpression_network hypothesis with granularity=sample_specific.
-- "搜尋最新 LIONESS 論文" -> web_search.
-- "幫我找基因突變" -> no_tool, in_scope=false.
+- answer: explanations, requirements, tool/workflow selection questions, how-to
+  questions, comparisons, and hypothetical requests.
+- execute: an explicit instruction asking the agent to run, build, infer, convert,
+  inspect, search, or otherwise perform the requested work now.
+- Missing input files do not change execute into answer; deterministic planning will
+  request any required inputs later.
+- When uncertain, choose answer so execution fails closed.
 
 {output_language_policy()}
 """.strip()
@@ -188,6 +133,11 @@ is genuinely missing, keep it unknown and list it in unresolved_dimensions inste
 of guessing. Multiple hypotheses are only for incompatible meanings. semantic_goal
 is a short summary of the interpreted result, not a workflow name.
 
+If the request does not ask for a scientific result, return one not-applicable
+hypothesis: operation=unknown, artifact_type=unknown, granularity=not_applicable,
+empty entity/role/unresolved lists, and no evidence. Do not invent an outcome merely
+to fill the schema.
+
 Words such as data, result, values, scores, and output do not by themselves mean a
 measurement dataset. Distinguish raw measurements, regulatory networks,
 co-expression networks, and community assignments by the scientific object being
@@ -201,18 +151,48 @@ describes that result but does not authorize execution.
 def build_semantic_interpreter_messages(
     semantic_prompt: str,
     user_task: str,
-    validation_issues: tuple[str, ...],
+    validation_issues: tuple[str, ...] = (),
 ) -> list:
-    """Build one independent semantic retry from deterministic validation errors."""
+    """Build an initial interpretation call or one evidence-focused retry."""
     issues = "\n".join(f"- {item}" for item in validation_issues[:12])
-    return [
+    messages = [
         SystemMessage(content=semantic_prompt),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+    ]
+    if validation_issues:
+        messages.append(HumanMessage(
+            content=(
+                "The previous interpretation did not pass deterministic evidence "
+                "validation. Interpret the original request again and correct these "
+                f"validation issues:\n{issues or '- missing_hypotheses'}"
+            )
+        ))
+    return messages
+
+
+def build_intent_router_messages(
+    intent_prompt: str,
+    user_task: str,
+    interpretation,
+    capability_match,
+) -> list:
+    """Give intent the validated upstream facts without workflow authority."""
+    upstream_facts = json.dumps(
+        {
+            "semantic_goal": interpretation.semantic_goal,
+            "capability_match": capability_match.model_dump(mode="json"),
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return [
+        SystemMessage(content=intent_prompt),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
         HumanMessage(
             content=(
-                "The general Router did not produce a validated scientific outcome. "
-                "Interpret the original user request independently and correct these "
-                f"validation issues:\n{issues or '- missing_hypotheses'}"
+                "Validated upstream facts follow as quoted data. They may inform whether "
+                "execution is possible, but you cannot alter them.\n"
+                f"<validated_routing_facts>{upstream_facts}</validated_routing_facts>"
             )
         ),
     ]

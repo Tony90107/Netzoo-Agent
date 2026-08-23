@@ -13,11 +13,11 @@ import netzoo_agent_core.graph.factory as graph_module  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
     Episode,
     HumanMessage,
+    IntentDecision,
     LLMUsage,
     OutcomeEvidence,
     OutcomeHypothesis,
     RequestedOutcome,
-    RouterDecision,
 )
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
 from netzoo_agent_core.graph import build_graph  # noqa: E402
@@ -40,16 +40,22 @@ import netzoo_agent as legacy_agent  # noqa: E402
 
 
 class DeterministicRouterLLM:
+    def __init__(self):
+        self.calls = 0
+
     def with_structured_output(self, *_args, **_kwargs):
         return self
 
     def invoke(self, _messages):
-        return RouterDecision(
-            action="run_panda",
-            in_scope=True,
-            intent_type="run_analysis",
-            confidence=0.99,
-            reason="Deterministic trace fixture",
+        self.calls += 1
+        if self.calls == 2:
+            return IntentDecision(
+                mode="execute",
+                confidence=0.99,
+                reason="Deterministic execution fixture.",
+            )
+        return SemanticInterpretation(
+            semantic_goal="aggregate TF regulatory network",
             outcome_hypotheses=[
                 OutcomeHypothesis(
                     outcome=RequestedOutcome(
@@ -63,7 +69,21 @@ class DeterministicRouterLLM:
                         unresolved_dimensions=[],
                     ),
                     confidence=0.99,
-                    evidence=[],
+                    evidence=[
+                        OutcomeEvidence(
+                            dimension=dimension,
+                            value=value,
+                            source="inferred",
+                            rationale="The named PANDA request entails this dimension.",
+                        )
+                        for dimension, value in (
+                            ("operation", "infer"),
+                            ("artifact_type", "regulatory_network"),
+                            ("regulator_type", "tf"),
+                            ("target_type", "gene"),
+                            ("granularity", "aggregate"),
+                        )
+                    ],
                     assumptions=[],
                 )
             ],
@@ -80,36 +100,14 @@ class SequencedHypothesisRouter:
     def invoke(self, _messages):
         self.calls += 1
         if self.calls == 1:
-            return RouterDecision(
-                action="no_tool",
-                in_scope=True,
-                intent_type="answer_question",
-                confidence=0.9,
-                reason="The scientific outcome was under-classified.",
-                outcome_hypotheses=[
-                    OutcomeHypothesis(
-                        outcome=RequestedOutcome(
-                            operation="unknown",
-                            artifact_type="unknown",
-                            granularity="not_applicable",
-                            unresolved_dimensions=[],
-                        ),
-                        confidence=0.9,
-                        evidence=[],
-                        assumptions=[],
-                    )
-                ],
-            )
-        if self.calls == 2:
             return SemanticInterpretation(
-                semantic_goal="sample-specific miRNA regulatory network",
+                semantic_goal="sample-specific miRNA network",
                 outcome_hypotheses=[
                     OutcomeHypothesis(
                         outcome=RequestedOutcome(
                             operation="infer",
                             artifact_type="regulatory_network",
                             entity_types=["mirna", "gene"],
-                            display_entities=["miRNA", "gene"],
                             regulator_types=["mirna"],
                             target_types=["gene"],
                             granularity="sample_specific",
@@ -118,45 +116,30 @@ class SequencedHypothesisRouter:
                         confidence=0.9,
                         evidence=[
                             OutcomeEvidence(
-                                dimension="operation",
-                                value="infer",
+                                dimension=dimension,
+                                value=value,
                                 source="inferred",
-                                rationale="Producing network edges requires inference.",
-                            ),
-                            OutcomeEvidence(
-                                dimension="artifact_type",
-                                value="regulatory_network",
-                                source="inferred",
-                                rationale="A miRNA network is interpreted as regulatory.",
-                            ),
-                            OutcomeEvidence(
-                                dimension="regulator_type",
-                                value="mirna",
-                                source="explicit",
-                                text_span="miRNA",
-                                rationale="The request explicitly names miRNA.",
-                            ),
-                            OutcomeEvidence(
-                                dimension="target_type",
-                                value="gene",
-                                source="inferred",
-                                rationale="The compatible hypothesis has gene targets.",
-                            ),
-                            OutcomeEvidence(
-                                dimension="granularity",
-                                value="sample_specific",
-                                source="explicit",
-                                text_span="sample-specific",
-                                rationale="The request explicitly states granularity.",
-                            ),
+                                rationale="The request entails this dimension.",
+                            )
+                            for dimension, value in (
+                                ("operation", "infer"),
+                                ("artifact_type", "regulatory_network"),
+                                ("regulator_type", "mirna"),
+                                ("target_type", "gene"),
+                                ("granularity", "sample_specific"),
+                            )
                         ],
-                        assumptions=[
-                            "network data means a regulatory-network result"
-                        ],
+                        assumptions=["network means regulatory network"],
                     )
                 ],
             )
-        raise AssertionError("semantic Router repair must run at most once")
+        if self.calls == 2:
+            return IntentDecision(
+                mode="answer",
+                confidence=0.99,
+                reason="The user asks which tools are needed.",
+            )
+        raise AssertionError("routing pipeline must make exactly two classification calls")
 
 
 class EmptyOutcomeRouter:
@@ -169,8 +152,8 @@ class EmptyOutcomeRouter:
     def invoke(self, _messages):
         self.calls += 1
         if self.calls > 2:
-            raise AssertionError("semantic Router repair must run at most once")
-        if self.calls == 2:
+            raise AssertionError("routing pipeline must make exactly two calls")
+        if self.calls == 1:
             return SemanticInterpretation(
                 semantic_goal="sample-specific miRNA regulatory network",
                 outcome_hypotheses=[
@@ -218,14 +201,10 @@ class EmptyOutcomeRouter:
                     )
                 ],
             )
-        return RouterDecision(
-            action="no_tool",
-            in_scope=True,
-            intent_type="answer_question",
-            confidence=0.9,
-            reason="No usable outcome hypothesis was produced.",
-            outcome_hypotheses=[],
-            clarification_question="What specific inputs do you have for the analysis?",
+        return IntentDecision(
+            mode="answer",
+            confidence=0.99,
+            reason="The user asks which tools are needed.",
         )
 
 
@@ -239,21 +218,11 @@ class EmptyRouterAndInterpreter:
     def invoke(self, _messages):
         self.calls += 1
         if self.calls == 1:
-            return RouterDecision(
-                action="run_lioness_puma",
-                candidate_actions=["run_lioness_puma"],
-                in_scope=True,
-                intent_type="run_analysis",
-                confidence=0.9,
-                reason="No usable outcome hypothesis was produced.",
-                outcome_hypotheses=[],
-            )
-        if self.calls == 2:
             return {
                 "semantic_goal": "No outcome",
                 "outcome_hypotheses": [],
             }
-        raise AssertionError("semantic interpreter must run at most once")
+        raise AssertionError("intent router must not run after invalid semantics")
 
 
 class GuidanceResponseLLM:
@@ -267,6 +236,80 @@ class GuidanceResponseLLM:
                 "Use PUMA followed by LIONESS-PUMA for sample-specific miRNA "
                 "regulatory networks. No files were inspected and no analysis ran."
             )
+        )
+
+
+class StrictRoutingPipelineLLM:
+    """Expose only the two LLM seams allowed by the routing pipeline."""
+
+    def __init__(self):
+        self.call_order: list[str] = []
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is SemanticInterpretation:
+            return SimpleNamespace(invoke=self._interpret)
+        if schema is IntentDecision:
+            return SimpleNamespace(invoke=self._route_intent)
+        raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+
+    def _interpret(self, _messages):
+        self.call_order.append("semantic_interpreter")
+        return SemanticInterpretation(
+            semantic_goal="sample-specific miRNA regulatory network",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=RequestedOutcome(
+                        operation="infer",
+                        artifact_type="regulatory_network",
+                        entity_types=["mirna"],
+                        display_entities=["miRNA"],
+                        regulator_types=["mirna"],
+                        target_types=[],
+                        granularity="sample_specific",
+                        unresolved_dimensions=[],
+                    ),
+                    confidence=0.98,
+                    evidence=[
+                        OutcomeEvidence(
+                            dimension="operation",
+                            value="infer",
+                            source="inferred",
+                            rationale="Producing a regulatory network requires inference.",
+                        ),
+                        OutcomeEvidence(
+                            dimension="artifact_type",
+                            value="regulatory_network",
+                            source="explicit",
+                            text_span="regulatory network",
+                            rationale="The requested artifact is explicit.",
+                        ),
+                        OutcomeEvidence(
+                            dimension="regulator_type",
+                            value="mirna",
+                            source="explicit",
+                            text_span="miRNA",
+                            rationale="The regulator type is explicit.",
+                        ),
+                        OutcomeEvidence(
+                            dimension="granularity",
+                            value="sample_specific",
+                            source="explicit",
+                            text_span="sample-specific",
+                            rationale="The granularity is explicit.",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+    def _route_intent(self, messages):
+        self.call_order.append("intent_router")
+        context = "\n".join(str(message.content) for message in messages)
+        assert '"matched_actions":["run_lioness_puma"]' in context
+        return IntentDecision(
+            mode="answer",
+            confidence=0.99,
+            reason="The user asks which tools are needed.",
         )
 
 
@@ -481,7 +524,75 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
     graph_module.StateGraph is None,
     reason="LangGraph integration runs in the project container",
 )
-def test_graph_repairs_an_underclassified_outcome_once(tmp_path: Path, monkeypatch):
+def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    pipeline_llm = StrictRoutingPipelineLLM()
+    response_llm = GuidanceResponseLLM()
+    models = iter([pipeline_llm, response_llm])
+    monkeypatch.setattr(
+        graph_module,
+        "build_llm",
+        lambda *_args, **_kwargs: next(models),
+    )
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="pipeline-test", profile_id="default")
+    app = build_graph(
+        "fake",
+        0.0,
+        router_model_name="fake",
+        profile_store=UserProfileStore(tmp_path / "profiles"),
+        episode_store=EpisodeStore(tmp_path / "episodes"),
+        trace_recorder=recorder,
+    )
+
+    result = app.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "What tools infer a sample-specific miRNA regulatory network?"
+                    )
+                )
+            ],
+            "run_id": str(run_id),
+        }
+    )
+
+    assert pipeline_llm.call_order == ["semantic_interpreter", "intent_router"]
+    assert result["decision"]["action"] == "no_tool"
+    assert result["decision"]["should_execute"] is False
+    assert result["decision"]["capability_match_status"] == "exact"
+    assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+    assert result["decision"]["recommended_actions"] == [
+        "run_puma",
+        "run_lioness_puma",
+    ]
+    assert [call["role"] for call in result["token_usage"]["calls"]] == [
+        "semantic_interpreter",
+        "intent_router",
+        "response",
+    ]
+    event_types = [event.event_type for event in store.read_events(run_id)]
+    assert event_types.index("routing.semantic_interpretation_accepted") < (
+        event_types.index("routing.registry_match_completed")
+    )
+    assert event_types.index("routing.registry_match_completed") < event_types.index(
+        "routing.intent_classified"
+    )
+
+
+@pytest.mark.skipif(
+    graph_module.StateGraph is None,
+    reason="LangGraph integration runs in the project container",
+)
+def test_graph_matches_one_valid_partial_semantic_interpretation(
+    tmp_path: Path, monkeypatch
+):
     monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
     monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
     router = SequencedHypothesisRouter()
@@ -521,12 +632,13 @@ def test_graph_repairs_an_underclassified_outcome_once(tmp_path: Path, monkeypat
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
     assert response_llm.calls == 1
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
-        "router",
         "semantic_interpreter",
+        "intent_router",
         "response",
     ]
-    assert (
-        sum(event.event_type == "routing.underclassified" for event in events) == 1
+    assert any(
+        event.event_type == "routing.semantic_interpretation_accepted"
+        for event in events
     )
 
 
@@ -587,8 +699,8 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     assert result["tool_results"] == []
     assert response_llm.calls == 1
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
-        "router",
         "semantic_interpreter",
+        "intent_router",
         "response",
     ]
     assert any(
@@ -601,7 +713,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     graph_module.StateGraph is None,
     reason="LangGraph integration runs in the project container",
 )
-def test_graph_rejects_empty_semantic_interpretation_after_empty_router(
+def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -639,20 +751,17 @@ def test_graph_rejects_empty_semantic_interpretation_after_empty_router(
         }
     )
 
-    assert router.calls == 2
+    assert router.calls == 1
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["recommended_actions"] == []
     assert result["decision"]["clarification_question"] == (
-        "What scientific result do you want NetZoo to produce?"
+        "Please restate the desired NetZoo result after the router is available."
     )
     assert result["tool_results"] == []
     calls = result["token_usage"]["calls"]
-    assert [call["role"] for call in calls[:2]] == [
-        "router",
-        "semantic_interpreter",
-    ]
-    assert calls[1]["status"] == "failed"
+    assert [call["role"] for call in calls] == ["semantic_interpreter", "response"]
+    assert calls[0]["status"] == "failed"
     assert any(
         event.event_type == "routing.semantic_interpreter_failed"
         for event in store.read_events(run_id)

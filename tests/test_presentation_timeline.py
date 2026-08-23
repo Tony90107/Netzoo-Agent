@@ -245,6 +245,38 @@ def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
     assert "● Matching registered workflows…" in output
 
 
+def test_state_machine_presents_initial_semantic_interpretation_as_classification(
+    monkeypatch, capsys
+):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "router",
+        "Semantic interpretation started",
+        {
+            "kind": "router_activity",
+            "operation": "semantic_interpreter",
+            "status": "started",
+        },
+    )
+    presentation._trace(
+        "router",
+        "Semantic interpretation completed",
+        {
+            "kind": "router_activity",
+            "operation": "semantic_interpreter",
+            "status": "completed",
+            "duration_ms": 1250,
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "● Classifying requested outcome…" in output
+    assert "✓ Interpreted requested outcome (1.25s)" in output
+    assert "Refined outcome classification" not in output
+
+
 def test_state_machine_keeps_deduplicated_router_repair_and_match_history(monkeypatch, capsys):
     _enable_state_machine(monkeypatch)
     monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)

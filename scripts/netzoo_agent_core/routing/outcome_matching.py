@@ -24,6 +24,18 @@ from ..contracts import (
 _UNKNOWN = "unknown"
 
 
+def _is_not_applicable(outcome: RequestedOutcome) -> bool:
+    return (
+        outcome.operation == _UNKNOWN
+        and outcome.artifact_type == _UNKNOWN
+        and outcome.granularity == "not_applicable"
+        and not outcome.entity_types
+        and not outcome.regulator_types
+        and not outcome.target_types
+        and not outcome.unresolved_dimensions
+    )
+
+
 def _has_unknown(outcome: RequestedOutcome) -> bool:
     return bool(
         outcome.unresolved_dimensions
@@ -167,6 +179,8 @@ def match_requested_outcome(
     ] = OUTPUT_CAPABILITIES,
 ) -> CapabilityMatch:
     """Return a fail-closed match derived only from typed outcome dimensions."""
+    if _is_not_applicable(outcome):
+        return CapabilityMatch(status="not_applicable")
     candidates = [
         (action, capability)
         for action, capability in capabilities.items()
@@ -273,6 +287,8 @@ def match_outcome_hypotheses(
     ] = OUTPUT_CAPABILITIES,
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
+    if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
+        return CapabilityMatch(status="not_applicable")
     exact: list[RecommendedAction] = []
     advisory: list[tuple[int, float, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
@@ -356,6 +372,52 @@ def named_workflow_action(task: str) -> RecommendedAction | None:
     return None
 
 
+def named_registered_action(task: str):
+    """Resolve an explicitly written registry workflow label, longest first."""
+    candidates = sorted(
+        (
+            (action, definition)
+            for action, definition in ACTION_DEFINITIONS.items()
+            if action != "no_tool"
+        ),
+        key=lambda item: len(item[1].workflow),
+        reverse=True,
+    )
+    for action, definition in candidates:
+        words = re.split(r"[-_\s]+", definition.workflow.casefold())
+        pattern = (
+            r"(?<![a-z0-9])"
+            + r"[\s_-]*".join(re.escape(word) for word in words)
+            + r"(?![a-z0-9])"
+        )
+        if re.search(pattern, task.casefold()):
+            return action
+    return None
+
+
+def match_semantic_request(
+    task: str,
+    hypotheses: Sequence[OutcomeHypothesis],
+) -> CapabilityMatch:
+    """Match typed meaning, using explicit registry identifiers only as a fallback."""
+    marker = re.search(
+        r"(?:CONFIRMED_OUTCOME_ACTION|PREVIOUS_ACTION)=(run_[a-z_]+)",
+        task,
+        flags=re.IGNORECASE,
+    )
+    if marker:
+        action = marker.group(1).casefold()
+        if action in OUTPUT_CAPABILITIES:
+            return CapabilityMatch(status="exact", matched_actions=[action])
+
+    explicit_action = named_registered_action(task)
+    if explicit_action is not None:
+        return CapabilityMatch(status="exact", matched_actions=[explicit_action])
+
+    match = match_outcome_hypotheses(hypotheses)
+    return match
+
+
 def apply_outcome_match(decision: TaskDecision) -> TaskDecision:
     """Replace all workflow-match fields with deterministic registry results."""
     if decision.requested_outcome is None:
@@ -392,6 +454,8 @@ __all__ = [
     "guidance_actions_for",
     "has_granularity_only_ambiguity",
     "match_outcome_hypotheses",
+    "match_semantic_request",
     "match_requested_outcome",
     "named_workflow_action",
+    "named_registered_action",
 ]

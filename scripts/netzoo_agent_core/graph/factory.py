@@ -11,7 +11,7 @@ from ..contracts import (
     DEFAULT_TASK_TOKEN_BUDGET,
     PROJECT_ROOT,
     ProjectPolicySnapshot,
-    RouterDecision,
+    IntentDecision,
     StateGraph,
 )
 from ..llm import build_llm, validate_response_model, validate_router_model
@@ -62,13 +62,13 @@ def build_graph(
         max_output_tokens=response_max_tokens,
         timeout_seconds=timeout_seconds,
     )
-    router = router_llm.with_structured_output(
-        RouterDecision,
+    semantic_interpreter = router_llm.with_structured_output(
+        SemanticInterpretation,
         method="function_calling",
         include_raw=False,
     )
-    semantic_interpreter = router_llm.with_structured_output(
-        SemanticInterpretation,
+    intent_router = router_llm.with_structured_output(
+        IntentDecision,
         method="function_calling",
         include_raw=False,
     )
@@ -80,13 +80,13 @@ def build_graph(
         project_policy=project_policy,
         recorder=recorder,
         price_catalog=price_catalog,
-        router=router,
         semantic_interpreter=semantic_interpreter,
+        intent_router=intent_router,
         response_llm=response_llm,
         router_model_name=router_model_name,
         response_model_name=model_name,
-        routing_prompt=prompts.routing,
         semantic_prompt=prompts.semantic,
+        intent_prompt=prompts.intent,
         response_prompt=prompts.response,
         router_max_tokens=router_max_tokens,
         response_max_tokens=response_max_tokens,

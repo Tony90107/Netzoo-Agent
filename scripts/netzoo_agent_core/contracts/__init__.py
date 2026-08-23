@@ -54,7 +54,12 @@ from ..settings import (
     USER_VISIBLE_OUTPUT_LANGUAGE,
     VERBOSE_OUTPUT,
 )
-from .decisions import PreferenceProposal, RouterDecision, TaskDecision
+from .decisions import (  # noqa: F401 -- direct internal import without public widening
+    IntentDecision,
+    PreferenceProposal,
+    RouterDecision,
+    TaskDecision,
+)
 from .interaction import (  # noqa: F401 -- direct imports without widening __all__
     ContextualReplyResolution,
     FollowUpContext,

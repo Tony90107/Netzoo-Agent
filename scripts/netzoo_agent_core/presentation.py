@@ -156,27 +156,17 @@ def _apply_public_progress_event(
     if isinstance(detail, dict) and detail.get("kind") == "router_activity":
         operation = str(detail.get("operation") or "router")
         if detail.get("status") == "started":
-            is_semantic_repair = operation in {
-                "router_repair",
-                "semantic_interpreter",
-            }
-            activity = (
-                "Refining outcome classification"
-                if is_semantic_repair
-                else "Calling Router to classify the requested outcome"
-            )
+            activity = {
+                "router_repair": "Refining outcome classification",
+                "semantic_interpreter": "Classifying requested outcome",
+            }.get(operation, "Calling Router to classify the requested outcome")
             state.activate("understand", activity)
             return True
         if detail.get("status") == "completed":
-            is_semantic_repair = operation in {
-                "router_repair",
-                "semantic_interpreter",
-            }
-            label = (
-                "✓ Refined outcome classification"
-                if is_semantic_repair
-                else "✓ Called Router — classified requested outcome"
-            )
+            label = {
+                "router_repair": "✓ Refined outcome classification",
+                "semantic_interpreter": "✓ Interpreted requested outcome",
+            }.get(operation, "✓ Called Router — classified requested outcome")
             _commit_public_activity(
                 f"router:{operation}:completed:{detail.get('call_id', operation)}",
                 label + _activity_duration(detail),
