@@ -61,6 +61,18 @@ def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
     return required
 
 
+def _is_not_applicable(outcome: RequestedOutcome) -> bool:
+    return (
+        outcome.operation == "unknown"
+        and outcome.artifact_type == "unknown"
+        and outcome.granularity == "not_applicable"
+        and not outcome.entity_types
+        and not outcome.regulator_types
+        and not outcome.target_types
+        and not outcome.unresolved_dimensions
+    )
+
+
 def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],
@@ -74,7 +86,11 @@ def validate_outcome_hypotheses(
     for index, hypothesis in enumerate(hypotheses):
         outcome_values = _outcome_values(hypothesis.outcome)
         required_evidence = _required_evidence(hypothesis.outcome)
-        if not required_evidence and not hypothesis.evidence:
+        if (
+            not required_evidence
+            and not hypothesis.evidence
+            and not _is_not_applicable(hypothesis.outcome)
+        ):
             issues.append(f"hypothesis[{index}].unusable_outcome")
         evidence_pairs: set[tuple[str, str]] = set()
         for item in hypothesis.evidence:

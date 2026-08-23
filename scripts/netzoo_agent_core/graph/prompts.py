@@ -5,16 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..contracts import EXECUTE_TOOLS, ProjectPolicySnapshot, output_language_policy
-from ..llm import build_routing_prompt, build_semantic_interpreter_prompt
+from ..llm import build_intent_router_prompt, build_semantic_interpreter_prompt
 
 __all__: list[str] = []
 
 
 @dataclass(frozen=True, slots=True)
 class _GraphPrompts:
-    routing: str
     semantic: str
+    intent: str
     response: str
+
+    @property
+    def routing(self) -> str:
+        """Compatibility alias for callers that still inspect the old field name."""
+        return self.intent
 
 
 def build_graph_prompts(project_policy: ProjectPolicySnapshot) -> _GraphPrompts:
@@ -98,7 +103,7 @@ Websearch MCP lookup is read-only and is allowed in either mode.
 {output_language_policy()}
 """.strip()
     return _GraphPrompts(
-        routing=build_routing_prompt(project_policy),
         semantic=build_semantic_interpreter_prompt(),
+        intent=build_intent_router_prompt(),
         response=response_prompt,
     )

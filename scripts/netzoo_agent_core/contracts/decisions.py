@@ -14,6 +14,15 @@ class PreferenceProposal(BaseModel):
     value: str
     reason: str
 
+
+class IntentDecision(BaseModel):
+    """LLM-owned answer/execute choice with no workflow-selection authority."""
+
+    mode: Literal["answer", "execute"]
+    confidence: float = Field(ge=0.0, le=1.0)
+    reason: str = Field(min_length=1, max_length=300)
+
+
 class RouterDecision(BaseModel):
     """LLM-owned semantic routing proposal, bounded by the action allowlist."""
 
@@ -102,4 +111,4 @@ class TaskDecision(BaseModel):
     web_query: str | None = None
     preference_updates: list[PreferenceProposal] = Field(default_factory=list)
 
-__all__ = ['PreferenceProposal', 'RouterDecision', 'TaskDecision']
+__all__ = ['IntentDecision', 'PreferenceProposal', 'RouterDecision', 'TaskDecision']

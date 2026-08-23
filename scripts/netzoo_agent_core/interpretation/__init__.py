@@ -1,6 +1,7 @@
 """Deterministic task hydration, repair, fallback, and input discovery."""
 
 from . import (
+    assembly,
     concept_answers,
     discovery,
     extraction,
@@ -16,6 +17,9 @@ from .discovery import (
     discover_demo_bundle,
     reusable_episode_inputs,
 )
+from .assembly import (  # noqa: F401 -- direct internal import without public widening
+    assemble_task_decision,
+)
 from .extraction import (
     INPUT_LABELS,
     _mentions_unspecified_data_directory,
@@ -30,6 +34,7 @@ from .provider_fallback import deterministic_router_fallback, _is_fatal_exceptio
 from .repair import _lioness_mode_plan, repair_router_decision
 
 _INTERPRETATION_IMPLEMENTATION_MODULES = (
+    assembly,
     discovery,
     extraction,
     hydration,

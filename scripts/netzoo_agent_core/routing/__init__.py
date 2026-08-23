@@ -28,6 +28,7 @@ from .discovery import (
 from .outcome_matching import (
     apply_outcome_match,
     guidance_actions_for,
+    match_semantic_request,  # noqa: F401 -- direct internal import
     match_requested_outcome,
 )
 from .dispatch import execute_selected_tool

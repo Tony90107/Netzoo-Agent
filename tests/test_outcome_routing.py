@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import sys
 from pathlib import Path
 
@@ -12,14 +11,19 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from netzoo_agent_core.contracts import (  # noqa: E402
     OutcomeEvidence,
     OutcomeHypothesis,
+    IntentDecision,
     RequestedOutcome,
     RouterDecision,
     TaskDecision,
 )
+from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
 from netzoo_agent_core.interpretation import (  # noqa: E402
     deterministic_router_fallback,
     hydrate_router_decision,
     repair_router_decision,
+)
+from netzoo_agent_core.interpretation.assembly import (  # noqa: E402
+    assemble_task_decision,
 )
 from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
     needs_outcome_repair,
@@ -27,6 +31,7 @@ from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
 )
 from netzoo_agent_core.llm import (  # noqa: E402
     build_routing_prompt,
+    build_semantic_interpreter_prompt,
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
@@ -153,6 +158,69 @@ def test_typed_outcome_registry_match_overrides_router_advisory_candidates():
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
 
 
+@pytest.mark.parametrize(
+    ("mode", "expected_action", "expected_execute"),
+    [
+        ("answer", "no_tool", False),
+        ("execute", "run_lioness_puma", True),
+    ],
+)
+def test_task_decision_is_assembled_from_registry_match_then_narrow_intent(
+    mode: str,
+    expected_action: str,
+    expected_execute: bool,
+):
+    interpretation = SemanticInterpretation(
+        semantic_goal="sample-specific miRNA regulatory network",
+        outcome_hypotheses=[hypothesis()],
+    )
+    match = match_outcome_hypotheses(interpretation.outcome_hypotheses)
+    intent = IntentDecision(
+        mode=mode,
+        confidence=0.97,
+        reason="User intent fixture.",
+    )
+
+    task = (
+        "Run a sample-specific miRNA regulatory network analysis."
+        if mode == "execute"
+        else "What tools infer a sample-specific miRNA regulatory network?"
+    )
+    decision = assemble_task_decision(interpretation, match, intent, task=task)
+
+    assert decision.action == expected_action
+    assert decision.should_execute is expected_execute
+    assert decision.matched_actions == ["run_lioness_puma"]
+    assert decision.recommended_actions == ["run_puma", "run_lioness_puma"]
+
+
+def test_execution_intent_cannot_authorize_a_workflow_selection_question():
+    interpretation = SemanticInterpretation(
+        semantic_goal="sample-specific miRNA regulatory network",
+        outcome_hypotheses=[hypothesis()],
+    )
+    match = match_outcome_hypotheses(interpretation.outcome_hypotheses)
+    mistaken_intent = IntentDecision(
+        mode="execute",
+        confidence=0.99,
+        reason="The intent model mistook infer for an imperative.",
+    )
+
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        mistaken_intent,
+        task=(
+            "If I want a sample-specific miRNA regulatory network, "
+            "what tools do I need?"
+        ),
+    )
+
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
+    assert decision.intent_type == "answer_question"
+
+
 def test_explicit_panda_name_wins_over_granularity_ambiguity():
     raw = TaskDecision(
         action="run_panda",
@@ -215,12 +283,13 @@ def test_explicit_panda_request_recovers_when_router_used_no_tool_for_clarificat
     assert repaired.clarification_question is None
 
 
-def test_router_prompt_renders_registry_backed_supporting_actions():
+def test_intent_router_prompt_does_not_render_registry_actions():
     prompt = build_routing_prompt(ProjectPolicyLoader(PROJECT_ROOT).load())
 
-    assert "Supporting and retrieval actions from the same validated registry:" in prompt
-    assert "- inspect_inputs: INPUTS. Required inputs: expression_file, motif_file, ppi_file" in prompt
-    assert "- web_search: WEB-SEARCH. Required inputs: web_query" in prompt
+    assert "Return only the IntentDecision structure" in prompt
+    assert "run_puma" not in prompt
+    assert "inspect_inputs" not in prompt
+    assert "web_search" not in prompt
 
 
 def test_router_reason_allows_bounded_repair_explanations():
@@ -242,10 +311,11 @@ def test_router_reason_allows_bounded_repair_explanations():
 
 def test_router_budget_and_prompt_support_bounded_partial_hypotheses():
     assert DEFAULT_ROUTER_MAX_TOKENS >= 1_200
-    source = inspect.getsource(build_routing_prompt)
-    assert "Prefer one partial" in source
-    assert "deterministic matcher will enumerate compatible" in source
-    assert "Keep it under 500 characters" in source
+    semantic_prompt = build_semantic_interpreter_prompt()
+    intent_prompt = build_routing_prompt(ProjectPolicyLoader(PROJECT_ROOT).load())
+    assert "one to three outcome_hypotheses" in semantic_prompt
+    assert "matched against the registry" in intent_prompt
+    assert "When uncertain, choose answer" in intent_prompt
 
 
 def test_router_repairs_an_omitted_outcome_hypothesis():

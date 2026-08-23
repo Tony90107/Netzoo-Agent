@@ -55,6 +55,31 @@ def test_graph_package_exports_only_public_entrypoints():
     assert graph.__all__ == PUBLIC_EXPORTS
 
 
+def test_graph_binds_semantic_interpreter_before_narrow_intent_router(monkeypatch):
+    factory = importlib.import_module("netzoo_agent_core.graph.factory")
+    bound_schemas = []
+
+    class RoutingProvider:
+        def with_structured_output(self, schema, **_kwargs):
+            bound_schemas.append(schema)
+            return SimpleNamespace()
+
+    models = iter([RoutingProvider(), SimpleNamespace()])
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setattr(factory, "ensure_graph_dependencies", lambda: None)
+    monkeypatch.setattr(factory, "StateGraph", object())
+    monkeypatch.setattr(factory, "build_llm", lambda *_args, **_kwargs: next(models))
+    monkeypatch.setattr(factory, "compile_graph", lambda context, **_kwargs: context)
+
+    factory.build_graph("fake", 0.0, router_model_name="fake")
+
+    assert bound_schemas == [
+        legacy_agent.SemanticInterpretation,
+        legacy_agent.IntentDecision,
+    ]
+
+
 def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     prompts = importlib.import_module("netzoo_agent_core.graph.prompts")
     monkeypatch.setattr(prompts, "EXECUTE_TOOLS", False)
