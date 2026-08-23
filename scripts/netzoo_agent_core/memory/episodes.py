@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 import time
 import uuid
@@ -46,6 +47,27 @@ class EpisodeCleanupReport(BaseModel):
     @property
     def deleted(self) -> int:
         return self.expired + self.overflow
+
+
+@dataclass(frozen=True, slots=True)
+class EpisodeSearchHit:
+    """One selected episode plus the deterministic ranking explanation."""
+
+    episode: Episode
+    final_score: int
+    overlap_tokens: list[str]
+    workflow_bonus: int
+    status_bonus: int
+
+    def trace_payload(self) -> dict[str, object]:
+        return {
+            "episode_id": self.episode.episode_id,
+            "workflow": self.episode.workflow,
+            "final_score": self.final_score,
+            "overlap_tokens": self.overlap_tokens,
+            "workflow_bonus": self.workflow_bonus,
+            "status_bonus": self.status_bonus,
+        }
 
 
 class EpisodeStore:
@@ -364,7 +386,13 @@ class EpisodeStore:
             tokens.add("memory-history")
         return tokens
 
-    def search(self, profile_id: str, query: str, limit: int = 3) -> list[Episode]:
+    def search_hits(
+        self,
+        profile_id: str,
+        query: str,
+        limit: int = 3,
+    ) -> list[EpisodeSearchHit]:
+        """Return ranked episodes with the score components used to select them."""
         safe_profile_id = _safe_memory_id(profile_id)
         query_tokens = self._query_tokens(query)
         report = EpisodeCleanupReport()
@@ -377,7 +405,7 @@ class EpisodeStore:
                 now=now,
             )
             self._cleanup_quarantine_locked(report, now=now)
-        scored: list[tuple[int, float, Episode]] = []
+        scored: list[tuple[int, float, EpisodeSearchHit]] = []
         for _, episode in records:
             episode_tokens = self._tokens(
                 " ".join(
@@ -399,7 +427,8 @@ class EpisodeStore:
                     ]
                 )
             )
-            overlap = len(query_tokens & episode_tokens)
+            overlap_tokens = sorted(query_tokens & episode_tokens)
+            overlap = len(overlap_tokens)
             workflow_bonus = (
                 3
                 if any(
@@ -418,9 +447,28 @@ class EpisodeStore:
             )
             score = base_score + status_bonus if base_score else 0
             if score:
-                scored.append((score, episode.created_at, episode))
+                scored.append(
+                    (
+                        score,
+                        episode.created_at,
+                        EpisodeSearchHit(
+                            episode=episode,
+                            final_score=score,
+                            overlap_tokens=overlap_tokens,
+                            workflow_bonus=workflow_bonus,
+                            status_bonus=status_bonus,
+                        ),
+                    )
+                )
         scored.sort(key=lambda item: (-item[0], -item[1]))
-        return [episode for _, _, episode in scored[:limit]]
+        return [hit for _, _, hit in scored[:limit]]
+
+    def search(self, profile_id: str, query: str, limit: int = 3) -> list[Episode]:
+        """Return ranked episodes while preserving the original public interface."""
+        return [
+            hit.episode
+            for hit in self.search_hits(profile_id, query, limit=limit)
+        ]
 
     def list_for_profile(self, profile_id: str) -> list[Episode]:
         safe_profile_id = _safe_memory_id(profile_id)

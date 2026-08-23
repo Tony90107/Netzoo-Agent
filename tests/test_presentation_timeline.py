@@ -99,6 +99,15 @@ def test_progress_state_marks_clarification_as_attention():
     assert "? Clarification needed\n  Clarification required" == presentation._render_progress_state(state)
 
 
+def test_progress_state_can_show_clarification_without_repeating_the_question():
+    state = presentation.ProgressState.initial()
+    state.complete("understand")
+    state.complete("match")
+    state.attention("next_step")
+
+    assert presentation._render_progress_state(state) == "? Clarification needed"
+
+
 def test_public_trace_events_update_task_level_stages(monkeypatch, capsys):
     _enable_state_machine(monkeypatch)
 
@@ -211,7 +220,9 @@ def test_state_machine_shows_verified_decision_facts_without_a_tool(monkeypatch,
 
     output = capsys.readouterr().out
     assert "✓ Matched workflows — PUMA, LIONESS-PUMA" in output
-    assert "? Clarification needed\n  Select aggregate or sample-specific" in output
+    assert "? Clarification needed" in output
+    assert "Should the result be aggregate or sample-specific?" not in output
+    assert "Select aggregate or sample-specific" not in output
 
 
 def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):

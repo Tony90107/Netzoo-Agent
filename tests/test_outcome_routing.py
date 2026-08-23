@@ -22,6 +22,7 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
     repair_router_decision,
 )
 from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
+    deterministic_explicit_outcome_hypotheses,
     needs_outcome_repair,
     select_primary_hypothesis,
 )
@@ -251,6 +252,40 @@ def test_router_repairs_an_empty_outcome_even_if_provider_marks_it_out_of_scope(
     )
 
     assert needs_outcome_repair(decision.outcome_hypotheses) is True
+
+
+def test_explicit_dimensions_recover_a_typed_outcome_without_guessing_a_workflow():
+    hypotheses = deterministic_explicit_outcome_hypotheses(
+        "If I want to get a sample-specific miRNA regulatory network, "
+        "what tools do I need?"
+    )
+
+    assert len(hypotheses) == 1
+    item = hypotheses[0]
+    assert item.outcome.operation == "infer"
+    assert item.outcome.artifact_type == "regulatory_network"
+    assert item.outcome.regulator_types == ["mirna"]
+    assert item.outcome.granularity == "sample_specific"
+    assert {evidence.dimension for evidence in item.evidence} == {
+        "operation",
+        "artifact_type",
+        "regulator_type",
+        "granularity",
+    }
+    assert match_outcome_hypotheses(hypotheses).model_dump() == {
+        "status": "exact",
+        "matched_actions": ["run_lioness_puma"],
+        "hypothesis_actions": [],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": None,
+    }
+
+
+def test_explicit_outcome_recovery_stays_closed_when_a_dimension_is_missing():
+    assert deterministic_explicit_outcome_hypotheses(
+        "What tools do I need for a sample-specific regulatory network?"
+    ) == []
 
 
 def test_router_normalizes_a_provider_hypothesis_with_flattened_outcome_fields():
