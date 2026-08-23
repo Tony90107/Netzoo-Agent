@@ -8,7 +8,10 @@ import time
 
 from ..contracts import AgentState, LLMUsage, RouterDecision, TaskDecision, _trace
 from ..interpretation.hydration import hydrate_router_decision
-from ..interpretation.outcome_consistency import needs_outcome_repair
+from ..interpretation.outcome_consistency import (
+    deterministic_explicit_outcome_hypotheses,
+    needs_outcome_repair,
+)
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
     deterministic_router_fallback,
@@ -221,6 +224,25 @@ def invoke_router(
                 usage=usage,
                 budget_warnings=budget_warnings,
             )
+            if needs_outcome_repair(router_decision.outcome_hypotheses):
+                recovered = deterministic_explicit_outcome_hypotheses(user_task)
+                if recovered:
+                    router_decision = router_decision.model_copy(
+                        update={"outcome_hypotheses": recovered}
+                    )
+                    record_event(
+                        context,
+                        state,
+                        "routing.deterministic_outcome_recovered",
+                        "classify",
+                        {
+                            "hypothesis_count": len(recovered),
+                            "evidence_dimensions": [
+                                evidence.dimension
+                                for evidence in recovered[0].evidence
+                            ],
+                        },
+                    )
         hydrated = hydrate_router_decision(router_decision, user_task)
         _trace(
             "reasoning",

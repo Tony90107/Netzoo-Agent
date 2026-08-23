@@ -80,7 +80,7 @@ class ProgressState:
         if detail is not None:
             stage.detail = detail
 
-    def attention(self, name: str, detail: str) -> None:
+    def attention(self, name: str, detail: str | None = None) -> None:
         index = _PROGRESS_STAGE_ORDER.index(name)
         for earlier in _PROGRESS_STAGE_ORDER[:index]:
             self.complete(earlier)
@@ -108,7 +108,10 @@ def _render_progress_state(state: ProgressState) -> str:
                 text = "Preparing next step…"
             return _ui_text(_truncate_terminal_line(f"● {text}"))
         if stage.status == "attention":
-            return _ui_text("? Clarification needed\n  " + (stage.detail or "Choose the next step."))
+            text = "? Clarification needed"
+            if stage.detail:
+                text += "\n  " + stage.detail
+            return _ui_text(text)
         if stage.status == "failed":
             return _ui_text(_truncate_terminal_line(f"✗ {stage.detail or 'Operation failed'}"))
     return ""
@@ -216,10 +219,7 @@ def _apply_public_progress_event(
         question = str(detail.get("question") or "")
         tool_status = str(detail.get("tool_status") or "")
         if question:
-            choice = re.sub(
-                r"^Should the result be\s+", "Select ", question
-            ).rstrip("?")
-            state.attention(state_name, choice)
+            state.attention(state_name)
         else:
             state.activate(state_name)
         state.activity = tool_status or None

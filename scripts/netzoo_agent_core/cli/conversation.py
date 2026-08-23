@@ -314,14 +314,19 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 active_usage = reply_result.usage.model_dump()
                 resolution = reply_result.resolution
                 if resolution.kind == "needs_detail":
-                    next_prompt = NextTurnPrompt(
-                        kind="initial",
-                        question=_ui_text(
-                            "Please enter a concrete follow-up question, provide the "
-                            "requested input path, or describe another NetZoo goal."
-                        ),
+                    retry_question = _ui_text(
+                        "Please enter a concrete follow-up question, provide the "
+                        "requested input path, or describe another NetZoo goal."
                     )
-                    follow_up_context = None
+                    next_prompt = next_prompt.model_copy(
+                        update={"question": retry_question}
+                    )
+                    follow_up_context = follow_up_context.model_copy(
+                        update={
+                            "prompt_kind": next_prompt.kind,
+                            "prompt_question": retry_question,
+                        }
+                    )
                     recorder.finish_run(
                         run_id,
                         "completed",

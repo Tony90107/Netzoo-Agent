@@ -806,10 +806,11 @@ def test_sample_specific_guidance_transcript_preserves_context_and_single_owner_
     assert "If you need to start" not in output
     assert "Please enter a concrete follow-up question" not in output
     assert runtime.invoke_graph_turn_func.call_count == 2
-    assert resolver.resolve.call_count == 1
+    assert resolver.resolve.call_count == 2
     second_invocation = runtime.invoke_graph_turn_func.call_args_list[1].args[1]
     submitted = second_invocation["messages"][-1].content
-    assert submitted == follow_up
+    assert "Previous NetZoo goal:" in submitted
+    assert f"User follow-up: {follow_up}" in submitted
     prompts = [call.args[0] for call in runtime.input_func.call_args_list]
     assert any("Enter a follow-up question" in prompt for prompt in prompts)
     assert all("Reply yes" not in prompt for prompt in prompts)
