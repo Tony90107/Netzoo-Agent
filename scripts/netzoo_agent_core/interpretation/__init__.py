@@ -5,6 +5,7 @@ from . import (
     discovery,
     extraction,
     hydration,
+    outcome_validation,
     provider_fallback,
     repair,
 )
@@ -32,6 +33,7 @@ _INTERPRETATION_IMPLEMENTATION_MODULES = (
     discovery,
     extraction,
     hydration,
+    outcome_validation,
     provider_fallback,
     repair,
     concept_answers,

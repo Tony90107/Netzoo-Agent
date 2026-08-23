@@ -15,6 +15,7 @@ from ..contracts import (
     StateGraph,
 )
 from ..llm import build_llm, validate_response_model, validate_router_model
+from ..contracts.outcomes import SemanticInterpretation
 from ..memory import EpisodeStore, UserProfileStore
 from ..policy import ProjectPolicyLoader
 from ..pricing import PriceCatalog
@@ -66,6 +67,11 @@ def build_graph(
         method="function_calling",
         include_raw=False,
     )
+    semantic_interpreter = router_llm.with_structured_output(
+        SemanticInterpretation,
+        method="function_calling",
+        include_raw=False,
+    )
     prompts = build_graph_prompts(project_policy)
     context = _GraphContext(
         profile_id=profile_id,
@@ -75,10 +81,12 @@ def build_graph(
         recorder=recorder,
         price_catalog=price_catalog,
         router=router,
+        semantic_interpreter=semantic_interpreter,
         response_llm=response_llm,
         router_model_name=router_model_name,
         response_model_name=model_name,
         routing_prompt=prompts.routing,
+        semantic_prompt=prompts.semantic,
         response_prompt=prompts.response,
         router_max_tokens=router_max_tokens,
         response_max_tokens=response_max_tokens,

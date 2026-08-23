@@ -156,16 +156,18 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
                 reason="The user confirmed a supported alternative outcome.",
             ).model_copy(update={"intent_type": "answer_question"})
 
-    # A question about which workflows to use must remain explanatory even when
-    # the Router selected an executable action.  The Router's candidates remain
-    # the sole source of workflow selection; this guard only withholds execution
-    # and prevents absent files from becoming an input-collection request.
+    # Compatibility fallback for a legacy Router result with no typed outcome.
+    # Evidence-bearing hypotheses take the registry-matcher path below instead.
     advisory_actions = [
         action
         for action in raw_decision.candidate_actions
         if action in LOCAL_WORKFLOW_ACTIONS
     ]
-    if is_workflow_selection_request(task) and len(advisory_actions) > 1:
+    if (
+        is_workflow_selection_request(task)
+        and not raw_decision.outcome_hypotheses
+        and len(advisory_actions) > 1
+    ):
         return raw_decision.model_copy(
             update={
                 "action": "no_tool",
@@ -228,6 +230,17 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
         )
     else:
         decision = raw_decision.model_copy(deep=True)
+
+    if is_workflow_selection_request(task) and decision.outcome_hypotheses:
+        decision = decision.model_copy(
+            update={
+                "action": "no_tool",
+                "in_scope": True,
+                "should_execute": False,
+                "intent_type": "answer_question",
+                "missing_inputs": [],
+            }
+        )
 
     continuation_match = re.search(
         r"PREVIOUS_ACTION=(run_[a-z_]+)", task, flags=re.IGNORECASE

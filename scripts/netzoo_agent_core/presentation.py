@@ -156,17 +156,25 @@ def _apply_public_progress_event(
     if isinstance(detail, dict) and detail.get("kind") == "router_activity":
         operation = str(detail.get("operation") or "router")
         if detail.get("status") == "started":
+            is_semantic_repair = operation in {
+                "router_repair",
+                "semantic_interpreter",
+            }
             activity = (
                 "Refining outcome classification"
-                if operation == "router_repair"
+                if is_semantic_repair
                 else "Calling Router to classify the requested outcome"
             )
             state.activate("understand", activity)
             return True
         if detail.get("status") == "completed":
+            is_semantic_repair = operation in {
+                "router_repair",
+                "semantic_interpreter",
+            }
             label = (
                 "✓ Refined outcome classification"
-                if operation == "router_repair"
+                if is_semantic_repair
                 else "✓ Called Router — classified requested outcome"
             )
             _commit_public_activity(
