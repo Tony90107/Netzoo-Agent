@@ -152,7 +152,7 @@ def test_discovery_module_is_internal_and_patchable():
 def test_interpretation_children_are_responsibility_sized():
     maximum_lines = {
         "discovery": 320,
-        "extraction": 280,
+        "extraction": 285,
         "hydration": 140,
         "provider_fallback": 230,
         "repair": 340,

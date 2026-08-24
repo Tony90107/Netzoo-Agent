@@ -254,6 +254,42 @@ def test_non_scientific_request_has_a_valid_not_applicable_outcome():
     assert match.matched_actions == []
 
 
+def test_scientific_outcome_cannot_mix_not_applicable_with_typed_dimensions():
+    task = (
+        "if i want to get sample specific mi-RNA regulator network,"
+        "what tools do i need?"
+    )
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="unknown",
+            artifact_type="unknown",
+            entity_types=["mirna"],
+            regulator_types=["mirna"],
+            target_types=["unknown"],
+            granularity="not_applicable",
+            unresolved_dimensions=["artifact_type", "operation"],
+        ),
+        confidence=0.8,
+        evidence=[
+            evidence(
+                "granularity",
+                "not_applicable",
+                text_span="sample specific",
+            ),
+            evidence(
+                "regulator_type",
+                "mirna",
+                text_span="mi-RNA regulator",
+            ),
+        ],
+    )
+
+    validation = validate_outcome_hypotheses(task, [hypothesis])
+
+    assert validation.valid is False
+    assert "hypothesis[0].inconsistent_not_applicable_outcome" in validation.issues
+
+
 def test_semantic_interpreter_prompt_has_no_workflow_selection_authority():
     prompt = build_semantic_interpreter_prompt()
 

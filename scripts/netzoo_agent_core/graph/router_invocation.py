@@ -7,7 +7,7 @@ import json
 import time
 
 from ..contracts import AgentState, IntentDecision, LLMUsage, TaskDecision, _trace
-from ..contracts.outcomes import CapabilityMatch, SemanticInterpretation
+from ..contracts.outcomes import CapabilityMatch, SemanticInterpretation, SemanticReview
 from ..interpretation.assembly import assemble_task_decision
 from ..interpretation.hydration import hydrate_router_decision
 from ..interpretation.outcome_validation import validate_outcome_hypotheses
@@ -20,6 +20,7 @@ from ..llm import (
     append_llm_usage,
     build_intent_router_messages,
     build_semantic_interpreter_messages,
+    build_semantic_reviewer_messages,
     structured_result_payload,
 )
 from ..routing.outcome_matching import match_semantic_request
@@ -94,56 +95,194 @@ def _invoke_semantic_interpreter(
     user_task: str,
     usage: LLMUsage,
 ) -> tuple[SemanticInterpretation | None, LLMUsage, list[str], BaseException | None]:
-    messages = build_semantic_interpreter_messages(context.semantic_prompt, user_task)
-    input_text = _serialized_structured_input(messages, SemanticInterpretation)
-    budget, budget_warnings = preflight_budget(
-        context,
-        state,
-        role="semantic_interpreter",
-        model=context.router_model_name,
-        input_text=input_text,
-        reserved_output_tokens=context.router_max_tokens,
-        allow_reserve=False,
-    )
-    if budget.status == "blocked":
-        usage.budget_exhausted = True
-        return None, usage, budget_warnings, None
-
-    started_ns = time.monotonic_ns()
-    raw = None
-    output_text = ""
-    try:
-        _trace(
-            "router",
-            "Semantic interpretation started",
-            {
-                "kind": "router_activity",
-                "operation": "semantic_interpreter",
-                "status": "started",
-            },
+    validation_issues: tuple[str, ...] = ()
+    budget_warnings = list(state.get("budget_warnings", []))
+    last_error: BaseException | None = None
+    proposal: SemanticInterpretation | None = None
+    for attempt in range(2):
+        role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
+        adapter = (
+            context.semantic_interpreter if attempt == 0 else context.semantic_reviewer
         )
-        structured = context.semantic_interpreter.invoke(messages)
-        payload, raw = structured_result_payload(structured)
-        interpretation = SemanticInterpretation.model_validate(payload)
-        output_text = interpretation.model_dump_json()
+        messages = (
+            build_semantic_reviewer_messages(
+                context.semantic_prompt,
+                user_task,
+                proposal,
+                validation_issues,
+            )
+            if attempt == 1
+            else build_semantic_interpreter_messages(
+                context.semantic_prompt,
+                user_task,
+                validation_issues,
+            )
+        )
+        schema_model = SemanticInterpretation if attempt == 0 else SemanticReview
+        input_text = _serialized_structured_input(messages, schema_model)
+        semantic_state = dict(state)
+        semantic_state["token_usage"] = usage.model_dump()
+        semantic_state["budget_warnings"] = budget_warnings
+        budget, budget_warnings = preflight_budget(
+            context,
+            semantic_state,
+            role=role,
+            model=context.semantic_model_name,
+            input_text=input_text,
+            reserved_output_tokens=context.router_max_tokens,
+            allow_reserve=False,
+        )
+        if budget.status == "blocked":
+            usage.budget_exhausted = True
+            return None, usage, budget_warnings, last_error
+
+        started_ns = time.monotonic_ns()
+        raw = None
+        output_text = ""
+        try:
+            _trace(
+                "router",
+                "Semantic interpretation started",
+                {
+                    "kind": "router_activity",
+                    "operation": "semantic_interpreter",
+                    "status": "started",
+                    "attempt": attempt + 1,
+                },
+            )
+            structured = adapter.invoke(messages)
+            payload, raw = structured_result_payload(structured)
+            if attempt == 0:
+                interpretation = SemanticInterpretation.model_validate(payload)
+                output_text = interpretation.model_dump_json()
+            else:
+                review = SemanticReview.model_validate(payload)
+                output_text = review.model_dump_json()
+                interpretation = SemanticInterpretation(
+                    semantic_goal=review.semantic_goal,
+                    outcome_hypotheses=[review.outcome_hypothesis],
+                )
+            if attempt == 0:
+                proposal = interpretation
+        except BaseException as error:
+            if _is_fatal_exception(error):
+                raise
+            duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+            schema_issues = _validation_issue_types(error)
+            usage = append_llm_usage(
+                usage,
+                role=role,
+                model=context.semantic_model_name,
+                response=raw,
+                input_text=input_text,
+                output_text=output_text,
+                budget_tokens=context.task_token_budget,
+                duration_ms=duration_ms,
+                status="failed",
+                price_catalog=context.price_catalog,
+            )
+            if attempt == 0 and schema_issues:
+                validation_issues = tuple(
+                    "schema_validation:"
+                    + ".".join(issue["location"])
+                    + ":"
+                    + str(issue["type"])
+                    for issue in schema_issues
+                )
+                last_error = error
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_interpretation_rejected",
+                    "classify",
+                    {"attempt": 1, "issues": list(validation_issues)},
+                )
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_interpretation_retried",
+                    "classify",
+                    {"issues": list(validation_issues)},
+                )
+                continue
+            record_event(
+                context,
+                state,
+                "routing.semantic_interpreter_failed",
+                "classify",
+                {
+                    "attempt": attempt + 1,
+                    "error_type": type(error).__name__,
+                    "validation_issues": schema_issues,
+                },
+            )
+            _trace(
+                "router",
+                "Semantic interpretation failed",
+                {
+                    "kind": "router_activity",
+                    "operation": "semantic_interpreter",
+                    "status": "failed",
+                    "error_type": type(error).__name__,
+                },
+            )
+            return None, usage, budget_warnings, error
+
         validation = validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,
         )
+        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:
+            usage = append_llm_usage(
+                usage,
+                role=role,
+                model=context.semantic_model_name,
+                response=raw,
+                input_text=input_text,
+                output_text=output_text,
+                budget_tokens=context.task_token_budget,
+                duration_ms=duration_ms,
+                status="failed",
+                price_catalog=context.price_catalog,
+            )
             record_event(
                 context,
                 state,
                 "routing.semantic_interpretation_rejected",
                 "classify",
-                {"issues": list(validation.issues)},
+                {"attempt": attempt + 1, "issues": list(validation.issues)},
             )
-            raise ValueError("semantic interpretation failed evidence validation")
-        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+            last_error = ValueError(
+                "semantic interpretation failed evidence validation"
+            )
+            if attempt == 0:
+                validation_issues = validation.issues
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_interpretation_retried",
+                    "classify",
+                    {"issues": list(validation_issues)},
+                )
+                continue
+            record_event(
+                context,
+                state,
+                "routing.semantic_interpreter_failed",
+                "classify",
+                {
+                    "attempt": attempt + 1,
+                    "error_type": type(last_error).__name__,
+                    "validation_issues": list(validation.issues),
+                },
+            )
+            return None, usage, budget_warnings, last_error
+
         usage = append_llm_usage(
             usage,
-            role="semantic_interpreter",
-            model=context.router_model_name,
+            role=role,
+            model=context.semantic_model_name,
             response=raw,
             input_text=input_text,
             output_text=output_text,
@@ -151,12 +290,29 @@ def _invoke_semantic_interpreter(
             duration_ms=duration_ms,
             price_catalog=context.price_catalog,
         )
+        if attempt == 0:
+            record_event(
+                context,
+                state,
+                "routing.semantic_interpretation_proposed",
+                "classify",
+                {
+                    "hypothesis_count": len(interpretation.outcome_hypotheses),
+                    "evidence_dimensions": [
+                        sorted({item.dimension for item in hypothesis.evidence})
+                        for hypothesis in interpretation.outcome_hypotheses
+                    ],
+                },
+            )
+            continue
+
         record_event(
             context,
             state,
             "routing.semantic_interpretation_accepted",
             "classify",
             {
+                "attempt": attempt + 1,
                 "hypothesis_count": len(interpretation.outcome_hypotheses),
                 "evidence_dimensions": [
                     sorted({item.dimension for item in hypothesis.evidence})
@@ -172,46 +328,12 @@ def _invoke_semantic_interpreter(
                 "operation": "semantic_interpreter",
                 "status": "completed",
                 "duration_ms": duration_ms,
+                "attempt": attempt + 1,
             },
         )
         return interpretation, usage, budget_warnings, None
-    except BaseException as error:
-        if _is_fatal_exception(error):
-            raise
-        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
-        record_event(
-            context,
-            state,
-            "routing.semantic_interpreter_failed",
-            "classify",
-            {
-                "error_type": type(error).__name__,
-                "validation_issues": _validation_issue_types(error),
-            },
-        )
-        usage = append_llm_usage(
-            usage,
-            role="semantic_interpreter",
-            model=context.router_model_name,
-            response=raw,
-            input_text=input_text,
-            output_text=output_text,
-            budget_tokens=context.task_token_budget,
-            duration_ms=duration_ms,
-            status="failed",
-            price_catalog=context.price_catalog,
-        )
-        _trace(
-            "router",
-            "Semantic interpretation failed",
-            {
-                "kind": "router_activity",
-                "operation": "semantic_interpreter",
-                "status": "failed",
-                "error_type": type(error).__name__,
-            },
-        )
-        return None, usage, budget_warnings, error
+
+    return None, usage, budget_warnings, last_error
 
 
 def _invoke_intent_router(

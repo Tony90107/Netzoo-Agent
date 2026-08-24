@@ -167,6 +167,84 @@ def test_partial_mirna_sample_network_uniquely_suggests_lioness_puma():
     assert result.hypothesis_actions == ["run_lioness_puma"]
 
 
+def test_explicit_outcome_evidence_outranks_a_conflicting_inferred_operation():
+    result = match_outcome_hypotheses(
+        [
+            OutcomeHypothesis(
+                outcome=outcome(
+                    operation="acquire",
+                    entity_types=["mirna"],
+                    target_types=["unknown"],
+                ),
+                confidence=0.9,
+                evidence=[
+                    OutcomeEvidence(
+                        dimension="operation",
+                        value="acquire",
+                        source="inferred",
+                        rationale="The surface verb was interpreted as acquisition.",
+                    ),
+                    OutcomeEvidence(
+                        dimension="artifact_type",
+                        value="regulatory_network",
+                        source="explicit",
+                        text_span="regulator network",
+                        rationale="The artifact is named by the user.",
+                    ),
+                    OutcomeEvidence(
+                        dimension="regulator_type",
+                        value="mirna",
+                        source="explicit",
+                        text_span="mi-RNA",
+                        rationale="The regulator type is named by the user.",
+                    ),
+                    OutcomeEvidence(
+                        dimension="granularity",
+                        value="sample_specific",
+                        source="explicit",
+                        text_span="sample specific",
+                        rationale="The granularity is named by the user.",
+                    ),
+                ],
+                assumptions=[],
+            )
+        ]
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_lioness_puma"]
+
+
+def test_explicit_evidence_fallback_stays_ambiguous_when_multiple_workflows_fit():
+    result = match_outcome_hypotheses(
+        [
+            OutcomeHypothesis(
+                outcome=outcome(
+                    operation="acquire",
+                    entity_types=[],
+                    regulator_types=[],
+                    target_types=[],
+                    granularity="aggregate",
+                ),
+                confidence=0.9,
+                evidence=[
+                    OutcomeEvidence(
+                        dimension="artifact_type",
+                        value="regulatory_network",
+                        source="explicit",
+                        text_span="regulatory network",
+                        rationale="Only the artifact family is explicit.",
+                    ),
+                ],
+                assumptions=[],
+            )
+        ]
+    )
+
+    assert result.status == "ambiguous"
+    assert result.matched_actions == []
+
+
 def test_generic_sample_network_keeps_all_lioness_families_tied():
     result = match_outcome_hypotheses(
         [
