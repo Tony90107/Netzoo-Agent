@@ -259,8 +259,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "tf_gene_regulation"}),
             handoff_contract=(
-                "LIONESS-PANDA uses the expression matrix and PANDA-compatible "
-                "priors to derive sample-specific TF-to-gene networks."
+                "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
+                "motif and PPI priors to internally infer the aggregate PANDA "
+                "network and derive sample-specific TF-to-gene networks. The PANDA "
+                "predecessor is a guidance prerequisite, not a direct file handoff."
             ),
         ),
     ),
@@ -298,8 +300,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
             handoff_contract=(
-                "LIONESS-PUMA uses the expression matrix and PUMA-compatible "
-                "priors to derive sample-specific TF/miRNA-to-gene networks."
+                "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
+                "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
+                "network and derive sample-specific TF/miRNA-to-gene networks. The "
+                "PUMA predecessor is a guidance prerequisite, not a direct file handoff."
             ),
         ),
     ),

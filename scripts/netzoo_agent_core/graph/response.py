@@ -64,17 +64,6 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_preference_confirmation_response(plan))
             ]
         }
-    if plan.status == "respond_only" and decision.clarification_question:
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        f"{decision.reason}\n\n{decision.clarification_question}\n\n"
-                        "No files were inspected and no analysis ran."
-                    )
-                )
-            ]
-        }
     if plan_evaluation and plan_evaluation.status == "rejected":
         _trace("done", "The Plan Evaluator blocked execution")
         return {

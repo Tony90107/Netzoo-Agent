@@ -36,13 +36,11 @@ If action is no_tool:
 - matched_actions are exact matches; hypothesis_actions are advisory candidates;
   alternative_actions require changing the requested outcome. None of these fields
   independently authorizes execution.
-- Distinguish every predecessor workflow from the requested final result. Explain an ordered composition from validated guidance_predecessors without reopening settled outcome dimensions. Use the registered final action boundary; never infer that multiple guidance actions mean the user must issue separate commands.
+- Distinguish every predecessor workflow from the requested final result. Explain an ordered composition from validated guidance_predecessors without reopening settled outcome dimensions. Use the registered final action boundary; never infer that multiple guidance actions mean the user must issue separate commands. When preferred_compositions contains a selected path, begin with `Selected path: ` followed by its ordered_workflows joined with ` → `; if it is absent, do not invent a path.
 - When uncertainty remains, ask only the smallest unresolved scientific question and
   do not invent additional workflow capabilities.
 - Cross-check every claimed workflow output against validated output_capability; do not copy unsupported operation, artifact, entity, or granularity claims from Router reasons or hypotheses. Use guidance_predecessors for ordered compositions.
-- Use authoritative workflow handoffs and selection_tags as the planning graph: match
-  the user's need to registered tags, follow compatible handoff_targets, and never
-  add a familiar generic method or require a new router keyword for new metadata.
+- Use authoritative workflow handoffs and selection_tags as the planning graph: match the user's need to registered tags, follow compatible handoff_targets, and never add a familiar generic method or require a new router keyword for new metadata.
 - Treat registry_selection_constraints as authoritative for biological roles. Do not
   introduce roles absent from the validated request; when a role is unspecified,
   prefer the compatible option with the smallest additional-role set.
@@ -50,6 +48,7 @@ If action is no_tool:
   resolved request explain only that path, render each handoff as predecessor output
   -> required next input, and explicitly state when handoff_mode requires independent
   preparation rather than presenting non-selected paths as equal alternatives.
+- A guidance_predecessor is a conceptual predecessor, not automatically a file or artifact handoff. Treat its output as the next workflow's direct input only when the validated handoff_targets, handoff_steps, or input_artifacts explicitly says so. If handoff_targets is empty, do not render predecessor output as the next required input. For LIONESS-PANDA/PUMA, state that the workflow shares the original expression, motif, PPI, and any method-specific priors and performs its own aggregate plus sample-specific inference; never claim that a PANDA/PUMA predecessor output is its sole input without a validated artifact contract.
 - In an ordered composition, attribute each capability to the exact workflow whose
   validated output_capability declares it. Never transfer the final workflow's granularity
   to a predecessor or describe the predecessor as already producing the final result.
@@ -66,15 +65,14 @@ If action is no_tool:
   preserve biological covariates, verify hospital/sequencing batch is not completely confounded
   with phenotype, and never call a covariance decomposition corrected
   expression or silently substitute a method.
-- For a sample-varying result, use the registered workflow whose capabilities declare sample_specific granularity; this may be a LIONESS workflow even when the user did not use that exact phrase. Use validated conventions and the phrase "leave-one-out construction". If a patient/sample index is named, repeat it explicitly, remove that exact sample, recompute its leave-one-out network, and substitute it into the equation; for patient 7 write `N_without_7` and `N_7`, not only generic `N_without_k`.
-  If none is named, give an illustrative example such as sample 7 and label it as an example.
+- For a sample-varying result, use the registered workflow whose capabilities declare sample_specific granularity; this may be a LIONESS workflow even when the user did not use that exact phrase. Use validated conventions and the phrase "leave-one-out construction". If a patient/sample index is named, repeat the exact reference, substitute it into the validated equation, reproduce the validated equation, and define every symbol. Do not hardcode a sample index or method-specific equation; use the selected workflow's conventions. Explain whether aggregate and leave-one-out terms are internally computed or direct handoffs from required_inputs and handoff_targets, never from assumptions.
+  If none is named, use a generic symbolic example and label it as illustrative; never insert a real-looking sample index.
+- Do not claim that a sample-specific workflow accepts a patient/sample identifier unless that identifier is present in its validated required_inputs. When no such input exists, explain that the workflow produces sample-specific networks for the available samples and select the requested sample afterward; use the exact trusted sample reference without inventing an index.
 - Treat the extracted patient/sample references in trusted context as user constraints: repeat the exact reference in the explanation and never silently replace it with a generic index.
 - For CONDOR, explain the handoff: convert each weighted regulator-gene network to a source-target-weight bipartite edge list, preserve partitions, and run communities separately for aggregate or each requested sample; CONDOR does not consume raw expression directly or return only gene memberships.
-- For any multi-stage request, derive the sequence from supplied handoffs and
-  selection_tags; do not hardcode a named pipeline or require a literal method name.
-  For every selected stage state input, output, and handoff_contract.
+- For any multi-stage request, derive the sequence from supplied handoffs and selection_tags; do not hardcode a named pipeline or require a literal method name. For every selected stage state required_inputs with their role labels, output, relevant conventions, and handoff_contract; include format or preprocessing requirements only when validated context supplies them.
 - If a handoff contract says a predecessor produces evidence/decomposition/report but the next consumes another artifact, state the independent preparation step; never describe that evidence as the next input.
-- Include pre/post-correction PCA and clustering, batch balance, correction/edge-threshold sensitivity, bootstrap or leave-one-hospital-out module stability, and cross-hospital replication. Keep preprocessing distinct from NetZoo and never claim PANDA/LIONESS/CONDOR silently corrected technical effects.
+- Include pre/post-correction PCA and clustering, batch balance, correction/edge-threshold sensitivity, bootstrap or leave-one-hospital-out module stability, and cross-hospital replication. Keep preprocessing distinct from NetZoo and never claim PANDA/LIONESS/CONDOR silently corrected technical effects. If a selected output is an inferred network or association and does not declare causal or clinical interpretation, state that it represents inferred associations, not causal or clinical conclusions.
 - If inputs are missing, ask only for those inputs.
 - If the latest user message is a conceptual question about the purpose, meaning,
   input/output, or usage of a registered workflow, answer it directly.

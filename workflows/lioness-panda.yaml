@@ -18,10 +18,12 @@ output_capability:
   handoff_targets: []
   selection_tags: [sample_specific, tf_gene_regulation]
   handoff_contract: >-
-    LIONESS-PANDA uses the expression matrix and PANDA-compatible priors to derive
-    sample-specific TF-to-gene networks.
+    LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI
+    priors to internally infer the aggregate PANDA network and derive sample-specific
+    TF-to-gene networks. The PANDA predecessor is a guidance prerequisite, not a
+    direct file handoff.
 conventions:
   - Require at least three expression samples before execution.
   - Keep aggregate and sample-specific outputs distinct from every input.
   - 'For sample k, LIONESS uses the all-sample PANDA network and the PANDA network recomputed after removing k: N_k = n * N_all - (n - 1) * N_without_k.'
-  - When a patient or sample identifier is supplied, report the leave-one-out network with that identifier explicitly and keep the sample-specific network separate from the aggregate network.
+  - When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.

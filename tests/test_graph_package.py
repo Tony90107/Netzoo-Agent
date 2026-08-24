@@ -136,7 +136,8 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "Do not mention whether" in result.response
     assert "preserve that order as a composition" in result.response
     assert "leave-one-out construction" in result.response
-    assert "N_without_7" in result.response
+    assert "N_without_7" not in result.response
+    assert "sample 7" not in result.response
     assert "source-target-weight bipartite edge list" in result.response
     assert "bootstrap or leave-one-hospital-out" in result.response
     assert "not completely confounded" in result.response
@@ -145,6 +146,17 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "registered final action" in result.response
     assert "must issue separate commands" in result.response
     assert "may be a LIONESS workflow" in result.response
+    assert "A guidance_predecessor is a conceptual predecessor" in result.response
+    assert "never claim that a PANDA/PUMA predecessor output is its sole input" in result.response
+    assert "produces sample-specific networks for the" in result.response
+    assert "If handoff_targets is empty, do not render predecessor output as the next required input" in result.response
+    assert "select the requested sample afterward" in result.response
+    assert "reproduce the validated equation" in result.response
+    assert "define every symbol" in result.response
+    assert "Do not hardcode a sample index" in result.response
+    assert "Selected path:" in result.response
+    assert "required_inputs with their role labels" in result.response
+    assert "inferred associations, not causal or clinical conclusions" in result.response
     assert "without an explicit sample-specific request" not in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
@@ -195,7 +207,7 @@ def test_ambiguous_guidance_reaches_response_model():
         reason="The Router returned competing granularities.",
         capability_match_status="ambiguous",
         hypothesis_actions=["run_lioness_puma"],
-        clarification_question=None,
+        clarification_question="Should the result be aggregate or sample-specific?",
     )
     plan = legacy_agent.WorkflowPlan(
         workflow="NO-TOOL",
@@ -255,6 +267,41 @@ def test_ambiguous_guidance_reaches_response_model():
     assert '"required_inputs": [' in response_input
     assert '"output_roles": [' in response_input
     assert '"conventions": [' in response_input
+
+
+def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The Router returned competing granularities.",
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Answer a workflow guidance question.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = legacy_agent.build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "request_mode": "guidance",
+                "relationship": "alternatives",
+                "candidates": ["run_puma", "run_lioness_puma"],
+            },
+        }
+    )
+
+    assert prompt.kind == "completed"
+    assert "Enter a follow-up question" in prompt.question
 
 
 def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules():

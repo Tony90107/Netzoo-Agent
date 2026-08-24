@@ -74,6 +74,28 @@ def test_registered_capability_metadata_is_the_only_pipeline_source():
     assert condor.handoff_targets == []
 
 
+def test_lioness_panda_contract_describes_internal_inference_inputs():
+    policy = ProjectPolicyLoader().load()
+    lioness = policy.workflows["run_lioness_panda"]
+    contract = lioness.output_capability.handoff_contract
+
+    assert lioness.required_inputs == [
+        "expression_file",
+        "motif_file",
+        "ppi_file",
+        "output_file",
+        "lioness_output",
+    ]
+    assert "motif and PPI priors" in contract
+    assert "internally" in contract
+    assert "not a direct file handoff" in contract
+
+    puma_contract = policy.workflows["run_lioness_puma"].output_capability.handoff_contract
+    assert "motif, PPI, and miRNA priors" in puma_contract
+    assert "internally" in puma_contract
+    assert "not a direct file handoff" in puma_contract
+
+
 def test_registry_generates_role_constraints_and_preserves_handoff_contracts():
     policy = ProjectPolicyLoader().load()
     decision = TaskDecision(

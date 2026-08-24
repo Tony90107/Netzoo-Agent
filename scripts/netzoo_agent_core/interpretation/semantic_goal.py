@@ -20,17 +20,33 @@ def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) 
         outcome_label = f"{regulators} regulatory network"
     else:
         outcome_label = outcome.artifact_type.replace("_", " ")
+    match_status = decision.capability_match_status or semantic_goal.get("match_status")
+    show_candidates = not (
+        semantic_goal.get("request_mode") == "guidance"
+        and match_status != "exact"
+    )
     workflows = [
-        workflow_name(action) for action in semantic_goal.get("candidates") or []
+        workflow_name(action)
+        for action in (semantic_goal.get("candidates") or [] if show_candidates else [])
+    ]
+    workflow_path = [
+        workflow_name(action)
+        for action in (
+            decision.recommended_actions
+            if match_status == "exact"
+            else []
+        )
     ]
     return {
         "kind": "classification",
         "outcome": outcome_label,
         "workflows": list(dict.fromkeys(workflows)),
+        "workflow_path": list(dict.fromkeys(workflow_path)),
         "workflow_scope": (
             "final_result"
             if decision.action == "no_tool"
             and semantic_goal.get("request_mode") == "guidance"
+            and match_status == "exact"
             and workflows
             else "composition"
             if semantic_goal.get("relationship") == "composition"
@@ -39,9 +55,23 @@ def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) 
     }
 
 
-def next_step_progress_detail(decision: TaskDecision) -> dict:
+def next_step_progress_detail(
+    decision: TaskDecision,
+    semantic_goal: dict | None = None,
+) -> dict:
     """Return public next-step facts without exposing private route reasoning."""
-    if decision.clarification_question:
+    # An ambiguous capability match is still answerable when the user asked for
+    # guidance.  In that case the response model explains the compatible
+    # workflows; presenting its internal clarification hint as a CLI blocker
+    # incorrectly stops the conversation before the explanation is shown.
+    request_mode = (semantic_goal or {}).get("request_mode")
+    is_guidance = request_mode == "guidance" or (
+        request_mode == "unknown"
+        and decision.action == "no_tool"
+        and not decision.should_execute
+        and decision.intent_type == "answer_question"
+    )
+    if decision.clarification_question and not is_guidance:
         return {
             "kind": "next_step",
             "status": "clarification_required",

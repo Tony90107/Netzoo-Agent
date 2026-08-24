@@ -18,10 +18,12 @@ output_capability:
   handoff_targets: []
   selection_tags: [sample_specific, mirna_regulation]
   handoff_contract: >-
-    LIONESS-PUMA uses the expression matrix and PUMA-compatible priors to derive
-    sample-specific TF/miRNA-to-gene networks.
+    LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI,
+    and miRNA priors to internally infer the aggregate PUMA network and derive
+    sample-specific TF/miRNA-to-gene networks. The PUMA predecessor is a guidance
+    prerequisite, not a direct file handoff.
 conventions:
   - Require at least three expression samples and a validated one-ID-per-line miRNA list.
   - Keep aggregate and sample-specific outputs distinct from every input.
   - 'For sample k, LIONESS uses the all-sample PUMA network and the PUMA network recomputed after removing k: N_k = n * N_all - (n - 1) * N_without_k.'
-  - When a patient or sample identifier is supplied, report the leave-one-out network with that identifier explicitly and keep the sample-specific network separate from the aggregate network.
+  - When a patient or sample identifier is supplied, produce sample-specific networks for all available samples, select the requested sample afterward, and keep it separate from the aggregate network.
