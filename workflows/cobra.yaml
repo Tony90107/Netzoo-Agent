@@ -14,6 +14,14 @@ output_capability:
   regulator_types: []
   target_types: []
   guidance_predecessors: []
+  input_artifacts: [expression_matrix]
+  handoff_targets: [run_panda]
+  selection_tags: [covariate_association, hospital_effect_assessment, sequencing_batch_effect_assessment]
+  handoff_contract: >-
+    COBRA consumes a gene-by-sample expression matrix and numeric sample covariates,
+    then produces a covariate-associated covariance decomposition. This output is
+    evidence for covariate handling, not a replacement expression matrix; PANDA must
+    receive an independently prepared corrected gene-by-sample matrix.
 conventions:
   - Expression must be a labeled gene-by-sample matrix with more genes than samples.
   - Design rows must use exactly the expression sample IDs and numeric covariates.

@@ -123,70 +123,8 @@ def is_workflow_selection_request(task: str) -> bool:
 
 
 def infer_goal_capability_match(task: str) -> _GoalCapabilityMatch:
-    """Classify whether matching registered actions are steps or alternatives."""
-    normalized = task.casefold()
-    if re.search(
-        r"\bcobra\b|covariate.{0,32}(?:co[- ]?expression|correlation)|(?:batch|協變數).{0,32}(?:co[- ]?expression|相關)",
-        normalized,
-        re.IGNORECASE,
-    ):
-        return _GoalCapabilityMatch(["run_cobra"], "single")
-    sample_specific = bool(
-        re.search(
-            r"(sample[\s_-]*(?:specific|spefic|specfic)|per[\s_-]*sample|"
-            r"individual[\s_-]*specific|樣本(?:特異|特定)|個體(?:特異|特定|化))",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-    )
-    mirna = bool(
-        re.search(
-            r"(mi[\s_-]*rna|mirna|micro[\s_-]*rna|微小\s*rna)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-    )
-    coexpression = bool(
-        re.search(
-            r"(co[\s_-]*expression|correlation\s+(?:network|matrix)|共表現|共同表現)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-    )
-    regulatory_network = bool(
-        re.search(
-            r"(regulat(?:ory|ion|or).{0,20}network|gene.{0,12}network|"
-            r"調控.{0,8}網路|基因.{0,8}網路|network\s+inference)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-    )
-    tf = bool(
-        re.search(
-            r"(transcription\s+factor|\btf(?:s)?\b|轉錄因子)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-    )
-    bipartite = bool(re.search(r"(bipartite|二分|雙部)", normalized))
-    communities = bool(re.search(r"(communit(?:y|ies)|modules?|社群|模組)", normalized))
-
-    # Recommendations describe the conceptual composition. The final item is the
-    # end-to-end execution action selected when the user asks the agent to do it.
-    if sample_specific and mirna and regulatory_network:
-        return _GoalCapabilityMatch(["run_puma", "run_lioness_puma"], "composition")
-    if mirna and regulatory_network:
-        return _GoalCapabilityMatch(["run_puma"], "single")
-    if sample_specific and tf and regulatory_network:
-        return _GoalCapabilityMatch(["run_panda", "run_lioness_panda"], "composition")
-    if sample_specific and regulatory_network:
-        return _GoalCapabilityMatch(["run_lioness_panda", "run_lioness_puma"], "alternatives")
-    if tf and regulatory_network:
-        return _GoalCapabilityMatch(["run_panda"], "single")
-    if sample_specific and coexpression:
-        return _GoalCapabilityMatch(["run_lioness_coexpression"], "single")
-    if bipartite and communities:
-        return _GoalCapabilityMatch(["run_condor"], "single")
+    """Return no domain guess; semantic interpretation owns workflow selection."""
+    del task
     return _GoalCapabilityMatch([], "single")
 
 
@@ -196,18 +134,8 @@ def infer_goal_capabilities(task: str) -> list[str]:
 
 
 def infer_advisory_capabilities(task: str) -> list[str]:
-    """Recommend a workflow for guidance questions without authorizing execution."""
-    recommendations = infer_goal_capabilities(task)
-    if recommendations:
-        return recommendations
-    normalized = task.casefold()
-    if re.search(
-        r"(sample[\s_-]*(?:specific|spefic|specfic)|per[\s_-]*sample).{0,40}"
-        r"(mi[\s_-]*rna|mirna|micro[\s_-]*rna)",
-        normalized,
-        flags=re.IGNORECASE,
-    ):
-        return ["run_puma", "run_lioness_puma"]
+    """Keep advisory routing fail-closed until semantic matching is available."""
+    del task
     return []
 
 

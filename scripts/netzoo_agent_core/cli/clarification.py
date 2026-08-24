@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
+
 from ..contracts import (
     ClarificationInputError,
     InputEvidence,
@@ -46,6 +48,14 @@ def _candidate_selection(evidence: InputEvidence, value: str) -> str:
     raise ClarificationInputError(
         f"{evidence.field} has no candidate numbered {cleaned}."
     )
+
+def _action_for_registered_choice(value: str) -> str | None:
+    normalized = value.casefold()
+    for action in registered_actions_for_family("lioness"):
+        definition = ACTION_DEFINITIONS[action]
+        if definition.workflow.casefold() in normalized or action.casefold() in normalized:
+            return action
+    return None
 
 def parse_clarification_assignments(
     plan: WorkflowPlan,
@@ -147,39 +157,15 @@ def resolve_clarification(plan: WorkflowPlan, answer: str) -> str:
     )
     if mode_evidence is not None:
         stripped = answer.strip().strip("'\"")
-        selected = ""
-        if stripped.isdigit():
-            index = int(stripped) - 1
-            if 0 <= index < len(mode_evidence.candidates):
-                selected = mode_evidence.candidates[index]
-        else:
-            normalized = stripped.casefold()
-            if "panda" in normalized:
-                selected = mode_evidence.candidates[0]
-            elif "puma" in normalized:
-                selected = mode_evidence.candidates[1]
-            elif re.search(
-                r"(co[- _]?expression|coexpression|共表現|共同表現)",
-                normalized,
-                flags=re.IGNORECASE,
-            ):
-                selected = mode_evidence.candidates[2]
-        if not selected:
+        selected = _candidate_selection(mode_evidence, stripped)
+        selected_action = _action_for_registered_choice(selected)
+        if selected_action is None:
             return (
                 "Continue the previous LIONESS task. The LIONESS base method is still "
                 f"unresolved because the user answered: {answer}. Ask them to choose "
-                "LIONESS PANDA, LIONESS PUMA, or LIONESS co-expression."
+                "one of the registered LIONESS-compatible workflow options."
             )
-
-        if "panda" in selected.casefold():
-            workflow_name = "LIONESS PANDA"
-            selected_action = "run_lioness_panda"
-        elif "puma" in selected.casefold():
-            workflow_name = "LIONESS PUMA"
-            selected_action = "run_lioness_puma"
-        else:
-            workflow_name = "LIONESS co-expression"
-            selected_action = "run_lioness_coexpression"
+        workflow_name = ACTION_DEFINITIONS[selected_action].workflow
         decision = TaskDecision.model_validate(plan.decision)
         known_fields = []
         for field_name in (

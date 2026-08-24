@@ -14,6 +14,13 @@ output_capability:
   regulator_types: [tf]
   target_types: [gene]
   guidance_predecessors: []
+  input_artifacts: [expression_matrix]
+  handoff_targets: [run_condor]
+  selection_tags: [tf_gene_regulation, aggregate_network]
+  handoff_contract: >-
+    PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors,
+    and produces a weighted TF-to-gene regulatory network. Convert that network to
+    a source-target-weight bipartite edge list before handing it to CONDOR.
 conventions:
   - Use a gene-by-sample expression matrix and compatible motif and PPI identifiers.
   - Never substitute a co-expression matrix for the expression input of the current wrapper.

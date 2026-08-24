@@ -13,10 +13,9 @@ MAX_RECOVERY_ATTEMPTS = 1
 TRANSIENT_TRACE_MIN_SECONDS = 0.6
 USER_VISIBLE_OUTPUT_LANGUAGE = "English"
 LIONESS_MODE_QUESTION = (
-    "Which LIONESS mode should run? Choose 1, 2, or 3. "
-    "If expression is the only available input, option 3 is usually appropriate. "
-    "After selection, the agent will discover and validate remaining inputs and "
-    "request authorization before actual execution."
+    "Which registered LIONESS-compatible workflow should run? Choose one of the "
+    "options below. After selection, the agent will discover and validate remaining "
+    "inputs and request authorization before actual execution."
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SESSION_ROOT = PROJECT_ROOT / ".netzoo" / "sessions"

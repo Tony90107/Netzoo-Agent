@@ -42,6 +42,52 @@ front matter；本文用來解釋維護原則，不會整段送進模型。
   明確輸入 `/execute` 後才能執行，輸入 `/planning` 會撤銷該授權。
 - 所有使用者可見 agent 輸出固定為英文。
 
+## Codebase knowledge graph
+
+This repository has a persistent Codebase Memory index in `.codebase-memory/`.
+Its project name is
+`Users-chenzhonghan-Documents-LLM-AGENT-netzoo_agent`.
+
+At the beginning of every session that involves code discovery, architecture,
+dependencies, callers, impact analysis, or refactoring:
+
+1. Call `list_projects` and select the project above.
+2. Call `index_status` to confirm the graph is ready and note its generation and
+   any parse-partial, skipped, stale, or excluded coverage.
+3. Choose an evidence tier: Verify by default; Auditor for exhaustive or
+   negative claims; Scout only for quick positive lookups.
+
+For structural code discovery, query the graph before scanning files or loading
+large source files into context:
+
+- Use `search_graph` to locate functions, methods, classes, routes, and variables.
+- Use `trace_path(direction="inbound")` for callers and
+  `trace_path(direction="outbound")` for dependencies.
+- Use `detect_changes(direction="inbound")` for change-impact and blast-radius
+  analysis.
+- Use `trace_path(mode="cross_service")` or Cypher through `query_graph` for
+  HTTP, async, and cross-service paths.
+- Use `get_architecture` for the project overview, layers, boundaries, routes,
+  clusters, and hotspots.
+- Use `get_code_snippet` only after resolving the exact qualified name through
+  `search_graph`.
+- Check `has_more`, `next`, or `truncated` on every graph response and paginate
+  before claiming the result is complete.
+- Before exhaustive or negative claims, run `check_index_coverage` for every
+  cited path and relevant scope. Read the reported source ranges directly when
+  coverage is partial, skipped, stale, or excluded.
+
+Do not run broad `grep`, `find`, glob, or repository-wide file reads for a
+structural question the graph can answer. This is a token-efficiency rule, not
+just a preference. Fall back to targeted source search only for string literals,
+error messages, config or non-code files, graph coverage gaps, or exact source
+verification after the graph has identified candidate paths.
+
+After large code changes, rebuild the index in `full` mode with persistence
+enabled so `.codebase-memory/graph.db.zst` stays shareable and current. After
+small indexed code changes, allow the watcher to refresh the graph, then confirm
+freshness with `index_status` before relying on it.
+
 ## 維護方式
 
 修改 workflow 所需 inputs 或 validation steps 時，必須更新 `workflow_registry.py`、

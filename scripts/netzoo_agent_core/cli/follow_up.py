@@ -61,6 +61,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     semantic_goal = state.get("semantic_goal") or {}
     semantic_candidates = semantic_goal.get("candidates") or []
     semantic_relationship = semantic_goal.get("relationship")
+    request_mode = semantic_goal.get("request_mode")
 
     if plan_evaluation and plan_evaluation.status == "rejected":
         return NextTurnPrompt(
@@ -84,6 +85,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     if (
         decision.capability_match_status == "unsupported"
         and decision.alternative_actions
+        and request_mode != "guidance"
     ):
         action = decision.alternative_actions[0]
         capability = OUTPUT_CAPABILITIES[action]
@@ -115,6 +117,16 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             kind="recommended_workflow",
             question=_ui_text(
                 "Enter the requested clarification or describe another NetZoo goal."
+            ),
+        )
+
+    if decision.action == "no_tool" and request_mode == "guidance":
+        return NextTurnPrompt(
+            kind="completed",
+            question=_ui_text(
+                "Enter a follow-up question, provide inputs only if you want to "
+                "execute the complete recommended pipeline, or describe another "
+                "NetZoo goal."
             ),
         )
 

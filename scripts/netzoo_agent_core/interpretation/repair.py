@@ -5,9 +5,11 @@ from __future__ import annotations
 import re
 
 from workflow_registry import (
+    ACTION_DEFINITIONS,
     LOCAL_WORKFLOW_ACTIONS,
     OUTPUT_CAPABILITIES,
     REQUIRED_INPUTS,
+    registered_actions_for_family,
 )
 
 from ..contracts import (
@@ -42,9 +44,11 @@ def _lioness_mode_plan(
 ) -> WorkflowPlan:
     """Build a resumable mode-selection step without guessing the LIONESS method."""
     candidates = [
-        _ui_text("LIONESS PANDA - expression + motif/prior + PPI"),
-        _ui_text("LIONESS PUMA - expression + TF/miRNA prior + PPI + miRNA list"),
-        _ui_text("LIONESS co-expression - expression only"),
+        _ui_text(
+            f"{ACTION_DEFINITIONS[action].workflow} - "
+            f"{ACTION_DEFINITIONS[action].memory_metadata.get('base_method', 'registered base method')}"
+        )
+        for action in registered_actions_for_family("lioness")
     ]
     question = _ui_text(LIONESS_MODE_QUESTION)
     mode_decision = decision.model_copy(
@@ -66,8 +70,8 @@ def _lioness_mode_plan(
                 field="lioness_mode",
                 status="missing",
                 reason=_ui_text(
-                    "LIONESS needs an explicit base method because PANDA, PUMA, and "
-                    "co-expression require different inputs and produce different networks."
+                    "The registered LIONESS variants require different inputs and "
+                    "produce different network artifacts; choose the compatible variant."
                 ),
                 candidates=candidates,
             )

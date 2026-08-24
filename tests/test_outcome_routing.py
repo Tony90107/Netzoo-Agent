@@ -171,6 +171,7 @@ def test_task_decision_is_assembled_from_registry_match_then_narrow_intent(
     expected_execute: bool,
 ):
     interpretation = SemanticInterpretation(
+        request_mode="execute" if mode == "execute" else "guidance",
         semantic_goal="sample-specific miRNA regulatory network",
         outcome_hypotheses=[hypothesis()],
     )
@@ -196,6 +197,7 @@ def test_task_decision_is_assembled_from_registry_match_then_narrow_intent(
 
 def test_execution_intent_cannot_authorize_a_workflow_selection_question():
     interpretation = SemanticInterpretation(
+        request_mode="guidance",
         semantic_goal="sample-specific miRNA regulatory network",
         outcome_hypotheses=[hypothesis()],
     )
@@ -219,6 +221,48 @@ def test_execution_intent_cannot_authorize_a_workflow_selection_question():
     assert decision.action == "no_tool"
     assert decision.should_execute is False
     assert decision.intent_type == "answer_question"
+
+
+def test_semantic_guidance_mode_blocks_execution_even_when_intent_misfires():
+    """A model-classified plan must not become a tool call through verb overlap."""
+    interpretation = SemanticInterpretation(
+        request_mode="guidance",
+        semantic_goal="aggregate TF regulatory community modules",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=RequestedOutcome(
+                    operation="analyze",
+                    artifact_type="community_assignment",
+                    entity_types=["gene"],
+                    regulator_types=[],
+                    target_types=[],
+                    granularity="not_applicable",
+                    unresolved_dimensions=[],
+                ),
+                confidence=0.99,
+                evidence=[],
+            )
+        ],
+    )
+    match = match_outcome_hypotheses(interpretation.outcome_hypotheses)
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        IntentDecision(
+            mode="execute",
+            confidence=0.99,
+            reason="The intent model mistook an embedded scientific verb for authorization.",
+        ),
+        task=(
+            "我有一份不同醫院的 RNA-Seq 矩陣，請規劃最嚴謹的分析流水線，"
+            "列出步驟與演算法。"
+        ),
+    )
+
+    assert match.matched_actions == ["run_condor"]
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
+    assert "no analysis was authorized" in decision.reason
 
 
 def test_explicit_panda_name_wins_over_granularity_ambiguity():

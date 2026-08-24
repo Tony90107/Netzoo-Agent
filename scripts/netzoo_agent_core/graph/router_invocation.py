@@ -159,6 +159,7 @@ def _invoke_semantic_interpreter(
                 review = SemanticReview.model_validate(payload)
                 output_text = review.model_dump_json()
                 interpretation = SemanticInterpretation(
+                    request_mode=review.request_mode,
                     semantic_goal=review.semantic_goal,
                     outcome_hypotheses=[review.outcome_hypothesis],
                 )
@@ -515,7 +516,11 @@ def invoke_router(
     decision = hydrate_router_decision(decision, user_task)
     return _RouterInvocation(
         decision=decision,
-        routing_state=outcome_routing_state(decision, interpretation.semantic_goal),
+        routing_state=outcome_routing_state(
+            decision,
+            interpretation.semantic_goal,
+            interpretation.request_mode,
+        ),
         usage=usage,
         budget_warnings=budget_warnings,
         reason_code="intent_fallback" if intent_fallback else "semantic_registry_intent",

@@ -34,6 +34,7 @@ class _SemanticReviewAdapter:
             key=lambda hypothesis: hypothesis.confidence,
         )
         return SemanticReview(
+            request_mode=interpretation.request_mode,
             semantic_goal=interpretation.semantic_goal,
             outcome_hypothesis=primary,
         )
@@ -288,10 +289,7 @@ class CapabilityGateTests(unittest.TestCase):
         task = "假設我要做一個 sample spefic 的 mi-RNA的基因調控網路，我要怎麼做才好"
 
         self.assertTrue(agent.is_workflow_information_request(task))
-        self.assertEqual(
-            agent.infer_goal_capabilities(task),
-            ["run_puma", "run_lioness_puma"],
-        )
+        self.assertEqual(agent.infer_goal_capabilities(task), [])
         decision = agent.repair_router_decision(
             agent.TaskDecision(
                 action="no_tool",
@@ -308,21 +306,28 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(decision.intent_type, "answer_question")
         self.assertEqual(decision.recommended_actions, [])
 
-    def test_goal_match_marks_sample_specific_mirna_as_a_composition(self):
+    def test_legacy_goal_match_does_not_select_workflows_from_keywords(self):
         match = agent.routing_capability.infer_goal_capability_match(
             "if i want to get sample specific mi-RNA regulator network, what tools do i need?"
         )
 
-        self.assertEqual(match.actions, ["run_puma", "run_lioness_puma"])
-        self.assertEqual(match.relationship, "composition")
+        self.assertEqual(match.actions, [])
+        self.assertEqual(match.relationship, "single")
 
-    def test_goal_match_keeps_unspecified_sample_regulation_as_alternatives(self):
+    def test_legacy_goal_match_does_not_select_alternatives_from_keywords(self):
         match = agent.routing_capability.infer_goal_capability_match(
             "if i want to get a sample specific regulator network, what tools do i need?"
         )
 
-        self.assertEqual(match.actions, ["run_lioness_panda", "run_lioness_puma"])
-        self.assertEqual(match.relationship, "alternatives")
+        self.assertEqual(match.actions, [])
+        self.assertEqual(match.relationship, "single")
+
+    def test_generic_batch_language_does_not_hardcode_a_cobra_action(self):
+        match = agent.routing_capability.infer_goal_capability_match(
+            "remove hospital and sequencing batch effects before building regulatory modules"
+        )
+
+        self.assertNotIn("run_cobra", match.actions)
 
     def test_recommended_workflow_gets_contextual_next_question(self):
         decision = agent.TaskDecision(
@@ -1538,6 +1543,34 @@ class CapabilityGateTests(unittest.TestCase):
 
         with self.assertRaises(agent.ClarificationInputError):
             agent.resolve_clarification(plan, "3")
+
+    def test_lioness_mode_candidates_are_derived_from_registered_family(self):
+        raw = agent.TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            confidence=0.84,
+            reason="LIONESS base method is missing.",
+        )
+        plan = agent._lioness_mode_plan(
+            raw,
+            "run LIONESS",
+            memory_notes=[],
+            policy_hash=None,
+        )
+
+        registered = [
+            definition.workflow
+            for definition in agent.ACTION_DEFINITIONS.values()
+            if definition.run and definition.memory_metadata.get("method_family") == "lioness"
+        ]
+        self.assertEqual(len(plan.evidence[0].candidates), len(registered))
+        for workflow in registered:
+            self.assertTrue(
+                any(workflow in candidate for candidate in plan.evidence[0].candidates)
+            )
+        self.assertIn("options below", plan.question)
+        self.assertNotIn("Choose 1, 2, or 3", plan.question)
 
     def test_no_tool_plan_does_not_invent_lioness_mode_choices(self):
         raw = agent.TaskDecision(
@@ -3109,6 +3142,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 unresolved_dimensions=[],
             )
             return agent.SemanticInterpretation(
+                request_mode="execute",
                 semantic_goal="sample-specific TF regulatory network",
                 outcome_hypotheses=[
                     agent.OutcomeHypothesis(
@@ -3213,6 +3247,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def invoke(self, _messages):
                 call_order.append("semantic_interpreter")
                 return agent.SemanticInterpretation(
+                    request_mode="guidance",
                     semantic_goal="sample-specific miRNA regulatory network",
                     outcome_hypotheses=[
                         agent.OutcomeHypothesis(
@@ -3491,6 +3526,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         class GuidanceSemanticInterpreter:
             def invoke(self, _messages):
                 return agent.SemanticInterpretation(
+                    request_mode="guidance",
                     semantic_goal="sample-specific miRNA regulatory network",
                     outcome_hypotheses=[
                         agent.OutcomeHypothesis(
@@ -3642,6 +3678,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         class AmbiguousSemanticInterpreter:
             def invoke(self, _messages):
                 return agent.SemanticInterpretation(
+                    request_mode="guidance",
                     semantic_goal="miRNA regulatory network with unresolved granularity",
                     outcome_hypotheses=[
                         hypothesis(
@@ -3901,6 +3938,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         class PreferenceSemanticInterpreter:
             def invoke(self, _messages):
                 return agent.SemanticInterpretation(
+                    request_mode="guidance",
                     semantic_goal="persistent preference request",
                     outcome_hypotheses=[
                         agent.OutcomeHypothesis(

@@ -24,6 +24,7 @@ EvidenceDimension = Literal[
     "regulator_type",
     "target_type",
     "granularity",
+    "selection_tag",
 ]
 
 
@@ -42,10 +43,19 @@ class RequestedOutcome(BaseModel):
     target_types: list[Literal["gene", "unknown"]] = Field(
         default_factory=list, max_length=2
     )
+    selection_tags: list[str] = Field(
+        default_factory=list,
+        max_length=16,
+        description=(
+            "Registry-defined intent signals inferred from the user's scientific "
+            "purpose. These guide capability composition but do not select or "
+            "authorize a workflow by themselves."
+        ),
+    )
     granularity: Granularity
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
 
-    @field_validator("display_entities", "unresolved_dimensions")
+    @field_validator("display_entities", "unresolved_dimensions", "selection_tags")
     @classmethod
     def _bounded_text_items(cls, values: list[str]) -> list[str]:
         if any(not item.strip() or len(item) > 120 for item in values):
@@ -77,6 +87,34 @@ class OutcomeHypothesis(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
+    def _normalize_registry_tag_evidence(cls, value):
+        """Keep registry signals separate from the scientific evidence ontology."""
+        if not isinstance(value, Mapping):
+            return value
+        normalized = dict(value)
+        raw_outcome = normalized.get("outcome") or normalized
+        if not isinstance(raw_outcome, Mapping):
+            return normalized
+        selection_tags = set(raw_outcome.get("selection_tags") or ())
+        aliases = {"selection_tag", "selection_tags", "registry_tag", "registry_tags"}
+        evidence = []
+        for item in normalized.get("evidence") or ():
+            if not isinstance(item, Mapping):
+                evidence.append(item)
+                continue
+            normalized_item = dict(item)
+            dimension = normalized_item.get("dimension")
+            if dimension in selection_tags:
+                normalized_item["dimension"] = "selection_tag"
+                normalized_item["value"] = dimension
+            elif dimension in aliases:
+                normalized_item["dimension"] = "selection_tag"
+            evidence.append(normalized_item)
+        normalized["evidence"] = evidence
+        return normalized
+
+    @model_validator(mode="before")
+    @classmethod
     def _nest_flattened_outcome(cls, value):
         """Normalize an equivalent provider transport shape before validation."""
         if not isinstance(value, Mapping) or "outcome" in value:
@@ -104,6 +142,14 @@ class SemanticInterpretation(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    request_mode: Literal["guidance", "execute", "unknown"] = Field(
+        default="unknown",
+        description=(
+            "Whether the user is asking for conceptual/planning guidance or is "
+            "explicitly asking the agent to perform the work now. This is a "
+            "semantic classification, not workflow selection or tool authorization."
+        ),
+    )
     semantic_goal: str = Field(min_length=1, max_length=240)
     outcome_hypotheses: list[OutcomeHypothesis] = Field(
         min_length=1,
@@ -120,6 +166,13 @@ class SemanticReview(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    request_mode: Literal["guidance", "execute", "unknown"] = Field(
+        default="unknown",
+        description=(
+            "Adjudicated request mode from the full user request; this does not "
+            "select a workflow."
+        ),
+    )
     semantic_goal: str = Field(min_length=1, max_length=240)
     outcome_hypothesis: OutcomeHypothesis = Field(
         description=(

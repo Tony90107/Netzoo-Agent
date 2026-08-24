@@ -31,6 +31,7 @@ def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
         "regulator_type": set(outcome.regulator_types),
         "target_type": set(outcome.target_types),
         "granularity": {outcome.granularity},
+        "selection_tag": set(outcome.selection_tags),
     }
 
 

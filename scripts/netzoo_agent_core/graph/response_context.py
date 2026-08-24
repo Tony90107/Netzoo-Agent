@@ -6,6 +6,7 @@ import re
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation import INPUT_LABELS
+from ..interpretation.registry_guidance import build_registry_selection_constraints
 
 __all__: list[str] = []
 
@@ -40,31 +41,17 @@ def validated_workflow_context(
     *,
     include_all: bool = False,
     task: str = "",
-) -> dict[str, list[dict]]:
-    """Return registry facts without granting them execution authority.
-
-    Guidance turns may need to explain a multi-stage request whose first semantic
-    interpretation points at an unsupported final artifact. Include the complete
-    validated catalog for those turns so the response model can map the user's
-    stages to capabilities. Execution still uses the exact action selected by the
-    matcher and never consumes this catalog as authorization.
-    """
-    seed_actions = list(
-        dict.fromkeys(
-            [
-                *decision.matched_actions,
-                *decision.hypothesis_actions,
-                *decision.recommended_actions,
-                *decision.alternative_actions,
-            ]
-        )
-    )
+) -> dict[str, object]:
+    """Return registry facts without granting execution authority."""
+    seed_actions = list(dict.fromkeys([
+        *decision.matched_actions, *decision.hypothesis_actions,
+        *decision.recommended_actions, *decision.alternative_actions,
+    ]))
     if include_all:
-        seed_actions.extend(
-            action for action in policy.workflows if action not in seed_actions
-        )
+        seed_actions.extend(action for action in policy.workflows if action not in seed_actions)
     relevant_actions = []
     compositions = []
+    handoffs = []
     for action in seed_actions:
         spec = policy.workflows.get(action)
         if spec is None:
@@ -73,18 +60,24 @@ def validated_workflow_context(
         relevant_actions.extend(predecessors)
         relevant_actions.append(action)
         if predecessors:
-            ordered_actions = [*predecessors, action]
-            compositions.append(
-                {
-                    "ordered_actions": ordered_actions,
-                    "ordered_workflows": [
-                        policy.workflows[item].workflow
-                        for item in ordered_actions
-                        if item in policy.workflows
-                    ],
-                    "final_action": action,
-                }
-            )
+            ordered = [*predecessors, action]
+            compositions.append({
+                "ordered_actions": ordered,
+                "ordered_workflows": [policy.workflows[item].workflow for item in ordered if item in policy.workflows],
+                "final_action": action,
+            })
+        for target in spec.output_capability.handoff_targets:
+            target_spec = policy.workflows.get(target)
+            if target_spec is None:
+                continue
+            handoffs.append({
+                "from_action": action, "from_workflow": spec.workflow,
+                "from_output": spec.output_capability.artifact_type,
+                "to_action": target, "to_workflow": target_spec.workflow,
+                "to_inputs": target_spec.output_capability.input_artifacts,
+                "selection_tags": sorted(spec.output_capability.selection_tags),
+                "handoff_contract": spec.output_capability.handoff_contract,
+            })
 
     workflows = []
     for action in dict.fromkeys(relevant_actions):
@@ -115,4 +108,12 @@ def validated_workflow_context(
                 "output_capability": spec.output_capability.model_dump(),
             }
         )
-    return {"compositions": compositions, "workflows": workflows, "sample_references": _sample_references(task)}
+    return {
+        "compositions": compositions,
+        "handoffs": handoffs,
+        "workflows": workflows,
+        "selection_constraints": build_registry_selection_constraints(
+            decision, workflows
+        ),
+        "sample_references": _sample_references(task),
+    }

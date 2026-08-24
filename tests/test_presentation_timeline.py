@@ -290,6 +290,26 @@ def test_state_machine_keeps_deduplicated_router_repair_and_match_history(monkey
     assert "✓ Matched workflows — PUMA, LIONESS-PUMA" in output
 
 
+def test_state_machine_labels_guidance_match_as_final_result(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "intent",
+        "Classified as no_tool",
+        {
+            "kind": "classification",
+            "outcome": "gene regulatory community modules",
+            "workflows": ["CONDOR"],
+            "workflow_scope": "final_result",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Matched final-result workflow — CONDOR" in output
+    assert "✓ Matched workflows — CONDOR" not in output
+
+
 def test_single_stream_hides_legacy_stage_labels(monkeypatch, capsys):
     _enable_state_machine(monkeypatch)
     monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)

@@ -14,6 +14,13 @@ output_capability:
   regulator_types: [tf, mirna]
   target_types: [gene]
   guidance_predecessors: []
+  input_artifacts: [expression_matrix]
+  handoff_targets: [run_condor]
+  selection_tags: [mirna_regulation, aggregate_network]
+  handoff_contract: >-
+    PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA
+    priors, and produces a weighted regulator-to-gene network. Convert that network
+    to a source-target-weight bipartite edge list before handing it to CONDOR.
 conventions:
   - Require one miRNA identifier per line and require every miRNA in prior column one.
   - A header repair may be attempted only through the code-enforced bounded recovery.
