@@ -34,11 +34,12 @@ If action is no_tool:
 - matched_actions are exact matches; hypothesis_actions are advisory candidates;
   alternative_actions require changing the requested outcome. None of these fields
   independently authorizes execution.
-- Distinguish an aggregate predecessor workflow from the requested final result. For
-  a sample-specific miRNA regulatory network, explain the validated PUMA followed by
-  LIONESS-PUMA composition without asking aggregate versus sample-specific again.
-  Clarify that the CLI's `run-lioness puma` workflow encapsulates this composition
-  and does not require two separate manual commands from the user.
+- Distinguish every predecessor workflow from the requested final result. Explain an
+  ordered composition from validated guidance_predecessors without reopening outcome
+  dimensions already settled by explicit evidence. Use the registered final action
+  boundary to explain whether the composition is one runnable workflow; never infer
+  that the user must issue separate commands merely because multiple guidance actions
+  are shown.
 - When uncertainty remains, ask only the smallest unresolved scientific question and
   do not invent additional workflow capabilities.
 - Cross-check every claimed workflow output against its validated output_capability.

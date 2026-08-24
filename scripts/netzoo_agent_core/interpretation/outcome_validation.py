@@ -87,6 +87,12 @@ def validate_outcome_hypotheses(
         outcome_values = _outcome_values(hypothesis.outcome)
         required_evidence = _required_evidence(hypothesis.outcome)
         if (
+            hypothesis.outcome.granularity == "not_applicable"
+            and hypothesis.outcome.artifact_type == "unknown"
+            and not _is_not_applicable(hypothesis.outcome)
+        ):
+            issues.append(f"hypothesis[{index}].inconsistent_not_applicable_outcome")
+        if (
             not required_evidence
             and not hypothesis.evidence
             and not _is_not_applicable(hypothesis.outcome)

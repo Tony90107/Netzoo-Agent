@@ -125,6 +125,8 @@ def bootstrap_runtime(
         raise SystemExit("--llm-timeout must be positive.")
     try:
         validate_router_model(args.router_model)
+        if args.semantic_model:
+            validate_router_model(args.semantic_model)
         validate_response_model(args.model)
     except ValueError as error:
         raise SystemExit(str(error)) from error
@@ -200,6 +202,7 @@ def bootstrap_runtime(
         episode_store=memory_runtime.episode_store,
         project_policy=policy,
         router_model_name=args.router_model,
+        semantic_model_name=args.semantic_model,
         router_max_tokens=args.router_max_tokens,
         response_max_tokens=args.response_max_tokens,
         task_token_budget=args.max_task_tokens,

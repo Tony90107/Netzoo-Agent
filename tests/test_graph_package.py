@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.graph as graph  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import SemanticReview  # noqa: E402
 
 
 PUBLIC_EXPORTS = ["build_graph", "invoke_graph_turn"]
@@ -21,7 +22,8 @@ BUILD_GRAPH_SIGNATURE = (
     "(model_name: 'str', temperature: 'float', profile_id: 'str' = 'default', "
     "profile_store: 'UserProfileStore | None' = None, episode_store: "
     "'EpisodeStore | None' = None, project_policy: 'ProjectPolicySnapshot | None' "
-    "= None, router_model_name: 'str | None' = None, router_max_tokens: 'int' "
+    "= None, router_model_name: 'str | None' = None, semantic_model_name: "
+    "'str | None' = None, router_max_tokens: 'int' "
     "= 1200, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
     "timeout_seconds: 'float' = 30.0, trace_recorder: 'TraceRecorder | None' = None)"
 )
@@ -55,7 +57,7 @@ def test_graph_package_exports_only_public_entrypoints():
     assert graph.__all__ == PUBLIC_EXPORTS
 
 
-def test_graph_binds_semantic_interpreter_before_narrow_intent_router(monkeypatch):
+def test_graph_binds_interpreter_and_reviewer_before_narrow_intent_router(monkeypatch):
     factory = importlib.import_module("netzoo_agent_core.graph.factory")
     bound_schemas = []
 
@@ -76,8 +78,45 @@ def test_graph_binds_semantic_interpreter_before_narrow_intent_router(monkeypatc
 
     assert bound_schemas == [
         legacy_agent.SemanticInterpretation,
+        SemanticReview,
         legacy_agent.IntentDecision,
     ]
+
+
+def test_graph_can_assign_semantics_to_a_stronger_model_than_intent(monkeypatch):
+    factory = importlib.import_module("netzoo_agent_core.graph.factory")
+    bindings = []
+
+    class Provider:
+        def __init__(self, role):
+            self.role = role
+
+        def with_structured_output(self, schema, **_kwargs):
+            bindings.append((self.role, schema))
+            return SimpleNamespace()
+
+    providers = iter([Provider("intent"), Provider("semantic"), SimpleNamespace()])
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "cheap,strong")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setattr(factory, "ensure_graph_dependencies", lambda: None)
+    monkeypatch.setattr(factory, "StateGraph", object())
+    monkeypatch.setattr(factory, "build_llm", lambda *_args, **_kwargs: next(providers))
+    monkeypatch.setattr(factory, "compile_graph", lambda context, **_kwargs: context)
+
+    context = factory.build_graph(
+        "fake",
+        0.0,
+        router_model_name="cheap",
+        semantic_model_name="strong",
+    )
+
+    assert bindings == [
+        ("semantic", legacy_agent.SemanticInterpretation),
+        ("semantic", SemanticReview),
+        ("intent", legacy_agent.IntentDecision),
+    ]
+    assert context.semantic_model_name == "strong"
+    assert context.router_model_name == "cheap"
 
 
 def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
@@ -97,8 +136,8 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "Do not mention whether" in result.response
     assert "Never describe an output role" in result.response
     assert "input file" in result.response
-    assert "run-lioness puma" in result.response
-    assert "does not require two separate manual commands" in result.response
+    assert "registered final action" in result.response
+    assert "must issue separate commands" in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
 

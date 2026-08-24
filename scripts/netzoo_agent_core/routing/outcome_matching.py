@@ -88,6 +88,38 @@ def _partially_compatible(
     )
 
 
+def _explicit_evidence_values(
+    hypothesis: OutcomeHypothesis,
+) -> dict[str, set[str]]:
+    """Group user-quoted semantic constraints independently of model inferences."""
+    grouped: dict[str, set[str]] = {}
+    for item in hypothesis.evidence:
+        if item.source != "explicit" or item.value == _UNKNOWN:
+            continue
+        grouped.setdefault(item.dimension, set()).add(item.value)
+    return grouped
+
+
+def _matches_explicit_evidence(
+    evidence: Mapping[str, set[str]],
+    capability: OutputCapabilityDefinition,
+) -> bool:
+    """Treat explicit user evidence as hard constraints on registry capabilities."""
+    scalar_constraints = (
+        ("operation", {capability.operation}),
+        ("artifact_type", {capability.artifact_type}),
+        ("granularity", set(capability.granularities)),
+        ("entity_type", set(capability.entity_types)),
+        ("regulator_type", set(capability.regulator_types)),
+        ("target_type", set(capability.target_types)),
+    )
+    return all(
+        not evidence.get(dimension)
+        or evidence[dimension].issubset(supported)
+        for dimension, supported in scalar_constraints
+    )
+
+
 def _selection_question(
     outcome: RequestedOutcome,
     candidates: list[tuple[RecommendedAction, OutputCapabilityDefinition]],
@@ -244,6 +276,25 @@ def _advisory_specificity_penalty(
     )
 
 
+def _explicit_evidence_specificity_penalty(
+    evidence: Mapping[str, set[str]],
+    capability: OutputCapabilityDefinition,
+) -> int:
+    """Rank evidence-compatible candidates without reintroducing inferred fields."""
+    requested_entities = evidence.get("entity_type", set())
+    requested_regulators = evidence.get("regulator_type", set())
+    requested_targets = evidence.get("target_type", set())
+    return (
+        (len(capability.entity_types - requested_entities) if requested_entities else 0)
+        + (
+            len(capability.regulator_types - requested_regulators)
+            if requested_regulators
+            else 0
+        )
+        + (len(capability.target_types - requested_targets) if requested_targets else 0)
+    )
+
+
 def has_granularity_only_ambiguity(
     hypotheses: Sequence[OutcomeHypothesis],
 ) -> bool:
@@ -290,12 +341,36 @@ def match_outcome_hypotheses(
     if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
         return CapabilityMatch(status="not_applicable")
     exact: list[RecommendedAction] = []
+    evidence_exact: list[RecommendedAction] = []
     advisory: list[tuple[int, float, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
         strict = match_requested_outcome(hypothesis.outcome, capabilities)
         if not hypothesis.assumptions and strict.status == "exact":
             exact.extend(strict.matched_actions)
         score = _hypothesis_evidence_score(hypothesis)
+        explicit_evidence = _explicit_evidence_values(hypothesis)
+        if strict.status != "exact" and explicit_evidence.get("artifact_type"):
+            explicit_candidates = [
+                (index, action, capability)
+                for index, (action, capability) in enumerate(capabilities.items())
+                if _matches_explicit_evidence(explicit_evidence, capability)
+            ]
+            if len(explicit_candidates) == 1:
+                evidence_exact.append(explicit_candidates[0][1])
+            else:
+                advisory.extend(
+                    (
+                        score,
+                        hypothesis.confidence,
+                        -_explicit_evidence_specificity_penalty(
+                            explicit_evidence,
+                            capability,
+                        ),
+                        index,
+                        action,
+                    )
+                    for index, action, capability in explicit_candidates
+                )
         for index, (action, capability) in enumerate(capabilities.items()):
             if _partially_compatible(hypothesis.outcome, capability):
                 advisory.append(
@@ -311,7 +386,7 @@ def match_outcome_hypotheses(
                     )
                 )
 
-    unique_exact = list(dict.fromkeys(exact))
+    unique_exact = list(dict.fromkeys([*exact, *evidence_exact]))
     if len(unique_exact) == 1:
         return CapabilityMatch(status="exact", matched_actions=unique_exact)
     if advisory:

@@ -23,8 +23,10 @@ class _GraphContext:
     recorder: TraceRecorder | NullTraceRecorder
     price_catalog: PriceCatalog
     semantic_interpreter: Any
+    semantic_reviewer: Any
     intent_router: Any
     response_llm: Any
+    semantic_model_name: str
     router_model_name: str
     response_model_name: str
     semantic_prompt: str

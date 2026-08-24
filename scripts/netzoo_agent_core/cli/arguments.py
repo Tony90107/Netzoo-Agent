@@ -53,6 +53,14 @@ def parse_args() -> argparse.Namespace:
             "Configure NETZOO_ROUTER_MODEL_ALLOWLIST to permit alternatives."
         ),
     )
+    parser.add_argument(
+        "--semantic-model",
+        default=os.environ.get("OPENROUTER_SEMANTIC_MODEL"),
+        help=(
+            "Optional stronger allow-listed model for scientific outcome "
+            "interpretation and evidence review. Defaults to --router-model."
+        ),
+    )
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument(
         "--router-max-tokens",

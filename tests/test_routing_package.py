@@ -25,6 +25,7 @@ HISTORICAL_EXPORTS = [
     "UNSUPPORTED_DELIVERABLE_PATTERNS",
     "WORKFLOW_INFORMATION_PATTERNS",
     "is_workflow_information_request",
+    "is_workflow_selection_request",
     "infer_goal_capabilities",
     "infer_advisory_capabilities",
     "inferred_execution_action",

@@ -16,6 +16,27 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as agent  # noqa: E402
 from netzoo_table_io import read_condor_edges  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import SemanticReview  # noqa: E402
+
+
+class _SemanticReviewAdapter:
+    """Adapt an existing semantic fixture to the review pass's singular contract."""
+
+    def __init__(self, interpreter):
+        self.interpreter = interpreter
+
+    def invoke(self, messages):
+        interpretation = agent.SemanticInterpretation.model_validate(
+            self.interpreter.invoke(messages)
+        )
+        primary = max(
+            interpretation.outcome_hypotheses,
+            key=lambda hypothesis: hypothesis.confidence,
+        )
+        return SemanticReview(
+            semantic_goal=interpretation.semantic_goal,
+            outcome_hypothesis=primary,
+        )
 
 
 class CapabilityGateTests(unittest.TestCase):
@@ -3067,8 +3088,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         self.model_allowlist = patch.dict(
             agent.os.environ,
             {
-                "NETZOO_RESPONSE_MODEL_ALLOWLIST": "fake,openai/gpt-4o-mini",
-                "NETZOO_ROUTER_MODEL_ALLOWLIST": "openai/gpt-4o-mini",
+                "NETZOO_RESPONSE_MODEL_ALLOWLIST": "fake,openai/gpt-4o-mini,openai/gpt-4o",
+                "NETZOO_ROUTER_MODEL_ALLOWLIST": "openai/gpt-4o-mini,openai/gpt-4o",
             },
         )
         self.model_allowlist.start()
@@ -3124,6 +3145,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         def with_structured_output(self, schema, **_kwargs):
             if schema is agent.SemanticInterpretation:
                 return LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+            if schema is SemanticReview:
+                return _SemanticReviewAdapter(
+                    LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+                )
             if schema is agent.IntentDecision:
                 return LangGraphHarnessIntegrationTests.FakeIntentRouter()
             raise AssertionError(f"unexpected routing schema: {schema.__name__}")
@@ -3254,6 +3279,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return SemanticInterpreter()
+                if schema is SemanticReview:
+                    return _SemanticReviewAdapter(SemanticInterpreter())
                 if schema is agent.IntentDecision:
                     return IntentRouter()
                 raise AssertionError(f"unexpected routing schema: {schema.__name__}")
@@ -3286,7 +3313,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 }
             )
 
-        self.assertEqual(call_order, ["semantic_interpreter", "intent_router"])
+        self.assertEqual(
+            call_order,
+            ["semantic_interpreter", "semantic_interpreter", "intent_router"],
+        )
         self.assertEqual(result["decision"]["action"], "no_tool")
         self.assertFalse(result["decision"]["should_execute"])
         self.assertEqual(
@@ -3296,6 +3326,160 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             result["decision"]["recommended_actions"],
             ["run_puma", "run_lioness_puma"],
         )
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_inconsistent_semantics_are_repaired_before_registry_matching(
+        self, build_llm
+    ):
+        call_order = []
+
+        class SemanticInterpreter:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke(self, messages):
+                self.calls += 1
+                call_order.append(f"semantic_interpreter_{self.calls}")
+                if self.calls == 1:
+                    return {
+                        "semantic_goal": "tools for a sample-specific miRNA network",
+                        "outcome_hypotheses": [
+                            {
+                                "outcome": {
+                                    "operation": "unknown",
+                                    "artifact_type": "unknown",
+                                    "entity_types": ["mirna"],
+                                    "display_entities": [],
+                                    "regulator_types": ["mirna"],
+                                    "target_types": ["unknown"],
+                                    "granularity": "not_applicable",
+                                    "unresolved_dimensions": [
+                                        "artifact_type",
+                                        "operation",
+                                    ],
+                                },
+                                "confidence": 0.8,
+                                "evidence": [
+                                    {
+                                        "dimension": "granularity",
+                                        "value": "not_applicable",
+                                        "source": "explicit",
+                                        "text_span": "sample specific",
+                                        "rationale": "The sample context is explicit.",
+                                    },
+                                    {
+                                        "dimension": "regulator_type",
+                                        "value": "mirna",
+                                        "source": "explicit",
+                                        "text_span": "mi-RNA regulator",
+                                        "rationale": "The regulator is explicit.",
+                                    },
+                                ],
+                                "assumptions": [],
+                            }
+                        ],
+                    }
+                rendered = "\n".join(str(message.content) for message in messages)
+                if "inconsistent_not_applicable_outcome" not in rendered:
+                    raise AssertionError("semantic retry did not receive validator evidence")
+                return {
+                    "semantic_goal": "sample-specific miRNA regulatory network",
+                    "outcome_hypotheses": [
+                        {
+                            "outcome": {
+                                "operation": "infer",
+                                "artifact_type": "regulatory_network",
+                                "entity_types": ["mirna"],
+                                "display_entities": ["miRNA"],
+                                "regulator_types": ["mirna"],
+                                "target_types": [],
+                                "granularity": "sample_specific",
+                                "unresolved_dimensions": [],
+                            },
+                            "confidence": 0.99,
+                            "evidence": [
+                                {
+                                    "dimension": dimension,
+                                    "value": value,
+                                    "source": "inferred",
+                                    "rationale": "The request entails this dimension.",
+                                }
+                                for dimension, value in (
+                                    ("operation", "infer"),
+                                    ("artifact_type", "regulatory_network"),
+                                    ("regulator_type", "mirna"),
+                                    ("granularity", "sample_specific"),
+                                )
+                            ],
+                            "assumptions": [],
+                        }
+                    ],
+                }
+
+        class IntentRouter:
+            def invoke(self, messages):
+                call_order.append("intent_router")
+                rendered = "\n".join(str(message.content) for message in messages)
+                if '"matched_actions":["run_lioness_puma"]' not in rendered:
+                    raise AssertionError("registry did not receive repaired semantics")
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.99,
+                    reason="The user asks which tools are needed.",
+                )
+
+        semantic = SemanticInterpreter()
+
+        class RoutingProvider:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return semantic
+                if schema is SemanticReview:
+                    return _SemanticReviewAdapter(semantic)
+                if schema is agent.IntentDecision:
+                    return IntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+
+        class ResponseLLM:
+            def invoke(self, _messages):
+                return agent.AIMessage(
+                    content="Use PUMA followed by LIONESS-PUMA for this result."
+                )
+
+        build_llm.side_effect = [RoutingProvider(), ResponseLLM()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+            )
+            result = app.invoke(
+                {
+                    "messages": [
+                        agent.HumanMessage(
+                            content=(
+                                "if i want to get sample specific mi-RNA regulator "
+                                "network,what tools do i need?"
+                            )
+                        )
+                    ]
+                }
+            )
+
+        self.assertEqual(
+            call_order,
+            ["semantic_interpreter_1", "semantic_interpreter_2", "intent_router"],
+        )
+        self.assertEqual(result["decision"]["action"], "no_tool")
+        self.assertEqual(
+            result["decision"]["matched_actions"], ["run_lioness_puma"]
+        )
+        self.assertIsNone(result["decision"]["clarification_question"])
 
     @patch("netzoo_agent.build_llm")
     @unittest.skipIf(
@@ -3351,6 +3535,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return GuidanceSemanticInterpreter()
+                if schema is SemanticReview:
+                    return _SemanticReviewAdapter(GuidanceSemanticInterpreter())
                 if schema is agent.IntentDecision:
                     return GuidanceIntentRouter()
                 raise AssertionError(f"unexpected routing schema: {schema.__name__}")
@@ -3483,6 +3669,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return AmbiguousSemanticInterpreter()
+                if schema is SemanticReview:
+                    return _SemanticReviewAdapter(AmbiguousSemanticInterpreter())
                 if schema is agent.IntentDecision:
                     return AnswerIntentRouter()
                 raise AssertionError(f"unexpected routing schema: {schema.__name__}")
@@ -3523,7 +3711,12 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
-            ["semantic_interpreter", "intent_router", "response"],
+            [
+                "semantic_interpreter",
+                "semantic_reviewer",
+                "intent_router",
+                "response",
+            ],
         )
         trusted_input = "\n".join(str(message.content) for message in captured)
         self.assertIn(motivating_request, trusted_input)
@@ -3561,10 +3754,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             result["plan"]["policy_hash"], result["project_policy"]["policy_hash"]
         )
         self.assertEqual(episodes[0].policy_hash, result["plan"]["policy_hash"])
-        self.assertEqual(len(result["token_usage"]["calls"]), 2)
+        self.assertEqual(len(result["token_usage"]["calls"]), 3)
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
-            ["semantic_interpreter", "intent_router"],
+            ["semantic_interpreter", "semantic_reviewer", "intent_router"],
         )
         self.assertLessEqual(
             result["token_usage"]["total_tokens"],
@@ -3739,6 +3932,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return PreferenceSemanticInterpreter()
+                if schema is SemanticReview:
+                    return _SemanticReviewAdapter(PreferenceSemanticInterpreter())
                 if schema is agent.IntentDecision:
                     return PreferenceIntentRouter()
                 raise AssertionError(f"unexpected routing schema: {schema.__name__}")
@@ -4001,7 +4196,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         prompts = [call.args[0] for call in input_mock.call_args_list]
         self.assertIn("What would you like to accomplish with NetZoo?", prompts[0])
         self.assertIn("recommended LIONESS-PUMA workflow", prompts[1])
-        self.assertEqual(prompts[1].count("Would you like"), 1)
+        self.assertIn("provide the expression matrix path", prompts[1])
+        self.assertEqual(prompts[1].count("Would you like"), 0)
         self.assertNotIn("What NetZoo task would you like to run?", prompts[1])
         self.assertIn("----------------------------------------\nNext step", prompts[1])
         self.assertIn("What would you like to accomplish with NetZoo?", prompts[2])
@@ -4067,7 +4263,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
 
         rendered = output.getvalue()
         self.assertEqual(status, 2)
-        self.assertIn("Provide all missing inputs in one reply", rendered)
+        self.assertIn("Select input 1 of 1", rendered)
         self.assertIn("data/lioness-toy/expression.tsv", rendered)
         self.assertIn("--resume", rendered)
 

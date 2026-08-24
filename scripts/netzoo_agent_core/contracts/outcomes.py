@@ -115,6 +115,21 @@ class SemanticInterpretation(BaseModel):
     )
 
 
+class SemanticReview(BaseModel):
+    """One adjudicated scientific outcome returned by the review pass."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    semantic_goal: str = Field(min_length=1, max_length=240)
+    outcome_hypothesis: OutcomeHypothesis = Field(
+        description=(
+            "The single primary scientific outcome after independently reviewing "
+            "the first-pass proposal. Remaining uncertainty belongs in the typed "
+            "outcome's unknown and unresolved fields, not in intent alternatives."
+        )
+    )
+
+
 class CapabilityMatch(BaseModel):
     """Code-owned relationship between one requested outcome and the registry."""
 
