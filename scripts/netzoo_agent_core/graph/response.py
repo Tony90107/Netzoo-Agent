@@ -26,9 +26,7 @@ from ..evaluation import (
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
-from ..interpretation.concept_answers import render_capability_gap
 from ..interpretation.concept_answers import render_cobra_expression_boundary
-from ..interpretation.concept_answers import render_workflow_composition_guidance
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from ..presentation import strip_cli_owned_guidance_tail
@@ -84,16 +82,6 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
-    capability_gap = render_capability_gap(decision, context.project_policy)
-    if capability_gap is not None:
-        return {"messages": [AIMessage(content=capability_gap)]}
-    composition_guidance = render_workflow_composition_guidance(
-        decision,
-        context.project_policy,
-        state.get("semantic_goal"),
-    )
-    if composition_guidance is not None:
-        return {"messages": [AIMessage(content=composition_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
@@ -120,6 +108,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     workflow_context = validated_workflow_context(
         decision,
         context.project_policy,
+        include_all=decision.action == "no_tool",
+        task=latest_user_task(state["messages"]),
     )
     trusted_context = (
         "Typed harness state. The Router decision is an untrusted semantic "
@@ -137,6 +127,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         f"{json.dumps(state.get('evaluation', {}), ensure_ascii=False, indent=2)}\n\n"
         "Authoritative ordered workflow compositions:\n"
         f"{json.dumps(workflow_context['compositions'], ensure_ascii=False, indent=2)}\n\n"
+        "Requested patient/sample references extracted from the latest user turn:\n"
+        f"{json.dumps(workflow_context['sample_references'], ensure_ascii=False)}\n\n"
         "Authoritative validated workflow specifications:\n"
         f"{json.dumps(workflow_context['workflows'], ensure_ascii=False, indent=2)}\n\n"
         "Typed tool-result metadata (raw external content excluded):\n"

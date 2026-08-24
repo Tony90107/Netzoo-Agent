@@ -134,6 +134,12 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "attribute each capability to the exact workflow" in result.response
     assert "Do not offer to proceed" in result.response
     assert "Do not mention whether" in result.response
+    assert "preserve that order as a composition" in result.response
+    assert "leave-one-out construction" in result.response
+    assert "N_without_7" in result.response
+    assert "source-target-weight bipartite edge list" in result.response
+    assert "bootstrap or leave-one-hospital-out" in result.response
+    assert "not completely confounded" in result.response
     assert "Never describe an output role" in result.response
     assert "input file" in result.response
     assert "registered final action" in result.response
@@ -246,6 +252,43 @@ def test_ambiguous_guidance_reaches_response_model():
     assert composition.index('"run_puma"') < composition.index('"run_lioness_puma"')
     assert '"required_inputs": [' in response_input
     assert '"output_roles": [' in response_input
+    assert '"conventions": [' in response_input
+
+
+def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules():
+    response_context = importlib.import_module(
+        "netzoo_agent_core.graph.response_context"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=False,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="pipeline guidance",
+        capability_match_status="unsupported",
+    )
+
+    context = response_context.validated_workflow_context(
+        decision,
+        policy,
+        include_all=True,
+    )
+    by_action = {item["action"]: item for item in context["workflows"]}
+
+    assert any(
+        "confounded" in item
+        for item in by_action["run_panda"]["conventions"]
+    )
+    assert any(
+        "N_without_7" not in item and "N_without_k" in item
+        for item in by_action["run_lioness_panda"]["conventions"]
+    )
+    assert any(
+        "source-target-weight" in item
+        for item in by_action["run_condor"]["conventions"]
+    )
 
 
 def test_guidance_response_removes_model_owned_status_and_cta_before_footer():
@@ -303,6 +346,72 @@ def test_guidance_response_removes_model_owned_status_and_cta_before_footer():
 
     assert result["messages"][0].content == (
         "Use PUMA followed by LIONESS-PUMA.\n\n"
+        "No files were inspected and no analysis ran."
+    )
+
+
+def test_unsupported_guidance_receives_full_validated_catalog_for_pipeline_mapping():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=False,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="The final requested artifact is not a direct workflow output.",
+        capability_match_status="unsupported",
+        alternative_actions=["run_condor"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain an ordered scientific pipeline.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    captured = []
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            captured.extend(messages)
+            return legacy_agent.AIMessage(
+                content="The requested pipeline needs conceptual workflow mapping."
+            )
+
+    context = SimpleNamespace(
+        project_policy=policy,
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    result = response_module.respond(
+        context,
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content=(
+                        "First build a regulatory network, then estimate the "
+                        "network for patient 7, and finally inspect modules."
+                    )
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    response_input = "\n".join(str(message.content) for message in captured)
+    assert '"action": "run_panda"' in response_input
+    assert '"action": "run_lioness_panda"' in response_input
+    assert '"action": "run_condor"' in response_input
+    assert "N_k = n * N_all - (n - 1) * N_without_k" in response_input
+    assert '"patient 7"' in response_input
+    assert result["messages"][0].content.endswith(
         "No files were inspected and no analysis ran."
     )
 
