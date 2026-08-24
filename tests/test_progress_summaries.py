@@ -6,6 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.progress_summaries import render_progress_summary  # noqa: E402
+from netzoo_agent_core.interpretation.semantic_goal import (  # noqa: E402
+    classification_progress_detail,
+)
 from netzoo_agent_core.cli.follow_up import (  # noqa: E402
     build_follow_up_context,
     build_next_turn_prompt,
@@ -142,6 +145,98 @@ def test_workflow_composition_recommends_its_final_registered_action():
         "aggregate",
         "sample_specific",
     ]
+
+
+def test_guidance_classification_labels_condor_as_final_result_boundary():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_condor"],
+        recommended_actions=["run_condor"],
+    )
+
+    detail = classification_progress_detail(
+        {
+            "goal": "gene regulatory community modules",
+            "candidates": ["run_condor"],
+            "relationship": "single",
+            "request_mode": "guidance",
+        },
+        decision,
+    )
+
+    assert detail["workflow_scope"] == "final_result"
+
+
+def test_guidance_next_step_does_not_offer_only_condor_input_path():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        recommended_actions=["run_condor"],
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="pipeline guidance",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "candidates": ["run_condor"],
+                "relationship": "single",
+                "request_mode": "guidance",
+            },
+        }
+    )
+
+    assert prompt.continuation_action is None
+    assert "CONDOR" not in prompt.question
+    assert "complete recommended pipeline" in prompt.question
+
+
+def test_guidance_does_not_offer_unsupported_alternative_as_next_step():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=False,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="unsupported",
+        alternative_actions=["run_condor"],
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="pipeline guidance",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "semantic_goal": {
+                "relationship": "single",
+                "request_mode": "guidance",
+            },
+        }
+    )
+
+    assert prompt.kind == "completed"
+    assert "supported alternative above" not in prompt.question
+    assert "complete recommended pipeline" in prompt.question
 
 
 def test_unsupported_outcome_offers_alternative_without_execution_continuation():

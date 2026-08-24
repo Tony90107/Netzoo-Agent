@@ -219,6 +219,57 @@ def test_evidence_validator_rejects_an_ungrounded_explicit_span():
     assert "hypothesis[0].ungrounded_evidence:regulator_type=mirna" in result.issues
 
 
+def test_registry_selection_signal_has_a_generic_evidence_boundary():
+    task = "Different hospitals and sequencing batches affect the regulatory modules."
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="analyze",
+            artifact_type="community_assignment",
+            entity_types=["gene"],
+            regulator_types=[],
+            target_types=[],
+            selection_tags=["hospital_effect_assessment"],
+            granularity="not_applicable",
+        ),
+        confidence=0.9,
+        evidence=[
+            evidence("operation", "analyze", source="inferred"),
+            evidence(
+                "artifact_type",
+                "community_assignment",
+                text_span="regulatory modules",
+            ),
+            evidence("entity_type", "gene", source="inferred"),
+            evidence(
+                "selection_tag",
+                "hospital_effect_assessment",
+                source="inferred",
+            ),
+        ],
+    )
+
+    result = validate_outcome_hypotheses(task, [hypothesis])
+
+    assert result.valid is True
+    assert result.issues == ()
+    assert hypothesis.evidence[-1].dimension == "selection_tag"
+
+    provider_alias = OutcomeHypothesis.model_validate(
+        {
+            "outcome": hypothesis.outcome.model_dump(),
+            "confidence": 0.9,
+            "evidence": [
+                {
+                    **hypothesis.evidence[-1].model_dump(),
+                    "dimension": "hospital_effect_assessment",
+                }
+            ],
+        }
+    )
+    assert provider_alias.evidence[0].dimension == "selection_tag"
+    assert provider_alias.evidence[0].value == "hospital_effect_assessment"
+
+
 def test_semantic_interpretation_schema_forbids_an_empty_result():
     with pytest.raises(ValidationError):
         SemanticInterpretation(
@@ -298,6 +349,13 @@ def test_semantic_interpreter_prompt_has_no_workflow_selection_authority():
     assert "run_puma" not in prompt
     assert "PUMA" not in prompt
     assert "text_span" in prompt
+    assert "estimating each patient's network" in prompt
+    assert "Do not select a workflow from a fixed keyword-to-tool table" in prompt
+    assert "request_mode" in prompt
+    assert "complete request" in prompt
+    assert "keyword or a fixed phrase" in prompt
+    assert "not in scientific evidence" in prompt
+    assert "generic dimension selection_tag" in prompt
 
 
 def test_intent_router_contract_can_only_choose_answer_or_execute():

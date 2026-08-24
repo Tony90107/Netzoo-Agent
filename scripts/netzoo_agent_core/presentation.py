@@ -202,9 +202,14 @@ def _apply_public_progress_event(
         state.complete("understand", outcome)
         if workflows:
             state.complete("match", ", ".join(workflows))
+            match_label = (
+                "Matched final-result workflow"
+                if detail.get("workflow_scope") == "final_result"
+                else "Matched workflows"
+            )
             _commit_public_activity(
                 f"workflow-match:{','.join(workflows)}",
-                f"✓ Matched workflows — {', '.join(workflows)}",
+                f"✓ {match_label} — {', '.join(workflows)}",
             )
         return True
     state_name = event_names.get((stage, message))

@@ -26,7 +26,18 @@ def assemble_task_decision(
         if match.status == "exact" and len(match.matched_actions) == 1
         else None
     )
-    execute = intent.mode == "execute" and exact_action is not None
+    semantic_execution_missing = interpretation.request_mode != "execute"
+    execute = (
+        intent.mode == "execute"
+        and exact_action is not None
+        and not semantic_execution_missing
+    )
+    execution_rejection = (
+        "Semantic interpretation did not classify this request as explicit execution; "
+        "no analysis was authorized."
+        if semantic_execution_missing and intent.mode == "execute"
+        else None
+    )
     rejection = (
         validate_task_text(
             task,
@@ -63,7 +74,7 @@ def assemble_task_decision(
         should_execute=execute,
         intent_type="run_analysis" if execute else "answer_question",
         confidence=intent.confidence,
-        reason=rejection or intent.reason,
+        reason=execution_rejection or rejection or intent.reason,
         candidate_actions=candidate_actions,
         recommended_actions=recommended_actions,
         requested_outcome=primary.outcome if primary else None,

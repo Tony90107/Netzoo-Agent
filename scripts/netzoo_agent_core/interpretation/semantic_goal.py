@@ -27,6 +27,15 @@ def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) 
         "kind": "classification",
         "outcome": outcome_label,
         "workflows": list(dict.fromkeys(workflows)),
+        "workflow_scope": (
+            "final_result"
+            if decision.action == "no_tool"
+            and semantic_goal.get("request_mode") == "guidance"
+            and workflows
+            else "composition"
+            if semantic_goal.get("relationship") == "composition"
+            else "match"
+        ),
     }
 
 
@@ -104,7 +113,11 @@ def semantic_summary_detail(semantic_goal: dict, decision: TaskDecision) -> dict
     }
 
 
-def outcome_routing_state(decision: TaskDecision, goal: str = "") -> dict:
+def outcome_routing_state(
+    decision: TaskDecision,
+    goal: str = "",
+    request_mode: str = "unknown",
+) -> dict:
     """Build graph state from the deterministic capability-match decision."""
     if decision.recommended_actions:
         candidates = list(decision.recommended_actions)
@@ -125,6 +138,7 @@ def outcome_routing_state(decision: TaskDecision, goal: str = "") -> dict:
         ),
         "relationship": relationship,
         "match_status": decision.capability_match_status,
+        "request_mode": request_mode,
     }
     return {
         "semantic_goal": semantic_goal,

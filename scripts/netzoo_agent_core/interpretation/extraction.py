@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
+
 from ..contracts import PreferenceProposal, _ui_text
 from ..routing import (
     CONTEXT7_LIBRARY_ALIASES,
@@ -132,7 +134,7 @@ def _mentions_unspecified_data_directory(task: str) -> bool:
 
 
 def _needs_lioness_mode_choice(task: str) -> bool:
-    """Return True for an execution request that names LIONESS but no base method."""
+    """Return True when an execution request names only a workflow family."""
     normalized = task.casefold()
     if "lioness" not in normalized:
         return False
@@ -144,14 +146,10 @@ def _needs_lioness_mode_choice(task: str) -> bool:
         flags=re.IGNORECASE,
     ):
         return False
-    return not (
-        "panda" in normalized
-        or "puma" in normalized
-        or re.search(
-            r"(co[- _]?expression|coexpression|共表現|共同表現)",
-            normalized,
-            flags=re.IGNORECASE,
-        )
+    comparable = normalized.replace("-", " ")
+    return not any(
+        ACTION_DEFINITIONS[action].workflow.casefold().replace("-", " ") in comparable
+        for action in registered_actions_for_family("lioness")
     )
 
 

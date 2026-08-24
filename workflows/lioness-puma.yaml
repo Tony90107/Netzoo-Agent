@@ -14,6 +14,12 @@ output_capability:
   regulator_types: [tf, mirna]
   target_types: [gene]
   guidance_predecessors: [run_puma]
+  input_artifacts: [expression_matrix]
+  handoff_targets: []
+  selection_tags: [sample_specific, mirna_regulation]
+  handoff_contract: >-
+    LIONESS-PUMA uses the expression matrix and PUMA-compatible priors to derive
+    sample-specific TF/miRNA-to-gene networks.
 conventions:
   - Require at least three expression samples and a validated one-ID-per-line miRNA list.
   - Keep aggregate and sample-specific outputs distinct from every input.

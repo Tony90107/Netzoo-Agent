@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import json
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import get_args
 
@@ -71,7 +72,9 @@ Never select or name a workflow, reinterpret scientific meaning, request inputs,
 a clarification question. Return only the IntentDecision structure.
 
 - answer: explanations, requirements, tool/workflow selection questions, how-to
-  questions, comparisons, and hypothetical requests.
+  questions, comparisons, pipeline planning, requests to list steps/algorithms,
+  and hypothetical requests. Planning a workflow is an answer request, not an
+  execution authorization.
 - execute: an explicit instruction asking the agent to run, build, infer, convert,
   inspect, search, or otherwise perform the requested work now.
 - Missing input files do not change execute into answer; deterministic planning will
@@ -98,7 +101,9 @@ def build_router_messages(routing_prompt: str, messages: list) -> list:
     ]
 
 
-def build_semantic_interpreter_prompt() -> str:
+def build_semantic_interpreter_prompt(
+    selection_tags: Sequence[str] | None = None,
+) -> str:
     """Build a workflow-independent ontology prompt for outcome interpretation."""
     regulator_types = sorted(
         set().union(
@@ -112,11 +117,28 @@ def build_semantic_interpreter_prompt() -> str:
         )
         | {"unknown"}
     )
+    registry_selection_tags = sorted(
+        set(selection_tags or ())
+        or set().union(
+            *(capability.selection_tags for capability in OUTPUT_CAPABILITIES.values())
+        )
+    )
     return f"""
 You are the semantic interpreter for a scientific Network Zoo request.
-Interpret only the result the user wants. Never select a workflow or action, never
-request input files, and never authorize tool execution. Return only the
-SemanticInterpretation structure.
+Interpret the full request, including what the user wants the agent to do now.
+Never select a workflow or action, never request input files, and never authorize
+tool execution. Return only the SemanticInterpretation structure.
+
+Set request_mode from the meaning of the complete request rather than from a
+keyword or a fixed phrase:
+- guidance: the user wants an explanation, comparison, workflow plan, list of
+  steps/algorithms, interpretation of possible methods, or a hypothetical answer;
+  do not perform analysis now.
+- execute: the user explicitly asks the agent to perform the requested analysis or
+  transformation now.
+- unknown: the request does not establish whether work should be performed now.
+  Do not infer execution authorization from missing files or from scientific verbs
+  appearing inside a request for explanation or planning.
 
 Allowed ontology values:
 - operation: {', '.join(get_args(Operation))}
@@ -133,8 +155,23 @@ Dimension semantics:
 - regulator_types and target_types describe biological roles inside an artifact.
   Empty role lists mean the user did not constrain that role; do not mark a role
   unresolved merely because it was not stated.
+- selection_tags are registry-defined intent signals, not workflow names. Infer only
+  tags whose scientific meaning is supported by the request, using this runtime
+  registry catalog: {', '.join(registry_selection_tags) or 'none'}. They help the
+  planning layer compose compatible capabilities; they do not select or authorize
+  a workflow and should remain empty when no registered signal is supported. Put
+  them only in outcome.selection_tags, not in scientific evidence. If evidence is
+  supplied for one, use the generic dimension selection_tag and the exact tag value;
+  never invent a new evidence dimension from a registry tag name.
 - granularity describes whether one result spans all samples or varies per sample.
   A sample-specific result does not by itself make sample an entity inside the result.
+- Infer granularity from the user's scientific purpose, not from one trigger phrase.
+  Purposes such as estimating each patient's network, comparing networks across
+  patients, measuring an individual's contribution, studying patient-level
+  heterogeneity, or obtaining one network per sample imply sample_specific even if
+  the user never says "sample-specific". Cohort-wide consensus, one network for the
+  whole dataset, or population-level modules imply aggregate. If the purpose
+  genuinely supports both, preserve both as a composition or unresolved hypothesis.
 - unresolved_dimensions contains only missing facts that create multiple materially
   different interpretations of the requested scientific result. Do not list optional
   unstated details that do not change the requested artifact.
@@ -173,6 +210,10 @@ measurement dataset. Distinguish raw measurements, regulatory networks,
 co-expression networks, and community assignments by the scientific object being
 requested. A question asking which tool could produce a named scientific result
 describes that result but does not authorize execution.
+
+Do not select a workflow from a fixed keyword-to-tool table. First infer the result,
+the unit over which it varies, and the biological roles; deterministic matching will
+compare those typed dimensions against the registered workflow capabilities.
 
 {output_language_policy()}
 """.strip()
@@ -248,6 +289,7 @@ def build_intent_router_messages(
     upstream_facts = json.dumps(
         {
             "semantic_goal": interpretation.semantic_goal,
+            "request_mode": interpretation.request_mode,
             "capability_match": capability_match.model_dump(mode="json"),
         },
         ensure_ascii=False,

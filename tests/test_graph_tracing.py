@@ -48,6 +48,7 @@ def semantic_review(interpretation: SemanticInterpretation) -> SemanticReview:
         key=lambda hypothesis: hypothesis.confidence,
     )
     return SemanticReview(
+        request_mode=interpretation.request_mode,
         semantic_goal=interpretation.semantic_goal,
         outcome_hypothesis=primary,
     )
@@ -71,6 +72,7 @@ class DeterministicRouterLLM:
                 reason="Deterministic execution fixture.",
             )
         interpretation = SemanticInterpretation(
+            request_mode="execute",
             semantic_goal="aggregate TF regulatory network",
             outcome_hypotheses=[
                 OutcomeHypothesis(
@@ -124,6 +126,7 @@ class SequencedHypothesisRouter:
         self.calls += 1
         if schema is not IntentDecision:
             interpretation = SemanticInterpretation(
+                request_mode="guidance",
                 semantic_goal="sample-specific miRNA network",
                 outcome_hypotheses=[
                     OutcomeHypothesis(
@@ -181,6 +184,7 @@ class EmptyOutcomeRouter:
         self.calls += 1
         if schema is not IntentDecision:
             interpretation = SemanticInterpretation(
+                request_mode="guidance",
                 semantic_goal="sample-specific miRNA regulatory network",
                 outcome_hypotheses=[
                     OutcomeHypothesis(
@@ -273,6 +277,7 @@ class EvidenceGuidedSemanticRetryRouter:
         self.calls += 1
         if self.calls == 1:
             return SemanticInterpretation(
+                request_mode="guidance",
                 semantic_goal="tools for a sample-specific miRNA regulator network",
                 outcome_hypotheses=[
                     OutcomeHypothesis(
@@ -352,6 +357,7 @@ class StrictRoutingPipelineLLM:
         if record_call:
             self.call_order.append("semantic_interpreter")
         return SemanticInterpretation(
+            request_mode="guidance",
             semantic_goal="sample-specific miRNA regulatory network",
             outcome_hypotheses=[
                 OutcomeHypothesis(

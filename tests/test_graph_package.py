@@ -144,6 +144,8 @@ def test_response_prompt_preserves_guidance_authority_boundaries(monkeypatch):
     assert "input file" in result.response
     assert "registered final action" in result.response
     assert "must issue separate commands" in result.response
+    assert "may be a LIONESS workflow" in result.response
+    assert "without an explicit sample-specific request" not in result.response
     assert result.routing == legacy_agent.build_routing_prompt(policy)
 
 
@@ -289,6 +291,15 @@ def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules(
         "source-target-weight" in item
         for item in by_action["run_condor"]["conventions"]
     )
+    handoffs = {
+        (item["from_action"], item["to_action"]): item
+        for item in context["handoffs"]
+    }
+    assert ("run_cobra", "run_panda") in handoffs
+    assert ("run_panda", "run_condor") in handoffs
+    assert handoffs[("run_cobra", "run_panda")]["from_output"] == "coexpression_network"
+    assert "not a replacement expression matrix" in handoffs[("run_cobra", "run_panda")]["handoff_contract"]
+    assert "regulatory_network" in handoffs[("run_panda", "run_condor")]["to_inputs"]
 
 
 def test_guidance_response_removes_model_owned_status_and_cta_before_footer():

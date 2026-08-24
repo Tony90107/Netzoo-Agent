@@ -137,6 +137,10 @@ class ProjectPolicyLoader:
                 guidance_predecessors=tuple(
                     spec.output_capability.guidance_predecessors
                 ),
+                input_artifacts=frozenset(spec.output_capability.input_artifacts),
+                handoff_targets=tuple(spec.output_capability.handoff_targets),
+                selection_tags=frozenset(spec.output_capability.selection_tags),
+                handoff_contract=spec.output_capability.handoff_contract,
             )
             if yaml_capability != definition.output_capability:
                 raise ProjectPolicyError(

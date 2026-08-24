@@ -34,6 +34,10 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     guidance_predecessors: list[RecommendedAction] = Field(
         default_factory=list, max_length=2
     )
+    input_artifacts: list[ArtifactType] = Field(default_factory=list, max_length=4)
+    handoff_targets: list[RecommendedAction] = Field(default_factory=list, max_length=4)
+    selection_tags: list[str] = Field(default_factory=list, max_length=12)
+    handoff_contract: str = Field(default="", max_length=800)
 
 
 class WorkflowPolicySpec(BaseModel):
@@ -90,7 +94,11 @@ class ProjectPolicySnapshot(BaseModel):
                 f"regulators={','.join(capability.regulator_types) or 'none'}, "
                 f"targets={','.join(capability.target_types) or 'none'}, "
                 f"granularities={','.join(capability.granularities)}. "
-                f"Required inputs: {', '.join(spec.required_inputs)}."
+                f"Selection tags: {','.join(capability.selection_tags) or 'none'}. "
+                f"Consumes: {','.join(capability.input_artifacts) or 'raw/user input'}. "
+                f"Handoff targets: {','.join(capability.handoff_targets) or 'none'}. "
+                f"Required inputs: {', '.join(spec.required_inputs)}. "
+                f"Handoff contract: {capability.handoff_contract or 'none'}."
             )
         return "\n".join(lines)
 

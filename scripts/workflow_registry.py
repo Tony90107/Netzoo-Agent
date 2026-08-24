@@ -90,6 +90,10 @@ class OutputCapabilityDefinition:
     regulator_types: frozenset[Literal["tf", "mirna"]] = frozenset()
     target_types: frozenset[Literal["gene"]] = frozenset()
     guidance_predecessors: tuple[RecommendedAction, ...] = ()
+    input_artifacts: frozenset[ArtifactType] = frozenset()
+    handoff_targets: tuple[RecommendedAction, ...] = ()
+    selection_tags: frozenset[str] = frozenset()
+    handoff_contract: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +177,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=("run_condor",),
+            selection_tags=frozenset({"tf_gene_regulation", "aggregate_network"}),
+            handoff_contract=(
+                "PANDA consumes a gene-by-sample expression matrix plus motif and "
+                "PPI priors, and produces a weighted TF-to-gene regulatory network. "
+                "Convert that network to a source-target-weight bipartite edge list "
+                "before handing it to CONDOR."
+            ),
         ),
     ),
     "run_puma": ActionDefinition(
@@ -203,6 +216,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf", "mirna"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=("run_condor",),
+            selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
+            handoff_contract=(
+                "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, "
+                "and miRNA priors, and produces a weighted regulator-to-gene network. "
+                "Convert that network to a source-target-weight bipartite edge list "
+                "before handing it to CONDOR."
+            ),
         ),
     ),
     "run_lioness_panda": ActionDefinition(
@@ -234,6 +256,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
             guidance_predecessors=("run_panda",),
+            input_artifacts=frozenset({"expression_matrix"}),
+            selection_tags=frozenset({"sample_specific", "tf_gene_regulation"}),
+            handoff_contract=(
+                "LIONESS-PANDA uses the expression matrix and PANDA-compatible "
+                "priors to derive sample-specific TF-to-gene networks."
+            ),
         ),
     ),
     "run_lioness_puma": ActionDefinition(
@@ -267,6 +295,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
             guidance_predecessors=("run_puma",),
+            input_artifacts=frozenset({"expression_matrix"}),
+            selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
+            handoff_contract=(
+                "LIONESS-PUMA uses the expression matrix and PUMA-compatible "
+                "priors to derive sample-specific TF/miRNA-to-gene networks."
+            ),
         ),
     ),
     "run_lioness_coexpression": ActionDefinition(
@@ -285,6 +319,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="coexpression_network",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            selection_tags=frozenset({"sample_specific", "coexpression"}),
+            handoff_contract=(
+                "LIONESS co-expression consumes a gene-by-sample expression matrix "
+                "and produces sample-specific co-expression networks."
+            ),
         ),
     ),
     "run_condor": ActionDefinition(
@@ -303,6 +343,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="community_assignment",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"not_applicable"}),
+            input_artifacts=frozenset({"regulatory_network"}),
+            selection_tags=frozenset({"bipartite_community_detection", "modules"}),
+            handoff_contract=(
+                "CONDOR consumes a weighted source-target bipartite edge list made "
+                "from a validated regulator-gene network and returns community "
+                "assignments with regulator-side and gene-side partitions."
+            ),
         ),
     ),
     "run_cobra": ActionDefinition(
@@ -319,6 +366,22 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="coexpression_network",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=("run_panda",),
+            selection_tags=frozenset(
+                {
+                    "covariate_association",
+                    "hospital_effect_assessment",
+                    "sequencing_batch_effect_assessment",
+                }
+            ),
+            handoff_contract=(
+                "COBRA consumes a gene-by-sample expression matrix and numeric sample "
+                "covariates, then produces a covariate-associated covariance "
+                "decomposition. This output is evidence for covariate handling, not "
+                "a replacement expression matrix; PANDA must receive an independently "
+                "prepared corrected gene-by-sample matrix."
+            ),
         ),
     ),
     "query_context7": ActionDefinition(
@@ -368,6 +431,15 @@ def workflow_name(action: str) -> str:
         return definition.workflow
     return (
         action.removeprefix("run_").removeprefix("inspect_").replace("_", "-").upper()
+    )
+
+
+def registered_actions_for_family(family: str) -> tuple[ActionName, ...]:
+    """Return registered runnable actions for a declared method family."""
+    return tuple(
+        action
+        for action, definition in ACTION_DEFINITIONS.items()
+        if definition.run and definition.memory_metadata.get("method_family") == family
     )
 
 
