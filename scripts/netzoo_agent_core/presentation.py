@@ -199,8 +199,15 @@ def _apply_public_progress_event(
     ):
         outcome = str(detail.get("outcome") or "Requested outcome classified")
         workflows = [str(item) for item in detail.get("workflows", [])]
+        workflow_path = [str(item) for item in detail.get("workflow_path", [])]
         state.complete("understand", outcome)
-        if workflows:
+        if workflow_path:
+            state.complete("match", " → ".join(workflow_path))
+            _commit_public_activity(
+                f"workflow-path:{','.join(workflow_path)}",
+                f"✓ Selected guidance path — {' → '.join(workflow_path)}",
+            )
+        elif workflows:
             state.complete("match", ", ".join(workflows))
             match_label = (
                 "Matched final-result workflow"
@@ -223,6 +230,12 @@ def _apply_public_progress_event(
         tool_status = str(detail.get("tool_status") or "")
         if question:
             state.attention(state_name)
+        elif detail.get("status") == "guidance":
+            state.complete(state_name, "Guidance prepared")
+            _commit_public_activity(
+                "guidance-prepared",
+                "✓ Guidance prepared",
+            )
         else:
             state.activate(state_name)
         state.activity = tool_status or None

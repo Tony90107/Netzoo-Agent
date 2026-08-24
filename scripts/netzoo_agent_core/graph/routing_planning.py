@@ -49,7 +49,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "reasoning",
         "Choosing the next safe step",
-        next_step_progress_detail(decision),
+        next_step_progress_detail(decision, routing_state["semantic_goal"]),
     )
     record_event(
         context,

@@ -225,6 +225,25 @@ def test_state_machine_shows_verified_decision_facts_without_a_tool(monkeypatch,
     assert "Select aggregate or sample-specific" not in output
 
 
+def test_state_machine_marks_guidance_as_prepared(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "reasoning",
+        "Choosing the next safe step",
+        {
+            "kind": "next_step",
+            "status": "guidance",
+            "tool_status": "No local tool has run yet.",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Guidance prepared" in output
+    assert "? Clarification needed" not in output
+
+
 def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
     _enable_state_machine(monkeypatch)
     monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
@@ -308,6 +327,26 @@ def test_state_machine_labels_guidance_match_as_final_result(monkeypatch, capsys
     output = capsys.readouterr().out
     assert "✓ Matched final-result workflow — CONDOR" in output
     assert "✓ Matched workflows — CONDOR" not in output
+
+
+def test_state_machine_renders_registry_derived_guidance_path(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "intent",
+        "Classified as no_tool",
+        {
+            "kind": "classification",
+            "outcome": "TF regulatory network",
+            "workflows": ["PANDA", "LIONESS-PANDA"],
+            "workflow_path": ["PANDA", "LIONESS-PANDA"],
+            "workflow_scope": "final_result",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Selected guidance path — PANDA → LIONESS-PANDA" in output
 
 
 def test_single_stream_hides_legacy_stage_labels(monkeypatch, capsys):

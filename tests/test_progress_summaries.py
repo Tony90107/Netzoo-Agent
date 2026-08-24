@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from netzoo_agent_core.progress_summaries import render_progress_summary  # noqa: E402
 from netzoo_agent_core.interpretation.semantic_goal import (  # noqa: E402
     classification_progress_detail,
+    next_step_progress_detail,
 )
 from netzoo_agent_core.cli.follow_up import (  # noqa: E402
     build_follow_up_context,
@@ -171,6 +172,109 @@ def test_guidance_classification_labels_condor_as_final_result_boundary():
     )
 
     assert detail["workflow_scope"] == "final_result"
+
+
+def test_guidance_ambiguity_is_not_presented_as_cli_clarification():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="ambiguous",
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+
+    detail = next_step_progress_detail(
+        decision,
+        {"request_mode": "guidance"},
+    )
+
+    assert detail["status"] == "guidance"
+    assert "question" not in detail
+
+
+def test_unknown_nonexecuting_mode_is_not_presented_as_cli_clarification():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.8,
+        reason="The request is conceptual.",
+        capability_match_status="ambiguous",
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+
+    detail = next_step_progress_detail(
+        decision,
+        {"request_mode": "unknown"},
+    )
+
+    assert detail["status"] == "guidance"
+    assert "question" not in detail
+
+
+def test_guidance_hypotheses_are_not_shown_as_final_workflow_matches():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="guidance",
+        capability_match_status="ambiguous",
+        hypothesis_actions=[
+            "run_panda",
+            "run_puma",
+            "run_lioness_panda",
+            "run_lioness_puma",
+        ],
+    )
+
+    detail = classification_progress_detail(
+        {
+            "candidates": [
+                "run_panda",
+                "run_puma",
+                "run_lioness_panda",
+                "run_lioness_puma",
+            ],
+            "request_mode": "guidance",
+            "relationship": "alternatives",
+        },
+        decision,
+    )
+
+    assert detail["workflows"] == []
+    assert detail["workflow_scope"] == "match"
+
+
+def test_exact_guidance_exposes_registry_derived_workflow_path():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_lioness_panda"],
+        recommended_actions=["run_panda", "run_lioness_panda"],
+    )
+
+    detail = classification_progress_detail(
+        {
+            "candidates": ["run_panda", "run_lioness_panda"],
+            "request_mode": "guidance",
+            "relationship": "composition",
+            "match_status": "exact",
+        },
+        decision,
+    )
+
+    assert detail["workflow_path"] == ["PANDA", "LIONESS-PANDA"]
 
 
 def test_guidance_next_step_does_not_offer_only_condor_input_path():

@@ -72,17 +72,6 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         )
 
     if (
-        decision.capability_match_status == "ambiguous"
-        and decision.clarification_question
-    ):
-        return NextTurnPrompt(
-            kind="clarify_outcome",
-            question=_ui_text(
-                "Enter the requested clarification or describe another NetZoo goal."
-            ),
-        )
-
-    if (
         decision.capability_match_status == "unsupported"
         and decision.alternative_actions
         and request_mode != "guidance"
@@ -108,6 +97,16 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
+    if decision.action == "no_tool" and request_mode == "guidance":
+        return NextTurnPrompt(
+            kind="completed",
+            question=_ui_text(
+                "Enter a follow-up question, provide inputs only if you want to "
+                "execute the complete recommended pipeline, or describe another "
+                "NetZoo goal."
+            ),
+        )
+
     if (
         decision.action == "no_tool"
         and semantic_relationship == "alternatives"
@@ -120,13 +119,14 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
-    if decision.action == "no_tool" and request_mode == "guidance":
+    if (
+        decision.capability_match_status == "ambiguous"
+        and decision.clarification_question
+    ):
         return NextTurnPrompt(
-            kind="completed",
+            kind="clarify_outcome",
             question=_ui_text(
-                "Enter a follow-up question, provide inputs only if you want to "
-                "execute the complete recommended pipeline, or describe another "
-                "NetZoo goal."
+                "Enter the requested clarification or describe another NetZoo goal."
             ),
         )
 
