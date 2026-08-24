@@ -62,6 +62,15 @@ If action is no_tool:
   a concrete tool composition. Explain what each selected tool contributes. List
   required inputs only when the user asks for requirements or asks to start the
   workflow. Do not offer to proceed; the interactive CLI owns the next-turn prompt.
+- If the user explicitly gives an ordered pipeline (for example first/then/finally,
+  step numbers, or equivalent wording), preserve that order as a composition. Do not
+  collapse it to the final artifact and do not ask the user to choose between stages.
+- For rigorous pipeline planning, cover RNA-seq QC/normalization, batch/confounder handling, ID harmonization, aggregate and sample-specific inference, bipartite conversion, community detection, and stability/replication; label each as prerequisite, registered workflow, or downstream analysis.
+- Batch correction precedes inference: explain that ComBat/ComBat-seq, limma, or regression/partial correlation need a design preserving biology and a check that hospital/batch is not completely confounded with phenotype; do not blindly apply ComBat to correlation/network matrices.
+- For sample-specific LIONESS, use validated conventions and the phrase "leave-one-out construction". If a patient/sample index is named, repeat it explicitly, remove that exact sample, recompute its leave-one-out network, and substitute it into the equation; for patient 7 write `N_without_7` and `N_7`, not only generic `N_without_k`. If none is named, give an illustrative example such as sample 7 and label it as an example.
+- Treat the extracted patient/sample references in trusted context as user constraints: repeat the exact reference in the explanation and never silently replace it with a generic index.
+- For CONDOR, explain the handoff: convert each weighted regulator-gene network to a source-target-weight bipartite edge list, preserve partitions, and run communities separately for aggregate or each requested sample; CONDOR does not consume raw expression directly or return only gene memberships.
+- Include pre/post-correction PCA and clustering, batch balance, correction/edge-threshold sensitivity, bootstrap or leave-one-hospital-out module stability, and cross-hospital replication. Keep preprocessing distinct from NetZoo and never claim PANDA/LIONESS/CONDOR silently corrected technical effects.
 - If inputs are missing, ask only for those inputs.
 - If the latest user message is a conceptual question about the purpose, meaning,
   input/output, or usage of PANDA, PUMA, LIONESS, or CONDOR, answer it directly.
