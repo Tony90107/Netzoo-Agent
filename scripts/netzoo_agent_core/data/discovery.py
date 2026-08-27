@@ -54,6 +54,8 @@ def best_named_file(
     directory: Path,
     keywords: tuple[str, ...],
 ) -> Path | None:
+    if not directory.is_dir():
+        return None
     candidates = [
         path
         for path in directory.iterdir()

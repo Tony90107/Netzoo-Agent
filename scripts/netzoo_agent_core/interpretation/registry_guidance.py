@@ -56,7 +56,18 @@ def _reverse_handoff_graph(records: dict[str, dict]) -> dict[str, list[str]]:
         for target in _capability(item).get("handoff_targets") or ():
             if target in records:
                 predecessors[target].append(producer)
+    for action, items in predecessors.items():
+        predecessors[action] = list(dict.fromkeys(items))
     return predecessors
+
+
+def _guidance_predecessors(action: str, records: dict[str, dict]) -> list[str]:
+    return [
+        predecessor
+        for predecessor in _capability(records[action]).get("guidance_predecessors")
+        or ()
+        if predecessor in records
+    ]
 
 
 def _paths_to_final(
@@ -68,16 +79,33 @@ def _paths_to_final(
     def walk(action: str, seen: frozenset[str]) -> list[list[str]]:
         if action in seen:
             return []
-        prior = predecessors.get(action) or []
-        if not prior:
-            return [[action]]
-        paths: list[list[str]] = []
-        for predecessor in prior:
+        guidance_prior = _guidance_predecessors(action, records)
+        if guidance_prior:
+            paths = [[]]
+            for predecessor in guidance_prior:
+                prior_paths = walk(predecessor, seen | {action})
+                paths = [
+                    [*prefix, *path]
+                    for prefix in paths
+                    for path in prior_paths
+                ]
+            return [
+                [*path, action]
+                for path in paths
+                if path and path[-1] != action
+            ]
+
+        paths = [[action]]
+        for predecessor in predecessors.get(action) or []:
             for path in walk(predecessor, seen | {action}):
                 paths.append([*path, action])
         return paths
 
-    return walk(final_action, frozenset())
+    paths = []
+    for path in walk(final_action, frozenset()):
+        if path not in paths:
+            paths.append(path)
+    return paths
 
 
 def _path_score(
@@ -113,6 +141,10 @@ def _handoff_steps(path: list[str], records: dict[str, dict]) -> list[dict]:
         producer_output = producer_capability.get("artifact_type")
         consumer_inputs = sorted(consumer_capability.get("input_artifacts") or ())
         direct_artifact_match = producer_output in consumer_inputs
+        is_guidance_predecessor = (
+            producer in (consumer_capability.get("guidance_predecessors") or ())
+            and consumer not in (producer_capability.get("handoff_targets") or ())
+        )
         steps.append(
             {
                 "from_action": producer,
@@ -126,7 +158,11 @@ def _handoff_steps(path: list[str], records: dict[str, dict]) -> list[dict]:
                     if not direct_artifact_match
                     else "registered_transformation"
                 ),
-                "handoff_contract": producer_capability.get("handoff_contract") or "",
+                "handoff_contract": (
+                    consumer_capability.get("handoff_contract")
+                    if is_guidance_predecessor
+                    else producer_capability.get("handoff_contract")
+                ) or "",
             }
         )
     return steps

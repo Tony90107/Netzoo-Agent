@@ -91,6 +91,10 @@ def build_graph(
         method="function_calling",
         include_raw=False,
     )
+    # Content mapping binds the structured schema lazily, only when a workflow
+    # has unresolved file roles. This keeps the graph's stable router contract
+    # unchanged while still making a real LLM call for the fallback.
+    input_content_mapper = router_llm
     prompts = build_graph_prompts(project_policy)
     context = _GraphContext(
         profile_id=profile_id,
@@ -102,6 +106,7 @@ def build_graph(
         semantic_interpreter=semantic_interpreter,
         semantic_reviewer=semantic_reviewer,
         intent_router=intent_router,
+        input_content_mapper=input_content_mapper,
         response_llm=response_llm,
         semantic_model_name=semantic_model_name,
         router_model_name=router_model_name,

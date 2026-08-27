@@ -13,6 +13,10 @@ import pandas as pd
 
 from netZooPy.cobra import cobra
 from netzoo_agent_core.data.cobra import load_cobra_inputs
+from netzoo_agent_core.data.coexpression import (
+    adjusted_coexpression_from_cobra,
+    write_adjusted_coexpression,
+)
 
 
 def checksum(path: Path) -> str:
@@ -26,10 +30,21 @@ def main() -> int:
     parser.add_argument("-o", "--output-dir", required=True)
     args = parser.parse_args()
     expression, design = load_cobra_inputs(args.expression, args.design)
+    if "intercept" not in design.columns:
+        design.insert(0, "intercept", 1.0)
+    elif not np.allclose(design["intercept"].to_numpy(dtype=float), 1.0):
+        raise ValueError("COBRA intercept column must contain only ones")
     psi, q, d, g = cobra(design.to_numpy(), expression.to_numpy())
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(output_dir / "components.npz", psi=psi, Q=q, d=d, g=g)
+    adjusted = adjusted_coexpression_from_cobra(
+        psi,
+        q,
+        list(expression.index.astype(str)),
+        list(design.columns.astype(str)),
+    )
+    adjusted_tsv, adjusted_npz = write_adjusted_coexpression(adjusted, output_dir)
     pd.DataFrame(
         {
             "component": range(1, len(d) + 1),
@@ -48,12 +63,30 @@ def main() -> int:
         "samples": int(expression.shape[1]),
         "covariates": list(design.columns.astype(str)),
         "sample_order": list(expression.columns.astype(str)),
-        "artifacts": ["components.npz", "summary.tsv"],
+        "adjustment": {
+            "method": "intercept_component",
+            "intercept_column": "intercept",
+            "formula": "Q @ diag(psi[intercept, :]) @ Q.T, normalized to correlation",
+        },
+        "adjusted_coexpression": {
+            "format": "labeled_gene_by_gene_correlation",
+            "tsv": adjusted_tsv.name,
+            "npz": adjusted_npz.name,
+            "genes": int(adjusted.shape[0]),
+        },
+        "artifacts": [
+            "components.npz",
+            "summary.tsv",
+            adjusted_tsv.name,
+            adjusted_npz.name,
+        ],
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {output_dir / 'manifest.json'}")
     print(f"Wrote {output_dir / 'components.npz'}")
     print(f"Wrote {output_dir / 'summary.tsv'}")
+    print(f"Wrote {adjusted_tsv}")
+    print(f"Wrote {adjusted_npz}")
     return 0
 
 

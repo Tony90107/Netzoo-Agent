@@ -159,6 +159,62 @@ class ArtifactValidationTests(unittest.TestCase):
         self.assertTrue(result.ok, result.errors)
         self.assertEqual(len(result.artifacts), 4)
 
+    def test_cobra_requires_and_accepts_adjusted_coexpression_artifacts(self):
+        output_dir = self.root / "cobra"
+        output_dir.mkdir()
+        (output_dir / "manifest.json").write_text(
+            '{"method":"COBRA","adjusted_coexpression":{"tsv":"adjusted_coexpression.tsv","npz":"adjusted_coexpression.npz"}}\n',
+            encoding="utf-8",
+        )
+        np.savez_compressed(
+            output_dir / "components.npz",
+            psi=np.ones((2, 2)),
+            Q=np.eye(2),
+            d=np.ones(2),
+            g=np.ones((2, 2)),
+        )
+        (output_dir / "summary.tsv").write_text(
+            "component\teigenvalue\tmax_absolute_covariate_impact\n1\t1\t1\n2\t1\t1\n",
+            encoding="utf-8",
+        )
+        (output_dir / "adjusted_coexpression.tsv").write_text(
+            "gene_id\tG1\tG2\nG1\t1\t0.5\nG2\t0.5\t1\n",
+            encoding="utf-8",
+        )
+        np.savez_compressed(
+            output_dir / "adjusted_coexpression.npz",
+            matrix=np.asarray([[1.0, 0.5], [0.5, 1.0]]),
+            gene_ids=np.asarray(["G1", "G2"]),
+        )
+
+        result = agent.validate_output_artifacts(
+            "run_cobra",
+            self.decision("run_cobra", output_dir=str(output_dir)),
+        )
+
+        self.assertTrue(result.ok, result.errors)
+        self.assertEqual(result.metrics["cobra_adjusted_coexpression_genes"], 2)
+
+    def test_cobra_without_adjusted_artifact_fails(self):
+        output_dir = self.root / "cobra-old"
+        output_dir.mkdir()
+        (output_dir / "manifest.json").write_text(
+            '{"method":"COBRA"}\n', encoding="utf-8"
+        )
+        np.savez_compressed(
+            output_dir / "components.npz",
+            psi=np.ones((2, 2)), Q=np.eye(2), d=np.ones(2), g=np.ones((2, 2))
+        )
+        (output_dir / "summary.tsv").write_text("component\teigenvalue\n1\t1\n", encoding="utf-8")
+
+        result = agent.validate_output_artifacts(
+            "run_cobra",
+            self.decision("run_cobra", output_dir=str(output_dir)),
+        )
+
+        self.assertFalse(result.ok)
+        self.assertIn("adjusted co-expression", " ".join(result.errors))
+
 
 if __name__ == "__main__":
     unittest.main()

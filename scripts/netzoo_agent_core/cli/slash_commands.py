@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 
 from .. import settings
+from ..contracts import PlanEvaluationResult, TaskDecision, WorkflowPlan
+from ..data.preflight import validate_workflow_inputs
 from ..runtime import configure_runtime
 
 __all__ = [
@@ -23,6 +25,7 @@ _KNOWN_COMMANDS = frozenset({"/planning", "/execute", "/status", "/help"})
 class SlashCommandResult:
     handled: bool
     message: str = ""
+    execute_once: bool = False
 
 
 def current_mode_label() -> str:
@@ -37,6 +40,10 @@ def handle_slash_command(
     user_input: str,
     *,
     allow_path_answer: bool = False,
+    execution_ready: bool | None = None,
+    execution_block_reason: str = "",
+    current_plan: WorkflowPlan | dict | None = None,
+    current_plan_evaluation: PlanEvaluationResult | dict | None = None,
 ) -> SlashCommandResult:
     stripped = user_input.strip()
     if not _COMMAND_TOKEN.fullmatch(stripped):
@@ -60,10 +67,34 @@ def handle_slash_command(
             message=f"Slash commands do not accept arguments. Enter {normalized} by itself.",
         )
     if normalized == "/execute":
-        configure_runtime(EXECUTE_TOOLS=True)
+        if current_plan is None:
+            ready = False
+            reason = (
+                "Execution is blocked because there is no current Work Plan. "
+                "no approved, ready workflow plan is available. "
+                "Create a Planning-mode preview first."
+            )
+        else:
+            ready, reason = _check_current_workflow_plan(
+                current_plan,
+                current_plan_evaluation,
+            )
+        if not ready:
+            return SlashCommandResult(
+                handled=True,
+                message=(
+                    reason
+                    or "Execution is unavailable because there is no approved, "
+                    "ready workflow plan. Continue providing the required inputs."
+                ),
+            )
         return SlashCommandResult(
             handled=True,
-            message="Execution mode enabled. Future workflow tasks will run commands.",
+            message=(
+                "The current Work Plan is approved and ready. "
+                "Confirm below to execute it once."
+            ),
+            execute_once=True,
         )
     if normalized == "/planning":
         configure_runtime(EXECUTE_TOOLS=False)
@@ -83,8 +114,72 @@ def handle_slash_command(
             "Type after / to enter another slash command.\n"
             "Slash commands:\n"
             "  /planning Return future workflow tasks to preview-only Planning.\n"
-            "  /execute  Run validated workflow commands for future tasks.\n"
+            "  /execute  Execute the current approved Work Plan once.\n"
             "  /status   Show the current execution mode.\n"
             "  /help     Show this help."
         ),
     )
+
+
+def _check_current_workflow_plan(
+    plan: WorkflowPlan | dict,
+    evaluation: PlanEvaluationResult | dict | None,
+) -> tuple[bool, str]:
+    """Check the cached plan before /execute grants one-shot authority."""
+    try:
+        validated_plan = WorkflowPlan.model_validate(plan)
+    except Exception:
+        return False, "Execution is blocked because the current Work Plan is invalid."
+    if validated_plan.status != "ready":
+        if validated_plan.missing_inputs:
+            return (
+                False,
+                "Execution is blocked because the current Work Plan is not ready. "
+                "It still needs: "
+                + ", ".join(validated_plan.missing_inputs)
+                + ".",
+            )
+        return (
+            False,
+            "Execution is blocked because the current Work Plan is not ready. "
+            f"Current status: {validated_plan.status}.",
+        )
+    if not validated_plan.steps:
+        return False, "Execution is blocked because the Work Plan has no steps."
+    if validated_plan.missing_inputs:
+        return (
+            False,
+            "Execution is blocked because the Work Plan still needs: "
+            + ", ".join(validated_plan.missing_inputs)
+            + ".",
+        )
+    try:
+        decision = TaskDecision.model_validate(validated_plan.decision)
+    except Exception:
+        return False, "Execution is blocked because the Work Plan decision is invalid."
+    if not decision.should_execute or decision.missing_inputs:
+        return (
+            False,
+            "Execution is blocked because the Work Plan is not authorized for "
+            "execution or still contains missing inputs.",
+        )
+    if evaluation is None:
+        return False, "Execution is blocked because the Work Plan has not passed evaluation."
+    try:
+        validated_evaluation = PlanEvaluationResult.model_validate(evaluation)
+    except Exception:
+        return False, "Execution is blocked because the Work Plan evaluation is invalid."
+    if validated_evaluation.status != "approved":
+        return (
+            False,
+            "Execution is blocked because the Work Plan evaluation is not approved. "
+            f"Current evaluation: {validated_evaluation.status}.",
+        )
+    preflight_errors = validate_workflow_inputs(decision.action, decision)
+    if preflight_errors:
+        return (
+            False,
+            "Execution is blocked because final input validation failed:\n"
+            + "\n".join(f"- {error}" for error in preflight_errors),
+        )
+    return True, ""

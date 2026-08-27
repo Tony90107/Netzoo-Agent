@@ -15,14 +15,15 @@ output_capability:
   target_types: []
   guidance_predecessors: []
   input_artifacts: [expression_matrix]
-  handoff_targets: [run_panda]
+  handoff_targets: [run_panda, run_puma]
   selection_tags: [covariate_association, hospital_effect_assessment, sequencing_batch_effect_assessment]
   handoff_contract: >-
     COBRA consumes a gene-by-sample expression matrix and numeric sample covariates,
-    then produces a covariate-associated covariance decomposition. This output is
-    evidence for covariate handling, not a replacement expression matrix; PANDA must
-    receive an independently prepared corrected gene-by-sample matrix.
+    then produces a covariate-associated covariance decomposition and a labeled
+    adjusted gene-by-gene co-expression artifact. PANDA or PUMA may consume the
+    adjusted artifact through coexpression_file; the raw components are not a matrix
+    input by themselves.
 conventions:
   - Expression must be a labeled gene-by-sample matrix with more genes than samples.
   - Design rows must use exactly the expression sample IDs and numeric covariates.
-  - COBRA output is a covariate-associated covariance decomposition, not a replacement expression matrix.
+  - run_cobra writes adjusted_coexpression.tsv and adjusted_coexpression.npz using the intercept component, with gene IDs on both axes.

@@ -98,6 +98,7 @@ class TaskDecision(BaseModel):
     motif_file: str | None = None
     ppi_file: str | None = None
     mirna_file: str | None = None
+    coexpression_file: str | None = None
     output_file: str | None = None
     lioness_output: str | None = None
     network_file: str | None = None

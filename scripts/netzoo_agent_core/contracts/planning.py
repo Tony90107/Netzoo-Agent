@@ -32,6 +32,21 @@ class InputEvidence(BaseModel):
         exclude_if=lambda value: value is None,
     )
 
+
+class InputRoleAssignment(BaseModel):
+    """One LLM-proposed input role mapping grounded in a candidate file."""
+
+    path: str = Field(min_length=1, max_length=4_000)
+    role: str = Field(min_length=1, max_length=100)
+    confidence: float = Field(ge=0.0, le=1.0)
+    rationale: str = Field(default="", max_length=2_000)
+
+
+class InputRoleMapping(BaseModel):
+    """Structured, bounded output for content-based input role discovery."""
+
+    assignments: list[InputRoleAssignment] = Field(default_factory=list, max_length=50)
+
 class InputBundleOption(BaseModel):
     """One complete coherent input bundle offered as an atomic selection."""
 
@@ -66,4 +81,9 @@ class WorkflowPlan(BaseModel):
     recovery_step_index: int | None = Field(default=None, ge=0)
     recovery_attempt: int = Field(default=0, ge=0, le=MAX_RECOVERY_ATTEMPTS)
 
-__all__ = ['InputBundleOption', 'InputEvidence', 'WorkflowStep', 'WorkflowPlan']
+__all__ = [
+    'InputBundleOption',
+    'InputEvidence',
+    'WorkflowStep',
+    'WorkflowPlan',
+]

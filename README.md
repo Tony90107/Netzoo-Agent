@@ -223,8 +223,8 @@ docker compose run --rm netzoo run-condor \
 
 COBRA 使用有 sample header 的 gene × sample expression matrix，以及 sample × covariate
 design matrix。兩者的 sample ID 必須完全一致（順序可以不同，執行時會對齊），且 design
-covariates 必須先編碼為數值。COBRA 輸出的是 covariate-associated covariance decomposition，
-**不是**可直接取代 PANDA/PUMA/LIONESS input 的校正後 expression matrix。
+covariates 必須先編碼為數值。COBRA 會保留 covariate-associated covariance decomposition，
+並額外將 intercept component 重建成帶 gene ID 的 adjusted co-expression artifact。
 
 ```bash
 docker compose run --rm netzoo run-cobra \
@@ -234,10 +234,18 @@ docker compose run --rm netzoo run-cobra \
 ```
 
 COBRA 會在指定資料夾直接產生 `manifest.json`（inputs、checksum、sample ordering）、
-`components.npz`（完整 `psi`、`Q`、`d`、`g`）及可直接閱讀的 `summary.tsv`。互動模式
+`components.npz`（完整 `psi`、`Q`、`d`、`g`）、`summary.tsv`，以及可直接交給 PANDA/PUMA
+的 `adjusted_coexpression.tsv` 與 `adjusted_coexpression.npz`。透過 `coexpression_file`
+指定 artifact 時，它會取代 PANDA/PUMA 內部的 Pearson co-expression 建構；expression file
+仍保留作為 gene/prior 對齊來源。互動模式
 啟用 `/execute` 後，同一資料夾還會有一份 `cobra-execution-*.md` execution log；input
 inspection 不會另寫公開 log。未指定 output directory 時，所有工作流都使用既有的
 `outputs/demo/`，避免新增 workflow 專屬子資料夾。
+
+COBRA 不只可和 PANDA 配合：PUMA 也有相同的 gene-gene co-expression 依賴，現在可用同一
+個 artifact。LIONESS-PANDA/PUMA 則需要每個 leave-one-out 子集重新形成的 co-expression，
+因此 aggregate COBRA artifact 不能直接冒充 sample-specific LIONESS 輸入；CONDOR 是
+調控網路之後的二分圖社群分析，不直接消費 COBRA co-expression。
 
 CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
 weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。

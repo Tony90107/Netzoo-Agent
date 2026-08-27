@@ -77,7 +77,13 @@ from .outcomes import (
     RequestedOutcome,
 )
 from .planning import InputBundleOption  # noqa: F401 -- typed internal plan detail
-from .planning import InputEvidence, WorkflowPlan, WorkflowStep
+from .planning import (
+    InputEvidence,
+    InputRoleAssignment,  # noqa: F401 -- compatibility facade attribute
+    InputRoleMapping,  # noqa: F401 -- compatibility facade attribute
+    WorkflowPlan,
+    WorkflowStep,
+)
 from .policy import (
     AgentsPolicyHeader,
     ProjectPolicySnapshot,
@@ -131,7 +137,8 @@ __all__ = [
     "RouterDecision", "TaskDecision", "LLMUsage", "InputEvidence",
     "RequestedOutcome", "OutcomeEvidence", "OutcomeHypothesis",
     "EvidenceDimension", "CapabilityMatch", "CapabilityMatchStatus",
-    "WorkflowStep", "WorkflowPlan", "EvaluationResult", "PlanRubricItem",
+    "WorkflowStep", "WorkflowPlan",
+    "EvaluationResult", "PlanRubricItem",
     "PlanEvaluationResult", "NextTurnPrompt", "CLI_FOLLOW_UP_STARTERS",
     "strip_cli_owned_follow_up_question", "ArtifactValidationResult",
     "ToolExecutionResult", "AgentsPolicyHeader", "WorkflowPolicySpec",

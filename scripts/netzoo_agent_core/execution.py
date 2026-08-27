@@ -21,6 +21,7 @@ from .data.inspection import (
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
 from .data.cobra import inspect_cobra_inputs_impl
+from .data.coexpression import read_coexpression_matrix
 
 from .data.tables import (
     _drop_common_header,
@@ -64,6 +65,7 @@ def run_panda(
     output_file: str,
     with_header: bool = False,
     extra_args: str = "",
+    coexpression_file: str = "",
 ) -> str:
     """Run PANDA through the container wrapper."""
     validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
@@ -77,8 +79,26 @@ def run_panda(
             f"{validation_report}"
         )
 
+    coexpression_report = ""
+    if coexpression_file:
+        try:
+            coexpression = read_coexpression_matrix(coexpression_file)
+        except ValueError as error:
+            return (
+                "PANDA input validation failed; no command was executed.\n\n"
+                f"{validation_report}\n"
+                f"- co-expression: {coexpression_file}\n"
+                f"  error: {error}"
+            )
+        coexpression_report = (
+            f"- co-expression: {coexpression_file}\n"
+            f"  format: labeled symmetric gene-by-gene matrix\n"
+            f"  shape: {coexpression.shape[0]} genes x {coexpression.shape[1]} genes\n"
+            "  handoff: replaces PANDA's Pearson co-expression construction"
+        )
+
     command = [
-        "run-panda",
+        "run-panda-precomputed" if coexpression_file else "run-panda",
         "-e",
         expression_file,
         "-m",
@@ -88,11 +108,14 @@ def run_panda(
         "-o",
         output_file,
     ]
+    if coexpression_file:
+        command.extend(["-c", coexpression_file])
     if with_header or inferred_header:
         command.append("--with_header")
     if extra_args:
         command.extend(shlex.split(extra_args))
-    return validation_report + "\n\n" + _run_command(command, output_file=output_file)
+    report = validation_report + ("\n" + coexpression_report if coexpression_report else "")
+    return report + "\n\n" + _run_command(command, output_file=output_file)
 
 
 @tool
@@ -103,6 +126,7 @@ def run_puma(
     mirna_file: str,
     output_file: str,
     extra_args: str = "",
+    coexpression_file: str = "",
 ) -> str:
     """Run PUMA using a one-regulator-per-line miRNA list."""
     validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
@@ -126,7 +150,7 @@ def run_puma(
         )
 
     command = [
-        "run-puma",
+        "run-puma-precomputed" if coexpression_file else "run-puma",
         "-e",
         expression_file,
         "-m",
@@ -138,6 +162,23 @@ def run_puma(
         "-o",
         output_file,
     ]
+    if coexpression_file:
+        try:
+            coexpression = read_coexpression_matrix(coexpression_file)
+        except ValueError as error:
+            return (
+                "PUMA input validation failed; no command was executed.\n\n"
+                f"{validation_report}\n"
+                f"- co-expression: {coexpression_file}\n"
+                f"  error: {error}"
+            )
+        command.extend(["-c", coexpression_file])
+        validation_report += (
+            f"\n- co-expression: {coexpression_file}\n"
+            "  format: labeled symmetric gene-by-gene matrix\n"
+            f"  shape: {coexpression.shape[0]} genes x {coexpression.shape[1]} genes\n"
+            "  handoff: replaces PUMA's Pearson co-expression construction"
+        )
     if extra_args:
         command.extend(shlex.split(extra_args))
     return validation_report + "\n\n" + _run_command(command, output_file=output_file)
@@ -434,6 +475,8 @@ def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
             str(output_path / "manifest.json"),
             str(output_path / "components.npz"),
             str(output_path / "summary.tsv"),
+            str(output_path / "adjusted_coexpression.tsv"),
+            str(output_path / "adjusted_coexpression.npz"),
         ],
     )
 

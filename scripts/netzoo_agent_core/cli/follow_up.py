@@ -156,21 +156,36 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         )
 
     if terminal_failed(results, result_evaluation):
-        return NextTurnPrompt(
-            kind="failed",
-            question=_ui_text(
+        validation_errors = [
+            error
+            for item in results
+            if item.action.startswith("inspect_")
+            for error in item.errors
+        ]
+        if validation_errors:
+            detail = validation_errors[0]
+            question = (
+                f"Input validation did not pass: {detail} "
+                "Are these local files intended for this workflow? "
+                "If not, provide the correct role=path assignments."
+            )
+        else:
+            question = (
                 f"The {plan.workflow} workflow stopped. Would you like to correct "
                 "its inputs or try a different workflow?"
-            ),
+            )
+        return NextTurnPrompt(
+            kind="failed",
+            question=_ui_text(question),
         )
 
     if any(item.status == "dry_run" for item in results):
         return NextTurnPrompt(
             kind="dry_run",
             question=_ui_text(
-                f"The {plan.workflow} command preview is ready. Enter /execute to "
-                "enable execution and confirm this validated workflow, or describe "
-                "the input changes you want."
+                f"Your {plan.workflow} plan is ready. Enter /execute to execute and "
+                "confirm this validated workflow.\n"
+                "Or describe the input changes you want."
             ),
         )
 

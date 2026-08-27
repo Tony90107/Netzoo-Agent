@@ -25,6 +25,7 @@ class _GraphContext:
     semantic_interpreter: Any
     semantic_reviewer: Any
     intent_router: Any
+    input_content_mapper: Any
     response_llm: Any
     semantic_model_name: str
     router_model_name: str

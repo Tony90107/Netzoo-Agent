@@ -197,7 +197,6 @@ def test_cobra_to_panda_boundary_response_reads_latest_message():
 
 def test_ambiguous_guidance_reaches_response_model():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
-    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
     decision = legacy_agent.TaskDecision(
         action="no_tool",
         in_scope=True,
@@ -216,6 +215,7 @@ def test_ambiguous_guidance_reaches_response_model():
         status="respond_only",
     )
     captured = []
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
 
     class GuidanceResponse:
         def invoke(self, messages):
@@ -270,7 +270,6 @@ def test_ambiguous_guidance_reaches_response_model():
 
 
 def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():
-    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
     decision = legacy_agent.TaskDecision(
         action="no_tool",
         in_scope=True,
@@ -343,9 +342,11 @@ def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules(
         for item in context["handoffs"]
     }
     assert ("run_cobra", "run_panda") in handoffs
+    assert ("run_cobra", "run_puma") in handoffs
     assert ("run_panda", "run_condor") in handoffs
     assert handoffs[("run_cobra", "run_panda")]["from_output"] == "coexpression_network"
-    assert "not a replacement expression matrix" in handoffs[("run_cobra", "run_panda")]["handoff_contract"]
+    assert "adjusted" in handoffs[("run_cobra", "run_panda")]["handoff_contract"]
+    assert "coexpression_file" in handoffs[("run_cobra", "run_puma")]["handoff_contract"]
     assert "regulatory_network" in handoffs[("run_panda", "run_condor")]["to_inputs"]
 
 

@@ -23,6 +23,7 @@ from ..evaluation import (
     render_needs_input_response,
     render_plan_evaluation,
     render_plan_rejection_response,
+    render_input_confirmation_response,
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
@@ -59,6 +60,12 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     if plan.status == "needs_input":
         return {"messages": [AIMessage(content=render_needs_input_response(plan))]}
     if plan.status == "needs_confirmation":
+        if not plan.preference_proposals:
+            return {
+                "messages": [
+                    AIMessage(content=render_input_confirmation_response(plan))
+                ]
+            }
         return {
             "messages": [
                 AIMessage(content=render_preference_confirmation_response(plan))

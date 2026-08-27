@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 
+from .. import settings
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import (
     AgentTurnInterrupted,
@@ -14,6 +15,7 @@ from ..contracts.state import (
 from ..contracts import FollowUpContext
 from ..framework_compat import HumanMessage
 from ..presentation import _clear_transient_trace, _trace, _ui_text
+from ..planning_audit import write_planning_audit
 from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
 from ..session import (
     _is_auto_session_id,
@@ -27,6 +29,8 @@ from .clarification import (
     clarification_continuation,
     clarification_prompt,
     custom_clarification_prompt,
+    input_confirmation_continuation,
+    input_confirmation_prompt,
     parse_clarification_assignments,
     preference_confirmation_prompt,
     preference_continuation,
@@ -52,15 +56,46 @@ def _handle_interactive_control(
     answer: str,
     *,
     allow_path_answer: bool = False,
+    execution_ready: bool = False,
+    execution_block_reason: str = "",
+    current_plan: WorkflowPlan | None = None,
+    current_plan_evaluation: dict | None = None,
 ) -> bool:
     result = handle_slash_command(
         answer,
         allow_path_answer=allow_path_answer,
+        execution_ready=execution_ready,
+        execution_block_reason=execution_block_reason,
+        current_plan=current_plan,
+        current_plan_evaluation=current_plan_evaluation,
     )
     if not result.handled:
         return False
     print(_ui_text(result.message))
     return True
+
+
+def _write_planning_audit_if_needed(
+    runtime: CliRuntime,
+    run_id: str,
+    task: str,
+    result: dict | None = None,
+    *,
+    execution_turn: bool = False,
+) -> None:
+    """Persist only planning-mode audit Markdown; execute logging is untouched."""
+    if settings.EXECUTE_TOOLS or execution_turn:
+        return
+    try:
+        write_planning_audit(
+            run_id,
+            runtime.trace_store,
+            task=task,
+            result=result,
+        )
+    except Exception:
+        # Observability must never change the outcome of a planning or execute turn.
+        return
 
 
 def run_conversation(args, runtime: CliRuntime) -> int:
@@ -86,7 +121,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
     custom_input_selection = False
     preview_task: str | None = None
     preview_workflow: str | None = None
+    preview_plan: WorkflowPlan | None = None
+    preview_plan_evaluation: dict | None = None
     execution_confirmation_task: str | None = None
+    input_confirmation_correction = False
     run_paused = False
     queued_task = args.task
     one_shot = bool(args.task) and not runtime.resume_id
@@ -101,6 +139,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         )
 
     while True:
+        execute_once = False
         if execution_confirmation_task is not None:
             try:
                 raw_answer = reader.read(
@@ -108,7 +147,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                         "\nRun the validated "
                         f"{preview_workflow or 'NetZoo'} workflow now? [y/N] "
                     ),
-                    menu_enabled=True,
+                    menu_enabled=False,
                 )
             except (EOFError, KeyboardInterrupt):
                 print()
@@ -126,6 +165,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 continue
             task = execution_confirmation_task
             execution_confirmation_task = None
+            execute_once = True
         elif queued_task is not None:
             task = queued_task.strip()
             queued_task = None
@@ -133,7 +173,17 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if not sys.stdin.isatty() and input_func is input:
                 _clear_transient_trace()
                 if pending_plan.status == "needs_confirmation":
-                    print("\n" + preference_confirmation_prompt(pending_plan))
+                    print(
+                        "\n"
+                        + (
+                            input_confirmation_prompt(
+                                pending_plan,
+                                correction=input_confirmation_correction,
+                            )
+                            if not pending_plan.preference_proposals
+                            else preference_confirmation_prompt(pending_plan)
+                        )
+                    )
                 else:
                     print("\n" + clarification_prompt(pending_plan))
                 print(
@@ -143,36 +193,115 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 )
                 return 2
             if pending_plan.status == "needs_confirmation":
-                try:
-                    raw_answer = reader.read(
-                        render_mode_prompt(
-                            "\n" + preference_confirmation_prompt(pending_plan)
+                if not pending_plan.preference_proposals:
+                    try:
+                        raw_answer = reader.read(
+                            render_mode_prompt(
+                                "\n"
+                                + input_confirmation_prompt(
+                                    pending_plan,
+                                    correction=input_confirmation_correction,
+                                )
+                            ),
+                            menu_enabled=False,
+                        )
+                    except (EOFError, KeyboardInterrupt):
+                        print()
+                        break
+                    if raw_answer is None:
+                        continue
+                    answer = raw_answer.strip()
+                    if _handle_interactive_control(
+                        answer,
+                        current_plan=pending_plan,
+                        execution_block_reason=(
+                            "This workflow still requires input confirmation. "
+                            "Confirm the displayed files or provide corrected paths."
                         ),
-                        menu_enabled=True,
-                    )
-                except (EOFError, KeyboardInterrupt):
-                    print()
-                    break
-                if raw_answer is None:
-                    continue
-                answer = raw_answer.strip()
-                if _handle_interactive_control(answer):
-                    continue
-                if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
-                    break
-                approved = answer.casefold() in {"y", "yes"}
-                if approved:
-                    profile_store.confirm(
-                        profile_id,
-                        pending_plan.preference_proposals,
-                    )
-                    print(
-                        _ui_text("Saved confirmed preferences to profile ")
-                        + f"'{profile_id}'."
-                    )
+                    ):
+                        continue
+                    if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
+                        break
+                    if not input_confirmation_correction:
+                        if answer.casefold() in {"y", "yes"}:
+                            task = input_confirmation_continuation(
+                                pending_plan,
+                                answer,
+                                approved=True,
+                            )
+                            input_confirmation_correction = False
+                        elif answer.casefold() in {"n", "no", ""}:
+                            input_confirmation_correction = True
+                            print(
+                                "\n"
+                                + input_confirmation_prompt(
+                                    pending_plan,
+                                    correction=True,
+                                )
+                            )
+                            continue
+                        else:
+                            try:
+                                task = input_confirmation_continuation(
+                                    pending_plan,
+                                    answer,
+                                    approved=False,
+                                )
+                            except ClarificationInputError as error:
+                                print(
+                                    "\n"
+                                    + _ui_text("Input not accepted: ")
+                                    + str(error)
+                                )
+                                input_confirmation_correction = True
+                                continue
+                        input_confirmation_correction = False
+                    else:
+                        try:
+                            task = input_confirmation_continuation(
+                                pending_plan,
+                                answer,
+                                approved=False,
+                            )
+                        except ClarificationInputError as error:
+                            print(
+                                "\n"
+                                + _ui_text("Input not accepted: ")
+                                + str(error)
+                            )
+                            continue
+                        input_confirmation_correction = False
                 else:
-                    print(_ui_text("Preference changes were not saved."))
-                task = preference_continuation(pending_plan, approved)
+                    try:
+                        raw_answer = reader.read(
+                            render_mode_prompt(
+                                "\n" + preference_confirmation_prompt(pending_plan)
+                            ),
+                            menu_enabled=False,
+                        )
+                    except (EOFError, KeyboardInterrupt):
+                        print()
+                        break
+                    if raw_answer is None:
+                        continue
+                    answer = raw_answer.strip()
+                    if _handle_interactive_control(answer):
+                        continue
+                    if answer.casefold() in {"exit", "quit", "q", "離開", "結束"}:
+                        break
+                    approved = answer.casefold() in {"y", "yes"}
+                    if approved:
+                        profile_store.confirm(
+                            profile_id,
+                            pending_plan.preference_proposals,
+                        )
+                        print(
+                            _ui_text("Saved confirmed preferences to profile ")
+                            + f"'{profile_id}'."
+                        )
+                    else:
+                        print(_ui_text("Preference changes were not saved."))
+                    task = preference_continuation(pending_plan, approved)
             else:
                 choosing_complete_bundle = bool(
                     pending_plan.input_bundle_options
@@ -200,11 +329,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                                 )
                             )
                         ),
-                        menu_enabled=(
-                            True
-                            if choosing_complete_bundle
-                            else target_field not in _PATH_ANSWER_FIELDS
-                        ),
+                        menu_enabled=False,
                     )
                 except (EOFError, KeyboardInterrupt):
                     print()
@@ -212,11 +337,18 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 if raw_answer is None:
                     continue
                 answer = raw_answer.strip()
+                missing_labels = ", ".join(pending_plan.missing_inputs)
                 if _handle_interactive_control(
                     answer,
+                    current_plan=pending_plan,
                     allow_path_answer=(
                         not choosing_complete_bundle
                         and target_field in _PATH_ANSWER_FIELDS
+                    ),
+                    execution_block_reason=(
+                        "This workflow plan is not ready to execute. It still needs: "
+                        f"{missing_labels}. Continue the input wizard or provide the "
+                        "required paths."
                     ),
                 ):
                     continue
@@ -266,6 +398,9 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             try:
                 raw_answer = reader.read(
                     f"\n{render_mode_prompt(render_next_turn_prompt(next_prompt))}\n> ",
+                    # Keep the prompt-toolkit adapter for ordinary tasks so a
+                    # bracketed multi-line paste stays one submission. Path
+                    # prompts remain plain input to avoid slash/path ambiguity.
                     menu_enabled=next_prompt.expected_field not in _PATH_ANSWER_FIELDS,
                 )
             except (EOFError, KeyboardInterrupt):
@@ -279,9 +414,14 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 and next_prompt.kind == "dry_run"
                 and preview_task is not None
             ):
-                command_result = handle_slash_command(answer)
+                command_result = handle_slash_command(
+                    answer,
+                    current_plan=preview_plan,
+                    current_plan_evaluation=preview_plan_evaluation,
+                )
                 print(_ui_text(command_result.message))
-                execution_confirmation_task = preview_task
+                if command_result.execute_once:
+                    execution_confirmation_task = preview_task
                 continue
             if _handle_interactive_control(
                 answer,
@@ -391,6 +531,12 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             )
             run_paused = False
         try:
+            if execute_once:
+                # Execution authority is scoped to this single graph turn. The
+                # next prompt always returns to Planning mode.
+                from ..runtime import configure_runtime
+
+                configure_runtime(EXECUTE_TOOLS=True)
             invocation = {
                 "messages": [*conversation, HumanMessage(content=task)],
                 "session_id": session_id,
@@ -406,6 +552,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 "cli",
                 {"reason": "keyboard_interrupt"},
             )
+            _write_planning_audit_if_needed(runtime, run_id, task)
             _clear_transient_trace()
             print()
             print(
@@ -422,6 +569,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 "cli",
                 {"error_type": type(error).__name__, "message": str(error)},
             )
+            _write_planning_audit_if_needed(runtime, run_id, task)
             _clear_transient_trace()
             print(
                 _ui_text(
@@ -440,6 +588,11 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 ),
             )
             continue
+        finally:
+            if execute_once:
+                from ..runtime import configure_runtime
+
+                configure_runtime(EXECUTE_TOOLS=False)
         conversation = compact_conversation(result["messages"])
         active_usage = result.get("token_usage")
         save_session(session_id, conversation, result, profile_id=profile_id)
@@ -449,6 +602,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
         )
         clarification_selections = {}
         custom_input_selection = False
+        input_confirmation_correction = False
         if active_usage:
             usage = LLMUsage.model_validate(active_usage)
             _trace(
@@ -468,14 +622,19 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             if next_prompt.kind == "dry_run":
                 preview_task = task
                 preview_workflow = plan.workflow
+                preview_plan = plan
+                preview_plan_evaluation = result.get("plan_evaluation")
             elif next_prompt.kind == "completed":
                 preview_task = None
                 preview_workflow = None
+                preview_plan = None
+                preview_plan_evaluation = None
         if pending_plan is not None:
             recorder.pause_run(
                 run_id,
                 {"reason": pending_plan.status},
             )
+            _write_planning_audit_if_needed(runtime, run_id, task, result)
             run_paused = True
             continue
         evaluation_status = (result.get("evaluation") or {}).get("status")
@@ -487,6 +646,13 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 "evaluation_status": evaluation_status,
                 "token_usage": active_usage or {},
             },
+        )
+        _write_planning_audit_if_needed(
+            runtime,
+            run_id,
+            task,
+            result,
+            execution_turn=execute_once,
         )
         run_id = None
         active_usage = None

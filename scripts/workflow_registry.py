@@ -158,13 +158,14 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "run_panda",
         "PANDA",
         required_inputs=("expression_file", "motif_file", "ppi_file", "output_file"),
-        optional_inputs=("with_header",),
+        optional_inputs=("with_header", "coexpression_file"),
         executor_fields=(
             "expression_file",
             "motif_file",
             "ppi_file",
             "output_file",
             "with_header",
+            "coexpression_file",
         ),
         validation_steps=("inspect_inputs",),
         local=True,
@@ -177,12 +178,16 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
-            input_artifacts=frozenset({"expression_matrix"}),
+            input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network"}),
             handoff_contract=(
                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
-                "PPI priors, and produces a weighted TF-to-gene regulatory network. "
+                "PPI priors, or a validated adjusted gene-by-gene co-expression "
+                "matrix through coexpression_file. When supplied, the adjusted matrix "
+                "replaces PANDA's Pearson co-expression construction while the expression "
+                "file remains the gene-order and prior compatibility source. PANDA "
+                "produces a weighted TF-to-gene regulatory network. "
                 "Convert that network to a source-target-weight bipartite edge list "
                 "before handing it to CONDOR."
             ),
@@ -204,7 +209,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             "ppi_file",
             "mirna_file",
             "output_file",
+            "coexpression_file",
         ),
+        optional_inputs=("coexpression_file",),
         validation_steps=("inspect_inputs",),
         local=True,
         run=True,
@@ -216,12 +223,15 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf", "mirna"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
-            input_artifacts=frozenset({"expression_matrix"}),
+            input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
             handoff_contract=(
                 "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, "
-                "and miRNA priors, and produces a weighted regulator-to-gene network. "
+                "and miRNA priors, or a validated adjusted gene-by-gene co-expression "
+                "matrix through coexpression_file. When supplied, the adjusted matrix "
+                "replaces PUMA's Pearson co-expression construction. PUMA produces "
+                "a weighted regulator-to-gene network. "
                 "Convert that network to a source-target-weight bipartite edge list "
                 "before handing it to CONDOR."
             ),
@@ -371,7 +381,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
             input_artifacts=frozenset({"expression_matrix"}),
-            handoff_targets=("run_panda",),
+            handoff_targets=("run_panda", "run_puma"),
             selection_tags=frozenset(
                 {
                     "covariate_association",
@@ -382,9 +392,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             handoff_contract=(
                 "COBRA consumes a gene-by-sample expression matrix and numeric sample "
                 "covariates, then produces a covariate-associated covariance "
-                "decomposition. This output is evidence for covariate handling, not "
-                "a replacement expression matrix; PANDA must receive an independently "
-                "prepared corrected gene-by-sample matrix."
+                "decomposition and a labeled adjusted gene-by-gene co-expression "
+                "artifact. PANDA or PUMA may consume the adjusted artifact through "
+                "coexpression_file; the raw components are not a matrix input "
+                "by themselves."
             ),
         ),
     ),
@@ -455,5 +466,10 @@ def executor_arguments(action: ActionName, decision: Any) -> dict[str, Any]:
         value = getattr(decision, field_name, None)
         if value in (None, "") and field_name in definition.executor_defaults:
             value = definition.executor_defaults[field_name]
+        elif value is None and field_name in definition.optional_inputs:
+            # Tool adapters use empty strings to mean "optional input omitted".
+            # Passing None leaks through the strict tool schema and turns a
+            # valid plan preview into a ValidationError.
+            value = ""
         arguments[field_name] = value
     return arguments

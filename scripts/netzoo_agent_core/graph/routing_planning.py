@@ -44,7 +44,11 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace(
         "intent",
         f"Classified as {decision.action}",
-        classification_progress_detail(routing_state["semantic_goal"], decision),
+        classification_progress_detail(
+            routing_state["semantic_goal"],
+            decision,
+            context.project_policy,
+        ),
     )
     _trace(
         "reasoning",
@@ -82,6 +86,7 @@ def plan_task(context: _GraphContext, state: AgentState) -> dict:
         profile=state.get("profile"),
         retrieved_episodes=state.get("retrieved_episodes", []),
         project_policy=state.get("project_policy"),
+        content_mapper=context.input_content_mapper,
     )
     profile = UserProfile.model_validate(state.get("profile"))
     pending_preferences = context.profile_store.pending(
@@ -97,6 +102,8 @@ def plan_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("plan", f"Planner: {plan.workflow} / {plan.status}", render_plan(plan))
     if plan.status == "needs_input":
         _trace("input", "The Planner requires additional input", plan.question)
+    elif plan.status == "needs_confirmation":
+        _trace("input", "The Planner requires confirmation", plan.question)
     record_event(
         context,
         state,

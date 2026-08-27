@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from workflow_registry import (
     REQUIRED_INPUTS,
@@ -38,6 +39,8 @@ class _PlanningContext:
     action: str
     workflow: str
     required: list[str]
+    content_mapper: Any | None = None
+    preflight_errors: list[str] = field(default_factory=list)
 
 
 def _prepare_planning_context(
@@ -46,6 +49,7 @@ def _prepare_planning_context(
     profile: UserProfile | dict | None,
     retrieved_episodes: list[Episode | dict] | None,
     project_policy: ProjectPolicySnapshot | dict | None,
+    content_mapper: Any | None = None,
 ) -> _PlanningContext | WorkflowPlan:
     decision = raw_decision.model_copy(deep=True)
     profile_model = (
@@ -124,4 +128,5 @@ def _prepare_planning_context(
         action=action,
         workflow=workflow,
         required=required,
+        content_mapper=content_mapper,
     )

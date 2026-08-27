@@ -36,6 +36,8 @@ __all__ = [
     "custom_clarification_prompt",
     "preference_confirmation_prompt",
     "preference_continuation",
+    "input_confirmation_prompt",
+    "input_confirmation_continuation",
 ]
 
 def _candidate_selection(evidence: InputEvidence, value: str) -> str:
@@ -313,3 +315,64 @@ def preference_continuation(plan: WorkflowPlan, approved: bool) -> str:
         f"{marker}. Continue the previous {plan.workflow} task with action "
         f"{decision.action}. Do not propose these preference updates again in this turn."
     )
+
+
+def input_confirmation_prompt(plan: WorkflowPlan, *, correction: bool = False) -> str:
+    """Render the common local-input confirmation, independent of workflow name."""
+    if correction:
+        return (
+            "Please provide corrected paths as field=path assignments "
+            "(for example expression_file=data/expression.tsv). "
+            "The files will be inspected again before execution.\n"
+            "Correction > "
+        )
+    return (
+        (plan.question or "Are these local inputs the files you want to use? [y/N]")
+        + "\n\n> "
+    )
+
+
+def input_confirmation_continuation(
+    plan: WorkflowPlan,
+    answer: str,
+    *,
+    approved: bool,
+) -> str:
+    """Turn a yes/no or corrected-path answer into a typed planning continuation."""
+    decision = TaskDecision.model_validate(plan.decision)
+    prefix = "DATA_CONFIRMATION_APPROVED" if approved else "DATA_CONFIRMATION_CORRECTED"
+    continuation = (
+        f"{prefix}. PREVIOUS_ACTION={decision.action}. Continue the previous "
+        f"{plan.workflow} task; do not treat this as a new conceptual question."
+    )
+    if approved:
+        for item in plan.evidence:
+            if (
+                item.value
+                and item.field not in {"output_file", "lioness_output", "output_dir"}
+            ):
+                continuation += f" CONFIRMED_INPUT_{item.field}={item.value};"
+        return continuation
+
+    assignments = re.findall(
+        r"([a-z_]+)\s*=\s*([^\s,;]+)",
+        answer,
+        flags=re.IGNORECASE,
+    )
+    allowed = {
+        item.field
+        for item in plan.evidence
+        if item.field not in {"output_file", "lioness_output", "output_dir"}
+    }
+    corrected = {
+        field_name: value.strip("'\".。")
+        for field_name, value in assignments
+        if field_name in allowed
+    }
+    if not corrected:
+        raise ClarificationInputError(
+            "Provide at least one corrected input as field=path."
+        )
+    for field_name, value in corrected.items():
+        continuation += f" CORRECTED_INPUT_{field_name}={value};"
+    return continuation

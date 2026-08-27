@@ -16,6 +16,7 @@ from .discovery import (
     _choose_unambiguous_candidate,
     discover_demo_bundle,
     reusable_episode_inputs,
+    _unlabeled_input_bindings,  # noqa: F401 -- internal compatibility facade
 )
 from .assembly import (  # noqa: F401 -- direct internal import without public widening
     assemble_task_decision,

@@ -88,7 +88,7 @@ class PathAndOutputSafetyTests(unittest.TestCase):
 
     def test_lioness_output_roles_must_be_distinct(self):
         task = (
-            "run LIONESS coexpression with expression_file=expression.tsv "
+            "run LIONESS coexpression with expression_file=data/lioness-toy/expression.tsv "
             "output_file=same.tsv lioness_output=same.tsv"
         )
         plan = agent.build_workflow_plan(
@@ -99,7 +99,7 @@ class PathAndOutputSafetyTests(unittest.TestCase):
                 intent_type="run_analysis",
                 confidence=1.0,
                 reason="explicit LIONESS coexpression request",
-                expression_file="expression.tsv",
+                expression_file="data/lioness-toy/expression.tsv",
                 output_file="same.tsv",
                 lioness_output="same.tsv",
             ),

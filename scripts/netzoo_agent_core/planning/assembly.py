@@ -112,6 +112,68 @@ def _assemble_workflow_plan(
             policy_notes=policy_notes,
         )
 
+    if context.preflight_errors:
+        decision.should_execute = False
+        errors = "\n".join(f"- {error}" for error in context.preflight_errors)
+        return WorkflowPlan(
+            workflow=workflow,
+            objective=decision.reason,
+            decision=decision.model_dump(),
+            evidence=evidence,
+            missing_inputs=[],
+            status="needs_input",
+            question=(
+                "Input preflight failed, so the Work Plan is not ready:\n\n"
+                f"{errors}\n\n"
+                "Please provide corrected files or fix the file contents, then I will re-check them."
+            ),
+            memory_notes=memory_notes,
+            policy_hash=policy_hash,
+            policy_notes=policy_notes,
+        )
+
+    # A content/filename role guess is the only kind of discovery that needs a
+    # user check here. Complete validated bundles and safe demo defaults remain
+    # executable plans, while LLM guesses are explicitly surfaced with their
+    # confidence and rationale below.
+    confirmation_evidence = [
+        item
+        for item in evidence
+        if (
+            item.reason.startswith("Role inferred from file contents by the LLM")
+        )
+        and item.value
+        and item.field not in {"output_file", "lioness_output", "output_dir"}
+    ]
+    if confirmation_evidence:
+        lines = [
+            f"I identified these local inputs for the {workflow} workflow:",
+            "",
+        ]
+        for item in confirmation_evidence:
+            lines.append(f"- {item.field}: {item.value}")
+            lines.append(f"  Evidence: {item.reason}")
+        lines.extend(
+            [
+                "",
+                "Are these the files you want to use? [y/N]",
+                "If not, answer no and provide the correct path(s).",
+            ]
+        )
+        decision.should_execute = False
+        return WorkflowPlan(
+            workflow=workflow,
+            objective=decision.reason,
+            decision=decision.model_dump(),
+            evidence=evidence,
+            missing_inputs=[],
+            status="needs_confirmation",
+            question="\n".join(lines),
+            memory_notes=memory_notes,
+            policy_hash=policy_hash,
+            policy_notes=policy_notes,
+        )
+
     steps = []
     validation_actions = (
         list(workflow_spec.validation_steps)

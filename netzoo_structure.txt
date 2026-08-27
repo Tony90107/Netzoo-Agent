@@ -1,0 +1,99 @@
+netzoo_agent/
+├── netzoo-chat                         # 互動 CLI launcher
+├── scripts/
+│   ├── netzoo_agent.py                 # 核心入口 / legacy facade
+│   ├── workflow_registry.py            # action、required inputs、executor mapping
+│   ├── netzoo_table_io.py              # 共用 table I/O
+│   └── netzoo_agent_core/
+│       ├── cli/
+│       │   ├── main.py                 # argparse main
+│       │   ├── arguments.py            # CLI flags
+│       │   ├── loop.py                 # run_cli coordinator
+│       │   ├── conversation.py         # one-shot / interactive / resume
+│       │   ├── clarification.py        # 缺少輸入與 preference 問答
+│       │   ├── follow_up.py            # 後續問題解析
+│       │   └── bootstrap.py            # runtime 組裝
+│       │
+│       ├── graph/
+│       │   ├── topology.py             # graph nodes 與 edges
+│       │   ├── factory.py              # build_graph / invoke_graph_turn
+│       │   ├── context.py              # graph dependencies
+│       │   ├── routing_planning.py     # classify_task / plan_task
+│       │   ├── execution.py            # evaluate_plan / execute / recover
+│       │   ├── policy_memory.py        # policy / memory nodes
+│       │   ├── response.py             # final response node
+│       │   └── transitions.py          # conditional routing
+│       │
+│       ├── contracts/
+│       │   ├── state.py                # AgentState
+│       │   ├── decisions.py            # RouterDecision / TaskDecision
+│       │   ├── planning.py             # WorkflowPlan / WorkflowStep
+│       │   ├── results.py              # ToolExecutionResult / EvaluationResult
+│       │   ├── memory.py               # UserProfile / Episode
+│       │   └── policy.py               # policy snapshot contracts
+│       │
+│       ├── llm.py                      # model build、prompt、token budget
+│       ├── policy.py                   # fail-closed policy loader
+│       ├── execution.py                # PANDA/PUMA/LIONESS/CONDOR/COBRA
+│       ├── command.py                  # subprocess、timeout、dry-run
+│       ├── tool_adapters.py            # data function → LangChain tool
+│       │
+│       ├── interpretation/
+│       │   ├── hydration.py            # RouterDecision → TaskDecision
+│       │   ├── repair.py               # deterministic repair
+│       │   ├── semantic_goal.py        # outcome routing state
+│       │   ├── discovery.py            # input discovery
+│       │   └── outcome_consistency.py  # hypothesis consistency
+│       │
+│       ├── planning/
+│       │   ├── builder.py              # build_workflow_plan
+│       │   ├── evidence.py             # evidence ledger
+│       │   ├── assembly.py             # WorkflowStep assembly
+│       │   └── context.py              # planning context
+│       │
+│       ├── evaluation/
+│       │   ├── plan_review.py          # Plan Evaluator
+│       │   ├── plan_rules.py           # evidence/path/order rules
+│       │   ├── step_results.py         # Result Evaluator
+│       │   ├── recovery.py             # recovery dispatch
+│       │   ├── recovery_registry.py   # bounded recovery allowlist
+│       │   └── rendering.py            # user-facing result rendering
+│       │
+│       ├── routing/
+│       │   ├── dispatch.py             # action → executor
+│       │   ├── retrieval.py            # Context7 / Websearch MCP
+│       │   ├── capability.py           # capability matching
+│       │   ├── results.py              # raw output normalization
+│       │   └── error_adapters.py       # error code mapping
+│       │
+│       ├── data/
+│       │   ├── tables.py               # table parsing / ID validation
+│       │   ├── inspection.py           # neutral inspection
+│       │   ├── transforms.py           # expression transformation
+│       │   ├── discovery.py            # file candidate scoring
+│       │   ├── bundles.py              # coherent input bundles
+│       │   ├── paths.py                # path safety
+│       │   └── artifacts.py            # output validation
+│       │
+│       ├── memory/
+│       │   ├── profiles.py             # confirmed profile
+│       │   ├── episodes.py             # compact task episodes
+│       │   ├── normalization.py        # memory normalization
+│       │   └── storage.py              # lock / atomic JSON / permissions
+│       │
+│       ├── session.py                  # checkpoint / resume / retention
+│       ├── trace_store.py              # local trace persistence
+│       ├── trace_sync.py               # optional remote upload
+│       └── tracing.py                  # node instrumentation
+│
+├── workflows/
+│   ├── panda.yaml                      # PANDA policy
+│   ├── puma.yaml                       # PUMA policy
+│   ├── lioness-*.yaml                  # LIONESS policies
+│   ├── condor.yaml                     # CONDOR policy
+│   └── cobra.yaml                      # COBRA policy
+│
+├── tests/                              # unit / boundary / lifecycle tests
+├── data/                               # toy/demo/manual inputs
+├── outputs/                            # workflow outputs
+└── .netzoo/                            # runtime state, generated locally

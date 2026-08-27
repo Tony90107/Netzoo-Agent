@@ -22,6 +22,7 @@ INPUT_LABELS = {
     "motif_file": _ui_text("motif/prior"),
     "ppi_file": _ui_text("PPI network"),
     "mirna_file": _ui_text("miRNA list"),
+    "coexpression_file": _ui_text("adjusted co-expression matrix"),
     "network_file": _ui_text("bipartite network"),
     "output_file": _ui_text("aggregate/network output"),
     "lioness_output": _ui_text("sample-specific LIONESS output"),
@@ -30,6 +31,7 @@ INPUT_LABELS = {
 
 
 _PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".npy"})
+
 
 
 def _looks_like_path(value: str) -> bool:
@@ -80,6 +82,7 @@ def _task_path(task: str, field_name: str) -> str | None:
         "motif_file": ("motif_file", "motif", "prior", "先驗", "調控先驗"),
         "ppi_file": ("ppi_file", "ppi", "PPI"),
         "mirna_file": ("mirna_file", "miRNA list", "mirna list", "miRNA", "mirna"),
+        "coexpression_file": ("coexpression_file", "co-expression file", "coexpression matrix", "adjusted co-expression", "adjusted_coexpression"),
         "network_file": ("network_file", "network", "bipartite", "二分網路", "網路"),
         "output_file": (
             "output_file",
