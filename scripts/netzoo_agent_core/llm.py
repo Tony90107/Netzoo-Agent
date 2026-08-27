@@ -181,6 +181,8 @@ Dimension semantics:
 Return one to three outcome_hypotheses. Preserve every scientific dimension stated
 by the user. For every known outcome dimension, add consistent evidence. Explicit
 evidence must include text_span containing the exact phrase from the user request.
+For multilingual requests, keep text_span in the user's original language; do not
+translate a phrase such as Chinese 基因 into the canonical value gene.
 Inferred evidence must explain the entailment and may omit text_span. If a dimension
 is genuinely missing, keep it unknown and list it in unresolved_dimensions instead
 of guessing. Multiple hypotheses are only for incompatible meanings. semantic_goal

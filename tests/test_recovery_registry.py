@@ -28,9 +28,9 @@ from netzoo_agent_core.planning import build_workflow_plan  # noqa: E402
 
 
 PUMA_TASK = (
-    "run PUMA with expression_file=data/expression.tsv, "
-    "motif_file=data/motif.tsv, ppi_file=data/ppi.tsv, "
-    "mirna_file=data/mirna.txt, output_file=outputs/puma.tsv"
+    "run PUMA with expression_file=data/lioness-toy/expression.tsv, "
+    "motif_file=data/lioness-toy/prior-puma.tsv, ppi_file=data/lioness-toy/ppi.tsv, "
+    "mirna_file=data/lioness-toy/mirna.txt, output_file=outputs/puma.tsv"
 )
 
 
@@ -42,10 +42,10 @@ def _ready_puma_plan():
         intent_type="run_analysis",
         confidence=1.0,
         reason="run PUMA",
-        expression_file="data/expression.tsv",
-        motif_file="data/motif.tsv",
-        ppi_file="data/ppi.tsv",
-        mirna_file="data/mirna.txt",
+        expression_file="data/lioness-toy/expression.tsv",
+        motif_file="data/lioness-toy/prior-puma.tsv",
+        ppi_file="data/lioness-toy/ppi.tsv",
+        mirna_file="data/lioness-toy/mirna.txt",
         output_file="outputs/puma.tsv",
     )
     return build_workflow_plan(decision, PUMA_TASK)
@@ -93,7 +93,7 @@ def test_registered_strategy_builds_bounded_plan():
         item for item in recovered.evidence if item.field == "expression_file"
     )
     assert expression.status == "derived"
-    assert expression.derived_from == "data/expression.tsv"
+    assert expression.derived_from == "data/lioness-toy/expression.tsv"
 
 
 def test_missing_error_code_does_not_mutate_plan():

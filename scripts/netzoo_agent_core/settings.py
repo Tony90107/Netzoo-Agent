@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SESSION_ROOT = PROJECT_ROOT / ".netzoo" / "sessions"
 TOOL_LOG_ROOT = PROJECT_ROOT / ".netzoo" / "logs"
 TRACE_ROOT = PROJECT_ROOT / ".netzoo" / "traces"
+PLANNING_AUDIT_ROOT = PROJECT_ROOT / ".netzoo" / "planning_audits"
 MEMORY_ROOT = PROJECT_ROOT / ".netzoo" / "memory"
 PROFILE_ROOT = MEMORY_ROOT / "profiles"
 EPISODE_ROOT = MEMORY_ROOT / "episodes"
@@ -40,7 +41,13 @@ DEFAULT_EPISODE_FAILED_RETENTION_DAYS = 30
 DEFAULT_EPISODE_MAX_COUNT = 200
 DEFAULT_EPISODE_MAX_BYTES = 10 * 1024 * 1024
 INPUT_ROLE_FIELDS = {
-    "expression_file", "design_file", "motif_file", "ppi_file", "mirna_file", "network_file"
+    "expression_file",
+    "design_file",
+    "motif_file",
+    "ppi_file",
+    "mirna_file",
+    "coexpression_file",
+    "network_file",
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
 PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis"}
@@ -51,6 +58,7 @@ __all__ = [
     "TOOL_TIMEOUT_SECONDS", "TRANSIENT_TRACE_MIN_SECONDS",
     "USER_VISIBLE_OUTPUT_LANGUAGE", "LIONESS_MODE_QUESTION", "PROJECT_ROOT",
     "SESSION_ROOT", "TOOL_LOG_ROOT", "TRACE_ROOT", "MEMORY_ROOT",
+    "PLANNING_AUDIT_ROOT",
     "PROFILE_ROOT", "EPISODE_ROOT", "TOOL_RAW_MAX_CHARS",
     "DEFAULT_RETENTION_DAYS", "DEFAULT_SESSION_HARD_RETENTION_DAYS",
     "DEFAULT_ROUTER_MODEL", "DEFAULT_ROUTER_MAX_TOKENS",

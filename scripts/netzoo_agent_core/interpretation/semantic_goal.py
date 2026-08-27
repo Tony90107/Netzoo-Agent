@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from ..contracts import TaskDecision
+from ..contracts import ProjectPolicySnapshot, TaskDecision
+from .registry_guidance import build_registry_selection_constraints
 from ..routing.outcome_matching import guidance_actions_for
 from workflow_registry import workflow_name
 
 
-def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) -> dict:
+def classification_progress_detail(
+    semantic_goal: dict,
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot | None = None,
+) -> dict:
     """Return compact, fact-grounded classification facts for the live CLI."""
     outcome = decision.requested_outcome
     if outcome is None:
@@ -29,29 +34,40 @@ def classification_progress_detail(semantic_goal: dict, decision: TaskDecision) 
         workflow_name(action)
         for action in (semantic_goal.get("candidates") or [] if show_candidates else [])
     ]
-    workflow_path = [
-        workflow_name(action)
-        for action in (
-            decision.recommended_actions
-            if match_status == "exact"
-            else []
-        )
-    ]
+    workflow_path = []
+    workflow_scope = "match"
+    if match_status == "exact":
+        if policy is not None:
+            workflow_records = [
+                {
+                    "action": action,
+                    "workflow": spec.workflow,
+                    "output_capability": spec.output_capability.model_dump(),
+                }
+                for action, spec in policy.workflows.items()
+            ]
+            preferred = build_registry_selection_constraints(
+                decision,
+                workflow_records,
+            )["preferred_compositions"]
+            if preferred:
+                workflow_path = list(preferred[0]["ordered_workflows"])
+                workflow_scope = (
+                    "composition" if len(workflow_path) > 1 else "final_result"
+                )
+        if not workflow_path:
+            workflow_path = [
+                workflow_name(action) for action in decision.recommended_actions
+            ]
+            workflow_scope = (
+                "composition" if len(workflow_path) > 1 else "final_result"
+            )
     return {
         "kind": "classification",
         "outcome": outcome_label,
         "workflows": list(dict.fromkeys(workflows)),
         "workflow_path": list(dict.fromkeys(workflow_path)),
-        "workflow_scope": (
-            "final_result"
-            if decision.action == "no_tool"
-            and semantic_goal.get("request_mode") == "guidance"
-            and match_status == "exact"
-            and workflows
-            else "composition"
-            if semantic_goal.get("relationship") == "composition"
-            else "match"
-        ),
+        "workflow_scope": workflow_scope,
     }
 
 

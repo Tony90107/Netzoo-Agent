@@ -87,6 +87,27 @@ class DatasetBundlePlanningTests(unittest.TestCase):
             {f"directory:{study.resolve()}"},
         )
 
+    def test_content_validation_accepts_a_uniquely_verified_misnamed_motif_file(self):
+        study = self.root / "study-a"
+        expression = self.write_expression(study)
+        self.write(
+            study,
+            "motfi.tsv",
+            "TF1\tGeneA\t1\nTF2\tGeneB\t1\nmiR-1\tGeneA\t1\n",
+        )
+        self.write(study, "ppi.tsv", "TF1\tTF2\t1\nTF2\tTF1\t1\n")
+        self.write(study, "mirna.txt", "miR-1\n")
+
+        plan = agent.build_workflow_plan(
+            self.puma_decision(str(expression)),
+            f"run PUMA with expression_file={expression}",
+        )
+
+        motif = next(item for item in plan.evidence if item.field == "motif_file")
+        self.assertEqual(plan.status, "ready")
+        self.assertEqual(Path(motif.value).name, "motfi.tsv")
+        self.assertIn("verified from file contents", motif.reason)
+
     def test_one_partial_bundle_lists_found_files_and_only_requests_missing_input(self):
         study = self.root / "data" / "study-a"
         self.write_expression(study)

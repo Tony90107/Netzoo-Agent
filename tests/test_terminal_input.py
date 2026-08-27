@@ -126,6 +126,19 @@ def test_nonempty_slash_is_preserved_by_real_key_dispatch():
     assert _dispatch_line_keys("/execute", "goal/help\r") == "goal/help"
 
 
+def test_bracketed_multiline_paste_is_submitted_as_one_task():
+    pasted = (
+        "\x1b[200~Run PANDA using data/official-toy/ToyExpressionData.txt,\n"
+        "data/official-toy/ToyMotifData.txt, and\n"
+        "data/official-toy/ToyPPIData.txt\x1b[201~\r"
+    )
+    assert _dispatch_line_keys("/execute", pasted) == (
+        "Run PANDA using data/official-toy/ToyExpressionData.txt,\n"
+        "data/official-toy/ToyMotifData.txt, and\n"
+        "data/official-toy/ToyPPIData.txt"
+    )
+
+
 def test_typed_planning_command_is_not_replaced_by_execute():
     assert _dispatch_line_keys("/execute", "/planning\r") == "/planning"
 

@@ -32,6 +32,8 @@ def render_plan(plan: WorkflowPlan) -> str:
             f"- {proposal.key} = {proposal.value} ({proposal.reason})"
             for proposal in plan.preference_proposals
         )
+    if plan.status == "needs_confirmation" and not plan.preference_proposals:
+        lines.append("Input confirmation required before execution.")
     if plan.question:
         lines.append("User input required: " + plan.question)
     return "\n".join(lines)

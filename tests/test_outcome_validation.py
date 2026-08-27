@@ -219,6 +219,31 @@ def test_evidence_validator_rejects_an_ungrounded_explicit_span():
     assert "hypothesis[0].ungrounded_evidence:regulator_type=mirna" in result.issues
 
 
+def test_evidence_validator_marks_translation_mismatch_as_recoverable():
+    task = "我有一份基因表現量矩陣，想了解它的用途。"
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="explain",
+            artifact_type="expression_matrix",
+            entity_types=["gene"],
+            granularity="aggregate",
+        ),
+        confidence=0.9,
+        evidence=[
+            evidence("operation", "explain", source="inferred"),
+            evidence("artifact_type", "expression_matrix", source="inferred"),
+            evidence("entity_type", "gene", text_span="gene"),
+            evidence("granularity", "aggregate", source="inferred"),
+        ],
+    )
+
+    result = validate_outcome_hypotheses(task, [hypothesis])
+
+    assert result.valid is False
+    assert result.recoverable is True
+    assert "hypothesis[0].ungrounded_evidence:entity_type=gene" in result.issues
+
+
 def test_registry_selection_signal_has_a_generic_evidence_boundary():
     task = "Different hospitals and sequencing batches affect the regulatory modules."
     hypothesis = OutcomeHypothesis(

@@ -77,7 +77,7 @@ def inspect_cobra_inputs_impl(expression_file: str, design_file: str) -> tuple[s
             "  sample IDs: expression columns and design rows match",
             f"  expression shape: {expression.shape[0]} genes x {expression.shape[1]} samples",
             f"  design shape: {design.shape[0]} samples x {design.shape[1]} covariates",
-            "  note: COBRA models covariate-associated co-expression; it does not emit a replacement expression matrix.",
+            "  note: run_cobra emits components plus an adjusted_coexpression.tsv/npz artifact.",
         ]
     )
     return "\n".join(lines), True

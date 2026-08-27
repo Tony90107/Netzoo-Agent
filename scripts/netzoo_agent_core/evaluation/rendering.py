@@ -129,6 +129,7 @@ def _compact_field_label(field_name: str) -> str:
         "motif_file": "Motif/prior",
         "ppi_file": "PPI",
         "mirna_file": "miRNA list",
+        "coexpression_file": "Adjusted co-expression",
         "network_file": "Network",
         "output_file": "Aggregate/network output",
         "lioness_output": "Sample-specific output",
@@ -323,4 +324,13 @@ def render_preference_confirmation_response(plan: WorkflowPlan) -> str:
     for proposal in plan.preference_proposals:
         lines.append(f"- {proposal.key} = {proposal.value}")
         lines.append(_ui_text("  Reason: ") + proposal.reason)
+    return "\n".join(lines)
+
+
+def render_input_confirmation_response(plan: WorkflowPlan) -> str:
+    lines = [
+        "No tool was executed because the local input selection needs confirmation.",
+        "",
+        plan.question or "Are these the files you want to use? [y/N]",
+    ]
     return "\n".join(lines)

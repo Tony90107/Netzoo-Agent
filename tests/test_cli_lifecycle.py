@@ -18,9 +18,11 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     InputBundleOption,
     InputEvidence,
     LLMUsage,
+    PlanEvaluationResult,
     PreferenceProposal,
     TaskDecision,
     WorkflowPlan,
+    WorkflowStep,
 )
 from netzoo_agent_core.cli.reply_resolution import ReplyResolutionResult  # noqa: E402
 from netzoo_agent_core.runtime import configure_runtime  # noqa: E402
@@ -96,10 +98,10 @@ def _workflow_result(goal: str, *, status: str) -> dict:
         should_execute=True,
         confidence=1.0,
         reason="test",
-        expression_file="data/expression.tsv",
-        motif_file="data/motif.tsv",
-        ppi_file="data/ppi.tsv",
-        mirna_file="data/mirna.txt",
+        expression_file="data/lioness-toy/expression.tsv",
+        motif_file="data/lioness-toy/prior-puma.tsv",
+        ppi_file="data/lioness-toy/ppi.tsv",
+        mirna_file="data/lioness-toy/mirna.txt",
         output_file="outputs/aggregate.tsv",
         lioness_output="outputs/lioness.tsv",
     )
@@ -107,6 +109,7 @@ def _workflow_result(goal: str, *, status: str) -> dict:
         workflow="LIONESS-PUMA",
         objective=goal,
         decision=decision.model_dump(),
+        steps=[WorkflowStep(action=action, purpose="test")],
         status="ready",
     )
     return {
@@ -116,6 +119,9 @@ def _workflow_result(goal: str, *, status: str) -> dict:
             {"action": action, "status": status, "summary": status}
         ],
         "evaluation": {"status": "completed", "reason": "done"},
+        "plan_evaluation": PlanEvaluationResult(
+            status="approved", score=100, summary="test"
+        ).model_dump(),
         "token_usage": LLMUsage().model_dump(),
     }
 
@@ -320,14 +326,14 @@ def test_interrupt_remains_130():
     assert result == 130
 
 
-def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
+def test_main_prompt_blocks_execute_without_a_ready_plan(capsys):
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
     previous = settings.EXECUTE_TOOLS
     try:
         configure_runtime(EXECUTE_TOOLS=False)
         runtime = _fake_cli_runtime(
             invoke_error=AssertionError("graph must not run"),
-            interactive_answers=["/execute", "/status", "/planning", "exit"],
+            interactive_answers=["/execute", "/status", "exit"],
         )
 
         result = conversation.run_conversation(
@@ -340,13 +346,12 @@ def test_main_prompt_commands_switch_mode_without_graph_or_trace(capsys):
         prompts = [call.args[0] for call in runtime.input_func.call_args_list]
         assert prompts[0].startswith("\nWhat would you like to accomplish with NetZoo?")
         assert not prompts[0].startswith("\n[")
-        assert prompts[1].startswith("\n[Execute] What would you like to accomplish with NetZoo?")
-        assert prompts[3].startswith("\nWhat would you like to accomplish with NetZoo?")
+        assert prompts[1].startswith("\nWhat would you like to accomplish with NetZoo?")
+        assert prompts[2].startswith("\nWhat would you like to accomplish with NetZoo?")
         output = capsys.readouterr().out
         assert "NetZoo agent started in Planning mode" in output
-        assert "Execution mode enabled" in output
-        assert "Current mode: Execute" in output
-        assert "Planning mode enabled" in output
+        assert "no approved, ready workflow plan" in output
+        assert "Current mode: Planning" in output
         assert settings.EXECUTE_TOOLS is False
     finally:
         configure_runtime(EXECUTE_TOOLS=previous)
@@ -377,8 +382,9 @@ def test_execute_after_preview_confirms_and_reuses_the_validated_task(capsys):
         ]
         assert submitted == [task, task]
         output = capsys.readouterr().out
-        assert "Execution mode enabled" in output
+        assert "execute it once" in output
         prompts = [call.args[0] for call in runtime.input_func.call_args_list]
+        assert any("Your LIONESS-PUMA plan is ready" in prompt for prompt in prompts)
         assert any(
             "Run the validated LIONESS-PUMA workflow now? [y/N]" in prompt
             for prompt in prompts
@@ -387,7 +393,7 @@ def test_execute_after_preview_confirms_and_reuses_the_validated_task(capsys):
         configure_runtime(EXECUTE_TOOLS=previous)
 
 
-def test_mode_menu_selection_reuses_slash_handler_without_graph_or_trace(
+def test_mode_menu_selection_blocks_execute_without_graph_or_trace(
     monkeypatch, capsys
 ):
     conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
@@ -408,7 +414,7 @@ def test_mode_menu_selection_reuses_slash_handler_without_graph_or_trace(
 
         runtime.invoke_graph_turn_func.assert_not_called()
         runtime.recorder.start_run.assert_not_called()
-        assert "Execution mode enabled" in capsys.readouterr().out
+        assert "no approved, ready workflow plan" in capsys.readouterr().out
     finally:
         configure_runtime(EXECUTE_TOOLS=previous)
 
@@ -442,6 +448,35 @@ def test_slash_command_does_not_consume_missing_input_state():
     runtime.invoke_graph_turn_func.assert_not_called()
     prompts = [call.args[0] for call in runtime.input_func.call_args_list]
     assert sum("expression_file" in prompt for prompt in prompts) == 2
+
+
+def test_execute_reports_missing_inputs_and_keeps_planning_mode(capsys):
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    plan = WorkflowPlan(
+        workflow="PANDA",
+        objective="run PANDA",
+        decision=_decision().model_dump(),
+        evidence=[
+            InputEvidence(
+                field="expression_file",
+                status="missing",
+                reason="required",
+            )
+        ],
+        missing_inputs=["expression_file"],
+        status="needs_input",
+    )
+    runtime = _fake_cli_runtime(
+        invoke_error=AssertionError("graph must not run"),
+        interactive_answers=["/execute", "exit"],
+    )
+    runtime.pending_plan = plan
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=None, keep_session=False), runtime
+    ) == 0
+    assert "It still needs: expression_file" in capsys.readouterr().out
+    assert settings.EXECUTE_TOOLS is False
 
 
 def _condor_missing_output_plan() -> WorkflowPlan:

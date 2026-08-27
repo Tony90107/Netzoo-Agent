@@ -3,7 +3,7 @@ workflow: PUMA
 action: run_puma
 description: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.
 required_inputs: [expression_file, motif_file, ppi_file, mirna_file, output_file]
-optional_inputs: []
+optional_inputs: [coexpression_file]
 validation_steps: [inspect_inputs]
 execution_step: run_puma
 output_capability:
@@ -14,13 +14,17 @@ output_capability:
   regulator_types: [tf, mirna]
   target_types: [gene]
   guidance_predecessors: []
-  input_artifacts: [expression_matrix]
+  input_artifacts: [expression_matrix, coexpression_network]
   handoff_targets: [run_condor]
   selection_tags: [mirna_regulation, aggregate_network]
   handoff_contract: >-
     PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA
-    priors, and produces a weighted regulator-to-gene network. Convert that network
-    to a source-target-weight bipartite edge list before handing it to CONDOR.
+    priors, or a validated adjusted gene-by-gene co-expression matrix through
+    coexpression_file. When supplied, the adjusted matrix replaces PUMA's Pearson
+    co-expression construction. PUMA produces a weighted regulator-to-gene network.
+    Convert that network to a source-target-weight bipartite edge list before
+    handing it to CONDOR.
 conventions:
   - Require one miRNA identifier per line and require every miRNA in prior column one.
   - A header repair may be attempted only through the code-enforced bounded recovery.
+  - When coexpression_file is supplied, its labeled gene IDs, square dimensions, and symmetry must match PUMA's filtered gene axis.

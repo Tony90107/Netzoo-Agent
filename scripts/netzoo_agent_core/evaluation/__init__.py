@@ -15,6 +15,7 @@ from .rendering import (
     render_compact_execution_response,
     render_execution_response,
     render_needs_input_response,
+    render_input_confirmation_response,  # noqa: F401 -- compatibility facade attribute
     render_plan_evaluation,
     render_plan_rejection_response,
     render_preference_confirmation_response,

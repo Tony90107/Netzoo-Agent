@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
@@ -22,6 +23,42 @@ from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
 
 __all__: list[str] = []
+
+_UNLABELED_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])([A-Za-z0-9_./~-]+\.(?:tsv|tab|txt|csv|npy))"
+    r"[.。]?(?![A-Za-z0-9_.-])",
+    flags=re.IGNORECASE,
+)
+
+
+def _unlabeled_input_bindings(
+    task: str,
+    fields: tuple[str, ...] | list[str],
+) -> dict[str, str]:
+    """Infer roles from stable filename hints; content validation remains authoritative."""
+    available = set(fields)
+    role_hints = {
+        "expression_file": ("expression", "expr"),
+        "design_file": ("design", "covariate", "metadata"),
+        "motif_file": ("motif", "prior"),
+        "ppi_file": ("ppi", "protein", "interaction"),
+        "mirna_file": ("mirna", "microrna"),
+        "coexpression_file": ("coexpression", "co-expression"),
+        "network_file": ("network", "bipartite"),
+    }
+    bindings: dict[str, str] = {}
+    for raw_path in _UNLABELED_PATH_RE.findall(task):
+        path = raw_path.strip().rstrip(".。")
+        name = path.rsplit("/", 1)[-1].casefold()
+        matches = [
+            field_name
+            for field_name in available
+            if field_name not in bindings
+            and any(hint in name for hint in role_hints.get(field_name, ()))
+        ]
+        if len(matches) == 1:
+            bindings[matches[0]] = path
+    return bindings
 
 
 def _choose_unambiguous_candidate(

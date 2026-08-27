@@ -3,7 +3,7 @@ workflow: PANDA
 action: run_panda
 description: Infer an aggregate TF-to-gene regulatory network with PANDA.
 required_inputs: [expression_file, motif_file, ppi_file, output_file]
-optional_inputs: [with_header]
+optional_inputs: [with_header, coexpression_file]
 validation_steps: [inspect_inputs]
 execution_step: run_panda
 output_capability:
@@ -14,15 +14,20 @@ output_capability:
   regulator_types: [tf]
   target_types: [gene]
   guidance_predecessors: []
-  input_artifacts: [expression_matrix]
+  input_artifacts: [expression_matrix, coexpression_network]
   handoff_targets: [run_condor]
   selection_tags: [tf_gene_regulation, aggregate_network]
   handoff_contract: >-
-    PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors,
-    and produces a weighted TF-to-gene regulatory network. Convert that network to
-    a source-target-weight bipartite edge list before handing it to CONDOR.
+    PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or
+    a validated adjusted gene-by-gene co-expression matrix through coexpression_file.
+    When supplied, the adjusted matrix replaces PANDA's Pearson co-expression
+    construction while the expression file remains the gene-order and prior
+    compatibility source. PANDA produces a weighted TF-to-gene regulatory network.
+    Convert that network to a source-target-weight bipartite edge list before
+    handing it to CONDOR.
 conventions:
   - Use a gene-by-sample expression matrix and compatible motif and PPI identifiers.
-  - Never substitute a co-expression matrix for the expression input of the current wrapper.
-  - Batch correction, normalization, and identifier harmonization are upstream preprocessing; PANDA does not silently perform them.
+  - When coexpression_file is supplied, it must be a labeled symmetric gene-by-gene matrix whose IDs and dimensions match PANDA's filtered gene axis.
+  - The adjusted co-expression artifact replaces only the Pearson construction; it does not replace the expression_file required for gene/prior compatibility.
+  - Batch correction, normalization, and identifier harmonization are explicit; PANDA does not silently perform them.
   - Preserve biological covariates in the correction design and verify that hospital or sequencing batch is not completely confounded with the phenotype before inference.

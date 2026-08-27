@@ -14,6 +14,18 @@ from unittest.mock import patch
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+PANDA_INPUT_TASK = (
+    "Run PANDA with expression_file=data/lioness-toy/expression.tsv "
+    "motif_file=data/lioness-toy/motif-panda.tsv "
+    "ppi_file=data/lioness-toy/ppi.tsv output_file=out.tsv"
+)
+PUMA_INPUT_TASK = (
+    "Run PUMA with expression_file=data/lioness-toy/expression.tsv "
+    "motif_file=data/lioness-toy/prior-puma.tsv "
+    "ppi_file=data/lioness-toy/ppi.tsv "
+    "mirna_file=data/lioness-toy/mirna.txt output_file=out.tsv"
+)
+
 import netzoo_agent as agent  # noqa: E402
 from netzoo_table_io import read_condor_edges  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import SemanticReview  # noqa: E402
@@ -421,7 +433,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
         self.assertEqual(prompt.kind, "dry_run")
-        self.assertIn("PANDA command preview is ready", prompt.question)
+        self.assertIn("Your PANDA plan is ready", prompt.question)
         self.assertIn("/execute", prompt.question)
         self.assertNotIn("--execute", prompt.question)
 
@@ -1189,8 +1201,8 @@ class CapabilityGateTests(unittest.TestCase):
         assert plan.decision["design_file"] == "data/cobra-toy/design.tsv"
         assert plan.decision["output_dir"] == "outputs/cobra-local-test"
         statuses = {item.field: item.status for item in plan.evidence}
-        assert statuses["expression_file"] == "provided"
-        assert statuses["design_file"] == "provided"
+        assert statuses["expression_file"] == "discovered"
+        assert statuses["design_file"] == "discovered"
 
     def test_cobra_uses_the_shared_default_output_directory(self):
         decision = agent.TaskDecision(
@@ -1638,7 +1650,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(final.status, "completed")
 
     def test_pre_execution_plan_evaluator_approves_valid_plan(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
+        task = PANDA_INPUT_TASK
         plan = agent.build_workflow_plan(self.decision(), task)
 
         evaluation = agent.evaluate_workflow_plan(plan, task)
@@ -1650,7 +1662,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
     def test_pre_execution_plan_evaluator_rejects_wrong_step_sequence(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
+        task = PANDA_INPUT_TASK
         plan = agent.build_workflow_plan(self.decision(), task)
         forged = plan.model_copy(
             update={
@@ -1671,7 +1683,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("validation_and_execution_order", failed)
 
     def test_pre_execution_plan_evaluator_rejects_output_overwrite(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
+        task = PANDA_INPUT_TASK
         plan = agent.build_workflow_plan(self.decision(), task)
         forged = plan.model_copy(deep=True)
         input_path = forged.decision["expression_file"]
@@ -1689,7 +1701,7 @@ class CapabilityGateTests(unittest.TestCase):
     def test_pre_execution_plan_evaluator_rejects_ungrounded_provided_evidence(self):
         plan = agent.build_workflow_plan(
             self.decision(),
-            "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv",
+            PANDA_INPUT_TASK,
         )
 
         evaluation = agent.evaluate_workflow_plan(
@@ -1723,7 +1735,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("evidence_provenance_contract", failed)
 
     def test_pre_execution_plan_evaluator_rejects_trailing_path_punctuation(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
+        task = PANDA_INPUT_TASK
         plan = agent.build_workflow_plan(self.decision(), task)
         forged = plan.model_copy(deep=True)
         forged.decision["output_file"] = "outputs/demo/panda.tsv."
@@ -1739,7 +1751,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("path_hygiene", failed)
 
     def test_plan_evaluation_markdown_is_an_audit_view(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv 跑 PANDA，輸出 out.tsv"
+        task = PANDA_INPUT_TASK
         plan = agent.build_workflow_plan(self.decision(), task)
         evaluation = agent.evaluate_workflow_plan(plan, task)
 
@@ -1909,7 +1921,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
 
     def test_recovered_plan_is_authorized_by_the_same_plan_evaluator(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        task = PUMA_INPUT_TASK
         decision = agent.TaskDecision(
             action="run_puma",
             in_scope=True,
@@ -1962,7 +1974,7 @@ class CapabilityGateTests(unittest.TestCase):
 
     @staticmethod
     def _recovered_puma_plan_for_provenance_tests():
-        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        task = PUMA_INPUT_TASK
         decision = agent.TaskDecision(
             action="run_puma",
             in_scope=True,
@@ -2054,7 +2066,7 @@ class CapabilityGateTests(unittest.TestCase):
                 self.assert_evidence_provenance_rejected(recovered, task)
 
     def test_initial_plan_cannot_claim_derived_input(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        task = PUMA_INPUT_TASK
         decision = agent.TaskDecision(
             action="run_puma",
             in_scope=True,
@@ -2084,7 +2096,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("evidence_provenance_contract", failed)
 
     def test_recovery_rejects_derived_output_mismatched_with_format_step(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        task = PUMA_INPUT_TASK
         decision = agent.TaskDecision(
             action="run_puma",
             in_scope=True,
@@ -2127,7 +2139,7 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertIn("evidence_provenance_contract", failed)
 
     def test_recovery_plan_with_unapproved_sequence_is_rejected(self):
-        task = "用 expression.tsv、motif.tsv、ppi.tsv、mirna.txt 跑 PUMA，輸出 out.tsv"
+        task = PUMA_INPUT_TASK
         decision = agent.TaskDecision(
             action="run_puma",
             in_scope=True,

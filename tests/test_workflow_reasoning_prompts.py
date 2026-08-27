@@ -69,7 +69,7 @@ def test_registered_capability_metadata_is_the_only_pipeline_source():
     condor = policy.workflows["run_condor"].output_capability
 
     assert "hospital_effect_assessment" in cobra.selection_tags
-    assert cobra.handoff_targets == ["run_panda"]
+    assert cobra.handoff_targets == ["run_panda", "run_puma"]
     assert panda.handoff_targets == ["run_condor"]
     assert condor.handoff_targets == []
 
@@ -137,7 +137,7 @@ def test_registry_generates_role_constraints_and_preserves_handoff_contracts():
     assert any(
         item["from_workflow"] == "COBRA"
         and item["to_workflow"] == "PANDA"
-        and "corrected gene-by-sample matrix" in item["handoff_contract"]
+        and "adjusted gene-by-gene co-expression artifact" in item["handoff_contract"]
         for item in context["handoffs"]
     )
 
@@ -179,6 +179,11 @@ def test_same_pipeline_prompt_gets_one_registry_derived_path_and_explicit_handof
     preferred = constraints["preferred_compositions"]
 
     assert preferred[0]["ordered_workflows"] == ["COBRA", "PANDA", "CONDOR"]
+    assert context["compositions"][0]["ordered_workflows"] == [
+        "COBRA",
+        "PANDA",
+        "CONDOR",
+    ]
     assert {
         item["workflow"]
         for item in constraints["workflow_role_options"]
@@ -188,10 +193,48 @@ def test_same_pipeline_prompt_gets_one_registry_derived_path_and_explicit_handof
         step["handoff_mode"] == expected
         for step, expected in zip(
             preferred[0]["handoff_steps"],
-            ["independent_preparation", "registered_transformation"],
+            ["registered_transformation", "registered_transformation"],
         )
     )
-    assert "corrected gene-by-sample matrix" in preferred[0]["handoff_steps"][0]["handoff_contract"]
+    assert "adjusted gene-by-gene co-expression artifact" in preferred[0]["handoff_steps"][0]["handoff_contract"]
+
+
+def test_lioness_guidance_predecessor_is_in_the_shared_selected_path():
+    policy = ProjectPolicyLoader().load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_lioness_puma"],
+        recommended_actions=["run_puma", "run_lioness_puma"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "mirna", "gene"],
+            regulator_types=["tf", "mirna"],
+            target_types=["gene"],
+            selection_tags=["sample_specific", "mirna_regulation"],
+            granularity="sample_specific",
+        ),
+    )
+
+    context = validated_workflow_context(
+        decision,
+        policy,
+        include_all=True,
+    )
+    preferred = context["selection_constraints"]["preferred_compositions"]
+
+    assert preferred[0]["ordered_workflows"] == ["PUMA", "LIONESS-PUMA"]
+    assert context["compositions"][0]["ordered_workflows"] == [
+        "PUMA",
+        "LIONESS-PUMA",
+    ]
+    assert "not a direct file handoff" in preferred[0]["handoff_steps"][0]["handoff_contract"]
 
 
 def test_semantic_purpose_inference_routes_implicit_patient_goal_to_lioness():

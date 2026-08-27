@@ -14,6 +14,7 @@ from ..contracts.decisions import TaskDecision
 from ..contracts.results import ArtifactValidationResult
 from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
+from .coexpression import read_coexpression_matrix
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -183,12 +184,31 @@ def validate_output_artifacts(
             errors.append("COBRA output_dir is missing")
         else:
             root = _resolve_user_path(decision.output_dir)
-            manifest, components, summary = (root / "manifest.json", root / "components.npz", root / "summary.tsv")
-            artifacts = [str(manifest), str(components), str(summary)]
+            manifest, components, summary = (
+                root / "manifest.json",
+                root / "components.npz",
+                root / "summary.tsv",
+            )
+            adjusted_tsv, adjusted_npz = (
+                root / "adjusted_coexpression.tsv",
+                root / "adjusted_coexpression.npz",
+            )
+            artifacts = [
+                str(manifest),
+                str(components),
+                str(summary),
+                str(adjusted_tsv),
+                str(adjusted_npz),
+            ]
             if _readable_nonempty_file(manifest, "COBRA manifest", errors):
                 try:
-                    if json.loads(manifest.read_text(encoding="utf-8")).get("method") != "COBRA":
+                    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+                    if manifest_data.get("method") != "COBRA":
                         errors.append("COBRA manifest method must be COBRA")
+                    if not manifest_data.get("adjusted_coexpression"):
+                        errors.append(
+                            "COBRA manifest must describe the adjusted co-expression artifact"
+                        )
                 except (OSError, ValueError) as error:
                     errors.append(f"COBRA manifest is malformed: {error}")
             if _readable_nonempty_file(components, "COBRA components", errors):
@@ -202,6 +222,33 @@ def validate_output_artifacts(
                 frame = _table(summary, "COBRA summary", errors)
                 if frame is not None:
                     metrics["cobra_components"] = int(len(frame))
+            if _readable_nonempty_file(
+                adjusted_tsv, "COBRA adjusted co-expression TSV", errors
+            ):
+                try:
+                    adjusted = read_coexpression_matrix(str(adjusted_tsv))
+                    metrics["cobra_adjusted_coexpression_genes"] = int(
+                        adjusted.shape[0]
+                    )
+                except ValueError as error:
+                    errors.append(f"COBRA adjusted co-expression is malformed: {error}")
+            if _readable_nonempty_file(
+                adjusted_npz, "COBRA adjusted co-expression NPZ", errors
+            ):
+                try:
+                    arrays = np.load(adjusted_npz, allow_pickle=False)
+                    if set(arrays.files) != {"matrix", "gene_ids"}:
+                        errors.append(
+                            "COBRA adjusted co-expression NPZ must contain matrix and gene_ids"
+                        )
+                    elif arrays["matrix"].ndim != 2 or arrays["matrix"].shape[0] != arrays["matrix"].shape[1]:
+                        errors.append(
+                            "COBRA adjusted co-expression NPZ matrix must be square"
+                        )
+                except Exception as error:  # noqa: BLE001 - malformed arrays are reported.
+                    errors.append(
+                        f"COBRA adjusted co-expression NPZ could not be loaded: {error}"
+                    )
     elif action == "run_condor":
         if not decision.output_dir:
             errors.append("CONDOR output_dir is missing")

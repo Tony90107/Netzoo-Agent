@@ -22,6 +22,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     TaskDecision,
     WorkflowPlan,
 )
+from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 
 def test_no_tool_summary_explains_source_and_safety():
@@ -275,6 +276,80 @@ def test_exact_guidance_exposes_registry_derived_workflow_path():
     )
 
     assert detail["workflow_path"] == ["PANDA", "LIONESS-PANDA"]
+
+
+def test_exact_guidance_uses_conditional_handoff_path_for_batch_effects():
+    policy = ProjectPolicyLoader().load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="explain",
+            artifact_type="expression_matrix",
+            entity_types=["gene", "sample"],
+            selection_tags=["sequencing_batch_effect_assessment"],
+            granularity="aggregate",
+        ),
+    )
+
+    detail = classification_progress_detail(
+        {
+            "candidates": ["run_panda"],
+            "request_mode": "guidance",
+            "relationship": "single",
+            "match_status": "exact",
+        },
+        decision,
+        policy,
+    )
+
+    assert detail["workflow_path"] == ["COBRA", "PANDA"]
+    assert detail["workflow_scope"] == "composition"
+
+
+def test_normal_panda_guidance_does_not_force_optional_cobra_handoff():
+    policy = ProjectPolicyLoader().load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            selection_tags=["tf_gene_regulation", "aggregate_network"],
+            granularity="aggregate",
+        ),
+    )
+
+    detail = classification_progress_detail(
+        {
+            "candidates": ["run_panda"],
+            "request_mode": "guidance",
+            "relationship": "single",
+            "match_status": "exact",
+        },
+        decision,
+        policy,
+    )
+
+    assert detail["workflow_path"] == ["PANDA"]
+    assert detail["workflow_scope"] == "final_result"
 
 
 def test_guidance_next_step_does_not_offer_only_condor_input_path():

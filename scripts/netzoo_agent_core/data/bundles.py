@@ -48,12 +48,6 @@ def _candidate_directories(action: str, nearby: Path) -> list[Path]:
     root = nearby.expanduser().resolve()
     if root.is_file():
         root = root.parent
-    keywords = {
-        keyword
-        for field_name in REQUIRED_INPUTS[action]
-        if field_name in INPUT_ROLE_FIELDS
-        for keyword in candidate_keywords(action, field_name)
-    }
     directories: set[Path] = set()
     visited = 0
     if not root.is_dir():
@@ -81,12 +75,59 @@ def _candidate_directories(action: str, nearby: Path) -> list[Path]:
                 path.is_file()
                 and not path.is_symlink()
                 and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
-                and any(keyword in filename.casefold() for keyword in keywords)
             ):
                 directories.add(directory_path.resolve())
         if visited > MAX_VISITED_FILES:
             break
     return sorted(directories, key=str)
+
+
+def _content_verified_completion(
+    action: str,
+    directory: Path,
+    values: dict[str, str],
+    input_fields: list[str],
+) -> tuple[str, str] | None:
+    """Fill one unlabelled role only when its full bundle validates uniquely."""
+    missing = [field_name for field_name in input_fields if field_name not in values]
+    if len(missing) != 1:
+        return None
+
+    field_name = missing[0]
+    if not directory.is_dir():
+        return None
+    selected = {
+        _resolve_user_path(value).resolve()
+        for value in values.values()
+        if value
+    }
+    candidates = [
+        path
+        for path in directory.iterdir()
+        if path.is_file()
+        and not path.is_symlink()
+        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
+        and path.resolve() not in selected
+    ]
+    verified: list[Path] = []
+    for candidate in candidates:
+        trial = {**values, field_name: _display_path(candidate)}
+        if not all(
+            trial.get(required)
+            for required in ("expression_file", "motif_file", "ppi_file")
+        ):
+            continue
+        _, valid, _ = _inspect_panda_inputs_impl(
+            trial["expression_file"],
+            trial["motif_file"],
+            trial["ppi_file"],
+            trial.get("mirna_file", ""),
+        )
+        if valid:
+            verified.append(candidate)
+    if len(verified) != 1:
+        return None
+    return field_name, _display_path(verified[0])
 
 
 def _bundle_in_directory(
@@ -101,6 +142,7 @@ def _bundle_in_directory(
     ]
     values = dict(explicit_inputs)
     candidates_by_field: dict[str, list[str]] = {}
+    content_verified_fields: list[str] = []
     for field_name in input_fields:
         if field_name in values:
             candidates_by_field[field_name] = [values[field_name]]
@@ -112,6 +154,18 @@ def _bundle_in_directory(
         rendered = _display_path(candidate)
         values[field_name] = rendered
         candidates_by_field[field_name] = [rendered]
+
+    content_completion = _content_verified_completion(
+        action,
+        directory,
+        values,
+        input_fields,
+    )
+    if content_completion is not None:
+        field_name, value = content_completion
+        values[field_name] = value
+        candidates_by_field[field_name] = [value]
+        content_verified_fields.append(field_name)
 
     missing_fields = tuple(
         field_name for field_name in input_fields if field_name not in values
@@ -151,6 +205,14 @@ def _bundle_in_directory(
         bundle_id=f"directory:{resolved_directory}",
         reason=(
             f"Selected one complete validated dataset bundle from {resolved_directory}."
+            + (
+                " The "
+                + ", ".join(content_verified_fields)
+                + " role was verified from file contents because its filename did "
+                "not match the expected naming pattern."
+                if content_verified_fields
+                else ""
+            )
         ),
         candidates_by_field=candidates_by_field,
     )

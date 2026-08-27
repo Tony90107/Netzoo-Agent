@@ -108,12 +108,11 @@ def validated_workflow_context(
                 "output_capability": spec.output_capability.model_dump(),
             }
         )
+    selection_constraints = build_registry_selection_constraints(decision, workflows)
     return {
-        "compositions": compositions,
+        "compositions": selection_constraints["preferred_compositions"] or compositions,
         "handoffs": handoffs,
         "workflows": workflows,
-        "selection_constraints": build_registry_selection_constraints(
-            decision, workflows
-        ),
+        "selection_constraints": selection_constraints,
         "sample_references": _sample_references(task),
     }

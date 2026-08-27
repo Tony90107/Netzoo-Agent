@@ -224,10 +224,12 @@ def render_cobra_expression_boundary(task: str) -> str | None:
         return None
     return _ui_text(
         "COBRA output cannot be used directly as PANDA expression input. "
-        "COBRA produces a covariate-associated covariance decomposition, whereas "
-        "PANDA requires a gene-by-sample expression matrix plus a motif prior and "
-        "a PPI network. Provide an independently prepared expression matrix if you "
-        "want to run PANDA.\n\n"
+        "COBRA produces a covariate-associated covariance decomposition plus an "
+        "adjusted_coexpression.tsv/.npz "
+        "artifact. Pass that labeled gene-by-gene matrix through coexpression_file; "
+        "keep the original gene-by-sample expression matrix as PANDA's expression_file "
+        "for gene/prior compatibility, together with motif and PPI inputs. The raw "
+        "psi/Q/d/g decomposition is not itself a PANDA matrix input.\n\n"
         "No files were inspected and no analysis ran."
     )
 
@@ -315,6 +317,7 @@ def render_workflow_composition_guidance(
         "motif_file": "Motif/prior",
         "ppi_file": "PPI network",
         "mirna_file": "miRNA list",
+        "coexpression_file": "Adjusted co-expression matrix",
     }
     inputs = "\n".join(
         f"   - `{field_name}`: {input_labels.get(field_name, field_name)}"

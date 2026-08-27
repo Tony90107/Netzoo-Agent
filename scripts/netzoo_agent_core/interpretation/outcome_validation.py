@@ -17,6 +17,7 @@ class OutcomeValidation:
 
     valid: bool
     issues: tuple[str, ...]
+    recoverable: bool = False
 
 
 def _normalized(value: str) -> str:
@@ -127,4 +128,7 @@ def validate_outcome_hypotheses(
                 )
 
     unique_issues = tuple(dict.fromkeys(issues))
-    return OutcomeValidation(not unique_issues, unique_issues)
+    recoverable = bool(unique_issues) and all(
+        ".ungrounded_evidence:" in issue for issue in unique_issues
+    )
+    return OutcomeValidation(not unique_issues, unique_issues, recoverable)

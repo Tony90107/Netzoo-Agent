@@ -51,6 +51,7 @@ def hydrate_router_decision(
         "motif_file",
         "ppi_file",
         "mirna_file",
+        "coexpression_file",
         "output_file",
         "lioness_output",
         "network_file",

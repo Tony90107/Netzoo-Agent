@@ -14,6 +14,12 @@ from netzoo_agent_core.cli.slash_commands import (  # noqa: E402
     render_mode_prompt,
 )
 from netzoo_agent_core.runtime import configure_runtime  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    PlanEvaluationResult,
+    TaskDecision,
+    WorkflowPlan,
+    WorkflowStep,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -50,16 +56,41 @@ def test_known_commands_remain_commands_in_path_context():
     assert result.message == "Current mode: Planning"
 
 
-def test_execute_and_planning_switch_the_session_mode_persistently():
+def test_execute_is_one_shot_and_leaves_planning_mode_enabled():
     assert current_mode_label() == "Planning"
     assert render_mode_prompt("Question") == "Question"
 
-    execute = handle_slash_command("/execute")
+    decision = TaskDecision(
+        action="run_panda",
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="Run PANDA.",
+        expression_file="data/lioness-toy/expression.tsv",
+        motif_file="data/lioness-toy/motif-panda.tsv",
+        ppi_file="data/lioness-toy/ppi.tsv",
+        output_file="outputs/panda.tsv",
+    )
+    plan = WorkflowPlan(
+        workflow="PANDA",
+        objective="Run PANDA.",
+        decision=decision.model_dump(),
+        steps=[WorkflowStep(action="run_panda", purpose="Execute PANDA.")],
+        status="ready",
+    )
+    evaluation = PlanEvaluationResult(status="approved", score=100, summary="Pass")
+    execute = handle_slash_command(
+        "/execute",
+        execution_ready=True,
+        current_plan=plan,
+        current_plan_evaluation=evaluation,
+    )
     assert execute.handled is True
-    assert "Execution mode enabled" in execute.message
-    assert settings.EXECUTE_TOOLS is True
-    assert current_mode_label() == "Execute"
-    assert render_mode_prompt("Question") == "[Execute] Question"
+    assert execute.execute_once is True
+    assert "once" in execute.message
+    assert settings.EXECUTE_TOOLS is False
+    assert current_mode_label() == "Planning"
+    assert render_mode_prompt("Question") == "Question"
 
     planning = handle_slash_command("/PLANNING")
     assert planning.handled is True
@@ -67,6 +98,54 @@ def test_execute_and_planning_switch_the_session_mode_persistently():
     assert settings.EXECUTE_TOOLS is False
     assert current_mode_label() == "Planning"
     assert render_mode_prompt("Question") == "Question"
+
+
+def test_execute_checks_the_current_plan_and_evaluation():
+    decision = TaskDecision(
+        action="run_panda",
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="Run PANDA.",
+        expression_file="data/lioness-toy/expression.tsv",
+        motif_file="data/lioness-toy/motif-panda.tsv",
+        ppi_file="data/lioness-toy/ppi.tsv",
+        output_file="outputs/panda.tsv",
+    )
+    plan = WorkflowPlan(
+        workflow="PANDA",
+        objective="Run PANDA.",
+        decision=decision.model_dump(),
+        steps=[WorkflowStep(action="run_panda", purpose="Execute PANDA.")],
+        status="ready",
+    )
+    evaluation = PlanEvaluationResult(status="approved", score=100, summary="Pass")
+
+    result = handle_slash_command(
+        "/execute",
+        current_plan=plan,
+        current_plan_evaluation=evaluation,
+    )
+
+    assert result.execute_once is True
+    assert settings.EXECUTE_TOOLS is False
+
+    not_ready = plan.model_copy(update={"status": "needs_confirmation"})
+    blocked = handle_slash_command(
+        "/execute",
+        current_plan=not_ready,
+        current_plan_evaluation=evaluation,
+    )
+    assert blocked.execute_once is False
+    assert "not ready" in blocked.message
+
+
+def test_execute_is_blocked_until_a_ready_plan_is_available():
+    result = handle_slash_command("/execute")
+
+    assert result.handled is True
+    assert "no current Work Plan" in result.message
+    assert settings.EXECUTE_TOOLS is False
 
 
 def test_status_and_help_report_without_changing_mode():
