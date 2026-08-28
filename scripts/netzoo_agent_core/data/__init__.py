@@ -5,6 +5,7 @@ from . import (
     bundles,
     cobra,
     coexpression,
+    dragon,
     discovery,
     inspection,
     sambar,
@@ -24,6 +25,7 @@ _DATA_IMPLEMENTATION_MODULES = (
     artifacts,
     cobra,
     coexpression,
+    dragon,
 )
 
 __all__: list[str] = []

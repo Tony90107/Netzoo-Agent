@@ -17,6 +17,7 @@ ActionName = Literal[
     "inspect_condor_inputs",
     "inspect_cobra_inputs",
     "inspect_sambar_inputs",
+    "inspect_dragon_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -27,6 +28,7 @@ ActionName = Literal[
     "run_condor",
     "run_cobra",
     "run_sambar",
+    "run_dragon",
     "query_context7",
     "web_search",
 ]
@@ -44,6 +46,7 @@ RecommendedAction = Literal[
     "run_condor",
     "run_cobra",
     "run_sambar",
+    "run_dragon",
 ]
 
 IntentType = Literal[
@@ -80,9 +83,13 @@ ArtifactType = Literal[
     "pathway_mutation_matrix",
     "community_assignment",
     "validation_report",
+    "multi_omic_network",
     "unknown",
 ]
-EntityType = Literal["tf", "mirna", "gene", "protein", "sample", "pathway", "unknown"]
+EntityType = Literal[
+    "tf", "mirna", "gene", "protein", "sample", "pathway",
+    "omics_layer_1_feature", "omics_layer_2_feature", "unknown",
+]
 Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
 
 
@@ -145,6 +152,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "SAMBAR-INPUTS",
         required_inputs=("mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file"),
         executor_fields=("mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file", "kmin", "kmax", "cluster"),
+        local=True,
+    ),
+    "inspect_dragon_inputs": ActionDefinition(
+        "inspect_dragon_inputs",
+        "DRAGON-INPUTS",
+        required_inputs=("omics_layer_1", "omics_layer_2"),
+        executor_fields=("omics_layer_1", "omics_layer_2"),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -477,6 +491,38 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             ),
         ),
     ),
+    "run_dragon": ActionDefinition(
+        "run_dragon",
+        "DRAGON",
+        required_inputs=("omics_layer_1", "omics_layer_2", "output_file"),
+        optional_inputs=("output_format", "lambda1", "lambda2"),
+        executor_fields=(
+            "omics_layer_1", "omics_layer_2", "output_file",
+            "output_format", "lambda1", "lambda2",
+        ),
+        executor_defaults={"output_format": "matrix"},
+        validation_steps=("inspect_dragon_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "dragon", "api": "netZooPy.dragon"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="multi_omic_network",
+            entity_types=frozenset({"omics_layer_1_feature", "omics_layer_2_feature"}),
+            granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"measurement_dataset"}),
+            selection_tags=frozenset({"multi_omic_network", "partial_correlation", "aggregate_network"}),
+            handoff_contract=(
+                "DRAGON consumes exactly two paired sample-by-feature continuous omics tables "
+                "and produces one aggregate undirected multi-omic network. The matrix is a "
+                "symmetric partial-correlation GGM with layer-qualified node IDs; edge lists "
+                "contain source, target, partial_correlation, and precision. This is an "
+                "association network, not a causal graph. There is no direct handoff to PANDA, "
+                "PUMA, LIONESS, CONDOR, BONOBO, or OTTER; a separate validated conversion would "
+                "be required before any tool that consumes a different artifact contract."
+            ),
+        ),
+    ),
     "query_context7": ActionDefinition(
         "query_context7",
         "CONTEXT7",
@@ -542,6 +588,13 @@ def executor_arguments(action: ActionName, decision: Any) -> dict[str, Any]:
     arguments = {}
     for field_name in definition.executor_fields:
         value = getattr(decision, field_name, None)
+        if action == "run_dragon" and value in (None, "") and field_name in {
+            "lambda1", "lambda2"
+        }:
+            # The verified DRAGON adapter treats omitted lambdas as a request for
+            # estimate_penalty_parameters_dragon; do not pass empty strings to its
+            # strict typed tool schema.
+            continue
         if value in (None, "") and field_name in definition.executor_defaults:
             value = definition.executor_defaults[field_name]
         elif value is None and field_name in definition.optional_inputs:

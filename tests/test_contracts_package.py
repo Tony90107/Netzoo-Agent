@@ -93,16 +93,16 @@ HISTORICAL_EXPORTS = [
 ]
 
 SCHEMA_DIGESTS = {
-    "TaskDecision": "cd2f00d1ca791c6b69fe945cdc3dc705adc468873c724260fecebfa087d3a534",
-    "RouterDecision": "d5fe95d5550882392ab0382e1be6b90d2eee874fe0225f4ef924ac72b1153515",
-    "RequestedOutcome": "f6e9cd7e92293b7c5e0e67f71fdf7f339e75325b5b91aab2599b05665d920d72",
+    "TaskDecision": "dc9e7712159acafe97b4df3a68f3a6b04eaa200d0114e6e91e06137c0106993c",
+    "RouterDecision": "18300a8225382b8423905fb2cac806260187724e2c0e45a0307a66547b227999",
+    "RequestedOutcome": "37bc6b910bcc824bd5039fe41012d3e2d6554d9269a110f7f7285da4caaa92ef",
     "OutcomeEvidence": "c36e790b7027e674beb4783d87c5288c7127f278243707a21321d1772960f522",
-    "OutcomeHypothesis": "4350adbc7c60be4a1acb4c87cc009dead65d713f1337ef9e5a642fcf95e9bde3",
-    "CapabilityMatch": "6d5d7ba3a9613641512a6a37c026437fa795db550fc98d4f7fcb73ef2dc2afad",
+    "OutcomeHypothesis": "c368914e9a24f308ee1c0ca2a4e52eae4cedd7119b8782dde709c8ae1b89e7c4",
+    "CapabilityMatch": "dfb1b4d8cd1dafb6d1e6d47da7bc4364462f2ee7dcac250400c5d02148c9a348",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "d06252a7558e6f628444af238715a4a878cea73ec65893251caeab279ce35653",
+    "ProjectPolicySnapshot": "6247cebe569094bebc751c8131d1e98895ec7b2ce66f5f74420f908b0f2d9044",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     "Episode": "12ea309e79b9fcfc32cd4030ad5aed570eecac04a5414fdfe061dc569a82e70e",
 }

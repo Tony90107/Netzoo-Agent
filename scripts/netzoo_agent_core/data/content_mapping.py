@@ -48,6 +48,14 @@ _ROLE_ALIASES = {
     "cancer_gene": "cancer_gene_file",
     "pathway": "pathway_file",
     "gmt": "pathway_file",
+    "omics_layer_1": "omics_layer_1",
+    "omics_layer_2": "omics_layer_2",
+    "layer1": "omics_layer_1",
+    "layer2": "omics_layer_2",
+    "omics1": "omics_layer_1",
+    "omics2": "omics_layer_2",
+    "first_omics": "omics_layer_1",
+    "second_omics": "omics_layer_2",
 }
 _ROLE_GUIDANCE = {
     "expression_file": "gene-by-sample numeric expression matrix; first column commonly contains gene IDs",
@@ -61,6 +69,8 @@ _ROLE_GUIDANCE = {
     "exon_size_file": "one-row CSV with unique gene IDs as columns and positive numeric gene/exon lengths, matching installed SAMBAR",
     "cancer_gene_file": "tab-delimited cancer-associated gene identifiers, normally one non-empty line",
     "pathway_file": "GMT pathway file: pathway name, description, then one or more gene IDs per line",
+    "omics_layer_1": "DRAGON layer 1; rows are samples and columns are continuous features",
+    "omics_layer_2": "DRAGON layer 2; rows are the same samples and columns are continuous features",
 }
 
 
