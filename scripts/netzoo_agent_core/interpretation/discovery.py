@@ -1,7 +1,6 @@
 """Candidate selection, coherent demo bundles, and reusable episode inputs."""
 
 from __future__ import annotations
-
 import json
 import re
 from pathlib import Path
@@ -21,11 +20,10 @@ from ..data.inspection import (
 from ..data.cobra import inspect_cobra_inputs_impl
 from ..data.sambar import inspect_sambar_inputs_impl
 from ..data.dragon import inspect_dragon_inputs_impl
-from . import giraffe_demo
 from ..data.otter import inspect_otter_inputs_impl
+from . import bonobo_demo, giraffe_demo
 from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
-
 __all__: list[str] = []
 
 _UNLABELED_PATH_RE = re.compile(
@@ -136,6 +134,8 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
         )
     if action == "run_giraffe":
         return giraffe_demo.discover_giraffe_demo_bundle(data_root)
+    if action == "run_bonobo":
+        return bonobo_demo.discover_bonobo_demo_bundle(data_root)
     if action == "run_condor":
         candidates: list[tuple[int, Path]] = []
         for path in data_root.rglob("*"):

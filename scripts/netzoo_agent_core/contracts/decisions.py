@@ -119,6 +119,17 @@ class TaskDecision(BaseModel):
     linkage: str = Field(default="complete", min_length=1, max_length=80)
     cluster: bool = True
     with_header: bool = False
+    # BONOBO's API-specific output and sample-selection controls are kept
+    # separate from the shared DRAGON/OTTER output_format field.
+    bonobo_output_format: Literal[".h5", ".hdf", ".txt", ".csv"] = ".h5"
+    sample_names: list[str] = Field(default_factory=list)
+    sparsify: bool = False
+    bonobo_confidence: float = Field(default=0.05, gt=0.0, lt=1.0)
+    save_pvals: bool = False
+    keep_in_memory: bool = False
+    delta: float | None = Field(default=None, gt=0.0, le=1.0)
+    log_transformed: bool | None = None
+    centered: bool | None = None
     genes_axis: Literal["auto", "rows", "columns"] = "auto"
     output_format: Literal["matrix", "edge_list"] = "matrix"
     computing: Literal["cpu", "gpu"] = "cpu"

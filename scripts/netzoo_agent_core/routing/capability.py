@@ -250,10 +250,21 @@ def validate_task_text(
             flags=re.IGNORECASE,
         ):
             return "The user must explicitly request netZooPy GIRAFFE execution or analysis."
+    if action == "run_bonobo":
+        if "bonobo" not in normalized and not semantic_execution:
+            return "The task objective must specifically match BONOBO before it can run."
+        if not semantic_execution and not re.search(
+            r"(run|execute|trial|test|試跑|執行|跑|分析|co.?expression|共表現|共同表現|sample.?specific|個體|樣本)",
+            normalized,
+            flags=re.IGNORECASE,
+        ):
+            return "The user must explicitly request BONOBO execution or sample-specific co-expression analysis."
     if action == "inspect_otter_inputs" and "otter" not in normalized:
         return "The user must explicitly name OTTER before inspecting its input."
     if action == "inspect_giraffe_inputs" and "giraffe" not in normalized:
         return "The user must explicitly name netZooPy GIRAFFE before inspecting its input."
+    if action == "inspect_bonobo_inputs" and "bonobo" not in normalized:
+        return "The user must explicitly name BONOBO before inspecting its input."
     if action == "inspect_condor_inputs" and "condor" not in normalized:
         return "The user must explicitly name CONDOR before inspecting its input."
     if action == "inspect_inputs" and not any(

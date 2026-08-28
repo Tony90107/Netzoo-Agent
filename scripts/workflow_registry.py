@@ -20,6 +20,7 @@ ActionName = Literal[
     "inspect_dragon_inputs",
     "inspect_otter_inputs",
     "inspect_giraffe_inputs",
+    "inspect_bonobo_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -33,6 +34,7 @@ ActionName = Literal[
     "run_dragon",
     "run_otter",
     "run_giraffe",
+    "run_bonobo",
     "query_context7",
     "web_search",
 ]
@@ -53,6 +55,7 @@ RecommendedAction = Literal[
     "run_dragon",
     "run_otter",
     "run_giraffe",
+    "run_bonobo",
 ]
 
 IntentType = Literal[
@@ -182,6 +185,20 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "GIRAFFE-INPUTS",
         required_inputs=("expression_file", "motif_file", "ppi_file"),
         executor_fields=("expression_file", "motif_file", "ppi_file"),
+        local=True,
+    ),
+    "inspect_bonobo_inputs": ActionDefinition(
+        "inspect_bonobo_inputs",
+        "BONOBO-INPUTS",
+        required_inputs=("expression_file",),
+        optional_inputs=(
+            "output_dir", "bonobo_output_format", "sample_names", "sparsify",
+            "bonobo_confidence", "save_pvals", "genes_axis", "log_transformed", "centered",
+        ),
+        executor_fields=(
+            "expression_file", "output_dir", "bonobo_output_format", "sample_names",
+            "sparsify", "bonobo_confidence", "save_pvals", "genes_axis", "log_transformed", "centered",
+        ),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -623,6 +640,60 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "are required before any downstream workflow. GIRAFFE has no direct "
                 "handoff to PANDA, PUMA, LIONESS, SAMBAR, DRAGON, OTTER, BONOBO, COBRA, "
                 "or CONDOR."
+            ),
+        ),
+    ),
+    "run_bonobo": ActionDefinition(
+        "run_bonobo",
+        "BONOBO",
+        required_inputs=("expression_file", "output_dir"),
+        optional_inputs=(
+            "bonobo_output_format", "sample_names", "sparsify", "bonobo_confidence",
+            "save_pvals", "precision", "keep_in_memory", "delta", "genes_axis",
+            "log_transformed", "centered",
+        ),
+        executor_fields=(
+            "expression_file", "output_dir", "bonobo_output_format", "sample_names",
+            "sparsify", "bonobo_confidence", "save_pvals", "precision", "keep_in_memory",
+            "delta", "genes_axis", "log_transformed", "centered",
+        ),
+        executor_defaults={
+            "bonobo_output_format": ".h5",
+            "sample_names": [],
+            "sparsify": False,
+            "bonobo_confidence": 0.05,
+            "save_pvals": False,
+            "precision": "single",
+            "keep_in_memory": False,
+            "genes_axis": "auto",
+        },
+        validation_steps=("inspect_bonobo_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={
+            "method_family": "bonobo",
+            "api": "netZooPy.bonobo.Bonobo.run_bonobo",
+            "netzoopy_version": "0.11.0",
+        },
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="coexpression_network",
+            entity_types=frozenset({"gene", "sample"}),
+            granularities=frozenset({"sample_specific"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=(),
+            selection_tags=frozenset({"sample_specific", "coexpression", "bayesian"}),
+            handoff_contract=(
+                "BONOBO consumes a labelled gene-by-sample expression matrix and "
+                "produces one gene-by-gene sample-specific co-expression matrix per "
+                "selected sample, plus optional matching p-value matrices. It does "
+                "not produce an aggregate/prior network, GRN, TF-gene regulation, or "
+                "causal network. BONOBO output is not a direct PANDA/PUMA "
+                "coexpression_file handoff: those workflows require one validated "
+                "aggregate labeled gene-by-gene matrix. A separate explicit "
+                "sample-selection or aggregation conversion is required, with its "
+                "own validation and user confirmation. It is not a direct handoff "
+                "to LIONESS, CONDOR, COBRA, DRAGON, or OTTER either."
             ),
         ),
     ),

@@ -17,6 +17,7 @@ from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
 from .dragon import validate_dragon_output
 from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
+from .bonobo import load_bonobo_inputs, validate_bonobo_output
 from .otter import load_otter_inputs, validate_otter_output
 
 __all__ = [
@@ -40,6 +41,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_dragon",
         "run_otter",
         "run_giraffe",
+        "run_bonobo",
     }
 )
 
@@ -410,6 +412,32 @@ def validate_output_artifacts(
                 metrics.update(giraffe_metrics)
             except (OSError, ValueError) as error:
                 errors.append(f"GIRAFFE output contract could not be checked: {error}")
+    elif action == "run_bonobo":
+        if not decision.output_dir:
+            errors.append("BONOBO output_dir is missing")
+        else:
+            try:
+                bundle = load_bonobo_inputs(
+                    decision.expression_file or "",
+                    decision.sample_names,
+                    genes_axis=decision.genes_axis,
+                    log_transformed=decision.log_transformed,
+                    centered=decision.centered,
+                )
+                ok, bonobo_errors, bonobo_artifacts, bonobo_metrics = validate_bonobo_output(
+                    decision.output_dir,
+                    bundle.gene_ids,
+                    bundle.selected_sample_ids,
+                    decision.bonobo_output_format,
+                    save_pvals=decision.save_pvals,
+                    sparsify=decision.sparsify,
+                )
+                artifacts.extend(bonobo_artifacts)
+                if not ok:
+                    errors.extend(bonobo_errors)
+                metrics.update(bonobo_metrics)
+            except (OSError, ValueError, TypeError) as error:
+                errors.append(f"BONOBO output contract could not be checked: {error}")
     else:
         if not decision.output_file:
             errors.append(f"{action} output_file is missing")

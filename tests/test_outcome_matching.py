@@ -274,6 +274,7 @@ def test_generic_sample_network_keeps_all_lioness_families_tied():
         "run_lioness_panda",
         "run_lioness_puma",
         "run_lioness_coexpression",
+        "run_bonobo",
     }
 
 

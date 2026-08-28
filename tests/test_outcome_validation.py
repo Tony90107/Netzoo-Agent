@@ -128,7 +128,7 @@ def evidence(
                     text_span="sample-specific",
                 ),
             ],
-            "run_lioness_coexpression",
+        None,
         ),
     ],
 )

@@ -46,6 +46,47 @@ _FILE_INPUT_FIELDS = frozenset(
 )
 
 
+def _apply_bonobo_parameter_bindings(context: _PlanningContext) -> None:
+    """Parse only explicit BONOBO parameter assignments from the user text.
+
+    In particular, numeric-looking sample names remain strings and are checked
+    against the expression header; they are never reinterpreted as positions.
+    """
+    if context.action != "run_bonobo":
+        return
+    task = context.task
+    decision = context.decision
+    match = re.search(
+        r"(?:sample_names?|samples?)\s*=\s*([^;\n]+)", task, flags=re.IGNORECASE
+    )
+    if match:
+        raw = match.group(1).strip().split()[0].rstrip(",")
+        names = [item.strip() for item in raw.split(",") if item.strip()]
+        if names:
+            decision.sample_names = names
+    format_match = re.search(
+        r"(?:bonobo[_ -]?output[_ -]?format|output[_ -]?format)\s*=\s*(\.?h5|\.?hdf|\.?txt|\.?csv)",
+        task,
+        flags=re.IGNORECASE,
+    )
+    if format_match:
+        value = format_match.group(1).casefold()
+        decision.bonobo_output_format = value if value.startswith(".") else "." + value
+    for field_name in ("sparsify", "save_pvals", "keep_in_memory", "log_transformed", "centered"):
+        match = re.search(
+            rf"{field_name}\s*=\s*(true|false)", task, flags=re.IGNORECASE
+        )
+        if match:
+            setattr(decision, field_name, match.group(1).casefold() == "true")
+    for field_name, decision_field in (("confidence", "bonobo_confidence"), ("delta", "delta")):
+        match = re.search(rf"{field_name}\s*=\s*([0-9]*\.?[0-9]+)", task, flags=re.IGNORECASE)
+        if match:
+            setattr(decision, decision_field, float(match.group(1)))
+    match = re.search(r"precision\s*=\s*(single|double)", task, flags=re.IGNORECASE)
+    if match:
+        decision.precision = match.group(1).casefold()
+
+
 def _cobra_unlabeled_input_paths(task: str) -> tuple[str | None, str | None]:
     """Bind COBRA's two ordered table paths in natural-language requests."""
     if "cobra" not in task.casefold():
@@ -65,6 +106,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     episode_models = context.episodes
     action = context.action
     required = context.required
+    _apply_bonobo_parameter_bindings(context)
     if action == "run_dragon" and re.search(
         r"(?:omics[_ -]?layer[_ -]?3|layer\s*3|three\s+omics|3\s+omics|三種|三層|三個.*omics)",
         task,
@@ -266,6 +308,12 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 autonomous_values[field_name] = value
                 autonomous_reasons[field_name] = reason
                 autonomous_sources[field_name] = "demo_bundle"
+            if action == "run_bonobo":
+                # The checked-in BONOBO toy fixture is intentionally already
+                # log-transformed and centered; keep those declarations explicit
+                # in the demo plan so preflight does not infer them for user data.
+                decision.log_transformed = True
+                decision.centered = True
     # Outputs are safe and reversible defaults; input datasets require evidence.
     expression_hint = decision.expression_file or _task_path(task, "expression_file")
     if expression_hint:
@@ -418,7 +466,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 )
             )
             continue
-        if field_name == "output_dir" and action in {"run_condor", "run_cobra", "run_sambar"}:
+        if field_name == "output_dir" and action in {"run_condor", "run_cobra", "run_sambar", "run_bonobo"}:
             value = default_output_dir
             decision.output_dir = value
             evidence.append(

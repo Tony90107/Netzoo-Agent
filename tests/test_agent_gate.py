@@ -3048,7 +3048,7 @@ class CapabilityGateTests(unittest.TestCase):
         payload = agent.json.loads(output.getvalue())
         self.assertEqual(status, 0)
         self.assertTrue(payload["code_enforced"])
-        self.assertEqual(len(payload["workflows"]), 11)
+        self.assertEqual(len(payload["workflows"]), 12)
 
     def test_confirmed_reuse_preference_can_reuse_validated_successful_inputs(self):
         episode = agent.Episode(

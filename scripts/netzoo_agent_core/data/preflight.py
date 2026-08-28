@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .cobra import inspect_cobra_inputs_impl
+from .bonobo import inspect_bonobo_inputs_impl
 from .dragon import inspect_dragon_inputs_impl
 from .giraffe import inspect_giraffe_inputs_impl
 from .coexpression import read_coexpression_matrix
@@ -117,6 +118,38 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
             _value(decision, "ppi_file"),
         )
         errors.extend(_report_errors("GIRAFFE inputs", report, ok))
+    elif action in {"inspect_bonobo_inputs", "run_bonobo"}:
+        if isinstance(decision, dict):
+            sample_names = decision.get("sample_names", [])
+            output_format = decision.get("bonobo_output_format", ".h5")
+            sparsify = bool(decision.get("sparsify", False))
+            confidence = float(decision.get("bonobo_confidence", 0.05))
+            save_pvals = bool(decision.get("save_pvals", False))
+            genes_axis = decision.get("genes_axis", "auto")
+            log_transformed = decision.get("log_transformed")
+            centered = decision.get("centered")
+        else:
+            sample_names = getattr(decision, "sample_names", [])
+            output_format = getattr(decision, "bonobo_output_format", ".h5")
+            sparsify = bool(getattr(decision, "sparsify", False))
+            confidence = float(getattr(decision, "bonobo_confidence", 0.05))
+            save_pvals = bool(getattr(decision, "save_pvals", False))
+            genes_axis = getattr(decision, "genes_axis", "auto")
+            log_transformed = getattr(decision, "log_transformed", None)
+            centered = getattr(decision, "centered", None)
+        report, ok = inspect_bonobo_inputs_impl(
+            _value(decision, "expression_file"),
+            sample_names,
+            output_dir=_value(decision, "output_dir"),
+            output_format=output_format,
+            sparsify=sparsify,
+            confidence=confidence,
+            save_pvals=save_pvals,
+            genes_axis=genes_axis,
+            log_transformed=log_transformed,
+            centered=centered,
+        )
+        errors.extend(_report_errors("BONOBO inputs", report, ok))
     elif action in {"inspect_otter_inputs", "run_otter"}:
         report, ok = inspect_otter_inputs_impl(
             expression,

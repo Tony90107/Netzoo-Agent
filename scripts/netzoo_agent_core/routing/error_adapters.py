@@ -115,10 +115,63 @@ class GiraffeToolErrorAdapter:
         )
 
 
+class BonoboToolErrorAdapter:
+    """Translate BONOBO runtime failures into stable typed categories."""
+
+    _CODES = frozenset(
+        {
+            "BONOBO_INPUT_INVALID",
+            "BONOBO_OUTPUT_FORMAT_UNSUPPORTED",
+            "BONOBO_PRECISION_UNSUPPORTED",
+            "BONOBO_PVALUES_REQUIRE_SPARSIFY",
+            "BONOBO_NETZOOPY_MISSING",
+            "BONOBO_VERSION_UNSUPPORTED",
+            "BONOBO_API_UNAVAILABLE",
+            "BONOBO_API_ERROR",
+            "BONOBO_OUTPUT_OVERWRITES_INPUT",
+            "BONOBO_OUTPUT_ERROR",
+            "BONOBO_OUTPUT_INVALID",
+            "BONOBO_RUNTIME_ERROR",
+        }
+    )
+
+    def adapt(self, context: ToolErrorContext) -> ToolErrorDiagnosis | None:
+        code = next(
+            (item for item in context.reported_error_codes if item in self._CODES),
+            None,
+        )
+        if code is None:
+            return None
+        retryable = code in {
+            "BONOBO_NETZOOPY_MISSING",
+            "BONOBO_VERSION_UNSUPPORTED",
+            "BONOBO_API_UNAVAILABLE",
+            "BONOBO_API_ERROR",
+            "BONOBO_OUTPUT_ERROR",
+            "BONOBO_RUNTIME_ERROR",
+        }
+        recovery = {
+            "BONOBO_NETZOOPY_MISSING": "run_in_pinned_docker_runtime",
+            "BONOBO_VERSION_UNSUPPORTED": "use_pinned_netzoopy_version",
+            "BONOBO_API_UNAVAILABLE": "reverify_netzoopy_bonobo_api",
+            "BONOBO_API_ERROR": "inspect_bonobo_runtime_and_inputs",
+            "BONOBO_OUTPUT_ERROR": "inspect_bonobo_output_directory",
+            "BONOBO_OUTPUT_INVALID": "inspect_bonobo_artifacts",
+            "BONOBO_RUNTIME_ERROR": "inspect_bonobo_execution_log",
+        }.get(code)
+        return ToolErrorDiagnosis(
+            error_code=code,
+            retryable=retryable,
+            recovery_action=recovery,
+            evidence=list(context.errors),
+        )
+
+
 TOOL_ERROR_ADAPTERS = MappingProxyType(
     {
         "run_puma": (PumaToolErrorAdapter(),),
         "run_giraffe": (GiraffeToolErrorAdapter(),),
+        "run_bonobo": (BonoboToolErrorAdapter(),),
     }
 )
 
