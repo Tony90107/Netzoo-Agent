@@ -230,6 +230,17 @@ def validate_task_text(
             flags=re.IGNORECASE,
         ):
             return "The user must explicitly request DRAGON execution or analysis."
+    if action == "run_otter":
+        if "otter" not in normalized and not semantic_execution:
+            return "The task objective must specifically match OTTER before it can run."
+        if not semantic_execution and not re.search(
+            r"(run|execute|trial|test|試跑|執行|跑|分析|regulatory|relaxed.?graph|調控|推論)",
+            normalized,
+            flags=re.IGNORECASE,
+        ):
+            return "The user must explicitly request OTTER execution or analysis."
+    if action == "inspect_otter_inputs" and "otter" not in normalized:
+        return "The user must explicitly name OTTER before inspecting its input."
     if action == "inspect_condor_inputs" and "condor" not in normalized:
         return "The user must explicitly name CONDOR before inspecting its input."
     if action == "inspect_inputs" and not any(

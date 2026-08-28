@@ -96,7 +96,7 @@ def evidence(
                 evidence("regulator_type", "tf", text_span="TF"),
                 evidence("granularity", "aggregate", text_span="aggregate"),
             ],
-            "run_panda",
+            None,
         ),
         (
             "Which method builds a sample-specific gene coexpression network?",
@@ -136,7 +136,7 @@ def test_generic_evidence_validation_precedes_registry_matching(
     task: str,
     outcome: RequestedOutcome,
     items: list[OutcomeEvidence],
-    expected_action: str,
+    expected_action: str | None,
 ):
     hypotheses = [
         OutcomeHypothesis(
@@ -152,8 +152,12 @@ def test_generic_evidence_validation_precedes_registry_matching(
 
     assert validation.valid is True
     assert validation.issues == ()
-    assert match.status == "exact"
-    assert match.matched_actions == [expected_action]
+    if expected_action is None:
+        assert match.status == "ambiguous"
+        assert match.matched_actions == []
+    else:
+        assert match.status == "exact"
+        assert match.matched_actions == [expected_action]
 
 
 def test_evidence_validator_rejects_missing_dimension_evidence():

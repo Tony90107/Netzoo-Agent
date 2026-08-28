@@ -11,6 +11,7 @@
 7. 試跑 LIONESS-PANDA、LIONESS-PUMA 與 LIONESS co-expression；LIONESS 需要無 header TSV 時，agent 可自動準備 derived expression input。
 8. 試跑 CONDOR toy bipartite network。
 9. 以 COBRA 分析 sample covariates 對 gene co-expression 的影響，並輸出可重現的 covariance decomposition。
+10. 以 OTTER 的 relaxed graph matching 推論 aggregate TF-to-gene regulatory network，嚴格驗證 TF-TF PPI、gene-gene co-expression 與 seed/prior 的方向、shape、identifier 與 NA 行為。
 9. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
@@ -29,10 +30,11 @@ memory consolidation`。Evaluator 通過後可
 | [PANDA_PUMA_Docker_入門.md](PANDA_PUMA_Docker_入門.md) | PANDA/PUMA input-output 與 Docker 入門 |
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
 | [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
-| [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR 的 versioned YAML 規格 |
+| [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR、COBRA、DRAGON、OTTER 的 versioned YAML 規格 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
 | [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |
+| [docs/OTTER_INTEGRATION.md](docs/OTTER_INTEGRATION.md) | OTTER API、CLI、輸入／輸出契約與 handoff 規範 |
 | [NEW_TASK_COMPLETE_DEMO_GUIDE.md](NEW_TASK_COMPLETE_DEMO_GUIDE.md) | 四個新任務的完整說明、Demo 與結果驗證 |
 | [docs/archive/](docs/archive/) | 歷史進度、舊 demo 與 PR 草稿（不作為現行規格） |
 
