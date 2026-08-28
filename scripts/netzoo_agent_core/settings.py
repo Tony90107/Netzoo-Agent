@@ -52,9 +52,15 @@ INPUT_ROLE_FIELDS = {
     "exon_size_file",
     "cancer_gene_file",
     "pathway_file",
+    "omics_layer_1",
+    "omics_layer_2",
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
-PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis", "norm_patient", "kmin", "kmax", "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster"}
+PARAMETER_FIELDS = {
+    "prefix", "with_header", "genes_axis", "norm_patient", "kmin", "kmax",
+    "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster",
+    "output_format", "lambda1", "lambda2",
+}
 
 __all__ = [
     "EXECUTE_TOOLS", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",

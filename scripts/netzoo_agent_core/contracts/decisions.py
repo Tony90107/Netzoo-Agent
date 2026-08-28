@@ -106,6 +106,8 @@ class TaskDecision(BaseModel):
     exon_size_file: str | None = None
     cancer_gene_file: str | None = None
     pathway_file: str | None = None
+    omics_layer_1: str | None = None
+    omics_layer_2: str | None = None
     output_dir: str | None = None
     prefix: str | None = None
     norm_patient: bool = True
@@ -118,6 +120,9 @@ class TaskDecision(BaseModel):
     cluster: bool = True
     with_header: bool = False
     genes_axis: Literal["auto", "rows", "columns"] = "auto"
+    output_format: Literal["matrix", "edge_list"] = "matrix"
+    lambda1: float | None = Field(default=None, ge=0.0, le=1.0)
+    lambda2: float | None = Field(default=None, ge=0.0, le=1.0)
     library_name: str | None = None
     library_id: str | None = None
     docs_query: str | None = None
