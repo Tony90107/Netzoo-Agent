@@ -16,6 +16,7 @@ from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
 from .dragon import validate_dragon_output
+from .otter import load_otter_inputs, validate_otter_output
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -36,6 +37,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_cobra",
         "run_sambar",
         "run_dragon",
+        "run_otter",
     }
 )
 
@@ -361,6 +363,31 @@ def validate_output_artifacts(
             if not ok:
                 errors.extend(dragon_errors)
             metrics.update(dragon_metrics)
+    elif action == "run_otter":
+        if not decision.output_file:
+            errors.append("OTTER output_file is missing")
+        else:
+            output = _resolve_user_path(decision.output_file)
+            artifacts.append(str(output))
+            try:
+                bundle = load_otter_inputs(
+                    decision.expression_file or "",
+                    decision.coexpression_file or "",
+                    decision.motif_file or "",
+                    decision.ppi_file or "",
+                    decision.precision,
+                )
+                ok, otter_errors, otter_metrics = validate_otter_output(
+                    decision.output_file,
+                    decision.output_format,
+                    bundle.tf_ids,
+                    bundle.gene_ids,
+                )
+                if not ok:
+                    errors.extend(otter_errors)
+                metrics.update(otter_metrics)
+            except (OSError, ValueError) as error:
+                errors.append(f"OTTER output contract could not be checked: {error}")
     else:
         if not decision.output_file:
             errors.append(f"{action} output_file is missing")

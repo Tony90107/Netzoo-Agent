@@ -14,7 +14,8 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
     if field_name == "expression_file":
         return ("expression", "expr")
     if field_name == "motif_file":
-        return tuple(part for part in (mode, "motif", "prior") if part)
+        extra = ("seed",) if action == "run_otter" else ()
+        return tuple(part for part in (mode, "motif", "prior", *extra) if part)
     if field_name == "ppi_file":
         return ("ppi",)
     if field_name == "mirna_file":
@@ -33,6 +34,12 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("layer1", "omics1", "transcript", "expression")
     if action == "run_dragon" and field_name == "omics_layer_2":
         return ("layer2", "omics2", "methyl", "chromatin")
+    if action == "run_otter" and field_name == "coexpression_file":
+        return ("coexpression", "co-expression", "correlation", "adjusted")
+    if action == "run_otter" and field_name == "motif_file":
+        return ("motif", "prior", "seed")
+    if action == "run_otter" and field_name == "ppi_file":
+        return ("ppi", "protein", "interaction")
     return ()
 
 

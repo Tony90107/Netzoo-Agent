@@ -121,6 +121,13 @@ class TaskDecision(BaseModel):
     with_header: bool = False
     genes_axis: Literal["auto", "rows", "columns"] = "auto"
     output_format: Literal["matrix", "edge_list"] = "matrix"
+    computing: Literal["cpu", "gpu"] = "cpu"
+    precision: Literal["single", "double"] = "double"
+    lam: float = Field(default=0.035, ge=0.0, le=1.0)
+    gamma: float = Field(default=0.335, ge=0.0)
+    iterations: int = Field(default=60, ge=1)
+    eta: float = Field(default=0.00001, gt=0.0)
+    bexp: float = Field(default=1.0, gt=0.0)
     lambda1: float | None = Field(default=None, ge=0.0, le=1.0)
     lambda2: float | None = Field(default=None, ge=0.0, le=1.0)
     library_name: str | None = None

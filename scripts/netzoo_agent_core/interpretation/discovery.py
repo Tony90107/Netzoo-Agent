@@ -21,6 +21,7 @@ from ..data.inspection import (
 from ..data.cobra import inspect_cobra_inputs_impl
 from ..data.sambar import inspect_sambar_inputs_impl
 from ..data.dragon import inspect_dragon_inputs_impl
+from ..data.otter import inspect_otter_inputs_impl
 from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
 
@@ -116,6 +117,21 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
         return (
             {"expression_file": _display_path(expression), "design_file": _display_path(design)},
             "Demo intent: selected the COBRA toy expression/design bundle with aligned sample IDs.",
+        )
+    if action == "run_otter":
+        expression = data_root / "otter-toy" / "expression.tsv"
+        motif = data_root / "otter-toy" / "motif.tsv"
+        ppi = data_root / "otter-toy" / "ppi.tsv"
+        _, ok = inspect_otter_inputs_impl(str(expression), "", str(motif), str(ppi))
+        if not ok:
+            return None
+        return (
+            {
+                "expression_file": _display_path(expression),
+                "motif_file": _display_path(motif),
+                "ppi_file": _display_path(ppi),
+            },
+            "Demo intent: selected the OTTER toy expression, TF-gene seed, and TF-TF PPI bundle after exact W/P/C validation.",
         )
     if action == "run_condor":
         candidates: list[tuple[int, Path]] = []

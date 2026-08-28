@@ -18,6 +18,7 @@ ActionName = Literal[
     "inspect_cobra_inputs",
     "inspect_sambar_inputs",
     "inspect_dragon_inputs",
+    "inspect_otter_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -29,6 +30,7 @@ ActionName = Literal[
     "run_cobra",
     "run_sambar",
     "run_dragon",
+    "run_otter",
     "query_context7",
     "web_search",
 ]
@@ -47,6 +49,7 @@ RecommendedAction = Literal[
     "run_cobra",
     "run_sambar",
     "run_dragon",
+    "run_otter",
 ]
 
 IntentType = Literal[
@@ -159,6 +162,16 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "DRAGON-INPUTS",
         required_inputs=("omics_layer_1", "omics_layer_2"),
         executor_fields=("omics_layer_1", "omics_layer_2"),
+        local=True,
+    ),
+    "inspect_otter_inputs": ActionDefinition(
+        "inspect_otter_inputs",
+        "OTTER-INPUTS",
+        required_inputs=("motif_file", "ppi_file"),
+        optional_inputs=("expression_file", "coexpression_file"),
+        executor_fields=(
+            "expression_file", "coexpression_file", "motif_file", "ppi_file", "precision",
+        ),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -407,7 +420,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
             input_artifacts=frozenset({"expression_matrix"}),
-            handoff_targets=("run_panda", "run_puma"),
+            handoff_targets=("run_panda", "run_puma", "run_otter"),
             selection_tags=frozenset(
                 {
                     "covariate_association",
@@ -419,8 +432,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "COBRA consumes a gene-by-sample expression matrix and numeric sample "
                 "covariates, then produces a covariate-associated covariance "
                 "decomposition and a labeled adjusted gene-by-gene co-expression "
-                "artifact. PANDA or PUMA may consume the adjusted artifact through "
-                "coexpression_file; the raw components are not a matrix input "
+                "artifact. PANDA, PUMA, or OTTER may consume the adjusted artifact "
+                "through coexpression_file only after the downstream identifier/order "
+                "contract is revalidated; the raw components are not a matrix input "
                 "by themselves."
             ),
         ),
@@ -520,6 +534,46 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "association network, not a causal graph. There is no direct handoff to PANDA, "
                 "PUMA, LIONESS, CONDOR, BONOBO, or OTTER; a separate validated conversion would "
                 "be required before any tool that consumes a different artifact contract."
+            ),
+        ),
+    ),
+    "run_otter": ActionDefinition(
+        "run_otter",
+        "OTTER",
+        required_inputs=("motif_file", "ppi_file", "output_file"),
+        optional_inputs=(
+            "expression_file", "coexpression_file", "output_format", "computing",
+            "precision", "lam", "gamma", "iterations", "eta", "bexp",
+        ),
+        executor_fields=(
+            "expression_file", "coexpression_file", "motif_file", "ppi_file", "output_file",
+            "output_format", "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
+        ),
+        validation_steps=("inspect_otter_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "otter", "api": "netZooPy.otter.otter"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "gene"}),
+            regulator_types=frozenset({"tf"}),
+            target_types=frozenset({"gene"}),
+            granularities=frozenset({"aggregate"}),
+            guidance_predecessors=(),
+            input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
+            handoff_targets=("run_condor",),
+            selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
+            handoff_contract=(
+                "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI "
+                "projection P, and either a gene-by-sample expression matrix (from which "
+                "C is computed) or a validated labeled gene-by-gene co-expression matrix. "
+                "Its lam parameter weights co-expression versus PPI as (lam, 1-lam), and "
+                "gamma is the verified regularization parameter. It produces an aggregate "
+                "TF-to-gene network whose edge weight is the optimized OTTER W score. "
+                "PPI and co-expression are never PANDA motif priors. Only a validated "
+                "source-target-weight edge-list export with disjoint regulator/target IDs "
+                "may be handed to CONDOR; a matrix export needs an explicit conversion."
             ),
         ),
     ),
