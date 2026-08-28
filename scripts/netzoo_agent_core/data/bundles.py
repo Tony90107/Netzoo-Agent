@@ -13,6 +13,7 @@ from ..settings import INPUT_ROLE_FIELDS
 from .discovery import best_named_file, candidate_keywords
 from .inspection import expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
+from .otter import inspect_otter_inputs_impl
 from .tables import _inspect_panda_inputs_impl
 from .sambar import inspect_sambar_inputs_impl
 
@@ -31,6 +32,7 @@ MULTI_FILE_ACTIONS = frozenset(
         "run_lioness_panda",
         "run_lioness_puma",
         "run_sambar",
+        "run_otter",
     }
 )
 MAX_DIRECTORY_DEPTH = 4
@@ -91,6 +93,10 @@ def _content_verified_completion(
     input_fields: list[str],
 ) -> tuple[str, str] | None:
     """Fill one unlabelled role only when its full bundle validates uniquely."""
+    if action == "run_otter":
+        # OTTER has a conditional source role (expression or co-expression), so
+        # guessing an unlabelled file here could silently choose the wrong source.
+        return None
     missing = [field_name for field_name in input_fields if field_name not in values]
     if len(missing) != 1:
         return None
@@ -145,11 +151,19 @@ def _bundle_in_directory(
     directory: Path,
     explicit_inputs: dict[str, str],
 ) -> BundleDiscovery | None:
-    input_fields = [
-        field_name
-        for field_name in REQUIRED_INPUTS[action]
-        if field_name in INPUT_ROLE_FIELDS
-    ]
+    if action == "run_otter":
+        source_field = (
+            "coexpression_file"
+            if explicit_inputs.get("coexpression_file")
+            else "expression_file"
+        )
+        input_fields = [source_field, "motif_file", "ppi_file"]
+    else:
+        input_fields = [
+            field_name
+            for field_name in REQUIRED_INPUTS[action]
+            if field_name in INPUT_ROLE_FIELDS
+        ]
     values = dict(explicit_inputs)
     candidates_by_field: dict[str, list[str]] = {}
     content_verified_fields: list[str] = []
@@ -201,6 +215,13 @@ def _bundle_in_directory(
         _, valid = inspect_sambar_inputs_impl(
             values["mutation_file"], values["exon_size_file"],
             values["cancer_gene_file"], values["pathway_file"],
+        )
+    elif action == "run_otter":
+        _, valid = inspect_otter_inputs_impl(
+            values.get("expression_file", ""),
+            values.get("coexpression_file", ""),
+            values["motif_file"],
+            values["ppi_file"],
         )
     else:
         _, valid, _ = _inspect_panda_inputs_impl(

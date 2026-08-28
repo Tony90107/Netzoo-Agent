@@ -60,6 +60,7 @@ PARAMETER_FIELDS = {
     "prefix", "with_header", "genes_axis", "norm_patient", "kmin", "kmax",
     "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster",
     "output_format", "lambda1", "lambda2",
+    "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
 }
 
 __all__ = [

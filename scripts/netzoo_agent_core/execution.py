@@ -31,6 +31,7 @@ from .data.dragon import (
     write_dragon_matrix,
 )
 from .data.coexpression import read_coexpression_matrix
+from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
 
 from .data.tables import (
     _drop_common_header,
@@ -66,6 +67,8 @@ __all__ = [
     "inspect_sambar_inputs",
     "run_sambar",
     "run_dragon",
+    "inspect_otter_inputs",
+    "run_otter",
     "LOCAL_TOOL_EXECUTORS",
 ]
 
@@ -513,6 +516,25 @@ def inspect_sambar_inputs(
 
 
 @tool
+def inspect_otter_inputs(
+    expression_file: str = "",
+    coexpression_file: str = "",
+    motif_file: str = "",
+    ppi_file: str = "",
+    precision: str = "double",
+) -> str:
+    """Inspect the exact W/P/C orientation and identifier contract for OTTER."""
+    report, _ = inspect_otter_inputs_impl(
+        expression_file,
+        coexpression_file,
+        motif_file,
+        ppi_file,
+        precision,
+    )
+    return report
+
+
+@tool
 def run_sambar(
     mutation_file: str,
     exon_size_file: str,
@@ -559,6 +581,100 @@ def run_sambar(
     if not cluster:
         command.append("--no-cluster")
     return inspection + "\n\n" + _run_command(command, additional_output_files=[str(path) for path in outputs])
+
+
+def _load_otter_api():
+    """Import the verified public low-level OTTER module at execution time."""
+    import importlib
+
+    return importlib.import_module("netZooPy.otter.otter")
+
+
+@tool
+def run_otter(
+    expression_file: str = "",
+    coexpression_file: str = "",
+    motif_file: str = "",
+    ppi_file: str = "",
+    output_file: str = "",
+    output_format: str = "matrix",
+    computing: str = "cpu",
+    precision: str = "double",
+    lam: float = 0.035,
+    gamma: float = 0.335,
+    iterations: int = 60,
+    eta: float = 0.00001,
+    bexp: float = 1.0,
+) -> str:
+    """Run the verified netZooPy OTTER(W, P, C) API with labeled artifacts."""
+    try:
+        if computing != "cpu":
+            return "OTTER execution failed; error: only computing=cpu is enabled in this runtime."
+        report, inputs_ok = inspect_otter_inputs_impl(
+            expression_file,
+            coexpression_file,
+            motif_file,
+            ppi_file,
+            precision,
+        )
+        if not inputs_ok:
+            return "OTTER input validation failed; no API call was made.\n\n" + report
+        bundle = load_otter_inputs(
+            expression_file,
+            coexpression_file,
+            motif_file,
+            ppi_file,
+            precision,
+        )
+        preview = (
+            "OTTER Python API preview:\n"
+            "- import: netZooPy.otter.otter\n"
+            "- call: otter(W, P, C, lam, gamma, Iter, eta, bexp)\n"
+            f"- shapes: W={bundle.W.shape}, P={bundle.P.shape}, C={bundle.C.shape}\n"
+            f"- weights: co-expression lam={lam}, PPI={1.0 - lam}; gamma={gamma} regularization\n"
+            f"- optimization: Iter={iterations}, eta={eta}, bexp={bexp}, precision={precision}\n"
+            f"- output: {output_format} at {_resolve_user_path(output_file)}\n"
+            "- no analysis was executed and no artifact was written (dry-run)."
+        )
+        if not settings.EXECUTE_TOOLS:
+            return report + "\n\n" + preview
+        if _resolve_user_path(output_file) in {
+            _resolve_user_path(value)
+            for value in (expression_file, coexpression_file, motif_file, ppi_file)
+            if value
+        }:
+            return "OTTER execution failed; error: output_file would overwrite an input."
+        api = _load_otter_api()
+        network = api.otter(
+            bundle.W,
+            bundle.P,
+            bundle.C,
+            lam=lam,
+            gamma=gamma,
+            Iter=iterations,
+            eta=eta,
+            bexp=bexp,
+        )
+        written = write_otter_output(
+            output_file,
+            network,
+            bundle.tf_ids,
+            bundle.gene_ids,
+            output_format,
+        )
+        return (
+            report
+            + "\n\nOTTER API execution completed.\n"
+            f"- output: {written}\n"
+            f"- interpretation: aggregate TF-to-gene regulatory network; edge weights are optimized OTTER W scores; "
+            f"PPI weight={1.0 - lam:g}, co-expression weight={lam:g}."
+        )
+    except SystemExit as error:
+        return f"OTTER execution failed; error: netZooPy exited during validation: {error}"
+    except Exception as error:  # noqa: BLE001 - tool failures are returned as typed text results.
+        return f"OTTER execution failed; error: no trusted result was returned: {type(error).__name__}: {error}"
+
+
 def _load_dragon_api():
     """Import only the verified public netZooPy DRAGON module at execution time."""
     import importlib
@@ -661,4 +777,6 @@ LOCAL_TOOL_EXECUTORS = {
     "run_sambar": run_sambar,
     "inspect_dragon_inputs": inspect_dragon_inputs,
     "run_dragon": run_dragon,
+    "inspect_otter_inputs": inspect_otter_inputs,
+    "run_otter": run_otter,
 }

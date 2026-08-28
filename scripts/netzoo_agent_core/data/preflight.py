@@ -8,6 +8,7 @@ from .cobra import inspect_cobra_inputs_impl
 from .dragon import inspect_dragon_inputs_impl
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
+from .otter import inspect_otter_inputs_impl
 from .tables import _inspect_panda_inputs_impl, _read_checked_table, _validate_expression
 from .sambar import inspect_sambar_inputs_impl
 from .transforms import (
@@ -68,6 +69,7 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
     motif = _value(decision, "motif_file")
     ppi = _value(decision, "ppi_file")
     mirna = _value(decision, "mirna_file")
+    coexpression = _value(decision, "coexpression_file")
 
     if action in {"inspect_inputs", "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma"}:
         report, ok, inferred_header = _inspect_panda_inputs_impl(
@@ -107,6 +109,19 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
             _value(decision, "omics_layer_2"),
         )
         errors.extend(_report_errors("DRAGON inputs", report, ok))
+    elif action in {"inspect_otter_inputs", "run_otter"}:
+        report, ok = inspect_otter_inputs_impl(
+            expression,
+            coexpression,
+            motif,
+            ppi,
+            _value(decision, "precision") or "double",
+        )
+        errors.extend(_report_errors("OTTER inputs", report, ok))
+        if action == "run_otter" and _value(decision, "computing") == "gpu":
+            errors.append(
+                "OTTER computing=gpu is not enabled by this Docker runtime; use computing=cpu."
+            )
     elif action == "run_lioness_coexpression":
         errors.extend(_validate_expression_file(expression))
         errors.extend(_validate_lioness_sample_count(expression))
@@ -129,7 +144,6 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
         )
         errors.extend(_report_errors("Expression conversion", report, "- error:" not in report))
 
-    coexpression = _value(decision, "coexpression_file")
     if action in {"run_panda", "run_puma"} and coexpression:
         try:
             read_coexpression_matrix(coexpression)

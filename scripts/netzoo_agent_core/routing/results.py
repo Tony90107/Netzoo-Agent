@@ -31,7 +31,7 @@ __all__ = [
 
 
 def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
-    if action in {"format_expression", "convert_expression", "run_panda", "run_puma"}:
+    if action in {"format_expression", "convert_expression", "run_panda", "run_puma", "run_otter"}:
         return [decision.output_file] if decision.output_file else []
     if action.startswith("run_lioness_"):
         return [
