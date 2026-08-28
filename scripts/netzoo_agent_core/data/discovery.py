@@ -21,6 +21,10 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("mirna", "mir")
     if field_name == "network_file":
         return ("condor", "bipartite", "network")
+    if action == "run_dragon" and field_name == "omics_layer_1":
+        return ("layer1", "omics1", "transcript", "expression")
+    if action == "run_dragon" and field_name == "omics_layer_2":
+        return ("layer2", "omics2", "methyl", "chromatin")
     return ()
 
 

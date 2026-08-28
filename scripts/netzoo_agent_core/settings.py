@@ -48,9 +48,11 @@ INPUT_ROLE_FIELDS = {
     "mirna_file",
     "coexpression_file",
     "network_file",
+    "omics_layer_1",
+    "omics_layer_2",
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
-PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis"}
+PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis", "output_format", "lambda1", "lambda2"}
 
 __all__ = [
     "EXECUTE_TOOLS", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",

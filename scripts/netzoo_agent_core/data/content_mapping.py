@@ -41,6 +41,14 @@ _ROLE_ALIASES = {
     "co-expression": "coexpression_file",
     "network": "network_file",
     "bipartite": "network_file",
+    "omics_layer_1": "omics_layer_1",
+    "omics_layer_2": "omics_layer_2",
+    "layer1": "omics_layer_1",
+    "layer2": "omics_layer_2",
+    "omics1": "omics_layer_1",
+    "omics2": "omics_layer_2",
+    "first_omics": "omics_layer_1",
+    "second_omics": "omics_layer_2",
 }
 _ROLE_GUIDANCE = {
     "expression_file": "gene-by-sample numeric expression matrix; first column commonly contains gene IDs",
@@ -50,6 +58,8 @@ _ROLE_GUIDANCE = {
     "mirna_file": "one-column miRNA identifier list, or a miRNA-containing prior list",
     "coexpression_file": "adjusted gene-by-gene numeric co-expression matrix",
     "network_file": "weighted source-target bipartite edge list for CONDOR",
+    "omics_layer_1": "DRAGON layer 1; rows are samples and columns are continuous features",
+    "omics_layer_2": "DRAGON layer 2; rows are the same samples and columns are continuous features",
 }
 
 

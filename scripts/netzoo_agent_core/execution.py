@@ -1,10 +1,11 @@
-"""Allow-listed PANDA, PUMA, LIONESS, and CONDOR command adapters."""
+"""Allow-listed NetZoo workflow adapters, including DRAGON's Python API adapter."""
 
 from __future__ import annotations
 
 import shlex
 from pathlib import Path
 
+from . import settings
 
 
 from .contracts import (
@@ -21,6 +22,13 @@ from .data.inspection import (
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
 from .data.cobra import inspect_cobra_inputs_impl
+from .data.dragon import (
+    DRAGON_OUTPUT_FORMATS,
+    inspect_dragon_inputs_impl,
+    load_and_align_dragon_layers,
+    write_dragon_edge_list,
+    write_dragon_matrix,
+)
 from .data.coexpression import read_coexpression_matrix
 
 from .data.tables import (
@@ -36,6 +44,7 @@ from .tool_adapters import (
     convert_expression_to_coexpression,
     format_expression_for_netzoo,
     inspect_cobra_inputs,
+    inspect_dragon_inputs,
     inspect_netzoo_inputs,
 )
 
@@ -53,6 +62,7 @@ __all__ = [
     "inspect_condor_inputs",
     "run_condor",
     "run_cobra",
+    "run_dragon",
     "LOCAL_TOOL_EXECUTORS",
 ]
 
@@ -481,6 +491,91 @@ def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
     )
 
 
+def _load_dragon_api():
+    """Import only the verified public netZooPy DRAGON module at execution time."""
+    import importlib
+
+    return importlib.import_module("netZooPy.dragon")
+
+
+@tool
+def run_dragon(
+    omics_layer_1: str,
+    omics_layer_2: str,
+    output_file: str,
+    output_format: str = "matrix",
+    lambda1: float | None = None,
+    lambda2: float | None = None,
+) -> str:
+    """Run the verified netZooPy DRAGON Python API on exactly two omics layers."""
+    try:
+        if output_format not in DRAGON_OUTPUT_FORMATS:
+            return f"DRAGON execution failed; error: unsupported output_format: {output_format}."
+        if (lambda1 is None) != (lambda2 is None):
+            return "DRAGON execution failed; error: lambda1 and lambda2 must be supplied together."
+        input_report, inputs_ok = inspect_dragon_inputs_impl(
+            omics_layer_1,
+            omics_layer_2,
+        )
+        if not inputs_ok:
+            return "DRAGON input validation failed; no API call was made.\n\n" + input_report
+        layer1, layer2, errors = load_and_align_dragon_layers(
+            omics_layer_1,
+            omics_layer_2,
+        )
+        if errors or layer1 is None or layer2 is None:
+            return "DRAGON input validation failed; no API call was made.\n\n" + input_report
+        if _resolve_user_path(output_file) in {
+            _resolve_user_path(omics_layer_1),
+            _resolve_user_path(omics_layer_2),
+        }:
+            return "DRAGON execution failed; error: output_file would overwrite an omics input."
+        lambda_text = (
+            f"manual lambdas=({lambda1}, {lambda2})"
+            if lambda1 is not None
+            else "lambdas estimated by estimate_penalty_parameters_dragon"
+        )
+        preview = (
+            "DRAGON Python API preview:\n"
+            "- import: netZooPy.dragon\n"
+            "- calls: estimate_penalty_parameters_dragon(X1, X2) -> "
+            "get_precision_matrix_dragon(X1, X2, lambdas) and "
+            "get_partial_correlation_dragon(X1, X2, lambdas)\n"
+            f"- {lambda_text}\n"
+            f"- output: {output_format} at {_resolve_user_path(output_file)}\n"
+            "- no analysis was executed and no artifact was written (dry-run)."
+        )
+        if not settings.EXECUTE_TOOLS:
+            return input_report + "\n\n" + preview
+
+        api = _load_dragon_api()
+        x1 = layer1.to_numpy(dtype=float)
+        x2 = layer2.to_numpy(dtype=float)
+        if lambda1 is None:
+            lambdas, _ = api.estimate_penalty_parameters_dragon(x1, x2)
+        else:
+            lambdas = [lambda1, lambda2]
+        precision, _ = api.get_precision_matrix_dragon(x1, x2, lambdas)
+        partial = api.get_partial_correlation_dragon(x1, x2, lambdas)
+        node_ids = [f"layer1::{value}" for value in layer1.columns] + [
+            f"layer2::{value}" for value in layer2.columns
+        ]
+        if output_format == "matrix":
+            written = write_dragon_matrix(output_file, partial, node_ids)
+        else:
+            written = write_dragon_edge_list(output_file, partial, precision, node_ids)
+        return (
+            input_report
+            + "\n\nDRAGON API execution completed.\n"
+            f"- lambdas: {list(map(float, lambdas))}\n"
+            f"- output: {written}\n"
+            "- interpretation: undirected aggregate association network; "
+            "partial correlation is not a causal effect."
+        )
+    except Exception as error:  # noqa: BLE001 - tool failures are returned as typed text results.
+        return f"DRAGON execution failed; error: no trusted result was returned: {type(error).__name__}: {error}"
+
+
 LOCAL_TOOL_EXECUTORS = {
     "inspect_inputs": inspect_netzoo_inputs,
     "inspect_condor_inputs": inspect_condor_inputs,
@@ -494,4 +589,6 @@ LOCAL_TOOL_EXECUTORS = {
     "run_condor": run_condor,
     "inspect_cobra_inputs": inspect_cobra_inputs,
     "run_cobra": run_cobra,
+    "inspect_dragon_inputs": inspect_dragon_inputs,
+    "run_dragon": run_dragon,
 }

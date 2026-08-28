@@ -15,6 +15,7 @@ from ..contracts.results import ArtifactValidationResult
 from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
+from .dragon import validate_dragon_output
 
 __all__ = [
     "ARTIFACT_WRITE_ACTIONS",
@@ -33,6 +34,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_lioness_coexpression",
         "run_condor",
         "run_cobra",
+        "run_dragon",
     }
 )
 
@@ -276,6 +278,19 @@ def validate_output_artifacts(
                     paths["tar_memb.tsv"], "CONDOR tar_memb", errors
                 )
                 _readable_nonempty_file(paths["summary.txt"], "CONDOR summary", errors)
+    elif action == "run_dragon":
+        if not decision.output_file:
+            errors.append("DRAGON output_file is missing")
+        else:
+            output = _resolve_user_path(decision.output_file)
+            artifacts.append(str(output))
+            ok, dragon_errors, dragon_metrics = validate_dragon_output(
+                decision.output_file,
+                decision.output_format,
+            )
+            if not ok:
+                errors.extend(dragon_errors)
+            metrics.update(dragon_metrics)
     else:
         if not decision.output_file:
             errors.append(f"{action} output_file is missing")

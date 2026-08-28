@@ -5,6 +5,7 @@ from __future__ import annotations
 from . import settings
 from .data.tables import inspect_netzoo_inputs_report
 from .data.cobra import inspect_cobra_inputs_impl
+from .data.dragon import inspect_dragon_inputs_impl
 from .data.transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
@@ -32,6 +33,13 @@ def inspect_netzoo_inputs(
 def inspect_cobra_inputs(expression_file: str, design_file: str) -> str:
     """Inspect labelled expression and sample-covariate inputs for COBRA."""
     report, _ = inspect_cobra_inputs_impl(expression_file, design_file)
+    return report
+
+
+@tool
+def inspect_dragon_inputs(omics_layer_1: str, omics_layer_2: str) -> str:
+    """Inspect exactly two DRAGON sample-by-feature continuous data tables."""
+    report, _ = inspect_dragon_inputs_impl(omics_layer_1, omics_layer_2)
     return report
 
 
@@ -68,6 +76,7 @@ def convert_expression_to_coexpression(
 __all__ = [
     "inspect_netzoo_inputs",
     "inspect_cobra_inputs",
+    "inspect_dragon_inputs",
     "format_expression_for_netzoo",
     "convert_expression_to_coexpression",
 ]

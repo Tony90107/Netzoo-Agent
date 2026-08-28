@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .cobra import inspect_cobra_inputs_impl
+from .dragon import inspect_dragon_inputs_impl
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
 from .tables import _inspect_panda_inputs_impl, _read_checked_table, _validate_expression
@@ -90,6 +91,12 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
     elif action in {"inspect_cobra_inputs", "run_cobra"}:
         report, ok = inspect_cobra_inputs_impl(expression, _value(decision, "design_file"))
         errors.extend(_report_errors("COBRA inputs", report, ok))
+    elif action in {"inspect_dragon_inputs", "run_dragon"}:
+        report, ok = inspect_dragon_inputs_impl(
+            _value(decision, "omics_layer_1"),
+            _value(decision, "omics_layer_2"),
+        )
+        errors.extend(_report_errors("DRAGON inputs", report, ok))
     elif action == "run_lioness_coexpression":
         errors.extend(_validate_expression_file(expression))
         errors.extend(_validate_lioness_sample_count(expression))

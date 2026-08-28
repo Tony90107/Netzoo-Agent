@@ -102,10 +102,15 @@ class TaskDecision(BaseModel):
     output_file: str | None = None
     lioness_output: str | None = None
     network_file: str | None = None
+    omics_layer_1: str | None = None
+    omics_layer_2: str | None = None
     output_dir: str | None = None
     prefix: str | None = None
     with_header: bool = False
     genes_axis: Literal["auto", "rows", "columns"] = "auto"
+    output_format: Literal["matrix", "edge_list"] = "matrix"
+    lambda1: float | None = Field(default=None, ge=0.0, le=1.0)
+    lambda2: float | None = Field(default=None, ge=0.0, le=1.0)
     library_name: str | None = None
     library_id: str | None = None
     docs_query: str | None = None
