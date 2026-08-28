@@ -52,7 +52,10 @@ INPUT_ROLE_FIELDS = {
     "omics_layer_2",
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
-PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis", "output_format", "lambda1", "lambda2"}
+PARAMETER_FIELDS = {
+    "prefix", "with_header", "genes_axis", "output_format", "lambda1", "lambda2",
+    "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
+}
 
 __all__ = [
     "EXECUTE_TOOLS", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",

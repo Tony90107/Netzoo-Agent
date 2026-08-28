@@ -8,6 +8,7 @@ from . import (
     dragon,
     discovery,
     inspection,
+    otter,
     paths,
     tables,
     transforms,
@@ -24,6 +25,7 @@ _DATA_IMPLEMENTATION_MODULES = (
     cobra,
     coexpression,
     dragon,
+    otter,
 )
 
 __all__: list[str] = []

@@ -84,9 +84,25 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     input_fields.extend(
         field_name for field_name in optional_file_fields if field_name not in input_fields
     )
+    if action == "run_otter":
+        otter_sources = {
+            field_name
+            for field_name in ("expression_file", "coexpression_file")
+            if getattr(decision, field_name, None) or _task_path(task, field_name)
+        }
+        if not otter_sources:
+            # OTTER has a conditional source contract: expression_file is required
+            # when C is computed, otherwise coexpression_file is required.
+            input_fields.append("expression_file")
+        else:
+            input_fields.extend(
+                field_name
+                for field_name in otter_sources
+                if field_name not in input_fields
+            )
     evidence_fields = [
         *required,
-        *[field_name for field_name in optional_file_fields if field_name not in required],
+        *[field_name for field_name in input_fields if field_name not in required],
     ]
     natural_bindings = _unlabeled_input_bindings(task, input_fields)
     confirmed_bindings = {
@@ -313,7 +329,15 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         profile_model.preferences.get("default_output_dir", "outputs/demo")
     )
     evidence: list[InputEvidence] = []
-    for field_name in required:
+    evidence_input_fields = [
+        *input_fields,
+        *[
+            field_name
+            for field_name in required
+            if field_name in OUTPUT_ROLE_FIELDS
+        ],
+    ]
+    for field_name in evidence_input_fields:
         value = getattr(decision, field_name) or _task_path(task, field_name)
         if value:
             setattr(decision, field_name, value)
@@ -372,7 +396,11 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 value = aggregate if field_name == "output_file" else sample_specific
             else:
                 value = _default_network_output(
-                    "puma" if "puma" in action else "panda",
+                    "puma"
+                    if "puma" in action
+                    else "otter"
+                    if action == "run_otter"
+                    else "panda",
                     seed,
                     default_output_dir,
                 )

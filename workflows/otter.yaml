@@ -1,0 +1,82 @@
+policy_version: 2
+workflow: OTTER
+action: run_otter
+description: Infer an aggregate TF-to-gene regulatory network with OTTER.
+required_inputs: [motif_file, ppi_file, output_file]
+optional_inputs: [expression_file, coexpression_file, output_format, computing, precision, lam, gamma, iterations, eta, bexp]
+validation_steps: [inspect_otter_inputs]
+execution_step: run_otter
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, gene]
+  granularities: [aggregate]
+  regulator_types: [tf]
+  target_types: [gene]
+  guidance_predecessors: []
+  input_artifacts: [expression_matrix, coexpression_network]
+  handoff_targets: [run_condor]
+  selection_tags: [tf_gene_regulation, aggregate_network, relaxed_graph_matching]
+  handoff_contract: >-
+    OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI
+    projection P, and either a gene-by-sample expression matrix (from which
+    C is computed) or a validated labeled gene-by-gene co-expression matrix.
+    Its lam parameter weights co-expression versus PPI as (lam, 1-lam), and
+    gamma is the verified regularization parameter. It produces an aggregate
+    TF-to-gene network whose edge weight is the optimized OTTER W score. PPI
+    and co-expression are never PANDA motif priors. Only a validated
+    source-target-weight edge-list export with disjoint regulator/target IDs
+    may be handed to CONDOR; a matrix export needs an explicit conversion.
+conventions:
+  - >-
+    motif_file is OTTER's TF-by-gene seed/prior W; it is not a request to use
+    OTTER's PPI or co-expression as a PANDA motif prior.
+  - >-
+    ppi_file must be a TF-TF edge list. Its identifier set must equal the TF
+    identifier set in motif_file; the adapter symmetrizes it into P and uses a
+    binary adjacency projection.
+  - >-
+    expression_file must have a header, a unique gene-ID first column, and at
+    least two unique sample columns. It is gene-by-sample; C is computed from
+    its gene rows. The installed official API has no sample_metadata argument.
+  - >-
+    coexpression_file is an optional precomputed source supported by this agent's
+    adapter, not by the official OTTER CLI/API signature. It must be a labeled
+    symmetric square gene-by-gene matrix with exact row/column order.
+  - >-
+    When both expression_file and coexpression_file are supplied, their gene IDs
+    and order must match exactly. W genes, C genes, and expression genes must
+    match exactly; no implicit intersection or reordering is performed.
+  - >-
+    NAs, non-finite values, non-numeric cells, duplicate IDs, empty rows/columns,
+    duplicate edge pairs, and malformed matrix/edge-list shapes are rejected
+    before the API call. OTTER's official reader/merging behavior is otherwise
+    permissive and its README warns that NAs and non-intersection inputs need care.
+  - >-
+    netZooPy 0.11.0 exposes netZooPy.otter.otter(W, P, C, lam=0.035, gamma=0.335,
+    Iter=60, eta=0.00001, bexp=1). lam weights C versus P as (lam, 1-lam);
+    gamma is regularization; iterations, eta, and bexp control optimization.
+  - >-
+    The verified API has no independent sparsity penalty or threshold parameter.
+    gamma is an L2-style regularization term, not a sparsity claim; an unknown
+    sparsity argument is rejected rather than silently mapped.
+  - >-
+    computing=cpu and precision=single/double are validated controls. The current
+    agent runtime does not enable OTTER GPU execution. The official CLI exposes
+    expression, motif, PPI, output, computing, precision, mode_process, iterations,
+    lam, gamma, eta, and bexp; it does not expose a precomputed C file or metadata.
+  - >-
+    output_format=matrix writes a labeled TF-by-gene matrix. output_format=edge_list
+    writes a complete source,target,weight TF-to-gene grid. Weight means the
+    optimized OTTER W score; output is aggregate, not sample-specific.
+  - >-
+    Official netZooPy includes a separate LionessOtter class and otterlioness CLI
+    command for sample-specific networks. This agent's registered OTTER action is
+    aggregate only and does not silently label its output LIONESS-OTTER.
+  - >-
+    COBRA is an explicit predecessor when batch/confounder adjustment is needed.
+    Only COBRA's adjusted co-expression artifact after this exact identifier/order
+    validation may hand off to OTTER; OTTER does not perform batch correction.
+  - >-
+    OTTER-to-CONDOR requires a validated edge-list export and the CONDOR input
+    validator. A matrix output must be explicitly converted and revalidated first.

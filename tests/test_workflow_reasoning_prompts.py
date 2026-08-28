@@ -69,7 +69,7 @@ def test_registered_capability_metadata_is_the_only_pipeline_source():
     condor = policy.workflows["run_condor"].output_capability
 
     assert "hospital_effect_assessment" in cobra.selection_tags
-    assert cobra.handoff_targets == ["run_panda", "run_puma"]
+    assert cobra.handoff_targets == ["run_panda", "run_puma", "run_otter"]
     assert panda.handoff_targets == ["run_condor"]
     assert condor.handoff_targets == []
 
@@ -178,17 +178,17 @@ def test_same_pipeline_prompt_gets_one_registry_derived_path_and_explicit_handof
     constraints = context["selection_constraints"]
     preferred = constraints["preferred_compositions"]
 
-    assert preferred[0]["ordered_workflows"] == ["COBRA", "PANDA", "CONDOR"]
+    assert preferred[0]["ordered_workflows"] == ["COBRA", "OTTER", "CONDOR"]
     assert context["compositions"][0]["ordered_workflows"] == [
         "COBRA",
-        "PANDA",
+        "OTTER",
         "CONDOR",
     ]
     assert {
         item["workflow"]
         for item in constraints["workflow_role_options"]
         if item["preferred_in_selected_composition"]
-    } == {"COBRA", "PANDA", "CONDOR"}
+    } == {"COBRA", "OTTER", "CONDOR"}
     assert all(
         step["handoff_mode"] == expected
         for step, expected in zip(
@@ -255,5 +255,5 @@ def test_semantic_purpose_inference_routes_implicit_patient_goal_to_lioness():
 
     assert patient_match.status == "exact"
     assert patient_match.matched_actions == ["run_lioness_panda"]
-    assert cohort_match.status == "exact"
-    assert cohort_match.matched_actions == ["run_panda"]
+    assert cohort_match.status == "ambiguous"
+    assert cohort_match.matched_actions == []

@@ -15,13 +15,14 @@ output_capability:
   target_types: []
   guidance_predecessors: []
   input_artifacts: [expression_matrix]
-  handoff_targets: [run_panda, run_puma]
+  handoff_targets: [run_panda, run_puma, run_otter]
   selection_tags: [covariate_association, hospital_effect_assessment, sequencing_batch_effect_assessment]
   handoff_contract: >-
     COBRA consumes a gene-by-sample expression matrix and numeric sample covariates,
     then produces a covariate-associated covariance decomposition and a labeled
-    adjusted gene-by-gene co-expression artifact. PANDA or PUMA may consume the
-    adjusted artifact through coexpression_file; the raw components are not a matrix
+    adjusted gene-by-gene co-expression artifact. PANDA, PUMA, or OTTER may consume
+    the adjusted artifact through coexpression_file only after the downstream
+    identifier/order contract is revalidated; the raw components are not a matrix
     input by themselves.
 conventions:
   - Expression must be a labeled gene-by-sample matrix with more genes than samples.
