@@ -183,8 +183,8 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="dry_run",
             question=_ui_text(
-                f"Your {plan.workflow} plan is ready. Enter /execute to execute and "
-                "confirm this validated workflow.\n"
+                f"Your {plan.workflow} plan is ready. Enter /execute to execute this "
+                "validated workflow.\n"
                 "Or describe the input changes you want."
             ),
         )
@@ -331,7 +331,7 @@ def resolve_next_turn_input(
         return None
     stripped = original_reply.strip()
     looks_like_path = bool(
-        re.search(r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$", stripped, flags=re.IGNORECASE)
+        re.search(r"[/\\]|\.(?:tsv|tab|txt|csv|gmt|npy)$", stripped, flags=re.IGNORECASE)
     )
     continuation = (
         f"PREVIOUS_ACTION={selected_action}. Continue the recommended "

@@ -33,6 +33,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_lioness_coexpression",
         "run_condor",
         "run_cobra",
+        "run_sambar",
     }
 )
 
@@ -163,6 +164,42 @@ def _validate_membership(path: Path, label: str, errors: list[str]) -> int:
     return int(frame.shape[0])
 
 
+def _validate_sambar_matrix(path: Path, label: str, errors: list[str]) -> tuple[int, int]:
+    if not _readable_nonempty_file(path, label, errors):
+        return 0, 0
+    try:
+        frame = pd.read_csv(path, index_col=0)
+    except (OSError, ValueError, pd.errors.ParserError) as error:
+        errors.append(f"{label} could not be parsed as CSV: {error}")
+        return 0, 0
+    if frame.empty or frame.shape[1] == 0:
+        errors.append(f"{label} must have non-empty row and column axes")
+        return 0, 0
+    values = frame.apply(pd.to_numeric, errors="coerce")
+    if values.isna().any().any():
+        errors.append(f"{label} values must all be numeric")
+    if frame.index.duplicated().any() or frame.columns.duplicated().any():
+        errors.append(f"{label} identifiers must be unique")
+    return int(frame.shape[0]), int(frame.shape[1])
+
+
+def _validate_sambar_distance(path: Path, errors: list[str]) -> int:
+    if not _readable_nonempty_file(path, "SAMBAR distance matrix", errors):
+        return 0
+    try:
+        matrix = np.loadtxt(path, delimiter=",")
+    except Exception as error:  # noqa: BLE001 - malformed external artifact.
+        errors.append(f"SAMBAR distance matrix could not be loaded: {error}")
+        return 0
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[0] != matrix.shape[1]:
+        errors.append("SAMBAR distance matrix must be a non-empty square numeric CSV")
+        return 0
+    if not np.isfinite(matrix).all():
+        errors.append("SAMBAR distance matrix must contain only finite numeric values")
+        return 0
+    return int(matrix.shape[0])
+
+
 def validate_output_artifacts(
     action: str,
     decision: TaskDecision,
@@ -179,7 +216,40 @@ def validate_output_artifacts(
             warnings=[f"No artifact contract is defined for {action}."],
         )
 
-    if action == "run_cobra":
+    if action == "run_sambar":
+        if not decision.output_dir:
+            errors.append("SAMBAR output_dir is missing")
+        else:
+            root = _resolve_user_path(decision.output_dir)
+            manifest = root / "manifest.json"
+            mutation_scores = root / "mt_out.csv"
+            pathway_scores = root / "pt_out.csv"
+            artifacts = [str(manifest), str(mutation_scores), str(pathway_scores)]
+            if decision.cluster:
+                artifacts.extend([str(root / "clustergroups.csv"), str(root / "dist_matrix.csv")])
+            if _readable_nonempty_file(manifest, "SAMBAR manifest", errors):
+                try:
+                    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+                    if manifest_data.get("method") != "SAMBAR":
+                        errors.append("SAMBAR manifest method must be SAMBAR")
+                    if bool(manifest_data.get("parameters", {}).get("cluster")) != bool(decision.cluster):
+                        errors.append("SAMBAR manifest cluster parameter does not match the plan")
+                except (OSError, ValueError) as error:
+                    errors.append(f"SAMBAR manifest is malformed: {error}")
+            mt_samples, mt_genes = _validate_sambar_matrix(mutation_scores, "SAMBAR mutation-score matrix", errors)
+            pt_pathways, pt_samples = _validate_sambar_matrix(pathway_scores, "SAMBAR pathway-score matrix", errors)
+            metrics.update({"sambar_mutation_score_genes": mt_genes, "sambar_mutation_score_samples": mt_samples, "sambar_pathways": pt_pathways, "sambar_pathway_score_samples": pt_samples})
+            if mt_samples and pt_samples and mt_samples != pt_samples:
+                errors.append("SAMBAR mutation-score rows and pathway-score columns must represent the same sample count")
+            if decision.cluster:
+                clusters = root / "clustergroups.csv"
+                distances = root / "dist_matrix.csv"
+                cluster_rows, cluster_columns = _validate_sambar_matrix(clusters, "SAMBAR cluster assignments", errors)
+                distance_rows = _validate_sambar_distance(distances, errors)
+                metrics.update({"sambar_clusterings": cluster_rows, "sambar_cluster_samples": cluster_columns, "sambar_distance_rows": distance_rows})
+                if mt_samples and distance_rows and mt_samples != distance_rows:
+                    errors.append("SAMBAR distance matrix must match the pathway-score sample count")
+    elif action == "run_cobra":
         if not decision.output_dir:
             errors.append("COBRA output_dir is missing")
         else:

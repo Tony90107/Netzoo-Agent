@@ -48,9 +48,13 @@ INPUT_ROLE_FIELDS = {
     "mirna_file",
     "coexpression_file",
     "network_file",
+    "mutation_file",
+    "exon_size_file",
+    "cancer_gene_file",
+    "pathway_file",
 }
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
-PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis"}
+PARAMETER_FIELDS = {"prefix", "with_header", "genes_axis", "norm_patient", "kmin", "kmax", "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster"}
 
 __all__ = [
     "EXECUTE_TOOLS", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",

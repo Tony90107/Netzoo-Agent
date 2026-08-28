@@ -14,6 +14,7 @@ __all__ = [
     "FILE_DISCOVERY_MAX_VISITED",
     "FILE_DISCOVERY_MAX_RESULTS",
     "_extract_named_path",
+    "_extract_explicit_role_path",
     "_score_candidate_file",
     "_find_candidate_files",
     "_default_lioness_outputs",
@@ -45,6 +46,13 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
     if match.group("quote"):
         return match.group("quoted")
     return match.group("plain").strip().rstrip(".。")
+
+
+def _extract_explicit_role_path(task: str, role: str) -> str | None:
+    match = re.search(rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?))(?=\s+[A-Za-z_]+\s*=|[，,；;]|$)", task, re.IGNORECASE)
+    if not match:
+        return None
+    return (match.group("quoted") if match.group("q") else match.group("plain")).strip().rstrip(".。")
 
 
 def _find_candidate_files(
@@ -88,7 +96,7 @@ def _find_candidate_files(
                 name = path.name.casefold()
                 if not any(keyword in name for keyword in keywords):
                     continue
-                if path.suffix.casefold() not in {".tsv", ".tab", ".txt", ".csv"}:
+                if path.suffix.casefold() not in {".tsv", ".tab", ".txt", ".csv", ".gmt"}:
                     continue
                 candidates.append((_score_candidate_file(path, keywords, nearby), path))
                 if len(candidates) >= FILE_DISCOVERY_MAX_RESULTS:

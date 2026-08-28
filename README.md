@@ -11,6 +11,7 @@
 7. 試跑 LIONESS-PANDA、LIONESS-PUMA 與 LIONESS co-expression；LIONESS 需要無 header TSV 時，agent 可自動準備 derived expression input。
 8. 試跑 CONDOR toy bipartite network。
 9. 以 COBRA 分析 sample covariates 對 gene co-expression 的影響，並輸出可重現的 covariance decomposition。
+10. 以 SAMBAR 將 somatic mutation matrix 聚合為 pathway mutation scores，並進行可選的 sample clustering。
 9. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
@@ -246,6 +247,26 @@ COBRA 不只可和 PANDA 配合：PUMA 也有相同的 gene-gene co-expression �
 個 artifact。LIONESS-PANDA/PUMA 則需要每個 leave-one-out 子集重新形成的 co-expression，
 因此 aggregate COBRA artifact 不能直接冒充 sample-specific LIONESS 輸入；CONDOR 是
 調控網路之後的二分圖社群分析，不直接消費 COBRA co-expression。
+
+## SAMBAR：somatic-mutation pathway subtyping
+
+SAMBAR 使用 samples × genes 的 mutation CSV、**一列且 gene IDs 為欄位**的 exon-size CSV、
+一行 tab-delimited cancer-gene list，以及 GMT pathway file。這個 exon-size layout 是本專案
+pin 的 netZooPy 實際實作所讀取的格式。所有四類輸入都必須有 gene identifier overlap。
+
+```bash
+docker compose run --rm netzoo run-sambar \
+  -m data/sambar-toy/mutation.csv \
+  -e data/sambar-toy/exon_size.csv \
+  -g data/sambar-toy/cancer_genes.txt \
+  -p data/sambar-toy/pathways.gmt \
+  -o outputs/sambar-toy --kmin 2 --kmax 3
+```
+
+輸出為 `mt_out.csv`（sample × gene mutation scores）、`pt_out.csv`（pathway × sample
+scores），以及 cluster=true 時的 `clustergroups.csv`、`dist_matrix.csv` 和可追溯
+`manifest.json`。SAMBAR results 不能直接餵給 PANDA、PUMA、LIONESS、CONDOR 或 COBRA；必須
+另行準備並驗證目標 workflow 的宣告 input artifact。
 
 CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
 weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。

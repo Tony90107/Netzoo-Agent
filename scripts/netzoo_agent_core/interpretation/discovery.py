@@ -19,13 +19,14 @@ from ..data.inspection import (
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
 from ..data.cobra import inspect_cobra_inputs_impl
+from ..data.sambar import inspect_sambar_inputs_impl
 from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
 
 __all__: list[str] = []
 
 _UNLABELED_PATH_RE = re.compile(
-    r"(?<![A-Za-z0-9_.-])([A-Za-z0-9_./~-]+\.(?:tsv|tab|txt|csv|npy))"
+    r"(?<![A-Za-z0-9_.-])([A-Za-z0-9_./~-]+\.(?:tsv|tab|txt|csv|gmt|npy))"
     r"[.。]?(?![A-Za-z0-9_.-])",
     flags=re.IGNORECASE,
 )
@@ -45,6 +46,10 @@ def _unlabeled_input_bindings(
         "mirna_file": ("mirna", "microrna"),
         "coexpression_file": ("coexpression", "co-expression"),
         "network_file": ("network", "bipartite"),
+        "mutation_file": ("mutation", "mut", "maf"),
+        "exon_size_file": ("exon", "length", "esize"),
+        "cancer_gene_file": ("cancer", "cangenes"),
+        "pathway_file": ("pathway", "gmt", "signature"),
     }
     bindings: dict[str, str] = {}
     for raw_path in _UNLABELED_PATH_RE.findall(task):
@@ -127,6 +132,17 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
             {"network_file": _display_path(best)},
             "Demo intent: selected a complete CONDOR toy bundle that passed format validation.",
         )
+
+    if action == "run_sambar":
+        directory = data_root / "sambar-toy"
+        bundle = {
+            "mutation_file": _display_path(directory / "mutation.csv"),
+            "exon_size_file": _display_path(directory / "exon_size.csv"),
+            "cancer_gene_file": _display_path(directory / "cancer_genes.txt"),
+            "pathway_file": _display_path(directory / "pathways.gmt"),
+        }
+        _, ok = inspect_sambar_inputs_impl(*bundle.values())
+        return (bundle, "Demo intent: selected the complete SAMBAR toy mutation/pathway bundle.") if ok else None
 
     if action == "run_lioness_coexpression":
         candidates: list[tuple[int, Path]] = []
@@ -242,6 +258,11 @@ def reusable_episode_inputs(
             continue
         if action == "run_condor":
             _, ok = _inspect_condor_inputs_impl(values["network_file"])
+        elif action == "run_sambar":
+            _, ok = inspect_sambar_inputs_impl(
+                values["mutation_file"], values["exon_size_file"],
+                values["cancer_gene_file"], values["pathway_file"],
+            )
         elif action in {
             "run_panda",
             "run_puma",

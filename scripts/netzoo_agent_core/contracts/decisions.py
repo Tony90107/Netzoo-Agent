@@ -102,8 +102,20 @@ class TaskDecision(BaseModel):
     output_file: str | None = None
     lioness_output: str | None = None
     network_file: str | None = None
+    mutation_file: str | None = None
+    exon_size_file: str | None = None
+    cancer_gene_file: str | None = None
+    pathway_file: str | None = None
     output_dir: str | None = None
     prefix: str | None = None
+    norm_patient: bool = True
+    kmin: int = Field(default=2, ge=2)
+    kmax: int = Field(default=4, ge=2)
+    gmt_msigdb: bool = True
+    subset_cancer_genes: bool = True
+    distance: str = Field(default="binomial", min_length=1, max_length=80)
+    linkage: str = Field(default="complete", min_length=1, max_length=80)
+    cluster: bool = True
     with_header: bool = False
     genes_axis: Literal["auto", "rows", "columns"] = "auto"
     library_name: str | None = None

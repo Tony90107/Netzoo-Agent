@@ -14,6 +14,7 @@ from .discovery import best_named_file, candidate_keywords
 from .inspection import expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
 from .tables import _inspect_panda_inputs_impl
+from .sambar import inspect_sambar_inputs_impl
 
 __all__ = [
     "BundleDiscovery",
@@ -29,6 +30,7 @@ MULTI_FILE_ACTIONS = frozenset(
         "run_puma",
         "run_lioness_panda",
         "run_lioness_puma",
+        "run_sambar",
     }
 )
 MAX_DIRECTORY_DEPTH = 4
@@ -74,7 +76,7 @@ def _candidate_directories(action: str, nearby: Path) -> list[Path]:
             if (
                 path.is_file()
                 and not path.is_symlink()
-                and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
+                and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv", ".gmt"}
             ):
                 directories.add(directory_path.resolve())
         if visited > MAX_VISITED_FILES:
@@ -106,12 +108,20 @@ def _content_verified_completion(
         for path in directory.iterdir()
         if path.is_file()
         and not path.is_symlink()
-        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
+        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv", ".gmt"}
         and path.resolve() not in selected
     ]
     verified: list[Path] = []
     for candidate in candidates:
         trial = {**values, field_name: _display_path(candidate)}
+        if action == "run_sambar":
+            required = ("mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file")
+            if not all(trial.get(name) for name in required):
+                continue
+            _, valid = inspect_sambar_inputs_impl(*(trial[name] for name in required))
+            if valid:
+                verified.append(candidate)
+            continue
         if not all(
             trial.get(required)
             for required in ("expression_file", "motif_file", "ppi_file")
@@ -187,12 +197,18 @@ def _bundle_in_directory(
             candidates_by_field=candidates_by_field,
             missing_fields=missing_fields,
         )
-    _, valid, _ = _inspect_panda_inputs_impl(
-        values["expression_file"],
-        values["motif_file"],
-        values["ppi_file"],
-        values.get("mirna_file", ""),
-    )
+    if action == "run_sambar":
+        _, valid = inspect_sambar_inputs_impl(
+            values["mutation_file"], values["exon_size_file"],
+            values["cancer_gene_file"], values["pathway_file"],
+        )
+    else:
+        _, valid, _ = _inspect_panda_inputs_impl(
+            values["expression_file"],
+            values["motif_file"],
+            values["ppi_file"],
+            values.get("mirna_file", ""),
+        )
     if not valid:
         return None
     if "lioness" in action:

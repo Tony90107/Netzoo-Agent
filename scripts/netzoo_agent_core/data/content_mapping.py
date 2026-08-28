@@ -15,12 +15,12 @@ __all__ = ["infer_input_roles"]
 
 _PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_.-])(?P<path>[A-Za-z0-9_./~\\-]+"
-    r"\.(?:tsv|tab|txt|csv|npy|npz|bed|mtx|h5|hdf5)(?:\.gz)?)"
+    r"\.(?:tsv|tab|txt|csv|gmt|npy|npz|bed|mtx|h5|hdf5)(?:\.gz)?)"
     r"[.。]?(?![A-Za-z0-9_.-])",
     flags=re.IGNORECASE,
 )
 _SUPPORTED_SUFFIXES = frozenset(
-    {".tsv", ".tab", ".txt", ".csv", ".npy", ".npz", ".bed", ".mtx", ".h5", ".hdf5", ".gz"}
+    {".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy", ".npz", ".bed", ".mtx", ".h5", ".hdf5", ".gz"}
 )
 _MAX_CANDIDATES = 120
 _MAX_PREVIEW_CHARS = 4_000
@@ -41,6 +41,13 @@ _ROLE_ALIASES = {
     "co-expression": "coexpression_file",
     "network": "network_file",
     "bipartite": "network_file",
+    "mutation": "mutation_file",
+    "mutations": "mutation_file",
+    "exon_size": "exon_size_file",
+    "gene_length": "exon_size_file",
+    "cancer_gene": "cancer_gene_file",
+    "pathway": "pathway_file",
+    "gmt": "pathway_file",
 }
 _ROLE_GUIDANCE = {
     "expression_file": "gene-by-sample numeric expression matrix; first column commonly contains gene IDs",
@@ -50,6 +57,10 @@ _ROLE_GUIDANCE = {
     "mirna_file": "one-column miRNA identifier list, or a miRNA-containing prior list",
     "coexpression_file": "adjusted gene-by-gene numeric co-expression matrix",
     "network_file": "weighted source-target bipartite edge list for CONDOR",
+    "mutation_file": "CSV with sample IDs as rows, gene IDs as columns, and non-negative numeric mutation values",
+    "exon_size_file": "one-row CSV with unique gene IDs as columns and positive numeric gene/exon lengths, matching installed SAMBAR",
+    "cancer_gene_file": "tab-delimited cancer-associated gene identifiers, normally one non-empty line",
+    "pathway_file": "GMT pathway file: pathway name, description, then one or more gene IDs per line",
 }
 
 

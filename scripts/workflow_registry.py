@@ -16,6 +16,7 @@ ActionName = Literal[
     "inspect_inputs",
     "inspect_condor_inputs",
     "inspect_cobra_inputs",
+    "inspect_sambar_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -25,6 +26,7 @@ ActionName = Literal[
     "run_lioness_coexpression",
     "run_condor",
     "run_cobra",
+    "run_sambar",
     "query_context7",
     "web_search",
 ]
@@ -41,6 +43,7 @@ RecommendedAction = Literal[
     "run_lioness_coexpression",
     "run_condor",
     "run_cobra",
+    "run_sambar",
 ]
 
 IntentType = Literal[
@@ -73,11 +76,13 @@ ArtifactType = Literal[
     "expression_matrix",
     "regulatory_network",
     "coexpression_network",
+    "mutation_matrix",
+    "pathway_mutation_matrix",
     "community_assignment",
     "validation_report",
     "unknown",
 ]
-EntityType = Literal["tf", "mirna", "gene", "protein", "sample", "unknown"]
+EntityType = Literal["tf", "mirna", "gene", "protein", "sample", "pathway", "unknown"]
 Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
 
 
@@ -133,6 +138,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "COBRA-INPUTS",
         required_inputs=("expression_file", "design_file"),
         executor_fields=("expression_file", "design_file"),
+        local=True,
+    ),
+    "inspect_sambar_inputs": ActionDefinition(
+        "inspect_sambar_inputs",
+        "SAMBAR-INPUTS",
+        required_inputs=("mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file"),
+        executor_fields=("mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file", "kmin", "kmax", "cluster"),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -396,6 +408,72 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "artifact. PANDA or PUMA may consume the adjusted artifact through "
                 "coexpression_file; the raw components are not a matrix input "
                 "by themselves."
+            ),
+        ),
+    ),
+    "run_sambar": ActionDefinition(
+        "run_sambar",
+        "SAMBAR",
+        required_inputs=(
+            "mutation_file",
+            "exon_size_file",
+            "cancer_gene_file",
+            "pathway_file",
+            "output_dir",
+        ),
+        optional_inputs=(
+            "norm_patient",
+            "kmin",
+            "kmax",
+            "gmt_msigdb",
+            "subset_cancer_genes",
+            "distance",
+            "linkage",
+            "cluster",
+        ),
+        executor_fields=(
+            "mutation_file",
+            "exon_size_file",
+            "cancer_gene_file",
+            "pathway_file",
+            "output_dir",
+            "norm_patient",
+            "kmin",
+            "kmax",
+            "gmt_msigdb",
+            "subset_cancer_genes",
+            "distance",
+            "linkage",
+            "cluster",
+        ),
+        executor_defaults={
+            "norm_patient": True,
+            "kmin": 2,
+            "kmax": 4,
+            "gmt_msigdb": True,
+            "subset_cancer_genes": True,
+            "distance": "binomial",
+            "linkage": "complete",
+            "cluster": True,
+        },
+        validation_steps=("inspect_sambar_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "sambar"},
+        output_capability=OutputCapabilityDefinition(
+            operation="analyze",
+            artifact_type="pathway_mutation_matrix",
+            entity_types=frozenset({"sample", "gene", "pathway"}),
+            granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"mutation_matrix"}),
+            selection_tags=frozenset({"somatic_mutation", "cancer_subtyping", "pathway_scores"}),
+            handoff_contract=(
+                "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length "
+                "CSV, a tab-delimited cancer-gene list, and a GMT pathway file. It produces "
+                "gene and pathway mutation-score matrices plus optional sample cluster labels. "
+                "These are not direct inputs to PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, "
+                "CONDOR, or COBRA; prepare and validate that workflow's declared input "
+                "artifact separately before any composition."
             ),
         ),
     ),

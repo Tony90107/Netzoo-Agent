@@ -132,15 +132,16 @@ def _assemble_workflow_plan(
             policy_notes=policy_notes,
         )
 
-    # A content/filename role guess is the only kind of discovery that needs a
-    # user check here. Complete validated bundles and safe demo defaults remain
-    # executable plans, while LLM guesses are explicitly surfaced with their
-    # confidence and rationale below.
+    # Discovery and inference are evidence, not execution authority. Every
+    # discovered or demo-selected local input must be deliberately confirmed.
     confirmation_evidence = [
         item
         for item in evidence
         if (
-            item.reason.startswith("Role inferred from file contents by the LLM")
+            (
+                item.reason.startswith("Role inferred from file contents by the LLM")
+                or item.status in {"discovered", "demo_bundle"}
+            )
         )
         and item.value
         and item.field not in {"output_file", "lioness_output", "output_dir"}

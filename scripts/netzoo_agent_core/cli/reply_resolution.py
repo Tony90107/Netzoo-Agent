@@ -195,7 +195,7 @@ class ContextualReplyResolver:
             context.continuation_action is not None
             and context.expected_field is not None
             and re.search(
-                r"[/\\]|\.(?:tsv|tab|txt|csv|npy)$",
+                r"[/\\]|\.(?:tsv|tab|txt|csv|gmt|npy)$",
                 reply.strip(),
                 flags=re.IGNORECASE,
             )

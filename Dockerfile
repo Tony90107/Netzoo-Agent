@@ -35,11 +35,12 @@ COPY docker/run-puma-precomputed /usr/local/bin/run-puma-precomputed
 COPY docker/run-lioness /usr/local/bin/run-lioness
 COPY docker/run-condor /usr/local/bin/run-condor
 COPY docker/run-cobra /usr/local/bin/run-cobra
+COPY docker/run-sambar /usr/local/bin/run-sambar
 COPY scripts/netzoo_table_io.py /opt/netzoo-harness/netzoo_table_io.py
 COPY scripts /opt/netzoo-app/scripts
 COPY docker/add-puma-lioness-header /usr/local/bin/add-puma-lioness-header
 COPY docker/web-url /usr/local/bin/web-url
-RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
+RUN chmod +x /usr/local/bin/run-panda /usr/local/bin/run-panda-precomputed /usr/local/bin/run-puma /usr/local/bin/run-puma-precomputed /usr/local/bin/run-lioness /usr/local/bin/run-condor /usr/local/bin/run-cobra /usr/local/bin/run-sambar /usr/local/bin/add-puma-lioness-header /usr/local/bin/web-url \
     && mkdir -p /work /data /outputs \
     && chown -R $MAMBA_USER:$MAMBA_USER /work /data /outputs /opt/netZooPy /opt/netzoo-harness
 
