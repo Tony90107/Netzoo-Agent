@@ -43,7 +43,7 @@ PLANNING_CASES = (
             reason="Explain PANDA.",
         ),
         "Explain PANDA.",
-        "9d761a2abaab2c6d8b2fbff52a1ddf0d37e439efd4752d85a883803d336f42ed",
+        "d458664bb9dcb2d93c90b866631d27a8ba37e2a755133febeb155c348338b3ea",
     ),
     (
         "retrieval",
@@ -56,7 +56,7 @@ PLANNING_CASES = (
             web_query="current PANDA references",
         ),
         "Search the web for current PANDA references.",
-        "79dfca25f0c98c4253e827c7c99a3a7b76ec157ed8856a13c5bd346200e1da85",
+        "b1b9a6d2827f5468b77880790f6ee179d5b246d34c95bff72928f7e29d8b7fa4",
     ),
     (
         "explicit_panda",
@@ -72,7 +72,7 @@ PLANNING_CASES = (
             "motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv "
             "output_file=outputs/study/panda.tsv"
         ),
-        "9dd87f35d206e7b1f3157800ac0f96e2f10ef53c7f44cdf853fafa669fcbb49e",
+        "01301bc509a23d49245ad09fa603134eda63ea64a4436b9ee1a08d09803ba6aa",
     ),
 )
 

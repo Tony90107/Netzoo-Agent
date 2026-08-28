@@ -1,0 +1,70 @@
+policy_version: 2
+workflow: BONOBO
+action: run_bonobo
+description: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.
+required_inputs: [expression_file, output_dir]
+optional_inputs:
+  [bonobo_output_format, sample_names, sparsify, bonobo_confidence, save_pvals, precision,
+   keep_in_memory, delta, genes_axis, log_transformed, centered]
+validation_steps: [inspect_bonobo_inputs]
+execution_step: run_bonobo
+output_capability:
+  operation: infer
+  artifact_type: coexpression_network
+  entity_types: [gene, sample]
+  granularities: [sample_specific]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
+  input_artifacts: [expression_matrix]
+  handoff_targets: []
+  selection_tags: [sample_specific, coexpression, bayesian]
+  handoff_contract: >-
+    BONOBO consumes a labelled gene-by-sample expression matrix and produces one
+    gene-by-gene sample-specific co-expression matrix per selected sample, plus
+    optional matching p-value matrices. It does not produce an aggregate/prior
+    network, GRN, TF-gene regulation, or causal network. BONOBO output is not a
+    direct PANDA/PUMA coexpression_file handoff: those workflows require one
+    validated aggregate labeled gene-by-gene matrix. A separate explicit
+    sample-selection or aggregation conversion is required, with its own
+    validation and user confirmation. It is not a direct handoff to LIONESS,
+    CONDOR, COBRA, DRAGON, or OTTER either.
+conventions:
+  - >-
+    The verified netZooPy 0.11.0 public API is
+    `netZooPy.bonobo.Bonobo(expression_file)` followed by
+    `run_bonobo(output_folder, output_fmt, keep_in_memory, save_full,
+    online_coexpression, delta, computing, cores, precision, sample_names,
+    sparsify, confidence, save_pvals)`. The agent passes only the supported
+    controls declared in this workflow and never invokes the BONOBO CLI.
+  - >-
+    The installed source reader uses header=0 and index_col=0, so the agent
+    requires a labelled header: the first column is unique gene IDs and the
+    remaining column names are unique sample IDs. A headerless matrix must be
+    corrected before execution; the CLI's looser header description is not used
+    as the executable contract.
+  - >-
+    Expression data must be numeric, finite, complete, gene-by-sample, and have
+    at least three total samples so each leave-one-out background has at least
+    two samples. The agent requires the caller to declare log_transformed=true
+    and centered=true because BONOBO assumes log-transformed centered expression.
+  - >-
+    sample_names is an explicit list of sample IDs, never positional indices.
+    Unknown or duplicate names are rejected before the API call and the selected
+    names remain in manifest.json and the sample-to-file mapping.
+  - >-
+    output formats are exactly .h5/.hdf (HDF5), .txt, and .csv. Upstream writes a square
+    matrix with gene IDs as columns and no row labels; HDF5 uses key bonobo and
+    p-value HDF5 uses key pvals. TXT is tab-delimited and CSV is comma-delimited
+    for the agent-owned artifact reader.
+  - >-
+    `sparsify` computes the upstream approximate p-values; p-value files are
+    written only when both sparsify=true and save_pvals=true. The agent rejects
+    save_pvals=true without sparsify=true and does not claim that a p-value
+    artifact is a GRN. The verified source currently returns the co-expression
+    matrix plus p-values; output verification is required after every run.
+  - >-
+    BONOBO has no aggregate/prior output. Its sample-specific matrices are not
+    directly valid PANDA/PUMA coexpression_file inputs, which require one
+    validated aggregate labeled gene-by-gene matrix; no implicit averaging or
+    sample-index selection is performed.

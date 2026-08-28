@@ -36,6 +36,8 @@ def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
         return [decision.output_file] if decision.output_file else []
     if action == "run_giraffe" and decision.output_file:
         return [str(path) for path in giraffe_output_paths(decision.output_file)]
+    if action == "run_bonobo" and decision.output_dir:
+        return [decision.output_dir]
     if action.startswith("run_lioness_"):
         return [
             path for path in (decision.output_file, decision.lioness_output) if path

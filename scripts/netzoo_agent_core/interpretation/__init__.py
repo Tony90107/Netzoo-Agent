@@ -2,6 +2,7 @@
 
 from . import (
     assembly,
+    bonobo_demo,
     concept_answers,
     discovery,
     extraction,
@@ -36,6 +37,7 @@ from .repair import _lioness_mode_plan, repair_router_decision
 
 _INTERPRETATION_IMPLEMENTATION_MODULES = (
     assembly,
+    bonobo_demo,
     discovery,
     extraction,
     hydration,

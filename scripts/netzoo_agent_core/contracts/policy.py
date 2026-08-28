@@ -57,6 +57,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_dragon",
         "run_otter",
         "run_giraffe",
+        "run_bonobo",
     ]
     description: str = Field(min_length=1, max_length=500)
     required_inputs: list[str] = Field(max_length=12)
@@ -64,7 +65,7 @@ class WorkflowPolicySpec(BaseModel):
     validation_steps: list[Literal[
         "inspect_inputs", "inspect_condor_inputs", "inspect_cobra_inputs",
         "inspect_sambar_inputs", "inspect_dragon_inputs", "inspect_otter_inputs",
-        "inspect_giraffe_inputs",
+        "inspect_giraffe_inputs", "inspect_bonobo_inputs",
     ]] = Field(
         default_factory=list, max_length=4
     )
@@ -79,7 +80,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_sambar",
         "run_dragon",
         "run_otter",
-        "run_giraffe",
+        "run_giraffe", "run_bonobo",
     ]
     output_capability: WorkflowOutputCapabilitySpec
     conventions: list[str] = Field(default_factory=list, max_length=20)

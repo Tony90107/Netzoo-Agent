@@ -28,7 +28,7 @@ RUN sed -i \
 # available to the wrapper scripts.
 RUN micromamba run -n netzoo python -m pip install --no-deps -e /opt/netZooPy \
     && micromamba run -n netzoo netzoopy --help >/dev/null \
-    && micromamba run -n netzoo python -c 'import inspect, netZooPy; from netZooPy.giraffe import Giraffe; assert netZooPy.__version__ == "0.11.0"; print(inspect.signature(Giraffe))'
+    && micromamba run -n netzoo python -c 'import inspect, netZooPy; from netZooPy.giraffe import Giraffe; from netZooPy.bonobo import Bonobo; assert netZooPy.__version__ == "0.11.0"; print(inspect.signature(Giraffe)); print(inspect.signature(Bonobo)); print(inspect.signature(Bonobo.run_bonobo))'
 COPY docker/run-panda /usr/local/bin/run-panda
 COPY docker/run-panda-precomputed /usr/local/bin/run-panda-precomputed
 COPY docker/run-puma /usr/local/bin/run-puma

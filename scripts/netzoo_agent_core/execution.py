@@ -42,6 +42,7 @@ from .data.giraffe import (
 )
 from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
+from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
 
 from .data.tables import (
     _drop_common_header,
@@ -79,6 +80,8 @@ __all__ = [
     "run_dragon",
     "inspect_giraffe_inputs",
     "run_giraffe",
+    "inspect_bonobo_inputs",
+    "run_bonobo",
     "inspect_otter_inputs",
     "run_otter",
     "LOCAL_TOOL_EXECUTORS",
@@ -939,6 +942,8 @@ LOCAL_TOOL_EXECUTORS = {
     "run_dragon": run_dragon,
     "inspect_giraffe_inputs": inspect_giraffe_inputs,
     "run_giraffe": run_giraffe,
+    "inspect_bonobo_inputs": inspect_bonobo_inputs,
+    "run_bonobo": run_bonobo,
     "inspect_otter_inputs": inspect_otter_inputs,
     "run_otter": run_otter,
 }

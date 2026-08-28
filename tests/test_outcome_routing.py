@@ -914,6 +914,7 @@ def test_generic_sample_network_keeps_compatible_families_unranked():
         "run_lioness_panda",
         "run_lioness_puma",
         "run_lioness_coexpression",
+        "run_bonobo",
     }
     assert decision.matched_actions == []
     assert decision.action == "no_tool"

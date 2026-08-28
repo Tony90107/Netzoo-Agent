@@ -2,6 +2,7 @@
 
 from . import (
     artifacts,
+    bonobo,
     bundles,
     cobra,
     coexpression,
@@ -28,6 +29,7 @@ _DATA_IMPLEMENTATION_MODULES = (
     coexpression,
     dragon,
     otter,
+    bonobo,
 )
 
 __all__: list[str] = []
