@@ -24,6 +24,8 @@ INPUT_LABELS = {
     "mirna_file": _ui_text("miRNA list"),
     "coexpression_file": _ui_text("adjusted co-expression matrix"),
     "network_file": _ui_text("bipartite network"),
+    "omics_layer_1": _ui_text("DRAGON omics layer 1"),
+    "omics_layer_2": _ui_text("DRAGON omics layer 2"),
     "output_file": _ui_text("aggregate/network output"),
     "lioness_output": _ui_text("sample-specific LIONESS output"),
     "output_dir": _ui_text("CONDOR output directory"),
@@ -31,8 +33,6 @@ INPUT_LABELS = {
 
 
 _PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".npy"})
-
-
 
 def _looks_like_path(value: str) -> bool:
     token = value.strip().rstrip(".。").casefold()
@@ -43,11 +43,9 @@ def _looks_like_path(value: str) -> bool:
         or any(token.endswith(suffix) for suffix in _PATHLIKE_SUFFIXES)
     )
 
-
 def _alias_pattern(aliases: tuple[str, ...]) -> str:
     ordered = sorted(aliases, key=len, reverse=True)
     return "|".join(re.escape(alias) for alias in ordered)
-
 
 def _has_explicit_file_binding(task: str, aliases: tuple[str, ...]) -> bool:
     names = _alias_pattern(aliases)
@@ -84,6 +82,8 @@ def _task_path(task: str, field_name: str) -> str | None:
         "mirna_file": ("mirna_file", "miRNA list", "mirna list", "miRNA", "mirna"),
         "coexpression_file": ("coexpression_file", "co-expression file", "coexpression matrix", "adjusted co-expression", "adjusted_coexpression"),
         "network_file": ("network_file", "network", "bipartite", "二分網路", "網路"),
+        "omics_layer_1": ("omics_layer_1", "layer1", "layer 1", "omics1", "第一層 omics", "第一層", "transcriptome", "transcriptomic"),
+        "omics_layer_2": ("omics_layer_2", "layer2", "layer 2", "omics2", "第二層 omics", "第二層", "methylome", "methylomic"),
         "output_file": (
             "output_file",
             "aggregate output",

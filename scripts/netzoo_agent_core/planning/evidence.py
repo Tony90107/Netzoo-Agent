@@ -36,6 +36,8 @@ _FILE_INPUT_FIELDS = frozenset(
         "mirna_file",
         "coexpression_file",
         "network_file",
+        "omics_layer_1",
+        "omics_layer_2",
     }
 )
 
@@ -59,6 +61,15 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     episode_models = context.episodes
     action = context.action
     required = context.required
+    if action == "run_dragon" and re.search(
+        r"(?:omics[_ -]?layer[_ -]?3|layer\s*3|three\s+omics|3\s+omics|三種|三層|三個.*omics)",
+        task,
+        flags=re.IGNORECASE,
+    ):
+        context.preflight_errors.append(
+            "DRAGON accepts exactly two omics layers; choose the two layers for this run. "
+            "A pairwise/chained workflow is not enabled without an explicit conversion contract."
+        )
     input_fields = [
         field_name
         for field_name in required
@@ -105,7 +116,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     )
     # Only inspect a directory explicitly named by the user. Router-proposed paths
     # are untrusted and must not steer content discovery into an unrelated folder.
-    expression_hint = _task_path(task, "expression_file")
+    expression_hint = _task_path(task, "expression_file") or _task_path(task, "omics_layer_1")
     content_nearby = (
         _resolve_user_path(expression_hint).parent
         if expression_hint
@@ -435,6 +446,27 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 )
             )
 
+    if action == "run_dragon":
+        layer_items = [
+            item for item in evidence
+            if item.field in {"omics_layer_1", "omics_layer_2"}
+        ]
+        if any(item.status == "missing" for item in layer_items):
+            # A single auto-discovered layer is not a usable DRAGON input pair.
+            # Keep explicitly supplied paths visible, but ask for both when the
+            # other half was only an ungrounded workspace discovery.
+            for item in layer_items:
+                if item.status in {"discovered", "demo_bundle"}:
+                    item.status = "missing"
+                    item.value = None
+                    item.reason = (
+                        "DRAGON requires both omics layers; this candidate was not "
+                        "selected without a complete two-layer pair."
+                    )
+                    setattr(decision, item.field, None)
+
     if all(getattr(decision, field_name, None) for field_name in input_fields):
-        context.preflight_errors[:] = validate_workflow_inputs(action, decision)
+        context.preflight_errors[:] = list(dict.fromkeys(
+            [*context.preflight_errors, *validate_workflow_inputs(action, decision)]
+        ))
     return evidence

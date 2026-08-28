@@ -1,0 +1,36 @@
+policy_version: 2
+workflow: DRAGON
+action: run_dragon
+description: Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON.
+required_inputs: [omics_layer_1, omics_layer_2, output_file]
+optional_inputs: [output_format, lambda1, lambda2]
+validation_steps: [inspect_dragon_inputs]
+execution_step: run_dragon
+output_capability:
+  operation: infer
+  artifact_type: multi_omic_network
+  entity_types: [omics_layer_1_feature, omics_layer_2_feature]
+  granularities: [aggregate]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
+  input_artifacts: [measurement_dataset]
+  handoff_targets: []
+  selection_tags: [multi_omic_network, partial_correlation, aggregate_network]
+  handoff_contract: >-
+    DRAGON consumes exactly two paired sample-by-feature continuous omics tables
+    and produces one aggregate undirected multi-omic network. The matrix is a
+    symmetric partial-correlation GGM with layer-qualified node IDs; edge lists
+    contain source, target, partial_correlation, and precision. This is an
+    association network, not a causal graph. There is no direct handoff to PANDA,
+    PUMA, LIONESS, CONDOR, BONOBO, or OTTER; a separate validated conversion would
+    be required before any tool that consumes a different artifact contract.
+conventions:
+  - Use CSV or TSV with a header; the first column is a unique sample ID and every remaining column is a unique feature ID.
+  - Rows are samples and columns are features in both layers. Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven.
+  - Values must be finite continuous numeric measurements. Missing values, non-numeric fields, duplicate sample IDs, and duplicate feature IDs are rejected; no imputation or normalization is implicit.
+  - The verified API has no sample_metadata, motif, PPI, expression-matrix, or three-layer argument. Sample metadata must be handled in a separate validated preprocessing step if needed.
+  - By default lambda1 and lambda2 are estimated by estimate_penalty_parameters_dragon. Manual shrinkage is allowed only when both values are supplied in [0, 1].
+  - output_format=matrix writes a labeled symmetric partial-correlation matrix. output_format=edge_list writes one undirected row per pair with source, target, partial_correlation, and precision.
+  - DRAGON output is aggregate, not sample-specific. Its partial correlations and precision values represent conditional associations, not causal relationships.
+  - Direct handoffs to PANDA, PUMA, LIONESS, CONDOR, BONOBO, and OTTER are illegal because their verified input contracts differ. A future pairwise/chained workflow requires an explicit conversion artifact and user confirmation.

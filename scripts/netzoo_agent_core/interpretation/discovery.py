@@ -19,6 +19,7 @@ from ..data.inspection import (
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
 from ..data.cobra import inspect_cobra_inputs_impl
+from ..data.dragon import inspect_dragon_inputs_impl
 from ..data.paths import _resolve_user_path
 from ..data.tables import _inspect_panda_inputs_impl
 
@@ -91,6 +92,16 @@ def _choose_unambiguous_candidate(
 def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
     """Find a coherent toy dataset as a bundle, then validate cross-file compatibility."""
     data_root = PROJECT_ROOT / "data"
+    if action == "run_dragon":
+        layer1 = data_root / "dragon-toy" / "layer1.tsv"
+        layer2 = data_root / "dragon-toy" / "layer2.tsv"
+        _, ok = inspect_dragon_inputs_impl(str(layer1), str(layer2))
+        if not ok:
+            return None
+        return (
+            {"omics_layer_1": _display_path(layer1), "omics_layer_2": _display_path(layer2)},
+            "Demo intent: selected the DRAGON two-layer toy bundle with exact sample-ID alignment.",
+        )
     if action == "run_cobra":
         expression = data_root / "cobra-toy" / "expression.tsv"
         design = data_root / "cobra-toy" / "design.tsv"
