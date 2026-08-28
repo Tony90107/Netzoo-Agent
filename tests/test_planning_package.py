@@ -28,6 +28,7 @@ def _plan_digest(plan) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+    payload = payload.replace(str(SCRIPTS_DIR.parent), "<PROJECT_ROOT>")
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -71,7 +72,7 @@ PLANNING_CASES = (
             "motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv "
             "output_file=outputs/study/panda.tsv"
         ),
-        "1688c17a704131925b8c76b6f9a756d70486cd3836aef2c3c84c061ed1961eb2",
+        "9dd87f35d206e7b1f3157800ac0f96e2f10ef53c7f44cdf853fafa669fcbb49e",
     ),
 )
 
