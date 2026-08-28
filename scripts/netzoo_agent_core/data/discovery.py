@@ -21,6 +21,14 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("mirna", "mir")
     if field_name == "network_file":
         return ("condor", "bipartite", "network")
+    if field_name == "mutation_file":
+        return ("mutation", "mut", "maf")
+    if field_name == "exon_size_file":
+        return ("exon", "length", "esize")
+    if field_name == "cancer_gene_file":
+        return ("cancer", "gene", "cangenes")
+    if field_name == "pathway_file":
+        return ("pathway", "gmt", "signature")
     return ()
 
 
@@ -38,7 +46,7 @@ def score_candidate_file(
         score += 50
     if str(relative.parent).startswith("data"):
         score += 10
-    if path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}:
+    if path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv", ".gmt"}:
         score += 5
     for keyword in keywords:
         if keyword in name:
@@ -60,7 +68,7 @@ def best_named_file(
         path
         for path in directory.iterdir()
         if path.is_file()
-        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv"}
+        and path.suffix.casefold() in {".tsv", ".tab", ".txt", ".csv", ".gmt"}
         and any(keyword in path.name.casefold() for keyword in keywords)
     ]
     if not candidates:

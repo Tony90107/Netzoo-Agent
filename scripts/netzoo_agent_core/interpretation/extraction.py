@@ -7,11 +7,8 @@ import re
 from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
 
 from ..contracts import PreferenceProposal, _ui_text
-from ..routing import (
-    CONTEXT7_LIBRARY_ALIASES,
-    _extract_named_path,
-    is_workflow_information_request,
-)
+from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
+from ..routing.discovery import _extract_explicit_role_path
 
 __all__: list[str] = []
 
@@ -28,12 +25,9 @@ INPUT_LABELS = {
     "lioness_output": _ui_text("sample-specific LIONESS output"),
     "output_dir": _ui_text("CONDOR output directory"),
 }
+INPUT_LABELS.update({"mutation_file": _ui_text("somatic mutation matrix"), "exon_size_file": _ui_text("gene/exon-size CSV"), "cancer_gene_file": _ui_text("cancer-gene list"), "pathway_file": _ui_text("GMT pathway file")})
 
-
-_PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".npy"})
-
-
-
+_PATHLIKE_SUFFIXES = frozenset({".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy"})
 def _looks_like_path(value: str) -> bool:
     token = value.strip().rstrip(".。").casefold()
     return token not in _PATHLIKE_SUFFIXES and bool(
@@ -43,11 +37,9 @@ def _looks_like_path(value: str) -> bool:
         or any(token.endswith(suffix) for suffix in _PATHLIKE_SUFFIXES)
     )
 
-
 def _alias_pattern(aliases: tuple[str, ...]) -> str:
     ordered = sorted(aliases, key=len, reverse=True)
     return "|".join(re.escape(alias) for alias in ordered)
-
 
 def _has_explicit_file_binding(task: str, aliases: tuple[str, ...]) -> bool:
     names = _alias_pattern(aliases)
@@ -109,6 +101,9 @@ def _task_path(task: str, field_name: str) -> str | None:
             "輸出",
         ),
     }
+    aliases_by_field.update({"mutation_file": ("mutation_file", "mutation", "mutations", "somatic mutation", "突變矩陣"), "exon_size_file": ("exon_size_file", "exon size", "gene length", "esize", "外顯子長度"), "cancer_gene_file": ("cancer_gene_file", "cancer genes", "cancer-gene list", "cangenes", "癌症基因"), "pathway_file": ("pathway_file", "pathway", "GMT", "gene set", "路徑")})
+    if explicit := _extract_explicit_role_path(task, field_name):
+        return explicit
     aliases = aliases_by_field.get(field_name, (field_name,))
     reversed_path = _reverse_named_path(task, aliases)
     if reversed_path:
@@ -185,6 +180,7 @@ def documentation_library_for_task(task: str) -> str | None:
         "netzoo",
         "puma",
         "panda",
+        "sambar",
     ):
         if alias in normalized:
             return CONTEXT7_LIBRARY_ALIASES[alias]

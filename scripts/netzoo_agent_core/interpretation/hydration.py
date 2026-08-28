@@ -55,6 +55,10 @@ def hydrate_router_decision(
         "output_file",
         "lioness_output",
         "network_file",
+        "mutation_file",
+        "exon_size_file",
+        "cancer_gene_file",
+        "pathway_file",
         "output_dir",
     ):
         parsed = _task_path(task, field_name)

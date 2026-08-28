@@ -1,0 +1,34 @@
+policy_version: 2
+workflow: SAMBAR
+action: run_sambar
+description: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.
+required_inputs: [mutation_file, exon_size_file, cancer_gene_file, pathway_file, output_dir]
+optional_inputs: [norm_patient, kmin, kmax, gmt_msigdb, subset_cancer_genes, distance, linkage, cluster]
+validation_steps: [inspect_sambar_inputs]
+execution_step: run_sambar
+output_capability:
+  operation: analyze
+  artifact_type: pathway_mutation_matrix
+  entity_types: [sample, gene, pathway]
+  granularities: [aggregate]
+  regulator_types: []
+  target_types: []
+  guidance_predecessors: []
+  input_artifacts: [mutation_matrix]
+  handoff_targets: []
+  selection_tags: [somatic_mutation, cancer_subtyping, pathway_scores]
+  handoff_contract: >-
+    SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a
+    tab-delimited cancer-gene list, and a GMT pathway file. It produces gene and
+    pathway mutation-score matrices plus optional sample cluster labels. These are
+    not direct inputs to PANDA, PUMA, LIONESS-PANDA, LIONESS-PUMA, CONDOR, or COBRA;
+    prepare and validate that workflow's declared input artifact separately before
+    any composition.
+conventions:
+  - Mutation rows are unique sample IDs and mutation columns are unique gene IDs with non-negative numeric values.
+  - The pinned SAMBAR implementation requires one positive numeric exon-length row whose CSV columns are unique gene IDs.
+  - "The cancer-gene list follows the installed SAMBAR reader: one non-empty tab-delimited line of identifiers."
+  - GMT rows contain a pathway name, description, and one or more gene identifiers.
+  - All four inputs must have a non-empty four-way gene identifier overlap before execution.
+  - cluster=true requires 2 <= kmin <= kmax <= number of mutation samples.
+  - SAMBAR fixed-name runtime outputs are staged privately and then validated in output_dir; no SAMBAR result is a direct handoff to another registered workflow.

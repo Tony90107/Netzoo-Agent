@@ -221,6 +221,8 @@ def validate_task_text(
             return "The user must explicitly request CONDOR execution or analysis."
     if action == "run_cobra" and "cobra" not in normalized and not semantic_execution:
         return "The user must explicitly request COBRA or covariate-aware co-expression analysis."
+    if action == "run_sambar" and "sambar" not in normalized and not semantic_execution:
+        return "The user must explicitly request SAMBAR or somatic-mutation pathway subtyping."
     if action == "inspect_condor_inputs" and "condor" not in normalized:
         return "The user must explicitly name CONDOR before inspecting its input."
     if action == "inspect_inputs" and not any(

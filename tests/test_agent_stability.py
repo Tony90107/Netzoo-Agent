@@ -263,7 +263,7 @@ class DatasetBundleTests(unittest.TestCase):
                 task,
             )
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         discovered = [
             item for item in plan.evidence if item.status == "discovered"
         ]

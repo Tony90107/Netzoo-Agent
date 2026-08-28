@@ -36,6 +36,10 @@ _FILE_INPUT_FIELDS = frozenset(
         "mirna_file",
         "coexpression_file",
         "network_file",
+        "mutation_file",
+        "exon_size_file",
+        "cancer_gene_file",
+        "pathway_file",
     }
 )
 
@@ -375,7 +379,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 )
             )
             continue
-        if field_name == "output_dir" and action in {"run_condor", "run_cobra"}:
+        if field_name == "output_dir" and action in {"run_condor", "run_cobra", "run_sambar"}:
             value = default_output_dir
             decision.output_dir = value
             evidence.append(

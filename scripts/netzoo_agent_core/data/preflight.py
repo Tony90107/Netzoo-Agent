@@ -8,6 +8,7 @@ from .cobra import inspect_cobra_inputs_impl
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
 from .tables import _inspect_panda_inputs_impl, _read_checked_table, _validate_expression
+from .sambar import inspect_sambar_inputs_impl
 from .transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
@@ -90,6 +91,15 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
     elif action in {"inspect_cobra_inputs", "run_cobra"}:
         report, ok = inspect_cobra_inputs_impl(expression, _value(decision, "design_file"))
         errors.extend(_report_errors("COBRA inputs", report, ok))
+    elif action in {"inspect_sambar_inputs", "run_sambar"}:
+        report, ok = inspect_sambar_inputs_impl(
+            _value(decision, "mutation_file"),
+            _value(decision, "exon_size_file"),
+            _value(decision, "cancer_gene_file"),
+            _value(decision, "pathway_file"),
+            decision,
+        )
+        errors.extend(_report_errors("SAMBAR inputs", report, ok))
     elif action == "run_lioness_coexpression":
         errors.extend(_validate_expression_file(expression))
         errors.extend(_validate_lioness_sample_count(expression))

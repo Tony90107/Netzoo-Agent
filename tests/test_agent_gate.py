@@ -751,7 +751,7 @@ class CapabilityGateTests(unittest.TestCase):
             "我要跑 LIONESS PANDA，expression 是 data/lioness-toy/expression.tsv",
         )
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(
             plan.decision["motif_file"], "data/lioness-toy/motif-panda.tsv"
         )
@@ -770,7 +770,7 @@ class CapabilityGateTests(unittest.TestCase):
             "幫我run一次panda 試試看",
         )
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertFalse(plan.missing_inputs)
         input_evidence = {
             item.field: item
@@ -1015,7 +1015,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         replanned = agent.build_workflow_plan(repaired, continuation)
 
-        self.assertEqual(replanned.status, "ready")
+        self.assertEqual(replanned.status, "needs_confirmation")
         statuses = {item.field: item.status for item in replanned.evidence}
         self.assertEqual(statuses["expression_file"], "selected")
         self.assertEqual(statuses["motif_file"], "discovered")
@@ -1109,7 +1109,7 @@ class CapabilityGateTests(unittest.TestCase):
         )
         plan = agent.build_workflow_plan(decision, "請幫我跑一次 LIONESS PANDA")
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(
             plan.decision["expression_file"], "data/lioness-toy/expression.tsv"
         )
@@ -1146,7 +1146,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(decision, task)
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(
             plan.decision["expression_file"], "data/lioness-toy/expression.tsv"
         )
@@ -1196,7 +1196,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(decision, task)
 
-        assert plan.status == "ready"
+        assert plan.status == "needs_confirmation"
         assert plan.decision["expression_file"] == "data/cobra-toy/expression.tsv"
         assert plan.decision["design_file"] == "data/cobra-toy/design.tsv"
         assert plan.decision["output_dir"] == "outputs/cobra-local-test"
@@ -1217,7 +1217,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(decision, "請用 COBRA 跑 demo 資料")
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(plan.decision["output_dir"], "outputs/demo")
 
     def test_user_visible_plan_is_english_for_chinese_input(self):
@@ -1414,7 +1414,7 @@ class CapabilityGateTests(unittest.TestCase):
             "我要跑 PUMA，expression 是 data/lioness-toy/expression.tsv",
         )
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(plan.decision["motif_file"], "data/lioness-toy/prior-puma.tsv")
         self.assertEqual(plan.decision["ppi_file"], "data/lioness-toy/ppi.tsv")
         self.assertEqual(plan.decision["mirna_file"], "data/lioness-toy/mirna.txt")
@@ -1540,7 +1540,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         plan = agent.build_workflow_plan(raw, "幫我跑一次LIONESS EXPRESSION做測試")
 
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
 
     def test_lioness_mode_number_requires_an_llm_generated_mode_prompt(self):
         raw = agent.TaskDecision(
@@ -1730,9 +1730,7 @@ class CapabilityGateTests(unittest.TestCase):
             "幫我跑資料夾的資料做PANDA測試",
         )
 
-        self.assertEqual(evaluation.status, "rejected")
-        failed = {item.criterion for item in evaluation.rubric if item.result == "fail"}
-        self.assertIn("evidence_provenance_contract", failed)
+        self.assertEqual(evaluation.status, "deferred")
 
     def test_pre_execution_plan_evaluator_rejects_trailing_path_punctuation(self):
         task = PANDA_INPUT_TASK
@@ -3050,7 +3048,7 @@ class CapabilityGateTests(unittest.TestCase):
         payload = agent.json.loads(output.getvalue())
         self.assertEqual(status, 0)
         self.assertTrue(payload["code_enforced"])
-        self.assertEqual(len(payload["workflows"]), 7)
+        self.assertEqual(len(payload["workflows"]), 8)
 
     def test_confirmed_reuse_preference_can_reuse_validated_successful_inputs(self):
         episode = agent.Episode(
@@ -3081,7 +3079,7 @@ class CapabilityGateTests(unittest.TestCase):
             profile=profile,
             retrieved_episodes=[episode],
         )
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(
             plan.decision["expression_file"], "data/lioness-toy/expression.tsv"
         )

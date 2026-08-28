@@ -41,6 +41,8 @@ def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
         return [decision.output_dir]
     if action == "run_cobra" and decision.output_dir:
         return [decision.output_dir]
+    if action == "run_sambar" and decision.output_dir:
+        return [decision.output_dir]
     return []
 
 

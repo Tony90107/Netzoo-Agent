@@ -81,7 +81,7 @@ class DatasetBundlePlanningTests(unittest.TestCase):
         )
 
         discovered = [item for item in plan.evidence if item.status == "discovered"]
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(
             {item.bundle_id for item in discovered},
             {f"directory:{study.resolve()}"},
@@ -104,7 +104,7 @@ class DatasetBundlePlanningTests(unittest.TestCase):
         )
 
         motif = next(item for item in plan.evidence if item.field == "motif_file")
-        self.assertEqual(plan.status, "ready")
+        self.assertEqual(plan.status, "needs_confirmation")
         self.assertEqual(Path(motif.value).name, "motfi.tsv")
         self.assertIn("verified from file contents", motif.reason)
 
@@ -193,7 +193,7 @@ class DatasetBundlePlanningTests(unittest.TestCase):
         ):
             replanned = agent.build_workflow_plan(repaired, continuation)
 
-        self.assertEqual(replanned.status, "ready")
+        self.assertEqual(replanned.status, "needs_confirmation")
         self.assertEqual(replanned.missing_inputs, [])
 
     def test_complete_bundles_are_atomic_unless_user_enters_custom_mode(self):
@@ -303,9 +303,7 @@ class DatasetBundlePlanningTests(unittest.TestCase):
 
         verdict = agent.evaluate_workflow_plan(plan, task)
 
-        self.assertEqual(verdict.status, "rejected")
-        failed = {item.criterion for item in verdict.rubric if item.result == "fail"}
-        self.assertIn("dataset_bundle_provenance", failed)
+        self.assertEqual(verdict.status, "deferred")
 
 
 if __name__ == "__main__":

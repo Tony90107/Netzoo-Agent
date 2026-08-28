@@ -27,7 +27,7 @@ def _panda_decision() -> TaskDecision:
     )
 
 
-def test_filename_paths_are_checked_then_ready_without_confirmation():
+def test_filename_paths_are_checked_then_require_confirmation():
     task = (
         "Run PANDA using data/official-toy/ToyExpressionData.txt, "
         "data/official-toy/ToyMotifData.txt, and "
@@ -35,16 +35,13 @@ def test_filename_paths_are_checked_then_ready_without_confirmation():
     )
     plan = build_workflow_plan(_panda_decision(), task)
 
-    assert plan.status == "ready"
+    assert plan.status == "needs_confirmation"
     assert {
         item.field
         for item in plan.evidence
         if item.reason.startswith("Role inferred from the filename")
     } == {"expression_file", "motif_file", "ppi_file"}
-    assert [step.action for step in plan.steps] == [
-        "inspect_inputs",
-        "run_panda",
-    ]
+    assert plan.steps == []
     assert all(
         item.status == "discovered"
         for item in plan.evidence
@@ -96,7 +93,7 @@ def test_input_confirmation_and_ready_prompts_keep_input_on_a_new_line():
             "data/official-toy/ToyPPIData.txt"
         ),
     )
-    assert plan.status == "ready"
+    assert plan.status == "needs_confirmation"
     confirmed = plan
     state = {
         "plan": confirmed.model_dump(),
