@@ -19,6 +19,7 @@ ActionName = Literal[
     "inspect_sambar_inputs",
     "inspect_dragon_inputs",
     "inspect_otter_inputs",
+    "inspect_giraffe_inputs",
     "format_expression",
     "convert_expression",
     "run_panda",
@@ -31,6 +32,7 @@ ActionName = Literal[
     "run_sambar",
     "run_dragon",
     "run_otter",
+    "run_giraffe",
     "query_context7",
     "web_search",
 ]
@@ -50,6 +52,7 @@ RecommendedAction = Literal[
     "run_sambar",
     "run_dragon",
     "run_otter",
+    "run_giraffe",
 ]
 
 IntentType = Literal[
@@ -172,6 +175,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_fields=(
             "expression_file", "coexpression_file", "motif_file", "ppi_file", "precision",
         ),
+        local=True,
+    ),
+    "inspect_giraffe_inputs": ActionDefinition(
+        "inspect_giraffe_inputs",
+        "GIRAFFE-INPUTS",
+        required_inputs=("expression_file", "motif_file", "ppi_file"),
+        executor_fields=("expression_file", "motif_file", "ppi_file"),
         local=True,
     ),
     "format_expression": ActionDefinition(
@@ -574,6 +584,45 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "PPI and co-expression are never PANDA motif priors. Only a validated "
                 "source-target-weight edge-list export with disjoint regulator/target IDs "
                 "may be handed to CONDOR; a matrix export needs an explicit conversion."
+            ),
+        ),
+    ),
+    "run_giraffe": ActionDefinition(
+        "run_giraffe",
+        "GIRAFFE",
+        required_inputs=("expression_file", "motif_file", "ppi_file", "output_file"),
+        executor_fields=("expression_file", "motif_file", "ppi_file", "output_file"),
+        validation_steps=("inspect_giraffe_inputs",),
+        local=True,
+        run=True,
+        memory_metadata={
+            "method_family": "giraffe",
+            "api": "netZooPy.giraffe.Giraffe",
+            "runtime": "docker",
+            "netzoopy_version": "0.11.0",
+        },
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=frozenset({"tf", "gene", "sample"}),
+            regulator_types=frozenset({"tf"}),
+            target_types=frozenset({"gene"}),
+            # GIRAFFE returns an aggregate TF-gene regulation matrix plus a
+            # TF-by-sample activity matrix; it does not return sample-specific
+            # TF-gene networks.
+            granularities=frozenset({"aggregate"}),
+            input_artifacts=frozenset({"expression_matrix"}),
+            handoff_targets=(),
+            selection_tags=frozenset({"tf_gene_regulation", "tfa", "aggregate_network"}),
+            handoff_contract=(
+                "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
+                "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
+                "It produces an aggregate TF-by-gene regulation matrix and a TF-by-sample "
+                "TFA matrix. GIRAFFE is not a direct CONDOR edge-list handoff; an "
+                "explicit validated matrix-to-edge-list conversion and user confirmation "
+                "are required before any downstream workflow. GIRAFFE has no direct "
+                "handoff to PANDA, PUMA, LIONESS, SAMBAR, DRAGON, OTTER, BONOBO, COBRA, "
+                "or CONDOR."
             ),
         ),
     ),

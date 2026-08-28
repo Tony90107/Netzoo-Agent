@@ -13,7 +13,8 @@
 9. 以 COBRA 分析 sample covariates 對 gene co-expression 的影響，並輸出可重現的 covariance decomposition。
 10. 以 SAMBAR 將 somatic mutation matrix 聚合為 pathway mutation scores，並進行可選的 sample clustering。
 10. 以 OTTER 的 relaxed graph matching 推論 aggregate TF-to-gene regulatory network，嚴格驗證 TF-TF PPI、gene-gene co-expression 與 seed/prior 的方向、shape、identifier 與 NA 行為。
-9. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
+11. 以 Docker 內固定版本的 netZooPy GIRAFFE 推論 aggregate TF-gene regulation 與 TF-by-sample TFA，並嚴格驗證輸入 identifier、PPI 對稱性與雙輸出。
+12. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
 `apply project policy -> memory retrieval -> classify -> plan -> execute -> evaluate ->
@@ -36,6 +37,7 @@ memory consolidation`。Evaluator 通過後可
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
 | [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |
 | [docs/OTTER_INTEGRATION.md](docs/OTTER_INTEGRATION.md) | OTTER API、CLI、輸入／輸出契約與 handoff 規範 |
+| [docs/GIRAFFE_INTEGRATION.md](docs/GIRAFFE_INTEGRATION.md) | GIRAFFE API、Docker runtime、輸入／輸出契約與 workflow 規範 |
 | [NEW_TASK_COMPLETE_DEMO_GUIDE.md](NEW_TASK_COMPLETE_DEMO_GUIDE.md) | 四個新任務的完整說明、Demo 與結果驗證 |
 | [docs/archive/](docs/archive/) | 歷史進度、舊 demo 與 PR 草稿（不作為現行規格） |
 

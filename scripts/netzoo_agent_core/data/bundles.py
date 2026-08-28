@@ -14,6 +14,7 @@ from .discovery import best_named_file, candidate_keywords
 from .inspection import expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
 from .otter import inspect_otter_inputs_impl
+from .giraffe import inspect_giraffe_inputs_impl
 from .tables import _inspect_panda_inputs_impl
 from .sambar import inspect_sambar_inputs_impl
 
@@ -33,6 +34,7 @@ MULTI_FILE_ACTIONS = frozenset(
         "run_lioness_puma",
         "run_sambar",
         "run_otter",
+        "run_giraffe",
     }
 )
 MAX_DIRECTORY_DEPTH = 4
@@ -128,6 +130,20 @@ def _content_verified_completion(
             if valid:
                 verified.append(candidate)
             continue
+        if action == "run_giraffe":
+            if not all(
+                trial.get(required)
+                for required in ("expression_file", "motif_file", "ppi_file")
+            ):
+                continue
+            _, valid = inspect_giraffe_inputs_impl(
+                trial["expression_file"],
+                trial["motif_file"],
+                trial["ppi_file"],
+            )
+            if valid:
+                verified.append(candidate)
+            continue
         if not all(
             trial.get(required)
             for required in ("expression_file", "motif_file", "ppi_file")
@@ -220,6 +236,12 @@ def _bundle_in_directory(
         _, valid = inspect_otter_inputs_impl(
             values.get("expression_file", ""),
             values.get("coexpression_file", ""),
+            values["motif_file"],
+            values["ppi_file"],
+        )
+    elif action == "run_giraffe":
+        _, valid = inspect_giraffe_inputs_impl(
+            values["expression_file"],
             values["motif_file"],
             values["ppi_file"],
         )

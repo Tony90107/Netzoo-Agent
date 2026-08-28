@@ -16,6 +16,7 @@ from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
 from .dragon import validate_dragon_output
+from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
 from .otter import load_otter_inputs, validate_otter_output
 
 __all__ = [
@@ -38,6 +39,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_sambar",
         "run_dragon",
         "run_otter",
+        "run_giraffe",
     }
 )
 
@@ -388,6 +390,26 @@ def validate_output_artifacts(
                 metrics.update(otter_metrics)
             except (OSError, ValueError) as error:
                 errors.append(f"OTTER output contract could not be checked: {error}")
+    elif action == "run_giraffe":
+        if not decision.output_file:
+            errors.append("GIRAFFE output_file is missing")
+        else:
+            regulation, tfa = giraffe_output_paths(decision.output_file)
+            artifacts.extend([str(regulation), str(tfa)])
+            try:
+                bundle = load_giraffe_inputs(
+                    decision.expression_file or "",
+                    decision.motif_file or "",
+                    decision.ppi_file or "",
+                )
+                ok, giraffe_errors, giraffe_metrics = validate_giraffe_output(
+                    decision.output_file, bundle
+                )
+                if not ok:
+                    errors.extend(giraffe_errors)
+                metrics.update(giraffe_metrics)
+            except (OSError, ValueError) as error:
+                errors.append(f"GIRAFFE output contract could not be checked: {error}")
     else:
         if not decision.output_file:
             errors.append(f"{action} output_file is missing")

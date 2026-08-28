@@ -68,9 +68,57 @@ class PumaToolErrorAdapter:
         )
 
 
+class GiraffeToolErrorAdapter:
+    """Translate GIRAFFE runtime failures into actionable categories."""
+
+    _CODES = frozenset(
+        {
+            "GIRAFFE_NETZOOPY_MISSING",
+            "GIRAFFE_VERSION_UNSUPPORTED",
+            "GIRAFFE_API_UNAVAILABLE",
+            "GIRAFFE_INPUT_FORMAT_ERROR",
+            "GIRAFFE_API_ERROR",
+            "GIRAFFE_OUTPUT_SHAPE_INVALID",
+            "GIRAFFE_OUTPUT_ERROR",
+            "GIRAFFE_OUTPUT_INVALID",
+            "GIRAFFE_RUNTIME_ERROR",
+            "GIRAFFE_OUTPUT_OVERWRITES_INPUT",
+        }
+    )
+
+    def adapt(self, context: ToolErrorContext) -> ToolErrorDiagnosis | None:
+        code = next(
+            (item for item in context.reported_error_codes if item in self._CODES),
+            None,
+        )
+        if code is None:
+            return None
+        retryable = code in {
+            "GIRAFFE_NETZOOPY_MISSING",
+            "GIRAFFE_VERSION_UNSUPPORTED",
+            "GIRAFFE_API_UNAVAILABLE",
+            "GIRAFFE_API_ERROR",
+            "GIRAFFE_RUNTIME_ERROR",
+        }
+        recovery = {
+            "GIRAFFE_NETZOOPY_MISSING": "run_in_pinned_docker_runtime",
+            "GIRAFFE_VERSION_UNSUPPORTED": "use_pinned_netzoopy_version",
+            "GIRAFFE_API_UNAVAILABLE": "reverify_netzoopy_giraffe_api",
+            "GIRAFFE_API_ERROR": "inspect_giraffe_runtime_and_inputs",
+            "GIRAFFE_RUNTIME_ERROR": "inspect_giraffe_execution_log",
+        }.get(code)
+        return ToolErrorDiagnosis(
+            error_code=code,
+            retryable=retryable,
+            recovery_action=recovery,
+            evidence=list(context.errors),
+        )
+
+
 TOOL_ERROR_ADAPTERS = MappingProxyType(
     {
         "run_puma": (PumaToolErrorAdapter(),),
+        "run_giraffe": (GiraffeToolErrorAdapter(),),
     }
 )
 
