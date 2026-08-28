@@ -1,0 +1,56 @@
+policy_version: 2
+workflow: GIRAFFE
+action: run_giraffe
+description: Infer aggregate TF-gene regulation and TF activity with netZooPy GIRAFFE.
+required_inputs: [expression_file, motif_file, ppi_file, output_file]
+optional_inputs: []
+validation_steps: [inspect_giraffe_inputs]
+execution_step: run_giraffe
+output_capability:
+  operation: infer
+  artifact_type: regulatory_network
+  entity_types: [tf, gene, sample]
+  granularities: [aggregate]
+  regulator_types: [tf]
+  target_types: [gene]
+  guidance_predecessors: []
+  input_artifacts: [expression_matrix]
+  handoff_targets: []
+  selection_tags: [tf_gene_regulation, tfa, aggregate_network]
+  handoff_contract: >-
+    GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a
+    TF-by-TF PPI matrix after explicit labelled-file conversion. It produces an
+    aggregate TF-by-gene regulation matrix and a TF-by-sample TFA matrix. GIRAFFE
+    is not a direct CONDOR edge-list handoff; an explicit validated
+    matrix-to-edge-list conversion and user confirmation are required before any
+    downstream workflow. GIRAFFE has no direct handoff to PANDA, PUMA, LIONESS,
+    SAMBAR, DRAGON, OTTER, BONOBO, COBRA, or CONDOR.
+conventions:
+  - >-
+    The verified netZooPy 0.11.0 API is `netZooPy.giraffe.Giraffe(expression,
+    prior, ppi, ...)`; the agent calls only the required three positional arrays
+    and uses the package defaults for all optional parameters.
+  - >-
+    expression_file is a gene-by-sample numeric table. The first column contains
+    unique gene IDs; a header supplies sample IDs, while a headerless file receives
+    deterministic sample_1, sample_2, ... labels for output only.
+  - >-
+    motif_file is either a three-column regulator,gene,weight edge list or a
+    labelled TF-by-gene matrix. Its gene IDs must exactly match expression IDs.
+  - >-
+    ppi_file is either a two/three-column TF edge list or a labelled square TF
+    matrix. The adapter explicitly symmetrizes edge-list pairs and supplies the
+    required unit diagonal; all TF IDs must match the motif/prior TF set.
+  - >-
+    Missing files, delimiter/shape errors, empty or non-finite values, duplicate
+    IDs/pairs, non-square or non-symmetric PPI data, and identifier mismatches are
+    rejected before the API call.
+  - >-
+    output_file is the regulation matrix. The TFA matrix is written beside it as
+    `<output stem>.tfa<same suffix>`, both with a `tf_id` column and validated
+    identifier order.
+  - >-
+    The Dockerfile is the canonical runtime. It pins netZooPy to
+    60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822 (version 0.11.0), installs patsy,
+    and runs an import/signature smoke test during image build. The host Python
+    environment is not silently modified.

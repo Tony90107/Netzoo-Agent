@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Literal
 
 from ..data.artifacts import ARTIFACT_WRITE_ACTIONS, validate_output_artifacts
+from ..data.giraffe import giraffe_output_paths
 from ..contracts import (
     TOOL_LOG_ROOT,
     TOOL_RAW_MAX_CHARS,
@@ -33,6 +34,8 @@ __all__ = [
 def _expected_artifacts(decision: TaskDecision, action: str) -> list[str]:
     if action in {"format_expression", "convert_expression", "run_panda", "run_puma", "run_otter"}:
         return [decision.output_file] if decision.output_file else []
+    if action == "run_giraffe" and decision.output_file:
+        return [str(path) for path in giraffe_output_paths(decision.output_file)]
     if action.startswith("run_lioness_"):
         return [
             path for path in (decision.output_file, decision.lioness_output) if path

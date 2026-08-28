@@ -27,7 +27,8 @@ RUN sed -i \
 # micromamba environment so its documented `netzoopy` console entry point is
 # available to the wrapper scripts.
 RUN micromamba run -n netzoo python -m pip install --no-deps -e /opt/netZooPy \
-    && micromamba run -n netzoo netzoopy --help >/dev/null
+    && micromamba run -n netzoo netzoopy --help >/dev/null \
+    && micromamba run -n netzoo python -c 'import inspect, netZooPy; from netZooPy.giraffe import Giraffe; assert netZooPy.__version__ == "0.11.0"; print(inspect.signature(Giraffe))'
 COPY docker/run-panda /usr/local/bin/run-panda
 COPY docker/run-panda-precomputed /usr/local/bin/run-panda-precomputed
 COPY docker/run-puma /usr/local/bin/run-puma

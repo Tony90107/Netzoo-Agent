@@ -5,6 +5,8 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 
+import numpy as np
+
 from . import settings
 
 
@@ -29,6 +31,14 @@ from .data.dragon import (
     load_and_align_dragon_layers,
     write_dragon_edge_list,
     write_dragon_matrix,
+)
+from .data.giraffe import (
+    GiraffeInputError,
+    giraffe_output_paths,
+    inspect_giraffe_inputs_impl,
+    load_giraffe_inputs,
+    validate_giraffe_output,
+    write_giraffe_outputs,
 )
 from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
@@ -67,6 +77,8 @@ __all__ = [
     "inspect_sambar_inputs",
     "run_sambar",
     "run_dragon",
+    "inspect_giraffe_inputs",
+    "run_giraffe",
     "inspect_otter_inputs",
     "run_otter",
     "LOCAL_TOOL_EXECUTORS",
@@ -760,6 +772,154 @@ def run_dragon(
         return f"DRAGON execution failed; error: no trusted result was returned: {type(error).__name__}: {error}"
 
 
+def _load_giraffe_api():
+    """Load the exact public GIRAFFE API from the Docker runtime."""
+    import importlib
+
+    netzoopy = importlib.import_module("netZooPy")
+    version = getattr(netzoopy, "__version__", None)
+    if version != "0.11.0":
+        raise RuntimeError(
+            f"unsupported netZooPy version {version!r}; the validated GIRAFFE contract requires 0.11.0"
+        )
+    module = importlib.import_module("netZooPy.giraffe")
+    giraffe_class = getattr(module, "Giraffe", None)
+    if giraffe_class is None or not callable(giraffe_class):
+        raise AttributeError("netZooPy.giraffe.Giraffe is not available")
+    return giraffe_class, version
+
+
+def _giraffe_failure(code: str, problem: str, needed: str) -> str:
+    return (
+        "GIRAFFE execution failed.\n"
+        f"error code: {code}\n"
+        f"error: {problem}\n"
+        "confirmed: input files were validated against the source-verified GIRAFFE matrix contract.\n"
+        f"needed: {needed}"
+    )
+
+
+@tool
+def inspect_giraffe_inputs(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+) -> str:
+    """Inspect and align the labelled files required by netZooPy GIRAFFE."""
+    report, _ = inspect_giraffe_inputs_impl(expression_file, motif_file, ppi_file)
+    return report
+
+
+@tool
+def run_giraffe(
+    expression_file: str,
+    motif_file: str,
+    ppi_file: str,
+    output_file: str,
+) -> str:
+    """Run source-verified netZooPy GIRAFFE in the Docker runtime."""
+    try:
+        input_report, inputs_ok = inspect_giraffe_inputs_impl(
+            expression_file, motif_file, ppi_file
+        )
+        if not inputs_ok:
+            return "GIRAFFE input validation failed; no API call was made.\n\n" + input_report
+        bundle = load_giraffe_inputs(expression_file, motif_file, ppi_file)
+        regulation_path, tfa_path = giraffe_output_paths(output_file)
+        inputs = {
+            _resolve_user_path(expression_file),
+            _resolve_user_path(motif_file),
+            _resolve_user_path(ppi_file),
+        }
+        if regulation_path in inputs or tfa_path in inputs:
+            return _giraffe_failure(
+                "GIRAFFE_OUTPUT_OVERWRITES_INPUT",
+                "an output path would overwrite one of the validated input files",
+                "choose a separate output_file path",
+            )
+        preview = (
+            "GIRAFFE Python API preview:\n"
+            "- runtime: Docker pinned netZooPy 0.11.0\n"
+            "- import: from netZooPy.giraffe import Giraffe\n"
+            "- call: Giraffe(expression, prior, ppi)\n"
+            "- outputs: model.get_regulation() -> TF-by-gene matrix; "
+            "model.get_tfa() -> TF-by-sample matrix\n"
+            f"- shapes: expression={bundle.expression.shape}, prior={bundle.prior.shape}, ppi={bundle.ppi.shape}\n"
+            f"- output: regulation={regulation_path}; tfa={tfa_path}\n"
+            "- no analysis was executed and no artifact was written (dry-run)."
+        )
+        if not settings.EXECUTE_TOOLS:
+            return input_report + "\n\n" + preview
+        try:
+            giraffe_class, version = _load_giraffe_api()
+        except ModuleNotFoundError as error:
+            return _giraffe_failure(
+                "GIRAFFE_NETZOOPY_MISSING",
+                "netZooPy with the GIRAFFE module is not importable in this runtime",
+                "execute the agent inside the Docker image built from this Dockerfile; do not install a second unpinned copy",
+            ) + f"\nloader detail: {error}"
+        except RuntimeError as error:
+            return _giraffe_failure(
+                "GIRAFFE_VERSION_UNSUPPORTED",
+                str(error),
+                "use netZooPy 0.11.0 / the validated Docker NETZOOPY_REF, or explicitly update the integration contract",
+            )
+        except (AttributeError, ImportError) as error:
+            return _giraffe_failure(
+                "GIRAFFE_API_UNAVAILABLE",
+                "the installed netZooPy package does not expose the verified GIRAFFE API",
+                "use the pinned Docker runtime or specify a commit whose API is re-verified",
+            ) + f"\nloader detail: {error}"
+        try:
+            model = giraffe_class(bundle.expression, bundle.prior, bundle.ppi)
+            regulation = np.asarray(model.get_regulation(), dtype=float)
+            tfa = np.asarray(model.get_tfa(), dtype=float)
+        except Exception as error:  # noqa: BLE001 - convert package failures to user-facing results.
+            return _giraffe_failure(
+                "GIRAFFE_API_ERROR",
+                f"the verified GIRAFFE API call failed: {type(error).__name__}: {error}",
+                "check the validated matrix shapes/values and the Docker dependency versions",
+            )
+        if regulation.shape != bundle.prior.shape or tfa.shape != (len(bundle.tf_ids), len(bundle.sample_ids)):
+            return _giraffe_failure(
+                "GIRAFFE_OUTPUT_SHAPE_INVALID",
+                f"GIRAFFE returned regulation shape {regulation.shape} and TFA shape {tfa.shape}, which do not match the input identifiers",
+                "use a compatible netZooPy GIRAFFE version or inspect the input orientation",
+            )
+        try:
+            written = write_giraffe_outputs(output_file, regulation, tfa, bundle)
+            valid, errors, _ = validate_giraffe_output(output_file, bundle)
+        except (OSError, ValueError) as error:
+            return _giraffe_failure(
+                "GIRAFFE_OUTPUT_ERROR",
+                f"the result could not be written or parsed: {error}",
+                "choose a writable output path and rerun in the Docker runtime",
+            )
+        if not valid:
+            return _giraffe_failure(
+                "GIRAFFE_OUTPUT_INVALID",
+                "; ".join(errors),
+                "inspect the output files and use a netZooPy version matching the verified API contract",
+            )
+        return (
+            input_report
+            + f"\n\nGIRAFFE API execution completed (netZooPy {version}).\n"
+            f"- regulation: {written[0]}\n- TFA: {written[1]}"
+        )
+    except GiraffeInputError as error:
+        return _giraffe_failure(
+            "GIRAFFE_INPUT_FORMAT_ERROR",
+            str(error),
+            "provide corrected expression, motif/prior, or PPI files and rerun input confirmation",
+        )
+    except Exception as error:  # noqa: BLE001 - keep interactive execution typed and bounded.
+        return _giraffe_failure(
+            "GIRAFFE_RUNTIME_ERROR",
+            f"an unexpected runtime failure occurred: {type(error).__name__}: {error}",
+            "rerun inside the pinned Docker runtime and inspect the private execution log",
+        )
+
+
 LOCAL_TOOL_EXECUTORS = {
     "inspect_inputs": inspect_netzoo_inputs,
     "inspect_condor_inputs": inspect_condor_inputs,
@@ -777,6 +937,8 @@ LOCAL_TOOL_EXECUTORS = {
     "run_sambar": run_sambar,
     "inspect_dragon_inputs": inspect_dragon_inputs,
     "run_dragon": run_dragon,
+    "inspect_giraffe_inputs": inspect_giraffe_inputs,
+    "run_giraffe": run_giraffe,
     "inspect_otter_inputs": inspect_otter_inputs,
     "run_otter": run_otter,
 }

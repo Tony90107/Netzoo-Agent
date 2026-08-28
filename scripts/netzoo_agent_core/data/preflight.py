@@ -6,6 +6,7 @@ from typing import Any
 
 from .cobra import inspect_cobra_inputs_impl
 from .dragon import inspect_dragon_inputs_impl
+from .giraffe import inspect_giraffe_inputs_impl
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
 from .otter import inspect_otter_inputs_impl
@@ -109,6 +110,13 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
             _value(decision, "omics_layer_2"),
         )
         errors.extend(_report_errors("DRAGON inputs", report, ok))
+    elif action in {"inspect_giraffe_inputs", "run_giraffe"}:
+        report, ok = inspect_giraffe_inputs_impl(
+            _value(decision, "expression_file"),
+            _value(decision, "motif_file"),
+            _value(decision, "ppi_file"),
+        )
+        errors.extend(_report_errors("GIRAFFE inputs", report, ok))
     elif action in {"inspect_otter_inputs", "run_otter"}:
         report, ok = inspect_otter_inputs_impl(
             expression,
