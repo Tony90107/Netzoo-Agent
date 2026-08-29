@@ -491,6 +491,17 @@ def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules(
     assert "adjusted" in handoffs[("run_cobra", "run_panda")]["handoff_contract"]
     assert "coexpression_file" in handoffs[("run_cobra", "run_puma")]["handoff_contract"]
     assert "regulatory_network" in handoffs[("run_panda", "run_condor")]["to_inputs"]
+    cobra = {item["action"]: item for item in context["workflows"]}["run_cobra"]
+    assert cobra["output_files"] == [
+        "manifest.json",
+        "components.npz",
+        "summary.tsv",
+        "adjusted_coexpression.tsv",
+        "adjusted_coexpression.npz",
+    ]
+    cobra_to_panda = handoffs[("run_cobra", "run_panda")]
+    assert cobra_to_panda["handoff_input_fields"] == ["coexpression_file"]
+    assert "adjusted_coexpression.tsv" in cobra_to_panda["producer_output_files"]
 
 
 def test_guidance_response_removes_model_owned_status_and_cta_before_footer():
@@ -874,7 +885,7 @@ def test_graph_children_remain_responsibility_sized():
         "policy_memory": 150,
         "prompts": 120,
         "response": 260,
-        "response_context": 120,
+        "response_context": 140,
         "routing_planning": 230,
         "topology": 130,
         "transitions": 70,

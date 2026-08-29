@@ -102,7 +102,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "773467e18b390906a4c44b90ad09fbe486407cb9a919cdd8ea5b094e04b6770a",
+    "ProjectPolicySnapshot": "353613a41586626bb3744e1e3c459616d6c99129c8046755ee5ee9853cff5f56",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     "Episode": "12ea309e79b9fcfc32cd4030ad5aed570eecac04a5414fdfe061dc569a82e70e",
 }

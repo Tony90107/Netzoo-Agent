@@ -60,6 +60,15 @@ def test_generated_reasoning_prompts_cover_implicit_workflow_intent():
     assert "Registered workflow execution mode" in response_prompt
     assert "without an explicit sample-specific request" not in response_prompt
     assert "selection_tags are registry-defined intent signals" in semantic_prompt
+    assert "write or generate a script/template" in build_graph_prompts(
+        ProjectPolicyLoader().load()
+    ).intent
+    assert "never call an artifact type a parameter name" in response_prompt.lower()
+    assert "handoff_input_fields" in response_prompt
+    assert "adjusted co-expression artifact" in response_prompt
+    assert "not a corrected expression matrix" in response_prompt
+    assert "If the user asks to write or generate a script" in response_prompt
+    assert "output_files" in response_prompt
 
 
 def test_registered_capability_metadata_is_the_only_pipeline_source():
