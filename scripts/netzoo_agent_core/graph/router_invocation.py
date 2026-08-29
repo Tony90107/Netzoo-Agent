@@ -14,6 +14,7 @@ from ..interpretation.outcome_validation import validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
     deterministic_router_fallback,
+    recover_registry_guidance,
 )
 from ..interpretation.semantic_goal import outcome_routing_state
 from ..llm import (
@@ -72,6 +73,7 @@ def _current_usage(context: _GraphContext, state: AgentState) -> LLMUsage:
 
 def _semantic_failure(
     context: _GraphContext,
+    state: AgentState,
     user_task: str,
     usage: LLMUsage,
     budget_warnings: list[str],
@@ -80,6 +82,23 @@ def _semantic_failure(
     reason_code: str,
 ) -> _RouterInvocation:
     decision = deterministic_router_fallback(user_task, error)
+    recovered = recover_registry_guidance(
+        user_task,
+        context.project_policy.workflows,
+        error,
+    )
+    if recovered is not None:
+        decision = recovered
+        record_event(
+            context,
+            state,
+            "routing.semantic_guidance_recovered",
+            "classify",
+            {
+                "matched_actions": decision.matched_actions,
+                "reason_code": "explicit_registry_workflow",
+            },
+        )
     return _RouterInvocation(
         decision=decision,
         routing_state=outcome_routing_state(decision),
@@ -217,16 +236,21 @@ def _invoke_semantic_interpreter(
                     "validation_issues": schema_issues,
                 },
             )
-            _trace(
-                "router",
-                "Semantic interpretation failed",
-                {
-                    "kind": "router_activity",
-                    "operation": "semantic_interpreter",
-                    "status": "failed",
-                    "error_type": type(error).__name__,
-                },
-            )
+            if recover_registry_guidance(
+                user_task,
+                context.project_policy.workflows,
+                error,
+            ) is None:
+                _trace(
+                    "router",
+                    "Semantic interpretation failed",
+                    {
+                        "kind": "router_activity",
+                        "operation": "semantic_interpreter",
+                        "status": "failed",
+                        "error_type": type(error).__name__,
+                    },
+                )
             return None, usage, budget_warnings, error
 
         validation = validate_outcome_hypotheses(
@@ -505,6 +529,7 @@ def invoke_router(
     if interpretation is None:
         return _semantic_failure(
             context,
+            state,
             user_task,
             usage,
             budget_warnings,

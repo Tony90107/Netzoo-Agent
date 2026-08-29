@@ -48,6 +48,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             routing_state["semantic_goal"],
             decision,
             context.project_policy,
+            user_task,
         ),
     )
     _trace(

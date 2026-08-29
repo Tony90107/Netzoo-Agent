@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 import re
 
 from ..contracts import TaskDecision
@@ -14,6 +14,7 @@ _PIPELINE_GUIDANCE_PATTERN = re.compile(
     r"|(?:完整流程|多階段|步驟|先|接著|然後|最後)",
     flags=re.IGNORECASE,
 )
+_TAG_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 def should_expand_guidance_catalog(decision: TaskDecision, task: str) -> bool:
@@ -31,6 +32,81 @@ def _capability(item: dict) -> dict:
 
 def _records_by_action(workflows: Sequence[dict]) -> dict[str, dict]:
     return {item["action"]: item for item in workflows if item.get("action")}
+
+
+def _normalized_tokens(value: str) -> set[str]:
+    value = re.sub(r"(?i)(?:mi|micro)[-_ ]rna", "mirna", value)
+    tokens = _TAG_TOKEN_PATTERN.findall(value.casefold())
+    return {token[:-1] if token.endswith("s") and len(token) > 3 else token for token in tokens}
+
+
+def _task_supported_selection_tags(
+    task: str,
+    workflows: Mapping[str, object],
+) -> set[str]:
+    task_tokens = _normalized_tokens(task)
+    tags = {
+        tag
+        for spec in workflows.values()
+        for tag in spec.output_capability.selection_tags
+    }
+    supported = set()
+    for tag in tags:
+        tag_tokens = _normalized_tokens(tag.replace("_", " "))
+        required = max(1, (len(tag_tokens) + 1) // 2)
+        if len(tag_tokens & task_tokens) >= required:
+            supported.add(tag)
+    return supported
+
+
+def decision_with_registry_signals(
+    decision: TaskDecision,
+    task: str,
+    workflows: Mapping[str, object],
+) -> TaskDecision:
+    """Add only registry tags with direct lexical support in the user request."""
+    outcome = decision.requested_outcome
+    if outcome is None:
+        return decision
+    inferred = _task_supported_selection_tags(task, workflows)
+    tags = list(dict.fromkeys([*outcome.selection_tags, *inferred]))
+    if tags == outcome.selection_tags:
+        return decision
+    return decision.model_copy(
+        deep=True,
+        update={
+            "requested_outcome": outcome.model_copy(update={"selection_tags": tags})
+        },
+    )
+
+
+def related_registry_actions(
+    seed_actions: Sequence[str],
+    workflows: Mapping[str, object],
+) -> list[str]:
+    """Expand selected actions through declared guidance and artifact handoffs."""
+    queue = list(seed_actions)
+    related = []
+    seen: set[str] = set()
+    while queue:
+        action = queue.pop(0)
+        if action in seen:
+            continue
+        seen.add(action)
+        spec = workflows.get(action)
+        if spec is None:
+            continue
+        related.append(action)
+        capability = spec.output_capability
+        queue.extend(capability.guidance_predecessors)
+        accepted_artifacts = set(capability.input_artifacts)
+        queue.extend(
+            producer_action
+            for producer_action, producer in workflows.items()
+            if action in producer.output_capability.handoff_targets
+            and producer.output_capability.artifact_type in accepted_artifacts
+        )
+    return related
 
 
 def _final_actions(

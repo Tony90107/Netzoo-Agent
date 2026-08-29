@@ -22,6 +22,12 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
     hydrate_router_decision,
     repair_router_decision,
 )
+from netzoo_agent_core.interpretation.provider_fallback import (  # noqa: E402
+    recover_registry_guidance,
+)
+from netzoo_agent_core.graph.response_context import (  # noqa: E402
+    validated_workflow_context,
+)
 from netzoo_agent_core.interpretation.assembly import (  # noqa: E402
     assemble_task_decision,
 )
@@ -682,6 +688,41 @@ def test_provider_failure_does_not_infer_even_an_explicit_named_workflow():
     assert decision.should_execute is False
     assert decision.matched_actions == []
     assert decision.recommended_actions == []
+
+
+def test_semantic_validation_failure_recovers_explicit_registry_pipeline_guidance():
+    policy = ProjectPolicyLoader().load()
+    task = (
+        "I want to run a complete netZoo network inference process. I have an "
+        "Expression matrix and a Covariates matrix recording experimental batches. "
+        "Please write a script: first perform batch correction, then input the "
+        "corrected result with Motif and PPI matrices into the PANDA algorithm."
+    )
+
+    decision = recover_registry_guidance(
+        task,
+        policy.workflows,
+        ValueError("semantic schema validation failed"),
+    )
+
+    assert decision is not None
+    assert decision.action == "no_tool"
+    assert decision.matched_actions == ["run_panda"]
+    assert decision.requested_outcome.artifact_type == "regulatory_network"
+
+    context = validated_workflow_context(decision, policy, task=task)
+    assert context["compositions"][0]["ordered_actions"] == [
+        "run_cobra",
+        "run_panda",
+    ]
+    panda = next(item for item in context["workflows"] if item["action"] == "run_panda")
+    assert "coexpression_file" in panda["optional_inputs"]
+    handoff = next(
+        item
+        for item in context["handoffs"]
+        if item["from_action"] == "run_cobra" and item["to_action"] == "run_panda"
+    )
+    assert "adjusted" in handoff["handoff_contract"]
 
 
 def test_contextual_input_format_question_preserves_router_docs_selection():

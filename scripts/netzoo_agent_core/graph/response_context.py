@@ -6,7 +6,7 @@ import re
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation import INPUT_LABELS
-from ..interpretation.registry_guidance import build_registry_selection_constraints
+from ..interpretation.registry_guidance import build_registry_selection_constraints, decision_with_registry_signals, related_registry_actions
 
 __all__: list[str] = []
 
@@ -43,12 +43,11 @@ def validated_workflow_context(
     task: str = "",
 ) -> dict[str, object]:
     """Return registry facts without granting execution authority."""
-    seed_actions = list(dict.fromkeys([
-        *decision.matched_actions, *decision.hypothesis_actions,
-        *decision.recommended_actions, *decision.alternative_actions,
-    ]))
+    seed_actions = list(dict.fromkeys([*decision.matched_actions, *decision.hypothesis_actions,
+                                       *decision.recommended_actions, *decision.alternative_actions]))
     if include_all:
         seed_actions.extend(action for action in policy.workflows if action not in seed_actions)
+    seed_actions = related_registry_actions(list(dict.fromkeys(seed_actions)), policy.workflows)
     relevant_actions = []
     compositions = []
     handoffs = []
@@ -108,7 +107,8 @@ def validated_workflow_context(
                 "output_capability": spec.output_capability.model_dump(),
             }
         )
-    selection_constraints = build_registry_selection_constraints(decision, workflows)
+    guidance_decision = decision_with_registry_signals(decision, task, policy.workflows)
+    selection_constraints = build_registry_selection_constraints(guidance_decision, workflows)
     return {
         "compositions": selection_constraints["preferred_compositions"] or compositions,
         "handoffs": handoffs,
