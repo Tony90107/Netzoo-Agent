@@ -203,20 +203,14 @@ def _apply_public_progress_event(
         state.complete("understand", outcome)
         if workflow_path:
             state.complete("match", " → ".join(workflow_path))
-            path_label = (
-                "Selected guidance path"
-                if detail.get("workflow_scope") == "composition"
-                or len(workflow_path) > 1
-                else "Matched final-result workflow"
-            )
             _commit_public_activity(
                 f"workflow-path:{','.join(workflow_path)}",
-                f"✓ {path_label} — {' → '.join(workflow_path)}",
+                f"✓ Workflow — {' → '.join(workflow_path)}",
             )
         elif workflows:
             state.complete("match", ", ".join(workflows))
             match_label = (
-                "Matched final-result workflow"
+                "Workflow"
                 if detail.get("workflow_scope") == "final_result"
                 else "Matched workflows"
             )

@@ -325,7 +325,7 @@ def test_state_machine_labels_guidance_match_as_final_result(monkeypatch, capsys
     )
 
     output = capsys.readouterr().out
-    assert "✓ Matched final-result workflow — CONDOR" in output
+    assert "✓ Workflow — CONDOR" in output
     assert "✓ Matched workflows — CONDOR" not in output
 
 
@@ -346,7 +346,7 @@ def test_state_machine_renders_registry_derived_guidance_path(monkeypatch, capsy
     )
 
     output = capsys.readouterr().out
-    assert "✓ Selected guidance path — PANDA → LIONESS-PANDA" in output
+    assert "✓ Workflow — PANDA → LIONESS-PANDA" in output
 
 
 def test_single_stream_hides_legacy_stage_labels(monkeypatch, capsys):

@@ -46,6 +46,35 @@ def test_invoke_graph_turn_translates_keyboard_interrupt():
         graph.invoke_graph_turn(InterruptedApp(), {"messages": []})
 
 
+def test_semantic_failure_recovers_explicit_workflow_guidance():
+    router_invocation = importlib.import_module(
+        "netzoo_agent_core.graph.router_invocation"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    task = (
+        "Please write a script that performs batch correction and then uses the "
+        "corrected co-expression result with Motif and PPI matrices in PANDA."
+    )
+    context = SimpleNamespace(
+        project_policy=policy,
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+
+    result = router_invocation._semantic_failure(
+        context,
+        {},
+        task,
+        legacy_agent.LLMUsage(budget_tokens=20_000),
+        [],
+        error=ValueError("semantic schema validation failed"),
+        reason_code="semantic_fallback",
+    )
+
+    assert result.decision.action == "no_tool"
+    assert result.decision.matched_actions == ["run_panda"]
+    assert result.decision.requested_outcome is not None
+
+
 def test_graph_is_a_package_with_factory_child():
     assert hasattr(graph, "__path__")
     factory = importlib.import_module("netzoo_agent_core.graph.factory")
@@ -358,6 +387,63 @@ def test_no_tool_response_context_follows_validated_actions_without_name_rules()
     assert '"action": "run_bonobo"' in response_input
     assert '"action": "run_puma"' not in response_input
     assert '"action": "run_lioness_puma"' not in response_input
+
+
+def test_response_context_derives_handoff_producers_from_registry_capabilities():
+    response_context = importlib.import_module(
+        "netzoo_agent_core.graph.response_context"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    outcome = legacy_agent.RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+        selection_tags=[
+            "hospital_effect_assessment",
+            "sequencing_batch_effect_assessment",
+        ],
+    )
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="The user requests batch-effect guidance before network inference.",
+        capability_match_status="exact",
+        matched_actions=["run_panda"],
+        requested_outcome=outcome,
+    )
+
+    context = response_context.validated_workflow_context(
+        decision,
+        policy,
+        include_all=False,
+        task="Remove hospital and sequencing batch effects before PANDA.",
+    )
+
+    actions = {item["action"] for item in context["workflows"]}
+    assert {"run_panda", "run_cobra"}.issubset(actions)
+    assert context["compositions"][0]["ordered_actions"] == [
+        "run_cobra",
+        "run_panda",
+    ]
+
+    outcome.selection_tags = []
+    context_without_signal = response_context.validated_workflow_context(
+        decision,
+        policy,
+        include_all=False,
+    )
+    assert {"run_panda", "run_cobra"}.issubset(
+        {item["action"] for item in context_without_signal["workflows"]}
+    )
+    assert context_without_signal["compositions"][0]["ordered_actions"] == [
+        "run_panda",
+    ]
 
 
 def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules():

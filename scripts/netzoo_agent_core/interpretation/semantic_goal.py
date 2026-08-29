@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
-from .registry_guidance import build_registry_selection_constraints
+from .registry_guidance import (
+    build_registry_selection_constraints,
+    decision_with_registry_signals,
+)
 from ..routing.outcome_matching import guidance_actions_for
 from workflow_registry import workflow_name
 
@@ -12,6 +15,7 @@ def classification_progress_detail(
     semantic_goal: dict,
     decision: TaskDecision,
     policy: ProjectPolicySnapshot | None = None,
+    task: str = "",
 ) -> dict:
     """Return compact, fact-grounded classification facts for the live CLI."""
     outcome = decision.requested_outcome
@@ -46,8 +50,13 @@ def classification_progress_detail(
                 }
                 for action, spec in policy.workflows.items()
             ]
-            preferred = build_registry_selection_constraints(
+            guidance_decision = decision_with_registry_signals(
                 decision,
+                task,
+                policy.workflows,
+            )
+            preferred = build_registry_selection_constraints(
+                guidance_decision,
                 workflow_records,
             )["preferred_compositions"]
             if preferred:

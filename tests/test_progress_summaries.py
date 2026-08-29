@@ -314,6 +314,39 @@ def test_exact_guidance_uses_conditional_handoff_path_for_batch_effects():
     assert detail["workflow_scope"] == "composition"
 
 
+def test_exact_guidance_recovers_registry_tags_from_task_text():
+    policy = ProjectPolicyLoader().load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="aggregate",
+        ),
+    )
+
+    detail = classification_progress_detail(
+        {"candidates": ["run_panda"], "request_mode": "guidance"},
+        decision,
+        policy,
+        "Remove hospital and sequencing batch effects before PANDA.",
+    )
+
+    assert detail["workflow_path"] == ["COBRA", "PANDA"]
+    assert detail["workflow_scope"] == "composition"
+
+
 def test_normal_panda_guidance_does_not_force_optional_cobra_handoff():
     policy = ProjectPolicyLoader().load()
     decision = TaskDecision(
