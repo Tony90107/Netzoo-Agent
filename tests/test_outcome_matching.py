@@ -60,6 +60,78 @@ def test_sample_specific_mirna_regulatory_network_matches_lioness_puma():
     ]
 
 
+def test_guidance_operation_is_not_required_for_registry_candidate_matching():
+    result = match_semantic_request(
+        "Which tools can produce a sample-specific miRNA regulatory network?",
+        [
+            advisory_hypothesis(
+                outcome(operation="explain"),
+                OutcomeEvidence(
+                    dimension="artifact_type",
+                    value="regulatory_network",
+                    source="explicit",
+                    rationale="The requested result is a regulatory network.",
+                ),
+                OutcomeEvidence(
+                    dimension="regulator_type",
+                    value="mirna",
+                    source="explicit",
+                    rationale="The request names miRNA regulators.",
+                ),
+                OutcomeEvidence(
+                    dimension="granularity",
+                    value="sample_specific",
+                    source="explicit",
+                    rationale="The request asks for sample-specific output.",
+                ),
+            )
+        ],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_lioness_puma"]
+    assert result.hypothesis_actions == []
+
+
+def test_guidance_promotes_one_advisory_candidate_to_an_exact_registry_match():
+    result = match_semantic_request(
+        "If I want a sample-specific miRNA regulatory network, what tools do I need?",
+        [
+            OutcomeHypothesis(
+                outcome=outcome(operation="unknown"),
+                confidence=0.9,
+                evidence=[],
+                assumptions=["The request is asking for workflow guidance."],
+            )
+        ],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_lioness_puma"]
+    assert result.hypothesis_actions == []
+
+
+def test_execution_matching_does_not_promote_one_advisory_candidate():
+    result = match_semantic_request(
+        "Build a sample-specific miRNA regulatory network.",
+        [
+            OutcomeHypothesis(
+                outcome=outcome(operation="infer"),
+                confidence=0.9,
+                evidence=[],
+                assumptions=["The input files have not been supplied yet."],
+            )
+        ],
+        request_mode="execute",
+    )
+
+    assert result.status == "ambiguous"
+    assert result.matched_actions == []
+    assert result.hypothesis_actions == ["run_lioness_puma"]
+
+
 def test_sample_specific_mirna_measurements_are_not_a_workflow_match():
     result = match_requested_outcome(
         outcome(

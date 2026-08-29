@@ -520,6 +520,7 @@ def invoke_router(
     capability_match = match_semantic_request(
         user_task,
         interpretation.outcome_hypotheses,
+        request_mode=interpretation.request_mode,
     )
     record_event(
         context,

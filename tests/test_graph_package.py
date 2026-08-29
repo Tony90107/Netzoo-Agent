@@ -259,6 +259,7 @@ def test_ambiguous_guidance_reaches_response_model():
     assert request in response_input
     assert '"action": "run_puma"' in response_input
     assert '"action": "run_lioness_puma"' in response_input
+    assert '"action": "run_bonobo"' not in response_input
     assert '"ordered_actions"' in response_input
     composition = response_input.split(
         "Authoritative ordered workflow compositions:", maxsplit=1
@@ -301,6 +302,62 @@ def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():
 
     assert prompt.kind == "completed"
     assert "Enter a follow-up question" in prompt.question
+
+
+def test_no_tool_response_context_follows_validated_actions_without_name_rules():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="Guidance requested.",
+        capability_match_status="exact",
+        matched_actions=["run_bonobo"],
+        recommended_actions=["run_bonobo"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain the selected workflow.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    captured = []
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            captured.extend(messages)
+            return legacy_agent.AIMessage(content="The selected workflow is available.")
+
+    context = SimpleNamespace(
+        project_policy=policy,
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+
+    response_module.respond(
+        context,
+        {
+            "messages": [
+                legacy_agent.HumanMessage(content="Explain the selected workflow")
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    response_input = "\n".join(str(message.content) for message in captured)
+    assert '"action": "run_bonobo"' in response_input
+    assert '"action": "run_puma"' not in response_input
+    assert '"action": "run_lioness_puma"' not in response_input
 
 
 def test_pipeline_guidance_context_carries_qc_handoff_and_sample_specific_rules():
@@ -473,6 +530,58 @@ def test_unsupported_guidance_receives_full_validated_catalog_for_pipeline_mappi
     assert result["messages"][0].content.endswith(
         "No files were inspected and no analysis ran."
     )
+
+
+def test_unsupported_non_pipeline_guidance_does_not_expand_full_catalog():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=False,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="The requested result is not currently matched.",
+        capability_match_status="unsupported",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain the capability boundary.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    captured = []
+
+    class GuidanceResponse:
+        def invoke(self, messages):
+            captured.extend(messages)
+            return legacy_agent.AIMessage(content="Please clarify the requested result.")
+
+    context = SimpleNamespace(
+        project_policy=policy,
+        response_llm=GuidanceResponse(),
+        response_prompt="Use only validated workflow facts.",
+        response_model_name="fake",
+        response_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    response_module.respond(
+        context,
+        {
+            "messages": [
+                legacy_agent.HumanMessage(content="Can NetZoo produce this result?")
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    response_input = "\n".join(str(message.content) for message in captured)
+    assert '"action": "run_puma"' not in response_input
+    assert '"action": "run_bonobo"' not in response_input
 
 
 def test_record_event_uses_run_id_and_exact_payload():

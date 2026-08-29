@@ -3,8 +3,26 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import re
 
 from ..contracts import TaskDecision
+
+
+_PIPELINE_GUIDANCE_PATTERN = re.compile(
+    r"\b(?:pipeline|workflow|end[-\s]?to[-\s]?end|multi[-\s]?stage|"
+    r"sequence|steps?|stages?|first|then|finally)\b"
+    r"|(?:完整流程|多階段|步驟|先|接著|然後|最後)",
+    flags=re.IGNORECASE,
+)
+
+
+def should_expand_guidance_catalog(decision: TaskDecision, task: str) -> bool:
+    """Expand the registry only for an explicitly requested pipeline map."""
+    return (
+        decision.capability_match_status == "unsupported"
+        and not decision.matched_actions
+        and bool(_PIPELINE_GUIDANCE_PATTERN.search(task))
+    )
 
 
 def _capability(item: dict) -> dict:
