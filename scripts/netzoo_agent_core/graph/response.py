@@ -28,6 +28,7 @@ from ..evaluation import (
 )
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import render_cobra_expression_boundary
+from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
 from ..presentation import strip_cli_owned_guidance_tail
@@ -104,7 +105,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     workflow_context = validated_workflow_context(
         decision,
         context.project_policy,
-        include_all=decision.action == "no_tool",
+        include_all=should_expand_guidance_catalog(decision, latest_user_task(state["messages"])),
         task=latest_user_task(state["messages"]),
     )
     trusted_context = (

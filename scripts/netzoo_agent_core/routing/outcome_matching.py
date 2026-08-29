@@ -473,6 +473,8 @@ def named_registered_action(task: str):
 def match_semantic_request(
     task: str,
     hypotheses: Sequence[OutcomeHypothesis],
+    *,
+    request_mode: str = "unknown",
 ) -> CapabilityMatch:
     """Match typed meaning, using explicit registry identifiers only as a fallback."""
     marker = re.search(
@@ -489,7 +491,41 @@ def match_semantic_request(
     if explicit_action is not None:
         return CapabilityMatch(status="exact", matched_actions=[explicit_action])
 
-    match = match_outcome_hypotheses(hypotheses)
+    matching_hypotheses = hypotheses
+    if request_mode == "guidance":
+        # Guidance asks which registered capability can produce the result; the
+        # explanatory wording is not itself a workflow operation.
+        matching_hypotheses = [
+            hypothesis.model_copy(
+                update={
+                    "outcome": hypothesis.outcome.model_copy(
+                        update={"operation": _UNKNOWN}
+                    )
+                }
+            )
+            for hypothesis in hypotheses
+        ]
+    match = match_outcome_hypotheses(matching_hypotheses)
+    if (
+        request_mode == "guidance"
+        and match.status == "ambiguous"
+        and len(hypotheses) == 1
+        and len(match.hypothesis_actions) == 1
+        and not any(
+            hypothesis.outcome.granularity == "unknown"
+            or "granularity" in hypothesis.outcome.unresolved_dimensions
+            for hypothesis in hypotheses
+        )
+    ):
+        # A guidance question may omit the operation because it asks which
+        # workflow to use. If every other requested dimension points to one
+        # registry capability, expose that capability as an exact *guidance*
+        # match. `assemble_task_decision` still blocks execution whenever the
+        # semantic request mode is not `execute`.
+        return CapabilityMatch(
+            status="exact",
+            matched_actions=list(match.hypothesis_actions),
+        )
     return match
 
 

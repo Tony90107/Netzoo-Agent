@@ -3274,9 +3274,9 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                             evidence=[
                                 agent.OutcomeEvidence(
                                     dimension="operation",
-                                    value="infer",
+                                    value="explain",
                                     source="inferred",
-                                    rationale="Producing the network requires inference.",
+                                    rationale="The user is asking which tools can produce the network.",
                                 ),
                                 agent.OutcomeEvidence(
                                     dimension="artifact_type",
