@@ -4,15 +4,27 @@ from __future__ import annotations
 
 import re
 
+from workflow_registry import ACTION_DEFINITIONS
+
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
 )
+from .registry_guidance import (
+    handoff_input_fields,
+    preferred_registry_composition_actions,
+)
 
 _PURPOSE_PATTERN = re.compile(
     r"\b(?:function|purpose|what\s+is|what\s+does)\b|(?:功能|用途|是什麼)",
+    flags=re.IGNORECASE,
+)
+_SCRIPT_REQUEST_PATTERN = re.compile(
+    r"\b(?:write|generate|create|give|show)\b.{0,40}\b(?:script|code|template)\b"
+    r"|\b(?:script|code|template)\b.{0,40}\b(?:write|generate|create)\b"
+    r"|(?:幫我|請).{0,20}(?:寫|產生|生成).{0,20}(?:腳本|程式|script|code)",
     flags=re.IGNORECASE,
 )
 
@@ -234,6 +246,112 @@ def render_cobra_expression_boundary(task: str) -> str | None:
     )
 
 
+def render_registered_handoff_script_guidance(
+    task: str,
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Render a script only for a registry-selected direct handoff.
+
+    The request interpretation selects the workflow path. This renderer only
+    reads the declared producer/consumer contract and never chooses a method
+    from keywords or a hard-coded source/target pair.
+    """
+    if not _SCRIPT_REQUEST_PATTERN.search(task):
+        return None
+    actions = preferred_registry_composition_actions(
+        task,
+        decision,
+        policy.workflows,
+    )
+    if len(actions) != 2:
+        return None
+    producer, consumer = (policy.workflows.get(action) for action in actions)
+    if producer is None or consumer is None:
+        return None
+    if consumer.action not in producer.output_capability.handoff_targets:
+        return None
+    workflow_path = f"{producer.workflow} → {consumer.workflow}"
+    handoff_fields = handoff_input_fields(
+        producer.output_capability.handoff_contract,
+        consumer,
+    )
+    if handoff_fields != ["coexpression_file"]:
+        return _ui_text(
+            f"The registry declares the **{workflow_path}** artifact handoff, but "
+            "it does not declare a script template for the target input contract. "
+            "No executable script was generated. Add a typed consumer adapter and "
+            "its validation contract before enabling this handoff.\n\n"
+            "No files were inspected and no analysis ran."
+        )
+    artifact_name = next(
+        (
+            name
+            for name in producer.output_files
+            if "coexpression" in name and name.endswith(".tsv")
+        ),
+        None,
+    )
+    if artifact_name is None or "output_dir" not in producer.required_inputs:
+        return _ui_text(
+            f"The registry declares the **{workflow_path}** artifact handoff, but "
+            "the producer output contract is incomplete for script generation. "
+            "No executable script was generated.\n\n"
+            "No files were inspected and no analysis ran."
+        )
+    producer_definition = ACTION_DEFINITIONS[producer.action]
+    consumer_definition = ACTION_DEFINITIONS[consumer.action]
+    producer_cli = producer_definition.cli_command
+    consumer_cli = consumer_definition.handoff_cli_commands.get(handoff_fields[0])
+    if producer_cli is None or consumer_cli is None:
+        return _ui_text(
+            f"The registry declares the **{workflow_path}** artifact handoff, but "
+            "no typed executable adapter is registered for that consumer input. "
+            "No executable script was generated.\n\n"
+            "No files were inspected and no analysis ran."
+        )
+    return _ui_text(
+        f"Use the registry-selected **{workflow_path}** handoff. The producer "
+        "creates an adjusted gene-by-gene co-expression artifact; it is not a "
+        "corrected expression matrix. The consumer therefore receives the original "
+        "expression matrix as `expression_file` and the producer TSV as "
+        "`coexpression_file`.\n\n"
+        "```bash\n"
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n\n"
+        "expression_file=\"path/to/expression.tsv\"   # genes × samples\n"
+        "design_file=\"path/to/design.tsv\"           # samples × numeric covariates\n"
+        "# One-hot encode categorical batches before writing design_file.\n"
+        "motif_file=\"path/to/motif.tsv\"\n"
+        "ppi_file=\"path/to/ppi.tsv\"\n"
+        "producer_output_dir=\"outputs/producer\"\n"
+        "consumer_output_file=\"outputs/regulatory-network.tsv\"\n\n"
+        f"# Runs {producer.workflow} and writes its declared handoff artifacts.\n"
+        f"docker compose run --rm netzoo {producer_cli} \\\n"
+        "  -e \"$expression_file\" -d \"$design_file\" -o \"$producer_output_dir\"\n\n"
+        f"coexpression_file=\"$producer_output_dir/{artifact_name}\"\n"
+        "# These are existence guards only; they do not validate artifact schema.\n"
+        "test -s \"$producer_output_dir/manifest.json\"\n"
+        "test -s \"$coexpression_file\"\n\n"
+        "# Keeps the original expression input; -c supplies the declared handoff\n"
+        "# artifact to the consumer's precomputed-coexpression entry point.\n"
+        f"docker compose run --rm netzoo {consumer_cli} \\\n"
+        "  -e \"$expression_file\" -m \"$motif_file\" -p \"$ppi_file\" \\\n"
+        "  -c \"$coexpression_file\" -o \"$consumer_output_file\"\n"
+        "```\n\n"
+        "Before execution: expression must be labeled genes × samples; design row "
+        "IDs must exactly match expression sample IDs (any row order is aligned), "
+        "and all design covariates must be numeric; one-hot encode categorical "
+        "batch labels before writing the design file. The producer runner adds an "
+        "all-ones intercept when absent, or rejects an invalid intercept when it is "
+        "present. The two `test -s` commands "
+        "only prove those files are non-empty; full format, identifier, symmetry, "
+        "and downstream gene-axis checks remain the responsibility of the registered "
+        "workflow runners and the agent's input-inspection/confirmation lifecycle.\n\n"
+        "No files were inspected and no analysis ran."
+    )
+
+
 def render_spec_backed_concept_answer(
     task: str,
     decision: TaskDecision,
@@ -349,6 +467,7 @@ __all__ = [
     "render_ambiguous_workflow_guidance",
     "render_capability_gap",
     "render_cobra_expression_boundary",
+    "render_registered_handoff_script_guidance",
     "render_outcome_clarification",
     "render_spec_backed_concept_answer",
     "render_workflow_composition_guidance",

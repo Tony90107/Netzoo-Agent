@@ -48,6 +48,7 @@ def _task_supported_selection_tags(
     tags = {
         tag
         for spec in workflows.values()
+        if getattr(spec, "output_capability", None) is not None
         for tag in spec.output_capability.selection_tags
     }
     supported = set()
@@ -78,6 +79,60 @@ def decision_with_registry_signals(
             "requested_outcome": outcome.model_copy(update={"selection_tags": tags})
         },
     )
+
+
+def _workflow_records(workflows: Mapping[str, object]) -> list[dict]:
+    """Adapt typed workflow definitions to the generic path-selection records."""
+    records = []
+    for action, spec in workflows.items():
+        capability = getattr(spec, "output_capability", None)
+        workflow = getattr(spec, "workflow", None)
+        if capability is None or not workflow:
+            continue
+        records.append(
+            {
+                "action": action,
+                "workflow": workflow,
+                "output_capability": {
+                    "operation": capability.operation,
+                    "artifact_type": capability.artifact_type,
+                    "entity_types": sorted(capability.entity_types),
+                    "granularities": sorted(capability.granularities),
+                    "regulator_types": sorted(capability.regulator_types),
+                    "target_types": sorted(capability.target_types),
+                    "guidance_predecessors": list(capability.guidance_predecessors),
+                    "input_artifacts": sorted(capability.input_artifacts),
+                    "handoff_targets": list(capability.handoff_targets),
+                    "selection_tags": sorted(capability.selection_tags),
+                    "handoff_contract": capability.handoff_contract,
+                },
+            }
+        )
+    return records
+
+
+def preferred_registry_composition_actions(
+    task: str,
+    decision: TaskDecision,
+    workflows: Mapping[str, object],
+) -> list[str]:
+    """Return one registry-selected composition without naming workflow pairs.
+
+    An already selected multi-stage composition is preserved. Otherwise, lexical
+    signals are mapped to declared selection tags, then the registered artifact
+    graph chooses the lowest-scoring legal path to the matched final action.
+    """
+    existing = list(dict.fromkeys(decision.recommended_actions))
+    if len(existing) > 1:
+        return existing
+    enriched = decision_with_registry_signals(decision, task, workflows)
+    preferred = build_registry_selection_constraints(
+        enriched,
+        _workflow_records(workflows),
+    )["preferred_compositions"]
+    if len(preferred) == 1:
+        return list(preferred[0]["ordered_actions"])
+    return existing
 
 
 def related_registry_actions(

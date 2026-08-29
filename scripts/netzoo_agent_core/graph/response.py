@@ -27,7 +27,10 @@ from ..evaluation import (
     render_preference_confirmation_response,
 )
 from ..interpretation import _is_fatal_exception
-from ..interpretation.concept_answers import render_cobra_expression_boundary
+from ..interpretation.concept_answers import (
+    render_cobra_expression_boundary,
+    render_registered_handoff_script_guidance,
+)
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..planning import render_plan
@@ -43,6 +46,13 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     cobra_boundary = render_cobra_expression_boundary(latest_user_task(state["messages"]))
     if cobra_boundary is not None:
         return {"messages": [AIMessage(content=cobra_boundary)]}
+    handoff_script = render_registered_handoff_script_guidance(
+        latest_user_task(state["messages"]),
+        decision,
+        context.project_policy,
+    )
+    if handoff_script is not None:
+        return {"messages": [AIMessage(content=handoff_script)]}
     plan = WorkflowPlan.model_validate(state["plan"])
     plan_evaluation = (
         PlanEvaluationResult.model_validate(state["plan_evaluation"])

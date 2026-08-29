@@ -35,6 +35,7 @@ class FollowUpContext(BaseModel):
     candidate_workflows: list[WorkflowConversationFact] = Field(default_factory=list)
     continuation_action: RecommendedAction | None = None
     expected_field: str | None = Field(default=None, max_length=80)
+    required_fields: list[str] = Field(default_factory=list, max_length=20)
     alternative_action: RecommendedAction | None = None
 
 

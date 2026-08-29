@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from ..contracts import IntentDecision, TaskDecision
 from ..contracts.outcomes import CapabilityMatch, SemanticInterpretation
-from workflow_registry import OUTPUT_CAPABILITIES
+from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
 from ..routing.outcome_matching import guidance_actions_for
 from ..routing.capability import validate_task_text
 from .outcome_consistency import select_primary_hypothesis
+from .registry_guidance import preferred_registry_composition_actions
 
 __all__ = ["assemble_task_decision"]
 
@@ -68,7 +69,7 @@ def assemble_task_decision(
     if intent.mode == "execute" and exact_action is None and not clarification:
         clarification = "What supported NetZoo result do you want the agent to produce?"
 
-    return TaskDecision(
+    decision = TaskDecision(
         action=exact_action if execute else "no_tool",
         in_scope=match.status != "unsupported",
         should_execute=execute,
@@ -86,3 +87,23 @@ def assemble_task_decision(
         mismatch_dimensions=match.mismatch_dimensions,
         clarification_question=clarification,
     )
+    composition_actions = preferred_registry_composition_actions(
+        task,
+        decision,
+        ACTION_DEFINITIONS,
+    )
+    if execute and len(composition_actions) > 1:
+        return decision.model_copy(
+            update={
+                "action": "no_tool",
+                "should_execute": False,
+                "intent_type": "answer_question",
+                "reason": (
+                    "The registered artifact handoff requires stage-by-stage "
+                    "preparation. NetZoo will plan, inspect, confirm, and execute "
+                    "the producer before it validates a ready downstream plan."
+                ),
+                "recommended_actions": composition_actions,
+            }
+        )
+    return decision.model_copy(update={"recommended_actions": composition_actions})

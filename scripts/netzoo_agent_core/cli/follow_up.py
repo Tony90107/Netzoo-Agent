@@ -43,6 +43,23 @@ def initial_next_turn_prompt() -> NextTurnPrompt:
     )
 
 
+def _registered_handoff_input_fields(actions: list[str]) -> list[str]:
+    """Return the ordered input union for a registry-declared handoff path."""
+    if len(actions) < 2:
+        return []
+    for producer, consumer in zip(actions, actions[1:]):
+        capability = OUTPUT_CAPABILITIES.get(producer)
+        if capability is None or consumer not in capability.handoff_targets:
+            return []
+    fields = []
+    for action in actions:
+        for field_name in REQUIRED_INPUTS.get(action, ()):
+            if field_name in OUTPUT_ROLE_FIELDS or field_name in fields:
+                continue
+            fields.append(field_name)
+    return fields
+
+
 def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     """Choose the next CLI question from the completed turn's structured outcome."""
     plan = WorkflowPlan.model_validate(state["plan"])
@@ -95,6 +112,39 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
                 if requested_granularity in capability.granularities
                 else None
             ),
+        )
+
+    composition_actions = list(dict.fromkeys(decision.recommended_actions))
+    composition_fields = _registered_handoff_input_fields(composition_actions)
+    if decision.action == "no_tool" and composition_fields:
+        workflows = " → ".join(_workflow_name(action) for action in composition_actions)
+        first_workflow = _workflow_name(composition_actions[0])
+        field_list = ", ".join(f"`{field_name}`" for field_name in composition_fields)
+        optional_outputs = []
+        for field_name in ("output_dir", "output_file"):
+            if any(
+                field_name in ACTION_DEFINITIONS[action].required_inputs
+                for action in composition_actions
+            ):
+                optional_outputs.append(f"`{field_name}`")
+        output_clause = (
+            " You may also provide " + " and ".join(optional_outputs) + "."
+            if optional_outputs
+            else ""
+        )
+        return NextTurnPrompt(
+            kind="recommended_workflow",
+            question=_ui_text(
+                f"To prepare the registered {workflows} pipeline, provide explicit "
+                f"role=path assignments for {field_list}.{output_clause}\n"
+                "NetZoo will inspect the complete input bundle and request confirmation. "
+                f"After the {first_workflow} plan is ready, "
+                "enter /execute to run that validated step. Once its declared handoff "
+                "artifact exists, NetZoo will validate the downstream step and require "
+                "a separate ready plan and /execute authorization."
+            ),
+            continuation_action=composition_actions[0],
+            required_fields=composition_fields,
         )
 
     if decision.action == "no_tool" and request_mode == "guidance":
@@ -259,6 +309,7 @@ def build_follow_up_context(
         ],
         continuation_action=prompt.continuation_action,
         expected_field=prompt.expected_field,
+        required_fields=prompt.required_fields,
         alternative_action=prompt.alternative_action,
     )
 
@@ -338,6 +389,13 @@ def resolve_next_turn_input(
         f"{_workflow_name(selected_action)} workflow. The user accepted "
         "the previous capability recommendation."
     )
-    if looks_like_path and prompt.expected_field:
+    if prompt.required_fields:
+        continuation += (
+            " Registered pipeline input roles: "
+            + ", ".join(prompt.required_fields)
+            + ". User-supplied role=path assignments follow:\n"
+            + stripped
+        )
+    elif looks_like_path and prompt.expected_field:
         continuation += f" {prompt.expected_field} is {stripped}."
     return continuation

@@ -149,6 +149,57 @@ def test_workflow_composition_recommends_its_final_registered_action():
     ]
 
 
+def test_cobra_panda_handoff_prompt_requires_the_complete_bundle_before_execute():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="COBRA-to-PANDA guidance",
+        recommended_actions=["run_cobra", "run_panda"],
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="COBRA-to-PANDA guidance",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt({"plan": plan.model_dump()})
+
+    assert prompt.continuation_action == "run_cobra"
+    assert prompt.expected_field is None
+    assert prompt.required_fields == [
+        "expression_file",
+        "design_file",
+        "motif_file",
+        "ppi_file",
+    ]
+    assert "COBRA → PANDA" in prompt.question
+    assert "`expression_file`" in prompt.question
+    assert "`design_file`" in prompt.question
+    assert "`motif_file`" in prompt.question
+    assert "`ppi_file`" in prompt.question
+    assert "inspect the complete input bundle" in prompt.question
+    assert "separate ready plan and /execute authorization" in prompt.question
+
+    continuation = resolve_next_turn_input(
+        prompt,
+        ContextualReplyResolution(
+            kind="accept_workflow",
+            reason="The user supplied the requested bundle.",
+            selected_action="run_cobra",
+        ),
+        "expression_file=data/expression.tsv design_file=data/design.tsv "
+        "motif_file=data/motif.tsv ppi_file=data/ppi.tsv",
+    )
+    assert continuation is not None
+    assert "PREVIOUS_ACTION=run_cobra" in continuation
+    assert "design_file=data/design.tsv" in continuation
+    assert "motif_file=data/motif.tsv" in continuation
+
+
 def test_guidance_classification_labels_condor_as_final_result_boundary():
     decision = TaskDecision(
         action="no_tool",
