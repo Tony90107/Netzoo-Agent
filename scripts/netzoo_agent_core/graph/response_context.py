@@ -6,7 +6,12 @@ import re
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation import INPUT_LABELS
-from ..interpretation.registry_guidance import build_registry_selection_constraints, decision_with_registry_signals, related_registry_actions
+from ..interpretation.registry_guidance import (
+    build_registry_selection_constraints,
+    decision_with_registry_signals,
+    handoff_input_fields,
+    related_registry_actions,
+)
 
 __all__: list[str] = []
 
@@ -74,6 +79,11 @@ def validated_workflow_context(
                 "from_output": spec.output_capability.artifact_type,
                 "to_action": target, "to_workflow": target_spec.workflow,
                 "to_inputs": target_spec.output_capability.input_artifacts,
+                "handoff_input_fields": handoff_input_fields(
+                    spec.output_capability.handoff_contract,
+                    target_spec,
+                ),
+                "producer_output_files": spec.output_files,
                 "selection_tags": sorted(spec.output_capability.selection_tags),
                 "handoff_contract": spec.output_capability.handoff_contract,
             })
@@ -99,6 +109,8 @@ def validated_workflow_context(
                     if item in OUTPUT_ROLE_FIELDS
                 ],
                 "optional_inputs": spec.optional_inputs,
+                "execution_step": spec.execution_step,
+                "output_files": spec.output_files,
                 "conventions": spec.conventions,
                 "role_labels": {
                     item: INPUT_LABELS.get(item, item)

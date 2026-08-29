@@ -109,6 +109,19 @@ def related_registry_actions(
     return related
 
 
+def handoff_input_fields(producer_contract: str, consumer_spec) -> list[str]:
+    """Find consumer parameters explicitly named by the producer contract."""
+    fields = [*consumer_spec.required_inputs, *consumer_spec.optional_inputs]
+    return [
+        field
+        for field in fields
+        if re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(field)}(?![A-Za-z0-9_])",
+            producer_contract,
+        )
+    ]
+
+
 def _final_actions(
     decision: TaskDecision,
     records: dict[str, dict],

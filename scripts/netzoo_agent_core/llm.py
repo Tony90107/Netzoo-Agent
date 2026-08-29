@@ -73,8 +73,10 @@ a clarification question. Return only the IntentDecision structure.
 
 - answer: explanations, requirements, tool/workflow selection questions, how-to
   questions, comparisons, pipeline planning, requests to list steps/algorithms,
-  and hypothetical requests. Planning a workflow is an answer request, not an
-  execution authorization.
+  requests to write or generate a script/template, and hypothetical requests.
+  Planning a workflow is an answer request, not an execution authorization. A
+  script request is also an answer request unless the user separately asks the
+  agent to execute that script now.
 - execute: an explicit instruction asking the agent to run, build, infer, convert,
   inspect, search, or otherwise perform the requested work now.
 - Missing input files do not change execute into answer; deterministic planning will
