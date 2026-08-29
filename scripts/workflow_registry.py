@@ -129,6 +129,8 @@ class ActionDefinition:
     local: bool = False
     run: bool = False
     memory_metadata: Mapping[str, str] = field(default_factory=dict)
+    cli_command: str | None = None
+    handoff_cli_commands: Mapping[str, str] = field(default_factory=dict)
     output_capability: OutputCapabilityDefinition | None = None
 
 
@@ -237,6 +239,8 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "panda"},
+        cli_command="run-panda",
+        handoff_cli_commands={"coexpression_file": "run-panda-precomputed"},
         output_capability=OutputCapabilityDefinition(
             operation="infer",
             artifact_type="regulatory_network",
@@ -441,6 +445,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         local=True,
         run=True,
         memory_metadata={"method_family": "cobra"},
+        cli_command="run-cobra",
         output_capability=OutputCapabilityDefinition(
             operation="analyze",
             artifact_type="coexpression_network",
@@ -453,6 +458,8 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                     "covariate_association",
                     "hospital_effect_assessment",
                     "sequencing_batch_effect_assessment",
+                    "batch_correction",
+                    "high_order_correlation",
                 }
             ),
             handoff_contract=(

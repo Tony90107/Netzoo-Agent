@@ -41,6 +41,7 @@ from netzoo_agent_core.llm import (  # noqa: E402
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_outcome_hypotheses,
+    match_semantic_request,
 )
 from netzoo_agent_core.routing.capability import (  # noqa: E402
     is_workflow_information_request,
@@ -199,6 +200,92 @@ def test_task_decision_is_assembled_from_registry_match_then_narrow_intent(
     assert decision.should_execute is expected_execute
     assert decision.matched_actions == ["run_lioness_puma"]
     assert decision.recommended_actions == ["run_puma", "run_lioness_puma"]
+
+
+def test_semantic_success_expands_a_registered_handoff_from_declared_selection_tags():
+    outcome = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+    interpretation = SemanticInterpretation(
+        request_mode="guidance",
+        semantic_goal="batch-adjusted aggregate TF-to-gene regulatory network",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=outcome,
+                confidence=0.95,
+                evidence=[],
+                assumptions=[],
+            )
+        ],
+    )
+    match = match_semantic_request(
+        "Write a script: first perform high-order correlation batch correction, "
+        "then infer a PANDA regulatory network.",
+        interpretation.outcome_hypotheses,
+        request_mode="guidance",
+    )
+
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        IntentDecision(mode="answer", confidence=0.95, reason="guidance"),
+        task=(
+            "Write a script: first perform high-order correlation batch correction, "
+            "then infer a PANDA regulatory network."
+        ),
+    )
+
+    assert decision.action == "no_tool"
+    assert decision.matched_actions == ["run_panda"]
+    assert decision.recommended_actions == ["run_cobra", "run_panda"]
+
+
+def test_execute_request_for_registered_handoff_requires_staged_preparation():
+    task = (
+        "Run high-order correlation batch correction, then infer a PANDA "
+        "regulatory network."
+    )
+    outcome = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+    interpretation = SemanticInterpretation(
+        request_mode="execute",
+        semantic_goal="batch-adjusted TF-to-gene network",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=outcome,
+                confidence=0.95,
+                evidence=[],
+                assumptions=[],
+            )
+        ],
+    )
+
+    decision = assemble_task_decision(
+        interpretation,
+        match_semantic_request(
+            task,
+            interpretation.outcome_hypotheses,
+            request_mode="execute",
+        ),
+        IntentDecision(mode="execute", confidence=0.95, reason="execute"),
+        task=task,
+    )
+
+    assert decision.recommended_actions == ["run_cobra", "run_panda"]
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
+    assert "stage-by-stage" in decision.reason
 
 
 def test_execution_intent_cannot_authorize_a_workflow_selection_question():

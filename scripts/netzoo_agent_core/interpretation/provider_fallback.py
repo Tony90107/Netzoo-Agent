@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from ..contracts import RequestedOutcome, TaskDecision
 from ..routing.outcome_matching import named_workflow_action
+from .registry_guidance import preferred_registry_composition_actions
 
 __all__: list[str] = []
 
@@ -56,18 +57,45 @@ def recover_registry_guidance(
         granularity=granularity,
         unresolved_dimensions=["granularity"] if granularity == "unknown" else [],
     )
+    provisional = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.35,
+        reason="registry guidance composition",
+        requested_outcome=outcome,
+        capability_match_status="exact",
+        matched_actions=[action],
+        recommended_actions=[action],
+    )
+    recommended_actions = preferred_registry_composition_actions(
+        task,
+        provisional,
+        workflows,
+    )
+    candidate_actions = [action, "no_tool"]
+    reason = (
+        "Semantic interpretation failed validation; recovered a registered "
+        f"guidance candidate from the explicitly named {spec.workflow} workflow."
+    )
+    if len(recommended_actions) > 1:
+        predecessor_spec = workflows[recommended_actions[-2]]
+        candidate_actions = [*recommended_actions, "no_tool"]
+        reason = (
+            "Semantic interpretation failed validation; recovered the registered "
+            f"{predecessor_spec.workflow} → {spec.workflow} handoff from the "
+            "explicit request and declared registry signals."
+        )
     return TaskDecision(
         action="no_tool",
         in_scope=True,
         should_execute=False,
         intent_type="answer_question",
         confidence=0.35,
-        reason=(
-            "Semantic interpretation failed validation; recovered a registered "
-            f"guidance candidate from the explicitly named {spec.workflow} workflow."
-        ),
-        candidate_actions=[action, "no_tool"],
-        recommended_actions=[action],
+        reason=reason,
+        candidate_actions=candidate_actions,
+        recommended_actions=recommended_actions,
         requested_outcome=outcome,
         capability_match_status="exact",
         matched_actions=[action],

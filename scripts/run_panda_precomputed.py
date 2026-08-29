@@ -65,6 +65,12 @@ def main() -> int:
         args.computing,
         args.alpha,
     )
+    if not np.isfinite(np.asarray(panda.panda_network, dtype=float)).all():
+        raise ValueError(
+            "PANDA produced non-finite regulatory-network weights; no output was "
+            "written. Check expression variability and motif/PPI overlap before "
+            "treating this as a valid COBRA-to-PANDA result."
+        )
     panda.panda_network = pd.DataFrame(
         panda.panda_network,
         index=panda.tfs,

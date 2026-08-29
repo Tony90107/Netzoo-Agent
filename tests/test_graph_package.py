@@ -52,8 +52,9 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
     )
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
     task = (
-        "Please write a script that performs batch correction and then uses the "
-        "corrected co-expression result with Motif and PPI matrices in PANDA."
+        "Please write a script that performs high-order correlation batch correction "
+        "and then uses the corrected co-expression result with Motif and PPI matrices "
+        "in PANDA."
     )
     context = SimpleNamespace(
         project_policy=policy,
@@ -72,7 +73,53 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
 
     assert result.decision.action == "no_tool"
     assert result.decision.matched_actions == ["run_panda"]
+    assert result.decision.recommended_actions == ["run_cobra", "run_panda"]
     assert result.decision.requested_outcome is not None
+
+
+def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.35,
+        reason="semantic fallback",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_cobra", "run_panda"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Provide COBRA to PANDA script guidance.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content=(
+                        "Write a script for high-order correlation batch correction "
+                        "then PANDA using expression, motif, and PPI matrices."
+                    )
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "**COBRA → PANDA**" in content
+    assert "run-cobra" in content
+    assert "run-panda-precomputed" in content
+    assert "-e \"$expression_file\"" in content
+    assert "-c \"$coexpression_file\"" in content
+    assert "not a corrected expression matrix" in content
 
 
 def test_graph_is_a_package_with_factory_child():

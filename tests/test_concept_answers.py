@@ -15,6 +15,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_capability_gap,
     render_cobra_expression_boundary,
+    render_registered_handoff_script_guidance,
     render_outcome_clarification,
     render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
@@ -75,6 +76,91 @@ def test_cobra_output_cannot_be_routed_as_panda_expression():
     assert answer is not None
     assert "cannot be used directly as PANDA expression input" in answer
     assert "covariance decomposition" in answer
+
+
+def test_registered_handoff_script_uses_artifact_not_expression_substitution():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=1.0,
+        reason="registry-selected handoff",
+        recommended_actions=["run_cobra", "run_panda"],
+    )
+    answer = render_registered_handoff_script_guidance(
+        "Please write a script for high-order correlation batch correction then "
+        "PANDA using expression, motif, and PPI matrices.",
+        decision,
+        policy,
+    )
+
+    assert answer is not None
+    assert "run-cobra" in answer
+    assert "run-panda-precomputed" in answer
+    assert "adjusted_coexpression.tsv" in answer
+    assert "original expression matrix as `expression_file`" in answer
+    assert "design row IDs must exactly match expression sample IDs" in answer
+    assert "One-hot encode categorical batches" in answer
+    assert "existence guards only" in answer
+    assert "square/symmetric numeric matrix" in answer
+
+
+def test_handoff_script_uses_registry_signals_when_semantic_routing_selected_only_final_action():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="semantic routing selected the final result",
+        capability_match_status="exact",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="aggregate",
+        ),
+    )
+
+    answer = render_registered_handoff_script_guidance(
+        "Write a script: first perform high-order correlation batch correction, "
+        "then PANDA.",
+        decision,
+        policy,
+    )
+
+    assert answer is not None
+    assert "**COBRA → PANDA**" in answer
+    assert "run-cobra" in answer
+    assert "run-panda-precomputed" in answer
+    assert "from cobra import" not in answer
+    assert "from panda import" not in answer
+
+
+def test_handoff_script_does_not_invent_an_undeclared_cli_variant():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=1.0,
+        reason="registered but unrenderable handoff",
+        recommended_actions=["run_cobra", "run_otter"],
+    )
+
+    answer = render_registered_handoff_script_guidance(
+        "Please write a script.", decision, policy
+    )
+
+    assert answer is not None
+    assert "no typed executable adapter is registered" in answer
+    assert "run-cobra" not in answer
 
 
 def test_composition_guidance_uses_registered_workflow_metadata():

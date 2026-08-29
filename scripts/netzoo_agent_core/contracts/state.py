@@ -67,6 +67,7 @@ class NextTurnPrompt(BaseModel):
     question: str
     continuation_action: str | None = None
     expected_field: str | None = None
+    required_fields: list[str] = Field(default_factory=list, max_length=20)
     alternative_action: RecommendedAction | None = None
     alternative_granularity: Granularity | None = None
 
