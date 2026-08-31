@@ -32,6 +32,7 @@ class AgentState(TypedDict):
     requested_outcome: NotRequired[dict]
     outcome_hypotheses: NotRequired[list[dict]]
     capability_match: NotRequired[dict]
+    workflow_continuation: NotRequired[dict | None]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

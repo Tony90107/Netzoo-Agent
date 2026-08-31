@@ -8,6 +8,7 @@ from workflow_registry import (
     ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     REQUIRED_INPUTS,
+    RUN_ACTIONS,
     workflow_name as _workflow_name,
 )
 
@@ -23,8 +24,10 @@ from ..contracts import (
     WorkflowPlan,
     _ui_text,
 )
+from ..contracts.interaction import WorkflowContinuation
 from ..interpretation import INPUT_LABELS
 from ..outcomes import effective_results, terminal_failed
+from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
 __all__ = [
     "initial_next_turn_prompt",
@@ -398,4 +401,30 @@ def resolve_next_turn_input(
         )
     elif looks_like_path and prompt.expected_field:
         continuation += f" {prompt.expected_field} is {stripped}."
+    else:
+        continuation += f"\nUser reply: {stripped}"
     return continuation
+
+
+def build_workflow_continuation(
+    prompt: NextTurnPrompt,
+    context: FollowUpContext,
+    resolution: ContextualReplyResolution,
+    task: str,
+) -> WorkflowContinuation | None:
+    """Carry an accepted, trusted selection separately from model input text."""
+    if (
+        resolution.kind != "accept_workflow"
+        or prompt.kind == "clarify_outcome"
+        or prompt.alternative_action
+    ):
+        return None
+    action = resolution.selected_action or prompt.continuation_action
+    trusted = {*context.candidate_actions, context.continuation_action}
+    if action not in trusted or action not in RUN_ACTIONS:
+        return None
+    # A registered artifact handoff starts with its producer. Choosing a
+    # downstream candidate must not bypass the separately validated stages.
+    if prompt.required_fields and prompt.continuation_action:
+        action = prompt.continuation_action
+    return WorkflowContinuation(action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:])
