@@ -113,6 +113,29 @@ def test_guidance_promotes_one_advisory_candidate_to_an_exact_registry_match():
     assert result.hypothesis_actions == []
 
 
+def test_guidance_uses_explicit_registry_tags_when_semantic_roles_are_omitted():
+    incomplete = OutcomeHypothesis(
+        outcome=outcome(
+            operation="unknown",
+            entity_types=[],
+            display_entities=[],
+            regulator_types=[],
+        ),
+        confidence=0.9,
+        evidence=[],
+        assumptions=["The semantic model omitted the explicit regulator role."],
+    )
+
+    result = match_semantic_request(
+        "If I want a sample-specific mi-RNA regulator network, what tools do I need?",
+        [incomplete],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_lioness_puma"]
+
+
 def test_execution_matching_does_not_promote_one_advisory_candidate():
     result = match_semantic_request(
         "Build a sample-specific miRNA regulatory network.",
