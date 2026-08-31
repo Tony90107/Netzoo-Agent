@@ -29,6 +29,7 @@ from ..evaluation import (
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
+    render_outcome_clarification,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
 )
@@ -90,6 +91,12 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
+    outcome_clarification = render_outcome_clarification(
+        decision,
+        context.project_policy,
+    )
+    if outcome_clarification is not None:
+        return {"messages": [AIMessage(content=outcome_clarification)]}
     composition_guidance = render_workflow_composition_guidance(
         decision,
         context.project_policy,

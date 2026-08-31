@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core import session  # noqa: E402
 import netzoo_agent_core.graph.factory as graph_module  # noqa: E402
+import netzoo_agent_core.graph.router_invocation as router_invocation  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
     Episode,
     HumanMessage,
@@ -324,6 +325,74 @@ class EvidenceGuidedSemanticRetryRouter:
         raise AssertionError("semantic retry pipeline made too many calls")
 
 
+class AmbiguousRoleSemanticReviewRouter:
+    """First pass is valid but omits the explicit miRNA regulator role."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def with_structured_output(self, schema, **_kwargs):
+        return SimpleNamespace(
+            invoke=lambda messages: self.invoke(schema, messages)
+        )
+
+    def invoke(self, schema, messages):
+        self.calls += 1
+        if self.calls == 1:
+            return SemanticInterpretation(
+                request_mode="guidance",
+                semantic_goal="tools for a sample-specific regulator network",
+                outcome_hypotheses=[
+                    OutcomeHypothesis(
+                        outcome=RequestedOutcome(
+                            operation="unknown",
+                            artifact_type="regulatory_network",
+                            entity_types=[],
+                            regulator_types=[],
+                            target_types=["gene"],
+                            granularity="sample_specific",
+                            unresolved_dimensions=[],
+                        ),
+                        confidence=0.9,
+                        evidence=[
+                            OutcomeEvidence(
+                                dimension="artifact_type",
+                                value="regulatory_network",
+                                source="explicit",
+                                text_span="regulator network",
+                                rationale="The requested artifact is explicit.",
+                            ),
+                            OutcomeEvidence(
+                                dimension="granularity",
+                                value="sample_specific",
+                                source="explicit",
+                                text_span="sample specific",
+                                rationale="The requested granularity is explicit.",
+                            ),
+                            OutcomeEvidence(
+                                dimension="target_type",
+                                value="gene",
+                                source="inferred",
+                                rationale="The target role was not specified.",
+                            ),
+                        ],
+                    )
+                ],
+            )
+        if self.calls == 2:
+            rendered = "\n".join(str(message.content) for message in messages)
+            assert "registry_ambiguity" in rendered
+            corrected = StrictRoutingPipelineLLM()
+            return semantic_review(corrected._interpret(messages, record_call=False))
+        if self.calls == 3:
+            return IntentDecision(
+                mode="answer",
+                confidence=0.99,
+                reason="The user asks which tools are needed.",
+            )
+        raise AssertionError("semantic role review made too many calls")
+
+
 class GuidanceResponseLLM:
     def __init__(self):
         self.calls = 0
@@ -336,6 +405,39 @@ class GuidanceResponseLLM:
                 "regulatory networks. No files were inspected and no analysis ran."
             )
         )
+
+
+def test_semantic_review_receives_registry_ambiguity_without_textual_matching(
+    tmp_path: Path,
+):
+    router = AmbiguousRoleSemanticReviewRouter()
+    context = SimpleNamespace(
+        semantic_interpreter=SimpleNamespace(
+            invoke=lambda messages: router.invoke(SemanticInterpretation, messages)
+        ),
+        semantic_reviewer=SimpleNamespace(
+            invoke=lambda messages: router.invoke(SemanticReview, messages)
+        ),
+        semantic_prompt="Interpret scientific outcomes.",
+        semantic_model_name="fake",
+        router_max_tokens=800,
+        task_token_budget=20_000,
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+    task = "if i want to get sample specific mi-RNA regulator network,what tools do i need?"
+
+    interpretation, _, _, error = router_invocation._invoke_semantic_interpreter(
+        context,
+        {"budget_warnings": []},
+        task,
+        LLMUsage(budget_tokens=20_000),
+    )
+
+    assert error is None
+    assert router.calls == 2
+    assert interpretation is not None
+    assert interpretation.outcome_hypotheses[0].outcome.regulator_types == ["mirna"]
 
 
 class StrictRoutingPipelineLLM:
@@ -878,6 +980,59 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
     event_types = [event.event_type for event in store.read_events(run_id)]
     assert "routing.semantic_interpretation_rejected" in event_types
     assert "routing.semantic_interpretation_retried" in event_types
+
+
+@pytest.mark.skipif(
+    graph_module.StateGraph is None,
+    reason="LangGraph integration runs in the project container",
+)
+def test_graph_reviews_registry_ambiguous_biological_roles(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    router = AmbiguousRoleSemanticReviewRouter()
+    models = iter([router, GuidanceResponseLLM()])
+    monkeypatch.setattr(
+        graph_module,
+        "build_llm",
+        lambda *_args, **_kwargs: next(models),
+    )
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="ambiguous-role-test", profile_id="default")
+    app = build_graph(
+        "fake",
+        0.0,
+        router_model_name="fake",
+        profile_store=UserProfileStore(tmp_path / "profiles"),
+        episode_store=EpisodeStore(tmp_path / "episodes"),
+        trace_recorder=recorder,
+    )
+
+    result = app.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "if i want to get sample specific mi-RNA regulator network,"
+                        "what tools do i need?"
+                    )
+                )
+            ],
+            "run_id": str(run_id),
+        }
+    )
+
+    assert router.calls == 3
+    assert result["decision"]["capability_match_status"] == "exact"
+    assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+    proposed = next(
+        event for event in store.read_events(run_id)
+        if event.event_type == "routing.semantic_interpretation_proposed"
+    )
+    assert proposed.payload["registry_match_status"] == "ambiguous"
 
 
 @pytest.mark.skipif(

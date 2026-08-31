@@ -352,6 +352,17 @@ def _invoke_semantic_interpreter(
             price_catalog=context.price_catalog,
         )
         if attempt == 0:
+            preliminary_match = match_semantic_request(
+                user_task,
+                interpretation.outcome_hypotheses,
+                request_mode=interpretation.request_mode,
+            )
+            if preliminary_match.status == "ambiguous":
+                validation_issues = (
+                    "registry_ambiguity:the structured outcome does not uniquely "
+                    "identify a capability; re-check the original request for explicit "
+                    "biological entity, regulator, target, and granularity roles",
+                )
             record_event(
                 context,
                 state,
@@ -363,6 +374,7 @@ def _invoke_semantic_interpreter(
                         sorted({item.dimension for item in hypothesis.evidence})
                         for hypothesis in interpretation.outcome_hypotheses
                     ],
+                    "registry_match_status": preliminary_match.status,
                 },
             )
             continue
