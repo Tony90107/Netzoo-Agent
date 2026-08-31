@@ -30,6 +30,7 @@ from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
     render_registered_handoff_script_guidance,
+    render_workflow_composition_guidance,
 )
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
@@ -89,6 +90,13 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
+    composition_guidance = render_workflow_composition_guidance(
+        decision,
+        context.project_policy,
+        state.get("semantic_goal"),
+    )
+    if composition_guidance is not None:
+        return {"messages": [AIMessage(content=composition_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
