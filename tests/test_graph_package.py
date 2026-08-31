@@ -314,7 +314,7 @@ def test_cobra_to_panda_boundary_response_reads_latest_message():
     assert "cannot be used directly as PANDA expression input" in result["messages"][0].content
 
 
-def test_ambiguous_guidance_reaches_response_model():
+def test_ambiguous_guidance_uses_deterministic_clarification():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     decision = legacy_agent.TaskDecision(
         action="no_tool",
@@ -369,24 +369,11 @@ def test_ambiguous_guidance_reaches_response_model():
         },
     )
 
-    assert captured
-    assert "PUMA followed by LIONESS-PUMA" in result["messages"][0].content
+    assert not captured
+    assert "Should the result be aggregate or sample-specific?" in result["messages"][0].content
     assert result["messages"][0].content.endswith(
         "No files were inspected and no analysis ran."
     )
-    response_input = "\n".join(str(message.content) for message in captured)
-    assert request in response_input
-    assert '"action": "run_puma"' in response_input
-    assert '"action": "run_lioness_puma"' in response_input
-    assert '"action": "run_bonobo"' not in response_input
-    assert '"ordered_actions"' in response_input
-    composition = response_input.split(
-        "Authoritative ordered workflow compositions:", maxsplit=1
-    )[1].split("Authoritative validated workflow specifications:", maxsplit=1)[0]
-    assert composition.index('"run_puma"') < composition.index('"run_lioness_puma"')
-    assert '"required_inputs": [' in response_input
-    assert '"output_roles": [' in response_input
-    assert '"conventions": [' in response_input
 
 
 def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():

@@ -113,7 +113,7 @@ def test_guidance_promotes_one_advisory_candidate_to_an_exact_registry_match():
     assert result.hypothesis_actions == []
 
 
-def test_guidance_uses_explicit_registry_tags_when_semantic_roles_are_omitted():
+def test_guidance_stays_ambiguous_when_semantic_roles_are_omitted():
     incomplete = OutcomeHypothesis(
         outcome=outcome(
             operation="unknown",
@@ -132,8 +132,9 @@ def test_guidance_uses_explicit_registry_tags_when_semantic_roles_are_omitted():
         request_mode="guidance",
     )
 
-    assert result.status == "exact"
-    assert result.matched_actions == ["run_lioness_puma"]
+    assert result.status == "ambiguous"
+    assert result.matched_actions == []
+    assert result.hypothesis_actions == ["run_lioness_panda", "run_lioness_puma"]
 
 
 def test_execution_matching_does_not_promote_one_advisory_candidate():

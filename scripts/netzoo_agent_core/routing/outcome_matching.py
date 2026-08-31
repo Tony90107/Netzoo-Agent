@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 import re
 
 from workflow_registry import (
@@ -22,50 +22,6 @@ from ..contracts import (
 
 
 _UNKNOWN = "unknown"
-_TAG_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-
-
-def _normalized_registry_tokens(value: str) -> set[str]:
-    value = re.sub(r"(?i)(?:mi|micro)[-_ ]rna", "mirna", value)
-    normalized = set()
-    for token in _TAG_TOKEN_PATTERN.findall(value.casefold()):
-        if token.endswith("s") and len(token) > 3:
-            token = token[:-1]
-        if token.startswith("regulat"):
-            token = "regulat"
-        normalized.add(token)
-    return normalized
-
-
-def _explicit_registry_tags(
-    task: str,
-    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
-) -> set[str]:
-    """Return registry intent tags with direct lexical support in the task."""
-    task_tokens = _normalized_registry_tokens(task)
-    supported = set()
-    for capability in capabilities.values():
-        for tag in capability.selection_tags:
-            tag_tokens = _normalized_registry_tokens(tag.replace("_", " "))
-            if tag_tokens and tag_tokens.issubset(task_tokens):
-                supported.add(tag)
-    return supported
-
-
-def _capabilities_for_explicit_tags(
-    task: str,
-    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
-) -> Mapping[RecommendedAction, OutputCapabilityDefinition]:
-    """Constrain matching only when explicit registry tags have a valid overlap."""
-    tags = _explicit_registry_tags(task, capabilities)
-    tagged = {
-        action: capability
-        for action, capability in capabilities.items()
-        if tags.issubset(capability.selection_tags)
-    }
-    return tagged or capabilities
-
-
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
     return (
         outcome.operation == _UNKNOWN
@@ -547,10 +503,7 @@ def match_semantic_request(
             )
             for hypothesis in hypotheses
         ]
-    match = match_outcome_hypotheses(
-        matching_hypotheses,
-        _capabilities_for_explicit_tags(task, OUTPUT_CAPABILITIES),
-    )
+    match = match_outcome_hypotheses(matching_hypotheses, OUTPUT_CAPABILITIES)
     if (
         request_mode == "guidance"
         and match.status == "ambiguous"
