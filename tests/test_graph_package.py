@@ -122,6 +122,49 @@ def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
     assert "not a corrected expression matrix" in content
 
 
+def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="The registry selected the sample-specific miRNA workflow.",
+        matched_actions=["run_lioness_puma"],
+        recommended_actions=["run_puma", "run_lioness_puma"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain the sample-specific miRNA workflow.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content=(
+                        "Which tools create a sample-specific miRNA regulatory "
+                        "network?"
+                    )
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "**PUMA**" in content
+    assert "**LIONESS-PUMA**" in content
+    assert "LIONESS-PANDA" not in content
+
+
 def test_graph_is_a_package_with_factory_child():
     assert hasattr(graph, "__path__")
     factory = importlib.import_module("netzoo_agent_core.graph.factory")
