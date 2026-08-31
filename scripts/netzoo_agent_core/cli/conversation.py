@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sys
 
+from workflow_registry import RUN_ACTIONS
+
 from .. import settings
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import (
@@ -13,10 +15,11 @@ from ..contracts.state import (
     NextTurnPrompt,
 )
 from ..contracts import FollowUpContext
+from ..contracts.interaction import WorkflowContinuation
 from ..framework_compat import HumanMessage
 from ..presentation import _clear_transient_trace, _trace, _ui_text
 from ..planning_audit import write_planning_audit
-from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
+from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, ROUTER_CONTEXT_MAX_CHARS
 from ..session import (
     _is_auto_session_id,
     compact_conversation,
@@ -39,6 +42,7 @@ from .clarification import (
 from .follow_up import (
     build_follow_up_context,
     build_next_turn_prompt,
+    build_workflow_continuation,
     follow_up_returns_to_main,
     initial_next_turn_prompt,
     render_next_turn_prompt,
@@ -140,6 +144,7 @@ def run_conversation(args, runtime: CliRuntime) -> int:
 
     while True:
         execute_once = False
+        workflow_continuation = None
         if execution_confirmation_task is not None:
             try:
                 raw_answer = reader.read(
@@ -166,6 +171,12 @@ def run_conversation(args, runtime: CliRuntime) -> int:
             task = execution_confirmation_task
             execution_confirmation_task = None
             execute_once = True
+            if preview_plan is not None:
+                action = preview_plan.decision["action"]
+                if action in RUN_ACTIONS:
+                    workflow_continuation = WorkflowContinuation(
+                        action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:]
+                    )
         elif queued_task is not None:
             task = queued_task.strip()
             queued_task = None
@@ -511,12 +522,21 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     run_id = None
                     active_usage = None
                     continue
+                workflow_continuation = build_workflow_continuation(
+                    next_prompt, follow_up_context, resolution, task
+                )
             else:
                 task = answer
         if task.casefold() in {"exit", "quit", "q", "離開", "結束"}:
             break
         if not task:
             continue
+        if pending_plan is not None:
+            action = pending_plan.decision["action"]
+            if action in RUN_ACTIONS:
+                workflow_continuation = WorkflowContinuation(
+                    action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:]
+                )
         if run_id is None:
             run_id = str(
                 recorder.start_run(session_id=session_id, profile_id=profile_id)
@@ -541,6 +561,9 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 "messages": [*conversation, HumanMessage(content=task)],
                 "session_id": session_id,
                 "run_id": run_id,
+                "workflow_continuation": (
+                    workflow_continuation.model_dump() if workflow_continuation else None
+                ),
             }
             if active_usage is not None:
                 invocation["token_usage"] = active_usage

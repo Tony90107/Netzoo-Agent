@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
-from workflow_registry import Granularity, RecommendedAction
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from workflow_registry import Granularity, RUN_ACTIONS, RecommendedAction
+
+from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
 ReplyIntent = Literal[
     "follow_up",
@@ -59,10 +61,31 @@ class ContextualReplyResolution(BaseModel):
     selected_granularity: Granularity | None = None
 
 
+class WorkflowContinuation(BaseModel):
+    """CLI-selected workflow for one planning turn, never execution permission.
+
+    Passed outside message text and bound to the current task so neither quoted
+    markers nor a previous turn can supply a continuation for a new request.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: RecommendedAction
+    task: str = Field(min_length=1, max_length=ROUTER_CONTEXT_MAX_CHARS)
+
+    @field_validator("action")
+    @classmethod
+    def local_workflow_only(cls, action: str) -> str:
+        if action not in RUN_ACTIONS:
+            raise ValueError("Only registered local workflows can be continued.")
+        return action
+
+
 __all__ = [
     "ContextualReplyResolution",
     "FollowUpContext",
     "ReplyIntent",
     "ReplyIntentDecision",
     "WorkflowConversationFact",
+    "WorkflowContinuation",
 ]
