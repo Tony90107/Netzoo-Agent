@@ -191,6 +191,14 @@ def _validate_sambar_matrix(path: Path, label: str, errors: list[str]) -> tuple[
     return int(frame.shape[0]), int(frame.shape[1])
 
 
+def _sambar_matrix_frame(path: Path) -> pd.DataFrame | None:
+    """Read a validated SAMBAR matrix for cross-artifact sample checks."""
+    try:
+        return pd.read_csv(path, index_col=0)
+    except (OSError, ValueError, pd.errors.ParserError):
+        return None
+
+
 def _validate_sambar_distance(path: Path, errors: list[str]) -> int:
     if not _readable_nonempty_file(path, "SAMBAR distance matrix", errors):
         return 0
@@ -247,15 +255,41 @@ def validate_output_artifacts(
             mt_samples, mt_genes = _validate_sambar_matrix(mutation_scores, "SAMBAR mutation-score matrix", errors)
             pt_pathways, pt_samples = _validate_sambar_matrix(pathway_scores, "SAMBAR pathway-score matrix", errors)
             metrics.update({"sambar_mutation_score_genes": mt_genes, "sambar_mutation_score_samples": mt_samples, "sambar_pathways": pt_pathways, "sambar_pathway_score_samples": pt_samples})
-            if mt_samples and pt_samples and mt_samples != pt_samples:
-                errors.append("SAMBAR mutation-score rows and pathway-score columns must represent the same sample count")
+            mt_frame = _sambar_matrix_frame(mutation_scores)
+            pt_frame = _sambar_matrix_frame(pathway_scores)
+            if mt_frame is not None and pt_frame is not None:
+                mt_ids = {str(value) for value in mt_frame.index}
+                pt_ids = {str(value) for value in pt_frame.columns}
+                unknown_pathway_samples = sorted(pt_ids - mt_ids)
+                if unknown_pathway_samples:
+                    errors.append(
+                        "SAMBAR pathway-score columns contain samples absent from the mutation-score rows: "
+                        + ", ".join(unknown_pathway_samples)
+                    )
+                omitted_samples = sorted(mt_ids - pt_ids)
+                if omitted_samples:
+                    omitted_values = mt_frame.loc[omitted_samples].apply(
+                        pd.to_numeric, errors="coerce"
+                    )
+                    if omitted_values.isna().any().any() or (omitted_values != 0).any().any():
+                        errors.append(
+                            "SAMBAR pathway-score output may omit mutation samples only when their mutation scores are all zero"
+                        )
             if decision.cluster:
                 clusters = root / "clustergroups.csv"
                 distances = root / "dist_matrix.csv"
                 cluster_rows, cluster_columns = _validate_sambar_matrix(clusters, "SAMBAR cluster assignments", errors)
                 distance_rows = _validate_sambar_distance(distances, errors)
                 metrics.update({"sambar_clusterings": cluster_rows, "sambar_cluster_samples": cluster_columns, "sambar_distance_rows": distance_rows})
-                if mt_samples and distance_rows and mt_samples != distance_rows:
+                cluster_frame = _sambar_matrix_frame(clusters)
+                if cluster_frame is not None and pt_frame is not None:
+                    cluster_ids = {str(value) for value in cluster_frame.columns}
+                    pathway_ids = {str(value) for value in pt_frame.columns}
+                    if cluster_ids != pathway_ids:
+                        errors.append(
+                            "SAMBAR cluster assignments must use the same sample columns as pathway scores"
+                        )
+                if pt_samples and distance_rows and pt_samples != distance_rows:
                     errors.append("SAMBAR distance matrix must match the pathway-score sample count")
     elif action == "run_cobra":
         if not decision.output_dir:

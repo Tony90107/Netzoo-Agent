@@ -66,7 +66,13 @@ def _read_gmt(path: str) -> tuple[set[str], int, list[str]]:
 
 
 def _parameter_errors(decision: Any) -> list[str]:
-    value = lambda name, default: (decision.get(name, default) if isinstance(decision, dict) else getattr(decision, name, default))
+    def value(name: str, default: Any) -> Any:
+        return (
+            decision.get(name, default)
+            if isinstance(decision, dict)
+            else getattr(decision, name, default)
+        )
+
     kmin, kmax = value("kmin", 2), value("kmax", 4)
     errors: list[str] = []
     if not isinstance(kmin, int) or isinstance(kmin, bool) or kmin < 2:

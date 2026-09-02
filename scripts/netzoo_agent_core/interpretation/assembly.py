@@ -92,7 +92,15 @@ def assemble_task_decision(
         decision,
         ACTION_DEFINITIONS,
     )
-    if execute and len(composition_actions) > 1:
+    has_direct_artifact_handoff = any(
+        consumer in ACTION_DEFINITIONS[producer].output_capability.handoff_targets
+        for producer, consumer in zip(
+            composition_actions,
+            composition_actions[1:],
+        )
+        if ACTION_DEFINITIONS[producer].output_capability is not None
+    )
+    if execute and has_direct_artifact_handoff:
         return decision.model_copy(
             update={
                 "action": "no_tool",

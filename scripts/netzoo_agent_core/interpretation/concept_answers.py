@@ -345,8 +345,8 @@ def render_registered_handoff_script_guidance(
         "batch labels before writing the design file. The producer runner adds an "
         "all-ones intercept when absent, or rejects an invalid intercept when it is "
         "present. The two `test -s` commands "
-        "only prove those files are non-empty; full format, identifier, symmetry, "
-        "and downstream gene-axis checks remain the responsibility of the registered "
+        "only prove those files are non-empty; confirming a square/symmetric numeric matrix, "
+        "identifier compatibility, and downstream gene-axis checks remains the responsibility of the registered "
         "workflow runners and the agent's input-inspection/confirmation lifecycle.\n\n"
         "No files were inspected and no analysis ran."
     )

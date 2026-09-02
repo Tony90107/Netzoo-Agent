@@ -243,6 +243,12 @@ def _render_clarification_prompt(
     all_missing_items = [item for item in plan.evidence if item.status == "missing"]
     missing_items = [item for item in all_missing_items if item.field not in selected]
     if not missing_items:
+        # A preflight failure can make the plan non-ready without creating a
+        # missing evidence item: all paths are present, but one or more files
+        # are malformed or identifier-incompatible. Preserve that actionable
+        # diagnostic instead of reporting that no input is required.
+        if plan.status == "needs_input" and plan.question:
+            return plan.question
         return _ui_text("No additional input is required.")
 
     current = missing_items[0]
