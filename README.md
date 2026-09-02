@@ -136,7 +136,8 @@ python scripts/netzoo_agent.py --memory-cleanup
 python scripts/netzoo_agent.py --profile alice --forget-memory
 ```
 
-真的執行必須進入互動模式，明確切換後再輸入任務：
+真的執行必須進入互動模式；先建立並核准 Work Plan，再用 `/execute`
+授權該計畫單次執行：
 
 ```bash
 ./netzoo-chat
@@ -151,11 +152,12 @@ What would you like to accomplish with NetZoo?
 Planning is the default preview-only state and has no prompt label. Press `/` at
 an empty prompt to show the muted `execute` completion; the input itself still
 contains only `/`. Press Enter to submit `/execute`, or continue typing to enter
-`/planning`, `/status`, or `/help`. `/execute` remains active until `/planning`
-or the session ends. A slash typed after other text remains literal. Path prompts
-intentionally do not open the completion, so absolute paths and slash commands
-can be typed normally. To interrupt analysis already running, use Ctrl-C;
-`/planning` applies only after the prompt becomes available again.
+`/planning`, `/status`, or `/help`. `/execute` first checks the current Work Plan,
+asks for confirmation, grants execution authority to that graph turn only, and then
+automatically returns to Planning mode. A slash typed after other text remains
+literal. Path prompts intentionally do not open the completion, so absolute paths
+and slash commands can be typed normally. To interrupt analysis already running,
+use Ctrl-C.
 
 `--task` 是非互動 preview-only 介面，不接受 `--execute`。
 
@@ -271,6 +273,14 @@ docker compose run --rm netzoo run-sambar \
 scores），以及 cluster=true 時的 `clustergroups.csv`、`dist_matrix.csv` 和可追溯
 `manifest.json`。SAMBAR results 不能直接餵給 PANDA、PUMA、LIONESS、CONDOR 或 COBRA；必須
 另行準備並驗證目標 workflow 的宣告 input artifact。
+
+重建 image 後可執行真實容器 release regression；它會先確認 image 內的 SAMBAR runner、
+input validator 與 artifact validator 和目前 checkout 完全一致，再跑 toy bundle 並驗證五個
+宣告產物：
+
+```bash
+NETZOO_RUN_DOCKER_TESTS=1 pytest -q tests/test_sambar_container.py
+```
 
 CONDOR 的輸入是 bipartite edge list，至少包含 source、target，第三欄
 weight 可選。Toy data 使用 TF-like regulator 到 gene 的二分網路。

@@ -15,6 +15,9 @@ import netzoo_agent as agent  # noqa: E402
 from workflow_registry import ACTION_DEFINITIONS, executor_arguments  # noqa: E402
 from netzoo_agent_core.cli.clarification import input_confirmation_continuation  # noqa: E402
 from netzoo_agent_core.data.sambar import inspect_sambar_inputs_impl  # noqa: E402
+from netzoo_agent_core.interpretation.registry_guidance import (  # noqa: E402
+    preferred_registry_composition_actions,
+)
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 
@@ -44,6 +47,35 @@ def test_policy_registry_and_no_direct_handoffs_are_exact():
     assert spec.validation_steps == ["inspect_sambar_inputs"]
     assert spec.output_capability.handoff_targets == []
     assert "not direct inputs to PANDA" in spec.output_capability.handoff_contract
+
+
+def test_sambar_does_not_invent_untyped_inbound_or_outbound_handoffs():
+    policy = ProjectPolicyLoader(ROOT).load()
+    sambar = policy.workflows["run_sambar"]
+
+    assert sambar.output_capability.handoff_targets == []
+    assert [
+        action
+        for action, spec in policy.workflows.items()
+        if "run_sambar" in spec.output_capability.handoff_targets
+    ] == []
+
+    selected = preferred_registry_composition_actions(
+        "Run SAMBAR pathway mutation scoring and clustering.",
+        agent.TaskDecision(
+            action="no_tool",
+            in_scope=True,
+            should_execute=False,
+            confidence=1.0,
+            reason="SAMBAR is the final requested workflow.",
+            capability_match_status="exact",
+            matched_actions=["run_sambar"],
+            recommended_actions=["run_sambar"],
+        ),
+        policy.workflows,
+    )
+
+    assert selected == ["run_sambar"]
 
 
 def test_sambar_plans_with_explicit_role_paths_and_has_a_dry_run_preview():
@@ -130,6 +162,30 @@ def test_sambar_artifact_contract_rejects_invalid_shape_and_accepts_valid_bundle
     invalid = agent.validate_output_artifacts("run_sambar", decision(output_dir=str(out), kmax=2))
     assert not invalid.ok
     assert "square" in " ".join(invalid.errors)
+
+
+def test_sambar_accepts_upstream_pathway_scores_for_nonzero_samples_only(tmp_path):
+    """Official SAMBAR omits all-zero samples from the pathway score matrix."""
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "manifest.json").write_text(
+        json.dumps({"method": "SAMBAR", "parameters": {"cluster": False}}),
+        encoding="utf-8",
+    )
+    (out / "mt_out.csv").write_text(
+        "sample,G1\nS1,1\nS2,0\nS3,0\n", encoding="utf-8"
+    )
+    (out / "pt_out.csv").write_text(
+        ",S1\nPATHWAY_A,0.5\n", encoding="utf-8"
+    )
+
+    valid = agent.validate_output_artifacts(
+        "run_sambar", decision(output_dir=str(out), cluster=False)
+    )
+
+    assert valid.ok, valid.errors
+    assert valid.metrics["sambar_mutation_score_samples"] == 3
+    assert valid.metrics["sambar_pathway_score_samples"] == 1
 
 
 def test_sambar_optional_defaults_never_leak_none_into_strict_schema():

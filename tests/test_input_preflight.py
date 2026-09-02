@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core import TaskDecision, build_workflow_plan  # noqa: E402
 from netzoo_agent_core.cli.slash_commands import handle_slash_command  # noqa: E402
+from netzoo_agent_core.cli.clarification import clarification_prompt  # noqa: E402
 from netzoo_agent_core.contracts import PlanEvaluationResult  # noqa: E402
 
 
@@ -47,6 +48,24 @@ def test_correct_filenames_are_still_rejected_when_content_is_invalid(tmp_path):
     assert plan.status == "needs_input"
     assert "preflight failed" in (plan.question or "")
     assert "motif" in (plan.question or "").casefold()
+
+
+def test_preflight_errors_are_shown_by_interactive_clarification_prompt(tmp_path):
+    expression, motif, ppi = _valid_panda_files(tmp_path)
+    motif.write_text("not an edge list\n", encoding="utf-8")
+
+    plan = build_workflow_plan(
+        _panda_decision(),
+        f"Run PANDA using {expression}, {motif}, and {ppi}.",
+    )
+
+    prompt = clarification_prompt(plan)
+
+    assert plan.status == "needs_input"
+    assert plan.missing_inputs == []
+    assert "Input preflight failed" in prompt
+    assert "motif" in prompt.casefold()
+    assert "No additional input is required." not in prompt
 
 
 def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_path):
