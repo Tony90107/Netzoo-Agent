@@ -30,3 +30,9 @@ The prompt intentionally does not mention that the content is invalid. The agent
 must discover and report the problem itself.
 
 Use the two prompt files in this directory as the user messages.
+
+## Docker path convention
+
+The prompts use `/work/...` because `docker-compose.yml` mounts the repository
+root at `/work` inside the `netzoo` container. Paste the prompt contents into
+`./netzoo-chat`; do not replace `/work` with the macOS host `/Users/...` path.

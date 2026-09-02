@@ -248,7 +248,10 @@ def _render_clarification_prompt(
         # are malformed or identifier-incompatible. Preserve that actionable
         # diagnostic instead of reporting that no input is required.
         if plan.status == "needs_input" and plan.question:
-            return plan.question
+            return plan.question + "\n\n" + input_confirmation_prompt(
+                plan,
+                correction=True,
+            )
         return _ui_text("No additional input is required.")
 
     current = missing_items[0]

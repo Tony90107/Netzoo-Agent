@@ -314,6 +314,10 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                         print(_ui_text("Preference changes were not saved."))
                     task = preference_continuation(pending_plan, approved)
             else:
+                preflight_correction = (
+                    pending_plan.status == "needs_input"
+                    and not pending_plan.missing_inputs
+                )
                 choosing_complete_bundle = bool(
                     pending_plan.input_bundle_options
                 ) and not custom_input_selection
@@ -353,13 +357,23 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                     answer,
                     current_plan=pending_plan,
                     allow_path_answer=(
-                        not choosing_complete_bundle
-                        and target_field in _PATH_ANSWER_FIELDS
+                        preflight_correction
+                        or (
+                            not choosing_complete_bundle
+                            and target_field in _PATH_ANSWER_FIELDS
+                        )
                     ),
                     execution_block_reason=(
-                        "This workflow plan is not ready to execute. It still needs: "
-                        f"{missing_labels}. Continue the input wizard or provide the "
-                        "required paths."
+                        (
+                            "Input preflight failed. Provide corrected input paths "
+                            "as field=path assignments."
+                            if preflight_correction
+                            else (
+                                "This workflow plan is not ready to execute. It still needs: "
+                                f"{missing_labels}. Continue the input wizard or provide the "
+                                "required paths."
+                            )
+                        )
                     ),
                 ):
                     continue
@@ -368,7 +382,13 @@ def run_conversation(args, runtime: CliRuntime) -> int:
                 if not answer:
                     continue
                 try:
-                    if choosing_complete_bundle:
+                    if preflight_correction:
+                        task = input_confirmation_continuation(
+                            pending_plan,
+                            answer,
+                            approved=False,
+                        )
+                    elif choosing_complete_bundle:
                         if answer.casefold() == "custom":
                             custom_input_selection = True
                             clarification_selections = {}
