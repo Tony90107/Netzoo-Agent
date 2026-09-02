@@ -42,6 +42,29 @@ from .response_context import validated_workflow_context
 __all__: list[str] = []
 
 
+def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
+    """Identify a fail-closed router result before any response-model guessing."""
+    reason = decision.reason.casefold()
+    return (
+        decision.action == "no_tool"
+        and decision.confidence <= 0.0
+        and not decision.matched_actions
+        and not decision.recommended_actions
+        and "router" in reason
+        and "no workflow was selected" in reason
+    )
+
+
+def _render_unresolved_router_fallback(decision: TaskDecision) -> str:
+    reason = decision.reason.strip()
+    clarification = (
+        decision.clarification_question.strip()
+        if decision.clarification_question
+        else "Please restate the desired NetZoo result after the router is available."
+    )
+    return f"{reason}\n\n{clarification}\n\nNo files were inspected and no analysis ran."
+
+
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     cobra_boundary = render_cobra_expression_boundary(latest_user_task(state["messages"]))
@@ -88,6 +111,16 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         return {
             "messages": [
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
+            ]
+        }
+    if _is_unresolved_router_fallback(decision):
+        _trace(
+            "done",
+            "The response model was skipped because router validation failed",
+        )
+        return {
+            "messages": [
+                AIMessage(content=_render_unresolved_router_fallback(decision))
             ]
         }
     outcome_clarification = render_outcome_clarification(

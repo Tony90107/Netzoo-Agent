@@ -122,6 +122,62 @@ def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
     assert "not a corrected expression matrix" in content
 
 
+def test_unresolved_router_fallback_does_not_let_response_model_guess_workflows():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="unknown",
+        confidence=0.0,
+        reason=(
+            "The LLM router was unavailable, so no workflow was selected. "
+            "(ValidationError)"
+        ),
+        clarification_question=(
+            "Please restate the desired NetZoo result after the router is available."
+        ),
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Clarify the requested result.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    class UnexpectedResponseModel:
+        def invoke(self, _messages):
+            raise AssertionError("response model must not guess after router failure")
+
+    result = response_module.respond(
+        SimpleNamespace(
+            project_policy=policy,
+            response_llm=UnexpectedResponseModel(),
+        ),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content=(
+                        "我有一批腫瘤病人的資料，想完成 somatic mutation pathway "
+                        "分群與 covariate 校正後的 co-expression network。"
+                    )
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "ValidationError" in content
+    assert "Please restate" in content
+    assert "No files were inspected and no analysis ran." in content
+    assert "CONDOR" not in content
+    assert "LIONESS-PANDA" not in content
+
+
 def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
@@ -961,7 +1017,8 @@ def test_graph_children_remain_responsibility_sized():
         "factory": 150,
         "policy_memory": 150,
         "prompts": 120,
-        "response": 260,
+        # The response node also owns the fail-closed router fallback renderer.
+        "response": 320,
         "response_context": 140,
         "routing_planning": 230,
         "topology": 130,
