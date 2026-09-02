@@ -7,7 +7,10 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core import TaskDecision, build_workflow_plan  # noqa: E402
 from netzoo_agent_core.cli.slash_commands import handle_slash_command  # noqa: E402
-from netzoo_agent_core.cli.clarification import clarification_prompt  # noqa: E402
+from netzoo_agent_core.cli.clarification import (  # noqa: E402
+    clarification_prompt,
+    input_confirmation_continuation,
+)
 from netzoo_agent_core.contracts import PlanEvaluationResult  # noqa: E402
 
 
@@ -65,7 +68,26 @@ def test_preflight_errors_are_shown_by_interactive_clarification_prompt(tmp_path
     assert plan.missing_inputs == []
     assert "Input preflight failed" in prompt
     assert "motif" in prompt.casefold()
+    assert "Correction >" in prompt
     assert "No additional input is required." not in prompt
+
+
+def test_preflight_error_accepts_corrected_input_assignments(tmp_path):
+    expression, motif, ppi = _valid_panda_files(tmp_path)
+    motif.write_text("not an edge list\n", encoding="utf-8")
+
+    plan = build_workflow_plan(
+        _panda_decision(),
+        f"Run PANDA using {expression}, {motif}, and {ppi}.",
+    )
+
+    continuation = input_confirmation_continuation(
+        plan,
+        f"motif_file={motif}",
+        approved=False,
+    )
+
+    assert "CORRECTED_INPUT_motif_file=" in continuation
 
 
 def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_path):
