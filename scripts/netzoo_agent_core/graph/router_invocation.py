@@ -267,11 +267,6 @@ def _invoke_semantic_interpreter(
             interpretation.outcome_hypotheses,
         )
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
-        recoverable_guidance = (
-            attempt == 1
-            and validation.recoverable
-            and interpretation.request_mode == "guidance"
-        )
         if not validation.valid:
             usage = append_llm_usage(
                 usage,
@@ -282,7 +277,7 @@ def _invoke_semantic_interpreter(
                 output_text=output_text,
                 budget_tokens=context.task_token_budget,
                 duration_ms=duration_ms,
-                status="success" if recoverable_guidance else "failed",
+                status="failed",
                 price_catalog=context.price_catalog,
             )
             record_event(
@@ -305,37 +300,6 @@ def _invoke_semantic_interpreter(
                     {"issues": list(validation_issues)},
                 )
                 continue
-            if recoverable_guidance:
-                record_event(
-                    context,
-                    state,
-                    "routing.semantic_interpretation_warning",
-                    "classify",
-                    {"warnings": list(validation.issues)},
-                )
-                record_event(
-                    context,
-                    state,
-                    "routing.semantic_interpretation_accepted",
-                    "classify",
-                    {
-                        "attempt": attempt + 1,
-                        "hypothesis_count": len(interpretation.outcome_hypotheses),
-                        "evidence_warnings": list(validation.issues),
-                    },
-                )
-                _trace(
-                    "router",
-                    "Semantic interpretation completed with evidence warnings",
-                    {
-                        "kind": "router_activity",
-                        "operation": "semantic_interpreter",
-                        "status": "completed",
-                        "duration_ms": duration_ms,
-                        "attempt": attempt + 1,
-                    },
-                )
-                return interpretation, usage, budget_warnings, None
             record_event(
                 context,
                 state,

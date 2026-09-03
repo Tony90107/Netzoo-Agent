@@ -151,7 +151,15 @@ Allowed ontology values:
 - granularity: {', '.join(get_args(Granularity))}
 
 Dimension semantics:
+- input_artifacts describes the inputs for the CURRENT requested analysis. Use
+  artifact ontology values, with evidence dimension input_artifact for each one.
+  Exclude data mentioned only as historical work, rejected suggestions, or future
+  intermediate outputs. Leave this list empty when no current input is established.
 - artifact_type is the scientific object returned to the user.
+  Do not copy input_artifacts into artifact_type simply because the input is explicit.
+  For example, a mutation matrix used to cluster patients is an input; the requested
+  result is sample_cluster_assignment, not another mutation_matrix. The same
+  input/output distinction applies to every workflow and modality.
 - entity_types are biological node/object types contained in that artifact. They are
   not indexing dimensions, cohorts, files, or the unit over which results vary.
 - regulator_types and target_types describe biological roles inside an artifact.
@@ -167,6 +175,10 @@ Dimension semantics:
   never invent a new evidence dimension from a registry tag name.
 - granularity describes whether one result spans all samples or varies per sample.
   A sample-specific result does not by itself make sample an entity inside the result.
+  One cohort clustering (sample_cluster_assignment), one sample_distance_matrix,
+  or one pathway score matrix remains aggregate even though it has one row/column
+  or label per patient. sample_specific means a separately inferred result per
+  patient, such as one network per patient, not merely a sample-indexed matrix.
 - Infer granularity from the user's scientific purpose, not from one trigger phrase.
   Purposes such as estimating each patient's network, comparing networks across
   patients, measuring an individual's contribution, studying patient-level
@@ -177,6 +189,7 @@ Dimension semantics:
 - unresolved_dimensions contains only missing facts that create multiple materially
   different interpretations of the requested scientific result. Do not list optional
   unstated details that do not change the requested artifact.
+  Optional selection tags are never unresolved scientific dimensions.
 - display_entities contains only user-facing biological entities represented in the
   artifact, not words copied from granularity or intent phrasing.
 
@@ -257,7 +270,13 @@ def build_semantic_reviewer_messages(
     return [
         SystemMessage(
             content=(
-                semantic_prompt
+                semantic_prompt.replace(
+                    "Return only the SemanticInterpretation structure.",
+                    "Return only the SemanticReview structure.",
+                ).replace(
+                    "Return one to three outcome_hypotheses.",
+                    "Return one outcome_hypothesis.",
+                )
                 + "\n\nYou are now the final semantic reviewer. Independently compare "
                 "every proposed field with the original request and the ontology "
                 "definitions above. Correct surface-verb mappings, category errors "
@@ -267,7 +286,13 @@ def build_semantic_reviewer_messages(
                 "SemanticReview structure. Whether the user wants an answer or an "
                 "execution is downstream intent, never a second scientific outcome. "
                 "Represent genuine remaining uncertainty with typed unknown values and "
-                "unresolved_dimensions inside that one outcome; do not discuss the review."
+                "unresolved_dimensions inside that one outcome; do not discuss the review. "
+                "The only root fields are request_mode, semantic_goal, and "
+                "outcome_hypothesis. Nest outcome, confidence, evidence, and assumptions "
+                "inside outcome_hypothesis; never put hypothesis metadata at the root. "
+                "Recheck current inputs versus historical context and requested outputs. "
+                "Repair rejected explicit evidence by quoting original source text; "
+                "do not retain a translated or fabricated quote."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),

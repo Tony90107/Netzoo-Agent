@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 import re
+import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 
@@ -21,12 +22,25 @@ class OutcomeValidation:
 
 
 def _normalized(value: str) -> str:
-    return re.sub(r"[\W_]+", " ", value.casefold()).strip()
+    text = unicodedata.normalize("NFKC", value).casefold()
+    # CJK words can be wrapped without a word separator. This is typography
+    # normalization, not translation or synonym inference.
+    text = re.sub(r"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", "", text)
+    return re.sub(r"[\W_]+", " ", text).strip()
+
+
+def _grounded_span(span: str, task: str) -> bool:
+    if not span:
+        return False
+    left = r"(?<![a-z0-9])" if span[0].isascii() and span[0].isalnum() else ""
+    right = r"(?![a-z0-9])" if span[-1].isascii() and span[-1].isalnum() else ""
+    return re.search(left + re.escape(span) + right, task) is not None
 
 
 def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
     return {
         "operation": {outcome.operation},
+        "input_artifact": set(outcome.input_artifacts),
         "artifact_type": {outcome.artifact_type},
         "entity_type": set(outcome.entity_types),
         "regulator_type": set(outcome.regulator_types),
@@ -42,6 +56,10 @@ def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
         required.append(("operation", outcome.operation))
     if outcome.artifact_type != "unknown":
         required.append(("artifact_type", outcome.artifact_type))
+    required.extend(
+        ("input_artifact", value) for value in outcome.input_artifacts
+        if value != "unknown"
+    )
     if outcome.granularity not in {"unknown", "not_applicable"}:
         required.append(("granularity", outcome.granularity))
     required.extend(
@@ -68,6 +86,7 @@ def _is_not_applicable(outcome: RequestedOutcome) -> bool:
         outcome.operation == "unknown"
         and outcome.artifact_type == "unknown"
         and outcome.granularity == "not_applicable"
+        and not outcome.input_artifacts
         and not outcome.entity_types
         and not outcome.regulator_types
         and not outcome.target_types
@@ -114,7 +133,7 @@ def validate_outcome_hypotheses(
                 )
             if item.source == "explicit":
                 span = _normalized(item.text_span or "")
-                if not span or span not in normalized_task:
+                if not _grounded_span(span, normalized_task):
                     issues.append(
                         f"hypothesis[{index}].ungrounded_evidence:"
                         f"{item.dimension}={item.value}"

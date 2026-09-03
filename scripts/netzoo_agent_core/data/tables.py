@@ -216,9 +216,9 @@ def _validate_expression(check: TableCheck) -> TableCheck:
     ):
         check.errors.append(
             "expression_file looks like a highly sparse binary somatic mutation "
-            "incidence matrix. PANDA and LIONESS require continuous gene-expression "
-            "measurements for correlation-based network inference; use the SAMBAR "
-            "mutation workflow for pathway-level patient subtyping."
+            "incidence matrix. The expression input contract requires gene-expression "
+            "measurements, not mutation incidence. Confirm the data modality and "
+            "choose a compatible workflow before correlation-based inference."
         )
     if row_ids.empty:
         check.errors.append("expression matrix has no gene IDs in the first column.")
