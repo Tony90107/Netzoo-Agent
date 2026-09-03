@@ -472,77 +472,12 @@ def render_recovered_workflow_guidance(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
 ) -> str | None:
-    """Render a provider-independent answer for one safely recovered workflow."""
-    if not (
-        decision.action == "no_tool"
-        and decision.capability_match_status == "exact"
-        and len(decision.recommended_actions) == 1
-        and "declared scientific signals" in decision.reason.casefold()
-    ):
-        return None
-    spec = policy.workflows.get(decision.recommended_actions[0])
-    if spec is None:
-        return None
-    capability = spec.output_capability
-    modalities = capability.accepted_input_modalities or capability.input_artifacts
-    artifacts = capability.produced_artifacts or [capability.artifact_type]
-    transformations = capability.transformations
+    """Compatibility entry point; provenance is typed, never parsed from prose."""
+    from .verified_guidance import guidance_contract, render_verified_guidance
 
-    modality_text = ", ".join(item.replace("_", " ") for item in modalities)
-    transformation_lines = "\n".join(
-        f"- {item.replace('_', ' ')}" for item in transformations
-    )
-    artifact_lines = "\n".join(
-        f"- {item.replace('_', ' ')}" for item in artifacts
-    )
-    current_inputs = set(
-        decision.requested_outcome.input_artifacts
-        if decision.requested_outcome and decision.requested_outcome.input_artifacts
-        else capability.input_artifacts
-    )
-    normalized_task = task.casefold()
-    incompatible_mentions: dict[str, list[str]] = {}
-    for other in policy.workflows.values():
-        rejected_inputs = current_inputs.intersection(
-            other.output_capability.incompatible_input_artifacts
-        )
-        words = re.split(r"[-_\s]+", other.workflow.casefold())
-        if (
-            rejected_inputs
-            and words
-            and all(
-                re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", normalized_task)
-                for word in words
-            )
-        ):
-            for artifact in sorted(rejected_inputs):
-                incompatible_mentions.setdefault(artifact, []).append(other.workflow)
-    rejections = []
-    for artifact, workflows in incompatible_mentions.items():
-        names = ", ".join(
-            sorted(
-                dict.fromkeys(workflows),
-                key=lambda name: (len(re.split(r"[-_\s]+", name)), name),
-            )
-        )
-        rejections.append(
-            f"\n\nDo not pass the {artifact.replace('_', ' ')} to {names}: their "
-            f"registered contracts reject {artifact}. Use their separately "
-            "validated compatible inputs instead."
-        )
-    transformation_section = (
-        f" and declares these transformations:\n\n{transformation_lines}"
-        if transformations else "."
-    )
-    rejection_text = "".join(rejections)
-    return _ui_text(
-        f"The registered match is **{spec.workflow}**. {spec.description}\n\n"
-        f"It accepts {modality_text} data{transformation_section}\n\n"
-        "Its declared outputs are:\n\n"
-        f"{artifact_lines}{rejection_text}\n\n"
-        "This is workflow guidance only; no execution was authorized. "
-        "No files were inspected and no analysis ran."
-    )
+    if decision.capability_match_status != "fallback":
+        return None
+    return render_verified_guidance(decision, guidance_contract(decision, policy, task))
 
 
 __all__ = [

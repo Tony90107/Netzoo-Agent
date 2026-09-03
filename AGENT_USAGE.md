@@ -686,6 +686,15 @@ missing-input accuracy、unnecessary-question count 與 unsafe-autofill count。
 LangGraph loop 與 `--task -> needs_input -> 使用者補充 -> 繼續執行` 則由 Docker
 integration tests 驗證。
 
+原始 prompt 的語意路由測試是另一層，不能以 Planner 情境測試替代。P2 新增
+`scripts/evaluate_routing.py`：預設只檢查題庫，明確加上 `--live` 才呼叫 provider。
+它分開統計語意成功、路由成功、registry 備援與最終建議回答，不會執行科學分析。
+`fallback` 不等於 `exact`，不能授權執行。已選定工具的建議回答會使用 registry
+與產物語意契約產生，明確保留拒絕原因及各產物的差異；一般概念／文件查詢仍保留
+response model。原始三題已加入輸出實體及最終回答斷言。
+測試層級、呼叫上限與 `--fail-on-skip` 驗收方式見
+[Routing test strategy](docs/routing-test-strategy.md)。
+
 ## 跟 expression data preprocessing 的關係
 
 expression data 要經過處理才能拿到基因表現 ：

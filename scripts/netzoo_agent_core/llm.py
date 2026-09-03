@@ -160,9 +160,12 @@ Dimension semantics:
   For example, a mutation matrix used to cluster patients is an input; the requested
   result is sample_cluster_assignment, not another mutation_matrix. The same
   input/output distinction applies to every workflow and modality.
-- entity_types are biological node/object types contained in that artifact. They are
-  not indexing dimensions, cohorts, files, or the unit over which results vary.
+- entity_types describe the output's objects, not every upstream input entity.
+  Sample cluster assignments and sample distances have entity_types=[sample],
+  even when computed from genes. Pathway mutation scores concern pathway/sample,
+  not gene entities. For networks, sample indexing alone does not make sample a node.
 - regulator_types and target_types describe biological roles inside an artifact.
+  These roles and their unresolved dimensions apply only to regulatory_network.
   Empty role lists mean the user did not constrain that role; do not mark a role
   unresolved merely because it was not stated.
 - selection_tags are registry-defined intent signals, not workflow names. Infer only

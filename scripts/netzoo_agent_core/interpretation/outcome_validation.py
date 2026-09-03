@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
+from ..contracts.artifact_semantics import outcome_consistency_issues
 
 __all__: list[str] = []
 
@@ -105,6 +106,10 @@ def validate_outcome_hypotheses(
     issues: list[str] = []
     normalized_task = _normalized(user_task)
     for index, hypothesis in enumerate(hypotheses):
+        issues.extend(
+            f"hypothesis[{index}].{issue}"
+            for issue in outcome_consistency_issues(hypothesis.outcome)
+        )
         outcome_values = _outcome_values(hypothesis.outcome)
         required_evidence = _required_evidence(hypothesis.outcome)
         if (

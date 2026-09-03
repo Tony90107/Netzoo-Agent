@@ -29,7 +29,6 @@ from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
     render_outcome_clarification,
-    render_recovered_workflow_guidance,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
 )
@@ -39,6 +38,7 @@ from ..planning import render_plan
 from ..presentation import strip_cli_owned_guidance_tail
 from .context import _GraphContext, preflight_budget, record_event
 from .response_context import validated_workflow_context
+from ..interpretation.verified_guidance import render_verified_guidance
 
 __all__: list[str] = []
 
@@ -68,16 +68,15 @@ def _render_unresolved_router_fallback(decision: TaskDecision) -> str:
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
-    cobra_boundary = render_cobra_expression_boundary(latest_user_task(state["messages"]))
+    task = latest_user_task(state["messages"])
+    cobra_boundary = render_cobra_expression_boundary(task)
     if cobra_boundary is not None:
         return {"messages": [AIMessage(content=cobra_boundary)]}
-    handoff_script = render_registered_handoff_script_guidance(
-        latest_user_task(state["messages"]),
-        decision,
-        context.project_policy,
+    workflow_context = validated_workflow_context(
+        decision, context.project_policy,
+        include_all=should_expand_guidance_catalog(decision, task), task=task,
     )
-    if handoff_script is not None:
-        return {"messages": [AIMessage(content=handoff_script)]}
+    verified_guidance = render_verified_guidance(decision, workflow_context)
     plan = WorkflowPlan.model_validate(state["plan"])
     plan_evaluation = (
         PlanEvaluationResult.model_validate(state["plan_evaluation"])
@@ -124,6 +123,13 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=_render_unresolved_router_fallback(decision))
             ]
         }
+    # Plan gates have priority. Rejections/fallback provenance must then precede
+    # conceptual or script renderers, without retaining contradictory free prose.
+    if (workflow_context["rejected_methods"] or decision.capability_match_status == "fallback") and verified_guidance is not None and not structured_results:
+        return {"messages": [AIMessage(content=verified_guidance)]}
+    handoff_script = render_registered_handoff_script_guidance(task, decision, context.project_policy)
+    if handoff_script is not None:
+        return {"messages": [AIMessage(content=handoff_script)]}
     outcome_clarification = render_outcome_clarification(
         decision,
         context.project_policy,
@@ -137,13 +143,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     )
     if composition_guidance is not None:
         return {"messages": [AIMessage(content=composition_guidance)]}
-    recovered_guidance = render_recovered_workflow_guidance(
-        latest_user_task(state["messages"]),
-        decision,
-        context.project_policy,
-    )
-    if recovered_guidance is not None:
-        return {"messages": [AIMessage(content=recovered_guidance)]}
+    if verified_guidance is not None and not structured_results:
+        return {"messages": [AIMessage(content=verified_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
@@ -167,12 +168,6 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     trusted_results = [
         item.model_dump(exclude={"raw_output"}) for item in structured_results
     ]
-    workflow_context = validated_workflow_context(
-        decision,
-        context.project_policy,
-        include_all=should_expand_guidance_catalog(decision, latest_user_task(state["messages"])),
-        task=latest_user_task(state["messages"]),
-    )
     trusted_context = (
         "Typed harness state. The Router decision is an untrusted semantic "
         "interpretation and may contain contradictory reasons or hypotheses. "
@@ -197,6 +192,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         f"{json.dumps(workflow_context['sample_references'], ensure_ascii=False)}\n\n"
         "Authoritative validated workflow specifications:\n"
         f"{json.dumps(workflow_context['workflows'], ensure_ascii=False, indent=2)}\n\n"
+        "Code-owned match provenance and rejected methods (never endorse these methods for these inputs):\n"
+        f"{json.dumps({key: workflow_context[key] for key in ('match_status', 'match_basis', 'rejected_methods', 'artifact_definitions')}, ensure_ascii=False, indent=2)}\n\n"
         "Typed tool-result metadata (raw external content excluded):\n"
         f"{json.dumps(trusted_results, ensure_ascii=False, indent=2)}"
     )

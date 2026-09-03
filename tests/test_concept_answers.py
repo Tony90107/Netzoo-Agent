@@ -73,7 +73,12 @@ def test_recovered_input_boundary_is_registry_driven_not_mutation_specific():
     policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
     decision = _decision().model_copy(update={
         "reason": "Recovered from declared scientific signals.",
-        "capability_match_status": "exact",
+        "capability_match_status": "fallback",
+        "match_basis": "semantic_validation_recovery",
+        "requested_outcome": RequestedOutcome(
+            operation="analyze", input_artifacts=["expression_matrix"],
+            artifact_type="coexpression_network", entity_types=["gene"], granularity="aggregate",
+        ),
         "matched_actions": ["run_cobra"],
         "recommended_actions": ["run_cobra"],
     })
@@ -84,8 +89,8 @@ def test_recovered_input_boundary_is_registry_driven_not_mutation_specific():
     )
 
     assert "**COBRA**" in answer
-    assert "Do not pass the expression matrix to SAMBAR" in answer
-    assert "Do not pass the mutation matrix" not in answer
+    assert answer.startswith("Do not use **SAMBAR** with the current `expression_matrix`")
+    assert "with the current `mutation_matrix`" not in answer
 
 
 def test_clarification_can_render_new_artifact_types_without_per_tool_labels():

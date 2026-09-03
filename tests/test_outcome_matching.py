@@ -186,6 +186,7 @@ def test_questioned_panda_mention_does_not_override_somatic_mutation_subtyping()
     )
     requested = RequestedOutcome(
         operation="analyze",
+        input_artifacts=["mutation_matrix"],
         artifact_type="sample_cluster_assignment",
         entity_types=["sample"],
         granularity="aggregate",
@@ -333,7 +334,8 @@ def test_incompatible_panda_semantics_cannot_override_mutation_guidance():
         request_mode="guidance",
     )
 
-    assert result.status == "exact"
+    assert result.status == "fallback"
+    assert result.match_basis == "registry_features"
     assert result.matched_actions == ["run_sambar"]
 
 
@@ -357,7 +359,8 @@ def test_sparse_somatic_mutation_guidance_recovers_from_input_output_confusion()
         request_mode="guidance",
     )
 
-    assert result.status == "exact"
+    assert result.status == "fallback"
+    assert result.match_basis == "registry_features"
     assert result.matched_actions == ["run_sambar"]
 
 
@@ -531,7 +534,8 @@ def test_explicit_outcome_evidence_outranks_a_conflicting_inferred_operation():
         ]
     )
 
-    assert result.status == "exact"
+    assert result.status == "fallback"
+    assert result.match_basis == "partial_evidence"
     assert result.matched_actions == ["run_lioness_puma"]
 
 

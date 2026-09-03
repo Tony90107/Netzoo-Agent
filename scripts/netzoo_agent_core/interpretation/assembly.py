@@ -51,8 +51,9 @@ def assemble_task_decision(
     if rejection:
         execute = False
     recommended_actions = (
-        guidance_actions_for(exact_action)
-        if exact_action is not None and exact_action in OUTPUT_CAPABILITIES
+        guidance_actions_for(match.matched_actions[0])
+        if match.status in {"exact", "fallback"} and len(match.matched_actions) == 1
+        and match.matched_actions[0] in OUTPUT_CAPABILITIES
         else []
     )
     workflow_candidates = list(
@@ -81,6 +82,8 @@ def assemble_task_decision(
         requested_outcome=primary.outcome if primary else None,
         outcome_hypotheses=interpretation.outcome_hypotheses,
         capability_match_status=match.status,
+        match_basis=match.match_basis,
+        rejected_methods=match.rejected_methods,
         matched_actions=match.matched_actions,
         hypothesis_actions=match.hypothesis_actions,
         alternative_actions=match.alternative_actions,

@@ -33,7 +33,9 @@ If action is no_tool:
 - Answer the latest user's actual question directly from the validated workflow facts.
 - Treat explicit constraints in the latest user request as settled unless they conflict
   internally. Never ask the user to choose a value already supplied.
-- matched_actions are exact matches; hypothesis_actions are advisory candidates;
+- matched_actions are exact only when capability_match_status is exact; fallback is a registry recommendation, not semantic validation or execution authority.
+- Never endorse rejected_methods for their rejected inputs, including an opening affirmation followed by a disclaimer. Keep artifact_definitions distinct.
+- hypothesis_actions are advisory candidates;
   alternative_actions require changing the requested outcome. None of these fields
   independently authorizes execution.
 - Distinguish every predecessor workflow from the requested final result. Explain an ordered composition from validated guidance_predecessors without reopening settled outcome dimensions. Use the registered final action boundary; never infer that multiple guidance actions mean the user must issue separate commands. When preferred_compositions contains a selected path, begin with `Selected path: ` followed by its ordered_workflows joined with ` → `; if it is absent, do not invent a path.

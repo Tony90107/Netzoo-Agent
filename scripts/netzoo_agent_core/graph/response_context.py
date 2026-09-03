@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
+from ..interpretation.verified_guidance import guidance_contract
 from ..interpretation import INPUT_LABELS
 from ..interpretation.registry_guidance import (
     build_registry_selection_constraints,
@@ -122,6 +123,7 @@ def validated_workflow_context(
     guidance_decision = decision_with_registry_signals(decision, task, policy.workflows)
     selection_constraints = build_registry_selection_constraints(guidance_decision, workflows)
     return {
+        **guidance_contract(decision, policy, task),
         "compositions": selection_constraints["preferred_compositions"] or compositions,
         "handoffs": handoffs,
         "workflows": workflows,

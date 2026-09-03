@@ -40,6 +40,9 @@ def classification_progress_detail(
     ]
     workflow_path = []
     workflow_scope = "match"
+    if match_status == "fallback":
+        outcome_label = "Fallback recommendation (not an exact semantic match)"
+        workflow_scope = "fallback"
     if match_status == "exact":
         if policy is not None:
             workflow_records = [
@@ -77,6 +80,8 @@ def classification_progress_detail(
         "workflows": list(dict.fromkeys(workflows)),
         "workflow_path": list(dict.fromkeys(workflow_path)),
         "workflow_scope": workflow_scope,
+        "match_status": match_status,
+        "match_basis": decision.match_basis,
     }
 
 
@@ -121,6 +126,9 @@ def public_semantic_summary(semantic_goal: dict, decision: TaskDecision) -> str:
     match_status = semantic_goal.get("match_status")
     display_candidates = [workflow_name(action) for action in candidates]
     goal = semantic_goal.get("goal") or ""
+    if match_status == "fallback":
+        return ("Registry-based fallback recommendation (not an exact semantic match): "
+                + ", ".join(display_candidates) + ". No execution is authorized.")
     if match_status == "unsupported":
         return (
             "The requested outcome does not exactly match a registered workflow; "
@@ -193,6 +201,7 @@ def outcome_routing_state(
         ),
         "relationship": relationship,
         "match_status": decision.capability_match_status,
+        "match_basis": decision.match_basis,
         "request_mode": request_mode,
     }
     return {
@@ -207,6 +216,8 @@ def outcome_routing_state(
         ],
         "capability_match": {
             "status": decision.capability_match_status,
+            "match_basis": decision.match_basis,
+            "rejected_methods": [item.model_dump() for item in decision.rejected_methods],
             "matched_actions": decision.matched_actions,
             "hypothesis_actions": decision.hypothesis_actions,
             "alternative_actions": decision.alternative_actions,
