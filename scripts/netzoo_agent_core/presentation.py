@@ -200,6 +200,10 @@ def _apply_public_progress_event(
         outcome = str(detail.get("outcome") or "Requested outcome classified")
         workflows = [str(item) for item in detail.get("workflows", [])]
         workflow_path = [str(item) for item in detail.get("workflow_path", [])]
+        if detail.get("match_status") == "fallback":
+            state.attention("match", "Registry recommendation; semantic match unconfirmed")
+            _commit_public_activity("workflow-fallback", "? Fallback recommendation — not an exact semantic match")
+            return True
         state.complete("understand", outcome)
         if workflow_path:
             state.complete("match", " → ".join(workflow_path))

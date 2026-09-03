@@ -170,7 +170,12 @@ def test_recovered_sambar_guidance_is_rendered_without_response_model_guessing()
         ),
         matched_actions=["run_sambar"],
         recommended_actions=["run_sambar"],
-        capability_match_status="exact",
+        capability_match_status="fallback",
+        match_basis="semantic_validation_recovery",
+        requested_outcome=legacy_agent.RequestedOutcome(
+            operation="analyze", input_artifacts=["mutation_matrix"],
+            artifact_type="sample_cluster_assignment", entity_types=["sample"], granularity="aggregate",
+        ),
     )
     plan = legacy_agent.WorkflowPlan(
         workflow="NO-TOOL",
@@ -208,9 +213,12 @@ def test_recovered_sambar_guidance_is_rendered_without_response_model_guessing()
     assert "**SAMBAR**" in content
     assert "gene length normalization" in content
     assert "patient mutation burden normalization" in content
-    assert "sample distance matrix" in content
-    assert "sample cluster assignment" in content
-    assert "Do not pass the mutation matrix to PANDA, LIONESS-PANDA" in content
+    assert "sample_distance_matrix" in content
+    assert "sample_cluster_assignment" in content
+    assert content.startswith("Do not use")
+    assert "Do not use **PANDA**" in content
+    assert "Do not use **LIONESS-PANDA**" in content
+    assert "Fallback recommendation" in content
     assert "No files were inspected and no analysis ran." in content
 
 
@@ -596,7 +604,7 @@ def test_no_tool_response_context_follows_validated_actions_without_name_rules()
         recorder=legacy_agent.NullTraceRecorder(),
     )
 
-    response_module.respond(
+    result = response_module.respond(
         context,
         {
             "messages": [
@@ -608,10 +616,11 @@ def test_no_tool_response_context_follows_validated_actions_without_name_rules()
         },
     )
 
-    response_input = "\n".join(str(message.content) for message in captured)
-    assert '"action": "run_bonobo"' in response_input
-    assert '"action": "run_puma"' not in response_input
-    assert '"action": "run_lioness_puma"' not in response_input
+    assert captured == []  # Selected guidance is now code-owned, not free prose.
+    answer = result["messages"][0].content
+    assert "BONOBO" in answer
+    assert "PUMA" not in answer
+    assert "coexpression_network" in answer
 
 
 def test_response_context_derives_handoff_producers_from_registry_capabilities():
@@ -1108,9 +1117,9 @@ def test_graph_children_remain_responsibility_sized():
         "execution": 230,
         "factory": 150,
         "policy_memory": 150,
-        "prompts": 120,
+        "prompts": 125,
         # The response node also owns the fail-closed router fallback renderer.
-        "response": 320,
+        "response": 340,
         "response_context": 140,
         "routing_planning": 230,
         "topology": 130,

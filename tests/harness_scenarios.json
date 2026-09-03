@@ -9,8 +9,10 @@
       "confidence": 0.99,
       "reason": "demo request"
     },
-    "expected_status": "ready",
+    "expected_status": "needs_confirmation",
+    "expected_steps": [],
     "expected_values": {
+      "should_execute": false,
       "expression_file": "data/lioness-toy/expression.tsv",
       "motif_file": "data/lioness-toy/motif-panda.tsv",
       "ppi_file": "data/lioness-toy/ppi.tsv"
@@ -27,6 +29,8 @@
       "reason": "formal analysis"
     },
     "expected_status": "needs_input",
+    "expected_steps": [],
+    "expected_values": {"should_execute": false},
     "expected_missing": ["expression_file", "ppi_file"]
   },
   {
@@ -40,8 +44,10 @@
       "reason": "PUMA request",
       "expression_file": "data/lioness-toy/expression.tsv"
     },
-    "expected_status": "ready",
+    "expected_status": "needs_confirmation",
+    "expected_steps": [],
     "expected_values": {
+      "should_execute": false,
       "motif_file": "data/lioness-toy/prior-puma.tsv",
       "ppi_file": "data/lioness-toy/ppi.tsv",
       "mirna_file": "data/lioness-toy/mirna.txt"
@@ -57,21 +63,53 @@
       "confidence": 0.99,
       "reason": "CONDOR demo"
     },
+    "expected_status": "needs_confirmation",
+    "expected_steps": [],
+    "expected_values": {
+      "should_execute": false,
+      "network_file": "data/condor-toy/bipartite.tsv"
+    }
+  },
+  {
+    "name": "puma_explicit_role_paths_ready",
+    "task": "Run PUMA with expression_file=data/lioness-toy/expression.tsv motif_file=data/lioness-toy/prior-puma.tsv ppi_file=data/lioness-toy/ppi.tsv mirna_file=data/lioness-toy/mirna.txt output_file=outputs/evaluation/puma.tsv",
+    "decision": {
+      "action": "run_puma",
+      "in_scope": true,
+      "should_execute": true,
+      "intent_type": "run_analysis",
+      "confidence": 0.99,
+      "reason": "User explicitly binds every input role"
+    },
     "expected_status": "ready",
     "expected_values": {
-      "network_file": "data/condor-toy/bipartite.tsv"
+      "should_execute": true,
+      "expression_file": "data/lioness-toy/expression.tsv",
+      "motif_file": "data/lioness-toy/prior-puma.tsv",
+      "ppi_file": "data/lioness-toy/ppi.tsv",
+      "mirna_file": "data/lioness-toy/mirna.txt"
     }
   },
   {
     "name": "unsupported_variant_calling",
     "task": "幫我使用 PANDA 找基因突變",
     "decision": {
-      "action": "run_panda",
+      "action": "no_tool",
       "in_scope": false,
-      "should_execute": true,
+      "should_execute": false,
+      "intent_type": "answer_question",
+      "capability_match_status": "unsupported",
       "confidence": 0.95,
-      "reason": "unsupported"
+      "reason": "unsupported",
+      "requested_outcome": {
+        "operation": "acquire",
+        "artifact_type": "mutation_matrix",
+        "entity_types": ["gene", "sample"],
+        "granularity": "aggregate"
+      }
     },
-    "expected_status": "respond_only"
+    "expected_status": "respond_only",
+    "expected_steps": [],
+    "expected_values": {"action": "no_tool", "should_execute": false}
   }
 ]

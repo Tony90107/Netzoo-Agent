@@ -16,7 +16,8 @@ from workflow_registry import (
 )
 
 
-CapabilityMatchStatus = Literal["exact", "ambiguous", "unsupported", "not_applicable"]
+CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported", "not_applicable"]
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "confirmed_context"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",
@@ -221,12 +222,26 @@ class SemanticReview(BaseModel):
         return normalized
 
 
+class RejectedMethod(BaseModel):
+    """Code-owned incompatibility scoped to the current input, not a whole method."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: RecommendedAction
+    workflow: str
+    reason_code: Literal["incompatible_input", "unsupported_input"]
+    input_artifacts: list[ArtifactType]
+    accepted_input_artifacts: list[ArtifactType]
+    reason: str
+
+
 class CapabilityMatch(BaseModel):
     """Code-owned relationship between one requested outcome and the registry."""
 
     model_config = ConfigDict(extra="forbid")
 
     status: CapabilityMatchStatus
+    match_basis: MatchBasis = "semantic"
+    rejected_methods: list[RejectedMethod] = Field(default_factory=list)
     matched_actions: list[ActionName] = Field(default_factory=list, max_length=6)
     hypothesis_actions: list[RecommendedAction] = Field(
         default_factory=list, max_length=6

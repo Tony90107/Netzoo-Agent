@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from pydantic import ValidationError
 
 from ..contracts import RequestedOutcome, TaskDecision
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
+from ..routing.method_rejections import rejected_methods_for
 from ..routing.outcome_matching import (
     explicit_input_artifacts,
     match_registry_guidance_features,
@@ -83,8 +85,11 @@ def recover_registry_guidance(
     )
     outcome = RequestedOutcome(
         operation=capability.operation,
+        input_artifacts=sorted(explicit_input_artifacts(task) & set(capability.input_artifacts)),
         artifact_type=capability.artifact_type,
-        entity_types=sorted(capability.entity_types),
+        entity_types=sorted(set(capability.entity_types) & (
+            ARTIFACT_SEMANTICS[capability.artifact_type].entities or set(capability.entity_types)
+        )),
         regulator_types=sorted(capability.regulator_types),
         target_types=sorted(capability.target_types),
         granularity=granularity,
@@ -98,7 +103,8 @@ def recover_registry_guidance(
         confidence=0.35,
         reason="registry guidance composition",
         requested_outcome=outcome,
-        capability_match_status="exact",
+        capability_match_status="fallback",
+        match_basis="semantic_validation_recovery",
         matched_actions=[action],
         recommended_actions=[action],
     )
@@ -137,7 +143,9 @@ def recover_registry_guidance(
         candidate_actions=candidate_actions,
         recommended_actions=recommended_actions,
         requested_outcome=outcome,
-        capability_match_status="exact",
+        capability_match_status="fallback",
+        match_basis="semantic_validation_recovery",
+        rejected_methods=rejected_methods_for(task, outcome.input_artifacts),
         matched_actions=[action],
     )
 

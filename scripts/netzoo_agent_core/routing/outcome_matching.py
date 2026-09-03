@@ -19,6 +19,8 @@ from ..contracts import (
     RequestedOutcome,
     TaskDecision,
 )
+from ..contracts.artifact_semantics import outcome_consistency_issues
+from .method_rejections import rejected_methods_for
 
 
 _UNKNOWN = "unknown"
@@ -104,7 +106,7 @@ def match_registry_guidance_features(
     ranked.sort(reverse=True)
     if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
         return None
-    return CapabilityMatch(status="exact", matched_actions=[ranked[0][2]])
+    return CapabilityMatch(status="fallback", match_basis="registry_features", matched_actions=[ranked[0][2]])
 
 
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
@@ -135,7 +137,7 @@ def _matches(
     outcome: RequestedOutcome,
     capability: OutputCapabilityDefinition,
 ) -> bool:
-    if _has_unknown(outcome):
+    if _has_unknown(outcome) or outcome_consistency_issues(outcome):
         return False
     return (
         outcome.operation == capability.operation
@@ -176,6 +178,14 @@ def _partially_compatible(
         and _known_set_matches(outcome.regulator_types, capability.regulator_types)
         and _known_set_matches(outcome.target_types, capability.target_types)
     )
+
+
+def _complete_guidance_match(outcome, capability) -> bool:
+    """Only explanatory operation may be omitted for an exact guidance match."""
+    return _matches(outcome.model_copy(update={
+        "operation": capability.operation,
+        "unresolved_dimensions": [value for value in outcome.unresolved_dimensions if value != "operation"],
+    }), capability)
 
 
 def _explicit_evidence_values(
@@ -310,6 +320,9 @@ def match_requested_outcome(
     ] = OUTPUT_CAPABILITIES,
 ) -> CapabilityMatch:
     """Return a fail-closed match derived only from typed outcome dimensions."""
+    issues = outcome_consistency_issues(outcome)
+    if issues:
+        return CapabilityMatch(status="unsupported", mismatch_dimensions=list(issues))
     if _is_not_applicable(outcome):
         return CapabilityMatch(status="not_applicable")
     candidates = [
@@ -438,6 +451,11 @@ def match_outcome_hypotheses(
     ] = OUTPUT_CAPABILITIES,
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
+    issues = list(dict.fromkeys(
+        issue for item in hypotheses for issue in outcome_consistency_issues(item.outcome)
+    ))
+    if issues:
+        return CapabilityMatch(status="unsupported", mismatch_dimensions=issues[:5])
     if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
         return CapabilityMatch(status="not_applicable")
     exact: list[RecommendedAction] = []
@@ -488,7 +506,11 @@ def match_outcome_hypotheses(
 
     unique_exact = list(dict.fromkeys([*exact, *evidence_exact]))
     if len(unique_exact) == 1:
-        return CapabilityMatch(status="exact", matched_actions=unique_exact)
+        return CapabilityMatch(
+            status="exact" if unique_exact[0] in exact else "fallback",
+            match_basis="semantic" if unique_exact[0] in exact else "partial_evidence",
+            matched_actions=unique_exact,
+        )
     if advisory:
         top_score = max(item[:3] for item in advisory)
         top_actions = [
@@ -614,7 +636,7 @@ def _enforce_input_compatibility(
     )
 
 
-def match_semantic_request(
+def _match_semantic_request(
     task: str,
     hypotheses: Sequence[OutcomeHypothesis],
     *,
@@ -629,7 +651,7 @@ def match_semantic_request(
     if marker:
         action = marker.group(1).casefold()
         if action in OUTPUT_CAPABILITIES:
-            return CapabilityMatch(status="exact", matched_actions=[action])
+            return CapabilityMatch(status="exact", match_basis="confirmed_context", matched_actions=[action])
 
     current_inputs = (
         sorted({
@@ -655,6 +677,15 @@ def match_semantic_request(
             for hypothesis in hypotheses
         ]
     match = match_outcome_hypotheses(matching_hypotheses, OUTPUT_CAPABILITIES)
+    if match.status == "fallback" and match.match_basis == "partial_evidence":
+        capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
+        if request_mode == "guidance" and all(
+            _complete_guidance_match(item.outcome, capability)
+            for item in matching_hypotheses
+        ):
+            match = match.model_copy(update={"status": "exact", "match_basis": "semantic"})
+        else:
+            return match
     if match.status == "exact":
         return _enforce_input_compatibility(
             task,
@@ -669,8 +700,10 @@ def match_semantic_request(
         and len(hypotheses) == 1
         and len(match.hypothesis_actions) == 1
         and not any(
-            hypothesis.outcome.granularity == "unknown"
-            or "granularity" in hypothesis.outcome.unresolved_dimensions
+            not _complete_guidance_match(
+                hypothesis.outcome,
+                OUTPUT_CAPABILITIES[match.hypothesis_actions[0]],
+            )
             for hypothesis in hypotheses
         )
     ):
@@ -711,7 +744,12 @@ def match_semantic_request(
             # known output or bypass an input contract.
             return match
         named_match = CapabilityMatch(
-            status="exact", matched_actions=[explicit_action]
+            status="exact" if capability is None or match.status == "ambiguous" and matching_hypotheses and all(
+                _complete_guidance_match(item.outcome, capability)
+                if request_mode == "guidance" else _matches(item.outcome, capability)
+                for item in matching_hypotheses
+            ) else "fallback",
+            match_basis="workflow_name", matched_actions=[explicit_action]
         )
         return _enforce_input_compatibility(
             task,
@@ -720,6 +758,21 @@ def match_semantic_request(
             input_artifacts=current_inputs,
         )
     return match
+
+
+def match_semantic_request(
+    task: str, hypotheses: Sequence[OutcomeHypothesis], *, request_mode: str = "unknown",
+) -> CapabilityMatch:
+    """Carry rejected methods alongside the selected semantic or advisory path."""
+    match = _match_semantic_request(task, hypotheses, request_mode=request_mode)
+    if match.status == "exact" and any(outcome_consistency_issues(item.outcome) for item in hypotheses):
+        match = CapabilityMatch(status="unsupported", mismatch_dimensions=["outcome_consistency"])
+    inputs = sorted({artifact for item in hypotheses for artifact in item.outcome.input_artifacts})
+    rejections = rejected_methods_for(task, inputs, actions=match.matched_actions)
+    rejected_actions = {item.action for item in rejections}
+    if rejected_actions.intersection(match.matched_actions):
+        match = CapabilityMatch(status="unsupported", mismatch_dimensions=["input_artifacts"])
+    return match.model_copy(update={"rejected_methods": rejections})
 
 
 def apply_outcome_match(decision: TaskDecision) -> TaskDecision:

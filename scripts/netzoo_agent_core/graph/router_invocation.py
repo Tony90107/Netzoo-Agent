@@ -105,7 +105,8 @@ def _semantic_failure(
             "classify",
             {
                 "matched_actions": decision.matched_actions,
-                "reason_code": "explicit_registry_workflow",
+                "reason_code": decision.match_basis,
+                "match_status": decision.capability_match_status,
             },
         )
     return _RouterInvocation(
@@ -541,6 +542,8 @@ def invoke_router(
         "classify",
         {
             "status": capability_match.status,
+            "match_basis": capability_match.match_basis,
+            "rejected_methods": [item.model_dump() for item in capability_match.rejected_methods],
             "matched_actions": capability_match.matched_actions,
             "hypothesis_actions": capability_match.hypothesis_actions,
             "mismatch_dimensions": capability_match.mismatch_dimensions,
@@ -572,7 +575,9 @@ def invoke_router(
         ),
         usage=usage,
         budget_warnings=budget_warnings,
-        reason_code="intent_fallback" if intent_fallback else "semantic_registry_intent",
+        reason_code=("intent_fallback" if intent_fallback else
+                     "registry_guidance_fallback" if capability_match.status == "fallback" else
+                     "semantic_registry_intent"),
     )
 
 

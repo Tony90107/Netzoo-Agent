@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
 
-from .outcomes import CapabilityMatchStatus, OutcomeHypothesis, RequestedOutcome
+from .outcomes import CapabilityMatchStatus, MatchBasis, OutcomeHypothesis, RejectedMethod, RequestedOutcome
 
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
@@ -87,6 +87,8 @@ class TaskDecision(BaseModel):
         default_factory=list, max_length=3
     )
     capability_match_status: CapabilityMatchStatus | None = None
+    match_basis: MatchBasis = "semantic"
+    rejected_methods: list[RejectedMethod] = Field(default_factory=list)
     matched_actions: list[RecommendedAction] = Field(default_factory=list)
     hypothesis_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
     alternative_actions: list[RecommendedAction] = Field(default_factory=list)

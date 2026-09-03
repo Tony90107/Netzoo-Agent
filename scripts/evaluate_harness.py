@@ -29,6 +29,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def evaluate(scenarios: list[dict]) -> dict:
+    if not scenarios:
+        raise ValueError("Planner evaluation requires at least one scenario.")
     project_policy = ProjectPolicyLoader(PROJECT_ROOT).load()
     results = []
     status_correct = 0
@@ -67,7 +69,12 @@ def evaluate(scenarios: list[dict]) -> dict:
             else:
                 errors.append(f"expected missing field was resolved: {field_name}")
 
-        if scenario["expected_status"] == "needs_input" and plan.status == "ready":
+        if "expected_steps" in scenario:
+            actual_steps = [step.action for step in plan.steps]
+            if actual_steps != scenario["expected_steps"]:
+                errors.append(f"steps={actual_steps}, expected={scenario['expected_steps']}")
+
+        if scenario["expected_status"] in {"needs_input", "needs_confirmation"} and plan.status == "ready":
             unsafe_autofill += 1
         if scenario["expected_status"] == "ready" and plan.status == "needs_input":
             unnecessary_questions += 1
