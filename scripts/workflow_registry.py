@@ -90,9 +90,20 @@ ArtifactType = Literal[
     "coexpression_network",
     "mutation_matrix",
     "pathway_mutation_matrix",
+    "gene_mutation_scores",
+    "sample_distance_matrix",
+    "sample_cluster_assignment",
     "community_assignment",
     "validation_report",
     "multi_omic_network",
+    "unknown",
+]
+InputModality = Literal[
+    "gene_expression",
+    "somatic_mutation",
+    "coexpression",
+    "regulatory_network",
+    "multi_omic_continuous",
     "unknown",
 ]
 EntityType = Literal[
@@ -108,6 +119,12 @@ class OutputCapabilityDefinition:
     artifact_type: ArtifactType
     entity_types: frozenset[EntityType]
     granularities: frozenset[Granularity]
+    accepted_input_modalities: frozenset[InputModality] = frozenset()
+    produced_artifacts: frozenset[ArtifactType] = frozenset()
+    transformations: frozenset[str] = frozenset()
+    scientific_objectives: frozenset[str] = frozenset()
+    incompatible_input_artifacts: frozenset[ArtifactType] = frozenset()
+    selection_phrases: tuple[str, ...] = ()
     regulator_types: frozenset[Literal["tf", "mirna"]] = frozenset()
     target_types: frozenset[Literal["gene"]] = frozenset()
     guidance_predecessors: tuple[RecommendedAction, ...] = ()
@@ -248,6 +265,11 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+            accepted_input_modalities=frozenset(
+                {"gene_expression", "coexpression"}
+            ),
+            produced_artifacts=frozenset({"regulatory_network"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network"}),
@@ -293,6 +315,11 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf", "mirna"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate"}),
+            accepted_input_modalities=frozenset(
+                {"gene_expression", "coexpression"}
+            ),
+            produced_artifacts=frozenset({"regulatory_network"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
@@ -335,6 +362,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
+            accepted_input_modalities=frozenset({"gene_expression"}),
+            produced_artifacts=frozenset({"regulatory_network"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             guidance_predecessors=("run_panda",),
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "tf_gene_regulation"}),
@@ -376,6 +406,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             regulator_types=frozenset({"tf", "mirna"}),
             target_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
+            accepted_input_modalities=frozenset({"gene_expression"}),
+            produced_artifacts=frozenset({"regulatory_network"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             guidance_predecessors=("run_puma",),
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
@@ -403,6 +436,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="coexpression_network",
             entity_types=frozenset({"gene"}),
             granularities=frozenset({"aggregate", "sample_specific"}),
+            accepted_input_modalities=frozenset({"gene_expression"}),
+            produced_artifacts=frozenset({"coexpression_network"}),
+            incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "coexpression"}),
             handoff_contract=(
@@ -527,6 +563,42 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="pathway_mutation_matrix",
             entity_types=frozenset({"sample", "gene", "pathway"}),
             granularities=frozenset({"aggregate"}),
+            accepted_input_modalities=frozenset({"somatic_mutation"}),
+            produced_artifacts=frozenset(
+                {
+                    "gene_mutation_scores",
+                    "pathway_mutation_matrix",
+                    "sample_cluster_assignment",
+                    "sample_distance_matrix",
+                }
+            ),
+            transformations=frozenset(
+                {
+                    "gene_length_normalization",
+                    "patient_mutation_burden_normalization",
+                    "pathway_aggregation",
+                    "sample_distance",
+                    "sample_clustering",
+                }
+            ),
+            scientific_objectives=frozenset({"cancer_subtyping"}),
+            incompatible_input_artifacts=frozenset({"expression_matrix"}),
+            selection_phrases=(
+                "somatic mutation",
+                "tumor mutation burden",
+                "gene length",
+                "pathway score",
+                "sparse mutation",
+                "patient clustering",
+                "體細胞突變",
+                "突變負荷",
+                "基因長度",
+                "途徑分數",
+                "生物途徑",
+                "稀疏",
+                "病患分群",
+                "亞型分群",
+            ),
             input_artifacts=frozenset({"mutation_matrix"}),
             selection_tags=frozenset({"somatic_mutation", "cancer_subtyping", "pathway_scores"}),
             handoff_contract=(

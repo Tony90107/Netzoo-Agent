@@ -777,6 +777,17 @@ def test_provider_failure_does_not_infer_even_an_explicit_named_workflow():
     assert decision.recommended_actions == []
 
 
+def test_semantic_validation_failure_is_not_reported_as_provider_unavailability():
+    decision = deterministic_router_fallback(
+        "Describe the desired NetZoo result.",
+        ValueError("semantic evidence validation failed"),
+    )
+
+    assert "failed validation" in decision.reason
+    assert "router was unavailable" not in decision.reason
+    assert "clarify" in decision.clarification_question.casefold()
+
+
 def test_semantic_validation_failure_recovers_explicit_registry_pipeline_guidance():
     policy = ProjectPolicyLoader().load()
     task = (

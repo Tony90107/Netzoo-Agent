@@ -4410,6 +4410,36 @@ class PandaInputInspectionTests(unittest.TestCase):
             )
             self.assertIn("motif TFs overlapping PPI TFs: 2/2 (100.0%)", report)
 
+    def test_sparse_binary_mutation_matrix_is_rejected_as_expression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            samples = [f"s{index}" for index in range(1, 101)]
+            expression = self.write(
+                root,
+                "wes_mutations.tsv",
+                "gene\t"
+                + "\t".join(samples)
+                + "\nGeneA\t1\t"
+                + "\t".join(["0"] * 99)
+                + "\nGeneB\t"
+                + "\t".join(["0"] * 100)
+                + "\n",
+            )
+            motif = self.write(
+                root,
+                "motif.tsv",
+                "TF1\tGeneA\t1\nTF2\tGeneB\t1\n",
+            )
+            ppi = self.write(root, "ppi.tsv", "TF1\tTF2\t1\n")
+
+            report, ok, _ = agent._inspect_panda_inputs_impl(
+                expression, motif, ppi
+            )
+
+            self.assertFalse(ok, report)
+            self.assertIn("highly sparse binary", report)
+            self.assertIn("somatic mutation", report)
+
     def test_partial_id_overlap_is_reported_with_unmatched_examples(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

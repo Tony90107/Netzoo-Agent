@@ -132,6 +132,20 @@ class ProjectPolicyLoader:
                 artifact_type=spec.output_capability.artifact_type,
                 entity_types=frozenset(spec.output_capability.entity_types),
                 granularities=frozenset(spec.output_capability.granularities),
+                accepted_input_modalities=frozenset(
+                    spec.output_capability.accepted_input_modalities
+                ),
+                produced_artifacts=frozenset(
+                    spec.output_capability.produced_artifacts
+                ),
+                transformations=frozenset(spec.output_capability.transformations),
+                scientific_objectives=frozenset(
+                    spec.output_capability.scientific_objectives
+                ),
+                incompatible_input_artifacts=frozenset(
+                    spec.output_capability.incompatible_input_artifacts
+                ),
+                selection_phrases=tuple(spec.output_capability.selection_phrases),
                 regulator_types=frozenset(spec.output_capability.regulator_types),
                 target_types=frozenset(spec.output_capability.target_types),
                 guidance_predecessors=tuple(

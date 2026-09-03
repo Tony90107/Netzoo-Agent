@@ -137,6 +137,77 @@ def test_guidance_stays_ambiguous_when_semantic_roles_are_omitted():
     assert result.hypothesis_actions == ["run_lioness_panda", "run_lioness_puma"]
 
 
+def test_questioned_panda_mention_does_not_override_somatic_mutation_subtyping():
+    task = (
+        "我剛剛成功用 RNA-Seq 資料跑完了 PANDA。現在拿到 WES 體細胞突變矩陣，"
+        "是不是也應該把這份充滿 0 的突變矩陣丟進 PANDA 跟 LIONESS，"
+        "來幫病患做亞型分群？"
+    )
+    requested = RequestedOutcome(
+        operation="analyze",
+        artifact_type="sample_cluster_assignment",
+        entity_types=["sample"],
+        granularity="aggregate",
+    )
+
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_sambar"]
+
+
+def test_incompatible_panda_semantics_cannot_override_mutation_guidance():
+    task = (
+        "我已經用 RNA-Seq 跑完 PANDA；現在是否能把 WES 體細胞突變矩陣"
+        "丟進 PANDA 與 LIONESS，建立病患特異網路並做亞型分群？"
+    )
+    confused = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="sample_specific",
+    )
+
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=confused, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_sambar"]
+
+
+def test_sparse_somatic_mutation_guidance_recovers_from_input_output_confusion():
+    task = (
+        "我手邊有一份 200 個肺癌病患的體細胞突變 (Somatic mutations) 矩陣，"
+        "99% 的格子都是 0。我想對病患進行亞型分群 (Subtyping)，"
+        "有沒有哪個工具專門處理高度稀疏的 DNA 突變矩陣並進行病患分群？"
+    )
+    confused = RequestedOutcome(
+        operation="analyze",
+        artifact_type="mutation_matrix",
+        entity_types=["gene", "sample"],
+        granularity="sample_specific",
+        unresolved_dimensions=["selection_tag"],
+    )
+
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=confused, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_sambar"]
+
+
 def test_execution_matching_does_not_promote_one_advisory_candidate():
     result = match_semantic_request(
         "Build a sample-specific miRNA regulatory network.",

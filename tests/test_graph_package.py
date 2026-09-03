@@ -77,6 +77,39 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
     assert result.decision.requested_outcome is not None
 
 
+def test_semantic_failure_recovers_sambar_from_declared_scientific_signals():
+    router_invocation = importlib.import_module(
+        "netzoo_agent_core.graph.router_invocation"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    task = (
+        "我想要對癌症病患的 DNA 體細胞突變資料做亞型分析，先校正基因長度與"
+        "不同病患的腫瘤突變負荷，再把基因突變聚合成生物途徑分數，計算病患"
+        "之間的距離並分群。"
+    )
+    context = SimpleNamespace(
+        project_policy=policy,
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+
+    result = router_invocation._semantic_failure(
+        context,
+        {},
+        task,
+        legacy_agent.LLMUsage(budget_tokens=20_000),
+        [],
+        error=ValueError("semantic evidence validation failed"),
+        reason_code="semantic_fallback",
+    )
+
+    assert result.decision.action == "no_tool"
+    assert result.decision.matched_actions == ["run_sambar"]
+    assert result.decision.recommended_actions == ["run_sambar"]
+    assert result.decision.requested_outcome is not None
+    assert "declared scientific signals" in result.decision.reason
+    assert "router was unavailable" not in result.decision.reason
+
+
 def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
@@ -120,6 +153,65 @@ def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
     assert "-e \"$expression_file\"" in content
     assert "-c \"$coexpression_file\"" in content
     assert "not a corrected expression matrix" in content
+
+
+def test_recovered_sambar_guidance_is_rendered_without_response_model_guessing():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.35,
+        reason=(
+            "Semantic interpretation failed validation; recovered a registered "
+            "guidance candidate for SAMBAR from multiple declared scientific signals."
+        ),
+        matched_actions=["run_sambar"],
+        recommended_actions=["run_sambar"],
+        capability_match_status="exact",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Explain the recovered SAMBAR match.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    class UnexpectedResponseModel:
+        def invoke(self, _messages):
+            raise AssertionError("recovered registry guidance must be deterministic")
+
+    result = response_module.respond(
+        SimpleNamespace(
+            project_policy=policy,
+            response_llm=UnexpectedResponseModel(),
+        ),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content=(
+                        "是否能把 WES 體細胞突變矩陣丟進 PANDA 與 LIONESS-PANDA？"
+                        "矩陣非常稀疏，我想做基因長度與突變負荷校正、途徑分數、"
+                        "病患距離與亞型分群。"
+                    )
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [],
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "**SAMBAR**" in content
+    assert "gene length normalization" in content
+    assert "patient mutation burden normalization" in content
+    assert "sample distance matrix" in content
+    assert "sample cluster assignment" in content
+    assert "Do not pass the mutation matrix to PANDA, LIONESS-PANDA" in content
+    assert "No files were inspected and no analysis ran." in content
 
 
 def test_unresolved_router_fallback_does_not_let_response_model_guess_workflows():

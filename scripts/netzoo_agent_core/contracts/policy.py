@@ -9,6 +9,7 @@ from workflow_registry import (
     ArtifactType,
     EntityType,
     Granularity,
+    InputModality,
     RecommendedAction,
 )
 
@@ -27,6 +28,16 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     artifact_type: ArtifactType
     entity_types: list[EntityType] = Field(max_length=8)
     granularities: list[Granularity] = Field(max_length=3)
+    accepted_input_modalities: list[InputModality] = Field(
+        default_factory=list, max_length=8
+    )
+    produced_artifacts: list[ArtifactType] = Field(default_factory=list, max_length=8)
+    transformations: list[str] = Field(default_factory=list, max_length=16)
+    scientific_objectives: list[str] = Field(default_factory=list, max_length=12)
+    incompatible_input_artifacts: list[ArtifactType] = Field(
+        default_factory=list, max_length=8
+    )
+    selection_phrases: list[str] = Field(default_factory=list, max_length=32)
     regulator_types: list[Literal["tf", "mirna"]] = Field(
         default_factory=list, max_length=2
     )
@@ -108,6 +119,11 @@ class ProjectPolicySnapshot(BaseModel):
                 f"regulators={','.join(capability.regulator_types) or 'none'}, "
                 f"targets={','.join(capability.target_types) or 'none'}, "
                 f"granularities={','.join(capability.granularities)}. "
+                f"Input modalities: {','.join(capability.accepted_input_modalities) or 'unspecified'}. "
+                f"Produced artifacts: {','.join(capability.produced_artifacts) or capability.artifact_type}. "
+                f"Transformations: {','.join(capability.transformations) or 'none'}. "
+                f"Objectives: {','.join(capability.scientific_objectives) or 'none'}. "
+                f"Incompatible inputs: {','.join(capability.incompatible_input_artifacts) or 'none'}. "
                 f"Selection tags: {','.join(capability.selection_tags) or 'none'}. "
                 f"Consumes: {','.join(capability.input_artifacts) or 'raw/user input'}. "
                 f"Handoff targets: {','.join(capability.handoff_targets) or 'none'}. "
