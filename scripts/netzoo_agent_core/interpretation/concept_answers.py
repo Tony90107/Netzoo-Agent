@@ -55,6 +55,10 @@ _GRANULARITY_LABELS = {
 _ENTITY_LABELS = {"tf": "TF", "mirna": "miRNA", "gene": "gene"}
 
 
+def _artifact_label(artifact: str) -> str:
+    return _ARTIFACT_LABELS.get(artifact, artifact.replace("_", " "))
+
+
 def _outcome_phrase(outcome, *, include_granularity: bool = True) -> str:
     if outcome is None:
         return "the requested result"
@@ -71,7 +75,7 @@ def _outcome_phrase(outcome, *, include_granularity: bool = True) -> str:
     ]
     if entities:
         pieces.append("/".join(entities))
-    pieces.append(_ARTIFACT_LABELS[outcome.artifact_type])
+    pieces.append(_artifact_label(outcome.artifact_type))
     return " ".join(pieces)
 
 
@@ -97,7 +101,7 @@ def _capability_phrase(spec, decision: TaskDecision) -> str:
         targets = "/".join(_ENTITY_LABELS[item] for item in capability.target_types)
         relationship = f"{regulators}-to-{targets} " if regulators and targets else ""
         return f"{prefix} {relationship}regulatory networks".strip()
-    return f"{prefix} {_ARTIFACT_LABELS[capability.artifact_type]}".strip()
+    return f"{prefix} {_artifact_label(capability.artifact_type)}".strip()
 
 
 def _workflow_sequence(
@@ -122,7 +126,7 @@ def _network_family_label(spec) -> str:
             return "TF-only regulatory network"
         labels = "/".join(_ENTITY_LABELS[item] for item in capability.regulator_types)
         return f"{labels} regulatory network"
-    return _ARTIFACT_LABELS[capability.artifact_type].capitalize()
+    return _artifact_label(capability.artifact_type).capitalize()
 
 
 def render_outcome_clarification(
@@ -216,7 +220,7 @@ def render_capability_gap(
     else:
         supported = sorted(
             {
-                _ARTIFACT_LABELS[item.output_capability.artifact_type]
+                _artifact_label(item.output_capability.artifact_type)
                 for item in policy.workflows.values()
             }
         )
@@ -491,40 +495,51 @@ def render_recovered_workflow_guidance(
     artifact_lines = "\n".join(
         f"- {item.replace('_', ' ')}" for item in artifacts
     )
+    current_inputs = set(
+        decision.requested_outcome.input_artifacts
+        if decision.requested_outcome and decision.requested_outcome.input_artifacts
+        else capability.input_artifacts
+    )
     normalized_task = task.casefold()
-    incompatible_mentions = []
+    incompatible_mentions: dict[str, list[str]] = {}
     for other in policy.workflows.values():
-        rejected_inputs = other.output_capability.incompatible_input_artifacts
+        rejected_inputs = current_inputs.intersection(
+            other.output_capability.incompatible_input_artifacts
+        )
         words = re.split(r"[-_\s]+", other.workflow.casefold())
         if (
-            "mutation_matrix" in rejected_inputs
+            rejected_inputs
             and words
             and all(
                 re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", normalized_task)
                 for word in words
             )
         ):
-            incompatible_mentions.append(other.workflow)
-    rejection = ""
-    if incompatible_mentions:
+            for artifact in sorted(rejected_inputs):
+                incompatible_mentions.setdefault(artifact, []).append(other.workflow)
+    rejections = []
+    for artifact, workflows in incompatible_mentions.items():
         names = ", ".join(
             sorted(
-                dict.fromkeys(incompatible_mentions),
+                dict.fromkeys(workflows),
                 key=lambda name: (len(re.split(r"[-_\s]+", name)), name),
             )
         )
-        rejection = (
-            f"\n\nDo not pass the mutation matrix to {names}: their registered "
-            "contracts reject mutation_matrix and require gene-expression or "
-            "co-expression inputs."
+        rejections.append(
+            f"\n\nDo not pass the {artifact.replace('_', ' ')} to {names}: their "
+            f"registered contracts reject {artifact}. Use their separately "
+            "validated compatible inputs instead."
         )
+    transformation_section = (
+        f" and declares these transformations:\n\n{transformation_lines}"
+        if transformations else "."
+    )
+    rejection_text = "".join(rejections)
     return _ui_text(
         f"The registered match is **{spec.workflow}**. {spec.description}\n\n"
-        f"It accepts {modality_text} data and declares these transformations:\n"
-        f"{transformation_lines}\n\n"
-        "Its declared outputs are:\n"
-        f"{artifact_lines}"
-        f"{rejection}\n\n"
+        f"It accepts {modality_text} data{transformation_section}\n\n"
+        "Its declared outputs are:\n\n"
+        f"{artifact_lines}{rejection_text}\n\n"
         "This is workflow guidance only; no execution was authorized. "
         "No files were inspected and no analysis ran."
     )

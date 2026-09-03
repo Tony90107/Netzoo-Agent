@@ -42,6 +42,14 @@ def _produced_artifacts(
     return capability.produced_artifacts or frozenset({capability.artifact_type})
 
 
+def _accepts_inputs(outcome: RequestedOutcome, capability: OutputCapabilityDefinition) -> bool:
+    requested = set(outcome.input_artifacts) - {_UNKNOWN}
+    return (
+        requested.issubset(capability.input_artifacts)
+        and not requested.intersection(capability.incompatible_input_artifacts)
+    )
+
+
 def explicit_input_artifacts(task: str) -> frozenset[str]:
     """Extract only strongly named input artifact families from user text."""
     return frozenset(
@@ -54,6 +62,8 @@ def explicit_input_artifacts(task: str) -> frozenset[str]:
 def match_registry_guidance_features(
     task: str,
     capabilities=OUTPUT_CAPABILITIES,
+    *,
+    input_artifacts: Sequence[str] | None = None,
 ) -> CapabilityMatch | None:
     """Recover one read-only capability from multiple registry-owned signals.
 
@@ -63,11 +73,19 @@ def match_registry_guidance_features(
     execution authorization remains downstream.
     """
     normalized = task.casefold()
-    task_inputs = explicit_input_artifacts(task)
+    task_inputs = (
+        explicit_input_artifacts(task)
+        if input_artifacts is None else frozenset(input_artifacts)
+    )
     ranked: list[tuple[int, int, RecommendedAction]] = []
     for index, (action, capability) in enumerate(capabilities.items()):
         incompatible_inputs = frozenset(capability.incompatible_input_artifacts)
         compatible_inputs = task_inputs & frozenset(capability.input_artifacts)
+        if input_artifacts is not None and (
+            task_inputs & incompatible_inputs
+            or not task_inputs.issubset(capability.input_artifacts)
+        ):
+            continue
         if task_inputs & incompatible_inputs and not compatible_inputs:
             continue
         phrase_hits = {
@@ -94,6 +112,7 @@ def _is_not_applicable(outcome: RequestedOutcome) -> bool:
         outcome.operation == _UNKNOWN
         and outcome.artifact_type == _UNKNOWN
         and outcome.granularity == "not_applicable"
+        and not outcome.input_artifacts
         and not outcome.entity_types
         and not outcome.regulator_types
         and not outcome.target_types
@@ -106,6 +125,7 @@ def _has_unknown(outcome: RequestedOutcome) -> bool:
         outcome.unresolved_dimensions
         or _UNKNOWN in {outcome.operation, outcome.artifact_type, outcome.granularity}
         or _UNKNOWN in outcome.entity_types
+        or _UNKNOWN in outcome.input_artifacts
         or _UNKNOWN in outcome.regulator_types
         or _UNKNOWN in outcome.target_types
     )
@@ -119,6 +139,7 @@ def _matches(
         return False
     return (
         outcome.operation == capability.operation
+        and _accepts_inputs(outcome, capability)
         and outcome.artifact_type in _produced_artifacts(capability)
         and outcome.granularity in capability.granularities
         and set(outcome.entity_types).issubset(capability.entity_types)
@@ -142,6 +163,7 @@ def _partially_compatible(
 ) -> bool:
     return (
         _known_scalar_matches(outcome.operation, capability.operation)
+        and _accepts_inputs(outcome, capability)
         and (
             outcome.artifact_type == _UNKNOWN
             or outcome.artifact_type in _produced_artifacts(capability)
@@ -175,6 +197,7 @@ def _matches_explicit_evidence(
     """Treat explicit user evidence as hard constraints on registry capabilities."""
     scalar_constraints = (
         ("operation", {capability.operation}),
+        ("input_artifact", set(capability.input_artifacts) - set(capability.incompatible_input_artifacts)),
         ("artifact_type", set(_produced_artifacts(capability))),
         ("granularity", set(capability.granularities)),
         ("entity_type", set(capability.entity_types)),
@@ -250,6 +273,12 @@ def _mismatch_dimensions(
     mismatches = []
     if not any(item.operation == outcome.operation for item in values):
         mismatches.append("operation")
+    if outcome.input_artifacts and not any(
+        _accepts_inputs(outcome, item)
+        and (outcome.artifact_type == _UNKNOWN or outcome.artifact_type in _produced_artifacts(item))
+        for item in values
+    ):
+        mismatches.append("input_artifacts")
     if not any(
         outcome.artifact_type in _produced_artifacts(item) for item in values
     ):
@@ -376,6 +405,7 @@ def has_granularity_only_ambiguity(
     signatures = {
         (
             item.operation,
+            tuple(sorted(item.input_artifacts)),
             item.artifact_type,
             tuple(sorted(item.entity_types)),
             tuple(sorted(item.regulator_types)),
@@ -545,21 +575,33 @@ def _enforce_input_compatibility(
     match: CapabilityMatch,
     *,
     request_mode: str,
+    input_artifacts: Sequence[str] | None = None,
 ) -> CapabilityMatch:
     """Prevent a typed or named match from accepting a declared bad input."""
     if match.status != "exact":
         return match
-    task_inputs = explicit_input_artifacts(task)
+    task_inputs = (
+        explicit_input_artifacts(task)
+        if input_artifacts is None else frozenset(input_artifacts)
+    )
     incompatible_actions = [
         action
         for action in match.matched_actions
         if action in OUTPUT_CAPABILITIES
-        and task_inputs & OUTPUT_CAPABILITIES[action].incompatible_input_artifacts
+        and (
+            task_inputs & OUTPUT_CAPABILITIES[action].incompatible_input_artifacts
+            or (
+                input_artifacts is not None
+                and not task_inputs.issubset(OUTPUT_CAPABILITIES[action].input_artifacts)
+            )
+        )
     ]
     if not incompatible_actions:
         return match
     if request_mode == "guidance":
-        registry_guidance = match_registry_guidance_features(task, OUTPUT_CAPABILITIES)
+        registry_guidance = match_registry_guidance_features(
+            task, OUTPUT_CAPABILITIES, input_artifacts=input_artifacts,
+        )
         if registry_guidance is not None:
             return registry_guidance
     return CapabilityMatch(
@@ -589,6 +631,15 @@ def match_semantic_request(
         if action in OUTPUT_CAPABILITIES:
             return CapabilityMatch(status="exact", matched_actions=[action])
 
+    current_inputs = (
+        sorted({
+            artifact for hypothesis in hypotheses
+            for artifact in hypothesis.outcome.input_artifacts
+            if artifact != _UNKNOWN
+        })
+        if any(hypothesis.outcome.input_artifacts for hypothesis in hypotheses)
+        else None
+    )
     matching_hypotheses = hypotheses
     if request_mode == "guidance":
         # Guidance asks which registered capability can produce the result; the
@@ -609,6 +660,7 @@ def match_semantic_request(
             task,
             match,
             request_mode=request_mode,
+            input_artifacts=current_inputs,
         )
 
     if (
@@ -635,10 +687,13 @@ def match_semantic_request(
             task,
             promoted,
             request_mode=request_mode,
+            input_artifacts=current_inputs,
         )
 
     if request_mode == "guidance":
-        registry_guidance = match_registry_guidance_features(task, OUTPUT_CAPABILITIES)
+        registry_guidance = match_registry_guidance_features(
+            task, OUTPUT_CAPABILITIES, input_artifacts=current_inputs,
+        )
         if registry_guidance is not None:
             return registry_guidance
 
@@ -647,6 +702,14 @@ def match_semantic_request(
     # method mentions from overriding a uniquely compatible typed outcome.
     explicit_action = named_registered_action(task)
     if explicit_action is not None:
+        capability = OUTPUT_CAPABILITIES.get(explicit_action)
+        if capability is not None and matching_hypotheses and not any(
+            _partially_compatible(hypothesis.outcome, capability)
+            for hypothesis in matching_hypotheses
+        ):
+            # A name may disambiguate compatible methods, never redefine a
+            # known output or bypass an input contract.
+            return match
         named_match = CapabilityMatch(
             status="exact", matched_actions=[explicit_action]
         )
@@ -654,6 +717,7 @@ def match_semantic_request(
             task,
             named_match,
             request_mode=request_mode,
+            input_artifacts=current_inputs,
         )
     return match
 

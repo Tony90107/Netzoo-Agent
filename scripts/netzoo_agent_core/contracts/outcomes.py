@@ -19,6 +19,7 @@ from workflow_registry import (
 CapabilityMatchStatus = Literal["exact", "ambiguous", "unsupported", "not_applicable"]
 EvidenceDimension = Literal[
     "operation",
+    "input_artifact",
     "artifact_type",
     "entity_type",
     "regulator_type",
@@ -34,6 +35,13 @@ class RequestedOutcome(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: Operation
+    input_artifacts: list[ArtifactType] = Field(
+        default_factory=list, max_length=4,
+        description=(
+            "Current inputs for the requested analysis, separate from output artifact_type. "
+            "Exclude historical datasets and merely proposed intermediate outputs."
+        ),
+    )
     artifact_type: ArtifactType
     entity_types: list[EntityType] = Field(default_factory=list, max_length=8)
     display_entities: list[str] = Field(default_factory=list, max_length=8)
@@ -54,6 +62,16 @@ class RequestedOutcome(BaseModel):
     )
     granularity: Granularity
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("unresolved_dimensions")
+    @classmethod
+    def _exclude_optional_registry_signals(cls, values: list[str]) -> list[str]:
+        """Advisory registry tags are not missing scientific requirements."""
+        optional = {"selection_tag", "selection_tags", "registry_tag", "registry_tags"}
+        return [
+            item for item in values
+            if item.strip().casefold().replace(" ", "_") not in optional
+        ]
 
     @field_validator("display_entities", "unresolved_dimensions", "selection_tags")
     @classmethod
@@ -181,6 +199,26 @@ class SemanticReview(BaseModel):
             "outcome's unknown and unresolved fields, not in intent alternatives."
         )
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_hypothesis_metadata(cls, value):
+        """Accept only an equivalent nesting of one hypothesis, never conflicts."""
+        if not isinstance(value, Mapping):
+            return value
+        hypothesis = value.get("outcome_hypothesis")
+        if not isinstance(hypothesis, Mapping):
+            return value
+        normalized = dict(value)
+        nested = dict(hypothesis)
+        for field in ("confidence", "evidence", "assumptions"):
+            if field not in normalized:
+                continue
+            if field in nested and nested[field] != normalized[field]:
+                raise ValueError(f"Conflicting review hypothesis metadata: {field}")
+            nested[field] = normalized.pop(field)
+        normalized["outcome_hypothesis"] = nested
+        return normalized
 
 
 class CapabilityMatch(BaseModel):

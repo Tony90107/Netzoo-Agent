@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -13,7 +15,9 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     RequestedOutcome,
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
+    has_granularity_only_ambiguity,
     match_outcome_hypotheses,
+    match_registry_guidance_features,
     match_semantic_request,
     guidance_actions_for,
     match_requested_outcome,
@@ -46,6 +50,31 @@ def advisory_hypothesis(
         evidence=list(evidence),
         assumptions=assumptions or ["One outcome dimension remains unconfirmed."],
     )
+
+
+@pytest.mark.parametrize("inputs", [
+    ["mutation_matrix", "expression_matrix"],
+    ["mutation_matrix", "bipartite_edge_list"],
+])
+def test_guidance_fallback_cannot_bypass_typed_input_contract(inputs):
+    result = match_registry_guidance_features(
+        "Gene length normalization and pathway scores for somatic mutations",
+        input_artifacts=inputs,
+    )
+
+    assert result is None
+
+
+def test_different_current_inputs_are_not_only_a_granularity_question():
+    hypotheses = [
+        advisory_hypothesis(outcome(input_artifacts=[artifact], granularity=granularity))
+        for artifact, granularity in (
+            ("expression_matrix", "aggregate"),
+            ("mutation_matrix", "sample_specific"),
+        )
+    ]
+
+    assert not has_granularity_only_ambiguity(hypotheses)
 
 
 def test_sample_specific_mirna_regulatory_network_matches_lioness_puma():
@@ -113,6 +142,18 @@ def test_guidance_promotes_one_advisory_candidate_to_an_exact_registry_match():
     assert result.hypothesis_actions == []
 
 
+def test_optional_registry_tags_do_not_make_a_known_scientific_result_ambiguous():
+    requested = outcome(unresolved_dimensions=["selection_tag", "registry_tags"])
+
+    result = match_requested_outcome(requested)
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_lioness_puma"]
+    unknown = outcome(granularity="unknown", unresolved_dimensions=["selection_tags", "granularity"])
+    assert unknown.unresolved_dimensions == ["granularity"]
+    assert match_requested_outcome(unknown).status == "ambiguous"
+
+
 def test_guidance_stays_ambiguous_when_semantic_roles_are_omitted():
     incomplete = OutcomeHypothesis(
         outcome=outcome(
@@ -158,6 +199,118 @@ def test_questioned_panda_mention_does_not_override_somatic_mutation_subtyping()
 
     assert result.status == "exact"
     assert result.matched_actions == ["run_sambar"]
+
+
+@pytest.mark.parametrize(("task", "inputs", "artifact", "granularity", "expected"), [
+    (
+        "Previously used SAMBAR on somatic mutations; now infer patient-specific "
+        "TF networks from my RNA-Seq expression matrix.",
+        ["expression_matrix"], "regulatory_network", "sample_specific", "run_lioness_panda",
+    ),
+    (
+        "Previously used PANDA on RNA-Seq expression; now cluster WES mutation patients.",
+        ["mutation_matrix"], "sample_cluster_assignment", "aggregate", "run_sambar",
+    ),
+])
+def test_current_typed_input_is_distinct_from_historical_method_and_data(
+    task, inputs, artifact, granularity, expected,
+):
+    is_network = artifact == "regulatory_network"
+    requested = RequestedOutcome(
+        operation="infer" if is_network else "analyze",
+        input_artifacts=inputs,
+        artifact_type=artifact,
+        entity_types=["tf", "gene"] if is_network else ["sample"],
+        regulator_types=["tf"] if is_network else [],
+        target_types=["gene"] if is_network else [],
+        granularity=granularity,
+    )
+
+    result = match_semantic_request(
+        task, [OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == [expected]
+
+
+@pytest.mark.parametrize(("artifact", "inputs", "entities", "regulators", "granularity"), [
+    ("sample_cluster_assignment", ["expression_matrix"], ["sample"], [], "aggregate"),
+    ("regulatory_network", ["mutation_matrix"], ["tf", "gene"], ["tf"], "sample_specific"),
+])
+def test_typed_outcome_matching_rejects_incompatible_input_contracts(
+    artifact, inputs, entities, regulators, granularity,
+):
+    result = match_requested_outcome(RequestedOutcome(
+        operation="infer" if regulators else "analyze",
+        input_artifacts=inputs, artifact_type=artifact, entity_types=entities,
+        regulator_types=regulators, granularity=granularity,
+    ))
+
+    assert result.status == "unsupported"
+    assert result.matched_actions == []
+    assert "input_artifacts" in result.mismatch_dimensions
+
+
+def test_named_method_cannot_override_an_unsupported_scientific_result():
+    requested = RequestedOutcome(
+        operation="acquire", artifact_type="measurement_dataset",
+        entity_types=["protein"], granularity="aggregate",
+    )
+    result = match_semantic_request(
+        "Previously used PANDA. Now download the protein measurement dataset.",
+        [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+        request_mode="execute",
+    )
+
+    assert result.status == "unsupported"
+    assert result.matched_actions == []
+
+
+def test_named_method_cannot_bypass_its_declared_input_contract():
+    requested = RequestedOutcome(
+        operation="infer", input_artifacts=["mutation_matrix"],
+        artifact_type="regulatory_network", entity_types=["tf", "gene"],
+        regulator_types=["tf"], target_types=["gene"], granularity="aggregate",
+    )
+    result = match_semantic_request(
+        "Run OTTER directly on this mutation matrix.",
+        [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+        request_mode="execute",
+    )
+
+    assert result.status == "unsupported"
+    assert result.matched_actions == []
+
+
+@pytest.mark.parametrize(("task", "operation", "artifact", "entities", "roles", "granularity", "expected"), [
+    ("Previously PANDA; now analyze cohort covariate-adjusted coexpression.", "analyze", "coexpression_network", ["gene"], [], "aggregate", "run_cobra"),
+    ("Previously SAMBAR; now analyze bipartite network communities.", "analyze", "community_assignment", ["gene"], [], "not_applicable", "run_condor"),
+    ("Previously PUMA; now infer an aggregate two-layer omic network.", "infer", "multi_omic_network", ["omics_layer_1_feature", "omics_layer_2_feature"], [], "aggregate", "run_dragon"),
+    ("Previously SAMBAR; now infer patient-specific miRNA regulatory networks.", "infer", "regulatory_network", ["mirna", "gene"], ["mirna"], "sample_specific", "run_lioness_puma"),
+    ("Use OTTER for an aggregate TF-to-gene network.", "infer", "regulatory_network", ["tf", "gene"], ["tf"], "aggregate", "run_otter"),
+    ("Use PANDA for an aggregate TF-to-gene network.", "infer", "regulatory_network", ["tf", "gene"], ["tf"], "aggregate", "run_panda"),
+    ("Use PUMA for an aggregate miRNA-to-gene network.", "infer", "regulatory_network", ["mirna", "gene"], ["mirna"], "aggregate", "run_puma"),
+    ("Use BONOBO for sample-specific gene coexpression.", "infer", "coexpression_network", ["gene"], [], "sample_specific", "run_bonobo"),
+    ("Use LIONESS-COEXPRESSION for sample-specific gene coexpression.", "infer", "coexpression_network", ["gene"], [], "sample_specific", "run_lioness_coexpression"),
+    ("Previously PANDA; now infer TF regulation and sample activity.", "infer", "regulatory_network", ["tf", "gene", "sample"], ["tf"], "aggregate", "run_giraffe"),
+])
+def test_scientific_goal_and_compatible_name_disambiguation_are_shared_across_workflows(
+    task, operation, artifact, entities, roles, granularity, expected,
+):
+    requested = RequestedOutcome(
+        operation=operation, artifact_type=artifact, entity_types=entities,
+        regulator_types=roles, target_types=["gene"] if roles else [],
+        granularity=granularity,
+    )
+    result = match_semantic_request(
+        task, [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+        request_mode="execute",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == [expected]
 
 
 def test_incompatible_panda_semantics_cannot_override_mutation_guidance():

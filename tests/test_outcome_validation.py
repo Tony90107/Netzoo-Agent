@@ -16,7 +16,10 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     OutcomeHypothesis,
     RequestedOutcome,
 )
-from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
+    SemanticInterpretation,
+    SemanticReview,
+)
 from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
     validate_outcome_hypotheses,
 )
@@ -190,6 +193,35 @@ def test_evidence_validator_rejects_missing_dimension_evidence():
     )
 
 
+def test_current_input_artifact_requires_its_own_consistent_evidence():
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="analyze", input_artifacts=["mutation_matrix"],
+            artifact_type="sample_cluster_assignment", entity_types=["sample"],
+            granularity="aggregate",
+        ),
+        confidence=0.9,
+        evidence=[evidence(dimension, value, source="inferred") for dimension, value in (
+            ("operation", "analyze"), ("artifact_type", "sample_cluster_assignment"),
+            ("entity_type", "sample"), ("granularity", "aggregate"),
+        )],
+    )
+    task = "Use a somatic mutation matrix to cluster patients."
+    missing = validate_outcome_hypotheses(task, [hypothesis])
+    assert "hypothesis[0].missing_evidence:input_artifact=mutation_matrix" in missing.issues
+
+    supported = hypothesis.model_copy(update={"evidence": [
+        *hypothesis.evidence,
+        evidence("input_artifact", "mutation_matrix", text_span="somatic mutation matrix"),
+    ]})
+    assert validate_outcome_hypotheses(task, [supported]).valid
+    conflicting = supported.model_copy(update={"evidence": [
+        *hypothesis.evidence,
+        evidence("input_artifact", "expression_matrix", source="inferred"),
+    ]})
+    assert not validate_outcome_hypotheses(task, [conflicting]).valid
+
+
 def test_evidence_validator_rejects_an_ungrounded_explicit_span():
     task = "Infer a sample-specific miRNA regulatory network."
     hypothesis = OutcomeHypothesis(
@@ -246,6 +278,37 @@ def test_evidence_validator_marks_translation_mismatch_as_recoverable():
     assert result.valid is False
     assert result.recoverable is True
     assert "hypothesis[0].ungrounded_evidence:entity_type=gene" in result.issues
+
+
+@pytest.mark.parametrize(
+    ("task", "span", "valid"),
+    [
+        ("分析基\n因表現量", "基因", True),
+        ("Analyze ＧＥＮＥ expression", "gene", True),
+        ("Analyze genetic variation", "gene", False),
+        ("分析基因表現量", "gene", False),
+    ],
+)
+def test_evidence_grounding_normalizes_unicode_but_not_translation_or_substrings(
+    task, span, valid,
+):
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="explain", artifact_type="expression_matrix",
+            entity_types=["gene"], granularity="aggregate",
+        ),
+        confidence=0.9,
+        evidence=[
+            evidence("operation", "explain", source="inferred"),
+            evidence("artifact_type", "expression_matrix", source="inferred"),
+            evidence("granularity", "aggregate", source="inferred"),
+            evidence("entity_type", "gene", text_span=span),
+        ],
+    )
+
+    result = validate_outcome_hypotheses(task, [hypothesis])
+
+    assert result.valid is valid
 
 
 def test_registry_selection_signal_has_a_generic_evidence_boundary():
@@ -305,6 +368,37 @@ def test_semantic_interpretation_schema_forbids_an_empty_result():
             semantic_goal="No outcome",
             outcome_hypotheses=[],
         )
+
+
+def test_review_normalizes_misplaced_hypothesis_metadata_without_losing_evidence():
+    payload = {
+        "request_mode": "guidance",
+        "semantic_goal": "Explain cohort clustering",
+        "outcome_hypothesis": {
+            "operation": "analyze",
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": ["sample"],
+            "granularity": "aggregate",
+        },
+        "confidence": 0.9,
+        "evidence": [evidence("entity_type", "sample", text_span="patients").model_dump()],
+        "assumptions": [],
+    }
+
+    review = SemanticReview.model_validate(payload)
+
+    assert review.outcome_hypothesis.confidence == 0.9
+    assert review.outcome_hypothesis.outcome.artifact_type == "sample_cluster_assignment"
+    assert review.outcome_hypothesis.evidence[0].text_span == "patients"
+    assert "confidence" in payload  # Do not mutate provider data.
+
+    conflicting = {**payload, "outcome_hypothesis": {
+        **payload["outcome_hypothesis"], "confidence": 0.2,
+    }}
+    with pytest.raises(ValidationError):
+        SemanticReview.model_validate(conflicting)
+    with pytest.raises(ValidationError):
+        SemanticReview.model_validate({**payload, "action": "run_sambar"})
 
 
 def test_non_scientific_request_has_a_valid_not_applicable_outcome():

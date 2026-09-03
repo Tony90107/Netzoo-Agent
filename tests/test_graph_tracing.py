@@ -383,7 +383,18 @@ class AmbiguousRoleSemanticReviewRouter:
             rendered = "\n".join(str(message.content) for message in messages)
             assert "registry_ambiguity" in rendered
             corrected = StrictRoutingPipelineLLM()
-            return semantic_review(corrected._interpret(messages, record_call=False))
+            review = semantic_review(corrected._interpret(messages, record_call=False))
+            original_spans = {
+                "artifact_type": "regulator network",
+                "regulator_type": "mi-RNA regulator",
+                "granularity": "sample specific",
+            }
+            review.outcome_hypothesis.evidence = [
+                item.model_copy(update={"text_span": original_spans[item.dimension]})
+                if item.dimension in original_spans else item
+                for item in review.outcome_hypothesis.evidence
+            ]
+            return review
         if self.calls == 3:
             return IntentDecision(
                 mode="answer",
@@ -405,6 +416,134 @@ class GuidanceResponseLLM:
                 "regulatory networks. No files were inspected and no analysis ran."
             )
         )
+
+
+def test_routing_never_accepts_unquoted_evidence_after_the_review_retry(tmp_path):
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="infer", artifact_type="regulatory_network",
+            entity_types=["mirna"], regulator_types=["mirna"],
+            granularity="sample_specific",
+        ),
+        confidence=0.99,
+        evidence=[OutcomeEvidence(
+            dimension=dimension, value=value, source="explicit",
+            text_span="fabricated quote absent from the user request",
+            rationale="Provider incorrectly claimed an exact quote.",
+        ) for dimension, value in (
+            ("operation", "infer"), ("artifact_type", "regulatory_network"),
+            ("regulator_type", "mirna"), ("granularity", "sample_specific"),
+        )],
+    )
+
+    class InvalidEvidenceProvider:
+        def with_structured_output(self, schema, **_kwargs):
+            def invoke(_messages):
+                assert schema in {SemanticInterpretation, SemanticReview}
+                if schema is SemanticReview:
+                    return SemanticReview(
+                        request_mode="guidance", semantic_goal="Network guidance",
+                        outcome_hypothesis=hypothesis,
+                    )
+                return SemanticInterpretation(
+                    request_mode="guidance", semantic_goal="Network guidance",
+                    outcome_hypotheses=[hypothesis],
+                )
+            return SimpleNamespace(invoke=invoke)
+
+    provider = InvalidEvidenceProvider()
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="unquoted-evidence", profile_id="default")
+    context = SimpleNamespace(
+        semantic_interpreter=provider.with_structured_output(SemanticInterpretation),
+        semantic_reviewer=provider.with_structured_output(SemanticReview),
+        intent_router=provider.with_structured_output(IntentDecision),
+        semantic_prompt="Interpret scientific outcomes.", intent_prompt="Classify intent.",
+        semantic_model_name="fake", router_model_name="fake", router_max_tokens=800,
+        task_token_budget=20_000, recorder=recorder,
+        project_policy=legacy_agent.ProjectPolicyLoader().load(),
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+    )
+
+    result = router_invocation.invoke_router(
+        context, {"run_id": str(run_id)}, "Explain sample-specific miRNA networks.",
+    )
+
+    assert result.decision.matched_actions == []
+    assert result.decision.should_execute is False
+    assert [call.role for call in result.usage.calls] == [
+        "semantic_interpreter", "semantic_reviewer",
+    ]
+    assert "routing.semantic_interpretation_accepted" not in {
+        event.event_type for event in store.read_events(run_id)
+    }
+
+
+def test_routing_repairs_multilingual_review_and_selects_typed_goal_without_fallback(tmp_path):
+    task = "我之前做過 PANDA；現在以 WES 資料對病人做分組。"
+    requested = RequestedOutcome(
+        operation="analyze", input_artifacts=["mutation_matrix"],
+        artifact_type="sample_cluster_assignment", entity_types=["sample"],
+        granularity="aggregate",
+    )
+    items = [OutcomeEvidence(
+        dimension=dimension, value=value,
+        source="explicit" if span else "inferred", text_span=span,
+        rationale="The current request is one cohort grouping from the stated data.",
+    ) for dimension, value, span in (
+        ("operation", "analyze", None), ("input_artifact", "mutation_matrix", "WES"),
+        ("artifact_type", "sample_cluster_assignment", "分組"),
+        ("entity_type", "sample", "病人"), ("granularity", "aggregate", None),
+    )]
+    first_items = [
+        item.model_copy(update={"text_span": "whole exome sequencing"})
+        if item.dimension == "input_artifact" else item for item in items
+    ]
+    proposal = SemanticInterpretation(
+        request_mode="guidance", semantic_goal="Cohort grouping",
+        outcome_hypotheses=[OutcomeHypothesis(
+            outcome=requested, confidence=0.9, evidence=first_items,
+        )],
+    )
+
+    def review(messages):
+        assert "ungrounded_evidence:input_artifact" in str(messages[-1].content)
+        return {
+            "request_mode": "guidance", "semantic_goal": "Cohort grouping",
+            "outcome_hypothesis": requested.model_dump(),
+            "confidence": 0.95, "evidence": [item.model_dump() for item in items],
+            "assumptions": [],
+        }
+
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="repaired-review", profile_id="default")
+    context = SimpleNamespace(
+        semantic_interpreter=SimpleNamespace(invoke=lambda _m: proposal),
+        semantic_reviewer=SimpleNamespace(invoke=review),
+        intent_router=SimpleNamespace(invoke=lambda _m: IntentDecision(
+            mode="answer", confidence=0.95, reason="Workflow guidance only.",
+        )),
+        semantic_prompt="Interpret scientific outcomes.", intent_prompt="Classify intent.",
+        semantic_model_name="fake", router_model_name="fake", router_max_tokens=800,
+        task_token_budget=20_000, recorder=recorder,
+        project_policy=legacy_agent.ProjectPolicyLoader().load(),
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+    )
+
+    result = router_invocation.invoke_router(context, {"run_id": str(run_id)}, task)
+
+    assert result.decision.matched_actions == ["run_sambar"]
+    assert result.decision.requested_outcome.input_artifacts == ["mutation_matrix"]
+    assert result.decision.requested_outcome.artifact_type == "sample_cluster_assignment"
+    assert result.decision.should_execute is False
+    assert [call.role for call in result.usage.calls] == [
+        "semantic_interpreter", "semantic_reviewer", "intent_router",
+    ]
+    events = {event.event_type for event in store.read_events(run_id)}
+    assert "routing.semantic_interpretation_accepted" in events
+    assert "routing.semantic_guidance_recovered" not in events
 
 
 def test_semantic_review_receives_registry_ambiguity_without_textual_matching(

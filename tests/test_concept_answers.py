@@ -17,6 +17,7 @@ from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_cobra_expression_boundary,
     render_registered_handoff_script_guidance,
     render_outcome_clarification,
+    render_recovered_workflow_guidance,
     render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
 )
@@ -66,6 +67,45 @@ def test_non_purpose_question_keeps_response_model_path():
         render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy)
         is None
     )
+
+
+def test_recovered_input_boundary_is_registry_driven_not_mutation_specific():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = _decision().model_copy(update={
+        "reason": "Recovered from declared scientific signals.",
+        "capability_match_status": "exact",
+        "matched_actions": ["run_cobra"],
+        "recommended_actions": ["run_cobra"],
+    })
+
+    answer = render_recovered_workflow_guidance(
+        "Can SAMBAR handle my expression matrix for covariate adjustment?",
+        decision, policy,
+    )
+
+    assert "**COBRA**" in answer
+    assert "Do not pass the expression matrix to SAMBAR" in answer
+    assert "Do not pass the mutation matrix" not in answer
+
+
+def test_clarification_can_render_new_artifact_types_without_per_tool_labels():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    requested = RequestedOutcome(
+        operation="analyze", artifact_type="sample_cluster_assignment",
+        entity_types=["sample"], granularity="unknown", unresolved_dimensions=["granularity"],
+    )
+    decision = _decision().model_copy(update={
+        "requested_outcome": requested,
+        "outcome_hypotheses": [OutcomeHypothesis(outcome=requested, confidence=0.9)],
+        "hypothesis_actions": ["run_sambar"],
+        "capability_match_status": "ambiguous",
+        "clarification_question": "Should the result be aggregate or sample-specific?",
+    })
+
+    answer = render_outcome_clarification(decision, policy)
+
+    assert "sample cluster assignment" in answer
+    assert "Should the result be aggregate or sample-specific?" in answer
 
 
 def test_cobra_output_cannot_be_routed_as_panda_expression():
