@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 import re
 
 from workflow_registry import (
@@ -22,6 +22,73 @@ from ..contracts import (
 
 
 _UNKNOWN = "unknown"
+_INPUT_ARTIFACT_PATTERNS = {
+    "mutation_matrix": re.compile(
+        r"somatic mutations?|somatic mutation matrix|mutation matrix|\bwes\b|"
+        r"dna.{0,8}(?:mutation|突變)|體細胞突變|突變矩陣",
+        flags=re.IGNORECASE,
+    ),
+    "expression_matrix": re.compile(
+        r"rna[- ]?seq|gene expression|expression matrix|表現量矩陣|表現矩陣",
+        flags=re.IGNORECASE,
+    ),
+}
+
+
+def _produced_artifacts(
+    capability: OutputCapabilityDefinition,
+) -> frozenset[str]:
+    """Return every artifact a workflow can deliberately expose to the user."""
+    return capability.produced_artifacts or frozenset({capability.artifact_type})
+
+
+def explicit_input_artifacts(task: str) -> frozenset[str]:
+    """Extract only strongly named input artifact families from user text."""
+    return frozenset(
+        artifact
+        for artifact, pattern in _INPUT_ARTIFACT_PATTERNS.items()
+        if pattern.search(task)
+    )
+
+
+def match_registry_guidance_features(
+    task: str,
+    capabilities=OUTPUT_CAPABILITIES,
+) -> CapabilityMatch | None:
+    """Recover one read-only capability from multiple registry-owned signals.
+
+    This is deliberately stricter than keyword routing: a workflow must have at
+    least two independent capability signals, be the unique top score, and not
+    reject an explicitly named input artifact. The result grants guidance only;
+    execution authorization remains downstream.
+    """
+    normalized = task.casefold()
+    task_inputs = explicit_input_artifacts(task)
+    ranked: list[tuple[int, int, RecommendedAction]] = []
+    for index, (action, capability) in enumerate(capabilities.items()):
+        incompatible_inputs = frozenset(capability.incompatible_input_artifacts)
+        compatible_inputs = task_inputs & frozenset(capability.input_artifacts)
+        if task_inputs & incompatible_inputs and not compatible_inputs:
+            continue
+        phrase_hits = {
+            phrase.casefold()
+            for phrase in capability.selection_phrases
+            if phrase.casefold() in normalized
+        }
+        input_hits = compatible_inputs
+        evidence_count = len(phrase_hits) + len(input_hits)
+        if evidence_count < 2:
+            continue
+        score = 3 * len(input_hits) + 2 * len(phrase_hits)
+        ranked.append((score, -index, action))
+    if not ranked:
+        return None
+    ranked.sort(reverse=True)
+    if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
+        return None
+    return CapabilityMatch(status="exact", matched_actions=[ranked[0][2]])
+
+
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
     return (
         outcome.operation == _UNKNOWN
@@ -52,7 +119,7 @@ def _matches(
         return False
     return (
         outcome.operation == capability.operation
-        and outcome.artifact_type == capability.artifact_type
+        and outcome.artifact_type in _produced_artifacts(capability)
         and outcome.granularity in capability.granularities
         and set(outcome.entity_types).issubset(capability.entity_types)
         and set(outcome.regulator_types).issubset(capability.regulator_types)
@@ -75,7 +142,10 @@ def _partially_compatible(
 ) -> bool:
     return (
         _known_scalar_matches(outcome.operation, capability.operation)
-        and _known_scalar_matches(outcome.artifact_type, capability.artifact_type)
+        and (
+            outcome.artifact_type == _UNKNOWN
+            or outcome.artifact_type in _produced_artifacts(capability)
+        )
         and (
             outcome.granularity == _UNKNOWN
             or outcome.granularity in capability.granularities
@@ -105,7 +175,7 @@ def _matches_explicit_evidence(
     """Treat explicit user evidence as hard constraints on registry capabilities."""
     scalar_constraints = (
         ("operation", {capability.operation}),
-        ("artifact_type", {capability.artifact_type}),
+        ("artifact_type", set(_produced_artifacts(capability))),
         ("granularity", set(capability.granularities)),
         ("entity_type", set(capability.entity_types)),
         ("regulator_type", set(capability.regulator_types)),
@@ -180,7 +250,9 @@ def _mismatch_dimensions(
     mismatches = []
     if not any(item.operation == outcome.operation for item in values):
         mismatches.append("operation")
-    if not any(item.artifact_type == outcome.artifact_type for item in values):
+    if not any(
+        outcome.artifact_type in _produced_artifacts(item) for item in values
+    ):
         mismatches.append("artifact_type")
     if not any(outcome.granularity in item.granularities for item in values):
         mismatches.append("granularity")
@@ -468,6 +540,38 @@ def named_registered_action(task: str):
     return None
 
 
+def _enforce_input_compatibility(
+    task: str,
+    match: CapabilityMatch,
+    *,
+    request_mode: str,
+) -> CapabilityMatch:
+    """Prevent a typed or named match from accepting a declared bad input."""
+    if match.status != "exact":
+        return match
+    task_inputs = explicit_input_artifacts(task)
+    incompatible_actions = [
+        action
+        for action in match.matched_actions
+        if action in OUTPUT_CAPABILITIES
+        and task_inputs & OUTPUT_CAPABILITIES[action].incompatible_input_artifacts
+    ]
+    if not incompatible_actions:
+        return match
+    if request_mode == "guidance":
+        registry_guidance = match_registry_guidance_features(task, OUTPUT_CAPABILITIES)
+        if registry_guidance is not None:
+            return registry_guidance
+    return CapabilityMatch(
+        status="unsupported",
+        mismatch_dimensions=["input_artifact"],
+        clarification_question=(
+            "The named input artifact is incompatible with the matched workflow. "
+            "Which compatible data type should NetZoo analyze?"
+        ),
+    )
+
+
 def match_semantic_request(
     task: str,
     hypotheses: Sequence[OutcomeHypothesis],
@@ -485,10 +589,6 @@ def match_semantic_request(
         if action in OUTPUT_CAPABILITIES:
             return CapabilityMatch(status="exact", matched_actions=[action])
 
-    explicit_action = named_registered_action(task)
-    if explicit_action is not None:
-        return CapabilityMatch(status="exact", matched_actions=[explicit_action])
-
     matching_hypotheses = hypotheses
     if request_mode == "guidance":
         # Guidance asks which registered capability can produce the result; the
@@ -504,6 +604,13 @@ def match_semantic_request(
             for hypothesis in hypotheses
         ]
     match = match_outcome_hypotheses(matching_hypotheses, OUTPUT_CAPABILITIES)
+    if match.status == "exact":
+        return _enforce_input_compatibility(
+            task,
+            match,
+            request_mode=request_mode,
+        )
+
     if (
         request_mode == "guidance"
         and match.status == "ambiguous"
@@ -520,9 +627,33 @@ def match_semantic_request(
         # registry capability, expose that capability as an exact *guidance*
         # match. `assemble_task_decision` still blocks execution whenever the
         # semantic request mode is not `execute`.
-        return CapabilityMatch(
+        promoted = CapabilityMatch(
             status="exact",
             matched_actions=list(match.hypothesis_actions),
+        )
+        return _enforce_input_compatibility(
+            task,
+            promoted,
+            request_mode=request_mode,
+        )
+
+    if request_mode == "guidance":
+        registry_guidance = match_registry_guidance_features(task, OUTPUT_CAPABILITIES)
+        if registry_guidance is not None:
+            return registry_guidance
+
+    # A workflow name is a fallback identifier, not stronger evidence than the
+    # requested scientific result. This keeps historical, questioned, or rejected
+    # method mentions from overriding a uniquely compatible typed outcome.
+    explicit_action = named_registered_action(task)
+    if explicit_action is not None:
+        named_match = CapabilityMatch(
+            status="exact", matched_actions=[explicit_action]
+        )
+        return _enforce_input_compatibility(
+            task,
+            named_match,
+            request_mode=request_mode,
         )
     return match
 
@@ -560,11 +691,13 @@ def apply_outcome_match(decision: TaskDecision) -> TaskDecision:
 
 __all__ = [
     "apply_outcome_match",
+    "explicit_input_artifacts",
     "guidance_actions_for",
     "has_granularity_only_ambiguity",
     "match_outcome_hypotheses",
     "match_semantic_request",
     "match_requested_outcome",
+    "match_registry_guidance_features",
     "named_workflow_action",
     "named_registered_action",
 ]

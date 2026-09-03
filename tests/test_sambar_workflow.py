@@ -49,6 +49,27 @@ def test_policy_registry_and_no_direct_handoffs_are_exact():
     assert "not direct inputs to PANDA" in spec.output_capability.handoff_contract
 
 
+def test_sambar_capability_describes_its_input_transformations_and_all_outputs():
+    capability = ProjectPolicyLoader(ROOT).load().workflows["run_sambar"].output_capability
+
+    assert capability.accepted_input_modalities == ["somatic_mutation"]
+    assert capability.produced_artifacts == [
+        "gene_mutation_scores",
+        "pathway_mutation_matrix",
+        "sample_cluster_assignment",
+        "sample_distance_matrix",
+    ]
+    assert capability.transformations == [
+        "gene_length_normalization",
+        "patient_mutation_burden_normalization",
+        "pathway_aggregation",
+        "sample_distance",
+        "sample_clustering",
+    ]
+    assert capability.scientific_objectives == ["cancer_subtyping"]
+    assert capability.incompatible_input_artifacts == ["expression_matrix"]
+
+
 def test_sambar_does_not_invent_untyped_inbound_or_outbound_handoffs():
     policy = ProjectPolicyLoader(ROOT).load()
     sambar = policy.workflows["run_sambar"]

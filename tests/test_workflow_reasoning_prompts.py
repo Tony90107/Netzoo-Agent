@@ -105,6 +105,21 @@ def test_lioness_panda_contract_describes_internal_inference_inputs():
     assert "not a direct file handoff" in puma_contract
 
 
+def test_expression_network_workflows_reject_somatic_mutation_matrices():
+    policy = ProjectPolicyLoader().load()
+
+    for action in (
+        "run_panda",
+        "run_puma",
+        "run_lioness_panda",
+        "run_lioness_puma",
+        "run_lioness_coexpression",
+    ):
+        capability = policy.workflows[action].output_capability
+        assert "gene_expression" in capability.accepted_input_modalities
+        assert capability.incompatible_input_artifacts == ["mutation_matrix"]
+
+
 def test_registry_generates_role_constraints_and_preserves_handoff_contracts():
     policy = ProjectPolicyLoader().load()
     decision = TaskDecision(

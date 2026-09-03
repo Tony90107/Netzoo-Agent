@@ -463,12 +463,80 @@ def render_workflow_composition_guidance(
     )
 
 
+def render_recovered_workflow_guidance(
+    task: str,
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Render a provider-independent answer for one safely recovered workflow."""
+    if not (
+        decision.action == "no_tool"
+        and decision.capability_match_status == "exact"
+        and len(decision.recommended_actions) == 1
+        and "declared scientific signals" in decision.reason.casefold()
+    ):
+        return None
+    spec = policy.workflows.get(decision.recommended_actions[0])
+    if spec is None:
+        return None
+    capability = spec.output_capability
+    modalities = capability.accepted_input_modalities or capability.input_artifacts
+    artifacts = capability.produced_artifacts or [capability.artifact_type]
+    transformations = capability.transformations
+
+    modality_text = ", ".join(item.replace("_", " ") for item in modalities)
+    transformation_lines = "\n".join(
+        f"- {item.replace('_', ' ')}" for item in transformations
+    )
+    artifact_lines = "\n".join(
+        f"- {item.replace('_', ' ')}" for item in artifacts
+    )
+    normalized_task = task.casefold()
+    incompatible_mentions = []
+    for other in policy.workflows.values():
+        rejected_inputs = other.output_capability.incompatible_input_artifacts
+        words = re.split(r"[-_\s]+", other.workflow.casefold())
+        if (
+            "mutation_matrix" in rejected_inputs
+            and words
+            and all(
+                re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", normalized_task)
+                for word in words
+            )
+        ):
+            incompatible_mentions.append(other.workflow)
+    rejection = ""
+    if incompatible_mentions:
+        names = ", ".join(
+            sorted(
+                dict.fromkeys(incompatible_mentions),
+                key=lambda name: (len(re.split(r"[-_\s]+", name)), name),
+            )
+        )
+        rejection = (
+            f"\n\nDo not pass the mutation matrix to {names}: their registered "
+            "contracts reject mutation_matrix and require gene-expression or "
+            "co-expression inputs."
+        )
+    return _ui_text(
+        f"The registered match is **{spec.workflow}**. {spec.description}\n\n"
+        f"It accepts {modality_text} data and declares these transformations:\n"
+        f"{transformation_lines}\n\n"
+        "Its declared outputs are:\n"
+        f"{artifact_lines}"
+        f"{rejection}\n\n"
+        "This is workflow guidance only; no execution was authorized. "
+        "No files were inspected and no analysis ran."
+    )
+
+
 __all__ = [
     "render_ambiguous_workflow_guidance",
     "render_capability_gap",
     "render_cobra_expression_boundary",
     "render_registered_handoff_script_guidance",
     "render_outcome_clarification",
+    "render_recovered_workflow_guidance",
     "render_spec_backed_concept_answer",
     "render_workflow_composition_guidance",
 ]

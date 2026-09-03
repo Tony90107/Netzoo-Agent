@@ -208,6 +208,18 @@ def _validate_expression(check: TableCheck) -> TableCheck:
         check.errors.append(
             f"expression values must be numeric; numeric cell ratio is {numeric_ratio:.1%}."
         )
+    numeric_values = pd.to_numeric(numeric_block.stack(), errors="coerce").dropna()
+    if (
+        len(numeric_values) >= 100
+        and set(numeric_values.unique()).issubset({0, 1})
+        and (numeric_values == 0).mean() >= 0.98
+    ):
+        check.errors.append(
+            "expression_file looks like a highly sparse binary somatic mutation "
+            "incidence matrix. PANDA and LIONESS require continuous gene-expression "
+            "measurements for correlation-based network inference; use the SAMBAR "
+            "mutation workflow for pathway-level patient subtyping."
+        )
     if row_ids.empty:
         check.errors.append("expression matrix has no gene IDs in the first column.")
     duplicated = row_ids[row_ids.duplicated()].unique()

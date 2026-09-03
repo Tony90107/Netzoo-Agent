@@ -29,6 +29,7 @@ from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
     render_outcome_clarification,
+    render_recovered_workflow_guidance,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
 )
@@ -50,8 +51,8 @@ def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
         and decision.confidence <= 0.0
         and not decision.matched_actions
         and not decision.recommended_actions
-        and "router" in reason
         and "no workflow was selected" in reason
+        and ("router" in reason or "semantic routing output failed validation" in reason)
     )
 
 
@@ -136,6 +137,13 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     )
     if composition_guidance is not None:
         return {"messages": [AIMessage(content=composition_guidance)]}
+    recovered_guidance = render_recovered_workflow_guidance(
+        latest_user_task(state["messages"]),
+        decision,
+        context.project_policy,
+    )
+    if recovered_guidance is not None:
+        return {"messages": [AIMessage(content=recovered_guidance)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {
