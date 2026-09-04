@@ -8,10 +8,16 @@ Unknown fields remain unresolved rather than being silently filled in.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Protocol
 
-if TYPE_CHECKING:
-    from .outcomes import RequestedOutcome
+
+class OutcomeFields(Protocol):
+    artifact_type: str
+    entity_types: list[str]
+    granularity: str
+    regulator_types: list[str]
+    target_types: list[str]
+    unresolved_dimensions: list[str]
 
 
 @dataclass(frozen=True)
@@ -38,7 +44,20 @@ ARTIFACT_SEMANTICS = {
 }
 
 
-def outcome_consistency_issues(outcome: RequestedOutcome) -> tuple[str, ...]:
+def artifact_field_constraints(artifact: str) -> dict:
+    """Generation constraints from the same ontology used by strict validation."""
+    rule = ARTIFACT_SEMANTICS[artifact]
+    fields = {"artifact_type": {"const": artifact}}
+    if rule.entities is not None:
+        fields["entity_types"] = {"items": {"enum": sorted(rule.entities | {"unknown"})}}
+    if rule.granularities is not None:
+        fields["granularity"] = {"enum": sorted(rule.granularities | {"unknown"})}
+    if artifact not in {"regulatory_network", "unknown"}:
+        fields.update(regulator_types={"maxItems": 0}, target_types={"maxItems": 0})
+    return fields
+
+
+def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:
     """Reject contradictions without choosing a workflow or resolving unknowns."""
     rule = ARTIFACT_SEMANTICS[outcome.artifact_type]
     issues = []

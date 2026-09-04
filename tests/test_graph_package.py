@@ -74,7 +74,7 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
     assert result.decision.action == "no_tool"
     assert result.decision.matched_actions == ["run_panda"]
     assert result.decision.recommended_actions == ["run_cobra", "run_panda"]
-    assert result.decision.requested_outcome is not None
+    assert result.decision.requested_outcome is None  # Candidate capabilities are not the user's goal.
 
 
 def test_semantic_failure_recovers_sambar_from_declared_scientific_signals():
@@ -105,7 +105,8 @@ def test_semantic_failure_recovers_sambar_from_declared_scientific_signals():
     assert result.decision.action == "no_tool"
     assert result.decision.matched_actions == ["run_sambar"]
     assert result.decision.recommended_actions == ["run_sambar"]
-    assert result.decision.requested_outcome is not None
+    assert result.decision.requested_outcome is None
+    assert result.decision.guidance_input_artifacts == ["mutation_matrix"]
     assert "declared scientific signals" in result.decision.reason
     assert "router was unavailable" not in result.decision.reason
 
@@ -211,8 +212,8 @@ def test_recovered_sambar_guidance_is_rendered_without_response_model_guessing()
 
     content = result["messages"][0].content
     assert "**SAMBAR**" in content
-    assert "gene length normalization" in content
-    assert "patient mutation burden normalization" in content
+    assert "gene length normalization" in content.casefold()
+    assert "patient mutation burden normalization" in content.casefold()
     assert "sample_distance_matrix" in content
     assert "sample_cluster_assignment" in content
     assert content.startswith("Do not use")

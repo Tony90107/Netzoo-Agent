@@ -691,7 +691,15 @@ integration tests 驗證。
 它分開統計語意成功、路由成功、registry 備援與最終建議回答，不會執行科學分析。
 `fallback` 不等於 `exact`，不能授權執行。已選定工具的建議回答會使用 registry
 與產物語意契約產生，明確保留拒絕原因及各產物的差異；一般概念／文件查詢仍保留
-response model。原始三題已加入輸出實體及最終回答斷言。
+response model。原始三題已加入輸出實體及完整「進度＋回答＋Next step」斷言。
+語意產生的 schema 依產物類型限制欄位；reviewer 收到具體 actual/expected 與
+evidence 修復資訊，仍須通過嚴格驗證。備援不會用工具預設產物覆寫使用者目標，
+也不會把系統解析失敗當成使用者問題不清楚。備援後的接受回覆需重新驗證語意，
+不能以候選工具直接略過路由進入 Planner。
+可加 `--repair-replay` 使用原始三題觀察到的錯誤類型重建第一輪失敗，測試 reviewer；
+這不是歷史模型原文，也不是 first-pass 自然語言準確率。需同時加 `--live` 才呼叫
+真實 reviewer（例如 `--live --repair-replay --max-calls 6`）。報告分開列出修復後
+通過驗證的比例與符合預期科學目標的比例；離線 fixture 的比例不能當成模型修復率。
 測試層級、呼叫上限與 `--fail-on-skip` 驗收方式見
 [Routing test strategy](docs/routing-test-strategy.md)。
 

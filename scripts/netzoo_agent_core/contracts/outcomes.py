@@ -17,7 +17,7 @@ from workflow_registry import (
 
 
 CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported", "not_applicable"]
-MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "confirmed_context"]
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",
@@ -63,6 +63,18 @@ class RequestedOutcome(BaseModel):
     )
     granularity: Granularity
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        from .artifact_semantics import ARTIFACT_SEMANTICS, artifact_field_constraints
+
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        # Provider constraints do not replace mandatory post-generation validation.
+        schema["anyOf"] = [
+            {"properties": artifact_field_constraints(artifact)}
+            for artifact in ARTIFACT_SEMANTICS
+        ]
+        return schema
 
     @field_validator("unresolved_dimensions")
     @classmethod

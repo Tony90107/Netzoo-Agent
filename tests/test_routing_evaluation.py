@@ -77,7 +77,7 @@ class FixtureProvider:
         self.calls = []
 
     def with_structured_output(self, schema, **kwargs):
-        assert kwargs == {"method": "function_calling", "include_raw": False}
+        assert kwargs == {"method": "function_calling", "include_raw": schema is not IntentDecision}
         provider = self
 
         class Adapter:

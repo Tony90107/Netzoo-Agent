@@ -9,6 +9,16 @@ from .registry_guidance import (
 )
 from ..routing.outcome_matching import guidance_actions_for
 from workflow_registry import workflow_name
+from .guidance_interaction import guidance_interaction
+
+
+def publish_routing_progress(decision, semantic_goal, policy, task):
+    """Shared publication path for the CLI and its end-to-end guidance evaluator."""
+    from ..contracts import _trace
+
+    _trace("intent", f"Classified as {decision.action}",
+           classification_progress_detail(semantic_goal, decision, policy, task))
+    _trace("reasoning", "Choosing the next safe step", next_step_progress_detail(decision, semantic_goal))
 
 
 def classification_progress_detail(
@@ -76,6 +86,7 @@ def classification_progress_detail(
             )
     return {
         "kind": "classification",
+        "interaction": (interaction.__dict__ if (interaction := guidance_interaction(decision)) else None),
         "outcome": outcome_label,
         "workflows": list(dict.fromkeys(workflows)),
         "workflow_path": list(dict.fromkeys(workflow_path)),
@@ -90,6 +101,11 @@ def next_step_progress_detail(
     semantic_goal: dict | None = None,
 ) -> dict:
     """Return public next-step facts without exposing private route reasoning."""
+    interaction = guidance_interaction(decision)
+    if interaction:
+        status = "guidance" if interaction.status == "fallback_guidance" else interaction.status
+        return {"kind": "next_step", "status": status,
+                "question": interaction.question, "tool_status": "No local tool has run yet."}
     # An ambiguous capability match is still answerable when the user asked for
     # guidance.  In that case the response model explains the compatible
     # workflows; presenting its internal clarification hint as a CLI blocker

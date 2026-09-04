@@ -90,6 +90,11 @@ def _validated_resolution(
     if decision.confidence < 0.80:
         return _needs_detail("The contextual reply classification was uncertain.")
     if decision.kind == "accept_workflow":
+        if not context.allow_workflow_continuation:
+            return ContextualReplyResolution(
+                kind="follow_up", reason="A fallback candidate requires fresh semantic validation.",
+                resolved_task=f"Previous NetZoo goal: {context.prior_user_goal}\nUser follow-up: {reply}",
+            )
         trusted_actions = {
             action
             for action in (

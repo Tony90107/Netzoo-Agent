@@ -5,7 +5,7 @@
 | Layer | Entry point | Evidence | Does not prove |
 | --- | --- | --- | --- |
 | Deterministic contracts | Matcher, evidence validator, registry-derived invariants | Known structured meanings respect input/output and authority contracts | Natural-language understanding |
-| Offline routing integration | Production `invoke_router` and selected-guidance `respond`, scripted provider responses | Interpreter → review → validation → matching → intent → final recommendation; bounded failures and diagnostics | Real provider/model accuracy |
+| Offline routing integration | Production `invoke_router`, progress renderer, selected-guidance `respond`, Next step and continuation controls | Interpreter → review → validation → matching → intent → complete terminal guidance; bounded failures and diagnostics | Real provider/model accuracy |
 | Live raw-prompt evaluation | Same production boundaries, real configured routing provider | Public prompts are interpreted and matched without injecting the answer key; selected final guidance satisfies corpus assertions | General free-prose answer quality, file validation or biological clustering quality |
 | Graph and scientific integration | Existing LangGraph and container tests | Full state transitions, execution gates and package artifacts | Robustness across untested prompts or clinical validity |
 
@@ -21,8 +21,24 @@ does not run scientific algorithms or authorize analysis.
   dimensions remain unresolved. Regulatory roles cannot leak into unrelated outputs.
 - `exact` is distinct from `fallback`. Feature lookup, partial-evidence recovery,
   and schema/evidence recovery preserve `match_basis`; an unconfirmed recommendation
-  never becomes an executable decision. CLI fallback progress is an attention
-  signal, not the normal exact-workflow success signal.
+  never becomes an executable decision. CLI fallback progress is a warning,
+  not exact-workflow success and not automatically a clarification request.
+- The provider schema constrains entities, granularity and role lists by artifact
+  type using the same ontology as the strict post-generation validator. Providers
+  may ignore schema constraints, so deterministic validation remains mandatory.
+  A failed proposal is retained transiently for one reviewer call, including when
+  the structured adapter rejects its nesting. Feedback includes actual fields,
+  permitted fields and required evidence repairs. Invalid values are never accepted
+  merely because the second call also failed.
+- Recovery leaves `requested_outcome` unset; candidate-compatible lexical inputs
+  live in `guidance_input_artifacts`, explicitly not a validated current-input
+  classification. Candidate outputs remain registry facts, not user requirements.
+  Existing validated partial goals are not overwritten by feature-based matching.
+- `guidance_interaction` owns fallback answer/progress/follow-up policy. Only a
+  concrete missing-choice question triggers clarification. Parser/provider failure
+  does not require the user to reformulate an already clear goal. A candidate alone
+  exposes neither a ready plan nor a workflow continuation. Even an acceptance reply
+  must return through semantic validation rather than adopt candidate defaults.
 - `RejectedMethod` carries the action, rejected current input, accepted inputs,
   reason code and explanation. The response contract recomputes these assertions
   from registry facts. A historical method mention is not evidence that the previous
@@ -36,6 +52,13 @@ does not run scientific algorithms or authorize analysis.
 - New workflows using existing artifact types inherit these constraints. A new
   artifact type needs an explicit semantic definition; the ontology coverage test
   fails until one is supplied. No SAMBAR-specific branch is added to these rules.
+- Explanations are gated by declared transformations and the concerns in the
+  question, never workflow-name branches. The original prompts separately explain
+  normalization, sparse pathway aggregation and input/method boundaries. Artifact
+  definitions and rejection polarity remain code-owned. The mutation explanations
+  follow [the primary methods paper](https://www.nature.com/articles/s41416-018-0109-7);
+  clustering quality is not guaranteed and relative burden normalization is not a
+  clinical TMB estimate.
 
 ## Offline regression
 
@@ -43,6 +66,7 @@ From the repository root, in the existing project Python environment:
 
 ```bash
 python -m pytest -q tests/test_guidance_consistency.py tests/test_routing_evaluation.py tests/test_routing_registry_invariants.py tests/test_test_strategy.py tests/test_harness_evaluation.py --fail-on-skip
+python -m pytest -q tests/test_semantic_repair_interaction.py --fail-on-skip
 python -m pytest -q -rs
 python -m ruff check scripts tests
 python scripts/evaluate_harness.py --json
@@ -110,7 +134,42 @@ the Planner, executor, memory stores, content mapper or a response model. Thus t
 three-provider-call bound is unchanged. Even if a model incorrectly classifies a
 guidance prompt as execution, the evaluator reports a safety failure without
 performing the action. Reports contain structured routing results, final guidance and
-sanitized diagnostic categories, not raw provider error messages.
+sanitized diagnostic categories, not raw provider error messages. It captures the
+actual public progress renderer, shares routing-progress publication with the CLI,
+and renders the actual Next step prompt (including navigation). The scorer rejects
+false clarification, exact-success signals on fallback, and unvalidated continuation
+controls independently of answer correctness.
+
+### Reviewer repair replay
+
+The September failure traces retained issue codes, not complete rejected proposals.
+`scripts/routing_repair_replay.py` therefore contains explicit **reconstructions**:
+distance granularity/roles, cluster granularity/missing operation evidence, and
+misplaced root assumptions/multi-omic roles. They are not raw captured model output.
+The failed proposal is supplied to the real production reviewer; expected answers
+remain outside model messages. A normal raw-prompt trial is still needed to evaluate
+the first-pass interpreter.
+
+Validate replay selection without any provider call:
+
+```bash
+python scripts/evaluate_routing.py --repair-replay --json
+```
+
+Explicitly opt into at most six logical provider calls (three reviewers, plus
+up to three intent calls):
+
+```bash
+python scripts/evaluate_routing.py --live --repair-replay --max-calls 6 --json
+```
+
+`review_repair_validation_rate` measures accepted repairs; `review_repair_rate`
+also requires gold semantic dimensions and the correct route. The denominator is
+first-pass validation failures, not every routine review; an empty denominator is
+`null`. Failed repairs remain fallback failures. `first_pass_source` labels injected
+reconstructions; `provider_calls` excludes injections, while `total_tokens` retains
+the conservative production budget estimate, including the injected first pass.
+Offline scripted-reviewer results exercise the scorer only, never model repair rate.
 
 ## Corpus and scoring
 
@@ -138,6 +197,9 @@ A case passes only if:
    `answer_forbidden` assertions. Unselected/general prose cases are explicitly
    `answer_evaluated=false`, not reported as passed final-answer tests. If such a
    case requires final-answer assertions, unevaluated means failure.
+8. The complete guidance surface passes progress/answer/Next step consistency
+   checks. Mutating only progress or continuation controls must fail the evaluator,
+   even when the selected workflow and answer are otherwise correct.
 
 `route_pass_rate`, `semantic_pass_rate` and final-answer results are separate.
 Recommending the expected action through fallback does not pass an `exact`

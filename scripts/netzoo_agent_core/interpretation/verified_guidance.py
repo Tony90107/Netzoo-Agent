@@ -9,11 +9,13 @@ from __future__ import annotations
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.method_rejections import rejected_methods_for
+from .guidance_interaction import guidance_interaction
+from .scientific_explanations import scientific_explanations
 
 
 def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str) -> dict:
     """Recompute trusted response assertions; model-supplied reasons are not facts."""
-    inputs = decision.requested_outcome.input_artifacts if decision.requested_outcome else []
+    inputs = decision.requested_outcome.input_artifacts if decision.requested_outcome else decision.guidance_input_artifacts
     actions = list(dict.fromkeys([*decision.matched_actions, *decision.recommended_actions]))
     rejections = rejected_methods_for(
         task, inputs, actions=[*actions, *(item.action for item in decision.rejected_methods)],
@@ -21,6 +23,11 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         names={action: spec.workflow for action, spec in policy.workflows.items()},
     )
     return {
+        "explanations": scientific_explanations(
+            task, [policy.workflows[action].output_capability.model_dump() for action in actions
+                   if action in policy.workflows and action not in {item.action for item in rejections}],
+            [item.model_dump() for item in rejections],
+        ),
         "match_status": decision.capability_match_status, "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in rejections],
         "artifact_definitions": {artifact: rule.description for artifact, rule in ARTIFACT_SEMANTICS.items()},
@@ -53,10 +60,13 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     if selected:
         names = " → ".join(workflows[action]["workflow"] for action in selected)
         if decision.capability_match_status == "fallback":
-            lines.append(f"Fallback recommendation: **{names}**. This is registry-based guidance, "
-                         "not an exact semantic match. The requested result still needs confirmation before planning execution.")
+            interaction = guidance_interaction(decision)
+            lines.append(f"Fallback recommendation: **{names}**. {interaction.explanation}")
         else:
             lines.append(f"Selected path: **{names}**.")
+        explanations = facts.get("explanations", [])
+        if explanations:
+            lines.append("Why this recommendation:\n\n" + "\n\n".join(explanations))
         for action in selected:
             item = workflows[action]
             capability = item["output_capability"]
@@ -64,7 +74,7 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             lines.append(f"**{item['workflow']}**: {item['description']}\n\n"
                          f"Accepted inputs: {', '.join(value.replace('_', ' ') for value in modalities)}.")
             transformations = capability["transformations"]
-            if transformations:
+            if transformations and not explanations:
                 lines.append("Declared transformations:\n\n" + "\n".join(
                     f"- {value.replace('_', ' ')}" for value in transformations
                 ))

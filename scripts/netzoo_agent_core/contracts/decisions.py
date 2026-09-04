@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, Field
-from workflow_registry import ActionName, IntentType, PreferenceKey, RecommendedAction
+from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKey, RecommendedAction
 
 from .outcomes import CapabilityMatchStatus, MatchBasis, OutcomeHypothesis, RejectedMethod, RequestedOutcome
 
@@ -78,11 +78,15 @@ class TaskDecision(BaseModel):
     recommended_actions: list[RecommendedAction] = Field(
         default_factory=list,
         description=(
-            "Code-owned workflow guidance sequence derived from one exact outcome "
-            "match. Router output must not populate this field."
+            "Code-owned exact match or fallback candidate sequence, distinguished by "
+            "capability_match_status. Router output must not populate this field."
         ),
     )
     requested_outcome: RequestedOutcome | None = None
+    guidance_input_artifacts: list[ArtifactType] = Field(
+        default_factory=list, max_length=4,
+        description="Candidate-compatible lexical input clues; not a validated current-input classification, user goal or execution authority.",
+    )
     outcome_hypotheses: list[OutcomeHypothesis] = Field(
         default_factory=list, max_length=3
     )

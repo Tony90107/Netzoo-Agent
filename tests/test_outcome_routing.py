@@ -762,7 +762,7 @@ def test_provider_failure_does_not_guess_an_unnamed_goal():
     assert decision.action == "no_tool"
     assert decision.matched_actions == []
     assert decision.recommended_actions == []
-    assert decision.clarification_question is not None
+    assert decision.clarification_question is None
 
 
 def test_provider_failure_does_not_infer_even_an_explicit_named_workflow():
@@ -785,7 +785,7 @@ def test_semantic_validation_failure_is_not_reported_as_provider_unavailability(
 
     assert "failed validation" in decision.reason
     assert "router was unavailable" not in decision.reason
-    assert "clarify" in decision.clarification_question.casefold()
+    assert decision.clarification_question is None
 
 
 def test_semantic_validation_failure_recovers_explicit_registry_pipeline_guidance():
@@ -806,7 +806,7 @@ def test_semantic_validation_failure_recovers_explicit_registry_pipeline_guidanc
     assert decision is not None
     assert decision.action == "no_tool"
     assert decision.matched_actions == ["run_panda"]
-    assert decision.requested_outcome.artifact_type == "regulatory_network"
+    assert decision.requested_outcome is None  # Do not replace a failed goal with candidate defaults.
 
     context = validated_workflow_context(decision, policy, task=task)
     assert context["compositions"][0]["ordered_actions"] == [
@@ -931,7 +931,7 @@ def test_provider_failure_never_guesses_unnamed_semantic_goals(task):
     assert decision.action == "no_tool"
     assert decision.matched_actions == []
     assert decision.recommended_actions == []
-    assert decision.clarification_question is not None
+    assert decision.clarification_question is None
 
 
 @pytest.mark.parametrize(
