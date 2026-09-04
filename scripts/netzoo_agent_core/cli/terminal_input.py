@@ -132,6 +132,10 @@ def _create_inline_mode_application(prompt: str, default_command: str):
         Window(
             content=FormattedTextControl(lambda: question),
             dont_extend_height=True,
+            # Display-only guidance needs wrapping too, independently of the
+            # editable TextArea. Otherwise Next step silently clips at the
+            # current terminal width, including after a resize.
+            wrap_lines=True,
         ),
         filter=Condition(lambda: bool(question)),
     )

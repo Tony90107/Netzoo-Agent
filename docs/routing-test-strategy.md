@@ -6,6 +6,8 @@
 | --- | --- | --- | --- |
 | Deterministic contracts | Matcher, evidence validator, registry-derived invariants | Known structured meanings respect input/output and authority contracts | Natural-language understanding |
 | Offline routing integration | Production `invoke_router`, progress renderer, selected-guidance `respond`, Next step and continuation controls | Interpreter → review → validation → matching → intent → complete terminal guidance; bounded failures and diagnostics | Real provider/model accuracy |
+| Provider wire contract | Real ChatOpenAI SDK with intercepted HTTP requests | Provider-bound function schema retains required fields and artifact constraints; invalid function arguments reach reviewer; complete/incomplete scripted repairs take correct paths | The provider's own schema processing or model accuracy |
+| Interactive terminal acceptance | PTY subprocess + ANSI screen emulator | Next step and navigation remain readable at narrow widths and after resize; keyboard submission still works | Every terminal emulator or arbitrarily short windows |
 | Live raw-prompt evaluation | Same production boundaries, real configured routing provider | Public prompts are interpreted and matched without injecting the answer key; selected final guidance satisfies corpus assertions | General free-prose answer quality, file validation or biological clustering quality |
 | Graph and scientific integration | Existing LangGraph and container tests | Full state transitions, execution gates and package artifacts | Robustness across untested prompts or clinical validity |
 
@@ -30,6 +32,11 @@ does not run scientific algorithms or authorize analysis.
   the structured adapter rejects its nesting. Feedback includes actual fields,
   permitted fields and required evidence repairs. Invalid values are never accepted
   merely because the second call also failed.
+  Every artifact branch repeats the required outcome fields with their types;
+  root properties remain authoritative for optional fields. Missing-field feedback
+  resolves the exact hypothesis index, maps it to the review's singular hypothesis,
+  and supplies the required field list, enum/type and evidence repair instructions.
+  This does not fill missing operations from workflow defaults or relax validation.
 - Recovery leaves `requested_outcome` unset; candidate-compatible lexical inputs
   live in `guidance_input_artifacts`, explicitly not a validated current-input
   classification. Candidate outputs remain registry facts, not user requirements.
@@ -170,6 +177,78 @@ first-pass validation failures, not every routine review; an empty denominator i
 reconstructions; `provider_calls` excludes injections, while `total_tokens` retains
 the conservative production budget estimate, including the injected first pass.
 Offline scripted-reviewer results exercise the scorer only, never model repair rate.
+
+### Latest missing-required-field batch
+
+The newer three traces all omitted `outcome.operation`; Q2 also omitted
+`granularity`, and Q3 omitted `operation` in both hypotheses. The reviewer again
+omitted `operation` in all three. This is **not** the old missing-operation-evidence
+case. Preserve the old replay and select this batch explicitly:
+
+```bash
+python scripts/evaluate_routing.py --repair-replay --repair-replay-suite missing-required --json
+# Paid model calls only with this explicit opt-in:
+python scripts/evaluate_routing.py --live --repair-replay --repair-replay-suite missing-required --max-calls 6 --json
+```
+
+Both suites remain reconstructions of error locations, not raw captured proposals.
+Reports record `repair_replay_suite`. Also run the three raw prompts without replay
+to measure first-pass performance; neither corpus validation nor scripted repair
+success changes the last observed live exact-match/complete-repair result of 0/3.
+
+### Offline wire and PTY gate
+
+Install the acceptance dependencies in an isolated environment based on the project
+environment, then require these tests to run with **zero skips**:
+
+```bash
+python -m pip install -r requirements-acceptance.txt
+python -m pytest -q tests/test_semantic_provider_wire.py tests/test_missing_required_repair.py tests/test_terminal_pty.py tests/test_terminal_input.py tests/test_semantic_repair_interaction.py --fail-on-skip
+```
+
+The wire tests use the actual SDK function-calling adapter and `httpx.MockTransport`,
+with an invalid endpoint and dummy key. They inspect the serialized HTTP body, not
+just Pydantic's schema or a fixture adapter. No paid API calls are made. The pinned
+acceptance SDKs are not production dependency pins and do not establish which
+versions ran in a user's Docker image. In the tested SDK, root `required` already
+survived conversion before the fix; the logs do not prove the SDK dropped fields.
+The old artifact branches contained only partial refinements, so required fields
+are now repeated explicitly there. Live effectiveness still requires measurement.
+
+The PTY test drives production routing guidance into the actual prompt-toolkit
+input application. It inspects the emulated screen at 40, 60 and 90 columns,
+resizes the active prompt to 32 columns, then submits `exit`. It fails on clipped
+`inputs.`, missing safety/navigation text, or broken key dispatch. This reproduced
+the original truncation before `Window.wrap_lines=True` was added to the display
+question, separately from the already-wrapping editable input. Existing string
+surface tests cannot detect this renderer defect.
+
+Validation recorded for this change (2026-09-04): the focused gate above passed
+51 tests with zero skips. In the same LangGraph-enabled acceptance environment,
+the full suite excluding the opt-in Docker test passed 842 tests and failed 16;
+the unmodified `933f4ea` baseline passed 825 and failed the **same 16 test IDs**.
+Those existing failures concern graph/response expectations and BONOBO tests;
+they were not skipped, weakened or fixed as part of this bounded change. This is
+not an all-green release gate. No live model or scientific Docker run was made.
+
+User-supplied CLI/session observations after this change (2026-09-04, 17:15-17:16):
+
+- Q1 and Q2 report `exact`; Q3 remains `fallback` with `registry_features`.
+- All three final outcomes pass the internal validator, and no missing-required
+  schema error is recorded. Q2's initial role/evidence errors were repaired.
+  This is one observed validation repair, not three successful complete repairs.
+- All three final `input_artifacts` lists are empty despite explicit mutation
+  inputs. Q1 records `sample_distance_matrix` rather than the terminal cluster
+  assignment; Q3 records `multi_omic_network` / `sample_specific` and loses the
+  PANDA/LIONESS input rejections. Against the existing corpus's complete semantic
+  labels, none of these three stored outcomes satisfies every required dimension.
+- Next step text is fully visible across wrapped lines in all three transcripts.
+
+Thus runtime exact labels improved from 0/3 to 2/3, but full semantic acceptance
+must not be reported as 2/3. Follow-up priorities are explicit-current-input
+completeness, distinguishing proposed means from terminal goals, and preserving
+method compatibility assessment when semantic extraction omits inputs. These
+remaining issues are not fixed by this schema/terminal checkpoint.
 
 ## Corpus and scoring
 
