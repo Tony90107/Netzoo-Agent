@@ -281,6 +281,7 @@ def evaluate(
         "metadata": {
             "source": source, "model": model_name, "temperature": 0.0,
             "first_pass_source": "observed_error_reconstruction_not_raw_capture" if replay else source,
+            "repair_replay_suite": provider.suite if replay else None,
             "policy_hash": policy.policy_hash, "repeat": repeat,
             "corpus_sha256": _fingerprint([case.model_dump() for case in cases]),
             "prompt_schema_sha256": _fingerprint({
@@ -327,6 +328,8 @@ def main(argv=None) -> int:
     parser.add_argument("--case", action="append", default=[], help="Select IDs (repeatable).")
     parser.add_argument("--live", action="store_true", help="Explicitly authorize paid provider calls for the selected public prompts.")
     parser.add_argument("--repair-replay", action="store_true", help="Inject reconstructed observed first-pass errors; evaluate reviewer repair, not raw-prompt accuracy.")
+    parser.add_argument("--repair-replay-suite", choices=("cross-field", "missing-required"),
+                        help="Observed failure batch; requires --repair-replay (default: cross-field).")
     parser.add_argument("--model", default=DEFAULT_ROUTER_MODEL)
     parser.add_argument("--repeat", type=int, choices=range(1, 6), default=1)
     parser.add_argument("--max-calls", type=int, default=12, help="Reject runs whose worst-case call count exceeds this cap.")
@@ -334,6 +337,8 @@ def main(argv=None) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
+        if args.repair_replay_suite and not args.repair_replay:
+            raise _ConfigurationError("--repair-replay-suite requires --repair-replay.")
         cases = load_scenarios(args.scenarios)
         unknown = set(args.case) - {case.id for case in cases}
         if unknown:
@@ -346,6 +351,8 @@ def main(argv=None) -> int:
             cases = [case for case in cases if case.id in OBSERVED_ISSUES]
         if not args.live:
             report = {"mode": "corpus_validation_only", "cases": len(cases), "ids": [case.id for case in cases]}
+            if args.repair_replay:
+                report["repair_replay_suite"] = args.repair_replay_suite or "cross-field"
         else:
             max_calls = len(cases) * args.repeat * (2 if args.repair_replay else 3)
             if max_calls > args.max_calls or not 0 < args.timeout <= 60:
@@ -355,7 +362,7 @@ def main(argv=None) -> int:
                 raise _ConfigurationError("Live evaluation requires OPENROUTER_API_KEY in the environment; no secrets are loaded automatically.")
             provider = build_llm(model, 0.0, max_output_tokens=DEFAULT_ROUTER_MAX_TOKENS, timeout_seconds=args.timeout)
             if args.repair_replay:
-                provider = RepairReplayProvider(provider)
+                provider = RepairReplayProvider(provider, suite=args.repair_replay_suite or "cross-field")
             report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat)
     except (ValueError, OSError, ImportError) as error:
         # Do not echo provider payloads, credentials, or Pydantic input values.

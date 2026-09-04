@@ -4,6 +4,7 @@ import json
 import re
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, artifact_field_constraints
+from ..contracts.outcomes import SemanticInterpretation
 
 
 def proposal_data(proposal):
@@ -32,7 +33,8 @@ def repair_feedback(proposal, issues: tuple[str, ...]) -> list[dict]:
     hypotheses = data.get("outcome_hypotheses", []) if isinstance(data, Mapping) else []
     feedback = []
     for issue in issues[:12]:
-        match = re.search(r"hypothesis\[(\d+)\]", issue)
+        location = issue.split(":", 2)[1].split(".") if issue.startswith("schema_validation:") else []
+        match = re.search(r"(?:hypothesis\[|outcome_hypotheses\.)(\d+)", issue)
         index = int(match[1]) if match else 0
         item = hypotheses[index] if isinstance(hypotheses, list) and index < len(hypotheses) else {}
         outcome = item.get("outcome", {}) if isinstance(item, Mapping) else {}
@@ -40,6 +42,12 @@ def repair_feedback(proposal, issues: tuple[str, ...]) -> list[dict]:
         fields = artifact_field_constraints(artifact) if isinstance(artifact, str) and artifact in ARTIFACT_SEMANTICS else {}
         expected = {"field_constraints": fields}
         if "schema_validation" in issue:
+            expected.update(_schema_repair(location, issue.rsplit(":", 1)[-1]))
+            field = location[-1] if location else None
+            if field in fields and "field_schema" in expected:
+                # Include the selected artifact's tighter constraint, not only
+                # the broad ontology enum. Validation still runs after review.
+                expected["field_schema"].update(fields[field])
             expected["shape"] = (
                 "Review root: request_mode, semantic_goal, outcome_hypothesis only. "
                 "Metadata belongs in outcome_hypothesis.confidence, outcome_hypothesis.evidence, "
@@ -56,8 +64,37 @@ def repair_feedback(proposal, issues: tuple[str, ...]) -> list[dict]:
             )
         if "roles" in issue:
             expected["roles"] = "Non-regulatory outputs have empty role lists and no unresolved regulator/target fields."
-        feedback.append({"issue": issue, "actual": outcome, "expected": expected})
+        feedback.append({"issue": issue, "location": location, "actual": outcome, "expected": expected})
     return feedback
+
+
+def _schema_repair(location: list[str], error_type: str) -> dict:
+    """Resolve Pydantic error paths against the canonical contract, never tool defaults."""
+    schema = SemanticInterpretation.model_json_schema()
+    node = schema
+    parent = schema
+    for segment in location:
+        while "$ref" in node:
+            node = schema["$defs"][node["$ref"].rsplit("/", 1)[-1]]
+        parent = node
+        node = node.get("items", {}) if segment.isdigit() else node.get("properties", {}).get(segment, {})
+    review_location = list(location)
+    if len(location) >= 2 and location[0] == "outcome_hypotheses" and location[1].isdigit():
+        review_location = ["outcome_hypothesis", *location[2:]]
+    return {
+        "review_path": ".".join(review_location),
+        "action": "add_required_field" if error_type == "missing" else "correct_field",
+        "required_fields": parent.get("required", []),
+        "field_schema": node,
+        "instruction": (
+            "Return a complete replacement SemanticReview, not a patch or a copied incomplete proposal. "
+            "Supply the named field using its schema and the original request, independently adjudicating "
+            "the primary goal when there are multiple hypotheses. Never use a candidate tool's default "
+            "output or operation to fill a missing field. For genuinely unresolved meaning use an allowed "
+            "unknown value and unresolved_dimensions, not omission. Add or update matching evidence for "
+            "each repaired scientific dimension; preserve grounded fields."
+        ),
+    }
 
 
 def repair_message(proposal, issues: tuple[str, ...]) -> str:

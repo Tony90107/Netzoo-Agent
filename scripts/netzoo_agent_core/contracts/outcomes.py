@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -35,7 +36,11 @@ class RequestedOutcome(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    operation: Operation
+    operation: Operation = Field(description=(
+        "Required scientific operation, even for guidance requests. Infer it from the "
+        "original scientific goal, not a tool name or request_mode. Use unknown with "
+        "unresolved_dimensions when genuinely unresolved; never omit this field."
+    ))
     input_artifacts: list[ArtifactType] = Field(
         default_factory=list, max_length=4,
         description=(
@@ -61,7 +66,11 @@ class RequestedOutcome(BaseModel):
             "authorize a workflow by themselves."
         ),
     )
-    granularity: Granularity
+    granularity: Granularity = Field(description=(
+        "Required output granularity, not the input entity type. Cohort-wide sample "
+        "distances or cluster labels are aggregate; separately inferred per-sample "
+        "results are sample_specific. Never omit this field."
+    ))
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
 
     @classmethod
@@ -69,11 +78,29 @@ class RequestedOutcome(BaseModel):
         from .artifact_semantics import ARTIFACT_SEMANTICS, artifact_field_constraints
 
         schema = handler.resolve_ref_schema(handler(core_schema))
-        # Provider constraints do not replace mandatory post-generation validation.
-        schema["anyOf"] = [
-            {"properties": artifact_field_constraints(artifact)}
-            for artifact in ARTIFACT_SEMANTICS
-        ]
+        # Keep required fields visible in EVERY conditional branch. Previously
+        # these branches were only refinement fragments. Observed replies omitted
+        # operation (and sometimes granularity); root required was preserved by
+        # the SDK, but function calling does not guarantee schema compliance.
+        # Do not copy all optional fields/descriptions into every branch: the root
+        # still owns them, and redundant schema text consumes the routing budget.
+        variants = []
+        for artifact in ARTIFACT_SEMANTICS:
+            constraints = artifact_field_constraints(artifact)
+            fields = {}
+            for name in dict.fromkeys([*schema["required"], *constraints]):
+                field = deepcopy(schema["properties"][name])
+                field.pop("title", None)
+                field.pop("description", None)
+                constraint = constraints.get(name, {})
+                if "items" in constraint:
+                    field["items"].update(constraint["items"])
+                field.update({key: value for key, value in constraint.items() if key != "items"})
+                if "const" in constraint:
+                    field["enum"] = [constraint["const"]]
+                fields[name] = field
+            variants.append({"type": "object", "required": list(schema["required"]), "properties": fields})
+        schema["anyOf"] = variants
         return schema
 
     @field_validator("unresolved_dimensions")
