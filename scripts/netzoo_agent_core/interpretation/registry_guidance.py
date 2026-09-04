@@ -125,6 +125,12 @@ def preferred_registry_composition_actions(
     existing = list(dict.fromkeys(decision.recommended_actions))
     if len(existing) > 1:
         return existing
+    if decision.requested_outcome is None:
+        # Candidate composition may use lexical signals without fabricating a
+        # requested artifact, role or granularity from the selected capability.
+        preferred = _preferred_compositions(decision, _workflow_records(workflows),
+                                            selection_tags=_task_supported_selection_tags(task, workflows))
+        return list(preferred[0]["ordered_actions"]) if len(preferred) == 1 else existing
     enriched = decision_with_registry_signals(decision, task, workflows)
     preferred = build_registry_selection_constraints(
         enriched,
@@ -333,6 +339,7 @@ def _handoff_steps(path: list[str], records: dict[str, dict]) -> list[dict]:
 def _preferred_compositions(
     decision: TaskDecision,
     workflows: Sequence[dict],
+    *, selection_tags: set[str] | None = None,
 ) -> list[dict]:
     records = _records_by_action(workflows)
     finals = _final_actions(decision, records)
@@ -342,10 +349,13 @@ def _preferred_compositions(
     requested_roles = (
         set(outcome.regulator_types) - {"unknown"} if outcome else set()
     )
-    requested_tags = set(outcome.selection_tags) if outcome else set()
+    requested_tags = set(outcome.selection_tags) if outcome else set(selection_tags or ())
     candidates = []
     for final in finals:
-        for path in _paths_to_final(final, records):
+        paths = _paths_to_final(final, records)
+        if len(decision.recommended_actions) > 1 and decision.recommended_actions in paths:
+            paths = [decision.recommended_actions]
+        for path in paths:
             candidates.append(
                 (
                     _path_score(path, records, requested_roles, requested_tags),

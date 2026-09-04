@@ -51,12 +51,19 @@ def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
         and decision.confidence <= 0.0
         and not decision.matched_actions
         and not decision.recommended_actions
-        and "no workflow was selected" in reason
-        and ("router" in reason or "semantic routing output failed validation" in reason)
+        and (decision.match_basis in {"semantic_validation_recovery", "provider_unavailable"}
+             or "no workflow was selected" in reason
+             and ("router" in reason or "semantic routing output failed validation" in reason))
     )
 
 
 def _render_unresolved_router_fallback(decision: TaskDecision) -> str:
+    from ..interpretation.guidance_interaction import guidance_interaction
+
+    interaction = guidance_interaction(decision)
+    if interaction:
+        return (f"{decision.reason}\n\n{interaction.explanation}\n\n{interaction.next_step}\n\n"
+                "No files were inspected and no analysis ran.")
     reason = decision.reason.strip()
     clarification = (
         decision.clarification_question.strip()

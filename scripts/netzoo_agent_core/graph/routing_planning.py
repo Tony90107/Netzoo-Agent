@@ -10,10 +10,7 @@ from ..contracts import (
     _trace,
     _ui_text,
 )
-from ..interpretation.semantic_goal import (
-    classification_progress_detail,
-    next_step_progress_detail,
-)
+from ..interpretation.semantic_goal import publish_routing_progress
 from ..llm import latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
@@ -41,21 +38,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             "classify",
             call.model_dump(mode="json"),
         )
-    _trace(
-        "intent",
-        f"Classified as {decision.action}",
-        classification_progress_detail(
-            routing_state["semantic_goal"],
-            decision,
-            context.project_policy,
-            user_task,
-        ),
-    )
-    _trace(
-        "reasoning",
-        "Choosing the next safe step",
-        next_step_progress_detail(decision, routing_state["semantic_goal"]),
-    )
+    publish_routing_progress(decision, routing_state["semantic_goal"], context.project_policy, user_task)
     record_event(
         context,
         state,

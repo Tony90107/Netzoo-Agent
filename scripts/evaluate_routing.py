@@ -27,10 +27,14 @@ from netzoo_agent_core.graph.context import _GraphContext
 from netzoo_agent_core.graph.prompts import build_graph_prompts
 from netzoo_agent_core.graph.router_invocation import invoke_router
 from netzoo_agent_core.graph.response import respond
+from netzoo_agent_core.evaluation.guidance_surface import capture_progress, score_surface
+from netzoo_agent_core.interpretation.semantic_goal import publish_routing_progress
+from netzoo_agent_core.presentation import _trace
 from netzoo_agent_core.llm import build_llm, build_semantic_reviewer_messages, validate_router_model
 from netzoo_agent_core.policy import ProjectPolicyLoader
 from netzoo_agent_core.pricing import PriceCatalog
 from workflow_registry import ArtifactType, EntityType, Granularity, RecommendedAction
+from routing_repair_replay import OBSERVED_ISSUES, RepairReplayProvider
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCENARIOS = PROJECT_ROOT / "tests" / "routing_scenarios.json"
@@ -171,7 +175,12 @@ def _score(case, result, events):
         f"pipeline: {result.reason_code}",
     ]
     errors = route_errors + semantic_errors + safety_errors + pipeline_errors
+    repair_attempted = any(event["type"] == "routing.semantic_interpretation_rejected"
+                           and event["payload"].get("attempt") == 1 for event in events)
     return {
+        "review_repair_attempted": repair_attempted,
+        "review_repair_validated": repair_attempted and accepted,
+        "review_repair_correct": repair_attempted and not semantic_errors and not route_errors,
         "id": case.id, "language": case.language, "category": case.category,
         "passed": not errors, "route_passed": not route_errors,
         "semantic_passed": not semantic_errors, "errors": errors,
@@ -188,7 +197,7 @@ def _score(case, result, events):
     }
 
 
-def _score_answer(case, result, context):
+def _score_answer(case, result, context, progress=""):
     """Exercise the production final guidance node without extra provider calls.
 
     Unselected/general free-prose answers are outside this bounded evaluator;
@@ -198,25 +207,28 @@ def _score_answer(case, result, context):
     if decision.action != "no_tool" or decision.should_execute or not (
         decision.capability_match_status in {"exact", "fallback"}
         and any(action in context.project_policy.workflows for action in decision.matched_actions)
-        or decision.rejected_methods
+        or decision.rejected_methods or decision.match_basis in {"semantic_validation_recovery", "provider_unavailable"}
     ):
         return {"answer_evaluated": False, "answer_passed": None, "answer": "",
                 "answer_errors": ["answer: no verified guidance available"]
                 if case.expected.answer_required or case.expected.answer_forbidden else []}
     plan = WorkflowPlan(workflow="NO-TOOL", objective="Evaluate guidance only",
                         decision=decision.model_dump(), status="respond_only")
-    response = respond(context, {
+    state = {
         "messages": [HumanMessage(content=case.prompt)], "decision": decision.model_dump(),
         "plan": plan.model_dump(), "tool_results": [], **result.routing_state,
-    })
+    }
+    response = respond(context, state)
     answer = str(response["messages"][0].content)
-    errors = [f"answer_missing: {value}" for value in case.expected.answer_required if value not in answer]
+    errors = [f"answer_missing: {value}" for value in case.expected.answer_required if value.casefold() not in answer.casefold()]
     errors.extend(f"answer_forbidden: {value}" for value in case.expected.answer_forbidden if value.casefold() in answer.casefold())
     if not answer.strip():
         errors.append("answer: empty")
     if response.get("token_usage"):
         errors.append("answer: selected guidance unexpectedly used the free-response path")
-    return {"answer_evaluated": True, "answer_passed": not errors, "answer": answer, "answer_errors": errors}
+    progress = progress.getvalue() if hasattr(progress, "getvalue") else progress
+    return {"answer_evaluated": True, "answer_passed": not errors, "answer": answer, "answer_errors": errors,
+            **score_surface(decision, state, progress, answer)}
 
 
 def evaluate(
@@ -226,14 +238,17 @@ def evaluate(
 ) -> dict:
     if not cases or not 1 <= repeat <= 5:
         raise ValueError("Evaluation requires cases and 1-5 repetitions.")
+    replay = isinstance(provider, RepairReplayProvider)
+    if replay and any(case.id not in OBSERVED_ISSUES for case in cases):
+        raise ValueError("Repair replay supports only the three original cases.")
     policy = ProjectPolicyLoader(PROJECT_ROOT).load()
     prompts = build_graph_prompts(policy)
     recorder = _EventRecorder()
     context = _GraphContext(
         profile_id="routing-evaluation", profile_store=None, episode_store=None,
         project_policy=policy, recorder=recorder, price_catalog=PriceCatalog.from_environment(),
-        semantic_interpreter=provider.with_structured_output(SemanticInterpretation, method="function_calling", include_raw=False),
-        semantic_reviewer=provider.with_structured_output(SemanticReview, method="function_calling", include_raw=False),
+        semantic_interpreter=provider.with_structured_output(SemanticInterpretation, method="function_calling", include_raw=True),
+        semantic_reviewer=provider.with_structured_output(SemanticReview, method="function_calling", include_raw=True),
         intent_router=provider.with_structured_output(IntentDecision, method="function_calling", include_raw=False),
         input_content_mapper=None, response_llm=None,
         semantic_model_name=model_name, router_model_name=model_name, response_model_name=model_name,
@@ -245,16 +260,27 @@ def evaluate(
     for case in cases:
         for trial in range(1, repeat + 1):
             recorder.events.clear()
+            if replay:
+                provider.case_id = case.id
             # The answer key is deliberately never sent to the runtime or provider.
-            result = invoke_router(context, {}, case.prompt)
-            row = {**_score(case, result, recorder.events), **_score_answer(case, result, context), "trial": trial}
+            with capture_progress() as progress:
+                _trace("intent", "Interpreting the request and capability boundaries")
+                result = invoke_router(context, {}, case.prompt)
+                publish_routing_progress(result.decision, result.routing_state["semantic_goal"], policy, case.prompt)
+                row = {**_score(case, result, recorder.events),
+                       **_score_answer(case, result, context, progress), "trial": trial}
             row["errors"].extend(row["answer_errors"])
+            row["errors"].extend(row.get("interaction_errors", []))
             row["passed"] = not row["errors"]
+            row["provider_calls"] = len(result.usage.calls) - (1 if replay and result.usage.calls else 0)
+            row["injected_proposal"] = replay
             results.append(row)
     total = len(results)
+    repair_trials = sum(item["review_repair_attempted"] for item in results)
     return {
         "metadata": {
             "source": source, "model": model_name, "temperature": 0.0,
+            "first_pass_source": "observed_error_reconstruction_not_raw_capture" if replay else source,
             "policy_hash": policy.policy_hash, "repeat": repeat,
             "corpus_sha256": _fingerprint([case.model_dump() for case in cases]),
             "prompt_schema_sha256": _fingerprint({
@@ -264,7 +290,7 @@ def evaluate(
                 )],
                 "schemas": [schema.model_json_schema() for schema in (SemanticInterpretation, SemanticReview, IntentDecision)],
             }),
-            "scope": "routing_and_verified_guidance_no_planner_executor_or_response_model",
+            "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model",
         },
         "summary": {
             "cases": len(cases), "trials": total,
@@ -274,10 +300,14 @@ def evaluate(
             "semantic_pass_rate": sum(item["semantic_passed"] for item in results) / total,
             "answer_evaluated_count": sum(item["answer_evaluated"] for item in results),
             "answer_failure_count": sum(bool(item["answer_errors"]) for item in results),
+            "interaction_failure_count": sum(bool(item.get("interaction_errors")) for item in results),
+            "review_repair_attempts": repair_trials,
+            "review_repair_validation_rate": sum(item["review_repair_validated"] for item in results) / repair_trials if repair_trials else None,
+            "review_repair_rate": sum(item["review_repair_correct"] for item in results) / repair_trials if repair_trials else None,
             "fallback_count": sum(item["status"] == "fallback" for item in results),
             "registry_recovery_count": sum(item["path"] == "registry_recovery" for item in results),
             "unsafe_execution_count": sum(item["should_execute"] or item["action"] != "no_tool" for item in results),
-            "provider_calls": sum(len(item["call_roles"]) for item in results),
+            "provider_calls": sum(item["provider_calls"] for item in results),
             "diagnostics": dict(Counter(code for item in results for code in item["diagnostics"])),
             "by_language": _breakdown(results, "language"),
             "by_category": _breakdown(results, "category"),
@@ -296,6 +326,7 @@ def main(argv=None) -> int:
     parser.add_argument("--scenarios", type=Path, default=DEFAULT_SCENARIOS)
     parser.add_argument("--case", action="append", default=[], help="Select IDs (repeatable).")
     parser.add_argument("--live", action="store_true", help="Explicitly authorize paid provider calls for the selected public prompts.")
+    parser.add_argument("--repair-replay", action="store_true", help="Inject reconstructed observed first-pass errors; evaluate reviewer repair, not raw-prompt accuracy.")
     parser.add_argument("--model", default=DEFAULT_ROUTER_MODEL)
     parser.add_argument("--repeat", type=int, choices=range(1, 6), default=1)
     parser.add_argument("--max-calls", type=int, default=12, help="Reject runs whose worst-case call count exceeds this cap.")
@@ -309,16 +340,22 @@ def main(argv=None) -> int:
             raise _ConfigurationError(f"Unknown case IDs: {sorted(unknown)}")
         if args.case:
             cases = [case for case in cases if case.id in args.case]
+        if args.repair_replay:
+            if args.case and any(case.id not in OBSERVED_ISSUES for case in cases):
+                raise _ConfigurationError("Repair replay supports original-q1, original-q2 and original-q3 only.")
+            cases = [case for case in cases if case.id in OBSERVED_ISSUES]
         if not args.live:
             report = {"mode": "corpus_validation_only", "cases": len(cases), "ids": [case.id for case in cases]}
         else:
-            max_calls = len(cases) * args.repeat * 3
+            max_calls = len(cases) * args.repeat * (2 if args.repair_replay else 3)
             if max_calls > args.max_calls or not 0 < args.timeout <= 60:
                 raise _ConfigurationError(f"Run needs a cap of at least {max_calls} calls and a timeout in (0, 60].")
             model = validate_router_model(args.model)
             if not os.environ.get("OPENROUTER_API_KEY"):
                 raise _ConfigurationError("Live evaluation requires OPENROUTER_API_KEY in the environment; no secrets are loaded automatically.")
             provider = build_llm(model, 0.0, max_output_tokens=DEFAULT_ROUTER_MAX_TOKENS, timeout_seconds=args.timeout)
+            if args.repair_replay:
+                provider = RepairReplayProvider(provider)
             report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat)
     except (ValueError, OSError, ImportError) as error:
         # Do not echo provider payloads, credentials, or Pydantic input values.

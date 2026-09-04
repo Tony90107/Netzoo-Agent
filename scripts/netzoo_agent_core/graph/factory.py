@@ -79,12 +79,12 @@ def build_graph(
     semantic_interpreter = semantic_llm.with_structured_output(
         SemanticInterpretation,
         method="function_calling",
-        include_raw=False,
+        include_raw=True,
     )
     semantic_reviewer = semantic_llm.with_structured_output(
         SemanticReview,
         method="function_calling",
-        include_raw=False,
+        include_raw=True,
     )
     intent_router = router_llm.with_structured_output(
         IntentDecision,

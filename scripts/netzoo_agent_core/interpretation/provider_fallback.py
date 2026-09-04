@@ -6,8 +6,7 @@ from collections.abc import Mapping
 
 from pydantic import ValidationError
 
-from ..contracts import RequestedOutcome, TaskDecision
-from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
+from ..contracts import TaskDecision
 from ..routing.method_rejections import rejected_methods_for
 from ..routing.outcome_matching import (
     explicit_input_artifacts,
@@ -29,17 +28,10 @@ def deterministic_router_fallback(
             "Semantic routing output failed validation, so no workflow was selected."
             + error_detail
         )
-        clarification = (
-            "Please clarify the desired NetZoo result; no workflow can be safely "
-            "selected from the invalid semantic output."
-        )
     else:
         reason = (
             "The LLM router was unavailable, so no workflow was selected."
             + error_detail
-        )
-        clarification = (
-            "Please restate the desired NetZoo result after the router is available."
         )
     return TaskDecision(
         action="no_tool",
@@ -48,7 +40,7 @@ def deterministic_router_fallback(
         intent_type="unknown",
         confidence=0.0,
         reason=reason,
-        clarification_question=clarification,
+        match_basis="semantic_validation_recovery" if isinstance(error, (ValidationError, ValueError)) else "provider_unavailable",
     )
 
 
@@ -79,22 +71,9 @@ def recover_registry_guidance(
         & frozenset(capability.incompatible_input_artifacts)
     ):
         return None
-    granularities = set(capability.granularities)
-    granularity = (
-        next(iter(granularities)) if len(granularities) == 1 else "unknown"
-    )
-    outcome = RequestedOutcome(
-        operation=capability.operation,
-        input_artifacts=sorted(explicit_input_artifacts(task) & set(capability.input_artifacts)),
-        artifact_type=capability.artifact_type,
-        entity_types=sorted(set(capability.entity_types) & (
-            ARTIFACT_SEMANTICS[capability.artifact_type].entities or set(capability.entity_types)
-        )),
-        regulator_types=sorted(capability.regulator_types),
-        target_types=sorted(capability.target_types),
-        granularity=granularity,
-        unresolved_dimensions=["granularity"] if granularity == "unknown" else [],
-    )
+    # Lexical input observations help scope candidate compatibility, but cannot
+    # manufacture the desired output, entities or granularity from the registry.
+    inputs = sorted(explicit_input_artifacts(task) & set(capability.input_artifacts))
     provisional = TaskDecision(
         action="no_tool",
         in_scope=True,
@@ -102,7 +81,7 @@ def recover_registry_guidance(
         intent_type="answer_question",
         confidence=0.35,
         reason="registry guidance composition",
-        requested_outcome=outcome,
+        guidance_input_artifacts=inputs,
         capability_match_status="fallback",
         match_basis="semantic_validation_recovery",
         matched_actions=[action],
@@ -142,10 +121,10 @@ def recover_registry_guidance(
         reason=reason,
         candidate_actions=candidate_actions,
         recommended_actions=recommended_actions,
-        requested_outcome=outcome,
+        guidance_input_artifacts=inputs,
         capability_match_status="fallback",
         match_basis="semantic_validation_recovery",
-        rejected_methods=rejected_methods_for(task, outcome.input_artifacts),
+        rejected_methods=rejected_methods_for(task, inputs),
         matched_actions=[action],
     )
 

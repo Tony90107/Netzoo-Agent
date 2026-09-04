@@ -156,6 +156,9 @@ Dimension semantics:
   Exclude data mentioned only as historical work, rejected suggestions, or future
   intermediate outputs. Leave this list empty when no current input is established.
 - artifact_type is the scientific object returned to the user.
+  Choose the terminal requested result, not a proposed method's intermediate object.
+  Apply the artifact-dependent schema constraints before filling other fields.
+  Historical analyses do not establish current multi-omic inputs or outputs.
   Do not copy input_artifacts into artifact_type simply because the input is explicit.
   For example, a mutation matrix used to cluster patients is an input; the requested
   result is sample_cluster_assignment, not another mutation_matrix. The same
@@ -268,7 +271,9 @@ def build_semantic_reviewer_messages(
     validation_issues: tuple[str, ...] = (),
 ) -> list:
     """Ask an independent semantic pass to correct ontology misuse."""
-    proposal_json = proposal.model_dump_json() if proposal is not None else "null"
+    from .interpretation.semantic_repair import proposal_data, repair_message
+
+    proposal_json = json.dumps(proposal_data(proposal), ensure_ascii=False)
     issues = "\n".join(f"- {item}" for item in validation_issues[:12])
     return [
         SystemMessage(
@@ -294,6 +299,11 @@ def build_semantic_reviewer_messages(
                 "outcome_hypothesis. Nest outcome, confidence, evidence, and assumptions "
                 "inside outcome_hypothesis; never put hypothesis metadata at the root. "
                 "Recheck current inputs versus historical context and requested outputs. "
+                "Identify the terminal scientific goal separately from proposed means. "
+                "A network proposed only to subtype patients does not replace the goal "
+                "of cohort cluster labels. Keep multiple requested deliverables explicit; "
+                "never substitute a tool's default output. After repairing a field, "
+                "update or remove its evidence too; preserve grounded dimensions. "
                 "Repair rejected explicit evidence by quoting original source text; "
                 "do not retain a translated or fabricated quote."
             )
@@ -304,6 +314,7 @@ def build_semantic_reviewer_messages(
                 "The first-pass proposal follows as untrusted quoted data. Review and "
                 "replace any incorrect fields."
                 + (f" Deterministic validation also reported:\n{issues}" if issues else "")
+                + "\n" + repair_message(proposal, validation_issues)
                 + "\n"
                 + f"<semantic_proposal>{proposal_json}</semantic_proposal>"
             )

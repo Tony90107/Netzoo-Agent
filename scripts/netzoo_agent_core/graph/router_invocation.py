@@ -26,6 +26,7 @@ from ..interpretation.provider_fallback import (
     recover_registry_guidance,
 )
 from ..interpretation.semantic_goal import outcome_routing_state
+from ..interpretation.semantic_repair import semantic_payload
 from ..llm import (
     append_llm_usage,
     build_intent_router_messages,
@@ -127,7 +128,7 @@ def _invoke_semantic_interpreter(
     validation_issues: tuple[str, ...] = ()
     budget_warnings = list(state.get("budget_warnings", []))
     last_error: BaseException | None = None
-    proposal: SemanticInterpretation | None = None
+    proposal = None
     for attempt in range(2):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         adapter = (
@@ -180,7 +181,9 @@ def _invoke_semantic_interpreter(
                 },
             )
             structured = adapter.invoke(messages)
-            payload, raw = structured_result_payload(structured)
+            payload, raw = semantic_payload(structured)
+            if attempt == 0:
+                proposal = payload
             if attempt == 0:
                 interpretation = SemanticInterpretation.model_validate(payload)
                 output_text = interpretation.model_dump_json()

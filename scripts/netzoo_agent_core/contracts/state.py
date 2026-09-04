@@ -66,6 +66,7 @@ class NextTurnPrompt(BaseModel):
         "alternative_outcome",
     ]
     question: str
+    allow_workflow_continuation: bool = True
     continuation_action: str | None = None
     expected_field: str | None = None
     required_fields: list[str] = Field(default_factory=list, max_length=20)

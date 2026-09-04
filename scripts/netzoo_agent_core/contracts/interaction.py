@@ -33,6 +33,7 @@ class FollowUpContext(BaseModel):
     prior_user_goal: str = Field(min_length=1, max_length=4_000)
     prompt_kind: str = Field(min_length=1, max_length=40)
     prompt_question: str = Field(min_length=1, max_length=600)
+    allow_workflow_continuation: bool = True
     candidate_actions: list[RecommendedAction] = Field(default_factory=list)
     candidate_workflows: list[WorkflowConversationFact] = Field(default_factory=list)
     continuation_action: RecommendedAction | None = None

@@ -1467,7 +1467,7 @@ class CapabilityGateTests(unittest.TestCase):
 
         self.assertEqual(decision.action, "no_tool")
         self.assertFalse(decision.should_execute)
-        self.assertIsNotNone(decision.clarification_question)
+        self.assertIsNone(decision.clarification_question)  # A provider failure is not missing user intent.
 
     def test_provider_fallback_does_not_infer_lioness_mode(self):
         decision = agent.deterministic_router_fallback(

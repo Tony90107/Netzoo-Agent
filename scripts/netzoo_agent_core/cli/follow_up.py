@@ -91,6 +91,15 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
+    from ..interpretation.guidance_interaction import guidance_interaction
+
+    interaction = guidance_interaction(decision)
+    if interaction:
+        # No continuation_action or expected_field: a bare path cannot confirm a
+        # failed semantic interpretation or silently adopt the candidate's output.
+        return NextTurnPrompt(kind="clarify_outcome" if interaction.question else "completed",
+                              question=_ui_text(interaction.next_step), allow_workflow_continuation=False)
+
     if (
         decision.capability_match_status == "unsupported"
         and decision.alternative_actions
@@ -296,6 +305,7 @@ def build_follow_up_context(
         prior_user_goal=prior_user_goal[-4000:],
         prompt_kind=prompt.kind,
         prompt_question=prompt.question,
+        allow_workflow_continuation=prompt.allow_workflow_continuation,
         candidate_actions=candidates,
         candidate_workflows=[
             WorkflowConversationFact(
@@ -356,6 +366,8 @@ def resolve_next_turn_input(
         return resolution.resolved_task
     if resolution.kind != "accept_workflow":
         return None
+    if not prompt.allow_workflow_continuation:
+        return resolution.resolved_task or original_reply
     if prompt.kind == "clarify_outcome":
         if not resolution.selected_action:
             return resolution.resolved_task
@@ -415,6 +427,8 @@ def build_workflow_continuation(
     """Carry an accepted, trusted selection separately from model input text."""
     if (
         resolution.kind != "accept_workflow"
+        or not prompt.allow_workflow_continuation
+        or not context.allow_workflow_continuation
         or prompt.kind == "clarify_outcome"
         or prompt.alternative_action
     ):

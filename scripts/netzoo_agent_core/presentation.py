@@ -200,9 +200,17 @@ def _apply_public_progress_event(
         outcome = str(detail.get("outcome") or "Requested outcome classified")
         workflows = [str(item) for item in detail.get("workflows", [])]
         workflow_path = [str(item) for item in detail.get("workflow_path", [])]
+        interaction = detail.get("interaction") or {}
+        if interaction.get("status") == "routing_unavailable":
+            state.complete("understand")
+            state.complete("match")
+            _commit_public_activity("routing-unavailable", interaction["progress"])
+            return True
         if detail.get("match_status") == "fallback":
-            state.attention("match", "Registry recommendation; semantic match unconfirmed")
-            _commit_public_activity("workflow-fallback", "? Fallback recommendation — not an exact semantic match")
+            interaction = detail.get("interaction") or {}
+            state.complete("understand")
+            state.complete("match", "Registry recommendation; semantic match unconfirmed")
+            _commit_public_activity("workflow-fallback", interaction.get("progress") or "! Fallback recommendation — not an exact semantic match")
             return True
         state.complete("understand", outcome)
         if workflow_path:
@@ -234,6 +242,8 @@ def _apply_public_progress_event(
         tool_status = str(detail.get("tool_status") or "")
         if question:
             state.attention(state_name)
+        elif detail.get("status") == "routing_unavailable":
+            state.complete(state_name)
         elif detail.get("status") == "guidance":
             state.complete(state_name, "Guidance prepared")
             _commit_public_activity(
