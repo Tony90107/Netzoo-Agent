@@ -1694,3 +1694,67 @@ Log 19／20 的 prompt 修改與 Log 24 的 request_mode 驗證器，都建立�
 
 `missing_evidence:entity_type` 應由 21 次大幅下降或消失。
 若未下降，則此歸因錯誤，需重新檢查 `_required_evidence` 的實際觸發條件。
+
+## Log 26｜預測成立：`entity_type` 證據需求歸零，通過 1/9 → 3/9
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+**付費呼叫 21 次。** 報告：[live-q1-q3-repeat3-round9.json](live-q1-q3-repeat3-round9.json)。
+
+### Log 25 的預測與結果
+
+> 預測：`missing_evidence:entity_type` 應由 21 次大幅下降或消失。
+
+| 指標 | 第八輪 | 第九輪 |
+| --- | --- | --- |
+| `missing_evidence:entity_type` | 8 | **0** |
+| `passed` | 1 / 9 | **3 / 9** |
+| `review_repair_validation_rate` | 0.222 | 0.333 |
+
+**預測成立。** 「不要求 ontology 已唯一決定的維度提供證據」使該類阻礙完全消失。
+Q1 由 0/3 變 2/3，Q2 1/3，Q3 仍 0/3。
+
+### 阻礙移轉
+
+`entity_type` 消失後，下一層浮現：
+
+| 第九輪最終阻礙 | 次數 |
+| --- | --- |
+| `missing_evidence:input_artifact=mutation_matrix` | **3** |
+| `schema_validation:evidence.N.rationale:missing` | 1 |
+| `missing_current_input:mutation_matrix` | 1 |
+| `conflicting_evidence:input_artifact=mutation_matrix` | 1 |
+| `conflicting_evidence:granularity=sample_specific` | 1 |
+
+`missing_evidence:input_artifact` 由 2 升至 6 次——它先前被 `entity_type` 遮住。
+
+### 介入：同一原則延伸一格，並在該處停住
+
+request witnesses **本來就會**在原文中定位目前輸入——那正是
+`missing_current_input` 的來源。當 outcome 列出的輸入，正是這些 witnesses
+獨立確認為 current 的那一個時，接地已由程式對照原文完成，再要求模型自己證明一次
+不增加任何資訊。
+
+**界線嚴格**：witnesses 看不到的輸入仍然必須有模型證據——那裡模型的證據是唯一的接地。
+歷史／否定／假設的輸入不算確認（測試明確涵蓋，且 `noncurrent_input` 照常觸發）。
+完整性需求完全未動：漏掉已確認的輸入仍然是 `missing_current_input`。
+
+這是繼「role 成員不需第二則 entity 證據」（既有）與 Log 25「ontology 唯一決定的維度」
+之後，同一原則的第三次應用，且到此為止：artifact_type、operation
+與模型自行主張的輸入仍然必須被證明。
+
+### 更新的既有測試
+
+`test_current_input_artifact_requires_its_own_consistent_evidence` 的第一段斷言
+在新規則下過時（其 task 原文本就含「somatic mutation matrix」）。**未刪除**：
+改為使用未提及輸入的 task 以保留「未確認輸入仍需證據」的意圖，並加註指向
+`tests/test_entailed_evidence.py`，該檔同時釘住兩個方向。
+
+離線：`tests/test_entailed_evidence.py` 12 項；完整套件
+**1214 passed、3 failed（既有待決策項）、0 skipped**；ruff 與 `git diff --check` 通過。
+
+### 可否證的預測
+
+`missing_evidence:input_artifact` 應由 6 次大幅下降。
+若未下降，則此歸因錯誤，需檢查 witnesses 在該題實際回報的 status。
+Q3 仍可能因 `conflicting_evidence:granularity` 與 `artifact_granularity` 失敗——
+那是 Log 22 記錄的獨立結構問題，本輪未動。

@@ -206,13 +206,16 @@ def test_current_input_artifact_requires_its_own_consistent_evidence():
             ("entity_type", "sample"), ("granularity", "aggregate"),
         )],
     )
-    task = "Use a somatic mutation matrix to cluster patients."
+    # The request no longer names the input: where the request witnesses locate
+    # it themselves, that grounding stands in for the model's evidence entry,
+    # and tests/test_entailed_evidence.py pins both sides of that boundary.
+    task = "Cluster my patients into subtypes."
     missing = validate_outcome_hypotheses(task, [hypothesis])
     assert "hypothesis[0].missing_evidence:input_artifact=mutation_matrix" in missing.issues
 
     supported = hypothesis.model_copy(update={"evidence": [
         *hypothesis.evidence,
-        evidence("input_artifact", "mutation_matrix", text_span="somatic mutation matrix"),
+        evidence("input_artifact", "mutation_matrix", source="inferred"),
     ]})
     assert validate_outcome_hypotheses(task, [supported]).valid
     conflicting = supported.model_copy(update={"evidence": [

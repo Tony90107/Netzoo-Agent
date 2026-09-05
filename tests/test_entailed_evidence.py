@@ -25,6 +25,7 @@ from netzoo_agent_core.interpretation.outcome_validation import validate_outcome
 
 
 TASK = ("我有一份癌症病患的體細胞突變矩陣，想把病患分成不同的亞型群組。")
+MUTATION_TASK = TASK
 
 
 def evidence(*pairs):
@@ -76,12 +77,18 @@ def test_the_artifact_choice_itself_still_needs_evidence():
     assert "hypothesis[0].missing_evidence:artifact_type=sample_cluster_assignment" in result.issues
 
 
-def test_the_current_input_still_needs_evidence():
-    result = validate(CLUSTER, evidence(
-        ("operation", "analyze"), ("artifact_type", "sample_cluster_assignment"),
-    ))
+def test_whether_an_input_needs_evidence_depends_on_the_request():
+    """Superseded the blanket demand: grounding the system already has counts.
 
-    assert "hypothesis[0].missing_evidence:input_artifact=mutation_matrix" in result.issues
+    The same outcome and the same evidence: accepted when the request witnesses
+    locate that input in the text themselves, rejected when they cannot.
+    """
+    items = evidence(("operation", "analyze"), ("artifact_type", "sample_cluster_assignment"))
+
+    assert validate(CLUSTER, items, task=MUTATION_TASK).valid
+    assert "hypothesis[0].missing_evidence:input_artifact=mutation_matrix" in validate(
+        CLUSTER, items, task="Group my patients into subtypes.",
+    ).issues
 
 
 def test_an_artifact_that_permits_several_entities_still_needs_evidence():
@@ -126,3 +133,54 @@ def test_a_value_the_artifact_forbids_is_still_rejected(field, value, issue):
     ))
 
     assert issue in result.issues
+
+
+# The same reasoning reaches one more dimension, and stops there. The request
+# witnesses locate current inputs in the original text on their own -- that is
+# what raises `missing_current_input` when the outcome omits one. Where a listed
+# input is the artifact those witnesses independently confirmed as current, the
+# grounding has already been checked against the request, so asking the model to
+# prove it again adds nothing. An input the witnesses cannot see is a different
+# matter: there the model's evidence is the only grounding available.
+
+
+def test_an_input_the_request_confirms_needs_no_evidence_of_its_own():
+    result = validate(CLUSTER, evidence(
+        ("operation", "analyze"), ("artifact_type", "sample_cluster_assignment"),
+    ), task=MUTATION_TASK)
+
+    assert result.valid, result.issues
+
+
+def test_an_input_the_request_does_not_mention_still_needs_evidence():
+    """Without an independent witness, the model's evidence is the only grounding."""
+    result = validate(
+        {**CLUSTER, "input_artifacts": ["coexpression_network"]},
+        evidence(("operation", "analyze"), ("artifact_type", "sample_cluster_assignment")),
+        task=MUTATION_TASK,
+    )
+
+    assert "hypothesis[0].missing_evidence:input_artifact=coexpression_network" in result.issues
+
+
+def test_a_historical_input_is_not_treated_as_confirmed():
+    task = "我之前用表現量矩陣跑過分析。現在我有體細胞突變矩陣。"
+    result = validate(
+        {**CLUSTER, "input_artifacts": ["expression_matrix"]},
+        evidence(("operation", "analyze"), ("artifact_type", "sample_cluster_assignment")),
+        task=task,
+    )
+
+    assert "hypothesis[0].missing_evidence:input_artifact=expression_matrix" in result.issues
+    assert "hypothesis[0].noncurrent_input:expression_matrix" in result.issues
+
+
+def test_omitting_a_confirmed_input_is_still_rejected():
+    """Dropping the evidence demand must not drop the completeness demand."""
+    result = validate(
+        {**CLUSTER, "input_artifacts": []},
+        evidence(("operation", "analyze"), ("artifact_type", "sample_cluster_assignment")),
+        task=MUTATION_TASK,
+    )
+
+    assert "hypothesis[0].missing_current_input:mutation_matrix" in result.issues
