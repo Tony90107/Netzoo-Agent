@@ -303,7 +303,6 @@ def _invoke_semantic_interpreter(
         validation = validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,
-            request_mode=interpretation.request_mode,
         )
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:

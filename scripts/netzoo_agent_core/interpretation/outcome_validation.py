@@ -9,7 +9,7 @@ import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.artifact_semantics import outcome_consistency_issues
-from .request_integrity import request_integrity_issues, request_mode_issues
+from .request_integrity import request_integrity_issues
 
 __all__: list[str] = []
 
@@ -99,7 +99,6 @@ def _is_not_applicable(outcome: RequestedOutcome) -> bool:
 def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],
-    request_mode: str | None = None,
 ) -> OutcomeValidation:
     """Validate evidence without selecting or naming a workflow."""
     if not hypotheses:
@@ -107,7 +106,6 @@ def validate_outcome_hypotheses(
 
     issues: list[str] = []
     normalized_task = _normalized(user_task)
-    issues.extend(request_mode_issues(user_task, request_mode))
     for index, hypothesis in enumerate(hypotheses):
         issues.extend(
             f"hypothesis[{index}].{issue}"
