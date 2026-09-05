@@ -109,6 +109,26 @@ def test_an_assumed_fallback_is_never_promoted_back_to_exact():
     assert match.status == "fallback"
 
 
+def declarative_case():
+    """A request that states a goal without asking which method fits.
+
+    `request_mode` is validated now, and every corpus prompt asks about methods,
+    so `unknown` is corrected there rather than reaching this path. The path
+    still applies to a request that takes no position on performing the work.
+    """
+    from evaluate_routing import RoutingScenario
+
+    return RoutingScenario.model_validate({
+        "id": "declarative-case", "language": "en", "category": "positive",
+        "prompt": "I have a somatic mutation matrix for cancer patients "
+                  "and I want cohort subtype labels for them.",
+        "expected": {"status": "exact", "actions": ["run_sambar"],
+                     "input_artifacts": ["mutation_matrix"],
+                     "artifact_type": "sample_cluster_assignment",
+                     "granularity": "aggregate"},
+    })
+
+
 def routing_row():
     """Reproduces the observed live shape: a reviewed outcome with request_mode unknown."""
     item = {**GOLD, "assumptions": ["Clustering follows pathway aggregation."]}
@@ -118,7 +138,7 @@ def routing_row():
         review={"request_mode": "unknown", "semantic_goal": "Cluster patients",
                 "outcome_hypothesis": item},
     )
-    return evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
+    return evaluate([declarative_case()], provider=provider, model_name="fixture")["results"][0]
 
 
 def test_production_routing_gives_the_user_guidance_and_no_continuation():
