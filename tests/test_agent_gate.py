@@ -3409,6 +3409,9 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 call_order.append(f"semantic_interpreter_{self.calls}")
                 if self.calls == 1:
                     return {
+                        # request_mode is validated now: a prompt asking which
+                        # tools to use may not come back as unknown.
+                        "request_mode": "guidance",
                         "semantic_goal": "tools for a sample-specific miRNA network",
                         "outcome_hypotheses": [
                             {
@@ -3450,6 +3453,7 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 if "inconsistent_not_applicable_outcome" not in rendered:
                     raise AssertionError("semantic retry did not receive validator evidence")
                 return {
+                    "request_mode": "guidance",
                     "semantic_goal": "sample-specific miRNA regulatory network",
                     "outcome_hypotheses": [
                         {

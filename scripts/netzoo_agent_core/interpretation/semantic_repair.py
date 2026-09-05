@@ -97,6 +97,20 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
             )
             if allowed is not None:
                 expected["allowed_values"] = sorted(allowed | {"unknown"})
+        if "request_mode_conflict:" in issue:
+            expected.update(
+                action="restore_request_mode",
+                review_path="request_mode",
+                request_mode=issue.rsplit(":", 1)[-1],
+                instruction=(
+                    "This request asks which method or tool fits, or whether a named one "
+                    "does, and gives no instruction to perform the work now, so it is a "
+                    "guidance request. Use unknown only when the request takes no position "
+                    "at all, and execute only for an explicit instruction to work now; a "
+                    "run the user already finished is background, not such an instruction. "
+                    "request_mode is a root field of the review, beside semantic_goal."
+                ),
+            )
         if "inconsistent_not_applicable_outcome" in issue:
             expected.update(
                 action="replace_not_applicable_outcome",
