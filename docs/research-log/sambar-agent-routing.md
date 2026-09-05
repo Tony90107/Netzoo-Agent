@@ -1892,3 +1892,53 @@ reviewer 是第二意見，不是前提。它失敗時，第一意見**仍然滿
 是否要進一步豁免，需要與 Log 25／26 相同的原則性依據；目前**沒有**——
 `regulatory_network` 的實體並非由 artifact 唯一決定，那裡的證據要求帶有資訊。
 本輪未介入。
+
+## Log 30｜request_facts 預測失敗並造成傷害；「0 次推薦錯工具」被證實只是語料性質
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，全語料 14 題。
+**付費呼叫 34 次。** 報告：[live-full-corpus-round2.json](live-full-corpus-round2.json)。
+
+### Log 29 的預測與結果
+
+> 預測：第一次嘗試的 `missing_current_input` 應大幅下降，第一次通過驗證的比例
+> 應高於 1/122。若兩者皆未變化，**不得再以「給模型更多資訊」的方向重試**。
+
+| 指標 | 第一輪（改動前） | 第二輪（含 request_facts） |
+| --- | --- | --- |
+| 第一次嘗試含 `missing_current_input` | 9 / 14 | **9 / 14（未變）** |
+| 第一次嘗試通過驗證 | 1 / 14 | **1 / 14（未變）** |
+| `conflicting_evidence:input_artifact` | **0** | **8** |
+| `passed` | 4 / 14 | 2 / 14 |
+| 工具正確 | 9 | 8 |
+| **推薦錯誤工具** | **0** | **1** |
+
+**兩項預測皆未成立，且產生新的失敗模式。** 模型把送過去的 facts 寫成了 evidence，
+卻沒有放進 `input_artifacts`——`conflicting_evidence:input_artifact` 由 0 增至 8。
+這正是 Log 29 事先列出的風險，只是方向不同：不是誤列歷史資料，而是引用卻不承諾。
+
+依預設判準，`049fe32` 已 `git revert`（`344b646`）。Log 28 的「保留已驗證的第一次結果」
+不在撤回範圍，且確實生效：`bipartite-communities` 的 `call_statuses` 為
+`["success","failed","success"]`，`matched_actions` 由 `[]` 變為 `["run_condor"]`。
+
+### 更重要的更正：「從未推薦錯工具」不是系統性質
+
+`mirna-current-goal` 這次得到 `run_panda`，期望是 `run_lioness_puma`——
+**本 session 第一次推薦錯誤工具**。
+
+成因不是 registry 寫錯：語意驗證失敗後，`registry_features` 這條詞彙 fallback 依
+表面特徵挑工具。對 mutation 而言 SAMBAR 是唯一符合的工作流程，所以先前每次都對；
+但對 expression → regulatory network，PANDA／PUMA／LIONESS-PANDA／LIONESS-PUMA
+是同族多個候選，詞彙 fallback 無法區分 aggregate 與 sample-specific，於是挑了
+同族但錯的那一個。
+
+因此 Log 28 記錄的「0/14 推薦錯誤」**是這組語料以 mutation 為主的性質，
+不是系統的安全保證**。必須據此更正先前的表述。
+
+這也讓 fallback 的代價比先前評估的高：不只是「沒有驗證」，在候選同族多個時，
+它會給出**看起來同樣自信、但錯誤**的推薦。
+
+### 未變更
+
+Log 28 的第一次結果保留、Log 25／26 的證據需求修正均保留。
+離線套件 **1219 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。
