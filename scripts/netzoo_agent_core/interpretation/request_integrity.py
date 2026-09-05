@@ -28,33 +28,6 @@ _PATIENT_CLUSTER = re.compile(
 _GOAL_NEGATED = re.compile(r"\b(?:not|no|without)\b|不要|不做|不需要|不進行", re.I)
 
 
-# A request that asks which method fits, or whether a named one does, is asking
-# for guidance. `unknown` is for a request that takes no position at all, and
-# `execute` needs an instruction to work now -- reporting a finished run is not
-# one, so historical clauses are excluded the same way they are for data.
-_METHOD_QUESTION = re.compile(
-    r"哪(?:一)?(?:個|些|種)|有沒有|該不該|是不是.{0,8}(?:應該|可以)|推薦|建議|"
-    r"(?:應該|可以|可不可以|能不能|適(?:合|用)).{0,12}(?:用|使用|丟進|交給|處理|分析)|"
-    r"\bwhich (?:tool|workflow|method|package)\b|\bwhat tool\b|"
-    r"\bshould i\b|\bcan i (?:use|feed|apply)\b|\bis .{0,20}(?:suitable|appropriate)\b|"
-    r"\bdo i need\b|\bhow (?:do|should) i\b|\bwhat (?:is|are) the (?:steps|options)\b|"
-    r"\brecommend\b|\badvice\b|\bdoes .{0,60}(?:produce|support|accept)\b|"
-    r"\bcan .{0,40}(?:produce|handle|accept)\b",
-    re.I,
-)
-_EXECUTE_INSTRUCTION = re.compile(
-    r"幫我(?:跑|執行|做|建立)|請(?:執行|跑|建立)|現在(?:就)?(?:跑|執行|開始)|"
-    r"開始(?:執行|分析|跑)|\b(?:please )?run (?:it|this|the|sambar|panda|lioness)\b|"
-    r"\bexecute\b|\bstart the (?:analysis|run|pipeline)\b|\bbuild (?:it|the) .{0,20}now\b",
-    re.I,
-)
-# "Do not run it" is the opposite of a work order, and appears in prompts that
-# state a goal and then withhold authorization.
-_INSTRUCTION_NEGATED = re.compile(
-    r"不要|不用|不需要|別|請勿|\bdo(?:n't| not)\b|\bnever\b|\bwithout\b", re.I
-)
-
-
 @dataclass(frozen=True)
 class InputMention:
     artifact: str
@@ -92,29 +65,6 @@ def input_mentions(task: str) -> tuple[InputMention, ...]:
                     status = "uncertain"
                 mentions.append(InputMention(artifact, status, match.group()))
     return tuple(mentions)
-
-
-def execution_instruction(task: str) -> bool:
-    """Report an instruction to work now, ignoring runs the user already did."""
-    for clause, scope in _scoped_clauses(task):
-        if scope == "historical":
-            continue
-        match = _EXECUTE_INSTRUCTION.search(clause)
-        if match and not _INSTRUCTION_NEGATED.search(clause[:match.end()]):
-            return True
-    return False
-
-
-def guidance_request(task: str) -> bool:
-    """Report a request that asks about methods without ordering the work."""
-    return bool(_METHOD_QUESTION.search(task)) and not execution_instruction(task)
-
-
-def request_mode_issues(task: str, request_mode: str | None) -> list[str]:
-    """Flag a request_mode the request's own wording does not support."""
-    if request_mode in {None, "guidance"} or not guidance_request(task):
-        return []
-    return ["request_mode_conflict:guidance"]
 
 
 def request_integrity_issues(task: str, outcome) -> list[str]:

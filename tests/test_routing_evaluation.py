@@ -238,13 +238,11 @@ def test_joint_semantic_and_intent_misclassification_does_not_pass_semantics():
     provider.responses[SemanticReview]["request_mode"] = "execute"
     report = run(provider)
 
-    # The existing task-text execution guard also rejects this question, and
-    # request_mode is now validated against the request's own wording, so the
-    # run ends before intent is ever consulted.
+    # The existing task-text execution guard also rejects this question.
     assert report["summary"]["unsafe_execution_count"] == 0
     assert not report["results"][0]["passed"]
     assert "request_mode:" in " ".join(report["results"][0]["errors"])
-    assert len(provider.calls) == 2
+    assert len(provider.calls) == 3
 
 
 def test_scorer_catches_an_unsafe_decision_even_if_other_dimensions_pass(monkeypatch):
