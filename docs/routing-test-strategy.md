@@ -108,8 +108,11 @@ counts a bypass of input confirmation as unsafe autofill; an empty corpus fails.
 ## Live evaluation (explicit opt-in)
 
 Use an environment containing the project's existing `langchain-openai` dependency.
+A base interpreter without it fails before any provider is built; the setup error
+names the missing module, while every other failure still reports only its type.
 Provide `OPENROUTER_API_KEY` securely in that environment; the evaluator does not
-load `.env` automatically or print credentials. It reuses `build_llm`, the router
+load `.env` automatically or print credentials. `--json` writes the report to
+stdout, so redirect it if you want to keep it. It reuses `build_llm`, the router
 model allowlist, temperature 0, timeout and structured-output conventions. No new
 provider SDK or endpoint is introduced.
 
@@ -279,7 +282,6 @@ A case passes only if:
 8. The complete guidance surface passes progress/answer/Next step consistency
    checks. Mutating only progress or continuation controls must fail the evaluator,
    even when the selected workflow and answer are otherwise correct.
-
 `route_pass_rate`, `semantic_pass_rate` and final-answer results are separate.
 Recommending the expected action through fallback does not pass an `exact`
 expectation. `fallback_count` and `registry_recovery_count` expose recovery instead
@@ -296,6 +298,139 @@ succeeded); `1` = a live trial failed; `2` = configuration/dependency/corpus err
 Never compare the exit code alone without checking the report mode/source.
 
 ## Acceptance and remaining boundaries
+
+### E1 request completeness gate (2026-09-05)
+
+`interpretation/request_integrity.py` supplies bounded, workflow-independent
+mutation/expression witnesses. The evidence validator checks omitted current
+inputs and noncurrent inputs even when no input evidence was supplied. Both
+semantic attempts use the same check; repair feedback includes original-language
+spans and current/historical/uncertain/negated/output context. The registry's
+lexical fallback extractor shares this scope so it cannot restore excluded history.
+No witness automatically fills a structured outcome or authorizes a workflow.
+
+Explicit patient clustering also conflicts with a proposal that substitutes an
+intermediate distance/network artifact. Repeated failure preserves an unvalidated
+fallback and no requested outcome. Missing inputs in general tool guidance remain
+allowed, and the answer explicitly says input compatibility has not been assessed.
+
+Run the expanded offline gate with zero skips:
+
+```bash
+python -m pytest -q tests/test_input_completeness.py tests/test_agent_module_boundaries.py tests/test_outcome_validation.py tests/test_routing_evaluation.py tests/test_semantic_provider_wire.py tests/test_missing_required_repair.py tests/test_terminal_pty.py tests/test_terminal_input.py tests/test_semantic_repair_interaction.py --fail-on-skip
+```
+
+This gate passed 139 tests. The new file contributes 33 tests; the real SDK/mock
+HTTP suite adds six input-omission cases alongside the six original missing-field
+cases. Three old fixtures were updated deliberately: current expression input is
+provided in the translation-only test; distance drift now invalidates exact; an
+unresolved granularity case retains the distinction between accepted validation
+and complete semantic correctness.
+
+The same-environment full run (excluding opt-in Docker) passed 881 tests and
+failed the same 16 IDs as `b36226d` (842 passed), with zero skips. See
+[machine-readable comparison](research-log/e1-offline-validation.json).
+
+These checks cover the named lexical witnesses and their tested English/Chinese
+contexts, not arbitrary temporal reference, negation, every modality or all
+multi-goal requests. WES alone does not prove a mutation matrix; raw-read acquisition
+is a negative control. No live model or Docker scientific run was made. The latest
+observed live full-semantic result remains 0/3; fixture success does not update it.
+
+### P0 malformed provider payload contract (2026-09-05)
+
+A provider may return any JSON shape for a declared field. Local normalization
+that touches such a value **before** strict validation converts a repairable
+schema failure into a `TypeError`, which routing cannot classify: the reviewer
+attempt is skipped, `recover_registry_guidance` refuses a non-`ValueError`, and
+the fallback reports `provider_unavailable` for a purely local defect.
+
+`tests/test_malformed_payload_contract.py` pins that contract. Every raw value is
+type-checked before any lookup; unexpected shapes are left untouched so strict
+Pydantic validation reports their exact path and error code. Six shapes previously
+raised `TypeError` inside `OutcomeHypothesis` normalization (unhashable or
+non-sequence `selection_tags`, unhashable evidence `dimension`, non-sequence
+`evidence`); the same defect exists at `b36226d` and was not introduced by E1.
+Recorded validation issues now also carry `input_type`, the rejected value's type
+name, so a future trace shows what shape a provider actually sent. The value
+itself is never recorded, and a test asserts that.
+
+This is a failure-diagnosability contract, not a semantic repair. No alias
+mapping, schema relaxation, prompt change or extra model call was added. The
+enumerated shapes are hand-written, not captured provider payloads, so they do
+not explain which value produced the earlier `literal_error` traces.
+
+Run the expanded offline gate with zero skips:
+
+```bash
+python -m pytest -q tests/test_malformed_payload_contract.py tests/test_input_completeness.py tests/test_agent_module_boundaries.py tests/test_outcome_validation.py tests/test_routing_evaluation.py tests/test_semantic_provider_wire.py tests/test_missing_required_repair.py tests/test_terminal_pty.py tests/test_terminal_input.py tests/test_semantic_repair_interaction.py --fail-on-skip
+```
+
+This gate passed 232 tests; the new file contributes 93, of which 34 failed before
+the fix, including two of its three real-SDK/`MockTransport` cases. The
+same-environment full run (excluding opt-in Docker) passed 974 and failed the same
+16 IDs as `b36226d` and E1, with zero skips. See
+[machine-readable comparison](research-log/p0-malformed-payload-validation.json).
+No live model or Docker scientific run was made; the latest observed live
+full-semantic result remains 0/3.
+
+### Closed artifact vocabulary and typed executor arguments (2026-09-05)
+
+Local traces show E1's deterministic witnesses firing correctly on the live model
+for all three original prompts. The remaining live blocker is narrow: the reviewer
+answered a canonical repair request (`missing_current_input:mutation_matrix`) with
+a literal outside the enum. The prompt listed artifact names without definitions,
+so mapping a user's words onto a canonical value was left to the model.
+
+The semantic prompt now renders the artifact ontology as a closed vocabulary of
+name and definition, derived from `ARTIFACT_SEMANTICS`, and says a near-miss name
+is never acceptable; `unknown` is. `input_artifacts` points at the same vocabulary,
+and repair feedback carries the named literal's definition plus the permitted list.
+A new artifact type joins all of these automatically. Recorded validation issues
+add `input_value` for identifier-shaped rejected values only, so the next live
+failure names the invented literal without retaining request text.
+
+`executor_arguments` no longer coerces every unset optional to `""`. Text inputs
+keep that adapter convention; a non-text optional is declared `X | None` and its
+tool schema rejects `""`, so it is omitted and inherits the adapter's own meaning.
+This replaces a DRAGON-specific branch and fixes a real BONOBO execution defect.
+`tests/test_executor_argument_types.py` checks every runnable action against its
+own tool schema.
+
+Thirteen of the sixteen long-standing failures were legacy expectations of
+behaviour that was later changed deliberately; each was rewritten against the
+current contract, and three of those assertions are now stricter than before
+(no response-model rewrite of verified guidance, per-schema `include_raw`, no
+request to restate after a validation failure). Three remain open because they
+need a product decision rather than a test edit: two lose execute-path event
+coverage now that demo autofill stops at `needs_confirmation`, and one fixture
+named "ambiguous" is now matched exactly.
+
+```bash
+python -m pytest -q tests/test_malformed_payload_contract.py tests/test_ontology_vocabulary.py tests/test_executor_argument_types.py tests/test_input_completeness.py tests/test_agent_module_boundaries.py tests/test_outcome_validation.py tests/test_routing_evaluation.py tests/test_semantic_provider_wire.py tests/test_missing_required_repair.py tests/test_terminal_pty.py tests/test_terminal_input.py tests/test_semantic_repair_interaction.py --fail-on-skip
+```
+
+This gate passed 371 tests with zero skips. The same-environment full run
+(excluding opt-in Docker) passed 1126 and failed 3, with zero skips. See
+[machine-readable comparison](research-log/p1-vocabulary-validation.json).
+No offline test can show that a real model will now choose the correct literal;
+that needs a live run. Until then the observed live full-semantic result is 0/3.
+
+### A third semantic attempt was tried and reverted (2026-09-05)
+
+Correcting `artifact_type` from a network to a cluster assignment makes an
+inherited `sample_specific` granularity illegal, and that violation is first
+reported by the attempt with no successor: across 18 live trials of the history
+case it appeared only at the final attempt in 14. A third, progress-gated attempt
+was added to give that violation somewhere to go.
+
+It measured worse. It fired in 2 of 9 trials and both regressed -- the extra
+review dropped the input it had already recovered and added ungrounded evidence,
+while the granularity error survived. Overall passes were unchanged at 4/9. The
+attempt and the token budget raised to support it were both reverted; the route
+bound stays at three provider calls and `DEFAULT_TASK_TOKEN_BUDGET` at 20_000.
+`tests/test_semantic_attempt_bound.py` holds the bound and records the result, so
+raising it again is a deliberate act with this evidence in view.
 
 For a release, require the offline suite to pass and review live results for all
 original prompts and negative controls. Require zero unsafe authorizations and

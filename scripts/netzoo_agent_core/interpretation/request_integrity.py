@@ -1,0 +1,96 @@
+"""Bounded text checks for omitted request facts, never automatic field repair.
+
+These lexical witnesses are deliberately independent of workflow names and of
+the model's filled fields. They are not a complete natural-language parser.
+"""
+from dataclasses import dataclass
+import re
+
+
+INPUT_PATTERNS = {
+    "mutation_matrix": r"\bsomatic mutations?\b|\bmutation (?:matrix|counts)\b|"
+                       r"DNA\s*突變(?:資料|矩陣)|體細胞突變|突變矩陣",
+    "expression_matrix": r"\bRNA[- ]?Seq\b|\b(?:gene )?expression (?:matrix|data|dataset)\b|"
+                         r"(?:基因)?表現量?(?:矩陣|資料)",
+}
+_HISTORY = re.compile(r"\b(?:previously|historical|earlier|past|old)\b|曾經|之前|先前|過去|剛剛|跑完", re.I)
+_CURRENT = re.compile(r"\b(?:now|currently|current|have|received)\b|現在|目前|手邊|這份|我有|拿到|給了我", re.I)
+_UNCERTAIN = re.compile(r"\b(?:if|hypothetical|might|would obtain|could obtain)\b|假如|假設|如果|尚未|還沒有", re.I)
+_NEGATED = re.compile(r"\b(?:not|without|no)\b|不是|並非|沒有|不含", re.I)
+_OUTPUT = re.compile(r"\b(?:produce[sd]?|generate[sd]?|create[sd]?)\b|產生|生成", re.I)
+_PROPOSAL = re.compile(r"\b(?:can|could|should|would)\b|能不能|可以|是否|應該", re.I)
+_PATIENT_CLUSTER = re.compile(
+    r"\b(?:cluster\w*|group\w*|subtyp\w*)\s+(?:the\s+|cancer\s+)?patients?\b|"
+    r"\bpatients?\b.{0,30}\b(?:cluster\w*|subtyp\w*|subgroups?)\b|"
+    r"(?:病患|病人|患者|樣本).{0,40}(?:分群|分組|亞型)|"
+    r"(?:分群|分組).{0,10}(?:病患|病人|患者)", re.I,
+)
+_GOAL_NEGATED = re.compile(r"\b(?:not|no|without)\b|不要|不做|不需要|不進行", re.I)
+
+
+@dataclass(frozen=True)
+class InputMention:
+    artifact: str
+    status: str
+    text_span: str
+
+
+def _scoped_clauses(task: str):
+    """A comma alone does not end a historical scope."""
+    for sentence in re.split(r"[。！？!?;；\n]|\.(?:\s|$)", task):
+        scope = "current"
+        for clause in re.split(r"[,，]|(?=\b(?:now|currently|but)\b|現在|目前|但現在)", sentence, flags=re.I):
+            if _HISTORY.search(clause):
+                scope = "historical"
+            elif _CURRENT.search(clause):
+                scope = "current"
+            yield clause, scope
+
+
+def input_mentions(task: str) -> tuple[InputMention, ...]:
+    """Retain temporal scope across comma clauses, resetting at sentence ends."""
+    mentions = []
+    for clause, scope in _scoped_clauses(task):
+        for artifact, pattern in INPUT_PATTERNS.items():
+            for match in re.finditer(pattern, clause, re.I):
+                prefix = clause[:match.start()]
+                status = scope
+                if _UNCERTAIN.search(prefix):
+                    status = "uncertain"
+                elif _NEGATED.search(prefix):
+                    status = "negated"
+                elif _OUTPUT.search(prefix):
+                    status = "proposed_output"
+                elif _PROPOSAL.search(prefix) and not _CURRENT.search(prefix):
+                    status = "uncertain"
+                mentions.append(InputMention(artifact, status, match.group()))
+    return tuple(mentions)
+
+
+def request_integrity_issues(task: str, outcome) -> list[str]:
+    mentions = input_mentions(task)
+    current = {m.artifact for m in mentions if m.status == "current"}
+    noncurrent = {m.artifact for m in mentions if m.status != "current"} - current
+    supplied = set(outcome.input_artifacts)
+    issues = (
+        [f"missing_current_input:{artifact}" for artifact in sorted(current - supplied)]
+        + [f"noncurrent_input:{artifact}" for artifact in sorted(noncurrent & supplied)]
+    )
+    if patient_clustering_goal(task) and outcome.artifact_type != "sample_cluster_assignment":
+        issues.append("terminal_goal_conflict:sample_cluster_assignment")
+    return issues
+
+
+def patient_clustering_goal(task: str) -> bool:
+    """Recognize explicit patient grouping, excluding history and negated goals.
+
+    Do not infer a network type or choose an intermediate distance artifact.
+    Unrecognized or competing goals remain the semantic reviewer's responsibility.
+    """
+    for clause, scope in _scoped_clauses(task):
+        if scope == "historical":
+            continue
+        for match in _PATIENT_CLUSTER.finditer(clause):
+            if not _GOAL_NEGATED.search(clause[:match.end()]):
+                return True
+    return False

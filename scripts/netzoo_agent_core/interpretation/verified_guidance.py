@@ -23,6 +23,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         names={action: spec.workflow for action, spec in policy.workflows.items()},
     )
     return {
+        "input_compatibility": "assessed" if set(inputs) - {"unknown"} else "not_assessed",
         "explanations": scientific_explanations(
             task, [policy.workflows[action].output_capability.model_dump() for action in actions
                    if action in policy.workflows and action not in {item.action for item in rejections}],
@@ -48,6 +49,8 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     if not rejected and not (selected and decision.capability_match_status in {"exact", "fallback"}):
         return None
     lines = []
+    if facts.get("input_compatibility") == "not_assessed":
+        lines.append("Input compatibility has not been assessed because no current input is established.")
     for item in rejected:
         artifacts = ", ".join(item["input_artifacts"])
         lines.append(

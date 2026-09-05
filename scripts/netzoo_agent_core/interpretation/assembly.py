@@ -67,7 +67,15 @@ def assemble_task_decision(
     )
     candidate_actions = [*workflow_candidates[:5], "no_tool"]
     clarification = match.clarification_question
-    if intent.mode == "execute" and exact_action is None and not clarification:
+    # An assumed outcome names one candidate and a complete requested result;
+    # the only thing withheld is the exact-match claim, so there is nothing for
+    # this question to collect.
+    if (
+        intent.mode == "execute"
+        and exact_action is None
+        and not clarification
+        and match.match_basis != "assumed_outcome"
+    ):
         clarification = "What supported NetZoo result do you want the agent to produce?"
 
     decision = TaskDecision(

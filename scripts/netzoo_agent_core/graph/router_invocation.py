@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import json
+import re
 import time
 
 from pydantic import ValidationError
@@ -58,18 +60,48 @@ def _serialized_structured_input(messages, schema_model) -> str:
     )
 
 
+# A rejected ontology literal is model vocabulary worth recording; free text may
+# quote the request, so only identifier-shaped values are retained.
+_IDENTIFIER_VALUE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,63}")
+
+
 def _validation_issue_types(error: BaseException) -> list[dict[str, object]]:
-    """Return non-sensitive Pydantic issue locations and codes for telemetry."""
+    """Return non-sensitive Pydantic issue locations, codes and shapes.
+
+    The rejected value's type name records what shape a provider actually sent,
+    which the September traces could not answer. Its content is kept only when it
+    is a bare canonical-looking identifier, never as arbitrary request text.
+    """
     errors = getattr(error, "errors", None)
     if not callable(errors):
         return []
-    return [
-        {
+    issues = []
+    for issue in errors():
+        value = issue.get("input")
+        recorded = {
             "location": [str(item) for item in issue.get("loc", ())],
             "type": str(issue.get("type", "unknown")),
+            "input_type": type(value).__name__,
         }
-        for issue in errors()
-    ][:8]
+        if isinstance(value, str) and _IDENTIFIER_VALUE.fullmatch(value):
+            recorded["input_value"] = value
+        if isinstance(value, Mapping):
+            # Field names an object was built from are model-chosen schema terms,
+            # so they name the wrong shape without retaining any request content.
+            recorded["input_keys"] = sorted(
+                key for key in value
+                if isinstance(key, str) and _IDENTIFIER_VALUE.fullmatch(key)
+            )[:8]
+        issues.append(recorded)
+    return issues[:8]
+
+
+# A third, progress-gated attempt was tried and reverted. It fired twice in nine
+# live trials and made the outcome worse both times: the extra review dropped an
+# input it had already recovered and added ungrounded evidence, while the error
+# it was meant to fix survived. Overall passes were unchanged, so it bought an
+# extra call and nothing else. See tests/test_semantic_attempt_bound.py.
+MAX_SEMANTIC_ATTEMPTS = 2
 
 
 def _current_usage(context: _GraphContext, state: AgentState) -> LLMUsage:
@@ -129,7 +161,7 @@ def _invoke_semantic_interpreter(
     budget_warnings = list(state.get("budget_warnings", []))
     last_error: BaseException | None = None
     proposal = None
-    for attempt in range(2):
+    for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         adapter = (
             context.semantic_interpreter if attempt == 0 else context.semantic_reviewer
@@ -228,7 +260,9 @@ def _invoke_semantic_interpreter(
                     state,
                     "routing.semantic_interpretation_rejected",
                     "classify",
-                    {"attempt": 1, "issues": list(validation_issues)},
+                    # Keep the located shapes beside the flattened issue strings:
+                    # the first attempt is where a rejected value is otherwise lost.
+                    {"attempt": 1, "issues": list(validation_issues), "shapes": schema_issues},
                 )
                 record_event(
                     context,
@@ -294,7 +328,7 @@ def _invoke_semantic_interpreter(
             last_error = ValueError(
                 "semantic interpretation failed evidence validation"
             )
-            if attempt == 0:
+            if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
                 validation_issues = validation.issues
                 record_event(
                     context,

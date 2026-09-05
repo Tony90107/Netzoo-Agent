@@ -297,11 +297,19 @@ def test_repeated_trials_use_fresh_usage_and_report_denominator():
     assert [item["trial"] for item in report["results"]] == [1, 2, 3]
 
 
-def test_repeated_semantic_drift_is_visible_even_when_the_action_stays_correct():
+def test_repeated_semantic_drift_invalidates_exact_even_when_candidate_stays_correct():
     import copy
 
     class AlternatingProvider(FixtureProvider):
-        reviews = 0
+        """Drift through every review of the second trial, not just its first.
+
+        Written when a third semantic attempt existed, so that one drifting
+        review could not be read as a correctable slip. The attempt was reverted;
+        the fixture is kept because tying drift to the trial states this test's
+        subject directly: a review that keeps drifting never becomes exact.
+        """
+
+        trials = 0
 
         def with_structured_output(self, schema, **kwargs):
             base = super().with_structured_output(schema, **kwargs)
@@ -310,9 +318,10 @@ def test_repeated_semantic_drift_is_visible_even_when_the_action_stays_correct()
             class Adapter:
                 def invoke(self, messages):
                     result = copy.deepcopy(base.invoke(messages))
+                    if schema is SemanticInterpretation:
+                        provider.trials += 1
                     if schema is SemanticReview:
-                        provider.reviews += 1
-                        if provider.reviews % 2 == 0:
+                        if provider.trials % 2 == 0:
                             item = result["outcome_hypothesis"]
                             item["outcome"]["artifact_type"] = "sample_distance_matrix"
                             for evidence in item["evidence"]:
@@ -324,7 +333,9 @@ def test_repeated_semantic_drift_is_visible_even_when_the_action_stays_correct()
 
     report = run(AlternatingProvider(), repeat=2)
 
-    assert report["summary"]["route_pass_rate"] == 1
+    assert report["summary"]["route_pass_rate"] == 0.5
+    assert report["results"][1]["status"] == "fallback"
+    assert report["results"][1]["outcome"] == {}
     assert report["summary"]["semantic_pass_rate"] == 0.5
     assert report["summary"]["unstable_cases"] == ["synthetic-case"]
 
@@ -389,3 +400,78 @@ def test_public_corpus_covers_original_prompts_and_negative_controls():
     assert {"en", "zh", "mixed"}.issubset({case.language for case in cases})
     assert {"positive", "negative", "history", "paraphrase"}.issubset({case.category for case in cases})
     assert len({action for case in cases for action in case.expected.actions}) >= 5
+
+
+def test_a_missing_dependency_names_the_module_without_echoing_payloads(monkeypatch, capsys):
+    """A wrong interpreter is a setup mistake; the module name is not a secret."""
+    from evaluate_routing import main
+    import evaluate_routing
+
+    def missing(*_args, **_kwargs):
+        raise ModuleNotFoundError("No module named 'langchain_openai'", name="langchain_openai")
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
+    monkeypatch.setattr(evaluate_routing, "build_llm", missing)
+
+    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+
+    error = capsys.readouterr().err
+    assert status == 2
+    assert "ModuleNotFoundError" in error and "langchain_openai" in error
+    assert "offline-placeholder" not in error
+
+
+def test_other_failures_still_report_only_their_type(monkeypatch, capsys):
+    from evaluate_routing import main
+    import evaluate_routing
+
+    def broken(*_args, **_kwargs):
+        raise ValueError("provider rejected key sk-secret-value")
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
+    monkeypatch.setattr(evaluate_routing, "build_llm", broken)
+
+    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+
+    error = capsys.readouterr().err
+    assert status == 2
+    assert "ValueError" in error
+    assert "sk-secret-value" not in error
+
+
+def test_report_exposes_structured_validation_issues_not_only_categories():
+    """A coarse category cannot say which field a live model got wrong."""
+    item = hypothesis()
+    item["outcome"]["input_artifacts"] = []
+    item["evidence"] = [e for e in item["evidence"] if e["dimension"] != "input_artifact"]
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Subtype patients",
+               "outcome_hypotheses": [item]},
+        review={"request_mode": "guidance", "semantic_goal": "Subtype patients",
+                "outcome_hypothesis": item},
+    )
+
+    row = run(provider, next(c for c in load_scenarios(DEFAULT_SCENARIOS) if c.id == 'original-q1'))["results"][0]
+
+    attempts = {entry["attempt"]: entry for entry in row["diagnostic_details"]}
+    assert "hypothesis[0].missing_current_input:mutation_matrix" in attempts[1]["issues"]
+    assert attempts[2]["issues"] == attempts[1]["issues"]
+    assert attempts[2]["error_type"] == "ValueError"
+
+
+def test_diagnostic_details_carry_the_rejected_shape_and_identifier():
+    item = hypothesis()
+    item["outcome"]["input_artifacts"] = ["somatic_mutation"]
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Subtype patients",
+               "outcome_hypotheses": [item]},
+    )
+
+    row = run(provider, next(c for c in load_scenarios(DEFAULT_SCENARIOS) if c.id == 'original-q1'))["results"][0]
+
+    issues = [issue for entry in row["diagnostic_details"] for issue in entry["issues"]]
+    assert "schema_validation:outcome_hypotheses.0.outcome.input_artifacts.0:literal_error" in issues
+    shapes = [shape for entry in row["diagnostic_details"] for shape in entry.get("shapes", [])]
+    assert {"location": ["outcome_hypotheses", "0", "outcome", "input_artifacts", "0"],
+            "type": "literal_error", "input_type": "str",
+            "input_value": "somatic_mutation"} in shapes

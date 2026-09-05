@@ -835,25 +835,31 @@ def registered_actions_for_family(family: str) -> tuple[ActionName, ...]:
     )
 
 
+def _is_text_input(decision: Any, field_name: str) -> bool:
+    """Report whether the typed decision declares this input as text."""
+    fields = getattr(type(decision), "model_fields", None)
+    field = fields.get(field_name) if isinstance(fields, dict) else None
+    return field is None or "str" in str(field.annotation)
+
+
 def executor_arguments(action: ActionName, decision: Any) -> dict[str, Any]:
     """Build the allow-listed executor payload for one typed decision."""
     definition = ACTION_DEFINITIONS[action]
     arguments = {}
     for field_name in definition.executor_fields:
         value = getattr(decision, field_name, None)
-        if action == "run_dragon" and value in (None, "") and field_name in {
-            "lambda1", "lambda2"
-        }:
-            # The verified DRAGON adapter treats omitted lambdas as a request for
-            # estimate_penalty_parameters_dragon; do not pass empty strings to its
-            # strict typed tool schema.
-            continue
         if value in (None, "") and field_name in definition.executor_defaults:
             value = definition.executor_defaults[field_name]
         elif value is None and field_name in definition.optional_inputs:
-            # Tool adapters use empty strings to mean "optional input omitted".
-            # Passing None leaks through the strict tool schema and turns a
-            # valid plan preview into a ValidationError.
+            # Text adapters use an empty string to mean "optional input omitted",
+            # because passing None leaks through their strict tool schema and turns
+            # a valid plan preview into a ValidationError. A non-text optional is
+            # declared `X | None` in the decision contract and its tool schema
+            # rejects "", so it is omitted instead and inherits the adapter's own
+            # meaning for an absent value, such as DRAGON estimating omitted
+            # penalty parameters.
+            if not _is_text_input(decision, field_name):
+                continue
             value = ""
         arguments[field_name] = value
     return arguments

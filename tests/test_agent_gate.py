@@ -3228,8 +3228,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         calls = []
 
         class CapturingLLM:
-            def with_structured_output(self, _schema, **kwargs):
-                calls.append(kwargs)
+            def with_structured_output(self, schema, **kwargs):
+                calls.append({"schema": schema.__name__, **kwargs})
                 return types.SimpleNamespace()
 
         build_llm.return_value = CapturingLLM()
@@ -3242,7 +3242,23 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 episode_store=agent.EpisodeStore(root / "episodes"),
             )
 
-        self.assertEqual(calls[0]["include_raw"], False)
+        # Only the semantic passes keep the raw response, and only so that
+        # invalid function arguments survive for exactly one reviewer call.
+        # No other role gains a parallel raw branch.
+        raw_branches = {
+            item["schema"]: item["include_raw"] for item in calls
+        }
+        self.assertEqual(
+            raw_branches,
+            {
+                "SemanticInterpretation": True,
+                "SemanticReview": True,
+                "IntentDecision": False,
+            },
+        )
+        self.assertTrue(
+            all(item["method"] == "function_calling" for item in calls)
+        )
 
     @patch("netzoo_agent.build_llm")
     @unittest.skipIf(
@@ -3274,7 +3290,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                             evidence=[
                                 agent.OutcomeEvidence(
                                     dimension="operation",
-                                    value="explain",
+                                    # The evidence value must name the filled
+                                    # operation; asking which tool produces a
+                                    # network is still an inference outcome.
+                                    value="infer",
                                     source="inferred",
                                     rationale="The user is asking which tools can produce the network.",
                                 ),

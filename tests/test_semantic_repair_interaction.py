@@ -103,12 +103,15 @@ def test_three_original_questions_have_distinct_complete_surfaces_and_repair_met
 
 def test_review_validator_success_is_not_the_same_as_correct_repair():
     item = hypothesis()
-    item["outcome"]["artifact_type"] = "sample_distance_matrix"
-    for evidence in item["evidence"]:
-        if evidence["dimension"] == "artifact_type":
-            evidence.update(value="sample_distance_matrix", source="inferred", text_span=None)
+    # Terminal distances now conflict with this explicit clustering request.
+    # Use unresolved granularity to retain the distinction between an accepted
+    # partial interpretation and the complete gold meaning, without requiring
+    # the validator to accept a known contradiction.
+    item["outcome"]["granularity"] = "unknown"
+    item["outcome"]["unresolved_dimensions"] = ["granularity"]
+    item["evidence"] = [e for e in item["evidence"] if e["dimension"] != "granularity"]
     provider = FixtureProvider(first={"outcome_hypotheses": []}, review={
-        "request_mode": "guidance", "semantic_goal": "Distances", "outcome_hypothesis": item,
+        "request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypothesis": item,
     })
     report = run(provider)
     assert report["summary"]["review_repair_validation_rate"] == 1

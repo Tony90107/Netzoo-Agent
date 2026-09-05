@@ -70,7 +70,8 @@ def test_provider_wire_preserves_required_fields_in_every_artifact_branch(model)
 
 @pytest.mark.parametrize("case_id", ["original-q1", "original-q2", "original-q3"])
 @pytest.mark.parametrize("repair_succeeds", [True, False], ids=["complete-repair", "still-missing"])
-def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair_succeeds):
+@pytest.mark.parametrize("defect", ["missing-required", "missing-input"])
+def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair_succeeds, defect):
     """Scripted replies test transport and validation, never reviewer intelligence."""
     ChatOpenAI = pytest.importorskip("langchain_openai").ChatOpenAI
     import httpx
@@ -82,8 +83,17 @@ def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair
     reviewed = hypothesis()
     for evidence in reviewed["evidence"]:
         evidence.update(source="inferred", text_span=None)
+    if defect == "missing-input":
+        from copy import deepcopy
+        first_item = deepcopy(reviewed)
+        first_item["outcome"]["input_artifacts"] = []
+        first_item["evidence"] = [e for e in first_item["evidence"] if e["dimension"] != "input_artifact"]
+        first = {"request_mode": "guidance", "semantic_goal": "Subtype patients", "outcome_hypotheses": [first_item]}
     if not repair_succeeds:
-        del reviewed["outcome"]["operation"]
+        if defect == "missing-required":
+            del reviewed["outcome"]["operation"]
+        else:
+            reviewed = deepcopy(first_item)
     replies = {
         "SemanticInterpretation": first,
         "SemanticReview": {"request_mode": "guidance", "semantic_goal": "Subtype patients",
@@ -114,16 +124,26 @@ def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair
         report = evaluate([case], provider=llm, model_name="fixture")
     assert len(captured) == (3 if repair_succeeds else 2)
     review_text = json.dumps(captured[1]["messages"])
-    assert "add_required_field" in review_text
-    assert "outcome_hypothesis.outcome.operation" in review_text
-    if case_id == "original-q2":
-        assert "outcome_hypothesis.outcome.granularity" in review_text
-    if case_id == "original-q3":
-        assert "schema_validation:outcome_hypotheses.1.outcome.operation:missing" in review_text
+    if defect == "missing-required":
+        assert "add_required_field" in review_text
+        assert "outcome_hypothesis.outcome.operation" in review_text
+        if case_id == "original-q2":
+            assert "outcome_hypothesis.outcome.granularity" in review_text
+        if case_id == "original-q3":
+            assert "schema_validation:outcome_hypotheses.1.outcome.operation:missing" in review_text
+    else:
+        assert "restore_current_input" in review_text
+        assert "outcome_hypothesis.outcome.input_artifacts" in review_text
     row = report["results"][0]
     assert row["interaction_passed"]
     assert row["review_repair_correct"] is repair_succeeds
     assert report["summary"]["review_repair_rate"] == int(repair_succeeds)
     assert row["status"] == ("exact" if repair_succeeds else "fallback")
     assert row["passed"] is repair_succeeds
+    if repair_succeeds:
+        assert row["outcome"]["input_artifacts"] == ["mutation_matrix"]
+        assert row["outcome"]["artifact_type"] == "sample_cluster_assignment"
+    else:
+        assert row["outcome"] == {}
+        assert not row["next_step"]["allow_workflow_continuation"]
     assert report["metadata"]["source"] == "fixture"
