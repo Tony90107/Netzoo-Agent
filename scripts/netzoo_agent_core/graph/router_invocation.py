@@ -161,6 +161,10 @@ def _invoke_semantic_interpreter(
     budget_warnings = list(state.get("budget_warnings", []))
     last_error: BaseException | None = None
     proposal = None
+    # The reviewer is a second opinion, not a precondition. An interpretation
+    # that already satisfied every check is kept if the review that follows does
+    # not, because discarding both leaves a registry guess naming no workflow.
+    validated: SemanticInterpretation | None = None
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         adapter = (
@@ -349,6 +353,15 @@ def _invoke_semantic_interpreter(
                     "validation_issues": list(validation.issues),
                 },
             )
+            if validated is not None:
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_review_discarded",
+                    "classify",
+                    {"attempt": attempt + 1, "issues": list(validation.issues)},
+                )
+                return validated, usage, budget_warnings, None
             return None, usage, budget_warnings, last_error
 
         usage = append_llm_usage(
@@ -362,6 +375,7 @@ def _invoke_semantic_interpreter(
             duration_ms=duration_ms,
             price_catalog=context.price_catalog,
         )
+        validated = interpretation
         if attempt == 0:
             preliminary_match = match_semantic_request(
                 user_task,

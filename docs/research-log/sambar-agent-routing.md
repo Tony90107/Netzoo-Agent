@@ -1,8 +1,8 @@
 # Research Log｜SAMBAR 整合與 NetZoo Agent 語意路由
 
-建立日期：2026-09-04  
-研究狀態：進行中  
-目前程式 checkpoint：`b36226d`  
+建立日期：2026-09-04
+研究狀態：進行中
+目前程式 checkpoint：`b36226d`
 紀錄性質：依對話、實際輸出、session／trace 與測試結果回溯整理；後續可逐輪追加。
 
 > 本紀錄保存「當時看到什麼、如何解釋、做了什麼、結果是否支持原先判斷」，不是把所有修改整理成一條必然成功的故事。未確認的原因保留為假設，未通過的驗收不因為已有改善而改寫成成功。
@@ -36,7 +36,7 @@
 
 ## Log 01｜初次測試：問題看似在 SAMBAR，實際跨越多個層次
 
-時間：初始測試階段，精確執行日期未保留於此紀錄。  
+時間：初始測試階段，精確執行日期未保留於此紀錄。
 狀態：已觀察問題；初始根因尚不能只由畫面確定。
 
 ### 觀察
@@ -70,7 +70,7 @@
 
 ## Log 02｜推薦到了 SAMBAR，但回答仍先肯定錯誤方法
 
-時間：前期路由修正後；依保留的輸出回溯。  
+時間：前期路由修正後；依保留的輸出回溯。
 狀態：工具推薦改善，回答一致性未通過。
 
 ### 觀察
@@ -103,7 +103,7 @@
 
 ## Log 03｜嚴格驗證後三題全是 fallback：安全性改善，不代表任務完成
 
-時間：2026-09-03 後續測試批次。  
+時間：2026-09-03 後續測試批次。
 狀態：失敗被攔截，但語意匹配仍未成功。
 
 ### 觀察
@@ -132,8 +132,8 @@
 
 ## Log 04｜舊錯誤消失，卻發現三題都更早卡在必要欄位
 
-觀察時間：2026-09-04 約 16:53–16:54。  
-狀態：真實語意失敗仍可重現。  
+觀察時間：2026-09-04 約 16:53–16:54。
+狀態：真實語意失敗仍可重現。
 Session：Q1 `8e4da569`、Q2 `fa58aea4`、Q3 `cd43df8c`。
 
 ### 觀察
@@ -164,8 +164,8 @@ Session：Q1 `8e4da569`、Q2 `fa58aea4`、Q3 `cd43df8c`。
 
 ## Log 05｜必要欄位修復與實際終端驗收
 
-實作時間：2026-09-04。  
-封存 checkpoint：`b36226d`，17:20:22（UTC+08:00）。  
+實作時間：2026-09-04。
+封存 checkpoint：`b36226d`，17:20:22（UTC+08:00）。
 狀態：離線契約與終端修正已驗證；模型成效須另看下一輪真實輸出。
 
 ### 介入 A：schema 與 reviewer
@@ -207,8 +207,8 @@ Session：Q1 `8e4da569`、Q2 `fa58aea4`、Q3 `cd43df8c`。
 
 ## Log 06｜最新實測：畫面 exact 達 2/3，但完整語意仍有缺口
 
-觀察時間：2026-09-04 約 17:15–17:16。  
-狀態：部分改善；完整語意驗收未通過。  
+觀察時間：2026-09-04 約 17:15–17:16。
+狀態：部分改善；完整語意驗收未通過。
 Session：Q1 `9fb95ec7`、Q2 `6d9e8665`、Q3 `ee60e54a`。
 
 > 測試發生於實作完成、checkpoint 提交之前。Commit 時間是封存時間，不代表測試當時 checkout 已有該 commit。
@@ -379,10 +379,10 @@ Session／trace 為本機紀錄，未將完整內容嵌入本文件。早期未�
 
 ## Log 07｜E1 原文輸入完整性與失敗路徑的一致性
 
-日期／時區：2026-09-05，Asia/Taipei。  
-程式版本：從 `b36226d` 工作樹開始；本輪尚未 commit。  
-環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`，沿用既有完整依賴環境。  
-案例：固定 Q1–Q3、反向歷史、未提輸入、假設資料、否定資料、距離限定、真正網路需求。  
+日期／時區：2026-09-05，Asia/Taipei。
+程式版本：從 `b36226d` 工作樹開始；本輪尚未 commit。
+環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`，沿用既有完整依賴環境。
+案例：固定 Q1–Q3、反向歷史、未提輸入、假設資料、否定資料、距離限定、真正網路需求。
 狀態：通過本輪有界離線契約驗收；真實模型語意成效尚未重測，研究目標未宣稱全面完成。
 
 ### 初始狀態與根因證據
@@ -457,11 +457,11 @@ E2 的完整多產物關係亦未增加新的持久欄位，目前依 primary ou
 
 ## Log 08｜P0 惡意／畸形 provider payload：本地 TypeError 被誤報為 provider 不可用
 
-日期／時區：2026-09-05，Asia/Taipei。  
-程式版本：從 `b36226d` 的 E1 工作樹開始；本輪尚未 commit。  
-環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`，沿用既有完整依賴環境。  
+日期／時區：2026-09-05，Asia/Taipei。
+程式版本：從 `b36226d` 的 E1 工作樹開始；本輪尚未 commit。
+環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`，沿用既有完整依賴環境。
 案例：17 種畸形原始欄位形狀 × interpretation／review，加上 production routing 與
-真 SDK + `httpx.MockTransport`。  
+真 SDK + `httpx.MockTransport`。
 狀態：通過本輪有界離線契約驗收；未呼叫付費模型，live 完整語意仍維持 0/3。
 
 > 本輪不修 routing accuracy。上一輪已撤回的 alias 實驗在第二次 semantic attempt 造成
@@ -544,9 +544,9 @@ canonical 名稱對映；若要對映，必須先看到真實 payload，而不�
 
 ## Log 09｜從 trace 回收證據、封閉本體詞彙、型別化 executor 參數與基線清理
 
-日期／時區：2026-09-05，Asia/Taipei。  
-程式版本：`b36226d` 工作樹（E1 + P0 之上）；本輪尚未 commit。  
-環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`。  
+日期／時區：2026-09-05，Asia/Taipei。
+程式版本：`b36226d` 工作樹（E1 + P0 之上）；本輪尚未 commit。
+環境：`/private/tmp/netzoo-schema-qa.AW2MQ5/venv/bin/python`。
 狀態：離線通過；**未呼叫付費模型，live Q1–Q3 未重測，完整語意仍為 0/3。**
 
 ### 觀察一：本機 trace 可回收部分「無法回溯」的證據
@@ -652,11 +652,11 @@ P1（typed data-mention inventory）尚未進行，因此跨模態、任意時�
 
 ## Log 10｜第一次 live 重測：安全性與回答明確改善，語意接受仍為 0/3
 
-日期／時區：2026-09-05，Asia/Taipei。  
-程式版本：`b36226d` 工作樹（E1 + P0 + Log 09 詞彙介入）。  
-模型：`openai/gpt-4o-mini`，temperature 0。  
-**實際付費呼叫：6 次**（三題各 2 次；intent router 從未被呼叫，低於 9 次上限）。  
-完整報告：[live-q1-q3-2026-09-05.json](live-q1-q3-2026-09-05.json)。  
+日期／時區：2026-09-05，Asia/Taipei。
+程式版本：`b36226d` 工作樹（E1 + P0 + Log 09 詞彙介入）。
+模型：`openai/gpt-4o-mini`，temperature 0。
+**實際付費呼叫：6 次**（三題各 2 次；intent router 從未被呼叫，低於 9 次上限）。
+完整報告：[live-q1-q3-2026-09-05.json](live-q1-q3-2026-09-05.json)。
 狀態：**未通過**。`semantic_pass_rate = 0.0`，三題皆 fallback。
 
 ### 觀察
@@ -707,9 +707,9 @@ Log 09 的詞彙介入**沒有**讓這批通過。它是否對 `input_artifacts`
 
 ## Log 11｜根因確定：模型在 `input_artifacts[0]` 回傳物件，不是錯誤的名稱
 
-日期／時區：2026-09-05，Asia/Taipei。  
-模型：`openai/gpt-4o-mini`。**付費呼叫 6 次。**  
-報告：[live-q1-q3-2026-09-05-detailed.json](live-q1-q3-2026-09-05-detailed.json)。  
+日期／時區：2026-09-05，Asia/Taipei。
+模型：`openai/gpt-4o-mini`。**付費呼叫 6 次。**
+報告：[live-q1-q3-2026-09-05-detailed.json](live-q1-q3-2026-09-05-detailed.json)。
 狀態：**語意仍 0/3**，但長期未知的根因已由觀察確定。
 
 ### 決定性觀察
@@ -766,7 +766,7 @@ Q1 特別值得記錄：它已經走到只差一個證據項目。這不是理�
 
 ## Log 12｜物件的鍵確認為本契約自身的欄位名；描述文字無效，改為傳輸形狀正規化
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 6 次。**  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 6 次。**
 報告：[live-q1-q3-round3.json](live-q1-q3-round3.json)。狀態：**語意仍 0/3。**
 
 ### 觀察
@@ -830,7 +830,7 @@ ruff 與 `git diff --check` 通過。
 ## Log 13｜變因控制：gpt-4o 同樣 0/3，且暴露修復訊息自相矛盾
 
 日期／時區：2026-09-05，Asia/Taipei。模型 **`openai/gpt-4o`**（`--model` 明確指定，
-allowlist 以環境變數暫時擴充）。**付費呼叫 6 次。**  
+allowlist 以環境變數暫時擴充）。**付費呼叫 6 次。**
 報告：[live-q1-q3-gpt4o.json](live-q1-q3-gpt4o.json)。狀態：**0/3。**
 
 ### 觀察
@@ -898,7 +898,7 @@ conflicting_evidence:input_artifact=mutation_matrix
 
 ## Log 14｜Q1 首次產出 gold outcome；失敗點移到 registry 匹配的 assumptions 耦合
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 7 次。**  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 7 次。**
 報告：[live-q1-q3-round4.json](live-q1-q3-round4.json)。狀態：**語意驗收 0/3，但性質改變。**
 
 ### 觀察：三題全部前進，Q1 出現質變
@@ -973,7 +973,7 @@ mini 有效，Log 13／14 對應的是已列印重現的矛盾。完整語意在
 
 ## Log 15｜預測失準與方法論修正：n=1 的逐輪比較不足以支持因果結論
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 6 次。**  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`。**付費呼叫 6 次。**
 報告：[live-q1-q3-round5.json](live-q1-q3-round5.json)。狀態：**0/3，且 Q1 相對上一輪退步。**
 
 ### 觀察：預測錯誤
@@ -1046,8 +1046,8 @@ Q3 連續兩輪第二次嘗試只剩 `artifact_granularity:sample_cluster_assign
 
 ## Log 16｜n=3 重複測量：dict 包裝佔 5/9，且其來源確認為我方修復訊息
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
-**付費呼叫 19 次。** 報告：[live-q1-q3-repeat3.json](live-q1-q3-repeat3.json)。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
+**付費呼叫 19 次。** 報告：[live-q1-q3-repeat3.json](live-q1-q3-repeat3.json)。
 狀態：**9 次試驗 0 通過**，但首次取得可用的分布。
 
 ### 分布
@@ -1112,7 +1112,7 @@ ruff 與 `git diff --check` 通過。
 
 ## Log 17｜預測獲得驗證：schema 錯誤 5/9 → 0/9，並出現首次完整通過
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
 **付費呼叫 20 次。** 報告：[live-q1-q3-repeat3-round2.json](live-q1-q3-repeat3-round2.json)。
 
 ### Log 16 的可否證預測與結果
@@ -1177,8 +1177,8 @@ Log 16 提出的 A／B／C 尚未選擇；在 9 次試驗中，assumptions 守�
 
 ## Log 18｜option C 生效、通過率 2/9；但 `artifact_granularity` 預測未成立
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
-**付費呼叫 21 次。** 報告：[live-q1-q3-repeat3-round3.json](live-q1-q3-repeat3-round3.json)。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
+**付費呼叫 21 次。** 報告：[live-q1-q3-repeat3-round3.json](live-q1-q3-repeat3-round3.json)。
 本輪執行時工作樹已含 artifact 一致性修復分支與 option C 的第一版。
 
 ### 結果
@@ -1244,7 +1244,7 @@ Q3 的解法**。
 
 ## Log 19｜Q1 轉為穩定；剩餘阻礙收斂到 `request_mode`，且成因是 prompt 內部矛盾
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
 **付費呼叫 23 次。** 報告：[live-q1-q3-repeat3-round4.json](live-q1-q3-repeat3-round4.json)。
 
 ### 結果
@@ -1309,7 +1309,7 @@ Q3 的 `artifact_granularity` 仍為 3/3（第三輪已判定「缺修復分支�
 
 ## Log 20｜兩項預測皆成立，通過率 4/9；`request_mode` 成為唯一判別因子
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
 **付費呼叫 22 次。** 報告：[live-q1-q3-repeat3-round5.json](live-q1-q3-repeat3-round5.json)。
 
 ### Log 19 的預測與結果
@@ -1381,7 +1381,7 @@ ruff 與 `git diff --check` 通過。
 
 ## Log 21｜通則化預測失敗且造成退步；依預設判準退回實測較佳組態
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
 **付費呼叫 20 次。** 報告：[live-q1-q3-repeat3-round6.json](live-q1-q3-repeat3-round6.json)。
 
 ### 預測與結果
@@ -1444,7 +1444,7 @@ ruff 與 `git diff --check` 通過。
 
 ## Log 22｜Q3 的失敗是結構性的：修正 artifact_type 會產生無法再修的相依欄位違規
 
-日期／時區：2026-09-05，Asia/Taipei。**離線分析，付費呼叫 0 次。**  
+日期／時區：2026-09-05，Asia/Taipei。**離線分析，付費呼叫 0 次。**
 資料來源：六輪 `--repeat 3` 報告，Q3 共 **18 次試驗**。
 
 ### 先排除「資訊不足」
@@ -1503,7 +1503,7 @@ Q3 每一輪都需要換，Q1／Q2 多半不需要。這也解釋了為何 Q3 �
 
 ## Log 23｜實作有界第三次嘗試；token 預算是同一個決定的必要部分
 
-日期／時區：2026-09-05，Asia/Taipei。**離線實作，付費呼叫 0 次。**  
+日期／時區：2026-09-05，Asia/Taipei。**離線實作，付費呼叫 0 次。**
 依據：使用者授權放寬嘗試上限（Log 22 的待決策事項）。
 
 ### 介入
@@ -1565,8 +1565,8 @@ def _made_progress(previous, current):
 
 ## Log 24｜第三次嘗試預測失敗：兩次啟用皆使情況變糟；Q1 首次 3/3
 
-日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
-**付費呼叫 24 次。** 報告：[live-q1-q3-repeat3-round7.json](live-q1-q3-repeat3-round7.json)。  
+日期／時區：2026-09-05，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
+**付費呼叫 24 次。** 報告：[live-q1-q3-repeat3-round7.json](live-q1-q3-repeat3-round7.json)。
 本輪含 Log 23 的第三次嘗試與 28_000 token 預算。
 
 ### 預測與結果
@@ -1621,8 +1621,8 @@ Q1 的 3/3 不能歸因於第三次嘗試——它一次都沒用到。與第五
 
 ## Log 25｜分析錯誤更正：`request_mode` 的相關性是報告產物，不是因果
 
-日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
-**付費呼叫 20 次。** 報告：[live-q1-q3-repeat3-round8.json](live-q1-q3-repeat3-round8.json)。  
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
+**付費呼叫 20 次。** 報告：[live-q1-q3-repeat3-round8.json](live-q1-q3-repeat3-round8.json)。
 結果：`passed 1/9`（前一輪 4/9）。
 
 ### 我的分析錯了
@@ -1697,7 +1697,7 @@ Log 19／20 的 prompt 修改與 Log 24 的 request_mode 驗證器，都建立�
 
 ## Log 26｜預測成立：`entity_type` 證據需求歸零，通過 1/9 → 3/9
 
-日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
 **付費呼叫 21 次。** 報告：[live-q1-q3-repeat3-round9.json](live-q1-q3-repeat3-round9.json)。
 
 ### Log 25 的預測與結果
@@ -1758,3 +1758,137 @@ request witnesses **本來就會**在原文中定位目前輸入——那正是
 若未下降，則此歸因錯誤，需檢查 witnesses 在該題實際回報的 status。
 Q3 仍可能因 `conflicting_evidence:granularity` 與 `artifact_granularity` 失敗——
 那是 Log 22 記錄的獨立結構問題，本輪未動。
+
+## Log 27｜第二個預測成立：`input_artifact` 證據需求歸零，通過 5/9（研究以來最佳）
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。
+**付費呼叫 24 次。** 報告：[live-q1-q3-repeat3-round10.json](live-q1-q3-repeat3-round10.json)。
+
+### Log 26 的預測與結果
+
+> 預測：`missing_evidence:input_artifact` 應由 6 次大幅下降。
+
+| 指標 | 第九輪 | 第十輪 |
+| --- | --- | --- |
+| `missing_evidence:input_artifact` | 6 | **0** |
+| `passed` | 3 / 9 | **5 / 9** |
+| `review_repair_validation_rate` | 0.333 | **0.667** |
+| `registry_recovery_count` | 6 | **3** |
+| Q1 | 2/3 | **3/3** |
+| Q2 | 1/3 | **2/3** |
+| Q3 | 0/3 | 0/3 |
+
+**預測成立。** 連續兩輪的證據需求修正，各自的可否證預測都在下一輪被驗證，
+且方向與幅度一致。Q1 首次三次全過。
+
+### 全程對照
+
+| 輪次 | passed / 9 | 主要變因 |
+| --- | --- | --- |
+| 1 | 0 | 取得分布基線 |
+| 2 | 1 | 修復訊息不再傳遞物件形狀 |
+| 3–4 | 2 | artifact 一致性分支、option C |
+| 5 | 4 | `request_mode` 措辭（**事後證實為誤讀，見 Log 25**） |
+| 6 | 2 | 通則化 → 撤回 |
+| 7 | 4 | 第三次嘗試 → 撤回 |
+| 8 | 1 | request_mode 驗證器 → 撤回（零觸發） |
+| 9 | 3 | 不要求 ontology 唯一決定的維度提供證據 |
+| 10 | **5** | 不要求 request witnesses 已確認的輸入提供證據 |
+
+第五輪的 4/9 曾被歸因於 prompt 措辭；Log 25 證明那個歸因錯誤。目前唯一有
+「預測→驗證」支持的因果，是第九、十輪這兩項證據需求修正。
+
+### Q3 仍為 0/3，三次的失敗互不相同
+
+| 試驗 | 失敗點 |
+| --- | --- |
+| 1 | 第二次嘗試 `missing_current_input` + `conflicting_evidence:input_artifact`——有證據卻沒放進 `input_artifacts` |
+| 2 | outcome **除 granularity 外全部正確**，模型填 `unknown` → `registry_features` fallback |
+| 3 | 第一次嘗試 schema 缺 `confidence`，第二次 `terminal_goal_conflict` |
+
+試驗 2 值得單獨記錄：第一次嘗試出現 `artifact_granularity`，模型的「修正」方式是把
+granularity 改成 `unknown`。但 `sample_cluster_assignment` 的 ontology 只允許
+`aggregate`——**這個維度並非真的未解，而是被它自己選定的 artifact 唯一決定**。
+
+### 待決策：是否正規化「唯一被決定卻填 unknown」的維度
+
+Log 25／26 的原則是「系統已驗證的事，不要求模型再證明一次」，只影響**證據需求**，
+沒有改寫 outcome。試驗 2 提出的是更進一步的問題：當某維度的合法值只有一個、
+而模型填了 `unknown` 時，系統是否應該將其解析為該唯一值？
+
+- 支持：那不是對使用者意圖的推測；artifact_type 是模型自己選的、且有證據，
+  granularity 隨之只有一個合法值。
+- 反對：這會是**系統寫入模型未寫的值**，跨過研究紀錄一貫的界線
+  （「不要用工具預設產物覆寫」「不要一律填入」同一家族的顧慮）。
+
+本輪**未實作**，僅記錄。若不做，Q3 這類「模型以 unknown 迴避一致性衝突」的情況
+預期會持續產生 `registry_features` fallback。
+
+### 未變更
+
+本輪無程式修改，僅記錄測量結果。離線套件維持 **1214 passed、3 failed、0 skipped**。
+
+## Log 28｜全語料首測：從未推薦錯工具，但改善高度集中在 mutation 那組
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，14 案例各一次。
+**付費呼叫 38 次。** 報告：[live-full-corpus.json](live-full-corpus.json)。
+
+### 工具選擇結果（使用者關切的主要指標）
+
+| | 次數 |
+| --- | --- |
+| 工具完全正確 | **9 / 14**（含 2 個「正確地不給工具」的負向控制） |
+| **推薦了錯的工具** | **0 / 14** |
+| 完全沒給工具 | 5 / 14 |
+
+**從未推薦錯誤工具**是本輪最重要的安全性結果：所有失敗都是「不給答案」，
+沒有一次是「給錯答案」。`unsafe_execution_count` 為 0。
+
+### 過擬合風險被證實
+
+| 案例組 | 工具正確 |
+| --- | --- |
+| mutation／SAMBAR（6 題） | **6 / 6** |
+| LIONESS-PUMA（1 題） | 1 / 1 |
+| 其餘工作流程（LIONESS-PANDA ×2、COBRA、CONDOR、DRAGON） | **0 / 5** |
+
+本 session 的所有改善都只用那三題 mutation 問題測量。Log 15 起就標記過
+「只測三題、且是設計修正時所用的同一組」的過擬合風險，**現在被直接證實**：
+改善集中在 mutation 那組，其餘工作流程仍然拿不到工具。
+
+五題「沒給工具」的阻礙仍以 `missing_evidence` 為主，但這次是
+`entity_type=gene/sample`、`regulator_type`、`target_type`——
+Log 25 的豁免只涵蓋 ontology **唯一決定**的維度，而 `regulatory_network`、
+`coexpression_network`、`community_assignment` 的實體集合是多值或未受限，
+因此不適用。
+
+### 已修正的具體缺陷：reviewer 摧毀已通過驗證的第一次結果
+
+`bipartite-communities` 的 `call_statuses` 為 `["success", "failed"]`：
+**第一次嘗試通過了全部檢查，第二次 review 沒有**，整個 run 因此落到
+`semantic_fallback` 且 `matched_actions` 為空——一個已驗證的解讀被換成
+一個沒有指名任何工作流程的 registry 猜測。
+
+reviewer 是第二意見，不是前提。它失敗時，第一意見**仍然滿足同一套驗證器**。
+現在保留已驗證的第一次結果，並記錄 `routing.semantic_review_discarded` 事件；
+被丟棄的 review 問題仍出現在診斷中。**沒有填入任何值**——保留的是模型自己產生、
+且驗證器接受過的 outcome。
+
+兩次都失敗時行為不變（fallback）；review 通過時仍以 review 為準。
+
+### 更新的既有測試
+
+`test_repeated_semantic_drift_invalidates_exact_even_when_candidate_stays_correct`
+的前提被此契約取代。**未刪除**：改為斷言漂移的 review 被丟棄、
+儲存的 outcome 是未漂移的那個、且漂移問題仍可在診斷中看到——
+即「漂移永遠不會成為答案」這個原始意圖，以更強的方式保留。
+
+離線：新檔 `tests/test_validated_first_pass_retained.py` 4 項；完整套件
+**1218 passed、3 failed（既有待決策項）、0 skipped**；ruff 與 `git diff --check` 通過。
+
+### 尚未處理
+
+其餘四題「沒給工具」的成因是非唯一決定維度的 `missing_evidence`。
+是否要進一步豁免，需要與 Log 25／26 相同的原則性依據；目前**沒有**——
+`regulatory_network` 的實體並非由 artifact 唯一決定，那裡的證據要求帶有資訊。
+本輪未介入。
