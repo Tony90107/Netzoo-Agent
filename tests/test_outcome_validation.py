@@ -260,6 +260,7 @@ def test_evidence_validator_marks_translation_mismatch_as_recoverable():
     hypothesis = OutcomeHypothesis(
         outcome=RequestedOutcome(
             operation="explain",
+            input_artifacts=["expression_matrix"],
             artifact_type="expression_matrix",
             entity_types=["gene"],
             granularity="aggregate",
@@ -267,6 +268,7 @@ def test_evidence_validator_marks_translation_mismatch_as_recoverable():
         confidence=0.9,
         evidence=[
             evidence("operation", "explain", source="inferred"),
+            evidence("input_artifact", "expression_matrix", text_span="基因表現量矩陣"),
             evidence("artifact_type", "expression_matrix", source="inferred"),
             evidence("entity_type", "gene", text_span="gene"),
             evidence("granularity", "aggregate", source="inferred"),

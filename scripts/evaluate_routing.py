@@ -134,6 +134,37 @@ def _diagnostics(events, reason_code):
     return sorted(codes)
 
 
+def _diagnostic_details(events) -> list[dict]:
+    """Expose the structured issue codes behind each coarse diagnostic category.
+
+    These are the harness's own ontology-scoped codes and Pydantic error
+    locations, already recorded to traces. They are not raw provider messages,
+    and a rejected value's content appears only when it is a bare identifier.
+    """
+    details = []
+    for event in events:
+        payload = event["payload"]
+        if event["type"] == "routing.semantic_interpretation_rejected":
+            details.append({
+                "attempt": payload.get("attempt"),
+                "issues": [str(item) for item in payload.get("issues", [])],
+                "shapes": list(payload.get("shapes", [])),
+            })
+        if event["type"] == "routing.semantic_interpreter_failed":
+            issues = payload.get("validation_issues", [])
+            details.append({
+                "attempt": payload.get("attempt"),
+                "error_type": payload.get("error_type"),
+                "issues": [
+                    "schema_validation:" + ".".join(item["location"]) + ":" + item["type"]
+                    if isinstance(item, dict) else str(item)
+                    for item in issues
+                ],
+                "shapes": [item for item in issues if isinstance(item, dict)],
+            })
+    return details
+
+
 def _score(case, result, events):
     decision, expected = result.decision, case.expected
     event_types = {event["type"] for event in events}
@@ -186,10 +217,17 @@ def _score(case, result, events):
         "semantic_passed": not semantic_errors, "errors": errors,
         "path": "registry_recovery" if recovered else result.reason_code,
         "diagnostics": _diagnostics(events, result.reason_code),
+        "diagnostic_details": _diagnostic_details(events),
         "status": decision.capability_match_status, "matched_actions": decision.matched_actions,
         "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in decision.rejected_methods],
         "outcome": actual_outcome, "request_mode": request_mode,
+        # Any assumption keeps a hypothesis advisory, so a correct outcome can
+        # still lose its exact match. The count makes that visible; the text is
+        # model prose about the request and is deliberately not recorded.
+        "assumption_count": sum(
+            len(item.assumptions) for item in decision.outcome_hypotheses
+        ),
         "action": decision.action, "should_execute": decision.should_execute,
         "call_roles": roles,
         "call_statuses": [call.status for call in result.usage.calls],
@@ -366,7 +404,15 @@ def main(argv=None) -> int:
             report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat)
     except (ValueError, OSError, ImportError) as error:
         # Do not echo provider payloads, credentials, or Pydantic input values.
-        message = str(error) if isinstance(error, _ConfigurationError) else type(error).__name__
+        # A missing dependency is a setup mistake, usually the wrong interpreter,
+        # and its module name is neither a payload nor a secret; withholding it
+        # only costs debugging time.
+        if isinstance(error, _ConfigurationError):
+            message = str(error)
+        elif isinstance(error, ImportError) and error.name:
+            message = f"{type(error).__name__}: {error.name} is missing from this interpreter"
+        else:
+            message = type(error).__name__
         print(f"Routing evaluation configuration error: {message}", file=sys.stderr)
         return 2
     if args.json or not args.live:

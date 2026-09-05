@@ -18,7 +18,7 @@ from workflow_registry import (
 
 
 CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported", "not_applicable"]
-MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context"]
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",
@@ -45,7 +45,11 @@ class RequestedOutcome(BaseModel):
         default_factory=list, max_length=4,
         description=(
             "Current inputs for the requested analysis, separate from output artifact_type. "
-            "Exclude historical datasets and merely proposed intermediate outputs."
+            "Exclude historical datasets and merely proposed intermediate outputs. "
+            "A list of plain strings: each item is one exact artifact_type literal "
+            "from the closed vocabulary defined in the system prompt. Never invent or "
+            "translate a name, and never wrap an item in an object; evidence, roles "
+            "and rationales belong in the hypothesis evidence list, not here."
         ),
     )
     artifact_type: ArtifactType
@@ -103,6 +107,27 @@ class RequestedOutcome(BaseModel):
         schema["anyOf"] = variants
         return schema
 
+    @field_validator(
+        "input_artifacts", "entity_types", "regulator_types", "target_types",
+        mode="before",
+    )
+    @classmethod
+    def _unwrap_single_key_transport_objects(cls, values):
+        """Normalize an equivalent provider transport shape before validation.
+
+        Providers mirror this model's own field names and return
+        `{"artifact_type": "mutation_matrix"}` where one closed-vocabulary literal
+        belongs. A single-key wrapper carries exactly that literal, so unwrapping
+        it discards nothing and the value still faces the same strict enum. Any
+        shape whose meaning would have to be chosen -- extra keys, an unknown key,
+        a non-string value -- is left untouched for strict validation to locate.
+        No name is ever mapped onto another. Free-text lists are excluded, since
+        an object there is a genuine error rather than a wrapper.
+        """
+        if not isinstance(values, (list, tuple)):
+            return values
+        return [_unwrapped_literal(item) for item in values]
+
     @field_validator("unresolved_dimensions")
     @classmethod
     def _exclude_optional_registry_signals(cls, values: list[str]) -> list[str]:
@@ -119,6 +144,42 @@ class RequestedOutcome(BaseModel):
         if any(not item.strip() or len(item) > 120 for item in values):
             raise ValueError("outcome text items must contain 1-120 characters")
         return values
+
+
+# Field names a provider mirrors from this contract when it wraps a literal.
+_TRANSPORT_WRAPPER_KEYS = frozenset(
+    {"artifact_type", "artifact", "type", "name", "value", "input_artifact"}
+)
+
+
+def _unwrapped_literal(item):
+    """Return the literal a mirrored outcome object carries, else it unchanged.
+
+    Providers echo this contract's own field names, either as a bare wrapper or
+    as a copy of the artifact's field-constraint object. Sibling outcome fields
+    have no representation inside one item of a closed-vocabulary list, so
+    reading the single artifact literal such an object names discards nothing
+    the contract could have stored. Exactly one wrapper key may carry a string,
+    every other key must itself be an outcome field, and the literal still faces
+    the same strict enum. Any other shape is left for validation to locate.
+    """
+    if not isinstance(item, Mapping) or not item:
+        return item
+    named = [
+        key for key in item
+        if key in _TRANSPORT_WRAPPER_KEYS and isinstance(item[key], str)
+    ]
+    if len(named) != 1:
+        return item
+    siblings = set(item) - {named[0]}
+    if siblings and not siblings <= _OUTCOME_FIELD_NAMES:
+        return item
+    return item[named[0]]
+
+
+# Resolved after RequestedOutcome is defined; a mirrored object may only echo
+# this contract's own field names.
+_OUTCOME_FIELD_NAMES: frozenset[str] = frozenset()
 
 
 class OutcomeEvidence(BaseModel):
@@ -151,17 +212,32 @@ class OutcomeHypothesis(BaseModel):
             return value
         normalized = dict(value)
         raw_outcome = normalized.get("outcome") or normalized
-        if not isinstance(raw_outcome, Mapping):
+        raw_evidence = normalized.get("evidence")
+        if raw_evidence is None:
+            raw_evidence = ()
+        # A provider may return any JSON shape for a declared field. Unexpected
+        # shapes are left untouched so strict validation reports their exact path
+        # and type, instead of an untyped lookup here raising TypeError and
+        # turning a repairable schema failure into an unavailable-router report.
+        if not isinstance(raw_outcome, Mapping) or not isinstance(raw_evidence, (list, tuple)):
             return normalized
-        selection_tags = set(raw_outcome.get("selection_tags") or ())
+        raw_tags = raw_outcome.get("selection_tags")
+        selection_tags = {
+            tag
+            for tag in (raw_tags if isinstance(raw_tags, (list, tuple)) else ())
+            if isinstance(tag, str)
+        }
         aliases = {"selection_tag", "selection_tags", "registry_tag", "registry_tags"}
         evidence = []
-        for item in normalized.get("evidence") or ():
+        for item in raw_evidence:
             if not isinstance(item, Mapping):
                 evidence.append(item)
                 continue
             normalized_item = dict(item)
             dimension = normalized_item.get("dimension")
+            if not isinstance(dimension, str):
+                evidence.append(normalized_item)
+                continue
             if dimension in selection_tags:
                 normalized_item["dimension"] = "selection_tag"
                 normalized_item["value"] = dimension
@@ -301,3 +377,6 @@ __all__ = [
     "RequestedOutcome",
     "SemanticInterpretation",
 ]
+
+
+_OUTCOME_FIELD_NAMES = frozenset(RequestedOutcome.model_fields)

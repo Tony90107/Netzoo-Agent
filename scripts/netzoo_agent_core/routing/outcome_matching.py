@@ -20,21 +20,11 @@ from ..contracts import (
     TaskDecision,
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
+from ..interpretation.request_integrity import input_mentions
 from .method_rejections import rejected_methods_for
 
 
 _UNKNOWN = "unknown"
-_INPUT_ARTIFACT_PATTERNS = {
-    "mutation_matrix": re.compile(
-        r"somatic mutations?|somatic mutation matrix|mutation matrix|\bwes\b|"
-        r"dna.{0,8}(?:mutation|突變)|體細胞突變|突變矩陣",
-        flags=re.IGNORECASE,
-    ),
-    "expression_matrix": re.compile(
-        r"rna[- ]?seq|gene expression|expression matrix|表現量矩陣|表現矩陣",
-        flags=re.IGNORECASE,
-    ),
-}
 
 
 def _produced_artifacts(
@@ -53,11 +43,10 @@ def _accepts_inputs(outcome: RequestedOutcome, capability: OutputCapabilityDefin
 
 
 def explicit_input_artifacts(task: str) -> frozenset[str]:
-    """Extract only strongly named input artifact families from user text."""
+    """Share the validator's current-input scope, including on fallback paths."""
     return frozenset(
-        artifact
-        for artifact, pattern in _INPUT_ARTIFACT_PATTERNS.items()
-        if pattern.search(task)
+        mention.artifact for mention in input_mentions(task)
+        if mention.status == "current"
     )
 
 
@@ -449,6 +438,8 @@ def match_outcome_hypotheses(
     capabilities: Mapping[
         RecommendedAction, OutputCapabilityDefinition
     ] = OUTPUT_CAPABILITIES,
+    *,
+    assumed_guidance: bool = False,
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     issues = list(dict.fromkeys(
@@ -459,12 +450,19 @@ def match_outcome_hypotheses(
     if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
         return CapabilityMatch(status="not_applicable")
     exact: list[RecommendedAction] = []
+    assumed_exact: list[RecommendedAction] = []
     evidence_exact: list[RecommendedAction] = []
     advisory: list[tuple[int, float, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
         strict = match_requested_outcome(hypothesis.outcome, capabilities)
-        if not hypothesis.assumptions and strict.status == "exact":
-            exact.extend(strict.matched_actions)
+        if strict.status == "exact":
+            # An assumption marks an unconfirmed interpretation of the request,
+            # so it can never yield an exact match. It is still a single named
+            # candidate, and withholding the registry guidance leaves the user
+            # with less than an outright interpretation failure would give.
+            (exact if not hypothesis.assumptions else assumed_exact).extend(
+                strict.matched_actions
+            )
         score = _hypothesis_evidence_score(hypothesis)
         explicit_evidence = _explicit_evidence_values(hypothesis)
         if strict.status != "exact" and explicit_evidence.get("artifact_type"):
@@ -510,6 +508,23 @@ def match_outcome_hypotheses(
             status="exact" if unique_exact[0] in exact else "fallback",
             match_basis="semantic" if unique_exact[0] in exact else "partial_evidence",
             matched_actions=unique_exact,
+        )
+    unique_assumed = list(dict.fromkeys(assumed_exact))
+    # Only a lone, fully determined hypothesis may be surfaced this way. Several
+    # hypotheses, or one that is still underdetermined, describe a real choice
+    # the user has to make, and an execution request must gain no candidate at
+    # all from an unconfirmed interpretation.
+    if (
+        assumed_guidance
+        and len(hypotheses) == 1
+        and not unique_exact
+        and len(unique_assumed) == 1
+    ):
+        return CapabilityMatch(
+            status="fallback",
+            match_basis="assumed_outcome",
+            matched_actions=unique_assumed,
+            hypothesis_actions=unique_assumed,
         )
     if advisory:
         top_score = max(item[:3] for item in advisory)
@@ -676,7 +691,11 @@ def _match_semantic_request(
             )
             for hypothesis in hypotheses
         ]
-    match = match_outcome_hypotheses(matching_hypotheses, OUTPUT_CAPABILITIES)
+    match = match_outcome_hypotheses(
+        matching_hypotheses,
+        OUTPUT_CAPABILITIES,
+        assumed_guidance=request_mode != "execute",
+    )
     if match.status == "fallback" and match.match_basis == "partial_evidence":
         capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
         if request_mode == "guidance" and all(

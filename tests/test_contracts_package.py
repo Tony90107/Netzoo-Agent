@@ -92,13 +92,18 @@ HISTORICAL_EXPORTS = [
     "_is_demo_request",
 ]
 
+# Updated deliberately on 2026-09-05: input_artifacts now names the closed
+# artifact_type vocabulary and declares that its items are plain strings, after a
+# live run recorded an object at input_artifacts[0]. Field meaning is unchanged.
+# 2026-09-05: MatchBasis gained assumed_outcome, so a hypothesis kept advisory by
+# its assumptions can be reported as registry guidance instead of a question.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "c05cfba78899e040cedb9de5b30f6027b40dd90b1df5ba9c33f5e7d197ef734c",
-    "RouterDecision": "7dbedd61803768b21f4d1fccf05fa7c3d994c7b36cef7601d9984cc8a256a6ee",
-    "RequestedOutcome": "f614a65f748d36fb7fbd8e6c33699ff6d29b7aba8ac1d5be939466a50dac366b",
+    "TaskDecision": "12ecac35bcc80cb27ea98e6222f6aa768b923506b555154b396ede7e826885c9",
+    "RouterDecision": "cee6a53b5323b44f966bb1aed49394d5bd1c0af040f1e4337ce7f7a1643b4f14",
+    "RequestedOutcome": "4218cc7547cf2273e6698f9bb475c16a16a18ec8e3f66ded5d49e59794cbb516",
     "OutcomeEvidence": "5bdbe86c3370bb618f6e8bbd9b68904819f87e0e7c9bedd3fbc35407ac87eac4",
-    "OutcomeHypothesis": "622ce4af605fb11cd13ec6bcf5a7d9d6a4e5cb15a55db308eb197e2477bdae10",
-    "CapabilityMatch": "4cc30c8fa15e93a7088270a7fd1272dfbd1987dfdddd8f8f503c99764ed21fa2",
+    "OutcomeHypothesis": "f4b8b0646a5e1eef582e42098ce9a89b08c65e17abd5062e1978e8b436442f91",
+    "CapabilityMatch": "5c19a6d664247a434d4e6c7da14f2ff5bd2d32910bba96def8c29c92c3c5e119",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",

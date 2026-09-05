@@ -207,26 +207,28 @@ class EmptyOutcomeRouter:
                                 source="inferred",
                                 rationale="A tool-selection question for a network implies inference.",
                             ),
+                            # This shared fixture serves two differently worded
+                            # prompts, so its evidence is inferred with a stated
+                            # entailment. Explicit evidence must quote the exact
+                            # request text, which no single span can satisfy for
+                            # both; that rule keeps its own tests elsewhere.
                             OutcomeEvidence(
                                 dimension="artifact_type",
                                 value="regulatory_network",
-                                source="explicit",
-                                text_span="regulatory network",
-                                rationale="The artifact is explicit.",
+                                source="inferred",
+                                rationale="A miRNA regulator network is a regulatory network.",
                             ),
                             OutcomeEvidence(
                                 dimension="regulator_type",
                                 value="mirna",
-                                source="explicit",
-                                text_span="miRNA",
-                                rationale="The regulator is explicit.",
+                                source="inferred",
+                                rationale="The request names miRNA as the regulator.",
                             ),
                             OutcomeEvidence(
                                 dimension="granularity",
                                 value="sample_specific",
-                                source="explicit",
-                                text_span="sample-specific",
-                                rationale="The granularity is explicit.",
+                                source="inferred",
+                                rationale="The request asks for one result per sample.",
                             ),
                         ],
                     )
@@ -842,6 +844,7 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
     app = build_graph(
         "fake",
         0.0,
+        router_model_name="fake",
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
@@ -924,12 +927,14 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
         "run_puma",
         "run_lioness_puma",
     ]
+    # Verified capability guidance is code-owned: the response model is never
+    # asked to rewrite a validated recommendation.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
-        "response",
     ]
+    assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     event_types = [event.event_type for event in store.read_events(run_id)]
     assert event_types.index("routing.semantic_interpretation_accepted") < (
         event_types.index("routing.registry_match_completed")
@@ -962,6 +967,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     app = build_graph(
         "fake",
         0.0,
+        router_model_name="fake",
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
@@ -983,13 +989,15 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
-    assert response_llm.calls == 1
+    assert response_llm.calls == 0
+    # Verified capability guidance is code-owned: the response model is never
+    # asked to rewrite a validated recommendation.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
-        "response",
     ]
+    assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
         event.event_type == "routing.semantic_interpretation_accepted"
         for event in events
@@ -1051,13 +1059,15 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     ]
     assert result["decision"]["clarification_question"] is None
     assert result["tool_results"] == []
-    assert response_llm.calls == 1
+    assert response_llm.calls == 0
+    # Verified capability guidance is code-owned: the response model is never
+    # asked to rewrite a validated recommendation.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
-        "response",
     ]
+    assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
         event.event_type == "routing.semantic_interpretation_accepted"
         for event in events
@@ -1220,15 +1230,17 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["recommended_actions"] == []
-    assert result["decision"]["clarification_question"] == (
-        "Please restate the desired NetZoo result after the router is available."
-    )
+    # A validation failure is the system's own failure: it must not be reported
+    # as an unclear question, and it must not ask the user to restate the goal.
+    assert result["decision"]["clarification_question"] is None
+    answer = str(result["messages"][-1].content)
+    assert "restate" not in answer.casefold()
+    assert "not evidence that your question is unclear" in answer.casefold()
     assert result["tool_results"] == []
     calls = result["token_usage"]["calls"]
     assert [call["role"] for call in calls] == [
         "semantic_interpreter",
         "semantic_reviewer",
-        "response",
     ]
     assert calls[0]["status"] == "failed"
     assert calls[1]["status"] == "failed"
