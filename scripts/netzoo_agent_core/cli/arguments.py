@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default=os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o"),
+        default=os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
         help=(
             "OpenRouter response model name; it must be listed in "
             "NETZOO_RESPONSE_MODEL_ALLOWLIST."
