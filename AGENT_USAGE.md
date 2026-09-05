@@ -322,11 +322,12 @@ classify -> plan -> execute -> evaluate
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
 # 回答模型
-export OPENROUTER_MODEL="openai/gpt-4o-mini"
-# Router 固定使用獨立、便宜且 allow-listed 的模型
-export OPENROUTER_ROUTER_MODEL="openai/gpt-4o-mini"
-export NETZOO_ROUTER_MODEL_ALLOWLIST="openai/gpt-4o-mini"
-export NETZOO_RESPONSE_MODEL_ALLOWLIST="openai/gpt-4o-mini"
+export OPENROUTER_MODEL="openai/gpt-4o"
+# Router 與 semantic interpretation 使用同一個 allow-listed 模型
+export OPENROUTER_ROUTER_MODEL="openai/gpt-4o"
+export OPENROUTER_SEMANTIC_MODEL="openai/gpt-4o"
+export NETZOO_ROUTER_MODEL_ALLOWLIST="openai/gpt-4o"
+export NETZOO_RESPONSE_MODEL_ALLOWLIST="openai/gpt-4o"
 export NETZOO_MAX_TASK_TOKENS=20000
 ```
 
