@@ -8,7 +8,7 @@ import re
 import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
-from ..contracts.artifact_semantics import outcome_consistency_issues
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
 from .request_integrity import request_integrity_issues
 
 __all__: list[str] = []
@@ -52,8 +52,31 @@ def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
     }
 
 
+def _entailed_by_artifact(outcome: RequestedOutcome) -> tuple[frozenset[str], str | None]:
+    """Return the entity set and granularity the chosen artifact alone fixes.
+
+    Where the ontology permits exactly one value, `outcome_consistency_issues`
+    already rejects every other, so a separate evidence entry for it repeats
+    what choosing the artifact_type has established. Artifacts that permit
+    several values are excluded: there the value is a real choice.
+    """
+    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
+    entities = (
+        rule.entities
+        if rule is not None and rule.entities is not None and len(rule.entities) == 1
+        else frozenset()
+    )
+    granularity = (
+        next(iter(rule.granularities))
+        if rule is not None and rule.granularities is not None and len(rule.granularities) == 1
+        else None
+    )
+    return entities, granularity
+
+
 def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
     required: list[tuple[str, str]] = []
+    entailed_entities, entailed_granularity = _entailed_by_artifact(outcome)
     if outcome.operation != "unknown":
         required.append(("operation", outcome.operation))
     if outcome.artifact_type != "unknown":
@@ -62,7 +85,7 @@ def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
         ("input_artifact", value) for value in outcome.input_artifacts
         if value != "unknown"
     )
-    if outcome.granularity not in {"unknown", "not_applicable"}:
+    if outcome.granularity not in {"unknown", "not_applicable", entailed_granularity}:
         required.append(("granularity", outcome.granularity))
     required.extend(
         ("regulator_type", value)
@@ -78,7 +101,9 @@ def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
     required.extend(
         ("entity_type", value)
         for value in outcome.entity_types
-        if value != "unknown" and value not in role_entities
+        if value != "unknown"
+        and value not in role_entities
+        and value not in entailed_entities
     )
     return required
 
