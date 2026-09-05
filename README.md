@@ -82,9 +82,10 @@ run-puma \
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
-export OPENROUTER_MODEL="openai/gpt-4o-mini"
-export OPENROUTER_ROUTER_MODEL="openai/gpt-4o-mini"
-export NETZOO_RESPONSE_MODEL_ALLOWLIST="openai/gpt-4o-mini"
+export OPENROUTER_MODEL="openai/gpt-4o"
+export OPENROUTER_ROUTER_MODEL="openai/gpt-4o"
+export OPENROUTER_SEMANTIC_MODEL="openai/gpt-4o"
+export NETZOO_RESPONSE_MODEL_ALLOWLIST="openai/gpt-4o"
 export NETZOO_MAX_TASK_TOKENS=20000
 # 選用：提高 Context7 rate limit
 export CONTEXT7_API_KEY="ctx7-..."
