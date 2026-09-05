@@ -67,6 +67,11 @@ def input_mentions(task: str) -> tuple[InputMention, ...]:
     return tuple(mentions)
 
 
+def confirmed_current_inputs(task: str) -> set[str]:
+    """Return the artifacts these witnesses locate in the request as current."""
+    return {item.artifact for item in input_mentions(task) if item.status == "current"}
+
+
 def request_integrity_issues(task: str, outcome) -> list[str]:
     mentions = input_mentions(task)
     current = {m.artifact for m in mentions if m.status == "current"}

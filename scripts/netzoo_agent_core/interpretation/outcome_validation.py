@@ -9,7 +9,7 @@ import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
-from .request_integrity import request_integrity_issues
+from .request_integrity import confirmed_current_inputs, request_integrity_issues
 
 __all__: list[str] = []
 
@@ -74,7 +74,10 @@ def _entailed_by_artifact(outcome: RequestedOutcome) -> tuple[frozenset[str], st
     return entities, granularity
 
 
-def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
+def _required_evidence(
+    outcome: RequestedOutcome,
+    confirmed_inputs: frozenset[str] = frozenset(),
+) -> list[tuple[str, str]]:
     required: list[tuple[str, str]] = []
     entailed_entities, entailed_granularity = _entailed_by_artifact(outcome)
     if outcome.operation != "unknown":
@@ -83,7 +86,7 @@ def _required_evidence(outcome: RequestedOutcome) -> list[tuple[str, str]]:
         required.append(("artifact_type", outcome.artifact_type))
     required.extend(
         ("input_artifact", value) for value in outcome.input_artifacts
-        if value != "unknown"
+        if value != "unknown" and value not in confirmed_inputs
     )
     if outcome.granularity not in {"unknown", "not_applicable", entailed_granularity}:
         required.append(("granularity", outcome.granularity))
@@ -131,6 +134,7 @@ def validate_outcome_hypotheses(
 
     issues: list[str] = []
     normalized_task = _normalized(user_task)
+    confirmed_inputs = frozenset(confirmed_current_inputs(user_task))
     for index, hypothesis in enumerate(hypotheses):
         issues.extend(
             f"hypothesis[{index}].{issue}"
@@ -141,7 +145,7 @@ def validate_outcome_hypotheses(
             for issue in outcome_consistency_issues(hypothesis.outcome)
         )
         outcome_values = _outcome_values(hypothesis.outcome)
-        required_evidence = _required_evidence(hypothesis.outcome)
+        required_evidence = _required_evidence(hypothesis.outcome, confirmed_inputs)
         if (
             hypothesis.outcome.granularity == "not_applicable"
             and hypothesis.outcome.artifact_type == "unknown"
