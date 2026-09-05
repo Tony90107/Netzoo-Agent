@@ -1618,3 +1618,79 @@ Q1 的 3/3 不能歸因於第三次嘗試——它一次都沒用到。與第五
 但此放寬是使用者在知情下的決定，故本輪**未自行撤回**，僅提出證據與建議。
 若保留，代價是 Q3 這類案例每次多一次呼叫且無收益；若撤回，Q3 回到兩次嘗試，
 結果不變（仍為 0/3），但省下該次呼叫並回復較低的 token 天花板。
+
+## Log 25｜分析錯誤更正：`request_mode` 的相關性是報告產物，不是因果
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，`--repeat 3`。  
+**付費呼叫 20 次。** 報告：[live-q1-q3-repeat3-round8.json](live-q1-q3-repeat3-round8.json)。  
+結果：`passed 1/9`（前一輪 4/9）。
+
+### 我的分析錯了
+
+第八輪新增的 `request_mode` 驗證器**在 9 次試驗中觸發 0 次**。也就是說模型每一次
+都回報 `guidance`，從來沒有回報過 `unknown`。
+
+原因：`_semantic_failure()` 呼叫 `outcome_routing_state(decision)`，
+而該函式的 `request_mode` 預設值就是 `"unknown"`。**任何語意失敗的 run，
+報告裡的 `request_mode` 一律是 `unknown`，與模型的實際輸出無關。**
+
+跨全部輪次核對：
+
+| pipeline 走完 | 報告的 request_mode | 次數 |
+| --- | --- | --- |
+| 否 | unknown | **53** |
+| 否 | guidance | 1 |
+| 是 | guidance | 16 |
+| 是 | unknown | 2 |
+
+所以 Log 20 記錄的「通過 ⟺ guidance，零例外」**是一個恆真式**：
+失敗 → fallback → 欄位填 unknown。而我據此推出的「48 次失敗中有 42 次卡在
+request_mode」**完全錯誤**——它量的是報告預設值，不是模型行為。
+
+Log 19／20 的 prompt 修改與 Log 24 的 request_mode 驗證器，都建立在這個誤讀上。
+第五輪 2/9→4/9、第六輪 4/9→2/9 的變化，在 n=9 下無法與雜訊區分。
+
+**處置**：`request_mode` 驗證器已 `git revert`（`baaae06`）。它在測量集上完全不觸發，
+且帶有 live 無法覆蓋的風險方向（把真正的工作指令說成 guidance）。
+無支持證據即退回，與本研究一貫判準一致。
+
+### 更正後的真實阻礙
+
+改用 `diagnostic_details`（非恆真式）統計最後一次嘗試的 issue，全部輪次：
+
+| issue | 次數 |
+| --- | --- |
+| **`missing_evidence`** | **29** |
+| `artifact_granularity` | 18 |
+| `schema_validation` | 14 |
+| `conflicting_evidence` | 13 |
+| `missing_current_input` | 9 |
+
+`missing_evidence` 再細分：**`entity_type` 21 次**、`input_artifact` 8 次。
+
+也就是說：**outcome 多半是對的，缺的是「證明」。** 系統要求每個已填維度都有
+對應且接地的證據，而模型反覆漏掉其中一項。這正是使用者問的
+「為什麼會沒能自己驗證問題的理解」的答案。
+
+### 介入：不要求 ontology 已唯一決定的維度提供證據
+
+`sample_cluster_assignment` 的 ontology 宣告 `entities = {sample}`、
+`granularities = {aggregate}`——**都只有一個合法值**，且
+`outcome_consistency_issues()` 已經會拒絕任何其他值。因此為它們另外要求一則證據
+不帶任何資訊：真正需要被證明的是「為什麼選這個 artifact_type」。
+
+這延伸的是驗證器**既有**的規則——被列為 regulator/target 的實體本來就不需要
+第二則 entity 證據。現在同樣排除 artifact 唯一決定的 entity 與 granularity。
+允許多個值的 artifact（如 `pathway_mutation_matrix` 的 {pathway, sample}、
+`regulatory_network` 的兩種 granularity）**不受影響**，因為那裡的值是真正的選擇。
+
+一致性檢查完全未動：測試明確斷言 artifact 禁止的 entity 或 granularity
+仍然被 `artifact_entity` / `artifact_granularity` 拒絕。
+
+離線：新檔 `tests/test_entailed_evidence.py` 8 項；完整套件
+**1210 passed、3 failed（既有待決策項）、0 skipped**；ruff 與 `git diff --check` 通過。
+
+### 可否證的預測
+
+`missing_evidence:entity_type` 應由 21 次大幅下降或消失。
+若未下降，則此歸因錯誤，需重新檢查 `_required_evidence` 的實際觸發條件。
