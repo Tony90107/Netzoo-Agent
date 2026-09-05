@@ -411,6 +411,14 @@ def main(argv=None) -> int:
             message = str(error)
         elif isinstance(error, ImportError) and error.name:
             message = f"{type(error).__name__}: {error.name} is missing from this interpreter"
+        elif callable(getattr(error, "errors", None)):
+            # A located path and code says which contract broke without echoing
+            # the value, and a bare type name has now cost three debug rounds.
+            located = "; ".join(
+                ".".join(str(part) for part in issue.get("loc", ())) + ":" + str(issue.get("type", "unknown"))
+                for issue in error.errors()[:5]
+            )
+            message = f"{type(error).__name__}: {located}"
         else:
             message = type(error).__name__
         print(f"Routing evaluation configuration error: {message}", file=sys.stderr)

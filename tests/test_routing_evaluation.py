@@ -481,3 +481,29 @@ def test_diagnostic_details_carry_the_rejected_shape_and_identifier():
     assert {"location": ["outcome_hypotheses", "0", "outcome", "input_artifacts", "0"],
             "type": "literal_error", "input_type": "str",
             "input_value": "somatic_mutation"} in shapes
+
+
+def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
+    """Third time the sanitiser hid a real fault; locations are not payloads."""
+    from evaluate_routing import main
+    import evaluate_routing
+    from netzoo_agent_core.contracts.outcomes import SemanticInterpretation
+
+    def broken(*_args, **_kwargs):
+        SemanticInterpretation.model_validate(
+            {"semantic_goal": "g", "outcome_hypotheses": [{"outcome": {
+                "operation": "analyze", "artifact_type": "sample_cluster_assignment",
+                "granularity": "aggregate"}}]}
+        )
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
+    monkeypatch.setattr(evaluate_routing, "build_llm", broken)
+
+    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+
+    error = capsys.readouterr().err
+    assert status == 2
+    assert "ValidationError" in error
+    assert "outcome_hypotheses.0.confidence" in error
+    assert "missing" in error
+    assert "offline-placeholder" not in error
