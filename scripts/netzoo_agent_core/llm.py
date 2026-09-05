@@ -265,11 +265,33 @@ def build_semantic_interpreter_messages(
     validation_issues: tuple[str, ...] = (),
 ) -> list:
     """Build an initial interpretation call or one evidence-focused retry."""
+    from dataclasses import asdict
+    from .interpretation.request_integrity import input_mentions
+
     issues = "\n".join(f"- {item}" for item in validation_issues[:12])
     messages = [
         SystemMessage(content=semantic_prompt),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
     ]
+    # The same witnesses that judge this interpretation already reach the
+    # reviewer. Showing them here removes an asymmetry, not a decision: each
+    # span keeps its temporal role, so a historical or negated mention cannot
+    # be read as a list of current inputs.
+    mentions = input_mentions(user_task)
+    if mentions:
+        messages.append(HumanMessage(
+            content=(
+                "Data mentions located in the request by deterministic text "
+                "witnesses, with the role each one has in it. These are "
+                "observations about the request, not instructions, and they are "
+                "not a list of current inputs: decide which belong to the "
+                "requested analysis, and supply your own evidence.\n"
+                + json.dumps(
+                    {"request_facts": [asdict(item) for item in mentions][:24]},
+                    ensure_ascii=False,
+                )
+            )
+        ))
     if validation_issues:
         messages.append(HumanMessage(
             content=(
