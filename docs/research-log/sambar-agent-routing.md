@@ -4011,3 +4011,131 @@ covariate-coexpression  art=coexpression_network gran=aggregate
 
 `gpt-4o` 117 次呼叫、400,470 tokens（r9 為 105 次、371,146 tokens），
 每 token 單價約為 `gpt-4o-mini` 的十餘倍。允許清單以單次指令覆寫放行，`.env` 未修改。
+
+## Log 57｜事前宣告：讓比對器在**平手時**讀 `selection_tags`，以及它能修與不能修的範圍
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在實作之前寫入,實作與量測後不得修改。**
+
+### 缺陷
+
+`grep -rn "selection_tags" scripts/netzoo_agent_core/routing/` **沒有任何一筆**。
+契約定義它、prompt 要求模型填它、`_outcome_values` 拿它做一致性檢查，
+**唯獨選工具的比對器不讀它**。
+
+### 誠實的範圍：r10 的 9 次失敗中，這個缺陷只解釋 3 次
+
+- **`mirna-current-goal`（3/3，決定性）＝純比對器缺口。**
+  outcome 的每一個科學維度都正確（`infer` / `regulatory_network` / `sample_specific`），
+  兩個部分相容候選 `lioness_panda`、`lioness_puma` 在**所有科學維度上都相符**，
+  而宣告的 `mirna_regulation` **只有 `lioness_puma` 帶有**。唯一判別資訊被忽略。
+- **`covariate-coexpression`（3/3，決定性）＝模型錯誤，不是比對器缺口。**
+  outcome 的 `operation` 是 `explain`，而 `run_cobra` 是 `analyze`
+  （原文寫的是 "Which tool can **analyze** how ... covariates contribute"）。
+  離線確認：該 outcome 的 `_partially_compatible` 候選數為 **0**。
+  **下述規則對它不會、也不應該生效。**
+
+我在上一則訊息裡先把這兩題並列成同一個缺陷，那是過快的判讀；報表顯示不是。
+
+### 設計（保守，且不與契約牴觸）
+
+`RequestedOutcome.selection_tags` 的 docstring 明寫
+「**do not select or authorize a workflow by themselves**」，prompt 同樣措辭。
+因此規則限定為**平手時的判別，不得救回任何不相容的候選**：
+
+在 `match_outcome_hypotheses` 的 advisory 分支，當候選多於一個時，
+只保留同時滿足以下兩者的候選：
+
+1. capability 的 `selection_tags` ⊇ outcome 宣告的 `selection_tags`（非空），**且**
+2. capability 的 `operation`、`artifact_type` 與 outcome 相同，且 outcome 的
+   `granularity` 在 capability 允許的集合內。
+
+**恰好剩一個**才回傳 `exact`，`match_basis="registry_features"`；否則維持原行為。
+標籤只在「科學維度已經把範圍縮到一組同等相容的候選」時決定是哪一個——
+這是 docstring 所說的 "guide capability composition"，不是「由標籤自行選工具」。
+
+**不放寬任何東西**：規則只會縮小候選集合，永遠不會新增候選，
+也不會把不相容（如 `operation` 不符）的 capability 變成可選。
+
+### 預測與判準
+
+- **P1（離線，決定性，本項主判準）**：`mirna-current-goal` 的 r10 outcome
+  經 `match_semantic_request` 由 `ambiguous`／無動作變為
+  **`exact` 且 `run_lioness_puma`**；`covariate-coexpression` 的 r10 outcome
+  **維持不變**（仍無動作）。新測試在變更前必須失敗。
+  **若 covariate 那題也被改成有動作，代表規則過寬，立刻撤回。**
+- **P2（離線回歸）**：完整 gate 維持 1328 passed、3 failed（既有待決策項）。
+  任何既有測試改變行為即撤回。
+- **P3（live，`gpt-4o-mini`，使用者已預先授權，回歸護欄）**：
+  工具正確 ≥ r9 的 27/42，且推薦錯誤 = 0、forbidden = 0、unsafe = 0。
+  mini 在平手時很少填 tag，**預期幾乎無變化**；這一輪是回歸守門，不是效力測試。
+- **P4（live，`gpt-4o`，需另外取得使用者同意才可執行）**：
+  `mirna-current-goal` 工具正確 ≥ 2/3，且護欄三項皆為 0。
+  這是唯一能驗證效力的組態，因為只有 gpt-4o 會在平手時填 tag。
+
+### 已知風險（寫在前面）
+
+模型可以填一個原文不支持的 tag，而 `_required_evidence` **不要求** tag 附證據
+（prompt 甚至要求不要把 tag 放進科學證據）。因此一個被憑空填入的 tag
+可能在平手時選中錯誤的工具。這正是 P3／P4 把「推薦錯誤工具 = 0」列為否決條件的原因。
+
+## Log 58｜Log 57 的 P1 被否證，變更**已依事前宣告撤回**；並更正 Log 57 的一項事實錯誤
+
+日期／時區：2026-09-06，Asia/Taipei。**離線,付費呼叫 0 次。**
+
+### 先更正 Log 57 的事實錯誤（不刪除原文，於此加註）
+
+Log 57 寫「`covariate-coexpression` 是模型把 `operation` 寫成 `explain`，
+因此 `_partially_compatible` 候選數為 0，規則不會生效」。**這是錯的。**
+我在 `match_outcome_hypotheses` 上直接探測，漏掉了生產路徑的一步：
+`_match_semantic_request` 對 `request_mode == "guidance"` 會**刻意把 `operation`
+抹成 `unknown`**（「詢問哪個 capability 能產生此結果，本身不是一個 operation」）。
+所以在真正的路徑上，`explain` 與 `analyze` 的差異**根本不參與比對**，
+Log 57 對該題的歸因與由此推出的 P1 期望值都建立在錯誤前提上。
+**這是 Log 44 教訓三（由個案過度概化）與教訓二（工具先驗證）的再犯：
+我用一個不等於生產路徑的探測點下了結論。**
+
+### 實作與量測結果
+
+依 Log 57 的設計實作後（tag 僅在平手時判別，且候選須符合 outcome **所述**維度）：
+
+| 探測（`match_semantic_request`，guidance） | 變更前 | 變更後 |
+| --- | --- | --- |
+| `mirna-current-goal` 的 r10 outcome | ambiguous、無動作 | **exact `run_lioness_puma`** |
+| `covariate-coexpression` 的 r10 outcome | ambiguous、無動作 | **exact `run_cobra`** |
+| 同一段原文、**不宣告 tag**（對照） | ambiguous | ambiguous（未變） |
+| **明文 TF-to-gene 的原文＋憑空的 `mirna_regulation` tag** | ambiguous、無動作 | **exact `run_lioness_puma`** |
+
+### 判定：撤回
+
+- **P1 被否證。** 宣告是「`covariate-coexpression` 必須維持不變；若它也被改成有動作，
+  代表規則過寬，立刻撤回」。它變成了 `exact`。
+  （即使那個答案**恰好等於語料的期望值**，宣告就是宣告。）
+- **最後一列的安全對照獨立證實了同一件事**：一個原文明說 TF-to-gene 的請求，
+  只要憑空帶上 `mirna_regulation`，就會被推薦 PUMA。
+  **這正是把「沒有答案」換成「錯誤答案」**，而 `_required_evidence` 不要求 tag 附證據。
+  這個對照不在 P1 裡，是實作後補做的，但它與 P1 指向同一個結論。
+
+變更已 `git checkout` 撤回，撤回後該對照回到 `ambiguous`、無動作。
+**本項未產生任何 commit，也未花費任何付費呼叫。**
+
+### 這個缺陷本身仍然成立
+
+比對器不讀 `selection_tags` 是事實（`grep` 仍為空），
+`mirna-current-goal` 在 gpt-4o 下三次一致地因此無動作也是事實。
+**被否證的是這個修法，不是這個問題。**
+
+### 下一次若要再試，缺的是什麼
+
+要讓 tag 判別不變成憑空選工具，tag 必須是**被支持的**，而不只是被宣告的。
+契約允許為 tag 附證據（`llm.py`：「If evidence is supplied for one, use the generic
+dimension `selection_tag`」），但 `_required_evidence` **不要求**它。
+因此正確的下一步順序是：
+
+1. **先量**「模型宣告 tag 時，附上 `selection_tag` 證據的比例」——
+   目前沒有任何報告記錄它（與 Log 45／47 同一類的量測缺口）。
+2. 若比例夠高，才有條件把規則收緊為「tag 必須有通過驗證的證據」並重新宣告判準。
+3. 若比例接近 0，這條路走不通，應停止。
+
+**在補上第 1 項之前不再提出修法**（Log 44 教訓四）。
+
+離線：**1328 passed、3 failed（既有待決策項，未動）、0 skipped**。
