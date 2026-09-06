@@ -17,8 +17,11 @@ Five structural guarantees, not promises:
    under the matching dimension. Nothing is derived from a tool name, from the
    registry, or from matching the request text.
 2. `input_artifact` additionally requires the request's own witnesses to have
-   scoped that artifact as current -- two independent sources. Role fields have
-   no such witness, so they are only ever moved, never witnessed into place.
+   scoped that artifact as current -- two independent sources. Role fields and
+   selection tags have no such witness, so they are only ever moved.
+   A moved tag is reported back so the caller can keep it out of capability
+   selection: the matcher may break a tie with a tag the model itself placed in
+   the outcome, and a tag this function moved must never pick a tool.
 3. `unknown` is never written.
 4. The result is re-validated through `RequestedOutcome.model_validate`, not
    copied past validation, so a value outside the closed vocabulary cannot be
@@ -47,6 +50,7 @@ _MOVABLE = (
     ("input_artifact", "input_artifacts"),
     ("regulator_type", "regulator_types"),
     ("target_type", "target_types"),
+    ("selection_tag", "selection_tags"),
 )
 
 

@@ -203,6 +203,9 @@ def _invoke_semantic_interpreter(
     # that already satisfied every check is kept if the review that follows does
     # not, because discarding both leaves a registry guess naming no workflow.
     validated: SemanticInterpretation | None = None
+    # Tags this function moved into the outcome, kept out of capability
+    # selection: a harness repair must never be what picks a tool.
+    restored_tags: frozenset[str] = frozenset()
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         # A patch can only be merged onto a structurally valid proposal. When the
@@ -252,7 +255,7 @@ def _invoke_semantic_interpreter(
         )
         if budget.status == "blocked":
             usage.budget_exhausted = True
-            return None, usage, budget_warnings, last_error
+            return None, usage, budget_warnings, last_error, restored_tags
 
         started_ns = time.monotonic_ns()
         raw = None
@@ -388,7 +391,7 @@ def _invoke_semantic_interpreter(
                         ],
                     },
                 )
-                return validated, usage, budget_warnings, None
+                return validated, usage, budget_warnings, None, restored_tags
             if recover_registry_guidance(
                 user_task,
                 context.project_policy.workflows,
@@ -404,7 +407,7 @@ def _invoke_semantic_interpreter(
                         "error_type": type(error).__name__,
                     },
                 )
-            return None, usage, budget_warnings, error
+            return None, usage, budget_warnings, error, restored_tags
 
         # The one authorized place the deterministic layer writes an outcome
         # field. It moves a value this hypothesis already stated in its own
@@ -412,6 +415,10 @@ def _invoke_semantic_interpreter(
         # Validation below is unchanged.
         interpretation, restored_inputs = restore_stated_fields(
             user_task, interpretation,
+        )
+        restored_tags = frozenset(
+            str(item["value"]) for item in restored_inputs
+            if item["field"] == "selection_tags"
         )
         if restored_inputs:
             record_event(
@@ -491,8 +498,8 @@ def _invoke_semantic_interpreter(
                     "classify",
                     {"attempt": attempt + 1, "issues": list(validation.issues)},
                 )
-                return validated, usage, budget_warnings, None
-            return None, usage, budget_warnings, last_error
+                return validated, usage, budget_warnings, None, restored_tags
+            return None, usage, budget_warnings, last_error, restored_tags
 
         usage = append_llm_usage(
             usage,
@@ -511,6 +518,7 @@ def _invoke_semantic_interpreter(
                 user_task,
                 interpretation.outcome_hypotheses,
                 request_mode=interpretation.request_mode,
+                ignore_tags=restored_tags,
             )
             if preliminary_match.status == "ambiguous":
                 validation_issues = (
@@ -565,9 +573,9 @@ def _invoke_semantic_interpreter(
                 "attempt": attempt + 1,
             },
         )
-        return interpretation, usage, budget_warnings, None
+        return interpretation, usage, budget_warnings, None, restored_tags
 
-    return None, usage, budget_warnings, last_error
+    return None, usage, budget_warnings, last_error, restored_tags
 
 
 def _invoke_intent_router(
@@ -698,7 +706,7 @@ def invoke_router(
     usage = _current_usage(context, state)
     if state.get("workflow_continuation") is not None:
         return _continue_workflow(context, state, user_task, usage)
-    interpretation, usage, budget_warnings, semantic_error = (
+    interpretation, usage, budget_warnings, semantic_error, restored_tags = (
         _invoke_semantic_interpreter(context, state, user_task, usage)
     )
     if interpretation is None:
@@ -721,6 +729,7 @@ def invoke_router(
         user_task,
         interpretation.outcome_hypotheses,
         request_mode=interpretation.request_mode,
+        ignore_tags=restored_tags,
     )
     record_event(
         context,

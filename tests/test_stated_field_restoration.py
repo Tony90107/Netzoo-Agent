@@ -232,3 +232,19 @@ def test_unknown_is_never_moved_into_a_role_field():
     result, _ = restore_stated_fields(CURRENT, source)
 
     assert result.outcome_hypotheses[0].outcome.regulator_types == []
+
+
+def test_a_selection_tag_stated_in_evidence_is_moved_and_reported_as_such():
+    """The largest remaining conflict family, and the one with a coupling.
+
+    The report has to name the moved tag so the caller can keep it out of
+    capability selection.
+    """
+    source = role_interpretation([("selection_tag", "mirna_regulation")])
+
+    result, restored = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.selection_tags == ["mirna_regulation"]
+    assert [(item["field"], item["value"]) for item in restored] == [
+        ("selection_tags", "mirna_regulation"),
+    ]
