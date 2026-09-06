@@ -108,3 +108,58 @@ def test_two_failed_attempts_still_fall_back():
 
     assert row["status"] == "fallback"
     assert row["outcome"] == {}
+
+
+class SchemaBreakingReviewProvider(ScriptedProvider):
+    """A review whose reply does not parse at all, not one that parses and fails.
+
+    The live record separates these two: `bipartite-communities` produced a
+    validated first pass six times across four rounds and lost it every time to
+    a review that broke the wire contract -- an empty `evidence_removals` value,
+    a non-literal dimension. That is the branch this file did not cover.
+    """
+
+    def with_structured_output(self, schema, **_kwargs):
+        provider = self
+        outer = super().with_structured_output(schema, **_kwargs)
+
+        class Adapter:
+            def invoke(self, messages):
+                if schema is SemanticInterpretation:
+                    return outer.invoke(messages)
+                if schema is IntentDecision:
+                    return outer.invoke(messages)
+                # The shape a live review actually emitted: a removal naming a
+                # dimension but no value.
+                return {
+                    "request_mode": "guidance",
+                    "semantic_goal": "Subtype patients",
+                    "hypothesis_index": 0,
+                    "outcome": {},
+                    "evidence_removals": [{"dimension": "operation", "value": ""}],
+                }
+
+        return Adapter()
+
+
+def run_with_unparseable_review(first):
+    return evaluate([q1()], provider=SchemaBreakingReviewProvider(first, first),
+                    model_name="fixture")["results"][0]
+
+
+def test_a_validated_first_pass_survives_a_review_that_does_not_parse():
+    row = run_with_unparseable_review(good_item())
+
+    assert row["status"] == "exact"
+    assert row["matched_actions"] == ["run_sambar"]
+    assert row["outcome"]["artifact_type"] == "sample_cluster_assignment"
+    issues = [issue for entry in row["diagnostic_details"] for issue in entry["issues"]]
+    assert any(str(issue).startswith("schema_validation:") for issue in issues)
+
+
+def test_an_unvalidated_first_pass_still_falls_back_when_the_review_does_not_parse():
+    """The retention is of a validated reading, not of any reading."""
+    row = run_with_unparseable_review(broken_item())
+
+    assert row["status"] == "fallback"
+    assert row["outcome"] == {}
