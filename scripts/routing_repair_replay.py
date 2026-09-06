@@ -22,7 +22,22 @@ MISSING_REQUIRED_ISSUES = {
     "original-q3": ["schema_validation:outcome_hypotheses.0.outcome.operation:missing",
                     "schema_validation:outcome_hypotheses.1.outcome.operation:missing"],
 }
-REPLAY_SUITES = {"cross-field": OBSERVED_ISSUES, "missing-required": MISSING_REQUIRED_ISSUES}
+# The failure that actually dominates the live record: 112 of 131 recorded first
+# attempts omit a current input the harness's own witnesses already located, and
+# 31 of them have no other defect at all. The other two suites reconstruct
+# cross-field and schema failures, so without this one a repair-replay round
+# never samples the class where a one-field repair should matter most.
+MISSING_INPUT_ISSUES = {
+    "original-q1": ["missing_current_input:mutation_matrix"],
+    "original-q2": ["missing_current_input:mutation_matrix"],
+    "original-q3": ["missing_current_input:mutation_matrix",
+                    "terminal_goal_conflict:sample_cluster_assignment"],
+}
+REPLAY_SUITES = {
+    "cross-field": OBSERVED_ISSUES,
+    "missing-required": MISSING_REQUIRED_ISSUES,
+    "missing-input": MISSING_INPUT_ISSUES,
+}
 
 
 def reconstructed_proposal(case_id: str, suite: str = "cross-field") -> dict:
@@ -30,6 +45,8 @@ def reconstructed_proposal(case_id: str, suite: str = "cross-field") -> dict:
         raise ValueError("Unknown repair replay suite")
     if suite == "missing-required":
         return _missing_required_proposal(case_id)
+    if suite == "missing-input":
+        return _missing_input_proposal(case_id)
     artifact = {"original-q1": "sample_distance_matrix", "original-q2": "sample_cluster_assignment",
                 "original-q3": "multi_omic_network"}[case_id]
     outcome = dict(operation="analyze", input_artifacts=["mutation_matrix"], artifact_type=artifact,
@@ -72,6 +89,44 @@ def _missing_required_proposal(case_id: str) -> dict:
     for issue in issues:
         path = issue.split(":")[1].split(".")
         proposal["outcome_hypotheses"][int(path[1])]["outcome"].pop(path[-1])
+    return proposal
+
+
+def _missing_input_proposal(case_id: str) -> dict:
+    """Reconstruct a schema-valid first pass whose only defect is an omitted input.
+
+    Everything else is the outcome the corpus expects, so a repair needs to touch
+    exactly one field. Q3 additionally keeps the terminal-goal conflict it shows
+    live, where the requested result is stated as a network rather than cluster
+    labels. No expected answer reaches the reviewer: it sees only this proposal,
+    the original request and the deterministic issue codes.
+    """
+    proposal = reconstructed_proposal(case_id)
+    proposal.pop("assumptions", None)
+    item = proposal["outcome_hypotheses"][0]
+    artifact = "regulatory_network" if case_id == "original-q3" else "sample_cluster_assignment"
+    item["outcome"].update(
+        operation="analyze", input_artifacts=[], artifact_type=artifact,
+        entity_types=["sample"], granularity="aggregate",
+        regulator_types=[], target_types=[],
+    )
+    if case_id == "original-q3":
+        item["outcome"].update(
+            operation="infer", entity_types=["tf", "gene"],
+            regulator_types=["tf"], target_types=["gene"], granularity="sample_specific",
+        )
+    values = [
+        ("operation", item["outcome"]["operation"]),
+        ("artifact_type", artifact),
+        ("granularity", item["outcome"]["granularity"]),
+        *(("regulator_type", role) for role in item["outcome"]["regulator_types"]),
+        *(("target_type", role) for role in item["outcome"]["target_types"]),
+    ]
+    item["evidence"] = [
+        dict(dimension=dimension, value=value, source="inferred",
+             rationale="Proposed interpretation of the requested result.")
+        for dimension, value in values
+    ]
     return proposal
 
 
