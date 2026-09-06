@@ -3875,3 +3875,139 @@ trial 1、2 的第二次是**證據**驗證失敗，走的是 Log 28 既有分�
 D：`not_applicable` 誤用）依 Log 51 的順序仍未處理。
 
 離線：**1328 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 55｜事前宣告：換 `gpt-4o` 跑一輪，用來判定失敗屬模型能力還是契約
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在執行第十輪之前寫入，執行後不得修改。**
+
+### 為什麼跑這一輪
+
+r1–r9 **全部**使用 `openai/gpt-4o-mini`。Log 50 已證明全語料指標在此樣本量下
+分辨不出契約層級的改動，而 Log 51 解剖出的四題穩定失敗，其形狀
+（宣稱 explicit 卻不附引文、角色欄位只填一半、把「只要建議」讀成「沒有科學結果」）
+**都比較像理解力不足，不像契約缺陷**。換模型是單變數對照：
+`policy_hash`、`corpus_sha256`、`prompt_schema_sha256` 全部不變，只換 `--model`。
+
+**這是目前唯一一個無論結果如何都會改變後續決策的實驗**，因此優先於機制 C。
+
+### 成本護欄的處理
+
+`validate_router_model` 明寫「fail closed unless ... explicitly cheap allowlist」，
+而 `.env` 的 `NETZOO_ROUTER_MODEL_ALLOWLIST` 只有 `gpt-4o-mini`。
+本輪以**單次指令的環境變數覆寫**放行 `openai/gpt-4o`，**不修改 `.env`**，
+覆寫不留存。`gpt-4o` 每 token 約為 `gpt-4o-mini` 的十餘倍，
+本輪 42 次試驗約 105 次呼叫，**成本明顯高於先前每一輪**，此點在執行前已告知使用者。
+
+### 判準
+
+**主判準 A（機制歸屬）**——對象是 Log 50／51 認定的四題穩定 0/3：
+`reverse-history-expression`、`sparse-expression-not-mutation`、
+`bipartite-communities`、`two-layer-network`。計算其中工具正確達 **≥ 2/3** 的題數。
+
+- **≥ 2 題** → **模型能力受限**。結論是停止繼續修契約，
+  剩餘機制（C／A／D）不值得再投入付費輪次。
+- **0 題** → **契約／本體論受限**。依 Log 51 的順序繼續，機制 C 優先，
+  且改用 repair-replay（每側 30 次呼叫）而非全語料。
+- **恰好 1 題** → 未判別，記錄後不動。
+
+**判準 B（整體，事前即知不敏感，僅作佐證）**——工具正確率對 r9 的 27/42：
+Fisher exact 要 p < 0.05，候選需達 **36/42 = 85.7%**（35/42 時 p = 0.081）。
+**這個門檻很高，事前寫下來就是為了避免事後把 30/42 之類的結果說成「有改善」。**
+
+**護欄（否決條件）**——推薦錯誤工具 = 0、forbidden = 0、`unsafe_execution_count` = 0。
+任一 > 0 表示換模型不是單純升級，需另行評估，不得逕自視為改善。
+
+**判準 C（機制層級的直接旁證，宣告但不作主判準）**——
+r5＋r6＋r7＋r9 的 `ungrounded_evidence_shapes` 累計 `absent` 全部、`unmatched` 0 次。
+若 `gpt-4o` 的 `absent` 條目數為 0 或接近 0，則「宣稱 explicit 卻不附引文」
+確定是模型能力問題；若仍大量出現，則該家族與模型強弱無關。
+
+### 明確不預測的事
+
+`passed` 不列入任何判準（Log 50）。token 與成本一併記錄，但不作為判準。
+
+## Log 56｜第十輪（`gpt-4o`）：判準 A 成立 3/4，未接地家族**完全消失**；但暴露一個程式端缺陷
+
+日期／時區：2026-09-06，Asia/Taipei。**使用者授權的付費輪次**，117 次呼叫、42 次試驗。
+報告：[live-full-corpus-round10-gpt4o-repeat3.json](live-full-corpus-round10-gpt4o-repeat3.json)。
+判準寫於 Log 55，執行前寫入，本節未修改。
+`policy_hash`、`corpus_sha256`、`prompt_schema_sha256` 與 r3–r9 完全相同，
+**唯一變數是模型**（`openai/gpt-4o` 對 `openai/gpt-4o-mini`）。
+
+### 判準結果
+
+| 判準 | 門檻 | 實測 | |
+| --- | --- | --- | --- |
+| **A（機制歸屬）** | 四題穩定 0/3 中達 ≥2/3 的題數 | **3/4** | **成立 → 模型能力受限** |
+| **B（整體，佐證）** | 工具正確 ≥ 36/42 | **33/42 = 78.6%**（p = 0.2269） | **未達成** |
+| **護欄** | 推薦錯誤／forbidden／unsafe = 0 | **0 / 0 / 0** | **成立** |
+| **C（機制旁證）** | `absent` 條目趨近 0 | **0**（270 個 explicit 條目、`without_span` 0） | **成立** |
+
+判準 A 逐題：`reverse-history-expression` 0/3 → **3/3**、
+`bipartite-communities` 0/3 → **3/3**、`two-layer-network` 0/3 → **3/3**、
+`sparse-expression-not-mutation` 0/3 → 1/3。
+
+**判準 B 未達成，因此不得宣稱整體正確率有顯著改善**——事前正是為了防這件事才寫下 36/42。
+
+### 判準 C：最大的 issue 家族整個消失
+
+r5＋r6＋r7＋r9 累計 `ungrounded_evidence` 條目全部是 `absent`、`unmatched` 0 次。
+`gpt-4o` 這一輪：**`ungrounded_evidence_shapes` 為空**，
+`evidence_span_hypotheses` 全部 `all_spanned`（73/73），
+`evidence_span_entries` = `with_span` 270、**`without_span` 0**、`inferred` 155。
+
+**「宣稱 `source="explicit"` 卻不附 `text_span`」確定是模型能力問題，與契約無關。**
+Log 45–48 花了三輪去量它、並在 Log 48 判斷不該為它收緊契約——那個判斷是對的，
+但正確的理由到這一輪才完整：它根本不是契約要處理的東西。
+
+`semantic_fallback` 由 12/42 降到 **4/42**；`unstable_cases` 由 8 降到 6。
+
+### 但 `gpt-4o` 不是全面較好，而且退步的那一題成因在程式端
+
+| 題目 | r9（mini） | r10（gpt-4o） |
+| --- | --- | --- |
+| `mirna-current-goal` | **3/3** | **0/3** |
+| `covariate-coexpression` | 1/3 | **0/3** |
+| `mutation-no-fallback-phrases` | 3/3 | 2/3 |
+
+r10 剩餘 9 次工具不正確的試驗中，**有 6 次是上表前兩題、且三次結果完全一致**。
+兩題的 outcome 都是決定性的同一份：
+
+```
+mirna-current-goal      art=regulatory_network  gran=sample_specific
+                        reg=[] tgt=[] selection_tags=['mirna_regulation']
+covariate-coexpression  art=coexpression_network gran=aggregate
+                        ent=['gene'] selection_tags=['covariate_association']
+```
+
+離線重現（`match_semantic_request`，非推測）：
+
+| tag | 擁有它的 capability | 比對結果 |
+| --- | --- | --- |
+| `mirna_regulation` | `run_puma`、`run_lioness_puma` | **ambiguous**，候選 `lioness_panda` / `lioness_puma` |
+| `covariate_association` | **只有 `run_cobra`** | **ambiguous**，候選 `run_cobra` / `run_lioness_coexpression` |
+
+`covariate_association` 是 `run_cobra` **獨有**的標籤，也正是該題的期望答案。
+模型填對了唯一能判別的欄位，**而比對器從頭到尾沒有讀它**：
+`grep -rn "selection_tags" scripts/netzoo_agent_core/routing/` **沒有任何一筆**。
+
+`selection_tags` 由契約定義、由 prompt 要求模型填寫、被驗證器納入
+`_outcome_values` 檢查一致性——**唯獨負責選工具的比對器不使用它**。
+
+**這解釋了 `gpt-4o` 為什麼會「退步」**：較強的模型改用 `selection_tags` 表達判別資訊，
+而比對器只認得角色欄位。這不是模型變差，是模型講了一句程式聽不懂的話。
+
+### 結論與修正後的優先順序
+
+1. **依 Log 55 的宣告：模型能力受限，機制 C 與 D 不值得再投入付費輪次。**
+   C（`evidence_removals` 撞 schema）在 gpt-4o 下 schema 診斷仍是 7（mini 為 6），
+   但其後果已由機制 B 從「全損」降為「修補作廢」；D 在 gpt-4o 下已不再出現。
+2. **新的最高價值目標是「比對器忽略 `selection_tags`」**，而它**不是**契約層的猜測：
+   決定性、可離線重現、6/9 的剩餘失敗、且修正方向是讓比對器讀一個
+   模型已經填對的既有欄位。這與機制 A（角色留空 → ambiguous）是同一個病灶的兩面。
+3. 未處理者仍為 Log 51 的機制 A 其餘部分（`role_entity` 無修復指引）與交接第六節的決策項。
+
+### 成本
+
+`gpt-4o` 117 次呼叫、400,470 tokens（r9 為 105 次、371,146 tokens），
+每 token 單價約為 `gpt-4o-mini` 的十餘倍。允許清單以單次指令覆寫放行，`.env` 未修改。
