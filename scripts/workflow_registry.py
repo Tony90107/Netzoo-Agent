@@ -462,7 +462,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             operation="analyze",
             artifact_type="community_assignment",
             entity_types=frozenset({"gene"}),
-            granularities=frozenset({"not_applicable"}),
+            # One community assignment per network, not one per sample. The
+            # former not_applicable value matched no interpretation the semantic
+            # prompt permits, so this capability could never be selected.
+            granularities=frozenset({"aggregate"}),
             input_artifacts=frozenset({"regulatory_network"}),
             selection_tags=frozenset({"bipartite_community_detection", "modules"}),
             handoff_contract=(

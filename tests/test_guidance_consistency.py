@@ -63,7 +63,10 @@ def test_every_artifact_type_has_explicit_output_semantics():
 @pytest.mark.parametrize("artifact,entities,granularity", [
     ("regulatory_network", ["tf", "gene"], "sample_specific"),
     ("coexpression_network", ["gene"], "aggregate"),
-    ("community_assignment", ["tf", "gene"], "not_applicable"),
+    # 2026-09-06: community_assignment now declares granularities={aggregate}.
+    # The row is rewritten rather than dropped so the artifact keeps a
+    # positive "this combination is valid" assertion under the new contract.
+    ("community_assignment", ["tf", "gene"], "aggregate"),
     ("pathway_mutation_matrix", ["pathway", "sample"], "aggregate"),
     ("sample_distance_matrix", ["sample"], "aggregate"),
 ])
