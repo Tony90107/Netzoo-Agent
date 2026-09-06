@@ -231,3 +231,59 @@ def test_a_reply_that_is_neither_shape_is_reported_against_the_patch_contract():
 
     assert any("outcome.granularity" in issue for issue in issues), issues
     assert not any("outcome_hypothesis:missing" in issue for issue in issues), issues
+
+
+def nested_patch(**root):
+    """The shape a live round returned 5/5 for one request: lists inside outcome."""
+    return {
+        "outcome": {
+            "input_artifacts": ["mutation_matrix"],
+            "evidence_additions": [{
+                "dimension": "input_artifact", "value": "mutation_matrix",
+                "source": "explicit", "text_span": "DNA 突變資料",
+                "rationale": "The request supplies the mutation matrix.",
+            }],
+        },
+        **root,
+    }
+
+
+def test_evidence_lists_nested_inside_outcome_are_lifted_to_the_root():
+    patch = SemanticPatch.model_validate(nested_patch())
+
+    assert patch.outcome.input_artifacts == ["mutation_matrix"]
+    assert [item.dimension for item in patch.evidence_additions] == ["input_artifact"]
+
+
+def test_the_lifted_shape_routes_exactly_like_the_flat_one():
+    provider = PatchProvider(missing_input_item(), nested_patch())
+
+    row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
+
+    assert row["status"] == "exact"
+    assert row["matched_actions"] == ["run_sambar"]
+    assert row["review_patch"]["evidence_added"] == 1
+
+
+def test_a_conflicting_pair_is_rejected_rather_than_merged_or_guessed():
+    """Two different lists under one name is not an equivalent nesting."""
+    with pytest.raises(ValueError, match="Conflicting patch evidence list"):
+        SemanticPatch.model_validate(nested_patch(evidence_additions=[]))
+
+
+def test_an_identical_pair_is_accepted_because_nothing_is_ambiguous():
+    payload = nested_patch()
+    payload["evidence_additions"] = list(payload["outcome"]["evidence_additions"])
+
+    patch = SemanticPatch.model_validate(payload)
+
+    assert len(patch.evidence_additions) == 1
+
+
+@pytest.mark.parametrize("outcome", ["not-a-mapping", ["granularity"], 7])
+def test_an_unexpected_outcome_shape_is_left_for_strict_validation_to_report(outcome):
+    """Never turn a repairable schema failure into a TypeError from this hook."""
+    with pytest.raises(Exception) as caught:
+        SemanticPatch.model_validate({"outcome": outcome})
+
+    assert not isinstance(caught.value, TypeError)
