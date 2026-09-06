@@ -97,6 +97,10 @@ HISTORICAL_EXPORTS = [
 # live run recorded an object at input_artifacts[0]. Field meaning is unchanged.
 # 2026-09-05: MatchBasis gained assumed_outcome, so a hypothesis kept advisory by
 # its assumptions can be reported as registry guidance instead of a question.
+# 2026-09-06: CapabilityMatch.hypothesis_actions maxItems 6 -> 12. That field is
+# built by the matcher from the registry, never from model output, and a live run
+# aborted because a wholly unresolved outcome ties across all twelve registered
+# capabilities. Only that one bound changed. See Log 42.
 # 2026-09-06: community_assignment declares granularities={aggregate}, so its
 # anyOf branch narrows from {aggregate, sample_specific, not_applicable, unknown}
 # to {aggregate, unknown}. Only that one branch changed; no field was added,
@@ -107,7 +111,7 @@ SCHEMA_DIGESTS = {
     "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
     "OutcomeEvidence": "5bdbe86c3370bb618f6e8bbd9b68904819f87e0e7c9bedd3fbc35407ac87eac4",
     "OutcomeHypothesis": "a95bba2a538fc6ec49137181c9650886a342c2c354c117912552738c62eb2cd2",
-    "CapabilityMatch": "5c19a6d664247a434d4e6c7da14f2ff5bd2d32910bba96def8c29c92c3c5e119",
+    "CapabilityMatch": "7098d0e6fbbf7f9b1c99da1152107fa2e5c9e205e06e345468d7dff14a160922",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
