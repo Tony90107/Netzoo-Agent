@@ -209,3 +209,31 @@ def test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions(task, 
     assert decision.guidance_input_artifacts == []
     assert decision.requested_outcome is None
     assert decision.capability_match_status == "fallback" and not decision.should_execute
+
+
+@pytest.mark.parametrize(
+    ("task", "expected"),
+    [
+        # A modal governing "which tool do you recommend" asks about the tool,
+        # not about the data. This scoped its own dataset as hypothetical, and
+        # the run named the right tool while declaring no input at all.
+        ("Which workflow would you recommend for assigning cancer patients to "
+         "subgroups from somatic mutation counts?", {"mutation_matrix"}),
+        ("我之前做過 PANDA；現在以 WES 資料對病人做分組。請問工具箱中哪一項適合？",
+         {"mutation_matrix"}),
+        # The assay name alone is not the dataset: these are sequencing reads.
+        ("I have raw WES FASTQ reads. Which workflow calls variants?", set()),
+        # A modal that really does suppose the data still demotes it.
+        ("Could I use a mutation matrix with PANDA?", set()),
+        ("If I obtained a mutation matrix, which workflow would you recommend?", set()),
+        # History stays history even with the request framing present.
+        ("Previously I used a somatic mutation matrix. Which workflow would you "
+         "recommend now?", set()),
+    ],
+)
+def test_request_framing_and_exome_wording_do_not_change_temporal_scope(task, expected):
+    from netzoo_agent_core.interpretation.request_integrity import (
+        confirmed_current_inputs,
+    )
+
+    assert confirmed_current_inputs(task) == expected

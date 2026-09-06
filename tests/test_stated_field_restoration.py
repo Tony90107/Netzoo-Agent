@@ -248,3 +248,37 @@ def test_a_selection_tag_stated_in_evidence_is_moved_and_reported_as_such():
     assert [(item["field"], item["value"]) for item in restored] == [
         ("selection_tags", "mirna_regulation"),
     ]
+
+
+def test_roles_made_illegal_by_the_artifact_are_cleared():
+    """The deletion half: a non-regulatory artifact has no legal role.
+
+    `artifact_roles` was 28 occurrences on the cheaper model. Clearing cannot
+    invent anything -- there is no legal value here to preserve -- which is why
+    it is the safest of the three authorized acts.
+    """
+    source = role_interpretation(
+        [], artifact_type="sample_cluster_assignment", granularity="aggregate",
+        regulator_types=["tf"], target_types=["gene"], entity_types=["sample"],
+        input_artifacts=["mutation_matrix"], operation="analyze",
+    )
+
+    result, restored = restore_stated_fields(CURRENT, source)
+    outcome = result.outcome_hypotheses[0].outcome
+
+    assert outcome.regulator_types == [] and outcome.target_types == []
+    assert [(item["field"], item["source"]) for item in restored] == [
+        ("roles", "stale_under_artifact"),
+    ]
+
+
+def test_roles_on_a_regulatory_artifact_are_left_alone():
+    source = role_interpretation(
+        [("regulator_type", "mirna")], entity_types=["mirna", "gene"],
+        regulator_types=["mirna"],
+    )
+
+    result, restored = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.regulator_types == ["mirna"]
+    assert restored == []
