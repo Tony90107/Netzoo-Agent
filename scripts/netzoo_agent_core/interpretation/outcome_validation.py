@@ -130,6 +130,36 @@ def _is_not_applicable(outcome: RequestedOutcome) -> bool:
     )
 
 
+def evidence_census(
+    hypotheses: Sequence[OutcomeHypothesis],
+) -> tuple[dict[str, str | int], ...]:
+    """Count how each hypothesis sourced its evidence, before any grounding check.
+
+    The rejection record says only which explicit quotes failed, so it cannot
+    say how often an explicit entry carries a quote at all. That base rate is
+    what separates "tighten the contract and a few violations surface earlier"
+    from "tighten the contract and most hypotheses become schema failures".
+    Counts only; no provider text and no effect on validation.
+    """
+    return tuple(
+        {
+            "hypothesis": index,
+            "explicit_with_span": sum(
+                1 for item in hypothesis.evidence
+                if item.source == "explicit" and (item.text_span or "").strip()
+            ),
+            "explicit_without_span": sum(
+                1 for item in hypothesis.evidence
+                if item.source == "explicit" and not (item.text_span or "").strip()
+            ),
+            "inferred": sum(
+                1 for item in hypothesis.evidence if item.source == "inferred"
+            ),
+        }
+        for index, hypothesis in enumerate(hypotheses)
+    )
+
+
 def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],

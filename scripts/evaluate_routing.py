@@ -103,6 +103,46 @@ def _fingerprint(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def _evidence_census(events) -> list[dict]:
+    """One census row per attempt, from whichever event that attempt ended on.
+
+    An attempt reports through more than one event (a final rejection is also a
+    failure), and the first pass reports through `_proposed`, which carries no
+    attempt number of its own. Both are collapsed to one row per attempt.
+    """
+    by_attempt: dict[object, list[dict]] = {}
+    for event in events:
+        if not event["type"].startswith("routing.semantic_interpretation"):
+            continue
+        census = event["payload"].get("evidence_census")
+        if census is None:
+            continue
+        attempt = event["payload"].get("attempt", 1)
+        if attempt not in by_attempt:
+            by_attempt[attempt] = [dict(item, attempt=attempt) for item in census]
+    return [row for attempt in sorted(by_attempt, key=str) for row in by_attempt[attempt]]
+
+
+def _span_hypotheses(result: dict) -> list[str]:
+    """Classify each hypothesis that wrote any explicit evidence, as one unit.
+
+    Entries inside one hypothesis are not independent, so the base rate that
+    decides whether the explicit-evidence contract can be tightened is stated
+    per hypothesis, not per entry.
+    """
+    classes = []
+    for row in result["evidence_census"]:
+        with_span, without_span = row["explicit_with_span"], row["explicit_without_span"]
+        if not with_span and not without_span:
+            continue
+        classes.append(
+            "all_spanned" if not without_span
+            else "none_spanned" if not with_span
+            else "mixed"
+        )
+    return classes
+
+
 def _ungrounded_by_attempt(result: dict) -> dict:
     """Deduplicate the shapes an attempt reports through more than one event.
 
@@ -252,6 +292,7 @@ def _score(case, result, events):
         "path": "registry_recovery" if recovered else result.reason_code,
         "diagnostics": _diagnostics(events, result.reason_code),
         "diagnostic_details": _diagnostic_details(events),
+        "evidence_census": _evidence_census(events),
         "status": decision.capability_match_status, "matched_actions": decision.matched_actions,
         "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in decision.rejected_methods],
@@ -425,6 +466,19 @@ def evaluate(
             # Entries within one hypothesis are not independent -- a model that
             # omits the quote omits it for every dimension it wrote. The
             # per-hypothesis grouping is the unit any criterion should use.
+            # Log 47's declared unit: does a hypothesis that writes explicit
+            # evidence give every such entry a quote, none of them, or some?
+            "evidence_span_hypotheses": dict(Counter(
+                cluster for item in results for cluster in _span_hypotheses(item)
+            )),
+            "evidence_span_entries": dict(Counter({
+                "with_span": sum(row["explicit_with_span"] for item in results
+                                 for row in item["evidence_census"]),
+                "without_span": sum(row["explicit_without_span"] for item in results
+                                    for row in item["evidence_census"]),
+                "inferred": sum(row["inferred"] for item in results
+                                for row in item["evidence_census"]),
+            })),
             "ungrounded_evidence_clusters": dict(Counter(
                 cluster for item in results
                 for cluster in _ungrounded_clusters(item)
