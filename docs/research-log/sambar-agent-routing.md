@@ -3221,3 +3221,585 @@ input_artifact 與 granularity 各**兩個方向**都釘（豁免成立時接受
 
 離線：**1318 passed、3 failed（既有待決策項，未動）、0 skipped**
 （1311 + 本次 7 項量測測試）。
+
+## Log 46｜第五輪：Log 45 的事前判準 **CONFIRMED**——未接地的引文是「根本沒附」，13/13
+
+日期／時區：2026-09-06，Asia/Taipei。**使用者明確授權的付費輪次**，33 次呼叫。
+報告：[live-full-corpus-round5.json](live-full-corpus-round5.json)。
+判準寫於 Log 45 第七節，**執行前寫入，本節未作任何修改**。
+
+環境與前一輪相同：`model=openai/gpt-4o-mini`、`temperature=0`、
+`prompt_schema_sha256=b5c70105`、`policy_hash=edc6a678`、`corpus_sha256=153d423d`
+——與 r3／r4 完全一致（本次只加量測，不進雜湊輸入，如預期）。
+
+### 判準結果
+
+| | 值 |
+| --- | --- |
+| `ungrounded_evidence_shapes` | **`absent` 13、`unmatched` 0** |
+| `ungrounded_evidence_clusters` | **`all_absent` 3、`all_unmatched` 0、`mixed` 0** |
+
+宣告的成立條件是「`all_absent` ≥ 全部叢集的 2/3」：**3/3 = 100%，成立。**
+否證條件（`all_unmatched` + `mixed` ≥ 1/2）為 0，未觸發。
+
+**結論：`ungrounded_evidence` 的成因是模型把證據標成 `source="explicit"`
+卻根本沒有附 `text_span`，不是「引用了原文沒有的字句」。**
+交接第七節（以及 Log 43／44）對這個家族的判讀**到此被推翻**。
+
+### 樣本量的誠實說明（Log 45 已預先要求）
+
+本輪只有 3 個叢集，低於事前估計的 6 個。若只看叢集層級，
+在「一半一半」的虛無假設下 3/3 的機率是 0.125——**單看叢集不算強證據**。
+強度來自另外兩件事：**13 個條目中 `unmatched` 出現 0 次**；
+以及 `reverse-history-expression` 在 r4 與 r5 重現**完全相同的三個維度**
+（`operation=infer`、`artifact_type=regulatory_network`、`granularity=sample_specific`），
+r5 顯示這三個全是 `absent`。這**追認**（而非證明）了 r4 同一案例的讀法。
+按事前宣告，落在成立區就不需要 `--repeat 3`；但**若要把「0 次 unmatched」
+當成通則而非本語料的性質，仍需重複輪次**。
+
+### 這一輪的其他數字（供第一節的表延續）
+
+| | r4 | **r5** |
+| --- | --- | --- |
+| 工具正確 | 9 / 14 | **8 / 14** |
+| 推薦錯誤工具 | 0 | **0** |
+| 推薦 forbidden 動作 | 0 | **0** |
+| `passed` | 2 / 14 | **3 / 14** |
+| `unstable_cases` | 0 | **0** |
+
+工具正確 9→8、`passed` 2→3，兩者都在交接第一節已判定的 n=1 雜訊範圍內，
+**不足以支持任何方向的結論**；安全性（0 錯誤工具、0 forbidden、
+`unsafe_execution_count=0`）維持在最佳水準。`review_introduced_schema_issues`
+與 r4 相同為 6。逐案變動：`original-q1`／`original-q3` 由 fallback 轉 exact 且通過，
+`original-q2` 反向掉到 fallback，`mutation-no-fallback-phrases` 掉到無結果。
+
+### 機制的直接觀察
+
+`reverse-history-expression` 連續兩輪全損（`status=None`、`matched_actions=[]`）：
+
+- attempt 1：`missing_current_input` 加三個 `absent`。
+- attempt 2：patch 只改 `input_artifacts`，撤回四筆 `unknown` 證據、
+  **新增四筆**，於是合併後同一個 hypothesis 帶著 **6 筆** explicit 條目
+  （舊三筆＋新三筆，維度與值相同），**六筆全部沒有 `text_span`**。
+  issue 字串會去重成三條，`evidence_shapes` 不去重——這是刻意的：
+  它數的是模型寫出的證據條目，不是相異的 dimension=value。
+- 兩次嘗試皆失敗 → 回落 registry → 整題無結果。
+  被丟掉的那份合併結果的維度值與語料期望一致。
+
+**修補動作本身重寫了同樣沒有引文的條目**，這說明第二次呼叫並不知道問題出在
+「沒附 span」——它看到的字串只說 `ungrounded_evidence:dimension=value`。
+
+### 下一步之前還缺一個數字（不要跳過）
+
+已知：失敗的 explicit 條目 100% 沒有 span。**未知：成功的 explicit 條目有多少。**
+`evidence_shapes` 只記錄失敗項，因此無法分辨「模型幾乎從不寫 `text_span`」與
+「只有這幾個案例沒寫」。這個基準率直接決定收緊契約
+（`source="explicit"` ⇒ `text_span` 必填）的後果：
+
+- 若模型多數 explicit 條目本來就有 span，收緊只會把少數失敗**提早**到 schema 層，
+  且帶著欄位位置的修復指引；
+- 若模型幾乎從不寫 span，收緊會把大量目前靠 `inferred` 或靠其他維度過關的
+  hypothesis 變成 schema 失敗——而 Log 32 已經量到 review 產生的 schema 錯誤有害。
+
+依 Log 44 教訓四（提出介入前先量），**在補上這個基準率之前不提出契約變更**。
+所需的量測同樣是純加法、不改任何送給模型的字串：對每個 hypothesis 統計
+explicit／inferred 條目數與其中有無 `text_span`，與本次的失敗計數併排。
+
+### 仍然不動的事
+
+`recoverable` 依舊沒有接上任何行為。本輪並未改變 Log 45 第八節的理由：
+機制雖已確認，但正確的處理方向是**收緊來源契約**，不是在驗證端放寬接受條件。
+
+## Log 47｜事前宣告：`explicit` 條目附引文的基準率，以及它決定什麼
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在執行第六輪之前寫入，執行後不得修改。**
+起因見 Log 46 最後一節：已知失敗的 explicit 條目 100% 沒有 `text_span`，
+未知的是**成功的 explicit 條目有多少**，而這個基準率決定收緊契約
+（`source="explicit"` ⇒ `text_span` 必填）是低風險還是有害。
+
+### 量測
+
+純加法，**不改動送給模型的任何字串、不改動任何驗證**：
+`evidence_census()` 對每個 hypothesis 統計 `explicit_with_span`、
+`explicit_without_span`、`inferred` 三個數，記在
+`routing.semantic_interpretation_proposed` / `_accepted` / `_rejected` /
+`_failed` 四個事件上（每次嘗試只取第一筆，沿用 Log 45 已釘住的去重規則），
+由報告的 `results[].evidence_census` 與 summary 的
+`evidence_span_hypotheses` 帶出。**這個統計在接地檢查之前，與通過與否無關。**
+
+### 判準（叢集單位＝含至少一個 explicit 條目的 hypothesis）
+
+分類為 `all_spanned`（其內每個 explicit 條目都有 span）、`none_spanned`、`mixed`。
+**同一個 hypothesis 在第一次呼叫與 review 各算一個叢集**：兩者是不同的書寫者，
+而要考慮的契約會同時約束兩者（Log 46 已示範 review 自己也寫出沒有引文的條目）。
+
+- **低風險，可提出收緊契約**：`all_spanned` ≥ 全部叢集的 2/3。
+  代表模型多數時候本來就附引文，收緊只是把少數違規**提早**到 schema 層，
+  並帶著欄位位置的修復指引。屆時仍須另寫 A/B 預測，不得直接合併。
+- **有害，不提出**：`none_spanned` + `mixed` ≥ 全部叢集的 1/2。
+  代表收緊會把大量 hypothesis 變成 schema 失敗，而 Log 32 已量到
+  review 產生的 schema 錯誤有害。此時**停在這裡回報**，不再提介入。
+- 兩者皆不成立：未判別，記錄後不動，需 `--repeat 3` 才有意義。
+
+### 樣本量估計（Log 44 教訓一）
+
+r5 有 14 題、每題第一次呼叫回 1–3 個 hypothesis，兩次嘗試各記一次，
+故預期 25–50 個叢集，
+足以在叢集層級分辨 2/3 與 1/2。**條目層級的比例會一併記錄但不作為判準**，
+因為同一個 hypothesis 內的條目不獨立（r5 已示範：一個 hypothesis 要嘛全附、
+要嘛全不附）。
+
+### 這一輪不改變的事
+
+第六輪與 r3–r5 的 `policy_hash`、`corpus_sha256` 必須相同；
+`prompt_schema_sha256` 亦必須相同（本次量測不進雜湊輸入）。
+若其中任何一項不同，該輪**不得**與前三輪並列比較。
+
+## Log 48｜第六輪：Log 47 判準成立（93% 已附引文），但**整個違規母體只有一題**
+
+日期／時區：2026-09-06，Asia/Taipei。**使用者授權的付費輪次**，37 次呼叫。
+報告：[live-full-corpus-round6.json](live-full-corpus-round6.json)。
+判準寫於 Log 47，執行前寫入，本節未修改。
+
+環境雜湊與 r3–r5 完全相同（`b5c70105` / `edc6a678` / `153d423d`），可並列比較。
+
+### Log 47 判準結果：**成立**
+
+| | 值 |
+| --- | --- |
+| `evidence_span_hypotheses` | **`all_spanned` 27、`none_spanned` 1、`mixed` 1** |
+| `evidence_span_entries` | `with_span` 90、`without_span` 9、`inferred` 13 |
+
+成立條件是 `all_spanned` ≥ 叢集的 2/3：**27/29 = 93%，成立。**
+條目層級 90/99 = 91% 的 explicit 條目本來就附引文。
+
+同時，Log 46 的發現**在獨立一輪中重現**：
+`ungrounded_evidence_shapes` = **`absent` 9、`unmatched` 0**。
+兩輪合計 **22 個未接地條目、`unmatched` 0 次、5 個叢集全為 `all_absent`**。
+
+### 但判準沒有問、而報表直接顯示的一件事
+
+**r6 全部 9 個沒有引文的條目、兩個非 `all_spanned` 的叢集，
+都來自同一題：`reverse-history-expression`。**
+
+| 輪次 | 該題結果 | 未接地維度 |
+| --- | --- | --- |
+| r3 | 全損（`status=None`） | operation、artifact_type、granularity |
+| r4 | 全損 | 同上三個 |
+| r5 | 全損 | 同上三個 |
+| r6 | 全損 | 同上三個 |
+
+**四輪、同一題、同樣三個維度、同一個機制、每次都是整題無結果。**
+r5 另有 `missing-granularity` 一次（該題 r6 反而通過）。
+
+因此「`ungrounded_evidence` 是最大的 issue 家族」這個由 r4 得到的描述，
+在有了 census 之後應改寫為：**它在 r4 分散於四題是那一輪的樣態，
+穩定重現的只有一題**，而那一題每輪都因此全損。
+
+### 對「收緊契約」的判斷：判準允許，但分布不支持
+
+Log 47 宣告成立時「可提出收緊契約」，此處**提出並同時說明為何不建議照做**：
+
+1. **母體是一題。** 為 93% 已合規的行為改全域契約，實際只影響一題。
+2. **收緊會拆掉 Log 32 已驗證的機制。** `source="explicit"` ⇒ `text_span` 必填
+   若寫成 `OutcomeEvidence` 的 model_validator，第一次呼叫會直接
+   `ValidationError` → `proposal` 為 None → `patching` 為 False →
+   第二次呼叫退回「整份 review」。而 Log 32／35–38 的受控 A/B
+   （0/33 → 16/33、p=0.0011）**正是建立在「第一次呼叫結構有效、第二次只補欄位」**
+   之上。用一個會消滅 patch 路徑的改動去修一題，代價與收益不成比例。
+3. 若仍要處理這一題，**它是一個單題的接地問題，不是契約問題**，
+   而「以 prompt 措辭為修正手段」已有六次失敗紀錄。目前沒有落在已證有效類別內的作法。
+
+**結論：停在這裡。不提出契約變更，不動 `recoverable`。**
+這是 Log 47 事前允許的兩個結局之一（成立→可提出），而提出後的評估結果是不做。
+
+### 這一輪的其他數字
+
+| | r4 | r5 | **r6** |
+| --- | --- | --- | --- |
+| 工具正確 | 9 / 14 | 8 / 14 | **9 / 14** |
+| 推薦錯誤工具 | 0 | 0 | **0** |
+| 推薦 forbidden 動作 | 0 | 0 | **0** |
+| `passed` | 2 / 14 | 3 / 14 | **4 / 14** |
+| `review_introduced_schema_issues` | 6 | 6 | **3** |
+| `unstable_cases` | 0 | 0 | **0** |
+
+`passed` 4/14 追平本研究以來的最佳（r1 的 4/14），工具正確 9/14 追平最佳，
+安全性維持 0 錯誤工具、0 forbidden、`unsafe_execution_count=0`。
+**但三輪 n=1 的 2→3→4 不足以宣稱趨勢**；依交接第一節，
+`passed` 在每題每輪 n=1 下太吵，仍以工具正確率與錯誤推薦數為主指標，
+而那兩項在 r4／r6 相同、r5 少一。
+
+### 本段所有變更的性質
+
+Log 45 與 Log 47 兩次都**只加量測**：新增 `evidence_shapes` 與 `evidence_census`
+兩組欄位、四個事件的 payload、報告與 summary 的計數，以及 9 項先對已知資料
+驗證過的測試。**沒有改動任何驗證邏輯、任何 schema、任何送給模型的字串**，
+`prompt_schema_sha256` 與 `policy_hash` 在 r3–r6 保持不變即為證據。
+
+離線：**1325 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 49｜事前宣告：`--repeat 3` 全語料，以及「嚴格超越 r1」的定義
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在執行第七輪之前寫入，執行後不得修改。**
+起因：使用者要求「比之前任何一次都還好」才提交，而 Log 48 顯示 r6 與 r1 四項全部打平。
+交接第七節第 2 項本來就指出，要讓 `passed` 成為可讀的數字需要 `--repeat 3`。
+
+### 對照組與其已知的缺陷
+
+基準是 **r1**（`live-full-corpus.json`）：工具正確 9/14 = 64.3%、
+推薦錯誤 0、forbidden 0、`passed` 4/14 = 28.6%，每題各一次。
+
+**這個對照本身是有瑕疵的，先寫在這裡而不是事後才說**：
+r1 的 `prompt_schema_sha256` 是 `0db9d867`，候選輪是 `b5c70105`，
+**兩者不是同一個組態**；且 r1 只有 14 次試驗、每題 n=1。
+要真正乾淨，應在 r1 的 commit 上同樣跑 `--repeat 3`（再約 100 次付費呼叫）。
+本輪**不做**那件事，因此下面的結論最多只能說「候選在 42 次試驗上的比率
+高於 r1 在 14 次試驗上的比率」，不能說「已排除組態差異」。
+
+### 判準（全部為嚴格不等式，且必須同時成立）
+
+`--repeat 3`，14 題共 42 次試驗：
+
+1. **護欄**：推薦錯誤工具 = 0 **且** forbidden = 0。任一 > 0 即**未達成**，不再看其他項。
+2. **工具正確率** > 64.3%，即 **≥ 28/42**。
+3. **`passed` 率** > 28.6%，即 **≥ 13/42**。
+
+三項同時成立 → **達成**，依使用者指示 commit。
+任一項不成立 → **未達成**，不 commit，據實回報。
+
+### 一併記錄但**不列入判準**的項目
+
+`unstable_cases`（同題三次結果不一致者）、Fisher exact 的 p 值、
+`review_introduced_schema_issues`、`evidence_span_hypotheses`、
+`ungrounded_evidence_shapes`。
+其中 p 值只作為「這個差距有多可能是雜訊」的參考量；
+**判準是使用者指定的點估計嚴格超越，不因 p 值高低而放寬或收緊**。
+`review_introduced_schema_issues` 依 Log 36 在本專案樣本量下不可檢驗，僅記錄。
+
+### 樣本量估計（Log 44 教訓一）
+
+42 次試驗下，工具正確率的 1 個試驗 ≈ 2.4 個百分點，
+要從 64.3% 跨到 > 64.3% 只需 28/42 = 66.7%，**分辨力足夠**。
+但 r1 只有 14 次試驗，其 64.3% 的 95% 信賴區間約為 35%–87%——
+**這代表「超越 r1 的點估計」是一個弱宣稱，而它正是使用者設定的門檻**，
+我照此執行，並在結果中一併說明其強度。
+
+呼叫上限設 `--max-calls 130`（r6 為 37 次／14 試驗，42 試驗約需 111 次）。
+
+## Log 50｜第七輪（`--repeat 3`）：Log 49 判準**未達成**，不 commit；且 r1–r6 的排名被證實是雜訊
+
+日期／時區：2026-09-06，Asia/Taipei。**使用者授權的付費輪次**，100 次呼叫、42 次試驗。
+報告：[live-full-corpus-round7-repeat3.json](live-full-corpus-round7-repeat3.json)。
+判準寫於 Log 49，執行前寫入，本節未修改。
+環境雜湊與 r3–r6 相同（`b5c70105` / `edc6a678` / `153d423d`）。
+
+### 判準結果：**未達成**
+
+| 項目 | 門檻 | 實測 | |
+| --- | --- | --- | --- |
+| 護欄：推薦錯誤工具 | = 0 | **0** | PASS |
+| 護欄：forbidden 動作 | = 0 | **0** | PASS |
+| 工具正確率 | ≥ 28/42（> 64.3%） | **24/42 = 57.1%** | **FAIL** |
+| `passed` 率 | ≥ 13/42（> 28.6%） | **9/42 = 21.4%** | **FAIL** |
+
+依 Log 49 的宣告與使用者的指示：**不 commit。**
+`unsafe_execution_count` 為 0，安全性未退步。
+
+### 這一輪推翻的不只是這次提交
+
+**r1–r6 的「最佳輪次」排名是雜訊。**
+
+| 對照 | Fisher exact（雙尾） |
+| --- | --- |
+| 工具正確 r1 9/14 vs r7 24/42 | **p = 0.759** |
+| `passed` r1 4/14 vs r7 9/42 | **p = 0.717** |
+
+r1 的 14 次試驗與 r7 的 42 次試驗**在統計上無法區分**。
+交接第一節早已指出 `passed` 在 n=1 下太吵、應改用工具正確率——
+**本輪顯示工具正確率在 n=14 下同樣吵**：42 次試驗的點估計（57.1%）
+低於每一個單輪 n=14 的點估計（64.3%、57.1%、57.1%、64.3%、57.1%、64.3%），
+而 8/14 的題目三次結果不一致（`unstable_cases`）。
+
+**因此「r6 打平 r1」「r4 是最佳輪次」這類敘述都不該再被引用。**
+本研究至今唯一有匹配對照、且達到統計顯著的結果，仍然只有 Log 32／38 的
+repair-replay A/B（0/33 → 16/33、p = 0.0011）。
+
+### 逐題（工具正確／`passed`，各 3 次）
+
+穩定正確：`original-q1` 3/3、`original-q2` 3/3、`original-q3` 3/3、
+`mutation-distance-not-clusters` 3/3、`mirna-current-goal` 3/3、
+`missing-granularity` 3/3、`unsupported-protein-acquisition` 3/3。
+（後兩題的期望動作為空集合，工具正確依既有定義計為正確——
+r1 至 r6 的數字同樣採此定義，比較一致。）
+
+**穩定失敗（0/3）**：`reverse-history-expression`、`sparse-expression-not-mutation`、
+`bipartite-communities`、`two-layer-network`。
+
+不穩定（1/3）：`mutation-paraphrase-en`、`mutation-no-fallback-phrases`、
+`covariate-coexpression`。
+
+`passed` 只有 `original-q3` 與 `mirna-current-goal` 是 3/3。
+
+### 附帶重現的量測（不列入判準）
+
+- `ungrounded_evidence_shapes` = **`absent` 5、`unmatched` 0**。
+  這是**第三次獨立重現**：r5＋r6＋r7 合計 27 個未接地條目、
+  8 個叢集全為 `all_absent`、`unmatched` **0 次**。
+- `evidence_span_hypotheses` = `all_spanned` 74、`none_spanned` 1、`mixed` 2
+  → **96% 的 hypothesis 本來就替每個 explicit 條目附上引文**，
+  與 Log 48 的 93% 一致。Log 48「不收緊契約」的判斷因此更穩固：
+  違規母體在 42 次試驗中仍然只有 5 個條目。
+- `review_introduced_schema_issues` = 22（42 次試驗，每次 0.52，
+  高於 r6 的 3/14 = 0.21）。依 Log 36，此數在本專案樣本量下不可檢驗，**僅記錄**。
+
+### 結論與下一步
+
+1. **不 commit**，依使用者設定的門檻與 Log 49 的宣告。
+2. **不改契約、不動 `recoverable`**（Log 48 的判斷未變，且被 96% 的基準率加強）。
+3. 若要再談任何路由改動，**單輪 n=14 已被證明無法當判準**；
+   最小可用的全語料量測是 `--repeat 3`（100 次呼叫），
+   而要偵測一個小效果所需的輪次更多。**受控 A/B（repair-replay）仍是唯一
+   在可負擔樣本量下有分辨力的設計。**
+4. 四題穩定 0/3 的失敗是比「哪一輪比較好」更值得處理的目標，
+   但其中 `reverse-history-expression` 的機制已查明而無已證有效的修法。
+
+離線：**1325 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 51｜四題穩定 0/3 的離線解剖：三個機制在程式端，一個在模型端
+
+日期／時區：2026-09-06，Asia/Taipei。**離線分析，付費呼叫 0 次。**
+資料：r7（42 次試驗）為主，r4–r6 佐證。四題為
+`reverse-history-expression`、`sparse-expression-not-mutation`、
+`bipartite-communities`、`two-layer-network`。
+
+---
+
+### 機制 B（最大、且完全在程式端）：review 的 schema 失敗會**丟掉已通過驗證的第一次結果**
+
+`router_invocation._invoke_semantic_interpreter` 有兩條失敗路徑，處理方式不一致：
+
+- **證據驗證失敗**（第二次）：
+  `if validated is not None: record_event("semantic_review_discarded"); return validated`
+  ——保留第一次結果，符合 Log 28 與該迴圈自己的註解
+  （「The reviewer is a second opinion, not a precondition」）。
+- **schema 失敗**（第二次）：`except` 區塊中 `if attempt == 0 and schema_issues:` 不成立，
+  於是直接 `return None, usage, budget_warnings, error`——**`validated` 被無聲丟棄**。
+
+實測（四輪，凡「第一次無任何拒絕紀錄」且「第二次為 schema 失敗」者）：
+
+| 輪次 | 命中 | 結果 |
+| --- | --- | --- |
+| r4 / r5 / r6 | 各 1 | 全部 `semantic_fallback`、`matched_actions=[]` |
+| r7 | 5 / 42 | 同上 |
+
+**8 次命中、8 次全損**，每一次的第一次呼叫都已經通過完整的 strict validation。
+`bipartite-communities` 在 r4、r5、r6、r7×3 共 6 次全部由此機制失敗——
+**這一題從來不是模型答錯，是答對之後被程式丟掉。**
+`two-layer-network` 與 `unsupported-protein-acquisition` 各 1 次。
+
+這是本次分析中**唯一「修正即為套用既有授權、而非放寬」**的一項：
+Log 28 已授權保留已驗證的第一次結果，只是沒有套用到 schema 分支。
+
+**但必須先講風險**：目前這 8 次的輸出是「沒有答案」，改後會變成「第一次呼叫的答案」，
+因此可能把全損換成**錯誤推薦**。任何判準都必須把
+「推薦錯誤工具 = 0、forbidden = 0」列為否決條件。
+
+---
+
+### 機制 C：review 的 `evidence_removals` 撞 schema，是 r7 最大的 schema 家族
+
+r7 第二次呼叫的 schema 錯誤（去重後）：
+
+```
+12  evidence_removals.N.value:string_too_short
+ 4  <root>:value_error
+ 3  evidence_additions/removals.N.dimension:literal_error
+ 2  outcome.unresolved_dimensions:too_long
+ 1  unresolved_dimensions:extra_forbidden
+```
+
+最大一項是模型想撤回一筆證據、卻給出**空字串**當 value。
+契約要求以 `(dimension, value)` 指名撤回，而模型顯然無法穩定複述原值。
+`review_repair_shapes` = patch 29／review 8：**仍有 8 次以整份 review 回覆**，
+`outcome.unresolved_dimensions:too_long` 兩次都出自這種形狀
+（`sparse-expression-not-mutation` 三次中的兩次）。
+
+機制 C 造成的是「這次修補作廢」，本身不必然全損；
+**但它與機制 B 相乘，才把 `bipartite-communities` 變成穩定 0/3。**
+
+---
+
+### 機制 A：兩題 LIONESS 的角色欄位——空著會 ambiguous，填一半會被拒
+
+離線探測（同一段原文，只改角色與 entity 欄位，`match_semantic_request`）：
+
+| outcome | 結果 |
+| --- | --- |
+| 角色全空 | **ambiguous**、`matched_actions=[]` |
+| `regulator_types=["tf"]` | **exact `run_lioness_panda`** |
+| `tf → gene` | exact `run_lioness_panda` |
+| `tf → gene` ＋ `entity_types=["tf","gene"]` | exact `run_lioness_panda` |
+| `tf → gene` ＋ **`entity_types=["gene"]`** | **unsupported**（`role_entity:regulatory_network`） |
+| 對照 `mirna → gene` | exact `run_lioness_puma` |
+
+因此 `run_lioness_panda` **是可達的**（不是 Log 31 那種契約不可達），
+只要模型寫出 `regulator_types=["tf"]`。實測三次的分布正好落在兩個坑：
+
+- r7 trial 1（與 `sparse-expression` trial 3）：角色留空 → `ambiguous` →
+  提出不必要的釐清問題，`actions=[]`。
+- r7 trial 2、3：patch 同時寫了 `entity_types`、`regulator_types`、`target_types`，
+  但 `entity_types` 少了 `tf` → `role_entity` → 第二次被拒 → 全損。
+
+**`role_entity` 是唯一沒有修復指引的本體論 issue 類別。**
+`semantic_repair` 的分支條件是 `"roles" in issue`，
+而字串是 `role_entity:...`（不含 `roles`），`"evidence" in issue` 也不成立，
+於是只回傳泛用的 field_constraints，**不告訴模型「角色必須是 entity_types 的子集」**。
+且它在 r7 只出現在第二次呼叫，沒有任何修復機會。
+
+另可注意：`entity_types` **留空是合法的**（檢查會跳過），
+**填一半反而違規**——模型因為講得比較多而被拒。
+
+---
+
+### 機制 D（模型端）：把「只要建議、不要執行」讀成「沒有科學結果」
+
+`two-layer-network` trial 3 第一次呼叫得到 `inconsistent_not_applicable_outcome`，
+trial 1／3 出現 `artifact_granularity:multi_omic_network`。
+`granularity` 的合法值含 `not_applicable`，而 semantic prompt 保留該值給
+「完全沒有科學結果」的請求；模型把 "I want guidance, not execution" 當成了那一類。
+`multi_omic_network` 允許 `{aggregate, sample_specific}`，因此 `not_applicable` 直接違規。
+這一類**已有修復指引**（`inconsistent_not_applicable_outcome` 有專屬 instruction），
+但三次中沒有一次修成功。這是模型端問題，且屬「以 prompt 措辭為修正手段」的禁區，
+目前沒有已證有效的作法。
+
+---
+
+### 優先順序（僅為提案，**尚未實作任何一項**）
+
+1. **機制 B**：程式端不一致，8/8 全損，修正是把 Log 28 的既有授權套用到 schema 分支。
+   影響面小、可離線測、不放寬任何驗證。**建議優先，且需事前判準＋一輪 `--repeat 3`。**
+2. **機制 C**：`evidence_removals` 的契約要求模型複述原值，實測做不到。
+   任何改動都會動到 Log 32 已驗證的 patch 契約，**風險高於機制 B**，
+   且在機制 B 修好之後其後果會從「全損」降為「修補作廢」——
+   **應先修 B 再重新量 C 的代價**。
+3. **機制 A**：可先補 `role_entity` 的修復指引（屬既有 `semantic_repair` 的資料，
+   不是新的 prompt 措辭）。但它只在最後一次嘗試出現，補了也沒有下一輪可用——
+   **除非同時處理，否則預期無效**，不建議單獨做。
+4. **機制 D**：無已證有效作法，不動。
+
+**共同前提**：依 Log 50，單輪 n=14 無法當判準；任何一項都需
+`--repeat 3`（約 100 次付費呼叫）或受控 A/B 才有分辨力。
+
+離線：**1325 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 52｜事前宣告：機制 B 的修正、預測與判準
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在實作與第八輪之前寫入，執行後不得修改。**
+
+### 要改什麼，以及為什麼這不是放寬
+
+`tests/test_validated_first_pass_retained.py` 的檔頭寫的就是這件事，
+且**點名 `bipartite-communities`**：「reviewer 是第二意見，不是前提條件；
+它失敗時第一意見仍然滿足同一個驗證器，保留它嚴格優於兩者皆棄。」
+Log 28 已授權此例外。但該檔四項測試**只覆蓋 review 的證據驗證失敗**，
+沒有覆蓋 review 的 **schema 失敗**——而後者走的是另一條 `except` 路徑，
+`if attempt == 0 and schema_issues:` 不成立後直接 `return None`，`validated` 被丟棄。
+
+修正即把同一個既有例外套用到 schema 分支：
+記完 `routing.semantic_interpreter_failed` 後，若 `validated is not None`，
+記 `routing.semantic_review_discarded` 並回傳 `validated`，
+與證據分支**逐行對應**。**不放寬任何驗證**：回傳的是第一次呼叫自己寫的、
+且已通過完整 strict validation 的結果；沒有任何欄位由程式填入。
+
+### 預測（可否證）
+
+- **P1（離線、決定性）**：新增的測試在**現行 HEAD 上必須失敗**、修正後通過。
+  若它在修正前就通過，代表我對機制的判讀錯誤，**立刻撤回整項變更**。
+- **P2（live，本項的主判準）**：r7 中「第一次無任何拒絕紀錄且第二次為 schema 失敗」
+  的族群是 **5/42，全部以 `semantic_fallback`、`matched_actions=[]` 收場**。
+  預測候選輪中**該族群以 `semantic_fallback` 收場的次數為 0**。
+  出現任何一次即**否證**。
+- **P3（護欄，否決條件）**：推薦錯誤工具 = 0、forbidden 動作 = 0、
+  `unsafe_execution_count` = 0。任一 > 0 即**撤回變更**，
+  因為本項的已知風險正是把「沒有答案」換成「錯誤答案」。
+- **P4（僅記錄，不作判準）**：工具正確數與 `passed` 對 r7 的變化，附 Fisher exact p。
+  依 Log 50，這兩個數在 42 次試驗下仍不足以判別約 5/42 的效果，
+  **因此不列入判準，也不得事後改用它宣稱成功。**
+
+### 明確不預測的事
+
+`bipartite-communities` 保留下來的第一次結果**會不會匹配到 `run_condor`，無法預測**：
+報告從未記錄第一次呼叫的 outcome 內容，只記錄它通過了驗證。
+它可能變成 `exact`、`ambiguous` 或 `unsupported`——
+P2 只要求它**不再是「連語意結果都沒有」的全損**。
+
+### 樣本量
+
+目標族群在 r7 是 5/42。P2 是「該族群全損次數 = 0」的計數式判準，
+不需要比率檢定；但**族群本身可能在候選輪縮小**（模型變異），
+若候選輪該族群出現次數為 0，則 P2 **不成立也不否證**，記為未判別。
+
+## Log 53｜第八輪當機、整輪付費呼叫報廢；成因是 Log 42 只修了生產端的界限
+
+日期／時區：2026-09-06，Asia/Taipei。**付費輪次，整輪損失，沒有報告。**
+指令與 r7 相同（`--live --repeat 3 --max-calls 130`），
+標準輸出 0 bytes，標準錯誤只有一行：
+
+```
+Routing evaluation configuration error: ValidationError: hypothesis_actions:too_long
+```
+
+已花費的呼叫數**無法得知**——用量記在報告裡，而報告從未產生。
+上限 130 次，r7 實際用 100 次；當機發生在流程中段，故損失量級為數十次呼叫。
+
+### 成因（已離線決定性重現，非推測）
+
+Log 42 把 `CapabilityMatch.hypothesis_actions` 的上限由寫死的 6 改為
+registry 推導的 `_RUNNABLE_CAPABILITY_COUNT = 12`。
+**但 `interpretation/assembly.py:96` 會把這個欄位原封複製進
+`TaskDecision.hypothesis_actions`，而後者的上限仍是寫死的 6。**
+
+```
+CapabilityMatch.hypothesis_actions  maxItems 12   （Log 42 已加寬）
+TaskDecision.hypothesis_actions     maxItems 6    ← 沒動到
+```
+
+離線重現：`TaskDecision(hypothesis_actions=<全部 12 個可執行 capability>)`
+直接拋 `too_long`。**Log 42 的修正只做了一半：加寬了生產端，沒有加寬它被複製進去的消費端。**
+
+### 為什麼是這一輪才炸
+
+機制 B 的修正讓「已通過驗證的第一次結果」在 review 撞 schema 時被保留下來。
+在此之前那條路徑回傳 `None`，根本走不到 assembly；現在它會走到。
+若第一次結果是**完全未解析**的 outcome，它與全部 12 個 capability 部分相容，
+於是 12 個候選撞上 6 的上限。
+
+**這是我的變更觸發的，但不是我的變更造成的**：界限錯誤在此之前就在那裡，
+只是被一條「先把結果丟掉」的路徑遮住。Log 42 說「界限改由 registry 推導」，
+當時只驗到 `CapabilityMatch` 為止。
+
+### 修正與測試
+
+- `RUNNABLE_CAPABILITY_COUNT` 由私有改為公開（單一事實來源），
+  `TaskDecision.hypothesis_actions` 改用同一個常數。
+- `tests/test_wide_ambiguity_survives.py` 新增一項測試，
+  **掃描 contracts 套件中所有帶 `hypothesis_actions` 欄位的模型**，
+  要求每一個的上限都不低於 registry 的 capability 數，
+  並斷言掃描確實涵蓋 `CapabilityMatch` 與 `TaskDecision`（否則掃描是空的）。
+  **已驗證：把上限改回 6 時該測試失敗，改回來則通過。**
+  這樣下一個複製這個欄位的契約也不會再漏。
+- `SCHEMA_DIGESTS["TaskDecision"]` 依既有慣例更新並加註，未刪除任何測試。
+
+### 方法論記錄
+
+Log 42 的修正**只驗到出問題的那一個契約為止**，沒有問「這個值還會被複製到哪裡」。
+一個由 registry 推導的界限，必須在它流經的**每一個**契約上成立；
+只修一處等於把同一次當機延後到下一條路徑被打開的時候——這次就是延後了兩天。
+
+離線：**1328 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+### 現況
+
+機制 B 的 P1（離線）仍然成立且未受影響；
+**P2／P3 尚未取得任何資料**，需要重跑一輪 `--repeat 3`（約 100 次付費呼叫）。
