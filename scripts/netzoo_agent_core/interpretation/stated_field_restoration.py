@@ -45,6 +45,9 @@ from .request_integrity import input_mentions
 __all__ = ["restore_stated_fields"]
 
 _UNKNOWN = "unknown"
+_ROLE_DIMENSIONS = frozenset(
+    {"regulator_type", "regulator_types", "target_type", "target_types"}
+)
 # (evidence dimension, outcome field). Order is the order candidates are tried.
 _MOVABLE = (
     ("input_artifact", "input_artifacts"),
@@ -72,6 +75,20 @@ def _with_value(outcome: RequestedOutcome, field: str, value: str) -> RequestedO
         return None
 
 
+def _without_roles(outcome: RequestedOutcome) -> RequestedOutcome | None:
+    payload = outcome.model_dump()
+    payload["regulator_types"] = []
+    payload["target_types"] = []
+    payload["unresolved_dimensions"] = [
+        item for item in payload["unresolved_dimensions"]
+        if item not in _ROLE_DIMENSIONS
+    ]
+    try:
+        return RequestedOutcome.model_validate(payload)
+    except Exception:
+        return None
+
+
 def restore_stated_fields(
     user_task: str, interpretation: SemanticInterpretation,
 ) -> tuple[SemanticInterpretation, list[dict[str, object]]]:
@@ -82,6 +99,28 @@ def restore_stated_fields(
     for index, hypothesis in enumerate(interpretation.outcome_hypotheses):
         outcome = hypothesis.outcome
         baseline = set(outcome_consistency_issues(outcome))
+        # Fields the artifact choice itself made illegal. Clearing them removes
+        # `artifact_roles` and can create nothing: a non-regulatory artifact has
+        # no legal role, so there is no value here to preserve. This is the
+        # deletion half of the authorization, the field-level analogue of
+        # retiring evidence a patch made stale.
+        if outcome.artifact_type not in {"regulatory_network", _UNKNOWN} and (
+            outcome.regulator_types or outcome.target_types
+            or _ROLE_DIMENSIONS.intersection(outcome.unresolved_dimensions)
+        ):
+            cleared = _without_roles(outcome)
+            if cleared is not None and not (
+                set(outcome_consistency_issues(cleared)) - baseline
+            ):
+                restored.append({
+                    "hypothesis": index,
+                    "field": "roles",
+                    "value": "cleared",
+                    "source": "stale_under_artifact",
+                    "witnessed_span": None,
+                })
+                outcome = cleared
+                baseline = set(outcome_consistency_issues(outcome))
         for dimension, field in _MOVABLE:
             stated = [
                 item.value for item in hypothesis.evidence
@@ -92,6 +131,9 @@ def restore_stated_fields(
                     continue
                 if dimension == "input_artifact" and value not in witnessed:
                     continue
+                source = (
+                    "witness_and_evidence" if value in witnessed else "evidence"
+                )
                 candidate = _with_value(outcome, field, value)
                 if candidate is None:
                     continue
@@ -103,6 +145,7 @@ def restore_stated_fields(
                     "hypothesis": index,
                     "field": field,
                     "value": value,
+                    "source": source,
                     "witnessed_span": witnessed.get(value),
                 })
         hypotheses.append(

@@ -8,7 +8,14 @@ import re
 
 
 INPUT_PATTERNS = {
+    # An exome assay named together with a dataset noun is the mutation matrix a
+    # live round expected and the witnesses did not see, leaving the right tool
+    # with no declared input. The assay name alone is not enough: "raw WES FASTQ
+    # reads" is sequencing output, not a mutation matrix, and a bare \bWES\b
+    # claimed it. Vocabulary only; scope is still decided by the clause rules.
     "mutation_matrix": r"\bsomatic mutations?\b|\bmutation (?:matrix|counts)\b|"
+                       r"\bWES\s*(?:資料|矩陣)|全外顯子[^,，。]{0,6}(?:資料|矩陣)|"
+                       r"\bwhole[- ]exome\b[^.]{0,20}\b(?:mutation|variant)s?\b|"
                        r"DNA\s*突變(?:資料|矩陣)|體細胞突變|突變矩陣",
     "expression_matrix": r"\bRNA[- ]?Seq\b|\b(?:gene )?expression (?:matrix|data|dataset)\b|"
                          r"(?:基因)?表現量?(?:矩陣|資料)",
@@ -19,6 +26,15 @@ _UNCERTAIN = re.compile(r"\b(?:if|hypothetical|might|would obtain|could obtain)\
 _NEGATED = re.compile(r"\b(?:not|without|no)\b|不是|並非|沒有|不含", re.I)
 _OUTPUT = re.compile(r"\b(?:produce[sd]?|generate[sd]?|create[sd]?)\b|產生|生成", re.I)
 _PROPOSAL = re.compile(r"\b(?:can|could|should|would)\b|能不能|可以|是否|應該", re.I)
+# A modal that governs "which tool do you recommend" is asking about the tool,
+# not supposing the data. Without this, "Which workflow would you recommend ...
+# from somatic mutation counts?" scoped its own dataset as hypothetical, and the
+# run named the right tool while declaring no input at all.
+_REQUEST_FRAMING = re.compile(
+    r"\b(?:recommend|suggest)\b|\b(?:which|what)\s+(?:workflow|tool|method|pipeline)\b|"
+    r"建議|推薦|哪(?:一)?(?:項|個|種)",
+    re.I,
+)
 _PATIENT_CLUSTER = re.compile(
     r"\b(?:cluster\w*|group\w*|subtyp\w*)\s+(?:the\s+|cancer\s+)?patients?\b|"
     r"\bpatients?\b.{0,30}\b(?:cluster\w*|subtyp\w*|subgroups?)\b|"
@@ -61,7 +77,11 @@ def input_mentions(task: str) -> tuple[InputMention, ...]:
                     status = "negated"
                 elif _OUTPUT.search(prefix):
                     status = "proposed_output"
-                elif _PROPOSAL.search(prefix) and not _CURRENT.search(prefix):
+                elif (
+                    _PROPOSAL.search(prefix)
+                    and not _CURRENT.search(prefix)
+                    and not _REQUEST_FRAMING.search(prefix)
+                ):
                     status = "uncertain"
                 mentions.append(InputMention(artifact, status, match.group()))
     return tuple(mentions)
