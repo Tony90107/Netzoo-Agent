@@ -21,6 +21,12 @@ class OutcomeValidation:
     valid: bool
     issues: tuple[str, ...]
     recoverable: bool = False
+    #: One entry per explicit evidence item that failed grounding, classifying
+    #: *why* without carrying the provider's own words. `ungrounded_evidence`
+    #: is the largest issue family in the live record and the two shapes below
+    #: call for opposite responses, yet nothing recorded so far distinguishes
+    #: them. Only the closed-vocabulary dimension and value appear here.
+    evidence_shapes: tuple[dict[str, str | int], ...] = ()
 
 
 def _normalized(value: str) -> str:
@@ -133,6 +139,7 @@ def validate_outcome_hypotheses(
         return OutcomeValidation(False, ("missing_hypotheses",))
 
     issues: list[str] = []
+    evidence_shapes: list[dict[str, str | int]] = []
     normalized_task = _normalized(user_task)
     confirmed_inputs = frozenset(confirmed_current_inputs(user_task))
     for index, hypothesis in enumerate(hypotheses):
@@ -177,6 +184,15 @@ def validate_outcome_hypotheses(
                         f"hypothesis[{index}].ungrounded_evidence:"
                         f"{item.dimension}={item.value}"
                     )
+                    evidence_shapes.append({
+                        "hypothesis": index,
+                        "dimension": item.dimension,
+                        "value": item.value,
+                        # "absent": the entry claimed an explicit quote and
+                        # supplied none. "unmatched": it supplied one the
+                        # request does not contain.
+                        "span": "absent" if not span else "unmatched",
+                    })
 
         for dimension, value in required_evidence:
             normalized_value = _normalized(value)
@@ -189,4 +205,9 @@ def validate_outcome_hypotheses(
     recoverable = bool(unique_issues) and all(
         ".ungrounded_evidence:" in issue for issue in unique_issues
     )
-    return OutcomeValidation(not unique_issues, unique_issues, recoverable)
+    return OutcomeValidation(
+        not unique_issues,
+        unique_issues,
+        recoverable,
+        tuple(evidence_shapes),
+    )

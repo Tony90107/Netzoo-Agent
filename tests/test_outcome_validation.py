@@ -508,3 +508,76 @@ def test_intent_router_prompt_has_no_semantic_or_workflow_authority():
     assert "outcome_hypotheses" not in prompt
     assert "candidate_actions" not in prompt
     assert "run_puma" not in prompt
+
+
+REVERSE_HISTORY_TASK = (
+    "Previously I used SAMBAR for somatic mutations. That analysis is finished. "
+    "Now I have a gene expression matrix, TF motif priors and PPI data. Which "
+    "workflow can infer a separate TF-to-gene regulatory network for each "
+    "patient? Advice only."
+)
+
+
+def _reverse_history_hypothesis(items: list[OutcomeEvidence]) -> OutcomeHypothesis:
+    return OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="infer",
+            input_artifacts=["expression_matrix"],
+            artifact_type="regulatory_network",
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="sample_specific",
+        ),
+        confidence=0.9,
+        evidence=items,
+    )
+
+
+def test_ungrounded_shapes_separate_an_absent_quote_from_an_unmatched_one():
+    """Validate the instrument against data whose shape is known by construction.
+
+    `ungrounded_evidence` is the largest issue family in the live record, and
+    the two shapes it conflates call for opposite responses. Nothing recorded
+    before this reported which one occurred, so the classifier is pinned here
+    against entries whose shape the fixture fixes.
+    """
+    hypothesis = _reverse_history_hypothesis([
+        # Claims an explicit quote, supplies none.
+        evidence("operation", "infer"),
+        # Supplies a quote the request does not contain.
+        evidence("granularity", "sample_specific", text_span="sample-specific"),
+        # Quotes the request's own wording.
+        evidence("artifact_type", "regulatory_network", text_span="regulatory network"),
+        evidence("input_artifact", "expression_matrix", text_span="gene expression matrix"),
+        # Inference is never asked for a quote, so it never has a shape.
+        evidence("regulator_type", "tf", source="inferred"),
+        evidence("target_type", "gene", source="inferred"),
+    ])
+
+    result = validate_outcome_hypotheses(REVERSE_HISTORY_TASK, [hypothesis])
+
+    assert [
+        (item["dimension"], item["span"]) for item in result.evidence_shapes
+    ] == [("operation", "absent"), ("granularity", "unmatched")]
+    assert all(item["hypothesis"] == 0 for item in result.evidence_shapes)
+    # The strings the next attempt is shown stay exactly as they were.
+    assert {issue for issue in result.issues if "ungrounded_evidence" in issue} == {
+        "hypothesis[0].ungrounded_evidence:operation=infer",
+        "hypothesis[0].ungrounded_evidence:granularity=sample_specific",
+    }
+
+
+def test_ungrounded_shapes_are_empty_when_every_explicit_quote_is_grounded():
+    hypothesis = _reverse_history_hypothesis([
+        evidence("operation", "infer", text_span="infer"),
+        evidence("input_artifact", "expression_matrix", text_span="gene expression matrix"),
+        evidence("artifact_type", "regulatory_network", text_span="regulatory network"),
+        evidence("granularity", "sample_specific", text_span="for each patient"),
+        evidence("regulator_type", "tf", source="inferred"),
+        evidence("target_type", "gene", source="inferred"),
+    ])
+
+    result = validate_outcome_hypotheses(REVERSE_HISTORY_TASK, [hypothesis])
+
+    assert result.evidence_shapes == ()
+    assert not [issue for issue in result.issues if "ungrounded_evidence" in issue]

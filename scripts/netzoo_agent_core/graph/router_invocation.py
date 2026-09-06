@@ -403,7 +403,13 @@ def _invoke_semantic_interpreter(
                 state,
                 "routing.semantic_interpretation_rejected",
                 "classify",
-                {"attempt": attempt + 1, "issues": list(validation.issues)},
+                {
+                    "attempt": attempt + 1,
+                    "issues": list(validation.issues),
+                    # Why each rejected quote failed, in closed vocabulary. The
+                    # issue strings the next attempt sees are unchanged.
+                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+                },
             )
             last_error = ValueError(
                 "semantic interpretation failed evidence validation"
@@ -427,6 +433,7 @@ def _invoke_semantic_interpreter(
                     "attempt": attempt + 1,
                     "error_type": type(last_error).__name__,
                     "validation_issues": list(validation.issues),
+                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
                 },
             )
             if validated is not None:

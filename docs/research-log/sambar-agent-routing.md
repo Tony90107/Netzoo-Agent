@@ -3077,3 +3077,147 @@ input_artifact 與 granularity 各**兩個方向**都釘（豁免成立時接受
 目前沒有落在已證有效類別內的作法。
 
 離線：**1311 passed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 45｜`recoverable` 是死碼；`ungrounded_evidence` 的兩種形狀從未被記錄，先量再談修
+
+日期／時區：2026-09-06，Asia/Taipei。**離線分析與量測，付費呼叫 0 次。**
+執行 [handoff-2026-09-06-b.md](handoff-2026-09-06-b.md) 第七節第 1 項。
+
+### 一、`OutcomeValidation.recoverable` 目前在哪裡被使用：**沒有任何地方**
+
+- 計算於 `outcome_validation.py:189`，唯一的生產端呼叫者
+  `router_invocation.py:383` 只讀 `.valid` 與 `.issues`，**從不讀 `.recoverable`**。
+- 全庫唯一的讀取點是 `tests/test_outcome_validation.py:284` 一項測試。
+- 由 `bc2d1b9`（08-27）引入，測試名稱是
+  `test_evidence_validator_marks_translation_mismatch_as_recoverable`——
+  它想標記的是「中文請求配英文引文」，但**從未接上任何行為**。
+
+### 二、它涵蓋這些案例嗎：涵蓋得很少，但涵蓋到的都是全損
+
+以「該次拒絕的所有 issue 皆為 ungrounded」（即 `recoverable` 為真）逐輪統計：
+
+| 輪次 | 相異拒絕次數 | 全 ungrounded 的拒絕 | 案例 |
+| --- | --- | --- | --- |
+| r1 | 17 | 0 | — |
+| r2 | 22 | 0 | — |
+| r3 | 23 | 1 | `reverse-history-expression`（attempt 2） |
+| r4 | 21 | 2 | `original-q3`、`reverse-history-expression`（皆 attempt 2） |
+
+三次都是**最後一次嘗試**被拒，因此兩次嘗試都失敗、回落到 registry
+猜測：r4 的 `reverse-history-expression` 最終 `status=None`、`matched_actions=[]`，
+而它被丟掉的那份合併結果是 `operation=infer`、`artifact_type=regulatory_network`、
+`granularity=sample_specific`——**與語料的期望值完全一致**。
+`original-q3` 同樣落到 fallback。
+
+但 r4 的 19 個 ungrounded 條目中，只有 4 個落在這兩次「全 ungrounded」的拒絕裡；
+其餘 15 個與別的 issue 家族同時出現，`recoverable` 不會為真。
+**它挑出的是真實且昂貴的案例，但只占這個家族的一小部分。**
+
+### 三、第七節的前提（「引用了原文沒有的字句」）目前無法由任何紀錄驗證
+
+`text_span` **不存在於任何已保存的產物**：報告的 `diagnostic_details` 只有 issue 字串，
+事件 `routing.semantic_interpretation_proposed` / `_accepted` 只記
+`evidence_dimensions`（維度名稱），`ungrounded_evidence:dimension=value` 也不含引文。
+因此「模型引用了原文沒有的字句」是**推論，不是量測**。
+
+而現有的離線證據指向**另一個機制**：
+
+1. **有一批失敗發生在「逐字片段就在原文裡」的維度上。** 把 r4 每個 ungrounded 的
+   value 直接拿去比對該題原文：`regulatory_network` 3 次、`infer` 2 次、
+   `analyze`／`mirna`／`gene` 各 1 次，**19 個中有 8 個原文裡就有現成的逐字片段**。
+   （其餘 11 個是 `sample_specific`、`aggregate`、`sample` 這類本體論詞，
+   原文本來就沒有逐字形式，必須改引使用者的說法，未接地屬預期之內。）
+   需要解釋的是前面那 8 個：最容易引的字就在眼前，仍然失敗。
+2. **同一個 hypothesis 裡是全有或全無。** r4 四個案例的 attempt 1
+   （`mirna-current-goal` 5/5、`mutation-distance-not-clusters` 4/4、
+   `reverse-history-expression` 3/3、`covariate-coexpression` 3/3）
+   模型自寫的 explicit 條目**全數**未接地。
+3. **唯一存活的 explicit 條目，是程式替它填 span 的那一個。**
+   `reverse-history-expression` 的 attempt 2 由 patch 補上 `input_artifact`，
+   其 span 來自 `semantic_repair._current_span()`（witness 定位的使用者原話），
+   結果 `input_artifact` 接地，其餘三個模型自寫的維度照樣未接地。
+
+離線重現（同一段原文、同一份 outcome，只改 evidence 的寫法）：
+
+| evidence 寫法 | ungrounded 條目 |
+| --- | --- |
+| explicit，**省略 `text_span`** | 4（operation、input_artifact、artifact_type、granularity） |
+| explicit，span 寫成本體論值本身 | 1（只有 `sample_specific`） |
+| explicit，span 引使用者原話 | 0 |
+| 全部改成 `inferred`、完全不給 span | 0 |
+
+**第一列的形狀，扣掉程式代填的 `input_artifact`，正是 r4 觀察到的簽名。**
+第二列不成立：`infer` 與 `regulatory network` 在原文裡都在。
+
+### 四、順帶查明：`inferred` 是一條沒有成本的繞道
+
+`_required_evidence` 只要求 `(dimension, value)` 這一對存在於 evidence；
+`source` 只在接地檢查裡有意義。所以**把每一條都寫成 `inferred` 就能完全避開接地檢查，
+而必要證據仍然滿足**（repair-replay 的注入提案正是這樣寫的）。
+同時 `select_primary_hypothesis` 給 explicit 兩倍權重（`outcome_consistency.py:48`）。
+兩件事合起來：**目前的接地檢查獎勵宣稱、懲罰引用，而不保護任何值**。
+這不是要放寬什麼，而是說明「修 ungrounded」的著力點不在放寬與否。
+
+### 五、這個家族不是本分支造成的，但 r3／r4 的暴增在紀錄裡沒有程式成因
+
+各輪 `ungrounded_evidence` 條目數（attempt 1 ／ attempt 2）：
+**r1 0／0、r2 0／0、r3 3／3、r4 15／4。**
+
+已用 `git diff 344b646 3236026` 確認：`outcome_validation.py` 與
+`request_integrity.py` **自 r2 起完全未變**，第一次呼叫的 prompt
+（`build_semantic_interpreter_messages` 與 `semantic_prompt` 本文）**逐位元組相同**，
+`corpus_sha256` 相同、模型與 temperature 相同。
+`prompt_schema_sha256` 由 `0db9d867` 變為 `b5c70105`，**其成因只是雜湊輸入新增了
+`SemanticPatch` 這個 schema**，不是第一次呼叫的 prompt 有任何改動。
+因此 attempt 1 的 0 → 15 目前**只能歸於供應商端變異**，這正是需要先量的理由。
+
+### 六、本次的變更：只加量測，不動行為
+
+依 Log 44 的方法論教訓（「工具要先對著已知資料驗證過再用」「提出介入前先量」），
+本次**不修改任何驗證、不放寬任何檢查、不改動送給模型的任何字串**：
+
+- `OutcomeValidation` 新增 `evidence_shapes`，對每個未接地的 explicit 條目記錄
+  `{hypothesis, dimension, value, span}`，其中 `span` 只有兩個值：
+  `absent`（宣稱 explicit 卻沒給引文）與 `unmatched`（給了但原文沒有）。
+  **只記封閉詞彙的維度與值，不記模型自己的字**——沿用
+  `_diagnostic_details` 既有的衛生規則。
+- `routing.semantic_interpretation_rejected` 與 `..._failed` 兩個事件、以及報告的
+  `diagnostic_details` 帶出這個欄位；summary 新增兩個計數：
+  `ungrounded_evidence_shapes`（absent／unmatched 條目數）與
+  `ungrounded_evidence_clusters`（以 hypothesis 為單位分類為
+  `all_absent`／`all_unmatched`／`mixed`）。
+- **送回給下一次嘗試的 issue 字串完全未變**，故不影響與既有輪次的可比性。
+- 量測器本身先對著**形狀由 fixture 決定**的資料驗證過（Log 44 的教訓二）：
+  條目分類四種寫法（absent／unmatched／已接地／inferred）、叢集分類四種組合，
+  並釘住「同一次拒絕經由兩個事件記錄時不得重複計數」——
+  這正是 r4 報告裡實際存在的重複，本次分析也是先去重才得出第二節的數字。
+
+### 七、事前宣告：下一輪全語料 live 的判準（執行前寫入，執行後不得修改）
+
+以「帶有 ungrounded 條目的 hypothesis」為叢集單位（r4 有 6 個這樣的叢集，
+單一條目間並不獨立，故不以條目數為判準）：
+
+- **成立**：`ungrounded_evidence_clusters` 中 `all_absent` ≥ 全部叢集的 2/3。
+  → 機制是「宣稱 explicit 卻沒附引文」，而契約層允許
+  `source="explicit"` 搭配 `text_span=None`（`outcomes.py:203` 預設為 None），
+  雖然 prompt 明文要求要附。此時的處理是**收緊契約**（explicit 必須有 span），
+  不是放寬，也不是改 prompt 措辭。
+- **否證**：`all_unmatched` 與 `mixed` 合計 ≥ 全部叢集的 1/2。
+  → 第七節原本的判讀成立，屬模型接地問題，目前沒有已證有效的作法，
+  應停在此處並回報，不要再提介入。
+- 兩者皆不成立（混合）：視為未判別，記錄後不動。
+
+樣本量估計：r4 有 19 個條目、6 個叢集；一輪全語料應可得到同一量級。
+以叢集為單位在 6 個樣本上分辨 2/3 與 1/2 的界線很勉強，**若首輪落在混合區，
+就需要 `--repeat 3` 才有意義**——這一點先寫在這裡，避免事後才發現測不到。
+
+### 八、尚未做、且不該自行決定的事
+
+- **不要現在把 `recoverable` 接上任何行為。** 它只涵蓋 6 次拒絕中的 2 次，
+  且它想代表的「翻譯不符」在那兩次身上**尚未被證實**——按第三節，
+  那兩次更像是「沒附引文」。接上去等於在機制未確認前就放寬接受條件。
+- 收緊契約（explicit ⇒ 必須有 `text_span`）會把一個語意層拒絕變成 schema 錯誤，
+  屬行為介入，需先取得第七節的量測結果，並由使用者授權付費輪次。
+
+離線：**1318 passed、3 failed（既有待決策項，未動）、0 skipped**
+（1311 + 本次 7 項量測測試）。

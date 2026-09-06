@@ -492,6 +492,72 @@ def test_diagnostic_details_carry_the_rejected_shape_and_identifier():
             "input_value": "somatic_mutation"} in shapes
 
 
+def test_report_separates_a_missing_quote_from_a_quote_the_request_lacks():
+    """Both shapes are reported as `ungrounded_evidence` and call for opposite fixes.
+
+    Across four live rounds this is the largest issue family, and no stored
+    artifact said which shape occurred. The classification carries only the
+    closed-vocabulary dimension and value, never the provider's own words.
+    """
+    item = hypothesis()
+    # Claims an explicit quote and supplies none.
+    item["evidence"][3]["source"] = "explicit"
+    item["evidence"][3]["text_span"] = None
+    # Supplies one the request does not contain.
+    item["evidence"][2]["text_span"] = "This text is absent from the request"
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypotheses": [item]},
+        review={"request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypothesis": item},
+    )
+
+    report = run(provider)
+    shapes = [
+        shape for entry in report["results"][0]["diagnostic_details"]
+        for shape in entry["evidence_shapes"]
+    ]
+
+    assert {"hypothesis": 0, "dimension": "entity_type", "value": "sample",
+            "span": "absent"} in shapes
+    assert {"hypothesis": 0, "dimension": "artifact_type",
+            "value": "sample_cluster_assignment", "span": "unmatched"} in shapes
+    # One rejection reported through two events must not count twice.
+    assert report["summary"]["ungrounded_evidence_shapes"] == {"unmatched": 2, "absent": 2}
+    assert report["summary"]["ungrounded_evidence_clusters"] == {"mixed": 2}
+    # The quotes themselves never enter the report.
+    assert "absent from the request" not in json.dumps(report)
+
+
+@pytest.mark.parametrize(
+    ("shapes", "expected"),
+    [
+        ([("absent", 0), ("absent", 0)], {"all_absent": 1}),
+        ([("unmatched", 0), ("unmatched", 0)], {"all_unmatched": 1}),
+        ([("absent", 0), ("unmatched", 0)], {"mixed": 1}),
+        # Separate hypotheses are separate units even in one attempt.
+        ([("absent", 0), ("unmatched", 1)], {"all_absent": 1, "all_unmatched": 1}),
+    ],
+)
+def test_ungrounded_clusters_group_by_hypothesis_before_any_criterion(shapes, expected):
+    """Pin the unit a criterion is allowed to count, against known rows.
+
+    Entries inside one hypothesis are not independent, so a criterion stated
+    per entry would overstate its own sample size.
+    """
+    from collections import Counter
+
+    from evaluate_routing import _ungrounded_clusters
+
+    row = {"diagnostic_details": [{
+        "attempt": 1,
+        "evidence_shapes": [
+            {"hypothesis": index, "dimension": "operation", "value": "infer", "span": span}
+            for span, index in shapes
+        ],
+    }]}
+
+    assert dict(Counter(_ungrounded_clusters(row))) == expected
+
+
 def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
     """Third time the sanitiser hid a real fault; locations are not payloads."""
     from evaluate_routing import main

@@ -64,3 +64,48 @@ def test_the_production_entry_point_survives_the_same_outcome():
 
     assert match.status == "ambiguous"
     assert match.matched_actions == []
+
+
+def _bound(field) -> int | None:
+    return next(
+        (item.max_length for item in field.metadata if hasattr(item, "max_length")),
+        None,
+    )
+
+
+def test_every_contract_the_candidates_are_copied_into_has_the_same_bound():
+    """Widening only the producer is what cost the second full-corpus round.
+
+    `assembly` copies `CapabilityMatch.hypothesis_actions` straight into
+    `TaskDecision`, whose own cap stayed at six. The run aborted with the same
+    `hypothesis_actions:too_long` this file was written for, in a contract this
+    file did not look at. Scanning every model that carries the field stops the
+    next copy from drifting too.
+    """
+    import inspect
+
+    from pydantic import BaseModel
+
+    from netzoo_agent_core import contracts
+
+    carriers = {
+        f"{module.__name__}.{name}": model
+        for module in vars(contracts).values()
+        if inspect.ismodule(module)
+        for name, model in vars(module).items()
+        if inspect.isclass(model)
+        and issubclass(model, BaseModel)
+        and "hypothesis_actions" in model.model_fields
+    }
+    # The scan is worthless if it finds nothing; name the models it must cover.
+    assert {name.rsplit(".", 1)[-1] for name in carriers} >= {
+        "CapabilityMatch", "TaskDecision",
+    }
+
+    narrow = {
+        name: _bound(model.model_fields["hypothesis_actions"])
+        for name, model in carriers.items()
+        if (_bound(model.model_fields["hypothesis_actions"]) or 0) < len(OUTPUT_CAPABILITIES)
+    }
+
+    assert not narrow, f"bounds behind the registry ({len(OUTPUT_CAPABILITIES)}): {narrow}"

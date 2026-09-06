@@ -103,6 +103,38 @@ def _fingerprint(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def _ungrounded_by_attempt(result: dict) -> dict:
+    """Deduplicate the shapes an attempt reports through more than one event.
+
+    A final rejection is recorded twice, as the rejection and as the failure
+    that ends the loop. Counting rows would inflate every total.
+    """
+    by_attempt: dict[object, list[dict]] = {}
+    for entry in result["diagnostic_details"]:
+        shapes = entry.get("evidence_shapes") or []
+        if shapes and entry.get("attempt") not in by_attempt:
+            by_attempt[entry.get("attempt")] = shapes
+    return by_attempt
+
+
+def _ungrounded_shapes(result: dict) -> list[dict]:
+    return [shape for shapes in _ungrounded_by_attempt(result).values() for shape in shapes]
+
+
+def _ungrounded_clusters(result: dict) -> list[str]:
+    """Classify each hypothesis that carries ungrounded entries, as one unit."""
+    groups: dict[tuple, set] = {}
+    for attempt, shapes in _ungrounded_by_attempt(result).items():
+        for shape in shapes:
+            groups.setdefault((attempt, shape.get("hypothesis")), set()).add(shape.get("span"))
+    return [
+        "all_absent" if spans == {"absent"}
+        else "all_unmatched" if spans == {"unmatched"}
+        else "mixed"
+        for spans in groups.values()
+    ]
+
+
 def _breakdown(results, field):
     return {
         key: {
@@ -149,12 +181,14 @@ def _diagnostic_details(events) -> list[dict]:
                 "attempt": payload.get("attempt"),
                 "issues": [str(item) for item in payload.get("issues", [])],
                 "shapes": list(payload.get("shapes", [])),
+                "evidence_shapes": list(payload.get("evidence_shapes", [])),
             })
         if event["type"] == "routing.semantic_interpreter_failed":
             issues = payload.get("validation_issues", [])
             details.append({
                 "attempt": payload.get("attempt"),
                 "error_type": payload.get("error_type"),
+                "evidence_shapes": list(payload.get("evidence_shapes", [])),
                 "issues": [
                     "schema_validation:" + ".".join(item["location"]) + ":" + item["type"]
                     if isinstance(item, dict) else str(item)
@@ -380,6 +414,21 @@ def evaluate(
             "unsafe_execution_count": sum(item["should_execute"] or item["action"] != "no_tool" for item in results),
             "provider_calls": sum(item["provider_calls"] for item in results),
             "diagnostics": dict(Counter(code for item in results for code in item["diagnostics"])),
+            # Splits the largest issue family in the live record into the two
+            # shapes that call for opposite responses: an explicit entry that
+            # supplied no quote at all, versus one whose quote the request does
+            # not contain. Nothing before this round recorded the difference.
+            "ungrounded_evidence_shapes": dict(Counter(
+                str(shape.get("span"))
+                for item in results for shape in _ungrounded_shapes(item)
+            )),
+            # Entries within one hypothesis are not independent -- a model that
+            # omits the quote omits it for every dimension it wrote. The
+            # per-hypothesis grouping is the unit any criterion should use.
+            "ungrounded_evidence_clusters": dict(Counter(
+                cluster for item in results
+                for cluster in _ungrounded_clusters(item)
+            )),
             "by_language": _breakdown(results, "language"),
             "by_category": _breakdown(results, "category"),
             "unstable_cases": [case.id for case in cases if len({
