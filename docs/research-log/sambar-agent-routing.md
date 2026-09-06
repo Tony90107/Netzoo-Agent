@@ -2656,3 +2656,113 @@ payload 形狀離線重放，現在解析成功（`input_artifacts=['mutation_ma
 
 離線：**1287 passed、3 failed（既有待決策項）、0 skipped**；ruff 與
 `git diff --check` 通過。**live 尚未執行**，Log 39 的預測與判準待下一輪檢驗。
+
+## Log 40｜Log 39 預測成立；Log 31 預測成立但護欄失敗；**全語料沒有改善**
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`。
+**付費呼叫 59 次**（巢狀確認 26、全語料 33）。
+報告：[repair-replay-nesting.json](repair-replay-nesting.json)、
+[live-full-corpus-round3.json](live-full-corpus-round3.json)。
+
+### 最重要的數字先講：全語料沒有改善
+
+| | 第一輪 | 第二輪 | **第三輪（本 session 全部變更）** |
+| --- | --- | --- | --- |
+| `passed` | **4 / 14** | 2 / 14 | **2 / 14** |
+| 工具正確 | **9 / 14** | 8 / 14 | **8 / 14** |
+| 推薦錯誤工具 | **0** | 1 | **2** |
+
+**本 session 的所有變更，在專案的頭條指標上沒有帶來改善，且推薦錯誤工具由 0 增為 2。**
+replay 上的勝利（基線 0/33、候選 16/33，Fisher p=0.0011）是在**隔離單一變數**的量測下
+取得的，不能外推到全語料。這正是交接文件警告的過擬合風險，方向與 Log 28 相同。
+
+### Log 39：兩項預測皆成立
+
+對照組為 Log 38 的候選側（同 suite、同 repeat，唯一差異是巢狀正規化）：
+
+| | Log 38 | Log 39 |
+| --- | --- | --- |
+| `outcome.evidence_additions:extra_forbidden` | 5 | **0** |
+| patch 佔比 | 67% | **100%** |
+| `passed` | 8 / 15 | 11 / 15 |
+| 推薦錯誤工具 / unsafe | 0 / 0 | 0 / 0 |
+
+護欄全過。**依 Log 39 事前宣告，通過率的上升不記為本項介入的功勞**（解析成功不等於
+通過驗證），且 Log 38 已記錄同設定逐案結果會擺盪。
+
+`original-q1` 由 0/5 變 5/5，機制上與此變更一致（那 5 次的唯一缺陷就是巢狀被拒）；
+`original-q3` 由 3/5 變 1/5。
+
+### 剩下的 replay 失敗，全部是同一個確定性機制
+
+Log 39 候選側的 Q3 四次失敗**完全相同**，且 `changed_fields` 從不包含角色欄位：
+
+```
+changed: artifact_type, entity_types, granularity, input_artifacts, operation, unresolved_dimensions
+issues : artifact_roles:sample_cluster_assignment
+         missing_evidence:regulator_type=tf
+         missing_evidence:target_type=gene
+```
+
+patch 把 artifact_type 改回 `sample_cluster_assignment`，但第一次寫的
+`regulator_types=["tf"]` 被沿用下來，在新 artifact 下才變成違規。
+
+### Log 31：預測成立，護欄失敗
+
+**預測成立且精確。** `bipartite-communities`：
+
+```
+status=exact  match_basis=semantic  actions=['run_condor']  path=semantic_registry_intent
+attempt 1 issue: artifact_granularity:community_assignment   ->  patch 改為 aggregate
+```
+
+機制已離線核對：guidance 請求會把 `operation` 抹成 unknown（該分支只問「哪個工作流程」），
+再由 `_complete_guidance_match` 升格為 exact。關鍵在 `granularity=aggregate` 必須先是
+**合法**的——舊契約會被 `outcome_consistency_issues` 拒絕，且
+`match_semantic_request` 在任一 hypothesis 有一致性問題時會把 exact 降為 unsupported。
+**歸因成立。** 另外注意：attempt 1 的 `artifact_granularity:community_assignment`
+是**新契約才存在的訊號**，patch reviewer 據此修好——兩項變更在此協同生效。
+
+**但 Log 31 宣告的護欄「推薦錯誤工具不得高於第二輪的 1」失敗：第三輪為 2。**
+
+### 新增的那次錯誤推薦：一個既有的潛在缺陷，被 R 暴露出來
+
+`unsupported-protein-acquisition`（負向控制，`run_panda` 列在 `forbidden_actions`）：
+
+```
+attempt 1: missing_evidence:entity_type=sample
+attempt 2: patch 只改 entity_types -> protein，未附對應證據
+           missing_evidence:entity_type=protein   -> 語意失敗 -> registry_recovery
+最終       : 推薦 run_panda
+```
+
+追到 `recover_registry_guidance`：`match_registry_guidance_features` 回 None，
+於是退到 `named_workflow_action(task)`，而該函式在
+
+> "**Previously I used PANDA.** Now I want advice on acquiring a protein abundance
+> measurement dataset… **I do not want inferred networks** or mutation subtyping."
+
+之中抓到 **純歷史脈絡的 PANDA**，並在一個明文拒絕推論網路的請求上推薦它。
+
+**這是既有的潛在缺陷，不是 R 造成的**——它直接違反既有禁令
+「不要把歷史資料當成目前輸入」。但**是 R 讓語意通道在該題失敗，才走到這條路徑**，
+所以兩件事都要記：缺陷是舊的，暴露是新的。
+
+R 自身的代價也確認了：**改了欄位卻沒附上對應證據**。這同時是 Q3 角色失敗與本題失敗
+的共同形狀。修復訊息早已寫明「After changing a field, withdraw or replace its evidence
+too」——指示無效，與六次失敗的紀錄一致。
+
+### 待決策（依我認為的優先序）
+
+1. **fallback 不得推薦只出現在歷史脈絡中的工作流程名稱。** 離線可證、屬安全性、
+   且已被既有禁令涵蓋。這是我建議的下一項，優先於任何 reviewer 工作。
+2. **patch 改動使欄位在新 artifact 下違規時的處理**（Q3 角色沿用）。
+   注意這會是**系統寫入 outcome 欄位值**，與已實作的過期 evidence 規則不同層級，
+   需要明確授權。
+3. reviewer 讀的 11,296 字 system prompt（單次呼叫的 76%）。無支持證據、
+   接近禁令那一類，排最後。
+
+### 累計
+
+本 session 付費呼叫 **141 次**。
+離線：**1287 passed、3 failed（既有待決策項）、0 skipped**。
