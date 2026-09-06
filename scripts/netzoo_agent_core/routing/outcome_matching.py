@@ -433,6 +433,65 @@ def _granularity_only_question(
     return None
 
 
+def _stated_dimensions_match(
+    outcome: RequestedOutcome, capability: OutputCapabilityDefinition,
+) -> bool:
+    """Whether every dimension the outcome actually states matches.
+
+    `unknown` means the outcome does not constrain that dimension, so it cannot
+    disqualify a capability. Guidance requests reach the matcher with their
+    operation deliberately blanked -- asking which capability can produce a
+    result is not itself an operation -- so requiring an operation here would
+    require what the caller just removed.
+    """
+    return (
+        outcome.operation in {_UNKNOWN, capability.operation}
+        and outcome.artifact_type in {_UNKNOWN, capability.artifact_type}
+        and (
+            capability.granularities is None
+            or outcome.granularity in {_UNKNOWN, *capability.granularities}
+        )
+    )
+
+
+def _tag_discriminated_action(
+    hypotheses: Sequence[OutcomeHypothesis],
+    candidates: Sequence[RecommendedAction],
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+) -> RecommendedAction | None:
+    """Break a tie with the registry tags the outcome declared, or return None.
+
+    `selection_tags` is defined by the contract, requested by the prompt and
+    checked by the evidence validator, and the matcher never read it. A round on
+    a stronger model made that visible: it expressed the one discriminating fact
+    as a registry tag rather than as a regulator role, and two equally
+    compatible capabilities stayed tied with no action at all.
+
+    The contract says tags "do not select or authorize a workflow by
+    themselves", so this only chooses among candidates the scientific dimensions
+    have already qualified: a survivor must carry every declared tag *and* match
+    each dimension the outcome states. The set can only shrink -- no capability
+    becomes reachable that was not already a candidate, and one whose stated
+    dimensions differ is never rescued.
+
+    Known limitation, accepted deliberately and pinned by a test: a tag the
+    request does not support still discriminates, because tags need no evidence.
+    Sixteen of sixteen tags in the live record were catalogue entries naming the
+    expected tool, and the live criterion vetoes on any wrong recommendation.
+    """
+    declared = {tag for item in hypotheses for tag in item.outcome.selection_tags}
+    if not declared or len(candidates) < 2:
+        return None
+    outcomes = [item.outcome for item in hypotheses]
+    survivors = [
+        action for action in candidates
+        if (capability := capabilities.get(action)) is not None
+        and declared <= capability.selection_tags
+        and any(_stated_dimensions_match(outcome, capability) for outcome in outcomes)
+    ]
+    return survivors[0] if len(survivors) == 1 else None
+
+
 def match_outcome_hypotheses(
     hypotheses: Sequence[OutcomeHypothesis],
     capabilities: Mapping[
@@ -537,6 +596,15 @@ def match_outcome_hypotheses(
             if (evidence_score, confidence, specificity_score) == top_score
         ]
         unique_top_actions = list(dict.fromkeys(top_actions))
+        discriminated = _tag_discriminated_action(
+            hypotheses, unique_top_actions, capabilities,
+        )
+        if discriminated is not None:
+            return CapabilityMatch(
+                status="exact",
+                match_basis="registry_features",
+                matched_actions=[discriminated],
+            )
         return CapabilityMatch(
             status="ambiguous",
             hypothesis_actions=unique_top_actions,
