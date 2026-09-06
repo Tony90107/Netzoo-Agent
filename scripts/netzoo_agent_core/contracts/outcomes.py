@@ -295,6 +295,68 @@ class SemanticInterpretation(BaseModel):
     )
 
 
+class OutcomePatch(BaseModel):
+    """Only the outcome fields the review is changing.
+
+    An omitted field is not "unknown": it means the first pass already got that
+    field right and it is carried forward unchanged. Re-emitting a whole outcome
+    is what produced 22 fresh `schema_validation` failures across the live record
+    while fixing 2, so the review is asked for a delta instead of a rewrite.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Operation | None = None
+    input_artifacts: list[ArtifactType] | None = Field(default=None, max_length=4)
+    artifact_type: ArtifactType | None = None
+    entity_types: list[EntityType] | None = Field(default=None, max_length=8)
+    display_entities: list[str] | None = Field(default=None, max_length=8)
+    regulator_types: list[Literal["tf", "mirna", "unknown"]] | None = Field(
+        default=None, max_length=3
+    )
+    target_types: list[Literal["gene", "unknown"]] | None = Field(
+        default=None, max_length=2
+    )
+    selection_tags: list[str] | None = Field(default=None, max_length=16)
+    granularity: Granularity | None = None
+    unresolved_dimensions: list[str] | None = Field(default=None, max_length=4)
+
+
+class EvidenceRemoval(BaseModel):
+    """One evidence entry the review withdraws, named by dimension and value."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dimension: EvidenceDimension
+    value: str = Field(min_length=1, max_length=80)
+
+
+class SemanticPatch(BaseModel):
+    """A field-scoped repair of one first-pass hypothesis, never a rewrite.
+
+    The merge only carries forward values the first pass itself produced; it
+    never supplies a value no model wrote. The merged interpretation is then run
+    through the same strict validation as any other, with nothing relaxed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    hypothesis_index: int = Field(
+        default=0, ge=0, le=2,
+        description=(
+            "Which first-pass hypothesis this repair adjudicates as the single "
+            "primary scientific outcome. Zero-based, in the proposal's own order."
+        ),
+    )
+    request_mode: Literal["guidance", "execute", "unknown"] | None = None
+    semantic_goal: str | None = Field(default=None, min_length=1, max_length=240)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    outcome: OutcomePatch = Field(default_factory=OutcomePatch)
+    evidence_removals: list[EvidenceRemoval] = Field(default_factory=list, max_length=12)
+    evidence_additions: list[OutcomeEvidence] = Field(default_factory=list, max_length=12)
+    assumptions: list[str] | None = Field(default=None, max_length=4)
+
+
 class SemanticReview(BaseModel):
     """One adjudicated scientific outcome returned by the review pass."""
 

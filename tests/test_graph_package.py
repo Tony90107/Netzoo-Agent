@@ -14,7 +14,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
 import netzoo_agent_core.graph as graph  # noqa: E402
-from netzoo_agent_core.contracts.outcomes import SemanticReview  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import SemanticPatch, SemanticReview  # noqa: E402
 
 
 PUBLIC_EXPORTS = ["build_graph", "invoke_graph_turn"]
@@ -352,9 +352,13 @@ def test_graph_binds_interpreter_and_reviewer_before_narrow_intent_router(monkey
 
     factory.build_graph("fake", 0.0, router_model_name="fake")
 
+    # 2026-09-06: the review pass gained a second binding. It is asked for a
+    # SemanticPatch when the first pass parsed and can be repaired field by
+    # field, and for a whole SemanticReview when there is nothing to patch onto.
     assert bound_schemas == [
         legacy_agent.SemanticInterpretation,
         SemanticReview,
+        SemanticPatch,
         legacy_agent.IntentDecision,
     ]
 
@@ -389,6 +393,9 @@ def test_graph_can_assign_semantics_to_a_stronger_model_than_intent(monkeypatch)
     assert bindings == [
         ("semantic", legacy_agent.SemanticInterpretation),
         ("semantic", SemanticReview),
+        # 2026-09-06: the patch binding must stay on the semantic model, not the
+        # cheaper intent model. That is the point of this assertion.
+        ("semantic", SemanticPatch),
         ("intent", legacy_agent.IntentDecision),
     ]
     assert context.semantic_model_name == "strong"

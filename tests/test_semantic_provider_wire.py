@@ -100,6 +100,16 @@ def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair
                            "outcome_hypothesis": reviewed},
         "IntentDecision": {"mode": "answer", "confidence": .95, "reason": "Guidance only"},
     }
+    # 2026-09-06: a first pass that parsed is repaired field by field, so the
+    # second call's tool is SemanticPatch. `missing-required` still parses badly
+    # and keeps the whole-review tool above; both wire shapes stay covered here.
+    replies["SemanticPatch"] = {
+        "outcome": {"input_artifacts": reviewed["outcome"]["input_artifacts"]},
+        "evidence_additions": [
+            evidence for evidence in reviewed["evidence"]
+            if evidence["dimension"] == "input_artifact"
+        ],
+    }
     captured = []
 
     def handle(request):

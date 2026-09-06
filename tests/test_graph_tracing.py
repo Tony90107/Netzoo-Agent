@@ -22,8 +22,16 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 )
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticInterpretation,
+    SemanticPatch,
     SemanticReview,
 )
+
+# 2026-09-06: the second semantic call is bound to SemanticPatch when the
+# first pass parsed. These scripted transports answer it with the same
+# complete review payload, which production still accepts, so each test
+# keeps asserting what it named. The patch shape itself is covered by
+# tests/test_semantic_patch_repair.py.
+_REVIEW_SCHEMAS = {SemanticReview, SemanticPatch}
 from netzoo_agent_core.graph import build_graph  # noqa: E402
 from netzoo_agent_core.graph.policy_memory import retrieve_memory  # noqa: E402
 from netzoo_agent_core.cli import export_local_trace, local_trace_status  # noqa: E402
@@ -109,7 +117,7 @@ class DeterministicRouterLLM:
         )
         return (
             semantic_review(interpretation)
-            if schema is SemanticReview
+            if schema in _REVIEW_SCHEMAS
             else interpretation
         )
 
@@ -162,7 +170,7 @@ class SequencedHypothesisRouter:
             )
             return (
                 semantic_review(interpretation)
-                if schema is SemanticReview
+                if schema in _REVIEW_SCHEMAS
                 else interpretation
             )
         return IntentDecision(
@@ -236,7 +244,7 @@ class EmptyOutcomeRouter:
             )
             return (
                 semantic_review(interpretation)
-                if schema is SemanticReview
+                if schema in _REVIEW_SCHEMAS
                 else interpretation
             )
         return IntentDecision(
@@ -441,8 +449,8 @@ def test_routing_never_accepts_unquoted_evidence_after_the_review_retry(tmp_path
     class InvalidEvidenceProvider:
         def with_structured_output(self, schema, **_kwargs):
             def invoke(_messages):
-                assert schema in {SemanticInterpretation, SemanticReview}
-                if schema is SemanticReview:
+                assert schema in {SemanticInterpretation, *_REVIEW_SCHEMAS}
+                if schema in _REVIEW_SCHEMAS:
                     return SemanticReview(
                         request_mode="guidance", semantic_goal="Network guidance",
                         outcome_hypothesis=hypothesis,
@@ -590,7 +598,7 @@ class StrictRoutingPipelineLLM:
     def with_structured_output(self, schema, **_kwargs):
         if schema is SemanticInterpretation:
             return SimpleNamespace(invoke=self._interpret)
-        if schema is SemanticReview:
+        if schema in _REVIEW_SCHEMAS:
             return SimpleNamespace(invoke=self._review)
         if schema is IntentDecision:
             return SimpleNamespace(invoke=self._route_intent)
