@@ -2990,3 +2990,90 @@ entity_type=protein）、本輪（`covariate-coexpression`）連續三輪出現�
 
 離線：**1300 passed、3 failed（既有待決策項）、0 skipped**。
 本 session 付費呼叫 **約 209 次**（含 Log 42 作廢的一輪）。
+
+## Log 44｜「改了欄位沒附證據」的離線報表**否定了這個前提**；被改動的維度反而比較乾淨
+
+日期／時區：2026-09-06，Asia/Taipei。**離線分析，付費呼叫 0 次。**
+工具：`scripts/analyze_patch_evidence.py`。資料：六份有記錄 `review_patch` 的報告，
+共 76 次試驗、59 次有 patch。
+
+### 報表
+
+`CH` = patch 改動了該維度；`--` = 該維度是沿用下來的。
+
+| dimension | | missing | ungrounded | conflicting | clean | 不乾淨 |
+| --- | --- | --- | --- | --- | --- | --- |
+| operation | CH | 3 | 0 | 0 | 45 | 6% |
+| operation | -- | 0 | 3 | 0 | 8 | 27% |
+| input_artifact | CH | 1 | 0 | 0 | 56 | 2% |
+| artifact_type | CH | 0 | **7** | 0 | 25 | **22%** |
+| artifact_type | -- | 0 | 3 | 0 | 24 | 11% |
+| entity_type | CH | **4** | 0 | 0 | 29 | 12% |
+| entity_type | -- | 0 | 0 | 0 | 26 | 0% |
+| regulator_type | CH | 0 | 0 | 0 | 15 | **0%** |
+| regulator_type | -- | **9** | 1 | 0 | 34 | **23%** |
+| target_type | CH | 1 | 5 | 0 | 10 | 38% |
+| target_type | -- | **9** | 1 | 0 | 33 | 23% |
+| granularity | CH | 0 | 0 | 0 | 33 | **0%** |
+| granularity | -- | 0 | 3 | 0 | 23 | 12% |
+| **合計** | **CH** | 9 | 7 | 5 | 221 | **9%** |
+| **合計** | **--** | 18 | 11 | 0 | 201 | **13%** |
+
+### 三個推翻既有判讀的結論
+
+1. **「改了欄位沒附證據」不是主要機制。** 被改動的維度整體只有 9% 不乾淨，
+   **沿用下來的維度是 13%**——方向與 Log 43 的判讀相反。我在 Log 40／43 把它
+   稱為「三輪一致的主要機制」是**過度概化**：那是幾個個案的共同形狀，不是統計上的主導項。
+2. **最大的單一來源是沿用的角色欄位**：`regulator_type` 與 `target_type` 各 9 次
+   `missing`，且**改動時是 0%**。這正是 Log 35 的 Q3 機制——角色被沿用進一個
+   ontology 不允許它們的 artifact，而不是被改壞。
+3. **改動 `artifact_type` 時的問題不是缺證據（0 次），而是 ungrounded（7 次）。**
+   模型有附證據，但引用的字句不在原文裡。
+
+### 對使用者提議的判斷
+
+使用者提出的四項原則中，前三項**目前已成立**：validator 已回報缺證據、
+reviewer 已被要求自備證據、缺證據時已保留診斷且不標 exact。第四項
+「核心欄位被改卻無證據 → 整份 unvalidated、不合併部分欄位」**實質上也已成立**：
+合併後走同一套 strict validation，少了必要證據就不可能通過，因此不可能成為結果。
+
+**但第四項若照字面寫成「沒有 evidence 條目就 unvalidated」會推翻 Log 25／26**——
+那兩項豁免（ontology 唯一決定的維度、witnesses 已確認的輸入）是本研究唯二
+有雙向預測驗證的成果。正確措辭是「**沒有通過驗證器所要求的證據**」。
+
+同理，提議的 invariant 清單中「changed granularity without granularity evidence
+→ reject」與「changed input_artifact without input evidence → reject」都必須帶豁免條件，
+否則就是要求撤回那兩項成果。
+
+### 已新增的 invariant tests
+
+`tests/test_patch_evidence_invariants.py` 11 項，**全部釘住既有行為，不新增任何要求**：
+artifact_type 改動時缺證據與 ungrounded 兩種形狀皆拒絕、改對且接地則接受；
+input_artifact 與 granularity 各**兩個方向**都釘（豁免成立時接受、不成立時拒絕）；
+被 patch 取代的舊值證據會被退役；**沿用角色在新 artifact 下被拒絕**（報表中最大的一項，
+釘成失敗，好讓未來任何處理都必須是刻意的決定）；未改動的欄位保留證據且維持有效。
+
+過程中一個 fixture 選錯原文：在 `original-q1` 上把 artifact_type 改成
+`sample_distance_matrix` 會觸發 `terminal_goal_conflict`——因為該題的終端目標本來
+就是分群。已改用 `mutation-distance-not-clusters`（明文「不要產生群組標籤」，
+`patient_clustering_goal` 為 False）。**這是終端目標檢查在測試中正確作用的一次實例。**
+
+### reviewer 回覆完全無法解析的形狀（累計）
+
+```
+5  outcome.evidence_additions:extra_forbidden      （已於 Log 39 處理）
+3  assumptions:extra_forbidden
+2  outcome.unresolved_dimensions:too_long
+2  outcome.input_artifacts.N:literal_error
+3  evidence_removals.N.value:string_too_short      （Log 43 觀察到）
+1  evidence_additions.1.rationale:missing
+```
+
+### 下一步
+
+報表推翻了原本的目標，因此**不應**照原計畫修改 reviewer contract。
+真正最大的一項是**沿用角色**，那需要跨越「系統寫入 outcome 欄位值」的界線，
+仍待使用者決策；第二項是 `artifact_type` 的 ungrounded 證據，屬模型接地問題，
+目前沒有落在已證有效類別內的作法。
+
+離線：**1311 passed、3 failed（既有待決策項）、0 skipped**。
