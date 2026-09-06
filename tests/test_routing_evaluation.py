@@ -558,6 +558,50 @@ def test_ungrounded_clusters_group_by_hypothesis_before_any_criterion(shapes, ex
     assert dict(Counter(_ungrounded_clusters(row))) == expected
 
 
+@pytest.mark.parametrize(
+    ("rows", "expected"),
+    [
+        ([(2, 0)], {"all_spanned": 1}),
+        ([(0, 2)], {"none_spanned": 1}),
+        ([(1, 1)], {"mixed": 1}),
+        # A hypothesis that wrote no explicit evidence is not a unit at all.
+        ([(0, 0), (1, 0)], {"all_spanned": 1}),
+    ],
+)
+def test_span_hypotheses_count_only_hypotheses_that_claimed_an_explicit_source(rows, expected):
+    from collections import Counter
+
+    from evaluate_routing import _span_hypotheses
+
+    result = {"evidence_census": [
+        {"hypothesis": index, "explicit_with_span": with_span,
+         "explicit_without_span": without_span, "inferred": 0}
+        for index, (with_span, without_span) in enumerate(rows)
+    ]}
+
+    assert dict(Counter(_span_hypotheses(result))) == expected
+
+
+def test_report_carries_one_evidence_census_row_per_attempt_and_hypothesis():
+    item = hypothesis()
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypotheses": [item]},
+        review={"request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypothesis": item},
+    )
+
+    report = run(provider)
+    census = report["results"][0]["evidence_census"]
+
+    # The fixture writes three quoted entries and two inferred ones. The review
+    # is a second writer, not a precondition, so it reports its own row: the
+    # contract under consideration would bind both passes.
+    row = {"hypothesis": 0, "explicit_with_span": 3, "explicit_without_span": 0, "inferred": 2}
+    assert census == [dict(row, attempt=1), dict(row, attempt=2)]
+    assert report["summary"]["evidence_span_hypotheses"] == {"all_spanned": 2}
+    assert report["summary"]["evidence_span_entries"] == {
+        "with_span": 6, "without_span": 0, "inferred": 4}
+
+
 def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
     """Third time the sanitiser hid a real fault; locations are not payloads."""
     from evaluate_routing import main

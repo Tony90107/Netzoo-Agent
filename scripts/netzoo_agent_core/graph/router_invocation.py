@@ -22,7 +22,7 @@ from ..contracts.outcomes import (
 )
 from ..interpretation.assembly import assemble_task_decision
 from ..interpretation.hydration import hydrate_router_decision
-from ..interpretation.outcome_validation import validate_outcome_hypotheses
+from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
     deterministic_router_fallback,
@@ -409,6 +409,9 @@ def _invoke_semantic_interpreter(
                     # Why each rejected quote failed, in closed vocabulary. The
                     # issue strings the next attempt sees are unchanged.
                     "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+                    "evidence_census": [
+                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+                    ],
                 },
             )
             last_error = ValueError(
@@ -434,6 +437,9 @@ def _invoke_semantic_interpreter(
                     "error_type": type(last_error).__name__,
                     "validation_issues": list(validation.issues),
                     "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+                    "evidence_census": [
+                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+                    ],
                 },
             )
             if validated is not None:
@@ -482,6 +488,9 @@ def _invoke_semantic_interpreter(
                         sorted({item.dimension for item in hypothesis.evidence})
                         for hypothesis in interpretation.outcome_hypotheses
                     ],
+                    "evidence_census": [
+                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+                    ],
                     "registry_match_status": preliminary_match.status,
                 },
             )
@@ -498,6 +507,9 @@ def _invoke_semantic_interpreter(
                 "evidence_dimensions": [
                     sorted({item.dimension for item in hypothesis.evidence})
                     for hypothesis in interpretation.outcome_hypotheses
+                ],
+                "evidence_census": [
+                    dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
                 ],
             },
         )

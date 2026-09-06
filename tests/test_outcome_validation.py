@@ -21,6 +21,7 @@ from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticReview,
 )
 from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
+    evidence_census,
     validate_outcome_hypotheses,
 )
 from netzoo_agent_core.llm import build_semantic_interpreter_prompt  # noqa: E402
@@ -581,3 +582,39 @@ def test_ungrounded_shapes_are_empty_when_every_explicit_quote_is_grounded():
 
     assert result.evidence_shapes == ()
     assert not [issue for issue in result.issues if "ungrounded_evidence" in issue]
+
+
+def test_evidence_census_counts_sourcing_before_any_grounding_check():
+    """The base rate the rejection record cannot supply, pinned by construction.
+
+    A quote the request does not contain still counts as a quote here: this
+    census answers whether the entry claimed a source it supplied, not whether
+    the claim held up.
+    """
+    hypothesis = _reverse_history_hypothesis([
+        evidence("operation", "infer", text_span="infer"),
+        evidence("artifact_type", "regulatory_network", text_span="absent from the request"),
+        evidence("granularity", "sample_specific"),
+        evidence("input_artifact", "expression_matrix", source="inferred"),
+    ])
+    empty = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="unknown", artifact_type="unknown", granularity="not_applicable",
+        ),
+        confidence=0.1,
+    )
+
+    census = evidence_census([hypothesis, empty])
+
+    assert census == (
+        {"hypothesis": 0, "explicit_with_span": 2, "explicit_without_span": 1, "inferred": 1},
+        {"hypothesis": 1, "explicit_with_span": 0, "explicit_without_span": 0, "inferred": 0},
+    )
+
+
+def test_evidence_census_treats_a_blank_span_as_no_span():
+    hypothesis = _reverse_history_hypothesis([
+        evidence("operation", "infer", text_span="   "),
+    ])
+
+    assert evidence_census([hypothesis])[0]["explicit_without_span"] == 1
