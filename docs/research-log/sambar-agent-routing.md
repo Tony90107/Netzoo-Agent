@@ -2851,3 +2851,63 @@ uniquely compatible typed outcome」），但**那道保護只在有可相容的
 新檔 `tests/test_historical_name_not_a_candidate.py` 9 項。
 離線：**1296 passed、3 failed（既有待決策項）、0 skipped**；ruff 與
 `git diff --check` 通過。**live 尚未執行**，Log 41 的第 3 項預測待下一輪全語料檢驗。
+
+## Log 42｜第四輪全語料當機並損失整輪付費呼叫；成因是既有的程式端界限，不是本輪變更
+
+日期／時區：2026-09-06，Asia/Taipei。**付費呼叫已花費但整輪報告遺失。**
+
+### 發生什麼事
+
+```
+Routing evaluation configuration error: ValidationError: hypothesis_actions:too_long
+exit=2   （沒有產生任何 JSON 報告）
+```
+
+`evaluate_routing` 在頂層攔截所有例外並回傳 2，因此**單一案例的執行期錯誤
+讓整輪 14 題的付費呼叫全部作廢**。
+
+### 成因（已離線重現，與 Log 41 的變更無關）
+
+`CapabilityMatch.hypothesis_actions` 的 `max_length` 是 **6**，但註冊的可執行
+capability 有 **12** 個。離線重現：
+
+```
+partially compatible with a fully unknown outcome: 12
+['run_panda','run_puma','run_lioness_panda','run_lioness_puma',
+ 'run_lioness_coexpression','run_condor','run_cobra','run_sambar',
+ 'run_dragon','run_otter','run_giraffe','run_bonobo']
+```
+
+**完全未解析的 outcome 與每一個 capability 都部分相容**，全部同分時
+`unique_top_actions` 有 12 項，超過界限即拋出 ValidationError。
+
+**與 Log 41 無關**：我只改了 `named_workflow_action`（用於
+`recover_registry_guidance` 與 `repair.py`），`named_registered_action` 與
+`match_outcome_hypotheses` 的 advisory 分支都未觸及。這是既有的潛在當機，
+本輪只是被模型輸出的變異觸發。第三輪沒觸發，僅此而已。
+
+### 修正
+
+界限改由 registry 推導（`_RUNNABLE_CAPABILITY_COUNT`），不再是寫死的數字，
+以免日後再度落後於註冊表。
+
+**這不是放寬 schema。** `CapabilityMatch` 的 docstring 寫明它是
+「Code-owned relationship between one requested outcome and the registry」——
+由 matcher 依 registry 建構，**不承載任何模型輸出**。而且行為是**恢復**而非新增：
+呼叫端只會把**唯一**候選升格，12 路平手照樣停在 ambiguous 並回一個釐清問題。
+
+新檔 `tests/test_wide_ambiguity_survives.py` 4 項，先釘住前提
+（未解析的 outcome 確實與全部 capability 相容），再釘住界限與行為，
+避免界限被對著一個虛構的前提測試。
+
+`CapabilityMatch` 的 schema digest 隨之更新並加註（`maxItems` 6 → 12，只有這一項變動）。
+
+### 尚未量測的鄰近風險（僅記錄）
+
+`matched_actions` 同樣是 `max_length=6`。目前的路徑只在 `len(...) == 1` 時由
+`hypothesis_actions` 指派，未觀察到溢出，**因此不動**——沒有觀察就修改屬臆測。
+
+### 代價
+
+Log 41 的第 3 項預測仍未驗證，需要重跑一輪全語料。
+離線：**1300 passed、3 failed（既有待決策項）、0 skipped**。

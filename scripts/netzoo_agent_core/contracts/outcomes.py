@@ -8,12 +8,22 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from workflow_registry import (
+    ACTION_DEFINITIONS,
     ActionName,
     ArtifactType,
     EntityType,
     Granularity,
     Operation,
     RecommendedAction,
+)
+
+# Every registered runnable capability can tie at once: an outcome that resolved
+# nothing is partially compatible with all of them. A live full-corpus round hit
+# exactly that and aborted with hypothesis_actions:too_long, losing the whole
+# run. Derive the bound from the registry so it cannot drift behind it again.
+_RUNNABLE_CAPABILITY_COUNT = sum(
+    1 for definition in ACTION_DEFINITIONS.values()
+    if definition.run and definition.output_capability is not None
 )
 
 
@@ -446,8 +456,11 @@ class CapabilityMatch(BaseModel):
     match_basis: MatchBasis = "semantic"
     rejected_methods: list[RejectedMethod] = Field(default_factory=list)
     matched_actions: list[ActionName] = Field(default_factory=list, max_length=6)
+    # Candidates behind an ambiguous match, not a recommendation. A wholly
+    # unresolved outcome legitimately lists every capability, and the caller
+    # already refuses to promote anything but a lone candidate.
     hypothesis_actions: list[RecommendedAction] = Field(
-        default_factory=list, max_length=6
+        default_factory=list, max_length=_RUNNABLE_CAPABILITY_COUNT
     )
     alternative_actions: list[RecommendedAction] = Field(
         default_factory=list, max_length=2
