@@ -458,6 +458,7 @@ def _tag_discriminated_action(
     hypotheses: Sequence[OutcomeHypothesis],
     candidates: Sequence[RecommendedAction],
     capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+    ignore_tags: frozenset[str] = frozenset(),
 ) -> RecommendedAction | None:
     """Break a tie with the registry tags the outcome declared, or return None.
 
@@ -479,7 +480,11 @@ def _tag_discriminated_action(
     Sixteen of sixteen tags in the live record were catalogue entries naming the
     expected tool, and the live criterion vetoes on any wrong recommendation.
     """
-    declared = {tag for item in hypotheses for tag in item.outcome.selection_tags}
+    # A tag the harness moved into the field is bookkeeping, not a choice the
+    # model made about the outcome, and a repair must never pick a tool.
+    declared = {
+        tag for item in hypotheses for tag in item.outcome.selection_tags
+    } - ignore_tags
     if not declared or len(candidates) < 2:
         return None
     outcomes = [item.outcome for item in hypotheses]
@@ -499,6 +504,7 @@ def match_outcome_hypotheses(
     ] = OUTPUT_CAPABILITIES,
     *,
     assumed_guidance: bool = False,
+    ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     issues = list(dict.fromkeys(
@@ -597,7 +603,7 @@ def match_outcome_hypotheses(
         ]
         unique_top_actions = list(dict.fromkeys(top_actions))
         discriminated = _tag_discriminated_action(
-            hypotheses, unique_top_actions, capabilities,
+            hypotheses, unique_top_actions, capabilities, ignore_tags,
         )
         if discriminated is not None:
             return CapabilityMatch(
@@ -746,6 +752,7 @@ def _match_semantic_request(
     hypotheses: Sequence[OutcomeHypothesis],
     *,
     request_mode: str = "unknown",
+    ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Match typed meaning, using explicit registry identifiers only as a fallback."""
     marker = re.search(
@@ -785,6 +792,7 @@ def _match_semantic_request(
         matching_hypotheses,
         OUTPUT_CAPABILITIES,
         assumed_guidance=request_mode != "execute",
+        ignore_tags=ignore_tags,
     )
     if match.status == "fallback" and match.match_basis == "partial_evidence":
         capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
@@ -870,10 +878,16 @@ def _match_semantic_request(
 
 
 def match_semantic_request(
-    task: str, hypotheses: Sequence[OutcomeHypothesis], *, request_mode: str = "unknown",
+    task: str,
+    hypotheses: Sequence[OutcomeHypothesis],
+    *,
+    request_mode: str = "unknown",
+    ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Carry rejected methods alongside the selected semantic or advisory path."""
-    match = _match_semantic_request(task, hypotheses, request_mode=request_mode)
+    match = _match_semantic_request(
+        task, hypotheses, request_mode=request_mode, ignore_tags=ignore_tags,
+    )
     if match.status == "exact" and any(outcome_consistency_issues(item.outcome) for item in hypotheses):
         match = CapabilityMatch(status="unsupported", mismatch_dimensions=["outcome_consistency"])
     inputs = sorted({artifact for item in hypotheses for artifact in item.outcome.input_artifacts})

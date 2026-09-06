@@ -112,3 +112,40 @@ def test_an_unsupported_tag_does_not_discriminate():
     result = match(TF_TASK, tags=["mirna_regulation"])
 
     assert result.matched_actions != ["run_lioness_puma"]
+
+
+def test_a_tag_the_harness_moved_does_not_pick_a_tool():
+    """A repair may not become a recommendation.
+
+    Syncing `selection_tags` from evidence removes the largest remaining
+    `conflicting_evidence` sub-family, but the matcher breaks ties with that
+    same field. A tag the model itself placed in the outcome is a choice it
+    made; one the harness moved there is bookkeeping, and the two must not have
+    the same authority.
+    """
+    hypothesis = OutcomeHypothesis.model_validate({
+        "outcome": {
+            "operation": "infer",
+            "input_artifacts": ["expression_matrix"],
+            "artifact_type": "regulatory_network",
+            "entity_types": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": ["mirna_regulation"],
+            "granularity": "sample_specific",
+        },
+        "confidence": 0.9,
+        "evidence": [],
+    })
+
+    chosen = match_semantic_request(
+        MIRNA_TASK, [hypothesis], request_mode="guidance",
+    )
+    ignored = match_semantic_request(
+        MIRNA_TASK, [hypothesis], request_mode="guidance",
+        ignore_tags=frozenset({"mirna_regulation"}),
+    )
+
+    assert chosen.matched_actions == ["run_lioness_puma"]
+    assert ignored.status == "ambiguous"
+    assert ignored.matched_actions == []

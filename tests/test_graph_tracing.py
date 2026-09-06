@@ -576,7 +576,10 @@ def test_semantic_review_receives_registry_ambiguity_without_textual_matching(
     )
     task = "if i want to get sample specific mi-RNA regulator network,what tools do i need?"
 
-    interpretation, _, _, error = router_invocation._invoke_semantic_interpreter(
+    # The call also reports which selection tags the harness moved into the
+    # outcome, so a repair cannot pick a tool. Unused here: this test is about
+    # what the review is told, not about matching.
+    interpretation, _, _, error, _ = router_invocation._invoke_semantic_interpreter(
         context,
         {"budget_warnings": []},
         task,
