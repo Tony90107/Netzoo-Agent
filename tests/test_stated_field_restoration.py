@@ -18,8 +18,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
-from netzoo_agent_core.interpretation.input_restoration import (  # noqa: E402
-    restore_confirmed_inputs,
+from netzoo_agent_core.interpretation.stated_field_restoration import (  # noqa: E402
+    restore_stated_fields,
 )
 from netzoo_agent_core.interpretation.request_integrity import (  # noqa: E402
     request_integrity_issues,
@@ -56,18 +56,18 @@ def interpretation(*, cites="expression_matrix", **outcome):
 
 
 def test_a_witnessed_current_input_is_restored_and_reported():
-    result, restored = restore_confirmed_inputs(CURRENT, interpretation())
+    result, restored = restore_stated_fields(CURRENT, interpretation())
 
     assert result.outcome_hypotheses[0].outcome.input_artifacts == ["expression_matrix"]
-    assert [item["artifact"] for item in restored] == ["expression_matrix"]
+    assert [item["value"] for item in restored] == ["expression_matrix"]
+    assert restored[0]["field"] == "input_artifacts"
     # The witness's own span is carried, so the record says what it read.
-    assert restored[0]["text_span"]
-    assert restored[0]["dropped_for_bound"] is False
+    assert restored[0]["witnessed_span"]
 
 
 def test_restoring_removes_the_issue_it_was_written_for():
     before = request_integrity_issues(CURRENT, interpretation().outcome_hypotheses[0].outcome)
-    result, _ = restore_confirmed_inputs(CURRENT, interpretation())
+    result, _ = restore_stated_fields(CURRENT, interpretation())
     after = request_integrity_issues(CURRENT, result.outcome_hypotheses[0].outcome)
 
     assert "missing_current_input:expression_matrix" in before
@@ -81,7 +81,7 @@ def test_a_hypothesis_that_never_cited_the_input_is_not_repaired():
     model that never read the request would be handed the answer, and fifteen
     tests written to guard exactly that would be silently rewritten.
     """
-    result, restored = restore_confirmed_inputs(CURRENT, interpretation(cites=None))
+    result, restored = restore_stated_fields(CURRENT, interpretation(cites=None))
 
     assert result.outcome_hypotheses[0].outcome.input_artifacts == []
     assert restored == []
@@ -92,7 +92,7 @@ def test_a_hypothesis_that_never_cited_the_input_is_not_repaired():
 
 def test_a_cited_input_the_request_does_not_witness_is_not_restored():
     """The other direction: the model's word alone is not enough either."""
-    result, restored = restore_confirmed_inputs(
+    result, restored = restore_stated_fields(
         HISTORICAL, interpretation(cites="expression_matrix"),
     )
 
@@ -102,7 +102,7 @@ def test_a_cited_input_the_request_does_not_witness_is_not_restored():
 
 def test_a_historical_mention_is_never_restored():
     """Log 41's failure class cannot arrive here: past clauses are not current."""
-    result, restored = restore_confirmed_inputs(
+    result, restored = restore_stated_fields(
         HISTORICAL, interpretation(cites="mutation_matrix"),
     )
 
@@ -113,38 +113,122 @@ def test_a_historical_mention_is_never_restored():
 def test_an_artifact_the_outcome_already_names_is_not_duplicated():
     source = interpretation(input_artifacts=["expression_matrix"])
 
-    result, restored = restore_confirmed_inputs(CURRENT, source)
+    result, restored = restore_stated_fields(CURRENT, source)
 
     assert result.outcome_hypotheses[0].outcome.input_artifacts == ["expression_matrix"]
     assert restored == []
 
 
 def test_unknown_is_never_added():
-    result, _ = restore_confirmed_inputs(
+    result, _ = restore_stated_fields(
         "Which workflow should I use?", interpretation(cites="unknown"),
     )
 
     assert result.outcome_hypotheses[0].outcome.input_artifacts == []
 
 
-def test_a_full_input_list_is_reported_rather_than_overflowed():
-    """The field is bounded at four; an overflow is recorded, never raised."""
+def test_a_full_input_list_is_left_alone_rather_than_overflowed():
+    """The field is bounded at four; re-validation refuses, nothing raises."""
     full = interpretation(input_artifacts=[
         "regulatory_network", "coexpression_network", "multi_omic_network",
         "community_assignment",
     ])
 
-    result, restored = restore_confirmed_inputs(CURRENT, full)
+    result, restored = restore_stated_fields(CURRENT, full)
 
     assert len(result.outcome_hypotheses[0].outcome.input_artifacts) == 4
-    assert restored == [] or all(item["dropped_for_bound"] for item in restored)
+    assert restored == []
 
 
 def test_nothing_else_about_the_outcome_changes():
-    result, _ = restore_confirmed_inputs(CURRENT, interpretation())
+    result, _ = restore_stated_fields(CURRENT, interpretation())
     before = interpretation().outcome_hypotheses[0].outcome.model_dump()
     after = result.outcome_hypotheses[0].outcome.model_dump()
 
     assert {k: v for k, v in after.items() if k != "input_artifacts"} == {
         k: v for k, v in before.items() if k != "input_artifacts"
     }
+
+
+def role_interpretation(evidence, **outcome):
+    body = {
+        "operation": "infer",
+        "input_artifacts": ["expression_matrix"],
+        "artifact_type": "regulatory_network",
+        "granularity": "sample_specific",
+        **outcome,
+    }
+    return SemanticInterpretation.model_validate({
+        "request_mode": "guidance",
+        "semantic_goal": "Infer per-patient networks",
+        "outcome_hypotheses": [{
+            "outcome": body,
+            "confidence": 0.9,
+            "evidence": [
+                {"dimension": d, "value": v, "source": "inferred",
+                 "rationale": "Stated by the request."}
+                for d, v in evidence
+            ],
+        }],
+    })
+
+
+def test_a_role_stated_in_evidence_is_moved_into_its_field():
+    """The gpt-4o shape: 22 occurrences of a role cited but not carried."""
+    source = role_interpretation(
+        [("regulator_type", "mirna"), ("target_type", "gene")],
+        entity_types=["mirna", "gene"],
+    )
+
+    result, restored = restore_stated_fields(CURRENT, source)
+    outcome = result.outcome_hypotheses[0].outcome
+
+    assert outcome.regulator_types == ["mirna"]
+    assert outcome.target_types == ["gene"]
+    assert {item["field"] for item in restored} == {"regulator_types", "target_types"}
+    # Roles have no independent witness, so none is claimed for them.
+    assert all(item["witnessed_span"] is None for item in restored)
+
+
+def test_a_role_no_evidence_states_is_never_invented():
+    source = role_interpretation([("target_type", "gene")], entity_types=["gene"])
+
+    result, _ = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.regulator_types == []
+
+
+def test_a_move_that_would_create_a_new_consistency_issue_is_reverted():
+    """`role_entity` fires when a role is not among the declared entity types.
+
+    Trading `conflicting_evidence` for `role_entity` repairs nothing, so the
+    move is dropped rather than applied.
+    """
+    source = role_interpretation(
+        [("regulator_type", "tf")], entity_types=["gene"],
+    )
+
+    result, restored = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.regulator_types == []
+    assert restored == []
+
+
+def test_a_value_outside_the_closed_vocabulary_cannot_be_written():
+    """Re-validation, not model_copy: an invalid literal is refused structurally."""
+    source = role_interpretation(
+        [("regulator_type", "protein")], entity_types=["gene", "protein"],
+    )
+
+    result, restored = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.regulator_types == []
+    assert restored == []
+
+
+def test_unknown_is_never_moved_into_a_role_field():
+    source = role_interpretation([("regulator_type", "unknown")])
+
+    result, _ = restore_stated_fields(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.regulator_types == []
