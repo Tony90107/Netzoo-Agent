@@ -1,0 +1,150 @@
+"""The narrow, authorized case where the deterministic layer writes a field.
+
+`missing_current_input` was the largest single issue in the live record on both
+models -- 28 occurrences on one round, 27 on another -- and it names an artifact
+the request's own witnesses located and scoped as current while the outcome
+omitted it. The model usually knows: it cites the same artifact in evidence and
+leaves the field empty, which then also raises `conflicting_evidence`.
+
+The value restored here comes from those witnesses, not from the model's free
+text. The validator already trusts them enough to waive the evidence
+requirement for a confirmed input, and it is the same call that raises the issue
+being removed. Everything else is unchanged: no role field is written, nothing
+is removed, and the merged outcome faces the identical strict validation.
+"""
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+
+from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
+from netzoo_agent_core.interpretation.input_restoration import (  # noqa: E402
+    restore_confirmed_inputs,
+)
+from netzoo_agent_core.interpretation.request_integrity import (  # noqa: E402
+    request_integrity_issues,
+)
+
+CURRENT = "Now I have a gene expression matrix, TF motif priors and PPI data. Which workflow infers a per-patient regulatory network?"
+HISTORICAL = "Previously I used a somatic mutation matrix. That analysis is finished. Which workflow infers a per-patient regulatory network?"
+
+
+def interpretation(*, cites="expression_matrix", **outcome):
+    """A hypothesis that cites an input in evidence but may omit the field."""
+    body = {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "granularity": "sample_specific",
+        **outcome,
+    }
+    evidence = [
+        {
+            "dimension": "input_artifact",
+            "value": cites,
+            "source": "inferred",
+            "rationale": "The request supplies this dataset.",
+        }
+    ] if cites else []
+    return SemanticInterpretation.model_validate({
+        "request_mode": "guidance",
+        "semantic_goal": "Infer per-patient networks",
+        "outcome_hypotheses": [
+            {"outcome": body, "confidence": 0.9, "evidence": evidence}
+        ],
+    })
+
+
+def test_a_witnessed_current_input_is_restored_and_reported():
+    result, restored = restore_confirmed_inputs(CURRENT, interpretation())
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == ["expression_matrix"]
+    assert [item["artifact"] for item in restored] == ["expression_matrix"]
+    # The witness's own span is carried, so the record says what it read.
+    assert restored[0]["text_span"]
+    assert restored[0]["dropped_for_bound"] is False
+
+
+def test_restoring_removes_the_issue_it_was_written_for():
+    before = request_integrity_issues(CURRENT, interpretation().outcome_hypotheses[0].outcome)
+    result, _ = restore_confirmed_inputs(CURRENT, interpretation())
+    after = request_integrity_issues(CURRENT, result.outcome_hypotheses[0].outcome)
+
+    assert "missing_current_input:expression_matrix" in before
+    assert not [issue for issue in after if issue.startswith("missing_current_input")]
+
+
+def test_a_hypothesis_that_never_cited_the_input_is_not_repaired():
+    """The invariant this must not remove: omitting a stated input still fails.
+
+    Two independent sources have to agree. The witness alone is not enough, or a
+    model that never read the request would be handed the answer, and fifteen
+    tests written to guard exactly that would be silently rewritten.
+    """
+    result, restored = restore_confirmed_inputs(CURRENT, interpretation(cites=None))
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == []
+    assert restored == []
+    assert "missing_current_input:expression_matrix" in request_integrity_issues(
+        CURRENT, result.outcome_hypotheses[0].outcome,
+    )
+
+
+def test_a_cited_input_the_request_does_not_witness_is_not_restored():
+    """The other direction: the model's word alone is not enough either."""
+    result, restored = restore_confirmed_inputs(
+        HISTORICAL, interpretation(cites="expression_matrix"),
+    )
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == []
+    assert restored == []
+
+
+def test_a_historical_mention_is_never_restored():
+    """Log 41's failure class cannot arrive here: past clauses are not current."""
+    result, restored = restore_confirmed_inputs(
+        HISTORICAL, interpretation(cites="mutation_matrix"),
+    )
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == []
+    assert restored == []
+
+
+def test_an_artifact_the_outcome_already_names_is_not_duplicated():
+    source = interpretation(input_artifacts=["expression_matrix"])
+
+    result, restored = restore_confirmed_inputs(CURRENT, source)
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == ["expression_matrix"]
+    assert restored == []
+
+
+def test_unknown_is_never_added():
+    result, _ = restore_confirmed_inputs(
+        "Which workflow should I use?", interpretation(cites="unknown"),
+    )
+
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == []
+
+
+def test_a_full_input_list_is_reported_rather_than_overflowed():
+    """The field is bounded at four; an overflow is recorded, never raised."""
+    full = interpretation(input_artifacts=[
+        "regulatory_network", "coexpression_network", "multi_omic_network",
+        "community_assignment",
+    ])
+
+    result, restored = restore_confirmed_inputs(CURRENT, full)
+
+    assert len(result.outcome_hypotheses[0].outcome.input_artifacts) == 4
+    assert restored == [] or all(item["dropped_for_bound"] for item in restored)
+
+
+def test_nothing_else_about_the_outcome_changes():
+    result, _ = restore_confirmed_inputs(CURRENT, interpretation())
+    before = interpretation().outcome_hypotheses[0].outcome.model_dump()
+    after = result.outcome_hypotheses[0].outcome.model_dump()
+
+    assert {k: v for k, v in after.items() if k != "input_artifacts"} == {
+        k: v for k, v in before.items() if k != "input_artifacts"
+    }

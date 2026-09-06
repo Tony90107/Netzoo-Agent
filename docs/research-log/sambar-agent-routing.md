@@ -4287,3 +4287,116 @@ Log 58 用來否決的錯 tag 至今仍**只在合成測試中存在過**。
 以免未來有人引用 r11 的 34/42 或 19/42 來支持它。
 
 離線：**1333 passed、1 xfailed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 62｜事前宣告：由**原文見證**補回目前輸入，範圍、理由與判準
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在實作之前寫入,實作與量測後不得修改。**
+**這是使用者明確授權的一次例外**（交接第五節：程式寫入 outcome 欄位需明確授權）。
+
+### 授權的範圍（刻意很窄）
+
+只補 `outcome.input_artifacts`，只補 `confirmed_current_inputs(user_task)`
+判定為 `current`、而 outcome 未列出的 artifact。**不補 `unknown`**，
+不補角色欄位（`regulator_type`／`target_type` 沒有獨立見證，仍停在交接第六節）。
+補入後走**完全相同**的 strict validation，不放寬任何檢查。
+每次補入記入 `routing.outcome_input_restored` 事件（artifact 與見證的原文片段），不靜默。
+
+### 為什麼這不是「填入模型沒寫的值」
+
+1. 來源不是模型的自由文字，是 `input_mentions(task)` 這組**原文詞彙見證**——
+   而系統**已經授權信任它到可以豁免證據要求的程度**（Log 26／27，
+   `_required_evidence(outcome, confirmed_inputs)`，本研究唯二有雙向預測驗證的成果）。
+2. `missing_current_input:X` 這條 issue **本身就是該見證的確認**：
+   它之所以被提出，正是因為見證在原文中定位到 X 且判定為 `current`。
+3. Log 41 的失敗類（歷史當成目前輸入）**由建構排除**：歷史子句產生的是
+   `noncurrent_input`，不是 `current`，兩者方向相反。
+4. `semantic_repair._current_span()` 早已把同一個見證的片段餵給第二次呼叫當模板；
+   差別只在由「請模型自己補」改為「程式補，然後走同一套驗證」。
+
+### 明確承認的損失
+
+`input_artifact` 這個維度上的 `missing_current_input` 與
+`conflicting_evidence:input_artifact` 兩項交叉檢查**將不再能偵測到任何東西**。
+為保留可觀測性，報告新增補入次數，使「模型自己填對的比率」仍可量。
+
+### 樣本量估計（Log 44 教訓一，先估再宣告）
+
+基線 r9（mini，42 次試驗）：`missing_current_input` 28 次、`noncurrent_input` 3 次、
+`unsupported` 0、status `None` 12/42、工具正確 27/42。
+**其中 8/42 的試驗，其每一次嘗試的 issue 都只由 `missing_current_input` 構成**
+（另有 3 次是部分），這 8 次是機制上會直接翻轉的母體。
+
+### 判準
+
+- **M（機制，決定性）**：候選輪的 `missing_current_input` 出現次數 **= 0**，
+  且 `routing.outcome_input_restored` 的補入次數 **> 0**。
+  這一項近乎恆真，作用是**驗證這段程式確實跑在 live 路徑上**，不作為成效證據。
+- **G（護欄，否決條件）**：推薦錯誤工具 = 0、forbidden = 0、`unsafe_execution_count` = 0、
+  **`noncurrent_input` ≤ 3**（不得高於基線）、**`unsupported` = 0**。
+  任一違反 → **撤回**。後兩項是本變更特有的風險：多加一個輸入可能讓
+  原本相容的能力變成不相容。
+- **O（成效，事前即承認是弱判準）**：status `None` 的試驗由 12/42 降到 **≤ 7/42**。
+  依 Log 50，單輪 42 次試驗對此量級效果的分辨力有限，
+  **O 不成立時不得單獨據以撤回，但必須據實記錄。**
+- **R（僅記錄）**：工具正確與 `passed` 對 r9 的 27/42 與 7/42，附 Fisher p。**不得據此宣稱成功。**
+
+### 執行組態
+
+候選輪使用 **`gpt-4o-mini`**（使用者已預先授權），對照基線為 r9，
+因為 `missing_current_input` 在 mini（28 次）與 gpt-4o（27 次）幾乎相同，
+mini 是有效且便宜的測試組態。
+
+## Log 63｜Log 62 的設計在**量測之前**修正：改為兩個來源都同意才補；並更正判準與測試組態
+
+日期／時區：2026-09-06，Asia/Taipei。**離線,付費呼叫 0 次,尚未執行任何候選輪。**
+
+### 一、第一版實作拆掉了一條刻意設計的不變量，被既有測試擋下
+
+Log 62 宣告的來源是「**只**用原文見證」。照此實作後，離線 gate 出現
+**15 個既有測試失敗**（另 3 個是既有待決策項），分布在四個檔案，其中一個名為
+`test_repeated_omission_of_explicit_current_input_cannot_pass`。
+
+**這不是「前提被新契約取代」，這是我把一條有名字的不變量拆掉了**：
+「重複省略原文明確陳述的目前輸入，不得通過」。
+只用見證等於**不論模型有沒有讀請求，程式都把答案遞給它**。
+
+### 二、修正：兩個獨立來源都同意才補
+
+使用者原話是「**自己在 evidence 裡寫過的值**補進對應的 outcome 欄位」。
+我第一版把它換成了見證來源，**方向比使用者要求的更寬**。改回兩者皆須成立：
+
+1. `input_mentions(task)` 在**原文**定位到該 artifact 且判定為 `current`；**且**
+2. **該 hypothesis 自己的 evidence** 以 `dimension="input_artifact"` 引用了它。
+
+於是「讀了但填錯地方」被修復，「根本沒讀」照舊失敗。
+修正後 **15 個既有測試全部回綠，沒有改寫或刪除任何一個**。
+新測試同時釘住兩個方向：只有見證不補、只有模型自稱也不補。
+
+### 三、這使得測試組態必須改變（且省下一輪）
+
+規則的生效條件與 `conflicting_evidence:input_artifact=<真實 artifact>` 同形。
+離線盤點該訊號：
+
+| 輪次 | 可能生效的試驗數 |
+| --- | --- |
+| r9（mini） | **1 / 42** |
+| r11（gpt-4o） | **15 / 42** |
+
+**mini 幾乎不會出現「引用了卻沒填欄位」這個形狀**（它的失敗形狀是整份缺 evidence）。
+因此 Log 62 宣告的「候選輪使用 mini」**在此作廢**：那會是又一次無資訊量的付費輪。
+與 Log 59 同一類的判斷，且同樣在花錢之前做出。
+
+### 四、修正後的判準（基線改為 r11，唯一變數是本變更）
+
+- **M（機制）**：`routing.outcome_input_restored` 補入次數 **> 0**，
+  且 `conflicting_evidence:input_artifact=<真實 artifact>` 由 **15** 明顯下降。
+- **G（護欄，否決條件）**：推薦錯誤 = 0、forbidden = 0、`unsafe_execution_count` = 0、
+  **`noncurrent_input` ≤ 1**、**`unsupported` ≤ 1**（皆為 r11 基線）。任一違反 → 撤回。
+- **O（成效，事前承認為弱判準）**：status `None` 由 **8/42** 降到 **≤ 5/42**。
+  依 Log 50，此樣本量分辨力有限，**O 不成立不得單獨據以撤回，但須據實記錄**。
+- **R（僅記錄）**：工具正確對 34/42、`passed` 對 19/42，附 Fisher p。**不得據此宣稱成功。**
+
+### 五、狀態
+
+程式已實作、離線 **1342 passed、1 xfailed、3 failed（既有待決策項）**，
+未改寫任何既有測試。**候選輪需 gpt-4o，依使用者指示須先取得同意，故尚未執行。**

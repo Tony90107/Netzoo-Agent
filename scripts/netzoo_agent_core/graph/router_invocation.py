@@ -22,6 +22,7 @@ from ..contracts.outcomes import (
 )
 from ..interpretation.assembly import assemble_task_decision
 from ..interpretation.hydration import hydrate_router_decision
+from ..interpretation.input_restoration import restore_confirmed_inputs
 from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
@@ -405,6 +406,22 @@ def _invoke_semantic_interpreter(
                 )
             return None, usage, budget_warnings, error
 
+        # The one authorized place the deterministic layer writes an outcome
+        # field. The value comes from the request's own witnesses -- already
+        # trusted enough to waive the evidence requirement, and the source of
+        # the `missing_current_input` issue this removes -- not from the model's
+        # free text. Validation below is unchanged.
+        interpretation, restored_inputs = restore_confirmed_inputs(
+            user_task, interpretation,
+        )
+        if restored_inputs:
+            record_event(
+                context,
+                state,
+                "routing.outcome_input_restored",
+                "classify",
+                {"attempt": attempt + 1, "restored": restored_inputs},
+            )
         validation = validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,
