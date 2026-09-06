@@ -14,7 +14,7 @@ from evaluate_routing import (  # noqa: E402
 )
 from netzoo_agent_core.contracts import IntentDecision  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
-    SemanticInterpretation, SemanticReview,
+    SemanticInterpretation, SemanticPatch, SemanticReview,
 )
 
 
@@ -74,6 +74,11 @@ class FixtureProvider:
                 "mode": "answer", "confidence": 0.95, "reason": "Guidance only.",
             },
         }
+        # 2026-09-06: the second semantic call now asks for a SemanticPatch. These
+        # scripted transports keep answering with the complete review shape, which
+        # production still accepts, so every existing assertion keeps testing what
+        # it named. tests/test_semantic_patch_repair.py scripts the patch shape.
+        self.responses[SemanticPatch] = self.responses[SemanticReview]
         self.calls = []
 
     def with_structured_output(self, schema, **kwargs):
@@ -321,7 +326,11 @@ def test_repeated_semantic_drift_invalidates_exact_even_when_candidate_stays_cor
                     result = copy.deepcopy(base.invoke(messages))
                     if schema is SemanticInterpretation:
                         provider.trials += 1
-                    if schema is SemanticReview:
+                    # 2026-09-06: the second call's adapter is bound to
+                    # SemanticPatch, while this transport still answers with the
+                    # review shape production also accepts. Drift is injected on
+                    # whichever schema that second call asks for.
+                    if schema in {SemanticReview, SemanticPatch}:
                         if provider.trials % 2 == 0:
                             item = result["outcome_hypothesis"]
                             item["outcome"]["artifact_type"] = "sample_distance_matrix"

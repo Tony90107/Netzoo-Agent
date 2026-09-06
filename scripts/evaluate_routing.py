@@ -22,7 +22,7 @@ from netzoo_agent_core.contracts import (
     DEFAULT_ROUTER_MAX_TOKENS, DEFAULT_ROUTER_MODEL, DEFAULT_TASK_TOKEN_BUDGET,
     HumanMessage, IntentDecision, ROUTER_CONTEXT_MAX_CHARS, WorkflowPlan,
 )
-from netzoo_agent_core.contracts.outcomes import SemanticInterpretation, SemanticReview
+from netzoo_agent_core.contracts.outcomes import SemanticInterpretation, SemanticPatch, SemanticReview
 from netzoo_agent_core.graph.context import _GraphContext
 from netzoo_agent_core.graph.prompts import build_graph_prompts
 from netzoo_agent_core.graph.router_invocation import invoke_router
@@ -231,6 +231,20 @@ def _score(case, result, events):
         "action": decision.action, "should_execute": decision.should_execute,
         "call_roles": roles,
         "call_statuses": [call.status for call in result.usage.calls],
+        # Which shape the review actually returned, and what it touched. Without
+        # this a round cannot tell whether the field-scoped repair was exercised
+        # at all, only whether the run happened to pass.
+        "review_repair_shape": next(
+            ("patch" for event in events
+             if event["type"] == "routing.semantic_patch_applied"),
+            "review" if repair_attempted else None,
+        ),
+        "review_patch": next(
+            ({key: event["payload"][key] for key in
+              ("changed_fields", "evidence_removed", "evidence_added", "evidence_retired_as_stale")}
+             for event in events if event["type"] == "routing.semantic_patch_applied"),
+            None,
+        ),
         "total_tokens": result.usage.total_tokens,
     }
 
@@ -287,6 +301,7 @@ def evaluate(
         project_policy=policy, recorder=recorder, price_catalog=PriceCatalog.from_environment(),
         semantic_interpreter=provider.with_structured_output(SemanticInterpretation, method="function_calling", include_raw=True),
         semantic_reviewer=provider.with_structured_output(SemanticReview, method="function_calling", include_raw=True),
+        semantic_patcher=provider.with_structured_output(SemanticPatch, method="function_calling", include_raw=True),
         intent_router=provider.with_structured_output(IntentDecision, method="function_calling", include_raw=False),
         input_content_mapper=None, response_llm=None,
         semantic_model_name=model_name, router_model_name=model_name, response_model_name=model_name,
@@ -327,7 +342,7 @@ def evaluate(
                 "reviewer": [str(message.content) for message in build_semantic_reviewer_messages(
                     prompts.semantic, "<evaluation prompt>", None, (),
                 )],
-                "schemas": [schema.model_json_schema() for schema in (SemanticInterpretation, SemanticReview, IntentDecision)],
+                "schemas": [schema.model_json_schema() for schema in (SemanticInterpretation, SemanticReview, SemanticPatch, IntentDecision)],
             }),
             "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model",
         },
@@ -341,6 +356,23 @@ def evaluate(
             "answer_failure_count": sum(bool(item["answer_errors"]) for item in results),
             "interaction_failure_count": sum(bool(item.get("interaction_errors")) for item in results),
             "review_repair_attempts": repair_trials,
+            "review_repair_shapes": dict(Counter(
+                item["review_repair_shape"] for item in results
+                if item["review_repair_shape"] is not None
+            )),
+            # The falsification target for the field-scoped repair: schema errors
+            # the review introduced that the first attempt did not have.
+            "review_introduced_schema_issues": sum(
+                len({
+                    issue for entry in item["diagnostic_details"]
+                    if entry.get("attempt") == 2 for issue in entry["issues"]
+                    if issue.startswith("schema_validation:")
+                } - {
+                    issue for entry in item["diagnostic_details"]
+                    if entry.get("attempt") == 1 for issue in entry["issues"]
+                })
+                for item in results
+            ),
             "review_repair_validation_rate": sum(item["review_repair_validated"] for item in results) / repair_trials if repair_trials else None,
             "review_repair_rate": sum(item["review_repair_correct"] for item in results) / repair_trials if repair_trials else None,
             "fallback_count": sum(item["status"] == "fallback" for item in results),
@@ -366,7 +398,7 @@ def main(argv=None) -> int:
     parser.add_argument("--case", action="append", default=[], help="Select IDs (repeatable).")
     parser.add_argument("--live", action="store_true", help="Explicitly authorize paid provider calls for the selected public prompts.")
     parser.add_argument("--repair-replay", action="store_true", help="Inject reconstructed observed first-pass errors; evaluate reviewer repair, not raw-prompt accuracy.")
-    parser.add_argument("--repair-replay-suite", choices=("cross-field", "missing-required"),
+    parser.add_argument("--repair-replay-suite", choices=("cross-field", "missing-required", "missing-input"),
                         help="Observed failure batch; requires --repair-replay (default: cross-field).")
     parser.add_argument("--model", default=DEFAULT_ROUTER_MODEL)
     parser.add_argument("--repeat", type=int, choices=range(1, 6), default=1)

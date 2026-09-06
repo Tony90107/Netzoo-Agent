@@ -15,7 +15,7 @@ from ..contracts import (
     StateGraph,
 )
 from ..llm import build_llm, validate_response_model, validate_router_model
-from ..contracts.outcomes import SemanticInterpretation, SemanticReview
+from ..contracts.outcomes import SemanticInterpretation, SemanticPatch, SemanticReview
 from ..memory import EpisodeStore, UserProfileStore
 from ..policy import ProjectPolicyLoader
 from ..pricing import PriceCatalog
@@ -86,6 +86,11 @@ def build_graph(
         method="function_calling",
         include_raw=True,
     )
+    semantic_patcher = semantic_llm.with_structured_output(
+        SemanticPatch,
+        method="function_calling",
+        include_raw=True,
+    )
     intent_router = router_llm.with_structured_output(
         IntentDecision,
         method="function_calling",
@@ -105,6 +110,7 @@ def build_graph(
         price_catalog=price_catalog,
         semantic_interpreter=semantic_interpreter,
         semantic_reviewer=semantic_reviewer,
+        semantic_patcher=semantic_patcher,
         intent_router=intent_router,
         input_content_mapper=input_content_mapper,
         response_llm=response_llm,

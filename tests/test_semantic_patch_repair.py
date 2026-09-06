@@ -1,0 +1,233 @@
+"""The review repairs named fields; it no longer retypes the whole structure.
+
+Across 83 attempt-1/attempt-2 pairs in the live record the review introduced an
+issue absent from attempt 1 in 71 of them. Twenty-two of those new issues were
+`schema_validation` -- a missing `evidence.N.rationale`, a non-literal in
+`input_artifacts` -- against 2 such issues it fixed. A schema error can never be
+the consequence of a correct semantic repair, only of re-emitting a structure
+that was already well formed, and the repair message had already been given the
+permitted literals and the item type without effect.
+
+So the review is asked for a delta. What it omits is carried forward from the
+first pass verbatim; what it names is changed. Nothing is invented, nothing is
+relaxed, and the merged interpretation faces the identical validator.
+"""
+from copy import deepcopy
+from pathlib import Path
+import sys
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+
+from netzoo_agent_core.contracts import IntentDecision  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
+    SemanticInterpretation, SemanticPatch,
+)
+from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
+    validate_outcome_hypotheses,
+)
+from netzoo_agent_core.interpretation.semantic_patch import apply_semantic_patch  # noqa: E402
+
+from evaluate_routing import DEFAULT_SCENARIOS, evaluate, load_scenarios  # noqa: E402
+from test_routing_evaluation import hypothesis  # noqa: E402
+
+
+def q1():
+    return next(case for case in load_scenarios(DEFAULT_SCENARIOS) if case.id == "original-q1")
+
+
+def grounded_item():
+    item = hypothesis()
+    for evidence in item["evidence"]:
+        evidence.update(source="inferred", text_span=None)
+    return item
+
+
+def proposal_of(item) -> SemanticInterpretation:
+    return SemanticInterpretation.model_validate({
+        "request_mode": "guidance",
+        "semantic_goal": "Subtype patients",
+        "outcome_hypotheses": [deepcopy(item)],
+    })
+
+
+class PatchProvider:
+    """Scripted transport whose second semantic reply is a patch, not a rewrite."""
+
+    def __init__(self, first, patch):
+        self.first, self.patch = first, patch
+        self.schemas = []
+
+    def with_structured_output(self, schema, **_kwargs):
+        provider = self
+
+        class Adapter:
+            def invoke(self, _messages):
+                provider.schemas.append(schema.__name__)
+                if schema is IntentDecision:
+                    return {"mode": "answer", "confidence": 0.95, "reason": "Guidance only."}
+                if schema is SemanticInterpretation:
+                    return {"request_mode": "guidance", "semantic_goal": "Subtype patients",
+                            "outcome_hypotheses": [deepcopy(provider.first)]}
+                return deepcopy(provider.patch)
+
+        return Adapter()
+
+
+def missing_input_item():
+    """The most common live first-pass defect: the current input is not listed."""
+    item = grounded_item()
+    item["outcome"]["input_artifacts"] = []
+    item["evidence"] = [e for e in item["evidence"] if e["dimension"] != "input_artifact"]
+    return item
+
+
+def test_the_second_semantic_call_asks_for_a_patch_when_the_first_pass_parsed():
+    provider = PatchProvider(missing_input_item(), {"outcome": {"input_artifacts": ["mutation_matrix"]}})
+
+    row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
+
+    assert provider.schemas == ["SemanticInterpretation", "SemanticPatch", "IntentDecision"]
+    assert row["status"] == "exact"
+    assert row["outcome"]["input_artifacts"] == ["mutation_matrix"]
+
+
+def test_fields_the_patch_does_not_name_survive_verbatim():
+    base = grounded_item()
+    proposal = proposal_of(missing_input_item())
+    patch = SemanticPatch.model_validate({"outcome": {"input_artifacts": ["mutation_matrix"]}})
+
+    merged, retired = apply_semantic_patch(proposal, patch)
+    outcome = merged.outcome_hypotheses[0].outcome
+
+    assert outcome.input_artifacts == ["mutation_matrix"]
+    assert outcome.artifact_type == base["outcome"]["artifact_type"]
+    assert outcome.operation == base["outcome"]["operation"]
+    assert outcome.granularity == base["outcome"]["granularity"]
+    assert merged.semantic_goal == proposal.semantic_goal
+    assert retired == []
+
+
+def test_an_empty_patch_endorses_the_first_pass_and_is_still_judged_by_it():
+    """Omission means "this was right", so a wrong first pass stays wrong."""
+    proposal = proposal_of(missing_input_item())
+
+    merged, _ = apply_semantic_patch(proposal, SemanticPatch())
+    result = validate_outcome_hypotheses(q1().prompt, merged.outcome_hypotheses)
+
+    assert merged.outcome_hypotheses[0].outcome == proposal.outcome_hypotheses[0].outcome
+    assert not result.valid
+    assert any("missing_current_input:mutation_matrix" in issue for issue in result.issues)
+
+
+def test_evidence_the_patch_does_not_name_is_kept_as_written():
+    proposal = proposal_of(grounded_item())
+    patch = SemanticPatch.model_validate({"semantic_goal": "Cluster the cohort"})
+
+    merged, _ = apply_semantic_patch(proposal, patch)
+
+    assert merged.outcome_hypotheses[0].evidence == proposal.outcome_hypotheses[0].evidence
+    assert merged.semantic_goal == "Cluster the cohort"
+
+
+def test_a_withdrawn_evidence_entry_is_removed_and_a_replacement_is_added():
+    proposal = proposal_of(grounded_item())
+    original = proposal.outcome_hypotheses[0].evidence[0]
+    patch = SemanticPatch.model_validate({
+        "evidence_removals": [{"dimension": original.dimension, "value": original.value}],
+        "evidence_additions": [{
+            "dimension": original.dimension, "value": original.value,
+            "source": "inferred", "rationale": "Restated from the scientific goal.",
+        }],
+    })
+
+    merged, _ = apply_semantic_patch(proposal, patch)
+    evidence = merged.outcome_hypotheses[0].evidence
+
+    assert sum(item.dimension == original.dimension for item in evidence) == 1
+    assert evidence[-1].rationale == "Restated from the scientific goal."
+
+
+def test_evidence_the_patch_itself_made_stale_is_retired_and_reported():
+    """A changed dimension retires only evidence naming the value it withdrew.
+
+    That entry describes a claim the review just took back, so keeping it could
+    only report a merge artifact. It is returned to the caller, never dropped in
+    silence, and the required-evidence check still runs on what remains.
+    """
+    proposal = proposal_of(grounded_item())
+    patch = SemanticPatch.model_validate({"outcome": {"artifact_type": "sample_distance_matrix"}})
+
+    merged, retired = apply_semantic_patch(proposal, patch)
+    evidence = merged.outcome_hypotheses[0].evidence
+
+    assert retired == [{"dimension": "artifact_type", "value": "sample_cluster_assignment",
+                        "field": "artifact_type"}]
+    assert not any(item.dimension == "artifact_type" for item in evidence)
+    result = validate_outcome_hypotheses(q1().prompt, merged.outcome_hypotheses)
+    assert not result.valid
+    assert any("missing_evidence:artifact_type=sample_distance_matrix" in issue
+               for issue in result.issues)
+
+
+def test_a_patch_cannot_relax_validation():
+    """The merged result faces the same checks; a bad repair still fails."""
+    proposal = proposal_of(missing_input_item())
+    patch = SemanticPatch.model_validate({"outcome": {"granularity": "sample_specific"}})
+
+    merged, _ = apply_semantic_patch(proposal, patch)
+    result = validate_outcome_hypotheses(q1().prompt, merged.outcome_hypotheses)
+
+    assert not result.valid
+    assert any("artifact_granularity:sample_cluster_assignment" in issue for issue in result.issues)
+
+
+@pytest.mark.parametrize("index,expected", [(0, "sample_cluster_assignment"), (1, "sample_distance_matrix")])
+def test_the_patch_names_which_hypothesis_it_adjudicates(index, expected):
+    second = grounded_item()
+    second["outcome"]["artifact_type"] = "sample_distance_matrix"
+    for evidence in second["evidence"]:
+        if evidence["dimension"] == "artifact_type":
+            evidence["value"] = "sample_distance_matrix"
+    proposal = SemanticInterpretation.model_validate({
+        "request_mode": "guidance", "semantic_goal": "Subtype patients",
+        "outcome_hypotheses": [grounded_item(), second],
+    })
+
+    merged, _ = apply_semantic_patch(proposal, SemanticPatch(hypothesis_index=index))
+
+    assert len(merged.outcome_hypotheses) == 1
+    assert merged.outcome_hypotheses[0].outcome.artifact_type == expected
+
+
+def test_a_first_pass_that_did_not_parse_still_gets_the_whole_review():
+    """There is nothing to carry forward, so the review owns the structure."""
+    provider = PatchProvider(
+        {"outcome": {"artifact_type": "sample_cluster_assignment"}},
+        {"request_mode": "guidance", "semantic_goal": "Subtype patients",
+         "outcome_hypothesis": grounded_item()},
+    )
+
+    row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
+
+    assert provider.schemas == ["SemanticInterpretation", "SemanticReview", "IntentDecision"]
+    assert row["status"] == "exact"
+
+
+def test_a_reply_that_is_neither_shape_is_reported_against_the_patch_contract():
+    """Observed live: a patch reply was reported as `outcome_hypothesis:missing`.
+
+    That names the whole-review contract, which the call never asked for, and
+    would send the next round chasing the wrong defect.
+    """
+    provider = PatchProvider(
+        missing_input_item(),
+        {"hypothesis_index": 0, "outcome": {"granularity": "not-an-ontology-value"}},
+    )
+
+    row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
+    issues = [issue for entry in row["diagnostic_details"] for issue in entry["issues"]]
+
+    assert any("outcome.granularity" in issue for issue in issues), issues
+    assert not any("outcome_hypothesis:missing" in issue for issue in issues), issues

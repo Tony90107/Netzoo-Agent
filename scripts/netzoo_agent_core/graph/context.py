@@ -36,6 +36,9 @@ class _GraphContext:
     router_max_tokens: int
     response_max_tokens: int
     task_token_budget: int
+    # Optional: when absent the review returns a whole SemanticReview, which
+    # is also the path taken whenever the first pass was not schema-valid.
+    semantic_patcher: Any = None
 
 
 def record_event(

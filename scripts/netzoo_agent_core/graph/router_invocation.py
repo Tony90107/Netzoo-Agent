@@ -17,6 +17,7 @@ from ..contracts.outcomes import (
     CapabilityMatch,
     RequestedOutcome,
     SemanticInterpretation,
+    SemanticPatch,
     SemanticReview,
 )
 from ..interpretation.assembly import assemble_task_decision
@@ -28,11 +29,15 @@ from ..interpretation.provider_fallback import (
     recover_registry_guidance,
 )
 from ..interpretation.semantic_goal import outcome_routing_state
+from ..interpretation.semantic_patch import (
+    apply_semantic_patch, patched_hypothesis_index,
+)
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import (
     append_llm_usage,
     build_intent_router_messages,
     build_semantic_interpreter_messages,
+    build_semantic_patch_messages,
     build_semantic_reviewer_messages,
     structured_result_payload,
 )
@@ -151,6 +156,38 @@ def _semantic_failure(
     )
 
 
+def _as_semantic_patch(payload) -> SemanticPatch | None:
+    """Return the payload as a patch, or None when it is a whole review.
+
+    `SemanticPatch` and `SemanticReview` are structurally disjoint: a review must
+    carry `outcome_hypothesis`, which the patch forbids, and a patch's root
+    `outcome` is not a review field. Accepting whichever arrived relaxes nothing
+    -- both go through the identical `validate_outcome_hypotheses` afterwards --
+    and it keeps a provider that answers with a complete structure working
+    instead of turning its reply into a decoding failure.
+    """
+    try:
+        return SemanticPatch.model_validate(payload)
+    except ValidationError:
+        return None
+
+
+def _validated_review(payload, *, patching: bool) -> SemanticReview:
+    """Parse a whole-review reply, reporting against the contract we asked for.
+
+    A reply that is neither shape must not be described by the review's missing
+    fields when the call requested a patch: the diagnostics would name a contract
+    this attempt never used, and a live round observed exactly that -- a patch
+    reply reported as `outcome_hypothesis:missing`.
+    """
+    try:
+        return SemanticReview.model_validate(payload)
+    except ValidationError:
+        if patching:
+            SemanticPatch.model_validate(payload)
+        raise
+
+
 def _invoke_semantic_interpreter(
     context: _GraphContext,
     state: AgentState,
@@ -167,11 +204,21 @@ def _invoke_semantic_interpreter(
     validated: SemanticInterpretation | None = None
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
+        # A patch can only be merged onto a structurally valid proposal. When the
+        # first pass did not parse, there is nothing to carry forward and the
+        # review still owns the whole structure.
+        patching = (
+            attempt == 1
+            and getattr(context, "semantic_patcher", None) is not None
+            and isinstance(proposal, SemanticInterpretation)
+        )
         adapter = (
-            context.semantic_interpreter if attempt == 0 else context.semantic_reviewer
+            context.semantic_interpreter if attempt == 0
+            else context.semantic_patcher if patching
+            else context.semantic_reviewer
         )
         messages = (
-            build_semantic_reviewer_messages(
+            (build_semantic_patch_messages if patching else build_semantic_reviewer_messages)(
                 context.semantic_prompt,
                 user_task,
                 proposal,
@@ -184,7 +231,11 @@ def _invoke_semantic_interpreter(
                 validation_issues,
             )
         )
-        schema_model = SemanticInterpretation if attempt == 0 else SemanticReview
+        schema_model = (
+            SemanticInterpretation if attempt == 0
+            else SemanticPatch if patching
+            else SemanticReview
+        )
         input_text = _serialized_structured_input(messages, schema_model)
         semantic_state = dict(state)
         semantic_state["token_usage"] = usage.model_dump()
@@ -223,8 +274,33 @@ def _invoke_semantic_interpreter(
             if attempt == 0:
                 interpretation = SemanticInterpretation.model_validate(payload)
                 output_text = interpretation.model_dump_json()
+            elif patching and (patch := _as_semantic_patch(payload)) is not None:
+                output_text = patch.model_dump_json()
+                interpretation, retired_evidence = apply_semantic_patch(proposal, patch)
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_patch_applied",
+                    "classify",
+                    {
+                        "attempt": attempt + 1,
+                        "hypothesis_index": patched_hypothesis_index(proposal, patch),
+                        "changed_fields": sorted(
+                            name for name, value in patch.outcome.model_dump().items()
+                            if value is not None
+                        ),
+                        "evidence_removed": [
+                            {"dimension": item.dimension, "value": item.value}
+                            for item in patch.evidence_removals
+                        ],
+                        "evidence_added": len(patch.evidence_additions),
+                        # Entries the patch itself made stale by changing their
+                        # dimension. Recorded, never silently dropped.
+                        "evidence_retired_as_stale": retired_evidence,
+                    },
+                )
             else:
-                review = SemanticReview.model_validate(payload)
+                review = _validated_review(payload, patching=patching)
                 output_text = review.model_dump_json()
                 interpretation = SemanticInterpretation(
                     request_mode=review.request_mode,
