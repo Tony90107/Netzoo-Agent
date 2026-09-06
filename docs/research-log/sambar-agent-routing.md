@@ -4449,3 +4449,59 @@ Log 62 宣告的來源是「**只**用原文見證」。照此實作後，離線
 
 報告新增補入次數，因此「模型未經協助即填對」的比率仍可計算——
 這是拿掉兩項交叉檢查後，唯一還能回答「模型有沒有自己做對」的方式。
+
+## Log 65｜第十二輪：Log 64 判準全部成立，機制乾淨；但整體數字下降，且我漏做了自己宣告的儀器
+
+日期／時區：2026-09-06，Asia/Taipei。**使用者授權的 gpt-4o 輪次**，116 次呼叫、42 次試驗。
+報告：[live-full-corpus-round12-gpt4o-restore.json](live-full-corpus-round12-gpt4o-restore.json)。
+判準寫於 Log 64，實作前寫入，本節未修改。基線 r11，唯一變數為本變更。
+
+### 判準結果
+
+| 判準 | 門檻 | 實測 | |
+| --- | --- | --- | --- |
+| **M**（機制） | 三項 issue 下降 | `ce:regulator/target_type` **22 → 0**；`ce:input_artifact`（真實 artifact）**15 → 2**；`missing_current_input` **27 → 12** | **成立** |
+| **G**（護欄，否決） | 六項 | 推薦錯誤 0、forbidden 0、unsafe 0、`noncurrent_input` 0、`unsupported` 1、`role_entity` 0 | **成立** |
+| **O**（成效，弱） | status `None` ≤ 5/42 | **8/42 → 5/42** | **成立（恰在門檻）** |
+| R（僅記錄） | — | 工具正確 34→33（p=1.0）、`passed` 19→15（p=0.5052） | **不得據此宣稱成功或失敗** |
+
+**角色欄位的矛盾被完全消除（22 → 0）**，這是本變更最乾淨的一項。
+
+### 我漏做的儀器（Log 44 教訓二的再犯）
+
+Log 62 與 64 都寫了「報告新增補入次數」。**事件有記，但從未接進報告。**
+於是判準 M 只能用 issue 計數**間接**驗證——結論不變，但這是我第二次
+「宣告了一個量測、卻用另一個量測交差」。已於本節補上
+`results[].restored_fields` 與 summary 的 `restored_fields`／
+`trials_with_restored_fields`，並加兩項測試釘住（有修就要出現、沒修也要出現空欄位）。
+**r12 的報告沒有這個欄位，下一輪才會有。**
+
+### 整體數字下降，且 12 次試驗雙向變動
+
+`exact` 25→22、`ambiguous` 5→9、`fallback` 3→5、`None` 8→5。
+逐一檢查每一次退步的失敗原因，**沒有一項屬於本變更會碰到的 issue 類別**：
+
+- `mirna-current-goal` t1／t2、`reverse-history-expression` t1：
+  attempt 1 皆為 **`conflicting_evidence:input_artifact=unknown`**。
+  本規則**刻意永不寫入 `unknown`**，所以碰不到它。
+- `original-q3` t1：`terminal_goal_conflict` ＋ `inconsistent_not_applicable_outcome`
+  ＋ `conflicting_evidence:selection_tag`，皆與本變更無關。
+
+結構上也不可能：本規則只加入值、且任何會新增 `outcome_consistency_issues` 的加入
+都會被單獨回退，因此無法把 `exact` 變成驗證失敗。
+**這些變動與 Log 50 量到的模型變異一致，方向兩邊都有。**
+
+### 新浮現的殘留形狀
+
+`conflicting_evidence:input_artifact=unknown`——**模型把 `unknown` 當成證據值寫出來**。
+本規則正確地拒絕搬運它（搬進去只會讓 outcome 更糟）。
+這是一個**新的、可量的殘留**，但它屬於「模型寫了無意義的值」，不是欄位不同步，
+與本變更修的不是同一件事。**本節不提修法**（Log 44 教訓四）。
+
+### 結論
+
+依事前判準，本變更**通過**：機制乾淨、護欄無一觸發、全損由 8/42 降到 5/42。
+整體正確率與 `passed` 的下降在 p=1.0 與 p=0.51，依 Log 64 的宣告
+**既不能用來宣稱成功，也不能用來宣稱失敗**。
+
+離線：**1349 passed、1 xfailed、3 failed（既有待決策項，未動）、0 skipped**。

@@ -293,6 +293,15 @@ def _score(case, result, events):
         "diagnostics": _diagnostics(events, result.reason_code),
         "diagnostic_details": _diagnostic_details(events),
         "evidence_census": _evidence_census(events),
+        # Declared in Log 62 and not built until Log 65: without it the only
+        # authorized field write is invisible to the report, and "the model got
+        # it right unaided" stops being measurable.
+        "restored_fields": [
+            dict(item, attempt=event["payload"].get("attempt"))
+            for event in events
+            if event["type"] == "routing.outcome_input_restored"
+            for item in event["payload"].get("restored", [])
+        ],
         "status": decision.capability_match_status, "matched_actions": decision.matched_actions,
         "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in decision.rejected_methods],
@@ -479,6 +488,16 @@ def evaluate(
                 "inferred": sum(row["inferred"] for item in results
                                 for row in item["evidence_census"]),
             })),
+            # How often the one authorized write fired, by field. The unaided
+            # rate is the complement: a report with a high count and a high pass
+            # rate is not the model getting it right.
+            "restored_fields": dict(Counter(
+                str(entry["field"]) for item in results
+                for entry in item["restored_fields"]
+            )),
+            "trials_with_restored_fields": sum(
+                1 for item in results if item["restored_fields"]
+            ),
             "ungrounded_evidence_clusters": dict(Counter(
                 cluster for item in results
                 for cluster in _ungrounded_clusters(item)

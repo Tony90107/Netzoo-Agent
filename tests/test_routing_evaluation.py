@@ -602,6 +602,42 @@ def test_report_carries_one_evidence_census_row_per_attempt_and_hypothesis():
         "with_span": 6, "without_span": 0, "inferred": 4}
 
 
+def test_the_report_says_when_the_harness_wrote_a_field_itself():
+    """The only authorized field write must never be invisible in the report.
+
+    It was declared with the change and left unwired for a round, so the
+    criterion it served had to be checked indirectly. Without this the pass rate
+    cannot be separated from the harness's own repairs.
+    """
+    item = hypothesis()
+    item["outcome"]["input_artifacts"] = []
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Subtype patients",
+               "outcome_hypotheses": [item]},
+    )
+
+    row = run(provider, next(c for c in load_scenarios(DEFAULT_SCENARIOS) if c.id == "original-q1"))["results"][0]
+
+    restored = [entry for entry in row["restored_fields"]]
+    assert [(entry["field"], entry["value"]) for entry in restored] == [
+        ("input_artifacts", "mutation_matrix"),
+    ]
+    assert restored[0]["attempt"] == 1
+
+
+def test_a_report_with_no_repair_says_so_rather_than_omitting_the_field():
+    item = hypothesis()
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Grouping",
+               "outcome_hypotheses": [item]},
+    )
+
+    report = run(provider)
+
+    assert report["results"][0]["restored_fields"] == []
+    assert report["summary"]["trials_with_restored_fields"] == 0
+
+
 def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
     """Third time the sanitiser hid a real fault; locations are not payloads."""
     from evaluate_routing import main
