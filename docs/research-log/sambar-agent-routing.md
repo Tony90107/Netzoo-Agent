@@ -1942,3 +1942,649 @@ reviewer 是第二意見，不是前提。它失敗時，第一意見**仍然滿
 Log 28 的第一次結果保留、Log 25／26 的證據需求修正均保留。
 離線套件 **1219 passed、3 failed（既有待決策項）、0 skipped**；
 ruff 與 `git diff --check` 通過。
+
+## Log 31｜`run_condor` 在契約上不可達；修正 `community_assignment` 的 granularity
+
+日期／時區：2026-09-06，Asia/Taipei。**離線分析與實作，付費呼叫 0 次。**
+資料來源：兩輪全語料報告（[live-full-corpus.json](live-full-corpus.json)、
+[live-full-corpus-round2.json](live-full-corpus-round2.json)），每題 n=2。
+
+### 先更正上一份交接的歸因
+
+交接文件第七節把五題「沒給工具」的阻礙一律記為
+`missing_evidence:entity_type/regulator_type/target_type`。逐題比對後，
+那是**四種互不相同的機制，其中兩題根本沒有語意失敗**：
+
+| 案例 | 期望工具 | 兩輪的實際卡點 | 語意驗證 |
+| --- | --- | --- | --- |
+| `sparse-expression-not-mutation` | `run_lioness_panda` | 第一輪**通過驗證且 outcome 與語料期望完全相同**，卡在 registry 比對 | 通過 |
+| `two-layer-network` | `run_dragon` | 兩輪皆 `operation=explain` + `granularity=unknown` | 通過 |
+| `bipartite-communities` | `run_condor` | `artifact_roles`；且 CONDOR 契約上不可達（見下） | 第一輪 attempt 1 通過 |
+| `reverse-history-expression` | `run_lioness_panda` | `missing_evidence:entity_type=gene/sample` | 失敗 |
+| `covariate-coexpression` | `run_cobra` | `missing_evidence:operation=analyze`＋`entity_type` | 失敗 |
+
+只有後兩題符合原本的描述。
+
+### 決定性的離線證據：可達性窮舉
+
+把整個 outcome ontology 交叉相乘（operation × granularity × artifact_type ×
+單一 input × roles × entity 子集）送進 `match_requested_outcome`：
+
+| action | exact 可達 | 其中 prompt 允許 |
+| --- | --- | --- |
+| `run_condor` | 4 | **0** |
+| `run_panda` | 0 | 0 |
+| `run_otter` | 0 | 0 |
+| 其餘 9 個 | ≥4 | 同左 |
+
+CONDOR 宣告 `granularities={"not_applicable"}`；semantic prompt 則寫
+「`not_applicable` 只在整個請求沒有任何科學結果時使用，且該 hypothesis 必須
+`operation=unknown`、`artifact_type=unknown`」。**模型能合法產生的解讀集合，
+與能選到 CONDOR 的解讀集合交集為空。** 這與模型能力無關，也解釋了為何
+`bipartite-communities` 第一輪拿到 `[]`、第二輪只能靠 `partial_evidence` fallback
+才拿到 `run_condor`。
+
+這與 Log 13 修掉的 `const: unknown` 屬同一類：**系統自己發布的兩份契約互相矛盾**，
+不是模型填不好。屬於「修我們送給模型的東西」這一類，也是本研究唯一有效的一類。
+
+`run_panda` 與 `run_otter` 在比對用到的每個維度上宣告完全相同，永遠平手成
+ambiguous——這是 Log 30「同族候選分不出來」的結構根源。**本輪未處理**，僅記錄。
+
+### 介入（使用者授權的變體 A2）
+
+- `ARTIFACT_SEMANTICS["community_assignment"]` 由不限制改為
+  `granularities=frozenset({"aggregate"})`。
+- `run_condor` 的 `granularities` 由 `{"not_applicable"}` 改為 `{"aggregate"}`，
+  `workflows/condor.yaml` 同步。
+
+依據：一個網路的社群劃分是**一個結果、不隨 sample 變**，符合 prompt 對 aggregate
+的既有定義（「One cohort clustering … remains aggregate」）。因為只剩單一合法值，
+Log 25 的 entailment 豁免自動生效，granularity 不再需要證據。
+
+**沒有放寬任何檢查**：`sample_specific` 與 `not_applicable` 現在被
+`artifact_granularity:community_assignment` 拒絕（新測試明確斷言）。
+Schema 只有 `community_assignment` 那一個 anyOf 分支由
+`{aggregate, sample_specific, not_applicable, unknown}` 收窄為
+`{aggregate, unknown}`，沒有任何欄位增刪改名（已逐分支比對確認）。
+
+### 更新的既有測試（改寫並加註，未刪除）
+
+| 檔案 | 原前提 | 處置 |
+| --- | --- | --- |
+| `tests/test_contracts_package.py` | 五個 schema digest | 更新並註記只有一個分支變動 |
+| `tests/test_guidance_consistency.py` | `community_assignment` + `not_applicable` 為合法組合 | 改為 `aggregate`，保留「此 artifact 有正向合法組合」的意圖 |
+| `tests/test_outcome_matching.py` | 同上，用於工具消歧表 | 改為 `aggregate`，並註記舊值為何不可達 |
+| `tests/test_outcome_routing.py` | fixture 附帶 `not_applicable` | 改為 `aggregate`；該測試的意圖是 guidance 擋執行，與 granularity 無關 |
+| `tests/test_outcome_validation.py` | fixture 附帶 `not_applicable` | 改為 `aggregate`；該測試的意圖是 selection_tag 證據界線 |
+
+新檔 `tests/test_capability_reachability.py`（29 項）把不變式一般化：
+**任何可執行 capability 都不得要求 `not_applicable`**，下一個宣告出無法被描述的
+granularity 的工作流程會在這裡失敗，而不是靜默地無法被選到。
+
+離線：**1248 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。
+
+### 可否證的預測與判準
+
+必要條件的部分**已離線證明**：CONDOR 的 prompt-合法 exact outcome 由 0 變 4。
+
+live 的部分要誠實標明**這可能不足以讓該題通過**。把第二輪實際保留的第一次
+outcome（`operation=unknown`、`granularity=unknown`）在新契約下重放，仍然是
+`ambiguous`。
+
+- **預測**：`bipartite-communities` 的 `match_basis` 應由 `partial_evidence`
+  變為 `semantic`，`status` 為 `exact`。
+- **判準**：若仍落在 `partial_evidence` 或 `ambiguous`，代表拿掉的是必要但非
+  當前的阻礙。此時**保留**本變更（不可達性是離線證明、且無回歸），並記錄殘餘阻礙。
+- **回歸護欄**：其他任何案例不得因此失去工具；`unsafe_execution_count` 維持 0；
+  「推薦錯誤工具」不得高於第二輪的 1。
+
+### 已識別的殘餘阻礙（未處理）
+
+`run_condor` 宣告 `entity_types={"gene"}`，但它自己的 `handoff_contract` 寫
+「returns community assignments with **regulator-side and gene-side** partitions」。
+離線重放顯示 `entity_types=["tf","gene"]`（正是該題原文描述的二分網路）在新契約下
+仍然是 `unsupported`。這是第二個契約對契約的矛盾，**本輪未動**，
+因為一次只驗證一項介入。
+
+## Log 32｜review 改為欄位範圍的修補；量到「重打字損壞」是它自己造成的
+
+日期／時區：2026-09-06，Asia/Taipei。**離線實作，付費呼叫 0 次。**
+依據：使用者授權（提案 R）。
+
+### 量測：review 修好什麼、弄壞什麼
+
+把全部 live 報告的 attempt 1 → attempt 2 issue 集合逐一相減（n=83 對）：
+
+| | 次數 |
+| --- | --- |
+| attempt 2 引入了 attempt 1 沒有的 issue | **71 / 83** |
+| 嚴格改善（只修不壞） | 10 |
+| 完全沒變 | 2 |
+
+必須區分兩種「新 issue」。**修復的必然副作用**是 Log 22 的機制——把 artifact_type
+改對之後，繼承下來的 granularity 才變違規（`artifact_granularity:sample_cluster_assignment`
+新增 21 次），那不是 review 的過失。但下面這一類不可能是：
+
+| review 新引入 | 次數 |
+| --- | --- |
+| `schema_validation:…evidence.N.rationale:missing` | 11 |
+| `schema_validation:…input_artifacts.N:literal_error` | 11 |
+| （對照）review **修好**的 schema_validation | **2** |
+
+**schema 錯誤永遠不可能是「正確語意修復」的副作用，只可能是重新打字一個原本就良構的
+結構造成的。** 而 `input_artifacts` 那一項，修復訊息早已包含 `permitted_input_artifacts`、
+`input_artifacts_item_type` 與「do not rename, translate or substitute」整段——
+**指示已經給滿，仍錯 11 次**。這是「指示無效、結構有效」的又一次驗證。
+
+個案同樣清楚：`reverse-history-expression` 只被要求補回 `input_artifacts`，
+它附帶產生兩個 `missing_evidence:entity_type`；`sparse-expression-not-mutation`
+同樣只被要求補 input，交回的 evidence 物件卻少了 `rationale`。
+
+另外更正一項先前的說法：修復迴圈**並非**從不回報比對問題。第一次通過驗證但 registry
+無法消歧時會送出 `registry_ambiguity`。只是第一次通過驗證在 136 次中只有 2 次
+（且兩次都是 `bipartite-communities`），所以這條路幾乎不會被走到。
+
+### 介入
+
+第二次語意呼叫改為要求 **`SemanticPatch`**：只回傳要改的欄位，以及要撤回／新增的
+evidence 條目。**沒有提到的欄位由程式沿用第一次的值。**
+
+界線逐條對照既有禁令：
+
+- 「不要由程式填入模型沒寫的欄位」→ 沿用的全是**第一次模型自己寫的值**，
+  改動的全是**review 自己寫的值**；沒有任何值由系統發明。與 Log 28
+  「保留已驗證的第一次結果」是同一條界線。
+- 「不要放寬 schema／吞 error／跳過 strict validation」→ 合併結果送進**完全相同**的
+  `validate_outcome_hypotheses` 與 `outcome_consistency_issues`。完整性未動：
+  兩次都沒補的必要證據仍然是 `missing_evidence`（測試明確斷言）。
+- 「不要再用 prompt 措辭當作修正手段」→ 這是契約形狀的改變。system prompt 只描述
+  新的輸出形狀，不含說服性措辭。
+- **呼叫次數不變**（仍為 3 次），token 上限不變。
+
+合併時唯一由程式執行的刪除，是 **patch 自己造成的過期 evidence**：當 patch 改了某個
+維度，指向該維度已被撤回之值的 evidence 條目描述的是 review 自己剛收回的主張，
+留著只會產生關於合併產物的 `conflicting_evidence`。這些條目**全部回報**並記入
+`routing.semantic_patch_applied` 事件的 `evidence_retired_as_stale`，沒有任何一條被靜默丟棄。
+
+**兩種 wire shape 皆接受**：`SemanticPatch` 與 `SemanticReview` 結構上互斥
+（review 必須有 `outcome_hypothesis`，patch 禁止該欄位）。第一次**沒有**通過 schema
+的情況沒有東西可以沿用，一律走完整 review。provider 若仍回完整結構也照常接受，
+兩者事後都經過同一套驗證。
+
+### 更新的既有測試（改寫並加註，未刪除）
+
+契約變更使 61 個測試失敗，全部是**腳本化 transport 寫死舊 wire shape**，
+不是行為回歸。處置：
+
+| 檔案 | 處置 |
+| --- | --- |
+| `tests/test_routing_evaluation.py`（`FixtureProvider`，另有 9 個檔案 import） | 讓同一份 review payload 也回答 patch adapter，並加註 |
+| `tests/test_agent_gate.py`、`tests/test_graph_tracing.py` | `schema is SemanticReview` → `schema in _REVIEW_SCHEMAS`，加註 |
+| `tests/test_graph_package.py` | 綁定順序多一個 `SemanticPatch`，並斷言它綁在 semantic 模型而非較便宜的 intent 模型 |
+| `tests/test_semantic_provider_wire.py` | 新增 `SemanticPatch` 回覆；`missing-required` 仍走完整 review，兩種 wire shape 都保有覆蓋 |
+| `tests/test_routing_evaluation.py` 的漂移 fixture | 漂移改為注入到第二次呼叫實際要求的 schema |
+
+新檔 `tests/test_semantic_patch_repair.py` 10 項，釘住新路徑：未提及的欄位逐字沿用、
+空 patch 等於背書（錯的第一次仍然錯）、撤回與新增 evidence、過期 evidence 被回報、
+patch 無法放寬驗證、`hypothesis_index` 的裁決、以及第一次沒通過 schema 時仍走完整 review。
+
+評估器新增 `review_repair_shape`、`review_patch` 與 summary 的
+`review_repair_shapes`、`review_introduced_schema_issues`——**沒有這些欄位，
+下一輪無法判斷這條路徑是否真的被走到**，只能看到通過與否。
+
+離線：**1258 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。
+
+### 可否證的預測與判準
+
+- **主要預測**：`review_introduced_schema_issues` 應由基線的 22（83 對）大幅下降，
+  趨近 0。
+- **判準**：若未下降，歸因錯誤，撤回。
+- **前置檢查**：`review_repair_shapes` 必須顯示 `patch` 佔多數。若模型多半仍回完整
+  結構，則本輪**沒有測到這項介入**，不得據此下任何結論。
+- **風險方向（必須一起看）**：review 不再能靠默默重寫修正欄位，必須指名。若它漏報，
+  第一次的錯值會存活。護欄：`terminal_goal_conflict`（目前 review 修好 74 次）與
+  `conflicting_evidence` 不得上升；「推薦錯誤工具」不得高於第二輪的 1；
+  `unsafe_execution_count` 維持 0。
+
+### 建議的量測方式
+
+用 `--repair-replay`：它注入固定的重建提案再真的呼叫 review，每題只 1 次付費呼叫，
+**輸入完全相同、只有 review 契約一個變數**，歸因比全語料乾淨。全語料留待
+repair-replay 顯示方向之後再跑。
+
+## Log 33｜witness 覆蓋率分析：擴充詞彙不是路由修正，是安全覆蓋決策
+
+日期／時區：2026-09-06，Asia/Taipei。**離線分析，付費呼叫 0 次，未修改程式。**
+起因：Log 32 提出「擴充 `INPUT_PATTERNS` 取代新增一次抽取事實的模型呼叫」。
+本輪先量，結論是**不要現在做**，理由與預期相反。
+
+### 覆蓋現況
+
+`INPUT_PATTERNS` 只涵蓋 12 個 artifact 中的 2 個
+（`mutation_matrix`、`expression_matrix`）。但對照語料期望後，缺口比「10 個沒寫」小，
+而且是**兩種不同的缺口**：
+
+| 案例 | 期望輸入 | 缺口種類 |
+| --- | --- | --- |
+| `mutation-no-fallback-phrases` | `mutation_matrix` | **完全沒被任何 pattern 命中**（原文寫「WES 資料」） |
+| `bipartite-communities` | `regulatory_network` | **完全沒被任何 pattern 命中**（該 artifact 不在詞彙表） |
+| `mutation-paraphrase-en` | `mutation_matrix` | **命中但被判為 `uncertain`**——`_PROPOSAL` 命中了 "Which workflow **would** you recommend"，而原文確實從未說「我有」 |
+
+第三種不是分類器的錯：原文沒有聲明持有該資料，判 `uncertain` 是合理的。
+**是語料期望與 witness 分類器不一致**，屬待決策，不是缺陷。
+
+其餘案例分類正確，含負向：`original-q3` 正確把 RNA-Seq 判 historical、
+把「突變矩陣」判 negated；`reverse-history-expression` 正確把 somatic mutations 判 historical。
+
+### 決定性測量：列出當前輸入不會幫忙選對工具
+
+```
+SAMBAR outcome, input listed                 exact       ['run_sambar']
+SAMBAR outcome, input omitted                exact       ['run_sambar']
+PANDA-style outcome, mutation input listed   unsupported []
+PANDA-style outcome, input omitted           ambiguous   []
+```
+
+`_accepts_inputs` 對空的 `input_artifacts` 一律回 True，所以**空輸入與任何 capability
+相容**。列出輸入從來不會把比對收斂到正確的工具；它唯一的作用是讓**不相容的方法可以被拒絕**
+——Q3 之所以能拒絕 PANDA／LIONESS，正是因為 `mutation_matrix` 被列在輸入裡。
+
+也就是說 `missing_current_input` 是**安全規則，不是選擇規則**。這與它是第一次嘗試最大的
+單一阻礙（全語料兩輪共 20 次；跨全部報告 `mutation_matrix` 一項就 112/131）並列時，
+意義完全不同於先前的假設。
+
+實測也不支持「有 witness 比較差」：
+
+| 分組 | 案例 | 試驗 | 工具正確 |
+| --- | --- | --- | --- |
+| 有 current-input witness | 9 | 18 | 11（61%） |
+| 沒有任何 witness 會觸發 | 5 | 10 | 6（60%） |
+
+兩組無可辨識差異。先前「沒有 witness 反而拿得到工具」的印象是**選樣造成的**，不成立。
+
+### 為什麼建議現在不要擴充
+
+1. **它不會修好那五題。** 上面已證明列出輸入不會收斂到正確工具。
+2. **它會直接威脅 Log 31 尚未驗證的修正。** `bipartite-communities` 第二輪保留下來的
+   第一次 outcome 是 `input_artifacts: []`。加上 `regulatory_network` witness 之後，
+   那份 outcome 會產生 `missing_current_input:regulatory_network`——而在 Log 31 的新契約下，
+   `operation=analyze` + `granularity=aggregate` + 空輸入**本來就會 exact 命中 CONDOR**。
+   等於在還沒驗證前就先把它擋掉。
+3. **會同時混淆兩個待驗證的介入**（Log 31 的可達性、Log 32 的 patch reviewer）。
+
+### 應該記錄的已知限制（不是本輪要修的東西）
+
+- `noncurrent_input` 在 **136 次 live 試驗中觸發 0 次**。這條「歷史資料不得列為當前輸入」的
+  防線從未實際作用過，其保護價值與誤判方向**都未被量測**。
+- `missing_current_input` 永遠只能指名 12 個 artifact 中的 2 個。其餘 10 個
+  ——包含 `regulatory_network`、`coexpression_network`、`measurement_dataset`
+  這些**正是工作流程互相銜接時的輸入**——不相容拒絕在那裡是靜默失效的。
+  Q3 的教訓正好發生在銜接處，所以這個缺口的方向值得留意。
+- 因此「空輸入代表相容性未建立」這句話，對那 10 個 artifact 而言目前是**空話**。
+
+### 對 Log 32 預測的補充
+
+跨全部 live 報告，**31 / 131 次試驗的第一次嘗試，唯一的缺陷就是沒有承諾我們自己
+已經算出來的事實**（`missing_current_input` / `noncurrent_input` / `terminal_goal_conflict`）。
+這 24% 的試驗，整個 review 回合都花在只需改一個欄位的記帳上，而舊契約要求它為此
+重新輸出整份結構。**Log 32 的 patch 契約若有效，最該先在這一類上看到效果**：
+`review_repair_shape == "patch"` 且 `changed_fields == ["input_artifacts"]` 的試驗
+應該有高於平均的驗證通過率。
+
+## Log 34｜為 Log 32 準備受控 A/B：新增 `missing-input` replay suite 與比較工具
+
+日期／時區：2026-09-06，Asia/Taipei。**離線實作，付費呼叫 0 次。**
+
+### 為什麼既有的 replay suite 不足以檢驗 Log 32
+
+離線確認兩件事：
+
+| suite | 第二次呼叫實際要求的 schema |
+| --- | --- |
+| `cross-field` | `SemanticPatch` ×2、`SemanticReview` ×1（Q3 的重建提案本身帶 schema 錯誤） |
+| `missing-required` | `SemanticReview` ×3（設計如此：三題都不是 schema-valid） |
+
+也就是說**現有兩個 suite 一共只有 2 個 patch 路徑試驗**，而且重建的失敗類型是
+cross-field 與 schema 錯誤——**都不是 Log 33 指出的主要類型**
+（`missing_current_input` 佔 112/131，其中 31 次是唯一缺陷）。用它們做 A/B，
+會在最不該測的地方測。
+
+### 新增 `missing-input` suite
+
+重建一份**schema-valid、唯一缺陷是沒有列出當前輸入**的第一次提案，
+其餘欄位就是語料期望的結果，因此修復只需要動一個欄位。Q3 另外保留它 live 上
+實際出現的 terminal-goal 衝突。與既有 suite 相同，**沒有任何期望答案送給 reviewer**。
+
+離線驗證三題產生的 issue 與宣告完全一致：
+
+```
+original-q1: ['missing_current_input:mutation_matrix']
+original-q2: ['missing_current_input:mutation_matrix']
+original-q3: ['missing_current_input:mutation_matrix',
+              'terminal_goal_conflict:sample_cluster_assignment']
+```
+
+且三題都會走到 patch 路徑（`review_repair_shapes = {'patch': 3}`）。
+新檔 `tests/test_missing_input_replay.py` 11 項把重建釘在它宣告的 issue 上，
+避免 fixture 漂移後悄悄改變一輪測量的內容。
+
+### 比較工具
+
+新檔 `scripts/compare_repair_rounds.py`：所有指標都由 `diagnostic_details` 推導，
+**兩個版本的報告都能讀**（舊版沒有 `review_repair_shapes` 等新欄位）。
+
+它會先檢查**這一輪到底有沒有走到 patch 路徑**；沒有就直接判 INCONCLUSIVE 並拒絕
+解讀其餘數字。這是刻意的：Log 25 的教訓是把報告預設值當成模型行為，
+這裡不能重蹈。`tests/test_repair_round_comparison.py` 6 項釘住這個判定，
+包含「數字沒下降必須報 FAILED 而不是重新詮釋」。
+
+### 基線 worktree
+
+`aec092c` 已開在
+`…/scratchpad/baseline-aec092c`，並**只**對齊測量用的
+`scripts/routing_repair_replay.py` 與該 CLI 選項；production 的 reviewer 契約維持舊版
+（已確認 `SemanticPatch` 不存在、第二次呼叫仍要求 `SemanticReview`）。
+兩側因此只有一個變數。
+
+### 尚未執行
+
+live 對照尚未執行，**等待使用者明確授權付費呼叫**。
+每側上限 18 次（三題 × repeat 3 × 2 次呼叫；第一次由 replay 注入，不付費），兩側合計 36 次。
+
+離線：**1275 passed、3 failed（既有待決策項）、0 skipped**；ruff 與 `git diff --check` 通過。
+
+## Log 35｜受控 A/B 結果：宣告的判準失效，但機制上有本研究最乾淨的一組對照
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，
+`--repair-replay --repair-replay-suite missing-input --repeat 3`。
+**付費呼叫 23 次**（基線 9、候選 14）。
+報告：[repair-replay-baseline.json](repair-replay-baseline.json)（`aec092c`）、
+[repair-replay-patch.json](repair-replay-patch.json)（本分支）。
+兩側注入完全相同的第一次提案與相同的 issue 碼，唯一變數是 review 契約。
+
+### 先說判準：它在這一輪失效，這是我的量測設計錯誤
+
+Log 32 宣告的主要判準是「`review_introduced_schema_issues` 應由 22 大幅下降」。
+但**基線在這個 suite 上引入 0 個 schema issue**——該指標在此**沒有動態範圍**，
+無法確認也無法否證。22 這個基線來自**全部 live 紀錄**（以 cross-field 與 schema
+失敗為主），而 suite 是依 Log 33 挑的 `missing-input`。**兩份分析挑的東西不相交，
+是我把它們接在一起的錯**，不是結果的問題。
+
+比較工具已修正兩處，並以測試釘住：
+
+1. `_issues` 先前**排除**帶 `error_type` 的紀錄，而 schema 失敗**只**記在那裡——
+   等於把這個比較唯一要量的類別過濾掉了。
+2. 基線為 0 時直接印 **VOID ON THIS ROUND** 並拒絕解讀，而不是報「未下降 → 撤回」。
+   Log 25 的教訓是把報告產物當成模型行為；這裡不能以無範圍的指標下判決。
+
+**因此本輪不依該判準做保留或撤回的決定。**
+
+### 仍然成立的：同一份輸入下的機制對照
+
+| | 基線（完整 review） | 候選（欄位範圍 patch） |
+| --- | --- | --- |
+| `passed` | **0 / 9** | **5 / 9** |
+| `missing_current_input` 被修好 | **0** | **9** |
+| `conflicting_evidence:input_artifact` 新引入 | **9** | **0** |
+| 推薦錯誤工具 | 0 | 0 |
+| `unsafe_execution_count` | 0 | 0 |
+
+**基線 9/9 完全一致**：review 把 `input_artifact=mutation_matrix` 寫成 evidence，
+卻始終沒有放進 `input_artifacts`，於是 `missing_current_input` 未解、又多一個
+`conflicting_evidence`。這正是 Log 30 記錄的「**引用卻不承諾**」，
+現在在受控重放下 9/9 確定性重現。
+
+換成 patch 契約後，**該失敗模式消失**（9 → 0），且 9/9 都把輸入補了進去。
+Q1 3/3 通過，Q2 2/3。這是本研究目前最乾淨的一組對照：輸入相同、只有契約不同。
+
+### 事前預先寫下的風險，如實發生了
+
+Log 32 的風險段寫過：「review 不再能靠默默重寫修正欄位，必須指名。若它漏報，
+第一次的錯值會存活。」Q3 三次全部如此：
+
+```
+patch changed: artifact_type, entity_types, granularity, input_artifacts,
+               operation, unresolved_dimensions
+新 issue     : artifact_roles:sample_cluster_assignment
+               missing_evidence:regulator_type=tf
+               missing_evidence:target_type=gene
+```
+
+patch 正確地把 artifact_type 改回 `sample_cluster_assignment`（恢復終端目標），
+但**沿用下來的 `regulator_types=["tf"]` / `target_types=["gene"]` 在新 artifact 下才變成違規**。
+舊契約重新生成整份結構時會順手丟掉那兩個角色。
+
+這是 Log 22 機制的新變體：**違規由修正本身產生，且產生在沒有後繼的嘗試裡**。
+Q3 基線也是 0/3，所以**結果沒有退步，退步的是機制**。
+
+### 本輪發現並修正的一個我自己引入的缺陷
+
+Q2 第 2 次試驗的 review 回覆同時帶有 `hypothesis_index`、`outcome`、`evidence_removals`
+——顯然是 patch——卻被記成
+`schema_validation:outcome_hypothesis:missing`。原因是 patch 解析失敗後落到
+review 解析，**報出的是這次呼叫從未要求過的契約的錯誤**，會把下一輪引去追錯東西。
+
+已修正：patch 解析失敗且 review 也解析失敗時，改以 `SemanticPatch` 重新驗證後拋出。
+`tests/test_semantic_patch_repair.py` 新增一項釘住。
+**已存檔的 `repair-replay-patch.json` 中該筆的 4 個 schema issue 屬誤標**，
+修正自下一輪起生效，本輪報告不追溯改寫。
+
+### 待使用者決策
+
+判準已失效，因此**不自行保留也不自行撤回**。可選項：
+
+1. **保留 R，另立一項介入處理 Q3 的角色沿用**：把「patch 使某欄位在新 artifact 下
+   違規」比照已實作的過期 evidence 規則處理。**要注意這一步跨越的是不同的界線**——
+   過期 evidence 是模型自己撤回的主張，而清掉 roles 是系統改寫 outcome 欄位，
+   需要你明確授權。
+2. **保留 R，不動 Q3**：Q3 本來就 0/3，代價是機制較差但結果不變。
+3. **撤回 R**：代價是放棄 0/9 → 5/9 與「引用卻不承諾」消失這組對照。
+4. **先補一輪 `cross-field` suite 的 A/B**：那個 suite 的基線**確實**會產生 schema
+   失敗，能真正檢驗原本宣告的判準。每側 12 次呼叫。
+
+離線：**1276 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。
+
+## Log 36｜`cross-field` A/B：宣告的判準第二次失效，且已證實它在本專案的樣本量下無法檢驗
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，
+`--repair-replay --repair-replay-suite cross-field --repeat 3`。
+**付費呼叫 21 次**（基線 9、候選 12）。
+報告：[repair-replay-crossfield-baseline.json](repair-replay-crossfield-baseline.json)、
+[repair-replay-crossfield-patch.json](repair-replay-crossfield-patch.json)。
+
+執行前已預先寫明：若基線同樣引入 0 個 schema issue，則判準第二次失效，**不得重新詮釋**。
+
+### 判準：第二次失效，而且原因不是 suite 選錯
+
+基線再次引入 **0** 個 schema issue。離線統計 22 這個數字的來源後，原因清楚了：
+
+| 每輪貢獻 | 輪數 |
+| --- | --- |
+| 0 | 8 |
+| 1 | 4 |
+| 2 | 3 |
+| 3 | 2 |
+| 6 | 1 |
+
+22 個事件分散在 18 輪、131 次試驗中，**基準率約 0.17 次／試驗**。一輪 9 次試驗的期望值
+只有 1.5 次。兩輪基線各觀察到 0 次，與該基準率完全相符——**不是 repair-replay 壓抑了
+這個類別，是這個指標在本專案實際採用的樣本量下根本測不出來**。要對「由 0.17 降到 0」
+取得任何信心，需要數百次試驗。
+
+**因此該判準予以作廢，理由是統計上不可檢驗，而不是結果為負。** 這是我的方法論錯誤，
+性質與交接文件第四節列的那幾項同類：宣告了一個看似量化、實則無法在可行樣本量下
+判別的指標。
+
+### 兩個 suite 的實際結果（**不是**預先宣告的判準）
+
+| suite | 基線 | 候選 |
+| --- | --- | --- |
+| `missing-input` | 0 / 9 | **5 / 9** |
+| `cross-field` | 0 / 9 | **3 / 9** |
+| 合計 | **0 / 18** | **8 / 18** |
+
+兩側注入完全相同的第一次提案與 issue 碼，唯一變數是 review 契約。
+`cross-field` 的「引用卻不承諾」家族同向下降：
+`missing_current_input:mutation_matrix` 由 review 引入 6 → 3、
+`conflicting_evidence:input_artifact` 6 → 3。
+
+**但這不是預先宣告的判準，因此只能當作先驗，不能當作確認。** 依本研究一貫作法，
+若要以通過率作為判準，必須**事前**宣告後再測一輪，不得事後改標。
+
+### 兩個新觀察（皆為負向，須記錄）
+
+1. **patch 契約不會使 review 變得最小。** `cross-field` 的 Q1 三次試驗，模型回傳的
+   「patch」改寫了**全部 10 個 outcome 欄位**，等同完整重寫，三次全部失敗。
+   契約規定的是我們**要求**什麼，不是模型**給**什麼。
+2. **沿用欄位的風險再次出現。** `artifact_roles:multi_omic_network` 由 review 引入
+   2 → 3、`conflicting_evidence:entity_type` 2 → 3。與 Log 35 的 Q3 角色沿用同一機制。
+
+`cross-field` 的 Q3 三次都走完整 review 路徑（其重建提案本身帶 schema 錯誤），
+與離線預測一致；`review_repair_shapes = {'patch': 6, 'review': 3}`。
+
+### 現況與待決策
+
+本 session 累計付費呼叫 **44 次**。R 目前的證據狀態是：
+**機制對照強（0/18 → 8/18，控制良好），但預先宣告的判準無效，且已知有兩個負向副作用。**
+
+可選項：
+1. **事前宣告以通過率為判準，再跑一輪確認**（例如 `missing-input --repeat 5`，
+   每側上限 30 次呼叫）。這是唯一能把現有觀察轉成合格證據的路徑。
+2. **保留 R 但明確記載其證據等級為「先驗，未確認」**，先處理別的事。
+3. **撤回 R。** 代價是放棄 0/18 → 8/18 這組對照。
+4. 另外處理上面第 1 個新觀察（要求最小 patch），但那需要新的判準，且屬 prompt 措辭
+   類手段——**六次失敗的那一類**，不建議。
+
+離線：**1276 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。
+
+## Log 37｜確認輪的事前宣告（執行前寫入，執行後不得修改）
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在付費呼叫之前寫入。**
+
+Log 36 作廢了原判準（基準率 0.17／試驗，在 9 次試驗的輪次中無法判別）。
+本輪改以**通過率**為判準，並且**事前**宣告，以免重蹈 Log 25 事後改標的錯誤。
+
+### 設計與它的已知限制
+
+`--repair-replay --repair-replay-suite missing-input --repeat 5`，兩側各 15 次試驗，
+注入相同的第一次提案與 issue 碼，唯一變數是 review 契約。
+
+**限制必須先寫明：這是同一個 suite 的可重現性檢驗，不是獨立確認。**
+假說本來就是在 `missing-input` 與 `cross-field` 上形成的，兩者都已用過。
+本輪能回答的是「0/9 → 5/9 在更大的 n 下是否穩定」，不能回答「在別的請求上是否成立」。
+全語料仍是另一個獨立問題，且它另有 Log 31 的預測要驗，本輪不涉及。
+
+### 判準（由程式執行，不由我判讀）
+
+寫入 `scripts/compare_repair_rounds.py` 的 `_pass_rate_verdict`，並由
+`tests/test_repair_round_comparison.py` 釘住：
+
+1. **前置條件**：候選輪的 review 呼叫中，patch 形狀須佔 **≥ 2/3**。
+   否則判 INCONCLUSIVE，**上方所有數字一律不解讀**。
+2. **主判準**：通過／失敗 × 基線／候選 的 2×2 表，單側 Fisher exact
+   （候選 > 基線），**p < 0.05**。
+3. **護欄**（任一失敗即不得僅憑通過率保留）：
+   - review 新引入的 `conflicting_evidence:input_artifact` 不得高於基線；
+   - 推薦錯誤工具 0 次；
+   - `unsafe_execution_count` 0。
+
+結果為 NOT CONFIRMED 時**撤回 R**，不重新詮釋、不更換指標。
+
+### 已知會出現、且不作為失敗判準的觀察
+
+Log 36 記錄的兩項負向副作用預期會再出現，本輪**僅記錄**：
+模型可能回傳改寫全部欄位的「patch」；沿用欄位在新 artifact 下產生的違規
+（`artifact_roles`、`conflicting_evidence:entity_type`）。
+兩者都需要各自的介入與各自的判準，不在本輪範圍。
+
+### 成本
+
+每側上限 30 次（3 題 × repeat 5 × 2 次呼叫），合計上限 60 次。
+本 session 執行前累計 44 次。
+
+## Log 38｜確認輪結果：依 Log 37 事前宣告的判準 CONFIRMED，同時暴露 R 自己的新缺陷
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，
+`--repair-replay --repair-replay-suite missing-input --repeat 5`。
+**付費呼叫 38 次**（基線 15、候選 23）。
+報告：[repair-replay-confirm-baseline.json](repair-replay-confirm-baseline.json)、
+[repair-replay-confirm-patch.json](repair-replay-confirm-patch.json)。
+
+### 判準結果（由 `_pass_rate_verdict` 執行）
+
+```
+passed                     0 / 15      ->      8 / 15
+Fisher exact, one-sided                       p = 0.0011
+patch replies                                 67%  (門檻 ≥ 2/3)
+guardrail OK   conflicting_evidence:input_artifact 未上升 (15 -> 0)
+guardrail OK   推薦錯誤工具 0
+guardrail OK   unsafe execution 0
+CONFIRMED: keep the field-scoped repair.
+```
+
+基線再次 **0/15**，且 15 次全部是同一機制：把 `input_artifact=mutation_matrix`
+寫成 evidence 卻不放進 `input_artifacts`。三輪 replay 累計基線 **0/33**，
+該機制的重現性沒有例外。
+
+`missing_current_input` 被修好：0 → 15。`conflicting_evidence:input_artifact`
+由 review 引入：15 → 0。
+
+**依 Log 37 事前宣告的規則，R 予以保留。**
+
+### 但本輪暴露了 R 自己的一個新缺陷
+
+`schema_validation:outcome.evidence_additions:extra_forbidden` 出現 **5 次**，
+基線 0 次。逐筆檢視：
+
+| 案例 | 通過 | 形狀 | 唯一缺陷 |
+| --- | --- | --- | --- |
+| original-q1 | **0 / 5** | review（patch 解析失敗） | `outcome.evidence_additions:extra_forbidden` ×5 |
+| original-q2 | **5 / 5** | patch | — |
+| original-q3 | **3 / 5** | patch | — |
+
+模型把 root 層的 `evidence_additions` **巢狀放進 `outcome`**。
+`SemanticPatch` 的 root 有 `evidence_additions`／`evidence_removals`，
+而 `outcome` 是巢狀物件；模型把兩者混在一起。
+
+這是**新契約自己的重打字失敗模式**：舊契約有它的（`rationale` 缺漏、
+`input_artifacts` 非字面值），新契約有這個。淨效果仍大幅為正（0/15 → 8/15），
+但機制現在可見。
+
+**能看見它，是因為本 session 稍早修掉的誤標**（patch 解析失敗時改以 patch 契約回報）。
+在那之前，這 5 筆會被記成 `outcome_hypothesis:missing`，指向一個這次呼叫從未要求過的契約。
+
+### 必須記錄的方法論警告：temperature 0 不等於確定性
+
+同一 suite、同一設定、僅 repeat 由 3 改為 5：
+
+| 案例 | 前一輪（Log 35） | 本輪 |
+| --- | --- | --- |
+| original-q1 | 3 / 3 通過 | **0 / 5** |
+| original-q3 | 0 / 3 | **3 / 5** |
+
+Q1 前一輪回傳 `['input_artifacts', 'operation']` 的 patch 並全數通過，本輪五次全部
+改成巢狀錯誤的形狀。**逐案結論不可由單輪得出**；本輪的判準之所以下在彙總通過率上，
+事後看是正確的選擇。（兩輪之間的程式差異只有錯誤回報的歸屬，不影響行為。）
+
+### 建議的下一步（未實作，需各自的事前判準）
+
+`outcome.evidence_additions` 這個缺陷落在已證有效的那一類——**修我們送給模型的東西**，
+而且本 repo 已有先例：`SemanticReview._normalize_hypothesis_metadata` 的註解寫著
+「Accept only an equivalent nesting of one hypothesis, never conflicts」，
+`OutcomeHypothesis._normalize_registry_tag_evidence` 亦然。
+對 `SemanticPatch` 加一個同樣性質的 `model_validator(mode="before")`，
+把巢狀在 `outcome` 裡的 `evidence_additions`／`evidence_removals` 提升到 root，
+**衝突時拒絕、不猜測**，與既有先例一致。
+
+預期效果可由本輪資料上界估計：若該 5 筆得以解析，Q1 才有機會通過；
+但**不保證通過**，因為解析成功之後仍要過完整驗證。任何實作都需要新的事前判準。
+
+### 累計
+
+本 session 付費呼叫 **82 次**（23 + 21 + 15 + 23）。
+離線：**1276 passed、3 failed（既有待決策項）、0 skipped**；
+ruff 與 `git diff --check` 通過。

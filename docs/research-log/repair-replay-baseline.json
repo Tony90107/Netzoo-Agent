@@ -1,0 +1,972 @@
+{
+  "metadata": {
+    "source": "live",
+    "model": "openai/gpt-4o-mini",
+    "temperature": 0.0,
+    "first_pass_source": "observed_error_reconstruction_not_raw_capture",
+    "repair_replay_suite": "missing-input",
+    "policy_hash": "5448a5bb4a77effb3ab4f70949486fd7450e86c4b207c6977598b5178a1e3cf2",
+    "repeat": 3,
+    "corpus_sha256": "8c805bc18c1c629e99d54382c364201f3bb5c7b20d20a79d010a541869ab4e43",
+    "prompt_schema_sha256": "0db9d867e48bfe121440873584a78c84ecd17606fe93b674dcef7ae1bcba51ff",
+    "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model"
+  },
+  "summary": {
+    "cases": 3,
+    "trials": 9,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "route_pass_rate": 0.0,
+    "semantic_pass_rate": 0.0,
+    "answer_evaluated_count": 9,
+    "answer_failure_count": 0,
+    "interaction_failure_count": 0,
+    "review_repair_attempts": 9,
+    "review_repair_validation_rate": 0.0,
+    "review_repair_rate": 0.0,
+    "fallback_count": 9,
+    "registry_recovery_count": 9,
+    "unsafe_execution_count": 0,
+    "provider_calls": 9,
+    "diagnostics": {
+      "evidence_validation": 9
+    },
+    "by_language": {
+      "mixed": {
+        "trials": 9,
+        "passed": 0,
+        "pass_rate": 0.0
+      }
+    },
+    "by_category": {
+      "history": {
+        "trials": 3,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "positive": {
+        "trials": 6,
+        "passed": 0,
+        "pass_rate": 0.0
+      }
+    },
+    "unstable_cases": []
+  },
+  "results": [
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q1",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11243,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nGene length normalization addresses the greater opportunity for mutations in longer genes; gene/exon sizes are therefore required, not just the mutation matrix.\n\nPatient mutation burden normalization rescales each patient's mutation scores relative to their overall mutation burden, so total burden does not dominate the comparison. This is a relative score normalization, not a clinical TMB estimate or a correction for every sequencing bias.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q1",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11236,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nGene length normalization addresses the greater opportunity for mutations in longer genes; gene/exon sizes are therefore required, not just the mutation matrix.\n\nPatient mutation burden normalization rescales each patient's mutation scores relative to their overall mutation burden, so total burden does not dominate the comparison. This is a relative score normalization, not a clinical TMB estimate or a correction for every sequencing bias.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q1",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11231,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nGene length normalization addresses the greater opportunity for mutations in longer genes; gene/exon sizes are therefore required, not just the mutation matrix.\n\nPatient mutation burden normalization rescales each patient's mutation scores relative to their overall mutation burden, so total burden does not dominate the comparison. This is a relative score normalization, not a clinical TMB estimate or a correction for every sequencing bias.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q2",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11237,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q2",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11237,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q2",
+      "language": "mixed",
+      "category": "positive",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11237,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Fallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q3",
+      "language": "mixed",
+      "category": "history",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].terminal_goal_conflict:sample_cluster_assignment"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [
+        {
+          "action": "run_panda",
+          "workflow": "PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "coexpression_network",
+            "expression_matrix"
+          ],
+          "reason": "The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix."
+        },
+        {
+          "action": "run_lioness_panda",
+          "workflow": "LIONESS-PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "expression_matrix"
+          ],
+          "reason": "The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix."
+        }
+      ],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11739,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Do not use **LIONESS-PANDA** with the current `mutation_matrix` input. The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nDo not use **PANDA** with the current `mutation_matrix` input. The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nFallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nMethod suitability depends on the current input and the requested result, not on using the same tool as a previous analysis. Changing a file's format does not change its scientific modality; a patient-indexed score matrix is not an individually inferred network. Use the compatible pathway for the current goal.\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q3",
+      "language": "mixed",
+      "category": "history",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].terminal_goal_conflict:sample_cluster_assignment"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [
+        {
+          "action": "run_panda",
+          "workflow": "PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "coexpression_network",
+            "expression_matrix"
+          ],
+          "reason": "The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix."
+        },
+        {
+          "action": "run_lioness_panda",
+          "workflow": "LIONESS-PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "expression_matrix"
+          ],
+          "reason": "The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix."
+        }
+      ],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11738,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Do not use **LIONESS-PANDA** with the current `mutation_matrix` input. The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nDo not use **PANDA** with the current `mutation_matrix` input. The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nFallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nMethod suitability depends on the current input and the requested result, not on using the same tool as a previous analysis. Changing a file's format does not change its scientific modality; a patient-indexed score matrix is not an individually inferred network. Use the compatible pathway for the current goal.\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "original-q3",
+      "language": "mixed",
+      "category": "history",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got fallback",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['mutation_matrix'], got None",
+        "artifact_type: expected sample_cluster_assignment, got None",
+        "granularity: expected aggregate, got None",
+        "entity_types: expected ['sample'], got None",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "registry_recovery",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].terminal_goal_conflict:sample_cluster_assignment"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValueError",
+          "issues": [
+            "hypothesis[0].missing_current_input:mutation_matrix",
+            "hypothesis[0].artifact_granularity:sample_cluster_assignment",
+            "hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix"
+          ],
+          "shapes": []
+        }
+      ],
+      "status": "fallback",
+      "matched_actions": [
+        "run_sambar"
+      ],
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [
+        {
+          "action": "run_panda",
+          "workflow": "PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "coexpression_network",
+            "expression_matrix"
+          ],
+          "reason": "The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix."
+        },
+        {
+          "action": "run_lioness_panda",
+          "workflow": "LIONESS-PANDA",
+          "reason_code": "incompatible_input",
+          "input_artifacts": [
+            "mutation_matrix"
+          ],
+          "accepted_input_artifacts": [
+            "expression_matrix"
+          ],
+          "reason": "The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix."
+        }
+      ],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "total_tokens": 11738,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Do not use **LIONESS-PANDA** with the current `mutation_matrix` input. The registered LIONESS-PANDA input contract does not accept mutation_matrix for this analysis; it accepts expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nDo not use **PANDA** with the current `mutation_matrix` input. The registered PANDA input contract does not accept mutation_matrix for this analysis; it accepts coexpression_network, expression_matrix. This restriction concerns this registered workflow and these inputs, not every possible use of the method.\n\nFallback recommendation: **SAMBAR**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.\n\nWhy this recommendation:\n\nMethod suitability depends on the current input and the requested result, not on using the same tool as a previous analysis. Changing a file's format does not change its scientific modality; a patient-indexed score matrix is not an individually inferred network. Use the compatible pathway for the current goal.\n\nThe sparse mutation matrix motivates pathway aggregation: patients may have mutations in different genes within the same biological pathway. Comparing pathway mutation scores can recover shared functional patterns that gene-by-gene comparisons miss. It does not guarantee biologically meaningful clusters; gene-set coverage and cluster stability still need validation.\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR**: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.\n\nAccepted inputs: somatic mutation.\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `gene_mutation_scores`: Gene-by-sample mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "progress": "● Classifying requested outcome…\n! Fallback recommendation — not an exact semantic match\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nAsk a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "provider_calls": 1,
+      "injected_proposal": true
+    }
+  ]
+}
