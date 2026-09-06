@@ -329,7 +329,12 @@ def test_semantic_guidance_mode_blocks_execution_even_when_intent_misfires():
                     entity_types=["gene"],
                     regulator_types=[],
                     target_types=[],
-                    granularity="not_applicable",
+                    # 2026-09-06: was not_applicable, which community_assignment no
+                    # longer permits. The granularity value is incidental here; the
+                    # assertion under test is that guidance blocks execution even
+                    # when the intent router says execute, so the fixture is
+                    # rewritten to a still-exact outcome rather than dropped.
+                    granularity="aggregate",
                     unresolved_dimensions=[],
                 ),
                 confidence=0.99,

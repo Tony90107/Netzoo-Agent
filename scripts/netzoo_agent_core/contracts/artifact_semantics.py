@@ -38,7 +38,11 @@ ARTIFACT_SEMANTICS = {
     "pathway_mutation_matrix": ArtifactSemantics("Pathway-by-sample mutation scores, not cluster labels", frozenset({"pathway", "sample"}), frozenset({"aggregate"})),
     "sample_distance_matrix": ArtifactSemantics("Pairwise sample distances, not cluster labels", frozenset({"sample"}), frozenset({"aggregate"})),
     "sample_cluster_assignment": ArtifactSemantics("Sample-to-cluster labels, separate from score and distance matrices", frozenset({"sample"}), frozenset({"aggregate"})),
-    "community_assignment": ArtifactSemantics("Network-node community memberships, not patient subtype labels"),
+    # One partition of one network, not one partition per sample, so the single
+    # legal value is aggregate. Leaving this unconstrained made every CONDOR-
+    # selecting outcome require granularity=not_applicable, which the semantic
+    # prompt reserves for a request with no scientific result at all.
+    "community_assignment": ArtifactSemantics("Network-node community memberships, not patient subtype labels", granularities=frozenset({"aggregate"})),
     "validation_report": ArtifactSemantics("Validation findings, not an inferred network"),
     "unknown": ArtifactSemantics("Unresolved output type"),
 }

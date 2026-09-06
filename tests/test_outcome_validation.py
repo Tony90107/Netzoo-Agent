@@ -326,7 +326,11 @@ def test_registry_selection_signal_has_a_generic_evidence_boundary():
             regulator_types=[],
             target_types=[],
             selection_tags=["hospital_effect_assessment"],
-            granularity="not_applicable",
+            # 2026-09-06: was not_applicable, which community_assignment no longer
+            # permits. This test is about the selection_tag evidence dimension, so
+            # the granularity is rewritten to the artifact's single legal value;
+            # being ontology-entailed it needs no evidence of its own.
+            granularity="aggregate",
         ),
         confidence=0.9,
         evidence=[

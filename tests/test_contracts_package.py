@@ -97,12 +97,16 @@ HISTORICAL_EXPORTS = [
 # live run recorded an object at input_artifacts[0]. Field meaning is unchanged.
 # 2026-09-05: MatchBasis gained assumed_outcome, so a hypothesis kept advisory by
 # its assumptions can be reported as registry guidance instead of a question.
+# 2026-09-06: community_assignment declares granularities={aggregate}, so its
+# anyOf branch narrows from {aggregate, sample_specific, not_applicable, unknown}
+# to {aggregate, unknown}. Only that one branch changed; no field was added,
+# removed or renamed. See docs/research-log/sambar-agent-routing.md Log 31.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "12ecac35bcc80cb27ea98e6222f6aa768b923506b555154b396ede7e826885c9",
-    "RouterDecision": "cee6a53b5323b44f966bb1aed49394d5bd1c0af040f1e4337ce7f7a1643b4f14",
-    "RequestedOutcome": "4218cc7547cf2273e6698f9bb475c16a16a18ec8e3f66ded5d49e59794cbb516",
+    "TaskDecision": "bc149c6f74e0241c5bce0af029c989f24b03b1f3c15d8d536db277ad83202e49",
+    "RouterDecision": "816888b9861862a5c54264b0894faab7b13cfa913fede720ec8467a0ad83abca",
+    "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
     "OutcomeEvidence": "5bdbe86c3370bb618f6e8bbd9b68904819f87e0e7c9bedd3fbc35407ac87eac4",
-    "OutcomeHypothesis": "f4b8b0646a5e1eef582e42098ce9a89b08c65e17abd5062e1978e8b436442f91",
+    "OutcomeHypothesis": "a95bba2a538fc6ec49137181c9650886a342c2c354c117912552738c62eb2cd2",
     "CapabilityMatch": "5c19a6d664247a434d4e6c7da14f2ff5bd2d32910bba96def8c29c92c3c5e119",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",

@@ -287,7 +287,11 @@ def test_named_method_cannot_bypass_its_declared_input_contract():
 
 @pytest.mark.parametrize(("task", "operation", "artifact", "entities", "roles", "granularity", "expected"), [
     ("Previously PANDA; now analyze cohort covariate-adjusted coexpression.", "analyze", "coexpression_network", ["gene"], [], "aggregate", "run_cobra"),
-    ("Previously SAMBAR; now analyze bipartite network communities.", "analyze", "community_assignment", ["gene"], [], "not_applicable", "run_condor"),
+    # 2026-09-06: CONDOR declares granularities={aggregate}. Under the old
+    # not_applicable value this row was the only outcome that could select
+    # CONDOR, and the semantic prompt forbids producing it alongside a real
+    # artifact_type, so the capability was unreachable in live routing.
+    ("Previously SAMBAR; now analyze bipartite network communities.", "analyze", "community_assignment", ["gene"], [], "aggregate", "run_condor"),
     ("Previously PUMA; now infer an aggregate two-layer omic network.", "infer", "multi_omic_network", ["omics_layer_1_feature", "omics_layer_2_feature"], [], "aggregate", "run_dragon"),
     ("Previously SAMBAR; now infer patient-specific miRNA regulatory networks.", "infer", "regulatory_network", ["mirna", "gene"], ["mirna"], "sample_specific", "run_lioness_puma"),
     ("Use OTTER for an aggregate TF-to-gene network.", "infer", "regulatory_network", ["tf", "gene"], ["tf"], "aggregate", "run_otter"),
