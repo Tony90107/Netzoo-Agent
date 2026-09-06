@@ -7,7 +7,14 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKey, RecommendedAction
 
-from .outcomes import CapabilityMatchStatus, MatchBasis, OutcomeHypothesis, RejectedMethod, RequestedOutcome
+from .outcomes import (
+    RUNNABLE_CAPABILITY_COUNT,
+    CapabilityMatchStatus,
+    MatchBasis,
+    OutcomeHypothesis,
+    RejectedMethod,
+    RequestedOutcome,
+)
 
 class PreferenceProposal(BaseModel):
     key: PreferenceKey
@@ -94,7 +101,12 @@ class TaskDecision(BaseModel):
     match_basis: MatchBasis = "semantic"
     rejected_methods: list[RejectedMethod] = Field(default_factory=list)
     matched_actions: list[RecommendedAction] = Field(default_factory=list)
-    hypothesis_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
+    # Same bound as CapabilityMatch, from the same registry-derived source.
+    # `assembly` copies the match straight into this field, so a cap of its own
+    # only decides how many candidates it takes to abort the run.
+    hypothesis_actions: list[RecommendedAction] = Field(
+        default_factory=list, max_length=RUNNABLE_CAPABILITY_COUNT
+    )
     alternative_actions: list[RecommendedAction] = Field(default_factory=list)
     mismatch_dimensions: list[str] = Field(default_factory=list)
     clarification_question: str | None = None

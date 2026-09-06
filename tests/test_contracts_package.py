@@ -101,12 +101,17 @@ HISTORICAL_EXPORTS = [
 # built by the matcher from the registry, never from model output, and a live run
 # aborted because a wholly unresolved outcome ties across all twelve registered
 # capabilities. Only that one bound changed. See Log 42.
+# 2026-09-06: TaskDecision.hypothesis_actions maxItems 6 -> 12, the same
+# registry-derived bound, now imported from one place. `assembly` copies
+# CapabilityMatch.hypothesis_actions straight into this field, so widening only
+# the producer left the abort intact one contract downstream and cost a second
+# full-corpus round. Router output must not populate this field. See Log 53.
 # 2026-09-06: community_assignment declares granularities={aggregate}, so its
 # anyOf branch narrows from {aggregate, sample_specific, not_applicable, unknown}
 # to {aggregate, unknown}. Only that one branch changed; no field was added,
 # removed or renamed. See docs/research-log/sambar-agent-routing.md Log 31.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "bc149c6f74e0241c5bce0af029c989f24b03b1f3c15d8d536db277ad83202e49",
+    "TaskDecision": "0370188a170c03cb6296f1d6744d7312b8d9a741d0c64ec650d85cd1d6d764af",
     "RouterDecision": "816888b9861862a5c54264b0894faab7b13cfa913fede720ec8467a0ad83abca",
     "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
     "OutcomeEvidence": "5bdbe86c3370bb618f6e8bbd9b68904819f87e0e7c9bedd3fbc35407ac87eac4",
