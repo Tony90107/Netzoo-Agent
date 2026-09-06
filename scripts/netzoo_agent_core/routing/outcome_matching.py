@@ -20,7 +20,7 @@ from ..contracts import (
     TaskDecision,
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
-from ..interpretation.request_integrity import input_mentions
+from ..interpretation.request_integrity import _scoped_clauses, input_mentions
 from .method_rejections import rejected_methods_for
 
 
@@ -565,21 +565,43 @@ def guidance_actions_for(action: RecommendedAction) -> list[RecommendedAction]:
     return [*capability.guidance_predecessors, action]
 
 
+def _workflow_name_pattern(action: str) -> str:
+    words = re.split(r"[-_\s]+", ACTION_DEFINITIONS[action].workflow.casefold())
+    return (
+        r"(?<![a-z0-9])"
+        + r"[\s_-]*".join(re.escape(word) for word in words)
+        + r"(?![a-z0-9])"
+    )
+
+
+def _current_scope_text(task: str) -> str:
+    """Return the request minus its historical clauses.
+
+    A workflow the user reports having already run is not the workflow being
+    asked about. `_match_semantic_request` already refuses to let a historical
+    mention override a compatible typed outcome, but that guard needs an outcome
+    to protect; after semantic validation fails there is none, and a live round
+    recommended a forbidden PANDA to a request whose only mention of it was
+    "Previously I used PANDA" and which said it did not want inferred networks.
+
+    The clause scoping is the same deterministic pass `input_mentions` uses, so
+    history is recognised here exactly as it is for input artifacts.
+    """
+    return " ".join(
+        clause for clause, scope in _scoped_clauses(task) if scope != "historical"
+    )
+
+
 def named_workflow_action(task: str) -> RecommendedAction | None:
-    """Resolve an explicitly written registered workflow name, longest first."""
+    """Resolve a currently written registered workflow name, longest first."""
     candidates = sorted(
         RUN_ACTIONS,
         key=lambda action: len(ACTION_DEFINITIONS[action].workflow),
         reverse=True,
     )
+    current = _current_scope_text(task).casefold()
     for action in candidates:
-        words = re.split(r"[-_\s]+", ACTION_DEFINITIONS[action].workflow.casefold())
-        pattern = (
-            r"(?<![a-z0-9])"
-            + r"[\s_-]*".join(re.escape(word) for word in words)
-            + r"(?![a-z0-9])"
-        )
-        if re.search(pattern, task.casefold()):
+        if re.search(_workflow_name_pattern(action), current):
             return action
     return None
 

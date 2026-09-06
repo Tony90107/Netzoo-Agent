@@ -188,14 +188,23 @@ def test_reverse_history_preserves_expression_network_through_production():
     assert row["matched_actions"] == ["run_lioness_panda"]
 
 
-@pytest.mark.parametrize("task", [
-    "Previously I used SAMBAR with a mutation matrix. Tell me about its capabilities.",
-    "If I obtain a mutation matrix, could SAMBAR help?",
+# 2026-09-06: the first task's premise was superseded. A workflow named only in
+# a historical clause is no longer a fallback candidate at all, so there is no
+# decision left to inspect for a restored input. The row is kept, not deleted:
+# the original intent -- a non-current mention must never become a current input
+# -- now holds in the stronger form that nothing is recommended, and the second
+# row still pins the original assertion for a mention that is not historical.
+@pytest.mark.parametrize("task,recommends", [
+    ("Previously I used SAMBAR with a mutation matrix. Tell me about its capabilities.", False),
+    ("If I obtain a mutation matrix, could SAMBAR help?", True),
 ])
-def test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions(task):
+def test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions(task, recommends):
     from netzoo_agent_core.interpretation.provider_fallback import recover_registry_guidance
     from netzoo_agent_core.policy import ProjectPolicyLoader
     decision = recover_registry_guidance(task, ProjectPolicyLoader().load().workflows, ValueError())
+    if not recommends:
+        assert decision is None
+        return
     assert decision is not None
     assert decision.guidance_input_artifacts == []
     assert decision.requested_outcome is None
