@@ -2766,3 +2766,88 @@ too」——指示無效，與六次失敗的紀錄一致。
 
 本 session 付費呼叫 **141 次**。
 離線：**1287 passed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 41｜事前宣告：fallback 不得採用只出現在歷史脈絡中的工作流程名稱
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在實作之前寫入。**
+
+### 觀察到的缺陷（Log 40）
+
+```
+task   : "Previously I used PANDA. Now I want advice on acquiring a protein
+          abundance measurement dataset… I do not want inferred networks…"
+語意失敗 -> recover_registry_guidance
+          match_registry_guidance_features -> None
+          named_workflow_action(task)      -> run_panda      <-- 純歷史脈絡
+最終     : 在明文拒絕推論網路的負向控制上推薦 forbidden 的 run_panda
+```
+
+`outcome_matching.py` 中 `named_registered_action` 的呼叫處早有註解寫明此意圖
+（「keeps historical, questioned, or rejected method mentions from overriding a
+uniquely compatible typed outcome」），但**那道保護只在有可相容的 typed outcome 時生效**。
+語意失敗後的 fallback 沒有 outcome，因此毫無防護。
+
+這直接違反既有禁令「不要把歷史資料當成目前輸入」。
+
+### 介入
+
+`named_workflow_action` 改為忽略**只**出現在歷史子句中的名稱，
+沿用 `request_integrity._scoped_clauses` 這套**既有的**確定性子句範圍機制
+（`input_mentions` 用的是同一套），不新增啟發式規則。
+名稱只要在任一非歷史子句出現，行為不變。
+
+### 可否證的預測
+
+1. **離線**：該題的 `named_workflow_action` 應由 `run_panda` 變為 `None`。
+2. **離線**：寫在當前子句的名稱仍須解析
+   （如「Use OTTER for an aggregate TF-to-gene network」→ `run_otter`）。
+3. **live（下一輪全語料）**：`unsupported-protein-acquisition` 不得再推薦 forbidden 動作；
+   推薦錯誤工具總數應由 2 回到 **≤ 1**。
+
+### 明確不預測的事
+
+**不預測全語料通過率上升。** 這是安全性修正，不是路由改善。
+若通過率上升，不得記為本項功勞。
+
+### 判準
+
+- live 仍在該題經由名稱路徑推薦 forbidden 動作 → 歸因錯誤，**撤回**。
+- 護欄：`passed` 不得低於 2/14；工具正確不得低於 8/14；其他案例不得新增錯誤推薦。
+
+### 已知風險
+
+`named_workflow_action` 有三個呼叫處，另兩處為 `repair.py` 的明確執行請求與
+`outcome_matching` 的名稱消歧。收緊會同時影響它們。既有測試套件即為第一道檢驗：
+**若有測試因此失敗，須逐一判讀該測試釘住的是意圖還是舊行為，不得為了讓它綠而放寬。**
+
+### Log 41 實作結果（離線）
+
+`named_workflow_action` 現在只讀請求的非歷史子句，沿用
+`request_integrity._scoped_clauses`。兩項離線預測皆成立：
+
+| 輸入 | 前 | 後 |
+| --- | --- | --- |
+| `unsupported-protein-acquisition` | `run_panda` | **`None`** |
+| "Use OTTER for an aggregate TF-to-gene network" | `run_otter` | `run_otter` |
+| `PREVIOUS_ACTION=run_panda`（harness 標記） | `run_panda` | `run_panda` |
+
+順帶影響（皆為同方向，且都在 `forbidden_actions` 上）：
+`mutation-no-fallback-phrases` 與 `mirna-current-goal` 的名稱解析也由 `run_panda`
+變為 `None`。**但 `mirna-current-goal` 第三輪的錯誤推薦不保證因此消失**——
+需確認它走的是名稱路徑而非其他 recovery 分支，該題 `match_registry_guidance_features`
+回 `None`，故名稱路徑是唯一來源，預期會改善；仍以 live 為準。
+
+`original-q3` 仍解析為 `run_panda`（原文是**提議**把資料丟進 PANDA，不是歷史回報），
+輸入相容性拒絕因此仍有機會作用——新測試明確釘住這一點。
+
+### 一個前提被取代的既有測試（改寫並加註，未刪除）
+
+`test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions` 的第一組
+參數斷言 `decision is not None`，但那是**前提**，不是主題；主題是
+`guidance_input_artifacts == []`。新契約下該題根本不再產生任何建議，
+**原意圖以更強的形式成立**。改為依情況斷言，並保留第二組參數（非歷史提及）
+原本的斷言。
+
+新檔 `tests/test_historical_name_not_a_candidate.py` 9 項。
+離線：**1296 passed、3 failed（既有待決策項）、0 skipped**；ruff 與
+`git diff --check` 通過。**live 尚未執行**，Log 41 的第 3 項預測待下一輪全語料檢驗。
