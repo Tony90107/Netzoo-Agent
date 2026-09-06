@@ -4139,3 +4139,54 @@ dimension `selection_tag`」），但 `_required_evidence` **不要求**它。
 **在補上第 1 項之前不再提出修法**（Log 44 教訓四）。
 
 離線：**1328 passed、3 failed（既有待決策項，未動）、0 skipped**。
+
+## Log 59｜離線盤點 `selection_tags`：mini 從不宣告；gpt-4o 宣告 16 次、**全部正確**
+
+日期／時區：2026-09-06，Asia/Taipei。**離線,付費呼叫 0 次。**
+資料：既有報告已記錄最終 outcome 的 `selection_tags`,不需重跑。
+
+### 一、mini 完全不用這個欄位，所以 mini 輪次無法回答這個問題
+
+| 輪次 | 有 outcome 的試驗 | 其中宣告 `selection_tags` |
+| --- | --- | --- |
+| r7（mini） | 16 / 42 | **0** |
+| r9（mini） | 21 / 42 | **0** |
+| r10（gpt-4o） | 33 / 42 | **16（48%）** |
+
+**跑一輪 mini 會得到 0/0 的基準率**，對 Log 58 提出的問題毫無資訊量。
+這一項因此不執行——**省下約 100 次呼叫，判斷依據是離線資料而非猜測。**
+
+### 二、gpt-4o 宣告的 tag：9 種、零發明、零指錯
+
+| 宣告的 tag | 在 registry catalog | 擁有者 | 出現在 | 該題期望動作 |
+| --- | --- | --- | --- | --- |
+| `bipartite_community_detection` | 是 | `run_condor` | `bipartite-communities` | **`run_condor`** |
+| `cancer_subtyping` / `pathway_scores` / `somatic_mutation` | 是 | `run_sambar` | `mutation-paraphrase-en` | **`run_sambar`** |
+| `covariate_association` | 是 | `run_cobra` | `covariate-coexpression` | **`run_cobra`** |
+| `mirna_regulation` | 是 | `run_puma`, `run_lioness_puma` | `mirna-current-goal` | **`run_lioness_puma`** |
+| `multi_omic_network` / `partial_correlation` | 是 | `run_dragon` | `two-layer-network` | **`run_dragon`** |
+| `tf_gene_regulation` | 是 | panda 家族 | `reverse-history-*` / `sparse-*` | **`run_lioness_panda`** |
+
+**16 次宣告全部落在 registry catalog 內，且全部指向該題的期望工具——沒有一次發明、沒有一次指錯。**
+（`selection_tags` 在 schema 上其實是自由字串，不是封閉詞彙；catalog 只寫在 prompt 裡。
+模型仍然 16/16 守住它。）
+
+### 三、這對 Log 58 的撤回意味著什麼
+
+**撤回本身依然成立**：P1 是事前宣告的，它被否證，規則就該撤回，這一點不因新資料而改變。
+
+但 Log 58 的風險論證需要加註：我用來否決的是一個**合成**的錯 tag，
+而在實際觀測中**錯 tag 出現 0 / 16 次**。所以那個風險
+「在原理上為真、在本語料與本模型上未曾發生」。兩件事都要說。
+
+同時，Log 58 提出的下一步（先量「tag 是否附證據」）**已不是最貼題的量測**。
+更貼題的是「tag 是否指錯」，而本節已離線給出 0/16。
+
+### 四、若要再試，什麼才算合格的判準
+
+**不能再拿本語料的兩題當預測**：它們的結果我已經離線量過（決定性），
+拿已知結果當預測不是預測。唯一尚未觀測的是
+**在新的一輪 live 中，這條規則會不會造成錯誤推薦**——
+而只有 gpt-4o 會宣告 tag，因此只有 gpt-4o 輪次能測。
+
+依使用者 2026-09-06 的指示，**gpt-4o 輪次需事先取得同意**，故本節到此停住，不自行執行。
