@@ -363,6 +363,31 @@ def _invoke_semantic_interpreter(
                     "validation_issues": schema_issues,
                 },
             )
+            # A review that does not parse is still only a second opinion. The
+            # branch below already keeps a validated first pass when the review
+            # parses and fails validation; a review that breaks the wire contract
+            # is no better an argument for discarding it. Six of the losses in the
+            # live record are this branch: a first pass that passed every check,
+            # replaced by a registry guess naming no workflow. Nothing is filled
+            # in -- what is returned is the first pass the validator accepted.
+            if validated is not None:
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_review_discarded",
+                    "classify",
+                    {
+                        "attempt": attempt + 1,
+                        "issues": [
+                            "schema_validation:"
+                            + ".".join(issue["location"])
+                            + ":"
+                            + str(issue["type"])
+                            for issue in schema_issues
+                        ],
+                    },
+                )
+                return validated, usage, budget_warnings, None
             if recover_registry_guidance(
                 user_task,
                 context.project_policy.workflows,
