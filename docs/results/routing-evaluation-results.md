@@ -140,11 +140,28 @@ is indistinguishable from run-to-run variance. Reported improvements of that siz
 survive. Detecting an effect of ~5/42 requires either many more prompts or a
 matched-control design like Experiment 1.
 
+The same replicate on **gpt-4o-mini**, also with no code difference:
+
+| Metric | Round A | Round B | Difference |
+| --- | --- | --- | --- |
+| Correct tool | 28 / 42 | 28 / 42 | **0** |
+| **A** | 17 / 42 | 19 / 42 | 2 trials |
+| Silence (C) | 14 / 42 | 14 / 42 | **0** |
+| Full-pass | 15 / 42 | 16 / 42 | 1 trial |
+
+Fisher p = 1.0 (correct tool) and p = 0.83 (**A**). The cheaper model's floor is
+**narrower** than the stronger model's, not wider as we predicted before running:
+±0–2 trials against ±3.
+
+Two consequences. First, an effect must clear roughly 3 trials on this benchmark
+to be readable at all, on either model. Second, **diagnostic issue counts are far
+noisier than trial outcomes**: the same two identical mini rounds differ by 21
+occurrences of one issue family (63 vs 42) while every trial-level metric moves
+by at most 2. Mechanism claims stated in issue counts therefore need effect sizes
+in the tens, which is how the interventions in this project were in fact judged.
+
 **Status: pre-registered as a replicate** (declared before running that the
 difference would define the noise floor and could not be attributed to anything).
-
-**Pending:** the same replicate for gpt-4o-mini is running; mini's floor may be
-wider because its silence rate is higher.
 
 ---
 
