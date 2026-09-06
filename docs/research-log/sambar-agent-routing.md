@@ -2911,3 +2911,82 @@ partially compatible with a fully unknown outcome: 12
 
 Log 41 的第 3 項預測仍未驗證，需要重跑一輪全語料。
 離線：**1300 passed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 43｜第四輪：Log 41 三項預測全部成立；安全性回到最佳，`passed` 仍低於起點
+
+日期／時區：2026-09-06，Asia/Taipei。模型 `openai/gpt-4o-mini`，全語料 14 題。
+**付費呼叫 34 次**（另有一輪因 Log 42 的當機作廢）。
+報告：[live-full-corpus-round4.json](live-full-corpus-round4.json)。
+
+### 四輪對照
+
+| | 第一輪 | 第二輪 | 第三輪 | **第四輪** |
+| --- | --- | --- | --- | --- |
+| 工具正確 | **9 / 14** | 8 | 8 | **9 / 14** |
+| 推薦錯誤工具 | **0** | 1 | 2 | **0** |
+| 推薦 forbidden 動作 | 0 | 0 | **1** | **0** |
+| `passed` | **4 / 14** | 2 | 2 | **2 / 14** |
+
+### Log 41：三項預測全部成立
+
+1. `unsupported-protein-acquisition` 不再推薦 forbidden 動作 —— **成立**。
+   現在是 `ambiguous` / `semantic` / `[]`，且 outcome 是
+   `operation=acquire`、`artifact_type=measurement_dataset`——**語意上正確**，
+   只卡在 `missing_evidence:input_artifact=measurement_dataset`。
+2. 推薦錯誤工具由 2 回到 ≤ 1 —— **成立**（0）。
+3. 護欄全過：`passed` 2/14 不低於 2；工具正確 9/14 不低於 8；無新增錯誤推薦。
+
+**額外的同向恢復**：`mirna-current-goal` 由 `run_panda` 變回
+`exact` / `semantic` / `run_lioness_puma`（第二、三輪皆錯）。它的
+`match_registry_guidance_features` 為 None，名稱路徑是唯一來源，
+與 Log 41 的機制一致。
+
+### 必須誠實記錄的整體結果
+
+**經過本 session 的全部工作，全語料的工具正確率與安全性回到第一輪的水準
+（9/14、0 次錯誤推薦），而 `passed` 仍是 2/14，低於第一輪的 4/14。**
+
+第一輪通過：`original-q1`、`original-q2`、`mutation-distance-not-clusters`、
+`mirna-current-goal`。第四輪通過：`original-q2`、`mirna-current-goal`。
+`passed` 的門檻比「工具正確」嚴（另含 status、answer 與 semantic acceptance），
+兩者不可互相代換。
+
+### 本輪暴露的第三個 patch 契約重打字失敗
+
+`bipartite-communities`（第二、三輪皆取得 `run_condor`）本輪回到 `[]`：
+
+```
+schema_validation:evidence_removals.2.value:string_too_short
+schema_validation:evidence_removals.3.value:string_too_short
+schema_validation:evidence_removals.4.value:string_too_short
+```
+
+模型送出 `evidence_removals` 條目但 `value` 是**空字串**。
+這是 patch 契約的第三種重打字失敗（前兩種：巢狀 `evidence_additions`、
+以及舊契約時代的 `rationale` 缺漏）。**與 Log 41 的變更無關**——該題原文
+不含任何工作流程名稱。
+
+### 反覆出現且尚未處理的主要機制
+
+第四輪的 issue 家族統計，以及 `covariate-coexpression` 本輪的失敗
+（patch 改了 6 個欄位 → `missing_evidence:entity_type=gene`），都指向同一件事：
+
+**patch 改了某個維度，卻沒有附上該維度的新證據。**
+
+這已在 Log 35（Q3 角色）、Log 40（`unsupported-protein-acquisition` 的
+entity_type=protein）、本輪（`covariate-coexpression`）連續三輪出現，
+是目前最穩定的失敗機制。修復訊息一直寫著
+「After changing a field, withdraw or replace its evidence too」——**指示無效**。
+
+### 待決策（優先序更新）
+
+1. **「改了欄位卻沒附證據」**：這是三輪一致的主要機制，已升到第一位。
+   可能的結構性作法需要各自的事前判準，且其中一種（由系統補上被改欄位的
+   證據）**明確違反既有禁令**，不可採。
+2. `evidence_removals.value` 空字串：第三種重打字失敗，可比照 Log 39 的
+   等價巢狀處理（丟棄無值的撤回項而非整份拒絕），但那會是**忽略模型的一部分輸出**，
+   需要判斷是否等價於「模型沒有指名任何條目」。
+3. Q3 角色沿用：屬第 1 項的特例。
+
+離線：**1300 passed、3 failed（既有待決策項）、0 skipped**。
+本 session 付費呼叫 **約 209 次**（含 Log 42 作廢的一輪）。
