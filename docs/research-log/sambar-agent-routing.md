@@ -2588,3 +2588,71 @@ Q1 前一輪回傳 `['input_artifacts', 'operation']` 的 patch 並全數通過�
 本 session 付費呼叫 **82 次**（23 + 21 + 15 + 23）。
 離線：**1276 passed、3 failed（既有待決策項）、0 skipped**；
 ruff 與 `git diff --check` 通過。
+
+## Log 39｜事前宣告：接受 `evidence_additions` 巢狀在 `outcome` 內的等價寫法
+
+日期／時區：2026-09-06，Asia/Taipei。**本節在實作之前寫入。**
+
+### 觀察到的缺陷
+
+Log 38 的確認輪：`original-q1` **5/5 失敗，唯一缺陷都是**
+`schema_validation:outcome.evidence_additions:extra_forbidden`。
+模型把 `SemanticPatch` root 層的 `evidence_additions` 放進巢狀的 `outcome` 物件裡。
+`original-q2`、`original-q3` 同一輪沒有這個問題（10 次 patch 回覆全部正確分層）。
+
+### 介入
+
+對 `SemanticPatch` 加 `model_validator(mode="before")`，把巢狀於 `outcome` 內的
+`evidence_additions` 與 `evidence_removals` 提升到 root。**與既有先例同一規則**
+（`SemanticReview._normalize_hypothesis_metadata`：
+「Accept only an equivalent nesting, never conflicts」）：
+
+- root 沒有該欄位時才提升；
+- root 與巢狀值**不同**時 `raise ValueError`，不猜測、不合併；
+- 非 Mapping／非 list 的形狀一律原樣放行，讓 strict validation 報出精確路徑
+  （沿用 `_normalize_registry_tag_evidence` 註解記載的理由：這裡不得因為
+  無型別的索引而把可修復的 schema 失敗變成 router 不可用）。
+
+**只處理這兩個 evidence 清單**，不處理其他欄位的錯置。觀察到的是這一個，
+其餘屬臆測。
+
+### 可否證的預測
+
+1. **主要**：在相同設定重跑確認輪，
+   `schema_validation:outcome.evidence_additions:extra_forbidden` 應由 **5/15 降為 0**。
+2. `review_repair_shapes` 的 patch 佔比應由 **67% 上升**。
+
+### 明確不預測的事
+
+**不預測通過率上升。** 解析成功之後仍要通過完整驗證；Q1 的 outcome 內容是否正確
+是另一回事。若通過率上升，**不得**記為本項介入的功勞，除非另立事前判準。
+
+### 判準
+
+- `extra_forbidden` 未降為 0（或未大幅下降）→ 歸因錯誤，**撤回**。
+- 護欄：通過率不得低於已確認的 8/15；推薦錯誤工具 0；`unsafe_execution_count` 0；
+  `conflicting_evidence:input_artifact` 不得上升。
+
+### 已知限制
+
+Log 38 記錄了同一設定兩輪之間逐案結果的不穩定（Q1 由 3/3 變 0/5）。
+因此若 `extra_forbidden` 歸零，仍**無法排除**那是同一種變異；判準只能說
+「與預測一致」，不能說「已證明」。要更強的證據需要更多輪次，成本另計。
+
+### Log 39 實作結果（離線）
+
+`SemanticPatch._normalize_nested_evidence_lists` 已實作。把 live 觀察到的那個
+payload 形狀離線重放，現在解析成功（`input_artifacts=['mutation_matrix']`、
+`operation='analyze'`、1 則 evidence addition）。
+
+新增 6 項測試：提升、路由結果與扁平寫法相同、**衝突時 raise 而非合併或猜測**、
+完全相同時接受、以及三種非 Mapping 的 `outcome` 形狀**不得**變成 TypeError
+（沿用 `_normalize_registry_tag_evidence` 記載的理由）。
+
+實作過程中我自己寫錯一個 fixture：用了 `體細胞突變` 當 text_span，但那句話在
+`original-q1` 的原文裡不存在（它在 q2／q3）。驗證器正確地以
+`ungrounded_evidence` 拒絕。**這是接地檢查在測試中發揮作用的一次實例**，
+已改為原文確實有的 `DNA 突變資料`。
+
+離線：**1287 passed、3 failed（既有待決策項）、0 skipped**；ruff 與
+`git diff --check` 通過。**live 尚未執行**，Log 39 的預測與判準待下一輪檢驗。

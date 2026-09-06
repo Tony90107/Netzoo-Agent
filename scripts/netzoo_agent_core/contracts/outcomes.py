@@ -356,6 +356,32 @@ class SemanticPatch(BaseModel):
     evidence_additions: list[OutcomeEvidence] = Field(default_factory=list, max_length=12)
     assumptions: list[str] | None = Field(default=None, max_length=4)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_nested_evidence_lists(cls, value):
+        """Accept only an equivalent nesting of the evidence lists, never conflicts.
+
+        A live round returned this patch shape five times out of five for one
+        request, with the root's `evidence_additions` placed inside the nested
+        `outcome` object and nothing else wrong. Both names describe the same
+        repair, so the nesting is equivalent, not ambiguous.
+        """
+        if not isinstance(value, Mapping):
+            return value
+        outcome = value.get("outcome")
+        if not isinstance(outcome, Mapping):
+            return value
+        normalized = dict(value)
+        nested = dict(outcome)
+        for field in ("evidence_additions", "evidence_removals"):
+            if field not in nested:
+                continue
+            if field in normalized and normalized[field] != nested[field]:
+                raise ValueError(f"Conflicting patch evidence list: {field}")
+            normalized[field] = nested.pop(field)
+        normalized["outcome"] = nested
+        return normalized
+
 
 class SemanticReview(BaseModel):
     """One adjudicated scientific outcome returned by the review pass."""
