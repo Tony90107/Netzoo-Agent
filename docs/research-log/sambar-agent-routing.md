@@ -4771,3 +4771,122 @@ gpt-4o 的同項量測是 ±3 次試驗（Log 67）；mini 的變異可能更大
 **用途**：Log 70 記到 A 由 8 升到 17 但無法歸因。本輪給出「多大的差距才算真的」，
 也是日後 mini 上任何改動的判準基礎。護欄（D=0、forbidden=0、unsafe=0）一併記錄；
 若護欄在零變更下被觸發，那是關於量測而非關於程式的發現。
+
+## Log 72｜事前宣告：另一個 agent 的架構變更——先驗證再評成效，且拆成兩個可識別的比較
+
+日期／時區：2026-09-07，Asia/Taipei。**本節在跑任何候選輪之前寫入,執行後不得修改。**
+
+### 已離線驗證的事（在談成效之前）
+
+使用者請另一個 agent 修改架構。先查完整性，結果如下：
+
+- **語料未被修改**：`corpus_sha256` 仍為 `153d423dc5…`，與 r3–r15 相同。
+- **離線 gate**：**1380 passed、1 xfailed、3 failed（既有待決策項）**，
+  測試收集數由 1363 升到 1384——**測試是淨增加,不是被刪**。
+  `git diff --stat` 顯示的 527 行刪除主要是生產程式被取代。
+- **本研究建立的守門測試全部存活**（逐一確認）：
+  `test_repeated_omission_of_explicit_current_input_cannot_pass`、
+  `test_a_validated_first_pass_survives_a_review_that_does_not_parse`、
+  `test_a_tag_the_harness_moved_does_not_pick_a_tool`、
+  `test_every_contract_the_candidates_are_copied_into_has_the_same_bound`、
+  `test_request_framing_and_exome_wording_do_not_change_temporal_scope`。
+- **它新增了兩個控制項**（`--review-policy`、`--semantic-contract`）並在報告中記錄，
+  這正是識別性所需。
+- **它自己明寫「No paid model evaluation was run for this change」**——
+  因此「有沒有優化」目前的答案是**未量測**，不是「有」或「沒有」。
+
+一項需要更正的動作：它刪除了 `docs/results/routing-evaluation-results.md`，
+理由是「User-provided historical A/B counts are not measurements of this change」。
+**前半句對、結論過度**：那份文件量的是**變更前的版本**，本身是合法的歷史量測。
+已復原，並在開頭加註版本邊界（`8a6ddc5`）與「B1 類數字描述的行為已不存在」。
+
+### 預設路徑同時改了兩件事，所以不能一輪比完
+
+1. **關鍵字 fallback 縮減**（無旗標，無條件生效）
+2. **`review_policy="when_needed"`**（有旗標，可關閉）
+
+依該 agent 自己的建議（"Changing fallback policy, model, corpus and contract in one
+comparison cannot identify a schema effect"），拆成兩個比較，皆用 **mini**（已預先授權）：
+
+- **X 輪**：新程式 ＋ `--review-policy always` → 對 r15 比較，**單獨識別 fallback 縮減**。
+- **Y 輪**：新程式 ＋ `--review-policy when_needed` → 對 X 輪比較，**單獨識別 review 政策**。
+
+### 判準（雜訊底線 mini = ±2 次試驗,見 Log 71）
+
+- **G（護欄,兩輪皆為否決條件）**：**D = 0**、forbidden = 0、`unsafe_execution_count` = 0。
+- **X 輪（fallback 縮減）**：預測 **B1 下降**（r15 為 5）、**C 上升**、**A 不變**（±2 內）。
+  fallback 從未產生 A，故若 A 下降超過 2，代表縮減傷到了驗證成功的路徑，需回報。
+- **Y 輪（review 政策）**：預測 **呼叫數下降**、**B2 不上升**（r15 為 4）、**A 不下降**（±2 內）。
+  依 Log 72 前的量測，attempt 1 乾淨的試驗有近半最終落在 B2，
+  故跳過第二次呼叫**可能**讓 B2 下降；但這是預測，不是已知。
+- **記錄但不作判準**：`passed`、工具正確率、延遲。
+  依 Log 67／71，單輪 42 次試驗對 ≤2–3 次的差異沒有分辨力。
+
+### 明確不做的事
+
+`--semantic-contract claims` 是該 agent 標為實驗性、預設關閉的新契約。
+它自己寫明「Earlier controlled results for the legacy schema do not establish
+this contract's effectiveness」，且 **mini 上「唯一障礙為 conflicting_evidence」的
+試驗數為 0（Log 72 前實測）**——因此在 mini 上它預期無收益。
+**本輪不測 claims 契約。**
+
+## Log 73｜架構變更的實測：fallback 縮減如設計運作；條件式 review 在 mini 上**觸發 0 次**
+
+日期／時區：2026-09-07，Asia/Taipei。**使用者預先授權的 mini 輪次**，兩輪共 232 次呼叫。
+報告：[live-r16-mini-newfallback-always.json](live-r16-mini-newfallback-always.json)、
+[live-r17-mini-newfallback-whenneeded.json](live-r17-mini-newfallback-whenneeded.json)。
+判準寫於 Log 72，執行前寫入，本節未修改。
+
+| | A | B1 | B2 | C | D | 工具正確 | passed | 呼叫 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| r15 舊程式／always | 19 | 5 | 4 | 14 | **0** | 28 | 16 | 109 |
+| r16 新程式／always | 20 | **2** | 4 | 16 | **0** | 26 | 17 | 116 |
+| r17 新程式／when_needed | 21 | 2 | 3 | 16 | **0** | 26 | 15 | 116 |
+
+### X 輪（fallback 縮減）：判準成立，如設計運作
+
+- **B1 5 → 2**（預測下降 ✓）、**C 14 → 16**（預測上升 ✓）
+- **A 19 → 20，差 1，在 ±2 底線內**（預測不變 ✓）
+  → **縮減沒有傷到通過驗證的路徑**，它只移除了「工具對但無經驗證 outcome」這一類。
+- 護欄 **D = 0、forbidden = 0、unsafe = 0** ✓
+
+**這是一個已驗證的設計改善**：把「registry 猜中但沒有經驗證解讀」換成「明確失敗」。
+代價可量：覆蓋率少 2 次試驗。依使用者的優先順序（工具對＋分析對 > 沉默），
+B1 本來就不是好狀態，所以這個交換方向正確。
+
+### Y 輪（條件式 review）：**在 mini 上是 no-op**
+
+每題呼叫數分佈與呼叫角色序列**在兩輪完全相同**：
+`{2: 10, 3: 32}`，32 次為 `(semantic_interpreter, semantic_reviewer, intent_router)`。
+**跳過第二次呼叫的條件在 42 次試驗中一次都沒有滿足。**
+
+成因可從先前量測解釋：該閘門要求「通過證據驗證 ＋ 單一 outcome ＋ 已知 request mode
+＋ 已知 operation ＋ 無 unresolved dimensions ＋ 唯一精確匹配」。
+而 **mini 的 attempt 1 通過驗證者僅 4/42**（Log 72 前實測），
+其中還要同時滿足其餘五項——交集為空。
+
+**因此 r16 與 r17 之間的所有差異（A 20→21、B2 4→3、passed 17→15）都是純雜訊**，
+因為兩輪走的程式路徑逐位元組相同。這也順帶成為本研究**第三個同行為重複**，
+其變異（A ±1、工具正確 0、passed ±2）與 Log 71 量到的 ±2 一致。
+
+### 整體：沒有可量測的準確度改善
+
+A 19 → 21：**Fisher p = 0.827**。工具正確 28 → 26：**p = 0.820**。
+兩者都在 mini 的 ±2 雜訊底線內。依 Log 71 的宣告，
+**這一輪既不能宣稱改善，也不能宣稱退步**——而且以這個樣本量，
+即使真有小幅改善也測不出來。
+
+### 完整性檢查（在談成效之前已完成，見 Log 72）
+
+語料未動（`corpus_sha256` 相同）、離線 gate 1380 passed（原 1359）、
+測試淨增 21 項、本研究的 5 個守門測試全部存活、並新增兩個可識別性控制項。
+**該 agent 自己明寫未跑過付費評估，本節即為該評估。**
+
+### 尚未測、且我不建議在 mini 上測的
+
+`--semantic-contract claims`（預設關閉）。它自己寫明舊有受控結果不能轉移，
+而 **mini 上「唯一障礙為 `conflicting_evidence`」的試驗數為 0**，
+故在 mini 上預期無收益。要測它需要 gpt-4o（4o 上該母體為 10/42，
+上限約 7 次試驗），並需使用者授權。
+條件式 review 同理：**要看它有沒有用，也只能在 4o 上測**
+（4o 的 attempt 1 通過驗證者為 7/42，仍偏低，但不為零）。

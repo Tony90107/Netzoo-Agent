@@ -7,6 +7,13 @@ every confound we know of is stated with the result rather than in a footnote.
 
 ---
 
+> **Version boundary.** Every number in this document measures the routing
+> system as of commit `8a6ddc5`. A later change reduced the keyword-based
+> registry fallback and made the second semantic call conditional; rounds taken
+> after it are not comparable to the rounds below, and the fallback-derived
+> figures (class **B1**) in particular describe behaviour that no longer exists.
+> The results stand as measurements of that version and are labelled as such.
+
 ## 1. System and task
 
 The agent maps a free-text request from a domain scientist onto one registered
