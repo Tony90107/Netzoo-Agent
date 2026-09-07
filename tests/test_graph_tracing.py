@@ -872,15 +872,25 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
     events = store.read_events(run_id)
     event_types = [event.event_type for event in events]
 
+    # Rewritten with the planner's confirmation gate. A demo request's inputs
+    # are discovered locally, and the planner now refuses to treat discovery as
+    # execution authority -- its own comment: "Every discovered or demo-selected
+    # local input must be deliberately confirmed." So this run stops at the
+    # question and emits no approval, tool or evaluation event, which is what
+    # the ordering assertions below now check: the plan is recorded, and nothing
+    # downstream of approval happens without it.
+    #
+    # The approved-and-executed ordering is still covered end to end by
+    # `test_workflow_continuation.py`, which supplies the confirmation reply.
     assert "policy.loaded" in event_types
     assert "decision.recorded" in event_types
     assert "plan.created" in event_types
-    assert "plan.approved" in event_types
-    assert "tool.started" in event_types
-    assert "tool.completed" in event_types
-    assert "evaluation.recorded" in event_types
-    assert event_types.index("plan.created") < event_types.index("tool.started")
+    assert "plan.approved" not in event_types
+    assert "tool.started" not in event_types
+    assert "evaluation.recorded" not in event_types
+    assert result["plan"]["status"] == "needs_confirmation"
     assert result["run_id"] == str(run_id)
+    # The trace stays verifiable whether or not the run reached execution.
     assert store.verify_run(run_id).valid is True
 
 

@@ -310,6 +310,49 @@ def _invoke_semantic_interpreter(
             else:
                 review = _validated_review(payload, patching=patching)
                 output_text = review.model_dump_json()
+                # A whole review carries one hypothesis and no index, so it
+                # cannot say which of several it replaces -- and rebuilding the
+                # interpretation from it alone deletes the rest. A first pass
+                # that offered two granularities was collapsed that way into a
+                # confident single answer, losing an ambiguity the validator had
+                # correctly identified. Where the proposal really was ambiguous,
+                # this reply does not answer the contract that was asked for, so
+                # the validated first pass is kept instead (the exception
+                # authorized for a failed review) rather than inventing a merge.
+                if (
+                    isinstance(proposal, SemanticInterpretation)
+                    and len(proposal.outcome_hypotheses) > 1
+                    and validated is not None
+                ):
+                    # The call happened and is billed, so it is accounted for
+                    # before returning. An early return that skipped this would
+                    # hide a paid call from the token budget.
+                    usage = append_llm_usage(
+                        usage,
+                        role=role,
+                        model=context.semantic_model_name,
+                        response=raw,
+                        input_text=input_text,
+                        output_text=output_text,
+                        budget_tokens=context.task_token_budget,
+                        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+                        status="failed",
+                        price_catalog=context.price_catalog,
+                    )
+                    record_event(
+                        context,
+                        state,
+                        "routing.semantic_review_discarded",
+                        "classify",
+                        {
+                            "attempt": attempt + 1,
+                            "issues": [
+                                "whole_review_cannot_represent_multiple_hypotheses:"
+                                f"{len(proposal.outcome_hypotheses)}"
+                            ],
+                        },
+                    )
+                    return validated, usage, budget_warnings, None, restored_tags
                 interpretation = SemanticInterpretation(
                     request_mode=review.request_mode,
                     semantic_goal=review.semantic_goal,
