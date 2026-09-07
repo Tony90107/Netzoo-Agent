@@ -456,7 +456,22 @@ def _tag_discriminated_action(
         and declared <= capability.selection_tags
         and any(_stated_dimensions_match(outcome, capability) for outcome in outcomes)
     ]
-    return survivors[0] if len(survivors) == 1 else None
+    if len(survivors) == 1:
+        return survivors[0]
+    # Nested tag sets: three capabilities carry a superset of a baseline's tags
+    # (OTTER and GIRAFFE over PANDA, BONOBO over LIONESS-coexpression), so
+    # "exactly one survivor" could never select the baseline and PANDA was
+    # unreachable outright. A request naming no specialisation is asking for the
+    # baseline, so the unique minimum under subset order wins; no unique minimum
+    # leaves the tie unresolved.
+    minimal = [
+        action for action in survivors
+        if all(
+            capabilities[action].selection_tags <= capabilities[other].selection_tags
+            for other in survivors
+        )
+    ]
+    return minimal[0] if len(minimal) == 1 else None
 
 
 def match_outcome_hypotheses(

@@ -25,9 +25,16 @@ from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
 from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
 
-# Reachability is a registry property, not a model one: a capability whose
-# selection tags are a subset of another's cannot be singled out by any outcome.
-KNOWN_UNREACHABLE = {"run_panda"}
+# Reachability is a registry property, not a model one. This was
+# {"run_panda"}: its selection tags are a proper subset of OTTER's and
+# GIRAFFE's, so a rule requiring exactly one surviving candidate could never
+# pick it. The tie-break now prefers the unique minimum under subset order -- a
+# request naming no specialisation is asking for the baseline -- which also
+# resolves LIONESS-coexpression against BONOBO, and the set is empty.
+# BONOBO's *conditional* unreachability is a different defect and is pinned by
+# its own test below rather than listed here. Anything added back needs its
+# reason written beside it.
+KNOWN_UNREACHABLE: set[str] = set()
 
 TASK = "Which registered workflow should I use? Advice only."
 
@@ -122,16 +129,23 @@ def _coexpression_match(entity_types, selection_tags=()):
 
 
 def test_declaring_sample_an_entity_switches_the_recommended_tool():
-    """One extra entity value turns a correct answer into a confident wrong one.
+    """The defect that produced this study's first wrong-tool recommendations.
 
-    The first wrong-tool recommendations in this study, 3 of 57 trials and all
-    deterministic, came from here. The prompt states the rule the model broke --
-    "a sample-specific result does not by itself make sample an entity inside the
-    result" -- and BONOBO declares `sample` among its entities while
-    LIONESS-coexpression does not, so breaking that one rule is decisive.
+    3 of 57 trials, all deterministic, all with `status = exact` and a semantic
+    basis -- a confident recommendation of the wrong workflow. The prompt states
+    the rule the model broke: a sample-specific result does not by itself make
+    `sample` an entity in the result. BONOBO declares `sample` among its
+    entities and LIONESS-coexpression does not, so breaking that one rule is
+    decisive.
 
-    `status` is `exact` and the basis is `semantic`: this is not a hedged
-    fallback, it is a confident recommendation of the wrong workflow.
+    A fix was written and **withdrawn**. Removing `sample` from BONOBO's and
+    GIRAFFE's entity sets makes the two capabilities tie on entities, and an
+    existing preference for the capability with the narrower granularity set
+    then selects BONOBO anyway -- including under `request_mode="execute"` for a
+    request that **names LIONESS-COEXPRESSION explicitly**. Trading a wrong
+    guidance answer for a wrong execution target is worse, so the entity change
+    is not applied and the defect is pinned here instead. See research log
+    Log 77-78.
     """
     correct = _coexpression_match(["gene"])
     with_sample = _coexpression_match(["gene", "sample"])
@@ -142,13 +156,13 @@ def test_declaring_sample_an_entity_switches_the_recommended_tool():
 
 
 def test_the_correct_entity_value_makes_bonobo_unreachable():
-    """And the same coupling runs the other way.
+    """The same coupling backwards, also still present.
 
-    With the natural entity value, an exact entity-set match to
+    With the natural `entity_types=["gene"]`, an exact entity-set match to
     LIONESS-coexpression outranks BONOBO's own unique `bayesian` tag, so the tag
-    never gets consulted. BONOBO is reachable only by omitting `entity_types`
-    entirely or by declaring `sample` -- which is the rule violation above.
-    Conditional reachability, distinct from PANDA's absolute case.
+    is never consulted. BONOBO is reachable only by omitting `entity_types` or
+    by the rule violation above -- conditional unreachability, distinct from the
+    absolute case the tag-ordering fix resolved for PANDA.
     """
     assert _coexpression_match(["gene"], ["bayesian"]).matched_actions == [
         "run_lioness_coexpression",
