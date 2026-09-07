@@ -150,32 +150,51 @@ many more prompts or a matched-control design as in §4.1.
 
 **Pre-registered** as replicates.
 
-### 4.5 Safety, and why the zero was a coverage artifact
+### 4.5 Safety, and why the first zero was a coverage artifact
 
-On the 14-prompt corpus, across **294 trials**, both models, seven rounds:
-**0 wrong-tool recommendations, 0 forbidden actions, 0 unauthorized
-executions** — a 95% upper bound of 1.02% by the rule of three.
+On the original 14-prompt corpus — which exercised **6 of 12** capabilities —
+294 trials across both models produced **0 wrong-tool recommendations, 0
+forbidden actions, 0 unauthorized executions**, a 95% upper bound of 1.02% by
+the rule of three.
 
-**That zero did not survive covering the rest of the registry.** On the
-19-prompt corpus the first round produced **3 wrong-tool recommendations in 57
-trials (5.3%)**, all deterministic, all in a newly covered capability pair, and
-all with `status = exact` and a semantic basis — confident recommendations, not
-hedged fallbacks. Nothing about the system changed; the corpus stopped hiding it.
+**That zero did not survive covering the rest of the registry.** Extending the
+corpus to 11 of 12 capabilities, with no change to the system, produced **3
+wrong-tool recommendations in 57 trials (5.3%)** — all deterministic, all in a
+newly covered capability pair, all reported as `exact` with a semantic basis.
+Confident recommendations, not hedged fallbacks.
 
-So the honest statement is not "this system does not recommend wrong tools". It
-is: **the wrong-tool rate was 0/294 on a corpus exercising 6 of 12 capabilities,
-and 3/57 on one exercising 11 of 12.** §5.4 gives the mechanism, which is a
-single ontology rule that the prompt states, the model breaks, and the registry
-then amplifies into a confident answer.
+After the causes were fixed (§5.4, §5.5), a 60-trial round on the 12-of-12
+corpus is back to **0 wrong-tool recommendations, 0 forbidden actions, 0
+unauthorized executions**.
 
-Forbidden actions and unauthorized executions remain at zero on both corpora.
+The sequence is the result, not any single number:
 
-The zero counts were pre-registered veto conditions in every intervention round;
-this round was pre-registered as a baseline, with the note — written before it
-ran — that a non-zero wrong-tool count would be a pre-existing defect revealed by
-the new corpus rather than a regression. It was.
+| Corpus | Capabilities covered | Trials | Wrong-tool |
+| --- | --- | --- | --- |
+| 14 prompts | 6 / 12 | 294 | **0** |
+| 19 prompts | 11 / 12 | 57 | **3** |
+| 20 prompts, causes fixed | 12 / 12 | 60 | **0** |
 
----
+A safety rate is a statement about a corpus, not about a system. Ours was
+0/294 partly because half the registry was never asked for.
+
+Forbidden actions and unauthorized executions are zero throughout.
+
+### 4.6 How often does the model supply the information that picks the tool?
+
+**Three trials in 27.**
+
+Several prompts fit more than one capability on the coarse dimensions the corpus
+originally recorded; what separates them is a role or a registry tag. The corpus
+now records that discriminator per prompt and the scorer requires it. Across the
+27 trials of the nine annotated prompts, **24 omit it** — the model named a tool
+without producing the information that chose it, and a deterministic preference
+in the matcher covered the gap.
+
+**All 24 were scored fully correct before this measurement existed.** That single
+number is the sharpest evidence for §6's first claim: internal consistency and
+even a correct tool name are not comprehension, and a benchmark that grades only
+the answer cannot tell the difference.
 
 ## 5. What the benchmark could not see
 
@@ -192,21 +211,29 @@ outcome can satisfy would depress the score permanently for a reason unrelated t
 the model. Five are reachable through their own registry tags and now have cases;
 coverage is **11 of 12**.
 
-### 5.2 PANDA cannot be uniquely recommended
+### 5.2 PANDA could not be recommended at all, and neither could two others
 
 ```
-run_panda   = {aggregate_network, tf_gene_regulation}
-run_otter   = {aggregate_network, tf_gene_regulation, relaxed_graph_matching}
-run_giraffe = {aggregate_network, tf_gene_regulation, tfa}
+run_panda                = {aggregate_network, tf_gene_regulation}
+run_otter                = {aggregate_network, tf_gene_regulation, relaxed_graph_matching}
+run_giraffe              = {aggregate_network, tf_gene_regulation, tfa}
+run_lioness_coexpression = {coexpression, sample_specific}
+run_bonobo               = {bayesian, coexpression, sample_specific}
 ```
 
-PANDA's tag set is a **proper subset** of both. Any outcome carrying PANDA's tags
-also satisfies OTTER's and GIRAFFE's prerequisites, so a rule that requires
-exactly one surviving candidate can never select it. **NetZoo's flagship method
-is structurally unreachable**, and no routing metric could show it because no
-case asked for it. The same shape had been found once before for CONDOR.
+Three nesting relations, and in each the **subset** member is the baseline
+method while the supersets are its specialisations. A tie-break requiring
+exactly one surviving candidate can never select a subset member, so
+**NetZoo's flagship method was structurally unrecommendable** — and no routing
+metric could reveal it, because no corpus prompt asked for it.
 
-A test now requires every capability to be reachable or listed as knowingly not,
+The fix is one rule, and it is a statement about scientific requests rather than
+a heuristic: *a request that names no specialisation is asking for the
+baseline*, so among candidates carrying every declared tag the unique minimum
+under subset order wins. All 12 capabilities are now uniquely reachable and the
+corpus covers all 12.
+
+A test requires every capability to be reachable or listed as knowingly not,
 forbids the corpus from expecting an unreachable one, and fails if a reachable
 capability has no case.
 
@@ -231,34 +258,61 @@ router relies on. Three findings, recorded rather than corrected:
    `regulatory_network`. Routing treats it as one thing; at the file level it is
    not, and no consumer can parse them uniformly.
 
-### 5.4 One stated rule, broken by the model, amplified by the registry
+### 5.4 One stated rule, broken by the model, amplified by an arbitrary preference
 
 The prompt tells the model: *a sample-specific result does not by itself make
-`sample` an entity inside the result.* Two capabilities nevertheless declare
-`sample` among their entities, and for one pair that makes the rule decisive:
+`sample` an entity inside the result.* Two capabilities nevertheless declared
+`sample` among their entities, and for one pair that made the rule decisive:
 
 | Outcome (same request, only `entity_types` differs) | Match |
 | --- | --- |
-| `entity_types=["gene"]` | **exact `run_lioness_coexpression`** — correct |
+| `entity_types=["gene"]` | exact `run_lioness_coexpression` |
 | `entity_types=["gene","sample"]` | **exact `run_bonobo`** — wrong, and confident |
-| `entity_types=[]` | ambiguous, both candidates |
 
-The model wrote `["gene","sample"]` in all three trials of the per-sample
-coexpression prompt, and the registry turned that one extra value into a
-different workflow. **A documented rule that nothing enforces became a
+The model wrote `["gene","sample"]` in all three trials, and that one extra value
+selected a different workflow. **A documented rule that nothing enforced became a
 wrong-tool recommendation.**
 
-The coupling also runs the other way. With the natural value `["gene"]`, an
-exact entity-set match to LIONESS-coexpression **outranks BONOBO's own unique
-`bayesian` tag**, so the tag is never consulted: BONOBO is reachable only by
-omitting `entity_types` or by committing the rule violation above. It is
-*conditionally* unreachable — the correct outcome cannot select it — which is a
-distinct defect from PANDA's absolute case in §5.2.
+Correcting the declarations took three attempts, and the two failures located the
+real cause. Removing `sample` makes the two capabilities tie on entities — and
+the matcher then reported `exact` anyway, because its specificity score counted
+**how many granularities a capability supports beyond the one requested**. The
+request names one value and both candidates support it; that one of them also
+supports another says nothing here. That term alone decided the tie, first
+visibly through an explicit-name path (an execute request naming
+LIONESS-COEXPRESSION resolved to BONOBO) and then on the direct matching path,
+where an existing test correctly demanded a clarification and got a confident
+answer instead.
 
-The corollary is uncomfortable and worth stating: the sibling prompt asking for
-Bayesian per-sample coexpression scored 3/3, **for the wrong reason** — two of
-its three trials named no `bayesian` tag at all and were selected by the same
-mistaken entity value. A passing case is not evidence of comprehension.
+Removing that one term, and only that one, resolved it. Excess on **roles and
+entities is kept**: a capability that also handles regulators the request never
+mentioned may need priors the user does not have, and this was measured, not
+assumed — refusing `exact` for any tie broke exactly that legitimate case and two
+corpus prompts depending on it.
+
+The prompt in question now returns a clarification question in all three trials,
+which is the correct answer: the request does not distinguish the two
+capabilities.
+
+### 5.5 A registered label that is an ordinary English word
+
+`inspect_inputs`, a validation step, is labelled `inputs`. Its name pattern is
+therefore the bare word, so **"I have three inputs and want a network."**
+resolves to it, and a live round recommended that non-workflow as `status =
+exact` with basis `workflow_name`.
+
+The rule is about the label, not the action: a method name is a deliberate
+reference and so is a multi-word step label, but a single common English word is
+not — unless the action is one the router can recommend. Excluding every
+supporting action instead was tried and was too broad; naming `WEB-SEARCH`
+deliberately is legitimate and an existing test said so.
+
+This is the second defect a corpus prompt exposed rather than a metric. It was
+also the occasion for a methodological correction of our own: the guardrail for
+the change under test was written as "wrong-tool recommendations = 0" where an
+earlier round had correctly written "= 0 *attributable to this change*". Under
+the literal wording a clean change would have been withdrawn for an unrelated
+defect. Criteria need their phrasing checked, not only their thresholds.
 
 **Scope:** these check identifier families, axis orientation, sample coverage and
 required/forbidden columns. **Numbers are not compared and this is not biological
@@ -286,20 +340,28 @@ and a checker filters them would move that guarantee from "impossible" to
 
 ## 7. Limitations
 
-1. **Corpus size and provenance.** Nineteen prompts written by the system's
-   authors; expected answers encode their judgement. The five added cases form
-   **three goal families, not five independent tasks** — independence is bounded
+1. **Corpus size and provenance.** Twenty prompts written by the system's
+   authors; expected answers encode their judgement. The six added cases form
+   **four goal families, not six independent tasks** — independence is bounded
    by the size of the tool set — and paraphrase groups should be treated as one
    statistical unit. §4.4 shows corpus size is the binding constraint on
    resolution.
-2. **Corpus change breaks comparability.** The digest changed when the five cases
-   were added; rounds before and after are not directly comparable. The original
-   fourteen remain scoreable as a subset.
+2. **Corpus change breaks comparability, three times.** The digest changed when
+   the five cases were added, again when PANDA's case was added, and again when
+   the discriminators were recorded. Rounds are comparable only within a digest;
+   the original fourteen remain scoreable as a subset, and §4.4's noise floors
+   were measured within a single digest each.
 3. **Single provider family.** Both models are OpenAI via OpenRouter.
 4. **Temperature 0 is not determinism.** §4.4 quantifies the residual.
 5. **`A` is graded against expected parameters, not execution.** §5.3 is the
-   first step toward closing this and closes only the structural part.
-6. **One reported architecture change is unmeasured by design.** An experimental
+   first step toward closing this and closes only the structural part. §4.6
+   tightens `A` to require the discriminator, which is what a correct outcome
+   must contain, but still not what the workflow actually produced.
+6. **Every defect in §5 was found by widening the corpus or by checking the
+   registry against itself — none by a routing metric.** That is the section's
+   point, and it is also its limitation: we do not know how many remain, only
+   that the metrics would not show them.
+7. **One reported architecture change is unmeasured by design.** An experimental
    provider contract that removes the evidence/outcome duplication is implemented
    but off by default; the controlled result in §4.1 does not transfer to it, and
    on the cheap model the failure class it targets does not occur at all.
