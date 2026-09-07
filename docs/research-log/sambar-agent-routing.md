@@ -5355,3 +5355,72 @@ Log 80 之後我對使用者說，修根因會「短期分數下降、長期正�
 那個失敗本來就該被記在模型頭上。**這也是先修尺、再改程式的理由。**
 
 離線：**1406 passed、2 xfailed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 82｜事前宣告：只移除 `_specificity_score` 的 granularity 廣度項，加上 entity 修正
+
+日期／時區：2026-09-07，Asia/Taipei。**本節在實作之前寫入,實作與量測後不得修改。**
+（其中的影響面數字來自已執行的**探索性離線量測**，非事後結果。）
+
+### 影響面已量測，而非估計
+
+先以「多個相容候選時一律不得 `exact`」試套（暫時，已還原）：
+**只新增 1 個失敗**——`test_semantic_purpose_inference_routes_implicit_patient_goal_to_lioness`。
+檢視該測試後判定它**是正當行為，不是缺陷**：
+
+請求宣告 `regulator_types=["tf"]`，而 `run_lioness_panda` 的調控者恰為 `{tf}`、
+`run_lioness_puma` 為 `{tf, mirna}`。偏好前者反映的是真實差異
+（PUMA 家族需要使用者未提及的 miRNA 先驗），**不是擲硬幣**。
+語料另有兩題（`reverse-history-expression`、`sparse-expression-not-mutation`，
+共 6 次試驗）依賴同一個偏好。**因此「一律不得 exact」過寬,不採用。**
+
+### 精確的缺陷在哪一項
+
+```python
+def _specificity_score(outcome, capability) -> int:
+    return (len(capability.entity_types   - set(outcome.entity_types))
+          + len(capability.regulator_types - set(outcome.regulator_types))
+          + len(capability.target_types    - set(outcome.target_types))
+          + len(capability.granularities   - {outcome.granularity})   # ← 這一項
+          + len(capability.guidance_predecessors))
+```
+
+角色與實體的超出量是有意義的：capability 能處理請求未提及的東西，代表它可能需要
+使用者沒有的輸入。**但 granularity 不是**：請求指定了**一個**值，
+兩個 capability **都支援它**，而「某個 capability 另外還支援別的 granularity」
+對這個請求毫無資訊。BONOBO 只支援 `sample_specific`、
+LIONESS-coexpression 支援兩種，於是前者靠「廣度較窄」贏——**這是憑空的偏好。**
+
+### 候選變更（兩項，一起）
+
+1. 從 `_specificity_score` 移除 `granularities` 廣度項。
+2. Log 77 的 entity 修正（`run_bonobo`／`run_giraffe` 移除 `sample`、
+   `run_sambar` 移除 `gene`，YAML 與 Python 兩側）。
+
+### 判準
+
+- **M1（離線，決定性）**：`test_semantic_purpose_inference_routes_implicit_patient_goal_to_lioness`
+  **必須仍然通過**（角色偏好不受影響）；且
+  `test_generic_evidence_validation_precedes_registry_matching` 的
+  coexpression 案例**必須回到 `ambiguous`**（那正是它一直要求的）。
+  **任一不成立 → 撤回。**
+- **M2（離線，決定性）**：Log 76 釘住的兩項缺陷測試**必須翻轉**
+  （`entity_types=["gene","sample"]` 不再換掉工具；BONOBO 由其自身 tag 可達），
+  且 `test_tf_activity_is_selected_by_its_registry_tag` 由 `xfail` 轉為通過
+  （屆時移除 `strict` 標記並改寫註解）。
+- **M3（離線，回歸）**：除既有 3 項待決策失敗外，
+  **僅允許「候選清單因誠實模糊而擴大」這一類的既有測試改寫**，
+  且每一項須逐一判斷是「前提被取代」或「真實回歸」。
+  探索量測顯示這類僅 1 項（`test_partial_hypotheses_generalize_across_network_families`）。
+  **若出現非此類的失敗 → 撤回。**
+- **G（護欄，live，否決條件）**：mini 一輪 60 次試驗（20 題 × 3）中
+  **D = 0**（r18 為 3）、forbidden = 0、`unsafe_execution_count` = 0。**D > 0 → 撤回。**
+- **O（成效，live）**：`per-sample-coexpression` 三次皆不得為 D。
+- **R（僅記錄,不得作為成敗依據）**：A、工具正確、`ambiguous` 次數。
+  **A 預期會下降**，因為 Log 81 起 A 額外要求判別維度，
+  而模型漏掉判別維度的試驗本來就該被記為失敗。
+  `corpus_sha256` 已於 Log 81 改變，**與 r18 及之前皆不可比較**。
+
+### 事前寫下的一個限制
+
+`guidance_predecessors` 也計入偏好分數，其正當性**未經檢驗**。
+本節不動它；若未來發現同類問題，應以同樣方式逐項檢驗，而非整體移除偏好。
