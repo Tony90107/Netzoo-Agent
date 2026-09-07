@@ -724,6 +724,19 @@ def _enforce_input_compatibility(
     )
 
 
+def _compatible_candidate_count(
+    outcome, capabilities=OUTPUT_CAPABILITIES,
+) -> int:
+    """How many registered capabilities the typed outcome is compatible with.
+
+    `match_requested_outcome` reports `exact` both when one capability is
+    compatible and when several are and a specificity preference picks a winner.
+    Those are different claims, and only the first should outrank an explicit
+    workflow name.
+    """
+    return sum(1 for capability in capabilities.values() if _matches(outcome, capability))
+
+
 def _match_semantic_request(
     task: str,
     hypotheses: Sequence[OutcomeHypothesis],
@@ -781,6 +794,32 @@ def _match_semantic_request(
         else:
             return match
     if match.status == "exact":
+        # `exact` means two different things here: exactly one capability is
+        # compatible, or several are and `_specificity_score` picked a winner.
+        # Only the first outranks an explicit workflow name. Left conflated, a
+        # request naming LIONESS-COEXPRESSION for execution resolved to BONOBO,
+        # because the preference favours the narrower granularity set and this
+        # early return runs before name disambiguation is even reached.
+        named = named_registered_action(_current_scope_text(task))
+        if (
+            named is not None
+            and named not in match.matched_actions
+            and (named_capability := OUTPUT_CAPABILITIES.get(named)) is not None
+            and matching_hypotheses
+            and all(
+                _matches(item.outcome, named_capability)
+                for item in matching_hypotheses
+            )
+            and any(
+                _compatible_candidate_count(item.outcome) > 1
+                for item in matching_hypotheses
+            )
+        ):
+            match = CapabilityMatch(
+                status="exact",
+                match_basis="workflow_name",
+                matched_actions=[named],
+            )
         return _enforce_input_compatibility(
             task,
             match,
@@ -831,8 +870,19 @@ def _match_semantic_request(
             # A name may disambiguate compatible methods, never redefine a
             # known output or bypass an input contract.
             return match
+        # `exact` from a specificity preference among several compatible
+        # capabilities is not the "uniquely compatible typed outcome" the rule
+        # above means to protect. Left as-is it silently outranked an explicit
+        # name: an execute request naming LIONESS-COEXPRESSION resolved to
+        # BONOBO. Where exactly one capability is compatible, nothing changes.
+        preference_resolved = match.status == "exact" and any(
+            _compatible_candidate_count(item.outcome) > 1
+            for item in matching_hypotheses
+        )
         named_match = CapabilityMatch(
-            status="exact" if capability is None or match.status == "ambiguous" and matching_hypotheses and all(
+            status="exact" if capability is None or (
+                match.status == "ambiguous" or preference_resolved
+            ) and matching_hypotheses and all(
                 _complete_guidance_match(item.outcome, capability)
                 if request_mode == "guidance" else _matches(item.outcome, capability)
                 for item in matching_hypotheses
