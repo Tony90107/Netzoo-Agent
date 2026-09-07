@@ -135,3 +135,119 @@ def test_the_run_records_its_own_provenance(sambar_run):
     assert manifest["method"] == "SAMBAR"
     assert manifest["inputs"] and manifest["parameters"]
     assert set(manifest["artifacts"]) >= {"mt_out.csv", "pt_out.csv"}
+
+
+# --- COBRA -------------------------------------------------------------------
+
+COBRA_TOY = "/opt/netZooPy/tests/cobra"
+
+
+def _assert_matches_upstream(produced, expected) -> None:
+    """Apply upstream's own assertion for this method, verbatim.
+
+    `tests/test_cobra.py` compares every component with
+    `pd.testing.assert_frame_equal(..., rtol=1e-10, check_exact=False)`. Using
+    that call rather than a hand-rolled bound keeps the tolerance the method
+    authors' judgement about their own reference files, and it matters here:
+    pandas applies its default `atol=1e-8` alongside `rtol`, which is what
+    absorbs the trailing eigenvalue. With 400 samples and 4000 genes the
+    covariance is rank-deficient, so that eigenvalue is zero in exact
+    arithmetic and floating-point dust in practice (ours 1.3e-13, upstream
+    -6.3e-14). A relative comparison against zero is undefined; upstream's
+    combined criterion is the correct instrument, not a looser one.
+    """
+    import pandas as pd
+
+    pd.testing.assert_frame_equal(
+        pd.DataFrame(produced), pd.DataFrame(expected),
+        rtol=1e-10, check_exact=False,
+    )
+
+
+@pytest.fixture(scope="module")
+def cobra_run() -> dict[str, object]:
+    """Run COBRA through the production wrapper on upstream's toy inputs.
+
+    Two adaptations to upstream's fixture, both preserving its meaning:
+
+    * Upstream calls `cobra.cobra(X, expression)` directly and pairs design
+      rows with expression columns **by position**; its `X.csv` index is
+      `1, 2, 3...` while the expression columns are `V1, V2, ...`. Our wrapper
+      refuses that: it requires the design's first column to be sample IDs
+      matching the expression columns exactly, so a covariate cannot be
+      silently attached to the wrong sample. The fixture makes upstream's
+      positional pairing explicit rather than relaxing that check.
+    * Upstream's design carries an all-ones intercept column; our wrapper adds
+      its own, so the fixture drops the duplicate. `psi` then has upstream's
+      three rows rather than four, which is how the shapes check out below.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                "python - <<'PY'\n"
+                "import pandas as pd\n"
+                f"e = pd.read_csv('{COBRA_TOY}/expression.csv', index_col=0)\n"
+                f"x = pd.read_csv('{COBRA_TOY}/X.csv', index_col=0)\n"
+                "x = x.drop(columns=[x.columns[0]])\n"
+                "x.insert(0, 'sample_id', list(e.columns))\n"
+                "x.to_csv('/out/design.csv', index=False)\n"
+                "PY\n"
+                "cd /opt/netzoo-app && python scripts/run_cobra.py"
+                f" -e {COBRA_TOY}/expression.csv -d /out/design.csv -o /out"
+                f" && cp {COBRA_TOY}/psi.csv {COBRA_TOY}/Q.csv"
+                f" {COBRA_TOY}/D.csv {COBRA_TOY}/G.csv /out/",
+            ],
+            check=True, capture_output=True, timeout=900,
+        )
+        import numpy as np
+        import pandas as pd
+
+        components = dict(np.load(out / "components.npz"))
+        upstream = {
+            name: pd.read_csv(out / f"{name}.csv", index_col=0).to_numpy()
+            for name in ("psi", "Q", "D", "G")
+        }
+    return {"components": components, "upstream": upstream}
+
+
+@pytest.mark.parametrize(("component", "reference"), [("psi", "psi"), ("g", "G")])
+def test_cobra_components_match_upstreams_ground_truth(cobra_run, component, reference):
+    produced = cobra_run["components"][component]
+    expected = cobra_run["upstream"][reference]
+
+    assert produced.shape == expected.shape
+    _assert_matches_upstream(produced, expected)
+
+
+def test_cobra_eigenvalues_match_upstreams_ground_truth(cobra_run):
+    """`D` is one column upstream and a vector here; the values are the check."""
+    produced = cobra_run["components"]["d"]
+    expected = cobra_run["upstream"]["D"].ravel()
+
+    assert produced.shape == expected.shape
+    _assert_matches_upstream(produced, expected)
+
+
+def test_cobra_eigenvectors_are_compared_through_a_reconstruction(cobra_run):
+    """Eigenvectors are sign-ambiguous, so `Q` is checked the way upstream does.
+
+    Upstream's own test never compares `Q` elementwise: it reconstructs a
+    covariance from `Q` and `psi` and compares that. Comparing `Q` directly
+    would fail on a sign flip that changes nothing about the decomposition.
+    """
+    import numpy as np
+
+    q, psi = cobra_run["components"]["Q"], cobra_run["components"]["psi"]
+    q_gt, psi_gt = cobra_run["upstream"]["Q"], cobra_run["upstream"]["psi"]
+
+    assert psi.shape[0] == psi_gt.shape[0]
+    for index in range(psi_gt.shape[0]):
+        _assert_matches_upstream(
+            q.dot(np.diag(psi[index, :])).dot(q.T),
+            q_gt.dot(np.diag(psi_gt[index, :])).dot(q_gt.T),
+        )
