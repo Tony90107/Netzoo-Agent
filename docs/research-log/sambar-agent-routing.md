@@ -5627,3 +5627,46 @@ plan → approve → execute → evaluate，並斷言
 其餘 11 個 capability 的**生物學斷言**。上游對其中幾個也有 ToyData 與參考值
 （`/opt/netZooPy/tests/` 下有 panda／puma／lioness／condor／cobra／otter／giraffe 等目錄），
 **本模式可直接延伸**，但今天只覆蓋 SAMBAR。
+
+## Log 86 — 執行層數值核對延伸至 COBRA（第二個 capability）
+
+**動機**：Log 85 把 SAMBAR 對上上游自寫的 ground truth，但當時只覆蓋 1/12。本輪
+延伸到 COBRA。無付費呼叫，只用本機 Docker 與上游隨附的參考檔。
+
+**判準（事前）**：用上游自己的斷言，不自訂容差。若我方輸出與
+`/opt/netZooPy/tests/cobra/{psi,Q,D,G}.csv` 在上游 `test_cobra.py` 的比較條件下
+一致，即通過；不一致就記錄不一致，不放寬條件。
+
+**結果**：`psi` 最大絕對差 5.3e-11、`D` 1.3e-12、`G` 3.7e-15，形狀全數相符
+（psi (3,400)、G/Q (4000,400)、D (400,)）。`Q` 依上游做法經
+`C = Q·diag(psi)·Qᵀ` 重建後比較（特徵向量有正負號自由度，逐元素比較會因無意義的
+翻號而失敗）。8 個 docker 測試全通過；離線閘門 1416 passed / 9 skipped /
+1 xfailed / 0 failed。
+
+**我的錯誤與修正**：我第一版自己寫了純相對誤差函式 `_within_rtol`，還加了 `*10`、
+`*1e4` 的寬放係數——這是自訂容差，而且錯的。它在最後一個特徵值上失敗（我方
+1.28e-13，上游 -6.29e-14）：400 樣本對 4000 基因，共變異數矩陣秩不足，該特徵值在
+精確算術下為 0，浮點下是雜訊，對 0 取相對誤差沒有定義。上游用
+`pd.testing.assert_frame_equal(..., rtol=1e-10, check_exact=False)`，而 pandas 會
+同時套用預設 `atol=1e-8`——那個 atol 才是吸收這個雜訊的東西。改為**原樣呼叫上游那一行**
+後全通過。教訓：容差該屬於方法作者，我加的寬放係數只是在掩蓋自己選錯了工具。
+
+**測試是否真的有鑑別力**：注入相對擾動檢查偵測下限——1e-6 抓到、1e-9 抓到、
+1e-11 抓不到（絕對誤差落到 atol 底下）。所以這不是恆真斷言，偵測門檻是實測的。
+
+**對齊過程本身產出的發現**：上游的 COBRA 測試以**位置**配對 design 列與 expression
+欄（`X.csv` 索引為 1,2,3…，expression 欄為 V1,V2…）。我方 wrapper 拒收這種輸入，
+要求 design 第一欄是與 expression 欄名完全相符的 sample ID。要重現上游數字，必須把
+上游的位置配對「明寫出來」，而不是放寬我方檢查。也就是說**我方執行層比方法本身的
+測試更嚴，而且是往保護使用者的方向嚴**：covariate 配錯樣本不會報錯，只會安靜地產出
+一個自信而錯誤的 differential coexpression 結果。另外上游 design 帶了全 1 的 intercept
+欄，我方 wrapper 自己會加，故 fixture 需去除重複欄——因此 psi 是上游的 3 列而非 4 列。
+
+**範圍限制（誠實記錄，未繞過）**：PANDA 與 PUMA 無法經我方 wrapper 與上游 ground
+truth 比較，因為 `run_panda_precomputed.py` / `run_puma_precomputed.py` 要求
+`--coexpression`，走的是與參考值生成時不同的計算路徑。這是這兩個 wrapper 的範圍限制。
+剩餘 10 個 capability 的生物學斷言仍不存在。
+
+**檔案**：`tests/test_execution_numeric_reference.py`（+4 COBRA 測試，共 8 個，
+以 `NETZOO_RUN_DOCKER_TESTS=1` 選擇性啟用）、`docs/results/netzoo-routing-findings.md`
+§5.6 改寫為兩個 capability 並納入 sample-ID 嚴格性發現。

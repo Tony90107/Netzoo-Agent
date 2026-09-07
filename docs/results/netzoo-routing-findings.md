@@ -319,34 +319,70 @@ defect. Criteria need their phrasing checked, not only their thresholds.
 **Scope:** these check identifier families, axis orientation, sample coverage and
 required/forbidden columns of outputs recorded earlier.
 
-### 5.6 One workflow now checked against upstream's own numbers
+### 5.6 Two workflows now checked against upstream's own numbers
 
-The pinned image carries netZooPy 0.11.0, and netZooPy ships a ground-truth file
-together with the inputs that produce it. So SAMBAR can be run through the
+The pinned image carries netZooPy 0.11.0, and netZooPy ships ground-truth files
+together with the inputs that produce them. So a workflow can be run through the
 production wrapper on those inputs and compared against **reference values its
 own authors wrote**, rather than against an earlier output of ours.
 
-| Comparison | Largest absolute disagreement |
-| --- | --- |
-| Fresh run vs upstream `sambar_gt.csv` | **3.5 × 10⁻¹⁸** |
-| Fresh run vs the artifact committed here | **3.5 × 10⁻¹⁸** |
+| Workflow | Component | Largest absolute disagreement |
+| --- | --- | --- |
+| SAMBAR | pathway × sample scores | **3.5 × 10⁻¹⁸** |
+| COBRA | `psi` (variance decomposition) | **5.3 × 10⁻¹¹** |
+| COBRA | `D` (eigenvalues) | **1.3 × 10⁻¹²** |
+| COBRA | `G` (gene loadings) | **3.7 × 10⁻¹⁵** |
+| COBRA | `Q` (eigenvectors) | via reconstruction, see below |
 
-Both are double rounding. The tolerance is 1e-12 — six orders looser than the
-observed disagreement, far tighter than any difference that could change a
-biological reading, and not so tight that it pins bit patterns across BLAS
-builds.
+**The tolerance is not ours.** For COBRA the test calls upstream's own
+assertion verbatim — `pd.testing.assert_frame_equal(..., rtol=1e-10,
+check_exact=False)`, the exact line from `tests/test_cobra.py` — so the
+precision judgement belongs to the method's authors, not to us. That choice
+turned out to matter rather than being merely tidy: pandas applies a default
+`atol=1e-8` alongside `rtol`, and with 400 samples against 4000 genes the
+covariance is rank-deficient, so its trailing eigenvalue is zero in exact
+arithmetic and floating-point dust in practice (ours 1.3 × 10⁻¹³, upstream
+−6.3 × 10⁻¹⁴). A pure relative comparison against zero is undefined and a
+hand-rolled `rtol` bound fails there for no real reason; upstream's combined
+criterion is the correct instrument, not a more forgiving one. `Q` is compared
+the way upstream compares it — through the covariance reconstructed from `Q`
+and `psi` — because eigenvectors are sign-ambiguous and an elementwise check
+would fail on a sign flip that changes nothing.
 
-Two things follow. The committed artifact stops being "a file we once produced"
-and becomes one that still reproduces. And §5.3's second finding is settled: the
-dropped sample is upstream behaviour, because upstream's ground truth drops it
-too. **That distinction is the point of having an execution layer: it separates
-our defect from the method's behaviour, and no routing or structural check can.**
+**The assertions discriminate.** Injecting a relative perturbation into a
+reference value, the check catches 10⁻⁶ and 10⁻⁹ and stops detecting at 10⁻¹¹,
+where the absolute error falls under the `atol` floor. So these are real
+comparisons with a measured detection threshold, not assertions that would pass
+against any output.
+
+**A finding from the alignment itself.** Upstream's COBRA test pairs design
+rows with expression columns **by position**: its `X.csv` is indexed `1, 2, 3…`
+while the expression columns are `V1, V2, …`. Our wrapper refuses that input —
+it requires the design's first column to be sample IDs matching the expression
+columns exactly. Reproducing upstream's number required making their positional
+pairing explicit rather than relaxing our check. **Our execution layer is
+therefore stricter than the method's own tests, in the direction that protects
+the user**: a mispaired covariate would not error, it would silently produce a
+confidently wrong differential-coexpression result. This is the kind of defect
+that only an execution-layer comparison can surface, and it is a property of
+the wrapper, not of the router.
+
+Two further things follow. Committed artifacts stop being "files we once
+produced" and become files that still reproduce. And §5.3's second finding is
+settled: the dropped sample is upstream behaviour, because upstream's ground
+truth drops it too. **That distinction is the point of having an execution
+layer: it separates our defect from the method's behaviour, and no routing or
+structural check can.**
 
 **What still does not exist** is per-workflow *biological* assertion for the
-other eleven capabilities. Upstream ships toy data and references for several of
-them and this pattern extends there; today only SAMBAR is covered. The check is
-opt-in (`NETZOO_RUN_DOCKER_TESTS=1`) so the offline gate stays fast — skipped,
-not absent.
+other ten capabilities. The pattern extends wherever upstream ships a reference,
+but not uniformly: PANDA and PUMA cannot be compared to their upstream ground
+truth through our wrappers at all, because `run_panda_precomputed.py` and
+`run_puma_precomputed.py` require `--coexpression` and so take a different
+computation path than the reference was generated from. That is a scope
+limitation of these two wrappers, recorded rather than worked around. The checks
+are opt-in (`NETZOO_RUN_DOCKER_TESTS=1`) so the offline gate stays fast —
+skipped, not absent.
 
 ---
 
