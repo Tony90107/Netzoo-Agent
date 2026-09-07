@@ -5424,3 +5424,75 @@ LIONESS-coexpression 支援兩種，於是前者靠「廣度較窄」贏——**
 
 `guidance_predecessors` 也計入偏好分數，其正當性**未經檢驗**。
 本節不動它；若未來發現同類問題，應以同樣方式逐項檢驗，而非整體移除偏好。
+
+## Log 83｜判準 G／O 皆成立；並記錄一個我自己的判準寫作錯誤與它揭露的安全缺陷
+
+日期／時區：2026-09-07，Asia/Taipei。**使用者預先授權的 mini 輪次**，兩輪共 325 次呼叫。
+報告：[live-r19-mini-specificity-fix.json](live-r19-mini-specificity-fix.json)（名稱缺陷未修）、
+[live-r20-mini-clean-guardrail.json](live-r20-mini-clean-guardrail.json)（已修）。
+判準寫於 Log 82。
+
+| | A | B1 | B2 | C | **D** | 工具正確 | passed | 缺判別維度 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| r19 | 20 | 2 | 2 | 35 | **1** | 24/60 | 13 | 24 |
+| **r20** | 21 | 3 | 2 | 34 | **0** | 26/60 | 15 | 24 |
+
+### 判準結果
+
+- **G（護欄）**：**D = 0、forbidden = 0、unsafe = 0 → 成立。**
+- **O（成效）**：`per-sample-coexpression` 三次皆非 D
+  （ambiguous／None／ambiguous）→ **成立**。
+  **原本要修的缺陷（Log 76 的 D = 3）已消除**：那三次由「自信地推薦 BONOBO」
+  變成「誠實地提問」，因為該請求確實沒有區分兩個 capability。
+- **R（僅記錄）**：A 21/60、工具正確 26/60、passed 15/60。
+  依 Log 81／82 的事前宣告，**這些數字與 r18 及之前皆不可比較**
+  （`corpus_sha256` 已因新增判別維度而改變）。
+
+### r19 的 D = 1：我的判準寫錯了，成因也不是這次變更
+
+r19 出現 1 次 D：`aggregate-tf-baseline` 推薦 `inspect_inputs`
+（`status=exact`、`basis=workflow_name`）——**那不是工作流程,是驗證步驟。**
+
+成因與 `_specificity_score` 無關，已離線證明：
+`inspect_inputs` 的標籤就是英文單字 `inputs`，其名稱樣式為
+`(?<![a-z0-9])inputs(?![a-z0-9])`。因此
+**`"I have three inputs and want a network."` 一句話就能重現**——
+任何含 "inputs" 的請求都會被讀成明文指名該驗證步驟。
+
+**我的判準寫作錯誤**：Log 82 的 G 寫成「D = 0」，
+而 Log 75 我曾正確地寫成「**歸因於本次變更的** D = 0」。
+照字面應撤回一個沒有造成問題的變更。
+**我沒有以論述繞過它，而是修掉成因後重跑**，並在此記錄疏漏本身。
+**判準的措辭本身也需要被檢查,而不只是判準的門檻。**
+
+### 名稱標籤修正（第一版過寬，已收窄）
+
+第一版排除「所有 `output_capability is None` 的 action」——**過寬**，
+既有測試 `test_registry_identifier_matches_supporting_action_without_intent_authority`
+立刻擋下：**明文指名 `WEB-SEARCH` 是正當行為。**
+
+正確的規則關於**標籤**而非 action：**方法名是刻意的指涉，
+多詞的步驟標籤也是；單一常見英文字不是**（除非該 action 本身可被推薦）。
+
+```
+'I have three inputs and want a network.'                -> None
+'Search the web with WEB-SEARCH for PANDA references.'   -> web_search
+'Please inspect the SAMBAR inputs first.'                -> inspect_sambar_inputs
+'Run SAMBAR on my mutation matrix.'                      -> run_sambar
+```
+
+已加 6 案例的參數化測試釘住此規則。
+
+### 判別維度量測的第一批數字
+
+9 題標註了判別維度，共 27 次試驗，其中 **24 次缺判別維度**——
+**mini 只在 3/27（11%）的試驗中提供了「決定選哪個工具」的資訊。**
+其餘 24 次即使名對了工具也不算通過，因為那是系統替它決定的。
+
+**這正是 Log 81 修尺的目的**：先前這 24 次會被記為 A（正確）。
+
+### 現況
+
+12 個 capability 全部唯一可達、語料 20 題涵蓋 12/12、
+Log 76 的 D 缺陷消除、名稱標籤缺陷修正、`exact` 不再由 granularity 廣度導出。
+離線：**1407 passed、1 xfailed、3 failed（既有待決策項）、0 skipped**。
