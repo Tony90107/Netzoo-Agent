@@ -511,7 +511,23 @@ flags (`--save_memory`, `--save_tmp`, `--rm_missing`, and the `modeProcess`
 variants, each with its own reference file) and then defending that
 reconstruction as equivalent. That is a real gap rather than a closed one, and
 it is left open rather than papered over with a comparison whose reference we
-would have had to choose ourselves. The checks
+would have had to choose ourselves. LIONESS is the same shape of problem: its
+reference files come from the class API under specific flags
+(`modeProcess="legacy"`, `save_tmp=True`, `alpha=0.1`), and our three LIONESS
+capabilities go through the CLI. DRAGON's upstream test ships no reference
+directory at all, and BONOBO has neither test data nor reference.
+
+One observation about the reference implementation's own suite belongs here,
+because it bears on how much "upstream's tests pass" is worth as evidence. In
+netZooPy's LIONESS test, **eight `np.allclose(...)` calls appear without
+`assert`** — the comparison is computed and the boolean discarded, so those
+lines pass no matter what the values are. Three sibling comparisons in the same
+file do assert. This is not a criticism of a widely used package; it is the
+reason a downstream tool cannot treat upstream's green suite as verification of
+the properties it depends on, and it is the same failure mode that shows up in
+our own history: a check that looks like a comparison and pins nothing. Where
+this work relies on upstream's assertions, it uses the ones that actually
+assert. The checks
 are opt-in (`NETZOO_RUN_DOCKER_TESTS=1`) so the offline gate stays fast —
 skipped, not absent.
 
