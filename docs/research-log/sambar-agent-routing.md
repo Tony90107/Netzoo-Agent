@@ -5670,3 +5670,73 @@ truth 比較，因為 `run_panda_precomputed.py` / `run_puma_precomputed.py` 要
 **檔案**：`tests/test_execution_numeric_reference.py`（+4 COBRA 測試，共 8 個，
 以 `NETZOO_RUN_DOCKER_TESTS=1` 選擇性啟用）、`docs/results/netzoo-routing-findings.md`
 §5.6 改寫為兩個 capability 並納入 sample-ID 嚴格性發現。
+
+## Log 87 — 執行層核對延伸至 OTTER，並抓到一個真實缺陷
+
+**動機**：延續 Log 85–86，把數值核對推到第三個 capability。這一輪不是確認正確，
+而是**抓到錯誤**。
+
+**判準（事前）**：同 Log 86，用上游自己的斷言條件。若我方輸出與上游參考不符，
+記錄不符並找出原因，不放寬條件、不改判準。
+
+**結果：`scripts/netzoo_agent_core/data/otter.py` 的 PPI 讀取有缺陷。**
+邊表讀取器**要求**三欄（source, target, weight）、把 weight 驗證為數值，然後
+**丟掉它**，對每一條列出的邊一律指派 1.0：
+
+```python
+for row in ppi.itertuples(index=False):
+    p[tf_index[row.left], tf_index[row.right]] = 1.0   # weight 被忽略
+    p[tf_index[row.right], tf_index[row.left]] = 1.0
+```
+
+同一段程式上一行處理 W 時是正確的（`float(row.weight)`）。
+
+**必須分清兩件事，不可混為一談**：
+
+1. **丟棄 PPI 權重是有記載的設計選擇**，不是隱藏 bug。`workflows/otter.yaml` 寫著
+   「the adapter symmetrizes it into P and uses a binary adjacency projection」。
+   這確實偏離 netZooPy 的能力（`otter(W,P,C)` 接受加權 P，上游 toy data 的 P 就是
+   加權的：0.179、0.811、0.999），但文件是誠實的。
+2. **weight 為 0 的邊被指派成 1.0，在任何解讀下都是錯的**——包括那個「binary
+   adjacency」的解讀。檔案明確聲明「不互作」的一對，被轉成「互作」。
+
+**量測（上游 OTTER toy data，661 TF）**：把上游的 P 寫成邊表再讀回來，
+436,260 個非對角格中有 350,312 個本應為 0、85,948 個本應為正——修正前全部變成 1.0，
+即**80.3% 的 PPI 網路被憑空造成「有互作」**，稀疏網路變成全連通。由此產生的
+OTTER 網路與上游 ground truth 差 1.5e-5（值本身約 7.4e-6，即同數量級的錯誤）。
+
+**修正**：`present = 1.0 if float(row.weight) > 0.0 else 0.0`，並以 `max` 合併
+（OR 語意）——若檔案同時列出 (i,j) 與 (j,i) 且權重不同，結果不應由列的順序決定。
+同時把 yaml 的措辭補明「weight 0 投影為 0，而非視為存在」。
+
+**這正是路由層與結構層看不到的那一類缺陷**：請求被正確路由、每個欄位都通過驗證、
+所有結構契約都成立——而數字是錯的，因為一個被要求提供、被驗證、然後被丟棄的欄位。
+沒有執行層核對就抓不到。
+
+**OTTER 無法對上游 ground truth 檔**：`test_otter.csv` 是用**加權** P 產生的，而我方
+有記載地使用二值投影。要重現該檔就得放棄那個已記載的選擇。因此參考值改用
+**上游的程式碼**（`netZooPy.otter.otter` 直接呼叫）搭配**獨立寫出的二值化矩陣**——
+在上游的「檔」不可及時用上游的「碼」。這仍然檢查了 adapter 貢獻的一切：識別碼對應、
+基因與 TF 排序、方向性、以及投影本身；而且它**真的抓到了**這個缺陷。
+
+**參數確認（無缺陷）**：我方預設 lam=0.035、gamma=0.335、Iter=60、eta=1e-05、bexp=1
+與 netZooPy 函式簽章預設**完全相同**；是上游的**測試**用了 Iter=1、lam=0.0035
+（推測為求快）。registry 文件記載正確。測試以上游測試的參數呼叫我方函式。
+
+**測試是否真的有鑑別力（誠實記錄）**：新增 3 個離線測試中**只有 1 個**會在修正前失敗
+（`test_ppi_edge_declared_absent_does_not_project_as_present`）。另兩個在舊碼下也通過，
+因為「全部指派 1.0」本身就是二值且與順序無關——它們不是這個缺陷的迴歸測試，而是
+性質守衛（順序測試會擋掉「直接指派」這種錯誤修法；二值測試會擋掉把權重帶進 P 的改動）。
+Docker 測試 3 個中 2 個會在修正前失敗。離線閘門 1419 passed / 12 skipped / 1 xfailed。
+
+**我的錯誤**：docstring 我原本寫「436,260 個格與獨立二值化不符」——那是與**加權** P
+的差異數；與二值化的差異是 350,312。已改正。差別在於我把兩個不同比較的數字混用了，
+而這個數字本來會被寫進論文。
+
+**留給你的決定（我沒有擅自改）**：要不要讓 P 承載 PPI 信賴度？netZooPy 接受加權 P，
+上游自己的 toy data 就是加權的，而生物學家最常見的輸入（STRING confidence score）
+正是加權的——目前二值化會讓 0.15 與 0.99 的互作等值。這是有記載的設計選擇，不是 bug，
+所以改動它等於改動科學判斷，需要你決定。
+
+**檔案**：`scripts/netzoo_agent_core/data/otter.py`、`workflows/otter.yaml`、
+`tests/test_otter_workflow.py`（+3）、`tests/test_execution_numeric_reference.py`（+3）。

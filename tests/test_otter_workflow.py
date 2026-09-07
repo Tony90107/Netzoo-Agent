@@ -287,3 +287,53 @@ def test_otter_bundle_discovery_never_mixes_two_complete_directories(tmp_path):
         f"directory:{first.resolve()}",
         f"directory:{second.resolve()}",
     }
+
+
+def test_ppi_edge_declared_absent_does_not_project_as_present(tmp_path):
+    """A PPI edge listed with weight 0 must project to 0, not to 1.
+
+    The registry promises a binary adjacency projection. The adapter previously
+    assigned 1.0 to every listed pair regardless of its weight, so a file that
+    spelled out a non-interaction turned it into an interaction -- and a dense
+    grid of pairs became a fully connected PPI network. Measured on upstream's
+    own OTTER toy data (661 TFs): of the 436,260 off-diagonal cells, 350,312 are
+    genuinely absent and 85,948 present, so writing that P out as an edge list
+    and reading it back fabricated 80.3% of the network as interacting.
+    """
+    expression, _, motif, ppi = _inputs(tmp_path)
+    ppi.write_text("TF1\tTF2\t0\n", encoding="utf-8")
+
+    bundle = load_otter_inputs(str(expression), "", str(motif), str(ppi))
+
+    assert bundle.P[0, 1] == 0.0
+    assert bundle.P[1, 0] == 0.0
+    assert bundle.P[0, 0] == 1.0 and bundle.P[1, 1] == 1.0
+
+
+def test_ppi_projection_is_binary_and_does_not_carry_confidences(tmp_path):
+    """Distinct positive weights project alike: P holds adjacency, not scores."""
+    expression, _, motif, ppi = _inputs(tmp_path)
+    projections = []
+    for weight in ("0.01", "0.99"):
+        ppi.write_text(f"TF1\tTF2\t{weight}\n", encoding="utf-8")
+        projections.append(
+            load_otter_inputs(str(expression), "", str(motif), str(ppi)).P.copy()
+        )
+
+    assert np.array_equal(*projections)
+    assert set(np.unique(projections[0]).tolist()) <= {0.0, 1.0}
+    assert projections[0][0, 1] == 1.0
+
+
+def test_ppi_projection_does_not_depend_on_row_order(tmp_path):
+    """Both directions listed with different weights must not race on order."""
+    expression, _, motif, ppi = _inputs(tmp_path)
+    projections = []
+    for rows in ("TF1\tTF2\t0\nTF2\tTF1\t0.9\n", "TF2\tTF1\t0.9\nTF1\tTF2\t0\n"):
+        ppi.write_text(rows, encoding="utf-8")
+        projections.append(
+            load_otter_inputs(str(expression), "", str(motif), str(ppi)).P.copy()
+        )
+
+    assert np.array_equal(*projections)
+    assert projections[0][0, 1] == projections[0][1, 0] == 1.0
