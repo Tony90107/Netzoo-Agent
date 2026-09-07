@@ -5573,3 +5573,57 @@ plan → approve → execute → evaluate，並斷言
 **過程中我還寫了一個假的 `expectedFailure` 測試並隨即移除**：
 它因為自身缺少 fixture 而失敗，不是因為我要釘的行為——
 **因錯誤原因而 xfail 的測試比沒有測試更糟。**
+
+## Log 85｜執行層第一次數值驗證：與上游 ground truth 相差 3.5×10⁻¹⁸，並解決 §5.3 的懸案
+
+日期／時區：2026-09-07，Asia/Taipei。**離線（本機 Docker）,付費呼叫 0 次。**
+
+### 前提：netZooPy 在映像裡，且上游自帶 ground truth
+
+`netZooPy` 不在任何本機 python 環境中，而在 pinned 映像 `netzoo_agent:latest`
+（`netZooPy 0.11.0`，位於 `/opt/netZooPy`）。關鍵發現是上游自己的測試資料：
+
+```
+/opt/netZooPy/tests/sambar/ToyData/{mut.ucec.csv,esizef.csv,genes.txt,h.all.v6.1.symbols.gmt}
+/opt/netZooPy/tests/sambar/ToyData/sambar_gt.csv      ← 上游作者寫的參考值
+```
+
+**參考值不是我們寫的**，這是它可信的原因——先前的「參考輸出」都只是我們自己早先的產物。
+
+### 結果
+
+用**生產用的 wrapper**（`scripts/run_sambar.py`）在映像內以上游 ToyData 執行：
+
+| 比較 | 最大絕對差 |
+| --- | --- |
+| 本次新跑 vs 上游 `sambar_gt.csv` | **3.469 × 10⁻¹⁸** |
+| 本次新跑 vs 本專案已提交的參考產物 | **3.469 × 10⁻¹⁸** |
+
+兩者皆為雙精度捨入。容差訂為 **1e-12**——比實測差距寬六個數量級，
+又遠比任何會改變生物學判讀的差異緊，因此能分辨「同一個計算」與「不同的結果」，
+而不至於跨 BLAS 版本釘死位元樣式。**容差的理據寫在測試裡,不是註腳。**
+
+### 解決 Log 74／§5.3 的發現 2
+
+先前只能說「SAMBAR 的 pathway 產物比它自己的 gene 層產物少一個樣本，
+**可能**是方法本身」。現在有上游證據：**上游 ground truth 也是 247 欄。**
+所以是方法行為（突變全被濾除的病患無法以突變負荷正規化），不是本專案的缺陷。
+**但 agent 從不告訴使用者少了一個樣本**——這一點仍然成立。
+
+**這正是執行層核對存在的理由：它能分辨「我們的缺陷」與「方法的性質」，而結構核對不能。**
+
+### 已提交的內容
+
+`tests/test_execution_numeric_reference.py`（4 項，opt-in
+`NETZOO_RUN_DOCKER_TESTS=1`，與既有容器測試同一個閘門）：
+與上游 gt 比對、與已提交產物比對（**使「參考產物」由「我們曾產生的檔案」
+變成「仍可重現的檔案」**）、樣本掉落歸因於上游、以及 provenance manifest。
+
+預設離線 gate：**1416 passed、4 skipped、1 xfailed、0 failed**——
+數值檢查是**被跳過而非不存在**，gate 仍然快。
+
+### 仍不存在的部分（誠實範圍）
+
+其餘 11 個 capability 的**生物學斷言**。上游對其中幾個也有 ToyData 與參考值
+（`/opt/netZooPy/tests/` 下有 panda／puma／lioness／condor／cobra／otter／giraffe 等目錄），
+**本模式可直接延伸**，但今天只覆蓋 SAMBAR。
