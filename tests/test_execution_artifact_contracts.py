@@ -12,10 +12,13 @@ from pinned runs (see `fixtures/execution/README.md`).
 
 **Scope, stated so it is not overclaimed.** These are structural checks:
 identifier families, axis orientation, sample coverage, and required versus
-forbidden columns. Numeric values are *not* compared against references and
-nothing here is biological validation. A full execution benchmark additionally
-needs fixed input bundles, reference values with justified tolerances, and
-per-workflow biological assertions; that does not exist yet.
+forbidden columns, all against outputs recorded earlier.
+
+Numeric comparison against upstream's own reference values now exists for one
+workflow, in `test_execution_numeric_reference.py`, which runs SAMBAR in the
+pinned image and agrees with netZooPy's ground truth to 3.5e-18. What still
+does not exist is per-workflow *biological* assertion for the other eleven
+capabilities.
 """
 import csv
 import json
@@ -73,10 +76,14 @@ def test_sambar_drops_one_sample_between_its_own_two_artifacts():
     """Sample coverage is not preserved, and the agent never says so.
 
     Routing correctness says nothing about output completeness. The pathway
-    scores cover 247 of the 248 samples present in the gene-level artifact --
-    plausibly intrinsic to the method, since a patient with no retained
-    mutations cannot be normalised by mutation burden, but it is a silent loss
-    from the requester's point of view. Pinned so a change in it is visible.
+    scores cover 247 of the 248 samples present in the gene-level artifact.
+
+    **Resolved since this was written.** It is the method, not our pipeline:
+    upstream netZooPy's own ground truth carries the same 247 columns, which
+    `test_execution_numeric_reference.py` asserts against a real run. A patient
+    whose retained mutations sum to zero cannot be normalised by mutation
+    burden. Still worth surfacing to a requester -- the agent never mentions it
+    -- but not a defect to fix here. Pinned so a change in it is visible.
     """
     columns, _ = _axes("sambar.pathway_mutation_matrix.csv")
     axes = json.loads((FIXTURES / "sambar.gene_mutation_scores.axes.json").read_text())
