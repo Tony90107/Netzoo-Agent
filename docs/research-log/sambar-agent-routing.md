@@ -5081,3 +5081,113 @@ Log 74 新增的 `test_capability_corpus_coverage.py` 判定 BONOBO「可達」�
 依 Log 31 的先例：**先修可達性，再談語料分數。**
 
 離線：**1406 passed、1 xfailed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 77｜事前宣告：修正巢狀 tag 與 `sample` 誤列為 entity，兩者皆為登錄表／排序缺陷
+
+日期／時區：2026-09-07，Asia/Taipei。**本節在實作之前寫入,實作與量測後不得修改。**
+
+### 缺陷是普遍的，不是個案
+
+離線盤點全部 12 個 capability 的 tag 集合，找到 **3 組真子集關係**：
+
+```
+run_lioness_coexpression ⊊ run_bonobo
+run_panda                ⊊ run_giraffe
+run_panda                ⊊ run_otter
+```
+
+**兩個受害者 `run_panda` 與 `run_lioness_coexpression` 都是基線方法**，
+而包含它們的都是其特化版本（OTTER／GIRAFFE 是 PANDA 的變體，
+BONOBO 是 LIONESS-coexpression 的貝氏版）。
+在「恰好剩一個候選才選取」的規則下，**真子集成員永遠無法被唯一選中**。
+
+### 兩項修正
+
+1. **登錄表資料**：從 `run_bonobo` 與 `run_giraffe` 的 `entity_types` 移除 `sample`。
+   依 prompt 自己的規則「a sample-specific result does not by itself make sample
+   an entity inside the result」，而 GIRAFFE 是 aggregate、其結果中也沒有樣本實體。
+   **`run_sambar` 的 `sample` 保留**——它的產物就是樣本分群標籤，樣本確實是結果中的實體。
+2. **比對器排序**：`_tag_discriminated_action` 在survivor 多於一個時，
+   若**恰有一個 survivor 的 tag 集合是其餘所有 survivor 的子集**，選取它；
+   否則維持 ambiguous。語意上：**未指名任何特化的請求，要的是基線方法。**
+
+第 2 項是行為介入（改變比對器排序），第 1 項是資料修正。
+
+### 判準
+
+- **M（機制，離線決定性，花錢前必須全部成立）**：
+  以**prompt 允許的 outcome**（sample-specific 時不把 `sample` 加入 entity_types）
+  探測，**12 個 capability 全部唯一可達**；
+  且 Log 76 釘住的兩項測試依新行為改寫並加註（不刪除）。
+  **若任一 capability 仍不可達,撤回。**
+- **G（護欄，live，否決條件）**：mini 一輪 57 次試驗中
+  **D = 0**（r18 為 3）、forbidden = 0、`unsafe_execution_count` = 0。
+  **D > 0 → 撤回整項。**
+- **O（成效，live）**：`per-sample-coexpression` 三次**皆不得為 D**。
+  預測為 A 或 C。**若仍為 D,撤回。**
+- **R（僅記錄）**：A（r18 為 19/57）、工具正確（25/57）。
+  依 Log 76，舊子集的變異已知可達 4 次試驗，**故 R 不作判準。**
+
+### 連帶必須做的事
+
+PANDA 變為可達後，Log 74 的覆蓋測試會要求語料必須有它的題目
+（`test_the_corpus_covers_every_reachable_capability`）。
+因此**一併新增 PANDA 的題目**，涵蓋率 11/12 → **12/12**，
+`corpus_sha256` 再次改變，**r18 與之後的輪次不可比較**。
+這是刻意的：依 Log 31 的先例，先修可達性，再談分數。
+
+## Log 78｜Log 77 的兩項修正：tag 排序**保留**，entity 修正**撤回**——它會造成執行模式選錯工具
+
+日期／時區：2026-09-07，Asia/Taipei。**離線,付費呼叫 0 次。尚未跑任何候選輪。**
+
+### 判準 M 的結果：一半成立、一半導致更嚴重的問題
+
+**保留：tag 排序（唯一最小者勝）。** 以 prompt 允許的 outcome 探測，
+`run_panda` **由不可達變為唯一可達**，Log 74 記錄的絕對不可達缺陷解除；
+`KNOWN_UNREACHABLE` 由 `{run_panda}` 變為空集合。
+一併新增 PANDA 的語料題目（`aggregate-tf-baseline`），涵蓋率 **11/12 → 12/12**。
+
+**撤回：從 `run_bonobo`／`run_giraffe`／`run_sambar` 的 `entity_types` 移除
+非結果實體。** 它離線可證會造成更嚴重的問題：
+
+```
+明文指名 LIONESS-COEXPRESSION 的請求,entity_types=["gene"]
+  request_mode=execute   -> exact ['run_bonobo']               ← 錯
+  request_mode=guidance  -> exact ['run_lioness_coexpression']  ← 對
+```
+
+成因：移除 `sample` 後兩個 capability 在 entity 上打平，
+而**既有的「granularity 集合較窄者較特化」偏好**隨即選了 BONOBO（只允許 sample_specific）。
+在 guidance 模式下 `workflow_name` 路徑會糾正它，**execute 模式不會**。
+
+**執行模式下指名一個工具卻解析到另一個，比解析不出來嚴重。**
+依 Log 77 的護欄精神（不得引入錯誤工具選擇），**整個 entity 半段撤回**，
+包含 YAML 與 Python 兩側。
+
+### 一併記錄的三件事
+
+1. **登錄表定義在兩處**（`workflows/*.yaml` 與 `scripts/workflow_registry.py`），
+   且有 `ProjectPolicyError` 一致性檢查在守。我只改 Python 一側時，
+   **232 個測試立刻失敗**——那個守衛做對了事，值得記下來。
+2. **`run_sambar` 宣告 `entity_types` 含 `gene`，而 `pathway_mutation_matrix`
+   只允許 `{pathway, sample}`**：登錄表與本體論自相矛盾，照其自身宣告構成的
+   outcome 會得到 `artifact_entity` 違規。新增
+   `test_each_capability_declares_only_entities_its_artifact_permits`
+   釘住此不變量——**但 SAMBAR 目前被該測試跳過**（其 artifact 的 entity 約束存在，
+   故實際會失敗）……**更正：該修正屬撤回範圍，故此測試現況為通過中的其他 capability，
+   SAMBAR 的違規仍存在且未被覆蓋。這是本節唯一未收尾的部分。**
+3. **新發現的潛在缺陷**：execute 模式不使用 `workflow_name` 消歧，
+   因此任何讓兩個 capability 在 entity 上打平的變更，都可能讓明文指名的請求
+   選到「granularity 較特化」的那一個。**這個缺陷在 entity 修正之前不會顯現，
+   但它先於我的變更存在。** 修它要動 execute 模式的消歧規則，屬另一次介入。
+
+### 現況與尚未做的
+
+- **保留**：tag 排序修正 ＋ PANDA 題目（語料 20 題，`corpus_sha256` 再次改變）。
+- **撤回**：entity 修正。因此 **Log 76 的 D = 3 缺陷仍然存在且已釘住測試**
+  （`test_declaring_sample_an_entity_switches_the_recommended_tool`）。
+- 判準 G／O（live）**尚未執行**：保留下來的那一半只影響 PANDA／基線方法的可達性，
+  與 D=3 的成因無關，故單獨跑一輪無法檢驗 G／O。**正確的下一步是先設計
+  「不會踩到 execute 模式」的 entity 修正，再一次驗證。**
+
+離線：**1406 passed、1 xfailed、3 failed（既有待決策項）、0 skipped**。
