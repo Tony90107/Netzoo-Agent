@@ -967,7 +967,10 @@ def test_provider_failure_never_guesses_unnamed_semantic_goals(task):
                 granularity="sample_specific",
                 unresolved_dimensions=["confirmation"],
             ),
-            ["run_lioness_coexpression"],
+            # BONOBO produces the same artifact at the same granularity and no
+            # longer differs on entities, so it is a real candidate: an
+            # under-specified request gets both, not a preference.
+            ["run_lioness_coexpression", "run_bonobo"],
         ),
     ],
 )
