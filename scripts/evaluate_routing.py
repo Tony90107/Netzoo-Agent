@@ -23,6 +23,8 @@ from netzoo_agent_core.contracts import (
     HumanMessage, IntentDecision, ROUTER_CONTEXT_MAX_CHARS, WorkflowPlan,
 )
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation, SemanticPatch, SemanticReview
+from netzoo_agent_core.contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
+from netzoo_agent_core.interpretation.claim_prompt import claim_messages
 from netzoo_agent_core.graph.context import _GraphContext
 from netzoo_agent_core.graph.prompts import build_graph_prompts
 from netzoo_agent_core.graph.router_invocation import invoke_router
@@ -371,6 +373,8 @@ def evaluate(
     cases: list[RoutingScenario], *, provider, model_name: str,
     source: Literal["fixture", "live"] = "fixture", repeat: int = 1,
     task_token_budget: int = DEFAULT_TASK_TOKEN_BUDGET,
+    semantic_contract: Literal["claims", "legacy"] = "legacy",
+    review_policy: Literal["when_needed", "always"] | None = None,
 ) -> dict:
     if not cases or not 1 <= repeat <= 5:
         raise ValueError("Evaluation requires cases and 1-5 repetitions.")
@@ -380,14 +384,20 @@ def evaluate(
     policy = ProjectPolicyLoader(PROJECT_ROOT).load()
     prompts = build_graph_prompts(policy)
     recorder = _EventRecorder()
+    # Historical fixtures/replay keep their recorded wire format. Live acceptance
+    # always exercises the current production contract, unless explicitly replaying.
+    review_policy = review_policy or ("when_needed" if source == "live" and not replay else "always")
+    schemas = (SemanticClaims, SemanticClaims, SemanticClaimRepair) if semantic_contract == "claims" else (SemanticInterpretation, SemanticReview, SemanticPatch)
     context = _GraphContext(
         profile_id="routing-evaluation", profile_store=None, episode_store=None,
         project_policy=policy, recorder=recorder, price_catalog=PriceCatalog.from_environment(),
-        semantic_interpreter=provider.with_structured_output(SemanticInterpretation, method="function_calling", include_raw=True),
-        semantic_reviewer=provider.with_structured_output(SemanticReview, method="function_calling", include_raw=True),
-        semantic_patcher=provider.with_structured_output(SemanticPatch, method="function_calling", include_raw=True),
+        semantic_interpreter=provider.with_structured_output(schemas[0], method="function_calling", include_raw=True),
+        semantic_reviewer=provider.with_structured_output(schemas[1], method="function_calling", include_raw=True),
+        semantic_patcher=provider.with_structured_output(schemas[2], method="function_calling", include_raw=True),
         intent_router=provider.with_structured_output(IntentDecision, method="function_calling", include_raw=False),
         input_content_mapper=None, response_llm=None,
+        semantic_claims=semantic_contract == "claims",
+        review_policy=review_policy,
         semantic_model_name=model_name, router_model_name=model_name, response_model_name=model_name,
         semantic_prompt=prompts.semantic, intent_prompt=prompts.intent, response_prompt=prompts.response,
         router_max_tokens=DEFAULT_ROUTER_MAX_TOKENS, response_max_tokens=0,
@@ -417,6 +427,7 @@ def evaluate(
     return {
         "metadata": {
             "source": source, "model": model_name, "temperature": 0.0,
+            "semantic_contract": semantic_contract, "review_policy": review_policy,
             "first_pass_source": "observed_error_reconstruction_not_raw_capture" if replay else source,
             "repair_replay_suite": provider.suite if replay else None,
             "policy_hash": policy.policy_hash, "repeat": repeat,
@@ -426,9 +437,12 @@ def evaluate(
                 "reviewer": [str(message.content) for message in build_semantic_reviewer_messages(
                     prompts.semantic, "<evaluation prompt>", None, (),
                 )],
-                "schemas": [schema.model_json_schema() for schema in (SemanticInterpretation, SemanticReview, SemanticPatch, IntentDecision)],
+                "schemas": [schema.model_json_schema() for schema in (*schemas, IntentDecision)],
+                "claim_messages": [str(m.content) for m in claim_messages("<evaluation prompt>", selection_tags={t for spec in policy.workflows.values() for t in spec.output_capability.selection_tags})] if semantic_contract == "claims" else None,
             }),
             "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model",
+            "execution_evaluated": False,
+            "biological_output_evaluated": False,
         },
         "summary": {
             "cases": len(cases), "trials": total,
@@ -523,6 +537,8 @@ def main(argv=None) -> int:
     parser.add_argument("--repair-replay-suite", choices=("cross-field", "missing-required", "missing-input"),
                         help="Observed failure batch; requires --repair-replay (default: cross-field).")
     parser.add_argument("--model", default=DEFAULT_ROUTER_MODEL)
+    parser.add_argument("--semantic-contract", choices=("legacy", "claims"), default="legacy", help="Claims is experimental; legacy preserves the current provider schema.")
+    parser.add_argument("--review-policy", choices=("when_needed", "always"), default="when_needed", help="Controlled comparison of review gating with the same schema.")
     parser.add_argument("--repeat", type=int, choices=range(1, 6), default=1)
     parser.add_argument("--max-calls", type=int, default=12, help="Reject runs whose worst-case call count exceeds this cap.")
     parser.add_argument("--timeout", type=float, default=30.0)
@@ -555,7 +571,8 @@ def main(argv=None) -> int:
             provider = build_llm(model, 0.0, max_output_tokens=DEFAULT_ROUTER_MAX_TOKENS, timeout_seconds=args.timeout)
             if args.repair_replay:
                 provider = RepairReplayProvider(provider, suite=args.repair_replay_suite or "cross-field")
-            report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat)
+            report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat,
+                              semantic_contract=args.semantic_contract, review_policy=args.review_policy)
     except (ValueError, OSError, ImportError) as error:
         # Do not echo provider payloads, credentials, or Pydantic input values.
         # A missing dependency is a setup mistake, usually the wrong interpreter,

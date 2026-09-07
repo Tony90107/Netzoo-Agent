@@ -3247,6 +3247,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
 
         # Only the semantic passes keep the raw response, and only so that
@@ -3374,6 +3376,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {
@@ -3532,6 +3536,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {
@@ -3634,6 +3640,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {
@@ -3771,6 +3779,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {"messages": [agent.HumanMessage(content=motivating_request)]}
@@ -3814,6 +3824,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=episode_store,
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {"messages": [agent.HumanMessage(content="請幫我跑一次 LIONESS PANDA")]}
@@ -3898,6 +3910,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
                 project_policy=policy,
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {"messages": [agent.HumanMessage(content="請幫我跑一次 LIONESS PANDA")]}
@@ -3922,6 +3936,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 0.0,
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {
@@ -3961,6 +3977,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 profile_store=agent.UserProfileStore(root / "profiles"),
                 episode_store=agent.EpisodeStore(root / "episodes"),
                 task_token_budget=1,
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {"messages": [agent.HumanMessage(content="Run a PANDA demo")]}
@@ -4029,6 +4047,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 profile_id="alice",
                 profile_store=profile_store,
                 episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
             )
             result = app.invoke(
                 {

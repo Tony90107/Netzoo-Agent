@@ -39,6 +39,10 @@ class _GraphContext:
     # Optional: when absent the review returns a whole SemanticReview, which
     # is also the path taken whenever the first pass was not schema-valid.
     semantic_patcher: Any = None
+    semantic_claims: bool = False
+    # Historical replay defaults to its original always-review behavior.
+    # The production factory explicitly selects when_needed.
+    review_policy: str = "always"
 
 
 def record_event(

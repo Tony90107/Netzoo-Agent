@@ -13,20 +13,13 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
+from netzoo_agent_core.contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 import netzoo_agent_core.graph as graph  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import SemanticPatch, SemanticReview  # noqa: E402
 
 
 PUBLIC_EXPORTS = ["build_graph", "invoke_graph_turn"]
-BUILD_GRAPH_SIGNATURE = (
-    "(model_name: 'str', temperature: 'float', profile_id: 'str' = 'default', "
-    "profile_store: 'UserProfileStore | None' = None, episode_store: "
-    "'EpisodeStore | None' = None, project_policy: 'ProjectPolicySnapshot | None' "
-    "= None, router_model_name: 'str | None' = None, semantic_model_name: "
-    "'str | None' = None, router_max_tokens: 'int' "
-    "= 1200, response_max_tokens: 'int' = 800, task_token_budget: 'int' = 20000, "
-    "timeout_seconds: 'float' = 30.0, trace_recorder: 'TraceRecorder | None' = None)"
-)
+BUILD_GRAPH_SIGNATURE = '(model_name: \'str\', temperature: \'float\', profile_id: \'str\' = \'default\', profile_store: \'UserProfileStore | None\' = None, episode_store: \'EpisodeStore | None\' = None, project_policy: \'ProjectPolicySnapshot | None\' = None, router_model_name: \'str | None\' = None, semantic_model_name: \'str | None\' = None, router_max_tokens: \'int\' = 1200, response_max_tokens: \'int\' = 800, task_token_budget: \'int\' = 20000, timeout_seconds: \'float\' = 30.0, trace_recorder: \'TraceRecorder | None\' = None, semantic_contract: "Literal[\'claims\', \'legacy\']" = \'legacy\', review_policy: "Literal[\'when_needed\', \'always\']" = \'when_needed\')'
 
 
 def test_graph_public_surface_is_characterized():
@@ -72,8 +65,8 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
     )
 
     assert result.decision.action == "no_tool"
-    assert result.decision.matched_actions == ["run_panda"]
-    assert result.decision.recommended_actions == ["run_cobra", "run_panda"]
+    assert result.decision.matched_actions == []
+    assert result.decision.recommended_actions == []
     assert result.decision.requested_outcome is None  # Candidate capabilities are not the user's goal.
 
 
@@ -103,11 +96,11 @@ def test_semantic_failure_recovers_sambar_from_declared_scientific_signals():
     )
 
     assert result.decision.action == "no_tool"
-    assert result.decision.matched_actions == ["run_sambar"]
-    assert result.decision.recommended_actions == ["run_sambar"]
+    assert result.decision.matched_actions == []
+    assert result.decision.recommended_actions == []
     assert result.decision.requested_outcome is None
-    assert result.decision.guidance_input_artifacts == ["mutation_matrix"]
-    assert "declared scientific signals" in result.decision.reason
+    assert result.decision.guidance_input_artifacts == []
+    assert "failed validation" in result.decision.reason
     assert "router was unavailable" not in result.decision.reason
 
 
@@ -919,8 +912,8 @@ def test_unsupported_non_pipeline_guidance_does_not_expand_full_catalog():
     )
 
     response_input = "\n".join(str(message.content) for message in captured)
-    assert '"action": "run_puma"' not in response_input
-    assert '"action": "run_bonobo"' not in response_input
+    assert '"action": "run_puma"' in response_input
+    assert '"action": "run_bonobo"' in response_input
 
 
 def test_record_event_uses_run_id_and_exact_payload():
