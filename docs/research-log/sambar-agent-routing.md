@@ -5805,3 +5805,79 @@ GIRAFFE PPI 格式（一種輸入格式不能用）。
 **檔案**：`scripts/netzoo_agent_core/execution.py`、
 `scripts/netzoo_agent_core/data/giraffe.py`、`tests/test_giraffe_workflow.py`（+4）、
 `tests/test_execution_numeric_reference.py`（+3）。
+
+## Log 89 — 執行層核對延伸至 CONDOR：這次全部通過，並釐清上游為何留兩份參考
+
+**判準（事前）**：同前，用上游自己的斷言
+（`pd.testing.assert_frame_equal(res, gt, check_exact=False)`，逐一比對社群標籤）。
+若標籤不符，先判斷是「分割不同」還是「編號不同」，兩者不可混為一談。
+
+**結果：CONDOR 全數通過，未發現缺陷。**
+
+| 比對 | 結果 |
+| --- | --- |
+| `condor-tar_memb.tsv` vs `gh_tar_memb.txt` | **標籤逐一相符** |
+| `condor-reg_memb.tsv` vs `gh_reg_memb.txt` | **標籤逐一相符** |
+| vs `gh_*_memb_v9igraph.txt` | 標籤不同，但**分割完全相同**（up to relabelling） |
+| 連跑兩次 | 四個 artifact **逐字節相同**（確定性） |
+
+13 個 target、34 個 regulator、各 8 個社群。
+
+**釐清了上游為何留兩份 ground truth**：`gh_*_memb.txt` 與 `gh_*_memb_v9igraph.txt`
+描述的是**同一個分割**，差別只在社群**編號**。本映像的 igraph 是 1.0.0（比 v9 更新），
+與主參考檔標籤完全相符，與 v9 版則只在編號上不同。因此把斷言寫成「分割相同」
+而非「標籤相同」，才是真正成立且對生物學家有意義的主張——社群編號是任意的，
+哪些節點被歸在一起才是結論。測試同時斷言「與 v9 參考的標籤確實不同」，
+以免哪天兩份參考變得一致時，這個測試的前提悄悄失效而我們不知道。
+
+**確定性**：社群偵測一般帶隨機性（上游測試自己會 `random.seed(10)`）。
+實測我方 wrapper 連跑兩次輸出逐字節相同，故把確定性也釘住。
+
+**fixture 說明**：上游 tutorial 的 `toynetwork.csv` 沒有為其 R 索引欄命名，
+所以標頭有 3 個名字、資料列有 4 個欄位；欄名又是研究領域用語
+（pollinator/plant/interactions）而非契約用語。fixture 改寫為契約要求的三欄，
+不改任何值。
+
+**一併記錄一個「不修、只報」的發現（診斷訊息誤導）**：
+若直接餵入欄名為 `pollinator,plant,interactions` 的合規三欄 CSV，我方會拒收並回報：
+
+```
+error: CONDOR weight column must be numeric when present; numeric ratio is 99.8%.
+```
+
+99.8% = 442/443——也就是**標頭列被當成資料列計入**。真正的原因是標頭名稱未被辨識，
+不是權重欄有非數值（該欄 442 列全部是數值）。拒收本身可辯護（契約明寫
+「required columns: source, target」），但訊息把責任指向資料，會讓使用者去檢查
+自己的數字，而正解是改欄名。**這是可用性缺陷，不是正確性缺陷**——使用者拿到的是
+錯誤訊息而非錯誤結果。我沒有動它：與 Log 87 的 OTTER（安靜產出錯數字）和 Log 88 的
+GIRAFFE（完全跑不起來）不同，這一項只是措辭，改動涉及標頭辨識策略的產品判斷，
+留給你決定。
+
+**同時查核並確認無誤的兩件事**：
+1. `command.py` 是以 `from .settings import EXECUTE_TOOLS` 取值綁定，我一度懷疑
+   `/execute` 無法生效。實測 `runtime.set_runtime_value` 會走遍 `sys.modules`
+   並在**每個**持有該名稱的模組上重新賦值，故 `configure_runtime(EXECUTE_TOOLS=True)`
+   確實生效。**無缺陷**——是我用錯了開關（直接設 `settings.EXECUTE_TOOLS`
+   只對動態讀取 `settings.X` 的路徑有效，如 OTTER/GIRAFFE）。
+2. 映像中沒有 `run-otter`、`run-giraffe`、`run-dragon`、`run-bonobo` 這四個 CLI，
+   我一度以為是缺失。實際上這四個 capability 走的是行程內 netZooPy Python API，
+   我方程式碼從未呼叫這些 CLI；程式碼實際呼叫的 8 個 CLI 全部存在。**無缺陷**。
+
+**進度**：12 個 capability 已核對 5 個（SAMBAR、COBRA、OTTER、GIRAFFE、CONDOR），
+其中 2 個發現缺陷。剩餘 7 個仍無生物學斷言。
+
+**檔案**：`tests/test_execution_numeric_reference.py`（+6，共 20 個 Docker 測試）。
+
+**Log 89 附記——修正我在 Log 86 起寫進論文文件的一個不準確主張**：
+我原本寫「PANDA 與 PUMA 完全無法與上游 ground truth 比較，因為
+`run_panda_precomputed.py` / `run_puma_precomputed.py` 要求 `--coexpression`」。
+這句話太強。實際查核：`run_panda` 有**兩條路徑**——有 `coexpression_file` 時走
+`run-panda-precomputed`，沒有時走 `run-panda`，而後者就是 `netzoopy panda`
+（上游自己的 CLI），並不要求 `--coexpression`。所以「完全無法比較」是錯的。
+
+正確的限制是另一回事，而且更有意思：上游的 PANDA 參考值出自其 **class API**，
+而**上游自己的 CLI 測試只斷言 `result.returncode == 0`，一個數值都沒比**。
+要做數值比對，就得用 CLI flag（`--save_memory`、`--save_tmp`、`--rm_missing`
+以及各 `modeProcess` 變體各自的參考檔）去重建 class 的預設行為，並且論證這個重建
+等價。那是一個**未關閉的缺口**，不是不可能——我選擇留著缺口，而不是自己挑一個
+參考檔去湊出一個看起來通過的比對。文件已改為這個說法。

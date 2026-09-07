@@ -324,10 +324,10 @@ required/forbidden columns of outputs recorded earlier.
 The pinned image carries netZooPy 0.11.0, and netZooPy ships ground-truth files
 together with the inputs that produce them. So a workflow can be run through the
 production path and compared against **reference values its own authors wrote**.
-Four of the twelve capabilities are now covered. Two reproduced their references
-immediately; **two did not, and the discrepancies were real defects in this
-system** — one of them silently wrong, one of them a capability that could never
-execute at all.
+Five of the twelve capabilities are now covered. Three reproduced their
+references immediately; **two did not, and the discrepancies were real defects in
+this system** — one of them silently wrong, one of them a capability that could
+never execute at all.
 
 | Workflow | Component | Result |
 | --- | --- | --- |
@@ -339,9 +339,25 @@ execute at all.
 | OTTER | TF × gene network | **defect: 80.3% of the PPI network fabricated** |
 | GIRAFFE | `R_hat`, `TFA_hat` | **defect: could not execute at all** |
 | GIRAFFE | PPI input format | **defect: documented format unreachable** |
+| CONDOR | regulator and target memberships | agrees **label-for-label** |
+| CONDOR | partition under a newer igraph | agrees up to relabelling |
 
 After the fixes, GIRAFFE reproduces upstream's reference to 1.5 × 10⁻⁶
 (`R_hat`) and 4.3 × 10⁻⁸ (`TFA_hat`), inside upstream's own `atol=1e-5`.
+
+CONDOR needs a different kind of assertion, and saying why sharpens what these
+checks are for. Upstream ships **two** reference files per side, one of them
+suffixed `v9igraph`, because community *numbering* moves with the igraph
+version. Our image carries igraph 1.0.0 and agrees label-for-label with the
+primary reference; against the `v9igraph` variant the labels differ but the
+**partition is identical** — every community maps onto exactly one of theirs.
+Asserting the partition rather than the labels states the claim that actually
+holds, and it is the claim a biologist depends on, since community numbers are
+arbitrary and only the grouping is a result. The test also asserts that the
+labels still *disagree* with the `v9igraph` variant, so that if the two
+references ever converge the premise cannot fail silently. The four artifacts
+are byte-identical across repeated runs, so this wrapper's community detection
+is deterministic even though the method's is randomised in general.
 
 **The tolerances are not ours.** Each test calls upstream's own assertion for
 that method verbatim — the pandas
@@ -467,15 +483,35 @@ ground truth drops it too. **That distinction is the point of having an
 execution layer: it separates our defect from the method's behaviour, and no
 routing or structural check can.**
 
+One further observation is recorded rather than acted on, because it is a
+usability defect and not a correctness one. Feed CONDOR a well-formed
+three-column network whose columns are named for the study
+(`pollinator, plant, interactions`) rather than for the contract, and it is
+rejected with *"weight column must be numeric when present; numeric ratio is
+99.8%"*. That 99.8% is 442/443: the unrecognised header row was counted as data.
+The weight column is entirely numeric, and the actual fix is to rename the
+columns. The rejection is defensible — the contract does specify `source` and
+`target` — but the message sends the user to inspect their numbers. Unlike the
+three defects above, the user gets an error rather than a result, so this is
+left as a product decision.
+
 **What still does not exist** is per-workflow *biological* assertion for the
-other eight capabilities — and given that two of the first four checked
-contained defects, the prior that the unchecked eight are correct should be
+other seven capabilities — and given that two of the first five checked
+contained defects, the prior that the unchecked seven are correct should be
 weak. The pattern extends wherever upstream ships a reference, but not
-uniformly: PANDA and PUMA cannot be compared to their upstream ground truth
-through our wrappers at all, because `run_panda_precomputed.py` and
-`run_puma_precomputed.py` require `--coexpression` and so take a different
-computation path than the reference was generated from. That is a scope
-limitation of those two wrappers, recorded rather than worked around. The checks
+uniformly. PANDA and PUMA are the awkward case, and worth stating precisely
+rather than as a flat impossibility. Each has two paths: a precomputed one that
+requires `--coexpression` and so computes something other than what upstream's
+reference was generated from, and a plain one that shells out to netZooPy's own
+`netzoopy panda` CLI. The plain path is in principle comparable, but upstream's
+reference values come from its *class* API, while **upstream's own CLI test
+asserts only `returncode == 0` and never compares a single value** — so a
+value-level comparison there means reconstructing the class defaults through CLI
+flags (`--save_memory`, `--save_tmp`, `--rm_missing`, and the `modeProcess`
+variants, each with its own reference file) and then defending that
+reconstruction as equivalent. That is a real gap rather than a closed one, and
+it is left open rather than papered over with a comparison whose reference we
+would have had to choose ourselves. The checks
 are opt-in (`NETZOO_RUN_DOCKER_TESTS=1`) so the offline gate stays fast —
 skipped, not absent.
 

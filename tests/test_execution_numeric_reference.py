@@ -490,3 +490,124 @@ def test_giraffe_outputs_carry_the_declared_identifiers(giraffe_run):
     assert list(regulation.columns[:2]) == ["G00000", "G00001"]
     assert list(tfa.index[:2]) == ["TF00000", "TF00001"]
     assert list(tfa.columns[:2]) == ["S000", "S001"]
+
+
+# --- CONDOR ------------------------------------------------------------------
+
+CONDOR_BUILD = r'''
+import os, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+# Upstream's tutorial CSV omits a name for its leading R index column, so its
+# header carries three names while the rows carry four fields, and its columns
+# are named for the study (pollinator/plant/interactions) rather than for the
+# contract. The fixture rewrites it as the documented three columns without
+# changing a value.
+network = pd.read_csv("/opt/netZooPy/tutorials/condor/toynetwork.csv", index_col=0)
+network.columns = ["source", "target", "weight"]
+network.to_csv("/out/toynetwork.csv", index=False)
+
+configure_runtime(EXECUTE_TOOLS=True)
+for run in ("first", "second"):
+    os.makedirs(f"/out/{run}", exist_ok=True)
+    report = execution.run_condor.invoke(dict(
+        network_file="/out/toynetwork.csv", output_dir=f"/out/{run}", prefix="condor"))
+    assert os.listdir(f"/out/{run}"), report
+'''
+
+
+@pytest.fixture(scope="module")
+def condor_run() -> dict[str, object]:
+    """Run CONDOR twice through the registered tool on upstream's toy network."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(CONDOR_BUILD, encoding="utf-8")
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                "python /out/build.py && cp /opt/netZooPy/tests/condor/*.txt /out/",
+            ],
+            check=True, capture_output=True, timeout=900,
+        )
+        import pandas as pd
+
+        def membership(directory: str, side: str):
+            frame = pd.read_csv(out / directory / f"condor-{side}_memb.tsv", sep="\t")
+            return frame.set_index(side)["community"]
+
+        def reference(name: str, side: str):
+            return pd.read_csv(out / name, index_col=0).set_index(side)["community"]
+
+        return {
+            "first": {side: membership("first", side) for side in ("tar", "reg")},
+            "second": {side: membership("second", side) for side in ("tar", "reg")},
+            "gt": {side: reference(f"gh_{side}_memb.txt", side) for side in ("tar", "reg")},
+            "gt_igraph9": {
+                side: reference(f"gh_{side}_memb_v9igraph.txt", side)
+                for side in ("tar", "reg")
+            },
+        }
+
+
+def _same_partition(left, right) -> bool:
+    """Whether two labellings induce the same partition, ignoring label names.
+
+    Community numbers are arbitrary, so this is the equivalence that carries
+    scientific meaning: every one of our communities maps onto exactly one of
+    theirs and vice versa.
+    """
+    import pandas as pd
+
+    table = pd.crosstab(left, right).astype(bool)
+    return bool(table.sum(axis=1).max() == 1 and table.sum(axis=0).max() == 1)
+
+
+@pytest.mark.parametrize("side", ["tar", "reg"])
+def test_condor_membership_matches_upstreams_ground_truth(condor_run, side):
+    """Upstream compares these membership files label-for-label; so does this."""
+    import pandas as pd
+
+    produced = condor_run["first"][side]
+    expected = condor_run["gt"][side]
+
+    assert set(produced.index) == set(expected.index)
+    pd.testing.assert_series_equal(
+        produced.loc[expected.index], expected, check_exact=False, check_names=False
+    )
+
+
+@pytest.mark.parametrize("side", ["tar", "reg"])
+def test_condor_partition_survives_the_igraph_version_upstream_hedged_against(
+    condor_run, side
+):
+    """Upstream ships a second reference for igraph 9, and this image has 1.0.0.
+
+    The two references do not agree label-for-label, which is why upstream keeps
+    both. They do describe the same partition: the version difference changes
+    community *numbering*, not which nodes group together. Asserting the
+    partition rather than the labels states the claim that actually holds, and
+    is the claim a biologist depends on.
+    """
+    produced = condor_run["first"][side]
+    other_version = condor_run["gt_igraph9"][side]
+
+    assert not (produced.loc[other_version.index] == other_version).all(), (
+        "labels now agree with the igraph 9 reference; this test's premise, "
+        "that the two references differ only by numbering, needs rechecking"
+    )
+    assert _same_partition(produced.loc[other_version.index], other_version)
+
+
+@pytest.mark.parametrize("side", ["tar", "reg"])
+def test_condor_is_deterministic_across_runs(condor_run, side):
+    """Community detection is randomised in general; this wrapper's is not."""
+    import pandas as pd
+
+    pd.testing.assert_series_equal(
+        condor_run["first"][side], condor_run["second"][side]
+    )
