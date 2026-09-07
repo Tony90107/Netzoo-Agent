@@ -77,17 +77,7 @@ def test_valid_non_tool_specific_artifact_combinations(artifact, entities, granu
 def test_feature_recommendation_is_not_exact_and_cannot_execute():
     task = "Subtype a sparse somatic mutation matrix using pathway aggregation"
     match = match_registry_guidance_features(task)
-    assert match.status == "fallback"
-    assert match.match_basis == "registry_features"
-    interpretation = SemanticInterpretation(
-        request_mode="execute", semantic_goal="Subtype samples", outcome_hypotheses=[hypothesis()],
-    )
-    decision = assemble_task_decision(
-        interpretation, match, IntentDecision(mode="execute", confidence=1, reason="Run now"), task=task,
-    )
-    assert decision.recommended_actions == ["run_sambar"]
-    assert not decision.should_execute
-    assert decision.action == "no_tool"
+    assert match is None  # Tool selection requires interpreted scientific meaning.
 
 
 def test_final_answer_rejects_wrong_method_and_separates_artifacts():

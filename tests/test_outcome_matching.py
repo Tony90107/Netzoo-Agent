@@ -338,9 +338,8 @@ def test_incompatible_panda_semantics_cannot_override_mutation_guidance():
         request_mode="guidance",
     )
 
-    assert result.status == "fallback"
-    assert result.match_basis == "registry_features"
-    assert result.matched_actions == ["run_sambar"]
+    assert result.status == "unsupported"
+    assert result.matched_actions == []
 
 
 def test_sparse_somatic_mutation_guidance_recovers_from_input_output_confusion():
@@ -363,9 +362,8 @@ def test_sparse_somatic_mutation_guidance_recovers_from_input_output_confusion()
         request_mode="guidance",
     )
 
-    assert result.status == "fallback"
-    assert result.match_basis == "registry_features"
-    assert result.matched_actions == ["run_sambar"]
+    assert result.status == "ambiguous"
+    assert result.matched_actions == []
 
 
 def test_execution_matching_does_not_promote_one_advisory_candidate():

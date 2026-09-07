@@ -8,22 +8,9 @@ import re
 from ..contracts import TaskDecision
 
 
-_PIPELINE_GUIDANCE_PATTERN = re.compile(
-    r"\b(?:pipeline|workflow|end[-\s]?to[-\s]?end|multi[-\s]?stage|"
-    r"sequence|steps?|stages?|first|then|finally)\b"
-    r"|(?:完整流程|多階段|步驟|先|接著|然後|最後)",
-    flags=re.IGNORECASE,
-)
-_TAG_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-
-
 def should_expand_guidance_catalog(decision: TaskDecision, task: str) -> bool:
-    """Expand the registry only for an explicitly requested pipeline map."""
-    return (
-        decision.capability_match_status == "unsupported"
-        and not decision.matched_actions
-        and bool(_PIPELINE_GUIDANCE_PATTERN.search(task))
-    )
+    """Expose capability facts for unsupported goals, independent of phrasing."""
+    return decision.capability_match_status == "unsupported" and not decision.matched_actions
 
 
 def _capability(item: dict) -> dict:
@@ -34,51 +21,11 @@ def _records_by_action(workflows: Sequence[dict]) -> dict[str, dict]:
     return {item["action"]: item for item in workflows if item.get("action")}
 
 
-def _normalized_tokens(value: str) -> set[str]:
-    value = re.sub(r"(?i)(?:mi|micro)[-_ ]rna", "mirna", value)
-    tokens = _TAG_TOKEN_PATTERN.findall(value.casefold())
-    return {token[:-1] if token.endswith("s") and len(token) > 3 else token for token in tokens}
-
-
-def _task_supported_selection_tags(
-    task: str,
-    workflows: Mapping[str, object],
-) -> set[str]:
-    task_tokens = _normalized_tokens(task)
-    tags = {
-        tag
-        for spec in workflows.values()
-        if getattr(spec, "output_capability", None) is not None
-        for tag in spec.output_capability.selection_tags
-    }
-    supported = set()
-    for tag in tags:
-        tag_tokens = _normalized_tokens(tag.replace("_", " "))
-        required = max(1, (len(tag_tokens) + 1) // 2)
-        if len(tag_tokens & task_tokens) >= required:
-            supported.add(tag)
-    return supported
-
-
 def decision_with_registry_signals(
-    decision: TaskDecision,
-    task: str,
-    workflows: Mapping[str, object],
+    decision: TaskDecision, task: str, workflows: Mapping[str, object],
 ) -> TaskDecision:
-    """Add only registry tags with direct lexical support in the user request."""
-    outcome = decision.requested_outcome
-    if outcome is None:
-        return decision
-    inferred = _task_supported_selection_tags(task, workflows)
-    tags = list(dict.fromkeys([*outcome.selection_tags, *inferred]))
-    if tags == outcome.selection_tags:
-        return decision
-    return decision.model_copy(
-        deep=True,
-        update={
-            "requested_outcome": outcome.model_copy(update={"selection_tags": tags})
-        },
-    )
+    """Only semantic interpretation may supply selection tags."""
+    return decision
 
 
 def _workflow_records(workflows: Mapping[str, object]) -> list[dict]:
@@ -116,22 +63,11 @@ def preferred_registry_composition_actions(
     decision: TaskDecision,
     workflows: Mapping[str, object],
 ) -> list[str]:
-    """Return one registry-selected composition without naming workflow pairs.
-
-    An already selected multi-stage composition is preserved. Otherwise, lexical
-    signals are mapped to declared selection tags, then the registered artifact
-    graph chooses the lowest-scoring legal path to the matched final action.
-    """
+    """Compose capabilities from model-interpreted constraints and legal handoffs."""
     existing = list(dict.fromkeys(decision.recommended_actions))
-    if len(existing) > 1:
+    if len(existing) > 1 or decision.requested_outcome is None:
         return existing
-    if decision.requested_outcome is None:
-        # Candidate composition may use lexical signals without fabricating a
-        # requested artifact, role or granularity from the selected capability.
-        preferred = _preferred_compositions(decision, _workflow_records(workflows),
-                                            selection_tags=_task_supported_selection_tags(task, workflows))
-        return list(preferred[0]["ordered_actions"]) if len(preferred) == 1 else existing
-    enriched = decision_with_registry_signals(decision, task, workflows)
+    enriched = decision
     preferred = build_registry_selection_constraints(
         enriched,
         _workflow_records(workflows),

@@ -59,7 +59,7 @@ def test_failed_repair_has_no_fabricated_goal_or_execution_shortcut():
     provider = FixtureProvider(first=ValueError("invalid"))
     report = run(provider)
     row = report["results"][0]
-    assert row["status"] == "fallback" and row["outcome"] == {}
+    assert row["status"] is None and row["outcome"] == {}
     assert row["interaction_passed"]
     assert "Clarification needed" not in row["progress"]
     assert "confirmation before planning" not in row["answer"]
@@ -129,7 +129,7 @@ def test_unrepaired_observed_errors_remain_failures_in_replay():
     assert report["summary"]["review_repair_attempts"] == 1
     assert report["summary"]["review_repair_validation_rate"] == 0
     assert report["summary"]["review_repair_rate"] == 0
-    assert report["results"][0]["status"] == "fallback"
+    assert report["results"][0]["status"] is None
     assert report["results"][0]["interaction_passed"]
     assert report["results"][0]["outcome"] == {}
 
@@ -220,7 +220,9 @@ def test_genuine_fallback_clarification_is_consistent_on_all_surfaces():
     from netzoo_agent_core.policy import ProjectPolicyLoader
 
     policy = ProjectPolicyLoader().load()
-    decision = recover_registry_guidance("Sparse somatic mutation matrix subtyping", policy.workflows, ValueError())
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=.35,
+                            reason="Persisted advisory candidate", recommended_actions=["run_sambar"],
+                            matched_actions=["run_sambar"], capability_match_status="fallback")
     decision = TaskDecision.model_validate({**decision.model_dump(), "clarification_question": "Do you want distances only or cluster labels?"})
     with capture_progress() as progress:
         publish_routing_progress(decision, {}, policy, "Sparse somatic mutation matrix subtyping")

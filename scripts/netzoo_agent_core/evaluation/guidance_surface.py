@@ -29,6 +29,11 @@ def score_surface(decision, state, progress: str, answer: str) -> dict:
     errors = []
     if "Clarification needed" in progress and not decision.clarification_question:
         errors.append("interaction: progress requests clarification without a question")
+    if decision.match_basis in {"semantic_validation_recovery", "provider_unavailable"} and not decision.matched_actions:
+        if prompt.allow_workflow_continuation or prompt.continuation_action or prompt.expected_field or prompt.required_fields:
+            errors.append("interaction: failed interpretation exposes an unvalidated continuation")
+        if "to start the recommended" in prompt.question:
+            errors.append("interaction: next step starts an unvalidated candidate")
     if decision.capability_match_status == "fallback":
         if "Fallback recommendation" not in progress or "✓ Workflow —" in progress:
             errors.append("interaction: fallback presented as an exact match")

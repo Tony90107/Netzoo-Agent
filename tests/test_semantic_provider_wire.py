@@ -148,7 +148,7 @@ def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair
     assert row["interaction_passed"]
     assert row["review_repair_correct"] is repair_succeeds
     assert report["summary"]["review_repair_rate"] == int(repair_succeeds)
-    assert row["status"] == ("exact" if repair_succeeds else "fallback")
+    assert row["status"] == ("exact" if repair_succeeds else None)
     assert row["passed"] is repair_succeeds
     if repair_succeeds:
         assert row["outcome"]["input_artifacts"] == ["mutation_matrix"]

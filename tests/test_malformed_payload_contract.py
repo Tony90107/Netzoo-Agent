@@ -164,7 +164,7 @@ def test_malformed_on_both_attempts_is_a_schema_failure_not_a_provider_outage(ca
 
     row = run(provider)["results"][0]
 
-    assert row["status"] == "fallback"
+    assert row["status"] is None
     assert row["match_basis"] != "provider_unavailable"
     assert row["diagnostics"] == ["schema_validation"]
     assert row["outcome"] == {}

@@ -170,6 +170,7 @@ def test_handoff_script_uses_registry_signals_when_semantic_routing_selected_onl
             regulator_types=["tf"],
             target_types=["gene"],
             granularity="aggregate",
+            selection_tags=["batch_correction", "high_order_correlation"],
         ),
     )
 

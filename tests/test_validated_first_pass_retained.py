@@ -106,7 +106,7 @@ def test_a_successful_review_is_still_preferred():
 def test_two_failed_attempts_still_fall_back():
     row = run(broken_item(), broken_item())
 
-    assert row["status"] == "fallback"
+    assert row["status"] is None
     assert row["outcome"] == {}
 
 
@@ -161,5 +161,5 @@ def test_an_unvalidated_first_pass_still_falls_back_when_the_review_does_not_par
     """The retention is of a validated reading, not of any reading."""
     row = run_with_unparseable_review(broken_item())
 
-    assert row["status"] == "fallback"
+    assert row["status"] is None
     assert row["outcome"] == {}
