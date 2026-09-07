@@ -844,7 +844,9 @@ def run_giraffe(
             "GIRAFFE Python API preview:\n"
             "- runtime: Docker pinned netZooPy 0.11.0\n"
             "- import: from netZooPy.giraffe import Giraffe\n"
-            "- call: Giraffe(expression, prior, ppi)\n"
+            "- call: Giraffe(expression, prior.T, ppi) -- the API takes the "
+            "prior gene-by-TF and returns regulation gene-by-TF; both are "
+            "converted to this workflow's TF-by-gene orientation\n"
             "- outputs: model.get_regulation() -> TF-by-gene matrix; "
             "model.get_tfa() -> TF-by-sample matrix\n"
             f"- shapes: expression={bundle.expression.shape}, prior={bundle.prior.shape}, ppi={bundle.ppi.shape}\n"
@@ -874,8 +876,15 @@ def run_giraffe(
                 "use the pinned Docker runtime or specify a commit whose API is re-verified",
             ) + f"\nloader detail: {error}"
         try:
-            model = giraffe_class(bundle.expression, bundle.prior, bundle.ppi)
-            regulation = np.asarray(model.get_regulation(), dtype=float)
+            # netZooPy's GIRAFFE takes the prior gene-by-TF and returns the
+            # regulation matrix the same way round (it documents "Size (G, TF)").
+            # The prior is loaded, written and validated here TF-by-gene, so the
+            # orientation is converted on the way in and back on the way out.
+            # Passing the prior untransposed made every real request fail inside
+            # the API on a tensor-size mismatch whenever the gene count differed
+            # from the TF count -- that is, always.
+            model = giraffe_class(bundle.expression, bundle.prior.T, bundle.ppi)
+            regulation = np.asarray(model.get_regulation(), dtype=float).T
             tfa = np.asarray(model.get_tfa(), dtype=float)
         except Exception as error:  # noqa: BLE001 - convert package failures to user-facing results.
             return _giraffe_failure(

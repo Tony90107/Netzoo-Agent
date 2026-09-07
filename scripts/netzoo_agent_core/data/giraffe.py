@@ -187,10 +187,18 @@ def _read_prior(path_value: str, gene_ids: tuple[str, ...]) -> tuple[np.ndarray,
 def _read_ppi(path_value: str, tf_ids: tuple[str, ...]) -> np.ndarray:
     frame = _read(path_value, "GIRAFFE PPI", min_fields=2)
     tf_set = set(tf_ids)
+    # A labelled square matrix is read with the header as its first row, so it
+    # has one more row AND one more column than the TF count -- the previous
+    # `shape[0] == shape[1] - 1` could never hold at the same time as the
+    # ID-token check below, which made this documented input format
+    # unreachable. The header row is matched against the TF set instead of
+    # inferred from shape arithmetic, so a three-column edge list whose header
+    # happens to start with an ID token is not mistaken for a 2-TF matrix.
     dense = (
-        frame.shape[0] == frame.shape[1] - 1
+        frame.shape[0] == frame.shape[1]
         and frame.shape[1] >= 3
         and str(frame.iloc[0, 0]).strip().casefold() in _ID_TOKENS
+        and {str(value).strip() for value in frame.iloc[0, 1:]} == tf_set
     )
     if dense:
         columns = _clean_ids(list(frame.iloc[0, 1:]), "PPI matrix column IDs")
