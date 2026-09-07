@@ -661,21 +661,12 @@ def test_registry_identifier_matches_supporting_action_without_intent_authority(
     assert result.matched_actions == ["web_search"]
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Blocked on the entity declarations, not on the tag rule. GIRAFFE "
-        "declares `sample` among its entities, so an outcome that correctly "
-        "omits it is not compatible at all and the tag never gets a chance. "
-        "Removing `sample` was attempted twice and withdrawn twice because the "
-        "matcher then reports `exact` from a specificity preference among "
-        "several compatible capabilities -- see research log Log 77-80. Pinned "
-        "strict so fixing that root cause flips this test and forces the record "
-        "to be updated."
-    ),
-    strict=True,
-)
 def test_tf_activity_is_selected_by_its_registry_tag():
     """PANDA, OTTER and GIRAFFE agree on every scientific dimension.
+
+    Was a strict xfail: GIRAFFE declared `sample` among its entities, so an
+    outcome that correctly omitted it was not compatible at all and the tag
+    never got a chance. Both halves of that are now fixed.
 
     They differ only in registry tags, so the dimensions alone are a genuine
     question and the tag is what answers it. GIRAFFE previously appeared unique

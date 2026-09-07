@@ -564,7 +564,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         output_capability=OutputCapabilityDefinition(
             operation="analyze",
             artifact_type="pathway_mutation_matrix",
-            entity_types=frozenset({"sample", "gene", "pathway"}),
+            entity_types=frozenset({"sample", "pathway"}),
             granularities=frozenset({"aggregate"}),
             accepted_input_modalities=frozenset({"somatic_mutation"}),
             produced_artifacts=frozenset(
@@ -686,6 +686,12 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             ),
         ),
     ),
+    # An entity list names entities *in the result*. GIRAFFE and BONOBO declared
+    # `sample`, which the semantic prompt says a sample-specific result does not
+    # create, and SAMBAR declared `gene`, which its own artifact ontology forbids.
+    # Those declarations turned one model mistake into a confident wrong-tool
+    # recommendation. SAMBAR keeps `sample`: its artifact really is
+    # sample-to-cluster labels, where samples are entities in the result.
     "run_giraffe": ActionDefinition(
         "run_giraffe",
         "GIRAFFE",
@@ -703,7 +709,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         output_capability=OutputCapabilityDefinition(
             operation="infer",
             artifact_type="regulatory_network",
-            entity_types=frozenset({"tf", "gene", "sample"}),
+            entity_types=frozenset({"tf", "gene"}),
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
             # GIRAFFE returns an aggregate TF-gene regulation matrix plus a
@@ -760,7 +766,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         output_capability=OutputCapabilityDefinition(
             operation="infer",
             artifact_type="coexpression_network",
-            entity_types=frozenset({"gene", "sample"}),
+            entity_types=frozenset({"gene"}),
             granularities=frozenset({"sample_specific"}),
             input_artifacts=frozenset({"expression_matrix"}),
             handoff_targets=(),

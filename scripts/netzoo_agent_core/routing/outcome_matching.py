@@ -195,11 +195,22 @@ def _specificity_score(
     outcome: RequestedOutcome,
     capability: OutputCapabilityDefinition,
 ) -> int:
+    """Excess a capability carries beyond what the request asked for.
+
+    Roles and entities count: a capability that also handles regulators the
+    request never mentioned may need priors the user does not have, which is why
+    a `tf`-only request should prefer LIONESS-PANDA over LIONESS-PUMA.
+
+    Granularity breadth does **not** count, and used to. The request names one
+    value and every candidate here supports it; that one of them also supports
+    another granularity says nothing about this request. That term alone let
+    BONOBO beat LIONESS-coexpression, and with `sample` declared as an entity it
+    produced this study's only wrong-tool recommendations.
+    """
     return (
         len(capability.entity_types - set(outcome.entity_types))
         + len(capability.regulator_types - set(outcome.regulator_types))
         + len(capability.target_types - set(outcome.target_types))
-        + len(capability.granularities - {outcome.granularity})
         + len(capability.guidance_predecessors)
     )
 
