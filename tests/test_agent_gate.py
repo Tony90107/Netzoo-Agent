@@ -5089,6 +5089,35 @@ class CondorCommandTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "weight column must be numeric"):
                 read_condor_edges(network)
 
+    def test_condor_names_an_unrecognized_header_instead_of_blaming_the_data(self):
+        """A header this parser doesn't recognize used to read as bad data.
+
+        `pollinator,plant,interactions` is a compliant three-column edge
+        table -- every data row's weight is numeric -- but the header names
+        aren't in the {source,from,regulator,tf}/{target,to,gene} pairs this
+        parser strips, so the header row itself was counted as the one
+        non-numeric weight and the message pointed the requester at their
+        numbers instead of at the header.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rows = "\n".join(f"P{i}\tG{i}\t{i}" for i in range(1, 6))
+            network = self.write(
+                root,
+                "unrecognized-header.tsv",
+                f"pollinator\tplant\tinteractions\n{rows}\n",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError, "column names were not recognized"
+            ) as raised:
+                read_condor_edges(network)
+
+            message = str(raised.exception)
+            self.assertIn("weight column must be numeric", message)
+            self.assertIn("row 1", message)
+            self.assertIn("pollinator", message)
+
 
 if __name__ == "__main__":
     unittest.main()
