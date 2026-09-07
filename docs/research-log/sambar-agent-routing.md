@@ -4890,3 +4890,92 @@ A 19 → 21：**Fisher p = 0.827**。工具正確 28 → 26：**p = 0.820**。
 上限約 7 次試驗），並需使用者授權。
 條件式 review 同理：**要看它有沒有用，也只能在 4o 上測**
 （4o 的 attempt 1 通過驗證者為 7/42，仍偏低，但不為零）。
+
+## Log 74｜量測層：語料涵蓋 6/12 → 11/12，PANDA 結構不可達；執行層核對抓到三件路由層永遠看不到的事
+
+日期／時區：2026-09-07，Asia/Taipei。**離線,付費呼叫 0 次。**
+
+### 一、語料：半個 registry 從未被測試
+
+清點結果：**14 題只涵蓋 12 個 capability 中的 6 個**。
+`run_panda`、`run_puma`、`run_otter`、`run_giraffe`、
+`run_lioness_coexpression`、`run_bonobo` **從未被任何題目測試過**。
+
+在寫新題目之前先驗可達性（Log 31 的教訓：不要加入不可能達成的期望）：
+
+| capability | 唯一可達 | 判別依據 |
+| --- | --- | --- |
+| `run_otter` | ✅ | tag `relaxed_graph_matching` |
+| `run_giraffe` | ✅ | tag `tfa` |
+| `run_puma` | ✅ | tag `aggregate_network`（`lioness_puma` 沒有） |
+| `run_lioness_coexpression` | ✅ | tag `coexpression` |
+| `run_bonobo` | ✅ | tag `bayesian` |
+| **`run_panda`** | **❌** | **見下** |
+
+**`run_panda` 結構上不可達**，且原因與 Log 31 的 CONDOR 同類：
+
+```
+run_panda   = {aggregate_network, tf_gene_regulation}
+run_otter   = {aggregate_network, tf_gene_regulation, relaxed_graph_matching}
+run_giraffe = {aggregate_network, tf_gene_regulation, tfa}
+panda ⊆ otter ✓   panda ⊆ giraffe ✓
+```
+
+**PANDA 的標籤集是 otter 與 giraffe 的真子集**，故任何帶 PANDA 標籤的 outcome
+同時符合那兩者，「恰好剩一個」永遠不成立——**NetZoo 的旗艦方法無法被唯一推薦。**
+依 Log 31 的先例，**先修可達性、再加題目**，因此本次**不加 PANDA 的題目**。
+
+已新增 **5 題獨立撰寫的目標**（`aggregate-tf-relaxed-matching`、
+`aggregate-tf-activity`、`aggregate-mirna-network`、`per-sample-coexpression`、
+`per-sample-coexpression-bayesian`），涵蓋率 **6/12 → 11/12**。
+
+**誠實的限制**：這 5 題構成 **3 個目標家族**（aggregate TF 網路含方法對比 ×2、
+aggregate miRNA 網路 ×1、per-sample coexpression 含方法對比 ×2），
+**不是 5 個獨立任務**。獨立性受工具集大小限制，統計上應以家族為單位。
+此外**這 5 題只能透過 `selection_tags` 平手判別通過**，而 mini 從不產生 tag，
+故**它們預期會拉低 mini 的分數**——benchmark 變難且變完整，不是退步。
+
+**`corpus_sha256` 由 `153d423dc5…` 變為 `57afb78310…`：
+r1–r17 與之後的輪次不可直接比較。** 舊 14 題可作為子集另行計分以維持連續性。
+
+新增 `tests/test_capability_corpus_coverage.py`（14 項）：
+每個 capability 必須可達或列入 `KNOWN_UNREACHABLE`（目前只有 `run_panda`）、
+語料不得期望不可達的 capability、且不得有可達但無題目的 capability。
+**若 PANDA 變為可達，測試會失敗並要求加題**——這條缺陷不會再默默存在。
+
+### 二、執行層核對：三件路由層永遠看不到的事
+
+`outputs/` 內有真實 pinned run 的輸出，但**未被追蹤**，故收成
+`tests/fixtures/execution/`（172 KB，大檔僅保留 axis 標籤或表頭＋200 列，
+已在 README 標明哪些是蒸餾過的），並附 SAMBAR 的 `manifest.json` 作為 provenance。
+新增 `tests/test_execution_artifact_contracts.py`（10 項）。
+
+**發現 1：宣告的方向與實際輸出不符。**
+`gene_mutation_scores` 的描述是「Gene-by-sample」，而 SAMBAR 實際輸出
+`mt_out.csv` 是 **sample-by-gene**。描述是散文而非契約，故可能只是文件缺陷；
+**但系統裡沒有任何東西能分辨這兩者的差別**——這正是需要執行層核對的理由。
+
+**發現 2：SAMBAR 在自己的兩個產物之間掉了一個樣本。**
+pathway 輸出有 **247** 個樣本欄，gene 層輸出有 **248** 個樣本列，且為嚴格子集。
+可能是方法本身所致（突變全被濾除的病患無法以突變負荷正規化），
+**但從請求者的角度是無聲的損失，而 agent 的回答從不提及。**
+**路由正確與輸出完整是兩件事。**
+
+**發現 3：`regulatory_network` 這個 artifact 沒有一致的序列化。**
+三個都宣告產出 `regulatory_network` 的工作流程用了三種格式：
+
+- PANDA：tab 分隔的表頭 `tf gene motif force`
+- **PUMA：完全沒有表頭**，第一列就是資料
+- LIONESS-PUMA：**空白分隔的表頭 ＋ tab 分隔的資料列**
+
+**路由層把它當成一種東西來推薦，檔案層它不是。** 下游無法統一解析，
+而任何路由層檢查都不可能發現。三者皆已釘住現狀，修好任何一個都會讓測試失敗並要求更新紀錄。
+
+### 三、範圍聲明（不得誇大）
+
+本模組核對的是**結構**：識別碼族、軸向、樣本覆蓋、必要與禁止的欄位。
+**不比對數值，不構成生物學驗證。** 完整的執行 benchmark 另需固定輸入包、
+有理據容差的參考數值、以及逐工作流程的生物學斷言——**那尚不存在。**
+
+離線：**1404 passed、1 xfailed、3 failed（既有待決策項,未動）、0 skipped**
+（1380 ＋ 語料覆蓋 14 ＋ 執行層 10）。

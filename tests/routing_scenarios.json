@@ -1,72 +1,363 @@
 [
   {
-    "id": "original-q1", "language": "mixed", "category": "positive",
+    "id": "original-q1",
+    "language": "mixed",
+    "category": "positive",
     "prompt": "我想要對一群癌症病患的 DNA 突變資料做亞型分析。但我知道有兩個偏差必須先校正：第一，較長的基因本來就比較容易隨機發生突變；第二，不同病患的整體突變負荷量 (Tumor mutation burden) 差異很大。此外，我希望能將『基因層次』的突變，轉換、濃縮成『生物途徑 (Pathway) 層次』的分數再來做計算。你有哪個內建工具可以一條龍處理『基因長度校正』、『途徑分數轉換』並計算病患之間的距離來分群？",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_cluster_assignment", "entity_types": ["sample"], "granularity": "aggregate", "answer_required": ["gene length normalization", "patient mutation burden normalization", "`pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels", "`sample_distance_matrix`: Pairwise sample distances"]}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "entity_types": [
+        "sample"
+      ],
+      "granularity": "aggregate",
+      "answer_required": [
+        "gene length normalization",
+        "patient mutation burden normalization",
+        "`pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels",
+        "`sample_distance_matrix`: Pairwise sample distances"
+      ]
+    }
   },
   {
-    "id": "original-q2", "language": "mixed", "category": "positive",
+    "id": "original-q2",
+    "language": "mixed",
+    "category": "positive",
     "prompt": "我手邊有一份 200 個肺癌病患的體細胞突變 (Somatic mutations) 矩陣，裡面記錄了哪些基因發生了突變。但這個矩陣極度稀疏，99% 的格子都是 0。我試圖直接用這個矩陣對病患進行亞型分群 (Subtyping)，但結果非常混亂，完全沒有生物學意義。在你的工具箱中，有沒有哪個工具專門用來處理這種『高度稀疏的 DNA 突變矩陣』，並能進行有效的病患分群？",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_cluster_assignment", "entity_types": ["sample"], "granularity": "aggregate", "answer_required": ["SAMBAR", "pathway aggregation", "`sample_cluster_assignment`: Sample-to-cluster labels"]}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "entity_types": [
+        "sample"
+      ],
+      "granularity": "aggregate",
+      "answer_required": [
+        "SAMBAR",
+        "pathway aggregation",
+        "`sample_cluster_assignment`: Sample-to-cluster labels"
+      ]
+    }
   },
   {
-    "id": "original-q3", "language": "mixed", "category": "history",
+    "id": "original-q3",
+    "language": "mixed",
+    "category": "history",
     "prompt": "我剛剛成功用 RNA-Seq 資料跑完了 PANDA，效果很好！現在我的合作夥伴又給了我同一批病患的『全外顯子定序 (WES) 體細胞突變矩陣』。既然 LIONESS 可以用來找出單一病患的特徵，那我是不是也應該把這份充滿 0 的突變矩陣丟進 PANDA 跟 LIONESS，來找出病患的特異性突變網路，然後藉此幫病患做亞型分群？",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "forbidden_actions": ["run_panda", "run_lioness_panda"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_cluster_assignment", "entity_types": ["sample"], "granularity": "aggregate", "answer_required": ["Do not use **PANDA**", "Do not use **LIONESS-PANDA**", "SAMBAR", "`pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels", "`sample_cluster_assignment`: Sample-to-cluster labels"], "answer_forbidden": ["is a valid approach", "you can indeed use", "transform the mutation matrix into expression"]}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "forbidden_actions": [
+        "run_panda",
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "entity_types": [
+        "sample"
+      ],
+      "granularity": "aggregate",
+      "answer_required": [
+        "Do not use **PANDA**",
+        "Do not use **LIONESS-PANDA**",
+        "SAMBAR",
+        "`pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels",
+        "`sample_cluster_assignment`: Sample-to-cluster labels"
+      ],
+      "answer_forbidden": [
+        "is a valid approach",
+        "you can indeed use",
+        "transform the mutation matrix into expression"
+      ]
+    }
   },
   {
-    "id": "mutation-paraphrase-en", "language": "en", "category": "paraphrase",
+    "id": "mutation-paraphrase-en",
+    "language": "en",
+    "category": "paraphrase",
     "prompt": "Which workflow would you recommend for assigning cancer patients to subgroups from somatic mutation counts? Please account for gene size and patient mutation burden and pool the signal by biological pathways. I only want a recommendation.",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_cluster_assignment", "granularity": "aggregate"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate"
+    }
   },
   {
-    "id": "mutation-no-fallback-phrases", "language": "mixed", "category": "paraphrase",
+    "id": "mutation-no-fallback-phrases",
+    "language": "mixed",
+    "category": "paraphrase",
     "prompt": "我之前做過 PANDA；現在以 WES 資料對病人做分組。請問工具箱中哪一項適合這項工作？先不用執行。",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "forbidden_actions": ["run_panda"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_cluster_assignment", "granularity": "aggregate"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "forbidden_actions": [
+        "run_panda"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate"
+    }
   },
   {
-    "id": "mutation-distance-not-clusters", "language": "zh", "category": "positive",
+    "id": "mutation-distance-not-clusters",
+    "language": "zh",
+    "category": "positive",
     "prompt": "我有癌症病患的體細胞突變矩陣，想先校正基因長度及病患突變負荷，再聚合成途徑分數。只需要病患兩兩之間的距離矩陣，不要產生群組標籤。請推薦適合的內建工具，不要執行。",
-    "expected": {"status": "exact", "actions": ["run_sambar"], "input_artifacts": ["mutation_matrix"], "artifact_type": "sample_distance_matrix", "granularity": "aggregate"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_distance_matrix",
+      "granularity": "aggregate"
+    }
   },
   {
-    "id": "reverse-history-expression", "language": "en", "category": "history",
+    "id": "reverse-history-expression",
+    "language": "en",
+    "category": "history",
     "prompt": "Previously I used SAMBAR for somatic mutations. That analysis is finished. Now I have a gene expression matrix, TF motif priors and PPI data. Which workflow can infer a separate TF-to-gene regulatory network for each patient? Advice only.",
-    "expected": {"status": "exact", "actions": ["run_lioness_panda"], "forbidden_actions": ["run_sambar"], "input_artifacts": ["expression_matrix"], "artifact_type": "regulatory_network", "granularity": "sample_specific"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "forbidden_actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific"
+    }
   },
   {
-    "id": "sparse-expression-not-mutation", "language": "en", "category": "negative",
+    "id": "sparse-expression-not-mutation",
+    "language": "en",
+    "category": "negative",
     "prompt": "My RNA-Seq gene expression matrix contains many zeros. These are expression measurements, not DNA mutation calls. I want a separate TF-to-gene regulatory network per patient, using motif and PPI priors. Which workflow should I use? Do not run it.",
-    "expected": {"status": "exact", "actions": ["run_lioness_panda"], "forbidden_actions": ["run_sambar"], "input_artifacts": ["expression_matrix"], "artifact_type": "regulatory_network", "granularity": "sample_specific"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "forbidden_actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific"
+    }
   },
   {
-    "id": "mirna-current-goal", "language": "en", "category": "history",
+    "id": "mirna-current-goal",
+    "language": "en",
+    "category": "history",
     "prompt": "PANDA worked for our old aggregate TF analysis. With the current expression matrix and miRNA, motif and PPI priors, which workflow would estimate a separate miRNA-to-gene regulatory network for every patient? Please explain the choice only.",
-    "expected": {"status": "exact", "actions": ["run_lioness_puma"], "input_artifacts": ["expression_matrix"], "artifact_type": "regulatory_network", "granularity": "sample_specific"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific"
+    }
   },
   {
-    "id": "covariate-coexpression", "language": "en", "category": "positive",
+    "id": "covariate-coexpression",
+    "language": "en",
+    "category": "positive",
     "prompt": "I have a gene expression matrix and covariate metadata. Which tool can analyze how hospital and sequencing batch covariates contribute to cohort gene coexpression? I want one covariate-adjusted gene-by-gene coexpression result, not regulatory networks or patient subtypes. Advice only.",
-    "expected": {"status": "exact", "actions": ["run_cobra"], "input_artifacts": ["expression_matrix"], "artifact_type": "coexpression_network", "granularity": "aggregate"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_cobra"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "coexpression_network",
+      "granularity": "aggregate"
+    }
   },
   {
-    "id": "bipartite-communities", "language": "en", "category": "positive",
+    "id": "bipartite-communities",
+    "language": "en",
+    "category": "positive",
     "prompt": "I already have a bipartite TF-to-gene regulatory network. Which workflow can partition its nodes into bipartite community modules? I am not asking to cluster patients or infer a new network. Please recommend a tool only.",
-    "expected": {"status": "exact", "actions": ["run_condor"], "input_artifacts": ["regulatory_network"], "artifact_type": "community_assignment"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_condor"
+      ],
+      "input_artifacts": [
+        "regulatory_network"
+      ],
+      "artifact_type": "community_assignment"
+    }
   },
   {
-    "id": "two-layer-network", "language": "en", "category": "positive",
+    "id": "two-layer-network",
+    "language": "en",
+    "category": "positive",
     "prompt": "I have two continuous omics data layers measured in the same cohort. Which workflow estimates one joint two-layer partial correlation network with different shrinkage levels across and within layers? I want guidance, not execution.",
-    "expected": {"status": "exact", "actions": ["run_dragon"], "artifact_type": "multi_omic_network", "granularity": "aggregate"}
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_dragon"
+      ],
+      "artifact_type": "multi_omic_network",
+      "granularity": "aggregate"
+    }
   },
   {
-    "id": "missing-granularity", "language": "en", "category": "negative",
+    "id": "missing-granularity",
+    "language": "en",
+    "category": "negative",
     "prompt": "I have an expression matrix and miRNA priors. Which workflow should I use to infer a miRNA-to-gene regulatory network? I have not decided whether I need one cohort network or a separate network for every patient. Please ask me which result I want.",
-    "expected": {"status": "ambiguous", "actions": [], "input_artifacts": ["expression_matrix"], "artifact_type": "regulatory_network", "granularity": "unknown", "require_clarification": true}
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "unknown",
+      "require_clarification": true
+    }
   },
   {
-    "id": "unsupported-protein-acquisition", "language": "en", "category": "negative",
+    "id": "unsupported-protein-acquisition",
+    "language": "en",
+    "category": "negative",
     "prompt": "Previously I used PANDA. Now I want advice on acquiring a protein abundance measurement dataset from a mass spectrometry instrument. I do not want inferred networks or mutation subtyping. Does a registered scientific workflow produce those measurements?",
-    "expected": {"status": "unsupported", "actions": [], "forbidden_actions": ["run_panda", "run_sambar"], "artifact_type": "measurement_dataset"}
+    "expected": {
+      "status": "unsupported",
+      "actions": [],
+      "forbidden_actions": [
+        "run_panda",
+        "run_sambar"
+      ],
+      "artifact_type": "measurement_dataset"
+    }
+  },
+  {
+    "id": "aggregate-tf-relaxed-matching",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have a cohort gene expression matrix and TF motif priors. I need one cohort-level TF-to-gene regulatory network, and I specifically want the method that solves it as a relaxed graph matching problem rather than by iterative message passing. Recommend a tool only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_otter"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate"
+    }
+  },
+  {
+    "id": "aggregate-tf-activity",
+    "language": "en",
+    "category": "positive",
+    "prompt": "From a gene expression matrix and motif priors I need estimated transcription factor activity alongside one cohort-wide TF-to-gene network. Which built-in workflow produces TF activity estimates? Guidance only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_giraffe"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate"
+    }
+  },
+  {
+    "id": "aggregate-mirna-network",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have a cohort expression matrix plus miRNA, motif and PPI priors. I want a single cohort-wide network of miRNA and TF regulation of genes, not one network per patient. Which workflow should I use? Do not run it.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate"
+    }
+  },
+  {
+    "id": "per-sample-coexpression",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Given only a gene expression matrix, I want a separate gene-by-gene coexpression network for each sample. No regulatory priors and no transcription factors are involved. Which tool does this? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_coexpression"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "coexpression_network",
+      "granularity": "sample_specific"
+    }
+  },
+  {
+    "id": "per-sample-coexpression-bayesian",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I want per-sample gene coexpression networks estimated in a Bayesian framework so that each edge carries uncertainty, using an expression matrix alone. Which registered workflow fits? Please only explain the choice.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_bonobo"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "coexpression_network",
+      "granularity": "sample_specific"
+    }
   }
 ]
