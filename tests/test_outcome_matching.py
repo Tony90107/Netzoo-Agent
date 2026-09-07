@@ -690,3 +690,29 @@ def test_tf_activity_is_selected_by_its_registry_tag():
     assert match(selection_tags=["tfa"]).matched_actions == ["run_giraffe"]
     # The baseline wins when no specialisation is named among the shared tags.
     assert match(selection_tags=["aggregate_network"]).matched_actions == ["run_panda"]
+
+
+@pytest.mark.parametrize(
+    ("task", "expected"),
+    [
+        # The defect: `inspect_inputs` is labelled with the bare English word,
+        # so an ordinary sentence named a validation step and a live round
+        # recommended that non-workflow as an exact workflow-name match.
+        ("I have three inputs and want a network.", None),
+        ("I want one cohort-wide network from those three inputs.", None),
+        # Deliberate references still resolve, including supporting steps.
+        ("Search the web with WEB-SEARCH for current PANDA references.", "web_search"),
+        ("Please inspect the SAMBAR inputs first.", "inspect_sambar_inputs"),
+        ("Run SAMBAR on my mutation matrix.", "run_sambar"),
+        ("Use LIONESS-COEXPRESSION for per-sample coexpression.", "run_lioness_coexpression"),
+    ],
+)
+def test_only_a_distinctive_label_counts_as_naming_a_registered_action(task, expected):
+    """A label has to be something a requester would type on purpose.
+
+    Method names qualify, and so do multi-word step labels. A single common
+    English word does not, unless the action is one the router can recommend.
+    """
+    from netzoo_agent_core.routing.outcome_matching import named_registered_action
+
+    assert named_registered_action(task) == expected

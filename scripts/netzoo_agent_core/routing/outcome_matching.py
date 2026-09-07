@@ -669,12 +669,29 @@ def named_workflow_action(task: str) -> RecommendedAction | None:
 
 
 def named_registered_action(task: str):
-    """Resolve an explicitly written registry workflow label, longest first."""
+    """Resolve an explicitly written registry workflow label, longest first.
+
+    A label must be distinctive enough to be a deliberate reference. Method
+    names are (PANDA, SAMBAR), and so are multi-word step labels a requester
+    would have to type on purpose (WEB-SEARCH, "bonobo inputs"). One label was
+    neither: `inspect_inputs` is labelled with the bare English word `inputs`,
+    so "the standard integration of those three inputs" was read as explicitly
+    naming a validation step and reported as an exact match on a workflow name.
+    A live round recommended that non-workflow to a user.
+
+    So a single-word label is only eligible when the action is one the router can
+    actually recommend. Excluding every supporting action instead would have
+    broken naming WEB-SEARCH deliberately, which is legitimate.
+    """
     candidates = sorted(
         (
             (action, definition)
             for action, definition in ACTION_DEFINITIONS.items()
             if action != "no_tool"
+            and (
+                definition.output_capability is not None
+                or len(re.split(r"[-_\s]+", definition.workflow.strip())) > 1
+            )
         ),
         key=lambda item: len(item[1].workflow),
         reverse=True,
