@@ -233,8 +233,16 @@ def _build_bundle(
         w[tf_index[row.left], gene_index[row.right]] = float(row.weight)
     p = np.eye(len(tf_ids), dtype=float)
     for row in ppi.itertuples(index=False):
-        p[tf_index[row.left], tf_index[row.right]] = 1.0
-        p[tf_index[row.right], tf_index[row.left]] = 1.0
+        # The registry promises a *binary* adjacency projection, so a listed
+        # edge carrying weight 0 is an interaction the file declares absent and
+        # must project to 0, not to 1. Combining with max gives OR semantics --
+        # present if either direction lists it -- so a file that spells out both
+        # (i, j) and (j, i) does not have the result decided by row order.
+        present = 1.0 if float(row.weight) > 0.0 else 0.0
+        left, right = tf_index[row.left], tf_index[row.right]
+        edge = max(p[left, right], p[right, left], present)
+        p[left, right] = edge
+        p[right, left] = edge
     dtype = np.float32 if precision == "single" else np.float64
     return OtterInputBundle(
         W=w.astype(dtype),

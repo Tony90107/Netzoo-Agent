@@ -251,3 +251,129 @@ def test_cobra_eigenvectors_are_compared_through_a_reconstruction(cobra_run):
             q.dot(np.diag(psi[index, :])).dot(q.T),
             q_gt.dot(np.diag(psi_gt[index, :])).dot(q_gt.T),
         )
+
+
+# --- OTTER -------------------------------------------------------------------
+
+OTTER_TOY = "/opt/netZooPy/tests/otter"
+
+# Upstream's own OTTER test asserts `rtol=1e-10`, and this uses the same
+# criterion. What it CANNOT use is upstream's `test_otter.csv`: that reference
+# was produced from a *weighted* PPI matrix, while the registry commits this
+# adapter to "a binary adjacency projection" (workflows/otter.yaml), so P here
+# holds adjacency and not interaction confidences. Reproducing upstream's file
+# would require abandoning that documented choice. The reference below is
+# therefore netZooPy's own `otter()` called directly on independently
+# constructed matrices -- upstream's *code* as ground truth where its *file* is
+# unreachable -- which checks everything our adapter contributes: identifier
+# mapping, gene and TF ordering, orientation, and the projection itself.
+OTTER_BUILD = r'''
+import numpy as np, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import settings, execution
+from netZooPy.otter.otter import otter
+
+w = pd.read_csv("{toy}/w.csv", header=None).to_numpy(float)
+p = pd.read_csv("{toy}/p.csv", header=None).to_numpy(float)
+c = pd.read_csv("{toy}/c.csv", header=None).to_numpy(float)
+tfs = [f"TF{{i:05d}}" for i in range(w.shape[0])]
+genes = [f"G{{i:05d}}" for i in range(w.shape[1])]
+
+# Upstream ships unlabeled matrices; our adapter requires identifiers, so the
+# fixture attaches names to upstream's positional convention without altering
+# a single value.
+pd.DataFrame({{"source": np.repeat(tfs, len(genes)),
+               "target": np.tile(genes, len(tfs)),
+               "weight": w.ravel()}}).to_csv("/out/w_edges.csv", index=False)
+pd.DataFrame({{"source": np.repeat(tfs, len(tfs)),
+               "target": np.tile(tfs, len(tfs)),
+               "weight": p.ravel()}}).to_csv("/out/p_edges.csv", index=False)
+frame = pd.DataFrame(c, index=genes, columns=genes); frame.index.name = "gene"
+frame.to_csv("/out/c_matrix.csv")
+
+# Independently written binarization, not read from the adapter under test.
+expected_p = (p > 0.0).astype(float)
+np.fill_diagonal(expected_p, 1.0)
+np.save("/out/reference.npy",
+        otter(w.copy(), expected_p.copy(), c.copy(), Iter=1, lam=0.0035, gamma=0.335))
+np.save("/out/expected_p.npy", expected_p)
+
+# The adapter's own projection, saved so the comparison is against a matrix
+# built by the code under test rather than recomputed beside it.
+from netzoo_agent_core.data.otter import load_otter_inputs
+np.save("/out/adapter_p.npy", load_otter_inputs(
+    coexpression_file="/out/c_matrix.csv", motif_file="/out/w_edges.csv",
+    ppi_file="/out/p_edges.csv").P)
+
+settings.EXECUTE_TOOLS = True
+report = execution.run_otter.invoke(dict(
+    coexpression_file="/out/c_matrix.csv", motif_file="/out/w_edges.csv",
+    ppi_file="/out/p_edges.csv", output_file="/out/otter_out.csv",
+    lam=0.0035, gamma=0.335, iterations=1))
+assert "execution completed" in report, report
+'''
+
+
+@pytest.fixture(scope="module")
+def otter_run() -> dict[str, object]:
+    """Run OTTER through the registered tool on upstream's toy matrices."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(OTTER_BUILD.format(toy=OTTER_TOY), encoding="utf-8")
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "python", "/out/build.py",
+            ],
+            check=True, capture_output=True, timeout=1800,
+        )
+        import numpy as np
+        import pandas as pd
+
+        return {
+            "produced": pd.read_csv(out / "otter_out.csv", index_col=0),
+            "reference": np.load(out / "reference.npy"),
+            "expected_p": np.load(out / "expected_p.npy"),
+            "adapter_p": np.load(out / "adapter_p.npy"),
+        }
+
+
+def test_otter_network_matches_netzoopy_called_directly(otter_run):
+    produced, reference = otter_run["produced"], otter_run["reference"]
+
+    assert produced.shape == reference.shape
+    _assert_matches_upstream(produced.to_numpy(float), reference)
+
+
+def test_otter_output_keeps_upstreams_identifier_order(otter_run):
+    """A transposition or reorder would still match numerically row-by-row."""
+    produced = otter_run["produced"]
+
+    assert list(produced.index[:3]) == ["TF00000", "TF00001", "TF00002"]
+    assert list(produced.columns[:3]) == ["G00000", "G00001", "G00002"]
+    assert produced.index.name == "tf"
+
+
+def test_otter_ppi_projection_matches_an_independent_binarization(otter_run):
+    """The check that catches a projection defect at upstream's scale.
+
+    Upstream's P written out as an edge list is a dense grid of 436,921 pairs,
+    most of them weighted 0. Before the zero-weight fix the adapter projected
+    every listed pair to 1.0, so 350,312 of the 436,260 off-diagonal cells
+    disagreed with this independent binarization: 80.3% of the network was
+    fabricated as interacting, and a fully connected PPI network stood in for a
+    sparse one. Neither the routing layer nor any structural contract check can
+    see that -- the request was routed correctly and every field validated.
+    """
+    import numpy as np
+
+    adapter, expected = otter_run["adapter_p"], otter_run["expected_p"]
+
+    assert adapter.shape == expected.shape == (661, 661)
+    assert set(np.unique(adapter).tolist()) <= {0.0, 1.0}
+    assert int((adapter != expected).sum()) == 0
+    # A guard on the fixture itself: if upstream's P were dense-positive, the
+    # comparison above would hold trivially and prove nothing.
+    assert 0.0 in set(np.unique(expected).tolist())
