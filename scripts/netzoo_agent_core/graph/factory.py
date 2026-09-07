@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from ..contracts import (
     AgentTurnInterrupted,
     DEFAULT_LLM_TIMEOUT_SECONDS,
@@ -15,7 +17,8 @@ from ..contracts import (
     StateGraph,
 )
 from ..llm import build_llm, validate_response_model, validate_router_model
-from ..contracts.outcomes import SemanticInterpretation, SemanticPatch, SemanticReview
+from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
+from ..contracts.outcomes import SemanticInterpretation, SemanticReview, SemanticPatch
 from ..memory import EpisodeStore, UserProfileStore
 from ..policy import ProjectPolicyLoader
 from ..pricing import PriceCatalog
@@ -41,7 +44,13 @@ def build_graph(
     task_token_budget: int = DEFAULT_TASK_TOKEN_BUDGET,
     timeout_seconds: float = DEFAULT_LLM_TIMEOUT_SECONDS,
     trace_recorder: TraceRecorder | None = None,
+    semantic_contract: Literal["claims", "legacy"] = "legacy",
+    review_policy: Literal["when_needed", "always"] = "when_needed",
 ):
+    if semantic_contract not in {"claims", "legacy"}:
+        raise ValueError("Unknown semantic contract")
+    if review_policy not in {"when_needed", "always"}:
+        raise ValueError("Unknown review policy")
     ensure_graph_dependencies()
     profile_store = profile_store or UserProfileStore()
     episode_store = episode_store or EpisodeStore()
@@ -77,17 +86,17 @@ def build_graph(
         timeout_seconds=timeout_seconds,
     )
     semantic_interpreter = semantic_llm.with_structured_output(
-        SemanticInterpretation,
+        SemanticClaims if semantic_contract == "claims" else SemanticInterpretation,
         method="function_calling",
         include_raw=True,
     )
     semantic_reviewer = semantic_llm.with_structured_output(
-        SemanticReview,
+        SemanticClaims if semantic_contract == "claims" else SemanticReview,
         method="function_calling",
         include_raw=True,
     )
     semantic_patcher = semantic_llm.with_structured_output(
-        SemanticPatch,
+        SemanticClaimRepair if semantic_contract == "claims" else SemanticPatch,
         method="function_calling",
         include_raw=True,
     )
@@ -111,6 +120,8 @@ def build_graph(
         semantic_interpreter=semantic_interpreter,
         semantic_reviewer=semantic_reviewer,
         semantic_patcher=semantic_patcher,
+        semantic_claims=semantic_contract == "claims",
+        review_policy=review_policy,
         intent_router=intent_router,
         input_content_mapper=input_content_mapper,
         response_llm=response_llm,

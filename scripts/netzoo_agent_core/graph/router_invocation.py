@@ -195,6 +195,10 @@ def _invoke_semantic_interpreter(
     user_task: str,
     usage: LLMUsage,
 ) -> tuple[SemanticInterpretation | None, LLMUsage, list[str], BaseException | None]:
+    if getattr(context, "semantic_claims", False):
+        from .claim_invocation import invoke_claim_interpreter
+        return invoke_claim_interpreter(context, state, user_task, usage,
+            serialize=_serialized_structured_input, schema_errors=_validation_issue_types)
     validation_issues: tuple[str, ...] = ()
     budget_warnings = list(state.get("budget_warnings", []))
     last_error: BaseException | None = None
@@ -520,6 +524,28 @@ def _invoke_semantic_interpreter(
                 request_mode=interpretation.request_mode,
                 ignore_tags=restored_tags,
             )
+            if (
+                getattr(context, "review_policy", "always") == "when_needed"
+                and preliminary_match.status in {"exact", "not_applicable"}
+                and interpretation.request_mode != "unknown"
+                and len(interpretation.outcome_hypotheses) == 1
+                and not interpretation.outcome_hypotheses[0].outcome.unresolved_dimensions
+                and (preliminary_match.status == "not_applicable" or (
+                    len(preliminary_match.matched_actions) == 1
+                    and interpretation.outcome_hypotheses[0].outcome.operation != "unknown"
+                ))
+            ):
+                record_event(context, state, "routing.semantic_interpretation_accepted", "classify", {
+                    "attempt": 1, "hypothesis_count": 1,
+                    "registry_match_status": preliminary_match.status,
+                    "review_skipped": "validated_complete_match",
+                    "evidence_census": list(evidence_census(interpretation.outcome_hypotheses)),
+                })
+                _trace("router", "Semantic interpretation completed", {
+                    "kind": "router_activity", "operation": "semantic_interpreter",
+                    "status": "completed", "duration_ms": duration_ms, "attempt": 1,
+                })
+                return interpretation, usage, budget_warnings, None, restored_tags
             if preliminary_match.status == "ambiguous":
                 validation_issues = (
                     "registry_ambiguity:the structured outcome does not uniquely "

@@ -859,6 +859,8 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -910,6 +912,8 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -982,6 +986,8 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -1043,6 +1049,8 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -1112,6 +1120,8 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -1169,6 +1179,8 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
@@ -1222,6 +1234,8 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
         profile_store=UserProfileStore(tmp_path / "profiles"),
         episode_store=EpisodeStore(tmp_path / "episodes"),
         trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="always",
     )
 
     result = app.invoke(
