@@ -210,6 +210,7 @@ def test_semantic_success_expands_a_registered_handoff_from_declared_selection_t
         regulator_types=["tf"],
         target_types=["gene"],
         granularity="aggregate",
+            selection_tags=["batch_correction", "high_order_correlation"],
     )
     interpretation = SemanticInterpretation(
         request_mode="guidance",
@@ -257,6 +258,7 @@ def test_execute_request_for_registered_handoff_requires_staged_preparation():
         regulator_types=["tf"],
         target_types=["gene"],
         granularity="aggregate",
+            selection_tags=["batch_correction", "high_order_correlation"],
     )
     interpretation = SemanticInterpretation(
         request_mode="execute",
@@ -808,24 +810,7 @@ def test_semantic_validation_failure_recovers_explicit_registry_pipeline_guidanc
         ValueError("semantic schema validation failed"),
     )
 
-    assert decision is not None
-    assert decision.action == "no_tool"
-    assert decision.matched_actions == ["run_panda"]
-    assert decision.requested_outcome is None  # Do not replace a failed goal with candidate defaults.
-
-    context = validated_workflow_context(decision, policy, task=task)
-    assert context["compositions"][0]["ordered_actions"] == [
-        "run_cobra",
-        "run_panda",
-    ]
-    panda = next(item for item in context["workflows"] if item["action"] == "run_panda")
-    assert "coexpression_file" in panda["optional_inputs"]
-    handoff = next(
-        item
-        for item in context["handoffs"]
-        if item["from_action"] == "run_cobra" and item["to_action"] == "run_panda"
-    )
-    assert "adjusted" in handoff["handoff_contract"]
+    assert decision is None  # No lexical replacement for a failed semantic goal.
 
 
 def test_contextual_input_format_question_preserves_router_docs_selection():

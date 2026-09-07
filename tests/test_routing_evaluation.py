@@ -126,14 +126,14 @@ def test_provider_value_error_recovery_is_not_counted_as_semantic_success():
     result = report["results"][0]
 
     assert not result["route_passed"]  # A fallback is not the expected exact match.
-    assert result["status"] == "fallback"
-    assert result["matched_actions"] == ["run_sambar"]
+    assert result["status"] is None
+    assert result["matched_actions"] == []
     assert result["answer_passed"]
-    assert "Fallback recommendation" in result["answer"]
+    assert "Fallback recommendation" not in result["answer"]
     assert not result["semantic_passed"]
     assert not result["passed"]
-    assert result["path"] == "registry_recovery"
-    assert report["summary"]["registry_recovery_count"] == 1
+    assert result["path"] == "semantic_fallback"
+    assert report["summary"]["registry_recovery_count"] == 0
     assert report["summary"]["semantic_pass_rate"] == 0
     assert len(provider.calls) == 1
     assert "provider" in result["diagnostics"]
@@ -174,7 +174,7 @@ def test_unrepaired_quotes_fail_semantic_metric_even_when_fallback_selects_tool(
     assert not result["passed"]
     assert not result["semantic_passed"]
     assert not result["route_passed"]
-    assert result["status"] == "fallback"
+    assert result["status"] is None
     assert "evidence_validation" in result["diagnostics"]
     assert len(provider.calls) == 2
     assert result["should_execute"] is False
@@ -193,10 +193,10 @@ def test_cross_field_semantic_failure_reaches_safe_final_guidance():
     )
     result = run(provider)["results"][0]
     assert not result["semantic_passed"]
-    assert result["status"] == "fallback"
+    assert result["status"] is None
     assert result["answer_evaluated"] and result["answer_passed"]
-    assert "not an exact semantic match" in result["answer"]
-    assert "`sample_cluster_assignment`: Sample-to-cluster labels" in result["answer"]
+    assert "Fallback recommendation" not in result["answer"]
+    assert "SAMBAR" not in result["answer"]
     assert len(provider.calls) == 2
 
 

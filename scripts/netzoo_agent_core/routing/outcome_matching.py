@@ -56,46 +56,8 @@ def match_registry_guidance_features(
     *,
     input_artifacts: Sequence[str] | None = None,
 ) -> CapabilityMatch | None:
-    """Recover one read-only capability from multiple registry-owned signals.
-
-    This is deliberately stricter than keyword routing: a workflow must have at
-    least two independent capability signals, be the unique top score, and not
-    reject an explicitly named input artifact. The result grants guidance only;
-    execution authorization remains downstream.
-    """
-    normalized = task.casefold()
-    task_inputs = (
-        explicit_input_artifacts(task)
-        if input_artifacts is None else frozenset(input_artifacts)
-    )
-    ranked: list[tuple[int, int, RecommendedAction]] = []
-    for index, (action, capability) in enumerate(capabilities.items()):
-        incompatible_inputs = frozenset(capability.incompatible_input_artifacts)
-        compatible_inputs = task_inputs & frozenset(capability.input_artifacts)
-        if input_artifacts is not None and (
-            task_inputs & incompatible_inputs
-            or not task_inputs.issubset(capability.input_artifacts)
-        ):
-            continue
-        if task_inputs & incompatible_inputs and not compatible_inputs:
-            continue
-        phrase_hits = {
-            phrase.casefold()
-            for phrase in capability.selection_phrases
-            if phrase.casefold() in normalized
-        }
-        input_hits = compatible_inputs
-        evidence_count = len(phrase_hits) + len(input_hits)
-        if evidence_count < 2:
-            continue
-        score = 3 * len(input_hits) + 2 * len(phrase_hits)
-        ranked.append((score, -index, action))
-    if not ranked:
-        return None
-    ranked.sort(reverse=True)
-    if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
-        return None
-    return CapabilityMatch(status="fallback", match_basis="registry_features", matched_actions=[ranked[0][2]])
+    """Deprecated compatibility entry point; lexical hits are not tool evidence."""
+    return None
 
 
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
@@ -840,17 +802,11 @@ def _match_semantic_request(
             input_artifacts=current_inputs,
         )
 
-    if request_mode == "guidance":
-        registry_guidance = match_registry_guidance_features(
-            task, OUTPUT_CAPABILITIES, input_artifacts=current_inputs,
-        )
-        if registry_guidance is not None:
-            return registry_guidance
 
     # A workflow name is a fallback identifier, not stronger evidence than the
     # requested scientific result. This keeps historical, questioned, or rejected
     # method mentions from overriding a uniquely compatible typed outcome.
-    explicit_action = named_registered_action(task)
+    explicit_action = named_registered_action(_current_scope_text(task))
     if explicit_action is not None:
         capability = OUTPUT_CAPABILITIES.get(explicit_action)
         if capability is not None and matching_hypotheses and not any(
@@ -868,6 +824,8 @@ def _match_semantic_request(
             ) else "fallback",
             match_basis="workflow_name", matched_actions=[explicit_action]
         )
+        if named_match.status != "exact":
+            return match
         return _enforce_input_compatibility(
             task,
             named_match,

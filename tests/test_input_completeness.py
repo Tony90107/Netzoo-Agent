@@ -35,7 +35,7 @@ def omit_inputs(item):
 def test_repeated_omission_of_explicit_current_input_cannot_pass(case):
     provider = provider_for(omit_inputs(cluster_item()))
     row = run(provider, case)["results"][0]
-    assert row["status"] == "fallback"
+    assert row["status"] is None
     assert not row["review_repair_validated"]
     assert row["outcome"] == {}
     assert row["interaction_passed"]
@@ -131,7 +131,7 @@ def test_intermediate_output_cannot_replace_explicit_patient_clustering_goal(cas
     bad = with_artifact(cluster_item(), artifact)
     provider = provider_for(bad)
     row = run(provider, case)["results"][0]
-    assert row["status"] == "fallback" and row["outcome"] == {}
+    assert row["status"] is None and row["outcome"] == {}
     assert "terminal_goal_conflict:sample_cluster_assignment" in provider.calls[1][1][-1].content
     repaired = run(provider_for(bad, cluster_item()), case)["results"][0]
     assert repaired["review_repair_correct"] and repaired["passed"]
@@ -202,13 +202,7 @@ def test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions(task, 
     from netzoo_agent_core.interpretation.provider_fallback import recover_registry_guidance
     from netzoo_agent_core.policy import ProjectPolicyLoader
     decision = recover_registry_guidance(task, ProjectPolicyLoader().load().workflows, ValueError())
-    if not recommends:
-        assert decision is None
-        return
-    assert decision is not None
-    assert decision.guidance_input_artifacts == []
-    assert decision.requested_outcome is None
-    assert decision.capability_match_status == "fallback" and not decision.should_execute
+    assert decision is None
 
 
 @pytest.mark.parametrize(

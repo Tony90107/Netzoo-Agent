@@ -38,7 +38,7 @@ def test_missing_operation_repair_is_still_rejected_if_reviewer_omits_it():
     report = run(provider)
     assert report["summary"]["review_repair_rate"] == 0
     assert report["summary"]["review_repair_validation_rate"] == 0
-    assert report["results"][0]["status"] == "fallback"
+    assert report["results"][0]["status"] is None
     assert not report["results"][0]["next_step"]["allow_workflow_continuation"]
 
 

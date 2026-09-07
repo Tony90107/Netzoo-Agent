@@ -112,7 +112,7 @@ def test_a_review_that_still_fails_ends_the_run_even_when_it_improved():
     row = run_q3(provider)
 
     assert len(provider.semantic_calls) == 2
-    assert row["status"] == "fallback"
+    assert row["status"] is None
     assert row["outcome"] == {}
     assert row["call_roles"] == ["semantic_interpreter", "semantic_reviewer"]
 
@@ -138,11 +138,11 @@ def test_the_route_bound_stays_at_three_calls(case_id):
 
 
 def test_a_failed_run_still_delivers_registry_guidance():
-    """Reverting the attempt must not cost the user the recommendation."""
+    """Failure must be disclosed without a fabricated recommendation."""
     provider = SequencedProvider(network_item(), half_corrected_item())
 
     row = run_q3(provider)
 
-    assert row["answer_evaluated"] and row["answer_passed"]
-    assert "SAMBAR" in row["answer"]
+    assert row["answer_evaluated"] and not row["answer_passed"]
+    assert "SAMBAR" not in row["answer"]
     assert not row["next_step"]["allow_workflow_continuation"]

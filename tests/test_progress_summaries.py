@@ -394,8 +394,8 @@ def test_exact_guidance_recovers_registry_tags_from_task_text():
         "Remove hospital and sequencing batch effects before PANDA.",
     )
 
-    assert detail["workflow_path"] == ["COBRA", "PANDA"]
-    assert detail["workflow_scope"] == "composition"
+    assert detail["workflow_path"] == ["PANDA"]
+    assert detail["workflow_scope"] == "final_result"
 
 
 def test_normal_panda_guidance_does_not_force_optional_cobra_handoff():

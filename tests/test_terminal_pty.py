@@ -48,8 +48,8 @@ def test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize(widt
     try:
         frame = _read_frame(child, stream, screen)
         for expected in (
-            "Next step", "intended deliverable and inputs.",
-            "this candidate is not ready to start.",
+            "Next step", "Retry this request when semantic routing is available",
+            "No workflow is ready to start.",
             "Enter/back: start a new task | exit: close",
         ):
             assert _compact(expected) in frame, screen.display
@@ -58,8 +58,8 @@ def test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize(widt
         child.setwinsize(30, 32)
         child.send("/e")
         frame = _read_frame(child, stream, screen)
-        assert _compact("intended deliverable and inputs.") in frame, screen.display
-        assert _compact("this candidate is not ready to start.") in frame, screen.display
+        assert _compact("Retry this request when semantic routing is available") in frame, screen.display
+        assert _compact("No workflow is ready to start.") in frame, screen.display
         assert _compact("Enter/back: start a new task | exit: close") in frame
         child.send("\x7f\x7fexit\r")
         child.expect("SUBMITTED='exit'")
