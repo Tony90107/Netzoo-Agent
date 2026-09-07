@@ -5191,3 +5191,117 @@ PANDA 變為可達後，Log 74 的覆蓋測試會要求語料必須有它的題�
   「不會踩到 execute 模式」的 entity 修正，再一次驗證。**
 
 離線：**1406 passed、1 xfailed、3 failed（既有待決策項）、0 skipped**。
+
+## Log 79｜事前宣告：偏好導出的 `exact` 不得封鎖明文指名，然後重上 entity 修正
+
+日期／時區：2026-09-07，Asia/Taipei。**本節在實作之前寫入,實作與量測後不得修改。**
+
+### 精確的缺陷（比 Log 78 的說法更準）
+
+`match_requested_outcome`：
+
+```python
+if len(candidates) > 1:
+    ranked = sorted(_specificity_score(outcome, capability) ...)
+    if ranked[0][0] < ranked[1][0]:
+        return CapabilityMatch(status="exact", matched_actions=[ranked[0][2]])
+```
+
+**有多個相容 capability 時，只要其中一個特化分數較好就回報 `exact`。**
+而名稱消歧的閘門是 `match.status == "ambiguous"`（該處註解明寫名稱只能消歧、
+不得覆蓋唯一相容的 typed outcome——這條規則本身是對的）。
+兩者相乘的後果：**一個由偏好導出的「假唯一解」會封鎖明文指名**，
+於是 execute 模式下指名 LIONESS-COEXPRESSION 會執行 BONOBO。
+
+**問題不在名稱規則,在於 `exact` 被用來表示「偏好的贏家」而非「唯一的相容者」。**
+
+### 修正（第一項，離線可證）
+
+只放寬名稱閘門：**當嚴格比對的相容候選多於一個時（即 `exact` 來自特化偏好而非唯一性），
+明文指名的、且與該 outcome 相容的工作流程優先。** 不改 `exact` 的對外語意、
+不改 `_specificity_score`、不讓名稱覆蓋真正唯一的相容匹配
+（`len(candidates) == 1` 時行為完全不變）。
+
+### 修正（第二項，重上）
+
+上述修正成立後，重新套用 Log 77 的 entity 修正
+（從 `run_bonobo`／`run_giraffe`／`run_sambar` 移除非結果實體，YAML 與 Python 兩側）。
+
+### 判準
+
+- **M1（離線，決定性）**：明文指名 LIONESS-COEXPRESSION 且 `entity_types=["gene"]` 時，
+  **`execute` 與 `guidance` 皆解析為 `run_lioness_coexpression`**。
+  **且 `len(candidates) == 1` 的情境行為不變**——以既有測試全綠為證。
+- **M2（離線，決定性）**：entity 修正重上後，
+  `entity_types=["gene","sample"]` **不再**把答案換成 BONOBO；
+  且 12 個 capability 仍全部唯一可達；
+  且 `test_each_capability_declares_only_entities_its_artifact_permits` 全數通過
+  （SAMBAR 的 `gene` 違規一併修好）。
+- **M3（離線，回歸）**：完整 gate 除既有 3 項待決策失敗外全綠。
+  **任何既有測試需要改寫時,必須逐一判斷是「前提被取代」還是「我弄壞了」**——
+  Log 78 已有一次是後者，不得再以「改寫測試」掩蓋回歸。
+- **G（護欄，live，否決條件）**：mini 一輪 60 次試驗（20 題 × 3）中
+  **D = 0**（r18 為 3）、forbidden = 0、`unsafe_execution_count` = 0。**D > 0 → 撤回。**
+- **O（成效，live）**：`per-sample-coexpression` 三次皆不得為 D。
+- **R（僅記錄）**：A、工具正確。`corpus_sha256` 已再變（20 題），**與 r18 不可比較**。
+
+## Log 80｜名稱閘門修好了；entity 修正**第二次撤回**，因為根因在別處
+
+日期／時區：2026-09-07，Asia/Taipei。**離線,付費呼叫 0 次。未跑任何候選輪。**
+判準寫於 Log 79。
+
+### 保留（判準 M1 成立，離線決定性）
+
+**偏好導出的 `exact` 不再封鎖明文指名。**
+`_match_semantic_request` 在 `match.status == "exact"` 時**提早回傳**，
+所以既有的名稱消歧區塊對這種情況是**死碼**。修正加在那個提早回傳處：
+當嚴格比對的相容候選多於一個（即 `exact` 來自 `_specificity_score` 的偏好而非唯一性）、
+且原文明文指名了另一個與該 outcome 相容的工作流程時，以指名者為準。
+**相容候選恰為一個時,行為完全不變。**
+
+實測：指名 LIONESS-COEXPRESSION 的請求在 `execute` 與 `guidance` **皆解析正確**。
+完整 gate 無回歸。**這修掉了一個先於本次工作存在的潛在缺陷。**
+
+### 撤回（第二次）：entity 修正
+
+移除 `sample`／`gene` 之後，兩個 coexpression capability 在 entity 上打平，
+而 `match_requested_outcome` 仍然回報 `exact`：
+
+```python
+if len(candidates) > 1:
+    ranked = sorted(_specificity_score(outcome, capability) ...)
+    if ranked[0][0] < ranked[1][0]:
+        return CapabilityMatch(status="exact", matched_actions=[ranked[0][2]])
+```
+
+第一次嘗試時這個問題經由**名稱路徑**顯現（已修）。
+第二次嘗試時它經由 **`match_outcome_hypotheses` 直接路徑**顯現——
+那裡沒有名稱可以糾正，而
+`test_generic_evidence_validation_precedes_registry_matching` 這個既有測試
+正確地要求該情境為 `ambiguous`，卻得到 `exact`。
+
+**因此根因不是 entity 宣告，而是「`exact` 被用來表示多個相容候選中的偏好贏家」。**
+entity 修正只是讓這個根因顯現在更多路徑上。
+
+**修根因會改變比對器的唯一性語意，影響面廣**（`_specificity_score` 在其他地方
+做的是正當的工作，例如為 sample_specific 請求優先選 LIONESS 而非 PANDA），
+**需要自己的事前判準與一輪驗證，不在本節範圍**。
+
+### 現況
+
+- **已落地且無回歸**：tag 排序（PANDA 由不可達變可達、`KNOWN_UNREACHABLE` 為空、
+  語料 20 題涵蓋 12/12）＋ 名稱閘門修正。
+- **仍存在且已釘住**：Log 76 的 D = 3 缺陷
+  （`test_declaring_sample_an_entity_switches_the_recommended_tool`）、
+  BONOBO 的條件式不可達、`run_sambar` 的 `gene` 與本體論衝突。
+- **新增 `xfail(strict=True)`**：`test_tf_activity_is_selected_by_its_registry_tag`
+  記錄期望行為與阻塞原因；**修好根因時它會由 xfail 轉 xpass 而失敗，強迫更新紀錄。**
+- 判準 G／O（live）**未執行**：保留的兩項與 D=3 的成因無關，跑一輪測不到它們。
+
+### 方法論記錄
+
+同一個修法連續兩次被自己的判準擋下，兩次都因為它暴露了一個**更深的缺陷**而非
+它自己的錯誤。兩次都選擇撤回而不是「改寫測試讓它綠」——
+Log 78 已經有一次我誤把真實回歸當成「前提被取代」，這是那次教訓的直接應用。
+
+離線：**1405 passed、2 xfailed、3 failed（既有待決策項）、0 skipped**。

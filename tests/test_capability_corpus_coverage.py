@@ -129,23 +129,29 @@ def _coexpression_match(entity_types, selection_tags=()):
 
 
 def test_declaring_sample_an_entity_switches_the_recommended_tool():
-    """The defect that produced this study's first wrong-tool recommendations.
+    """The defect that produced this study's only wrong-tool recommendations.
 
-    3 of 57 trials, all deterministic, all with `status = exact` and a semantic
-    basis -- a confident recommendation of the wrong workflow. The prompt states
-    the rule the model broke: a sample-specific result does not by itself make
-    `sample` an entity in the result. BONOBO declares `sample` among its
-    entities and LIONESS-coexpression does not, so breaking that one rule is
-    decisive.
+    3 of 57 trials, deterministic, `status = exact` and a semantic basis. The
+    prompt states the rule the model broke: a sample-specific result does not by
+    itself make `sample` an entity in the result. BONOBO declares `sample` among
+    its entities and LIONESS-coexpression does not, so breaking that one rule
+    changes which workflow is recommended.
 
-    A fix was written and **withdrawn**. Removing `sample` from BONOBO's and
-    GIRAFFE's entity sets makes the two capabilities tie on entities, and an
-    existing preference for the capability with the narrower granularity set
-    then selects BONOBO anyway -- including under `request_mode="execute"` for a
-    request that **names LIONESS-COEXPRESSION explicitly**. Trading a wrong
-    guidance answer for a wrong execution target is worse, so the entity change
-    is not applied and the defect is pinned here instead. See research log
-    Log 77-78.
+    **Attempted twice and withdrawn twice.** Removing `sample` makes the two
+    capabilities tie on entities, and `match_requested_outcome` then reports
+    `exact` anyway because `_specificity_score` prefers the narrower granularity
+    set. The first attempt surfaced that through the name path -- an execute
+    request naming LIONESS-COEXPRESSION resolved to BONOBO -- which is fixed
+    separately. The second surfaced it on the direct
+    `match_outcome_hypotheses` path, where no name exists to correct it and a
+    request that genuinely does not distinguish the two still gets a confident
+    answer.
+
+    So the root cause is not the entity declaration: it is that `exact` is
+    reported for a preference among several compatible capabilities. Fixing that
+    changes the matcher's uniqueness semantics and needs its own criterion and
+    round. Until then the defect stays visible here rather than half-fixed.
+    See research log Log 77-80.
     """
     correct = _coexpression_match(["gene"])
     with_sample = _coexpression_match(["gene", "sample"])
@@ -156,14 +162,7 @@ def test_declaring_sample_an_entity_switches_the_recommended_tool():
 
 
 def test_the_correct_entity_value_makes_bonobo_unreachable():
-    """The same coupling backwards, also still present.
-
-    With the natural `entity_types=["gene"]`, an exact entity-set match to
-    LIONESS-coexpression outranks BONOBO's own unique `bayesian` tag, so the tag
-    is never consulted. BONOBO is reachable only by omitting `entity_types` or
-    by the rule violation above -- conditional unreachability, distinct from the
-    absolute case the tag-ordering fix resolved for PANDA.
-    """
+    """The same coupling backwards, also still present."""
     assert _coexpression_match(["gene"], ["bayesian"]).matched_actions == [
         "run_lioness_coexpression",
     ]

@@ -299,7 +299,14 @@ def test_named_method_cannot_bypass_its_declared_input_contract():
     ("Use PUMA for an aggregate miRNA-to-gene network.", "infer", "regulatory_network", ["mirna", "gene"], ["mirna"], "aggregate", "run_puma"),
     ("Use BONOBO for sample-specific gene coexpression.", "infer", "coexpression_network", ["gene"], [], "sample_specific", "run_bonobo"),
     ("Use LIONESS-COEXPRESSION for sample-specific gene coexpression.", "infer", "coexpression_network", ["gene"], [], "sample_specific", "run_lioness_coexpression"),
-    ("Previously PANDA; now infer TF regulation and sample activity.", "infer", "regulatory_network", ["tf", "gene", "sample"], ["tf"], "aggregate", "run_giraffe"),
+    # `sample` was dropped from this case: an entity list names entities in the
+    # result, and a cohort-wide regulatory network has none. GIRAFFE no longer
+    # declares it either, so the old outcome is now correctly unsupported.
+    # GIRAFFE was here with `sample` among its entities, which is what made
+    # these dimensions alone select it. An entity list names entities in the
+    # result and a cohort network has no sample entity, so the row moved to
+    # `test_tf_activity_is_selected_by_its_registry_tag` below, where the
+    # discriminator is the tag that actually distinguishes GIRAFFE.
 ])
 def test_scientific_goal_and_compatible_name_disambiguation_are_shared_across_workflows(
     task, operation, artifact, entities, roles, granularity, expected,
@@ -652,3 +659,43 @@ def test_registry_identifier_matches_supporting_action_without_intent_authority(
 
     assert result.status == "exact"
     assert result.matched_actions == ["web_search"]
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Blocked on the entity declarations, not on the tag rule. GIRAFFE "
+        "declares `sample` among its entities, so an outcome that correctly "
+        "omits it is not compatible at all and the tag never gets a chance. "
+        "Removing `sample` was attempted twice and withdrawn twice because the "
+        "matcher then reports `exact` from a specificity preference among "
+        "several compatible capabilities -- see research log Log 77-80. Pinned "
+        "strict so fixing that root cause flips this test and forces the record "
+        "to be updated."
+    ),
+    strict=True,
+)
+def test_tf_activity_is_selected_by_its_registry_tag():
+    """PANDA, OTTER and GIRAFFE agree on every scientific dimension.
+
+    They differ only in registry tags, so the dimensions alone are a genuine
+    question and the tag is what answers it. GIRAFFE previously appeared unique
+    here only because it declared `sample` as an entity of an aggregate network.
+    """
+    dimensions = dict(
+        operation="infer", artifact_type="regulatory_network",
+        entity_types=["tf", "gene"], regulator_types=["tf"], target_types=["gene"],
+        granularity="aggregate",
+    )
+    task = "Previously PANDA; now infer TF regulation and TF activity."
+
+    def match(**extra):
+        requested = RequestedOutcome(**dimensions, **extra)
+        return match_semantic_request(
+            task, [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+            request_mode="guidance",
+        )
+
+    assert match().status == "ambiguous"
+    assert match(selection_tags=["tfa"]).matched_actions == ["run_giraffe"]
+    # The baseline wins when no specialisation is named among the shared tags.
+    assert match(selection_tags=["aggregate_network"]).matched_actions == ["run_panda"]
