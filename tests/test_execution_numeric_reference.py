@@ -611,3 +611,228 @@ def test_condor_is_deterministic_across_runs(condor_run, side):
     pd.testing.assert_series_equal(
         condor_run["first"][side], condor_run["second"][side]
     )
+
+
+# --- LIONESS -------------------------------------------------------------------
+
+# Upstream's own `test_lioness.py` compares its ground-truth fixtures
+# (`tests/lioness/lioness.1.npy`, `lioness.1.coexpression.npy`) against a
+# `Panda`/`Lioness` construction that passes `modeProcess="legacy"` explicitly.
+# Our production path (`docker/run-lioness panda|coexpression` ->
+# `netZooPy/panda/run_panda.py`) never sets `modeProcess`, so it gets `Panda`'s
+# own default, `"union"` -- a different gene/TF intersection policy that would
+# make those fixtures the wrong ground truth (comparing two different networks,
+# not validating the same one). The same is true for LIONESS-PUMA's toy run.
+#
+# So this follows the OTTER/GIRAFFE precedent instead of the SAMBAR/COBRA one:
+# where upstream's *file* doesn't match what we actually run, upstream's *code*
+# called with our production defaults is the ground truth. Each build script
+# below constructs `Panda`/`Puma` + `Lioness`/`LionessPuma` directly, copying
+# `run_panda.py`/`run_puma.py`'s own argument list verbatim, and compares that
+# against the registered tool run through the real CLI wrapper. The tolerance
+# is `np.allclose`'s default (`rtol=1e-05, atol=1e-08`) because that is what
+# upstream's own three real assertions use (test_lioness.py lines 127, 148,
+# 161) -- they call `np.allclose(gt, res)` with no explicit tolerance, so the
+# default *is* the authors' judgement, not an omission to fill in ourselves.
+LIONESS_TOY = "/opt/netZooPy/tests/puma/ToyData"
+
+LIONESS_PANDA_BUILD = r'''
+import numpy as np, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netZooPy.panda.panda import Panda
+from netZooPy.lioness.lioness import Lioness
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+# Ground truth: netZooPy/panda/run_panda.py's own argument list, verbatim,
+# followed by netZooPy/lioness/lioness.py's export path for a lioness_file.
+panda_obj = Panda(f"{{toy}}/ToyExpressionData.txt", f"{{toy}}/ToyMotifData.txt",
+                   f"{{toy}}/ToyPPIData.txt", save_tmp=True, remove_missing=False,
+                   keep_expression_matrix=True, save_memory=False)
+panda_obj.save_panda_results("/out/reference_panda.txt")
+Lioness(panda_obj, export_filename="/out/reference.csv")
+
+# Produced: the registered tool, through the real CLI wrapper.
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_lioness_panda.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    output_file="/out/panda_out.txt",
+    lioness_output="/out/produced.csv"))
+assert "Exit code: 0" in report, report
+'''
+
+LIONESS_PUMA_BUILD = r'''
+import numpy as np, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netZooPy.puma import Puma
+from netZooPy.lioness.lioness_for_puma import LionessPuma
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+# Ground truth: netZooPy/puma/run_puma.py's own argument list, verbatim.
+# `.txt` rather than `.csv`: LionessPuma.save_lioness_results writes a plain
+# `np.savetxt` body with no header at all, and only the `.txt` case keeps the
+# body's own delimiter (space) consistent with the header our production path
+# adds afterwards (docker/add-puma-lioness-header always joins the header
+# with spaces, regardless of the file's chosen delimiter -- a `.csv`/`.tsv`
+# output would carry a space-delimited header over a comma/tab-delimited
+# body, which is a separate finding, not something to route around silently).
+puma_obj = Puma(f"{{toy}}/ToyExpressionData.txt", f"{{toy}}/ToyMotifData.txt",
+                 f"{{toy}}/ToyPPIData.txt", f"{{toy}}/ToyMiRList.txt",
+                 save_tmp=True, remove_missing=False, keep_expression_matrix=True)
+puma_obj.save_puma_results("/out/reference_puma.txt")
+lioness_obj = LionessPuma(puma_obj)
+lioness_obj.save_lioness_results("/out/reference.txt")
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_lioness_puma.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    mirna_file=f"{{toy}}/ToyMiRList.txt",
+    output_file="/out/puma_out.txt",
+    lioness_output="/out/produced.txt"))
+assert "Exit code: 0" in report, report
+'''
+
+LIONESS_COEXPRESSION_BUILD = r'''
+import numpy as np, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netZooPy.panda.panda import Panda
+from netZooPy.lioness.lioness import Lioness
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+# Ground truth: run_panda.py's argument list with motif omitted, which is how
+# `docker/run-lioness coexpression` invokes the same legacy script.
+panda_obj = Panda(f"{{toy}}/ToyExpressionData.txt", None,
+                   f"{{toy}}/ToyPPIData.txt", save_tmp=True, remove_missing=False,
+                   keep_expression_matrix=True, save_memory=False)
+panda_obj.save_panda_results("/out/reference_panda.txt")
+Lioness(panda_obj, export_filename="/out/reference.csv")
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_lioness_coexpression.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    output_file="/out/coexpression_out.txt",
+    lioness_output="/out/produced.csv"))
+assert "Exit code: 0" in report, report
+'''
+
+
+def _run_lioness_build(
+    build_script: str,
+    *,
+    produced_name: str = "produced.csv",
+    reference_name: str = "reference.csv",
+    reference_has_header: bool = True,
+    id_columns: tuple[str, str] = ("tf", "gene"),
+) -> dict[str, object]:
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(
+            build_script.format(toy=LIONESS_TOY), encoding="utf-8"
+        )
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "python", "/out/build.py",
+            ],
+            check=True, capture_output=True, timeout=1800,
+        )
+        import pandas as pd
+
+        sep = r"\s+" if not reference_has_header else ","
+        produced = pd.read_csv(out / produced_name, sep=sep, engine="python")
+        if reference_has_header:
+            reference = pd.read_csv(out / reference_name, sep=sep, engine="python")
+        else:
+            # LionessPuma.save_lioness_results writes no header at all; the
+            # CLI wrapper's header (regulator, gene, prior_weight, samples...)
+            # is added afterwards by docker/add-puma-lioness-header, not by
+            # netZooPy itself, so the reference file needs the same names
+            # assigned by hand to compare like-for-like.
+            reference = pd.read_csv(
+                out / reference_name, sep=r"\s+", engine="python", header=None
+            )
+            reference.columns = list(produced.columns)
+    return {"produced": produced, "reference": reference, "id_columns": id_columns}
+
+
+@pytest.fixture(scope="module")
+def lioness_panda_run() -> dict[str, object]:
+    return _run_lioness_build(LIONESS_PANDA_BUILD, id_columns=("tf", "gene"))
+
+
+@pytest.fixture(scope="module")
+def lioness_puma_run() -> dict[str, object]:
+    return _run_lioness_build(
+        LIONESS_PUMA_BUILD,
+        produced_name="produced.txt",
+        reference_name="reference.txt",
+        reference_has_header=False,
+        id_columns=("regulator", "gene"),
+    )
+
+
+@pytest.fixture(scope="module")
+def lioness_coexpression_run() -> dict[str, object]:
+    return _run_lioness_build(LIONESS_COEXPRESSION_BUILD, id_columns=("gene1", "gene2"))
+
+
+def _assert_lioness_tables_match(produced, reference, id_columns) -> None:
+    """Align on the (regulator, gene) identifier columns, then compare values.
+
+    Both files are written pre-sorted by their own identifier columns (see
+    `export_lioness_table` for PANDA/co-expression and `LionessPuma`'s column
+    stack for PUMA), but this re-sorts explicitly rather than depending on
+    that -- the point of the comparison is the values, not incidental row
+    order agreement.
+    """
+    import numpy as np
+
+    assert list(produced.columns) == list(reference.columns)
+    produced_sorted = produced.sort_values(by=id_columns).reset_index(drop=True)
+    reference_sorted = reference.sort_values(by=id_columns).reset_index(drop=True)
+    assert list(produced_sorted[id_columns[0]]) == list(reference_sorted[id_columns[0]])
+    assert list(produced_sorted[id_columns[1]]) == list(reference_sorted[id_columns[1]])
+
+    value_columns = [c for c in produced.columns if c not in id_columns]
+    produced_values = produced_sorted[value_columns].to_numpy(dtype=float)
+    reference_values = reference_sorted[value_columns].to_numpy(dtype=float)
+    assert produced_values.shape == reference_values.shape
+    assert np.allclose(reference_values, produced_values), (
+        f"largest disagreement: "
+        f"{np.max(np.abs(produced_values - reference_values)):.3e}"
+    )
+
+
+def test_lioness_panda_matches_netzoopy_called_directly(lioness_panda_run):
+    _assert_lioness_tables_match(
+        lioness_panda_run["produced"], lioness_panda_run["reference"],
+        id_columns=list(lioness_panda_run["id_columns"]),
+    )
+
+
+def test_lioness_puma_matches_netzoopy_called_directly(lioness_puma_run):
+    _assert_lioness_tables_match(
+        lioness_puma_run["produced"], lioness_puma_run["reference"],
+        id_columns=list(lioness_puma_run["id_columns"]),
+    )
+
+
+def test_lioness_coexpression_matches_netzoopy_called_directly(lioness_coexpression_run):
+    _assert_lioness_tables_match(
+        lioness_coexpression_run["produced"], lioness_coexpression_run["reference"],
+        id_columns=list(lioness_coexpression_run["id_columns"]),
+    )
