@@ -662,3 +662,28 @@ def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
     assert "outcome_hypotheses.0.confidence" in error
     assert "missing" in error
     assert "offline-placeholder" not in error
+
+
+def test_naming_the_right_tool_without_the_discriminator_is_reported():
+    """Credit for the right tool must not cover for a missing discriminator.
+
+    Several corpus prompts fit more than one capability on their coarse fields;
+    what separates them is a role or a registry tag. One prompt scored 3/3 while
+    two of its three trials named no distinguishing tag at all -- the harness
+    resolved the tie, not the model. The corpus now records the discriminator
+    and the scorer reports its absence.
+    """
+    item = hypothesis()
+    provider = FixtureProvider(
+        first={"request_mode": "guidance", "semantic_goal": "Grouping", "outcome_hypotheses": [item]},
+    )
+    case = scenario(required_discriminators={"selection_tags": ["cancer_subtyping"]})
+
+    row = run(provider, case)["results"][0]
+
+    assert row["matched_actions"] == ["run_sambar"]
+    assert any(
+        error.startswith("discriminator: selection_tags must include")
+        for error in row["errors"]
+    )
+    assert not row["passed"]

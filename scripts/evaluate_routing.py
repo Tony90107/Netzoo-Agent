@@ -56,6 +56,13 @@ class RoutingExpectation(BaseModel):
     artifact_type: ArtifactType | None = None
     granularity: Granularity | None = None
     entity_types: list[EntityType] | None = None
+    # The dimensions that actually distinguish the expected capability from the
+    # others its coarse fields also fit. Without them the corpus states the
+    # answer but not what a correct outcome must contain, so a trial where the
+    # harness guessed among compatible candidates scored the same as one where
+    # the model supplied the discriminator -- and one prompt scored 3/3 with two
+    # of its trials naming no distinguishing tag at all.
+    required_discriminators: dict[str, list[str]] = Field(default_factory=dict)
     answer_required: list[str] = Field(default_factory=list)
     answer_forbidden: list[str] = Field(default_factory=list)
     require_clarification: bool = False
@@ -64,6 +71,12 @@ class RoutingExpectation(BaseModel):
     def consistent(self):
         if (self.status in {"exact", "fallback"}) != bool(self.actions):
             raise ValueError("Only exact or fallback expectations may select actions, and must select at least one.")
+        permitted = {"regulator_types", "target_types", "selection_tags", "entity_types"}
+        unknown = set(self.required_discriminators) - permitted
+        if unknown:
+            raise ValueError(f"Unknown discriminator dimensions: {sorted(unknown)}")
+        if self.required_discriminators and not self.actions:
+            raise ValueError("Discriminators only mean something beside an expected action.")
         if set(self.actions) & set(self.forbidden_actions):
             raise ValueError("Expected actions cannot also be forbidden.")
         if len(self.actions) != len(set(self.actions)):
@@ -268,6 +281,17 @@ def _score(case, result, events):
         actual = actual_outcome.get(dimension)
         if wanted is not None and (set(actual or []) != set(wanted) if isinstance(wanted, list) else actual != wanted):
             semantic_errors.append(f"{dimension}: expected {wanted}, got {actual}")
+    # The dimension that actually distinguishes the expected capability. Naming
+    # the right tool while omitting it means the harness resolved the tie, not
+    # the model: one prompt scored 3/3 with two trials naming no distinguishing
+    # tag at all. Recorded separately so that credit is not given for it.
+    for dimension, required in (expected.required_discriminators or {}).items():
+        present = set(actual_outcome.get(dimension) or [])
+        missing = sorted(set(required) - present)
+        if missing:
+            semantic_errors.append(
+                f"discriminator: {dimension} must include {missing}, got {sorted(present)}"
+            )
     request_mode = result.routing_state.get("semantic_goal", {}).get("request_mode")
     if request_mode != "guidance":
         semantic_errors.append(f"request_mode: expected guidance, got {request_mode}")
