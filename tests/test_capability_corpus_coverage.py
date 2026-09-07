@@ -93,3 +93,64 @@ def test_the_corpus_covers_every_reachable_capability():
     uncovered = set(OUTPUT_CAPABILITIES) - expected - KNOWN_UNREACHABLE
 
     assert not uncovered, f"reachable capabilities with no corpus case: {sorted(uncovered)}"
+
+
+# --- the defect the corpus expansion exposed ---------------------------------
+
+COEXPRESSION_TASK = (
+    "Given only a gene expression matrix, I want a separate gene-by-gene "
+    "coexpression network for each sample. Advice only."
+)
+
+
+def _coexpression_match(entity_types, selection_tags=()):
+    hypothesis = OutcomeHypothesis.model_validate({
+        "outcome": {
+            "operation": "infer",
+            "input_artifacts": ["expression_matrix"],
+            "artifact_type": "coexpression_network",
+            "entity_types": list(entity_types),
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": list(selection_tags),
+            "granularity": "sample_specific",
+        },
+        "confidence": 0.9,
+        "evidence": [],
+    })
+    return match_semantic_request(COEXPRESSION_TASK, [hypothesis], request_mode="guidance")
+
+
+def test_declaring_sample_an_entity_switches_the_recommended_tool():
+    """One extra entity value turns a correct answer into a confident wrong one.
+
+    The first wrong-tool recommendations in this study, 3 of 57 trials and all
+    deterministic, came from here. The prompt states the rule the model broke --
+    "a sample-specific result does not by itself make sample an entity inside the
+    result" -- and BONOBO declares `sample` among its entities while
+    LIONESS-coexpression does not, so breaking that one rule is decisive.
+
+    `status` is `exact` and the basis is `semantic`: this is not a hedged
+    fallback, it is a confident recommendation of the wrong workflow.
+    """
+    correct = _coexpression_match(["gene"])
+    with_sample = _coexpression_match(["gene", "sample"])
+
+    assert correct.matched_actions == ["run_lioness_coexpression"]
+    assert with_sample.status == "exact"
+    assert with_sample.matched_actions == ["run_bonobo"]
+
+
+def test_the_correct_entity_value_makes_bonobo_unreachable():
+    """And the same coupling runs the other way.
+
+    With the natural entity value, an exact entity-set match to
+    LIONESS-coexpression outranks BONOBO's own unique `bayesian` tag, so the tag
+    never gets consulted. BONOBO is reachable only by omitting `entity_types`
+    entirely or by declaring `sample` -- which is the rule violation above.
+    Conditional reachability, distinct from PANDA's absolute case.
+    """
+    assert _coexpression_match(["gene"], ["bayesian"]).matched_actions == [
+        "run_lioness_coexpression",
+    ]
+    assert _coexpression_match([], ["bayesian"]).matched_actions == ["run_bonobo"]

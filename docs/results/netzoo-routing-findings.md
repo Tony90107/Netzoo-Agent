@@ -150,20 +150,30 @@ many more prompts or a matched-control design as in §4.1.
 
 **Pre-registered** as replicates.
 
-### 4.5 Safety
+### 4.5 Safety, and why the zero was a coverage artifact
 
-Across **294 trials**, both models, seven rounds: **0 wrong-tool
-recommendations, 0 recommendations of an explicitly forbidden action, 0
-unauthorized executions.** 0/294 gives a 95% upper bound of **1.02%** (rule of
-three).
+On the 14-prompt corpus, across **294 trials**, both models, seven rounds:
+**0 wrong-tool recommendations, 0 forbidden actions, 0 unauthorized
+executions** — a 95% upper bound of 1.02% by the rule of three.
 
-Failures are silence or under-specification, not confident error: the
-deterministic layer refuses to emit a workflow it cannot validate and degrades to
-a clarification question.
+**That zero did not survive covering the rest of the registry.** On the
+19-prompt corpus the first round produced **3 wrong-tool recommendations in 57
+trials (5.3%)**, all deterministic, all in a newly covered capability pair, and
+all with `status = exact` and a semantic basis — confident recommendations, not
+hedged fallbacks. Nothing about the system changed; the corpus stopped hiding it.
 
-Descriptive, but the zero counts were pre-registered veto conditions in every
-intervention round: any wrong or forbidden recommendation would have withdrawn
-the change under test. §6 argues part of this is structural.
+So the honest statement is not "this system does not recommend wrong tools". It
+is: **the wrong-tool rate was 0/294 on a corpus exercising 6 of 12 capabilities,
+and 3/57 on one exercising 11 of 12.** §5.4 gives the mechanism, which is a
+single ontology rule that the prompt states, the model breaks, and the registry
+then amplifies into a confident answer.
+
+Forbidden actions and unauthorized executions remain at zero on both corpora.
+
+The zero counts were pre-registered veto conditions in every intervention round;
+this round was pre-registered as a baseline, with the note — written before it
+ran — that a non-zero wrong-tool count would be a pre-existing defect revealed by
+the new corpus rather than a regression. It was.
 
 ---
 
@@ -220,6 +230,35 @@ router relies on. Three findings, recorded rather than corrected:
    space-separated header above tab-separated rows. All three declare
    `regulatory_network`. Routing treats it as one thing; at the file level it is
    not, and no consumer can parse them uniformly.
+
+### 5.4 One stated rule, broken by the model, amplified by the registry
+
+The prompt tells the model: *a sample-specific result does not by itself make
+`sample` an entity inside the result.* Two capabilities nevertheless declare
+`sample` among their entities, and for one pair that makes the rule decisive:
+
+| Outcome (same request, only `entity_types` differs) | Match |
+| --- | --- |
+| `entity_types=["gene"]` | **exact `run_lioness_coexpression`** — correct |
+| `entity_types=["gene","sample"]` | **exact `run_bonobo`** — wrong, and confident |
+| `entity_types=[]` | ambiguous, both candidates |
+
+The model wrote `["gene","sample"]` in all three trials of the per-sample
+coexpression prompt, and the registry turned that one extra value into a
+different workflow. **A documented rule that nothing enforces became a
+wrong-tool recommendation.**
+
+The coupling also runs the other way. With the natural value `["gene"]`, an
+exact entity-set match to LIONESS-coexpression **outranks BONOBO's own unique
+`bayesian` tag**, so the tag is never consulted: BONOBO is reachable only by
+omitting `entity_types` or by committing the rule violation above. It is
+*conditionally* unreachable — the correct outcome cannot select it — which is a
+distinct defect from PANDA's absolute case in §5.2.
+
+The corollary is uncomfortable and worth stating: the sibling prompt asking for
+Bayesian per-sample coexpression scored 3/3, **for the wrong reason** — two of
+its three trials named no `bayesian` tag at all and were selected by the same
+mistaken entity value. A passing case is not evidence of comprehension.
 
 **Scope:** these check identifier families, axis orientation, sample coverage and
 required/forbidden columns. **Numbers are not compared and this is not biological

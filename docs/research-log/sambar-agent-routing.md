@@ -4998,3 +4998,86 @@ pathway 輸出有 **247** 個樣本欄，gene 層輸出有 **248** 個樣本列�
 - 分類沿用 A／B1／B2／C／D（Log 69）。
 
 呼叫上限 `--max-calls 180`（19 × 3 × 3 = 171）。
+
+## Log 76｜新語料基線：**本研究第一次出現「推薦錯誤工具」**，成因是一條寫在 prompt 裡卻無人強制的規則
+
+日期／時區：2026-09-07，Asia/Taipei。**使用者預先授權的 mini 輪次**，154 次呼叫、57 次試驗。
+報告：[live-r18-mini-corpus19-baseline.json](live-r18-mini-corpus19-baseline.json)。
+讀法宣告於 Log 75，執行前寫入，本節未修改。
+`corpus_sha256=57afb78310…`（19 題），**與 r1–r17 不可比較**。
+
+### 結果
+
+| | A | B1 | B2 | C | **D** | 工具正確 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 全 57 次 | 19 | 2 | 4 | 29 | **3** | 25/57 = 43.9% |
+| 舊 14 題子集（42 次） | 16 | 2 | 4 | 20 | **0** | 22/42 |
+| **新 5 題（15 次）** | 3 | 0 | 0 | 9 | **3** | 3/15 |
+
+forbidden = 0、`unsafe_execution_count` = 0。
+
+### D = 3：機制完全確定，且三次一致
+
+三次全部來自 `per-sample-coexpression`，`status=exact`、`basis=semantic`——
+**是自信的推薦，不是保守的 fallback**。同一個請求，只改 `entity_types`：
+
+| outcome | 比對結果 |
+| --- | --- |
+| `entity_types=["gene"]` | **exact `run_lioness_coexpression`**（正確） |
+| `entity_types=["gene","sample"]` | **exact `run_bonobo`**（錯誤） |
+| `entity_types=[]` | ambiguous，兩個候選 |
+
+模型三次都寫了 `["gene","sample"]`。而 prompt 明文寫著
+**「A sample-specific result does not by itself make sample an entity inside the result.」**
+`run_bonobo` 宣告 `entity_types={gene, sample}`、`run_lioness_coexpression` 宣告 `{gene}`，
+於是**違反那一條規則就足以換掉推薦的工具**。
+
+**一條寫在 prompt 裡、卻沒有任何程式強制的規則，變成了一次自信的錯誤推薦。**
+
+### 同一個耦合的反向：BONOBO 在正確的 outcome 下不可達
+
+`entity_types=["gene"]` ＋ 正確的 `bayesian` tag → 仍然選出 `lioness_coexpression`。
+**entity 集合的精確相符優先於唯一判別 tag，tag 從未被諮詢。**
+BONOBO 只能靠「完全不填 entity_types」或「犯上述規則違反」才選得到——
+**條件式不可達**，與 Log 74 的 PANDA（絕對不可達）是不同的缺陷。
+
+因此 `per-sample-coexpression-bayesian` 那題 **3/3 通過是「對的答案、錯的理由」**：
+三次中有兩次**根本沒有寫 `bayesian` tag**，是被同一個錯誤的 entity 值選中的。
+**通過的案例不是理解的證據。**
+
+### 這如何推翻先前的安全性宣稱（必須更正）
+
+先前記錄並寫進論文文件的是「294 次試驗、0 次錯誤推薦、95% 上界 1.02%」。
+**那個 0 是語料涵蓋率的產物,不是系統的性質。** 程式沒有任何改變，
+只是語料由涵蓋 6/12 個 capability 變成 11/12，D 立刻出現：**3/57 = 5.3%**。
+
+正確的陳述是：**「在涵蓋 6/12 的語料上為 0/294；在涵蓋 11/12 的語料上為 3/57。」**
+`docs/results/netzoo-routing-findings.md` 的 §4.5 已據此改寫，並新增 §5.4 記錄機制。
+
+Log 75 事前已寫明「若 D > 0，那是新語料揭露的既有缺陷，不是本次變更造成的退步」。
+**確實如此**，這也是事前宣告唯一有價值的地方：它讓歸因不必事後爭論。
+
+### 我自己測試的缺陷（一併記錄）
+
+Log 74 新增的 `test_capability_corpus_coverage.py` 判定 BONOBO「可達」，
+因為它的探測用 `entity_types=[]` 加上該 capability 自己宣告的全部 tag。
+**那是一個 prompt 不鼓勵模型產生的 outcome**——與 Log 31 的教訓同型：
+可達性必須以「模型被允許產生的解讀」為準，不是以「登錄表自己的欄位」為準。
+已新增兩項測試釘住上述兩個方向（換工具、以及正確值下不可達）。
+
+### 舊 14 題子集：與 r17 相差 4 次，程式相同
+
+舊子集工具正確 22/42，而 r17（同一份生產程式、舊語料）為 26/42。
+**程式相同、相差 4 次試驗**，高於 Log 71 由兩次重複估出的 ±2。
+兩次重複本來就是很薄的底線估計，此處應讀為
+**±2 過於樂觀，尾部更寬**；這反而加強 Log 67／71 的結論，而不是推翻它。
+
+### 尚未做，且不建議自行決定
+
+修法方向是登錄表資料：把 `sample` 從 `run_bonobo`／`run_giraffe` 的
+`entity_types` 移除（`run_sambar` 的 `sample` 是正當的——它的產物就是樣本分群標籤），
+並讓唯一判別 tag 的優先序高於 entity 集合的精確相符。
+**這會改變比對器的排序規則，屬行為介入**，需事前判準與一輪驗證。
+依 Log 31 的先例：**先修可達性，再談語料分數。**
+
+離線：**1406 passed、1 xfailed、3 failed（既有待決策項）、0 skipped**。
