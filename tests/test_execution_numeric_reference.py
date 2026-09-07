@@ -377,3 +377,116 @@ def test_otter_ppi_projection_matches_an_independent_binarization(otter_run):
     # A guard on the fixture itself: if upstream's P were dense-positive, the
     # comparison above would hold trivially and prove nothing.
     assert 0.0 in set(np.unique(expected).tolist())
+
+
+# --- GIRAFFE -----------------------------------------------------------------
+
+# Upstream's GIRAFFE test asserts `np.testing.assert_allclose(..., atol=1e-5)`,
+# a different criterion from the pandas one used above, so it is applied as
+# upstream writes it.
+GIRAFFE_ATOL = 1e-5
+GIRAFFE_BUILD = r'''
+import numpy as np, pandas as pd, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netZooPy.panda import Panda
+from netzoo_agent_core import settings, execution
+
+# Upstream's own recipe: its GIRAFFE reference is generated from PANDA's
+# intersection-mode preprocessing of the PUMA toy data, not from the raw files.
+# Starting from the same preprocessed matrices isolates what this wrapper
+# contributes from what PANDA's preprocessing contributes.
+toy = "/opt/netZooPy/tests/puma/ToyData"
+panda = Panda(f"{toy}/ToyExpressionData.txt", f"{toy}/ToyMotifData.txt",
+              f"{toy}/ToyPPIData.txt", modeProcess="intersection",
+              with_header=False, process_data_only=True)
+expression = np.asarray(panda.expression, dtype=float)
+motif = np.asarray(panda.motif_matrix_unnormalized, dtype=float)   # TF-by-gene
+ppi = np.asarray(panda.ppi_matrix, dtype=float)
+
+genes = [f"G{i:05d}" for i in range(expression.shape[0])]
+samples = [f"S{i:03d}" for i in range(expression.shape[1])]
+tfs = [f"TF{i:05d}" for i in range(motif.shape[0])]
+pd.DataFrame(expression, index=genes, columns=samples).rename_axis("gene").to_csv(
+    "/out/expression.tsv", sep="\t")
+pd.DataFrame(motif, index=tfs, columns=genes).rename_axis("tf").to_csv(
+    "/out/motif.tsv", sep="\t")
+pd.DataFrame(ppi, index=tfs, columns=tfs).rename_axis("tf").to_csv(
+    "/out/ppi.tsv", sep="\t")
+
+settings.EXECUTE_TOOLS = True
+report = execution.run_giraffe.invoke(dict(
+    expression_file="/out/expression.tsv", motif_file="/out/motif.tsv",
+    ppi_file="/out/ppi.tsv", output_file="/out/giraffe.tsv"))
+assert "API execution completed" in report, report
+'''
+
+
+@pytest.fixture(scope="module")
+def giraffe_run() -> dict[str, object]:
+    """Run GIRAFFE through the registered tool on upstream's toy inputs."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(GIRAFFE_BUILD, encoding="utf-8")
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                "python /out/build.py"
+                " && cp /opt/netZooPy/tests/giraffe/Toygiraffe_R_hat.txt"
+                " /opt/netZooPy/tests/giraffe/Toygiraffe_TFA_hat.txt /out/",
+            ],
+            check=True, capture_output=True, timeout=1800,
+        )
+        import pandas as pd
+
+        return {
+            "regulation": pd.read_csv(out / "giraffe.tsv", sep="\t", index_col=0),
+            "tfa": pd.read_csv(out / "giraffe.tfa.tsv", sep="\t", index_col=0),
+            "regulation_gt": pd.read_csv(
+                out / "Toygiraffe_R_hat.txt", sep="\t", index_col=0),
+            "tfa_gt": pd.read_csv(
+                out / "Toygiraffe_TFA_hat.txt", sep="\t", index_col=0, header=None),
+        }
+
+
+def test_giraffe_regulation_matches_upstreams_ground_truth(giraffe_run):
+    """Upstream's `R_hat` is gene-by-TF; this workflow writes TF-by-gene.
+
+    The orientation difference is the whole point of the comparison: passing the
+    prior untransposed made this call fail inside the API for every input whose
+    gene count differed from its TF count.
+    """
+    import numpy as np
+
+    produced = giraffe_run["regulation"]
+    expected = giraffe_run["regulation_gt"]
+
+    assert produced.shape == expected.shape[::-1]
+    np.testing.assert_allclose(
+        expected.values, produced.to_numpy(float).T, atol=GIRAFFE_ATOL
+    )
+
+
+def test_giraffe_tfa_matches_upstreams_ground_truth(giraffe_run):
+    import numpy as np
+
+    produced = giraffe_run["tfa"]
+    expected = giraffe_run["tfa_gt"]
+
+    assert produced.shape == expected.shape
+    np.testing.assert_allclose(
+        expected.values, produced.to_numpy(float), atol=GIRAFFE_ATOL
+    )
+
+
+def test_giraffe_outputs_carry_the_declared_identifiers(giraffe_run):
+    """A transposed write would still compare equal after a transpose above."""
+    regulation, tfa = giraffe_run["regulation"], giraffe_run["tfa"]
+
+    assert regulation.index.name == "tf_id"
+    assert list(regulation.index[:2]) == ["TF00000", "TF00001"]
+    assert list(regulation.columns[:2]) == ["G00000", "G00001"]
+    assert list(tfa.index[:2]) == ["TF00000", "TF00001"]
+    assert list(tfa.columns[:2]) == ["S000", "S001"]

@@ -5740,3 +5740,68 @@ Docker 測試 3 個中 2 個會在修正前失敗。離線閘門 1419 passed / 1
 
 **檔案**：`scripts/netzoo_agent_core/data/otter.py`、`workflows/otter.yaml`、
 `tests/test_otter_workflow.py`（+3）、`tests/test_execution_numeric_reference.py`（+3）。
+
+## Log 88 — 執行層核對延伸至 GIRAFFE：這個 capability 根本無法執行
+
+**判準（事前）**：同 Log 86–87，用上游自己的斷言（GIRAFFE 用
+`np.testing.assert_allclose(atol=1e-5)`，與 COBRA 的 pandas 斷言不同，照其原樣套用）。
+
+**結果：抓到兩個缺陷，其中一個讓 GIRAFFE 完全無法執行。**
+
+**缺陷一：prior 方向錯誤（嚴重——該 capability 從來跑不起來）**
+netZooPy 的 `Giraffe(expression, prior, ppi)` 要求 prior 是 **gene×TF**
+（上游測試寫 `giraffe.Giraffe(expression, motif.T, ppi)`），`get_regulation()` 回傳
+也是 gene×TF（其註解寫 `Size (G, TF)`）。我方 `_read_prior` 建的是 **TF×gene**，
+而 `execution.py` 直接把它傳進去，沒有轉置。以上游 ToyData（913 gene、87 TF）實測：
+
+```
+RuntimeError: The size of tensor a (913) must match the size of tensor b (87)
+              at non-singleton dimension 0
+```
+
+也就是說：**只要 gene 數 ≠ TF 數，run_giraffe 必定失敗**——即實務上永遠失敗。
+
+**為什麼一直沒被發現**：`settings.EXECUTE_TOOLS` 預設 False，沒有任何測試真的執行它；
+而唯一的 mock 測試 `test_giraffe_execute_uses_verified_api_and_validates_both_outputs`
+的 fixture 用 **2 個 gene、2 個 TF**——prior 是方陣，**方陣看不出轉置**。那個 mock 還
+明確斷言 `prior.shape == (2, 2)`，兩種方向都成立。這是一個關於測試方法本身的教訓：
+**對稱的 fixture 無法偵測方向性錯誤**。新增的離線測試改用 3 gene × 2 TF。
+
+**修正**：`giraffe_class(bundle.expression, bundle.prior.T, bundle.ppi)`，回傳值
+`.T` 轉回 TF×gene——因為 writer、validator 與 registry 都以 TF×gene 為輸出方向，
+保留該對外契約，只修正 API 邊界。preview 文字也一併更新以維持誠實。
+
+**缺陷二：有記載的輸入格式「labelled square TF matrix」不可達**
+`_read_ppi` 的 dense 判定同時要求
+`frame.shape[0] == frame.shape[1] - 1` 與 `frame.iloc[0,0]` 是 ID token。
+但後者意味著有標頭列，而有標頭列時 n×n 矩陣讀進來是 (n+1)×(n+1)，即
+`shape[0] == shape[1]`。**兩個條件不可能同時成立**，所以任何合規的標記方陣都掉到
+邊表分支並被拒絕——而 registry 契約明寫接受該格式。
+反過來，那個舊條件**只在錯的輸入上成立**：標頭為 `tf/gene/weight` 且僅 1 列資料的
+邊表是 2×3，`shape[0]==shape[1]-1` 成立且首格是 "tf"，於是被**誤判成方陣**。
+修正：改為 `shape[0] == shape[1]` 並額外要求標頭列的集合等於 TF 集合，
+不再用形狀算術去猜格式。
+
+**嚴重性分級（不可混為一談）**：這兩個缺陷都是 **fail-safe**——使用者拿到錯誤訊息，
+不是錯誤數字。這與 Log 87 的 OTTER 缺陷有本質差別：OTTER 是安靜地產出錯誤數字。
+按對使用者的危害排序：OTTER（錯數字，無警告）> GIRAFFE（完全不能跑）>
+GIRAFFE PPI 格式（一種輸入格式不能用）。
+
+**修正後對上游 ground truth 的核對**：
+| 元件 | 最大絕對差 | 上游判準 |
+| --- | --- | --- |
+| `R_hat`（TF×gene 網路） | 1.5e-06 | atol=1e-5 ✓ |
+| `TFA_hat`（TF×sample） | 4.3e-08 | atol=1e-5 ✓ |
+
+兩種 PPI 格式（標記方陣與三欄邊表）都能執行並得到相同結果。
+
+**fixture 說明**：上游的 GIRAFFE 參考值是由 **PANDA 的 intersection 預處理**產生
+（`Panda(..., modeProcess="intersection", process_data_only=True)`），不是原始檔。
+測試從同一組預處理後矩陣出發，把「我方 wrapper 的貢獻」與「PANDA 預處理的貢獻」分開。
+
+**測試鑑別力**：新增 3 個離線測試（方向、方陣格式、邊表不被誤判）在修正前**全部失敗**；
+3 個 Docker 測試在修正前也全部失敗（在第一個缺陷處即擋下）。
+
+**檔案**：`scripts/netzoo_agent_core/execution.py`、
+`scripts/netzoo_agent_core/data/giraffe.py`、`tests/test_giraffe_workflow.py`（+4）、
+`tests/test_execution_numeric_reference.py`（+3）。
