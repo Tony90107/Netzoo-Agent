@@ -147,7 +147,24 @@ def read_condor_edges(path: str | Path) -> tuple[pd.DataFrame, TableReadInfo]:
         raise ValueError("CONDOR source and target IDs must be non-empty.")
     numeric_weight = pd.to_numeric(edges["weight"], errors="coerce")
     if numeric_weight.isna().any():
+        bad_rows = numeric_weight.isna()
         ratio = numeric_weight.notna().mean()
+        if bad_rows.sum() == 1 and bad_rows.iloc[0]:
+            # Every row but the first parses fine, so the likeliest cause is a
+            # header row this function did not recognize (it only strips
+            # {source,from,regulator,tf}/{target,to,gene} pairs) rather than a
+            # bad value in the data itself. Naming that possibility keeps a
+            # legitimate rejection from reading as "check your numbers" when
+            # the numbers are fine and the header spelling is the problem.
+            header_values = list(frame.iloc[0, : edges.shape[1]])
+            raise ValueError(
+                "CONDOR weight column must be numeric when present; "
+                f"numeric ratio is {ratio:.1%}. Only row 1 fails, with "
+                f"values {header_values!r} -- if that is a header row, its "
+                "column names were not recognized (expected source/target, "
+                "optionally with a weight column); rename or remove it. "
+                "Otherwise, fix row 1's weight value."
+            )
         raise ValueError(
             "CONDOR weight column must be numeric when present; "
             f"numeric ratio is {ratio:.1%}."
