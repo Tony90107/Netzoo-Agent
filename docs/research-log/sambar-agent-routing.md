@@ -6638,3 +6638,40 @@ Log 82 提的那個疑慮因此以「限制其效力」而非「整體移除偏�
 它需要 `..interpretation.request_integrity`，而 `interpretation/__init__` 會匯入
 `repair`，`repair` 又匯入 `outcome_matching` — 循環匯入。改拆排序偏好即無此問題
 （不觸及 interpretation，且無任何外部引用）。
+
+## Log 103｜問題 2：Docker 可用了，已核對 8/12；並修掉「失敗但無從診斷」
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**（本機 Docker）。
+
+### 現況重新盤點
+
+Docker daemon 這次是開著的，含執行層的完整閘門跑得完：
+**1518 passed / 2 errors**。已數值核對的 capability 是 **8/12**，不是交接寫的 5：
+
+| 已核對 | 依據 |
+| --- | --- |
+| SAMBAR、COBRA、OTTER、GIRAFFE、CONDOR | Log 85–89 |
+| **LIONESS-PANDA／LIONESS-PUMA／LIONESS-coexpression** | commit `4820fc4`，本次確認三項單獨跑**全部通過**（13.5 分鐘） |
+
+剩下 4 個：**PANDA／PUMA**（上游自己的 CLI 測試只斷言 `returncode == 0`，
+需重建 class 預設並論證等價）、**DRAGON／BONOBO**（上游無參考值，只能做契約層）。
+
+### 那 2 個 error 不是數值錯誤，而是無從診斷
+
+`test_lioness_puma` 與 `test_lioness_coexpression` 在**全閘門下** error，
+**單獨跑卻通過**。訊息只有：
+
+```
+CalledProcessError: Command '[docker run ... python /out/build.py]' returned non-zero exit status 1.
+```
+
+**容器自己的 stderr 被 `capture_output=True` 收走後就丟掉了**，
+`check=True` 拋出的 `CalledProcessError` 只帶退出碼與 argv。
+所以「為什麼失敗」在報告裡不存在——**一個失敗無從診斷的數值檢查，稱不上檢查。**
+
+六個呼叫點原本各自重複同一段 `subprocess.run(..., check=True, capture_output=True)`，
+現在統一走 `_in_container()`，失敗時把容器 stderr 的最後 2000 字附在訊息裡，
+並加一項會失敗的測試（故意讓容器以 3 退出並寫入標記字串）驗證它真的帶出來。
+
+**偶發本身尚未定性**：三項單獨跑皆通過，全閘門下兩項失敗，
+最可能是並行時的資源競爭，但**在拿到 stderr 之前不下結論**。已重跑全閘門觀察。
