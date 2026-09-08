@@ -30,7 +30,12 @@ RUNNABLE_CAPABILITY_COUNT = sum(
 
 
 CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported", "not_applicable"]
-MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome"]
+# "unverified_evidence": the reading was kept although one or more of its quotes
+# could not be located in the request. It is the only basis that is not a claim
+# about how well the request matched a capability but about how far the reading
+# itself is trusted, and `invoke_router` holds anything carrying it below
+# `exact` and away from execution.
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome", "unverified_evidence"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",
@@ -204,6 +209,68 @@ class OutcomeEvidence(BaseModel):
     source: Literal["explicit", "inferred"]
     text_span: str | None = Field(default=None, min_length=1, max_length=160)
     rationale: str = Field(min_length=1, max_length=240)
+
+    @model_validator(mode="after")
+    def _explicit_evidence_carries_its_quote(self):
+        """`explicit` asserts the request said it, so the request must be quoted.
+
+        Without this the contract permitted the one shape it was then certain to
+        reject: `_grounded_span` fails an empty quote, so every such entry became
+        `ungrounded_evidence`. Across 35 live rounds that shape accounted for 185
+        of 188 entries in that family, and 79% of them cost the whole
+        interpretation. The rule was only ever stated in prompt prose, which the
+        schema below contradicted -- `text_span` was optional and defaulted to
+        null. The experimental claims contract already enforces it
+        (`semantic_claims.Support`); this brings the mainline contract level with it.
+        """
+        if self.source == "explicit" and not (self.text_span or "").strip():
+            raise ValueError("explicit evidence must quote the request")
+        return self
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        """State the same rule where the provider can act on it.
+
+        A `model_validator` never reaches `model_json_schema()`, so enforcing the
+        rule in Python alone would leave the provider seeing an optional field
+        defaulting to null and change only where the failure surfaces -- from
+        evidence validation to schema validation, which is the worse of the two
+        paths: a first pass that does not parse leaves no proposal to patch, so
+        the retry falls back to a whole review, the shape that introduced a fresh
+        issue in 71 of 83 recorded pairs. The branch structure mirrors
+        `RequestedOutcome`, whose variants this provider already accepts.
+        """
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        quote = {
+            key: value for key, value in schema["properties"]["text_span"].items()
+            if key not in {"anyOf", "default", "title"}
+        }
+        quote.update({"type": "string", "minLength": 1, "maxLength": 160})
+
+        def variant(source: str, extra: dict[str, dict]) -> dict:
+            # Every required property is restated inside the branch. A first
+            # attempt listed only the constrained ones and relied on the branch
+            # composing with the root, which is what JSON Schema means and not
+            # what the provider does: it read the branch as the whole object and
+            # returned evidence entries carrying nothing but `source` and
+            # `text_span`. Every trial of a full round failed schema validation.
+            # `RequestedOutcome` above restates them for the same reason.
+            fields = {
+                name: {
+                    key: value for key, value in schema["properties"][name].items()
+                    if key not in {"title", "description"}
+                }
+                for name in schema["required"]
+            }
+            fields["source"] = {"enum": [source]}
+            return {
+                "type": "object",
+                "required": [*schema["required"], *extra],
+                "properties": {**fields, **extra},
+            }
+
+        schema["anyOf"] = [variant("explicit", {"text_span": quote}), variant("inferred", {})]
+        return schema
 
 
 class OutcomeHypothesis(BaseModel):

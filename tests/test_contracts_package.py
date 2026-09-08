@@ -110,13 +110,26 @@ HISTORICAL_EXPORTS = [
 # anyOf branch narrows from {aggregate, sample_specific, not_applicable, unknown}
 # to {aggregate, unknown}. Only that one branch changed; no field was added,
 # removed or renamed. See docs/research-log/sambar-agent-routing.md Log 31.
+# 2026-09-08: OutcomeEvidence gained an anyOf pair -- an `explicit` entry must
+# carry text_span, an `inferred` one need not. The rule existed only in prompt
+# prose while the schema said the field was optional and defaulted to null, so
+# the contract kept inviting the one shape `_grounded_span` was certain to
+# reject: 185 of 188 entries in the largest issue family, 79% of them costing
+# the whole interpretation. OutcomeHypothesis, TaskDecision and RouterDecision
+# change only because they embed it; RequestedOutcome and CapabilityMatch are
+# untouched, which is what confines the change to the evidence entry. See Log 92.
+# 2026-09-08: MatchBasis gained unverified_evidence, the basis carried by a
+# reading kept although one of its quotes could not be located in the request.
+# It is the only basis that describes trust in the reading rather than fit to a
+# capability, and invoke_router holds anything carrying it below exact and away
+# from execution. Nothing else in these contracts changed. See Log 94.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "0370188a170c03cb6296f1d6744d7312b8d9a741d0c64ec650d85cd1d6d764af",
-    "RouterDecision": "816888b9861862a5c54264b0894faab7b13cfa913fede720ec8467a0ad83abca",
+    "TaskDecision": "790a7298dbc0914c53df9160eeb83c4e0d511b0b842c0acd7e1974df367bdf2f",
+    "RouterDecision": "dae9e099db515de552ceae109f3714519139c4fcfdd83ea6fb0204c8542cdcf8",
     "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
-    "OutcomeEvidence": "5bdbe86c3370bb618f6e8bbd9b68904819f87e0e7c9bedd3fbc35407ac87eac4",
-    "OutcomeHypothesis": "a95bba2a538fc6ec49137181c9650886a342c2c354c117912552738c62eb2cd2",
-    "CapabilityMatch": "7098d0e6fbbf7f9b1c99da1152107fa2e5c9e205e06e345468d7dff14a160922",
+    "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
+    "OutcomeHypothesis": "0704c2dd7f108a31fad4cc3d17ee3357266f0374c457fc545f11b488d28c839b",
+    "CapabilityMatch": "b43330a9f99022b12c321a982dea0765a1bbb4fc749f42e8d99d49cebc4bb79a",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",

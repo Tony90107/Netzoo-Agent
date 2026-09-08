@@ -89,7 +89,13 @@ class RoutingScenario(BaseModel):
 
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]*$")
     language: Literal["en", "zh", "mixed"]
-    category: Literal["positive", "negative", "history", "paraphrase"]
+    # `misspelling` and `terse` were added once it was clear the twenty original
+    # prompts share two properties no real request has: every content word is
+    # spelled correctly, and every one of them states which inputs the user
+    # already holds. Neither condition was measured, so neither could fail.
+    category: Literal[
+        "positive", "negative", "history", "paraphrase", "misspelling", "terse",
+    ]
     prompt: str = Field(min_length=1, max_length=ROUTER_CONTEXT_MAX_CHARS)
     expected: RoutingExpectation
 
@@ -187,6 +193,56 @@ def _ungrounded_clusters(result: dict) -> list[str]:
         else "all_unmatched" if spans == {"unmatched"}
         else "mixed"
         for spans in groups.values()
+    ]
+
+
+#: The two dimensions whose loss changes which capabilities remain candidates.
+#: With both resolved, the mi-RNA sample-specific request has exactly one match;
+#: with them `unknown`, the candidate set spreads to four. Fixed here so the
+#: measured rate cannot quietly change its own denominator between rounds.
+CORE_DIMENSIONS = ("operation", "artifact_type")
+
+
+def _downgrade_events(events) -> list[dict]:
+    return [
+        event["payload"] for event in events
+        if event["type"] == "routing.outcome_downgraded"
+    ]
+
+
+def _unknown_core(result: dict) -> list[dict]:
+    """Why each core dimension of the accepted outcome carries no commitment.
+
+    `never_stated` and `downgraded` are the two situations that reach the same
+    `unknown`, and only the second is meaning the run had and dropped. A round
+    that reports the bare rate cannot tell them apart, and three documents
+    attributed one to the other on that basis.
+    """
+    outcome = result["outcome"]
+    if not outcome:
+        return []
+    dropped = {
+        item["dimension"]: item
+        for payload in result["outcome_downgrades"] if payload["comparable"]
+        for item in payload["downgrades"]
+    }
+    # No comparison was made at all -- either the run was accepted on its first
+    # pass (nothing to compare against) or correspondence was undefined. Saying
+    # "never stated" here would be asserting something unmeasured.
+    comparable = any(payload["comparable"] for payload in result["outcome_downgrades"])
+    accepted_first = not result["outcome_downgrades"]
+    return [
+        {
+            "dimension": dimension,
+            "origin": (
+                "downgraded" if dimension in dropped
+                else "never_stated" if comparable or accepted_first
+                else "uncomparable"
+            ),
+            "first_pass_span": (dropped.get(dimension) or {}).get("first_pass_span"),
+        }
+        for dimension in CORE_DIMENSIONS
+        if outcome.get(dimension) == "unknown"
     ]
 
 
@@ -319,6 +375,11 @@ def _score(case, result, events):
         "diagnostics": _diagnostics(events, result.reason_code),
         "diagnostic_details": _diagnostic_details(events),
         "evidence_census": _evidence_census(events),
+        # What the accepted interpretation stopped committing to, relative to
+        # the first pass, and what the first pass's own quote for that value did
+        # (`absent`, `unmatched`, or nothing). An empty list beside
+        # `comparable: false` means no comparison was possible, not no loss.
+        "outcome_downgrades": _downgrade_events(events),
         # Declared in Log 62 and not built until Log 65: without it the only
         # authorized field write is invisible to the report, and "the model got
         # it right unaided" stops being measurable.
@@ -440,6 +501,7 @@ def evaluate(
                 publish_routing_progress(result.decision, result.routing_state["semantic_goal"], policy, case.prompt)
                 row = {**_score(case, result, recorder.events),
                        **_score_answer(case, result, context, progress), "trial": trial}
+            row["unknown_core"] = _unknown_core(row)
             row["errors"].extend(row["answer_errors"])
             row["errors"].extend(row.get("interaction_errors", []))
             row["passed"] = not row["errors"]
@@ -535,6 +597,40 @@ def evaluate(
             )),
             "trials_with_restored_fields": sum(
                 1 for item in results if item["restored_fields"]
+            ),
+            # Every commitment an accepted interpretation stopped carrying,
+            # keyed by dimension, where it landed, and what the first pass's own
+            # quote for that value did. `grounded` in the third position means
+            # the value was never reported ungrounded at all -- so a drop there
+            # cannot be blamed on the citation contract.
+            "outcome_downgrades": dict(Counter(
+                f"{drop['dimension']}:{drop['to_value']}:"
+                f"{drop['first_pass_span'] or 'grounded'}"
+                for item in results for payload in item["outcome_downgrades"]
+                for drop in payload["downgrades"]
+            )),
+            "trials_with_outcome_downgrade": sum(
+                1 for item in results
+                if any(payload["downgrades"] for payload in item["outcome_downgrades"])
+            ),
+            # Why the first pass and the accepted interpretation could not be
+            # compared, when they could not. Reported rather than folded into
+            # the zero above: "no comparison" and "no loss" are different facts,
+            # and merging them is the error this instrument exists to expose.
+            "downgrade_not_comparable": dict(Counter(
+                str(payload["reason"]) for item in results
+                for payload in item["outcome_downgrades"] if not payload["comparable"]
+            )),
+            # The 8-12% rate, split by which of the two situations produced it.
+            # The bare rate was measured on three archived rounds and attributed
+            # to a citation failure none of those trials had.
+            "unknown_core_origin": dict(Counter(
+                f"{entry['dimension']}:{entry['origin']}:"
+                f"{entry['first_pass_span'] or 'grounded'}"
+                for item in results for entry in item["unknown_core"]
+            )),
+            "trials_with_unknown_core": sum(
+                1 for item in results if item["unknown_core"]
             ),
             "ungrounded_evidence_clusters": dict(Counter(
                 cluster for item in results

@@ -543,8 +543,13 @@ def test_ungrounded_shapes_separate_an_absent_quote_from_an_unmatched_one():
     against entries whose shape the fixture fixes.
     """
     hypothesis = _reverse_history_hypothesis([
-        # Claims an explicit quote, supplies none.
-        evidence("operation", "infer"),
+        # A quote with characters but no words. Since the contract began
+        # requiring `explicit` entries to carry a quote, this is the only way
+        # left to reach `absent` -- the common shape it used to describe, an
+        # entry claiming an explicit source and supplying nothing, no longer
+        # parses. The classifier is kept because a count pinned at zero is what
+        # shows the contract still holding.
+        evidence("operation", "infer", text_span="---"),
         # Supplies a quote the request does not contain.
         evidence("granularity", "sample_specific", text_span="sample-specific"),
         # Quotes the request's own wording.
@@ -590,11 +595,17 @@ def test_evidence_census_counts_sourcing_before_any_grounding_check():
     A quote the request does not contain still counts as a quote here: this
     census answers whether the entry claimed a source it supplied, not whether
     the claim held up.
+
+    `explicit_without_span` is 0 by construction now, and cannot be otherwise:
+    the census reads the same emptiness the contract rejects. It is kept, and
+    pinned, because this census is what measured whether the contract could be
+    tightened at all (1057/1138 hypotheses already complied), and a counter that
+    stays at zero is the evidence that it took.
     """
     hypothesis = _reverse_history_hypothesis([
         evidence("operation", "infer", text_span="infer"),
         evidence("artifact_type", "regulatory_network", text_span="absent from the request"),
-        evidence("granularity", "sample_specific"),
+        evidence("granularity", "sample_specific", text_span="one network per patient"),
         evidence("input_artifact", "expression_matrix", source="inferred"),
     ])
     empty = OutcomeHypothesis(
@@ -607,14 +618,24 @@ def test_evidence_census_counts_sourcing_before_any_grounding_check():
     census = evidence_census([hypothesis, empty])
 
     assert census == (
-        {"hypothesis": 0, "explicit_with_span": 2, "explicit_without_span": 1, "inferred": 1},
+        {"hypothesis": 0, "explicit_with_span": 3, "explicit_without_span": 0, "inferred": 1},
         {"hypothesis": 1, "explicit_with_span": 0, "explicit_without_span": 0, "inferred": 0},
     )
 
 
-def test_evidence_census_treats_a_blank_span_as_no_span():
-    hypothesis = _reverse_history_hypothesis([
-        evidence("operation", "infer", text_span="   "),
-    ])
+def test_a_blank_span_no_longer_reaches_the_census_because_the_contract_rejects_it():
+    """Where "explicit with no quote" is now stopped.
 
-    assert evidence_census([hypothesis])[0]["explicit_without_span"] == 1
+    The census used to count this shape; it counted 281 of them across the live
+    record, and 79% of the entries in that family cost the whole interpretation.
+    The rule was in the prompt all along and in no contract, so the schema kept
+    inviting it. It is refused at parse time now, which is why the counter above
+    can only be zero.
+    """
+    with pytest.raises(ValidationError):
+        evidence("operation", "infer", text_span="   ")
+    with pytest.raises(ValidationError):
+        evidence("operation", "infer")
+
+    # Inference is never asked for a quote, and is untouched.
+    assert evidence("operation", "infer", source="inferred").text_span is None
