@@ -21,10 +21,15 @@ from ..contracts import (
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
 from ..interpretation.request_integrity import _scoped_clauses, input_mentions
+from .candidate_ranking import (
+    _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
+    _hypothesis_evidence_score, _specificity_score, stated_dimension_score,
+)
 from .method_rejections import rejected_methods_for
 
 
-_UNKNOWN = "unknown"
+# Defined beside the ranking preferences that also need it.
+from .candidate_ranking import _UNKNOWN  # noqa: E402
 
 
 def _produced_artifacts(
@@ -191,30 +196,6 @@ def _selection_question(
     return "Which of the registered result types do you want NetZoo to produce?"
 
 
-def _specificity_score(
-    outcome: RequestedOutcome,
-    capability: OutputCapabilityDefinition,
-) -> int:
-    """Excess a capability carries beyond what the request asked for.
-
-    Roles and entities count: a capability that also handles regulators the
-    request never mentioned may need priors the user does not have, which is why
-    a `tf`-only request should prefer LIONESS-PANDA over LIONESS-PUMA.
-
-    Granularity breadth does **not** count, and used to. The request names one
-    value and every candidate here supports it; that one of them also supports
-    another granularity says nothing about this request. That term alone let
-    BONOBO beat LIONESS-coexpression, and with `sample` declared as an entity it
-    produced this study's only wrong-tool recommendations.
-    """
-    return (
-        len(capability.entity_types - set(outcome.entity_types))
-        + len(capability.regulator_types - set(outcome.regulator_types))
-        + len(capability.target_types - set(outcome.target_types))
-        + len(capability.guidance_predecessors)
-    )
-
-
 def _alternative_actions(
     outcome: RequestedOutcome,
     capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
@@ -314,7 +295,21 @@ def match_requested_outcome(
             )
             for index, (action, capability) in enumerate(candidates)
         )
-        if len(ranked) == 1 or ranked[0][0] < ranked[1][0]:
+        winner = dict(candidates)[ranked[0][2]]
+        # It has to win the ranking, and win it on something the request said.
+        # Without the second half this system's own preference for the narrower
+        # capability settles the choice and the result is still reported as an
+        # exact match, so a run that named no distinguishing dimension scored
+        # exactly like one that did. The preference still orders candidates; it
+        # just no longer certifies the answer.
+        if len(ranked) == 1 or (
+            ranked[0][0] < ranked[1][0]
+            and all(
+                stated_dimension_score(outcome, winner)
+                < stated_dimension_score(outcome, capability)
+                for action, capability in candidates if action != ranked[0][2]
+            )
+        ):
             return CapabilityMatch(status="exact", matched_actions=[ranked[0][2]])
         return CapabilityMatch(
             status="ambiguous",
@@ -324,48 +319,6 @@ def match_requested_outcome(
         status="unsupported",
         alternative_actions=_alternative_actions(outcome, capabilities),
         mismatch_dimensions=_mismatch_dimensions(outcome, capabilities),
-    )
-
-
-def _hypothesis_evidence_score(hypothesis: OutcomeHypothesis) -> int:
-    return sum(2 if item.source == "explicit" else 1 for item in hypothesis.evidence)
-
-
-def _advisory_specificity_penalty(
-    outcome: RequestedOutcome,
-    capability: OutputCapabilityDefinition,
-) -> int:
-    """Penalize extra biological roles only when the user specified that role."""
-    requested_entities = set(outcome.entity_types) - {_UNKNOWN}
-    requested_regulators = set(outcome.regulator_types) - {_UNKNOWN}
-    requested_targets = set(outcome.target_types) - {_UNKNOWN}
-    return (
-        (len(capability.entity_types - requested_entities) if requested_entities else 0)
-        + (
-            len(capability.regulator_types - requested_regulators)
-            if requested_regulators
-            else 0
-        )
-        + (len(capability.target_types - requested_targets) if requested_targets else 0)
-    )
-
-
-def _explicit_evidence_specificity_penalty(
-    evidence: Mapping[str, set[str]],
-    capability: OutputCapabilityDefinition,
-) -> int:
-    """Rank evidence-compatible candidates without reintroducing inferred fields."""
-    requested_entities = evidence.get("entity_type", set())
-    requested_regulators = evidence.get("regulator_type", set())
-    requested_targets = evidence.get("target_type", set())
-    return (
-        (len(capability.entity_types - requested_entities) if requested_entities else 0)
-        + (
-            len(capability.regulator_types - requested_regulators)
-            if requested_regulators
-            else 0
-        )
-        + (len(capability.target_types - requested_targets) if requested_targets else 0)
     )
 
 
