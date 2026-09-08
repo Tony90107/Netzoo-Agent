@@ -15,10 +15,21 @@ Required:
   -o, --out         Output network file
 
 Optional:
-  -r, --rm_missing  Remove missing genes/TFs
-  -q, --lioness     Also write LIONESS-PUMA single-sample networks
+      --mode_process  How priors are combined: union (default), legacy,
+                      intersection. legacy is the mode upstream's own
+                      reference network was built under.
+  -q, --lioness       Also write LIONESS-PUMA single-sample networks
+  -r, --rm_missing    Accepted and ignored. netZooPy's legacy script
+                      declared this flag without an argument and then read
+                      one, so it has never taken effect; the help used to
+                      claim otherwise. Making it work would change every
+                      network built with it and is a separate decision.
 EOF
   exit 0
 fi
 
-exec python "$NETZOOPY_SRC/netZooPy/puma/run_puma.py" "$@"
+# netZooPy has no `netzoopy puma` command, and its legacy script fixes
+# modeProcess to the class default with no way to change it, which put its
+# own reference network out of reach. Ours is the same run plus that one
+# option; scripts/run_puma.py carries the equivalence argument.
+exec python "/opt/netzoo-app/scripts/run_puma.py" "$@"

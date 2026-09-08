@@ -1021,6 +1021,147 @@ def puma_run() -> dict[str, object]:
         return {"produced": read("produced.txt"), "reference": read("reference.txt")}
 
 
+PUMA_GT = "/opt/netZooPy/tests/puma/matlablike_test_puma.txt"
+
+# Upstream's reference is built under `modeProcess="legacy"`. The path could not
+# select a mode until it was given one, so this file was unreachable and PUMA
+# had no third-party comparison at all.
+PUMA_LEGACY_BUILD = r"""
+import sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_puma.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    mirna_file=f"{{toy}}/ToyMiRList.txt",
+    output_file="/out/produced.txt",
+    mode_process="legacy"))
+assert "Exit code: 0" in report, report
+"""
+
+# The equivalence argument, run rather than asserted: the same inputs through
+# the script this replaced, in its own directory because both write temp files.
+PUMA_UPSTREAM_BUILD = r"""
+import subprocess, sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+subprocess.run(
+    ["python", "/opt/netZooPy/netZooPy/puma/run_puma.py",
+     "-e", f"{{toy}}/ToyExpressionData.txt", "-m", f"{{toy}}/ToyMotifData.txt",
+     "-p", f"{{toy}}/ToyPPIData.txt", "-i", f"{{toy}}/ToyMiRList.txt",
+     "-o", "/out/upstream.txt"],
+    check=True, cwd="/tmp",
+)
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_puma.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    mirna_file=f"{{toy}}/ToyMiRList.txt",
+    output_file="/out/produced.txt"))
+assert "Exit code: 0" in report, report
+"""
+
+
+def _puma_build(script: str, copy_ground_truth: bool = False) -> dict[str, object]:
+    import pandas as pd
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(script.format(toy=PANDA_TOY), encoding="utf-8")
+        command = "python /out/build.py"
+        if copy_ground_truth:
+            command += f" && cp {PUMA_GT} /out/ground_truth.txt"
+        _in_container(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c", command,
+            ],
+            timeout=1800,
+        )
+        read = lambda name: pd.read_csv(out / name, sep=" ", header=None)  # noqa: E731
+        produced = read("produced.txt")
+        other = read("ground_truth.txt" if copy_ground_truth else "upstream.txt")
+    return {"produced": produced, "other": other}
+
+
+@pytest.fixture(scope="module")
+def puma_legacy_run() -> dict[str, object]:
+    return _puma_build(PUMA_LEGACY_BUILD, copy_ground_truth=True)
+
+
+@pytest.fixture(scope="module")
+def puma_default_vs_upstream() -> dict[str, object]:
+    return _puma_build(PUMA_UPSTREAM_BUILD)
+
+
+def test_the_default_path_still_reproduces_the_script_it_replaced(
+    puma_default_vs_upstream,
+):
+    """Adding the option must move nothing, and this is the proof, not a claim.
+
+    Value for value, not within a tolerance: the same inputs through the same
+    class with the same arguments should agree exactly, and anything less would
+    mean the replacement did something the original did not.
+    """
+    import pandas as pd
+
+    assert len(puma_default_vs_upstream["produced"]) > 10_000
+
+    pd.testing.assert_frame_equal(
+        puma_default_vs_upstream["produced"], puma_default_vs_upstream["other"],
+        check_exact=True,
+    )
+
+
+def test_puma_in_legacy_mode_matches_upstreams_reference_network(puma_legacy_run):
+    """The comparison the fixed processing mode used to put out of reach.
+
+    Upstream's own tolerance for this file (`rtol=1e-5`), from its own test.
+    """
+    import pandas as pd
+
+    assert len(puma_legacy_run["produced"]) > 10_000
+
+    pd.testing.assert_frame_equal(
+        puma_legacy_run["produced"], puma_legacy_run["other"],
+        rtol=1e-5, check_exact=False,
+    )
+
+
+def test_an_unknown_processing_mode_is_refused_rather_than_ignored():
+    """A silent fallback would let the test above pass with the flag doing nothing.
+
+    Then it would be pinning the default under another name, which is worse than
+    having no test: it would read as evidence for something never exercised.
+    """
+    with pytest.raises(AssertionError) as raised:
+        _in_container(
+            ["docker", "run", "--rm", IMAGE, "run-puma",
+             "-e", f"{PANDA_TOY}/ToyExpressionData.txt",
+             "-m", f"{PANDA_TOY}/ToyMotifData.txt",
+             "-p", f"{PANDA_TOY}/ToyPPIData.txt",
+             "-i", f"{PANDA_TOY}/ToyMiRList.txt",
+             "-o", "/tmp/out.txt", "--mode_process", "sideways"],
+            timeout=300,
+        )
+
+    assert "sideways" in str(raised.value)
+
+
 def test_puma_network_matches_netzoopy_called_directly(puma_run):
     """Upstream's own tolerance for PUMA (`rtol=1e-5`), taken from its test."""
     import pandas as pd
@@ -1031,3 +1172,22 @@ def test_puma_network_matches_netzoopy_called_directly(puma_run):
     pd.testing.assert_frame_equal(
         puma_run["produced"], puma_run["reference"], rtol=1e-5, check_exact=False,
     )
+
+
+def test_the_two_processing_modes_actually_produce_different_networks(
+    puma_legacy_run, puma_default_vs_upstream,
+):
+    """Without this, the legacy comparison above proves nothing.
+
+    If union and legacy happened to agree, that test would pass with the flag
+    doing nothing at all -- it would be pinning the default under another name.
+    The modes combine the priors' genes and TFs differently, so they should
+    disagree, and the check is that they do.
+    """
+    import pandas as pd
+
+    with pytest.raises(AssertionError):
+        pd.testing.assert_frame_equal(
+            puma_default_vs_upstream["produced"], puma_legacy_run["other"],
+            rtol=1e-5, check_exact=False,
+        )

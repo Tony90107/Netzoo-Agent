@@ -158,8 +158,17 @@ def run_puma(
     output_file: str,
     extra_args: str = "",
     coexpression_file: str = "",
+    mode_process: str = "",
 ) -> str:
-    """Run PUMA using a one-regulator-per-line miRNA list."""
+    """Run PUMA using a one-regulator-per-line miRNA list.
+
+    `mode_process` selects how the priors' genes and TFs are combined --
+    "union" (the long-standing behaviour, and what is used when this is left
+    empty), "legacy", or "intersection". It exists because netZooPy's own
+    reference network is built under "legacy" and the path had no way to reach
+    it, so the capability's numbers could never be compared against a
+    third-party file. Leaving it empty changes nothing.
+    """
     validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
         expression_file=expression_file,
         motif_file=motif_file,
@@ -210,6 +219,8 @@ def run_puma(
             f"  shape: {coexpression.shape[0]} genes x {coexpression.shape[1]} genes\n"
             "  handoff: replaces PUMA's Pearson co-expression construction"
         )
+    if mode_process:
+        command.extend(["--mode_process", mode_process])
     if extra_args:
         command.extend(shlex.split(extra_args))
     return validation_report + "\n\n" + _run_command(command, output_file=output_file)
