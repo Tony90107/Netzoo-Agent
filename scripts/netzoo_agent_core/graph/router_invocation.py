@@ -32,7 +32,7 @@ from ..interpretation.provider_fallback import (
 from ..interpretation.outcome_downgrade import interpretation_downgrades
 from ..interpretation.semantic_goal import outcome_routing_state
 from ..interpretation.semantic_patch import (
-    apply_semantic_patch, patched_hypothesis_index,
+    apply_semantic_patch, evidence_only_repair, patched_hypothesis_index,
 )
 from ..interpretation.semantic_repair import semantic_payload
 from ..interpretation.unverified_evidence import (
@@ -251,7 +251,10 @@ def _invoke_semantic_interpreter(
                 output_text = interpretation.model_dump_json()
             elif patching and (patch := _as_semantic_patch(payload)) is not None:
                 output_text = patch.model_dump_json()
-                interpretation, retired_evidence = apply_semantic_patch(proposal, patch)
+                citations_only = evidence_only_repair(validation_issues)
+                interpretation, retired_evidence = apply_semantic_patch(
+                    proposal, patch, evidence_only=citations_only,
+                )
                 patched_index = patched_hypothesis_index(proposal, patch)
                 record_event(
                     context,
@@ -273,6 +276,9 @@ def _invoke_semantic_interpreter(
                         # Entries the patch itself made stale by changing their
                         # dimension. Recorded, never silently dropped.
                         "evidence_retired_as_stale": retired_evidence,
+                        # True when the rejection named only missing citations,
+                        # so the patch's outcome overrides were dropped.
+                        "evidence_only": citations_only,
                     },
                 )
             else:

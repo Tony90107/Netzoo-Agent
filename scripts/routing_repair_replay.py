@@ -33,11 +33,42 @@ MISSING_INPUT_ISSUES = {
     "original-q3": ["missing_current_input:mutation_matrix",
                     "terminal_goal_conflict:sample_cluster_assignment"],
 }
+# The class that dominates the loss once the citation failures are fixed: 126 of
+# 165 `missing_evidence` occurrences over two rounds name a role dimension
+# (entity_type 61, target_type 33, regulator_type 32), and the role is exactly
+# what separates the expected capability from its compatible neighbours. These
+# four prompts are the ones whose declared discriminator IS a role, two of them
+# stating an input and two stating none, so the reconstructed first pass differs
+# from the corpus answer in one respect only: the roles it writes into the
+# outcome have no matching evidence entry.
+ROLE_EVIDENCE_ISSUES = {
+    "mirna-current-goal": ["missing_evidence:regulator_type=mirna",
+                           "missing_evidence:target_type=gene"],
+    "sparse-expression-not-mutation": ["missing_evidence:regulator_type=tf",
+                                       "missing_evidence:target_type=gene"],
+    "terse-mirna-per-sample": ["missing_evidence:regulator_type=mirna",
+                               "missing_evidence:target_type=gene"],
+    "mirna-misspelled-no-inputs": ["missing_evidence:regulator_type=mirna",
+                                   "missing_evidence:target_type=gene"],
+}
+
 REPLAY_SUITES = {
     "cross-field": OBSERVED_ISSUES,
     "missing-required": MISSING_REQUIRED_ISSUES,
     "missing-input": MISSING_INPUT_ISSUES,
+    "role-evidence": ROLE_EVIDENCE_ISSUES,
 }
+
+
+def suite_cases(suite: str) -> frozenset[str]:
+    """The prompts a suite reconstructs a first pass for.
+
+    Each suite owns its own set: the role-evidence class does not occur in the
+    three mutation prompts at all, since SAMBAR has no regulator or target.
+    """
+    if suite not in REPLAY_SUITES:
+        raise ValueError("Unknown repair replay suite")
+    return frozenset(REPLAY_SUITES[suite])
 
 
 def reconstructed_proposal(case_id: str, suite: str = "cross-field") -> dict:
@@ -47,6 +78,8 @@ def reconstructed_proposal(case_id: str, suite: str = "cross-field") -> dict:
         return _missing_required_proposal(case_id)
     if suite == "missing-input":
         return _missing_input_proposal(case_id)
+    if suite == "role-evidence":
+        return _role_evidence_proposal(case_id)
     artifact = {"original-q1": "sample_distance_matrix", "original-q2": "sample_cluster_assignment",
                 "original-q3": "multi_omic_network"}[case_id]
     outcome = dict(operation="analyze", input_artifacts=["mutation_matrix"], artifact_type=artifact,
@@ -68,6 +101,57 @@ def reconstructed_proposal(case_id: str, suite: str = "cross-field") -> dict:
     if case_id == "original-q3":
         proposal["assumptions"] = ["Previously used expression analysis methods may apply to the new data."]
     return proposal
+
+
+#: Everything the corpus expects, minus the role evidence. Kept beside the suite
+#: rather than derived from the corpus file: a replay that read the answer key
+#: would be handing the reviewer the answer.
+_ROLE_EVIDENCE_OUTCOMES = {
+    "mirna-current-goal": dict(
+        operation="infer", input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network", granularity="sample_specific",
+        regulator_types=["mirna"], target_types=["gene"],
+    ),
+    "sparse-expression-not-mutation": dict(
+        operation="infer", input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network", granularity="sample_specific",
+        regulator_types=["tf"], target_types=["gene"],
+    ),
+    "terse-mirna-per-sample": dict(
+        operation="infer", input_artifacts=[],
+        artifact_type="regulatory_network", granularity="sample_specific",
+        regulator_types=["mirna"], target_types=["gene"],
+    ),
+    "mirna-misspelled-no-inputs": dict(
+        operation="infer", input_artifacts=[],
+        artifact_type="regulatory_network", granularity="sample_specific",
+        regulator_types=["mirna"], target_types=["gene"],
+    ),
+}
+
+
+def _role_evidence_proposal(case_id: str) -> dict:
+    """A first pass whose only defect is role evidence it never wrote.
+
+    The outcome states the roles; the evidence list covers every other dimension
+    the validator asks for. So the run fails on `missing_evidence` for the roles
+    and nothing else, and a repair has to add exactly those entries.
+    """
+    outcome = dict(_ROLE_EVIDENCE_OUTCOMES[case_id])
+    values = [
+        ("operation", outcome["operation"]),
+        ("artifact_type", outcome["artifact_type"]),
+        ("granularity", outcome["granularity"]),
+    ]
+    return dict(
+        request_mode="guidance",
+        semantic_goal="Infer the regulatory network the request describes",
+        outcome_hypotheses=[dict(outcome=outcome, confidence=0.9, evidence=[
+            dict(dimension=dimension, value=value, source="inferred",
+                 rationale="Proposed interpretation of the requested result.")
+            for dimension, value in values
+        ])],
+    )
 
 
 def _missing_required_proposal(case_id: str) -> dict:
