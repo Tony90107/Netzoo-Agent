@@ -5899,3 +5899,548 @@ GIRAFFE（完全跑不起來）不同，這一項只是措辭，改動涉及標�
 對下游工具所依賴的性質而言，是比看起來更弱的證據**——而且這正是我自己在
 Log 8x 犯過的同一種錯（寫出看起來像比對、實際上什麼都沒釘住的測試）。
 本研究引用上游斷言時，只用真的有斷言的那些。
+
+## Log 90｜事前宣告：1e 語料兩類新增，與 1b「降級」儀器化（只量測，不改行為）
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+承接 [handoff-2026-09-08.md](handoff-2026-09-08.md) 的 1e 與 1b。
+本節**不**實作 1a、1c、1d：1c 需使用者授權，1a／1d 待本節的量測結果再定。
+
+### 先修正交接文件的一項歸因錯誤（來自既有存檔，未付費）
+
+交接說現象 B 的 8–12% 是「review 為了消解 `ungrounded_evidence` 而把欄位降級成
+`unknown`」。**8–12% 這個數字重現無誤**（r18 7/57、r19 5/60、r20 6/60），
+但把這 18 次逐一攤開後：**其中 0 次在 attempt 1 有 `ungrounded_evidence`**。
+它們 attempt 1 的 issue 是 `missing_current_input` 與 `artifact_granularity`。
+
+現象 B 的機制是在 mi-rna 那一題觀察到的，而**那題在
+`routing_semantic_variants.json`，不在量出 8–12% 的 `routing_scenarios.json`**。
+交接把「一個族群的比率」接到「另一個族群的機制」上。**兩者都真實，連結沒有證據。**
+
+第二項，同樣來自存檔：三輪的 `ungrounded_evidence` 條目中
+**`absent` 122 筆、`unmatched` 僅 11 筆**（attempt 1：46／3；attempt 2：76／8）。
+`absent` ＝「宣告 `source: explicit` 卻完全沒給 `text_span`」。
+**1a（拼字軸容錯）只能碰到 `unmatched` 那 11 筆**；主流是第三種缺陷，
+1a 與 1b 都不處理它。這一點先寫下，避免日後把 1a 的效益估過頭。
+
+**這正是本節要建的儀器所測的東西**：目前沒有任何紀錄能把
+「這個維度在 attempt 1 引文失敗」與「這個維度在被接受的 outcome 是 unknown」連起來，
+所以上述歸因才可能在無人察覺下成立三份文件。
+
+### 本次改什麼
+
+1. **1b 儀器（只加量測）**：新模組比對「首次解讀的 outcome」與「被接受的 outcome」，
+   逐維度記錄**首次有具體值、最終不再承諾**的降級，並帶上該維度在 attempt 1 的
+   引文結果（`absent`／`unmatched`／無）。新增事件 `routing.outcome_downgraded`，
+   評估報表新增對應欄位。**不改驗證、比對、prompt 或 schema 的任何行為。**
+2. **1e 語料**：新增 `misspelling` 與 `terse` 兩類共 6 題。
+   `terse` ＝不陳述自己有哪些輸入的簡短提問（現行 20 題每題都陳述）。
+3. **回溯量測腳本**：對既有存檔輪次計算上述去向，**不付費**。
+
+### 判準
+
+- **I1（離線，決定性）**：首次寫具體值、最終為 `unknown` → 回報一筆降級；
+  兩次皆 `unknown` → 回報零筆。兩者皆須先驗證在儀器存在前會失敗。
+- **I2（離線，決定性）**：首次有 >1 個 hypothesis 而審查塌縮成 1 個時，
+  必須回報 `comparable=False`，**不得**回報「零筆降級」。
+  **「無法比對」與「沒有降級」不可混為一談**——這就是本節在修正的那種錯誤。
+- **I3（離線，決定性）**：每筆降級須帶 `first_pass_span`，
+  使「引文對不上而丟棄」與「其他原因而丟棄」可分。缺此欄位則本儀器無法否證任何事。
+- **I4（離線，回歸）**：既有 1423 項全數通過，且
+  `outcome_validation.py`／`semantic_patch.py`／`outcome_matching.py`／prompts
+  **零行為改動**。本節若出現任何既有測試需要改寫，即代表我動了不該動的東西 → 撤回。
+- **I5（語料）**：6 題新增後 `load_scenarios` 與 reachability 測試通過；
+  記錄新的 `corpus_sha256`。**新語料只能與同 digest 的輪次比較**（沿用 P5）。
+- **I6（回溯，不付費）**：腳本須在 r18／r19／r20 重現 unknown-core 7／5／6，
+  並輸出 attempt-1 各 `ungrounded_evidence` 項在最終 outcome 的去向。
+  **若重現不出這三個數，代表腳本的定義與先前不同 → 先對齊定義再談其他。**
+
+### 本節不宣稱什麼
+
+本節**不會**讓 unknown 比率下降，也不打算下降——它只讓「為什麼是 unknown」變成可讀。
+P3 的門檻要等 I6 與一輪同 digest 的 mini 基線之後才寫得出來；
+在那之前寫下的任何門檻都是猜的。
+
+## Log 91｜Log 90 判準全數成立；並且：1b 所針對的機制在整份 live 紀錄中出現 0 次
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**（純離線與既有存檔重讀）。
+讀法宣告於 Log 90，執行前寫入，本節未修改。
+
+### 判準結果
+
+| | 結果 |
+| --- | --- |
+| I1 降級／非降級可分 | ✓（`test_outcome_downgrade.py`；儀器不存在時 8 項無法 collect） |
+| I2 無法比對不得報成零 | ✓（`comparable=False` + `reason`） |
+| I3 每筆降級帶 `first_pass_span` | ✓（含一項端到端：引文對不上 → 審查降級 → 報表記為 `unmatched`） |
+| I4 既有測試零改寫 | ✓ 1423 → 1441（+12 儀器、+6 語料），**無一項既有測試需要改寫** |
+| I5 語料 20 → 27 題 | ✓ `corpus_sha256=a43c2baec7…`（**與 r18–r20 皆不可比較**） |
+| I6 回溯重現 8–12% | ✓ 7/57、5/60、6/60，完全一致 |
+
+### 主要結果：1b 想擋的那件事，紀錄裡一次都沒發生
+
+`analyze_unknown_downgrades.py` 把**35 輪 live、789 次試驗**中每一個
+attempt-1 無法對上原文的引文，配到它在最終 outcome 的下場：
+
+| 下場 | 次數 |
+| --- | --- |
+| `no_accepted_outcome`（整輪解讀被丟棄） | **148** |
+| `retained`（值留著，照樣被接受） | 34 |
+| `replaced`（換成另一個具體值） | 6 |
+| **`abandoned`（降級成 unknown）** | **0** |
+
+**0 次。** 交接把 8–12% 的 unknown 歸因於「審查為了消解 `ungrounded_evidence`
+而把欄位降級」，但整份 live 紀錄裡沒有任何一次這樣的降級。
+8–12% 這個數字本身無誤（我重現到個位數），它只是**不是這個原因造成的**。
+
+同一份資料的第二個切面：`ungrounded_evidence` 的 span 分布是
+**`absent` 185 對 `unmatched` 3**。`absent` ＝「宣告 `source: "explicit"`
+卻完全沒給 `text_span`」。也就是說：
+
+- **1a（拼字軸容錯）能碰到的是那 3 筆**，佔 1.6%。
+- **真正的損害是 `absent` 且 79% 直接讓整輪解讀報廢**——那是現象 A 的形狀
+  （硬失敗），不是現象 B。處理它的是 **1c**，而 1c 需要使用者授權。
+
+### 一個既有的反例：`unknown` 並非永遠免罰
+
+實作端到端測試時第一版選了 `artifact_type` 當降級對象，結果 attempt 2 被
+`terminal_goal_conflict:sample_cluster_assignment` 擋下。
+`request_integrity.py:104` 已經有一條「使用者明講要分群，`artifact_type`
+就不得是別的（含 unknown）」的規則——**硬寫死、只涵蓋一個 artifact type**。
+交接說「把欄位設成 unknown 永遠可行且永遠會過」，嚴格說不成立：
+**已經有一個特例存在**。若日後真要做 1b，它是現成的形狀樣板，而不是新發明。
+
+### 語料兩軸的副產品：既有的決定性見證全都怕錯字
+
+三組配對（同一題，只改拼字）量到：
+
+| 題 | `confirmed_current_inputs` | `patient_clustering_goal` |
+| --- | --- | --- |
+| `mirna-current-goal` → 錯字版 | `[expression_matrix]` → **`[]`** | False → False |
+| `aggregate-tf-baseline` → 錯字版 | `[expression_matrix]` → **`[]`** | False → False |
+| `mutation-paraphrase-en` → 錯字版 | `[mutation_matrix]` → **`[]`** | **True → False** |
+
+一個字母就讓見證全部失效。後果不只是少一條檢查：輸入一旦不再被見證為 current，
+`_required_evidence` 的豁免同時消失，**模型反而必須替它補一個對得上的引文**——
+而原文正是錯的。錯字題因此同時踩到 1a 的機制，這正是這三題被加進來的用途。
+
+### 下一步不是 1a 或 1b
+
+依上表，成本效益最高的順序已經和交接不同：
+
+1. **`absent`（185 筆，79% 導致整輪報廢）**——契約層面：`OutcomeEvidence.text_span`
+   目前是 `str | None` 且預設 `None`，`source="explicit"` 卻語意上要求它。
+   **契約允許了自己隨後拒絕的形狀。** 收緊的可行性已有數字：
+   全紀錄 1057/1138 ＝ **92.9%** 的 hypothesis 已經替每一條 explicit 都給了引文，
+   屬於「少數違規提早浮現」而非「多數變成 schema 失敗」。
+2. **1c**（把剩下的由整輪丟棄降為降信心接受）——需使用者授權。
+3. 1a 只值 3 筆；1b 目前值 0 筆。**兩者都先不要做。**
+
+以上皆為既有存檔的重讀，**未付費**。同 digest 的 mini 基線尚未跑；
+P3 的門檻仍不該在那之前寫下。
+
+## Log 92｜事前宣告：`explicit` 證據必須附引文——契約層收緊（行為改動，非儀器）
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+依據 Log 91：`ungrounded_evidence` 中 `absent` 185 對 `unmatched` 3，
+且 148/188 ＝ **79%** 導致整輪解讀報廢。這是最大的單一損失來源。
+
+### 病灶
+
+`OutcomeEvidence.text_span` 是 `str | None = None`，且**不在 JSON schema 的
+`required` 裡、明寫 `default: null`**。而 `source="explicit"` 語意上要求它，
+prompt 散文（`llm.py:221`）也這樣寫。**schema 與散文互相矛盾，模型跟隨 schema。**
+契約允許了自己隨後必定拒絕的形狀，然後把後果記成模型的錯。
+
+repo 內已有先例：實驗性 claims 契約的 `Support.explicit_requires_quote`
+（`semantic_claims.py:28-32`）**已經強制這條**；legacy 沒有。
+本次是把既有規則搬到主線，不是發明新規則。
+
+### 一個必須一起做的部分，否則等於沒做
+
+Pydantic 的 `model_validator` **不進 `model_json_schema()`**。只加 validator，
+模型端看到的 schema 一字未變，失敗只是從 evidence 層搬到 schema 層——
+而且搬到**更差的重試路徑**：schema 失敗時 `proposal` 沒有 parsed 版本，
+attempt 2 因此走 whole review，而 whole review 在 83 對比較中有 71 次引入新問題
+（Log 32）。所以本次**必須同時**讓要求出現在送給 provider 的 JSON schema 裡，
+做法沿用 `RequestedOutcome.__get_pydantic_json_schema__` 已在用的 `anyOf` 變體。
+
+### 判準
+
+- **S1（離線，決定性）**：`source="explicit"` 且無 `text_span` → 契約拒絕；
+  `source="inferred"` 且無 `text_span` → 照常通過。兩者皆須先驗證修正前會失敗。
+- **S2（離線，決定性）**：`OutcomeEvidence.model_json_schema()` 的 explicit 分支
+  必須把 `text_span` 列入 `required` 且不允許 null。
+  **只加 validator 不改 schema ＝ 只是把失敗換位置，視同未完成。**
+- **S3（離線，回歸）**：既有測試預期會有翻轉（fixture 中確有 explicit 無 span 者）。
+  **與 Log 90 的 I4 不同：這是行為改動，允許既有測試改寫**，但每一項須逐一判定
+  是「前提被取代」或「真實回歸」，並逐項寫下判定。
+  **出現無法歸入「前提被取代」的失敗 → 撤回。**
+- **S4（護欄，live，否決條件）**：mini 一輪。**D（推薦錯工具）= 0**、
+  forbidden = 0、`unsafe_execution_count` = 0。任一違反 → 撤回。
+- **S5（主判準，live）**：**「最終有被接受 outcome 的試驗數」不得下降。**
+  這是本次真正要改善的量（Log 91 的 148 次 `no_accepted_outcome`）。
+  `absent` 計數下降**不算成效**——若它只是換成 `schema_validation`，
+  代價相同而位置不同。**接受數下降 → 撤回。**
+- **S6（機制，live，僅記錄不作成敗）**：`evidence_span_entries.without_span`
+  應趨近 0；`diagnostics` 中 `schema_validation` 的變化量。
+
+### 事前寫下的兩個限制
+
+1. 新語料 27 題的 mini 基線**尚未跑過**，所以 S5 沒有同 digest 的對照。
+   本次必須**先跑一輪收緊前的 27 題基線**，再跑收緊後，否則 S5 無法判定。
+   兩輪皆 mini（使用者預先授權）。
+2. 本次不碰 `_grounded_span`、不碰 `recoverable`、不碰 prompt 散文。
+   1c 是下一節的事，兩者混在一起就無法歸因。
+
+## Log 93｜Log 92 判準成立，但只在第二次實作；第一次觸發撤回條件，原因寫在下面
+
+日期／時區：2026-09-08，Asia/Taipei。**使用者預先授權的 mini 輪次**，三輪共 581 次呼叫。
+讀法宣告於 Log 92，執行前寫入，本節未修改。
+`corpus_sha256=a43c2baec7…`（27 題）三輪相同，**與 r18–r20 不可比較**。
+
+報告：[r21 收緊前](live-r21-mini-corpus27-preTighten.json)、
+[r22 分支寫錯](live-r22-mini-corpus27-explicitQuote.json)、
+[r23 收緊後](live-r23-mini-corpus27-explicitQuote-fixed.json)。
+
+### 先講第一次實作失敗，因為它比成功的那次更有內容
+
+r22 觸發 S5 的撤回條件，而且不是小幅：**接受數 42 → 2、81 次試驗全部
+schema 失敗**。診斷是決定性的——`input_keys: ["source", "text_span"]`：
+模型回傳的 evidence 物件**只有我在分支裡列出的那兩個欄位**，
+`dimension`／`value`／`rationale` 全部消失。
+
+原因是我寫的 `anyOf` 分支只列出它要約束的屬性，其餘靠與 root 的 AND 組合。
+**這在 JSON Schema 語意上正確，但 provider 不那樣讀**——它把分支當成物件的
+全部定義。同一個檔案裡的 `RequestedOutcome.__get_pydantic_json_schema__`
+**早就在每個 variant 裡重述全部 required 欄位**，我沒照做。
+
+修正是在每個分支重述全部 required 欄位，並加測試釘住這條
+（`test_each_branch_restates_every_required_property`）。
+**S5 未因此放寬**，重做的版本用同一條門檻重測。
+
+### r23 判準結果
+
+| 判準 | r21 收緊前 | r23 收緊後 | |
+| --- | --- | --- | --- |
+| **S5 有被接受 outcome 的試驗** | 42 | **53** | ✓ 上升 |
+| S4 **D（推薦錯工具）** | 0 | **0** | ✓ |
+| S4 forbidden／unsafe | 0／0 | **0／0** | ✓ |
+| S6 `without_span` 條目 | 10 | **0** | ✓ |
+| S6 `schema_validation` 試驗數 | 17 | **11** | ✓ **下降** |
+| `passed` | 18 | 22 | 記錄 |
+| 工具正確 | 19/81 | 20/81 | 記錄 |
+
+S6 那一列與我事前的預期相反，值得寫下來：**把要求寫進 schema 之後，
+schema 失敗反而變少了**。因為模型不再產出那個「之後必然被拒」的形狀，
+它就不會在第二次呼叫時被迫重寫整份結構。收緊沒有把失敗換位置，是真的少了。
+
+分類別（有被接受 outcome／試驗）：
+`positive 21→30`、`negative 6→8`、`history 3→5`、`paraphrase 6/6`、
+`terse 6→4`、**`misspelling 0/12→0/12`（完全未動，如預期）**。
+
+### 更重要的一件事：Log 91 的優先順序，被新語料自己推翻了
+
+Log 91 依 35 輪存檔判定「`absent` 185 對 `unmatched` 3，所以先修 absent、
+1a 只值 3 筆」。**在 27 題語料上，這個比例整個反過來**：
+
+| | 舊語料（35 輪存檔） | 新語料 r21 |
+| --- | --- | --- |
+| `absent` | 185 | **10** |
+| `unmatched` | 3 | **74** |
+
+而且 r21 的 74 筆 `unmatched` 中，**69 筆來自 `misspelling` 這一類**，
+該類 **0/12 次有被接受的 outcome——12 次全部整輪報廢，無一例外**。
+r23 收緊後 `unmatched` 仍是 80，`misspelling` 仍是 0/12：**這一塊本次完全沒碰到。**
+
+舊存檔看不到這件事，是因為**舊語料 20 題每一題都拼字正確**——
+`unmatched` 需要有錯字或改述才會出現，語料裡沒有這個條件，就量不到這個現象。
+**1e 的用途正是這個**；它一落地就改寫了 Log 91 的排序。
+
+我在 Log 91 寫的「1a 只值 3 筆、兩者都先不要做」**是錯的**，
+錯在把一個缺少該條件的語料上的量測當成普遍比例。**現在的排序是：**
+
+1. **1a（拼字／改述軸的引文對齊）**——80 筆 `unmatched`，其中 misspelling 12 次
+   全損。目前最大的單一損失來源。
+2. **1c**——1a 對齊不到的殘餘，由整輪丟棄降為降信心接受。
+3. `absent` 已完成（10 → 0），1b 仍為 0 筆。
+
+### 順帶：live 儀器確認了 Log 91 的另一半
+
+r21／r23 的 `unknown_core_origin` 全部是 `never_stated`（8 筆／r21），
+**`downgraded` 為 0**。Log 91 由存檔推得的結論，現在由 live 儀器直接證實：
+**1b 針對的機制不存在。**
+
+## Log 94｜事前宣告：1c——引文對不上時，由「整輪丟棄」改為「降級接受並說清楚」
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+**這是本研究第一項會放寬安全性質的改動，使用者已明確授權。**
+
+### 放寬的到底是什麼
+
+目前的不變式：**任何 outcome 都必須讓它每一條 explicit 證據都能在使用者原文中找到，
+否則整份解讀丟棄。** 1c 讓「只差在引文對不上」的解讀通過。
+風險是具體的：模型可能主張使用者說了某件他沒說的事（多一個限定詞），
+而那個主張接著會去選工具。
+
+我在事前對使用者說明過：依 r21／r23，**1a 才是最大的一塊（80 筆 `unmatched`、
+`misspelling` 12 次全損），而 1a 不放寬任何安全性質**；且 1c 會遮蔽 1a 的可量測效益。
+使用者仍指定先做 1c，故照做，並以下列上界約束它。
+
+### 放寬的上界（這是可否證處，不是修辭）
+
+- 以此路徑接受的解讀**永遠不得產生 `exact`**；`exact` 一律降為 `fallback`。
+- `should_execute` 永遠為 False，`action` 永遠是 `no_tool`。
+- issue **不消失**：`ungrounded_evidence` 照常產生、照常記錄，改變的只有處置。
+
+### 判準
+
+- **R1（離線，決定性）**：全部 issue 皆為 `ungrounded_evidence` 時接受並標記；
+  只要混入任何其他 issue（`missing_evidence`、`conflicting_evidence`、
+  `missing_current_input`……）**仍然整輪丟棄**。兩者皆須先驗證修正前會失敗。
+- **R2（安全上界，離線，決定性）**：此路徑產生的決策
+  `capability_match_status != "exact"`、`should_execute is False`、`action == "no_tool"`。
+  **任一不成立即為放寬失控 → 撤回。**
+- **R3（負向控制，離線，決定性）**：交接的 P2——原文只說 `network`、
+  引文寫 `regulatory network`（多一個原文沒有的限定詞）——
+  **仍然被判 `ungrounded_evidence`**。若該 issue 消失 → 撤回。
+  這條是「放寬」與「不再偵測」的分界。
+- **R4（訊息，離線，決定性）**：使用者看到的文字必須明說引文無法對應原文，
+  且**不得**出現「稍後重試」（那是 1d 指出的假建議）。
+- **R5（護欄，live，否決條件）**：**D = 0**、forbidden = 0、`unsafe_execution_count` = 0。
+  **任一違反 → 撤回。** 放寬最直接的風險就是多推薦一個錯工具。
+- **R6（成效，live）**：`misspelling` 類「有被接受 outcome」由 **0/12** 上升，
+  且**工具正確數不得下降**（r23 為 20/81）。
+  若接受數上升而工具正確數下降，代表放寬只是把沉默換成錯誤 → 撤回。
+- **R7（回歸）**：既有測試若翻轉，逐一判定「前提被取代」或「真實回歸」。
+
+### 事前寫下的一個限制
+
+r23 的 80 筆 `unmatched` 有 69 筆來自錯字。1c 對它們的處理是「接受一個
+引文對不上的解讀」，而**錯字題的正解其實是對齊拼字（1a）**。
+所以 R6 若成立，它證明的是「損失變小」，**不是「理解正確了」**——
+兩者是不同的事，事後不得混談。
+
+## Log 95｜1c 判準全數成立；效果真實但小，且它的天花板已經量到
+
+日期／時區：2026-09-08，Asia/Taipei。**使用者預先授權的 mini 輪次**，215 次呼叫。
+讀法宣告於 Log 94，執行前寫入，本節未修改。
+報告：[r24](live-r24-mini-corpus27-unverifiedKept.json)，對照 [r23](live-r23-mini-corpus27-explicitQuote-fixed.json)。
+`corpus_sha256=a43c2baec7…` 兩輪相同。
+
+### 判準結果
+
+| 判準 | r23 | r24 | |
+| --- | --- | --- | --- |
+| **R5 D（推薦錯工具）** | 0 | **0** | ✓ |
+| **R5 forbidden／unsafe** | 0／0 | **0／0** | ✓ |
+| **R6 `misspelling` 有被接受 outcome** | 0/12 | **3/12** | ✓ 上升 |
+| **R6 工具正確** | 20/81 | **22/81** | ✓ 未下降 |
+| R2 走此路徑者 `status` | — | **3 次全為 `fallback`** | ✓ |
+| R2 走此路徑者 `should_execute` | — | **0 次為 True** | ✓ |
+| R1／R3／R4 | 離線決定性，見 `test_unverified_evidence_is_bounded.py` | | ✓ |
+
+走上這條路徑的**恰好就是三次錯字題**，而且**推薦的工具是對的**：
+
+```
+mirna-current-goal-misspelled  t1  fallback  run_lioness_puma  no_tool  exec=False
+mirna-current-goal-misspelled  t2  fallback  run_lioness_puma  no_tool  exec=False
+mutation-paraphrase-misspelled t3  fallback  run_sambar        no_tool  exec=False
+```
+
+**這正是 1c 要的形狀**：解讀是對的，引文因為原文有錯字而必然對不上，
+使用者現在拿到正確的候選，並且被明白告知那個解讀未經查證、不會被執行。
+
+### 效果只有 3/12，天花板在哪裡已經量到
+
+`recoverable` 要求**所有** issue 都是 `ungrounded_evidence`。r24 中有 ungrounded
+但沒走上這條路的試驗，被以下家族擋住：
+`missing_evidence` 5、`role_entity` 4、`artifact_granularity` 1、
+`inconsistent_not_applicable_outcome` 1，其餘為 schema 層的 `text_span:missing`。
+
+**這是設計上的正確行為**（R1 就是這樣宣告的）：引文找不到是一回事，
+「這個主張後面根本沒有東西」是另一回事，後者仍然整輪丟棄。
+但也因此，**1c 能救的上限就是這麼多**。
+
+### 不歸因給 1c 的變化
+
+`passed` 22 → 21、negative 3/9 → 2/9、paraphrase 6/6 → 5/6、terse 3/9 → 4/9。
+**這些都是 ±1，且沒有一次 negative 或 paraphrase 試驗走過 `unverified_evidence`
+路徑**（三次全在 misspelling）。mini 在 27 題語料上的雜訊底線從未量過，
+所以**這些差異不歸因於本次變更，也不作為成敗依據**。
+
+### 現在該做什麼：仍然是 1a
+
+錯字題 12 次中，1c 救回 3 次、而且是以「未經查證的候選」的形式。
+剩下 9 次仍然全損，且那 3 次也**不是理解正確了，只是損失變小了**
+（Log 94 事前就寫明這兩者不可混談）。
+
+**錯字題的正解是拼字軸對齊（1a）**：對齊之後引文會真的成立，
+這 12 次可以走正常的 `exact` 路徑，而不是停在 `fallback`。
+1c 現在是 1a 的安全網，不是替代品。
+
+### 附：這一連串改動之後的離線閘門
+
+`1455 passed / 0 failed`（本次三項工作合計新增 31 項測試）。
+`router_invocation.py` 因超過 1000 行的可讀性上限，
+拆出 `graph/intent_invocation.py`（意圖分類）與
+`graph/structured_calls.py`（兩階段共用的呼叫計價與 Pydantic 失敗描述），
+927 → 854 行。**拆分不涉及任何行為改動**，由既有測試全綠佐證。
+
+## Log 96｜事前宣告：1a——引文與原文做詞對齊，只容忍拼字，不容忍內容
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+依據 Log 93／95：新語料上 `unmatched` 80 筆，`misspelling` 12 次試驗中
+1c 只救回 3 次（且只到 `fallback`），其餘 9 次仍全損。**這是目前最大的單一損失來源，
+而 1a 不放寬任何安全性質**——引文對齊成功之後，引文是真的成立，不是被略過。
+
+### 做法（依交接的 1a，不改成整句相似度）
+
+引文與原文各自切成詞，引文必須對齊到原文中**同長度的一段連續詞**，逐詞配對；
+每一對要嘛完全相同，要嘛編輯距離夠小。**不使用整句相似度**：
+`network`→`regulatory network` 的相似度不低於 `regualtor`→`regulator`，
+單一門檻鬆到能救現象 A，就同時放行捏造。
+
+三條收緊約束，缺一則放寬失控：
+
+1. **門檻隨詞長縮緊**：長度 ≤ 4 必須完全相同；5–7 距離 ≤ 1；≥ 8 距離 ≤ 2。
+   用 Damerau（含相鄰換位），因為真實錯字以換位為主
+   （`regualtor`／`toosl`／`pateint`／`cohrot` 皆是）。
+2. **兩個都是領域詞時，必須完全相同。** 領域詞取自 registry 的封閉字彙
+   （artifact／entity／operation／granularity／selection tag 拆詞），
+   外加 registry 沒有但混淆會改變答案的近鄰（`mrna`／`rna`／`dna`／`microrna`
+   ／`ppi`／`motif`）。**`mirna` 與 `mrna` 距離只有 1，這條是唯一擋住它的東西。**
+3. **非 ASCII 的詞不做容錯**，必須完全相同。編輯距離是拉丁字母鍵盤現象；
+   中文 `分組`／`分類` 距離也是 1，套上去就是亂配。
+
+### 判準
+
+- **A1（P1，離線，決定性）**：現象 A 原句
+  （`sample specific mi-rna regualtor network, what toosl do i need?`），
+  引文寫成正確拼字（`regulator network`／`tools`）時判為 grounded。
+- **A2（P2，負向控制，決定性）**：原文只有 `network`、引文寫 `regulatory network`
+  → **仍然不 grounded**。**放寬的可否證性在此。**
+- **A3（單調性，決定性）**：**目前任何 grounded 的引文都必須仍然 grounded。**
+  放寬只能新增對齊，不得移除。既有測試全綠是必要條件，另加一項針對性測試。
+- **A4（領域詞不得互為錯字，決定性）**：`mirna`↔`mrna`、`tf`↔`tfa`、
+  `coexpression`↔`expression` 必須全部拒絕。**這是本次最可能造成錯路由之處。**
+- **A5（非 ASCII，決定性）**：中文詞必須完全相同。
+- **A6（護欄，live，否決條件）**：**D = 0**、forbidden = 0、`unsafe_execution_count` = 0。
+  **任一違反 → 撤回。**
+- **A7（成效，live）**：`misspelling` 類「有被接受 outcome」由 **3/12** 上升，
+  **且工具正確不得下降**（r24 為 22/81）。
+  另加機制檢查：**走 `unverified_evidence` 路徑的次數應下降**——
+  引文若真的對齊了，就不該再需要 1c 那張安全網。
+  若接受數上升而 `unverified_evidence` 次數不降，代表對齊沒生效，是別的東西在動。
+
+## Log 97｜事前宣告：A7 後半踩線，先量雜訊底線再判；兩種結果都寫死
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在跑 r26 之前寫入，量測後不得修改。**
+
+r25（1a）機制完全生效：`unmatched` 60 → **0**、`unverified_evidence` 路徑 3 → **0**、
+`misspelling` 有被接受 outcome 3/12 → **10/12**、該類**首次出現通過**（0/12 → 2/12）。
+**A6 成立**：D = 0、forbidden = 0、unsafe = 0。
+
+**但 A7 後半「工具正確不得下降」踩線：22 → 21。**
+
+### 我的判準寫作缺陷
+
+A7 我寫成「不得下降」，卻**沒有雜訊底線**。四輪同一指標為
+**19（r21）／20（r23）／22（r24）／21（r25）**，而 r25 有 **15/27 題**被標記
+`unstable_cases`。逐題看更明顯：`covariate-coexpression` 1→3→3→1、
+`two-layer-network` 0→2→3→1、`terse-mirna-per-sample` 3→0→1→0，
+**與該輪改了什麼無關地擺盪 2–3**。
+
+標準禁令寫著「單輪無法排名版本」，我卻寫了一條單輪判準。
+**這是我的錯，不是量測結果的錯**，但我不會事後改寫 A7 的文字來繞過它。
+
+### 因此先量從未量過的東西：同碼替身輪
+
+r26 ＝ **r25 的完全替身**（程式碼、語料、參數全同），只為量這個指標的輪間離散。
+兩種結果的處置**在此寫死**：
+
+- **若 |工具正確(r26) − 工具正確(r25)| ≥ 1**
+  → 該指標在單輪 81 次試驗下分辨不出 1 的差異，
+  **A7 後半宣告「無法評定」**，不得宣稱成立；
+  改以兩輪合計（r25+r26 對 r23+r24）作為**方向參考，不作為成敗依據**。
+  1a 的去留改由 **A6（已成立）** 與機制證據（`unmatched` 60→0）決定。
+- **若 r26 的工具正確與 r25 完全相同（離散為 0）**
+  → 雜訊底線為 0，22 → 21 是真實下降，
+  **A7 後半未成立 → 撤回 1a**，並改為只保留錯字題的量測、不放行對齊。
+
+### 順帶記錄一個尚未證實的機制假說
+
+`review_repair_attempts` r24 77 → r25 71。可能是：
+**`ungrounded_evidence` 的誤判一直在充當「觸發 review」的意外開關**，
+而 review 確實在修好那些解讀；把誤判拿掉，也就順手拿掉了那個修正。
+逐題差異與此相容（`covariate-coexpression`、`two-layer-network` 皆下降）。
+**這是假說，本輪不作結論**，也不因此改動任何東西。
+
+## Log 98｜A7 後半依事前規則判為「無法評定」；並且：本語料的雜訊底線第一次被量到，它很大
+
+日期／時區：2026-09-08，Asia/Taipei。**使用者預先授權的 mini 輪次。**
+處置規則宣告於 Log 97，跑 r26 之前寫入，本節未修改。
+報告：[r25](live-r25-mini-corpus27-spanAlignment.json)、
+[r26 同碼替身](live-r26-mini-corpus27-replicate.json)。
+
+### 雜訊底線（同碼、同語料、同參數，兩輪）
+
+| 指標 | r25 | r26 | 同碼差 |
+| --- | --- | --- | --- |
+| 工具正確 | 21 | **22** | **1** |
+| `passed` | 18 | **21** | **3** |
+| 有被接受 outcome | 58 | **54** | **4** |
+| `misspelling` 接受 | 10/12 | **7/12** | **3** |
+| 逐題計數不同的題數 | — | — | **6 / 27** |
+
+`covariate-coexpression` 在**同碼**下 1 → 3。這正是 r24→r25 我差點歸因給 1a 的那個
+擺盪，也正是 Log 97 記下的「review 意外開關」假說的主要證據——
+**該假說就此無證據支持，撤回。**
+
+**這是本研究第一次量到 mini 在 27 題語料上的輪間離散**（先前所有 ±3 都借用
+gpt-4o 的舊尺規）。結論很直接：**單輪 81 次試驗分辨不出 3 以內的差異。**
+
+### A7 的判定
+
+依 Log 97 寫死的規則，`|工具正確(r26) − 工具正確(r25)| = 1 ≥ 1`
+→ **A7 後半宣告「無法評定」，不得宣稱成立。**
+（r26 的 22 恰等於 r24 的 22，所以 r25 的「22 → 21」是雜訊。）
+
+1a 的去留因此改由 **A6** 與**結構性證據**決定，兩者皆成立：
+
+| 證據 | r24（1a 前） | r25 | r26 | 性質 |
+| --- | --- | --- | --- | --- |
+| **A6 D／forbidden／unsafe** | 0/0/0 | **0/0/0** | **0/0/0** | 護欄 |
+| **`unmatched` 條目** | 60 | **0** | **0** | **結構性，非計分** |
+| **走 `unverified_evidence` 路徑** | 3 | **0** | **0** | **結構性** |
+
+`unmatched` 60 → 0 在兩輪都成立，且它是對齊程式的直接後果，不是分數。
+**1a 保留。** 依據是機制與護欄，不是分數。
+
+### 我必須撤回自己先前的兩項說法
+
+雜訊底線一量出來，前面幾節有兩處超出可分辨範圍：
+
+- **Log 95 的 R6「`misspelling` 接受 0/12 → 3/12」**：該指標同碼差為 **3**。
+  **這個差正好落在雜訊底線上，不可分辨 → 撤回該項成效宣稱。**
+  1c 的正當性因此只剩下離線的 R1–R4（決定性）與 R5 護欄，
+  **不再有可主張的 live 成效**。
+- **Log 95 的「工具正確 20 → 22」**：同碼差 1，**方向參考而已，撤回其成效意味。**
+
+仍然成立、且未受影響的是**差距遠大於底線或本質為結構性的那些**：
+Log 93 的 S5（接受數 42 → 53，差 11 ≫ 4）、r22 的崩潰（42 → 2）、
+S6 的 `without_span` 10 → 0（結構性），以及本節的 `unmatched` 60 → 0。
+
+### 1c 現在打幾次？零次
+
+`unverified_evidence` 路徑在 r25／r26 皆為 **0 次**——1a 對齊成功之後，
+這條安全網在本語料上完全用不到。**不移除**：它接的是翻譯／改述那類
+1a 對齊不到的殘餘，而本語料沒有那種題。但要如實記著：
+**它目前的實測效益是 0，正當性全部來自離線的決定性判準。**
+
+### 對後續量測的硬性影響
+
+**單輪 mini 在此語料上不得用於宣稱 3 以內的差異。** 要主張這種量級，
+必須跑替身輪並報告同碼離散，或改用結構性指標
+（如 `unmatched`、`without_span`、走某條路徑的次數）——
+那些不是分數，不受模型抽樣影響。
