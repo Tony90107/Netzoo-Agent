@@ -1267,15 +1267,52 @@ def test_the_lioness_puma_aggregate_can_now_reach_upstreams_reference(
     )
 
 
-def test_rm_missing_fails_with_its_reason_instead_of_being_ignored():
-    """The repair is that it stops lying, not that it starts working.
+def test_rm_missing_now_filters_where_upstream_says_it_can():
+    """The flag works, by making upstream's own filter reachable.
 
-    `remove_missing` cannot work for PUMA: `Puma` does not inherit from `Panda`,
-    so `Panda.processData`'s name-mangled `__remove_missing` call cannot resolve
-    on a `Puma` instance. Before, the flag was accepted and dropped, and the
-    help said it removed missing genes. Now it fails and says why. Working
-    around it would mean this wrapper owning PUMA's filtering semantics with
-    nothing upstream to check the result against.
+    This test previously asserted the opposite -- that `--rm_missing` fails with
+    an explanation -- which was the honest repair while the filter looked
+    unreachable. It is reachable: `Puma` defines `__remove_missing`, and only the
+    name mangling in `Panda.processData` (which `Puma` does not inherit from)
+    kept it from being called. Aliasing one mangled name to the other runs
+    netZooPy's own code; no filtering logic was added here.
+
+    The filtered network has to differ from the unfiltered one, or the flag is
+    still doing nothing -- just failing to do it in a new way.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        _in_container(
+            [
+                "docker", "run", "--rm", "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                "cd /tmp && "
+                f"run-puma -e {PANDA_TOY}/ToyExpressionData.txt "
+                f"-m {PANDA_TOY}/ToyMotifData.txt -p {PANDA_TOY}/ToyPPIData.txt "
+                f"-i {PANDA_TOY}/ToyMiRList.txt -o /out/plain.txt && "
+                f"run-puma -e {PANDA_TOY}/ToyExpressionData.txt "
+                f"-m {PANDA_TOY}/ToyMotifData.txt -p {PANDA_TOY}/ToyPPIData.txt "
+                f"-i {PANDA_TOY}/ToyMiRList.txt -o /out/filtered.txt "
+                "--mode_process legacy -r",
+            ],
+            timeout=1800,
+        )
+        plain = (out / "plain.txt").read_text().splitlines()
+        filtered = (out / "filtered.txt").read_text().splitlines()
+
+    # 87 TFs by 1000 genes, and by the 913 that survive the motif prior -- the
+    # same 913 PANDA keeps, which the test below pins independently.
+    assert len(plain) == 87 * 1000
+    assert len(filtered) == 87 * 913
+
+
+def test_rm_missing_is_refused_in_the_modes_that_cannot_honour_it():
+    """netZooPy's own docstring limits the filter to `legacy`.
+
+    The other modes do not ignore it -- they fail deep inside the priors with a
+    `TypeError` about integral indices. Refusing up front states a documented
+    limit instead of surfacing it as an accident.
     """
     with pytest.raises(AssertionError) as raised:
         _in_container(
@@ -1288,9 +1325,7 @@ def test_rm_missing_fails_with_its_reason_instead_of_being_ignored():
             timeout=600,
         )
 
-    message = str(raised.value)
-    assert "cannot honour --rm_missing" in message
-    assert "does not inherit from Panda" in message
+    assert "--mode_process legacy" in str(raised.value)
 
 
 def test_panda_still_honours_the_same_flag():
