@@ -6549,3 +6549,92 @@ response model 去寫答覆（測試名稱就寫著 `reaches_response_llm`）。
 （outcome 未解析出任何候選，合理），1 次交給 response model。
 **主體早已修好，只是沒有任何報告看得見它**——而看不見的正確行為，
 與看不見的錯誤行為，從外面看是一樣的。本節補的就是那雙眼睛。
+
+## Log 101｜事前宣告：問題 3 採選項 (a)——缺判別維度時不得回 `exact`
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+**使用者已在兩個選項中指定 (a)。**
+
+### 先寫下它今天攔下幾次：0
+
+把 r25／r26 的 162 個 outcome 重放 `match_requested_outcome`：
+
+| 分類 | 次數 |
+| --- | --- |
+| 平手 → 已經是 ambiguous | 18 |
+| 唯一候選 → exact（請求自己決定的） | 16 |
+| regulator 未定 → 已經是 ambiguous | 8 |
+| **exact，但只由「較窄」偏好決定** | **6** |
+
+那 6 次全在 `aggregate-mirna-network`，冠軍 `run_puma` 勝出的唯一原因是
+`guidance_predecessors`（LIONESS-PUMA 多一個前置步驟）——**正是 Log 82 明文
+標記「其正當性未經檢驗」的那一項**。但該題在 r25／r26 實際上 0 次 exact，
+所以**實際為 exact 的 34 次中，(a) 會改變的是 0 次**。
+
+**(a) 因此是護欄，不是現行修正。** 這一點事前寫下，事後不得改口成「效益」。
+它的價值是防止該類復發，成本為零；分支確實可達（重放觸發 6 次），不是死碼。
+
+### 規則的精確定義（不是 Log 82 已否決的那個）
+
+Log 82 試過「多個相容候選時一律不得 `exact`」並**否決**：`tf` 專用請求偏好
+LIONESS-PANDA 而非 LIONESS-PUMA 反映真實差異（PUMA 需要使用者沒有的 miRNA 先驗），
+不是擲硬幣。**(a) 必須保留那一類。**
+
+因此規則是：**冠軍必須在「outcome 實際陳述過的維度」上嚴格勝過每一個其他候選，
+才可以是 `exact`。** 只在 outcome 沒陳述的維度上較窄，是本系統的偏好，不是請求的資訊。
+
+- `regulator_types=["tf"]` vs LIONESS-PANDA `{tf}`／LIONESS-PUMA `{tf,mirna}`：
+  請求陳述了 regulator，受限分數 0 vs 1 → **仍 `exact`**。
+- entity／regulator／target 皆未陳述：受限分數全 0 → 平手 → `ambiguous`。
+- `guidance_predecessors` 不由 outcome 導出，**不得單獨支撐 `exact`**
+  （仍可用於排序）。這順帶處理了 Log 82 留下的那個未檢驗項。
+
+### 判準
+
+- **T1（決定性）**：冠軍與其他候選只在 outcome 未陳述的維度上有差異時，
+  **不得 `exact`**。須先驗證修正前會失敗。
+- **T2（決定性，否決條件）**：Log 82 的合法案例必須存活——
+  `regulator_types=["tf"]` 仍 `exact` 選 LIONESS-PANDA。
+  **若翻轉即代表我又寫成了 Log 82 已否決的版本 → 撤回。**
+- **T3（決定性）**：`_tag_discriminated_action` 路徑不受影響——
+  該判別維度是模型自己宣告的 `selection_tags`，不是偏好。
+- **T4（回歸）**：既有測試若翻轉，逐一判定為「前提被取代」或真實回歸。
+- **T5（結構性，取代 live 成效宣稱）**：重放 162 個 outcome 時
+  「exact，但只由較窄偏好決定」須由 **6 降為 0**。
+  **不宣稱任何分數改善**——依 Log 98，單輪分不出 ≤3 的差異，而本項預期差異為 0。
+
+## Log 102｜問題 3 選項 (a) 完成：T1–T5 全數成立，且它今天確實攔下 0 次
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**：全部離線與既有存檔重放。
+讀法宣告於 Log 101，實作前寫入，本節未修改。
+
+| 判準 | 結果 |
+| --- | --- |
+| **T1 只由未陳述維度分勝負者不得 `exact`** | ✓ `mirna+tf / target gene / entity 未陳述` 由 `exact run_puma` 轉為 `ambiguous`；修正前會失敗 |
+| **T2 Log 82 的合法案例存活（否決條件）** | ✓ `regulator_types=["tf"]` 仍 `exact` 選 `run_lioness_panda` |
+| **T3 tag 判別不受影響** | ✓ `selection_tags=["aggregate_network"]` 仍 `exact run_panda`，`basis=registry_features` |
+| **T4 回歸** | ✓ 1501 passed，**既有測試零改寫** |
+| **T5 結構性** | ✓ 重放 162 個 outcome，`exact` 由 22 降為 16——正好是事前量到的那 6 個 |
+
+**實際影響為 0**：那 6 個全在 `aggregate-mirna-network`，而該題在 r25／r26
+實際 0 次 `exact`。Log 101 事前就寫明這是護欄而非現行修正，此處不改口。
+
+### 順帶解掉 Log 82 留下的未檢驗項
+
+那 6 次的冠軍 `run_puma` 勝出的唯一原因是 `guidance_predecessors`
+（LIONESS-PUMA 多一個前置步驟）——Log 82 寫著「`guidance_predecessors` 也計入
+偏好分數，其正當性**未經檢驗**」。新規則的受限分數不含它，
+所以**它仍可用於排序，但不再能單獨讓一個答案成為 `exact`**。
+Log 82 提的那個疑慮因此以「限制其效力」而非「整體移除偏好」的方式收斂。
+
+### 模組切分
+
+`outcome_matching.py` 逾 1000 行可讀性上限，拆出
+`routing/candidate_ranking.py`（相容候選之間的排序偏好，994 → 936 行）。
+**這是真實的責任邊界**：那裡每一項都是偏好，而「偏好可否讓答案成為 exact」
+現在由 `match_requested_outcome` 另行決定——把那個決定放在偏好之外，正是拆分的理由。
+
+第一次嘗試拆 `workflow_names`（自由文字解析工作流程名稱）**失敗並已還原**：
+它需要 `..interpretation.request_integrity`，而 `interpretation/__init__` 會匯入
+`repair`，`repair` 又匯入 `outcome_matching` — 循環匯入。改拆排序偏好即無此問題
+（不觸及 interpretation，且無任何外部引用）。
