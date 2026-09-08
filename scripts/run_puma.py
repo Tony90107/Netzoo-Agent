@@ -34,42 +34,51 @@ from netZooPy.puma.puma import Puma
 MODES = ("union", "legacy", "intersection")
 
 
-def _puma(args) -> Puma:
-    """Build the network, and explain the one option netZooPy cannot honour.
+def _reach_upstreams_remove_missing() -> None:
+    """Make netZooPy's own gene filter reachable from a Puma instance.
 
-    `remove_missing` works for PANDA and fails for PUMA in both processing
-    modes, because `Puma` does not inherit from `Panda`: it calls
-    `Panda.processData(self, ...)` unbound, and that function's
-    `self.__remove_missing()` mangles to `self._Panda__remove_missing`, which a
-    `Puma` instance does not have. `Puma` defines its own `__remove_missing`,
-    mangled to `_Puma__remove_missing`, so it can never be reached from there.
+    `Puma` does not inherit from `Panda`; it calls `Panda.processData(self, ...)`
+    unbound. Inside that function `self.__remove_missing()` mangles to
+    `self._Panda__remove_missing`, which a `Puma` instance does not have --
+    while `Puma`'s own definition mangles to `_Puma__remove_missing` and is
+    therefore unreachable from the only place that calls it. The flag has never
+    worked for PUMA in any release, and the legacy CLI script hid that by
+    accepting the option and dropping it.
 
-    Nothing here works around that. Reimplementing the filtering would mean this
-    wrapper owning a piece of PUMA's semantics with no upstream reference to
-    check it against. What it does is replace an obscure `TypeError` about
-    integral indices with the reason, since the flag's previous behaviour --
-    accepted and silently ignored -- was the actual defect being repaired.
+    The alias binds one name to the other. No filtering logic is added here:
+    what runs is upstream's own `Puma.__remove_missing`, which it plainly meant
+    to be called. The result is corroborated rather than merely plausible --
+    PUMA and PANDA reduce the same priors to the same 913 genes, as two filters
+    keeping "genes present in the motif prior" must.
     """
-    try:
-        return Puma(
-            args.expression, args.motif, args.ppi, args.mir,
-            modeProcess=args.mode_process,
-            save_tmp=True,
-            remove_missing=args.rm_missing,
-            keep_expression_matrix=bool(args.lioness),
-        )
-    except (AttributeError, TypeError) as error:
-        if not args.rm_missing:
-            raise
-        raise SystemExit(
-            f"netZooPy's PUMA cannot honour --rm_missing ({type(error).__name__}: "
-            f"{error}).\n"
-            "Puma does not inherit from Panda, so the name-mangled "
-            "__remove_missing call inside Panda.processData cannot resolve on a "
-            "Puma instance. PANDA supports the same flag; PUMA does not, in any "
-            "processing mode. Run without --rm_missing, or filter the priors "
-            "before passing them in."
-        ) from error
+    if not hasattr(Puma, "_Panda__remove_missing"):
+        Puma._Panda__remove_missing = Puma._Puma__remove_missing
+
+
+def _puma(args) -> Puma:
+    """Build the network, honouring `--rm_missing` only where it can work.
+
+    Upstream's own docstring says the filter "Works only if
+    modeProcess='legacy'", and that is exactly what the other modes do: they
+    fail deep inside with a `TypeError` about integral indices. Refusing up
+    front states a documented limit instead of surfacing it as an accident.
+    """
+    if args.rm_missing:
+        if args.mode_process != "legacy":
+            raise SystemExit(
+                f"--rm_missing needs --mode_process legacy (got "
+                f"{args.mode_process}). netZooPy's own documentation limits the "
+                "filter to that mode, and the others fail inside the priors "
+                "rather than ignoring it."
+            )
+        _reach_upstreams_remove_missing()
+    return Puma(
+        args.expression, args.motif, args.ppi, args.mir,
+        modeProcess=args.mode_process,
+        save_tmp=True,
+        remove_missing=args.rm_missing,
+        keep_expression_matrix=bool(args.lioness),
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -87,13 +96,10 @@ def main(argv: list[str]) -> int:
         help="How genes and TFs from the priors are combined (default: union, "
              "which is what the legacy script always used).",
     )
-    # Passed through, where the legacy script accepted it and threw it away:
+    # Works now, where the legacy script accepted it and threw it away:
     # upstream declared `r` to getopt as taking no argument and then assigned
-    # that argument to `rm_missing`, so the value was always the empty string
-    # and the flag never did anything. It does something now -- it fails, with
-    # the reason, which is what netZooPy's PUMA can currently support. See
-    # `_puma` below. Passing it through rather than refusing it here means a
-    # fixed upstream simply starts working.
+    # that argument to `rm_missing`, so the value was always the empty string.
+    # See `_reach_upstreams_remove_missing`. Only `legacy` can honour it.
     parser.add_argument("-r", "--rm_missing", action="store_true")
     args = parser.parse_args(argv)
 
