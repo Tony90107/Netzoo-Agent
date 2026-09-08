@@ -6809,3 +6809,127 @@ V1 成立只證明「我方腳本 ≡ 上游腳本」，V2 成立只證明「leg
 已數值核對 **11/12**：SAMBAR、COBRA、OTTER、GIRAFFE、CONDOR、LIONESS ×3、
 PANDA（MATLAB 第三方）、**PUMA（第三方）**、以及 PUMA 的管線層核對。
 剩 **DRAGON／BONOBO**：上游無參考值亦無測試資料，只能做契約層。
+
+## Log 107｜事前宣告：修好 `-r`，並讓 LIONESS-PUMA 的聚合步驟也能選 mode
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+**使用者已授權兩項**（Log 106 提出的兩個待決策）。
+
+### 「修好 `-r`」的結論與預期不同，先寫在動手之前
+
+實測（本機 Docker，未付費）：
+
+| | `remove_missing=False` | `remove_missing=True` |
+| --- | --- | --- |
+| PUMA union | (87, 1000) | **`TypeError: indices must be integral…`** |
+| PUMA legacy | (87, 1000) | **`AttributeError: 'Puma' object has no attribute '_Panda__remove_missing'`** |
+| **PANDA legacy** | (87, 1000) | **正常，(87, 913)** |
+
+成因精確：**`Puma` 並未繼承 `Panda`**，而是以未綁定方式呼叫 `Panda.processData(self, ...)`；
+該函式內部呼叫 `self.__remove_missing()`，經名稱改寫成 `self._Panda__remove_missing`，
+在 `Puma` 實例上不存在（`Puma` 自己那個改寫成 `_Puma__remove_missing`，永遠不會被叫到）。
+PANDA 用同一旗標完全正常，**所以這是 PUMA 專屬的上游缺陷，不是我方造成的**。
+
+**因此「修好」不可能是「讓它產生正確網路」**——那要重新實作 netZooPy 的基因過濾語意，
+而且沒有任何上游參考能驗證那些數字。**能修、也該修的是「它會說謊」這件事**：
+從「接受並靜默忽略」改成「明確失敗並指出成因」。
+
+### 判準
+
+- **W1（決定性，否決條件）**：不傳 `-r` 時，輸出與現況**逐值相同**。
+- **W2（決定性）**：傳 `-r` 時**不得再靜默忽略**，必須失敗且訊息指出成因。
+  **「接受並忽略」是原缺陷；換成「靜默做了別的事」同樣不可接受。**
+  實作方式為**原樣傳遞**而非硬寫拒絕——若上游哪天修好，它就自動開始work，
+  而測試會翻轉並讓我們知道。
+- **W3（決定性）**：PANDA 的同一旗標仍正常（1000 → 913 基因）。
+  這條是「我方沒有弄壞別的東西」的對照。
+- **W4（決定性，否決條件）**：`run-lioness puma` 改走我方腳本後，
+  **不指定 mode 時 LIONESS-PUMA 的輸出逐值不變**。既有那項數值核對不得被動到。
+- **W5（第三方）**：`mode_process` 送達 LIONESS-PUMA 的聚合步驟，
+  且該聚合輸出在 legacy 下對得上 `matlablike_test_puma.txt`（上游自己的 `rtol=1e-5`）。
+- **W6（回歸）**：含 Docker 的完整閘門全綠，既有測試零改寫。
+
+### 明確不做
+
+**不繞過上游缺陷、不自行實作 `remove_missing`。** 那等於我方接管 PUMA 的基因過濾語意，
+產出的網路沒有任何第三方基準可驗證——正是本研究一路在避免的東西。
+若要那樣做，需另行授權，並且必須先想清楚拿什麼當基準。
+
+## Log 108｜W1–W6 成立。`-r` 的「修好」是讓它停止說謊，不是讓它開始work
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**（本機 Docker）。
+讀法宣告於 Log 107，實作前寫入，本節未修改。
+
+| 判準 | 結果 |
+| --- | --- |
+| **W1 不傳 `-r` 時輸出逐值不變**（否決條件） | ✓ 既有 V1 測試仍綠 |
+| **W2 `-r` 不得再靜默忽略** | ✓ 明確失敗，訊息含成因；改為原樣傳遞而非硬寫拒絕 |
+| **W3 PANDA 同一旗標仍正常** | ✓ (87, 913)，1000 → 913 基因 |
+| **W4 LIONESS-PUMA 預設數值不變**（否決條件） | ✓ 既有 `test_lioness_puma_matches_netzoopy_called_directly` 仍綠 |
+| **W5 LIONESS-PUMA 聚合可選 mode 並對上第三方** | ✓ legacy 下對上 `matlablike_test_puma.txt`，`rtol=1e-5` |
+| **W6 回歸** | ✓ 離線 1501 passed，既有測試零改寫 |
+
+### 「修好 `-r`」的實際結論
+
+事前量測（Log 107）已寫明：`remove_missing=True` 在 PUMA 的**兩種模式下都崩潰**，
+而 PANDA 用同一旗標正常。成因是 **`Puma` 並未繼承 `Panda`**——它以未綁定方式
+呼叫 `Panda.processData(self, ...)`，該函式內部的 `self.__remove_missing()`
+經名稱改寫成 `self._Panda__remove_missing`，在 `Puma` 實例上不存在；
+`Puma` 自己那個改寫成 `_Puma__remove_missing`，永遠不會被叫到。
+
+所以**能修的不是「讓它產生正確網路」，而是「讓它停止說謊」**：
+從「接受並靜默忽略、說明文字還宣稱它會移除缺失基因」，
+改成失敗並指出成因。實作方式是**原樣傳遞給 `Puma`**，只在 `-r` 有給且拋例外時
+把訊息換成可讀的——**若上游哪天修好，它就自動開始work，而測試會翻轉讓我們知道**。
+
+**明確沒有做**：不自行實作 `remove_missing`。那等於我方接管 PUMA 的基因過濾語意，
+產出的網路沒有任何第三方基準可驗證。若要那樣做需另行授權，且必須先決定基準。
+
+### LIONESS-PUMA 的聚合步驟
+
+`docker/run-lioness puma` 原本直接呼叫上游 legacy 腳本，改指向我方
+`scripts/run_puma.py` 後，`--mode_process` 自然可用；
+`execution.run_lioness_puma` 新增同名參數，**預設空字串＝行為不變**。
+W4 由既有那項數值核對守門（它比對的是 class API 參考），
+再加上 V1 已證明「我方腳本預設 ≡ 上游腳本」，兩者相加即為「預設未變」的依據。
+
+**LIONESS-PUMA 的聚合輸出現在也對得上第三方基準**——Log 106 第 (i) 點列的限制解除。
+
+### 仍然成立的限制
+
+**union（目前預設）依舊沒有第三方基準。** 兩次變更都沒有改善這一點：
+V1／W1 證明「我方 ≡ 上游」，V2／W5 證明「legacy 下對得上第三方」，
+**都不是對 union 數值的驗證**。若要驗 union，需要一份 union 模式下的第三方參考，
+而上游沒有提供。
+
+## Log 109｜閘門環境自己壞掉了一次，而它壞掉時大部分測試照樣是綠的
+
+日期／時區：2026-09-09，Asia/Taipei。**未付費。**
+
+Log 108 的 W6 全閘門跑出 **19 failed**，全部在 `test_semantic_provider_wire.py`
+與 `test_semantic_claims.py`。逐一查證後：**與本次變更無關。**
+
+`ModuleNotFoundError: No module named 'langchain_openai'`。QA venv
+（`/private/tmp/netzoo-schema-qa.AW2MQ5/venv`）**掉了整組 LangChain 套件**——
+`langchain_openai`、`langchain_core`、`langgraph` 全部消失，
+`pydantic`／`pandas`／`numpy`／`pytest`／`httpx` 都還在。
+venv 位於 `/private/tmp`，而日期剛跨到 09-09；macOS 的暫存清理是最合理的成因。
+今天稍早的 live 輪次（r21–r26）用得到 `langchain_openai`，
+上一次全閘門 1532 passed 也包含這 19 項通過，**所以是那之後才掉的**。
+
+已依 `requirements-acceptance.txt`（該檔正是為此 venv 而寫）還原到釘死的版本
+（`langchain-openai==1.6.0`、`langchain-core==1.6.1`）。
+
+### 真正值得記下來的不是「壞了」，是「壞了還很綠」
+
+環境殘缺時，**離線閘門仍然回報 1501 passed**。因為 `framework_compat` 在
+langgraph 缺席時會退到替身，套件不見了只會讓一部分測試多跳過幾項——
+`skipped` 由 24 一路變成 34，而那個數字沒有任何人在看。
+**我當時把上升的 skip 數歸因於自己新增的 Docker 測試，沒有再查。那是錯的。**
+
+於是有一段時間，我報出的「1501 passed」是在一個裝不起真實 framework 的環境裡量的。
+那些數字沒有作廢（相關測試本來就不碰 LangChain），但**它們當時並不代表我以為的意思**。
+
+**往後的做法**：閘門的 `skipped` 數字要和 `passed` 一起看。
+跳過數上升而沒有對應的新增跳過測試，就是環境問題，不是巧合。
+`/private/tmp` 裡的 venv 隨時可能被系統清掉——這個 QA 環境本身不耐久。

@@ -1191,3 +1191,128 @@ def test_the_two_processing_modes_actually_produce_different_networks(
             puma_default_vs_upstream["produced"], puma_legacy_run["other"],
             rtol=1e-5, check_exact=False,
         )
+
+
+# --- the two flags that used to lie, and the step that could not choose ------
+
+LIONESS_PUMA_LEGACY_BUILD = r'''
+import sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_lioness_puma.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    mirna_file=f"{{toy}}/ToyMiRList.txt",
+    output_file="/out/produced.txt",
+    lioness_output="/out/lioness.txt",
+    mode_process="{mode}"))
+assert "Exit code: 0" in report, report
+'''
+
+
+def _lioness_puma_aggregate(mode: str) -> "object":
+    """The aggregate PUMA network the LIONESS-PUMA path produces."""
+    import pandas as pd
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(
+            LIONESS_PUMA_LEGACY_BUILD.format(toy=PANDA_TOY, mode=mode), encoding="utf-8"
+        )
+        _in_container(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                f"python /out/build.py && cp {PUMA_GT} /out/ground_truth.txt",
+            ],
+            timeout=1800,
+        )
+        return {
+            "aggregate": pd.read_csv(out / "produced.txt", sep=" ", header=None),
+            "ground_truth": pd.read_csv(out / "ground_truth.txt", sep=" ", header=None),
+        }
+
+
+@pytest.fixture(scope="module")
+def lioness_puma_legacy() -> dict:
+    return _lioness_puma_aggregate("legacy")
+
+
+def test_the_lioness_puma_aggregate_can_now_reach_upstreams_reference(
+    lioness_puma_legacy,
+):
+    """The step that could not choose a processing mode, compared at last.
+
+    LIONESS-PUMA's aggregate stage ran netZooPy's legacy script, which fixed the
+    mode to the class default, so upstream's own reference network -- built
+    under `legacy` -- was unreachable from this path specifically. The
+    sample-specific stage follows whatever the aggregate produced, so this is
+    where the comparison has to happen.
+    """
+    import pandas as pd
+
+    assert len(lioness_puma_legacy["aggregate"]) > 10_000
+
+    pd.testing.assert_frame_equal(
+        lioness_puma_legacy["aggregate"], lioness_puma_legacy["ground_truth"],
+        rtol=1e-5, check_exact=False,
+    )
+
+
+def test_rm_missing_fails_with_its_reason_instead_of_being_ignored():
+    """The repair is that it stops lying, not that it starts working.
+
+    `remove_missing` cannot work for PUMA: `Puma` does not inherit from `Panda`,
+    so `Panda.processData`'s name-mangled `__remove_missing` call cannot resolve
+    on a `Puma` instance. Before, the flag was accepted and dropped, and the
+    help said it removed missing genes. Now it fails and says why. Working
+    around it would mean this wrapper owning PUMA's filtering semantics with
+    nothing upstream to check the result against.
+    """
+    with pytest.raises(AssertionError) as raised:
+        _in_container(
+            ["docker", "run", "--rm", IMAGE, "run-puma",
+             "-e", f"{PANDA_TOY}/ToyExpressionData.txt",
+             "-m", f"{PANDA_TOY}/ToyMotifData.txt",
+             "-p", f"{PANDA_TOY}/ToyPPIData.txt",
+             "-i", f"{PANDA_TOY}/ToyMiRList.txt",
+             "-o", "/tmp/out.txt", "-r"],
+            timeout=600,
+        )
+
+    message = str(raised.value)
+    assert "cannot honour --rm_missing" in message
+    assert "does not inherit from Panda" in message
+
+
+def test_panda_still_honours_the_same_flag():
+    """The control: the breakage is netZooPy's, and specific to PUMA.
+
+    Without this, "PUMA cannot do it" could equally mean we broke something.
+    PANDA filters 1000 genes down to 913 with the same option.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(
+            "from netZooPy.panda.panda import Panda\n"
+            f'obj = Panda("{PANDA_TOY}/ToyExpressionData.txt", '
+            f'"{PANDA_TOY}/ToyMotifData.txt", "{PANDA_TOY}/ToyPPIData.txt", '
+            "modeProcess='legacy', save_tmp=True, remove_missing=True, "
+            "keep_expression_matrix=False)\n"
+            'open("/out/shape.txt", "w").write(repr(obj.panda_network.shape))\n',
+            encoding="utf-8",
+        )
+        _in_container(
+            ["docker", "run", "--rm", "-v", f"{out}:/out", IMAGE,
+             "sh", "-c", "cd /tmp && python /out/build.py"],
+            timeout=900,
+        )
+        assert (out / "shape.txt").read_text() == "(87, 913)"

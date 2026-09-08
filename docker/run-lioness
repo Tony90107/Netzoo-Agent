@@ -13,7 +13,8 @@ At least three samples are required.
 
 Modes:
   panda           Legacy netZooPy PANDA followed by LIONESS-PANDA
-  puma            Legacy netZooPy PUMA followed by LIONESS-PUMA
+  puma            netZooPy PUMA followed by LIONESS-PUMA. Accepts
+                  --mode_process union (default), legacy or intersection.
   coexpression    Pearson correlation followed by LIONESS co-expression
 EOF
 }
@@ -43,7 +44,10 @@ case "$mode" in
           ;;
       esac
     done
-    python "$NETZOOPY_SRC/netZooPy/puma/run_puma.py" "${args[@]}"
+    # Ours, so the aggregate PUMA step can select a processing mode too. The
+    # legacy script fixed it to the class default with no flag, which is why
+    # this step could not be compared against upstream's own reference network.
+    python /opt/netzoo-app/scripts/run_puma.py "${args[@]}"
     if [[ -n "$expression_file" && -n "$lioness_file" && "${lioness_file##*.}" != "npy" ]]; then
       add-puma-lioness-header "$expression_file" "$lioness_file"
     fi
