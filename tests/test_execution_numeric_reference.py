@@ -43,6 +43,29 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _in_container(argv: list[str], *, timeout: int) -> subprocess.CompletedProcess:
+    """Run one command in the pinned image, and say why when it fails.
+
+    `check=True` raises `CalledProcessError`, whose message carries the exit
+    code and the whole argv but not the container's own stderr, and pytest
+    prints that message and nothing more. Two reference runs failed exactly that
+    way during a full-gate pass -- both passed when run on their own -- and
+    nothing recorded anywhere could say what had differed. A numeric check whose
+    failures are undiagnosable is not much of a check.
+
+    The tail is bounded because a netZooPy traceback can be long, and it is the
+    end of it that says what went wrong.
+    """
+    result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    if result.returncode:
+        raise AssertionError(
+            f"the pinned image exited {result.returncode}.\n"
+            f"--- container stderr (last 2000 characters) ---\n"
+            f"{result.stderr[-2000:] or '(the container wrote nothing to stderr)'}"
+        )
+    return result
+
+
 def _table(path: Path) -> tuple[list[str], dict[str, list[float]]]:
     with path.open() as handle:
         reader = csv.reader(handle)
@@ -56,7 +79,7 @@ def sambar_run() -> dict[str, object]:
     """Run SAMBAR through the production wrapper on upstream's toy inputs."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
@@ -67,7 +90,7 @@ def sambar_run() -> dict[str, object]:
                 f" -g {TOY}/genes.txt -p {TOY}/h.all.v6.1.symbols.gmt"
                 f" -o /out && cp {TOY}/sambar_gt.csv /out/upstream_gt.csv",
             ],
-            check=True, capture_output=True, timeout=900,
+            timeout=900,
         )
         produced, upstream = _table(out / "pt_out.csv"), _table(out / "upstream_gt.csv")
         gene_columns, gene_rows = _table(out / "mt_out.csv")
@@ -183,7 +206,7 @@ def cobra_run() -> dict[str, object]:
     """
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
@@ -202,7 +225,7 @@ def cobra_run() -> dict[str, object]:
                 f" && cp {COBRA_TOY}/psi.csv {COBRA_TOY}/Q.csv"
                 f" {COBRA_TOY}/D.csv {COBRA_TOY}/G.csv /out/",
             ],
-            check=True, capture_output=True, timeout=900,
+            timeout=900,
         )
         import numpy as np
         import pandas as pd
@@ -320,14 +343,14 @@ def otter_run() -> dict[str, object]:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         (out / "build.py").write_text(OTTER_BUILD.format(toy=OTTER_TOY), encoding="utf-8")
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
                 "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
                 IMAGE, "python", "/out/build.py",
             ],
-            check=True, capture_output=True, timeout=1800,
+            timeout=1800,
         )
         import numpy as np
         import pandas as pd
@@ -427,7 +450,7 @@ def giraffe_run() -> dict[str, object]:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         (out / "build.py").write_text(GIRAFFE_BUILD, encoding="utf-8")
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
@@ -437,7 +460,7 @@ def giraffe_run() -> dict[str, object]:
                 " && cp /opt/netZooPy/tests/giraffe/Toygiraffe_R_hat.txt"
                 " /opt/netZooPy/tests/giraffe/Toygiraffe_TFA_hat.txt /out/",
             ],
-            check=True, capture_output=True, timeout=1800,
+            timeout=1800,
         )
         import pandas as pd
 
@@ -524,7 +547,7 @@ def condor_run() -> dict[str, object]:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         (out / "build.py").write_text(CONDOR_BUILD, encoding="utf-8")
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
@@ -532,7 +555,7 @@ def condor_run() -> dict[str, object]:
                 IMAGE, "sh", "-c",
                 "python /out/build.py && cp /opt/netZooPy/tests/condor/*.txt /out/",
             ],
-            check=True, capture_output=True, timeout=900,
+            timeout=900,
         )
         import pandas as pd
 
@@ -741,14 +764,14 @@ def _run_lioness_build(
         (out / "build.py").write_text(
             build_script.format(toy=LIONESS_TOY), encoding="utf-8"
         )
-        subprocess.run(
+        _in_container(
             [
                 "docker", "run", "--rm",
                 "-v", f"{out}:/out",
                 "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
                 IMAGE, "python", "/out/build.py",
             ],
-            check=True, capture_output=True, timeout=1800,
+            timeout=1800,
         )
         import pandas as pd
 
@@ -836,3 +859,22 @@ def test_lioness_coexpression_matches_netzoopy_called_directly(lioness_coexpress
         lioness_coexpression_run["produced"], lioness_coexpression_run["reference"],
         id_columns=list(lioness_coexpression_run["id_columns"]),
     )
+
+
+def test_a_failed_container_run_says_what_the_container_said():
+    """Otherwise a numeric check that breaks cannot be diagnosed at all.
+
+    Two reference runs failed during a full-gate pass and passed when run alone,
+    and the only thing recorded was `returned non-zero exit status 1` -- the
+    container's own stderr was captured and then dropped. This is cheap: one
+    container, one deliberate failure.
+    """
+    with pytest.raises(AssertionError) as raised:
+        _in_container(
+            ["docker", "run", "--rm", IMAGE, "python", "-c",
+             "import sys; sys.stderr.write('netzoo-diagnostic-marker'); sys.exit(3)"],
+            timeout=120,
+        )
+
+    assert "exited 3" in str(raised.value)
+    assert "netzoo-diagnostic-marker" in str(raised.value)
