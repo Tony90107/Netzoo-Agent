@@ -99,18 +99,21 @@ def test_guidance_operation_is_not_required_for_registry_candidate_matching():
                     dimension="artifact_type",
                     value="regulatory_network",
                     source="explicit",
+                    text_span="regulatory network",
                     rationale="The requested result is a regulatory network.",
                 ),
                 OutcomeEvidence(
                     dimension="regulator_type",
                     value="mirna",
                     source="explicit",
+                    text_span="miRNA",
                     rationale="The request names miRNA regulators.",
                 ),
                 OutcomeEvidence(
                     dimension="granularity",
                     value="sample_specific",
                     source="explicit",
+                    text_span="sample-specific",
                     rationale="The request asks for sample-specific output.",
                 ),
             )
@@ -482,12 +485,14 @@ def test_partial_mirna_sample_network_uniquely_suggests_lioness_puma():
                     dimension="regulator_type",
                     value="mirna",
                     source="explicit",
+                    text_span="miRNA",
                     rationale="The request explicitly names miRNA.",
                 ),
                 OutcomeEvidence(
                     dimension="granularity",
                     value="sample_specific",
                     source="explicit",
+                    text_span="one network per sample",
                     rationale="The request explicitly asks for one network per sample.",
                 ),
             )
@@ -596,6 +601,7 @@ def test_generic_sample_network_keeps_all_lioness_families_tied():
                     dimension="granularity",
                     value="sample_specific",
                     source="explicit",
+                    text_span="sample-specific",
                     rationale="The request explicitly asks for a sample-specific result.",
                 ),
             )
@@ -625,6 +631,7 @@ def test_measurement_artifact_conflicts_with_every_network_hypothesis():
                     dimension="artifact_type",
                     value="measurement_dataset",
                     source="explicit",
+                    text_span="measured miRNA values",
                     rationale="The request asks for measured miRNA values.",
                 ),
             )

@@ -29,11 +29,15 @@ from ..interpretation.provider_fallback import (
     deterministic_router_fallback,
     recover_registry_guidance,
 )
+from ..interpretation.outcome_downgrade import interpretation_downgrades
 from ..interpretation.semantic_goal import outcome_routing_state
 from ..interpretation.semantic_patch import (
     apply_semantic_patch, patched_hypothesis_index,
 )
 from ..interpretation.semantic_repair import semantic_payload
+from ..interpretation.unverified_evidence import (
+    UNVERIFIED_BASIS, bounded_match, with_reduced_confidence,
+)
 from ..llm import (
     append_llm_usage,
     build_intent_router_messages,
@@ -44,6 +48,8 @@ from ..llm import (
 )
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
+from .intent_invocation import _invoke_intent_router
+from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__: list[str] = []
 
@@ -55,51 +61,6 @@ class _RouterInvocation:
     usage: LLMUsage
     budget_warnings: list[str]
     reason_code: str
-
-
-def _serialized_structured_input(messages, schema_model) -> str:
-    text = "\n".join(str(message.content) for message in messages)
-    return text + json.dumps(
-        schema_model.model_json_schema(),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-
-
-# A rejected ontology literal is model vocabulary worth recording; free text may
-# quote the request, so only identifier-shaped values are retained.
-_IDENTIFIER_VALUE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,63}")
-
-
-def _validation_issue_types(error: BaseException) -> list[dict[str, object]]:
-    """Return non-sensitive Pydantic issue locations, codes and shapes.
-
-    The rejected value's type name records what shape a provider actually sent,
-    which the September traces could not answer. Its content is kept only when it
-    is a bare canonical-looking identifier, never as arbitrary request text.
-    """
-    errors = getattr(error, "errors", None)
-    if not callable(errors):
-        return []
-    issues = []
-    for issue in errors():
-        value = issue.get("input")
-        recorded = {
-            "location": [str(item) for item in issue.get("loc", ())],
-            "type": str(issue.get("type", "unknown")),
-            "input_type": type(value).__name__,
-        }
-        if isinstance(value, str) and _IDENTIFIER_VALUE.fullmatch(value):
-            recorded["input_value"] = value
-        if isinstance(value, Mapping):
-            # Field names an object was built from are model-chosen schema terms,
-            # so they name the wrong shape without retaining any request content.
-            recorded["input_keys"] = sorted(
-                key for key in value
-                if isinstance(key, str) and _IDENTIFIER_VALUE.fullmatch(key)
-            )[:8]
-        issues.append(recorded)
-    return issues[:8]
 
 
 # A third, progress-gated attempt was tried and reverted. It fired twice in nine
@@ -188,7 +149,6 @@ def _validated_review(payload, *, patching: bool) -> SemanticReview:
             SemanticPatch.model_validate(payload)
         raise
 
-
 def _invoke_semantic_interpreter(
     context: _GraphContext,
     state: AgentState,
@@ -210,6 +170,13 @@ def _invoke_semantic_interpreter(
     # Tags this function moved into the outcome, kept out of capability
     # selection: a harness repair must never be what picks a tool.
     restored_tags: frozenset[str] = frozenset()
+    # Measurement only, read at acceptance. The first pass's own grounding
+    # result per (dimension, value), and the hypothesis a patch was merged onto,
+    # are both gone by the time the accepted interpretation exists -- and
+    # without them a dimension that ends up `unknown` cannot be told apart from
+    # one that was never committed to. Neither influences any decision below.
+    first_pass_shapes: tuple[dict, ...] = ()
+    patched_index: int | None = None
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         # A patch can only be merged onto a structurally valid proposal. When the
@@ -285,6 +252,7 @@ def _invoke_semantic_interpreter(
             elif patching and (patch := _as_semantic_patch(payload)) is not None:
                 output_text = patch.model_dump_json()
                 interpretation, retired_evidence = apply_semantic_patch(proposal, patch)
+                patched_index = patched_hypothesis_index(proposal, patch)
                 record_event(
                     context,
                     state,
@@ -512,6 +480,8 @@ def _invoke_semantic_interpreter(
             last_error = ValueError(
                 "semantic interpretation failed evidence validation"
             )
+            if attempt == 0:
+                first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
             if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
                 validation_issues = validation.issues
                 record_event(
@@ -546,6 +516,32 @@ def _invoke_semantic_interpreter(
                     {"attempt": attempt + 1, "issues": list(validation.issues)},
                 )
                 return validated, usage, budget_warnings, None, restored_tags
+            if validation.recoverable:
+                # Every remaining issue is a quote the request does not contain,
+                # and nothing else. Discarding the whole interpretation for that
+                # is what cost 148 of 188 such entries their entire run, while
+                # the reading itself was often right -- a misspelled request
+                # makes a matching quote impossible, not the meaning unclear.
+                # The reading is kept, its confidence reduced, and `invoke_router`
+                # holds it below `exact` and away from execution. The issues are
+                # still raised, still recorded, and still shown to the user; only
+                # the disposition changes. `recoverable` was computed here since
+                # the validator was written and read by nothing until now.
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_evidence_unverified",
+                    "classify",
+                    {
+                        "attempt": attempt + 1,
+                        "issues": list(validation.issues),
+                        "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+                    },
+                )
+                return (
+                    with_reduced_confidence(interpretation),
+                    usage, budget_warnings, None, restored_tags,
+                )
             return None, usage, budget_warnings, last_error, restored_tags
 
         usage = append_llm_usage(
@@ -614,6 +610,32 @@ def _invoke_semantic_interpreter(
             )
             continue
 
+        # Measurement only. An accepted outcome saying `unknown` is recorded as
+        # one fact today, and two opposite situations reach it: the first pass
+        # said nothing either, or it named a value that is now gone. Only the
+        # second is meaning the system had and discarded, and `unknown` is
+        # exactly the value that needs no evidence -- so dropping a value always
+        # dissolves an `ungrounded_evidence` issue about it. Nothing here
+        # changes the interpretation, and the accepted event is emitted either way.
+        downgrade = interpretation_downgrades(
+            proposal, interpretation, first_pass_shapes,
+            hypothesis_index=patched_index,
+        )
+        record_event(
+            context,
+            state,
+            "routing.outcome_downgraded",
+            "classify",
+            {
+                "attempt": attempt + 1,
+                # False means the two interpretations could not be put in
+                # correspondence, and the empty list below says nothing at all.
+                "comparable": downgrade.comparable,
+                "reason": downgrade.reason,
+                "hypothesis": downgrade.hypothesis_index,
+                "downgrades": [dict(item) for item in downgrade.downgrades],
+            },
+        )
         record_event(
             context,
             state,
@@ -645,125 +667,6 @@ def _invoke_semantic_interpreter(
         return interpretation, usage, budget_warnings, None, restored_tags
 
     return None, usage, budget_warnings, last_error, restored_tags
-
-
-def _invoke_intent_router(
-    context: _GraphContext,
-    state: AgentState,
-    user_task: str,
-    interpretation: SemanticInterpretation,
-    capability_match: CapabilityMatch,
-    usage: LLMUsage,
-    budget_warnings: list[str],
-) -> tuple[IntentDecision, LLMUsage, list[str], bool]:
-    messages = build_intent_router_messages(
-        context.intent_prompt,
-        user_task,
-        interpretation,
-        capability_match,
-    )
-    input_text = _serialized_structured_input(messages, IntentDecision)
-    intent_state = dict(state)
-    intent_state["token_usage"] = usage.model_dump()
-    intent_state["budget_warnings"] = budget_warnings
-    budget, budget_warnings = preflight_budget(
-        context,
-        intent_state,
-        role="intent_router",
-        model=context.router_model_name,
-        input_text=input_text,
-        reserved_output_tokens=context.router_max_tokens,
-        allow_reserve=False,
-    )
-    if budget.status == "blocked":
-        usage.budget_exhausted = True
-        return (
-            IntentDecision(
-                mode="answer",
-                confidence=0.0,
-                reason="Intent classification was skipped because the token budget was exhausted.",
-            ),
-            usage,
-            budget_warnings,
-            True,
-        )
-
-    started_ns = time.monotonic_ns()
-    raw = None
-    try:
-        _trace(
-            "intent",
-            "Intent classification started",
-            {"kind": "intent_activity", "status": "started"},
-        )
-        structured = context.intent_router.invoke(messages)
-        payload, raw = structured_result_payload(structured)
-        intent = IntentDecision.model_validate(payload)
-        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
-        usage = append_llm_usage(
-            usage,
-            role="intent_router",
-            model=context.router_model_name,
-            response=raw,
-            input_text=input_text,
-            output_text=intent.model_dump_json(),
-            budget_tokens=context.task_token_budget,
-            duration_ms=duration_ms,
-            price_catalog=context.price_catalog,
-        )
-        record_event(
-            context,
-            state,
-            "routing.intent_classified",
-            "classify",
-            {"mode": intent.mode, "confidence": intent.confidence},
-        )
-        _trace(
-            "intent",
-            "Intent classification completed",
-            {
-                "kind": "intent_activity",
-                "status": "completed",
-                "duration_ms": duration_ms,
-            },
-        )
-        return intent, usage, budget_warnings, False
-    except BaseException as error:
-        if _is_fatal_exception(error):
-            raise
-        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
-        record_event(
-            context,
-            state,
-            "routing.intent_router_failed",
-            "classify",
-            {
-                "error_type": type(error).__name__,
-                "validation_issues": _validation_issue_types(error),
-            },
-        )
-        usage = append_llm_usage(
-            usage,
-            role="intent_router",
-            model=context.router_model_name,
-            response=raw,
-            input_text=input_text,
-            output_text="",
-            budget_tokens=context.task_token_budget,
-            duration_ms=duration_ms,
-            status="failed",
-            price_catalog=context.price_catalog,
-        )
-        return (
-            IntentDecision(
-                mode="answer",
-                confidence=0.0,
-                reason="Intent classification failed, so execution was not authorized.",
-            ),
-            usage,
-            budget_warnings,
-            True,
-        )
 
 
 def invoke_router(
@@ -800,6 +703,23 @@ def invoke_router(
         request_mode=interpretation.request_mode,
         ignore_tags=restored_tags,
     )
+    # An interpretation reaches the registry either fully grounded or explicitly
+    # marked. Re-deriving that here from the same validator, rather than trusting
+    # a flag passed down, is what makes the bound checkable at the one place it
+    # has to hold: nothing whose quotes the request does not contain may present
+    # itself as an exact match or authorize an action.
+    if not validate_outcome_hypotheses(user_task, interpretation.outcome_hypotheses).valid:
+        capability_match = bounded_match(capability_match)
+        record_event(
+            context,
+            state,
+            "routing.unverified_evidence_bounded",
+            "classify",
+            {
+                "status": capability_match.status,
+                "matched_actions": capability_match.matched_actions,
+            },
+        )
     record_event(
         context,
         state,
@@ -831,6 +751,13 @@ def invoke_router(
         task=user_task,
     )
     decision = hydrate_router_decision(decision, user_task)
+    if capability_match.match_basis == UNVERIFIED_BASIS:
+        # The second half of the bound. A reading whose quotes were not found is
+        # something to show the user, never something to act on, whatever the
+        # intent router concluded about the request's mood.
+        decision = decision.model_copy(update={
+            "should_execute": False, "action": "no_tool",
+        })
     return _RouterInvocation(
         decision=decision,
         routing_state=outcome_routing_state(

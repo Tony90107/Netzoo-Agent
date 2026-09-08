@@ -428,7 +428,23 @@ class GuidanceResponseLLM:
         )
 
 
-def test_routing_never_accepts_unquoted_evidence_after_the_review_retry(tmp_path):
+def test_a_reading_whose_quotes_are_absent_is_kept_but_held_below_an_exact_match(tmp_path):
+    """The relaxation authorized in Log 94, and the exact extent of it.
+
+    This test used to assert the opposite -- that such a reading reached no
+    workflow at all. Discarding it entirely is what cost 148 of 188 such entries
+    their whole run, and every one of a round's twelve misspelled trials, while
+    the reading was usually right: a transposed letter makes a matching quote
+    impossible, not the meaning unclear.
+
+    The cost is stated here rather than hidden: this fixture's quotes are not a
+    typo, they are fabricated, and the relaxation cannot tell the two apart. So
+    a fabricated quote now does reach a named candidate. What it can never reach
+    is an exact match, an authorized action, or a claim that it was verified --
+    and the issue itself is still raised. Those bounds are the whole of what
+    keeps this safe, so each is asserted below; if any stops holding, the
+    relaxation has escaped its authorization.
+    """
     hypothesis = OutcomeHypothesis(
         outcome=RequestedOutcome(
             operation="infer", artifact_type="regulatory_network",
@@ -480,14 +496,25 @@ def test_routing_never_accepts_unquoted_evidence_after_the_review_retry(tmp_path
         context, {"run_id": str(run_id)}, "Explain sample-specific miRNA networks.",
     )
 
-    assert result.decision.matched_actions == []
+    events = {event.event_type for event in store.read_events(run_id)}
+
+    # Kept, and named, so the user has something to judge.
+    assert result.decision.matched_actions == ["run_lioness_puma"]
+    # The bounds. Never exact, never executable, never labelled verified.
+    assert result.decision.capability_match_status == "fallback"
+    assert result.decision.match_basis == "unverified_evidence"
     assert result.decision.should_execute is False
+    assert result.decision.action == "no_tool"
+    assert "routing.semantic_interpretation_accepted" not in events
+    # Still detected, still recorded: relaxing the response is not the same as
+    # ceasing to notice, and this is where those two would be confused.
+    assert "routing.semantic_evidence_unverified" in events
+    # The intent router now runs, where a discarded reading never reached it.
+    # That is a third paid call on a path that used to stop at two -- the price
+    # of keeping the reading, recorded rather than left to be discovered later.
     assert [call.role for call in result.usage.calls] == [
-        "semantic_interpreter", "semantic_reviewer",
+        "semantic_interpreter", "semantic_reviewer", "intent_router",
     ]
-    assert "routing.semantic_interpretation_accepted" not in {
-        event.event_type for event in store.read_events(run_id)
-    }
 
 
 def test_routing_repairs_multilingual_review_and_selects_typed_goal_without_fallback(tmp_path):

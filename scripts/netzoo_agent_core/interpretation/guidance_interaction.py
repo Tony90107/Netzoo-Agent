@@ -16,8 +16,26 @@ class GuidanceInteraction:
 def guidance_interaction(decision: TaskDecision) -> GuidanceInteraction | None:
     if decision.action != "no_tool" or decision.should_execute:
         return None
-    if decision.capability_match_status != "fallback" and decision.match_basis not in {"semantic_validation_recovery", "provider_unavailable"}:
+    if decision.capability_match_status != "fallback" and decision.match_basis not in {"semantic_validation_recovery", "provider_unavailable", "unverified_evidence"}:
         return None
+    if decision.match_basis == "unverified_evidence":
+        # Say the thing that actually happened. The message this replaces on
+        # this path called routing "unavailable" and advised retrying "when
+        # available" -- while routing had run, twice, and the wording it could
+        # not match was still in the request, so an unchanged retry was certain
+        # to fail again the same way.
+        return GuidanceInteraction(
+            "unverified_interpretation",
+            "! Interpretation kept, but its quotes could not be matched to your wording",
+            "The request was interpreted and a candidate was found, but at least one "
+            "quote supporting that reading could not be located in your text -- often "
+            "a spelling or rephrasing difference, sometimes a detail the reading added. "
+            "So this is shown as a candidate rather than a verified match, and nothing "
+            "will run from it. Please check that the reading matches what you meant.",
+            "Rephrase the part that matters most, or confirm the reading above and "
+            "restate your goal with the inputs you have. Repeating the request unchanged "
+            "will reach the same result.",
+        )
     question = decision.clarification_question
     if question:
         return GuidanceInteraction(

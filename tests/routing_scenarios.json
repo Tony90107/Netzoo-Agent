@@ -430,5 +430,144 @@
         ]
       }
     }
+  },
+  {
+    "id": "mirna-current-goal-misspelled",
+    "language": "en",
+    "category": "misspelling",
+    "prompt": "PANDA worked for our old aggregate TF analysis. With the current expresion matrix and miRNA, motif and PPI priros, which workflwo would estimate a seperate miRNA-to-gene regualtory network for every pateint? Please explan the choice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      }
+    }
+  },
+  {
+    "id": "aggregate-tf-baseline-misspelled",
+    "language": "en",
+    "category": "misspelling",
+    "prompt": "I have a cohrot gene expresion matrix, TF motif priros and PPI data. I want one cohort-wide TF-to-gene regualtory network using the standrad message-passing integration of those three inputs, with no relaxed matching and no TF activity estimation. Which workflwo should I use? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_panda"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "required_discriminators": {
+        "selection_tags": [
+          "aggregate_network"
+        ]
+      }
+    }
+  },
+  {
+    "id": "mutation-paraphrase-misspelled",
+    "language": "en",
+    "category": "misspelling",
+    "prompt": "Which workflwo would you recomend for assigning cancer pateints to subgropus from somatic mutaiton counts? Please acount for gene size and patient mutation burden and pool the signal by biolgical pathways. I only want a recomendation.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate"
+    }
+  },
+  {
+    "id": "mirna-misspelled-no-inputs",
+    "language": "en",
+    "category": "misspelling",
+    "prompt": "if i want to get sample specific mi-rna regualtor network, what toosl do i need?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "terse-mirna-per-sample",
+    "language": "en",
+    "category": "terse",
+    "prompt": "Which tool gives me a separate miRNA-to-gene regulatory network for each patient?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "terse-tf-cohort",
+    "language": "en",
+    "category": "terse",
+    "prompt": "Which tool builds one cohort-wide TF-to-gene regulatory network?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "require_clarification": true
+    }
+  },
+  {
+    "id": "terse-mutation-subtypes",
+    "language": "en",
+    "category": "terse",
+    "prompt": "Which tool assigns cancer patients to molecular subtypes?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate",
+      "answer_required": [
+        "SAMBAR"
+      ]
+    }
   }
 ]

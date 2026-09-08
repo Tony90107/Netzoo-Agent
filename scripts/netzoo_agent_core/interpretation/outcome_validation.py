@@ -10,6 +10,7 @@ import unicodedata
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
 from .request_integrity import confirmed_current_inputs, request_integrity_issues
+from .span_alignment import aligned_span
 
 __all__: list[str] = []
 
@@ -38,11 +39,21 @@ def _normalized(value: str) -> str:
 
 
 def _grounded_span(span: str, task: str) -> bool:
+    """Whether the request contains this quote, verbatim or misspelled.
+
+    The verbatim test comes first and is unchanged, so word alignment can only
+    ever add a grounding. That ordering is not a micro-optimization: scripts
+    without word delimiters normalize to a single token, and alignment cannot
+    read them at all -- a Chinese quote that grounds today grounds through this
+    branch. `aligned_span` refuses every non-ASCII word for the same reason.
+    """
     if not span:
         return False
     left = r"(?<![a-z0-9])" if span[0].isascii() and span[0].isalnum() else ""
     right = r"(?![a-z0-9])" if span[-1].isascii() and span[-1].isalnum() else ""
-    return re.search(left + re.escape(span) + right, task) is not None
+    if re.search(left + re.escape(span) + right, task) is not None:
+        return True
+    return aligned_span(span, task)
 
 
 def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:

@@ -562,6 +562,7 @@ def hypothesis(
                 dimension="regulator_type",
                 value="mirna",
                 source="explicit",
+                text_span="miRNA",
                 rationale="The request explicitly names miRNA.",
             )
         ],
@@ -1032,6 +1033,7 @@ def test_generic_sample_network_keeps_compatible_families_unranked():
                             dimension="granularity",
                             value="sample_specific",
                             source="explicit",
+                            text_span="per-sample",
                             rationale="The request explicitly asks for per-sample output.",
                         )
                     ],
@@ -1078,6 +1080,7 @@ def test_measurement_metadata_is_retained_without_reselecting_action(task):
                             dimension="artifact_type",
                             value="measurement_dataset",
                             source="explicit",
+                            text_span="measured miRNA values",
                             rationale="The request asks for measured miRNA values.",
                         )
                     ],

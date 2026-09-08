@@ -174,9 +174,14 @@ def test_unrepaired_quotes_fail_semantic_metric_even_when_fallback_selects_tool(
     assert not result["passed"]
     assert not result["semantic_passed"]
     assert not result["route_passed"]
-    assert result["status"] is None
+    # Not discarded any more -- kept as a candidate, and still not a pass. The
+    # semantic metric is what must not soften: a reading whose quote the request
+    # lacks has not been verified, whatever guidance was salvaged from it.
+    assert result["status"] == "fallback"
     assert "evidence_validation" in result["diagnostics"]
-    assert len(provider.calls) == 2
+    # Three, not two: the reading survives to intent classification instead of
+    # being dropped before it. The extra call is what keeping it costs.
+    assert len(provider.calls) == 3
     assert result["should_execute"] is False
 
 
@@ -500,9 +505,11 @@ def test_report_separates_a_missing_quote_from_a_quote_the_request_lacks():
     closed-vocabulary dimension and value, never the provider's own words.
     """
     item = hypothesis()
-    # Claims an explicit quote and supplies none.
+    # A quote made of characters that are not words. Since the contract began
+    # requiring `explicit` entries to carry a quote, an entry supplying none no
+    # longer parses, and this is the remaining way to reach `absent`.
     item["evidence"][3]["source"] = "explicit"
-    item["evidence"][3]["text_span"] = None
+    item["evidence"][3]["text_span"] = "--"
     # Supplies one the request does not contain.
     item["evidence"][2]["text_span"] = "This text is absent from the request"
     provider = FixtureProvider(
