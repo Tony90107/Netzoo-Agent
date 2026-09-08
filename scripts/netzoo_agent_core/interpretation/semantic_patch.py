@@ -93,7 +93,16 @@ def apply_semantic_patch(
     }
     outcome = RequestedOutcome(**{**base.outcome.model_dump(), **overrides})
 
-    withdrawn = {(item.dimension, item.value) for item in patch.evidence_removals}
+    # A citation-only repair leaves the outcome alone, so no evidence entry can
+    # have gone stale -- and a withdrawal there takes support away from a value
+    # the outcome still asserts, recreating the very issue being repaired.
+    # Measured: in 8 of 11 residual failures the review withdrew exactly the
+    # entries attempt 2 then reported missing, `('operation', 'infer')` and
+    # `('artifact_type', 'regulatory_network')`, while adding only the two role
+    # entries it was asked for.
+    withdrawn = set() if evidence_only else {
+        (item.dimension, item.value) for item in patch.evidence_removals
+    }
     evidence = []
     retired: list[dict] = []
     for item in base.evidence:
