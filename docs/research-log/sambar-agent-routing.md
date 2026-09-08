@@ -6675,3 +6675,44 @@ CalledProcessError: Command '[docker run ... python /out/build.py]' returned non
 
 **偶發本身尚未定性**：三項單獨跑皆通過，全閘門下兩項失敗，
 最可能是並行時的資源競爭，但**在拿到 stderr 之前不下結論**。已重跑全閘門觀察。
+
+## Log 104｜PANDA 對上 MATLAB 第三方基準通過；PUMA 只能做到管線層，原因是具體的
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**（本機 Docker）。
+已數值核對 **8/12 → 10/12**。
+
+### PANDA：第三方基準，通過
+
+上游有 `tests/panda/panda_gt_matlab.csv`（MATLAB 產出），
+其 `test_panda.py` 以
+`pd.testing.assert_frame_equal(rtol=1e-12, atol=1e-12, check_exact=False, check_names=False)`
+比對。**該斷言原樣抄用**，改為比「我方生產路徑的輸出」對「同一個 MATLAB 檔」。
+
+「論證等價」比預期簡單：`netZooPy/command_line.py:60,94` 顯示 CLI 只是
+`Panda(...)` 的薄構造，選項逐一原樣傳入。所以只要把上游那個區塊的旗標
+（`--save_memory --mode_process legacy --save_tmp --keep_expr`）交給
+`run_panda(extra_args=...)`，就是同一組參數，不需要任何推論。
+
+結果：**87 TF × 1000 gene，最大絕對差 1.39×10⁻¹³**（門檻 1e-12）。
+反向控制：擾動一個值 10⁻⁶ 即失敗。並加了形狀斷言——**兩個空表比較起來是相等的**。
+
+### PUMA：第三方基準不可達，原因寫清楚
+
+上游的第三方參考 `tests/puma/matlablike_test_puma.txt` 是在
+`modeProcess="legacy"` 下產生的。而我方生產路徑走 netZooPy 的 legacy
+`run_puma.py`，其第 76 行構造 `Puma(...)` **完全沒有傳 modeProcess**
+（因此是類別預設 `"union"`），而該腳本**也沒有任何旗標可以改它**。
+
+**兩者跑的是不同的處理模式，比不了**——這不是精度問題，是模式不同。
+所以本次做可達的那一半：我方輸出對「以 `run_puma.py` 第 76 行原樣參數呼叫的
+class API」，容差沿用上游 PUMA 測試自己的 `rtol=1e-5`。
+
+**這是管線層核對，不是第三方核對**，如實標示在測試 docstring 裡。
+它能抓的是 OTTER 那一類（包裝層安靜產出錯數字），抓不到 PUMA 數學本身的問題。
+若要真正的第三方核對，**需要讓生產路徑能指定 modeProcess**——那是行為改動，
+留給使用者決定。
+
+### 剩下 2 個
+
+DRAGON、BONOBO：上游無參考值亦無測試資料（交接已載明），只能做契約層。
+**先驗仍應放低**：已核對的 10 個裡抓到 2 個真實缺陷。
