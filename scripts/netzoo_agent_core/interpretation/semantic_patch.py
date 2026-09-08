@@ -25,6 +25,8 @@ is silently dropped.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from ..contracts.outcomes import (
     OutcomeHypothesis, RequestedOutcome, SemanticInterpretation, SemanticPatch,
 )
@@ -55,14 +57,36 @@ def patched_hypothesis_index(proposal: SemanticInterpretation, patch: SemanticPa
     return min(patch.hypothesis_index, len(proposal.outcome_hypotheses) - 1)
 
 
+def evidence_only_repair(issues: Sequence[str]) -> bool:
+    """Whether the rejection asked for citations and nothing else.
+
+    `missing_evidence` says a value has no supporting entry. It does not say the
+    value is wrong -- other codes do that, and say which dimension
+    (`conflicting_evidence`, `artifact_granularity`, `role_entity`,
+    `terminal_goal_conflict`). Asked only for citations, the review rewrote the
+    whole outcome in 14 of 24 recorded patches and introduced
+    `entity_types=["sample"]` on the way, which raised `role_entity` 38 times
+    across 36 trials and is this study's only recorded source of a wrong tool.
+    """
+    return bool(issues) and all(".missing_evidence:" in issue for issue in issues)
+
+
 def apply_semantic_patch(
     proposal: SemanticInterpretation,
     patch: SemanticPatch,
+    *,
+    evidence_only: bool = False,
 ) -> tuple[SemanticInterpretation, list[dict]]:
-    """Return the merged interpretation and the stale evidence the patch retired."""
+    """Return the merged interpretation and the stale evidence the patch retired.
+
+    `evidence_only` drops the patch's outcome overrides and keeps its evidence
+    changes. It is set when every issue was `missing_evidence`, so the review was
+    answering a question about citations; changing values there answers a
+    question nobody asked.
+    """
     index = patched_hypothesis_index(proposal, patch)
     base = proposal.outcome_hypotheses[index]
-    overrides = {
+    overrides = {} if evidence_only else {
         name: value
         for name, value in patch.outcome.model_dump().items()
         if value is not None

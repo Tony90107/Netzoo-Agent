@@ -36,7 +36,7 @@ from netzoo_agent_core.llm import build_llm, build_semantic_reviewer_messages, v
 from netzoo_agent_core.policy import ProjectPolicyLoader
 from netzoo_agent_core.pricing import PriceCatalog
 from workflow_registry import ArtifactType, EntityType, Granularity, RecommendedAction
-from routing_repair_replay import OBSERVED_ISSUES, RepairReplayProvider
+from routing_repair_replay import REPLAY_SUITES, RepairReplayProvider, suite_cases
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCENARIOS = PROJECT_ROOT / "tests" / "routing_scenarios.json"
@@ -498,8 +498,11 @@ def evaluate(
     if not cases or not 1 <= repeat <= 5:
         raise ValueError("Evaluation requires cases and 1-5 repetitions.")
     replay = isinstance(provider, RepairReplayProvider)
-    if replay and any(case.id not in OBSERVED_ISSUES for case in cases):
-        raise ValueError("Repair replay supports only the three original cases.")
+    # Each suite reconstructs a first pass for its own prompts. The role-evidence
+    # class does not occur in the three mutation prompts at all -- SAMBAR has no
+    # regulator or target -- so the permitted set is the suite's, not a fixed one.
+    if replay and any(case.id not in suite_cases(provider.suite) for case in cases):
+        raise ValueError("Repair replay supports only the prompts its suite reconstructs.")
     policy = ProjectPolicyLoader(PROJECT_ROOT).load()
     prompts = build_graph_prompts(policy)
     recorder = _EventRecorder()
@@ -688,7 +691,7 @@ def main(argv=None) -> int:
     parser.add_argument("--case", action="append", default=[], help="Select IDs (repeatable).")
     parser.add_argument("--live", action="store_true", help="Explicitly authorize paid provider calls for the selected public prompts.")
     parser.add_argument("--repair-replay", action="store_true", help="Inject reconstructed observed first-pass errors; evaluate reviewer repair, not raw-prompt accuracy.")
-    parser.add_argument("--repair-replay-suite", choices=("cross-field", "missing-required", "missing-input"),
+    parser.add_argument("--repair-replay-suite", choices=tuple(REPLAY_SUITES),
                         help="Observed failure batch; requires --repair-replay (default: cross-field).")
     parser.add_argument("--model", default=DEFAULT_ROUTER_MODEL)
     parser.add_argument("--semantic-contract", choices=("legacy", "claims"), default="legacy", help="Claims is experimental; legacy preserves the current provider schema.")
@@ -708,9 +711,12 @@ def main(argv=None) -> int:
         if args.case:
             cases = [case for case in cases if case.id in args.case]
         if args.repair_replay:
-            if args.case and any(case.id not in OBSERVED_ISSUES for case in cases):
-                raise _ConfigurationError("Repair replay supports original-q1, original-q2 and original-q3 only.")
-            cases = [case for case in cases if case.id in OBSERVED_ISSUES]
+            permitted = suite_cases(args.repair_replay_suite or "cross-field")
+            if args.case and any(case.id not in permitted for case in cases):
+                raise _ConfigurationError(
+                    f"Repair replay suite reconstructs only: {', '.join(sorted(permitted))}."
+                )
+            cases = [case for case in cases if case.id in permitted]
         if not args.live:
             report = {"mode": "corpus_validation_only", "cases": len(cases), "ids": [case.id for case in cases]}
             if args.repair_replay:
