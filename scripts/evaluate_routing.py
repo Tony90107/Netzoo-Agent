@@ -390,6 +390,11 @@ def _score(case, result, events):
             for item in event["payload"].get("restored", [])
         ],
         "status": decision.capability_match_status, "matched_actions": decision.matched_actions,
+        # The candidates an ambiguous decision is holding. Without them a report
+        # cannot tell "underdetermined, and here are the four it is between"
+        # from "resolved nothing at all", and those need opposite responses.
+        "hypothesis_actions": decision.hypothesis_actions,
+        "clarification_question_asked": bool(decision.clarification_question),
         "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in decision.rejected_methods],
         "outcome": actual_outcome, "request_mode": request_mode,
@@ -427,12 +432,30 @@ def _score_answer(case, result, context, progress=""):
     explicitly requiring an answer for such a case fails instead of fabricating a pass.
     """
     decision = result.decision
+    # `ambiguous` is the commonest outcome by far -- 69 of 162 trials over two
+    # rounds -- and all of it used to leave here unscored, so no report said
+    # anything about what the user sees in the commonest case. That is how a
+    # problem the answer layer had already solved stayed written down as unfixed
+    # across several handoffs. Most of it is answered deterministically by
+    # `render_outcome_clarification`, which costs no provider call, so it is
+    # scored below; the remainder genuinely needs the response model and stays
+    # outside this evaluator -- but it now says so instead of being folded into
+    # one undifferentiated `false`.
+    deterministic_ambiguity = (
+        decision.capability_match_status == "ambiguous"
+        and bool(decision.clarification_question)
+    )
     if decision.action != "no_tool" or decision.should_execute or not (
         decision.capability_match_status in {"exact", "fallback"}
         and any(action in context.project_policy.workflows for action in decision.matched_actions)
         or decision.rejected_methods or decision.match_basis in {"semantic_validation_recovery", "provider_unavailable"}
+        or deterministic_ambiguity
     ):
         return {"answer_evaluated": False, "answer_passed": None, "answer": "",
+                "answer_scope": (
+                    "response_model" if decision.capability_match_status == "ambiguous"
+                    else "out_of_scope"
+                ),
                 "answer_errors": ["answer: no verified guidance available"]
                 if case.expected.answer_required or case.expected.answer_forbidden else []}
     plan = WorkflowPlan(workflow="NO-TOOL", objective="Evaluate guidance only",
@@ -450,7 +473,18 @@ def _score_answer(case, result, context, progress=""):
     if response.get("token_usage"):
         errors.append("answer: selected guidance unexpectedly used the free-response path")
     progress = progress.getvalue() if hasattr(progress, "getvalue") else progress
-    return {"answer_evaluated": True, "answer_passed": not errors, "answer": answer, "answer_errors": errors,
+    # An ambiguous decision holding candidates has to name them. It already did,
+    # for 56 of the 69 ambiguous trials in the two rounds that first looked --
+    # and nothing recorded that, so neither the fix nor its loss would show.
+    errors.extend(
+        f"candidate_unnamed: {action}"
+        for action in decision.hypothesis_actions
+        if decision.capability_match_status == "ambiguous"
+        and (spec := context.project_policy.workflows.get(action)) is not None
+        and spec.workflow.casefold() not in answer.casefold()
+    )
+    return {"answer_evaluated": True, "answer_passed": not errors, "answer": answer,
+            "answer_errors": errors, "answer_scope": "deterministic",
             **score_surface(decision, state, progress, answer)}
 
 

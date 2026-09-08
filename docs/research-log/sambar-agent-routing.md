@@ -6444,3 +6444,108 @@ S6 的 `without_span` 10 → 0（結構性），以及本節的 `unmatched` 60 �
 必須跑替身輪並報告同碼離散，或改用結構性指標
 （如 `unmatched`、`without_span`、走某條路徑的次數）——
 那些不是分數，不受模型抽樣影響。
+
+## Log 99｜事前宣告：問題 4 其實大半已修，真正的缺陷是「沒人在看」與一處沉默
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+**未付費**：以下全部由 r25／r26 已記錄的 outcome 離線重放 matcher 與 answer 層得出。
+
+### 交接的問題 4 陳述有誤
+
+交接說「歧義以決定性方式作答，永不進入 response model，**所以無法用真實候選
+把候選講出來**。已釘住、未修。」把 69 次 ambiguous 的 outcome 重放一次：
+
+| 使用者實際看到 | 次數 |
+| --- | --- |
+| **具名列出真實候選** | **56** |
+| 有文字但無候選可具名（outcome 未解析出任何候選，合理） | 12 |
+| **完全沒有文字** | **1** |
+
+`render_outcome_clarification` 早就在做這件事，例如：
+
+```
+I can map this to more than one compatible network result:
+- TF-only regulatory network: PANDA → LIONESS-PANDA
+- TF/miRNA regulatory network: PUMA → LIONESS-PUMA
+
+Should the result be aggregate or sample-specific?
+```
+
+**問題 4 的主體已經修好了，只是沒有任何報告能看見它。**
+
+### 真正的缺陷有兩個
+
+1. **量測盲區（大）**：`ambiguous` 是目前最大宗的結果（69/162 ＝ 43%），
+   而其中 **63 次 `answer_evaluated: False`**——評估器對使用者會看到什麼
+   **完全不主張**。報表也沒有記錄 `hypothesis_actions`。
+   **一個已修好的問題因此被連續數份文件記成未修**；同理，它退化了也不會有人發現。
+2. **一處沉默（小但確定）**：`outcome_matching.py:608` 的
+   `if len(unique_top_actions) > 1 else None` 使「ambiguous 但只有 1 個候選」
+   **完全不帶問題**，`render_outcome_clarification` 因此提早返回 None。
+   系統說「我不確定」，然後既不問也不說。r25／r26 各出現一次
+   （`two-layer-network`，候選為 `run_dragon`）。
+
+### 判準
+
+- **Q1（決定性）**：`ambiguous` 的試驗必須全部 `answer_evaluated: True`。盲區關閉。
+- **Q2（決定性）**：**ambiguous 的決策永遠不得產生空的使用者文字。**
+  單一候選那條路徑須先驗證修正前會失敗。
+- **Q3（決定性）**：候選 ≥ 2 時，文字必須具名列出**每一個**候選。
+  這是在釘住一個已經正確、卻從未被記錄的行為——不釘住，它退化了也沒人知道。
+- **Q4（成本，決定性）**：不得新增任何 provider 呼叫。
+  ambiguous 的答覆是決定性產生的，評估它不該要錢。
+- **Q5（回歸）**：既有測試全綠；語料對 ambiguous 的期望
+  （`terse-tf-cohort`、`missing-granularity`，r25／r26 皆 6/6）不得改寫。
+
+### 不做什麼
+
+不動 matcher 判定 ambiguous 的門檻，也不改任何題的期望狀態。
+本節只做「讓看不見的變成看得見」與「補上那處沉默」。
+
+## Log 100｜Q1／Q3／Q4／Q5 成立；Q2 的前提是錯的，被既有測試當場擋下
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**：本節全部為離線與既有存檔重放。
+讀法宣告於 Log 99，實作前寫入，本節未修改。
+
+### Q2 撤回：那不是沉默，是交給 response model
+
+我把 `outcome_matching.py:608` 的「單一候選 → `clarification_question=None`」
+當成缺陷，改成一律給問題。既有測試
+`test_explicit_sample_specific_guidance_reaches_response_llm` 立刻擋下：
+使用者**已經明講 sample-specific**，我的改動卻讓系統反問
+「aggregate 還是 sample-specific？」
+
+那個 `else None` **是有意的**：只有一個候選時沒有值得問的問題，於是交給
+response model 去寫答覆（測試名稱就寫著 `reaches_response_llm`）。
+我之所以誤判成「沉默」，是因為離線重放時直接呼叫
+`render_outcome_clarification`，而背後沒有 response model。
+**用不完整的重放環境下結論，就會把設計讀成缺陷。** 該改動已撤回。
+
+### 成立的部分
+
+| 判準 | 結果 |
+| --- | --- |
+| **Q1 ambiguous 不再無人評分** | ✓ 帶問題者以決定性答覆評分；不帶問題者標記 `answer_scope: response_model`，不再與「沒人看」混為一談 |
+| **Q3 候選必須全部具名** | ✓ 並加了會失敗的反向測試（抽掉兩個名字 → `candidate_unnamed`） |
+| **Q4 不得新增 provider 呼叫** | ✓ 呼叫序列仍為 interpreter → patch → intent |
+| **Q5 回歸** | ✓ 1496 passed，既有測試零改寫 |
+
+報表新增 `hypothesis_actions` 與 `clarification_question_asked`。
+**「模糊，候選是這四個」與「什麼都沒解析出來」從此在報表上可分**——
+先前兩者都只是 `status: ambiguous`。
+
+### 又一次「測試沒釘住東西」
+
+我寫的第一版 Q2 反向測試用 `if` 包住斷言，而該條件**從不成立**
+（那個 outcome 實際上是 `None` 而非 `ambiguous`），等於空跑。
+改用 live 真的出現過的形狀（`two-layer-network`，唯一候選 DRAGON），
+並**先斷言該形狀仍可達**，再斷言標記。
+標準禁令的「通過原因錯的測試什麼都沒釘住」在本節出現了一次，記在這裡。
+
+### 交接的問題 4 應改寫
+
+問題 4 說「無法用真實候選把候選講出來，已釘住、未修」。
+重放 69 次 ambiguous：**56 次已經具名列出真實候選**，12 次沒有候選可講
+（outcome 未解析出任何候選，合理），1 次交給 response model。
+**主體早已修好，只是沒有任何報告看得見它**——而看不見的正確行為，
+與看不見的錯誤行為，從外面看是一樣的。本節補的就是那雙眼睛。
