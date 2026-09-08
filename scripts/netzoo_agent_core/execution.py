@@ -294,6 +294,7 @@ def _run_lioness_command(
     motif_file: str = "",
     ppi_file: str = "",
     mirna_file: str = "",
+    mode_process: str = "",
 ) -> str:
     lioness_suffix = Path(lioness_output).suffix.casefold()
     allowed_suffixes = (
@@ -373,6 +374,8 @@ def _run_lioness_command(
         command.extend(["-p", ppi_file])
     if mirna_file:
         command.extend(["-i", mirna_file])
+    if mode_process:
+        command.extend(["--mode_process", mode_process])
     command.extend(["-o", output_file, "-q", lioness_output])
     sections = [
         section for section in [preparation_report, validation_report] if section
@@ -415,8 +418,16 @@ def run_lioness_puma(
     mirna_file: str,
     output_file: str,
     lioness_output: str,
+    mode_process: str = "",
 ) -> str:
-    """Run aggregate PUMA plus LIONESS-PUMA sample-specific networks."""
+    """Run aggregate PUMA plus LIONESS-PUMA sample-specific networks.
+
+    `mode_process` selects how the priors' genes and TFs are combined for the
+    aggregate PUMA step -- "union" (the long-standing behaviour, and what an
+    empty value keeps), "legacy", or "intersection". The step could not choose
+    before, which is why it had no comparison against upstream's own reference
+    network. The sample-specific step follows whatever the aggregate produced.
+    """
     return _run_lioness_command(
         "puma",
         expression_file,
@@ -425,6 +436,7 @@ def run_lioness_puma(
         motif_file,
         ppi_file,
         mirna_file,
+        mode_process=mode_process,
     )
 
 
