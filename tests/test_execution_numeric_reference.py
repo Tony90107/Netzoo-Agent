@@ -878,3 +878,156 @@ def test_a_failed_container_run_says_what_the_container_said():
 
     assert "exited 3" in str(raised.value)
     assert "netzoo-diagnostic-marker" in str(raised.value)
+
+
+# --- PANDA against upstream's MATLAB ground truth ----------------------------
+
+PANDA_TOY = "/opt/netZooPy/tests/puma/ToyData"
+PANDA_GT = "/opt/netZooPy/tests/panda/panda_gt_matlab.csv"
+
+# The flags upstream's own comparison runs under. netZooPy's CLI is a thin
+# constructor call -- `command_line.panda` builds `Panda(...)` from its options
+# verbatim -- so these reproduce upstream's block 4 exactly rather than
+# approximating it: save_memory gives the TF-by-gene adjacency the MATLAB file
+# is in, and modeProcess=legacy is the mode that file was produced under.
+PANDA_MATLAB_FLAGS = "--save_memory --mode_process legacy --save_tmp --keep_expr"
+
+PANDA_BUILD = r'''
+import sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_panda.invoke(dict(
+    expression_file="{toy}/ToyExpressionData.txt",
+    motif_file="{toy}/ToyMotifData.txt",
+    ppi_file="{toy}/ToyPPIData.txt",
+    output_file="/out/produced.txt",
+    extra_args="{flags}"))
+assert "Exit code: 0" in report, report
+'''
+
+
+@pytest.fixture(scope="module")
+def panda_matlab_run() -> dict[str, object]:
+    """Run PANDA through the production wrapper and read upstream's MATLAB file.
+
+    This is the third-party comparison the capability did not have. Upstream's
+    own CLI test asserts only `returncode == 0`, so nothing until now checked
+    that the numbers our path produces are PANDA's numbers -- the same gap that
+    let OTTER emit a silently wrong network.
+    """
+    import pandas as pd
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(
+            PANDA_BUILD.format(toy=PANDA_TOY, flags=PANDA_MATLAB_FLAGS),
+            encoding="utf-8",
+        )
+        _in_container(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "sh", "-c",
+                f"python /out/build.py && cp {PANDA_GT} /out/ground_truth.csv",
+            ],
+            timeout=1800,
+        )
+        produced = pd.read_csv(out / "produced.txt", sep=" ", engine="python")
+        produced = produced.set_index(produced.columns[0])
+        ground_truth = pd.read_csv(out / "ground_truth.csv", sep=",", index_col=0, header=0)
+    return {"produced": produced, "ground_truth": ground_truth}
+
+
+def test_panda_network_matches_upstreams_matlab_ground_truth(panda_matlab_run):
+    """Upstream's own assertion, called with its own tolerances, unchanged.
+
+    `tests/test_panda.py` compares its legacy-mode network to this same file
+    with exactly this call; copying it is what keeps the tolerance the method
+    authors' and not ours.
+    """
+    import pandas as pd
+
+    # Two empty frames compare equal, so the size of what was compared is
+    # asserted before the comparison rather than trusted.
+    assert panda_matlab_run["produced"].shape == (87, 1000)
+
+    pd.testing.assert_frame_equal(
+        panda_matlab_run["produced"], panda_matlab_run["ground_truth"],
+        rtol=1e-12, atol=1e-12, check_exact=False, check_names=False,
+    )
+
+
+# --- PUMA against the class API the production script itself calls -----------
+
+# Upstream's third-party reference (`tests/puma/matlablike_test_puma.txt`) is
+# produced under `modeProcess="legacy"`. The production path runs netZooPy's
+# legacy `run_puma.py`, which constructs `Puma(...)` without a modeProcess
+# argument at all -- so it runs the class default, "union" -- and exposes no
+# flag to change it. The third-party comparison is therefore unreachable
+# through the wrapper as it stands, and this checks the reachable thing instead:
+# that our path reproduces the class API called with the arguments that script
+# passes. That is a check on our plumbing, not on PUMA's mathematics, and it is
+# the kind that caught OTTER emitting a silently wrong network.
+PUMA_BUILD = r'''
+import sys
+sys.path.insert(0, "/opt/netzoo-app/scripts")
+from netZooPy.puma.puma import Puma
+from netzoo_agent_core import execution
+from netzoo_agent_core.runtime import configure_runtime
+
+toy = "{toy}"
+
+# netZooPy/puma/run_puma.py line 76, verbatim: no modeProcess, save_tmp=True,
+# keep_expression_matrix=bool(lioness_file) which is False with no lioness output.
+reference = Puma(f"{{toy}}/ToyExpressionData.txt", f"{{toy}}/ToyMotifData.txt",
+                 f"{{toy}}/ToyPPIData.txt", f"{{toy}}/ToyMiRList.txt",
+                 save_tmp=True, remove_missing=False, keep_expression_matrix=False)
+reference.save_puma_results("/out/reference.txt")
+
+configure_runtime(EXECUTE_TOOLS=True)
+report = execution.run_puma.invoke(dict(
+    expression_file=f"{{toy}}/ToyExpressionData.txt",
+    motif_file=f"{{toy}}/ToyMotifData.txt",
+    ppi_file=f"{{toy}}/ToyPPIData.txt",
+    mirna_file=f"{{toy}}/ToyMiRList.txt",
+    output_file="/out/produced.txt"))
+assert "Exit code: 0" in report, report
+'''
+
+
+@pytest.fixture(scope="module")
+def puma_run() -> dict[str, object]:
+    import pandas as pd
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        (out / "build.py").write_text(
+            PUMA_BUILD.format(toy=PANDA_TOY), encoding="utf-8"
+        )
+        _in_container(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{out}:/out",
+                "-v", f"{ROOT / 'scripts'}:/opt/netzoo-app/scripts:ro",
+                IMAGE, "python", "/out/build.py",
+            ],
+            timeout=1800,
+        )
+        read = lambda name: pd.read_csv(out / name, sep=" ", header=None)  # noqa: E731
+        return {"produced": read("produced.txt"), "reference": read("reference.txt")}
+
+
+def test_puma_network_matches_netzoopy_called_directly(puma_run):
+    """Upstream's own tolerance for PUMA (`rtol=1e-5`), taken from its test."""
+    import pandas as pd
+
+    assert puma_run["produced"].shape == puma_run["reference"].shape
+    assert len(puma_run["produced"]) > 10_000, "the toy network did not build"
+
+    pd.testing.assert_frame_equal(
+        puma_run["produced"], puma_run["reference"], rtol=1e-5, check_exact=False,
+    )
