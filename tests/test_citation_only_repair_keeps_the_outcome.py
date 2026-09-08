@@ -149,3 +149,48 @@ def test_suppressing_the_rewrite_is_what_removes_the_role_entity_rejection():
 
     assert outcome_consistency_issues(rewritten.outcome_hypotheses[0].outcome)
     assert not outcome_consistency_issues(citations.outcome_hypotheses[0].outcome)
+
+
+def test_a_citation_only_repair_ignores_withdrawals_too():
+    """Nothing can have gone stale, so a withdrawal can only undo the repair.
+
+    The outcome is untouched on this path, so every evidence entry still
+    supports a value the outcome asserts. Applying a withdrawal there recreates
+    the `missing_evidence` being repaired -- measured in 8 of 11 residual
+    failures, where the review withdrew exactly the entries attempt 2 then
+    reported missing while adding only the two roles it was asked for.
+    """
+    item = proposal()
+    item.outcome_hypotheses[0].evidence.append(
+        type(item.outcome_hypotheses[0].evidence[0]).model_validate({
+            "dimension": "artifact_type", "value": "regulatory_network",
+            "source": "inferred", "rationale": "The request describes a network.",
+        })
+    )
+    patch = SemanticPatch.model_validate({
+        "hypothesis_index": 0,
+        "evidence_additions": [
+            {"dimension": "regulator_type", "value": "mirna", "source": "inferred",
+             "rationale": "The request names miRNA regulators."},
+        ],
+        # Exactly the shape observed: withdraw the first pass's own valid
+        # entries while adding the roles.
+        "evidence_removals": [
+            {"dimension": "operation", "value": "infer"},
+            {"dimension": "artifact_type", "value": "regulatory_network"},
+        ],
+    })
+
+    kept, _ = apply_semantic_patch(item, patch, evidence_only=True)
+    dropped, _ = apply_semantic_patch(item, patch, evidence_only=False)
+
+    kept_pairs = {(e.dimension, e.value) for e in kept.outcome_hypotheses[0].evidence}
+    dropped_pairs = {(e.dimension, e.value) for e in dropped.outcome_hypotheses[0].evidence}
+
+    # Citation-only: the first pass's entries survive and the role is added.
+    assert ("operation", "infer") in kept_pairs
+    assert ("artifact_type", "regulatory_network") in kept_pairs
+    assert ("regulator_type", "mirna") in kept_pairs
+    # The scope guard: elsewhere a withdrawal still withdraws.
+    assert ("operation", "infer") not in dropped_pairs
+    assert ("artifact_type", "regulatory_network") not in dropped_pairs
