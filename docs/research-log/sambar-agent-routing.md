@@ -6716,3 +6716,96 @@ class API」，容差沿用上游 PUMA 測試自己的 `rtol=1e-5`。
 
 DRAGON、BONOBO：上游無參考值亦無測試資料（交接已載明），只能做契約層。
 **先驗仍應放低**：已核對的 10 個裡抓到 2 個真實缺陷。
+
+## Log 105｜事前宣告：讓 PUMA 的生產路徑能指定 `modeProcess`
+
+日期／時區：2026-09-08，Asia/Taipei。**本節在實作之前寫入，實作與量測後不得修改。**
+**使用者已授權**（Log 104 提出的唯一待決策）。
+
+### 為什麼非動生產路徑不可
+
+`netzoopy` CLI **只有 `panda` 與 `lioness`，沒有 `puma`**，所以我方唯一的路徑是上游
+legacy 的 `netZooPy/puma/run_puma.py`。該腳本第 76 行構造 `Puma(...)` 時
+**完全不傳 `modeProcess`**（＝類別預設 `"union"`），且沒有任何旗標可改。
+而上游的第三方參考 `matlablike_test_puma.txt` 是在 `"legacy"` 下產生的。
+**兩者跑的是不同處理模式，不加旗標就永遠比不了。**
+
+### 做法
+
+改由我方擁有的 `scripts/run_puma.py` 取代該腳本（`scripts/run_puma_precomputed.py`
+已是同樣的先例），內容逐項照抄上游那 4 行實質邏輯，**只多一個 `--mode_process`**。
+`docker/run-puma` 改 exec 我方腳本；`execution.run_puma` 增加 `mode_process` 參數，
+**預設空字串 ＝ 完全不改變現有行為**。
+
+### 判準
+
+- **V1（等價，決定性，否決條件）**：**不指定 `mode_process` 時，我方腳本的輸出必須與
+  上游 `run_puma.py` 的輸出逐值相同**（`check_exact=True`）。
+  這是「沒有改變現有行為」的可否證證明。**不成立 → 撤回。**
+- **V2（第三方，決定性）**：`mode_process=legacy` 時，輸出須對上
+  `tests/puma/matlablike_test_puma.txt`，**沿用上游 PUMA 測試自己的 `rtol=1e-5`**。
+  達成則 PUMA 由「管線層」升為**第三方核對**，10/12 → 11/12。
+- **V3（決定性）**：無法辨識的 mode 必須被明確拒絕，**不得默默落回預設**——
+  默默落回會讓 V2 的測試在旗標失效時照樣通過，等於什麼都沒釘住。
+- **V4（回歸）**：既有測試零改寫；含 Docker 的完整閘門全綠。
+- **V5（不擴大，否決條件）**：`-r/--rm_missing` 的**行為必須逐字保留**。
+  上游 `getopt` 把 `r` 宣告為無參數旗標卻寫 `rm_missing = arg`（旗標的 `arg` 是空字串），
+  所以**它從來沒有生效過**。我方腳本必須同樣忽略它。
+  **修好它是另一件事，需另行授權**；本次只把 `docker/run-puma` 說明文字裡
+  「Remove missing genes/TFs」這句不實描述改成如實說明——**這不改行為**。
+
+### 事前寫下的限制
+
+V1 成立只證明「我方腳本 ≡ 上游腳本」，V2 成立只證明「legacy 模式下數值對得上第三方」。
+**兩者都不證明 union 模式（即目前的預設）的數值正確**——union 模式沒有第三方基準，
+這一點不因本次變更而改變，事後不得含混帶過。
+
+## Log 106｜PUMA 取得第三方核對；V1–V5 全數成立。已核對 11/12
+
+日期／時區：2026-09-08，Asia/Taipei。**未付費**（本機 Docker）。
+讀法宣告於 Log 105，實作前寫入，本節未修改。
+
+| 判準 | 結果 |
+| --- | --- |
+| **V1 預設路徑必須與上游腳本逐值相同（否決條件）** | ✓ `check_exact=True` 通過，87000 列 |
+| **V2 legacy 模式對上第三方基準** | ✓ 沿用上游 `rtol=1e-5`，`matlablike_test_puma.txt` |
+| **V3 無法辨識的 mode 必須被拒** | ✓ `--mode_process sideways` 直接失敗，訊息帶出該值 |
+| **V4 回歸** | ✓ 離線 1501 passed，既有測試零改寫 |
+| **V5 `-r` 行為逐字保留** | ✓ 仍是接受並忽略；只改了說明文字，未改行為 |
+
+### V2 不是空的，另立一項守門
+
+若 union 與 legacy 碰巧產出相同，V2 那條測試在旗標完全失效時也會通過——
+**那就變成用另一個名字釘住預設值**。實測：union **對不上**第三方基準
+（`iloc[:, 1]` 起就不同），legacy 對得上。已加測試
+`test_the_two_processing_modes_actually_produce_different_networks` 釘住這個前提。
+
+### 做了什麼
+
+`netzoopy` CLI 沒有 `puma` 命令，唯一路徑是上游 legacy 腳本，而它構造 `Puma(...)`
+時不傳 `modeProcess` 也沒有旗標。改由我方 `scripts/run_puma.py` 取代
+（`run_puma_precomputed.py` 已是先例），實質邏輯逐項照抄，**只多一個
+`--mode_process`**。`docker/run-puma` 改指向它，映像已重建（快取，24 秒）。
+`execution.run_puma` 新增 `mode_process` 參數，**預設空字串＝行為不變**，
+而 V1 是那句話的證明而非宣稱。
+
+### 三件必須寫下來的事
+
+1. **PUMA 有兩條路徑，只有一條能選 mode。** `docker/run-lioness puma` 第 46 行
+   仍直接呼叫上游 `run_puma.py`，所以 **LIONESS-PUMA 的聚合步驟仍固定 union**。
+   本次刻意不動它（會改變已核對的 LIONESS-PUMA 數值），但不要假設
+   `mode_process` 到處適用。
+2. **union 模式仍然沒有第三方基準。** V1 證明「我方腳本 ≡ 上游腳本」，
+   V2 證明「legacy 下對得上第三方」。**目前的預設是 union，它的數值正確性
+   仍未被第三方驗證過**——本次變更沒有改善這一點。
+3. **`-r/--rm_missing` 從來沒有生效過。** 上游 `getopt` 把 `r` 宣告為無參數旗標，
+   處理式卻寫 `rm_missing = arg`（旗標的 `arg` 是空字串），因此 `remove_missing`
+   恆為假值。我方腳本照樣忽略它以保持行為不變；`docker/run-puma` 原本的說明
+   宣稱它「Remove missing genes/TFs」，**那句話是錯的，已改為如實描述**。
+   **修好它會改變每一張用它建出來的網路，需另行授權。**
+
+### 現況
+
+已數值核對 **11/12**：SAMBAR、COBRA、OTTER、GIRAFFE、CONDOR、LIONESS ×3、
+PANDA（MATLAB 第三方）、**PUMA（第三方）**、以及 PUMA 的管線層核對。
+剩 **DRAGON／BONOBO**：上游無參考值亦無測試資料，只能做契約層。
