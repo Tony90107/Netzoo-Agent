@@ -30,6 +30,7 @@ from ..interpretation.outcome_validation import evidence_census, validate_outcom
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
     deterministic_router_fallback,
+    recover_explicit_run,
     recover_registry_guidance,
 )
 from ..interpretation.outcome_downgrade import interpretation_downgrades
@@ -94,17 +95,21 @@ def _semantic_failure(
     reason_code: str,
 ) -> _RouterInvocation:
     decision = deterministic_router_fallback(user_task, error)
-    recovered = recover_registry_guidance(
+    recovered = recover_explicit_run(
+        user_task,
+        context.project_policy.workflows,
+        error,
+    ) or recover_registry_guidance(
         user_task,
         context.project_policy.workflows,
         error,
     )
     if recovered is not None:
-        decision = recovered
+        decision = hydrate_router_decision(recovered, user_task)
         record_event(
             context,
             state,
-            "routing.semantic_guidance_recovered",
+            "routing.explicit_run_recovered",
             "classify",
             {
                 "matched_actions": decision.matched_actions,

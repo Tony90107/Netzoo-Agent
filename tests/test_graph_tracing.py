@@ -273,6 +273,69 @@ class EmptyRouterAndInterpreter:
         raise AssertionError("intent router must not run after invalid semantics")
 
 
+class InvalidPandaEvidenceRouter:
+    """The two structured replies recorded in the failing interactive run."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def with_structured_output(self, schema, **_kwargs):
+        return SimpleNamespace(
+            invoke=lambda messages: self.invoke(schema, messages)
+        )
+
+    def invoke(self, schema, _messages):
+        self.calls += 1
+        if schema is SemanticInterpretation:
+            return {
+                "request_mode": "execute",
+                "semantic_goal": "Infer a PANDA regulatory network",
+                "outcome_hypotheses": [{
+                    "outcome": {
+                        "operation": "infer",
+                        "input_artifacts": ["expression_matrix"],
+                        "artifact_type": "regulatory_network",
+                        "entity_types": ["tf", "gene"],
+                        "regulator_types": ["tf"],
+                        "target_types": ["gene"],
+                        "granularity": "not_applicable",
+                    },
+                    "confidence": 0.9,
+                    "evidence": [
+                        {
+                            "dimension": "operation",
+                            "value": "infer",
+                            "source": "inferred",
+                            "rationale": "Running PANDA infers a network.",
+                        },
+                        {
+                            "dimension": "artifact_type",
+                            "value": "regulatory_network",
+                            "source": "inferred",
+                            "rationale": "PANDA returns a regulatory network.",
+                        },
+                        {
+                            "dimension": "input_artifact",
+                            "value": "expression_file, motif_file, ppi_file",
+                            "source": "explicit",
+                            "text_span": "expression_file, motif_file, ppi_file",
+                            "rationale": "The request names all three inputs.",
+                        },
+                    ],
+                }],
+            }
+        if schema is SemanticPatch:
+            return {
+                "outcome": {
+                    "granularity": "aggregate",
+                    "input_artifacts": [
+                        "expression_file", "motif_file", "ppi_file",
+                    ],
+                },
+            }
+        raise AssertionError("intent router must not run after failed semantics")
+
+
 class EvidenceGuidedSemanticRetryRouter:
     """Reproduce the real gpt-4o-mini output, then correct it when rejected."""
 
@@ -1310,6 +1373,56 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
         event.event_type == "routing.semantic_interpreter_failed"
         for event in store.read_events(run_id)
     )
+
+
+@pytest.mark.skipif(
+    graph_module.StateGraph is None,
+    reason="LangGraph integration runs in the project container",
+)
+def test_explicit_panda_run_survives_semantic_validation_failure(
+    tmp_path: Path,
+    monkeypatch,
+):
+    """A broken semantic reply must not erase an unambiguous run command."""
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    router = InvalidPandaEvidenceRouter()
+    models = iter([router, GuidanceResponseLLM()])
+    monkeypatch.setattr(
+        graph_module,
+        "build_llm",
+        lambda *_args, **_kwargs: next(models),
+    )
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="panda-validation-fallback", profile_id="default")
+    app = build_graph(
+        "fake",
+        0.0,
+        router_model_name="fake",
+        profile_store=UserProfileStore(tmp_path / "profiles"),
+        episode_store=EpisodeStore(tmp_path / "episodes"),
+        trace_recorder=recorder,
+        semantic_contract="legacy",
+        review_policy="when_needed",
+    )
+    task = """Run PANDA using these local files:
+expression_file=/work/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
+motif_file=/work/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
+ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
+
+    result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
+
+    assert router.calls == 2
+    assert result["decision"]["action"] == "run_panda"
+    assert result["decision"]["match_basis"] == "workflow_name"
+    assert result["decision"]["expression_file"].endswith("/expression.tsv")
+    assert result["decision"]["motif_file"].endswith("/motif.tsv")
+    assert result["decision"]["ppi_file"].endswith("/ppi.tsv")
+    assert result["plan"]["workflow"] == "PANDA"
+    assert result["plan"]["status"] == "needs_input"
+    assert "preflight failed" in result["plan"]["question"].casefold()
+    assert result["tool_results"] == []
 
 
 def test_local_trace_status_and_export_need_no_model_provider(tmp_path: Path):

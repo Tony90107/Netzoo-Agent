@@ -29,7 +29,7 @@ __all__ = [
 OUTCOME_FIELDS = frozenset({
     "operation", "input_artifacts", "artifact_type", "entity_types",
     "display_entities", "regulator_types", "target_types", "selection_tags",
-    "granularity", "unresolved_dimensions", "named_methods",
+    "granularity", "unresolved_dimensions",
 })
 
 #: Which outcome field an evidence dimension speaks about. One copy, because a
@@ -43,7 +43,6 @@ DIMENSION_BY_FIELD = {
     "target_types": "target_type",
     "granularity": "granularity",
     "selection_tags": "selection_tag",
-    "named_methods": "named_method",
 }
 FIELD_BY_DIMENSION = {v: k for k, v in DIMENSION_BY_FIELD.items()}
 
