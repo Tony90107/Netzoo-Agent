@@ -26,6 +26,13 @@ from .candidate_ranking import (
     _hypothesis_evidence_score, _specificity_score, stated_dimension_score,
 )
 from .method_rejections import rejected_methods_for
+from .named_labels import (
+    _current_scope_text,
+    _workflow_name_pattern,
+    named_registered_action,
+    named_workflow_action,
+    solely_named_run_action,
+)
 
 
 # Defined beside the ranking preferences that also need it.
@@ -580,87 +587,6 @@ def guidance_actions_for(action: RecommendedAction) -> list[RecommendedAction]:
     return [*capability.guidance_predecessors, action]
 
 
-def _workflow_name_pattern(action: str) -> str:
-    words = re.split(r"[-_\s]+", ACTION_DEFINITIONS[action].workflow.casefold())
-    return (
-        r"(?<![a-z0-9])"
-        + r"[\s_-]*".join(re.escape(word) for word in words)
-        + r"(?![a-z0-9])"
-    )
-
-
-def _current_scope_text(task: str) -> str:
-    """Return the request minus its historical clauses.
-
-    A workflow the user reports having already run is not the workflow being
-    asked about. `_match_semantic_request` already refuses to let a historical
-    mention override a compatible typed outcome, but that guard needs an outcome
-    to protect; after semantic validation fails there is none, and a live round
-    recommended a forbidden PANDA to a request whose only mention of it was
-    "Previously I used PANDA" and which said it did not want inferred networks.
-
-    The clause scoping is the same deterministic pass `input_mentions` uses, so
-    history is recognised here exactly as it is for input artifacts.
-    """
-    return " ".join(
-        clause for clause, scope in _scoped_clauses(task) if scope != "historical"
-    )
-
-
-def named_workflow_action(task: str) -> RecommendedAction | None:
-    """Resolve a currently written registered workflow name, longest first."""
-    candidates = sorted(
-        RUN_ACTIONS,
-        key=lambda action: len(ACTION_DEFINITIONS[action].workflow),
-        reverse=True,
-    )
-    current = _current_scope_text(task).casefold()
-    for action in candidates:
-        if re.search(_workflow_name_pattern(action), current):
-            return action
-    return None
-
-
-def named_registered_action(task: str):
-    """Resolve an explicitly written registry workflow label, longest first.
-
-    A label must be distinctive enough to be a deliberate reference. Method
-    names are (PANDA, SAMBAR), and so are multi-word step labels a requester
-    would have to type on purpose (WEB-SEARCH, "bonobo inputs"). One label was
-    neither: `inspect_inputs` is labelled with the bare English word `inputs`,
-    so "the standard integration of those three inputs" was read as explicitly
-    naming a validation step and reported as an exact match on a workflow name.
-    A live round recommended that non-workflow to a user.
-
-    So a single-word label is only eligible when the action is one the router can
-    actually recommend. Excluding every supporting action instead would have
-    broken naming WEB-SEARCH deliberately, which is legitimate.
-    """
-    candidates = sorted(
-        (
-            (action, definition)
-            for action, definition in ACTION_DEFINITIONS.items()
-            if action != "no_tool"
-            and (
-                definition.output_capability is not None
-                or len(re.split(r"[-_\s]+", definition.workflow.strip())) > 1
-            )
-        ),
-        key=lambda item: len(item[1].workflow),
-        reverse=True,
-    )
-    for action, definition in candidates:
-        words = re.split(r"[-_\s]+", definition.workflow.casefold())
-        pattern = (
-            r"(?<![a-z0-9])"
-            + r"[\s_-]*".join(re.escape(word) for word in words)
-            + r"(?![a-z0-9])"
-        )
-        if re.search(pattern, task.casefold()):
-            return action
-    return None
-
-
 def _enforce_input_compatibility(
     task: str,
     match: CapabilityMatch,
@@ -837,6 +763,32 @@ def _match_semantic_request(
             input_artifacts=current_inputs,
         )
 
+
+    # Nothing was interpreted at all. A reading with every dimension unknown is
+    # how this system encodes "out of scope", and the interpreter also produces
+    # it whenever the request states something the outcome vocabulary has no
+    # dimension for -- a method name being exactly that. When the requester wrote
+    # one runnable label out by name, that label is the only fact the request
+    # contains, it cannot contradict a reading that claims nothing, and reporting
+    # the capability as unavailable is the one answer certain to be wrong.
+    #
+    # This is a registry lookup, not the phrase-count guess removed in `15cbaad`:
+    # the label is matched on word boundaries after historical clauses are
+    # stripped, two labels resolve to none, and the input contract below still
+    # applies. Where the reading claims anything at all, the rule underneath is
+    # untouched and a typed outcome still outranks a name.
+    if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
+        sole_action = solely_named_run_action(task)
+        if sole_action is not None:
+            return _enforce_input_compatibility(
+                task,
+                CapabilityMatch(
+                    status="exact", match_basis="workflow_name",
+                    matched_actions=[sole_action],
+                ),
+                request_mode=request_mode,
+                input_artifacts=current_inputs,
+            )
 
     # A workflow name is a fallback identifier, not stronger evidence than the
     # requested scientific result. This keeps historical, questioned, or rejected

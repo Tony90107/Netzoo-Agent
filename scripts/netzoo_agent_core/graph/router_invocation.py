@@ -638,10 +638,20 @@ def _invoke_semantic_interpreter(
                 and interpretation.request_mode != "unknown"
                 and len(interpretation.outcome_hypotheses) == 1
                 and not interpretation.outcome_hypotheses[0].outcome.unresolved_dimensions
-                and (preliminary_match.status == "not_applicable" or (
-                    len(preliminary_match.matched_actions) == 1
-                    and interpretation.outcome_hypotheses[0].outcome.operation != "unknown"
-                ))
+                # An interpretation that does not know what was requested has
+                # settled nothing, whatever the registry then says about it. This
+                # guard used to sit inside the `exact` arm alone, so a reading
+                # with every dimension unknown -- the shape that encodes "out of
+                # scope", and equally the shape produced whenever the request
+                # states something the outcome vocabulary has no dimension for --
+                # ended routing on the first attempt with no review at all. The
+                # review is the only step that can tell those two apart. The cost
+                # is one extra call on a request that really is out of scope.
+                and interpretation.outcome_hypotheses[0].outcome.operation != "unknown"
+                and (
+                    preliminary_match.status == "not_applicable"
+                    or len(preliminary_match.matched_actions) == 1
+                )
             ):
                 record_event(context, state, "routing.semantic_interpretation_accepted", "classify", {
                     "attempt": 1, "hypothesis_count": 1,
