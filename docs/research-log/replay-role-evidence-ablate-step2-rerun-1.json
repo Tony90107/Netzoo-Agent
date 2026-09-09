@@ -1,0 +1,1636 @@
+{
+  "metadata": {
+    "source": "live",
+    "model": "openai/gpt-4o-mini",
+    "temperature": 0.0,
+    "semantic_contract": "legacy",
+    "review_policy": "when_needed",
+    "first_pass_source": "observed_error_reconstruction_not_raw_capture",
+    "repair_replay_suite": "role-evidence",
+    "policy_hash": "5533c2c3d3e1670c3b01a2f927dc67566806a5a2763bd81efea54ead57f474f7",
+    "repeat": 3,
+    "corpus_sha256": "27df8dcf2f3c6578d791bdfa8ac4316bdea65e84d81d46355fb320c695db1fbd",
+    "prompt_schema_sha256": "fbabb39cb80a81ad97adb464098f29be377d03394378ec2492bc5dceefc21f7d",
+    "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model",
+    "execution_evaluated": false,
+    "biological_output_evaluated": false
+  },
+  "summary": {
+    "cases": 4,
+    "trials": 12,
+    "passed": 6,
+    "pass_rate": 0.5,
+    "route_pass_rate": 0.5,
+    "semantic_pass_rate": 0.5,
+    "answer_evaluated_count": 12,
+    "answer_failure_count": 3,
+    "interaction_failure_count": 0,
+    "review_repair_attempts": 12,
+    "review_repair_shapes": {
+      "review": 6,
+      "patch": 6
+    },
+    "review_introduced_schema_issues": 6,
+    "review_repair_validation_rate": 0.5,
+    "review_repair_rate": 0.5,
+    "fallback_count": 0,
+    "registry_recovery_count": 0,
+    "unsafe_execution_count": 0,
+    "provider_calls": 18,
+    "diagnostics": {
+      "evidence_validation": 12,
+      "schema_validation": 6
+    },
+    "ungrounded_evidence_shapes": {},
+    "evidence_span_hypotheses": {
+      "all_spanned": 6
+    },
+    "evidence_span_entries": {
+      "with_span": 12,
+      "without_span": 0,
+      "inferred": 54
+    },
+    "restored_fields": {},
+    "trials_with_restored_fields": 0,
+    "outcome_downgrades": {},
+    "trials_with_outcome_downgrade": 0,
+    "downgrade_not_comparable": {},
+    "unknown_core_origin": {},
+    "trials_with_unknown_core": 0,
+    "ungrounded_evidence_clusters": {},
+    "by_language": {
+      "en": {
+        "trials": 12,
+        "passed": 6,
+        "pass_rate": 0.5
+      }
+    },
+    "by_category": {
+      "history": {
+        "trials": 3,
+        "passed": 3,
+        "pass_rate": 1.0
+      },
+      "misspelling": {
+        "trials": 3,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "negative": {
+        "trials": 3,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "terse": {
+        "trials": 3,
+        "passed": 3,
+        "pass_rate": 1.0
+      }
+    },
+    "unstable_cases": []
+  },
+  "results": [
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "sparse-expression-not-mutation",
+      "language": "en",
+      "category": "negative",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_panda'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['expression_matrix'], got None",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['tf'], got []",
+        "discriminator: target_types must include ['gene'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=tf",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10571,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "sparse-expression-not-mutation",
+      "language": "en",
+      "category": "negative",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_panda'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['expression_matrix'], got None",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['tf'], got []",
+        "discriminator: target_types must include ['gene'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=tf",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_additions",
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10634,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "sparse-expression-not-mutation",
+      "language": "en",
+      "category": "negative",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_panda'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "input_artifacts: expected ['expression_matrix'], got None",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['tf'], got []",
+        "discriminator: target_types must include ['gene'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=tf",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10571,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "mirna-current-goal",
+      "language": "en",
+      "category": "history",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "regulator_types",
+          "target_types"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "unknown"
+          },
+          {
+            "dimension": "target_type",
+            "value": "unknown"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11247,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.89s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "mirna-current-goal",
+      "language": "en",
+      "category": "history",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "display_entities",
+          "entity_types",
+          "regulator_types",
+          "target_types",
+          "unresolved_dimensions"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "unknown"
+          },
+          {
+            "dimension": "target_type",
+            "value": "unknown"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11276,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.94s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "mirna-current-goal",
+      "language": "en",
+      "category": "history",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [
+          "expression_matrix"
+        ],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "regulator_types",
+          "target_types"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "unknown"
+          },
+          {
+            "dimension": "target_type",
+            "value": "unknown"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11246,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.84s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "mirna-misspelled-no-inputs",
+      "language": "en",
+      "category": "misspelling",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_puma'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['mirna'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback",
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_additions",
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10589,
+      "answer_evaluated": true,
+      "answer_passed": false,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "mirna-misspelled-no-inputs",
+      "language": "en",
+      "category": "misspelling",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_puma'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['mirna'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback",
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_additions",
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10598,
+      "answer_evaluated": true,
+      "answer_passed": false,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": false,
+      "review_repair_correct": false,
+      "id": "mirna-misspelled-no-inputs",
+      "language": "en",
+      "category": "misspelling",
+      "passed": false,
+      "route_passed": false,
+      "semantic_passed": false,
+      "errors": [
+        "status: expected exact, got None",
+        "actions: expected ['run_lioness_puma'], got []",
+        "semantic_acceptance: no validated review; fallback is not semantic success",
+        "artifact_type: expected regulatory_network, got None",
+        "granularity: expected sample_specific, got None",
+        "discriminator: regulator_types must include ['mirna'], got []",
+        "request_mode: expected guidance, got unknown",
+        "pipeline: semantic_fallback",
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "path": "semantic_fallback",
+      "diagnostics": [
+        "evidence_validation",
+        "schema_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        },
+        {
+          "attempt": 2,
+          "error_type": "ValidationError",
+          "evidence_shapes": [],
+          "issues": [
+            "schema_validation::value_error"
+          ],
+          "shapes": [
+            {
+              "location": [],
+              "type": "value_error",
+              "input_type": "dict",
+              "input_keys": [
+                "evidence_additions",
+                "evidence_removals",
+                "hypothesis_index",
+                "outcome",
+                "request_mode",
+                "semantic_goal"
+              ]
+            }
+          ]
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        }
+      ],
+      "outcome_downgrades": [],
+      "restored_fields": [],
+      "status": null,
+      "matched_actions": [],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic_validation_recovery",
+      "rejected_methods": [],
+      "outcome": {},
+      "request_mode": "unknown",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer"
+      ],
+      "call_statuses": [
+        "failed",
+        "failed"
+      ],
+      "review_repair_shape": "review",
+      "review_patch": null,
+      "total_tokens": 10605,
+      "answer_evaluated": true,
+      "answer_passed": false,
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "answer_errors": [
+        "answer_missing: LIONESS-PUMA"
+      ],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✗ Router classification failed — ValidationError\n✗ Router call failed\n! Semantic routing unavailable\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Retry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.",
+        "allow_workflow_continuation": false,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "unknown_core": [],
+      "provider_calls": 1,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "terse-mirna-per-sample",
+      "language": "en",
+      "category": "terse",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "artifact_type",
+          "entity_types",
+          "granularity",
+          "input_artifacts",
+          "operation",
+          "regulator_types",
+          "target_types",
+          "unresolved_dimensions"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "mirna"
+          },
+          {
+            "dimension": "target_type",
+            "value": "gene"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11156,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.22s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 1,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "terse-mirna-per-sample",
+      "language": "en",
+      "category": "terse",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "artifact_type",
+          "display_entities",
+          "entity_types",
+          "granularity",
+          "input_artifacts",
+          "operation",
+          "regulator_types",
+          "selection_tags",
+          "target_types",
+          "unresolved_dimensions"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "mirna"
+          },
+          {
+            "dimension": "target_type",
+            "value": "gene"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11171,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.39s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 2,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    },
+    {
+      "review_repair_attempted": true,
+      "review_repair_validated": true,
+      "review_repair_correct": true,
+      "id": "terse-mirna-per-sample",
+      "language": "en",
+      "category": "terse",
+      "passed": true,
+      "route_passed": true,
+      "semantic_passed": true,
+      "errors": [],
+      "path": "semantic_registry_intent",
+      "diagnostics": [
+        "evidence_validation"
+      ],
+      "diagnostic_details": [
+        {
+          "attempt": 1,
+          "issues": [
+            "hypothesis[0].missing_evidence:regulator_type=mirna",
+            "hypothesis[0].missing_evidence:target_type=gene"
+          ],
+          "shapes": [],
+          "evidence_shapes": []
+        }
+      ],
+      "evidence_census": [
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 0,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 1
+        },
+        {
+          "hypothesis": 0,
+          "explicit_with_span": 2,
+          "explicit_without_span": 0,
+          "inferred": 3,
+          "attempt": 2
+        }
+      ],
+      "outcome_downgrades": [
+        {
+          "attempt": 2,
+          "comparable": true,
+          "reason": null,
+          "hypothesis": 0,
+          "downgrades": []
+        }
+      ],
+      "restored_fields": [],
+      "status": "exact",
+      "matched_actions": [
+        "run_lioness_puma"
+      ],
+      "hypothesis_actions": [],
+      "clarification_question_asked": false,
+      "match_basis": "semantic",
+      "rejected_methods": [],
+      "outcome": {
+        "operation": "infer",
+        "input_artifacts": [],
+        "artifact_type": "regulatory_network",
+        "entity_types": [],
+        "display_entities": [],
+        "regulator_types": [
+          "mirna"
+        ],
+        "target_types": [
+          "gene"
+        ],
+        "selection_tags": [],
+        "granularity": "sample_specific",
+        "unresolved_dimensions": []
+      },
+      "request_mode": "guidance",
+      "assumption_count": 0,
+      "action": "no_tool",
+      "should_execute": false,
+      "call_roles": [
+        "semantic_interpreter",
+        "semantic_reviewer",
+        "intent_router"
+      ],
+      "call_statuses": [
+        "failed",
+        "success",
+        "success"
+      ],
+      "review_repair_shape": "patch",
+      "review_patch": {
+        "changed_fields": [
+          "artifact_type",
+          "entity_types",
+          "granularity",
+          "input_artifacts",
+          "operation",
+          "regulator_types",
+          "target_types",
+          "unresolved_dimensions"
+        ],
+        "evidence_removed": [
+          {
+            "dimension": "regulator_type",
+            "value": "unknown"
+          },
+          {
+            "dimension": "target_type",
+            "value": "unknown"
+          }
+        ],
+        "evidence_added": 2,
+        "evidence_retired_as_stale": []
+      },
+      "total_tokens": 11155,
+      "answer_evaluated": true,
+      "answer_passed": true,
+      "answer": "I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:\n\n1. **PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Output**: Aggregate workflow output (`output_file`).\n\n2. **LIONESS-PUMA**\n   - **Inputs**:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n   - `mirna_file`: miRNA list\n   - **Outputs**:\n     - Aggregate workflow output (`output_file`).\n     - Sample-specific LIONESS output (`lioness_output`).\n\nUse PUMA when you only need the aggregate result. Use LIONESS-PUMA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary. No files were inspected and no analysis ran.",
+      "answer_errors": [],
+      "answer_scope": "deterministic",
+      "progress": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.35s)\n● Matching registered workflows…\n✓ Workflow — PUMA → LIONESS-PUMA\n✓ Guidance prepared\n",
+      "next_step": {
+        "kind": "completed",
+        "question": "Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.",
+        "allow_workflow_continuation": true,
+        "continuation_action": null,
+        "expected_field": null,
+        "required_fields": [],
+        "alternative_action": null,
+        "alternative_granularity": null
+      },
+      "next_step_text": "----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close",
+      "interaction_passed": true,
+      "interaction_errors": [],
+      "trial": 3,
+      "unknown_core": [],
+      "provider_calls": 2,
+      "injected_proposal": true
+    }
+  ]
+}
