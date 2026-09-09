@@ -60,6 +60,38 @@ def test_a_removal_naming_no_dimension_is_set_aside_and_the_repair_survives():
                         "field": "evidence_removals"}]
 
 
+def test_the_dimension_names_the_model_actually_invented_are_set_aside():
+    """The shape as observed, not as imagined.
+
+    A leave-one-out round with this change reverted (Log 117) put the class back
+    on the wire in 4 of 36 trials, and named what the review had actually
+    written: `evidence_removals[4].dimension = "display_entity"` and
+    `evidence_removals[7].dimension = "unresolved_dimension"`, inside a list of
+    at least eight withdrawals. Neither is a misspelling of a real dimension --
+    they are invented vocabulary, which is why matching them against the closed
+    set can only ever fail.
+
+    The synthetic case above was a plausible guess at the shape; this is the
+    recorded one, including the two-in-one-list arrangement that first draft
+    did not cover.
+    """
+    removals = [{"dimension": "granularity", "value": "aggregate"}] * 4
+    removals.append({"dimension": "display_entity", "value": "sample"})
+    removals += [{"dimension": "operation", "value": "infer"}] * 2
+    removals.append({"dimension": "unresolved_dimension", "value": "gene"})
+
+    patch, ignored = _as_semantic_patch(payload(evidence_removals=removals))
+
+    assert patch is not None, "the addition was lost to two inert instructions"
+    assert [item.value for item in patch.evidence_additions] == ["mirna"]
+    # The six well-formed withdrawals in the same list still stand.
+    assert [(item.dimension, item.value) for item in patch.evidence_removals] == [
+        ("granularity", "aggregate")] * 4 + [("operation", "infer")] * 2
+    # One record per item set aside -- two here, not one summary line.
+    assert ignored == [{"reason": "removal_names_no_dimension",
+                        "field": "evidence_removals"}] * 2
+
+
 def test_a_well_formed_removal_still_takes_effect():
     """The scope guard. Without it this would be a licence to ignore removals."""
     patch, ignored = _as_semantic_patch(payload(evidence_removals=[
