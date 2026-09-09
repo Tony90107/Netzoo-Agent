@@ -7584,3 +7584,83 @@ gpt-4o-mini。
 3. 已知同碼差距：全語料 n = 81 為 ±3～4；matched control n = 36 為 **10–11**。
    **後者在相對尺度上更差（≈30% vs ≈5%），先前「matched control 解析度更高」的
    說法是錯的，撤回。**
+
+## Log 121｜事前宣告：C＋A——點名工具走確定性解析，且真空解讀不得跳過複審（尚未實作）
+
+日期／時區：2026-09-09，Asia/Taipei。**本節寫於改程式之前，之後不得修改。**
+使用者指示：「做 C+A」。
+
+### 缺陷（先量過才寫）
+
+請求：`Run PANDA using these three local files:` ＋三個真實路徑
+（`alpha_17.tsv` 表現量、`blue_note.csv` motif、`fragment_03.txt` PPI，合格的 PANDA 三件組）。
+
+| 版本 | 日期 | 結果 |
+| --- | --- | --- |
+| HEAD `17525d0` | — | **6/6 失敗**（靜默 `no_tool`） |
+| `main` `0abf9ee` | — | **4/4 失敗**（2 次為 ValueError 畫面） |
+| `0c47b90^` = `15cbaad` | 2026-09-07 | **4/4 失敗**（4 次全為 ValueError 畫面） |
+
+**不是本分支造成的。** 本分支 20 個 commit 未觸及相關邏輯。
+
+### 機制（讀碼確認，非推測）
+
+outcome 詞彙表沒有「工具名稱」這個維度，所以解讀層對「Run PANDA」的唯一自洽輸出是
+全 `unknown` ＋ `granularity=not_applicable` ＋ `unresolved_dimensions=[]`。
+**這正好是系統用來編碼「超出範圍」的形狀**，於是：
+
+1. `outcome_validation.py` 的 `inconsistent_not_applicable_outcome` 與 `unusable_outcome`
+   兩個檢查都以 `and not _is_not_applicable(...)` **明文豁免**它。
+2. `outcome_matching.match_outcome_hypotheses` 在
+   `all(_is_not_applicable(...))` 時**直接短路回 `not_applicable`**，
+   後面的 `named_registered_action` 分支根本到不了。
+3. 2026-09-07 起，`router_invocation.py` 的 `when_needed` 跳過條件把
+   `operation != "unknown"` 這個守衛**只掛在 `exact` 那一支**，
+   `not_applicable` 那一支沒有——所以真空解讀連第二次呼叫都沒有。
+
+歷史成因：`15cbaad`（2026-09-07）移除了「語意失敗時用詞頻猜工作流程」的後備。
+**該 commit 自己就寫明「coverage drops … should be revisited if that changes.」**
+本次即是它邀請的 revisit。差別在於：**當時移除的是猜測（詞頻／token 重疊），
+現在要加的是查表**——`named_workflow_action` 是對註冊標籤的邊界完全比對，
+且已先以 `_current_scope_text` 濾掉歷史子句。
+
+### 語料覆蓋缺口（零成本查得，一併記錄）
+
+27 題語料中有 6 題提到工具名，**全部都是「我以前用過 PANDA」的歷史語境**。
+**「run <工具> on these files」這個類別，一題都沒有。**
+1550 個測試全綠而最普通的真實請求會壞，原因在此。
+
+### 介入
+
+- **C**：`match_outcome_hypotheses` 的 `not_applicable` 短路之前，
+  若請求**當前語域**明確點名**一個** `RUN_ACTIONS` 標籤，
+  則回 `CapabilityMatch(status="exact", match_basis="workflow_name", ...)`，
+  並照舊通過 `_enforce_input_compatibility`。
+  **只在解讀完全真空時生效**——outcome 有主張任何值時，一律維持現行規則
+  （典型化的 outcome 仍然壓過名稱）。
+- **A**：把 `operation != "unknown"` 從 `exact` 那一支的內層析取中**提出來**，
+  使真空第一次解讀在任何 match 狀態下都不得跳過複審。
+
+**兩者皆非 prompt 措辭修改。**
+
+### 事前判準（決定性、離線；依 Log 117 的教訓，閘門一律架在結構性後果上）
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **N1** 缺陷 | 點名 `RUN_ACTIONS` ＋真空 outcome → 必須匹配該能力 | **失敗** |
+| **N2** 範圍：歷史 | 「我以前用過 PANDA，現在要對病人分群」→ **不得**匹配 PANDA | 通過（不得破壞） |
+| **N3** 範圍：典型化優先 | 非真空且與名稱不相容的 outcome → 名稱**不得**覆寫 | 通過（不得破壞） |
+| **N4** A 的缺陷 | 真空第一次解讀**不得**跳過複審 | **失敗** |
+| **N5** A 的範圍 | 非真空且 `exact` 的第一次解讀**仍然**跳過複審（不得增加成本） | 通過（不得破壞） |
+| **N6** 回歸 | 含 Docker 閘門全綠，且 `skipped` 與 `passed` 一起讀 | — |
+
+### 描述性、非閘門（依 Log 120 的教訓，不對抽樣量設下限）
+
+**N7**：使用者的原句實跑。逐次記錄是否到達 `run_panda`。
+**這是描述，不是判準**——是否真空取決於模型當輪的輸出，屬分數型。
+不論結果如何都不得回頭改 N1–N6。
+
+### 已知代價，事前寫明
+
+A 會讓**真正超出範圍**的請求（例如問天氣）多花一次 LLM 呼叫。
+這是刻意付的：目前系統把「真空」與「超出範圍」混為一談，而它們不是同一件事。
