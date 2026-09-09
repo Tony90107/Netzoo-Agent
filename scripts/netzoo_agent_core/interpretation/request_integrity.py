@@ -20,7 +20,21 @@ INPUT_PATTERNS = {
     "expression_matrix": r"\bRNA[- ]?Seq\b|\b(?:gene )?expression (?:matrix|data|dataset)\b|"
                          r"(?:基因)?表現量?(?:矩陣|資料)",
 }
-_HISTORY = re.compile(r"\b(?:previously|historical|earlier|past|old)\b|曾經|之前|先前|過去|剛剛|跑完", re.I)
+# Completion is bound to a verb, never to a bare adverb. Scope is decided per
+# clause and a history hit overrides a current hit in the same clause, so a bare
+# `already` would read "I already have an expression matrix" as history and make
+# a declared current input vanish -- this module's scoping is shared with
+# `input_mentions`. "I already finished my PANDA run last month" carried none of
+# the original markers and was read as a live request to run PANDA.
+_HISTORY = re.compile(
+    r"\b(?:previously|historical|earlier|past|old)\b"
+    r"|\b(?:already|just)\s+(?:ran|run|did|done|finished|completed|performed)\b"
+    r"|\b(?:finished|completed)\s+(?:my|our|the|a|an)\b"
+    r"|\blast\s+(?:week|month|year|time)\b"
+    r"|\bused to\b"
+    r"|曾經|之前|先前|過去|剛剛|跑完|上次|當初|已經(?:跑|做|執行|完成|用)",
+    re.I,
+)
 _CURRENT = re.compile(r"\b(?:now|currently|current|have|received)\b|現在|目前|手邊|這份|我有|拿到|給了我", re.I)
 _UNCERTAIN = re.compile(r"\b(?:if|hypothetical|might|would obtain|could obtain)\b|假如|假設|如果|尚未|還沒有", re.I)
 _NEGATED = re.compile(r"\b(?:not|without|no)\b|不是|並非|沒有|不含", re.I)
