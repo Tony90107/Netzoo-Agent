@@ -7723,3 +7723,80 @@ A 會讓**真正超出範圍**的請求（例如問天氣）多花一次 LLM 呼
   `not_applicable` 這條路徑在程式上不可能再回傳空匹配。
 - **語料仍未涵蓋這個類別**（27 題中 0 題是「run <工具> on these files»）。
   本次以決定性測試補上，**未動語料**——動語料會改變所有既有分數的比較基礎。
+
+## Log 123｜事前宣告：擴充歷史詞彙 ＋ 補進語料（尚未實作）
+
+日期／時區：2026-09-09，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+使用者指示：「擴充歷史詞彙 並補進語料」。
+
+### 必須先講的代價：語料一動，所有既有分數失去可比性
+
+`corpus_sha256` 會從 `a43c2baec7…` 改變。
+**Log 85 以後所有以 27 題語料量到的數字，與新語料的數字不可直接比較。**
+matched-control 的四次量測（35／29／19／24）用的是 `role-evidence` suite，
+其 4 題不變，**那條鏈不受影響**；受影響的是全語料輪次的所有計數。
+本次**不重跑**全語料——依 Log 120，那需要時間交錯的同碼替身才有意義。
+既有文件中引用舊 sha 的地方會加註。
+
+### 甲、歷史詞彙擴充
+
+`_HISTORY` 現為 `previously|historical|earlier|past|old|曾經|之前|先前|過去|剛剛|跑完`。
+缺口見 Log 122：`I already finished my PANDA run last month` 被讀成當前語域。
+
+**危險在於這是與 `input_mentions` 共用的機器**，且子句規則是
+「`_HISTORY` 命中 → historical，否則 `_CURRENT` 命中 → current」，
+所以 `_HISTORY` 會**壓過** `_CURRENT`。
+**單獨加 `already` 會把 `I already have an expression matrix` 判成歷史，
+使當前輸入消失。** 因此新增項一律**綁定完成動作的動詞**，不綁單獨副詞。
+
+候選（動詞綁定）：
+```
+\b(?:already|just)\s+(?:ran|run|did|done|finished|completed|performed)\b
+\b(?:finished|completed)\s+(?:my|our|the|a|an)\b
+\blast\s+(?:week|month|year|time)\b
+\bused to\b
+上次|當初|已經(?:跑|做|執行|完成|用)
+```
+
+**判準（結構性、決定性、零成本；依 Log 117，閘門只架在程式確定後果上）**
+
+- **V1（負向對照，決定性）**：對**語料每一題**，擴充前後
+  `_scoped_clauses` 的 (子句, 分域) 序列**必須逐字相同**，
+  且 `input_mentions` 必須相同。**任何一題不同即回退。**
+- **V2（所有權不是歷史）**：`I already have an expression matrix and motif priors`
+  必須維持 `current`。
+- **V3（缺口修好）**：`I already finished my PANDA run last month` 必須為 `historical`，
+  且該句在真空解讀下**不得**再匹配 `run_panda`
+  （即 Log 122 記下的 `test_the_history_guard_is_only_as_good_as_its_vocabulary` 反轉）。
+- **V4（回歸）**：含 Docker 閘門全綠，`skipped` 與 `passed` 一起讀。
+
+**事前量測結果（唯讀腳本，改動前先跑）**：V1 對 27 題**全部零差異**
+（分域零變化、`input_mentions` 零變化）；V2、V3 的探針皆如預期。
+**這是在動程式碼之前取得的，記錄於此以免事後被當成調整過的結果。**
+
+### 乙、語料補三題
+
+缺口見 Log 121：27 題中提到工具名的 6 題**全部是歷史語境**，
+「run <工具> on these files」一題都沒有。補的三題正好覆蓋這一類的三種結局：
+
+| id | 類別 | 形狀 | 預期 |
+| --- | --- | --- | --- |
+| `run-named-panda-with-files` | positive | 點名 PANDA ＋三個檔案路徑 | `exact` / `run_panda` |
+| `run-named-tool-finished-then-new-goal` | history | 「已跑完 PANDA」＋新的每樣本目標 | `exact` / `run_lioness_panda`，`forbidden: run_panda` |
+| `run-two-named-tools` | negative | 同時點名 PANDA 與 PUMA | 需澄清，不得逕自選一個 |
+
+**判準**
+
+- **C1**：三題的 `expected` 必須由**現有 scorer 欄位**表達，不得為此新增評分邏輯。
+- **C2**：`run-named-tool-finished-then-new-goal` 是乙案對甲案的**語料層負向對照**
+  ——歷史詞彙擴充若做過頭，這一題會抓到。
+- **C3**：新語料只**新增**，不修改既有 27 題的任何一字。
+- **C4**：**不重跑全語料，不主張任何分數。** 新題目的實跑結果若要引用，
+  必須另行宣告並附時間交錯的同碼替身。
+
+### 事前預測
+
+甲案：V1 已驗證零差異，預測全數通過。
+乙案：`run-two-named-tools` 我**預測會失敗**——目前 C 只在「恰好一個標籤」時生效，
+兩個標籤會落回真空 → `not_applicable` → 靜默 `no_tool`，而預期是**請求澄清**。
+若如此，我**不改判準**，如實記錄為語料新暴露出的缺陷。
