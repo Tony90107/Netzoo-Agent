@@ -123,17 +123,13 @@ HISTORICAL_EXPORTS = [
 # It is the only basis that describes trust in the reading rather than fit to a
 # capability, and invoke_router holds anything carrying it below exact and away
 # from execution. Nothing else in these contracts changed. See Log 94.
-# Changed deliberately on 2026-09-09 for `named_methods` (Log 128/129): the six
-# below all carry the new outcome field, its `named_method` evidence dimension,
-# or the `named_method` match basis. The pin exists so a schema the provider sees
-# cannot move by accident; moving it is a decision, and this is the record of one.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "44248ddce6ecb6c8bc9af0feb8ec7a068c4dd12be77f6a80878288d40229f75f",
-    "RouterDecision": "877624117b7401dbd58347026b27b867802f5b1c897096eee1f39a2633489bae",
-    "RequestedOutcome": "49e3f0998191a19dc427101a9d065542deddf8acc7a4cf68a43332957fc82efd",
-    "OutcomeEvidence": "c6ee1732f03bfbe5ee381c20ae9be7f490ce07e288cd3af8b83ac82864a73c16",
-    "OutcomeHypothesis": "a97e4047f229671d466dab184dbe65d62ade05d37d4ba6aa3289dc4945a0f055",
-    "CapabilityMatch": "931318bcb26b92199d20472a91ce1222ec6068b4139aebac43ebecd7d0231087",
+    "TaskDecision": "790a7298dbc0914c53df9160eeb83c4e0d511b0b842c0acd7e1974df367bdf2f",
+    "RouterDecision": "dae9e099db515de552ceae109f3714519139c4fcfdd83ea6fb0204c8542cdcf8",
+    "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
+    "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
+    "OutcomeHypothesis": "0704c2dd7f108a31fad4cc3d17ee3357266f0374c457fc545f11b488d28c839b",
+    "CapabilityMatch": "b43330a9f99022b12c321a982dea0765a1bbb4fc749f42e8d99d49cebc4bb79a",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",

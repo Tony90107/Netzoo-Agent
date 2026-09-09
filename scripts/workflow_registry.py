@@ -809,15 +809,6 @@ REQUIRED_INPUTS = {
 RUN_ACTIONS = frozenset(
     action for action, definition in ACTION_DEFINITIONS.items() if definition.run
 )
-#: The registered label of every runnable method, and the action each names.
-#: Derived from the registry so the closed vocabulary the model may write cannot
-#: drift from the capabilities that exist.
-ACTION_BY_METHOD_LABEL = {
-    ACTION_DEFINITIONS[action].workflow: action for action in sorted(RUN_ACTIONS)
-}
-METHOD_LABELS = tuple(sorted(ACTION_BY_METHOD_LABEL))
-MethodLabel = Literal[METHOD_LABELS]  # type: ignore[valid-type]
-
 LOCAL_WORKFLOW_ACTIONS = frozenset(
     action for action, definition in ACTION_DEFINITIONS.items() if definition.local
 )
