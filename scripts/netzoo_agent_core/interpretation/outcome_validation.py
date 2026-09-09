@@ -12,6 +12,7 @@ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consisten
 from ..contracts.repair_scope import (
     FIELD_BY_DIMENSION, NO_OUTCOME_FIELDS, OUTCOME_FIELDS, Issue,
 )
+from workflow_registry import ACTION_BY_METHOD_LABEL, OUTPUT_CAPABILITIES
 from .request_integrity import confirmed_current_inputs, request_integrity_issues
 from .span_alignment import aligned_span
 
@@ -69,6 +70,7 @@ def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
         "target_type": set(outcome.target_types),
         "granularity": {outcome.granularity},
         "selection_tag": set(outcome.selection_tags),
+        "named_method": set(outcome.named_methods),
     }
 
 
@@ -94,12 +96,77 @@ def _entailed_by_artifact(outcome: RequestedOutcome) -> tuple[frozenset[str], st
     return entities, granularity
 
 
+#: Which outcome field each capability attribute answers for. Read from the
+#: registry's own capability shape rather than restated, so a capability that
+#: gains an attribute does not silently stop being checked.
+_CAPABILITY_FIELDS = (
+    ("operation", "operation", False),
+    ("artifact_type", "artifact_type", False),
+    ("granularities", "granularity", False),
+    ("entity_types", "entity_types", True),
+    ("regulator_types", "regulator_types", True),
+    ("target_types", "target_types", True),
+)
+
+
+def _named_method_conflicts(outcome: RequestedOutcome) -> list[Issue]:
+    """Where the outcome asserts something the method it names cannot produce.
+
+    The requester wrote the method down and the quote was checked, so the name is
+    a fact about the request. A dimension that contradicts it is a guess the
+    model made around that fact -- PANDA produces an aggregate network, and a
+    reading that names PANDA and asserts `sample_specific` has guessed. Only the
+    contradicting field is opened for repair: the name is quoted, so it is not
+    the part in doubt.
+
+    Nothing is filled in from the capability. An unknown dimension stays unknown
+    and the registry answers for it at match time.
+    """
+    conflicts: list[Issue] = []
+    for label in outcome.named_methods:
+        action = ACTION_BY_METHOD_LABEL.get(label)
+        capability = OUTPUT_CAPABILITIES.get(action) if action else None
+        if capability is None:
+            continue
+        for attribute, field, is_set in _CAPABILITY_FIELDS:
+            allowed = getattr(capability, attribute, None)
+            if allowed is None:
+                continue
+            stated = getattr(outcome, field)
+            values = (set(stated) if is_set else {stated}) - {"unknown"}
+            permitted = set(allowed) if not isinstance(allowed, str) else {allowed}
+            if values and not values.issubset(permitted):
+                conflicts.append(Issue(
+                    f"named_method_conflict:{label}.{field}", {field},
+                ))
+    return conflicts
+
+
+def _label_quoted(label: str, span: str) -> bool:
+    """Whether the quoted span actually contains the method label it supports.
+
+    The span is separately checked against the request, so the pair means the
+    label really is in the request and really is what this entry cites. Matching
+    is on word boundaries and ignores case and the separators a requester may
+    type, so `LIONESS-PANDA`, `lioness panda` and `LIONESS_PANDA` all count.
+    """
+    words = re.split(r"[-_\s]+", label.casefold())
+    pattern = (
+        r"(?<![a-z0-9])" + r"[\s_-]*".join(re.escape(word) for word in words)
+        + r"(?![a-z0-9])"
+    )
+    return re.search(pattern, span.casefold()) is not None
+
+
 def _required_evidence(
     outcome: RequestedOutcome,
     confirmed_inputs: frozenset[str] = frozenset(),
 ) -> list[tuple[str, str]]:
     required: list[tuple[str, str]] = []
     entailed_entities, entailed_granularity = _entailed_by_artifact(outcome)
+    # A named method is a claim about the request's own words, so it always
+    # needs its entry; there is no ontology that could entail it.
+    required.extend(("named_method", value) for value in outcome.named_methods)
     if outcome.operation != "unknown":
         required.append(("operation", outcome.operation))
     if outcome.artifact_type != "unknown":
@@ -197,6 +264,10 @@ def validate_outcome_hypotheses(
             issue.prefixed(f"hypothesis[{index}].")
             for issue in outcome_consistency_issues(hypothesis.outcome)
         )
+        issues.extend(
+            issue.prefixed(f"hypothesis[{index}].")
+            for issue in _named_method_conflicts(hypothesis.outcome)
+        )
         outcome_values = _outcome_values(hypothesis.outcome)
         required_evidence = _required_evidence(hypothesis.outcome, confirmed_inputs)
         if (
@@ -234,6 +305,16 @@ def validate_outcome_hypotheses(
                     {FIELD_BY_DIMENSION[item.dimension]}
                     if item.dimension in FIELD_BY_DIMENSION else NO_OUTCOME_FIELDS,
                 ))
+            if item.dimension == "named_method":
+                # Reporting what the user wrote is not something that can be
+                # inferred, and a quote that does not contain the label does not
+                # support the claim -- both would let an unmentioned method in.
+                span = item.text_span or ""
+                if item.source != "explicit" or not _label_quoted(item.value, span):
+                    issues.append(Issue(
+                        f"hypothesis[{index}].unquoted_named_method:{item.value}",
+                        {"named_methods"},
+                    ))
             if item.source == "explicit":
                 span = _normalized(item.text_span or "")
                 if not _grounded_span(span, normalized_task):
