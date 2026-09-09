@@ -7800,3 +7800,82 @@ matched-control 的四次量測（35／29／19／24）用的是 `role-evidence` 
 乙案：`run-two-named-tools` 我**預測會失敗**——目前 C 只在「恰好一個標籤」時生效，
 兩個標籤會落回真空 → `not_applicable` → 靜默 `no_tool`，而預期是**請求澄清**。
 若如此，我**不改判準**，如實記錄為語料新暴露出的缺陷。
+
+## Log 124｜甲乙兩案結果：V1–V4 全過；**C1 無法達成，而原因本身是發現**；新語料三題實跑 0/3
+
+日期／時區：2026-09-09，Asia/Taipei。判準宣告於 Log 123，改動之前寫入，未修改。
+
+### 甲、歷史詞彙擴充：V1–V4 全部通過
+
+| 判準 | 結果 |
+| --- | --- |
+| **V1** 負向對照 | 既有 27 題，`_scoped_clauses` 與 `input_mentions` **零差異** ✓（改動前唯讀量過一次，改動後在 30 題語料上再量一次，同樣為零） |
+| **V2** 所有權不是歷史 | `I already have an expression matrix and motif priors` 維持 `current` ✓ |
+| **V3** 缺口修好 | `I already finished my PANDA run last month.` → `historical`，且真空解讀下不再匹配 `run_panda`（`not_applicable`）✓ |
+| **V4** 回歸 | 離線 **1529 passed／35 skipped（Docker）／0 failed**；含 Docker 另計 |
+
+新增項全部**綁定完成動作的動詞**，不綁單獨副詞——這是 V2 能過的原因。
+Log 122 留下的 `test_the_history_guard_is_only_as_good_as_its_vocabulary`
+當時就寫明「詞彙一長這個測試就會失敗」，今天長了，已把該測試反轉為
+`test_a_finished_run_reported_without_the_old_markers_is_still_history`。
+
+### 乙、語料：C1 無法達成
+
+**C1 說「不得為此新增評分邏輯」。做不到，而做不到的原因才是重點。**
+
+評分器把 `request_mode == "guidance"` 與 `should_execute == False`
+**硬寫死成對每一題的要求**：
+
+```python
+if request_mode != "guidance": semantic_errors.append(...)
+if decision.should_execute or decision.action != "no_tool":
+    safety_errors.append("execution: a guidance case must never authorize an action")
+```
+
+也就是說，**這個評測工具在結構上寫不出一個「執行」請求**。
+27 題全是「該用哪個工具」，所以這條硬編碼從來沒有被察覺；
+**這才是「最普通的真實請求沒被測到、而閘門長年全綠」的真正原因**，
+比 Log 121 說的「語料剛好沒有這一類」更深一層。
+
+**處置**：在 `RoutingExpectation` 加 `request_mode`，**預設 `guidance`**。
+預設值使既有 27 題的評分**逐字不變**（結構性保證，已以測試釘住：
+JSON 中未寫該欄位的案例一律解析為 `guidance`，且宣告 `execute` 的恰為兩題新案）。
+**我違反了 C1，在此明記，不改判準。**
+
+### 乙、語料三題：C2／C3 通過，實跑 0/3
+
+`corpus_sha256`：`a43c2baec7…` → **`d24258545e…`**。27 → **30** 題。
+既有 27 題**一字未改**（C3 ✓）。
+
+單次實跑（`--repeat 1`，描述性，依 C4 不主張任何分數）：
+
+| 新案 | 路由結果 | 判定 |
+| --- | --- | --- |
+| `run-named-panda-with-files` | `run_panda`／`exact`／`workflow_name` | **路由層正確**；僅因 `semantic_acceptance` 而不算通過 |
+| `run-named-tool-finished-then-new-goal` | `semantic_validation_recovery`（ValueError 路徑） | 全面失敗 |
+| `run-two-named-tools` | `not_applicable`，無澄清提問 | 失敗，**與我 Log 123 的事前預測一致** |
+
+**三題目前都不通過。我沒有調整任何期望值去讓它們通過。**
+語料的職責是寫下「正確長什麼樣」，這三題現在寫下了，而系統還做不到。
+
+三點解讀，逐一分開：
+
+1. **`run-named-panda-with-files` 的失敗是誠實的。**
+   評分器要求「有一次通過驗證的語意解讀」才算語意成功。
+   這一題沒有——**名稱把它路由對了，語意層什麼也沒驗證**。
+   這是系統目前的實情，不是評分器的錯，**我不會改評分器讓它變成通過**。
+   要它真正通過，得讓複審能把「PANDA」轉成該能力的 outcome，那是另一項工作。
+2. **`run-named-tool-finished-then-new-goal` 我沒有事前預測，它失敗了。**
+   單次試驗不能排名任何東西（Log 98／120），所以我也不從中推論什麼。
+   它的形狀對照既有會通過的 `reverse-history-expression`，差別只在措辭。
+3. **`run-two-named-tools` 如預測失敗。** C 刻意讓「兩個標籤」解析為 none，
+   於是落回真空 → `not_applicable` → 靜默 `no_tool`；而正確行為是**提問**。
+   這是 C 的已知邊界，現在有語料釘著它。
+
+### 這一則不主張什麼
+
+- **不主張**任何分數改善。**未重跑全語料**（C4）。
+- **既有 27 題語料的所有歷史數字，與 30 題語料的數字不可比較。**
+  受影響的是全語料輪次；matched-control 那條鏈用的是 `role-evidence`
+  四題獨立 suite，**不受影響**。
+- 引用舊 `corpus_sha256` 的文件已加註。

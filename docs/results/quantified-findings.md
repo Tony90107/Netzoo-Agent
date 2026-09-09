@@ -4,7 +4,9 @@
 每一項都註明證據來源（研究記錄 Log 編號、報告檔）與**不能宣稱什麼**。
 
 環境：`gpt-4o-mini`（temperature 0）經 OpenRouter；離線與執行層閘門為本機 Docker，
-映像 `netzoo_agent:latest`。語料 27 題，`corpus_sha256=a43c2baec7…`。
+映像 `netzoo_agent:latest`。**本文所有數字取自 27 題語料**，`corpus_sha256=a43c2baec7…`。
+Log 124 起語料補為 30 題（`d24258545e…`，新增「點名工具直接執行」這一類），
+**其後的全語料數字與本文不可比較**；matched control 的 `role-evidence` 四題未變，第 6 節不受影響。
 
 ---
 

@@ -569,5 +569,58 @@
         "SAMBAR"
       ]
     }
+  },
+  {
+    "id": "run-named-panda-with-files",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Run PANDA using these three local files:\n\n/work/manual_tests/input_identification/random_names_valid/alpha_17.tsv\n/work/manual_tests/input_identification/random_names_valid/blue_note.csv\n/work/manual_tests/input_identification/random_names_valid/fragment_03.txt",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_panda"
+      ],
+      "request_mode": "execute"
+    }
+  },
+  {
+    "id": "run-named-tool-finished-then-new-goal",
+    "language": "en",
+    "category": "history",
+    "prompt": "I already finished my PANDA run last month. Now I have the same expression matrix plus TF motif priors and PPI data, and I want a separate TF-to-gene regulatory network for each individual sample.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "forbidden_actions": [
+        "run_panda"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ]
+      }
+    }
+  },
+  {
+    "id": "run-two-named-tools",
+    "language": "en",
+    "category": "negative",
+    "prompt": "Run PANDA and PUMA on these files:\n\n/work/manual_tests/input_identification/random_names_valid/alpha_17.tsv\n/work/manual_tests/input_identification/random_names_valid/blue_note.csv\n/work/manual_tests/input_identification/random_names_valid/fragment_03.txt",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "request_mode": "execute",
+      "require_clarification": true
+    }
   }
 ]

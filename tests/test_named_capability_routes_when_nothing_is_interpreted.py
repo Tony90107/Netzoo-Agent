@@ -104,27 +104,35 @@ def test_a_method_named_as_history_still_decides_nothing():
     assert match.status == "not_applicable"
 
 
-def test_the_history_guard_is_only_as_good_as_its_vocabulary():
-    """A known limit, recorded rather than hidden.
+def test_a_finished_run_reported_without_the_old_markers_is_still_history():
+    """The limit recorded in Log 122, now closed (Log 123/124).
 
-    Clause scoping is a bounded lexical pass and says so in its own module
-    docstring: `previously`, `earlier`, `past`, `old`, and their CJK
-    equivalents. `I already finished my PANDA run last month` carries none of
-    them, so it reads as current and the label is honoured.
+    Clause scoping is a bounded lexical pass, and its history vocabulary was
+    `previously`, `earlier`, `past`, `old` and their CJK equivalents. "I already
+    finished my PANDA run last month" carried none of them, so a bare sentence
+    reporting a finished run read as a live request to run it again. This test
+    asserted that behaviour and said it would fail the day the vocabulary grew;
+    it grew, and this is the reversed assertion.
 
-    Two conditions have to hold together for this to bite, which is why the
-    exposure is narrow. The reading must assert nothing, and the request must
-    state no other goal -- add one, as in "... Now I want to cluster patients by
-    their somatic mutations", and the match is decided as `unsupported` before
-    the label is ever consulted. What is left is a bare sentence reporting a
-    finished run, which is pinned here rather than left to be discovered.
-
-    Extending the history vocabulary is a change to machinery shared with input
-    scoping and has to be measured on its own, so it is not done here. This test
-    fails the day it grows, which is the point.
+    What the vocabulary gained is bound to a completion verb, never to a bare
+    adverb, because a history hit overrides a current hit in the same clause and
+    the same scoping decides which inputs count as present. `already` on its own
+    would have read "I already have an expression matrix" as history and made a
+    declared input disappear -- which the test below holds shut.
     """
     match = match_semantic_request(
         "I already finished my PANDA run last month.",
+        nothing_interpreted(), request_mode="execute",
+    )
+
+    assert match.matched_actions == []
+    assert match.status == "not_applicable"
+
+
+def test_owning_something_already_is_not_reporting_it_finished():
+    """The scope limit that makes the addition safe rather than merely wider."""
+    match = match_semantic_request(
+        "I already have an expression matrix and motif priors. Run PANDA.",
         nothing_interpreted(), request_mode="execute",
     )
 

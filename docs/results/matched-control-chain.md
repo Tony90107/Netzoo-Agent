@@ -7,7 +7,10 @@
 > Log 111–120。
 >
 > 資料日期：2026-09-09。模型：`gpt-4o-mini`（temperature 0，經 OpenRouter）。
-> 語料 `tests/routing_scenarios.json`（27 題，`corpus_sha256=a43c2baec7…`）。
+> 語料 `tests/routing_scenarios.json`（量測時為 27 題，`corpus_sha256=a43c2baec7…`）。
+> **Log 124 起語料為 30 題（`d24258545e…`）**：本檔數字皆取自 27 題版本，
+> 與其後的全語料數字不可比較。matched control 用的是 `role-evidence` 四題
+> 獨立 suite，該四題未變，**本檔的機制鏈不受影響**。
 >
 > **⚠ 本檔曾經以一組 Fisher p 值為主結果。那些 p 值已於 Log 120 全部撤回。**
 > **撤回的理由、以及撤回這件事本身，都寫在下面——第 3 節就是為它而寫的。**
