@@ -7879,3 +7879,82 @@ JSON 中未寫該欄位的案例一律解析為 `guidance`，且宣告 `execute`
   受影響的是全語料輪次；matched-control 那條鏈用的是 `role-evidence`
   四題獨立 suite，**不受影響**。
 - 引用舊 `corpus_sha256` 的文件已加註。
+
+## Log 125｜事前宣告：修復範圍改由驗證規則自己宣告（尚未實作）
+
+日期／時區：2026-09-09，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+使用者指示：先做這個；且「不要看到關鍵字就做某件事，要有完整的 harness」。
+
+### 觸發此項的實測（使用者第二次回報，4/4 重現）
+
+請求：`Run PANDA using these local files:` ＋ `expression_file=` / `motif_file=` /
+`ppi_file=` 三行路徑。第一次解讀（實際傾印）：
+
+```
+operation      = infer                ✓  evidence: explicit，引了原文
+artifact_type  = regulatory_network   ✓  evidence: inferred
+granularity    = not_applicable       ✗
+```
+
+**唯一的拒絕**：`artifact_granularity:regulatory_network`
+（調控網路不得為 `not_applicable` 粒度）。
+**然後複審把整份 outcome 重寫並引入新錯誤**——attempt 2 冒出
+`input_artifact=regulatory_network`、`input_artifact=multi_omic_network`
+（把輸出當輸入）、`entity_type=tf` 等，兩次皆敗 → ValueError。
+
+**這與 Log 111–115 量到的是同一種行為，只是換了 issue 類別。**
+`evidence_only` 護欄只在「issue 全為 `missing_evidence`」時生效；
+這裡是 `artifact_granularity`，於是整份重寫被允許。
+**程式碼目前只有二元開關，沒有「只准改被指出的那幾個欄位」這一檔。**
+
+### 介入：範圍由規則自己宣告，不由 issue 碼字串推導
+
+每一個發出 issue 的地方，**在讀取欄位的那段程式碼旁邊**一併宣告
+「本規則檢查了哪些 outcome 欄位」。修復可動範圍 = 本次所有 issue 宣告的聯集。
+
+發出點共 12 處，分佈於三個模組：
+
+| 規則 | 檢查的欄位（＝宣告的範圍） |
+| --- | --- |
+| `artifact_entity` | `entity_types`, `artifact_type` |
+| `artifact_granularity` | `granularity`, `artifact_type` |
+| `artifact_roles` | `regulator_types`, `target_types`, `unresolved_dimensions`, `artifact_type` |
+| `role_entity` | `entity_types`, `regulator_types`, `target_types` |
+| `missing_current_input` / `noncurrent_input` | `input_artifacts` |
+| `terminal_goal_conflict` | `artifact_type` |
+| `inconsistent_not_applicable_outcome` / `unusable_outcome` | **全部欄位**（規則檢查整體形狀） |
+| `conflicting_evidence:<dim>=<v>` | `<dim>` 對應的那一個欄位 |
+| `ungrounded_evidence` / `missing_evidence` | **空集合**（規則檢查的是引文，不是 outcome） |
+
+**兩個由本體論推導、而非手寫的部分**：
+1. `conflicting_evidence` 的欄位由既有的 `_EVIDENCE_DIMENSIONS` 對應表得到。
+2. 若 `artifact_type` 在範圍內且 patch 確實改了它，
+   則 `ARTIFACT_SEMANTICS` 對**新** artifact_type 所約束的欄位一併進入範圍。
+   這是查本體論表，不是為每個 issue 碼手寫清單。
+
+**副作用（正面）**：`evidence_only_repair` 那個 `".missing_evidence:" in issue`
+字串判斷**被刪除**。①③ 成為「宣告範圍＝空集合」的一般情形，不再是特例。
+
+### 事前判準（結構性、離線、決定性）
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **H1** harness | 決定修復範圍的程式碼**不得**對 issue 碼做字串比對；範圍一律取自規則宣告 | — |
+| **H2** 等價 | 全為證據類的拒絕 → 可動範圍為 ∅，①③ 行為逐字不變 | 通過（不得破壞） |
+| **H3** 缺陷 | 僅 `artifact_granularity` 的拒絕 → 只准動 `granularity`／`artifact_type`；patch 對其他欄位的覆寫不得生效 | **失敗** |
+| **H4** 範圍 | `inconsistent_not_applicable_outcome`／`unusable_outcome` 仍准動全部欄位 | 通過 |
+| **H5** 本體論推導 | patch 合法改了 `artifact_type` 時，新 artifact 所約束的欄位自動在範圍內 | **失敗** |
+| **H6** 無漏網 | `validate_outcome_hypotheses` 產出的**每一條** issue 都必須帶宣告範圍 | **失敗** |
+| **H7** 回歸 | 含 Docker 閘門全綠，`skipped` 與 `passed` 一起讀 | — |
+
+### 描述性、非判準（依 Log 120）
+
+使用者這句話的實跑結果逐次記錄。**本輪不提出任何分數主張**：
+沒有跑全語料，也沒有時間交錯的同碼替身，因此不得計算 p 值、
+不得宣稱修復率改善。可主張的只有結構性的部分：
+**patch 對宣告範圍外欄位的覆寫，在程式上不可能生效。**
+
+### 事前預測
+
+H3 修好後，該請求的第二次呼叫只會被允許改 `granularity`／`artifact_type`，
+因此我預測它會通過。**但我不預測次數**——若失敗，如實記錄，不改判準。
