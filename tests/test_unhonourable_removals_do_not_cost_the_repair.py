@@ -63,8 +63,9 @@ def test_a_removal_naming_no_dimension_is_set_aside_and_the_repair_survives():
 def test_the_dimension_names_the_model_actually_invented_are_set_aside():
     """The shape as observed, not as imagined.
 
-    A leave-one-out round with this change reverted (Log 117) put the class back
-    on the wire in 4 of 36 trials, and named what the review had actually
+    Two leave-one-out rounds with this change reverted (Log 117, Log 119) put the
+    class back on the wire in 4 and then 17 of 36 trials -- it is 0 under the
+    current code by construction -- and named what the review had actually
     written: `evidence_removals[4].dimension = "display_entity"` and
     `evidence_removals[7].dimension = "unresolved_dimension"`, inside a list of
     at least eight withdrawals. Neither is a misspelling of a real dimension --

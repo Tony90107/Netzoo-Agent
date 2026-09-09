@@ -1,197 +1,235 @@
 # Matched-control 機制鏈：可放進論文的兩項
 
 > 對象：NetZoo agent 語意路由的**修復階段**（第二次 LLM 呼叫）。
-> 本檔只收兩件事：**(1) 主結果與其可分別歸因的機制**、**(2) 這個設計能否證**。
+> 本檔只收兩件事：**(1) 機制鏈及其歸因依據**、**(2) 這個設計能否證**。
 > 完整的十項發現在 [`quantified-findings.md`](quantified-findings.md)；
 > 每一步的事前判準在 [`../research-log/sambar-agent-routing.md`](../research-log/sambar-agent-routing.md)
-> Log 111–117。
+> Log 111–120。
 >
-> 資料日期：2026-09-09。模型：`gpt-4o-mini`。語料 `tests/routing_scenarios.json`
-> （27 題，`corpus_sha256=a43c2baec7…`）。
+> 資料日期：2026-09-09。模型：`gpt-4o-mini`（temperature 0，經 OpenRouter）。
+> 語料 `tests/routing_scenarios.json`（27 題，`corpus_sha256=a43c2baec7…`）。
+>
+> **⚠ 本檔曾經以一組 Fisher p 值為主結果。那些 p 值已於 Log 120 全部撤回。**
+> **撤回的理由、以及撤回這件事本身，都寫在下面——第 3 節就是為它而寫的。**
 
 ---
 
 ## 0. 一段話
 
 固定 LLM 的第一次呼叫、只變動程式碼的 matched-control 設計下，
-修復階段的正確率從 **2/36 提升到 35/36**（單尾 Fisher exact **p = 5.3×10⁻¹⁷**），
-分三個機制步驟達成，每一步都伴隨一個**結構性計數器歸零**作為歸因依據。
-同一設計在四次量測中**兩次產出否定結果**——一次是介入未達自己的事前門檻，
-一次是我自己的有效性判準把一輪對我有利的數據判為作廢。
+修復階段的正確率從 **2/36** 提升到 **35/36**，同碼替身另量到 **24/36**。
+差距（22–33）遠大於實測的同碼差距（11），
+**所以「大幅改善」成立，但逐步的分數歸因與所有 p 值不成立、已撤回。**
+三個機制步驟的歸因改為完全建立在**結構性計數器**上——那是程式碼的確定後果，
+不受抽樣影響。同一設計在六次量測中**三次產出否定結果**，
+其中一次推翻的是本研究自己的主結果。
 
 ---
 
-## 1. 為什麼需要 matched-control
+## 1. 設計，以及它實際的解析度
 
-**問題**：全語料 live 輪次無法分辨小效果。同一份程式碼、同一語料、同一參數，
-連跑多輪，`passed` 波動 **±3**、accepted **±4**、tool-correct **±1**，
-27 題中有 **6 題**在兩輪之間翻面（Log 98）。
-在 n = 81 的全語料上，任何 ≤3 的差異都在噪音裡。
+### 1.1 為什麼要 matched control
+
+全語料 live 輪次無法分辨小效果：同一份程式碼、同語料、同參數，連跑多輪，
+`passed` 波動 **±3**、accepted **±4**、tool-correct **±1**，
+27 題中有 **6 題**在兩輪之間翻面（Log 98，n = 81）。
 
 **設計**：把第一次 LLM 呼叫的輸出**固定成一個離線建構的解讀**，
 使其唯一缺陷屬於待測類別，然後只變動程式碼，量第二次呼叫的修復是否正確。
-第一次呼叫的模型變異因此被完全移除；剩下的變異只來自審查層那一次呼叫。
+第一次呼叫的變異因此被移除；剩下的變異只來自審查層那一次呼叫。
 
 **對象類別**：第一次解讀把角色（regulator／target／entity）寫進 outcome，
 卻沒有對應的證據條目。這在拼字問題修好之後是最大的損失來源——
-兩輪 162 次試驗中，`missing_evidence` 有 **126/165（76%）** 屬角色維度，
-而角色正是把預期能力和它的相容鄰居分開的那個維度。
-四題的判別維度皆為角色（兩題有輸入、兩題沒有）。
+`missing_evidence` 有 **126/165（76%）** 屬角色維度，而角色正是把預期能力
+和它的相容鄰居分開的那個維度。四題的判別維度皆為角色。
 
 **規模**：4 題 × 3 repeat = 12 trial／輪，3 輪 = **n = 36**。
 
-**解析度的實測**：本設計**五次**量測的逐輪離散為 **1／0／3／1／4**
-（最後一個是 §3.2 的 leave-one-out 輪次，也是最大的一次）。
-對照全語料輪次的 ±3～±4。
+### 1.2 實際的解析度（Log 120，推翻了本檔前一版的說法）
 
-已達顯著的合計差異是 **20**（2→22）與 **10**（25→35）；
-未達的是 **3**（22→25）；差 **6** 的那一次（35 對 29）被自己的閘門作廢。
+| 配置 | 時間 | 逐輪 | 合計 |
+| --- | --- | --- | --- |
+| 現行碼 | 01:57 | 12, 11, 12 | 35/36 |
+| 抽掉②（ablation） | 10:24 | 9, 12, 8 | 29/36 |
+| 抽掉②（ablation） | 11:02 | 6, 7, 6 | 19/36 |
+| 現行碼 | 11:03 | 7, 8, 9 | **24/36** |
 
-> **固定第一次呼叫之後，n = 36 分得出 10 以上的差異、分不出 3；
-> 6 這個量級目前沒有一次通過完整判準的量測。**
-> 全語料輪次（n = 81）從未達到顯著。
+兩對都離線核對過是**同一份 runtime**（現行碼那一對：`f7400ef..HEAD` 排除
+`docs/` 與 `tests/` 後零檔案；ablated 那一對：同一個 `git revert 2e03a24`，
+其間 `router_invocation.py` 零差異）。
+
+**同碼差距：現行 11、ablated 10。輪內離散只有 1／4／1／2。**
+
+> **輪內小、量測間大**，代表**背靠背連續跑的三輪不是獨立樣本**：
+> 它們共用一個隨時間漂移的 provider 狀態。
+> 把三輪當成 n = 36 的獨立試驗會高估有效樣本數，
+> **因此本設計先前報出的每一個 Fisher p 值在統計上無效。**
+
+同碼差距的相對尺度：全語料 ±3～4／81 ≈ **5%**；matched control 10–11／36 ≈ **30%**。
+**「matched control 解析度更高」是錯的，撤回。**
+它真正買到的不是解析度，而是**把第一次呼叫的變異移走，使結構性計數器乾淨可讀**。
+
+### 1.3 因此，可用的作法
+
+1. 分數只用來排除「差距小於同碼差距」的假象；
+2. **逐步歸因一律以結構性計數器為準**；
+3. 若真要主張 p 值，同碼替身必須與候選在**時間上交錯**，不是各跑一批。
 
 ---
 
-## 2. 第一項強化：主結果與可分別歸因的機制鏈
+## 2. 第一項：機制鏈，以結構性計數器歸因
 
-### 2.1 結果
+「結構性計數器」＝程式碼的確定後果（該類別在該版程式下**不可能發生**），
+對比「分數型指標」＝受抽樣支配。**歸因靠前者。**
 
-每一步的門檻都在跑該步之前、由凍結的基線與 Fisher exact 算出並寫死。
+| 步驟 | 機制（一句話） | 結構性計數器 | 合計分數 |
+| --- | --- | --- | --- |
+| 原始 | — | — | 2/36 |
+| ① | `missing_evidence` 說的是「這個值沒有引用」，不是「這個值錯了」；<br>issue 全屬該碼時，patch 只套用證據增刪，不套用 outcome 覆寫 | `role_entity` **38 → 0**<br>`missing_evidence:entity_type=sample` **26 → 0** | 22/36 |
+| ② | 一條指名不存在維度的移除、或根／巢狀兩份互相矛盾的清單，<br>**不可能產生任何效果**；不該為它丟掉整份格式正確的修復 | `removal_dim` **10 → 0**<br>`list_conflict` **6 → 0**<br>ablation 重跑再現：**17 個 trial → 0** | 25/36 |
+| ③ | ①的路徑上 outcome 不變，**故沒有任何證據會變成過時的**；<br>該路徑的移除只能撤回一個 outcome 仍在主張的值 | 「移除項與抱怨項重疊」**8 → 0**<br>attempt-2 `missing_evidence` **36 → 0** | 35/36（同碼替身 24/36） |
 
-| 程式狀態 | 逐輪 | 合計 | 事前門檻 | 對前一步 | 對原始 |
-| --- | --- | --- | --- | --- | --- |
-| 原始 | 1, 1, 0 | **2 / 36** | — | — | — |
-| ① citation-only 不改 outcome | 8, 7, 7 | **22 / 36** | — | p = 3.1×10⁻⁷ | p = 3.1×10⁻⁷ |
-| ② 移除項指令正規化 | 8, 7, 10 | **25 / 36** | 30/36 | **p = 0.31（未達）** | — |
-| ③ citation-only 忽略移除項 | 12, 11, 12 | **35 / 36** | 32/36 | p = 0.0015 | **p = 5.3×10⁻¹⁷** |
+### 2.1 分數能支持什麼、不能支持什麼
 
-### 2.2 三個機制，以及各自的結構性計數器
+- **能**：原始 2/36 對現行的兩次量測 {35, 24}，差 **33** 與 **22**，
+  遠大於同碼差距 **11**。**「這三步合起來大幅改善了修復階段」成立。**
+- **不能**：逐步歸因。①的 Δ20 只比同碼差距大 9，②的 Δ3 與③的 Δ10 都在其內。
+  **不得說「①值 20 分、③值 10 分」。**
+- **不能**：任何 p 值（§1.2）。
 
-「結構性計數器」＝程式碼的確定後果，不受抽樣噪音支配（相對於 pass rate 這類分數指標）。
-**歸因靠的是這一欄，不是分數。**
+### 2.2 ③ 的成因是實測，不是推論
 
-| 步驟 | 機制（一句話） | 結構性計數器 |
-| --- | --- | --- |
-| ① | `missing_evidence` 說的是「這個值沒有引用」，不是「這個值錯了」；<br>因此當 issue 全屬該碼時，patch 只套用證據增刪，不套用 outcome 覆寫 | `role_entity` **38 → 0**<br>`missing_evidence:entity_type=sample` **26 → 0** |
-| ② | 一條指名不存在維度的移除、或根／巢狀兩份互相矛盾的清單，<br>**不可能產生任何效果**；不該為它丟掉整份格式正確的修復 | `removal_dim` **10 → 0**<br>`list_conflict` **6 → 0** |
-| ③ | ①的路徑上 outcome 不變，**故沒有任何證據會變成過時的**；<br>該路徑的移除只能撤回一個 outcome 仍在主張的值 | 「移除項與抱怨項重疊」**8 → 0**<br>attempt-2 `missing_evidence` **36 → 0** |
+② 的副作用是讓失敗**可診斷**。逐試驗比對 11 次殘留失敗，**8 次**是 patch
+移除了 attempt 2 隨後抱怨缺少的那幾條證據——`('operation','infer')` 與
+`('artifact_type','regulatory_network')` 各 8 次，典型形狀是「移除 6 條、新增 2 條」。
+③ 是從這裡查出來的。**這個 8/11 是逐試驗的比對計數，不是分數指標。**
 
-### 2.3 ③ 的成因是實測，不是推論
+### 2.3 ② 的 leave-one-out 對照：結構性成立，分數不成立
 
-② 的副作用是讓失敗**可診斷**。逐試驗比對 11 次殘留失敗，
-**8 次**是 patch 移除了 attempt 2 隨後抱怨缺少的那幾條證據
-——`('operation','infer')` 與 `('artifact_type','regulatory_network')` 各 8 次，
-典型形狀是「移除 6 條、新增 2 條」。③ 是從這裡查出來的，不是猜的。
+抽掉②（`git revert`，只動 `router_invocation.py`）跑了兩次，
+第一次因我自己的閘門寫錯而作廢（§3.2），第二次閘門換成結構性後通過。
+
+- **結構性（成立）**：`schema_validation` 家族在現行碼下**恆為 0 個 trial**
+  （四次量測皆然），因為那兩種形狀在驗證前就被挑掉——這是程式保證。
+  抽掉②後回到 **4** 與 **17** 個 trial，且**全部**屬②宣告處理的形狀，沒有第三種。
+  離線決定性測試 7 項在現行碼全過、在 ablated 碼全敗。
+- **分數（不成立）**：時間最相鄰的一對——ablated 19（11:02）對現行 24（11:03）
+  ——只差 5，單尾 p = 0.17。
+
+**② 的地位不變：只以「不該為一個必然無效的指令丟掉整份格式正確的修復」的
+正當性保留，不主張改善修復率。**
 
 ### 2.4 必須一併陳述的限度
 
 - **模型行為沒有改變。** 候選組的 patch **仍有 18/25 動了 ≥9 個 outcome 欄位**。
   效果全部來自**套用階段的限制**，不是模型端的改善。
 - **未使用 prompt 措辭。** 三步都是程式碼層的合併規則。
-  （本研究先前有六次以 prompt 措辭嘗試修復的失敗紀錄，已列為硬性禁止。）
-- **唯一殘餘的 1/36 是契約在正常工作**：審查層為 `target_type=gene` 補了一條
+- **35/36 的那 1 次殘留是契約在正常工作**：審查層為 `target_type=gene` 補了一條
   **explicit** 證據，而該請求（`…mi-rna regualtor network, what toosl do i need?`）
-  從未提到 gene。`ungrounded_evidence` 是對的。**不應該去修它。**
+  從未提到 gene。**不應該去修它。**
 - **這是修復階段的內部指標**，不是端到端路由正確率。
-  這三步在真實請求上的合計效果尚未量測（需要同碼替身輪才能主張任何分數差異）。
 
 ### 2.5 論文可直接使用的句子
 
 > Fixing the first LLM call and varying only the merge rules, the repair stage
-> went from 2/36 to 35/36 (one-sided Fisher exact, p = 5.3×10⁻¹⁷) in three steps,
-> each accompanied by a structural counter falling to zero: the rejection class
-> the step targets becomes unreachable by construction, so attribution does not
-> rest on the score alone. The model's output did not change — 18 of 25 candidate
-> patches still rewrite nine or more outcome fields; what changed is that a
-> request for a citation no longer licenses the reviewer to rewrite the value or
-> to withdraw its support.
+> went from 2/36 to 35/36; a same-code replicate of the final state returned
+> 24/36. Against a measured same-code span of 11, a gap of 22–33 supports the
+> direction and order of magnitude of the improvement but not a step-by-step
+> attribution, and every Fisher p value this design reported has been withdrawn:
+> three consecutive rounds share a drifting provider state and are not
+> independent samples, so n = 36 overstates the effective sample size.
+> Attribution therefore rests on structural counters — for each step, the
+> rejection class it targets becomes unreachable by construction (`role_entity`
+> 38 → 0; the two malformed-removal shapes 10 → 0 and 6 → 0, reproduced as
+> 17 trials → 0 under ablation; withdrawal/complaint overlap 8 → 0) — none of
+> which is a sampled quantity. The model's output did not change: 18 of 25
+> candidate patches still rewrite nine or more outcome fields.
 
 ---
 
-## 3. 第二項強化：這個設計能否證
+## 3. 第二項：這個設計能否證
 
-一個只會產出好消息的評估設計沒有證據力。本設計在四次量測中**兩次擋下了我自己**。
+一個只會產出好消息的評估設計沒有證據力。本設計在六次量測中**三次擋下了作者**。
 
-### 3.1 否證一：介入未達自己的事前門檻（步驟 ②，Log 113／114）
+### 3.1 否證一：介入未達自己的事前門檻（步驟②，Log 113／114）
 
-② 精準達成了它宣告的機制目標（`removal_dim` 10→0、`list_conflict` 6→0），
-卻同時：
+② 精準達成了它宣告的機制目標（`removal_dim` 10→0、`list_conflict` 6→0），卻同時：
 
 - **未達統計門檻**：25/36，p = 0.31，門檻 30/36；且
 - **違反了事前寫下的 Z3「不得換位置」判準**：11 次失敗只有 3 次真的修好，
   其餘 8 次把失敗從**線路層**搬到**語意層**
   （attempt 2 出現基線沒有的 `missing_evidence` **36 次**）。
 
-**處置**：保留，但**只以「不該為一個必然無效的指令丟掉整份格式正確的修復」的
-正當性保留，不主張它改善修復率。** 這一點事後不得美化成「它也有效」。
+**處置**：保留，但只以正當性保留，不主張它改善修復率。事後不得美化成「它也有效」。
 
-> **沒有這一步，「matched control 優於全語料分數」就只有正面案例支撐。**
+### 3.2 否證二：有效性閘門判掉一輪對作者有利的數據（Log 116／117）
 
-### 3.2 否證二：有效性判準把一輪對我有利的數據判為作廢（Log 116／117）
+leave-one-out 輪次算出 **29/36**，單尾 p = 0.0276，**符合我事前寫下的預測**。
+但同時宣告的有效性閘門 M1（線路層形狀須回來合計 ≥ 8）**實測 7**。
+**依事前規則，該輪作廢，p 值不得引用。**
 
-因為 ② 是一個**放寬**（忽略模型給的指令），專案規則要求它配一個**負向對照**，
-而它當時只有離線的範圍測試，沒有量測過的對照。同時，「三段可分別歸因」這件事
-本身從未被測過——三步都只跟前一步比，沒有任何一步被單獨抽掉。
+**M1 本身是設計錯誤，這才是那一輪的產出**：它把硬性下限架在一個**分數型**計數上，
+而下限（8）來自單次觀測、無凍結基線。
+> **補上的規則：有效性檢查只能架在結構性計數器上
+> （例如「該家族在現行程式碼下恆為 0」），不得對受抽樣影響的計數設下限。**
 
-於是做 leave-one-out：`git revert` 掉 ②，得到 **①＋③**，其餘完全不變。
-**事前**宣告（Log 116，跑之前寫入）：
+換成結構性閘門重跑（Log 118／119），得 19/36，W1 的算術成立——
+但緊接著的 §3.3 把它的 p 值也一併帶走。
 
-| 判準 | 內容 |
+### 3.3 否證三：同碼替身推翻了本研究自己的主結果（Log 119／120）
+
+因為兩次 ablated 量測（29 與 19）在**已離線確認 runtime 完全相同**的情況下差了 10，
+我事前宣告了一輪現行碼的同碼替身，並寫下撤回分支：
+
+| 判準（事前） | 內容 |
 | --- | --- |
-| **W1** ②承重 | `abl ≤ 29/36`（單尾 Fisher p < 0.05） |
-| **W2** ②多餘 | `abl ≥ 33/36` 且 p > 0.05 |
-| **W3** 不可評 | 30–32/36 |
-| **M1** 有效性閘門 | 兩種線路層形狀必須回來，合計 **≥ 8**；**不通過則本輪作廢** |
-| 事前預測 | 我預測 W1 |
+| **R0** 結構性閘門 | 現行碼 `schema_validation` 家族須為 0 個 trial |
+| **R1** 穩定 | ≥ 32/36 → 主結果保留 |
+| **R2** 不穩定 | ≤ 28/36 → **③ 的 p = 0.0015 與累計 5.3×10⁻¹⁷ 撤回** |
+| **R3** 不可評 | 29–31/36 |
+| 事前預測 | 我預測 R1 |
 
-**結果：`abl = 29/36`（逐輪 9／12／8），p = 0.0276——W1 的算術達標。
-但 M1 實測 7 < 8。依我自己寫下的規則，這一輪作廢，p = 0.0276 不得引用。**
+**結果：24/36（逐輪 7／8／9）。R0 通過，R2 觸發，我的預測是錯的。**
+依事前規定，**③ 的 p、累計 p、①的 p、W1 的 p、以及更早 1c 的 p 全部撤回**，
+「n = 36 分得出 3／分得出 10」兩句撤回，
+「matched control 解析度優於全語料」撤回，
+「現行碼對 provider 擺盪結構性免疫」這個假說也被推翻（現行臂擺盪 11）。
 
-**M1 本身才是這一輪真正的產出。** 它把硬性數字下限套在一個**受抽樣影響的計數**上，
-而那個下限（8）來自單次觀測，沒有凍結基線。依本研究自己的分類，
-`removal_dim` 出現幾次取決於審查層那一輪寫了什麼——它是**分數型**指標，
-我卻拿它當硬閘門。
-> **規則補充：有效性檢查只能架在結構性計數器上
-> （例如「該家族在現行程式碼下恆為 0」），不得對分數型計數設下限。**
+**前兩次否證擋下的是一個介入和一輪數據；這一次擋下的是主結果。**
 
-**不依賴 M1、因此仍成立的部分**（結構性）：`schema_validation` 這個 issue 家族
-在現行程式碼下是 **0 個 trial**——那兩種形狀在驗證之前就被挑掉，不可能出現。
-抽掉 ② 之後回到 **4 個 trial**，且 4 個**全部**是 ② 宣告要處理的兩種形狀，沒有第三種。
-7 次失敗的組成：
+### 3.4 論文可直接使用的句子
 
-| 類別 | 抽掉② | 現行 |
-| --- | --- | --- |
-| ②的線路層形狀 | 4 | 0 |
-| 正確的拒絕（虛構 gene 引文） | 3 | 1 |
-
-**這一輪不能主張**：不能說②承重（閘門未過），不能說②多餘（29 遠低於 33），
-也不能把 29 與 35 相減當效果量——逐輪離散 **4** 是本設計最大的一次，
-差距 6 只比它大 2。
-
-### 3.3 論文可直接使用的句子
-
-> The design is capable of returning negative results, and did so twice. One
-> intervention met its mechanistic target exactly (two wire-level rejection
-> shapes went to zero) yet missed its pre-registered statistical threshold
-> (25/36, p = 0.31 against 30/36) and violated a pre-registered criterion
-> forbidding failures from merely relocating; it is retained on a
-> proportionality argument and is explicitly **not** claimed as an improvement
-> to the repair rate. A later leave-one-out round produced a score that would
-> have supported the author's written prediction (29/36, p = 0.0276), but was
-> voided by its own pre-declared validity gate (7 observed against a required
-> 8) — and the post-mortem showed the gate had been badly typed, placing a hard
-> floor on a sampling-dependent count.
+> The design is capable of returning negative results and did so three times,
+> the last of them against the study's own headline. One intervention met its
+> mechanistic target exactly yet missed its pre-registered threshold (25/36,
+> p = 0.31 against 30/36) and violated a pre-registered criterion forbidding
+> failures from merely relocating; it is retained on a proportionality argument
+> and explicitly not claimed as an improvement. A leave-one-out round produced a
+> score supporting the author's written prediction (29/36) but was voided by its
+> own pre-declared validity gate — whose post-mortem showed the gate had been
+> badly typed, placing a hard floor on a sampling-dependent count. Finally, a
+> pre-declared same-code replicate of the final configuration returned 24/36
+> against a recorded 35/36, triggering the withdrawal branch written before the
+> round ran: three consecutive rounds are not independent samples, and every
+> Fisher p value this design had reported was withdrawn. What survived is
+> exactly what the study had already argued should be relied on — the structural
+> counters.
 
 ---
 
 ## 4. 不能主張的（本檔範圍內）
 
-1. **不能**說 ② 改善了修復率（p = 0.31，且違反 Z3）。
-2. **不能**引用 leave-one-out 的 p = 0.0276（M1 未過，該輪作廢）。
-3. **不能**把 35/36 當成端到端路由正確率——它是修復階段的內部指標。
-4. **不能**說模型變好了——模型行為沒變，變的是套用規則。
-5. **不能**跨設計比較：全語料輪次與 matched-control 輪次的 n 與變異來源不同。
+1. **不能**引用本設計報出的任何 Fisher p 值。全部撤回（Log 120）。
+2. **不能**做逐步的分數歸因（「①值 20 分、③值 10 分」）。
+3. **不能**說 ② 改善了修復率（p = 0.31，違反 Z3，且時間相鄰對只差 5）。
+4. **不能**把 35/36 當成端到端路由正確率——它是修復階段的內部指標，
+   而且同碼替身另量到 24/36。
+5. **不能**說模型變好了——模型行為沒變，變的是套用規則。
+6. **不能**說 matched control 解析度優於全語料——相對尺度上更差。
+
+**可以主張的只有兩件事**：
+(a) 三步合起來使修復階段大幅改善（Δ22–33 對同碼差距 11）；
+(b) 每一步的機制以結構性計數器歸零為據，且該歸零是程式的確定後果。
 
 ---
 
@@ -205,14 +243,17 @@ set -a && . ./.env && set +a && ~/.venvs/netzoo-qa/bin/python \
   | tee docs/research-log/replay-roundN.json
 
 # leave-one-out（抽掉②）
-git worktree add -b ablation/no-step2 /tmp/ablate HEAD
+git worktree add --detach /tmp/ablate HEAD
 cd /tmp/ablate && git revert --no-commit 2e03a24   # 只動 router_invocation.py
+git checkout HEAD -- tests/test_unhonourable_removals_do_not_cost_the_repair.py
 #  ...再跑同一條 replay 指令三次
 
-# 三步的機制計數器（決定性、不花錢）
+# 結構性閘門（決定性、不花錢）：現行碼全過、ablated 碼全敗
 ~/.venvs/netzoo-qa/bin/python -m pytest -q \
   tests/test_citation_only_repair_keeps_the_outcome.py \
   tests/test_unhonourable_removals_do_not_cost_the_repair.py
 ```
 
-Fisher exact 一律單尾（H1：候選 > 基線），`scipy.stats.fisher_exact(..., alternative='greater')`。
+存檔：`docs/research-log/replay-role-evidence-*.json`
+（`nowithdraw-*` = 現行碼 35/36；`samecode-current-*` = 現行碼 24/36；
+`ablate-step2-*` = 29/36；`ablate-step2-rerun-*` = 19/36）。
