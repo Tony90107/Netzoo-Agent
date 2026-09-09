@@ -30,22 +30,17 @@ from collections.abc import Sequence
 from ..contracts.outcomes import (
     OutcomeHypothesis, RequestedOutcome, SemanticInterpretation, SemanticPatch,
 )
+from ..contracts.artifact_semantics import fields_opened_by_artifact
+from ..contracts.repair_scope import (
+    DIMENSION_BY_FIELD, FIELD_BY_DIMENSION, OUTCOME_FIELDS,
+)
 
 __all__: list[str] = []
 
 
 # Patch field -> the evidence dimension that field's values are cited under.
 # display_entities and unresolved_dimensions carry no evidence of their own.
-_EVIDENCE_DIMENSIONS = {
-    "operation": "operation",
-    "input_artifacts": "input_artifact",
-    "artifact_type": "artifact_type",
-    "entity_types": "entity_type",
-    "regulator_types": "regulator_type",
-    "target_types": "target_type",
-    "granularity": "granularity",
-    "selection_tags": "selection_tag",
-}
+_EVIDENCE_DIMENSIONS = DIMENSION_BY_FIELD
 
 
 def _values(value) -> set[str]:
@@ -57,39 +52,45 @@ def patched_hypothesis_index(proposal: SemanticInterpretation, patch: SemanticPa
     return min(patch.hypothesis_index, len(proposal.outcome_hypotheses) - 1)
 
 
-def evidence_only_repair(issues: Sequence[str]) -> bool:
-    """Whether the rejection asked for citations and nothing else.
-
-    `missing_evidence` says a value has no supporting entry. It does not say the
-    value is wrong -- other codes do that, and say which dimension
-    (`conflicting_evidence`, `artifact_granularity`, `role_entity`,
-    `terminal_goal_conflict`). Asked only for citations, the review rewrote the
-    whole outcome in 14 of 24 recorded patches and introduced
-    `entity_types=["sample"]` on the way, which raised `role_entity` 38 times
-    across 36 trials and is this study's only recorded source of a wrong tool.
-    """
-    return bool(issues) and all(".missing_evidence:" in issue for issue in issues)
-
-
 def apply_semantic_patch(
     proposal: SemanticInterpretation,
     patch: SemanticPatch,
     *,
-    evidence_only: bool = False,
+    permitted_fields: frozenset[str] | None = None,
 ) -> tuple[SemanticInterpretation, list[dict]]:
     """Return the merged interpretation and the stale evidence the patch retired.
 
-    `evidence_only` drops the patch's outcome overrides and keeps its evidence
-    changes. It is set when every issue was `missing_evidence`, so the review was
-    answering a question about citations; changing values there answers a
-    question nobody asked.
+    `permitted_fields` is what the rejection licensed, collected from the rules
+    that fired rather than parsed out of their codes (`contracts.repair_scope`).
+    `None` permits the whole outcome, which is what happens when nothing declared
+    a scope. An empty set permits none of it, and that is the citation-only case:
+    `missing_evidence` says a value has no supporting entry, not that the value is
+    wrong, and asked only for citations the review rewrote the whole outcome in 14
+    of 24 recorded patches, introducing `entity_types=["sample"]` on the way --
+    38 `role_entity` rejections across 36 trials, this study's only recorded
+    source of a wrong tool.
+
+    A review allowed to correct `artifact_type` gets the fields that artifact's
+    own ontology governs, or the correction would leave a combination the
+    ontology forbids. That comes from `ARTIFACT_SEMANTICS`, not from a list.
     """
     index = patched_hypothesis_index(proposal, patch)
     base = proposal.outcome_hypotheses[index]
-    overrides = {} if evidence_only else {
+    allowed = OUTCOME_FIELDS if permitted_fields is None else frozenset(permitted_fields)
+    requested = {
         name: value
         for name, value in patch.outcome.model_dump().items()
         if value is not None
+    }
+    replacement = requested.get("artifact_type")
+    if (
+        "artifact_type" in allowed
+        and replacement is not None
+        and replacement != base.outcome.artifact_type
+    ):
+        allowed |= fields_opened_by_artifact(replacement)
+    overrides = {
+        name: value for name, value in requested.items() if name in allowed
     }
     outcome = RequestedOutcome(**{**base.outcome.model_dump(), **overrides})
 
@@ -100,8 +101,11 @@ def apply_semantic_patch(
     # entries attempt 2 then reported missing, `('operation', 'infer')` and
     # `('artifact_type', 'regulatory_network')`, while adding only the two role
     # entries it was asked for.
-    withdrawn = set() if evidence_only else {
+    withdrawn = {
         (item.dimension, item.value) for item in patch.evidence_removals
+        if DIMENSION_BY_FIELD.get(  # the field this dimension speaks about
+            FIELD_BY_DIMENSION.get(item.dimension, ""), None
+        ) is not None and FIELD_BY_DIMENSION[item.dimension] in allowed
     }
     evidence = []
     retired: list[dict] = []

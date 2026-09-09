@@ -6,6 +6,8 @@ the model's filled fields. They are not a complete natural-language parser.
 from dataclasses import dataclass
 import re
 
+from ..contracts.repair_scope import Issue
+
 
 INPUT_PATTERNS = {
     # An exome assay named together with a dataset noun is the mutation matrix a
@@ -111,12 +113,19 @@ def request_integrity_issues(task: str, outcome) -> list[str]:
     current = {m.artifact for m in mentions if m.status == "current"}
     noncurrent = {m.artifact for m in mentions if m.status != "current"} - current
     supplied = set(outcome.input_artifacts)
+    # Both input rules compared the request's witnesses against one field.
     issues = (
-        [f"missing_current_input:{artifact}" for artifact in sorted(current - supplied)]
-        + [f"noncurrent_input:{artifact}" for artifact in sorted(noncurrent & supplied)]
+        [Issue(f"missing_current_input:{artifact}", {"input_artifacts"})
+         for artifact in sorted(current - supplied)]
+        + [Issue(f"noncurrent_input:{artifact}", {"input_artifacts"})
+           for artifact in sorted(noncurrent & supplied)]
     )
     if patient_clustering_goal(task) and outcome.artifact_type != "sample_cluster_assignment":
-        issues.append("terminal_goal_conflict:sample_cluster_assignment")
+        # Read `artifact_type` only. What the corrected artifact then constrains
+        # is opened by the ontology at merge time, not listed here.
+        issues.append(Issue(
+            "terminal_goal_conflict:sample_cluster_assignment", {"artifact_type"},
+        ))
     return issues
 
 

@@ -32,9 +32,15 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticInterpretation, SemanticPatch,
 )
-from netzoo_agent_core.interpretation.semantic_patch import (  # noqa: E402
-    apply_semantic_patch, evidence_only_repair,
+from netzoo_agent_core.contracts.repair_scope import permitted_fields  # noqa: E402
+from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
+    validate_outcome_hypotheses,
 )
+from netzoo_agent_core.interpretation.semantic_patch import (  # noqa: E402
+    apply_semantic_patch,
+)
+
+TASK = "Infer a per-sample miRNA regulatory network from my expression matrix"
 
 
 def proposal() -> SemanticInterpretation:
@@ -84,39 +90,41 @@ def rewriting_patch() -> SemanticPatch:
     })
 
 
-# --- which rejections count as citation-only ---------------------------------
+# --- which rejections license nothing in the outcome -------------------------
+#
+# There is no test here for a code's spelling any more. The scope comes from the
+# rules that fired, which is why `missing_evidence` licenses an empty set: the
+# rule that raises it examined the evidence list and no outcome field at all.
 
 
-def test_a_rejection_naming_only_missing_evidence_is_citation_only():
-    assert evidence_only_repair((
-        "hypothesis[0].missing_evidence:regulator_type=mirna",
-        "hypothesis[0].missing_evidence:target_type=gene",
-    ))
+def test_a_rejection_naming_only_missing_evidence_licenses_no_outcome_field():
+    issues = validate_outcome_hypotheses(TASK, proposal().outcome_hypotheses).issues
+
+    assert issues and all(".missing_evidence:" in issue for issue in issues)
+    assert permitted_fields(issues) == frozenset()
 
 
-def test_any_other_code_alongside_it_is_not():
-    """Those codes do say a value is wrong, so the review must stay free to fix it."""
-    for other in (
-        "hypothesis[0].role_entity:regulatory_network",
-        "hypothesis[0].artifact_granularity:coexpression_network",
-        "hypothesis[0].conflicting_evidence:granularity=aggregate",
-        "hypothesis[0].terminal_goal_conflict:sample_cluster_assignment",
-    ):
-        assert not evidence_only_repair((
-            "hypothesis[0].missing_evidence:regulator_type=mirna", other,
-        )), other
+def test_a_rejection_about_the_outcome_licenses_the_fields_its_rule_read():
+    """Those rules do say a value is wrong, so the review must stay free to fix it."""
+    item = proposal()
+    item.outcome_hypotheses[0].outcome.granularity = "not_applicable"
+
+    issues = validate_outcome_hypotheses(TASK, item.outcome_hypotheses).issues
+
+    assert any(".artifact_granularity:" in issue for issue in issues)
+    assert permitted_fields(issues) >= {"granularity", "artifact_type"}
 
 
-def test_an_empty_rejection_is_not_citation_only():
+def test_an_empty_rejection_licenses_nothing_either():
     """Nothing was asked, so nothing licenses suppressing anything."""
-    assert not evidence_only_repair(())
+    assert permitted_fields(()) == frozenset()
 
 
 # --- what the merge does with it ---------------------------------------------
 
 
 def test_the_citations_are_applied_and_the_rewrite_is_not():
-    merged, _ = apply_semantic_patch(proposal(), rewriting_patch(), evidence_only=True)
+    merged, _ = apply_semantic_patch(proposal(), rewriting_patch(), permitted_fields=frozenset())
     outcome = merged.outcome_hypotheses[0].outcome
 
     # The reading the first pass gave, untouched.
@@ -131,7 +139,7 @@ def test_the_citations_are_applied_and_the_rewrite_is_not():
 
 def test_the_same_patch_still_changes_the_outcome_when_the_rejection_was_not_citation_only():
     """The scope limit. Without it this would block corrections that were asked for."""
-    merged, _ = apply_semantic_patch(proposal(), rewriting_patch(), evidence_only=False)
+    merged, _ = apply_semantic_patch(proposal(), rewriting_patch())
     outcome = merged.outcome_hypotheses[0].outcome
 
     assert outcome.entity_types == ["sample"]
@@ -149,8 +157,8 @@ def test_suppressing_the_rewrite_is_what_removes_the_role_entity_rejection():
     """
     from netzoo_agent_core.contracts.artifact_semantics import outcome_consistency_issues
 
-    rewritten, _ = apply_semantic_patch(proposal(), rewriting_patch(), evidence_only=False)
-    citations, _ = apply_semantic_patch(proposal(), rewriting_patch(), evidence_only=True)
+    rewritten, _ = apply_semantic_patch(proposal(), rewriting_patch())
+    citations, _ = apply_semantic_patch(proposal(), rewriting_patch(), permitted_fields=frozenset())
 
     assert outcome_consistency_issues(rewritten.outcome_hypotheses[0].outcome)
     assert not outcome_consistency_issues(citations.outcome_hypotheses[0].outcome)
@@ -186,8 +194,8 @@ def test_a_citation_only_repair_ignores_withdrawals_too():
         ],
     })
 
-    kept, _ = apply_semantic_patch(item, patch, evidence_only=True)
-    dropped, _ = apply_semantic_patch(item, patch, evidence_only=False)
+    kept, _ = apply_semantic_patch(item, patch, permitted_fields=frozenset())
+    dropped, _ = apply_semantic_patch(item, patch)
 
     kept_pairs = {(e.dimension, e.value) for e in kept.outcome_hypotheses[0].evidence}
     dropped_pairs = {(e.dimension, e.value) for e in dropped.outcome_hypotheses[0].evidence}
