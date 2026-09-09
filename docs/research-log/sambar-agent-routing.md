@@ -7958,3 +7958,64 @@ granularity    = not_applicable       ✗
 
 H3 修好後，該請求的第二次呼叫只會被允許改 `granularity`／`artifact_type`，
 因此我預測它會通過。**但我不預測次數**——若失敗，如實記錄，不改判準。
+
+## Log 126｜結果：H1–H6 全過；使用者那句話 5 次中 2 次改善；**發現整份複審路徑繞過範圍限制**
+
+日期／時區：2026-09-09，Asia/Taipei。判準宣告於 Log 125，改動之前寫入，未修改。
+
+### 事前判準
+
+| 判準 | 結果 |
+| --- | --- |
+| **H1** harness | 決定範圍的程式碼**不再對 issue 碼做任何字串比對**。`evidence_only_repair` 及其 `".missing_evidence:" in issue` 已刪除 ✓ |
+| **H2** 等價 | ①③ 成為「宣告範圍＝空集合」的一般情形，行為不變；該測試檔已改用新 API，斷言內容未變 ✓ |
+| **H3** 缺陷 | 僅 `artifact_granularity` 的拒絕 → `permitted == {granularity, artifact_type}`；patch 對 `input_artifacts`／`entity_types`／角色的覆寫不生效 ✓ |
+| **H4** 範圍 | `inconsistent_not_applicable_outcome`／`unusable_outcome` 宣告全部欄位 ✓ |
+| **H5** 本體論推導 | patch 合法改 `artifact_type` 時，`ARTIFACT_SEMANTICS` 對新 artifact 約束的欄位自動開放；不受它約束的欄位仍關閉 ✓ |
+| **H6** 無漏網 | `validate_outcome_hypotheses` 每一條 issue 都帶宣告範圍（測試逐條檢查）✓ |
+| **H7** 回歸 | 離線 **1532 passed／35 skipped／0 failed**；含 Docker 另計 |
+
+**修好前確實會失敗，以定點突變驗證**：把 `apply_semantic_patch` 的
+`allowed` 強制設為全部欄位後，**6 項測試失敗**（含 ①③ 那三項，證明它們現在
+由同一套機制保障）；還原後 13 項全過。
+
+### 實作要點（皆為「規則自己宣告」，非查表）
+
+- `contracts/repair_scope.py`：`Issue` 是 `str` 子類別，攜帶 `.fields`。
+  既有所有把 issue 當字串用的呼叫端（前綴、去重、送給 provider、測試）**一行未改**。
+  前綴改用 `.prefixed()`，因為 f-string 會退化成純 `str` 並丟失宣告。
+- 12 個發出點各自在**讀取欄位的程式碼旁邊**宣告範圍。
+- 兩處推導而非宣告：`conflicting_evidence` 的欄位取自共用的維度對應表；
+  `artifact_type` 合法變更時開放的欄位取自 `ARTIFACT_SEMANTICS`。
+- 順帶消除一份重複：欄位↔證據維度的對應表原本在 `semantic_patch` 有一份、
+  `outcome_validation` 有另一份形式，現在只有一份。
+
+### 實跑（描述性，非判準；依 Log 120 不提出分數主張）
+
+使用者第二句話，5 次：
+
+| 次數 | 結果 |
+| --- | --- |
+| 2 | `ambiguous`——複審成功，落到既有的澄清路徑（PANDA／LIONESS-PANDA／PUMA 在沒有 regulator 型別時本來就分不出） |
+| 3 | 仍為 ValueError 路徑 |
+
+**改善了但沒有修好。** 事前預測「我預測它會通過」——**部分成立，不得算通過**。
+
+### 新發現的結構性缺口（讀碼確認，非推測）
+
+`apply_semantic_patch` **只在回覆能解析成 patch 時才被呼叫**。
+當回覆是整份 `SemanticReview`（或 patch 解析失敗而退回整份複審）時，
+解讀被**整份取代**，**範圍限制完全不適用**。
+
+也就是說本次介入只覆蓋了兩條修復路徑中的一條。剩下 3/5 的失敗
+（attempt 2 出現 `conflicting_evidence:granularity=aggregate` /
+`sample_specific`）有兩個候選成因，本輪**無法分辨**：
+整份複審路徑未受限，或 patch 改了值卻沒同步證據。
+**不猜**，留待下一輪以逐試驗傾印判定。
+
+### 這一則不主張什麼
+
+- **不主張**任何分數改善。未跑全語料，無時間交錯同碼替身。
+- **不主張**使用者那句話已修好。5 次中 3 次仍失敗。
+- 可主張的只有結構性的：**patch 路徑上，對宣告範圍外欄位的覆寫在程式上不可能生效**
+  （突變測試證明），且**每一條 issue 都帶著它的規則實際檢查過的欄位**。

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
+from .repair_scope import Issue
 
 
 class OutcomeFields(Protocol):
@@ -66,19 +67,52 @@ def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:
     rule = ARTIFACT_SEMANTICS[outcome.artifact_type]
     issues = []
     known_entities = set(outcome.entity_types) - {"unknown"}
+    # Each rule declares the fields it just read. Written here rather than in a
+    # table elsewhere so the declaration cannot drift from the comparison.
     if rule.entities is not None and not known_entities.issubset(rule.entities):
-        issues.append(f"artifact_entity:{outcome.artifact_type}")
+        issues.append(Issue(
+            f"artifact_entity:{outcome.artifact_type}",
+            {"entity_types", "artifact_type"},
+        ))
     if (rule.granularities is not None and outcome.granularity != "unknown"
             and outcome.granularity not in rule.granularities):
-        issues.append(f"artifact_granularity:{outcome.artifact_type}")
+        issues.append(Issue(
+            f"artifact_granularity:{outcome.artifact_type}",
+            {"granularity", "artifact_type"},
+        ))
     roles = {"regulator_type", "regulator_types", "target_type", "target_types"}
     if outcome.artifact_type not in {"regulatory_network", "unknown"} and (
         outcome.regulator_types or outcome.target_types
         or roles.intersection(outcome.unresolved_dimensions)
     ):
-        issues.append(f"artifact_roles:{outcome.artifact_type}")
+        issues.append(Issue(
+            f"artifact_roles:{outcome.artifact_type}",
+            {"regulator_types", "target_types", "unresolved_dimensions",
+             "artifact_type"},
+        ))
     if outcome.artifact_type == "regulatory_network":
         role_entities = (set(outcome.regulator_types) | set(outcome.target_types)) - {"unknown"}
         if known_entities and not role_entities.issubset(known_entities):
-            issues.append("role_entity:regulatory_network")
+            issues.append(Issue(
+                "role_entity:regulatory_network",
+                {"entity_types", "regulator_types", "target_types"},
+            ))
     return tuple(issues)
+
+
+def fields_opened_by_artifact(artifact_type: str) -> frozenset[str]:
+    """The fields an artifact's own ontology constrains.
+
+    Read from `ARTIFACT_SEMANTICS` rather than listed here: when a review is
+    allowed to correct `artifact_type`, the fields the new artifact governs have
+    to move with it or the result is a combination the ontology forbids.
+    """
+    rule = ARTIFACT_SEMANTICS.get(artifact_type)
+    if rule is None:
+        return frozenset()
+    opened = {"artifact_type"}
+    if rule.entities is not None:
+        opened.add("entity_types")
+    if rule.granularities is not None:
+        opened.add("granularity")
+    return frozenset(opened)

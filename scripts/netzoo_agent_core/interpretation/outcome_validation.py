@@ -9,6 +9,9 @@ import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
+from ..contracts.repair_scope import (
+    FIELD_BY_DIMENSION, NO_OUTCOME_FIELDS, OUTCOME_FIELDS, Issue,
+)
 from .request_integrity import confirmed_current_inputs, request_integrity_issues
 from .span_alignment import aligned_span
 
@@ -184,12 +187,14 @@ def validate_outcome_hypotheses(
     normalized_task = _normalized(user_task)
     confirmed_inputs = frozenset(confirmed_current_inputs(user_task))
     for index, hypothesis in enumerate(hypotheses):
+        # `prefixed` rather than an f-string: plain formatting would return a
+        # bare `str` and drop the field scope each rule declared.
         issues.extend(
-            f"hypothesis[{index}].{issue}"
+            issue.prefixed(f"hypothesis[{index}].")
             for issue in request_integrity_issues(user_task, hypothesis.outcome)
         )
         issues.extend(
-            f"hypothesis[{index}].{issue}"
+            issue.prefixed(f"hypothesis[{index}].")
             for issue in outcome_consistency_issues(hypothesis.outcome)
         )
         outcome_values = _outcome_values(hypothesis.outcome)
@@ -199,13 +204,20 @@ def validate_outcome_hypotheses(
             and hypothesis.outcome.artifact_type == "unknown"
             and not _is_not_applicable(hypothesis.outcome)
         ):
-            issues.append(f"hypothesis[{index}].inconsistent_not_applicable_outcome")
+            # This rule reads the outcome as a whole, so the whole outcome is
+            # open to correction.
+            issues.append(Issue(
+                f"hypothesis[{index}].inconsistent_not_applicable_outcome",
+                OUTCOME_FIELDS,
+            ))
         if (
             not required_evidence
             and not hypothesis.evidence
             and not _is_not_applicable(hypothesis.outcome)
         ):
-            issues.append(f"hypothesis[{index}].unusable_outcome")
+            issues.append(Issue(
+                f"hypothesis[{index}].unusable_outcome", OUTCOME_FIELDS,
+            ))
         evidence_pairs: set[tuple[str, str]] = set()
         for item in hypothesis.evidence:
             normalized_value = _normalized(item.value)
@@ -214,17 +226,24 @@ def validate_outcome_hypotheses(
                 _normalized(value) for value in outcome_values[item.dimension]
             }
             if normalized_value not in valid_values:
-                issues.append(
+                # The entry contradicts one field. Either that field is wrong
+                # or the entry is; both fixes live inside this scope.
+                issues.append(Issue(
                     f"hypothesis[{index}].conflicting_evidence:"
-                    f"{item.dimension}={item.value}"
-                )
+                    f"{item.dimension}={item.value}",
+                    {FIELD_BY_DIMENSION[item.dimension]}
+                    if item.dimension in FIELD_BY_DIMENSION else NO_OUTCOME_FIELDS,
+                ))
             if item.source == "explicit":
                 span = _normalized(item.text_span or "")
                 if not _grounded_span(span, normalized_task):
-                    issues.append(
+                    # About the quote, not about the value. Nothing in the
+                    # outcome was questioned, so nothing in it may be rewritten.
+                    issues.append(Issue(
                         f"hypothesis[{index}].ungrounded_evidence:"
-                        f"{item.dimension}={item.value}"
-                    )
+                        f"{item.dimension}={item.value}",
+                        NO_OUTCOME_FIELDS,
+                    ))
                     evidence_shapes.append({
                         "hypothesis": index,
                         "dimension": item.dimension,
@@ -238,9 +257,10 @@ def validate_outcome_hypotheses(
         for dimension, value in required_evidence:
             normalized_value = _normalized(value)
             if (dimension, normalized_value) not in evidence_pairs:
-                issues.append(
-                    f"hypothesis[{index}].missing_evidence:{dimension}={value}"
-                )
+                issues.append(Issue(
+                    f"hypothesis[{index}].missing_evidence:{dimension}={value}",
+                    NO_OUTCOME_FIELDS,
+                ))
 
     unique_issues = tuple(dict.fromkeys(issues))
     recoverable = bool(unique_issues) and all(
