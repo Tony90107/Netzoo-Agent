@@ -8236,3 +8236,74 @@ M-a～M-e 會通過。**對實跑我不預測次數**——Log 126 我預測「�
 若消除矛盾後模型仍不填 → **設計失敗，撤回整個欄位**；
 若填了但捏造 → 閘門已證明會擋下；
 若填對 → 才進入路由層的量測。
+
+## Log 130｜事前宣告：消除契約矛盾的**唯一一次** prompt 編輯，以及寫死的撤回條件（尚未執行）
+
+日期／時區：2026-09-09，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+使用者指示：改提示消除矛盾，先寫死撤回條件。
+
+### 為什麼這不是「以 prompt 措辭作為修法」
+
+專案硬性禁止該作法（六次失敗紀錄）。禁止的是**用說服性措辭讓某個行為出現**。
+本案不同，且差別是可查證的：**系統提示目前明文禁止新契約要求的事**
+（`Never select a workflow or action`、
+`Do not select a workflow from a fixed keyword-to-tool table`），
+模型服從提示、忽略欄位。**兩者並存時，模型收到的契約自相矛盾，
+任何關於該欄位的量測都不成立。** 這是量測的前提，不是效果的來源。
+
+**這個區分很容易被拿來自我開脫，所以用底下的撤回條件把它綁死。**
+
+### 編輯內容（最小，且只此一次）
+
+在兩處各加入一句，區分「回報使用者寫出的方法」與「選擇工作流程」：
+
+1. `Never select a workflow or action …` 之後：
+   「Recording a method the request itself names, in named_methods with the quote
+   that names it, reports what the user wrote and is not selecting one.」
+2. `Do not select a workflow from a fixed keyword-to-tool table` 之後：
+   「that is about choosing a method the request did not name. A method the request
+   does name belongs in named_methods with its quote, and the typed dimensions are
+   still inferred from the goal, not from the method.」
+
+**不得提及任何工作流程名稱**（既有測試
+`test_semantic_interpreter_prompt_has_no_workflow_selection_authority`
+斷言提示中不含 `PUMA`／`run_puma`，該界線維持不變：
+閉集合詞彙住在 schema，提示保持與能力無關）。
+
+**這是本功能允許的唯一一次 prompt 編輯。若還需要更多措辭才會動，
+那就是那六次失敗的同一個模式，功能撤回。**
+
+### 量測設計（時間交錯，因為今日實測同碼漂移達 5）
+
+Log 129 量到同一份程式碼、同一句話，數小時內 5/5 → 0/4。
+因此**兩臂必須在同一時間窗內交替執行**，不得各跑一批。
+
+- 3 題**明確點名方法**的請求 × 3 次 × 兩臂
+- 2 題**未點名**的對照請求 × 3 次 × 兩臂
+- 每次請求依序跑 OLD、NEW，逐題逐次交替。
+
+### 撤回條件（寫死，事後不得調整）
+
+全部以**有無**（0 對非 0）判定，不對任何比率設門檻（Log 117／120）。
+
+- **W-1｜設計失敗，整個功能撤回**：NEW 臂 9 次點名請求中，
+  `named_methods` **全部為空** → 撤回 `named_methods` 欄位、`named_method`
+  證據維度、三道閘門、匹配分支、以及本次 prompt 編輯。**不再嘗試措辭。**
+- **W-2｜誘發捏造，撤回 prompt 編輯**：對照組（未點名方法）的 NEW 臂中，
+  **只要出現一次** `named_methods` 非空 → 該編輯誘導模型無中生有，
+  撤回 prompt 編輯並回報。**閘門擋得下來，不構成保留的理由。**
+- **W-3｜填了但對路由無用，撤回**：NEW 臂有填該欄位，但**沒有任何一次**
+  以 `match_basis=named_method` 匹配到該方法 → 欄位對路由是惰性的，撤回。
+- **W-4｜回歸**：含 Docker 閘門全綠，`skipped` 與 `passed` 一起讀。
+
+### 不作為判準的
+
+OLD 臂的次數**照實記錄，但不作為基線計算任何 p 值**。
+本次比較的是「該欄位有沒有被使用」這個有無問題，屬結構性；
+分數層面的任何主張都需要另行宣告並附時間交錯的同碼替身。
+
+### 事前預測
+
+**我不預測。** Log 126 我預測「會通過」得到部分成立，
+Log 129 我預測 M-a～M-e 通過（成立）但對實跑刻意不預測（正確的選擇）。
+這次同樣只記錄。
