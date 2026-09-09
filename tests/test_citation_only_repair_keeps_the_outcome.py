@@ -9,8 +9,13 @@ way, which raised `role_entity` 38 times across 36 trials and is this study's
 only recorded cause of a wrong tool recommendation.
 
 Measured on a matched control that fixes the model's first pass and varies only
-this code: repair rate 2/36 -> 22/36, one-sided Fisher exact p = 3.1e-7, with
-`role_entity` going 38 -> 0 and no new issue family appearing.
+this code: repair rate 2/36 -> 22/36, with `role_entity` going 38 -> 0 and no new
+issue family appearing. The 38 -> 0 is what this file pins, because it is a
+consequence of the code rather than of sampling. The score is not: a same-code
+replicate of the final state later returned 24/36 against a recorded 35/36
+(Log 120), which showed that three consecutive rounds share a drifting provider
+state and are not independent samples, and every Fisher p value this design had
+reported was withdrawn.
 
 The model's behaviour did not change -- 18 of 25 candidate patches still rewrite
 nine or more fields. What changed is that those overrides are no longer applied.
