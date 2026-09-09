@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 import re
 
 from workflow_registry import (
+    ACTION_BY_METHOD_LABEL,
     ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     OutputCapabilityDefinition,
@@ -763,6 +764,37 @@ def _match_semantic_request(
             input_artifacts=current_inputs,
         )
 
+
+    # The reading itself says the request named a method, and the contract has
+    # already held that claim to an explicit quote which is in the request and
+    # contains the label. So this is the model's judgement, checked, rather than
+    # a scan of the text: the interpretation decided that the mention is what the
+    # user wants run rather than work they have finished, and the registry -- not
+    # the model, and not this function -- says what that method produces.
+    #
+    # Two named methods are a question, not a fact, and fall through to the
+    # ordinary ambiguity handling. A reading that contradicts the method it names
+    # never reaches here: `named_method_conflict` rejects it during validation.
+    asserted = {
+        label for hypothesis in matching_hypotheses
+        for label in hypothesis.outcome.named_methods
+    }
+    if len(asserted) == 1:
+        action = ACTION_BY_METHOD_LABEL.get(next(iter(asserted)))
+        capability = OUTPUT_CAPABILITIES.get(action) if action else None
+        if capability is not None and all(
+            _partially_compatible(hypothesis.outcome, capability)
+            for hypothesis in matching_hypotheses
+        ):
+            return _enforce_input_compatibility(
+                task,
+                CapabilityMatch(
+                    status="exact", match_basis="named_method",
+                    matched_actions=[action],
+                ),
+                request_mode=request_mode,
+                input_artifacts=current_inputs,
+            )
 
     # Nothing was interpreted at all. A reading with every dimension unknown is
     # how this system encodes "out of scope", and the interpreter also produces

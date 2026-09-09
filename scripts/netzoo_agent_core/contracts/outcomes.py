@@ -15,6 +15,7 @@ from workflow_registry import (
     Granularity,
     Operation,
     RecommendedAction,
+    MethodLabel,
 )
 
 # Every registered runnable capability can tie at once: an outcome that resolved
@@ -35,7 +36,7 @@ CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported",
 # about how well the request matched a capability but about how far the reading
 # itself is trusted, and `invoke_router` holds anything carrying it below
 # `exact` and away from execution.
-MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome", "unverified_evidence"]
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome", "unverified_evidence", "named_method"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",
@@ -45,6 +46,7 @@ EvidenceDimension = Literal[
     "target_type",
     "granularity",
     "selection_tag",
+    "named_method",
 ]
 
 
@@ -92,6 +94,20 @@ class RequestedOutcome(BaseModel):
         "distances or cluster labels are aggregate; separately inferred per-sample "
         "results are sample_specific. Never omit this field."
     ))
+    named_methods: list[MethodLabel] = Field(
+        default_factory=list, max_length=3,
+        description=(
+            "Registered methods the request itself names as what to use now. "
+            "Report what the user wrote, not what you would choose: leave this "
+            "empty when the request describes a goal without naming a method, "
+            "and leave it empty for a method mentioned only as finished or past "
+            "work. Every entry needs an explicit evidence item on dimension "
+            "named_method whose text_span quotes the request and contains the "
+            "label. Naming a method does not excuse describing the requested "
+            "result; fill the other fields from the goal as usual, and leave a "
+            "dimension unknown rather than guessing it from the method."
+        ),
+    )
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
 
     @classmethod
