@@ -127,6 +127,43 @@ def test_unknown_is_never_added():
     assert result.outcome_hypotheses[0].outcome.input_artifacts == []
 
 
+def test_artifact_alignment_resolves_a_uniquely_entailed_unknown():
+    source = SemanticInterpretation.model_validate({
+        "request_mode": "guidance",
+        "semantic_goal": "Subtype patients",
+        "outcome_hypotheses": [{
+            "outcome": {
+                "operation": "analyze",
+                "input_artifacts": ["mutation_matrix"],
+                "artifact_type": "sample_cluster_assignment",
+                "entity_types": ["sample"],
+                "granularity": "unknown",
+                "unresolved_dimensions": ["granularity"],
+            },
+            "confidence": 0.9,
+            "evidence": [{
+                "dimension": "artifact_type",
+                "value": "sample_cluster_assignment",
+                "source": "inferred",
+                "rationale": "The requested result is a patient subtype assignment.",
+            }],
+        }],
+    })
+
+    result, restored = restore_stated_fields(
+        "Subtype patients from a mutation matrix.",
+        source,
+        align_artifact_constraints=True,
+    )
+
+    outcome = result.outcome_hypotheses[0].outcome
+    assert outcome.granularity == "aggregate"
+    assert outcome.unresolved_dimensions == []
+    assert [(item["field"], item["source"]) for item in restored] == [
+        ("granularity", "artifact_ontology"),
+    ]
+
+
 def test_a_full_input_list_is_left_alone_rather_than_overflowed():
     """The field is bounded at four; re-validation refuses, nothing raises."""
     full = interpretation(input_artifacts=[

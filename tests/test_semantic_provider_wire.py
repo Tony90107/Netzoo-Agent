@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation, SemanticReview  # noqa: E402
+from netzoo_agent_core.contracts.artifact_semantics import ARTIFACT_SEMANTICS  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -56,14 +57,22 @@ def test_provider_wire_preserves_required_fields_in_every_artifact_branch(model)
         assert branch["type"] == "object"
         assert set(branch["required"]) == set(outcome["required"])
         assert set(branch["required"]) <= branch["properties"].keys()
-        assert branch["properties"]["operation"]["enum"] == outcome["properties"]["operation"]["enum"]
         artifact = branch["properties"]["artifact_type"]["const"]
+        operations = ARTIFACT_SEMANTICS[artifact].operations
+        expected_operations = (
+            sorted(operations | {"unknown"})
+            if operations is not None
+            else outcome["properties"]["operation"]["enum"]
+        )
+        assert branch["properties"]["operation"]["enum"] == expected_operations
         valid = {"operation": "analyze", "artifact_type": artifact, "granularity": "aggregate"}
         validator.validate(valid)
         for field in outcome["required"]:
             assert not validator.is_valid({k: v for k, v in valid.items() if k != field})
     assert not validator.is_valid({"operation": "analyze", "artifact_type": "sample_cluster_assignment",
                                    "granularity": "sample_specific"})
+    assert not validator.is_valid({"operation": "infer", "artifact_type": "sample_cluster_assignment",
+                                   "granularity": "aggregate"})
     assert not validator.is_valid({"operation": "analyze", "artifact_type": "sample_cluster_assignment",
                                    "granularity": "aggregate", "entity_types": ["gene"]})
 

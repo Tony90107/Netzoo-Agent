@@ -13,6 +13,7 @@ from .repair_scope import Issue
 
 
 class OutcomeFields(Protocol):
+    operation: str
     artifact_type: str
     entity_types: list[str]
     granularity: str
@@ -26,6 +27,7 @@ class ArtifactSemantics:
     description: str
     entities: frozenset[str] | None = None
     granularities: frozenset[str] | None = None
+    operations: frozenset[str] | None = None
 
 
 ARTIFACT_SEMANTICS = {
@@ -38,7 +40,12 @@ ARTIFACT_SEMANTICS = {
     "gene_mutation_scores": ArtifactSemantics("Gene-by-sample mutation scores, not pathway scores", frozenset({"gene", "sample"}), frozenset({"aggregate"})),
     "pathway_mutation_matrix": ArtifactSemantics("Pathway-by-sample mutation scores, not cluster labels", frozenset({"pathway", "sample"}), frozenset({"aggregate"})),
     "sample_distance_matrix": ArtifactSemantics("Pairwise sample distances, not cluster labels", frozenset({"sample"}), frozenset({"aggregate"})),
-    "sample_cluster_assignment": ArtifactSemantics("Sample-to-cluster labels, separate from score and distance matrices", frozenset({"sample"}), frozenset({"aggregate"})),
+    "sample_cluster_assignment": ArtifactSemantics(
+        "Sample-to-cluster labels, separate from score and distance matrices",
+        frozenset({"sample"}),
+        frozenset({"aggregate"}),
+        frozenset({"analyze"}),
+    ),
     # One partition of one network, not one partition per sample, so the single
     # legal value is aggregate. Leaving this unconstrained made every CONDOR-
     # selecting outcome require granularity=not_applicable, which the semantic
@@ -53,6 +60,8 @@ def artifact_field_constraints(artifact: str) -> dict:
     """Generation constraints from the same ontology used by strict validation."""
     rule = ARTIFACT_SEMANTICS[artifact]
     fields = {"artifact_type": {"const": artifact}}
+    if rule.operations is not None:
+        fields["operation"] = {"enum": sorted(rule.operations | {"unknown"})}
     if rule.entities is not None:
         fields["entity_types"] = {"items": {"enum": sorted(rule.entities | {"unknown"})}}
     if rule.granularities is not None:
@@ -113,6 +122,8 @@ def fields_opened_by_artifact(artifact_type: str) -> frozenset[str]:
     opened = {"artifact_type"}
     if rule.entities is not None:
         opened.add("entity_types")
+    if rule.operations is not None:
+        opened.add("operation")
     if rule.granularities is not None:
         opened.add("granularity")
     return frozenset(opened)

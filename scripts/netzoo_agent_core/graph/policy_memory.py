@@ -40,7 +40,12 @@ def apply_project_policy(context: _GraphContext, state: AgentState) -> dict:
 def retrieve_memory(context: _GraphContext, state: AgentState) -> dict:
     user_task = str(state["messages"][-1].content)
     profile = context.profile_store.load(context.profile_id)
-    hits = context.episode_store.search_hits(context.profile_id, user_task, limit=3)
+    hits = context.episode_store.search_hits(
+        context.profile_id,
+        user_task,
+        limit=3,
+        requested_outcome=state.get("requested_outcome"),
+    )
     episodes = [hit.episode for hit in hits]
     _trace(
         "memory",

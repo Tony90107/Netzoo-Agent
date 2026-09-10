@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .outcomes import RequestedOutcome
+
 class UserProfile(BaseModel):
     profile_id: str
     version: int = 1
@@ -24,6 +26,7 @@ class Episode(BaseModel):
     workflow: str
     action: str | None = None
     intent_type: str | None = None
+    requested_outcome: RequestedOutcome | None = None
     status: Literal["completed", "dry_run", "failed"]
     inputs: dict[str, str] = Field(default_factory=dict)
     input_roles: list[str] = Field(default_factory=list)

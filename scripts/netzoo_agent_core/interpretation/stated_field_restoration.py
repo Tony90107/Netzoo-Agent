@@ -1,8 +1,10 @@
-"""Move values the hypothesis already stated into the fields that carry them.
+"""Restore stated values and artifact-entailed scalar fields.
 
 This is the one place the deterministic layer writes an outcome field, and the
-rule it follows is narrow enough to state in one line: it may **move** a value
-the hypothesis wrote in its own evidence, and it may never **invent** one.
+rules are narrow: it may **move** a value the hypothesis wrote in its own
+evidence, or align an under-specified or impossible scalar to the sole value
+declared by the already selected artifact. It never selects an artifact or
+workflow.
 
 The failure it repairs was the largest single family in the live record on both
 models: the model says the same thing twice, in evidence and in the outcome
@@ -11,7 +13,7 @@ artifact and leaves `input_artifacts` empty; it cites `regulator_type=mirna` and
 leaves `regulator_types` empty. The run then falls back to a registry guess
 carrying no outcome at all.
 
-Five structural guarantees, not promises:
+Six structural guarantees, not promises:
 
 1. A candidate value must appear verbatim in this hypothesis's own evidence
    under the matching dimension. Nothing is derived from a tool name, from the
@@ -29,17 +31,24 @@ Five structural guarantees, not promises:
 5. A candidate is applied only if it removes no fewer consistency issues than it
    creates: any addition that introduces a new `outcome_consistency_issues`
    entry is reverted individually.
+6. After a field-scoped review patch, ontology alignment applies only where the
+   selected artifact declares exactly one operation or granularity. The artifact
+   choice remains subject to its own strict evidence validation, so filling a
+   dependent scalar cannot make an unsupported artifact pass. Conflicting
+   evidence is retired and reported.
 
-Historical mentions cannot arrive here: a past-scoped clause yields
-`noncurrent_input`, the opposite direction. Nothing is ever removed, no field
-outside the three below is touched, and the result faces the identical strict
-validation afterwards.
+Historical input mentions cannot arrive here: a past-scoped clause yields
+`noncurrent_input`, the opposite direction. Ordinary restoration only adds
+already-stated values. Artifact alignment may replace operation/granularity and
+retire evidence that directly contradicts the artifact's sole legal value; each
+such change is traced, and the result faces identical strict validation.
 """
 
 from __future__ import annotations
 
-from ..contracts.artifact_semantics import outcome_consistency_issues
-from ..contracts.outcomes import RequestedOutcome, SemanticInterpretation
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
+from ..contracts.outcomes import OutcomeEvidence, RequestedOutcome, SemanticInterpretation
+from ..contracts.repair_scope import DIMENSION_BY_FIELD
 from .request_integrity import input_mentions
 
 __all__ = ["restore_stated_fields"]
@@ -89,8 +98,22 @@ def _without_roles(outcome: RequestedOutcome) -> RequestedOutcome | None:
         return None
 
 
+def _with_scalar(outcome: RequestedOutcome, field: str, value: str) -> RequestedOutcome | None:
+    payload = outcome.model_dump()
+    payload[field] = value
+    payload["unresolved_dimensions"] = [
+        item for item in payload["unresolved_dimensions"]
+        if item != DIMENSION_BY_FIELD[field]
+    ]
+    try:
+        return RequestedOutcome.model_validate(payload)
+    except Exception:
+        return None
+
+
 def restore_stated_fields(
     user_task: str, interpretation: SemanticInterpretation,
+    *, align_artifact_constraints: bool = False,
 ) -> tuple[SemanticInterpretation, list[dict[str, object]]]:
     """Return the interpretation with stated values moved into place, plus a record."""
     witnessed = _witnessed_current(user_task)
@@ -98,7 +121,56 @@ def restore_stated_fields(
     hypotheses = []
     for index, hypothesis in enumerate(interpretation.outcome_hypotheses):
         outcome = hypothesis.outcome
+        evidence = list(hypothesis.evidence)
         baseline = set(outcome_consistency_issues(outcome))
+        if align_artifact_constraints:
+            rule = ARTIFACT_SEMANTICS[outcome.artifact_type]
+            for field, permitted in (
+                ("operation", rule.operations),
+                ("granularity", rule.granularities),
+            ):
+                if permitted is None or len(permitted) != 1:
+                    continue
+                current = getattr(outcome, field)
+                entailed = next(iter(permitted))
+                dimension = DIMENSION_BY_FIELD[field]
+                if current == entailed:
+                    continue
+                candidate = _with_scalar(outcome, field, entailed)
+                if candidate is None:
+                    continue
+                retired = [
+                    item.value for item in evidence
+                    if item.dimension == dimension and item.value != entailed
+                ]
+                evidence = [
+                    item for item in evidence
+                    if item.dimension != dimension or item.value == entailed
+                ]
+                if field == "operation" and not any(
+                    item.dimension == dimension and item.value == entailed
+                    for item in evidence
+                ):
+                    evidence.append(OutcomeEvidence(
+                        dimension="operation",
+                        value=entailed,
+                        source="inferred",
+                        rationale=(
+                            "The selected artifact ontology uniquely defines the "
+                            "canonical scientific operation."
+                        ),
+                    ))
+                restored.append({
+                    "hypothesis": index,
+                    "field": field,
+                    "value": entailed,
+                    "previous_value": current,
+                    "source": "artifact_ontology",
+                    "witnessed_span": None,
+                    "evidence_retired": retired,
+                })
+                outcome = candidate
+                baseline = set(outcome_consistency_issues(outcome))
         # Fields the artifact choice itself made illegal. Clearing them removes
         # `artifact_roles` and can create nothing: a non-regulatory artifact has
         # no legal role, so there is no value here to preserve. This is the
@@ -148,10 +220,12 @@ def restore_stated_fields(
                     "source": source,
                     "witnessed_span": witnessed.get(value),
                 })
-        hypotheses.append(
-            hypothesis if outcome is hypothesis.outcome
-            else hypothesis.model_copy(update={"outcome": outcome})
-        )
+        updates = {}
+        if outcome is not hypothesis.outcome:
+            updates["outcome"] = outcome
+        if evidence != list(hypothesis.evidence):
+            updates["evidence"] = evidence
+        hypotheses.append(hypothesis if not updates else hypothesis.model_copy(update=updates))
     if not restored:
         return interpretation, []
     return interpretation.model_copy(update={"outcome_hypotheses": hypotheses}), restored

@@ -1057,8 +1057,8 @@ def test_topology_is_exact_and_fully_instrumented(monkeypatch):
 
     expected_nodes = [
         "apply_project_policy",
-        "retrieve_memory",
         "classify",
+        "retrieve_memory",
         "plan",
         "evaluate_plan",
         "execute_tool",
@@ -1071,9 +1071,9 @@ def test_topology_is_exact_and_fully_instrumented(monkeypatch):
     assert recorder.instrumented == expected_nodes
     assert compiled.edges == [
         ("START", "apply_project_policy"),
-        ("apply_project_policy", "retrieve_memory"),
-        ("retrieve_memory", "classify"),
-        ("classify", "plan"),
+        ("apply_project_policy", "classify"),
+        ("classify", "retrieve_memory"),
+        ("retrieve_memory", "plan"),
         ("plan", "evaluate_plan"),
         ("execute_tool", "evaluate"),
         ("recover", "evaluate_plan"),

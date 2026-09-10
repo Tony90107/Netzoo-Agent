@@ -81,7 +81,7 @@ def test_feature_recommendation_is_not_exact_and_cannot_execute():
 
 
 def test_final_answer_rejects_wrong_method_and_separates_artifacts():
-    task = "Previously used RNA-Seq PANDA. Now should I use PANDA and LIONESS on a WES somatic mutation matrix to subtype patients?"
+    task = "Previously used RNA-Seq PANDA. Now should I use PANDA and LIONESS on a sparse WES somatic mutation matrix to subtype patients?"
     item = hypothesis()
     match = match_semantic_request(task, [item], request_mode="guidance")
     decision = assemble_task_decision(
@@ -112,6 +112,19 @@ def test_final_answer_rejects_wrong_method_and_separates_artifacts():
     assert "`pathway_mutation_matrix`: Pathway-by-sample mutation scores" in answer
     assert "`sample_cluster_assignment`: Sample-to-cluster labels" in answer
     assert "not cluster labels" in answer
+    assert "Gene-length normalization" in answer
+    assert "patient-specific cancer-associated mutation rate" in answer
+    assert "genes annotated to multiple pathways" in answer
+    assert "Routing-level input modality: somatic mutation." in answer
+    assert "Required workflow inputs:" in answer
+    for field_name in (
+        "mutation_file",
+        "exon_size_file",
+        "cancer_gene_file",
+        "pathway_file",
+    ):
+        assert f"`{field_name}`" in answer
+    assert "`output_dir`" not in answer
     assert "No files were inspected and no analysis ran." in answer
 
 

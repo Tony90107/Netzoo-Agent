@@ -162,6 +162,23 @@ def test_explanations_depend_on_capabilities_not_tool_name():
     assert len(explanations) == 1 and "different genes" in explanations[0]
 
 
+def test_richer_sparse_mutation_explanation_suppresses_its_shorter_duplicate():
+    from netzoo_agent_core.interpretation.scientific_explanations import scientific_explanations
+
+    explanations = scientific_explanations(
+        "A sparse mutation matrix has 99% zero entries",
+        [{"transformations": [
+            "gene_length_normalization",
+            "patient_mutation_burden_normalization",
+            "pathway_aggregation",
+        ]}],
+        [],
+    )
+
+    assert len(explanations) == 1
+    assert "Gene-length normalization" in explanations[0]
+
+
 def test_all_registered_fallback_candidates_share_non_executing_interaction():
     from workflow_registry import OUTPUT_CAPABILITIES
     from netzoo_agent_core.cli.follow_up import build_next_turn_prompt
