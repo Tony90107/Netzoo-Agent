@@ -216,3 +216,48 @@ def test_sambar_optional_defaults_never_leak_none_into_strict_schema():
     assert args["distance"] == "binomial"
     assert args["linkage"] == "complete"
     assert all(value is not None for value in args.values())
+
+
+def test_an_ambiguous_match_never_composes_a_recommendation_from_its_own_question():
+    """The candidates a clarification asks about are not a choice already made.
+
+    A live guidance round on a request supplying motif and PPI priors carried
+    nine hypotheses and one clarification question to the screen while
+    `recommended_actions` in the same decision record read `run_bonobo` -- a
+    prior-free co-expression method the question had not yet ruled in or out.
+    `_final_actions` reaches `hypothesis_actions` when nothing is matched, so
+    the composition preference scored a winner out of the list the user was
+    about to be asked to pick from.
+    """
+    policy = ProjectPolicyLoader(ROOT).load()
+    hypotheses = [
+        "run_panda", "run_puma", "run_otter", "run_giraffe", "run_bonobo",
+    ]
+
+    for status in ("ambiguous", "unsupported"):
+        selected = preferred_registry_composition_actions(
+            "Which workflow produces this result?",
+            agent.TaskDecision(
+                action="no_tool",
+                in_scope=True,
+                should_execute=False,
+                confidence=0.9,
+                reason="The requested result is not resolved to one capability.",
+                capability_match_status=status,
+                matched_actions=[],
+                recommended_actions=[],
+                hypothesis_actions=hypotheses,
+                requested_outcome=agent.RequestedOutcome(
+                    operation="infer",
+                    input_artifacts=["expression_matrix"],
+                    artifact_type="unknown",
+                    granularity="unknown",
+                ),
+                clarification_question="Which result do you want NetZoo to produce?",
+            ),
+            policy.workflows,
+        )
+
+        assert selected == [], (
+            f"{status} composed {selected} out of the candidates it was asking about"
+        )
