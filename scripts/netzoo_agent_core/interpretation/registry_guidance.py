@@ -67,6 +67,18 @@ def preferred_registry_composition_actions(
     existing = list(dict.fromkeys(decision.recommended_actions))
     if len(existing) > 1 or decision.requested_outcome is None:
         return existing
+    # Composition refines a choice the matcher made; it cannot stand in for one
+    # the matcher declined to make. On `ambiguous` there are no matched actions
+    # and a clarification question is already on its way to the user, so
+    # `_final_actions` falls through to `hypothesis_actions` -- the very list the
+    # question is asking the user to choose from -- and scores a single winner
+    # out of it. A live guidance round on a request that supplied motif and PPI
+    # priors surfaced nine hypotheses and one question on screen while this
+    # function wrote `run_bonobo`, a prior-free co-expression method, into
+    # `recommended_actions` in the same decision record. `unsupported` has no
+    # compatible capability at all, so it composes nothing either.
+    if decision.capability_match_status in {"ambiguous", "unsupported"}:
+        return existing
     enriched = decision
     preferred = build_registry_selection_constraints(
         enriched,
