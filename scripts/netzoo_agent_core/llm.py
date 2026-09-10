@@ -136,6 +136,16 @@ Interpret the full request, including what the user wants the agent to do now.
 Never select a workflow or action, never request input files, and never authorize
 tool execution. Return only the SemanticInterpretation structure.
 
+Before emitting hypotheses, separate the request into discourse roles:
+- historical context: analyses or data described only as prior work;
+- current input: the data available for the analysis being considered now;
+- proposed method: a method the user asks whether they should use;
+- terminal scientific goal: the result the user ultimately wants to obtain.
+A method posed under should/can/whether is a candidate under evaluation, not a
+competing terminal result. Do not create another hypothesis solely for the proposed method.
+Create multiple hypotheses only when the request genuinely supports competing
+terminal scientific goals.
+
 Set request_mode from the meaning of the complete request rather than from a
 keyword or a fixed phrase:
 - guidance: the user wants an explanation, comparison, workflow plan, list of

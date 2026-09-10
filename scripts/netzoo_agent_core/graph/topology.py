@@ -31,8 +31,8 @@ def compile_graph(context: _GraphContext, *, graph_cls=StateGraph):
     graph = graph_cls(AgentState)
     nodes = (
         ("apply_project_policy", apply_project_policy),
-        ("retrieve_memory", retrieve_memory),
         ("classify", classify_task),
+        ("retrieve_memory", retrieve_memory),
         ("plan", plan_task),
         ("evaluate_plan", evaluate_plan),
         ("execute_tool", execute_tool),
@@ -48,9 +48,9 @@ def compile_graph(context: _GraphContext, *, graph_cls=StateGraph):
         )
 
     graph.add_edge(START, "apply_project_policy")
-    graph.add_edge("apply_project_policy", "retrieve_memory")
-    graph.add_edge("retrieve_memory", "classify")
-    graph.add_edge("classify", "plan")
+    graph.add_edge("apply_project_policy", "classify")
+    graph.add_edge("classify", "retrieve_memory")
+    graph.add_edge("retrieve_memory", "plan")
     graph.add_edge("plan", "evaluate_plan")
     graph.add_conditional_edges(
         "evaluate_plan",

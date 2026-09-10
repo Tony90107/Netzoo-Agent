@@ -501,23 +501,40 @@ def _invoke_semantic_interpreter(
             return None, usage, budget_warnings, error, restored_tags
 
         # The one authorized place the deterministic layer writes an outcome
-        # field. It moves a value this hypothesis already stated in its own
-        # evidence into the field that carries it, and never invents one.
-        # Validation below is unchanged.
-        interpretation, restored_inputs = restore_stated_fields(
-            user_task, interpretation,
+        # field. It can move a value stated in the hypothesis's own evidence;
+        # after a review patch it may also align an under-specified or impossible
+        # scalar to the sole value entailed by the already selected artifact. It
+        # never picks an artifact or workflow. Validation below is unchanged.
+        interpretation, restorations = restore_stated_fields(
+            user_task,
+            interpretation,
+            align_artifact_constraints=patch is not None,
         )
         restored_tags = frozenset(
-            str(item["value"]) for item in restored_inputs
+            str(item["value"]) for item in restorations
             if item["field"] == "selection_tags"
         )
-        if restored_inputs:
+        artifact_alignments = [
+            item for item in restorations if item["source"] == "artifact_ontology"
+        ]
+        stated_restorations = [
+            item for item in restorations if item["source"] != "artifact_ontology"
+        ]
+        if artifact_alignments:
+            record_event(
+                context,
+                state,
+                "routing.outcome_artifact_constraints_applied",
+                "classify",
+                {"attempt": attempt + 1, "alignments": artifact_alignments},
+            )
+        if stated_restorations:
             record_event(
                 context,
                 state,
                 "routing.outcome_input_restored",
                 "classify",
-                {"attempt": attempt + 1, "restored": restored_inputs},
+                {"attempt": attempt + 1, "restored": stated_restorations},
             )
         validation = validate_outcome_hypotheses(
             user_task,

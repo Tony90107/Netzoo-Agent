@@ -108,6 +108,7 @@ def normalize_episode_memory(
         "raw_task_excerpt": task[:500],
         "action": decision.action,
         "intent_type": intent_type,
+        "requested_outcome": decision.requested_outcome,
         "input_roles": input_roles,
         "output_roles": output_roles,
         "parameters": parameters,

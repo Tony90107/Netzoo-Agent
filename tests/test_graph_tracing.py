@@ -906,10 +906,12 @@ def test_memory_retrieval_trace_explains_each_selected_episode_score(tmp_path: P
         {
             "episode_id": "mirna-success",
             "workflow": "LIONESS-PUMA",
-            "final_score": 7,
+            "final_score": 4,
             "overlap_tokens": ["mirna", "sample-specific"],
-            "workflow_bonus": 3,
+            "workflow_bonus": 0,
             "status_bonus": 2,
+            "typed_score": 0,
+            "typed_matches": [],
         }
     ]
 

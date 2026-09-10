@@ -37,6 +37,10 @@ def q1():
     return next(case for case in load_scenarios(DEFAULT_SCENARIOS) if case.id == "original-q1")
 
 
+def q3():
+    return next(case for case in load_scenarios(DEFAULT_SCENARIOS) if case.id == "original-q3")
+
+
 def grounded_item():
     item = hypothesis()
     for evidence in item["evidence"]:
@@ -181,6 +185,171 @@ def test_a_patch_cannot_relax_validation():
 
     assert not result.valid
     assert any("artifact_granularity:sample_cluster_assignment" in issue for issue in result.issues)
+
+
+def test_terminal_cluster_artifact_recovers_its_entailed_operation_and_granularity():
+    """Replay the live q3 failure through the production routing seam.
+
+    The first pass correctly identifies the terminal cluster labels, but carries
+    `infer` and `sample_specific` over from the proposed patient-network means.
+    The review fixes the input/evidence and attempts `analyze`, while repeating
+    the invalid granularity.  Artifact ontology, not task keywords, must settle
+    the dependent fields before registry matching.
+    """
+    first = {
+        "outcome": {
+            "operation": "infer",
+            "input_artifacts": [],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": ["sample"],
+            "granularity": "sample_specific",
+        },
+        "confidence": 0.9,
+        "evidence": [
+            {
+                "dimension": "operation",
+                "value": "infer",
+                "source": "explicit",
+                "text_span": "找出病患的特異性突變網路",
+                "rationale": "The proposed intermediate is a patient-specific network.",
+            },
+            {
+                "dimension": "artifact_type",
+                "value": "mutation_matrix",
+                "source": "explicit",
+                "text_span": "全外顯子定序 (WES) 體細胞突變矩陣",
+                "rationale": "The model confused the current input with the result.",
+            },
+            {
+                "dimension": "entity_type",
+                "value": "sample",
+                "source": "inferred",
+                "rationale": "The requested labels assign patients to subtypes.",
+            },
+            {
+                "dimension": "granularity",
+                "value": "sample_specific",
+                "source": "inferred",
+                "rationale": "The model copied granularity from the proposed network.",
+            },
+        ],
+    }
+    patch = {
+        "outcome": {
+            "operation": "analyze",
+            "input_artifacts": ["mutation_matrix"],
+            "artifact_type": "sample_cluster_assignment",
+            "entity_types": ["sample"],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            # This is the one defect the live reviewer left behind.
+            "granularity": "sample_specific",
+            "unresolved_dimensions": [],
+        },
+        "evidence_removals": [
+            {"dimension": "artifact_type", "value": "mutation_matrix"},
+        ],
+        "evidence_additions": [
+            {
+                "dimension": "input_artifact",
+                "value": "mutation_matrix",
+                "source": "explicit",
+                "text_span": "全外顯子定序 (WES) 體細胞突變矩陣",
+                "rationale": "This is the current dataset.",
+            },
+            {
+                "dimension": "artifact_type",
+                "value": "sample_cluster_assignment",
+                "source": "inferred",
+                "rationale": "Patient subtyping asks for cohort cluster labels.",
+            },
+        ],
+    }
+    provider = PatchProvider(first, patch)
+
+    row = evaluate([q3()], provider=provider, model_name="fixture")["results"][0]
+
+    assert row["status"] == "exact"
+    assert row["matched_actions"] == ["run_sambar"]
+    assert row["outcome"] == {
+        "operation": "analyze",
+        "input_artifacts": ["mutation_matrix"],
+        "artifact_type": "sample_cluster_assignment",
+        "entity_types": ["sample"],
+        "display_entities": [],
+        "regulator_types": [],
+        "target_types": [],
+        "selection_tags": [],
+        "granularity": "aggregate",
+        "unresolved_dimensions": [],
+    }
+    assert row["should_execute"] is False
+    assert "Do not use **PANDA**" in row["answer"]
+    assert "Do not use **LIONESS-PANDA**" in row["answer"]
+    assert "SAMBAR" in row["answer"]
+    assert "Pathway aggregation turns gene mutation scores" in row["answer"]
+
+
+def test_review_unknown_is_resolved_when_its_evidence_names_the_artifact_entailment():
+    """Replay d0ebe7b1: the field says unknown while its evidence says aggregate."""
+    first = grounded_item()
+    first["outcome"]["granularity"] = "sample_specific"
+    for item in first["evidence"]:
+        if item["dimension"] == "granularity":
+            item["value"] = "sample_specific"
+    patch = {
+        "outcome": {"granularity": "unknown"},
+        "evidence_removals": [
+            {"dimension": "granularity", "value": "sample_specific"},
+        ],
+        "evidence_additions": [
+            {
+                "dimension": "granularity",
+                "value": "aggregate",
+                "source": "inferred",
+                "rationale": (
+                    "Sample cluster assignments are one cohort-level artifact."
+                ),
+            },
+        ],
+    }
+
+    row = evaluate(
+        [q3()],
+        provider=PatchProvider(first, patch),
+        model_name="fixture",
+    )["results"][0]
+
+    assert row["status"] == "exact"
+    assert row["matched_actions"] == ["run_sambar"]
+    assert row["outcome"]["granularity"] == "aggregate"
+
+
+def test_review_unknown_is_resolved_from_a_uniquely_entailed_artifact():
+    """The artifact contract is sufficient when granularity evidence is absent."""
+    first = grounded_item()
+    first["outcome"]["granularity"] = "sample_specific"
+    for item in first["evidence"]:
+        if item["dimension"] == "granularity":
+            item["value"] = "sample_specific"
+    patch = {
+        "outcome": {"granularity": "unknown"},
+        "evidence_removals": [
+            {"dimension": "granularity", "value": "sample_specific"},
+        ],
+    }
+
+    row = evaluate(
+        [q3()],
+        provider=PatchProvider(first, patch),
+        model_name="fixture",
+    )["results"][0]
+
+    assert row["status"] == "exact"
+    assert row["matched_actions"] == ["run_sambar"]
+    assert row["outcome"]["granularity"] == "aggregate"
 
 
 @pytest.mark.parametrize("index,expected", [(0, "sample_cluster_assignment"), (1, "sample_distance_matrix")])

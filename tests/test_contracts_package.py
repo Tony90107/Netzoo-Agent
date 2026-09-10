@@ -123,19 +123,25 @@ HISTORICAL_EXPORTS = [
 # It is the only basis that describes trust in the reading rather than fit to a
 # capability, and invoke_router holds anything carrying it below exact and away
 # from execution. Nothing else in these contracts changed. See Log 94.
+# 2026-09-10: sample_cluster_assignment now declares its sole canonical
+# operation=analyze in the artifact-dependent generation schema. This prevents
+# a review patch from carrying the proposed network's infer operation into the
+# terminal cohort-clustering result. Embedded schemas change transitively.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "790a7298dbc0914c53df9160eeb83c4e0d511b0b842c0acd7e1974df367bdf2f",
-    "RouterDecision": "dae9e099db515de552ceae109f3714519139c4fcfdd83ea6fb0204c8542cdcf8",
-    "RequestedOutcome": "16cc8ded777741b0738471d373927419652f893ba3332b99250e02a9726ff5a5",
+    "TaskDecision": "b3ac31a38133016e597d805fe17adff10abb502b0488f0e3ec5f237b46cd52be",
+    "RouterDecision": "1834edb36d14ed0fc6311edd470c64eac3fecdfe1f1e4f7dc3c95e842b112bb1",
+    "RequestedOutcome": "a3987383482e806840a305f87d498768d5cffd9e3c0d338661297213eb229983",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
-    "OutcomeHypothesis": "0704c2dd7f108a31fad4cc3d17ee3357266f0374c457fc545f11b488d28c839b",
+    "OutcomeHypothesis": "eabe2790885ed4238ee572279c0804a6dfc855bcf5fcd531d908a2b6eb1ff663",
     "CapabilityMatch": "b43330a9f99022b12c321a982dea0765a1bbb4fc749f42e8d99d49cebc4bb79a",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
     "ProjectPolicySnapshot": "7874d426766e6f00bc969f1a53e810e3a112b8317dc58fb2f68979a9cdc6b6e7",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
-    "Episode": "12ea309e79b9fcfc32cd4030ad5aed570eecac04a5414fdfe061dc569a82e70e",
+    # Updated deliberately on 2026-09-10: episodes retain the typed scientific
+    # outcome used for semantic memory retrieval.
+    "Episode": "e338f839735bff5f06f76909a63b776ef7fb58cb10c6c0ba53a9067421a7709a",
 }
 
 

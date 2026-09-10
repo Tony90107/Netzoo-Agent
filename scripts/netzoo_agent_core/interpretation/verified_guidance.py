@@ -9,6 +9,8 @@ from __future__ import annotations
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.method_rejections import rejected_methods_for
+from ..settings import INPUT_ROLE_FIELDS
+from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
 
@@ -34,6 +36,16 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         "artifact_definitions": {artifact: rule.description for artifact, rule in ARTIFACT_SEMANTICS.items()},
         "workflows": [dict(action=action, workflow=policy.workflows[action].workflow,
                            description=policy.workflows[action].description,
+                           required_inputs=[
+                               field
+                               for field in policy.workflows[action].required_inputs
+                               if field in INPUT_ROLE_FIELDS
+                           ],
+                           role_labels={
+                               field: INPUT_LABELS.get(field, field.replace("_", " "))
+                               for field in policy.workflows[action].required_inputs
+                               if field in INPUT_ROLE_FIELDS
+                           },
                            output_capability=policy.workflows[action].output_capability.model_dump())
                       for action in actions if action in policy.workflows],
     }
@@ -75,7 +87,14 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             capability = item["output_capability"]
             modalities = capability["accepted_input_modalities"] or capability["input_artifacts"]
             lines.append(f"**{item['workflow']}**: {item['description']}\n\n"
-                         f"Accepted inputs: {', '.join(value.replace('_', ' ') for value in modalities)}.")
+                         f"Routing-level input modality: {', '.join(value.replace('_', ' ') for value in modalities)}.")
+            required_inputs = item.get("required_inputs", [])
+            if required_inputs:
+                role_labels = item.get("role_labels", {})
+                lines.append("Required workflow inputs:\n\n" + "\n".join(
+                    f"- `{field}`: {role_labels.get(field, field.replace('_', ' '))}"
+                    for field in required_inputs
+                ))
             transformations = capability["transformations"]
             if transformations and not explanations:
                 lines.append("Declared transformations:\n\n" + "\n".join(

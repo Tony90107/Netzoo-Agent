@@ -10,10 +10,11 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from workflow_registry import REQUIRED_INPUTS
+from workflow_registry import OUTPUT_CAPABILITIES, REQUIRED_INPUTS
 
 from ..contracts.decisions import TaskDecision
 from ..contracts.memory import Episode
+from ..contracts.outcomes import RequestedOutcome
 from ..contracts.planning import WorkflowPlan
 from ..contracts.results import EvaluationResult, ToolExecutionResult
 from ..outcomes import effective_results, terminal_failed
@@ -58,6 +59,8 @@ class EpisodeSearchHit:
     overlap_tokens: list[str]
     workflow_bonus: int
     status_bonus: int
+    typed_score: int = 0
+    typed_matches: tuple[str, ...] = ()
 
     def trace_payload(self) -> dict[str, object]:
         return {
@@ -67,6 +70,8 @@ class EpisodeSearchHit:
             "overlap_tokens": self.overlap_tokens,
             "workflow_bonus": self.workflow_bonus,
             "status_bonus": self.status_bonus,
+            "typed_score": self.typed_score,
+            "typed_matches": list(self.typed_matches),
         }
 
 
@@ -391,10 +396,17 @@ class EpisodeStore:
         profile_id: str,
         query: str,
         limit: int = 3,
+        *,
+        requested_outcome: RequestedOutcome | dict | None = None,
     ) -> list[EpisodeSearchHit]:
         """Return ranked episodes with the score components used to select them."""
         safe_profile_id = _safe_memory_id(profile_id)
         query_tokens = self._query_tokens(query)
+        typed_query = (
+            RequestedOutcome.model_validate(requested_outcome)
+            if requested_outcome is not None
+            else None
+        )
         report = EpisodeCleanupReport()
         with _exclusive_file_lock(self.lock_path):
             self._prepare_layout_locked(report)
@@ -405,8 +417,15 @@ class EpisodeStore:
                 now=now,
             )
             self._cleanup_quarantine_locked(report, now=now)
-        scored: list[tuple[int, float, EpisodeSearchHit]] = []
+        scored: list[tuple[int, int, float, EpisodeSearchHit]] = []
         for _, episode in records:
+            typed_score = 0
+            typed_matches: list[str] = []
+            if typed_query is not None:
+                typed_result = self._typed_compatibility(episode, typed_query)
+                if typed_result is None:
+                    continue
+                typed_score, typed_matches = typed_result
             episode_tokens = self._tokens(
                 " ".join(
                     [
@@ -429,15 +448,8 @@ class EpisodeStore:
             )
             overlap_tokens = sorted(query_tokens & episode_tokens)
             overlap = len(overlap_tokens)
-            workflow_bonus = (
-                3
-                if any(
-                    name in query.casefold() and name in episode.workflow.casefold()
-                    for name in ("panda", "puma", "lioness", "condor")
-                )
-                else 0
-            )
-            base_score = overlap + workflow_bonus
+            workflow_bonus = 0
+            base_score = overlap
             status_bonus = (
                 2
                 if episode.status == "completed"
@@ -445,10 +457,16 @@ class EpisodeStore:
                 if episode.status == "failed"
                 else 0
             )
-            score = base_score + status_bonus if base_score else 0
+            if typed_query is not None:
+                semantic_rank = typed_score
+                score = typed_score + overlap + status_bonus
+            else:
+                semantic_rank = 0
+                score = base_score + status_bonus if base_score else 0
             if score:
                 scored.append(
                     (
+                        semantic_rank,
                         score,
                         episode.created_at,
                         EpisodeSearchHit(
@@ -457,11 +475,89 @@ class EpisodeStore:
                             overlap_tokens=overlap_tokens,
                             workflow_bonus=workflow_bonus,
                             status_bonus=status_bonus,
+                            typed_score=typed_score,
+                            typed_matches=tuple(typed_matches),
                         ),
                     )
                 )
-        scored.sort(key=lambda item: (-item[0], -item[1]))
-        return [hit for _, _, hit in scored[:limit]]
+        scored.sort(key=lambda item: (-item[0], -item[1], -item[2]))
+        return [hit for _, _, _, hit in scored[:limit]]
+
+    @staticmethod
+    def _typed_compatibility(
+        episode: Episode,
+        requested: RequestedOutcome,
+    ) -> tuple[int, list[str]] | None:
+        """Gate memory by scientific outcome; text overlap is only a tie-breaker."""
+        capability = OUTPUT_CAPABILITIES.get(episode.action or "")
+        stored = episode.requested_outcome
+        if capability is None and stored is None:
+            return None
+
+        score = 0
+        matches: list[str] = []
+        requested_inputs = set(requested.input_artifacts) - {"unknown"}
+        if requested_inputs:
+            if capability is not None:
+                if requested_inputs & capability.incompatible_input_artifacts:
+                    return None
+                if not requested_inputs.issubset(capability.input_artifacts):
+                    return None
+            elif stored is None or not requested_inputs.issubset(
+                set(stored.input_artifacts)
+            ):
+                return None
+            score += 8
+            matches.append("input_artifacts")
+
+        if requested.artifact_type != "unknown":
+            compatible_artifacts = set()
+            if capability is not None:
+                compatible_artifacts = {
+                    capability.artifact_type,
+                    *capability.produced_artifacts,
+                }
+            elif stored is not None:
+                compatible_artifacts = {stored.artifact_type}
+            if requested.artifact_type not in compatible_artifacts:
+                return None
+            score += 8
+            matches.append("artifact_type")
+            if stored is not None and stored.artifact_type == requested.artifact_type:
+                score += 2
+                matches.append("stored_artifact_type")
+
+        if requested.operation != "unknown":
+            operation = capability.operation if capability is not None else stored.operation
+            if requested.operation != operation:
+                return None
+            score += 3
+            matches.append("operation")
+
+        if requested.granularity not in {"unknown", "not_applicable"}:
+            granularities = (
+                capability.granularities
+                if capability is not None
+                else {stored.granularity}
+            )
+            if requested.granularity not in granularities:
+                return None
+            score += 3
+            matches.append("granularity")
+
+        requested_entities = set(requested.entity_types) - {"unknown"}
+        if requested_entities:
+            episode_entities = (
+                capability.entity_types
+                if capability is not None
+                else set(stored.entity_types)
+            )
+            if not requested_entities.issubset(episode_entities):
+                return None
+            score += 2
+            matches.append("entity_types")
+
+        return score, matches
 
     def search(self, profile_id: str, query: str, limit: int = 3) -> list[Episode]:
         """Return ranked episodes while preserving the original public interface."""

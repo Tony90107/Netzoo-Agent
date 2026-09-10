@@ -71,6 +71,17 @@ def test_generated_reasoning_prompts_cover_implicit_workflow_intent():
     assert "output_files" in response_prompt
 
 
+def test_semantic_contract_separates_a_proposed_method_from_the_terminal_goal():
+    """A method under evaluation is context, not a competing outcome."""
+    prompt = build_semantic_interpreter_prompt()
+
+    assert "historical context" in prompt
+    assert "current input" in prompt
+    assert "proposed method" in prompt
+    assert "terminal scientific goal" in prompt
+    assert "Do not create another hypothesis solely for the proposed method" in prompt
+
+
 def test_registered_capability_metadata_is_the_only_pipeline_source():
     policy = ProjectPolicyLoader().load()
     cobra = policy.workflows["run_cobra"].output_capability
