@@ -8508,3 +8508,92 @@ GIRAFFE——這要如實報告為「機制成立但不足」，不得事後改�
 3. **`OutputCapabilityDefinition` 只有一組 `entity_types`，卻要描述兩個產物。**
    這是形狀上的近似，本輪接受。若 G-d 失敗，代表近似不成立，
    需要 per-artifact 的實體宣告。
+
+## Log 133｜W-4 觸發：TFA artifact 型別**依事前規定撤回**；風險 3 被證實為成因
+
+日期／時區：2026-09-10，Asia/Taipei。依 Log 132 事前寫死的條件執行。
+
+### 結果
+
+| 判準 | 結果 |
+| --- | --- |
+| **G-a** 無 tag 的 TFA outcome → `exact`／`run_giraffe` | **通過**（`match_semantic_request`，`selection_tags=[]`） |
+| **G-b** PANDA／PUMA／OTTER／LIONESS-\* 皆不匹配該 outcome | **通過**（8 個能力逐一 parametrize） |
+| **G-c** `regulatory_network` 基線仍匹配 PANDA | **通過**（改動前後逐字相同） |
+| **G-d** `sample` 不得讓 GIRAFFE 經由它不產出的 artifact 被匹配 | **通過**（全詞彙表列舉） |
+| **G-e** 提示差異恰為新增的一行 artifact 詞彙 | **通過** |
+| **G-f** `ARTIFACT_SEMANTICS` 與 `ArtifactType` 一致 | **通過** |
+| **G-g** 閘門不得新增失敗（基線 15 筆環境性失敗） | **失敗，15 → 17** |
+
+**W-4 觸發（G-g 破裂），三處改動全部撤回。**
+
+### 成因：Log 132 風險 3，位置猜錯但機制猜對
+
+事前寫的風險 3 是「`OutputCapabilityDefinition` 只有一組 `entity_types`，
+卻要描述兩個產物；這是形狀上的近似」。我把它掛在 G-d 底下，
+以為破裂會表現為「GIRAFFE 被不該匹配的 outcome 匹配到」。
+**G-d 通過了；破裂發生在排序層，不在匹配層。**
+
+`_specificity_score` 計 `capability.entity_types - set(outcome.entity_types)`。
+GIRAFFE 誠實宣告第二個產物含 `sample` 之後，它的 penalty 由 0 變 1，
+於是掉出 `match_outcome_hypotheses` 的 `top_actions`，
+而 `_tag_discriminated_action` **只在 top_actions 上運作**：
+
+```
+outcome: regulatory_network / [tf,gene] / aggregate / selection_tags=['tfa']
+  改動前  run_panda 0  run_lioness_panda 0  run_otter 0  run_giraffe 0  <- 四者並列 top
+  改動後  run_panda 0  run_lioness_panda 0  run_otter 0  run_giraffe 1  <- GIRAFFE 掉出
+```
+
+`tfa` tag 標記的正是 GIRAFFE，卻再也看不到它。
+既有測試 `test_tf_activity_is_selected_by_its_registry_tag` 因此失敗——
+而該測試自己的 docstring 早就寫著
+「GIRAFFE previously appeared unique here only because it declared `sample`」，
+是先前那次移除 `sample` 的直接遺產。
+
+**一句話：把能力描述得更完整，會讓它在排序上顯得更不專一，
+於是唯一能選中它的機制反而失效。**
+
+### 兩臂都不乾淨（實測，非推論）
+
+撤回前另跑了一臂「只加 `produced_artifacts`、不加 `sample`」：
+
+| 臂 | 非基線失敗 |
+| --- | --- |
+| A：`produced_artifacts` ＋ `entity_types` 加 `sample` | `test_tf_activity_is_selected_by_its_registry_tag` |
+| B：只加 `produced_artifacts` | 新案 G-a（outcome 寫 `entity_types=[tf,sample]` 時匹配不到） |
+
+（兩臂另各有一筆 `test_contract_model_schemas_are_unchanged`，
+那是 schema 摘要釘樁，屬預期的登記工作，不計為回歸。）
+
+B 臂的意思是：TF-by-sample 矩陣**最自然的實體描述**就是 `[tf, sample]`，
+不宣告 `sample` 就接不住它。兩臂是同一個近似的兩面，
+**這不是選哪一邊的問題，是近似本身不成立。**
+
+### 沒有被撤回的
+
+- **Log 132 本身**（事前宣告，不得修改）。
+- **`tfa` tag 的 0/1275 存量統計**——那是量測，與本次設計成敗無關。
+- **語料新案 `tfa-factorization-rejects-named-panda`**（使用者原句）。
+  它與 `aggregate-tf-activity` 同為紅燈，如實記錄一個未解問題，
+  這正是語料的用途。
+- **`ambiguous` 不得覆寫 `recommended_actions` 的修正**（另一個變數，
+  有自己的 mutation 驗證：拿掉守衛後測試回報 `composed ['run_bonobo']`，
+  與實跑紀錄逐字相同）。
+
+### 下一輪若要再試，前提是什麼（不在本輪做，也不預先辯護）
+
+必要條件是**產物層級的實體宣告**，或讓 `_specificity_score`
+不計入僅由 `produced_artifacts` 帶進來的實體。
+在那之前，任何「加一個 artifact 值」的嘗試都會撞上同一堵牆。
+
+那是對排序層的改動，**必須另寫事前判準**，
+且判準必須包含「四個並列 top 的既有排序不得變動」這一條——
+本輪就是漏了它。
+
+### 對本輪的一句誠實結論
+
+機制設計是對的（G-a～G-d 全部通過，`produced_artifacts` 確實能在不碰
+`selection_tags` 的情況下選中 GIRAFFE），**但它與現行排序層不相容，
+而不相容是我事前寫下、卻掛錯位置的那個風險。**
+判準沒有事後調整，改動已撤回。
