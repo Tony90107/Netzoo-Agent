@@ -8366,3 +8366,145 @@ prompt 編輯**從未進入 repo**（只存在於量測腳本），故無需還�
 `Run PANDA using these three local files` ＋三個路徑：
 今日稍早 **5/5 → `run_panda`**，數小時後**同一份程式碼 0/4**（worktree 對照組證實）。
 **Log 122 那句「5/5」自此不得作為現況引用。**
+
+## Log 132｜事前宣告：TFA 產物進入 artifact 詞彙表——把鑑別事實從 tag 命名空間搬進 typed 維度（尚未實作）
+
+日期／時區：2026-09-10，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+依據：本節下方的 `selection_tags` 存量統計（41 個 live round，1275 試驗）。
+使用者指示：先寫事前判準，再動 `ArtifactType`。
+
+### 觸發本輪的實測：`selection_tags` 在實跑中幾乎不存在
+
+`docs/research-log/live-*.json` 全部 41 檔，1275 個帶 outcome 的試驗
+（gpt-4o-mini 與 gpt-4o）：**`selection_tags` 非空者 51 個，4.0%。**
+
+| tag | 次數 | | tag | 次數 |
+| --- | ---: | --- | --- | ---: |
+| `cancer_subtyping` | 12 | | **`tfa`** | **0** |
+| `covariate_association` | 12 | | **`relaxed_graph_matching`** | **0** |
+| `multi_omic_network` | 12 | | **`aggregate_network`** | **0** |
+| `partial_correlation` | 11 | | **`sample_specific`** | **0** |
+| `pathway_scores` | 11 | | **`coexpression`** | **0** |
+| `somatic_mutation` | 10 | | **`modules`** | **0** |
+| `bipartite_community_detection` | 7 | | **`high_order_correlation`** | **0** |
+| `mirna_regulation` | 5 | | **`batch_correction`** | **0** |
+| `tf_gene_regulation` | 2 | | `bayesian` | 1 |
+
+模式很乾淨：**會被填的全是「把題目表面主題換句話說」的 tag；
+每一個真正能區分方法的 tag 都是 0。**
+
+`_tag_discriminated_action` 只讀 `selection_tags`，所以它在實跑中幾乎不觸發。
+語料 `aggregate-tf-activity` 在 r26 replicate 的失敗訊息逐字證實這點：
+`discriminator: selection_tags must include ['tfa'], got []`，
+而同一次試驗的 typed 維度（`operation=infer`、`artifact_type=regulatory_network`、
+`regulator_types=[tf]`、`target_types=[gene]`、`granularity=aggregate`）**全部正確**。
+
+**為什麼離線閘門沒有發現**：`test_each_capability_is_reachable_or_listed_as_not`
+的 `_best_outcome()` 直接把 `capability.selection_tags` 餵進 outcome，
+等於預先假設模型會填。GIRAFFE 在該測試中的可達性正是靠 tag tie-break 成立的。
+**閘門測的是「若模型填了會不會 work」，實跑測的是「模型會不會填」——後者從未被測。**
+
+### 要解決的，以及為什麼現有機制解不掉
+
+缺的不是限制，也不是提示措辭。Log 130／131 已就此結案：
+`named_methods` 9/9 為空，W-1 觸發整個撤回，且事前寫明不再嘗試措辭。
+
+缺的是**放置事實的位置**——與 Log 128 同一個診斷，但結論相反。
+那次把事實放進**新欄位**（模型不用）；這次把它放進
+**模型已經在用的既有欄位的閉集合詞彙**。
+
+差別可查證：同一批 1275 試驗中 `artifact_type` 幾乎總是被填
+（r26 的 `unknown_core_origin` 只有 `artifact_type:never_stated` 2 次）；
+`selection_tags` 是 4.0%；`named_methods` 是 0/18。
+**本案不新增欄位，只在既有閉集合加一個值。**
+
+### 形狀（三處，單一變數）
+
+1. `ArtifactType` 加 `tf_activity_matrix`。
+2. `ARTIFACT_SEMANTICS` 對應條目：描述
+   `"TF-by-sample transcription factor activity estimates, not a TF-to-gene network"`，
+   entities `{tf, sample}`，granularities `{aggregate}`。
+   **aggregate 而非 sample_specific**：與 `sample_distance_matrix`／
+   `pathway_mutation_matrix` 同理——一份 sample-indexed 矩陣不是
+   per-sample 分別推論的結果。
+3. GIRAFFE：`produced_artifacts = {regulatory_network, tf_activity_matrix}`，
+   `entity_types` 加 `sample`。
+
+**不做的**：不替其餘 workflow 補 `produced_artifacts`（另一個變數，另一輪）；
+不動 `selection_tags`、`_tag_discriminated_action` 或 matcher 任何一行。
+
+### 關於提示文字：唯一允許的改動，且可機器查核
+
+`build_semantic_interpreter_prompt` 的 artifact 詞彙表由 `ARTIFACT_SEMANTICS`
+**自動產生**，所以本案會讓提示多出一行。這屬於 Log 47 的分類
+「契約形狀的改變，system prompt 只描述新的輸出形狀，不含說服性措辭」。
+
+**釘死**：判準 G-e 要求提示的變更**恰好**是那一行，其餘逐字不變。
+**若需要任何額外措辭才有效，那就是六次失敗的同一模式，本案撤回。**
+
+### 事前判準（結構性、離線、決定性）
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **G-a** | 一個 `artifact_type=tf_activity_matrix`、`selection_tags=[]`、無 role 的 outcome → `exact` 且 `matched_actions == ["run_giraffe"]` | **失敗** |
+| **G-b** | 同一個 outcome 對 PANDA／PUMA／OTTER／LIONESS-\* 皆不匹配 | **失敗** |
+| **G-c** | `artifact_type=regulatory_network` 的既有 outcome 行為**逐字不變**（PANDA 基線仍匹配 PANDA） | 通過（不得破壞） |
+| **G-d** | GIRAFFE 加入 `sample` 後，**不得**讓任何 `artifact_type` 不在其 `produced_artifacts` 內的 outcome 匹配到 GIRAFFE | **失敗** |
+| **G-e** | 語意解讀提示的差異**恰為**新增的那一行 artifact 詞彙，其餘逐字不變 | **失敗** |
+| **G-f** | `set(ARTIFACT_SEMANTICS) == set(get_args(ArtifactType))` 仍成立 | 通過 |
+| **G-g** | 全閘門綠；`skipped` 與 `passed` 一起讀。既有 15 筆環境性失敗（`test_executor_argument_types` 12 ＋ `test_semantic_claims` 3，於乾淨樹上同樣失敗）為對照，**不得增加** | — |
+
+### 撤回條件（寫死，事後不得調整；全部以有無判定，依 Log 117／120）
+
+- **W-1｜設計失敗，整個撤回**：實跑中，對**明白要求 TF 活性**的請求，
+  9 次讀數的 outcome **從未**出現 `tf_activity_matrix` → 撤回三處改動。
+  與 Log 131 同一條規則，**不再嘗試措辭**。
+- **W-2｜誘發誤標，撤回**：對照請求（只要調控網路、明說不要 TF 活性）的
+  NEW 臂**只要出現一次** `artifact_type=tf_activity_matrix` → 新值污染了
+  既有分類，撤回。**閘門擋得下來不構成保留的理由。**
+- **W-3｜填了但路由用不到，撤回**：該值有出現，但**沒有任何一次** GIRAFFE
+  是經由 `produced_artifacts` 而非 tag tie-break 被選中 → 對路由惰性，撤回。
+- **W-4｜回歸**：G-c 或 G-g 任一破裂 → 撤回。
+
+### 實跑設計（描述性，非判準；依 Log 120／124）
+
+模型 gpt-4o-mini（使用者已預先授權該模型）。
+
+- **要求 TF 活性**（3 題 × 3 次 = 9 讀數，供 W-1）：
+  ① 語料新案 `tfa-factorization-rejects-named-panda`（使用者原句，雙輸出）；
+  ② `aggregate-tf-activity`（英文，雙輸出）；
+  ③ 一句**只要 TFA、不要網路**的中文改寫——這題最具診斷力，
+     因為它移除了「`artifact_type` 是純量、而請求要兩個輸出」這個混淆。
+- **對照**（2 題 × 3 次，供 W-2）：`aggregate-tf-baseline`
+  （明說 no TF activity estimation）與 `aggregate-tf-relaxed-matching`。
+
+**本輪不提出任何分數主張**：不跑全語料、無時間交錯同碼替身，
+故不得計 p 值、不得宣稱修復率改善。
+Log 129 量到同碼同句數小時內 5/5 → 0/4；Log 120 的同碼替身跨度為
+3–4（全語料）／10–11（配對對照）。
+
+### 事前預測
+
+G-a～G-g 我預測會通過——它們是決定性的，不涉及模型。
+
+**對實跑我不預測次數。** 唯一有根據的先驗是
+「`artifact_type` 是模型已經在用的欄位」，但那不保證它會選新值而非
+`regulatory_network`：使用者原句同時要求兩個輸出，而 `artifact_type` 是純量。
+**若結果是 G-a 通過、W-1 不觸發（第③題有填），卻在雙輸出題上仍選不到
+GIRAFFE——這要如實報告為「機制成立但不足」，不得事後改判準。**
+
+### 已知風險，事前寫明
+
+1. **`artifact_type` 是純量，而使用者要的是兩個輸出。**
+   本案讓 TFA 成為可指名的終端結果，但無法表達「同時要兩個」。
+   若實跑顯示模型在雙輸出請求上穩定選 `regulatory_network`，
+   真正缺的是 outcome 端的多產物表達——那是另一個更大的形狀改動，
+   本輪不做，也不預先為它辯護。
+2. **GIRAFFE 的 `entity_types` 加入 `sample` 是對 `workflow_registry.py`
+   該處註解的部分翻案。** 當時移除 `sample` 是因為它與
+   「sample-specific 不創造 sample 實體」衝突。翻案的正當性：
+   GIRAFFE 現在**宣告**了一個 TF-by-sample 產物，sample 確實是該結果中的實體，
+   與 SAMBAR 保留 `sample` 同理。**G-d 就是用來限制這次翻案的作用範圍。**
+3. **`OutputCapabilityDefinition` 只有一組 `entity_types`，卻要描述兩個產物。**
+   這是形狀上的近似，本輪接受。若 G-d 失敗，代表近似不成立，
+   需要 per-artifact 的實體宣告。
