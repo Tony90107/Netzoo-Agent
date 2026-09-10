@@ -8597,3 +8597,123 @@ B 臂的意思是：TF-by-sample 矩陣**最自然的實體描述**就是 `[tf, 
 `selection_tags` 的情況下選中 GIRAFFE），**但它與現行排序層不相容，
 而不相容是我事前寫下、卻掛錯位置的那個風險。**
 判準沒有事後調整，改動已撤回。
+
+## Log 134｜事前宣告：把實體廣度移出排序偏好，並在其上重試 TFA artifact（尚未實作）
+
+日期／時區：2026-09-10，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+依據：Log 133 的成因分析。使用者指示：先 commit `ambiguous` 修正，再寫排序層事前判準。
+
+### 要解決的
+
+Log 133 的成因：四個偏好函式都計
+`len(capability.entity_types - <request 說的實體>)`——
+`_specificity_score`、`stated_dimension_score`、
+`_advisory_specificity_penalty`、`_explicit_evidence_specificity_penalty`。
+
+GIRAFFE 一旦誠實宣告第二個產物含 `sample`，penalty 由 0 變 1，
+掉出 `match_outcome_hypotheses` 的 `top_actions`，
+而 `_tag_discriminated_action` 只在 `top_actions` 上運作。
+**把能力描述得更完整，會讓它在排序上顯得更不專一。**
+
+### 這個項為什麼是多餘的（現行註冊表的靜態事實，不是改動後的量測）
+
+12 個能力的宣告：
+
+| action | artifact_type | entity_types | regulator | target |
+| --- | --- | --- | --- | --- |
+| run_panda | regulatory_network | gene, tf | tf | gene |
+| run_lioness_panda | regulatory_network | gene, tf | tf | gene |
+| run_otter | regulatory_network | gene, tf | tf | gene |
+| run_giraffe | regulatory_network | gene, tf | tf | gene |
+| run_puma | regulatory_network | gene, mirna, tf | mirna, tf | gene |
+| run_lioness_puma | regulatory_network | gene, mirna, tf | mirna, tf | gene |
+| run_lioness_coexpression | coexpression_network | gene | — | — |
+| run_cobra | coexpression_network | gene | — | — |
+| run_bonobo | coexpression_network | gene | — | — |
+| run_condor | community_assignment | gene | — | — |
+| run_sambar | pathway_mutation_matrix | pathway, sample | — | — |
+| run_dragon | multi_omic_network | omics_layer_1/2_feature | — | — |
+
+兩個可查證的性質：
+
+1. 每一個 `regulatory_network` 能力的 `entity_types`
+   **恰好等於** `regulator_types ∪ target_types`。
+2. 共用 `artifact_type`、roles 相同、**只有** `entity_types` 不同的能力對：
+   **0 對**（全 66 組配對逐一檢查）。
+
+排序只在「已經相容於同一個 outcome」的候選之間進行，而相容性要求
+artifact 相同，所以上面兩點合起來是：
+**實體項在現行註冊表中對排序沒有任何鑑別貢獻。
+它唯一的實際作用，就是懲罰「宣告了第二個產物」。**
+
+另註 `_specificity_score` 自己的理由（docstring）：
+「a capability that also handles regulators the request never mentioned may need
+priors the user does not have」——那講的是 **role**（PUMA 要 miRNA prior），
+不是 entity。`sample` 不需要任何額外 prior，它是輸出的性質，不是輸入的要求。
+
+### 形狀（兩階段，各自可驗證）
+
+**Phase 1｜啟用改動**
+從上述四個偏好函式移除實體項。roles 與 `guidance_predecessors` **不動**。
+**`_matches` 與 `_partially_compatible` 的 `entity_types` 相容性檢查不動**——
+那回答「能不能」，本案只改「偏好哪個」。
+
+**Phase 2｜在其上重試 Log 132**
+**逐字**重新套用 Log 132 的三處改動，不做任何修改。
+若需要修改才成立，那就不是本輪要證的東西，撤回。
+
+### 事前判準（結構性、離線、決定性）
+
+Phase 1：
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **R-a** | 全語料 31 題的 outcome ＋ 生成網格，每個 outcome 的 `top_actions` 與 `matched_actions` 改動前後**逐一相同**（先存基線再比對） | **失敗** |
+| **R-b** | 閘門不得新增失敗（基線 15 筆環境性失敗） | **失敗** |
+| **R-c** | 守衛測試：一旦出現「共用 `artifact_type` 與 roles、僅 `entity_types` 不同」的能力對，測試必須失敗，並在訊息中指出移除實體項的前提已不成立 | **失敗** |
+| **R-d** | `tf`-only 請求仍偏好 LIONESS-PANDA 而非 LIONESS-PUMA（`_specificity_score` docstring 點名要保住的案例） | **失敗** |
+
+Phase 2：
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **G-a～G-g** | 逐條重跑 Log 132 的七項，全部必須通過 | **失敗** |
+| **R-e** | **Log 132 漏掉的那一條**：`artifact_type=regulatory_network`＋`selection_tags=['tfa']` 的 outcome，其 `top_actions` 必須仍含 `run_giraffe`，且既有 `test_tf_activity_is_selected_by_its_registry_tag` 通過 | **失敗** |
+
+### 撤回條件（寫死，事後不得調整）
+
+- **X-1｜Phase 1 不惰性**：R-a 或 R-d 任一破裂 → 撤回 Phase 1，**Phase 2 不執行**。
+- **X-2｜Phase 2 仍有回歸**：G-a～G-g 或 R-e 任一破裂 → 撤回 Phase 2，
+  **且 Phase 1 一併撤回**。
+  寫死一併撤回的理由：Phase 1 的唯一目的就是解開 Phase 2 的耦合，
+  它自己不改善任何可觀察行為。**「以後會用到」不構成保留理由**，
+  留下無主的改動只會讓下一輪更難歸因。
+- **X-3｜實跑**：與 Log 132 的 W-1／W-2／W-3 **逐字相同**，不在此重述。
+- **X-4｜措辭**：本輪 Phase 1 **不得**產生任何提示文字變動
+  （偏好函式不進提示）；Phase 2 沿用 Log 132 的 G-e。
+
+### 描述性、非判準（依 Log 120／124）
+
+同 Log 132：不跑全語料實跑、無時間交錯同碼替身，
+故不得計 p 值、不得宣稱修復率改善。
+
+### 事前預測
+
+R-a～R-d 我預測通過——「0 對」是可查證的靜態事實，不涉及模型。
+
+**Phase 2 我不預測。** Log 132 的 G-a～G-f 已經通過過一次，
+但那一次是在 G-g 破裂的情況下；解開耦合之後 G-g 會不會通過，我沒有依據。
+Log 133 也已經證明我對「風險會在哪裡表現」的判斷可以是錯的。
+
+### 已知風險，事前寫明
+
+1. **實體項的多餘性是現行註冊表的性質，不是設計不變式。**
+   未來若加入一個 `entity_types` 不等於 `roles ∪ artifact 本體實體`的能力，
+   移除的前提就不再成立。**R-c 就是用來把這個前提釘在測試裡的**，
+   不是註解裡。
+2. **Phase 1 通過 R-a 只證明它今天惰性，不證明它正確。**
+   正確性主張要等 Phase 2；這也是 X-2 寫「一併撤回」的原因。
+3. **即使兩階段都成立，`artifact_type` 仍是純量。**
+   Log 132 風險 1 未解：使用者原句要兩個輸出，模型仍可能選
+   `regulatory_network` 而非 `tf_activity_matrix`。
+   **那種結果要如實報告為「機制成立但不足」，不得改判準，也不在本輪處理。**
