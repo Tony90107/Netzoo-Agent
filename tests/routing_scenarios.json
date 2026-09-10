@@ -622,5 +622,36 @@
       "request_mode": "execute",
       "require_clarification": true
     }
+  },
+  {
+    "id": "tfa-factorization-rejects-named-panda",
+    "language": "mixed",
+    "category": "positive",
+    "prompt": "我手邊有三個矩陣：基因表現量 (G x n)、先驗調控 Motif (G x TF) 和蛋白質交互作用 (TF x TF)。我不想用 PANDA 那種訊息傳遞的方法，我希望用一個機器學習模型，直接把原始的表現量矩陣『分解』成兩個結果：一個是 (G x TF) 的調控網路矩陣，另一個是能反映每個樣本狀態的 (TF x n)『轉錄因子活性 (TFA)』矩陣。在 netZooPy 裡面，哪個套件是專門做這種『生物學先驗知識引導的矩陣分解 (Biologically informed matrix factorization)』的？",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_giraffe"
+      ],
+      "forbidden_actions": [
+        "run_panda"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ],
+        "target_types": [
+          "gene"
+        ]
+      },
+      "answer_required": [
+        "GIRAFFE"
+      ]
+    }
   }
 ]
