@@ -169,6 +169,10 @@ class ProjectPolicyLoader:
                     spec.output_capability.guidance_predecessors
                 ),
                 input_artifacts=frozenset(spec.output_capability.input_artifacts),
+                # Required executor prerequisites are code-enforced registry
+                # metadata, not provider outcome fields; keep them out of the
+                # public policy schema while retaining the comparison here.
+                required_input_artifacts=definition.output_capability.required_input_artifacts,
                 handoff_targets=tuple(spec.output_capability.handoff_targets),
                 selection_tags=frozenset(spec.output_capability.selection_tags),
                 handoff_contract=spec.output_capability.handoff_contract,

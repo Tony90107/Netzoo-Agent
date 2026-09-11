@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import get_args
-from dataclasses import dataclass
 import time
 
 from pydantic import ValidationError
-from workflow_registry import OUTPUT_CAPABILITIES
 
 from ..contracts import AgentState, LLMUsage, TaskDecision, _trace
-from ..contracts.interaction import WorkflowContinuation
 from ..contracts.outcomes import (
     EvidenceDimension,
     RequestedOutcome,
@@ -47,19 +44,12 @@ from ..llm import (
 )
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
+from .continuation_invocation import continue_workflow
 from .intent_invocation import _invoke_intent_router
+from .invocation_types import RouterInvocation as _RouterInvocation
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__: list[str] = []
-
-
-@dataclass(frozen=True, slots=True)
-class _RouterInvocation:
-    decision: TaskDecision
-    routing_state: dict
-    usage: LLMUsage
-    budget_warnings: list[str]
-    reason_code: str
 
 
 # A third, progress-gated attempt was tried and reverted. It fired twice in nine
@@ -305,6 +295,7 @@ def _invoke_semantic_interpreter(
 
         started_ns = time.monotonic_ns()
         raw = None
+        payload = None
         output_text = ""
         try:
             _trace(
@@ -451,7 +442,12 @@ def _invoke_semantic_interpreter(
                     "classify",
                     # Keep the located shapes beside the flattened issue strings:
                     # the first attempt is where a rejected value is otherwise lost.
-                    {"attempt": 1, "issues": list(validation_issues), "shapes": schema_issues},
+                    {
+                        "attempt": 1,
+                        "issues": list(validation_issues),
+                        "shapes": schema_issues,
+                        "provider_payload": payload,
+                    },
                 )
                 record_event(
                     context,
@@ -470,6 +466,7 @@ def _invoke_semantic_interpreter(
                     "attempt": attempt + 1,
                     "error_type": type(error).__name__,
                     "validation_issues": schema_issues,
+                    "provider_payload": payload,
                 },
             )
             # A review that does not parse is still only a second opinion. The
@@ -610,6 +607,7 @@ def _invoke_semantic_interpreter(
                     "attempt": attempt + 1,
                     "error_type": type(last_error).__name__,
                     "validation_issues": list(validation.issues),
+                    "rejected_interpretation": interpretation.model_dump(mode="json"),
                     "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
                     "evidence_census": [
                         dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
@@ -622,7 +620,11 @@ def _invoke_semantic_interpreter(
                     state,
                     "routing.semantic_review_discarded",
                     "classify",
-                    {"attempt": attempt + 1, "issues": list(validation.issues)},
+                    {
+                        "attempt": attempt + 1,
+                        "issues": list(validation.issues),
+                        "rejected_interpretation": interpretation.model_dump(mode="json"),
+                    },
                 )
                 return validated, usage, budget_warnings, None, restored_tags
             if validation.recoverable:
@@ -799,7 +801,7 @@ def invoke_router(
     """Run the ordered semantic, validation, registry, and intent pipeline."""
     usage = _current_usage(context, state)
     if state.get("workflow_continuation") is not None:
-        return _continue_workflow(context, state, user_task, usage)
+        return continue_workflow(context, state, user_task, usage)
     interpretation, usage, budget_warnings, semantic_error, restored_tags = (
         _invoke_semantic_interpreter(context, state, user_task, usage)
     )
@@ -906,85 +908,4 @@ def invoke_router(
         reason_code=("intent_fallback" if intent_fallback else
                      "registry_guidance_fallback" if capability_match.status == "fallback" else
                      "semantic_registry_intent"),
-    )
-
-
-def _continue_workflow(
-    context: _GraphContext,
-    state: AgentState,
-    task: str,
-    usage: LLMUsage,
-) -> _RouterInvocation:
-    """Plan a CLI-validated selection without asking models to select it again."""
-    try:
-        continuation = WorkflowContinuation.model_validate(state["workflow_continuation"])
-        if (
-            continuation.task != task
-            or continuation.action not in context.project_policy.workflows
-        ):
-            raise ValueError("The continuation does not match the current task and policy.")
-    except (ValidationError, ValueError):
-        decision = TaskDecision(
-            action="no_tool",
-            in_scope=True,
-            should_execute=False,
-            confidence=0.0,
-            intent_type="answer_question",
-            reason="The workflow continuation is invalid or stale; select the workflow again.",
-        )
-        reason_code = "invalid_workflow_continuation"
-    else:
-        action = continuation.action
-        capability = OUTPUT_CAPABILITIES[action]
-        granularity = (
-            next(iter(capability.granularities))
-            if len(capability.granularities) == 1
-            else "unknown"
-        )
-        decision = hydrate_router_decision(
-            TaskDecision(
-                action=action,
-                in_scope=True,
-                should_execute=True,
-                confidence=1.0,
-                intent_type="run_analysis",
-                reason="Preparing the workflow selected in the current CLI continuation.",
-                candidate_actions=[action, "no_tool"],
-                matched_actions=[action],
-                recommended_actions=[action],
-                capability_match_status="exact",
-                requested_outcome=RequestedOutcome(
-                    operation=capability.operation,
-                    artifact_type=capability.artifact_type,
-                    entity_types=sorted(capability.entity_types),
-                    regulator_types=sorted(capability.regulator_types),
-                    target_types=sorted(capability.target_types),
-                    granularity=granularity,
-                    unresolved_dimensions=(
-                        ["granularity"] if granularity == "unknown" else []
-                    ),
-                ),
-            ),
-            task,
-        )
-        reason_code = "workflow_continuation"
-    record_event(
-        context, state, "routing.workflow_continuation", "classify",
-        {
-            "action": decision.action,
-            "reason_code": reason_code,
-            "purpose": "planning",
-            "execution_authorized": False,
-        },
-    )
-    return _RouterInvocation(
-        decision=decision,
-        routing_state=outcome_routing_state(
-            decision,
-            decision.reason,
-            "execute" if decision.action != "no_tool" else "unknown",
-        ),
-        usage=usage,
-        budget_warnings=list(state.get("budget_warnings", [])),
-        reason_code=reason_code,
     )
