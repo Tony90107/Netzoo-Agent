@@ -72,6 +72,7 @@ class WorkflowPolicySpec(BaseModel):
     ]
     description: str = Field(min_length=1, max_length=500)
     required_inputs: list[str] = Field(max_length=12)
+    required_input_groups: list[list[str]] = Field(default_factory=list, max_length=8)
     optional_inputs: list[str] = Field(default_factory=list, max_length=12)
     output_files: list[str] = Field(default_factory=list, max_length=20)
     validation_steps: list[Literal[
@@ -128,6 +129,8 @@ class ProjectPolicySnapshot(BaseModel):
                 f"Consumes: {','.join(capability.input_artifacts) or 'raw/user input'}. "
                 f"Handoff targets: {','.join(capability.handoff_targets) or 'none'}. "
                 f"Required inputs: {', '.join(spec.required_inputs)}. "
+                f"Required input alternatives: "
+                f"{' AND '.join(' OR '.join(group) for group in spec.required_input_groups) or 'none'}. "
                 f"Handoff contract: {capability.handoff_contract or 'none'}."
             )
         return "\n".join(lines)

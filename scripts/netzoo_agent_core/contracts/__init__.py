@@ -75,6 +75,7 @@ from .outcomes import (
     OutcomeEvidence,
     OutcomeHypothesis,
     RequestedOutcome,
+    SemanticDiscriminator,
 )
 from .planning import InputBundleOption  # noqa: F401 -- typed internal plan detail
 from .planning import (
@@ -136,7 +137,7 @@ __all__ = [
     "AgentTurnInterrupted", "ClarificationInputError", "PreferenceProposal",
     "RouterDecision", "TaskDecision", "LLMUsage", "InputEvidence",
     "RequestedOutcome", "OutcomeEvidence", "OutcomeHypothesis",
-    "EvidenceDimension", "CapabilityMatch", "CapabilityMatchStatus",
+    "SemanticDiscriminator", "EvidenceDimension", "CapabilityMatch", "CapabilityMatchStatus",
     "WorkflowStep", "WorkflowPlan",
     "EvaluationResult", "PlanRubricItem",
     "PlanEvaluationResult", "NextTurnPrompt", "CLI_FOLLOW_UP_STARTERS",

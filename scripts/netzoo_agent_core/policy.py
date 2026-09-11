@@ -113,6 +113,23 @@ class ProjectPolicyLoader:
                     f"{action} required_inputs conflict with Python: "
                     f"yaml={spec.required_inputs}, code={code_required}."
                 )
+            code_groups = [list(group) for group in definition.required_input_groups]
+            if spec.required_input_groups != code_groups:
+                raise ProjectPolicyError(
+                    f"{action} required_input_groups conflict with Python: "
+                    f"yaml={spec.required_input_groups}, code={code_groups}."
+                )
+            unknown_group_fields = {
+                field
+                for group in spec.required_input_groups
+                for field in group
+                if field not in known_fields
+            }
+            if any(not group for group in spec.required_input_groups) or unknown_group_fields:
+                raise ProjectPolicyError(
+                    f"{action} has invalid required_input_groups: "
+                    f"unknown={sorted(unknown_group_fields)}."
+                )
             if spec.execution_step != action:
                 raise ProjectPolicyError(
                     f"{action} execution_step must equal its code-enforced action."

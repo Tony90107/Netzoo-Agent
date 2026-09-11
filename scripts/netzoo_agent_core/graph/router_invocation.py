@@ -70,6 +70,13 @@ class _RouterInvocation:
 MAX_SEMANTIC_ATTEMPTS = 2
 
 
+from .discriminator import (
+    discriminator_context as _discriminator_context,
+    invoke_semantic_discriminator as _invoke_semantic_discriminator,
+    _fill_inferred_role_evidence,
+)
+
+
 def _current_usage(context: _GraphContext, state: AgentState) -> LLMUsage:
     current = state.get("token_usage")
     return (
@@ -232,6 +239,7 @@ def _invoke_semantic_interpreter(
     # Tags this function moved into the outcome, kept out of capability
     # selection: a harness repair must never be what picks a tool.
     restored_tags: frozenset[str] = frozenset()
+    discriminator_context = ""
     # Measurement only, read at acceptance. The first pass's own grounding
     # result per (dimension, value), and the hypothesis a patch was merged onto,
     # are both gone by the time the accepted interpretation exists -- and
@@ -248,6 +256,10 @@ def _invoke_semantic_interpreter(
             attempt == 1
             and getattr(context, "semantic_patcher", None) is not None
             and isinstance(proposal, SemanticInterpretation)
+            and not any(
+                "inconsistent_not_applicable_outcome" in issue
+                for issue in validation_issues
+            )
         )
         adapter = (
             context.semantic_interpreter if attempt == 0
@@ -260,6 +272,7 @@ def _invoke_semantic_interpreter(
                 user_task,
                 proposal,
                 validation_issues,
+                discriminator_context,
             )
             if attempt == 1
             else build_semantic_interpreter_messages(
@@ -511,6 +524,8 @@ def _invoke_semantic_interpreter(
             interpretation,
             align_artifact_constraints=patch is not None,
         )
+        if patch is not None:
+            interpretation = _fill_inferred_role_evidence(interpretation)
         restored_tags = frozenset(
             str(item["value"]) for item in restorations
             if item["field"] == "selection_tags"
@@ -690,6 +705,9 @@ def _invoke_semantic_interpreter(
                 })
                 return interpretation, usage, budget_warnings, None, restored_tags
             if preliminary_match.status == "ambiguous":
+                discriminator_context = _discriminator_context(
+                    list(preliminary_match.hypothesis_actions)
+                )
                 validation_issues = (
                     "registry_ambiguity:the structured outcome does not uniquely "
                     "identify a capability; re-check the original request for explicit "
@@ -806,6 +824,20 @@ def invoke_router(
         interpretation.outcome_hypotheses,
         request_mode=interpretation.request_mode,
         ignore_tags=restored_tags,
+    )
+    (
+        interpretation,
+        capability_match,
+        usage,
+        budget_warnings,
+    ) = _invoke_semantic_discriminator(
+        context,
+        state,
+        user_task,
+        interpretation,
+        capability_match,
+        usage,
+        budget_warnings,
     )
     # An interpretation reaches the registry either fully grounded or explicitly
     # marked. Re-deriving that here from the same validator, rather than trusting

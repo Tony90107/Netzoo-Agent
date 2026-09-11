@@ -41,6 +41,10 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
                                for field in policy.workflows[action].required_inputs
                                if field in INPUT_ROLE_FIELDS
                            ],
+                           required_input_groups=[
+                               [field for field in group if field in INPUT_ROLE_FIELDS]
+                               for group in policy.workflows[action].required_input_groups
+                           ],
                            role_labels={
                                field: INPUT_LABELS.get(field, field.replace("_", " "))
                                for field in policy.workflows[action].required_inputs
@@ -95,6 +99,16 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                     f"- `{field}`: {role_labels.get(field, field.replace('_', ' '))}"
                     for field in required_inputs
                 ))
+            for group in item.get("required_input_groups", []):
+                if group:
+                    role_labels = item.get("role_labels", {})
+                    lines.append(
+                        "Required alternative (provide one):\n\n"
+                        + "\n".join(
+                            f"- `{field}`: {role_labels.get(field, field.replace('_', ' '))}"
+                            for field in group
+                        )
+                    )
             transformations = capability["transformations"]
             if transformations and not explanations:
                 lines.append("Declared transformations:\n\n" + "\n".join(

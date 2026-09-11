@@ -28,7 +28,9 @@ PUMA_INPUT_TASK = (
 
 import netzoo_agent as agent  # noqa: E402
 from netzoo_table_io import read_condor_edges  # noqa: E402
-from netzoo_agent_core.contracts.outcomes import SemanticPatch, SemanticReview  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
+    SemanticDiscriminator, SemanticPatch, SemanticReview,
+)
 
 # 2026-09-06: the second semantic call is bound to SemanticPatch when the
 # first pass parsed. These scripted transports answer it with the same
@@ -36,6 +38,11 @@ from netzoo_agent_core.contracts.outcomes import SemanticPatch, SemanticReview  
 # keeps asserting what it named. The patch shape itself is covered by
 # tests/test_semantic_patch_repair.py.
 _REVIEW_SCHEMAS = {SemanticReview, SemanticPatch}
+
+
+class _SemanticDiscriminatorAdapter:
+    def invoke(self, _messages):
+        return SemanticDiscriminator()
 
 
 class _SemanticReviewAdapter:
@@ -3196,6 +3203,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         def with_structured_output(self, schema, **_kwargs):
             if schema is agent.SemanticInterpretation:
                 return LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+            if schema is SemanticDiscriminator:
+                return _SemanticDiscriminatorAdapter()
             if schema in _REVIEW_SCHEMAS:
                 return _SemanticReviewAdapter(
                     LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
@@ -3356,6 +3365,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return SemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
                 if schema in _REVIEW_SCHEMAS:
                     return _SemanticReviewAdapter(SemanticInterpreter())
                 if schema is agent.IntentDecision:
@@ -3516,6 +3527,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return semantic
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
                 if schema in _REVIEW_SCHEMAS:
                     return _SemanticReviewAdapter(semantic)
                 if schema is agent.IntentDecision:
@@ -3617,6 +3630,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return GuidanceSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
                 if schema in _REVIEW_SCHEMAS:
                     return _SemanticReviewAdapter(GuidanceSemanticInterpreter())
                 if schema is agent.IntentDecision:
@@ -3754,6 +3769,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return AmbiguousSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
                 if schema in _REVIEW_SCHEMAS:
                     return _SemanticReviewAdapter(AmbiguousSemanticInterpreter())
                 if schema is agent.IntentDecision:
@@ -4044,6 +4061,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             def with_structured_output(self, schema, **_kwargs):
                 if schema is agent.SemanticInterpretation:
                     return PreferenceSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
                 if schema in _REVIEW_SCHEMAS:
                     return _SemanticReviewAdapter(PreferenceSemanticInterpreter())
                 if schema is agent.IntentDecision:

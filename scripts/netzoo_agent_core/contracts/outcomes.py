@@ -15,6 +15,7 @@ from workflow_registry import (
     Granularity,
     Operation,
     RecommendedAction,
+    SELECTION_TAG_GLOSSARY,
 )
 
 # Every registered runnable capability can tie at once: an outcome that resolved
@@ -501,6 +502,35 @@ class SemanticPatch(BaseModel):
             normalized[field] = nested.pop(field)
         normalized["outcome"] = nested
         return normalized
+
+
+class SemanticDiscriminator(BaseModel):
+    """A narrow, evidence-backed tie-break among already compatible capabilities."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    selection_tags: list[str] = Field(default_factory=list, max_length=8)
+    evidence: list[OutcomeEvidence] = Field(default_factory=list, max_length=8)
+
+    @field_validator("selection_tags")
+    @classmethod
+    def _registered_tags_only(cls, values: list[str]) -> list[str]:
+        unknown = set(values) - set(SELECTION_TAG_GLOSSARY)
+        if unknown:
+            raise ValueError(f"Unknown semantic discriminator tags: {sorted(unknown)}")
+        return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def _evidence_matches_tags(self):
+        tags = set(self.selection_tags)
+        for item in self.evidence:
+            if item.dimension != "selection_tag":
+                raise ValueError("Semantic discriminator evidence must use selection_tag")
+            if item.value not in tags:
+                raise ValueError("Semantic discriminator evidence must support a selected tag")
+        if tags and not tags.issubset({item.value for item in self.evidence}):
+            raise ValueError("Every selected discriminator tag requires evidence")
+        return self
 
 
 class SemanticReview(BaseModel):

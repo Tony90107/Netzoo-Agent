@@ -149,7 +149,10 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "multi_omic_network": "infer one network spanning two omics layers",
     "partial_correlation": "infer conditional associations using partial correlation",
     "pathway_scores": "produce pathway-level mutation scores",
-    "relaxed_graph_matching": "optimize a regulatory network by relaxed graph matching",
+    "relaxed_graph_matching": (
+        "formulate regulatory-network inference as a continuous relaxed graph-matching "
+        "optimization problem solved by gradient descent rather than message passing"
+    ),
     "sample_specific": "infer a separate network for each sample",
     "signed_partial_regulatory_effects": (
         "estimate positive activating and negative inhibitory partial regulatory effects"
@@ -190,6 +193,10 @@ class ActionDefinition:
     action: ActionName
     workflow: str
     required_inputs: tuple[str, ...] = ()
+    # Each group is an OR-set: at least one field in every group is required.
+    # This keeps conditional sources (such as OTTER expression vs precomputed C)
+    # explicit without pretending both files are mandatory.
+    required_input_groups: tuple[tuple[str, ...], ...] = ()
     optional_inputs: tuple[str, ...] = ()
     executor_fields: tuple[str, ...] = ()
     executor_defaults: Mapping[str, Any] = field(default_factory=dict)
@@ -705,6 +712,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "run_otter",
         "OTTER",
         required_inputs=("motif_file", "ppi_file", "output_file"),
+        required_input_groups=(("expression_file", "coexpression_file"),),
         optional_inputs=(
             "expression_file", "coexpression_file", "output_format", "computing",
             "precision", "lam", "gamma", "iterations", "eta", "bexp",
@@ -874,6 +882,11 @@ REQUIRED_INPUTS = {
     action: definition.required_inputs
     for action, definition in ACTION_DEFINITIONS.items()
     if definition.required_inputs
+}
+REQUIRED_INPUT_GROUPS = {
+    action: definition.required_input_groups
+    for action, definition in ACTION_DEFINITIONS.items()
+    if definition.required_input_groups
 }
 RUN_ACTIONS = frozenset(
     action for action, definition in ACTION_DEFINITIONS.items() if definition.run

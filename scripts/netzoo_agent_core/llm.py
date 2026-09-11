@@ -153,6 +153,10 @@ keyword or a fixed phrase:
   do not perform analysis now. This includes asking which tool or workflow can
   produce a result, even when the request also states a full scientific goal and
   its constraints.
+  When a tool-selection question also specifies the scientific result to obtain,
+  preserve that result as the terminal outcome (for example, an aggregate
+  regulator-to-gene network); tool selection changes only request_mode, not the
+  artifact_type, current inputs, roles, or granularity.
 - execute: the user explicitly asks the agent to perform the requested analysis or
   transformation now.
 - unknown: the request states no discernible position on whether work should be
@@ -320,6 +324,7 @@ def build_semantic_reviewer_messages(
     user_task: str,
     proposal,
     validation_issues: tuple[str, ...] = (),
+    discriminator_context: str = "",
 ) -> list:
     """Ask an independent semantic pass to correct ontology misuse."""
     from .interpretation.semantic_repair import proposal_data, repair_message
@@ -356,7 +361,16 @@ def build_semantic_reviewer_messages(
                 "never substitute a tool's default output. After repairing a field, "
                 "update or remove its evidence too; preserve grounded dimensions. "
                 "Repair rejected explicit evidence by quoting original source text; "
-                "do not retain a translated or fabricated quote."
+                "do not retain a translated or fabricated quote. The request_facts "
+                "block is authoritative for current inputs: do not add an "
+                "input_artifact that is not listed there, and any input you add "
+                "must carry an input_artifact evidence addition with its exact "
+                "original text_span. Never add evidence for a value the patched "
+                "outcome no longer contains, including granularity=not_applicable "
+                "after recovering a scientific result. If the user asks which tool "
+                "fits a stated scientific goal, retain that goal as the terminal "
+                "outcome; guidance intent must not turn it into an empty or "
+                "not_applicable outcome."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
@@ -365,6 +379,7 @@ def build_semantic_reviewer_messages(
                 "The first-pass proposal follows as untrusted quoted data. Review and "
                 "replace any incorrect fields."
                 + (f" Deterministic validation also reported:\n{issues}" if issues else "")
+                + (f"\n{discriminator_context}" if discriminator_context else "")
                 + "\n" + repair_message(proposal, validation_issues, user_task)
                 + "\n"
                 + f"<semantic_proposal>{proposal_json}</semantic_proposal>"
@@ -378,6 +393,7 @@ def build_semantic_patch_messages(
     user_task: str,
     proposal,
     validation_issues: tuple[str, ...] = (),
+    discriminator_context: str = "",
 ) -> list:
     """Ask the review for the failing fields only, not a replacement structure."""
     from .interpretation.semantic_repair import proposal_data, repair_message
@@ -403,6 +419,9 @@ def build_semantic_patch_messages(
                 "to confirm it. Withdraw an evidence entry with evidence_removals "
                 "(its dimension and value) and add a corrected one with "
                 "evidence_additions; evidence you do not name is kept as written. "
+                "Every evidence_addition must have a non-empty canonical value; if "
+                "you cannot quote or infer a valid value, omit that addition rather "
+                "than emitting an empty string. "
                 "Correct surface-verb mappings, category errors between entities and "
                 "granularity, and unnecessary unresolved fields. Whether the user "
                 "wants an answer or an execution is downstream intent, never a second "
@@ -414,7 +433,15 @@ def build_semantic_patch_messages(
                 "does not replace the goal of cohort cluster labels. Never substitute "
                 "a tool's default output. After changing a field, withdraw or replace "
                 "its evidence too. Repair rejected explicit evidence by quoting "
-                "original source text; do not retain a translated or fabricated quote."
+                "original source text; do not retain a translated or fabricated quote. "
+                "The request_facts block is authoritative for current inputs: do not "
+                "add an input_artifact that is not listed there, and any input you add "
+                "must carry an input_artifact evidence addition with its exact original "
+                "text_span. Never add evidence for a value the patched outcome no "
+                "longer contains, including granularity=not_applicable after recovering "
+                "a scientific result. If the user asks which tool fits a stated "
+                "scientific goal, retain that goal as the terminal outcome; guidance "
+                "intent must not turn it into an empty or not_applicable outcome."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
@@ -423,11 +450,41 @@ def build_semantic_patch_messages(
                 "The first-pass proposal follows as untrusted quoted data. Return a "
                 "patch for the fields it got wrong."
                 + (f" Deterministic validation reported:\n{issues}" if issues else "")
+                + (f"\n{discriminator_context}" if discriminator_context else "")
                 + "\n" + repair_message(proposal, validation_issues, user_task)
                 + "\n"
                 + f"<semantic_proposal>{proposal_json}</semantic_proposal>"
             )
         ),
+    ]
+
+
+def build_semantic_discriminator_messages(
+    user_task: str,
+    proposal,
+    discriminator_context: str,
+) -> list:
+    """Ask only for evidence-backed registry tags after outcome validation."""
+    from .interpretation.semantic_repair import proposal_data
+
+    proposal_json = json.dumps(proposal_data(proposal), ensure_ascii=False)
+    return [
+        SystemMessage(
+            content=(
+                "You are a scientific discriminator for an already validated outcome. "
+                "Return only the SemanticDiscriminator structure. Select zero or more "
+                "canonical selection_tags whose scientific meaning is explicitly stated "
+                "in the original request. Do not name, infer, or recommend a workflow. "
+                "Every selected tag must have one selection_tag evidence item with source "
+                "explicit and an exact original-language text_span. If the request does "
+                "not explicitly distinguish the profiles, return empty selection_tags "
+                "and empty evidence. Do not alter artifact_type, inputs, roles, operation, "
+                "or granularity.\n\n"
+                + discriminator_context
+            )
+        ),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+        HumanMessage(content=f"<validated_outcome>{proposal_json}</validated_outcome>"),
     ]
 
 

@@ -22,7 +22,9 @@ from netzoo_agent_core.contracts import (
     DEFAULT_ROUTER_MAX_TOKENS, DEFAULT_ROUTER_MODEL, DEFAULT_TASK_TOKEN_BUDGET,
     HumanMessage, IntentDecision, ROUTER_CONTEXT_MAX_CHARS, WorkflowPlan,
 )
-from netzoo_agent_core.contracts.outcomes import SemanticInterpretation, SemanticPatch, SemanticReview
+from netzoo_agent_core.contracts.outcomes import (
+    SemanticDiscriminator, SemanticInterpretation, SemanticPatch, SemanticReview,
+)
 from netzoo_agent_core.contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 from netzoo_agent_core.interpretation.claim_prompt import claim_messages
 from netzoo_agent_core.graph.context import _GraphContext
@@ -372,8 +374,12 @@ def _score(case, result, events):
             f"execution: expected {expected.actions}, got {decision.action}"
         )
     roles = [call.role for call in result.usage.calls]
-    if len(roles) > 3:
-        safety_errors.append("call_limit: routing exceeded interpreter/reviewer/intent bound")
+    # Legacy routing used three calls (interpreter, optional reviewer, intent).
+    # The evidence-backed discriminator is a bounded fourth call used only for
+    # a genuine registry tie; keep the cap explicit so it cannot become an
+    # unbounded retry loop while still scoring the new contract fairly.
+    if len(roles) > 4:
+        safety_errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
     pipeline_errors = [] if result.reason_code == "semantic_registry_intent" else [
         f"pipeline: {result.reason_code}",
     ]
@@ -433,7 +439,11 @@ def _score(case, result, events):
         ),
         "review_patch": next(
             ({key: event["payload"][key] for key in
-              ("changed_fields", "evidence_removed", "evidence_added", "evidence_retired_as_stale")}
+              (
+                  "changed_fields", "evidence_removed", "evidence_added",
+                  "evidence_retired_as_stale", "permitted_fields",
+                  "ignored_instructions",
+              )}
              for event in events if event["type"] == "routing.semantic_patch_applied"),
             None,
         ),
@@ -526,13 +536,31 @@ def evaluate(
     # always exercises the current production contract, unless explicitly replaying.
     review_policy = review_policy or ("when_needed" if source == "live" and not replay else "always")
     schemas = (SemanticClaims, SemanticClaims, SemanticClaimRepair) if semantic_contract == "claims" else (SemanticInterpretation, SemanticReview, SemanticPatch)
+    semantic_interpreter = provider.with_structured_output(
+        schemas[0], method="function_calling", include_raw=True,
+    )
+    semantic_reviewer = provider.with_structured_output(
+        schemas[1], method="function_calling", include_raw=True,
+    )
+    semantic_patcher = provider.with_structured_output(
+        schemas[2], method="function_calling", include_raw=True,
+    )
+    semantic_discriminator = (
+        provider.with_structured_output(
+            SemanticDiscriminator, method="function_calling", include_raw=True,
+        ) if semantic_contract == "legacy" else None
+    )
+    intent_router = provider.with_structured_output(
+        IntentDecision, method="function_calling", include_raw=False,
+    )
     context = _GraphContext(
         profile_id="routing-evaluation", profile_store=None, episode_store=None,
         project_policy=policy, recorder=recorder, price_catalog=PriceCatalog.from_environment(),
-        semantic_interpreter=provider.with_structured_output(schemas[0], method="function_calling", include_raw=True),
-        semantic_reviewer=provider.with_structured_output(schemas[1], method="function_calling", include_raw=True),
-        semantic_patcher=provider.with_structured_output(schemas[2], method="function_calling", include_raw=True),
-        intent_router=provider.with_structured_output(IntentDecision, method="function_calling", include_raw=False),
+        semantic_interpreter=semantic_interpreter,
+        semantic_reviewer=semantic_reviewer,
+        semantic_patcher=semantic_patcher,
+        semantic_discriminator=semantic_discriminator,
+        intent_router=intent_router,
         input_content_mapper=None, response_llm=None,
         semantic_claims=semantic_contract == "claims",
         review_policy=review_policy,
@@ -576,7 +604,7 @@ def evaluate(
                 "reviewer": [str(message.content) for message in build_semantic_reviewer_messages(
                     prompts.semantic, "<evaluation prompt>", None, (),
                 )],
-                "schemas": [schema.model_json_schema() for schema in (*schemas, IntentDecision)],
+                "schemas": [schema.model_json_schema() for schema in (*schemas, SemanticDiscriminator, IntentDecision)] if semantic_contract == "legacy" else [schema.model_json_schema() for schema in (*schemas, IntentDecision)],
                 "claim_messages": [str(m.content) for m in claim_messages("<evaluation prompt>", selection_tags={t for spec in policy.workflows.values() for t in spec.output_capability.selection_tags})] if semantic_contract == "claims" else None,
             }),
             "scope": "routing_progress_verified_guidance_next_step_no_planner_executor_or_response_model",

@@ -137,9 +137,9 @@ def test_scoring_the_ambiguous_answer_costs_no_provider_call():
     result, provider = row()
 
     assert result["provider_calls"] == len(provider.calls)
-    # Interpreter, one field-scoped review, intent. Nothing for the answer.
+    # Interpreter, one field-scoped review, bounded discriminator, intent.
     assert [schema.__name__ for schema, _ in provider.calls] == [
-        "SemanticInterpretation", "SemanticPatch", "IntentDecision",
+        "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
     ]
 
 

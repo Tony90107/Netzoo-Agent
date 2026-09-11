@@ -14,7 +14,7 @@ from evaluate_routing import (  # noqa: E402
 )
 from netzoo_agent_core.contracts import IntentDecision  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
-    SemanticInterpretation, SemanticPatch, SemanticReview,
+    SemanticDiscriminator, SemanticInterpretation, SemanticPatch, SemanticReview,
 )
 
 
@@ -118,6 +118,68 @@ def test_production_routing_boundary_receives_only_prompt_not_answer_key():
     assert any(message.content == TASK for message in first_messages)
     assert "run_sambar" not in "\n".join(str(m.content) for m in first_messages)
     assert "synthetic-case" not in "\n".join(str(m.content) for m in first_messages)
+
+
+def test_discriminator_contract_can_select_otter_from_a_validated_panda_tie():
+    task = (
+        "I have an expression matrix, motif priors and PPI data. Infer one aggregate "
+        "TF-gene regulatory network with continuous relaxed graph matching rather than "
+        "message passing. Which tool fits?"
+    )
+    item = {
+        "outcome": {
+            "operation": "infer",
+            "input_artifacts": ["expression_matrix"],
+            "artifact_type": "regulatory_network",
+            "entity_types": ["tf", "gene"],
+            "regulator_types": ["tf"],
+            "target_types": ["gene"],
+            "selection_tags": [],
+            "granularity": "aggregate",
+        },
+        "confidence": 0.95,
+        "evidence": [
+            {"dimension": "operation", "value": "infer", "source": "inferred", "rationale": "The request asks to infer a network."},
+            {"dimension": "input_artifact", "value": "expression_matrix", "source": "explicit", "text_span": "expression matrix", "rationale": "The request supplies an expression matrix."},
+            {"dimension": "artifact_type", "value": "regulatory_network", "source": "explicit", "text_span": "regulatory network", "rationale": "The request asks for a regulatory network."},
+            {"dimension": "regulator_type", "value": "tf", "source": "inferred", "rationale": "TF-gene identifies TF regulators."},
+            {"dimension": "target_type", "value": "gene", "source": "inferred", "rationale": "TF-gene identifies gene targets."},
+            {"dimension": "granularity", "value": "aggregate", "source": "inferred", "rationale": "The request asks for one aggregate network."},
+        ],
+    }
+    provider = FixtureProvider(first={
+        "request_mode": "guidance", "semantic_goal": "Infer an aggregate TF-gene network",
+        "outcome_hypotheses": [item],
+    })
+    provider.responses[SemanticPatch] = {"outcome": {}}
+    provider.responses[SemanticDiscriminator] = {
+        "selection_tags": ["relaxed_graph_matching"],
+        "evidence": [{
+            "dimension": "selection_tag", "value": "relaxed_graph_matching",
+            "source": "explicit", "text_span": "continuous relaxed graph matching",
+            "rationale": "The request explicitly contrasts relaxed graph matching with message passing.",
+        }],
+    }
+    case = RoutingScenario.model_validate({
+        "id": "discriminator-otter", "language": "en", "category": "positive",
+        "prompt": task,
+        "expected": {
+            "status": "exact", "actions": ["run_otter"],
+            "input_artifacts": ["expression_matrix"],
+            "artifact_type": "regulatory_network", "granularity": "aggregate",
+            "required_discriminators": {"selection_tags": ["relaxed_graph_matching"]},
+        },
+    })
+
+    report = evaluate([case], provider=provider, model_name="fixture")
+    result = report["results"][0]
+
+    assert result["route_passed"], result
+    assert result["semantic_passed"]
+    assert result["matched_actions"] == ["run_otter"]
+    assert [schema.__name__ for schema, _ in provider.calls] == [
+        "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
+    ]
 
 
 def test_provider_value_error_recovery_is_not_counted_as_semantic_success():
