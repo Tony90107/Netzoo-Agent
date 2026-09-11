@@ -163,6 +163,105 @@ def test_reverse_history_does_not_reject_compatible_expression_workflows():
     assert "not every possible use of the method" in answer
 
 
+def test_tfa_factorization_guidance_is_model_routed_and_explicit_about_giraffe():
+    task = (
+        "Use biologically informed matrix factorization to jointly infer a "
+        "TF-gene network and a TF-by-sample TFA matrix."
+    )
+    # Raw request text is never a deterministic workflow-selection shortcut.
+    assert match_registry_guidance_features(task) is None
+
+    requested = agent.RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network_and_tf_activity",
+        entity_types=["tf", "gene", "sample"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        selection_tags=[
+            "tfa",
+            "biologically_informed_matrix_factorization",
+            "joint_grn_tfa_inference",
+        ],
+        granularity="aggregate",
+    )
+    match = match_semantic_request(
+        task,
+        [agent.OutcomeHypothesis(outcome=requested, confidence=.95, evidence=[])],
+        request_mode="guidance",
+    )
+    assert match.status == "exact" and match.matched_actions == ["run_giraffe"]
+
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        requested_outcome=requested,
+        capability_match_status=match.status,
+        match_basis=match.match_basis,
+        matched_actions=match.matched_actions,
+        recommended_actions=match.matched_actions,
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+    answer = render_verified_guidance(decision, guidance_contract(decision, policy, task))
+
+    assert answer is not None
+    assert "Selected path: **GIRAFFE**" in answer
+    assert "biologically informed matrix factorization" in answer.lower()
+    assert "jointly infer" in answer.lower()
+    assert "`regulatory_network`" in answer
+    assert "`tf_activity_matrix`" in answer
+
+
+def test_signed_linear_effect_guidance_is_typed_and_explains_tfa_regression():
+    task = (
+        "I need signed partial regulatory effects whose positive and negative "
+        "weights are coefficients of a linear model."
+    )
+    assert match_registry_guidance_features(task) is None
+
+    requested = agent.RequestedOutcome(
+        operation="infer",
+        artifact_type="signed_regulatory_effect_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+    match = match_semantic_request(
+        task,
+        [agent.OutcomeHypothesis(outcome=requested, confidence=.95, evidence=[])],
+        request_mode="guidance",
+    )
+    assert match.status == "exact" and match.matched_actions == ["run_giraffe"]
+
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        requested_outcome=requested,
+        capability_match_status=match.status,
+        match_basis=match.match_basis,
+        matched_actions=match.matched_actions,
+        recommended_actions=match.matched_actions,
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+    answer = render_verified_guidance(
+        decision, guidance_contract(decision, policy, task)
+    )
+
+    assert answer is not None
+    assert "Selected path: **GIRAFFE**" in answer
+    assert "signed partial regulatory effects" in answer.lower()
+    assert "linear-model coefficients" in answer.lower()
+    assert "positive" in answer.lower() and "negative" in answer.lower()
+    assert "tfa" in answer.lower() and "predictor" in answer.lower()
+
+
 def test_fallback_public_progress_is_not_an_exact_workflow_signal():
     from netzoo_agent_core.interpretation.semantic_goal import classification_progress_detail, outcome_routing_state, public_semantic_summary
     decision = agent.TaskDecision(

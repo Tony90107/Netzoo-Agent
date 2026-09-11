@@ -695,8 +695,66 @@ def test_tf_activity_is_selected_by_its_registry_tag():
 
     assert match().status == "ambiguous"
     assert match(selection_tags=["tfa"]).matched_actions == ["run_giraffe"]
-    # The baseline wins when no specialisation is named among the shared tags.
-    assert match(selection_tags=["aggregate_network"]).matched_actions == ["run_panda"]
+    assert match(
+        selection_tags=["biologically_informed_matrix_factorization"]
+    ).matched_actions == ["run_giraffe"]
+    assert match(selection_tags=["joint_grn_tfa_inference"]).matched_actions == [
+        "run_giraffe"
+    ]
+    # A generic aggregate network no longer silently defaults to PANDA now that
+    # all three methods declare their algorithmic discriminator.
+    assert match(selection_tags=["aggregate_network"]).status == "ambiguous"
+
+
+def test_tf_activity_matrix_is_a_typed_giraffe_output():
+    """TFA must be routable as an artifact, not only as an optional tag."""
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="tf_activity_matrix",
+        entity_types=["tf", "sample"],
+        granularity="aggregate",
+    )
+
+    result = match_requested_outcome(requested)
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_giraffe"]
+
+
+def test_joint_regulatory_network_and_tfa_is_a_typed_artifact_bundle():
+    """A joint result is one conjunction, not two competing hypotheses."""
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network_and_tf_activity",
+        entity_types=["tf", "gene", "sample"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+
+    result = match_requested_outcome(requested)
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_giraffe"]
+
+
+def test_signed_regulatory_effect_network_is_a_typed_giraffe_output():
+    """Signed linear effects must not depend on an optional selection tag."""
+    requested = RequestedOutcome(
+        operation="infer",
+        artifact_type="signed_regulatory_effect_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+
+    result = match_requested_outcome(requested)
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_giraffe"]
 
 
 @pytest.mark.parametrize(

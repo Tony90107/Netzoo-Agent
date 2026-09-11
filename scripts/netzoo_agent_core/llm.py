@@ -184,6 +184,21 @@ Dimension semantics:
   separately identify current data, history, hypothetical data and proposed methods.
 - artifact_type is the scientific object returned to the user.
   Choose the terminal requested result, not a proposed method's intermediate object.
+  A request that jointly asks for a TF-gene regulatory network and a TF-by-sample
+  activity matrix is ONE compatible terminal goal, not two competing hypotheses.
+  Represent that conjunction with artifact_type=regulatory_network_and_tf_activity,
+  input_artifacts=[expression_matrix], entity_types=[tf, gene, sample],
+  regulator_types=[tf], target_types=[gene], and granularity=aggregate. Preserve joint inference and
+  algorithmic constraints in selection_tags. A matrix with one column per sample
+  remains one aggregate artifact; it is not a separately inferred result per sample.
+  Evidence for a composite artifact bundle is inferred ontology synthesis, with
+  a scientific rationale and no text_span; do not present one clause as a quote
+  for the whole conjunction.
+  A requested TF-gene network whose positive/negative edges must be
+  signed partial regulatory effects interpretable as linear-model coefficients is
+  artifact_type=signed_regulatory_effect_network, with entity_types=[tf, gene],
+  regulator_types=[tf], target_types=[gene], and granularity=aggregate. This is a
+  property of the requested output, not a generic regulatory_network preference.
   Apply the artifact-dependent schema constraints before filling other fields.
   Historical analyses do not establish current multi-omic inputs or outputs.
   Do not copy input_artifacts into artifact_type simply because the input is explicit.
@@ -195,12 +210,20 @@ Dimension semantics:
   even when computed from genes. Pathway mutation scores concern pathway/sample,
   not gene entities. For networks, sample indexing alone does not make sample a node.
 - regulator_types and target_types describe biological roles inside an artifact.
-  These roles and their unresolved dimensions apply only to regulatory_network.
+  These roles and their unresolved dimensions apply only to regulatory-network
+  artifact types, including signed and joint regulatory outputs.
   Empty role lists mean the user did not constrain that role; do not mark a role
   unresolved merely because it was not stated.
 - selection_tags are registry-defined intent signals, not workflow names. Infer only
   tags whose scientific meaning is supported by the request, using this runtime
-  registry catalog: {', '.join(registry_selection_tags) or 'none'}. They help the
+  registry catalog: {', '.join(registry_selection_tags) or 'none'}. Include every
+  supported tag when the user states its scientific meaning, including
+  a requested secondary output or algorithmic approach; do not leave the list empty
+  merely because artifact_type already describes the primary output. For example,
+  requesting both a TF-gene network and per-sample TFA through biologically informed
+  matrix factorization supports tfa, joint_grn_tfa_inference, and
+  biologically_informed_matrix_factorization. A rejected or historical method does
+  not support its tags. These signals help the
   planning layer compose compatible capabilities; they do not select or authorize
   a workflow and should remain empty when no registered signal is supported. Put
   them only in outcome.selection_tags, not in scientific evidence. If evidence is

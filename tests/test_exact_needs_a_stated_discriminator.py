@@ -95,7 +95,7 @@ def test_a_tag_the_model_declared_still_discriminates():
     """
     match = semantic(
         regulator_types=["tf"], target_types=["gene"],
-        selection_tags=["aggregate_network"],
+        selection_tags=["message_passing"],
     )
 
     assert match.status == "exact"

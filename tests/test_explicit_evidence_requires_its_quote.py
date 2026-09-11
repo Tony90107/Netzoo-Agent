@@ -55,10 +55,31 @@ def test_inference_is_still_never_asked_for_a_quote():
     assert item.text_span is None
 
 
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_an_inferred_blank_quote_is_normalized_to_absence(blank):
+    """Provider-equivalent blanks must not abort an otherwise valid repair."""
+    item = OutcomeEvidence.model_validate(entry(source="inferred", text_span=blank))
+
+    assert item.text_span is None
+
+
 def test_an_explicit_entry_that_quotes_the_request_is_unaffected():
     item = OutcomeEvidence.model_validate(entry(text_span="infer a network"))
 
     assert item.source == "explicit" and item.text_span == "infer a network"
+
+
+def test_composite_artifact_evidence_is_normalized_to_inference():
+    """A bundle synthesizes multiple spans and cannot honestly quote just one."""
+    item = OutcomeEvidence.model_validate(entry(
+        dimension="artifact_type",
+        value="regulatory_network_and_tf_activity",
+        text_span="a regulatory network plus per-sample TF activity",
+        rationale="The two requested outputs form the registered artifact bundle.",
+    ))
+
+    assert item.source == "inferred"
+    assert item.text_span is None
 
 
 def test_the_provider_is_shown_the_rule_and_not_only_held_to_it():

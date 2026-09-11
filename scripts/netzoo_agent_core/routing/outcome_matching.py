@@ -6,11 +6,9 @@ from collections.abc import Mapping, Sequence
 import re
 
 from workflow_registry import (
-    ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
     OutputCapabilityDefinition,
     RecommendedAction,
-    RUN_ACTIONS,
 )
 
 from ..contracts import (
@@ -19,8 +17,12 @@ from ..contracts import (
     RequestedOutcome,
     TaskDecision,
 )
-from ..contracts.artifact_semantics import outcome_consistency_issues
-from ..interpretation.request_integrity import _scoped_clauses, input_mentions
+from ..contracts.artifact_semantics import (
+    ARTIFACT_COMPONENTS,
+    ARTIFACT_SEMANTICS,
+    outcome_consistency_issues,
+)
+from ..interpretation.request_integrity import input_mentions
 from .candidate_ranking import (
     _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
     _hypothesis_evidence_score, _specificity_score, stated_dimension_score,
@@ -28,7 +30,6 @@ from .candidate_ranking import (
 from .method_rejections import rejected_methods_for
 from .named_labels import (
     _current_scope_text,
-    _workflow_name_pattern,
     named_registered_action,
     named_workflow_action,
     solely_named_run_action,
@@ -44,6 +45,41 @@ def _produced_artifacts(
 ) -> frozenset[str]:
     """Return every artifact a workflow can deliberately expose to the user."""
     return capability.produced_artifacts or frozenset({capability.artifact_type})
+
+
+def _supported_artifacts(
+    capability: OutputCapabilityDefinition,
+) -> frozenset[str]:
+    """Return concrete outputs plus every fully satisfied ontology bundle."""
+    produced = _produced_artifacts(capability)
+    bundles = {
+        artifact
+        for artifact, components in ARTIFACT_COMPONENTS.items()
+        if components.issubset(produced)
+    }
+    # ``artifact_type`` is the capability's primary semantic result. It may be
+    # a scientifically meaningful subtype of one concrete output file (for
+    # example, a signed-effect regulatory network), while produced_artifacts
+    # remains the literal artifact inventory shown to users and validators.
+    return produced | {capability.artifact_type} | bundles
+
+
+def _supported_entities(
+    artifact_type: str,
+    capability: OutputCapabilityDefinition,
+) -> frozenset[str]:
+    """Return entity support for the particular artifact being requested.
+
+    ``entity_types`` describes the capability's primary artifact. Secondary
+    artifacts use the shared artifact ontology, so a TF-by-sample TFA matrix
+    does not force ``sample`` to become an entity of GIRAFFE's TF-gene network.
+    """
+    if artifact_type == capability.artifact_type or artifact_type == _UNKNOWN:
+        return capability.entity_types
+    semantics = ARTIFACT_SEMANTICS.get(artifact_type)
+    if artifact_type in _supported_artifacts(capability) and semantics is not None:
+        return semantics.entities or capability.entity_types
+    return capability.entity_types
 
 
 def _accepts_inputs(outcome: RequestedOutcome, capability: OutputCapabilityDefinition) -> bool:
@@ -105,9 +141,11 @@ def _matches(
     return (
         outcome.operation == capability.operation
         and _accepts_inputs(outcome, capability)
-        and outcome.artifact_type in _produced_artifacts(capability)
+        and outcome.artifact_type in _supported_artifacts(capability)
         and outcome.granularity in capability.granularities
-        and set(outcome.entity_types).issubset(capability.entity_types)
+        and set(outcome.entity_types).issubset(
+            _supported_entities(outcome.artifact_type, capability)
+        )
         and set(outcome.regulator_types).issubset(capability.regulator_types)
         and set(outcome.target_types).issubset(capability.target_types)
     )
@@ -131,13 +169,16 @@ def _partially_compatible(
         and _accepts_inputs(outcome, capability)
         and (
             outcome.artifact_type == _UNKNOWN
-            or outcome.artifact_type in _produced_artifacts(capability)
+            or outcome.artifact_type in _supported_artifacts(capability)
         )
         and (
             outcome.granularity == _UNKNOWN
             or outcome.granularity in capability.granularities
         )
-        and _known_set_matches(outcome.entity_types, capability.entity_types)
+        and _known_set_matches(
+            outcome.entity_types,
+            _supported_entities(outcome.artifact_type, capability),
+        )
         and _known_set_matches(outcome.regulator_types, capability.regulator_types)
         and _known_set_matches(outcome.target_types, capability.target_types)
     )
@@ -168,12 +209,18 @@ def _matches_explicit_evidence(
     capability: OutputCapabilityDefinition,
 ) -> bool:
     """Treat explicit user evidence as hard constraints on registry capabilities."""
+    requested_artifacts = evidence.get("artifact_type", set())
+    evidence_artifact = (
+        next(iter(requested_artifacts))
+        if len(requested_artifacts) == 1
+        else _UNKNOWN
+    )
     scalar_constraints = (
         ("operation", {capability.operation}),
         ("input_artifact", set(capability.input_artifacts) - set(capability.incompatible_input_artifacts)),
-        ("artifact_type", set(_produced_artifacts(capability))),
+        ("artifact_type", set(_supported_artifacts(capability))),
         ("granularity", set(capability.granularities)),
-        ("entity_type", set(capability.entity_types)),
+        ("entity_type", set(_supported_entities(evidence_artifact, capability))),
         ("regulator_type", set(capability.regulator_types)),
         ("target_type", set(capability.target_types)),
     )
@@ -212,7 +259,9 @@ def _alternative_actions(
         return []
     ranked: list[tuple[int, int, RecommendedAction]] = []
     for index, (action, capability) in enumerate(capabilities.items()):
-        entity_overlap = requested_entities & capability.entity_types
+        entity_overlap = requested_entities & _supported_entities(
+            outcome.artifact_type, capability
+        )
         if not entity_overlap:
             continue
         score = 2 * len(entity_overlap)
@@ -235,19 +284,21 @@ def _mismatch_dimensions(
         mismatches.append("operation")
     if outcome.input_artifacts and not any(
         _accepts_inputs(outcome, item)
-        and (outcome.artifact_type == _UNKNOWN or outcome.artifact_type in _produced_artifacts(item))
+        and (outcome.artifact_type == _UNKNOWN or outcome.artifact_type in _supported_artifacts(item))
         for item in values
     ):
         mismatches.append("input_artifacts")
     if not any(
-        outcome.artifact_type in _produced_artifacts(item) for item in values
+        outcome.artifact_type in _supported_artifacts(item) for item in values
     ):
         mismatches.append("artifact_type")
     if not any(outcome.granularity in item.granularities for item in values):
         mismatches.append("granularity")
     requested_entities = set(outcome.entity_types) - {_UNKNOWN}
     if requested_entities and not any(
-        requested_entities.issubset(item.entity_types) for item in values
+        requested_entities.issubset(
+            _supported_entities(outcome.artifact_type, item)
+        ) for item in values
     ):
         mismatches.append("entity_types")
     requested_regulators = set(outcome.regulator_types) - {_UNKNOWN}
@@ -379,7 +430,10 @@ def _stated_dimensions_match(
     """
     return (
         outcome.operation in {_UNKNOWN, capability.operation}
-        and outcome.artifact_type in {_UNKNOWN, capability.artifact_type}
+        and (
+            outcome.artifact_type == _UNKNOWN
+            or outcome.artifact_type in _supported_artifacts(capability)
+        )
         and (
             capability.granularities is None
             or outcome.granularity in {_UNKNOWN, *capability.granularities}

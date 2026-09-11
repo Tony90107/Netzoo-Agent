@@ -369,7 +369,7 @@
     "id": "per-sample-coexpression",
     "language": "en",
     "category": "positive",
-    "prompt": "Given only a gene expression matrix, I want a separate gene-by-gene coexpression network for each sample. No regulatory priors and no transcription factors are involved. Which tool does this? Advice only.",
+    "prompt": "Given only a gene expression matrix, I want a separate gene-by-gene coexpression network for each sample, derived from the all-sample network and the network recomputed after leaving that sample out. No regulatory priors and no transcription factors are involved. Which tool does this? Advice only.",
     "expected": {
       "status": "exact",
       "actions": [
@@ -382,7 +382,7 @@
       "granularity": "sample_specific",
       "required_discriminators": {
         "selection_tags": [
-          "coexpression"
+          "leave_one_out_network_inference"
         ]
       }
     }
@@ -426,7 +426,7 @@
       "granularity": "aggregate",
       "required_discriminators": {
         "selection_tags": [
-          "aggregate_network"
+          "message_passing"
         ]
       }
     }
@@ -470,7 +470,7 @@
       "granularity": "aggregate",
       "required_discriminators": {
         "selection_tags": [
-          "aggregate_network"
+          "message_passing"
         ]
       }
     }
@@ -639,18 +639,51 @@
       "input_artifacts": [
         "expression_matrix"
       ],
-      "artifact_type": "regulatory_network",
+      "artifact_type": "regulatory_network_and_tf_activity",
       "granularity": "aggregate",
+      "entity_types": [
+        "tf",
+        "gene",
+        "sample"
+      ],
       "required_discriminators": {
-        "regulator_types": [
-          "tf"
-        ],
-        "target_types": [
-          "gene"
+        "selection_tags": [
+          "tfa",
+          "biologically_informed_matrix_factorization",
+          "joint_grn_tfa_inference"
         ]
       },
       "answer_required": [
         "GIRAFFE"
+      ]
+    }
+  },
+  {
+    "id": "signed-linear-regulatory-effects-select-giraffe",
+    "language": "mixed",
+    "category": "positive",
+    "prompt": "我之前建好的基因調控網路只能告訴我轉錄因子和標靶基因之間『有很強的關聯』，但我現在的研究需要明確區分這個轉錄因子到底是在『促進 (Activation)』還是『抑制 (Repression)』基因表現。我聽說你們有一個演算法，算出來的調控權重可以直接被解釋成『線性模型的係數 (Coefficients of a linear model)』，也就是自帶正負號的調控效應。請問我該切換成哪個工具？",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_giraffe"
+      ],
+      "forbidden_actions": [
+        "run_panda",
+        "run_lioness_panda",
+        "run_otter"
+      ],
+      "artifact_type": "signed_regulatory_effect_network",
+      "granularity": "aggregate",
+      "entity_types": [
+        "tf",
+        "gene"
+      ],
+      "answer_required": [
+        "GIRAFFE",
+        "signed partial regulatory effects",
+        "linear-model coefficients",
+        "TFA"
       ]
     }
   }

@@ -83,8 +83,10 @@ class RequestedOutcome(BaseModel):
         max_length=16,
         description=(
             "Registry-defined intent signals inferred from the user's scientific "
-            "purpose. These guide capability composition but do not select or "
-            "authorize a workflow by themselves."
+            "purpose or requested algorithmic approach. Audit the runtime catalog "
+            "even when the primary artifact is already known, and include every "
+            "supported signal. These guide capability composition but do not select "
+            "or authorize a workflow by themselves."
         ),
     )
     granularity: Granularity = Field(description=(
@@ -209,6 +211,45 @@ class OutcomeEvidence(BaseModel):
     source: Literal["explicit", "inferred"]
     text_span: str | None = Field(default=None, min_length=1, max_length=160)
     rationale: str = Field(min_length=1, max_length=240)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_evidence_transport(cls, value):
+        """Normalize provider spellings that do not change semantic evidence.
+
+        Inferred evidence never claims to quote the request. Some structured
+        output providers nevertheless serialize its optional ``text_span`` as
+        an empty string; preserving that spelling carries no information and
+        would otherwise abort the entire semantic repair. Ordinary explicit
+        evidence is intentionally untouched and must still contain a grounded
+        quote.
+
+        An ontology bundle is necessarily synthesized from evidence for two or
+        more concrete artifacts. One contiguous quote cannot be the source for
+        that conjunction, so providers that label the bundle evidence explicit
+        are normalized to inference while preserving their rationale. This is
+        based only on the typed artifact ontology; it neither reads request text
+        nor chooses a workflow.
+        """
+        if not isinstance(value, Mapping):
+            return value
+        from .artifact_semantics import ARTIFACT_COMPONENTS
+
+        if (
+            value.get("dimension") == "artifact_type"
+            and value.get("value") in ARTIFACT_COMPONENTS
+            and value.get("source") == "explicit"
+        ):
+            normalized = dict(value)
+            normalized["source"] = "inferred"
+            normalized["text_span"] = None
+            return normalized
+        span = value.get("text_span")
+        if value.get("source") == "inferred" and isinstance(span, str) and not span.strip():
+            normalized = dict(value)
+            normalized["text_span"] = None
+            return normalized
+        return value
 
     @model_validator(mode="after")
     def _explicit_evidence_carries_its_quote(self):
