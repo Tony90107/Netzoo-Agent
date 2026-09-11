@@ -215,6 +215,34 @@ def test_tfa_factorization_guidance_is_model_routed_and_explicit_about_giraffe()
     assert "`tf_activity_matrix`" in answer
 
 
+def test_otter_guidance_declares_expression_or_coexpression_source_and_optimization():
+    outcome = agent.RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        selection_tags=["relaxed_graph_matching"],
+        granularity="aggregate",
+    )
+    decision = agent.TaskDecision(
+        action="no_tool", in_scope=True, should_execute=False, confidence=.95,
+        reason="Guidance", requested_outcome=outcome,
+        capability_match_status="exact", match_basis="registry_features",
+        matched_actions=["run_otter"], recommended_actions=["run_otter"],
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+    answer = render_verified_guidance(decision, guidance_contract(
+        decision, policy,
+        "Infer an aggregate TF-gene regulatory network with continuous relaxed graph matching.",
+    ))
+    assert answer is not None
+    assert "continuous-relaxation" in answer
+    assert "Required alternative (provide one):" in answer
+    assert "`expression_file`" in answer and "`coexpression_file`" in answer
+
+
 def test_signed_linear_effect_guidance_is_typed_and_explains_tfa_regression():
     task = (
         "I need signed partial regulatory effects whose positive and negative "

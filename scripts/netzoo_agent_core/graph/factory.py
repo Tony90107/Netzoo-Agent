@@ -18,7 +18,7 @@ from ..contracts import (
 )
 from ..llm import build_llm, validate_response_model, validate_router_model
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
-from ..contracts.outcomes import SemanticInterpretation, SemanticReview, SemanticPatch
+from ..contracts.outcomes import SemanticDiscriminator, SemanticInterpretation, SemanticReview, SemanticPatch
 from ..memory import EpisodeStore, UserProfileStore
 from ..policy import ProjectPolicyLoader
 from ..pricing import PriceCatalog
@@ -100,6 +100,7 @@ def build_graph(
         method="function_calling",
         include_raw=True,
     )
+    semantic_discriminator = semantic_llm.with_structured_output(SemanticDiscriminator, method="function_calling", include_raw=True)
     intent_router = router_llm.with_structured_output(
         IntentDecision,
         method="function_calling",
@@ -120,6 +121,7 @@ def build_graph(
         semantic_interpreter=semantic_interpreter,
         semantic_reviewer=semantic_reviewer,
         semantic_patcher=semantic_patcher,
+        semantic_discriminator=semantic_discriminator,
         semantic_claims=semantic_contract == "claims",
         review_policy=review_policy,
         intent_router=intent_router,

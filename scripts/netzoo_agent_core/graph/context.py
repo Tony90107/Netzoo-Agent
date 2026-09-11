@@ -43,6 +43,7 @@ class _GraphContext:
     # Historical replay defaults to its original always-review behavior.
     # The production factory explicitly selects when_needed.
     review_policy: str = "always"
+    semantic_discriminator: Any = None
 
 
 def record_event(

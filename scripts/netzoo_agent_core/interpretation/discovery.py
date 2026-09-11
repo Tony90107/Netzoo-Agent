@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-from workflow_registry import REQUIRED_INPUTS, workflow_name as _workflow_name
+from workflow_registry import REQUIRED_INPUTS, REQUIRED_INPUT_GROUPS, workflow_name as _workflow_name
 
 from ..contracts import Episode, PROJECT_ROOT, _display_path
 from ..data.discovery import (
@@ -267,9 +267,7 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
     )
 
 
-def reusable_episode_inputs(
-    action: str, episodes: list[Episode]
-) -> tuple[dict[str, str], str] | None:
+def reusable_episode_inputs(action: str, episodes: list[Episode]) -> tuple[dict[str, str], str] | None:
     expected_workflow = _workflow_name(action)
     for episode in episodes:
         if episode.status != "completed" or episode.workflow != expected_workflow:
@@ -279,7 +277,9 @@ def reusable_episode_inputs(
             for field_name in REQUIRED_INPUTS.get(action, ())
             if field_name not in {"output_file", "lioness_output", "output_dir"}
         ]
-        if any(field_name not in episode.inputs for field_name in required_fields):
+        if (any(field_name not in episode.inputs for field_name in required_fields)
+                or any(not any(field_name in episode.inputs for field_name in group)
+                       for group in REQUIRED_INPUT_GROUPS.get(action, ()) )):
             continue
         values = {
             field_name: episode.inputs[field_name] for field_name in required_fields

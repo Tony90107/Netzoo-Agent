@@ -66,6 +66,7 @@ HISTORICAL_EXPORTS = [
     "RequestedOutcome",
     "OutcomeEvidence",
     "OutcomeHypothesis",
+    "SemanticDiscriminator",
     "EvidenceDimension",
     "CapabilityMatch",
     "CapabilityMatchStatus",
@@ -136,6 +137,9 @@ HISTORICAL_EXPORTS = [
 # ArtifactType-bearing schemas without changing their transport shape.
 # Signed partial regulatory-effect networks are now a first-class subtype, so
 # the model can express coefficient direction without relying on optional tags.
+# 2026-09-11: WorkflowPolicySpec records conditional required-input groups so
+# guidance can state expression_file OR coexpression_file without making both
+# sources mandatory.
 SCHEMA_DIGESTS = {
     "TaskDecision": "f8173ed369c9b4e31d42e7141873f04914c6cbf4baca3620712c195c7567531e",
     "RouterDecision": "fe64ba8a2c630f241273b7bebef9ff59bf7c12aa0c3547619de2b4628975ffe7",
@@ -146,7 +150,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "d87747c54baf47fb003512820efe3532548db6b721f891fed435667d67c60ec5",
+    "ProjectPolicySnapshot": "52f7d1952ce9083af23baeb5911f4e3df7d8e7d35cf042a85b8c653db3c7c0a6",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
@@ -173,6 +177,7 @@ def test_models_have_one_owner_and_preserve_identity():
             "RequestedOutcome",
             "OutcomeEvidence",
             "OutcomeHypothesis",
+            "SemanticDiscriminator",
             "EvidenceDimension",
             "CapabilityMatch",
             "CapabilityMatchStatus",

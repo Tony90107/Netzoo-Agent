@@ -21,6 +21,7 @@ from netzoo_agent_core.data.otter import (  # noqa: E402
 from netzoo_agent_core.execution import run_otter  # noqa: E402
 from netzoo_agent_core.cli.slash_commands import handle_slash_command  # noqa: E402
 from netzoo_agent_core.contracts import PlanEvaluationResult  # noqa: E402
+from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.routing.dispatch import execute_selected_tool  # noqa: E402
 from workflow_registry import (  # noqa: E402
     ACTION_DEFINITIONS,
@@ -229,6 +230,11 @@ def test_otter_plans_expression_and_precomputed_variants_and_declares_handoffs(t
     assert coexpression_plan.status == "ready"
 
     capability = OUTPUT_CAPABILITIES["run_otter"]
+    definition = ACTION_DEFINITIONS["run_otter"]
+    assert definition.required_input_groups == (("expression_file", "coexpression_file"),)
+    spec = ProjectPolicyLoader(Path(__file__).parents[1]).load().workflows["run_otter"]
+    assert spec.required_input_groups == [["expression_file", "coexpression_file"]]
+    assert "continuous-relaxation" in spec.description
     assert capability.handoff_targets == ("run_condor",)
     assert "PPI and co-expression are never PANDA motif priors" in capability.handoff_contract
     assert "run_lioness_otter" not in ACTION_DEFINITIONS

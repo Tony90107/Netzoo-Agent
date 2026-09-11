@@ -9,6 +9,8 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from netzoo_agent_core.graph.prompts import build_graph_prompts  # noqa: E402
+from netzoo_agent_core.graph.router_invocation import _discriminator_context  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import SemanticDiscriminator  # noqa: E402
 from netzoo_agent_core.llm import build_semantic_interpreter_prompt  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.contracts import RequestedOutcome, TaskDecision  # noqa: E402
@@ -119,6 +121,35 @@ def test_every_registered_selection_tag_has_a_scientific_gloss():
     )
 
     assert registered <= SELECTION_TAG_GLOSSARY.keys()
+
+
+def test_ambiguous_reviewer_context_exposes_scientific_otter_discriminator_without_tool_names():
+    context = _discriminator_context(["run_panda", "run_otter"])
+
+    assert "continuous relaxed graph-matching" in context
+    assert "gradient descent" in context
+    assert "selection_tags value" in context
+    assert "run_panda" not in context
+    assert "run_otter" not in context
+    assert "PANDA" not in context
+    assert "OTTER" not in context
+
+
+def test_semantic_discriminator_is_closed_and_evidence_backed():
+    schema = SemanticDiscriminator.model_json_schema()
+
+    assert set(schema["properties"]) == {"selection_tags", "evidence"}
+    valid = SemanticDiscriminator.model_validate({
+        "selection_tags": ["relaxed_graph_matching"],
+        "evidence": [{
+            "dimension": "selection_tag",
+            "value": "relaxed_graph_matching",
+            "source": "explicit",
+            "text_span": "連續鬆弛化",
+            "rationale": "The request explicitly asks for continuous relaxation.",
+        }],
+    })
+    assert valid.selection_tags == ["relaxed_graph_matching"]
 
 
 def test_provider_schema_keeps_selection_signals_optional():
