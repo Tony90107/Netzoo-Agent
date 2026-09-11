@@ -11,7 +11,10 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from netzoo_agent_core.graph.prompts import build_graph_prompts  # noqa: E402
 from netzoo_agent_core.graph.router_invocation import _discriminator_context  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import SemanticDiscriminator  # noqa: E402
-from netzoo_agent_core.llm import build_semantic_interpreter_prompt  # noqa: E402
+from netzoo_agent_core.llm import (  # noqa: E402
+    build_semantic_interpreter_prompt,
+    build_semantic_reviewer_messages,
+)
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.contracts import RequestedOutcome, TaskDecision  # noqa: E402
 from netzoo_agent_core.graph.response_context import (  # noqa: E402
@@ -90,6 +93,20 @@ def test_semantic_contract_separates_a_proposed_method_from_the_terminal_goal():
     assert "proposed method" in prompt
     assert "terminal scientific goal" in prompt
     assert "Do not create another hypothesis solely for the proposed method" in prompt
+
+
+def test_reviewer_recovers_scientific_goal_after_not_applicable_placeholder():
+    messages = build_semantic_reviewer_messages(
+        build_semantic_interpreter_prompt(),
+        "請問哪個演算法能以損失函數、正則化與鬆弛化推論基因調控網路？",
+        {"request_mode": "guidance"},
+        ("hypothesis[0].inconsistent_not_applicable_outcome",),
+    )
+    reviewer_prompt = messages[0].content
+
+    assert "reconstruct the goal" in reviewer_prompt
+    assert "regulatory_network" in reviewer_prompt
+    assert "relaxed_graph_matching" in reviewer_prompt
 
 
 def test_registered_capability_metadata_is_the_only_pipeline_source():

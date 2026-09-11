@@ -182,6 +182,68 @@ def test_discriminator_contract_can_select_otter_from_a_validated_panda_tie():
     ]
 
 
+def test_not_applicable_recovery_preserves_chinese_otter_constraints():
+    """A malformed first reading must not erase the stated scientific goal."""
+    task = (
+        "我想要建構一個基因調控網路，希望模型在求解時有明確的損失函數、正則化項，"
+        "並以目標函數鬆弛化的推論架構完成。請問哪個演算法適合？"
+    )
+    empty = {
+        "outcome": {
+            "operation": "explain", "input_artifacts": [], "artifact_type": "unknown",
+            "entity_types": [], "regulator_types": [], "target_types": [],
+            "selection_tags": [], "granularity": "not_applicable",
+        },
+        "confidence": 0.8,
+        "evidence": [{
+            "dimension": "operation", "value": "explain", "source": "explicit",
+            "text_span": "請問哪個演算法適合？", "rationale": "The user asks for guidance.",
+        }],
+    }
+    recovered = {
+        "outcome": {
+            "operation": "infer", "input_artifacts": [], "artifact_type": "regulatory_network",
+            "entity_types": ["tf", "gene"], "regulator_types": ["tf"], "target_types": ["gene"],
+            "selection_tags": [], "granularity": "aggregate",
+        },
+        "confidence": 0.9,
+        "evidence": [
+            {"dimension": "operation", "value": "infer", "source": "inferred", "rationale": "The requested model constructs a network."},
+            {"dimension": "artifact_type", "value": "regulatory_network", "source": "explicit", "text_span": "基因調控網路", "rationale": "The terminal result is a regulatory network."},
+            {"dimension": "regulator_type", "value": "tf", "source": "inferred", "rationale": "Regulatory-network roles are TF to gene."},
+            {"dimension": "target_type", "value": "gene", "source": "inferred", "rationale": "Regulatory-network roles are TF to gene."},
+            {"dimension": "granularity", "value": "aggregate", "source": "inferred", "rationale": "一個 network requests one aggregate result."},
+        ],
+    }
+    provider = FixtureProvider(first={
+        "request_mode": "guidance", "semantic_goal": "Identify a suitable algorithm",
+        "outcome_hypotheses": [empty],
+    }, review={
+        "request_mode": "guidance", "semantic_goal": "Infer an aggregate regulatory network",
+        "outcome_hypothesis": recovered,
+    })
+    provider.responses[SemanticDiscriminator] = {
+        "selection_tags": ["relaxed_graph_matching"],
+        "evidence": [{
+            "dimension": "selection_tag", "value": "relaxed_graph_matching", "source": "explicit",
+            "text_span": "目標函數鬆弛化", "rationale": "The request explicitly asks for a relaxation-based objective.",
+        }],
+    }
+    case = RoutingScenario.model_validate({
+        "id": "not-applicable-recovery-otter", "language": "zh", "category": "positive",
+        "prompt": task,
+        "expected": {
+            "status": "exact", "actions": ["run_otter"], "artifact_type": "regulatory_network",
+            "granularity": "aggregate", "required_discriminators": {"selection_tags": ["relaxed_graph_matching"]},
+        },
+    })
+
+    result = evaluate([case], provider=provider, model_name="fixture", task_token_budget=30000)["results"][0]
+    assert result["route_passed"], result
+    assert result["semantic_passed"], result
+    assert result["matched_actions"] == ["run_otter"]
+
+
 def test_provider_value_error_recovery_is_not_counted_as_semantic_success():
     provider = FixtureProvider(first=ValueError("sensitive provider detail"))
     report = run(provider)

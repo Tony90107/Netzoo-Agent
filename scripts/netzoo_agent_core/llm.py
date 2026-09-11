@@ -370,7 +370,10 @@ def build_semantic_reviewer_messages(
                 "after recovering a scientific result. If the user asks which tool "
                 "fits a stated scientific goal, retain that goal as the terminal "
                 "outcome; guidance intent must not turn it into an empty or "
-                "not_applicable outcome."
+                "not_applicable outcome. If validation reports "
+                "inconsistent_not_applicable_outcome, reconstruct the goal: "
+                "基因調控網路→regulatory_network; loss/objective + regularization + "
+                "鬆弛化→relaxed_graph_matching, with exact original-language evidence."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
