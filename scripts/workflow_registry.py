@@ -144,14 +144,17 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
         "derive each sample network from all-sample and leave-one-out networks"
     ),
     "message_passing": "iteratively pass messages among expression, motif, and PPI networks",
+    "lioness_base_compatibility": (
+        "aggregate LIONESS-compatible base network"
+    ),
     "mirna_regulation": "model miRNA-to-gene regulation",
     "modules": "return network modules or community membership",
     "multi_omic_network": "infer one network spanning two omics layers",
     "partial_correlation": "infer conditional associations using partial correlation",
     "pathway_scores": "produce pathway-level mutation scores",
     "relaxed_graph_matching": (
-        "formulate regulatory-network inference as a continuous relaxed graph-matching "
-        "optimization problem solved by gradient descent rather than message passing"
+        "continuous relaxed graph-matching; explicit objective/loss, gradient descent, "
+        "convergence; not heuristic message passing"
     ),
     "sample_specific": "infer a separate network for each sample",
     "signed_partial_regulatory_effects": (
@@ -183,6 +186,10 @@ class OutputCapabilityDefinition:
     target_types: frozenset[Literal["gene"]] = frozenset()
     guidance_predecessors: tuple[RecommendedAction, ...] = ()
     input_artifacts: frozenset[ArtifactType] = frozenset()
+    # Executor-level prerequisites that are not themselves output ontology
+    # values. Keeping these as registry strings avoids widening the provider
+    # outcome schema just to express a missing file requirement.
+    required_input_artifacts: frozenset[str] = frozenset()
     handoff_targets: tuple[RecommendedAction, ...] = ()
     selection_tags: frozenset[str] = frozenset()
     handoff_contract: str = ""
@@ -332,6 +339,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             handoff_targets=("run_condor",),
             selection_tags=frozenset({
                 "tf_gene_regulation", "aggregate_network", "message_passing",
+                "lioness_base_compatibility",
             }),
             handoff_contract=(
                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
@@ -381,6 +389,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             produced_artifacts=frozenset({"regulatory_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
+            required_input_artifacts=frozenset({"mirna_prior"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
             handoff_contract=(
@@ -471,6 +480,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             guidance_predecessors=("run_puma",),
             input_artifacts=frozenset({"expression_matrix"}),
+            required_input_artifacts=frozenset({"mirna_prior"}),
             selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "

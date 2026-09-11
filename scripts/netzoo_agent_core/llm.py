@@ -482,7 +482,8 @@ def build_semantic_discriminator_messages(
                 "explicit and an exact original-language text_span. If the request does "
                 "not explicitly distinguish the profiles, return empty selection_tags "
                 "and empty evidence. Do not alter artifact_type, inputs, roles, operation, "
-                "or granularity.\n\n"
+                "or granularity. Recognize the glossary meanings even when the request is "
+                "written in Chinese or another language; never translate text_span.\n\n"
                 + discriminator_context
             )
         ),

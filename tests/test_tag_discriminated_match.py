@@ -97,18 +97,8 @@ def test_a_tag_never_rescues_a_candidate_whose_stated_dimensions_differ():
     assert result.matched_actions != ["run_lioness_puma"]
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Accepted, recorded limitation: tags need no evidence, so a tag the "
-        "request does not support still discriminates. Pinned so it cannot be "
-        "forgotten. Sixteen of sixteen tags in the live record were catalogue "
-        "entries naming the expected tool, and the live criterion vetoes on any "
-        "wrong recommendation. See research log Log 58 and Log 60."
-    ),
-    strict=True,
-)
 def test_an_unsupported_tag_does_not_discriminate():
-    """A TF-to-gene request carrying an invented miRNA tag should not pick PUMA."""
+    """A TF-to-gene request carrying an unsupported miRNA tag must not pick PUMA."""
     result = match(TF_TASK, tags=["mirna_regulation"])
 
     assert result.matched_actions != ["run_lioness_puma"]

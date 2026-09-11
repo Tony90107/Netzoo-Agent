@@ -17,15 +17,24 @@ from ..contracts import (
     RequestedOutcome,
     TaskDecision,
 )
-from ..contracts.artifact_semantics import (
-    ARTIFACT_COMPONENTS,
-    ARTIFACT_SEMANTICS,
-    outcome_consistency_issues,
-)
-from ..interpretation.request_integrity import input_mentions
+from ..contracts.artifact_semantics import outcome_consistency_issues
 from .candidate_ranking import (
     _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
     _hypothesis_evidence_score, _specificity_score, stated_dimension_score,
+    _UNKNOWN,
+)
+from .capability_compatibility import (
+    _accepts_inputs,
+    _complete_guidance_match,
+    _explicit_evidence_values,
+    _has_unknown,
+    _is_not_applicable,
+    _matches,
+    _matches_explicit_evidence,
+    _partially_compatible,
+    _supported_artifacts,
+    _supported_entities,
+    explicit_input_artifacts,
 )
 from .method_rejections import rejected_methods_for
 from .named_labels import (
@@ -36,68 +45,6 @@ from .named_labels import (
 )
 
 
-# Defined beside the ranking preferences that also need it.
-from .candidate_ranking import _UNKNOWN  # noqa: E402
-
-
-def _produced_artifacts(
-    capability: OutputCapabilityDefinition,
-) -> frozenset[str]:
-    """Return every artifact a workflow can deliberately expose to the user."""
-    return capability.produced_artifacts or frozenset({capability.artifact_type})
-
-
-def _supported_artifacts(
-    capability: OutputCapabilityDefinition,
-) -> frozenset[str]:
-    """Return concrete outputs plus every fully satisfied ontology bundle."""
-    produced = _produced_artifacts(capability)
-    bundles = {
-        artifact
-        for artifact, components in ARTIFACT_COMPONENTS.items()
-        if components.issubset(produced)
-    }
-    # ``artifact_type`` is the capability's primary semantic result. It may be
-    # a scientifically meaningful subtype of one concrete output file (for
-    # example, a signed-effect regulatory network), while produced_artifacts
-    # remains the literal artifact inventory shown to users and validators.
-    return produced | {capability.artifact_type} | bundles
-
-
-def _supported_entities(
-    artifact_type: str,
-    capability: OutputCapabilityDefinition,
-) -> frozenset[str]:
-    """Return entity support for the particular artifact being requested.
-
-    ``entity_types`` describes the capability's primary artifact. Secondary
-    artifacts use the shared artifact ontology, so a TF-by-sample TFA matrix
-    does not force ``sample`` to become an entity of GIRAFFE's TF-gene network.
-    """
-    if artifact_type == capability.artifact_type or artifact_type == _UNKNOWN:
-        return capability.entity_types
-    semantics = ARTIFACT_SEMANTICS.get(artifact_type)
-    if artifact_type in _supported_artifacts(capability) and semantics is not None:
-        return semantics.entities or capability.entity_types
-    return capability.entity_types
-
-
-def _accepts_inputs(outcome: RequestedOutcome, capability: OutputCapabilityDefinition) -> bool:
-    requested = set(outcome.input_artifacts) - {_UNKNOWN}
-    return (
-        requested.issubset(capability.input_artifacts)
-        and not requested.intersection(capability.incompatible_input_artifacts)
-    )
-
-
-def explicit_input_artifacts(task: str) -> frozenset[str]:
-    """Share the validator's current-input scope, including on fallback paths."""
-    return frozenset(
-        mention.artifact for mention in input_mentions(task)
-        if mention.status == "current"
-    )
-
-
 def match_registry_guidance_features(
     task: str,
     capabilities=OUTPUT_CAPABILITIES,
@@ -106,129 +53,6 @@ def match_registry_guidance_features(
 ) -> CapabilityMatch | None:
     """Deprecated compatibility entry point; lexical hits are not tool evidence."""
     return None
-
-
-def _is_not_applicable(outcome: RequestedOutcome) -> bool:
-    return (
-        outcome.operation == _UNKNOWN
-        and outcome.artifact_type == _UNKNOWN
-        and outcome.granularity == "not_applicable"
-        and not outcome.input_artifacts
-        and not outcome.entity_types
-        and not outcome.regulator_types
-        and not outcome.target_types
-        and not outcome.unresolved_dimensions
-    )
-
-
-def _has_unknown(outcome: RequestedOutcome) -> bool:
-    return bool(
-        outcome.unresolved_dimensions
-        or _UNKNOWN in {outcome.operation, outcome.artifact_type, outcome.granularity}
-        or _UNKNOWN in outcome.entity_types
-        or _UNKNOWN in outcome.input_artifacts
-        or _UNKNOWN in outcome.regulator_types
-        or _UNKNOWN in outcome.target_types
-    )
-
-
-def _matches(
-    outcome: RequestedOutcome,
-    capability: OutputCapabilityDefinition,
-) -> bool:
-    if _has_unknown(outcome) or outcome_consistency_issues(outcome):
-        return False
-    return (
-        outcome.operation == capability.operation
-        and _accepts_inputs(outcome, capability)
-        and outcome.artifact_type in _supported_artifacts(capability)
-        and outcome.granularity in capability.granularities
-        and set(outcome.entity_types).issubset(
-            _supported_entities(outcome.artifact_type, capability)
-        )
-        and set(outcome.regulator_types).issubset(capability.regulator_types)
-        and set(outcome.target_types).issubset(capability.target_types)
-    )
-
-
-def _known_scalar_matches(requested: str, supported: str) -> bool:
-    return requested == _UNKNOWN or requested == supported
-
-
-def _known_set_matches(requested: Sequence[str], supported: frozenset[str]) -> bool:
-    known = set(requested) - {_UNKNOWN}
-    return known.issubset(supported)
-
-
-def _partially_compatible(
-    outcome: RequestedOutcome,
-    capability: OutputCapabilityDefinition,
-) -> bool:
-    return (
-        _known_scalar_matches(outcome.operation, capability.operation)
-        and _accepts_inputs(outcome, capability)
-        and (
-            outcome.artifact_type == _UNKNOWN
-            or outcome.artifact_type in _supported_artifacts(capability)
-        )
-        and (
-            outcome.granularity == _UNKNOWN
-            or outcome.granularity in capability.granularities
-        )
-        and _known_set_matches(
-            outcome.entity_types,
-            _supported_entities(outcome.artifact_type, capability),
-        )
-        and _known_set_matches(outcome.regulator_types, capability.regulator_types)
-        and _known_set_matches(outcome.target_types, capability.target_types)
-    )
-
-
-def _complete_guidance_match(outcome, capability) -> bool:
-    """Only explanatory operation may be omitted for an exact guidance match."""
-    return _matches(outcome.model_copy(update={
-        "operation": capability.operation,
-        "unresolved_dimensions": [value for value in outcome.unresolved_dimensions if value != "operation"],
-    }), capability)
-
-
-def _explicit_evidence_values(
-    hypothesis: OutcomeHypothesis,
-) -> dict[str, set[str]]:
-    """Group user-quoted semantic constraints independently of model inferences."""
-    grouped: dict[str, set[str]] = {}
-    for item in hypothesis.evidence:
-        if item.source != "explicit" or item.value == _UNKNOWN:
-            continue
-        grouped.setdefault(item.dimension, set()).add(item.value)
-    return grouped
-
-
-def _matches_explicit_evidence(
-    evidence: Mapping[str, set[str]],
-    capability: OutputCapabilityDefinition,
-) -> bool:
-    """Treat explicit user evidence as hard constraints on registry capabilities."""
-    requested_artifacts = evidence.get("artifact_type", set())
-    evidence_artifact = (
-        next(iter(requested_artifacts))
-        if len(requested_artifacts) == 1
-        else _UNKNOWN
-    )
-    scalar_constraints = (
-        ("operation", {capability.operation}),
-        ("input_artifact", set(capability.input_artifacts) - set(capability.incompatible_input_artifacts)),
-        ("artifact_type", set(_supported_artifacts(capability))),
-        ("granularity", set(capability.granularities)),
-        ("entity_type", set(_supported_entities(evidence_artifact, capability))),
-        ("regulator_type", set(capability.regulator_types)),
-        ("target_type", set(capability.target_types)),
-    )
-    return all(
-        not evidence.get(dimension)
-        or evidence[dimension].issubset(supported)
-        for dimension, supported in scalar_constraints
-    )
 
 
 def _selection_question(
@@ -245,7 +69,12 @@ def _selection_question(
         )
     if outcome.artifact_type == "unknown":
         return "What artifact should NetZoo produce?"
-    if outcome.granularity == "unknown":
+    candidate_granularities = {
+        granularity
+        for _, capability in candidates
+        for granularity in capability.granularities
+    }
+    if outcome.granularity == "unknown" and len(candidate_granularities) > 1:
         return "Should the result be aggregate or sample-specific?"
     return "Which of the registered result types do you want NetZoo to produce?"
 
@@ -277,13 +106,14 @@ def _alternative_actions(
 def _mismatch_dimensions(
     outcome: RequestedOutcome,
     capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+    available_inputs: Sequence[str] = (),
 ) -> list[str]:
     values = list(capabilities.values())
     mismatches = []
     if not any(item.operation == outcome.operation for item in values):
         mismatches.append("operation")
     if outcome.input_artifacts and not any(
-        _accepts_inputs(outcome, item)
+        _accepts_inputs(outcome, item, available_inputs)
         and (outcome.artifact_type == _UNKNOWN or outcome.artifact_type in _supported_artifacts(item))
         for item in values
     ):
@@ -319,6 +149,8 @@ def match_requested_outcome(
     capabilities: Mapping[
         RecommendedAction, OutputCapabilityDefinition
     ] = OUTPUT_CAPABILITIES,
+    *,
+    available_inputs: Sequence[str] = (),
 ) -> CapabilityMatch:
     """Return a fail-closed match derived only from typed outcome dimensions."""
     issues = outcome_consistency_issues(outcome)
@@ -329,7 +161,7 @@ def match_requested_outcome(
     candidates = [
         (action, capability)
         for action, capability in capabilities.items()
-        if _matches(outcome, capability)
+        if _matches(outcome, capability, available_inputs)
     ]
     if _has_unknown(outcome):
         return CapabilityMatch(
@@ -376,12 +208,14 @@ def match_requested_outcome(
     return CapabilityMatch(
         status="unsupported",
         alternative_actions=_alternative_actions(outcome, capabilities),
-        mismatch_dimensions=_mismatch_dimensions(outcome, capabilities),
+        mismatch_dimensions=_mismatch_dimensions(outcome, capabilities, available_inputs),
     )
 
 
 def has_granularity_only_ambiguity(
     hypotheses: Sequence[OutcomeHypothesis],
+    candidates: Sequence[RecommendedAction] | None = None,
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition] = OUTPUT_CAPABILITIES,
 ) -> bool:
     """Return whether hypotheses preserve every requested fact except granularity."""
     if not hypotheses:
@@ -402,17 +236,32 @@ def has_granularity_only_ambiguity(
     # A partial hypothesis (unknown granularity) and explicit granularity
     # alternatives still describe the same missing choice.  Treat that as a
     # granularity question whenever no other scientific dimension changes.
-    return (
-        granularities <= {"unknown", "aggregate", "sample_specific"}
-        and len(signatures) == 1
-    )
+    if not granularities <= {"unknown", "aggregate", "sample_specific"}:
+        return False
+    # An explicit aggregate (or sample-specific) result is settled. The old
+    # len(signatures)==1 check treated one fully explicit hypothesis as a
+    # granularity ambiguity and produced the same clarification for PANDA,
+    # OTTER, and GIRAFFE ties.
+    if granularities in ({"aggregate"}, {"sample_specific"}):
+        return False
+    if candidates is not None:
+        candidate_granularities = {
+            granularity
+            for action in candidates
+            for granularity in capabilities[action].granularities
+        }
+        if len(candidate_granularities) <= 1:
+            return False
+    return len(signatures) == 1
 
 
 def _granularity_only_question(
     hypotheses: Sequence[OutcomeHypothesis],
+    candidates: Sequence[RecommendedAction] | None = None,
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition] = OUTPUT_CAPABILITIES,
 ) -> str | None:
     """Return the sole clarification when only outcome granularity differs."""
-    if has_granularity_only_ambiguity(hypotheses):
+    if has_granularity_only_ambiguity(hypotheses, candidates, capabilities):
         return "Should the result be aggregate or sample-specific?"
     return None
 
@@ -507,6 +356,7 @@ def match_outcome_hypotheses(
     *,
     assumed_guidance: bool = False,
     ignore_tags: frozenset[str] = frozenset(),
+    available_inputs: Sequence[str] = (),
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     issues = list(dict.fromkeys(
@@ -521,7 +371,11 @@ def match_outcome_hypotheses(
     evidence_exact: list[RecommendedAction] = []
     advisory: list[tuple[int, float, int, int, RecommendedAction]] = []
     for hypothesis in hypotheses:
-        strict = match_requested_outcome(hypothesis.outcome, capabilities)
+        strict = match_requested_outcome(
+            hypothesis.outcome,
+            capabilities,
+            available_inputs=available_inputs,
+        )
         if strict.status == "exact":
             # An assumption marks an unconfirmed interpretation of the request,
             # so it can never yield an exact match. It is still a single named
@@ -555,7 +409,11 @@ def match_outcome_hypotheses(
                     for index, action, capability in explicit_candidates
                 )
         for index, (action, capability) in enumerate(capabilities.items()):
-            if _partially_compatible(hypothesis.outcome, capability):
+            if _partially_compatible(
+                hypothesis.outcome,
+                capability,
+                available_inputs,
+            ):
                 advisory.append(
                     (
                         score,
@@ -618,7 +476,11 @@ def match_outcome_hypotheses(
             hypothesis_actions=unique_top_actions,
             clarification_question=(
                 (
-                    _granularity_only_question(hypotheses)
+                    _granularity_only_question(
+                        hypotheses,
+                        unique_top_actions,
+                        capabilities,
+                    )
                     or "Which compatible network result do you mean?"
                 )
                 if len(unique_top_actions) > 1
@@ -628,7 +490,11 @@ def match_outcome_hypotheses(
 
     first_outcome = hypotheses[0].outcome if hypotheses else None
     if first_outcome is not None:
-        return match_requested_outcome(first_outcome, capabilities)
+        return match_requested_outcome(
+            first_outcome,
+            capabilities,
+            available_inputs=available_inputs,
+        )
     return CapabilityMatch(
         status="ambiguous",
         clarification_question="What scientific result do you want?",
@@ -655,6 +521,10 @@ def _enforce_input_compatibility(
         explicit_input_artifacts(task)
         if input_artifacts is None else frozenset(input_artifacts)
     )
+    # Only lexical input witnesses can establish that a required prior is
+    # absent. Fields supplied by the semantic interpreter are claims to match,
+    # not proof that the user explicitly listed the complete input bundle.
+    observed_task_inputs = explicit_input_artifacts(task)
     incompatible_actions = [
         action
         for action in match.matched_actions
@@ -663,7 +533,20 @@ def _enforce_input_compatibility(
             task_inputs & OUTPUT_CAPABILITIES[action].incompatible_input_artifacts
             or (
                 input_artifacts is not None
-                and not task_inputs.issubset(OUTPUT_CAPABILITIES[action].input_artifacts)
+                and not (
+                    task_inputs
+                    - OUTPUT_CAPABILITIES[action].required_input_artifacts
+                ).issubset(OUTPUT_CAPABILITIES[action].input_artifacts)
+            )
+            or bool(
+                observed_task_inputs
+                and OUTPUT_CAPABILITIES[action].required_input_artifacts
+                - observed_task_inputs
+                and not (
+                    OUTPUT_CAPABILITIES[action].required_input_artifacts
+                    - observed_task_inputs == {"mirna_prior"}
+                    and re.search(r"\bmi[- ]?RNA\b", task, re.I)
+                )
             )
         )
     ]
@@ -716,15 +599,13 @@ def _match_semantic_request(
         if action in OUTPUT_CAPABILITIES:
             return CapabilityMatch(status="exact", match_basis="confirmed_context", matched_actions=[action])
 
-    current_inputs = (
-        sorted({
-            artifact for hypothesis in hypotheses
-            for artifact in hypothesis.outcome.input_artifacts
-            if artifact != _UNKNOWN
-        })
-        if any(hypothesis.outcome.input_artifacts for hypothesis in hypotheses)
-        else None
-    )
+    declared_inputs = {
+        artifact for hypothesis in hypotheses
+        for artifact in hypothesis.outcome.input_artifacts
+        if artifact != _UNKNOWN
+    }
+    lexical_inputs = explicit_input_artifacts(task)
+    current_inputs = sorted(declared_inputs | set(lexical_inputs)) or None
     matching_hypotheses = hypotheses
     if request_mode == "guidance":
         # Guidance asks which registered capability can produce the result; the
@@ -744,6 +625,7 @@ def _match_semantic_request(
         OUTPUT_CAPABILITIES,
         assumed_guidance=request_mode != "execute",
         ignore_tags=ignore_tags,
+        available_inputs=lexical_inputs,
     )
     if match.status == "fallback" and match.match_basis == "partial_evidence":
         capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]

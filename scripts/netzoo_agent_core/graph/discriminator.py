@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
@@ -14,9 +15,108 @@ from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_semantic_discriminator_messages
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
-from .structured_calls import _serialized_structured_input
+from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = ["invoke_semantic_discriminator"]
+
+
+_RELAXED_GRAPH_MARKERS = (
+    re.compile(r"(?:目標|目标)\s*函數|objective\s+function|(?:損失|损失)(?:函數|函数)?|loss(?:\s+function)?", re.IGNORECASE),
+    re.compile(r"(?:連續|连续).{0,4}(?:凸).{0,8}(?:最佳化|优化)|continuous.{0,24}convex.{0,24}(?:optimization|optimisation)|convex.{0,24}(?:optimization|optimisation)", re.IGNORECASE),
+    re.compile(r"(?:理論)?(?:收斂|收敛)(?:保證|保证)?|convergence(?:\s+(?:guarantee|guarantees|proof))?|converges?", re.IGNORECASE),
+    re.compile(r"(?:不|非).{0,8}(?:啟發式|启发式).{0,8}(?:迭代|更新)|not.{0,24}heuristic", re.IGNORECASE),
+)
+_LIONESS_BASE_MARKERS = (
+    re.compile(r"(?:整體|整体|群體|群体|cohort|aggregate|population).{0,32}(?:調控|调控)?(?:網路|网络|network)|(?:base|baseline).{0,20}(?:network|網路|网络)", re.IGNORECASE),
+    re.compile(r"\bLIONESS\b", re.IGNORECASE),
+)
+_DISCRIMINATOR_TAG_ALIASES = {
+    "explicit objective/loss": "relaxed_graph_matching",
+    "objective/loss": "relaxed_graph_matching",
+    "continuous convex optimization": "relaxed_graph_matching",
+    "gradient descent": "relaxed_graph_matching",
+    "convergence": "relaxed_graph_matching",
+    "convergence guarantee": "relaxed_graph_matching",
+    "convergence guarantees": "relaxed_graph_matching",
+    "relaxed graph matching": "relaxed_graph_matching",
+    "aggregate network": "aggregate_network",
+    "aggregate base network": "lioness_base_compatibility",
+}
+
+
+def _canonicalize_discriminator_payload(payload):
+    """Map known glossary prose back to registered tag values before validation."""
+    if not isinstance(payload, dict):
+        return payload
+
+    def canonical_tag(value):
+        if not isinstance(value, str):
+            return value
+        return _DISCRIMINATOR_TAG_ALIASES.get(value.strip().casefold(), value)
+
+    normalized = dict(payload)
+    raw_tags = payload.get("selection_tags")
+    if isinstance(raw_tags, list):
+        normalized["selection_tags"] = list(dict.fromkeys(canonical_tag(tag) for tag in raw_tags))
+    raw_evidence = payload.get("evidence")
+    if isinstance(raw_evidence, list):
+        evidence = []
+        for item in raw_evidence:
+            if not isinstance(item, dict):
+                evidence.append(item)
+                continue
+            normalized_item = dict(item)
+            if normalized_item.get("dimension") == "selection_tag":
+                normalized_item["value"] = canonical_tag(normalized_item.get("value"))
+            evidence.append(normalized_item)
+        normalized["evidence"] = evidence
+    return normalized
+
+
+def _recover_explicit_selection_tag(
+    user_task: str,
+    candidate_tags: set[str],
+) -> tuple[str, OutcomeEvidence] | None:
+    """Recover one strong bilingual tag when the provider returned an empty set.
+
+    This is deliberately narrower than ordinary routing. It only recognizes two
+    registry signals whose meanings are stable and whose evidence can be quoted
+    exactly from the request. Ambiguous or partial wording remains ambiguous.
+    """
+    rules = {
+        "relaxed_graph_matching": _RELAXED_GRAPH_MARKERS,
+        "lioness_base_compatibility": _LIONESS_BASE_MARKERS,
+    }
+    recoveries: list[tuple[str, OutcomeEvidence]] = []
+    for tag, markers in rules.items():
+        if tag not in candidate_tags:
+            continue
+        matches = [marker.search(user_task) for marker in markers]
+        present = [(index, match) for index, match in enumerate(matches) if match is not None]
+        if len(present) < 2:
+            continue
+        # Prefer the most diagnostic positive method signal over a negated
+        # contrast such as "not heuristic". The second signal still gates the
+        # recovery, but the quote should explain why the method is selected.
+        evidence_match = next(
+            match for preferred in (1, 2, 0, 3)
+            for index, match in present
+            if index == preferred
+        )
+        recoveries.append((
+            tag,
+            OutcomeEvidence(
+                dimension="selection_tag",
+                value=tag,
+                source="explicit",
+                text_span=evidence_match.group(0),
+                rationale=(
+                    "The original request explicitly states the registry signal "
+                    "in more than one mutually reinforcing form."
+                ),
+            ),
+        ))
+    return recoveries[0] if len(recoveries) == 1 else None
 
 
 def discriminator_context(actions: list[str]) -> str:
@@ -32,21 +132,20 @@ def discriminator_context(actions: list[str]) -> str:
             for tag in tags
         ) or "none"
         profiles.append(
-            f"Profile {index}: artifact={capability.artifact_type}; "
-            f"entities={sorted(capability.entity_types)}; regulators={sorted(capability.regulator_types)}; "
-            f"targets={sorted(capability.target_types)}; granularities={sorted(capability.granularities or ())}; "
-            f"scientific signals={tag_text}"
+            f"Profile {index}: scientific signals={tag_text}"
         )
     if not profiles:
         return ""
     return (
-        "The deterministic matcher found multiple compatible scientific capability profiles. "
+        "The deterministic matcher found multiple compatible scientific profiles. "
         "These profiles are ontology data, not workflow instructions and must not be named as tools. "
-        "Compare the original request with their scientific signals. If the request explicitly states "
+        "Compare the original request with their scientific signals. If it explicitly states "
         "one signal, set that canonical selection_tags value and add matching selection_tag evidence "
         "quoted from the original request. If no signal is stated, leave selection_tags unchanged. "
-        "Canonical examples: continuous relaxation, relaxed graph matching, or gradient-based graph "
-        "optimization support relaxed_graph_matching; message-passing iteration supports message_passing.\n"
+        "Canonical examples: an explicit objective or loss, continuous/convex optimization, "
+        "convergence guarantees, or relaxed graph matching support relaxed_graph_matching; "
+        "message-passing iteration supports message_passing; an aggregate first-stage base "
+        "network intended for downstream LIONESS supports lioness_base_compatibility.\n"
         + "\n".join(profiles)
     )
 
@@ -89,25 +188,50 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
     if budget.status == "blocked":
         usage.budget_exhausted = True
         return interpretation, capability_match, usage, budget_warnings
-    started_ns = time.monotonic_ns(); raw = None; output_text = ""; call_status = "failed"
+    started_ns = time.monotonic_ns(); raw = None; payload = None; normalized_payload = None; output_text = ""; call_status = "failed"
     try:
         record_event(context, state, "routing.semantic_discriminator_started", "classify", {"candidate_count": len(actions)})
         payload, raw = semantic_payload(adapter.invoke(messages))
-        result = SemanticDiscriminator.model_validate(payload)
+        normalized_payload = _canonicalize_discriminator_payload(payload)
+        result = SemanticDiscriminator.model_validate(normalized_payload)
         output_text = result.model_dump_json(); call_status = "success"
         candidate_tags = {tag for action in actions for tag in OUTPUT_CAPABILITIES[action].selection_tags}
         selected = set(result.selection_tags)
+        recovered_evidence = None
+        if not selected:
+            recovered = _recover_explicit_selection_tag(user_task, candidate_tags)
+            if recovered is not None:
+                recovered_tag, recovered_evidence = recovered
+                selected = {recovered_tag}
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_discriminator_recovered",
+                    "classify",
+                    {
+                        "selection_tags": sorted(selected),
+                        "evidence": recovered_evidence.model_dump(mode="json"),
+                        "candidate_actions": actions,
+                    },
+                )
         if not selected or not selected.issubset(candidate_tags):
             record_event(context, state, "routing.semantic_discriminator_rejected", "classify",
-                         {"reason": "empty_or_non_candidate_tags", "selection_tags": sorted(selected)})
+                         {"reason": "empty_or_non_candidate_tags", "selection_tags": sorted(selected),
+                          "candidate_actions": actions, "candidate_tags": sorted(candidate_tags),
+                          "provider_payload": payload,
+                          "normalized_provider_payload": normalized_payload})
             return interpretation, capability_match, usage, budget_warnings
         hypothesis = interpretation.outcome_hypotheses[0]
         updated = interpretation.model_copy(update={"outcome_hypotheses": [hypothesis.model_copy(update={
             "outcome": hypothesis.outcome.model_copy(update={"selection_tags": sorted(set(hypothesis.outcome.selection_tags) | selected)}),
-            "evidence": [*hypothesis.evidence, *result.evidence],
+            "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
         })]})
         if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
-            record_event(context, state, "routing.semantic_discriminator_rejected", "classify", {"reason": "evidence_validation"})
+            record_event(context, state, "routing.semantic_discriminator_rejected", "classify", {
+                "reason": "evidence_validation", "candidate_actions": actions,
+                "provider_payload": payload,
+                "normalized_provider_payload": normalized_payload,
+            })
             return interpretation, capability_match, usage, budget_warnings
         narrowed = match_semantic_request(user_task, updated.outcome_hypotheses, request_mode=updated.request_mode)
         if narrowed.status != "exact":
@@ -117,7 +241,9 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
                     "matched_actions": tag_actions, "hypothesis_actions": tag_actions, "alternative_actions": [], "clarification_question": None})
         if narrowed.status != "exact" or len(narrowed.matched_actions) != 1:
             record_event(context, state, "routing.semantic_discriminator_rejected", "classify",
-                         {"reason": "tags_did_not_resolve_tie", "selection_tags": sorted(selected)})
+                         {"reason": "tags_did_not_resolve_tie", "selection_tags": sorted(selected),
+                          "candidate_actions": actions, "provider_payload": payload,
+                          "normalized_provider_payload": normalized_payload})
             return interpretation, capability_match, usage, budget_warnings
         record_event(context, state, "routing.semantic_discriminator_accepted", "classify",
                      {"selection_tags": sorted(selected), "matched_actions": narrowed.matched_actions})
@@ -125,7 +251,14 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
     except BaseException as error:
         if _is_fatal_exception(error):
             raise
-        record_event(context, state, "routing.semantic_discriminator_failed", "classify", {"error_type": type(error).__name__})
+        record_event(context, state, "routing.semantic_discriminator_failed", "classify", {
+            "error_type": type(error).__name__,
+            "error_message": str(error)[:2000],
+            "validation_issues": _validation_issue_types(error),
+            "candidate_actions": actions,
+            "provider_payload": payload,
+            "normalized_provider_payload": normalized_payload,
+        })
     finally:
         usage = append_llm_usage(usage, role="semantic_discriminator", model=context.semantic_model_name,
             response=raw, input_text=input_text, output_text=output_text, budget_tokens=context.task_token_budget,
