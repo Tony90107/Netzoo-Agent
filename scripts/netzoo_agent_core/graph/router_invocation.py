@@ -5,17 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import get_args
 from dataclasses import dataclass
-import json
-import re
 import time
 
 from pydantic import ValidationError
 from workflow_registry import OUTPUT_CAPABILITIES
 
-from ..contracts import AgentState, IntentDecision, LLMUsage, TaskDecision, _trace
+from ..contracts import AgentState, LLMUsage, TaskDecision, _trace
 from ..contracts.interaction import WorkflowContinuation
 from ..contracts.outcomes import (
-    CapabilityMatch,
     EvidenceDimension,
     RequestedOutcome,
     SemanticInterpretation,
@@ -44,11 +41,9 @@ from ..interpretation.unverified_evidence import (
 )
 from ..llm import (
     append_llm_usage,
-    build_intent_router_messages,
     build_semantic_interpreter_messages,
     build_semantic_patch_messages,
     build_semantic_reviewer_messages,
-    structured_result_payload,
 )
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
@@ -139,10 +134,11 @@ def _honourable_removals(payload) -> tuple[object, list[dict]]:
     of the first and 6 of the second, out of 14 failures in 36.
 
     A removal names one (dimension, value) to withdraw. When its `dimension` is
-    outside the closed vocabulary it names nothing that can exist in the evidence
-    list, so honouring it and ignoring it are the same act -- while rejecting the
-    patch over it is not. Only removals are treated this way: a malformed
-    *addition* is the repair itself failing, and stays strict.
+    outside the closed vocabulary, or its string value is blank, it names nothing
+    that can exist in the evidence list. Honouring it and ignoring it are therefore
+    the same act -- while rejecting the patch over it is not. Only removals are
+    treated this way: a malformed *addition* is the repair itself failing, and
+    stays strict.
 
     The second shape is the same list at the root and nested inside `outcome`
     with different contents. The nesting is an accommodation for a provider that
@@ -171,6 +167,11 @@ def _honourable_removals(payload) -> tuple[object, list[dict]]:
             dimension = item.get("dimension") if isinstance(item, Mapping) else None
             if isinstance(item, Mapping) and dimension not in _EVIDENCE_DIMENSIONS:
                 ignored.append({"reason": "removal_names_no_dimension",
+                                "field": "evidence_removals"})
+                continue
+            value = item.get("value") if isinstance(item, Mapping) else None
+            if isinstance(value, str) and not value.strip():
+                ignored.append({"reason": "removal_names_no_value",
                                 "field": "evidence_removals"})
                 continue
             kept.append(item)

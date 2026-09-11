@@ -75,6 +75,25 @@ The requested output path stores the labelled TF-by-gene regulation matrix;
 the sibling `<stem>.tfa<suffix>` stores the labelled TF-by-sample TFA matrix.
 Both artifacts are shape- and identifier-validated after execution.
 
+At the routing boundary, `tf_activity_matrix` is a first-class artifact type,
+and `regulatory_network_and_tf_activity` is the typed bundle for the joint
+result. GIRAFFE declares both concrete components in `produced_artifacts`; the
+matcher derives support for the bundle from that conjunction without naming a
+workflow or scanning the raw request for GIRAFFE-specific keywords. Entity
+constraints for secondary and composite artifacts come from the shared
+artifact ontology (`tf`, `gene`, and `sample`) rather than changing the entity
+contract of the primary TF-gene network.
+
+`signed_regulatory_effect_network` is the primary semantic result for GIRAFFE's
+regulation matrix. It represents a TF-gene network whose entries are signed
+partial regulatory effects rather than generic association strengths. The
+installed netZooPy 0.11.0 objective contains the expression reconstruction term
+`||Y - R @ abs(TFA)||²`: the sample-varying TFA values act as predictors, and
+the corresponding entries of `R` are linear-model coefficients. Positive
+coefficients represent activating effects and negative coefficients represent
+inhibitory effects. The matcher derives this from the typed artifact and
+registry capability; it does not scan raw request text for sign-related words.
+
 ## Workflow behavior
 
 `run_giraffe` is registered in the same policy/plan/executor/evaluator path as

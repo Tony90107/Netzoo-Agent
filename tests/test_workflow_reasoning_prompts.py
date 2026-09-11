@@ -60,6 +60,14 @@ def test_generated_reasoning_prompts_cover_implicit_workflow_intent():
     assert "Registered workflow execution mode" in response_prompt
     assert "without an explicit sample-specific request" not in response_prompt
     assert "selection_tags are registry-defined intent signals" in semantic_prompt
+    assert "biologically_informed_matrix_factorization" in semantic_prompt
+    assert "activity matrix is ONE compatible terminal goal" in semantic_prompt
+    assert "artifact_type=regulatory_network_and_tf_activity" in semantic_prompt
+    assert "artifact_type=signed_regulatory_effect_network" in semantic_prompt
+    assert "signed partial regulatory effects" in semantic_prompt
+    assert "linear-model coefficients" in semantic_prompt
+    assert "leave_one_out_network_inference" in semantic_prompt
+    assert "message_passing" in semantic_prompt
     assert "write or generate a script/template" in build_graph_prompts(
         ProjectPolicyLoader().load()
     ).intent
@@ -87,11 +95,40 @@ def test_registered_capability_metadata_is_the_only_pipeline_source():
     cobra = policy.workflows["run_cobra"].output_capability
     panda = policy.workflows["run_panda"].output_capability
     condor = policy.workflows["run_condor"].output_capability
+    giraffe = policy.workflows["run_giraffe"].output_capability
 
     assert "hospital_effect_assessment" in cobra.selection_tags
     assert cobra.handoff_targets == ["run_panda", "run_puma", "run_otter"]
     assert panda.handoff_targets == ["run_condor"]
     assert condor.handoff_targets == []
+    assert "biologically_informed_matrix_factorization" in giraffe.selection_tags
+    assert "joint_grn_tfa_inference" in giraffe.selection_tags
+    assert "signed_partial_regulatory_effects" in giraffe.selection_tags
+    assert "linear_model_coefficients" in giraffe.selection_tags
+    assert "tfa_covariate_regression" in giraffe.selection_tags
+    assert giraffe.artifact_type == "signed_regulatory_effect_network"
+    assert "biologically informed matrix factorization" in giraffe.handoff_contract
+    assert "Y approximately R times absolute TFA" in giraffe.handoff_contract
+
+
+def test_every_registered_selection_tag_has_a_scientific_gloss():
+    from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
+
+    registered = set().union(
+        *(capability.selection_tags for capability in OUTPUT_CAPABILITIES.values())
+    )
+
+    assert registered <= SELECTION_TAG_GLOSSARY.keys()
+
+
+def test_provider_schema_keeps_selection_signals_optional():
+    from netzoo_agent_core.contracts import RequestedOutcome
+
+    schema = RequestedOutcome.model_json_schema()
+
+    assert "selection_tags" in schema["properties"]
+    assert "selection_tags" not in schema["required"]
+    assert all("selection_tags" not in branch["required"] for branch in schema["anyOf"])
 
 
 def test_lioness_panda_contract_describes_internal_inference_inputs():

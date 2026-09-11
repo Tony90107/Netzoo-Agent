@@ -33,6 +33,24 @@ class ArtifactSemantics:
 ARTIFACT_SEMANTICS = {
     "measurement_dataset": ArtifactSemantics("Source measurements, not an inferred network"),
     "expression_matrix": ArtifactSemantics("Gene-by-sample expression measurements", frozenset({"gene", "sample"})),
+    "tf_activity_matrix": ArtifactSemantics(
+        "Inferred transcription-factor-by-sample activity values",
+        frozenset({"tf", "sample"}),
+        frozenset({"aggregate"}),
+        frozenset({"infer"}),
+    ),
+    "regulatory_network_and_tf_activity": ArtifactSemantics(
+        "A jointly inferred TF-gene regulatory network and TF-by-sample activity matrix",
+        frozenset({"tf", "gene", "sample"}),
+        frozenset({"aggregate"}),
+        frozenset({"infer"}),
+    ),
+    "signed_regulatory_effect_network": ArtifactSemantics(
+        "A TF-gene network whose signed partial effects are linear-model coefficients",
+        frozenset({"tf", "gene"}),
+        frozenset({"aggregate"}),
+        frozenset({"infer"}),
+    ),
     "mutation_matrix": ArtifactSemantics("Gene-by-sample mutation measurements", frozenset({"gene", "sample"})),
     "regulatory_network": ArtifactSemantics("Inferred regulator-to-target associations", granularities=frozenset({"aggregate", "sample_specific"})),
     "coexpression_network": ArtifactSemantics("Inferred gene-to-gene associations", frozenset({"gene", "sample"}), frozenset({"aggregate", "sample_specific"})),
@@ -56,6 +74,27 @@ ARTIFACT_SEMANTICS = {
 }
 
 
+# Composite terminal results are ontology-level conjunctions. A capability
+# supports one exactly when it declares every concrete component as an output;
+# the mapping never names a workflow and therefore also applies to future
+# implementations that expose the same result pair.
+ARTIFACT_COMPONENTS: dict[str, frozenset[str]] = {
+    "regulatory_network_and_tf_activity": frozenset(
+        {"regulatory_network", "tf_activity_matrix"}
+    ),
+}
+
+
+_REGULATORY_ARTIFACTS = frozenset(
+    {
+        "regulatory_network",
+        "regulatory_network_and_tf_activity",
+        "signed_regulatory_effect_network",
+        "unknown",
+    }
+)
+
+
 def artifact_field_constraints(artifact: str) -> dict:
     """Generation constraints from the same ontology used by strict validation."""
     rule = ARTIFACT_SEMANTICS[artifact]
@@ -66,7 +105,7 @@ def artifact_field_constraints(artifact: str) -> dict:
         fields["entity_types"] = {"items": {"enum": sorted(rule.entities | {"unknown"})}}
     if rule.granularities is not None:
         fields["granularity"] = {"enum": sorted(rule.granularities | {"unknown"})}
-    if artifact not in {"regulatory_network", "unknown"}:
+    if artifact not in _REGULATORY_ARTIFACTS:
         fields.update(regulator_types={"maxItems": 0}, target_types={"maxItems": 0})
     return fields
 
@@ -90,7 +129,7 @@ def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:
             {"granularity", "artifact_type"},
         ))
     roles = {"regulator_type", "regulator_types", "target_type", "target_types"}
-    if outcome.artifact_type not in {"regulatory_network", "unknown"} and (
+    if outcome.artifact_type not in _REGULATORY_ARTIFACTS and (
         outcome.regulator_types or outcome.target_types
         or roles.intersection(outcome.unresolved_dimensions)
     ):
@@ -99,7 +138,11 @@ def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:
             {"regulator_types", "target_types", "unresolved_dimensions",
              "artifact_type"},
         ))
-    if outcome.artifact_type == "regulatory_network":
+    if outcome.artifact_type in {
+        "regulatory_network",
+        "regulatory_network_and_tf_activity",
+        "signed_regulatory_effect_network",
+    }:
         role_entities = (set(outcome.regulator_types) | set(outcome.target_types)) - {"unknown"}
         if known_entities and not role_entities.issubset(known_entities):
             issues.append(Issue(

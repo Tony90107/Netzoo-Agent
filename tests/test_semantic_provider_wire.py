@@ -65,7 +65,16 @@ def test_provider_wire_preserves_required_fields_in_every_artifact_branch(model)
             else outcome["properties"]["operation"]["enum"]
         )
         assert branch["properties"]["operation"]["enum"] == expected_operations
-        valid = {"operation": "analyze", "artifact_type": artifact, "granularity": "aggregate"}
+        valid_operation = (
+            next(value for value in expected_operations if value != "unknown")
+            if operations is not None
+            else "analyze"
+        )
+        valid = {
+            "operation": valid_operation,
+            "artifact_type": artifact,
+            "granularity": "aggregate",
+        }
         validator.validate(valid)
         for field in outcome["required"]:
             assert not validator.is_valid({k: v for k, v in valid.items() if k != field})

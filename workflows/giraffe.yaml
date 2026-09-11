@@ -1,30 +1,33 @@
 policy_version: 2
 workflow: GIRAFFE
 action: run_giraffe
-description: Infer aggregate TF-gene regulation and TF activity with netZooPy GIRAFFE.
+description: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
 required_inputs: [expression_file, motif_file, ppi_file, output_file]
 optional_inputs: []
 validation_steps: [inspect_giraffe_inputs]
 execution_step: run_giraffe
 output_capability:
   operation: infer
-  artifact_type: regulatory_network
+  artifact_type: signed_regulatory_effect_network
   entity_types: [tf, gene]
   granularities: [aggregate]
+  produced_artifacts: [regulatory_network, tf_activity_matrix]
   regulator_types: [tf]
   target_types: [gene]
   guidance_predecessors: []
   input_artifacts: [expression_matrix]
   handoff_targets: []
-  selection_tags: [tf_gene_regulation, tfa, aggregate_network]
+  selection_tags: [tf_gene_regulation, tfa, aggregate_network, biologically_informed_matrix_factorization, joint_grn_tfa_inference, linear_model_coefficients, signed_partial_regulatory_effects, tfa_covariate_regression]
   handoff_contract: >-
     GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a
-    TF-by-TF PPI matrix after explicit labelled-file conversion. It produces an
-    aggregate TF-by-gene regulation matrix and a TF-by-sample TFA matrix. GIRAFFE
-    is not a direct CONDOR edge-list handoff; an explicit validated
-    matrix-to-edge-list conversion and user confirmation are required before any
-    downstream workflow. GIRAFFE has no direct handoff to PANDA, PUMA, LIONESS,
-    SAMBAR, DRAGON, OTTER, BONOBO, COBRA, or CONDOR.
+    TF-by-TF PPI matrix after explicit labelled-file conversion. Through biologically
+    informed matrix factorization it jointly fits gene expression as Y approximately
+    R times absolute TFA. TFA supplies the sample-varying predictors, while entries of R
+    are signed partial regulatory effects interpretable as linear-model coefficients:
+    positive for activation and negative for repression. It returns the aggregate
+    TF-by-gene R matrix and a TF-by-sample TFA matrix. A CONDOR handoff requires
+    validated matrix-to-edge-list conversion and user confirmation. No other direct
+    handoff is registered.
 conventions:
   - >-
     The verified netZooPy 0.11.0 API is `netZooPy.giraffe.Giraffe(expression,

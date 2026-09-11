@@ -25,12 +25,9 @@ from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
 from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
 
-# Reachability is a registry property, not a model one. This was
-# {"run_panda"}: its selection tags are a proper subset of OTTER's and
-# GIRAFFE's, so a rule requiring exactly one surviving candidate could never
-# pick it. The tie-break now prefers the unique minimum under subset order -- a
-# request naming no specialisation is asking for the baseline -- which also
-# resolves LIONESS-coexpression against BONOBO, and the set is empty.
+# Reachability is a registry property, not a model one. PANDA, OTTER and GIRAFFE
+# now carry distinct algorithmic tags, as do LIONESS-coexpression and BONOBO, so
+# a generic output request stays ambiguous while a stated method remains reachable.
 # BONOBO's *conditional* unreachability is a different defect and is pinned by
 # its own test below rather than listed here. Anything added back needs its
 # reason written beside it.
@@ -154,8 +151,11 @@ def test_declaring_sample_an_entity_no_longer_switches_the_recommended_tool():
 
 
 def test_each_coexpression_capability_is_reached_by_its_own_tag():
-    """With the arbitrary preference gone, the tag is what decides."""
+    """Algorithmic tags, rather than a subset-order default, decide."""
     assert _coexpression_match(["gene"], ["bayesian"]).matched_actions == ["run_bonobo"]
-    assert _coexpression_match(["gene"], ["coexpression"]).matched_actions == [
+    assert _coexpression_match(
+        ["gene"], ["leave_one_out_network_inference"]
+    ).matched_actions == [
         "run_lioness_coexpression",
     ]
+    assert _coexpression_match(["gene"], ["coexpression"]).status == "ambiguous"

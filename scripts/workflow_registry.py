@@ -86,6 +86,9 @@ Operation = Literal[
 ArtifactType = Literal[
     "measurement_dataset",
     "expression_matrix",
+    "tf_activity_matrix",
+    "regulatory_network_and_tf_activity",
+    "signed_regulatory_effect_network",
     "regulatory_network",
     "coexpression_network",
     "mutation_matrix",
@@ -111,6 +114,54 @@ EntityType = Literal[
     "omics_layer_1_feature", "omics_layer_2_feature", "unknown",
 ]
 Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
+
+
+# Workflow-independent meanings for the registry signals exposed to the semantic
+# interpreter.  Bare identifiers such as ``tfa`` and ``bayesian`` made the model
+# guess what counted as support and, in live routing, it usually returned an empty
+# list.  Keep the scientific vocabulary here beside the capability registry so
+# every consumer sees the same meanings without exposing action names.
+SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
+    "aggregate_network": "one cohort-wide or population-level network",
+    "batch_correction": "remove or adjust technical batch effects",
+    "bayesian": "Bayesian shrinkage estimation of sample-specific co-expression",
+    "biologically_informed_matrix_factorization": (
+        "factor gene expression using motif and TF-protein interaction priors"
+    ),
+    "bipartite_community_detection": "find communities in a two-mode network",
+    "cancer_subtyping": "derive patient or tumor subtypes",
+    "coexpression": "infer gene-gene co-expression relationships",
+    "covariate_association": "estimate how sample covariates change co-expression",
+    "high_order_correlation": "model higher-order covariance or correlation structure",
+    "hospital_effect_assessment": "assess or remove hospital or site effects",
+    "joint_grn_tfa_inference": (
+        "jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix"
+    ),
+    "linear_model_coefficients": (
+        "interpret TF-gene regulatory weights as coefficients in a linear expression model"
+    ),
+    "leave_one_out_network_inference": (
+        "derive each sample network from all-sample and leave-one-out networks"
+    ),
+    "message_passing": "iteratively pass messages among expression, motif, and PPI networks",
+    "mirna_regulation": "model miRNA-to-gene regulation",
+    "modules": "return network modules or community membership",
+    "multi_omic_network": "infer one network spanning two omics layers",
+    "partial_correlation": "infer conditional associations using partial correlation",
+    "pathway_scores": "produce pathway-level mutation scores",
+    "relaxed_graph_matching": "optimize a regulatory network by relaxed graph matching",
+    "sample_specific": "infer a separate network for each sample",
+    "signed_partial_regulatory_effects": (
+        "estimate positive activating and negative inhibitory partial regulatory effects"
+    ),
+    "sequencing_batch_effect_assessment": "assess or remove sequencing-batch effects",
+    "somatic_mutation": "analyze somatic mutation measurements",
+    "tf_gene_regulation": "model transcription-factor-to-gene regulation",
+    "tfa": "estimate transcription factor activity (TFA) for each sample",
+    "tfa_covariate_regression": (
+        "model gene expression with transcription factor activities as predictors"
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,7 +323,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             handoff_targets=("run_condor",),
-            selection_tags=frozenset({"tf_gene_regulation", "aggregate_network"}),
+            selection_tags=frozenset({
+                "tf_gene_regulation", "aggregate_network", "message_passing",
+            }),
             handoff_contract=(
                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
                 "PPI priors, or a validated adjusted gene-by-gene co-expression "
@@ -440,7 +493,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             produced_artifacts=frozenset({"coexpression_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix"}),
-            selection_tags=frozenset({"sample_specific", "coexpression"}),
+            selection_tags=frozenset({
+                "sample_specific", "coexpression", "leave_one_out_network_inference",
+            }),
             handoff_contract=(
                 "LIONESS co-expression consumes a gene-by-sample expression matrix "
                 "and produces sample-specific co-expression networks."
@@ -708,7 +763,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         },
         output_capability=OutputCapabilityDefinition(
             operation="infer",
-            artifact_type="regulatory_network",
+            artifact_type="signed_regulatory_effect_network",
             entity_types=frozenset({"tf", "gene"}),
             regulator_types=frozenset({"tf"}),
             target_types=frozenset({"gene"}),
@@ -716,18 +771,32 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             # TF-by-sample activity matrix; it does not return sample-specific
             # TF-gene networks.
             granularities=frozenset({"aggregate"}),
+            produced_artifacts=frozenset({
+                "regulatory_network", "tf_activity_matrix",
+            }),
             input_artifacts=frozenset({"expression_matrix"}),
             handoff_targets=(),
-            selection_tags=frozenset({"tf_gene_regulation", "tfa", "aggregate_network"}),
+            selection_tags=frozenset({
+                "tf_gene_regulation",
+                "tfa",
+                "aggregate_network",
+                "biologically_informed_matrix_factorization",
+                "joint_grn_tfa_inference",
+                "linear_model_coefficients",
+                "signed_partial_regulatory_effects",
+                "tfa_covariate_regression",
+            }),
             handoff_contract=(
                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
-                "It produces an aggregate TF-by-gene regulation matrix and a TF-by-sample "
-                "TFA matrix. GIRAFFE is not a direct CONDOR edge-list handoff; an "
-                "explicit validated matrix-to-edge-list conversion and user confirmation "
-                "are required before any downstream workflow. GIRAFFE has no direct "
-                "handoff to PANDA, PUMA, LIONESS, SAMBAR, DRAGON, OTTER, BONOBO, COBRA, "
-                "or CONDOR."
+                "Through biologically informed matrix factorization it jointly fits "
+                "gene expression as Y approximately R times absolute TFA. TFA supplies "
+                "the sample-varying predictors, while entries of R are signed partial "
+                "regulatory effects interpretable as linear-model coefficients: positive "
+                "for activation and negative for repression. It returns the aggregate "
+                "TF-by-gene R matrix and a TF-by-sample TFA matrix. "
+                "A CONDOR handoff requires validated matrix-to-edge-list conversion and "
+                "user confirmation. No other direct handoff is registered."
             ),
         ),
     ),

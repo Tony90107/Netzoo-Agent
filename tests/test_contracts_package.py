@@ -127,21 +127,30 @@ HISTORICAL_EXPORTS = [
 # operation=analyze in the artifact-dependent generation schema. This prevents
 # a review patch from carrying the proposed network's infer operation into the
 # terminal cohort-clustering result. Embedded schemas change transitively.
+# 2026-09-10: tf_activity_matrix is now a first-class artifact so GIRAFFE's TFA
+# output can be expressed without overloading optional selection tags. Those tags
+# remain optional at both Python and provider boundaries. Contracts embedding
+# ArtifactType or RequestedOutcome change transitively.
+# The joint GRN/TFA result is now a first-class composite artifact whose support
+# is derived from concrete produced-artifact components. This expands the same
+# ArtifactType-bearing schemas without changing their transport shape.
+# Signed partial regulatory-effect networks are now a first-class subtype, so
+# the model can express coefficient direction without relying on optional tags.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "b3ac31a38133016e597d805fe17adff10abb502b0488f0e3ec5f237b46cd52be",
-    "RouterDecision": "1834edb36d14ed0fc6311edd470c64eac3fecdfe1f1e4f7dc3c95e842b112bb1",
-    "RequestedOutcome": "a3987383482e806840a305f87d498768d5cffd9e3c0d338661297213eb229983",
+    "TaskDecision": "f8173ed369c9b4e31d42e7141873f04914c6cbf4baca3620712c195c7567531e",
+    "RouterDecision": "fe64ba8a2c630f241273b7bebef9ff59bf7c12aa0c3547619de2b4628975ffe7",
+    "RequestedOutcome": "adeea85942782cee47f34cc56cd3bf6b2385334c7eeaf76286e220d8189a2887",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
-    "OutcomeHypothesis": "eabe2790885ed4238ee572279c0804a6dfc855bcf5fcd531d908a2b6eb1ff663",
-    "CapabilityMatch": "b43330a9f99022b12c321a982dea0765a1bbb4fc749f42e8d99d49cebc4bb79a",
+    "OutcomeHypothesis": "3470a96bfbd4c67d4f0436f444db71ae8a899c3671ecc213f218785d22317ea9",
+    "CapabilityMatch": "430684751dc5fd4f7e6251ff6aba2bce250d4ca21968c61e650fd92e6aaa73c0",
     "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "7874d426766e6f00bc969f1a53e810e3a112b8317dc58fb2f68979a9cdc6b6e7",
+    "ProjectPolicySnapshot": "d87747c54baf47fb003512820efe3532548db6b721f891fed435667d67c60ec5",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
-    "Episode": "e338f839735bff5f06f76909a63b776ef7fb58cb10c6c0ba53a9067421a7709a",
+    "Episode": "05ce6485a00b9fb0ef59297ed175e5612fca3aceae66ebad20c9199f2ec0862a",
 }
 
 

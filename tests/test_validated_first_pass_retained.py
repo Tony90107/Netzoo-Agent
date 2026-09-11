@@ -120,7 +120,6 @@ class SchemaBreakingReviewProvider(ScriptedProvider):
     """
 
     def with_structured_output(self, schema, **_kwargs):
-        provider = self
         outer = super().with_structured_output(schema, **_kwargs)
 
         class Adapter:
@@ -129,14 +128,15 @@ class SchemaBreakingReviewProvider(ScriptedProvider):
                     return outer.invoke(messages)
                 if schema is IntentDecision:
                     return outer.invoke(messages)
-                # The shape a live review actually emitted: a removal naming a
-                # dimension but no value.
+                # A genuinely unparseable removal. Blank strings are now
+                # intentionally treated as inert instructions and have their
+                # own regression test; null still violates the wire contract.
                 return {
                     "request_mode": "guidance",
                     "semantic_goal": "Subtype patients",
                     "hypothesis_index": 0,
                     "outcome": {},
-                    "evidence_removals": [{"dimension": "operation", "value": ""}],
+                    "evidence_removals": [{"dimension": "operation", "value": None}],
                 }
 
         return Adapter()

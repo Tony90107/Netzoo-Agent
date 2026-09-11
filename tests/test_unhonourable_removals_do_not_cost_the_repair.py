@@ -60,6 +60,19 @@ def test_a_removal_naming_no_dimension_is_set_aside_and_the_repair_survives():
                         "field": "evidence_removals"}]
 
 
+def test_a_removal_naming_no_value_is_set_aside_and_the_repair_survives():
+    """An empty value cannot identify any valid evidence entry to withdraw."""
+    patch, ignored = _as_semantic_patch(payload(evidence_removals=[
+        {"dimension": "artifact_type", "value": ""},
+    ]))
+
+    assert patch is not None, "the addition was lost to an inert instruction"
+    assert [item.value for item in patch.evidence_additions] == ["mirna"]
+    assert patch.evidence_removals == []
+    assert ignored == [{"reason": "removal_names_no_value",
+                        "field": "evidence_removals"}]
+
+
 def test_the_dimension_names_the_model_actually_invented_are_set_aside():
     """The shape as observed, not as imagined.
 
