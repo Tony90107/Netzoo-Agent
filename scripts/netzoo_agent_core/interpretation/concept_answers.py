@@ -12,6 +12,7 @@ from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
 )
+from ..routing.named_labels import solely_named_run_action
 from .registry_guidance import (
     handoff_input_fields,
     preferred_registry_composition_actions,
@@ -26,6 +27,13 @@ _SCRIPT_REQUEST_PATTERN = re.compile(
     r"|\b(?:script|code|template)\b.{0,40}\b(?:write|generate|create)\b"
     r"|(?:幫我|請).{0,20}(?:寫|產生|生成).{0,20}(?:腳本|程式|script|code)",
     flags=re.IGNORECASE,
+)
+_WORKFLOW_CONTRACT_PATTERN = re.compile(
+    r"(?:input|inputs|file|files|data|parameter|parameters|輸入|檔案|資料|先驗)"
+    r".{0,100}(?:output|outputs|result|產生|輸出|結果|網路|network|matrix|矩陣)"
+    r"|(?:output|outputs|result|產生|輸出|結果|網路|network|matrix|矩陣)"
+    r".{0,100}(?:input|inputs|file|files|data|parameter|parameters|輸入|檔案|資料|先驗)",
+    flags=re.IGNORECASE | re.DOTALL,
 )
 
 _OPERATION_VERBS = {
@@ -381,6 +389,55 @@ def render_spec_backed_concept_answer(
     return None
 
 
+def render_registered_workflow_contract_answer(
+    task: str,
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Answer a named workflow's input/output contract without re-routing it.
+
+    A question such as "BONOBO needs which inputs, and does it produce a
+    regulatory or co-expression network?" mentions possible output categories as
+    alternatives. Those alternatives are not a selected terminal outcome, so a
+    semantic matcher must not turn them into a regulatory-network clarification.
+    """
+    if not (decision.in_scope and decision.action == "no_tool"):
+        return None
+    if not _WORKFLOW_CONTRACT_PATTERN.search(task):
+        return None
+    action = solely_named_run_action(task)
+    if action is None:
+        return None
+    spec = policy.workflows.get(action)
+    if spec is None or spec.output_capability is None:
+        return None
+    capability = spec.output_capability
+    inputs = ", ".join(spec.required_inputs) or "no registered required inputs"
+    optional = ", ".join(spec.optional_inputs)
+    if capability.artifact_type == "coexpression_network":
+        if "sample_specific" in capability.granularities:
+            output = "one gene-gene co-expression network per selected sample"
+        else:
+            output = "a gene-gene co-expression network"
+    else:
+        output = _capability_phrase(spec, decision)
+    lines = [
+        f"{spec.workflow}: {spec.description}",
+        f"Registered required inputs: {inputs}.",
+    ]
+    if optional:
+        lines.append(f"Optional controls: {optional}.")
+    lines.append(f"Output: {output}.")
+    if capability.artifact_type == "coexpression_network":
+        lines.append(
+            "This is a co-expression result, not a regulatory network (TF/miRNA) "
+            "or a covariance-decomposition artifact."
+        )
+    if spec.workflow.casefold() == "bonobo":
+        lines.append("P-value files require both `sparsify=true` and `save_pvals=true`.")
+    return _ui_text("\n".join(lines) + "\n\nNo files were inspected and no analysis ran.")
+
+
 def render_ambiguous_workflow_guidance(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
@@ -488,5 +545,6 @@ __all__ = [
     "render_outcome_clarification",
     "render_recovered_workflow_guidance",
     "render_spec_backed_concept_answer",
+    "render_registered_workflow_contract_answer",
     "render_workflow_composition_guidance",
 ]
