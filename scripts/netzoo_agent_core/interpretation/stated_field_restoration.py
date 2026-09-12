@@ -98,6 +98,36 @@ def _without_roles(outcome: RequestedOutcome) -> RequestedOutcome | None:
         return None
 
 
+def _without_sample_entity(outcome: RequestedOutcome) -> RequestedOutcome | None:
+    """Keep sample IDs as selection constraints, not co-expression nodes.
+
+    ``sample_specific`` describes one separately inferred network per sample;
+    the nodes in each gene-gene matrix are still genes.  The semantic ontology
+    permits ``sample`` for other sample-indexed artifacts, so this narrow rule
+    applies only when a co-expression outcome already names both gene and
+    sample.  It is a normalization of output semantics, not workflow choice.
+    """
+    if not (
+        outcome.artifact_type == "coexpression_network"
+        and outcome.granularity == "sample_specific"
+        and "gene" in outcome.entity_types
+        and "sample" in outcome.entity_types
+    ):
+        return None
+    payload = outcome.model_dump()
+    payload["entity_types"] = [
+        value for value in payload["entity_types"] if value != "sample"
+    ]
+    payload["unresolved_dimensions"] = [
+        value for value in payload["unresolved_dimensions"]
+        if value != "entity_type"
+    ]
+    try:
+        return RequestedOutcome.model_validate(payload)
+    except Exception:
+        return None
+
+
 def _with_scalar(outcome: RequestedOutcome, field: str, value: str) -> RequestedOutcome | None:
     payload = outcome.model_dump()
     payload[field] = value
@@ -123,6 +153,27 @@ def restore_stated_fields(
         outcome = hypothesis.outcome
         evidence = list(hypothesis.evidence)
         baseline = set(outcome_consistency_issues(outcome))
+        normalized_entities = _without_sample_entity(outcome)
+        if normalized_entities is not None:
+            retired = [
+                item.value for item in evidence
+                if item.dimension == "entity_type" and item.value == "sample"
+            ]
+            evidence = [
+                item for item in evidence
+                if not (item.dimension == "entity_type" and item.value == "sample")
+            ]
+            restored.append({
+                "hypothesis": index,
+                "field": "entity_types",
+                "value": "gene",
+                "previous_value": list(hypothesis.outcome.entity_types),
+                "source": "artifact_ontology",
+                "witnessed_span": None,
+                "evidence_retired": retired,
+            })
+            outcome = normalized_entities
+            baseline = set(outcome_consistency_issues(outcome))
         if align_artifact_constraints:
             rule = ARTIFACT_SEMANTICS[outcome.artifact_type]
             for field, permitted in (
