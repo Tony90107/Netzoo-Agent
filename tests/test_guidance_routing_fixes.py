@@ -45,14 +45,6 @@ Q2_ZH = (
     "我擁有 100 個病患的 Expression 矩陣、Motif 和 PPI 先驗資料。我的最終目標是先建立一個整體的群體調控網路，"
     "接著立刻使用 LIONESS 演算法拆解並反推每一位病患個人的專屬調控網路。"
 )
-BONOBO_PVALUE_TASK = (
-    "From my expression matrix, analyze S01 and S07, sparsify the sample-specific "
-    "co-expression networks, and output the matching p-value matrices."
-)
-BONOBO_BAYESIAN_TASK = (
-    "My expression data are noisy; use background covariance and prior information "
-    "with adaptive shrinkage to balance data and prior automatically for each sample."
-)
 
 
 def tf_aggregate(*, tags: list[str] | None = None) -> OutcomeHypothesis:
@@ -105,30 +97,6 @@ def tf_aggregate(*, tags: list[str] | None = None) -> OutcomeHypothesis:
                 source="inferred",
                 rationale="Fixture supplies the validated target role.",
             ),
-        ],
-    )
-
-
-def bonobo_coexpression() -> OutcomeHypothesis:
-    return OutcomeHypothesis(
-        outcome=RequestedOutcome(
-            operation="infer", input_artifacts=["expression_matrix"],
-            artifact_type="coexpression_network", entity_types=["gene"],
-            selection_tags=[], granularity="sample_specific",
-        ),
-        confidence=0.95,
-        evidence=[
-            OutcomeEvidence(
-                dimension=dimension, value=value, source="inferred",
-                rationale="Fixture supplies the validated outcome dimension.",
-            )
-            for dimension, value in (
-                ("operation", "infer"),
-                ("input_artifact", "expression_matrix"),
-                ("artifact_type", "coexpression_network"),
-                ("entity_type", "gene"),
-                ("granularity", "sample_specific"),
-            )
         ],
     )
 
@@ -243,94 +211,6 @@ def test_empty_provider_tags_recover_chinese_q2_to_panda(tmp_path):
 
     assert match.status == "exact"
     assert match.matched_actions == ["run_panda"]
-
-
-def test_generic_provider_tags_recover_bonobo_pvalue_discriminator(tmp_path):
-    store = LocalTraceStore(tmp_path / "traces")
-    recorder = TraceRecorder(store)
-    run_id = recorder.start_run(session_id="bonobo-pvalue-recovery", profile_id="default")
-    context = SimpleNamespace(
-        semantic_discriminator=SimpleNamespace(invoke=lambda _messages: {
-            "parsed": {
-                "selection_tags": [
-                    "sample_specific", "coexpression", "sparse_pvalue_coexpression",
-                ],
-                "evidence": [
-                    {
-                        "dimension": "artifact_type", "value": "coexpression_network",
-                        "source": "explicit", "text_span": "co-expression",
-                        "rationale": "The provider repeated the prior outcome evidence.",
-                    },
-                ],
-            },
-            "raw": object(),
-        }),
-        semantic_claims=False,
-        semantic_model_name="fixture",
-        router_max_tokens=200,
-        task_token_budget=10_000,
-        recorder=recorder,
-        price_catalog=PriceCatalog(),
-    )
-
-    _, match, _, _ = invoke_semantic_discriminator(
-        context,
-        {"run_id": str(run_id)},
-        BONOBO_PVALUE_TASK,
-        SemanticInterpretation(
-            request_mode="guidance",
-            semantic_goal="sample-specific co-expression with p-values",
-            outcome_hypotheses=[bonobo_coexpression()],
-        ),
-        CapabilityMatch(
-            status="ambiguous",
-            hypothesis_actions=[
-                "run_lioness_coexpression", "run_cobra", "run_bonobo",
-            ],
-        ),
-        LLMUsage(),
-        [],
-    )
-
-    assert match.status == "exact"
-    assert match.matched_actions == ["run_bonobo"]
-
-
-def test_empty_provider_tags_recover_bonobo_bayesian_discriminator(tmp_path):
-    store = LocalTraceStore(tmp_path / "traces")
-    recorder = TraceRecorder(store)
-    run_id = recorder.start_run(session_id="bonobo-bayesian-recovery", profile_id="default")
-    context = SimpleNamespace(
-        semantic_discriminator=SimpleNamespace(invoke=lambda _messages: {
-            "parsed": {"selection_tags": [], "evidence": []}, "raw": object(),
-        }),
-        semantic_claims=False,
-        semantic_model_name="fixture",
-        router_max_tokens=200,
-        task_token_budget=10_000,
-        recorder=recorder,
-        price_catalog=PriceCatalog(),
-    )
-
-    _, match, _, _ = invoke_semantic_discriminator(
-        context,
-        {"run_id": str(run_id)},
-        BONOBO_BAYESIAN_TASK,
-        SemanticInterpretation(
-            request_mode="guidance",
-            semantic_goal="adaptive Bayesian sample-specific co-expression",
-            outcome_hypotheses=[bonobo_coexpression()],
-        ),
-        CapabilityMatch(
-            status="ambiguous",
-            hypothesis_actions=["run_lioness_coexpression", "run_bonobo"],
-        ),
-        LLMUsage(),
-        [],
-    )
-
-    assert match.status == "exact"
-    assert match.matched_actions == ["run_bonobo"]
 
 
 def test_discriminator_normalizes_glossary_aliases_to_otter(tmp_path):

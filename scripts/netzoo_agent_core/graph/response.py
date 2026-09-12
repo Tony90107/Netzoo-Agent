@@ -28,7 +28,6 @@ from ..evaluation import (
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
-    render_registered_workflow_contract_answer,
     render_outcome_clarification,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
@@ -138,11 +137,6 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     handoff_script = render_registered_handoff_script_guidance(task, decision, context.project_policy)
     if handoff_script is not None:
         return {"messages": [AIMessage(content=handoff_script)]}
-    workflow_contract_answer = render_registered_workflow_contract_answer(
-        task, decision, context.project_policy,
-    )
-    if workflow_contract_answer is not None:
-        return {"messages": [AIMessage(content=workflow_contract_answer)]}
     outcome_clarification = render_outcome_clarification(
         decision,
         context.project_policy,
