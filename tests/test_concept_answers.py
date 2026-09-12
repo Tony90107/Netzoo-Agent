@@ -20,7 +20,6 @@ from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_recovered_workflow_guidance,
     render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
-    render_registered_workflow_contract_answer,
 )
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
@@ -68,22 +67,6 @@ def test_non_purpose_question_keeps_response_model_path():
         render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy)
         is None
     )
-
-
-def test_named_workflow_input_output_question_uses_registered_contract():
-    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
-
-    answer = render_registered_workflow_contract_answer(
-        "BONOBO 需要哪些輸入？最後產生的是調控網路、co-expression network，還是 covariance matrix？",
-        _decision(),
-        policy,
-    )
-
-    assert answer is not None
-    assert "BONOBO" in answer
-    assert "expression_file" in answer
-    assert "sample-specific gene-gene co-expression" in answer
-    assert "not a regulatory network" in answer
 
 
 def test_recovered_input_boundary_is_registry_driven_not_mutation_specific():

@@ -125,9 +125,6 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "aggregate_network": "one cohort-wide or population-level network",
     "batch_correction": "remove or adjust technical batch effects",
     "bayesian": "Bayesian shrinkage estimation of sample-specific co-expression",
-    "sparse_pvalue_coexpression": (
-        "sparsify sample-specific co-expression and return matching p-value matrices"
-    ),
     "biologically_informed_matrix_factorization": (
         "factor gene expression using motif and TF-protein interaction priors"
     ),
@@ -860,10 +857,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             granularities=frozenset({"sample_specific"}),
             input_artifacts=frozenset({"expression_matrix"}),
             handoff_targets=(),
-            selection_tags=frozenset({
-                "sample_specific", "coexpression", "bayesian",
-                "sparse_pvalue_coexpression",
-            }),
+            selection_tags=frozenset({"sample_specific", "coexpression", "bayesian"}),
             handoff_contract=(
                 "BONOBO consumes a labelled gene-by-sample expression matrix and "
                 "produces one gene-by-gene sample-specific co-expression matrix per "

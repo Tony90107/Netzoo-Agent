@@ -145,11 +145,6 @@ A method posed under should/can/whether is a candidate under evaluation, not a
 competing terminal result. Do not create another hypothesis solely for the proposed method.
 Create multiple hypotheses only when the request genuinely supports competing
 terminal scientific goals.
-When the user names a registered workflow and asks about its inputs, outputs, or
-whether its result is one type versus another, treat the listed types as answer
-choices in a documentation question—not as a selected terminal outcome. Preserve
-the named workflow as the subject of the question and do not infer a regulatory
-network merely because that category appears among the alternatives.
 
 Set request_mode from the meaning of the complete request rather than from a
 keyword or a fixed phrase:

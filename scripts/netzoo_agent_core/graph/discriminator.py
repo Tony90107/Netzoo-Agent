@@ -30,14 +30,6 @@ _LIONESS_BASE_MARKERS = (
     re.compile(r"(?:整體|整体|群體|群体|cohort|aggregate|population).{0,32}(?:調控|调控)?(?:網路|网络|network)|(?:base|baseline).{0,20}(?:network|網路|网络)", re.IGNORECASE),
     re.compile(r"\bLIONESS\b", re.IGNORECASE),
 )
-_BONOBO_BAYESIAN_MARKERS = (
-    re.compile(r"\b(?:Bayesian|prior|shrinkage|covariance)\b|先驗|收縮|共變異", re.IGNORECASE),
-    re.compile(r"\b(?:adaptive|automatically?\s+estimate|balance|weight)\b|自動|適應|權衡|平衡", re.IGNORECASE),
-)
-_BONOBO_PVALUE_MARKERS = (
-    re.compile(r"\b(?:sparsif(?:y|ied|ication)|sparse)\b|稀疏化|稀疏", re.IGNORECASE),
-    re.compile(r"\b(?:p[- ]?values?|p[- ]?value\s+matrix)\b|p值|p-value", re.IGNORECASE),
-)
 _DISCRIMINATOR_TAG_ALIASES = {
     "explicit objective/loss": "relaxed_graph_matching",
     "objective/loss": "relaxed_graph_matching",
@@ -87,15 +79,13 @@ def _recover_explicit_selection_tag(
 ) -> tuple[str, OutcomeEvidence] | None:
     """Recover one strong bilingual tag when the provider returned an empty set.
 
-    This is deliberately narrower than ordinary routing. It only recognizes
+    This is deliberately narrower than ordinary routing. It only recognizes two
     registry signals whose meanings are stable and whose evidence can be quoted
     exactly from the request. Ambiguous or partial wording remains ambiguous.
     """
     rules = {
         "relaxed_graph_matching": _RELAXED_GRAPH_MARKERS,
         "lioness_base_compatibility": _LIONESS_BASE_MARKERS,
-        "bayesian": _BONOBO_BAYESIAN_MARKERS,
-        "sparse_pvalue_coexpression": _BONOBO_PVALUE_MARKERS,
     }
     recoveries: list[tuple[str, OutcomeEvidence]] = []
     for tag, markers in rules.items():
@@ -203,46 +193,16 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
         record_event(context, state, "routing.semantic_discriminator_started", "classify", {"candidate_count": len(actions)})
         payload, raw = semantic_payload(adapter.invoke(messages))
         normalized_payload = _canonicalize_discriminator_payload(payload)
-        try:
-            result = SemanticDiscriminator.model_validate(normalized_payload)
-        except Exception:
-            # A live provider occasionally echoed the complete semantic
-            # outcome evidence alongside BONOBO tags.  The discriminator
-            # contract accepts only selection_tag evidence; discard that
-            # malformed tag payload so the bounded, quote-backed BONOBO
-            # recovery below can still inspect the original request.
-            raw_tags = set(normalized_payload.get("selection_tags") or ())
-            raw_evidence = normalized_payload.get("evidence") or []
-            if (
-                {"bayesian", "sparse_pvalue_coexpression"}.intersection(raw_tags)
-                and not any(
-                    isinstance(item, dict)
-                    and item.get("dimension") == "selection_tag"
-                    for item in raw_evidence
-                )
-            ):
-                normalized_payload = {"selection_tags": [], "evidence": []}
-                result = SemanticDiscriminator.model_validate(normalized_payload)
-            else:
-                raise
+        result = SemanticDiscriminator.model_validate(normalized_payload)
         output_text = result.model_dump_json(); call_status = "success"
         candidate_tags = {tag for action in actions for tag in OUTPUT_CAPABILITIES[action].selection_tags}
         selected = set(result.selection_tags)
         recovered_evidence = None
-        # Providers often return the broad shared tags (sample_specific and
-        # coexpression) even when the request contains a stronger BONOBO
-        # discriminator.  Recover that explicit signal whenever the returned
-        # tags still leave the candidate tie unresolved, not only when the
-        # provider returned an empty list.
-        tag_actions = [
-            action for action in actions
-            if selected and selected.issubset(OUTPUT_CAPABILITIES[action].selection_tags)
-        ]
-        if not selected or len(tag_actions) != 1:
+        if not selected:
             recovered = _recover_explicit_selection_tag(user_task, candidate_tags)
             if recovered is not None:
                 recovered_tag, recovered_evidence = recovered
-                selected = set(selected) | {recovered_tag}
+                selected = {recovered_tag}
                 record_event(
                     context,
                     state,
