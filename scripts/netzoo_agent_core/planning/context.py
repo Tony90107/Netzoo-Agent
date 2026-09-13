@@ -21,6 +21,7 @@ from ..contracts import (
 )
 from ..policy import ProjectPolicyLoader
 from ..routing import enforce_capability_gate
+from ..handoff import build_bonobo_handoff, explicit_bonobo_handoff_requested
 
 __all__: list[str] = []
 
@@ -39,6 +40,7 @@ class _PlanningContext:
     action: str
     workflow: str
     required: list[str]
+    workflow_handoff: Any | None = None
     content_mapper: Any | None = None
     preflight_errors: list[str] = field(default_factory=list)
 
@@ -76,7 +78,46 @@ def _prepare_planning_context(
     workflow_spec = None
     action = decision.action
     workflow = _workflow_name(action)
-    if action != "no_tool":
+    handoff = None
+    if explicit_bonobo_handoff_requested(task):
+        handoff = build_bonobo_handoff(
+            task,
+            decision,
+            policy_model.workflows if policy_model is not None else None,
+        )
+        if handoff is not None and handoff.status != "validated":
+            decision.should_execute = False
+            decision.action = "no_tool"
+            decision.intent_type = "answer_question"
+            decision.missing_inputs = []
+            return WorkflowPlan(
+                workflow=handoff.producer_workflow,
+                objective=handoff.reason,
+                decision=decision.model_dump(),
+                workflow_handoff=handoff,
+                status="needs_input",
+                question=handoff.reason,
+                memory_notes=memory_notes,
+                policy_hash=policy_hash,
+                policy_notes=policy_notes,
+            )
+        if handoff is not None and handoff.consumer_action is not None:
+            decision = decision.model_copy(
+                update={
+                    "action": handoff.producer_action,
+                    "should_execute": True,
+                    "intent_type": "run_analysis",
+                    "recommended_actions": [
+                        handoff.producer_action,
+                        handoff.consumer_action,
+                    ],
+                }
+            )
+            action = decision.action
+            workflow = _workflow_name(action)
+    if action != "no_tool" and not (
+        handoff is not None and handoff.status == "validated"
+    ):
         decision = enforce_capability_gate(decision, user_task=task)
         action = decision.action
         workflow = _workflow_name(action)
@@ -115,6 +156,10 @@ def _prepare_planning_context(
         if workflow_spec is not None
         else list(REQUIRED_INPUTS[action])
     )
+    if handoff is not None and handoff.status == "validated":
+        required.extend(
+            item for item in handoff.required_prior_inputs if item not in required
+        )
     return _PlanningContext(
         decision=decision,
         task=task,
@@ -128,5 +173,8 @@ def _prepare_planning_context(
         action=action,
         workflow=workflow,
         required=required,
+        workflow_handoff=handoff
+        if explicit_bonobo_handoff_requested(task)
+        else None,
         content_mapper=content_mapper,
     )

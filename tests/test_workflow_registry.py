@@ -7,7 +7,12 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as agent  # noqa: E402
-from workflow_registry import ACTION_DEFINITIONS, ACTION_NAMES  # noqa: E402
+from workflow_registry import (  # noqa: E402
+    ACTION_DEFINITIONS,
+    ACTION_NAMES,
+    get_controls,
+    resolve_conditional_output,
+)
 
 
 class WorkflowRegistryTests(unittest.TestCase):
@@ -33,6 +38,40 @@ class WorkflowRegistryTests(unittest.TestCase):
                     agent.CODE_VALIDATION_STEPS[action],
                     list(definition.validation_steps),
                 )
+
+    def test_controls_are_typed_and_non_bonobo_workflows_do_not_leak_bonobo_controls(self):
+        bonobo_controls = get_controls("run_bonobo")
+        self.assertIn("sample_names", {item.name for item in bonobo_controls})
+        for item in bonobo_controls:
+            self.assertTrue(item.executor_argument)
+            self.assertIn(
+                item.control_type,
+                {"boolean", "integer", "number", "string", "string_list", "enum"},
+            )
+        panda_controls = get_controls("run_panda")
+        self.assertEqual([item.name for item in panda_controls], ["with_header"])
+
+    def test_selection_tags_filter_only_registry_declared_controls(self):
+        sample_controls = get_controls("run_bonobo", {"sample_specific"})
+        sparse_controls = get_controls(
+            "run_bonobo", {"sparse_pvalue_coexpression"}
+        )
+        self.assertIn("sample_names", {item.name for item in sample_controls})
+        self.assertNotIn("save_pvals", {item.name for item in sample_controls})
+        self.assertIn("save_pvals", {item.name for item in sparse_controls})
+        self.assertNotIn("sample_names", {item.name for item in sparse_controls})
+
+    def test_bonobo_conditional_output_is_machine_resolvable(self):
+        rule = resolve_conditional_output(
+            "run_bonobo", {"sparsify": True, "save_pvals": True}
+        )
+        self.assertIsNotNone(rule)
+        self.assertEqual(
+            rule.produced_artifacts,
+            frozenset({"coexpression_network", "pvalue_matrix"}),
+        )
+        self.assertIn("full co-expression matrix", rule.semantics)
+        self.assertIn("p-value matrix", rule.semantics)
 
 
 if __name__ == "__main__":

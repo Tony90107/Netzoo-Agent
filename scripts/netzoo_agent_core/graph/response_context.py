@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from workflow_registry import get_controls
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation.verified_guidance import guidance_contract
@@ -110,6 +111,10 @@ def validated_workflow_context(
                     if item in OUTPUT_ROLE_FIELDS
                 ],
                 "optional_inputs": spec.optional_inputs,
+                "controls": [
+                    item.model_dump(mode="json")
+                    for item in get_controls(action, registry=policy.workflows)
+                ],
                 "execution_step": spec.execution_step,
                 "output_files": spec.output_files,
                 "conventions": spec.conventions,

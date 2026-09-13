@@ -12,6 +12,56 @@ from ..contracts import (
 )
 from ..routing import structure_tool_result
 
+
+def _handoff_output_failures(
+    plan: WorkflowPlan,
+    result: ToolExecutionResult,
+) -> list[str]:
+    """Check that a successful producer result still matches its typed handoff."""
+    handoff = plan.workflow_handoff
+    if (
+        handoff is None
+        or handoff.status != "validated"
+        or result.action != handoff.producer_action
+        or result.status != "success"
+    ):
+        return []
+
+    failures: list[str] = []
+    expected_artifacts = {
+        path
+        for paths in handoff.artifact_paths.values()
+        for path in paths
+    }
+    expected_artifacts.update(handoff.source_artifact_paths)
+    reported_artifacts = set(result.artifacts)
+    if not expected_artifacts:
+        failures.append("validated handoff has no planned producer artifact paths")
+    else:
+        missing_artifacts = sorted(expected_artifacts - reported_artifacts)
+        if missing_artifacts:
+            failures.append(
+                "producer result did not verify planned handoff artifacts: "
+                + ", ".join(missing_artifacts)
+            )
+
+    sample_count = result.metrics.get("bonobo_samples")
+    if sample_count is not None and sample_count != len(handoff.sample_ids):
+        failures.append(
+            "producer result sample count does not match the handoff sample identity"
+        )
+    gene_count = result.metrics.get("bonobo_genes")
+    if gene_count is not None and gene_count != len(handoff.gene_ids):
+        failures.append(
+            "producer result gene count does not match the handoff gene order"
+        )
+    if sample_count is None or gene_count is None:
+        failures.append(
+            "producer result did not expose BONOBO sample/gene identity metrics"
+        )
+    return failures
+
+
 def evaluate_step_result(
     plan: WorkflowPlan,
     step_index: int,
@@ -49,6 +99,13 @@ def evaluate_step_result(
         return EvaluationResult(
             status="failed",
             reason="The structured tool result reports a validation or execution failure.",
+        )
+    handoff_failures = _handoff_output_failures(plan, structured)
+    if handoff_failures:
+        return EvaluationResult(
+            status="failed",
+            reason="The verified producer output violated the workflow handoff contract: "
+            + "; ".join(handoff_failures),
         )
     if step_index + 1 < len(plan.steps):
         return EvaluationResult(

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .paths import _resolve_user_path
+from workflow_registry import resolve_conditional_output
 
 BONOBO_OUTPUT_FORMATS = frozenset({".h5", ".hdf", ".txt", ".csv"})
 BONOBO_MANIFEST = "manifest.json"
@@ -261,8 +262,15 @@ def inspect_bonobo_inputs_impl(
                 )
             if not 0.0 < float(confidence) < 1.0:
                 raise ValueError("BONOBO confidence must be strictly between 0 and 1")
-            if save_pvals and not sparsify:
-                raise ValueError("BONOBO save_pvals=true requires sparsify=true")
+            output_rule = resolve_conditional_output(
+                "run_bonobo", {"sparsify": sparsify, "save_pvals": save_pvals}
+            )
+            if output_rule is None or not output_rule.valid:
+                raise ValueError(
+                    output_rule.semantics
+                    if output_rule is not None
+                    else "BONOBO output combination is not registered"
+                )
             paths = bonobo_artifact_paths(
                 output_dir,
                 bundle.selected_sample_ids,
@@ -274,6 +282,7 @@ def inspect_bonobo_inputs_impl(
             lines.append(
                 "  p-values: enabled" if save_pvals else "  p-values: not requested"
             )
+            lines.append(f"  output semantics: {output_rule.semantics}")
             lines.append(
                 "  expected network files: "
                 + ", ".join(_format_path(item) for item in paths["networks"])
@@ -343,8 +352,15 @@ def validate_bonobo_output(
     if not root.is_dir():
         errors.append(f"BONOBO output folder is missing or not a directory: {root}")
         return False, errors, artifacts, metrics
-    if save_pvals and not sparsify:
-        errors.append("BONOBO save_pvals=true requires sparsify=true")
+    output_rule = resolve_conditional_output(
+        "run_bonobo", {"sparsify": sparsify, "save_pvals": save_pvals}
+    )
+    if output_rule is None or not output_rule.valid:
+        errors.append(
+            output_rule.semantics
+            if output_rule is not None
+            else "BONOBO output combination is not registered"
+        )
     try:
         paths = bonobo_artifact_paths(root, sample_ids, output_format, save_pvals=save_pvals)
     except ValueError as error:
@@ -390,6 +406,18 @@ def validate_bonobo_output(
                 errors.append("BONOBO manifest sample_to_pvalues does not match the p-value contract")
             if bool(manifest.get("save_pvals")) != bool(save_pvals):
                 errors.append("BONOBO manifest save_pvals does not match the plan")
+            if output_rule is not None:
+                for field_name, expected in output_rule.manifest_expectations.items():
+                    if manifest.get(field_name) != expected:
+                        errors.append(
+                            f"BONOBO manifest {field_name} does not match the registered output contract"
+                        )
+                if manifest.get("output_semantics") != output_rule.semantics:
+                    errors.append("BONOBO manifest output_semantics does not match the registered output contract")
+                if sorted(manifest.get("produced_artifacts", [])) != sorted(
+                    output_rule.produced_artifacts
+                ):
+                    errors.append("BONOBO manifest produced_artifacts does not match the registered output contract")
             if manifest.get("aggregate_network") is not None or manifest.get("prior_network") is not None:
                 errors.append("BONOBO must not claim an aggregate or prior network artifact")
         except (OSError, ValueError, TypeError) as error:
@@ -459,6 +487,15 @@ def write_bonobo_manifest(
     root = _resolve_user_path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     paths = bonobo_artifact_paths(root, bundle.selected_sample_ids, output_format, save_pvals=save_pvals)
+    output_rule = resolve_conditional_output(
+        "run_bonobo", {"sparsify": sparsify, "save_pvals": save_pvals}
+    )
+    if output_rule is None or not output_rule.valid:
+        raise ValueError(
+            output_rule.semantics
+            if output_rule is not None
+            else "BONOBO output combination is not registered"
+        )
     payload = {
         "method": "BONOBO",
         "api": "netZooPy.bonobo.Bonobo.run_bonobo",
@@ -487,7 +524,10 @@ def write_bonobo_manifest(
         "aggregate_network": None,
         "prior_network": None,
         "interpretation": "sample-specific gene-gene co-expression association matrices; not a GRN or causal network",
+        "produced_artifacts": sorted(output_rule.produced_artifacts),
+        "output_semantics": output_rule.semantics,
     }
+    payload.update(output_rule.manifest_expectations)
     manifest = root / BONOBO_MANIFEST
     manifest.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return manifest

@@ -1,13 +1,14 @@
 """Code-enforced workflow/action registry for the NetZoo harness.
 
 The YAML workflow files remain independently validated policy data. This module
-is the single Python source for action names, required inputs, validation steps,
-executor arguments, and memory metadata.
+is the single Python source for action names, inputs, controls, validation steps,
+executor arguments, output capabilities, and memory metadata.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping, get_args
 
 
@@ -91,6 +92,7 @@ ArtifactType = Literal[
     "signed_regulatory_effect_network",
     "regulatory_network",
     "coexpression_network",
+    "pvalue_matrix",
     "mutation_matrix",
     "pathway_mutation_matrix",
     "gene_mutation_scores",
@@ -114,6 +116,9 @@ EntityType = Literal[
     "omics_layer_1_feature", "omics_layer_2_feature", "unknown",
 ]
 Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
+ControlType = Literal[
+    "boolean", "integer", "number", "string", "string_list", "enum"
+]
 
 
 # Workflow-independent meanings for the registry signals exposed to the semantic
@@ -125,6 +130,9 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "aggregate_network": "one cohort-wide or population-level network",
     "batch_correction": "remove or adjust technical batch effects",
     "bayesian": "Bayesian shrinkage estimation of sample-specific co-expression",
+    "sparse_pvalue_coexpression": (
+        "sparsify sample-specific co-expression and return matching p-value matrices"
+    ),
     "biologically_informed_matrix_factorization": (
         "factor gene expression using motif and TF-protein interaction priors"
     ),
@@ -171,12 +179,51 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
 
 
 @dataclass(frozen=True, slots=True)
+class WorkflowControlDefinition:
+    """One user-facing control and its executor schema contract."""
+
+    name: str
+    control_type: ControlType
+    default: Any = None
+    allowed_values: tuple[Any, ...] = ()
+    minimum: float | None = None
+    maximum: float | None = None
+    nullable: bool = False
+    selection_tags: frozenset[str] = frozenset()
+    executor_argument: str | None = None
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ConditionalOutputDefinition:
+    """Machine-checkable output semantics for a control combination."""
+
+    when: Mapping[str, Any]
+    produced_artifacts: frozenset[ArtifactType]
+    semantics: str
+    manifest_expectations: Mapping[str, Any] = field(default_factory=dict)
+    valid: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class HandoffConsumerDefinition:
+    """A consumer whose registered input schema accepts a producer artifact."""
+
+    action: RecommendedAction
+    workflow: str
+    input_field: str
+    required_prior_inputs: tuple[str, ...] = ()
+    accepted_input_granularities: frozenset[Granularity] = frozenset()
+
+
+@dataclass(frozen=True, slots=True)
 class OutputCapabilityDefinition:
     operation: Literal["infer", "analyze"]
     artifact_type: ArtifactType
     entity_types: frozenset[EntityType]
     granularities: frozenset[Granularity]
     accepted_input_modalities: frozenset[InputModality] = frozenset()
+    accepted_input_granularities: frozenset[Granularity] = frozenset()
     produced_artifacts: frozenset[ArtifactType] = frozenset()
     transformations: frozenset[str] = frozenset()
     scientific_objectives: frozenset[str] = frozenset()
@@ -193,6 +240,7 @@ class OutputCapabilityDefinition:
     handoff_targets: tuple[RecommendedAction, ...] = ()
     selection_tags: frozenset[str] = frozenset()
     handoff_contract: str = ""
+    conditional_outputs: tuple[ConditionalOutputDefinition, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +261,7 @@ class ActionDefinition:
     memory_metadata: Mapping[str, str] = field(default_factory=dict)
     cli_command: str | None = None
     handoff_cli_commands: Mapping[str, str] = field(default_factory=dict)
+    controls: tuple[WorkflowControlDefinition, ...] = ()
     output_capability: OutputCapabilityDefinition | None = None
 
 
@@ -333,9 +382,11 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             accepted_input_modalities=frozenset(
                 {"gene_expression", "coexpression"}
             ),
+            accepted_input_granularities=frozenset({"aggregate"}),
             produced_artifacts=frozenset({"regulatory_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({
                 "tf_gene_regulation", "aggregate_network", "message_passing",
@@ -386,10 +437,11 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             accepted_input_modalities=frozenset(
                 {"gene_expression", "coexpression"}
             ),
+            accepted_input_granularities=frozenset({"aggregate"}),
             produced_artifacts=frozenset({"regulatory_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
-            required_input_artifacts=frozenset({"mirna_prior"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior", "mirna_prior"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
             handoff_contract=(
@@ -434,6 +486,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             accepted_input_modalities=frozenset({"gene_expression"}),
             produced_artifacts=frozenset({"regulatory_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             guidance_predecessors=("run_panda",),
             input_artifacts=frozenset({"expression_matrix"}),
             selection_tags=frozenset({"sample_specific", "tf_gene_regulation"}),
@@ -478,9 +531,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             accepted_input_modalities=frozenset({"gene_expression"}),
             produced_artifacts=frozenset({"regulatory_network"}),
             incompatible_input_artifacts=frozenset({"mutation_matrix"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior", "mirna_prior"}),
             guidance_predecessors=("run_puma",),
             input_artifacts=frozenset({"expression_matrix"}),
-            required_input_artifacts=frozenset({"mirna_prior"}),
             selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
@@ -705,7 +758,11 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="multi_omic_network",
             entity_types=frozenset({"omics_layer_1_feature", "omics_layer_2_feature"}),
             granularities=frozenset({"aggregate"}),
-            input_artifacts=frozenset({"measurement_dataset"}),
+            # `expression_matrix` is one concrete form of the measured omics
+            # table that DRAGON can consume. Keep the generic value as well:
+            # semantic routing may know only that the inputs are measurements,
+            # while the executor still requires exactly two layer files.
+            input_artifacts=frozenset({"measurement_dataset", "expression_matrix"}),
             selection_tags=frozenset({"multi_omic_network", "partial_correlation", "aggregate_network"}),
             handoff_contract=(
                 "DRAGON consumes exactly two paired sample-by-feature continuous omics tables "
@@ -744,6 +801,8 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             granularities=frozenset({"aggregate"}),
             guidance_predecessors=(),
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
+            accepted_input_granularities=frozenset({"aggregate"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
             handoff_contract=(
@@ -793,6 +852,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "regulatory_network", "tf_activity_matrix",
             }),
             input_artifacts=frozenset({"expression_matrix"}),
+            required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             handoff_targets=(),
             selection_tags=frozenset({
                 "tf_gene_regulation",
@@ -857,7 +917,60 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             granularities=frozenset({"sample_specific"}),
             input_artifacts=frozenset({"expression_matrix"}),
             handoff_targets=(),
-            selection_tags=frozenset({"sample_specific", "coexpression", "bayesian"}),
+            produced_artifacts=frozenset({"coexpression_network", "pvalue_matrix"}),
+            conditional_outputs=(
+                ConditionalOutputDefinition(
+                    when={"sparsify": False, "save_pvals": False},
+                    produced_artifacts=frozenset({"coexpression_network"}),
+                    semantics=(
+                        "full sample-specific gene-gene co-expression matrices; "
+                        "no p-value artifact is written"
+                    ),
+                    manifest_expectations={
+                        "sparsify_requested": False,
+                        "network_sparsified": False,
+                        "pvalue_thresholding_required": False,
+                    },
+                ),
+                ConditionalOutputDefinition(
+                    when={"sparsify": True, "save_pvals": False},
+                    produced_artifacts=frozenset({"coexpression_network"}),
+                    semantics=(
+                        "upstream thresholds each sample-specific co-expression "
+                        "matrix; no p-value artifact is written"
+                    ),
+                    manifest_expectations={
+                        "sparsify_requested": True,
+                        "network_sparsified": True,
+                        "pvalue_thresholding_required": False,
+                    },
+                ),
+                ConditionalOutputDefinition(
+                    when={"sparsify": True, "save_pvals": True},
+                    produced_artifacts=frozenset({"coexpression_network", "pvalue_matrix"}),
+                    semantics=(
+                        "upstream retains the full co-expression matrix for each "
+                        "selected sample and writes a matching p-value matrix; "
+                        "threshold it from the saved p-value matrix; it does not "
+                        "also emit an already-thresholded network in this mode"
+                    ),
+                    manifest_expectations={
+                        "sparsify_requested": True,
+                        "network_sparsified": False,
+                        "pvalue_thresholding_required": True,
+                    },
+                ),
+                ConditionalOutputDefinition(
+                    when={"sparsify": False, "save_pvals": True},
+                    produced_artifacts=frozenset(),
+                    semantics="invalid: save_pvals requires sparsify",
+                    valid=False,
+                ),
+            ),
+            selection_tags=frozenset({
+                "sample_specific", "coexpression", "bayesian",
+                "sparse_pvalue_coexpression",
+            }),
             handoff_contract=(
                 "BONOBO consumes a labelled gene-by-sample expression matrix and "
                 "produces one gene-by-gene sample-specific co-expression matrix per "
@@ -884,6 +997,104 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         required_inputs=("web_query",),
         executor_fields=("web_query",),
     ),
+}
+
+
+def _control(
+    name: str,
+    control_type: ControlType,
+    default: Any = None,
+    *,
+    allowed_values: tuple[Any, ...] = (),
+    minimum: float | None = None,
+    maximum: float | None = None,
+    nullable: bool = False,
+    selection_tags: frozenset[str] = frozenset(),
+    description: str = "",
+) -> WorkflowControlDefinition:
+    return WorkflowControlDefinition(
+        name=name,
+        control_type=control_type,
+        default=default,
+        allowed_values=allowed_values,
+        minimum=minimum,
+        maximum=maximum,
+        nullable=nullable,
+        selection_tags=selection_tags,
+        executor_argument=name,
+        description=description,
+    )
+
+
+# User-facing controls are registry data, not renderer branches. Optional file
+# inputs such as `coexpression_file` remain inputs; this table contains only
+# knobs whose values are passed through to a workflow executor.
+WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
+    "run_panda": (
+        _control("with_header", "boolean", False, description="Expression input has a header."),
+    ),
+    "run_condor": (
+        _control("prefix", "string", "condor", description="Prefix for derived CONDOR artifacts."),
+    ),
+    "run_sambar": (
+        _control("norm_patient", "boolean", True),
+        _control("kmin", "integer", 2, minimum=2),
+        _control("kmax", "integer", 4, minimum=2),
+        _control("gmt_msigdb", "boolean", True),
+        _control("subset_cancer_genes", "boolean", True),
+        _control("distance", "string", "binomial"),
+        _control("linkage", "string", "complete"),
+        _control("cluster", "boolean", True),
+    ),
+    "run_dragon": (
+        _control("output_format", "enum", "matrix", allowed_values=("matrix", "edge_list")),
+        _control("lambda1", "number", None, minimum=0, maximum=1, nullable=True),
+        _control("lambda2", "number", None, minimum=0, maximum=1, nullable=True),
+    ),
+    "run_otter": (
+        _control("output_format", "enum", "matrix", allowed_values=("matrix", "edge_list")),
+        _control("computing", "enum", "cpu", allowed_values=("cpu", "gpu")),
+        _control("precision", "enum", "double", allowed_values=("single", "double")),
+        _control("lam", "number", 0.035, minimum=0, maximum=1),
+        _control("gamma", "number", 0.335, minimum=0),
+        _control("iterations", "integer", 60, minimum=1),
+        _control("eta", "number", 0.00001, minimum=0),
+        _control("bexp", "number", 1.0, minimum=0),
+    ),
+    "run_bonobo": (
+        _control(
+            "bonobo_output_format", "enum", ".h5",
+            allowed_values=(".h5", ".hdf", ".txt", ".csv"),
+        ),
+        _control(
+            "sample_names", "string_list", [],
+            selection_tags=frozenset({"sample_specific"}),
+            description="Explicit sample IDs; never positional sample indices.",
+        ),
+        _control(
+            "sparsify", "boolean", False,
+            selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+        ),
+        _control(
+            "bonobo_confidence", "number", 0.05, minimum=0, maximum=1,
+            selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+        ),
+        _control(
+            "save_pvals", "boolean", False,
+            selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+        ),
+        _control("precision", "enum", "single", allowed_values=("single", "double")),
+        _control("keep_in_memory", "boolean", False),
+        _control("delta", "number", None, minimum=0, maximum=1, nullable=True),
+        _control("genes_axis", "enum", "auto", allowed_values=("auto", "rows", "columns")),
+        _control("log_transformed", "boolean", None, nullable=True),
+        _control("centered", "boolean", None, nullable=True),
+    ),
+}
+
+ACTION_DEFINITIONS = {
+    action: replace(definition, controls=WORKFLOW_CONTROLS.get(action, ()))
+    for action, definition in ACTION_DEFINITIONS.items()
 }
 
 ACTION_NAMES = frozenset(get_args(ActionName))
@@ -918,6 +1129,152 @@ OUTPUT_CAPABILITIES = {
 }
 
 
+def _registry_definition(workflow_id: str, registry=None):
+    source = registry if registry is not None else ACTION_DEFINITIONS
+    if hasattr(source, "workflows"):
+        source = source.workflows
+    definition = source.get(workflow_id) if hasattr(source, "get") else None
+    if definition is not None:
+        return definition
+    for action, candidate in source.items():
+        if getattr(candidate, "workflow", None) == workflow_id:
+            return candidate
+    return None
+
+
+def get_controls(
+    workflow_id: str,
+    selection_tags: Sequence[str] = (),
+    registry=None,
+) -> tuple[WorkflowControlDefinition, ...] | tuple[Any, ...]:
+    """Return registry-declared controls applicable to a workflow request.
+
+    ``registry`` may be either ``ACTION_DEFINITIONS`` or a validated project
+    policy mapping. This keeps guidance and execution consumers on the same
+    accessor while allowing the loaded YAML snapshot to remain authoritative.
+    Untagged controls are always applicable; tagged controls require at least
+    one matching requested selection tag.
+    """
+    definition = _registry_definition(workflow_id, registry)
+    if definition is None:
+        return ()
+    controls = tuple(getattr(definition, "controls", ()) or ())
+    requested = set(selection_tags)
+    if not requested:
+        return controls
+    return tuple(
+        control
+        for control in controls
+        if not set(getattr(control, "selection_tags", ()) or ())
+        or set(getattr(control, "selection_tags", ()) or ()) & requested
+    )
+
+
+def resolve_conditional_output(
+    workflow_id: str,
+    control_values: Mapping[str, Any],
+    registry=None,
+) -> ConditionalOutputDefinition | Any | None:
+    """Resolve one machine-checkable output rule from registry control values."""
+    definition = _registry_definition(workflow_id, registry)
+    capability = getattr(definition, "output_capability", None)
+    rules = tuple(getattr(capability, "conditional_outputs", ()) or ())
+    if not rules:
+        return None
+    controls = {getattr(item, "name", ""): item for item in get_controls(workflow_id, registry=registry)}
+    values = {}
+    for name, control in controls.items():
+        argument = getattr(control, "executor_argument", None) or name
+        value = control_values.get(name, control_values.get(argument, getattr(control, "default", None)))
+        values[name] = value
+    for rule in rules:
+        if all(values.get(name) == expected for name, expected in rule.when.items()):
+            return rule
+    return None
+
+
+def _artifact_input_field(artifact: ArtifactType, fields: set[str]) -> str | None:
+    """Resolve an artifact to an explicitly registered file input field."""
+    stem = artifact.removesuffix("_network")
+    candidates = (
+        f"{stem}_file",
+        f"{artifact}_file",
+        "network_file" if artifact == "regulatory_network" else "",
+    )
+    return next((field for field in candidates if field and field in fields), None)
+
+
+def registered_handoff_consumers(
+    producer_action: str,
+    registry=None,
+) -> tuple[HandoffConsumerDefinition, ...]:
+    """Find consumers whose registered schema accepts the producer output.
+
+    Compatibility requires both an artifact declaration and an explicit input
+    granularity declaration. This is intentionally stricter than matching a
+    workflow name or assuming that every co-expression matrix is interchangeable.
+    """
+    source = registry if registry is not None else ACTION_DEFINITIONS
+    if hasattr(source, "workflows"):
+        source = source.workflows
+    producer = _registry_definition(producer_action, source)
+    producer_capability = getattr(producer, "output_capability", None)
+    if producer_capability is None:
+        return ()
+    artifacts = set(
+        getattr(producer_capability, "produced_artifacts", ())
+        or (getattr(producer_capability, "artifact_type", "unknown"),)
+    )
+    source_granularities = set(getattr(producer_capability, "granularities", ()) or ())
+    consumers: list[HandoffConsumerDefinition] = []
+    for action, candidate in source.items():
+        if (
+            action == producer_action
+            or action not in RUN_ACTIONS
+            or not getattr(candidate, "run", True)
+        ):
+            continue
+        capability = getattr(candidate, "output_capability", None)
+        if capability is None:
+            continue
+        accepted_granularities = set(
+            getattr(capability, "accepted_input_granularities", ()) or ()
+        )
+        if not accepted_granularities or not source_granularities.intersection(
+            accepted_granularities
+        ):
+            continue
+        accepted_modalities = set(
+            getattr(capability, "accepted_input_modalities", ()) or ()
+        )
+        if accepted_modalities and "coexpression" not in accepted_modalities:
+            continue
+        input_artifacts = set(getattr(capability, "input_artifacts", ()) or ())
+        fields = set(getattr(candidate, "required_inputs", ()) or ()) | set(
+            getattr(candidate, "optional_inputs", ()) or ()
+        )
+        for artifact in sorted(artifacts & input_artifacts):
+            input_field = _artifact_input_field(artifact, fields)
+            if input_field is None:
+                continue
+            prior_fields = tuple(
+                field
+                for field in getattr(candidate, "required_inputs", ())
+                if field not in {"expression_file", "coexpression_file", "output_file", "output_dir"}
+            )
+            consumers.append(
+                HandoffConsumerDefinition(
+                    action=action,
+                    workflow=getattr(candidate, "workflow", action),
+                    input_field=input_field,
+                    required_prior_inputs=prior_fields,
+                    accepted_input_granularities=frozenset(accepted_granularities),
+                )
+            )
+            break
+    return tuple(consumers)
+
+
 def workflow_name(action: str) -> str:
     definition = ACTION_DEFINITIONS.get(action)
     if definition is not None:
@@ -946,10 +1303,17 @@ def _is_text_input(decision: Any, field_name: str) -> bool:
 def executor_arguments(action: ActionName, decision: Any) -> dict[str, Any]:
     """Build the allow-listed executor payload for one typed decision."""
     definition = ACTION_DEFINITIONS[action]
+    controls = {
+        (control.executor_argument or control.name): control
+        for control in definition.controls
+    }
     arguments = {}
     for field_name in definition.executor_fields:
         value = getattr(decision, field_name, None)
-        if value in (None, "") and field_name in definition.executor_defaults:
+        control = controls.get(field_name)
+        if value in (None, "") and control is not None and control.default is not None:
+            value = control.default
+        elif value in (None, "") and field_name in definition.executor_defaults:
             value = definition.executor_defaults[field_name]
         elif value is None and field_name in definition.optional_inputs:
             # Text adapters use an empty string to mean "optional input omitted",

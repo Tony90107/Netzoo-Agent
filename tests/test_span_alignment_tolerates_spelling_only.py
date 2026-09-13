@@ -82,6 +82,52 @@ def test_the_reported_hard_failure_now_validates_end_to_end():
     assert not [issue for issue in result.issues if "ungrounded_evidence" in issue]
 
 
+def test_terminal_hard_wrap_inside_ascii_words_does_not_unground_a_quote():
+    """The CLI may receive pasted display wrapping as literal newlines."""
+    task = (
+        "我想從 expression matrix 中產生兩張 s\n"
+        "ample-specific gene-gene co-expression ma\n"
+        "trix，並且在 sparsify 後輸出 p-value matrix。"
+    )
+    item = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="infer",
+            input_artifacts=["expression_matrix"],
+            artifact_type="coexpression_network",
+            entity_types=["gene"],
+            granularity="sample_specific",
+        ),
+        confidence=0.9,
+        evidence=[
+            OutcomeEvidence(
+                dimension=dimension,
+                value=value,
+                source="explicit",
+                text_span=span,
+                rationale="Stated by the user.",
+            )
+            for dimension, value, span in (
+                (
+                    "operation",
+                    "infer",
+                    "產生兩張 sample-specific gene-gene co-expression matrix",
+                ),
+                ("input_artifact", "expression_matrix", "expression matrix"),
+                (
+                    "artifact_type",
+                    "coexpression_network",
+                    "sample-specific gene-gene co-expression matrix",
+                ),
+                ("granularity", "sample_specific", "sample-specific"),
+            )
+        ],
+    )
+
+    result = validate_outcome_hypotheses(task, [item])
+
+    assert not [issue for issue in result.issues if "ungrounded_evidence" in issue]
+
+
 @pytest.mark.parametrize(("misspelled", "correct"), [
     ("regualtor", "regulator"), ("toosl", "tools"), ("expresion", "expression"),
     ("priros", "priors"), ("workflwo", "workflow"), ("seperate", "separate"),

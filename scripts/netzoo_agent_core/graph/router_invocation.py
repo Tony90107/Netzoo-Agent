@@ -24,6 +24,7 @@ from ..interpretation.outcome_validation import evidence_census, validate_outcom
 from ..interpretation.provider_fallback import (
     _is_fatal_exception,
     deterministic_router_fallback,
+    recover_ambiguous_input,
     recover_explicit_run,
     recover_registry_guidance,
 )
@@ -94,6 +95,9 @@ def _semantic_failure(
     ) or recover_registry_guidance(
         user_task,
         context.project_policy.workflows,
+        error,
+    ) or recover_ambiguous_input(
+        user_task,
         error,
     )
     if recovered is not None:

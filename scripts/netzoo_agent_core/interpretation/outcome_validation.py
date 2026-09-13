@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
+from ..contracts.outcomes import OutcomeEvidence
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
 from ..contracts.repair_scope import (
     FIELD_BY_DIMENSION, NO_OUTCOME_FIELDS, OUTCOME_FIELDS, Issue,
@@ -41,6 +42,19 @@ def _normalized(value: str) -> str:
     return re.sub(r"[\W_]+", " ", text).strip()
 
 
+def _hard_wrap_normalized(value: str) -> str:
+    """Normalize terminal wrapping inside an ASCII token without joining words.
+
+    Interactive terminals can insert a newline in the middle of identifiers or
+    English words (``s\nample-specific``). Ordinary spaces and newlines between
+    complete words remain separators, so this does not turn paraphrases into
+    apparent verbatim quotes.
+    """
+    text = unicodedata.normalize("NFKC", value).casefold()
+    text = re.sub(r"(?<=[a-z0-9])[\t ]*\r?\n[\t ]*(?=[a-z0-9])", "", text)
+    return _normalized(text)
+
+
 def _grounded_span(span: str, task: str) -> bool:
     """Whether the request contains this quote, verbatim or misspelled.
 
@@ -57,6 +71,17 @@ def _grounded_span(span: str, task: str) -> bool:
     if re.search(left + re.escape(span) + right, task) is not None:
         return True
     return aligned_span(span, task)
+
+
+def explicit_evidence_grounded(user_task: str, evidence: OutcomeEvidence) -> bool:
+    """Whether an explicit evidence quote occurs in the typed terminal request."""
+    if evidence.source != "explicit":
+        return False
+    span = _normalized(evidence.text_span or "")
+    if not span:
+        return False
+    variants = tuple(dict.fromkeys((_normalized(user_task), _hard_wrap_normalized(user_task))))
+    return any(_grounded_span(span, task) for task in variants)
 
 
 def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
@@ -184,7 +209,6 @@ def validate_outcome_hypotheses(
 
     issues: list[str] = []
     evidence_shapes: list[dict[str, str | int]] = []
-    normalized_task = _normalized(user_task)
     confirmed_inputs = frozenset(confirmed_current_inputs(user_task))
     for index, hypothesis in enumerate(hypotheses):
         # `prefixed` rather than an f-string: plain formatting would return a
@@ -236,7 +260,7 @@ def validate_outcome_hypotheses(
                 ))
             if item.source == "explicit":
                 span = _normalized(item.text_span or "")
-                if not _grounded_span(span, normalized_task):
+                if not explicit_evidence_grounded(user_task, item):
                     # About the quote, not about the value. Nothing in the
                     # outcome was questioned, so nothing in it may be rewritten.
                     issues.append(Issue(

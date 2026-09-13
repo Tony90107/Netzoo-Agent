@@ -14,6 +14,7 @@ from .data.bonobo import (
     write_bonobo_manifest,
 )
 from .data.paths import _resolve_user_path
+from workflow_registry import resolve_conditional_output
 
 __all__ = ["inspect_bonobo_inputs", "run_bonobo"]
 
@@ -42,6 +43,14 @@ def _bonobo_failure(code: str, problem: str, needed: str) -> str:
         f"error: {problem}\n"
         f"needed: {needed}"
     )
+
+
+def _bonobo_sparsity_behavior(sparsify: bool, save_pvals: bool) -> str:
+    rule = resolve_conditional_output(
+        "run_bonobo",
+        {"sparsify": sparsify, "save_pvals": save_pvals},
+    )
+    return rule.semantics if rule is not None else "unregistered BONOBO output combination"
 
 
 @tool
@@ -103,10 +112,15 @@ def run_bonobo(
                 f"unsupported precision {precision!r}",
                 "use single or double",
             )
-        if save_pvals and not sparsify:
+        output_rule = resolve_conditional_output(
+            "run_bonobo", {"sparsify": sparsify, "save_pvals": save_pvals}
+        )
+        if output_rule is None or not output_rule.valid:
             return _bonobo_failure(
                 "BONOBO_PVALUES_REQUIRE_SPARSIFY",
-                "save_pvals=true was requested while sparsify=false",
+                output_rule.semantics
+                if output_rule is not None
+                else "the requested BONOBO output combination is not registered",
                 "enable sparsify when p-value artifacts are requested",
             )
         report, inputs_ok = inspect_bonobo_inputs_impl(
@@ -161,6 +175,7 @@ def run_bonobo(
             f"keep_in_memory={keep_in_memory}, delta={delta if delta is not None else 'API default'}\n"
             f"- output folder: {output_root}\n"
             f"- expected sample networks: {', '.join(str(item) for item in paths['networks'])}\n"
+            f"- sparsity behavior: {_bonobo_sparsity_behavior(sparsify, save_pvals)}.\n"
             "- BONOBO produces sample-specific gene-gene co-expression matrices only; "
             "no aggregate/prior network or GRN is claimed.\n"
             "- no analysis was executed and no artifact was written (dry-run)."
@@ -256,6 +271,7 @@ def run_bonobo(
             f"- manifest: {manifest}\n"
             f"- networks: {len(bundle.selected_sample_ids)} sample-specific matrices\n"
             f"- p-values: {'saved' if save_pvals else 'not saved'}\n"
+            f"- sparsity behavior: {_bonobo_sparsity_behavior(sparsify, save_pvals)}.\n"
             "- interpretation: sample-specific gene-gene co-expression association matrices; not a GRN, TF-gene regulation, or causal network."
         )
     except (OSError, ValueError, TypeError) as error:

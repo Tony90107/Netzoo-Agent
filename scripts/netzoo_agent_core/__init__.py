@@ -12,6 +12,7 @@ from .contracts import (
     PlanEvaluationResult,
     TaskDecision,
     ToolExecutionResult,
+    WorkflowHandoff,
     WorkflowPlan,
     WorkflowStep,
 )
@@ -46,6 +47,7 @@ __all__ = [
     "TaskDecision",
     "TOOLS",
     "ToolExecutionResult",
+    "WorkflowHandoff",
     "WorkflowPlan",
     "WorkflowStep",
     "build_graph",

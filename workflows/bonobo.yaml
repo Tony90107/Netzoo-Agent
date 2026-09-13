@@ -7,6 +7,66 @@ optional_inputs:
   [bonobo_output_format, sample_names, sparsify, bonobo_confidence, save_pvals, precision,
    keep_in_memory, delta, genes_axis, log_transformed, centered]
 validation_steps: [inspect_bonobo_inputs]
+controls:
+  - name: bonobo_output_format
+    type: enum
+    default: .h5
+    allowed_values: [.h5, .hdf, .txt, .csv]
+    executor_argument: bonobo_output_format
+  - name: sample_names
+    type: string_list
+    default: []
+    selection_tags: [sample_specific]
+    executor_argument: sample_names
+    description: Explicit sample IDs; never positional sample indices.
+  - name: sparsify
+    type: boolean
+    default: false
+    selection_tags: [sparse_pvalue_coexpression]
+    executor_argument: sparsify
+  - name: bonobo_confidence
+    type: number
+    default: 0.05
+    minimum: 0
+    maximum: 1
+    selection_tags: [sparse_pvalue_coexpression]
+    executor_argument: bonobo_confidence
+  - name: save_pvals
+    type: boolean
+    default: false
+    selection_tags: [sparse_pvalue_coexpression]
+    executor_argument: save_pvals
+  - name: precision
+    type: enum
+    default: single
+    allowed_values: [single, double]
+    executor_argument: precision
+  - name: keep_in_memory
+    type: boolean
+    default: false
+    executor_argument: keep_in_memory
+  - name: delta
+    type: number
+    default: null
+    minimum: 0
+    maximum: 1
+    nullable: true
+    executor_argument: delta
+  - name: genes_axis
+    type: enum
+    default: auto
+    allowed_values: [auto, rows, columns]
+    executor_argument: genes_axis
+  - name: log_transformed
+    type: boolean
+    default: null
+    nullable: true
+    executor_argument: log_transformed
+  - name: centered
+    type: boolean
+    default: null
+    nullable: true
+    executor_argument: centered
 execution_step: run_bonobo
 output_capability:
   operation: infer
@@ -18,7 +78,37 @@ output_capability:
   guidance_predecessors: []
   input_artifacts: [expression_matrix]
   handoff_targets: []
-  selection_tags: [sample_specific, coexpression, bayesian]
+  selection_tags: [sample_specific, coexpression, bayesian, sparse_pvalue_coexpression]
+  produced_artifacts: [coexpression_network, pvalue_matrix]
+  conditional_outputs:
+    - when: {sparsify: false, save_pvals: false}
+      produced_artifacts: [coexpression_network]
+      semantics: >-
+        full sample-specific gene-gene co-expression matrices; no p-value artifact is written
+      manifest_expectations:
+        sparsify_requested: false
+        network_sparsified: false
+        pvalue_thresholding_required: false
+    - when: {sparsify: true, save_pvals: false}
+      produced_artifacts: [coexpression_network]
+      semantics: >-
+        upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written
+      manifest_expectations:
+        sparsify_requested: true
+        network_sparsified: true
+        pvalue_thresholding_required: false
+    - when: {sparsify: true, save_pvals: true}
+      produced_artifacts: [coexpression_network, pvalue_matrix]
+      semantics: >-
+        upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode
+      manifest_expectations:
+        sparsify_requested: true
+        network_sparsified: false
+        pvalue_thresholding_required: true
+    - when: {sparsify: false, save_pvals: true}
+      produced_artifacts: []
+      semantics: "invalid: save_pvals requires sparsify"
+      valid: false
   handoff_contract: >-
     BONOBO consumes a labelled gene-by-sample expression matrix and produces one
     gene-by-gene sample-specific co-expression matrix per selected sample, plus
@@ -58,11 +148,16 @@ conventions:
     p-value HDF5 uses key pvals. TXT is tab-delimited and CSV is comma-delimited
     for the agent-owned artifact reader.
   - >-
-    `sparsify` computes the upstream approximate p-values; p-value files are
-    written only when both sparsify=true and save_pvals=true. The agent rejects
-    save_pvals=true without sparsify=true and does not claim that a p-value
-    artifact is a GRN. The verified source currently returns the co-expression
-    matrix plus p-values; output verification is required after every run.
+    `sparsify` computes the upstream approximate p-values. With sparsify=true and
+    save_pvals=false, upstream thresholds the co-expression matrix and does not
+    save p-values. With both sparsify=true and save_pvals=true, upstream retains
+    the full co-expression matrix and writes p-values for downstream thresholding;
+    it does not also emit an already-thresholded network.
+  - >-
+    The agent rejects save_pvals=true without sparsify=true and does not claim
+    that a p-value artifact is a GRN. Output verification is required after every
+    run, and the manifest distinguishes a sparsification request from an actually
+    thresholded network and from a network requiring p-value-based thresholding.
   - >-
     BONOBO has no aggregate/prior output. Its sample-specific matrices are not
     directly valid PANDA/PUMA coexpression_file inputs, which require one

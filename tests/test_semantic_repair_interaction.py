@@ -145,6 +145,34 @@ def test_provider_outage_is_not_reported_as_user_ambiguity():
     assert not row["next_step"]["allow_workflow_continuation"]
 
 
+def test_validation_failure_with_explicit_inputs_falls_back_to_result_clarification():
+    from netzoo_agent_core.graph.response import _render_unresolved_router_fallback
+    from netzoo_agent_core.interpretation.guidance_interaction import guidance_interaction
+    from netzoo_agent_core.interpretation.hydration import hydrate_router_decision
+    from netzoo_agent_core.interpretation.provider_fallback import recover_ambiguous_input
+
+    task = (
+        "我只想分析 S01 和 S07，請保留這兩個 sample ID，不要選第一個樣本，也不要把兩個"
+        "樣本平均成一張網路。expression_file=data/toy/expression.tsv "
+        "output_dir=outputs/s01-s07 log_transformed=true centered=true"
+    )
+    decision = recover_ambiguous_input(task, ValueError("invalid semantic output"))
+
+    assert decision is not None
+    hydrated = hydrate_router_decision(decision, task)
+    assert hydrated.clarification_question
+    assert hydrated.expression_file == "data/toy/expression.tsv"
+    assert hydrated.output_dir == "outputs/s01-s07"
+    assert "Sample IDs (`sample_names`): S01, S07" in _render_unresolved_router_fallback(
+        hydrated, task
+    )
+    interaction = guidance_interaction(hydrated)
+    assert interaction is not None
+    assert interaction.status == "clarification_required"
+    assert "Clarification needed" in interaction.progress
+    assert "workflow" in interaction.next_step.casefold()
+
+
 def test_repair_replay_requires_explicit_live_opt_in(monkeypatch, capsys):
     from evaluate_routing import main
     monkeypatch.setattr("evaluate_routing.build_llm", lambda *_a, **_kw: pytest.fail("Unexpected provider call"))
@@ -230,7 +258,6 @@ def test_fallback_acknowledgement_cannot_bypass_semantic_validation():
 
 def test_genuine_fallback_clarification_is_consistent_on_all_surfaces():
     from netzoo_agent_core.contracts import TaskDecision, WorkflowPlan
-    from netzoo_agent_core.interpretation.provider_fallback import recover_registry_guidance
     from netzoo_agent_core.interpretation.semantic_goal import publish_routing_progress
     from netzoo_agent_core.interpretation.verified_guidance import guidance_contract, render_verified_guidance
     from netzoo_agent_core.evaluation.guidance_surface import capture_progress, score_surface

@@ -15,11 +15,14 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
     render_capability_gap,
     render_cobra_expression_boundary,
+    render_sample_specific_coexpression_handoff_boundary,
     render_registered_handoff_script_guidance,
     render_outcome_clarification,
     render_recovered_workflow_guidance,
     render_workflow_composition_guidance,
     render_spec_backed_concept_answer,
+    render_registered_workflow_contract_answer,
+    render_unsupported_algorithm_boundary,
 )
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
@@ -67,6 +70,43 @@ def test_non_purpose_question_keeps_response_model_path():
         render_spec_backed_concept_answer("compare PANDA and PUMA", _decision(), policy)
         is None
     )
+
+
+def test_sample_specific_coexpression_handoff_to_panda_is_blocked_without_conversion():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    task = (
+        "先產生 S01 和 S07 的 sample-specific gene-gene co-expression，"
+        "然後直接把這些矩陣交給 PANDA 作為 coexpression_file；"
+        "不要做 aggregation 或 sample selection。"
+    )
+
+    answer = render_sample_specific_coexpression_handoff_boundary(task, policy)
+
+    assert answer is not None
+    assert "PANDA" in answer
+    assert "sample-specific gene-gene co-expression" in answer
+    assert "aggregate" in answer
+    assert "explicitly forbids aggregation or sample selection" in answer
+    assert "LIONESS-PANDA can instead" not in answer
+    assert "No execution is permitted" in answer
+
+
+def test_named_workflow_input_output_question_uses_registered_contract():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+
+    answer = render_registered_workflow_contract_answer(
+        "BONOBO 需要哪些輸入？最後產生的是調控網路、co-expression network，還是 covariance matrix？",
+        _decision(),
+        policy,
+    )
+
+    assert answer is not None
+    assert "BONOBO" in answer
+    assert "expression_file" in answer
+    assert "sample-specific gene-gene co-expression" in answer
+    assert "not a regulatory network" in answer
+    assert "retains the full co-expression matrix" in answer
+    assert "does not also emit an already-thresholded network" in answer
 
 
 def test_recovered_input_boundary_is_registry_driven_not_mutation_specific():
@@ -121,6 +161,73 @@ def test_cobra_output_cannot_be_routed_as_panda_expression():
     assert answer is not None
     assert "cannot be used directly as PANDA expression input" in answer
     assert "covariance decomposition" in answer
+
+
+def test_glasso_bayesian_request_reports_no_exact_workflow_and_nearest_boundary():
+    answer = render_unsupported_algorithm_boundary(
+        "Use Graphical Lasso to estimate the inverse covariance precision matrix "
+        "and Bayesian optimization to tune the regularization strength."
+    )
+
+    assert answer is not None
+    assert answer.startswith("No registered netZooPy workflow implements")
+    assert "DRAGON" in answer
+    assert "BONOBO" in answer
+    assert "not Graphical Lasso" in answer
+    assert "not Bayesian Optimization" in answer
+    assert "likely looking for" not in answer
+    assert "No files were inspected and no analysis ran." in answer
+
+
+def test_active_learning_gaussian_process_request_reports_no_exact_workflow():
+    answer = render_unsupported_algorithm_boundary(
+        "Use motif priors and active learning with a Gaussian process over parameter "
+        "bounds and an iteration budget to produce a sparse regulatory network."
+    )
+
+    assert answer is not None
+    assert answer.startswith("No registered netZooPy workflow implements")
+    assert "Gaussian-process" in answer
+    assert "GIRAFFE" in answer
+    assert "OTTER" in answer
+    assert "BONOBO" in answer
+    assert "does not accept motif/PPI priors" in answer
+    assert "likely looking for" not in answer
+
+
+def test_full_chinese_glasso_prompt_rejects_the_false_bonobo_premise():
+    answer = render_unsupported_algorithm_boundary(
+        "我手邊有基因表現量矩陣與先驗資料。我不想使用傳統 PANDA 的啟發式訊息傳遞，"
+        "而是希望使用 Graphical Lasso (GLASSO) 來估算基因之間的逆共變異數矩陣 "
+        "(Precision Matrix)。但 Glasso 的正則化懲罰參數非常難調，我需要演算法透過"
+        "貝氏最佳化 (Bayesian Optimization) 自動幫我搜尋最佳正則化強度與先驗權重。"
+        "netZooPy 中哪一個模組實作這種架構？"
+    )
+
+    assert answer is not None
+    assert answer.startswith("No registered netZooPy workflow implements")
+    assert "DRAGON" in answer
+    assert "BONOBO" in answer
+    assert "not Graphical Lasso" in answer
+    assert "not Bayesian Optimization" in answer
+    assert "likely looking for" not in answer
+
+
+def test_full_chinese_active_learning_prompt_rejects_the_false_bonobo_premise():
+    answer = render_unsupported_algorithm_boundary(
+        "我想要建構一個基因調控網路，輸入包括基因表現量檔案和 Motif 先驗矩陣。"
+        "我希望使用一個具備主動學習機制的工作流，它能在設定的迭代預算內，自動在"
+        "定義好的上下邊界之中利用高斯程序代理模型進行超參數採樣，最後回傳一個稀疏"
+        "且條件獨立的調控網路檔案。請問 netZooPy 中哪一個工作流符合這樣的呼叫邏輯？"
+    )
+
+    assert answer is not None
+    assert answer.startswith("No registered netZooPy workflow implements")
+    assert "GIRAFFE" in answer
+    assert "OTTER" in answer
+    assert "BONOBO" in answer
+    assert "does not accept motif/PPI priors" in answer
+    assert "likely looking for" not in answer
 
 
 def test_registered_handoff_script_uses_artifact_not_expression_substitution():

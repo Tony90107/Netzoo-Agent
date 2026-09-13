@@ -54,6 +54,12 @@ ARTIFACT_SEMANTICS = {
     "mutation_matrix": ArtifactSemantics("Gene-by-sample mutation measurements", frozenset({"gene", "sample"})),
     "regulatory_network": ArtifactSemantics("Inferred regulator-to-target associations", granularities=frozenset({"aggregate", "sample_specific"})),
     "coexpression_network": ArtifactSemantics("Inferred gene-to-gene associations", frozenset({"gene", "sample"}), frozenset({"aggregate", "sample_specific"})),
+    "pvalue_matrix": ArtifactSemantics(
+        "P-value matrix paired with a sample-specific gene-gene co-expression result",
+        frozenset({"gene", "sample"}),
+        frozenset({"sample_specific"}),
+        frozenset({"infer"}),
+    ),
     "multi_omic_network": ArtifactSemantics("Inferred associations between omics features", granularities=frozenset({"aggregate", "sample_specific"})),
     "gene_mutation_scores": ArtifactSemantics("Gene-by-sample mutation scores, not pathway scores", frozenset({"gene", "sample"}), frozenset({"aggregate"})),
     "pathway_mutation_matrix": ArtifactSemantics("Pathway-by-sample mutation scores, not cluster labels", frozenset({"pathway", "sample"}), frozenset({"aggregate"})),

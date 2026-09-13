@@ -13,7 +13,6 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as legacy_agent  # noqa: E402
-from netzoo_agent_core.contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 import netzoo_agent_core.graph as graph  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticDiscriminator, SemanticPatch, SemanticReview,
@@ -149,6 +148,42 @@ def test_semantic_failure_script_request_keeps_complete_cobra_panda_contract():
     assert "-e \"$expression_file\"" in content
     assert "-c \"$coexpression_file\"" in content
     assert "not a corrected expression matrix" in content
+
+
+def test_response_reports_no_exact_workflow_for_glasso_bayesian_optimization():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    task = (
+        "I have an expression matrix and priors. Use Graphical Lasso to estimate "
+        "the inverse covariance precision matrix and Bayesian optimization to tune it."
+    )
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="generic regulatory network interpretation",
+        matched_actions=["run_panda"],
+        recommended_actions=["run_panda"],
+        capability_match_status="exact",
+    )
+
+    result = response_module.respond(
+        SimpleNamespace(),
+        {
+            "messages": [legacy_agent.HumanMessage(content=task)],
+            "decision": decision.model_dump(),
+        },
+    )
+
+    content = result["messages"][0].content
+    assert content.startswith("No registered netZooPy workflow implements")
+    assert "DRAGON" in content
+    assert "BONOBO" in content
+    assert "not Graphical Lasso" in content
+    assert "not Bayesian Optimization" in content
+    assert "likely looking for" not in content
+    assert "Selected path" not in content
 
 
 def test_recovered_sambar_guidance_is_rendered_without_response_model_guessing():

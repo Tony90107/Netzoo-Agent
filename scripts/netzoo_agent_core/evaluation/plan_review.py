@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from workflow_registry import (
+    ACTION_DEFINITIONS,
     CODE_VALIDATION_STEPS,
     LOCAL_EXECUTION_ACTIONS,
     REQUIRED_INPUTS,
     RUN_ACTIONS,
     workflow_name as _workflow_name,
+    registered_handoff_consumers,
 )
 
 from ..contracts import (
@@ -54,6 +56,11 @@ def evaluate_workflow_plan(
         )
 
     rubric: list[PlanRubricItem] = []
+    policy_model = (
+        ProjectPolicySnapshot.model_validate(project_policy)
+        if project_policy is not None
+        else None
+    )
     try:
         decision = TaskDecision.model_validate(plan.decision)
     except Exception as error:
@@ -71,10 +78,14 @@ def evaluate_workflow_plan(
         )
 
     action = decision.action
+    handoff = plan.workflow_handoff or getattr(decision, "workflow_handoff", None)
     recognized_action = action in REQUIRED_INPUTS and action != "no_tool"
+    expected_workflow = _workflow_name(action)
+    if handoff is not None and handoff.status == "validated":
+        expected_workflow = f"{expected_workflow} -> {handoff.consumer_workflow}"
     capability_ok = (
         recognized_action
-        and plan.workflow == _workflow_name(action)
+        and plan.workflow == expected_workflow
     )
     rubric.append(
         PlanRubricItem(
@@ -85,6 +96,67 @@ def evaluate_workflow_plan(
                 if capability_ok
                 else "The action is not registered or does not match the validated workflow."
             ),
+        )
+    )
+
+    if handoff is None:
+        handoff_ok = True
+        handoff_detail = "No composed workflow handoff was requested."
+    elif handoff.status != "validated":
+        handoff_ok = False
+        handoff_detail = (
+            f"Handoff status is {handoff.status}; blocked handoffs cannot execute."
+        )
+    else:
+        registry = policy_model.workflows if policy_model is not None else ACTION_DEFINITIONS
+        consumers = registered_handoff_consumers(handoff.producer_action, registry)
+        consumer = next(
+            (item for item in consumers if item.action == handoff.consumer_action),
+            None,
+        )
+        evidence_by_field = {item.field: item for item in plan.evidence}
+        missing_priors = [
+            field
+            for field in handoff.required_prior_inputs
+            if not getattr(decision, field, None)
+            or evidence_by_field.get(field) is None
+            or evidence_by_field[field].status == "missing"
+        ]
+        identities_ok = (
+            bool(handoff.sample_ids and handoff.gene_ids and handoff.source_artifact_paths)
+            and len(handoff.sample_ids) == len(set(handoff.sample_ids))
+            and len(handoff.gene_ids) == len(set(handoff.gene_ids))
+        )
+        field_ok = (
+            consumer is not None
+            and handoff.consumer_input_field == consumer.input_field
+        )
+        handoff_ok = field_ok and identities_ok and not missing_priors
+        handoff_detail = (
+            "Registered consumer, exact artifact identity, sample IDs, gene order, and prior inputs are present."
+            if handoff_ok
+            else "Invalid handoff contract: "
+            + "; ".join(
+                item
+                for item in [
+                    "consumer is not registered or its handoff input field does not match"
+                    if not field_ok
+                    else "",
+                    "sample IDs and gene order must be validated before execution"
+                    if not identities_ok
+                    else "",
+                    "missing registered prior inputs: " + ", ".join(missing_priors)
+                    if missing_priors
+                    else "",
+                ]
+                if item
+            )
+        )
+    rubric.append(
+        PlanRubricItem(
+            criterion="workflow_handoff_contract",
+            result="pass" if handoff_ok else "fail",
+            detail=handoff_detail,
         )
     )
 
@@ -189,11 +261,6 @@ def evaluate_workflow_plan(
         )
     )
 
-    policy_model = (
-        ProjectPolicySnapshot.model_validate(project_policy)
-        if project_policy is not None
-        else None
-    )
     workflow_spec = (
         policy_model.workflows.get(action)
         if policy_model is not None and action in policy_model.workflows
@@ -210,6 +277,16 @@ def evaluate_workflow_plan(
         normal_steps = [action]
     else:
         normal_steps = []
+    if handoff is not None and handoff.status == "validated":
+        consumer_spec = (
+            policy_model.workflows.get(handoff.consumer_action)
+            if policy_model is not None and handoff.consumer_action
+            else None
+        )
+        if consumer_spec is not None:
+            normal_steps.extend(
+                [*consumer_spec.validation_steps, consumer_spec.execution_step]
+            )
     expected_steps, recovery_ok, recovery_detail = _expected_plan_steps(
         plan,
         decision,

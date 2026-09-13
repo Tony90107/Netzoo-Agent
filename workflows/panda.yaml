@@ -5,6 +5,12 @@ description: Infer an aggregate TF-to-gene regulatory network with PANDA.
 required_inputs: [expression_file, motif_file, ppi_file, output_file]
 optional_inputs: [with_header, coexpression_file]
 validation_steps: [inspect_inputs]
+controls:
+  - name: with_header
+    type: boolean
+    default: false
+    executor_argument: with_header
+    description: Expression input has a header.
 execution_step: run_panda
 output_capability:
   operation: infer
@@ -15,6 +21,7 @@ output_capability:
   target_types: [gene]
   guidance_predecessors: []
   accepted_input_modalities: [gene_expression, coexpression]
+  accepted_input_granularities: [aggregate]
   produced_artifacts: [regulatory_network]
   incompatible_input_artifacts: [mutation_matrix]
   input_artifacts: [expression_matrix, coexpression_network]

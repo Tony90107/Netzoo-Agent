@@ -1,6 +1,6 @@
 """Stable typed contracts and compatibility exports for the NetZoo harness."""
 
-from . import decisions, interaction, memory, outcomes, planning, policy, results, state
+from . import decisions, handoffs, interaction, memory, outcomes, planning, policy, results, state
 from ..framework_compat import (  # noqa: F401 -- historical facade attributes
     AIMessage, END, HumanMessage, START, StateGraph, SystemMessage, add_messages, tool,
 )
@@ -82,12 +82,15 @@ from .planning import (
     InputEvidence,
     InputRoleAssignment,  # noqa: F401 -- compatibility facade attribute
     InputRoleMapping,  # noqa: F401 -- compatibility facade attribute
+    WorkflowHandoff,  # noqa: F401 -- direct internal import without public widening
     WorkflowPlan,
     WorkflowStep,
 )
 from .policy import (
     AgentsPolicyHeader,
+    ConditionalOutputSpec,  # noqa: F401 -- direct internal import without public widening
     ProjectPolicySnapshot,
+    WorkflowControlSpec,  # noqa: F401 -- direct internal import without public widening
     WorkflowOutputCapabilitySpec,
     WorkflowPolicySpec,
 )
@@ -108,6 +111,7 @@ from .state import (
 
 _CONTRACT_IMPLEMENTATION_MODULES = (
     decisions,
+    handoffs,
     interaction,
     outcomes,
     planning,

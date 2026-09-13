@@ -536,6 +536,8 @@ def test_unsupported_outcome_offers_alternative_without_execution_continuation()
     assert prompt.kind == "alternative_outcome"
     assert prompt.continuation_action is None
     assert prompt.alternative_action == "run_lioness_puma"
+    assert "LIONESS-PUMA" in prompt.question
+    assert "supported alternative above" not in prompt.question
     continuation = resolve_next_turn_input(
         prompt,
         ContextualReplyResolution(
