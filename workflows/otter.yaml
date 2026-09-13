@@ -10,12 +10,55 @@ required_inputs: [motif_file, ppi_file, output_file]
 required_input_groups: [[expression_file, coexpression_file]]
 optional_inputs: [expression_file, coexpression_file, output_format, computing, precision, lam, gamma, iterations, eta, bexp]
 validation_steps: [inspect_otter_inputs]
+controls:
+  - name: output_format
+    type: enum
+    default: matrix
+    allowed_values: [matrix, edge_list]
+    executor_argument: output_format
+  - name: computing
+    type: enum
+    default: cpu
+    allowed_values: [cpu, gpu]
+    executor_argument: computing
+  - name: precision
+    type: enum
+    default: double
+    allowed_values: [single, double]
+    executor_argument: precision
+  - name: lam
+    type: number
+    default: 0.035
+    minimum: 0
+    maximum: 1
+    executor_argument: lam
+  - name: gamma
+    type: number
+    default: 0.335
+    minimum: 0
+    executor_argument: gamma
+  - name: iterations
+    type: integer
+    default: 60
+    minimum: 1
+    executor_argument: iterations
+  - name: eta
+    type: number
+    default: 0.00001
+    minimum: 0
+    executor_argument: eta
+  - name: bexp
+    type: number
+    default: 1.0
+    minimum: 0
+    executor_argument: bexp
 execution_step: run_otter
 output_capability:
   operation: infer
   artifact_type: regulatory_network
   entity_types: [tf, gene]
   granularities: [aggregate]
+  accepted_input_granularities: [aggregate]
   regulator_types: [tf]
   target_types: [gene]
   guidance_predecessors: []

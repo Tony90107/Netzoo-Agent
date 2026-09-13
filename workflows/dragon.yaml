@@ -5,6 +5,26 @@ description: Infer an aggregate two-layer multi-omic Gaussian graphical model wi
 required_inputs: [omics_layer_1, omics_layer_2, output_file]
 optional_inputs: [output_format, lambda1, lambda2]
 validation_steps: [inspect_dragon_inputs]
+controls:
+  - name: output_format
+    type: enum
+    default: matrix
+    allowed_values: [matrix, edge_list]
+    executor_argument: output_format
+  - name: lambda1
+    type: number
+    default: null
+    minimum: 0
+    maximum: 1
+    nullable: true
+    executor_argument: lambda1
+  - name: lambda2
+    type: number
+    default: null
+    minimum: 0
+    maximum: 1
+    nullable: true
+    executor_argument: lambda2
 execution_step: run_dragon
 output_capability:
   operation: infer
@@ -14,7 +34,7 @@ output_capability:
   regulator_types: []
   target_types: []
   guidance_predecessors: []
-  input_artifacts: [measurement_dataset]
+  input_artifacts: [measurement_dataset, expression_matrix]
   handoff_targets: []
   selection_tags: [multi_omic_network, partial_correlation, aggregate_network]
   handoff_contract: >-

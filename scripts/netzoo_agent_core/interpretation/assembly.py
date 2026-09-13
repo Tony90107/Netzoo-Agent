@@ -9,6 +9,7 @@ from ..routing.outcome_matching import guidance_actions_for
 from ..routing.capability import validate_task_text
 from .outcome_consistency import select_primary_hypothesis
 from .registry_guidance import preferred_registry_composition_actions
+from ..handoff import build_bonobo_handoff
 
 __all__ = ["assemble_task_decision"]
 
@@ -98,6 +99,26 @@ def assemble_task_decision(
         mismatch_dimensions=match.mismatch_dimensions,
         clarification_question=clarification,
     )
+    bonobo_handoff = build_bonobo_handoff(task, decision, ACTION_DEFINITIONS)
+    if bonobo_handoff is not None:
+        if bonobo_handoff.status != "validated":
+            return decision.model_copy(
+                update={
+                    "action": "no_tool",
+                    "should_execute": False,
+                    "intent_type": "answer_question",
+                    "reason": bonobo_handoff.reason,
+                    "recommended_actions": ["run_bonobo"],
+                }
+            )
+        decision = decision.model_copy(
+            update={
+                "recommended_actions": [
+                    "run_bonobo",
+                    *(item for item in [bonobo_handoff.consumer_action] if item),
+                ],
+            }
+        )
     composition_actions = preferred_registry_composition_actions(
         task,
         decision,

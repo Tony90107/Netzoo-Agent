@@ -26,6 +26,11 @@ and merges its two files on a common sample index.
 
 ## Agent input contract
 
+At routing time, `expression_matrix` is accepted as one concrete measured omics
+input for DRAGON; the generic `measurement_dataset` value remains valid when the
+modality is not specified. Execution still requires the two separate layer files
+below.
+
 `omics_layer_1` and `omics_layer_2` are separate CSV/TSV/TAB/TXT files with a
 header. The first column is a unique sample identifier; every remaining column
 name is a unique feature identifier. Both files use rows=samples and

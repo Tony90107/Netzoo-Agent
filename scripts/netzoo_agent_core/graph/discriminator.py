@@ -9,7 +9,10 @@ from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
 
 from ..contracts import AgentState, LLMUsage
 from ..contracts.outcomes import OutcomeEvidence, SemanticDiscriminator, SemanticInterpretation
-from ..interpretation.outcome_validation import validate_outcome_hypotheses
+from ..interpretation.outcome_validation import (
+    explicit_evidence_grounded,
+    validate_outcome_hypotheses,
+)
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_semantic_discriminator_messages
@@ -29,6 +32,14 @@ _RELAXED_GRAPH_MARKERS = (
 _LIONESS_BASE_MARKERS = (
     re.compile(r"(?:整體|整体|群體|群体|cohort|aggregate|population).{0,32}(?:調控|调控)?(?:網路|网络|network)|(?:base|baseline).{0,20}(?:network|網路|网络)", re.IGNORECASE),
     re.compile(r"\bLIONESS\b", re.IGNORECASE),
+)
+_BONOBO_BAYESIAN_MARKERS = (
+    re.compile(r"\b(?:Bayesian|prior|shrinkage|covariance)\b|先驗|收縮|共變異", re.IGNORECASE),
+    re.compile(r"\b(?:adaptive|automatically?\s+estimate|balance|weight)\b|自動|適應|權衡|平衡", re.IGNORECASE),
+)
+_BONOBO_PVALUE_MARKERS = (
+    re.compile(r"\b(?:sparsif(?:y|ied|ication)|sparse)\b|稀疏化|稀疏", re.IGNORECASE),
+    re.compile(r"\b(?:p[- ]?values?|p[- ]?value\s+matrix)\b|p值|p-value", re.IGNORECASE),
 )
 _DISCRIMINATOR_TAG_ALIASES = {
     "explicit objective/loss": "relaxed_graph_matching",
@@ -73,19 +84,37 @@ def _canonicalize_discriminator_payload(payload):
     return normalized
 
 
+def _selection_evidence_grounds_tags(
+    user_task: str,
+    selected: set[str],
+    evidence: list[OutcomeEvidence],
+) -> bool:
+    """Require each tie-breaking tag to have its own grounded explicit quote."""
+    grounded = {
+        item.value
+        for item in evidence
+        if item.dimension == "selection_tag"
+        and explicit_evidence_grounded(user_task, item)
+    }
+    return selected.issubset(grounded)
+
+
 def _recover_explicit_selection_tag(
     user_task: str,
     candidate_tags: set[str],
 ) -> tuple[str, OutcomeEvidence] | None:
     """Recover one strong bilingual tag when the provider returned an empty set.
 
-    This is deliberately narrower than ordinary routing. It only recognizes two
-    registry signals whose meanings are stable and whose evidence can be quoted
-    exactly from the request. Ambiguous or partial wording remains ambiguous.
+    This is deliberately narrower than ordinary routing. It only recognizes a
+    small set of registry signals whose meanings are stable and whose evidence
+    can be quoted exactly from the request. Ambiguous or partial wording remains
+    ambiguous.
     """
     rules = {
         "relaxed_graph_matching": _RELAXED_GRAPH_MARKERS,
         "lioness_base_compatibility": _LIONESS_BASE_MARKERS,
+        "bayesian": _BONOBO_BAYESIAN_MARKERS,
+        "sparse_pvalue_coexpression": _BONOBO_PVALUE_MARKERS,
     }
     recoveries: list[tuple[str, OutcomeEvidence]] = []
     for tag, markers in rules.items():
@@ -168,6 +197,67 @@ def _fill_inferred_role_evidence(interpretation: SemanticInterpretation) -> Sema
     return interpretation.model_copy(update={"outcome_hypotheses": hypotheses})
 
 
+def _recover_failed_discriminator(
+    user_task: str,
+    interpretation: SemanticInterpretation,
+    capability_match,
+):
+    """Recover a unique, explicitly stated registry signal after bad provider data.
+
+    The discriminator is an optional second opinion. If its structured response
+    is malformed, a strong signal already present in the user's request must not
+    be lost merely because the provider failed to serialize that second opinion.
+    This helper only narrows the candidates already produced by the typed
+    matcher; it never creates a new workflow.
+    """
+    actions = list(capability_match.hypothesis_actions)
+    candidate_tags = {
+        tag
+        for action in actions
+        for tag in OUTPUT_CAPABILITIES[action].selection_tags
+    }
+    recovered = _recover_explicit_selection_tag(user_task, candidate_tags)
+    if recovered is None:
+        return None
+    recovered_tag, recovered_evidence = recovered
+    hypothesis = interpretation.outcome_hypotheses[0]
+    outcome = hypothesis.outcome.model_copy(update={
+        "selection_tags": sorted(
+            set(hypothesis.outcome.selection_tags) | {recovered_tag}
+        )
+    })
+    updated = interpretation.model_copy(update={
+        "outcome_hypotheses": [hypothesis.model_copy(update={
+            "outcome": outcome,
+            "evidence": [*hypothesis.evidence, recovered_evidence],
+        })]
+    })
+    if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
+        return None
+    narrowed = match_semantic_request(
+        user_task,
+        updated.outcome_hypotheses,
+        request_mode=updated.request_mode,
+    )
+    if narrowed.status != "exact":
+        tag_actions = [
+            action for action in actions
+            if {recovered_tag}.issubset(OUTPUT_CAPABILITIES[action].selection_tags)
+        ]
+        if len(tag_actions) == 1:
+            narrowed = capability_match.model_copy(update={
+                "status": "exact",
+                "match_basis": "registry_features",
+                "matched_actions": tag_actions,
+                "hypothesis_actions": tag_actions,
+                "alternative_actions": [],
+                "clarification_question": None,
+            })
+    if narrowed.status != "exact" or len(narrowed.matched_actions) != 1:
+        return None
+    return updated, narrowed, recovered_evidence
+
+
 def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, user_task: str,
                                   interpretation: SemanticInterpretation, capability_match,
                                   usage: LLMUsage, budget_warnings: list[str]):
@@ -188,21 +278,53 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
     if budget.status == "blocked":
         usage.budget_exhausted = True
         return interpretation, capability_match, usage, budget_warnings
-    started_ns = time.monotonic_ns(); raw = None; payload = None; normalized_payload = None; output_text = ""; call_status = "failed"
+    started_ns = time.monotonic_ns()
+    raw = None
+    payload = None
+    normalized_payload = None
+    output_text = ""
+    call_status = "failed"
     try:
         record_event(context, state, "routing.semantic_discriminator_started", "classify", {"candidate_count": len(actions)})
         payload, raw = semantic_payload(adapter.invoke(messages))
         normalized_payload = _canonicalize_discriminator_payload(payload)
-        result = SemanticDiscriminator.model_validate(normalized_payload)
-        output_text = result.model_dump_json(); call_status = "success"
+        try:
+            result = SemanticDiscriminator.model_validate(normalized_payload)
+        except Exception:
+            # A provider may echo complete outcome evidence alongside a valid
+            # Bonobo tag. The discriminator accepts only selection_tag evidence;
+            # discard the unrelated echo so bounded recovery can inspect the
+            # original request.
+            raw_tags = set(normalized_payload.get("selection_tags") or ())
+            raw_evidence = normalized_payload.get("evidence") or []
+            if (
+                {"bayesian", "sparse_pvalue_coexpression"}.intersection(raw_tags)
+                and not any(
+                    isinstance(item, dict)
+                    and item.get("dimension") == "selection_tag"
+                    for item in raw_evidence
+                )
+            ):
+                normalized_payload = {"selection_tags": [], "evidence": []}
+                result = SemanticDiscriminator.model_validate(normalized_payload)
+            else:
+                raise
+        output_text = result.model_dump_json()
+        call_status = "success"
         candidate_tags = {tag for action in actions for tag in OUTPUT_CAPABILITIES[action].selection_tags}
         selected = set(result.selection_tags)
         recovered_evidence = None
-        if not selected:
+        # Broad shared tags can leave LIONESS-COEXPRESSION and BONOBO tied even
+        # when the request explicitly asks for Bonobo's p-value artifacts.
+        tag_actions = [
+            action for action in actions
+            if selected and selected.issubset(OUTPUT_CAPABILITIES[action].selection_tags)
+        ]
+        if not selected or len(tag_actions) != 1:
             recovered = _recover_explicit_selection_tag(user_task, candidate_tags)
             if recovered is not None:
                 recovered_tag, recovered_evidence = recovered
-                selected = {recovered_tag}
+                selected = set(selected) | {recovered_tag}
                 record_event(
                     context,
                     state,
@@ -227,6 +349,43 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
             "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
         })]})
         if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
+            selection_evidence = [
+                *result.evidence,
+                *([recovered_evidence] if recovered_evidence else []),
+            ]
+            tag_actions = [
+                action for action in actions
+                if selected.issubset(OUTPUT_CAPABILITIES[action].selection_tags)
+            ]
+            # A discriminator only narrows the already-matched candidate set.
+            # Its independently grounded selection-tag evidence remains usable
+            # even when unrelated evidence in the base interpretation is bad.
+            if (
+                len(tag_actions) == 1
+                and _selection_evidence_grounds_tags(
+                    user_task, selected, selection_evidence,
+                )
+            ):
+                narrowed = capability_match.model_copy(update={
+                    "status": "exact",
+                    "match_basis": "registry_features",
+                    "matched_actions": tag_actions,
+                    "hypothesis_actions": tag_actions,
+                    "alternative_actions": [],
+                    "clarification_question": None,
+                })
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_discriminator_accepted",
+                    "classify",
+                    {
+                        "selection_tags": sorted(selected),
+                        "matched_actions": narrowed.matched_actions,
+                        "base_evidence": "unverified",
+                    },
+                )
+                return interpretation, narrowed, usage, budget_warnings
             record_event(context, state, "routing.semantic_discriminator_rejected", "classify", {
                 "reason": "evidence_validation", "candidate_actions": actions,
                 "provider_payload": payload,
@@ -259,6 +418,26 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
             "provider_payload": payload,
             "normalized_provider_payload": normalized_payload,
         })
+        recovered = _recover_failed_discriminator(
+            user_task, interpretation, capability_match,
+        )
+        if recovered is not None:
+            updated, narrowed, evidence = recovered
+            record_event(
+                context,
+                state,
+                "routing.semantic_discriminator_recovered",
+                "classify",
+                {
+                    "selection_tags": sorted(
+                        updated.outcome_hypotheses[0].outcome.selection_tags
+                    ),
+                    "evidence": evidence.model_dump(mode="json"),
+                    "candidate_actions": actions,
+                    "reason": "provider_payload_invalid",
+                },
+            )
+            return updated, narrowed, usage, budget_warnings
     finally:
         usage = append_llm_usage(usage, role="semantic_discriminator", model=context.semantic_model_name,
             response=raw, input_text=input_text, output_text=output_text, budget_tokens=context.task_token_budget,

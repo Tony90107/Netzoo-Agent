@@ -12,10 +12,13 @@ from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
 )
+from ..routing.method_rejections import unsupported_algorithm_request
+from ..routing.named_labels import solely_named_run_action
 from .registry_guidance import (
     handoff_input_fields,
     preferred_registry_composition_actions,
 )
+from ..handoff import sample_specific_coexpression_handoff_requested
 
 _PURPOSE_PATTERN = re.compile(
     r"\b(?:function|purpose|what\s+is|what\s+does)\b|(?:功能|用途|是什麼)",
@@ -27,7 +30,13 @@ _SCRIPT_REQUEST_PATTERN = re.compile(
     r"|(?:幫我|請).{0,20}(?:寫|產生|生成).{0,20}(?:腳本|程式|script|code)",
     flags=re.IGNORECASE,
 )
-
+_WORKFLOW_CONTRACT_PATTERN = re.compile(
+    r"(?:input|inputs|file|files|data|parameter|parameters|輸入|檔案|資料|先驗)"
+    r".{0,100}(?:output|outputs|result|產生|輸出|結果|網路|network|matrix|矩陣)"
+    r"|(?:output|outputs|result|產生|輸出|結果|網路|network|matrix|矩陣)"
+    r".{0,100}(?:input|inputs|file|files|data|parameter|parameters|輸入|檔案|資料|先驗)",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 _OPERATION_VERBS = {
     "acquire": "acquire",
     "prepare": "prepare",
@@ -42,6 +51,7 @@ _ARTIFACT_LABELS = {
     "expression_matrix": "expression matrices",
     "regulatory_network": "regulatory networks",
     "coexpression_network": "co-expression networks",
+    "pvalue_matrix": "matching p-value matrices",
     "community_assignment": "community assignments",
     "validation_report": "validation reports",
     "unknown": "the requested result",
@@ -229,6 +239,100 @@ def render_capability_gap(
     return _ui_text("\n\n".join(lines))
 
 
+def render_sample_specific_coexpression_handoff_boundary(
+    task: str,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Explain an unnamed sample-specific co-expression handoff boundary.
+
+    A request may describe the producer output and name an aggregate consumer
+    without naming the producer method.  That is still enough to reject the
+    direct handoff, but not enough to select one of several producers.  Keep
+    this boundary independent of producer selection and derive the consumer
+    input contract from the registry.
+    """
+    if not sample_specific_coexpression_handoff_requested(task):
+        return None
+
+    normalized = task.casefold()
+    consumers = [
+        spec
+        for spec in policy.workflows.values()
+        if spec.output_capability is not None
+        and spec.workflow.casefold() in normalized
+        and "coexpression_network" in spec.output_capability.input_artifacts
+    ]
+    if not consumers:
+        consumer_phrase = "the requested downstream workflow"
+        consumer_spec = None
+    else:
+        consumer_phrase = ", ".join(spec.workflow for spec in consumers)
+        consumer_spec = consumers[0]
+
+    input_field = "coexpression_file"
+    accepted_granularities = (
+        set(consumer_spec.output_capability.accepted_input_granularities)
+        if consumer_spec is not None
+        else set()
+    )
+    if consumer_spec is not None and input_field not in (
+        set(consumer_spec.required_inputs) | set(consumer_spec.optional_inputs)
+    ):
+        input_field = "the registered co-expression input"
+
+    prior_inputs = []
+    if consumer_spec is not None:
+        prior_inputs = [
+            field
+            for field in consumer_spec.required_inputs
+            if field not in {"expression_file", "coexpression_file", "output_file", "output_dir"}
+        ]
+
+    if consumer_spec is None:
+        lines = [
+            "The first stage requests sample-specific gene-gene co-expression "
+            "matrices, but no registered downstream consumer contract was found "
+            "for the requested handoff.",
+        ]
+    else:
+        lines = [
+            "The first stage requests sample-specific gene-gene co-expression "
+            f"matrices, but {consumer_phrase} cannot receive them directly through "
+            f"`{input_field}`.",
+        ]
+    if "aggregate" in accepted_granularities and "sample_specific" not in accepted_granularities:
+        lines.append(
+            f"The registered {consumer_phrase} input contract accepts an aggregate "
+            "gene-by-gene co-expression matrix, not one matrix per sample."
+        )
+    if prior_inputs:
+        lines.append(
+            "The downstream workflow also requires these registered prior inputs: "
+            + ", ".join(f"`{field}`" for field in prior_inputs)
+            + "."
+        )
+    if re.search(
+        r"(?:不要|不做|禁止|without|no).{0,32}"
+        r"(?:aggregation|aggregate|sample\s+selection|averag|平均|選樣本|選取樣本)",
+        task,
+        re.IGNORECASE,
+    ):
+        lines.append(
+            "The request explicitly forbids aggregation or sample selection, "
+            "so no valid conversion path remains."
+        )
+    else:
+        lines.append(
+            "A separate, explicitly validated aggregation or sample-selection "
+            "conversion would be required; it is not inserted automatically."
+        )
+    lines.extend([
+        "No execution is permitted for this direct handoff.",
+        "No files were inspected and no analysis ran.",
+    ])
+    return _ui_text("\n\n".join(lines))
+
+
 def render_cobra_expression_boundary(task: str) -> str | None:
     """Prevent a scientifically invalid COBRA-output-to-PANDA handoff."""
     normalized = task.casefold()
@@ -248,6 +352,37 @@ def render_cobra_expression_boundary(task: str) -> str | None:
         "psi/Q/d/g decomposition is not itself a PANDA matrix input.\n\n"
         "No files were inspected and no analysis ran."
     )
+
+
+def render_unsupported_algorithm_boundary(task: str) -> str | None:
+    """Correct method premises that no registered workflow actually satisfies."""
+    boundary = unsupported_algorithm_request(task)
+    if boundary is None:
+        return None
+    if boundary == "glasso_bayesian_optimization":
+        return _ui_text(
+            "No registered netZooPy workflow implements the requested combination "
+            "of Graphical Lasso precision-matrix inference and Bayesian Optimization. "
+            "DRAGON is the nearest registered precision/partial-correlation workflow, "
+            "but it uses covariance shrinkage for one or two omics layers; it is not "
+            "Graphical Lasso and does not use Bayesian Optimization or motif/PPI priors. "
+            "BONOBO is a conjugate Bayesian sample-specific covariance/co-expression "
+            "model; its data-calibrated delta is not Bayesian Optimization, and it "
+            "does not estimate an inverse-covariance precision matrix.\n\n"
+            "No files were inspected and no analysis ran."
+        )
+    if boundary == "active_learning_gaussian_process":
+        return _ui_text(
+            "No registered netZooPy workflow implements active learning with "
+            "Gaussian-process sampling over parameter bounds for a sparse, "
+            "conditionally independent regulatory network. GIRAFFE and OTTER are the "
+            "nearest registered expression/motif/PPI regulatory workflows, but their "
+            "iterative optimization is not Gaussian-process Bayesian Optimization. "
+            "BONOBO is expression-only sample-specific gene-gene co-expression; it "
+            "does not accept motif/PPI priors or produce a TF-gene precision network.\n\n"
+            "No files were inspected and no analysis ran."
+        )
+    return None
 
 
 def render_registered_handoff_script_guidance(
@@ -381,6 +516,58 @@ def render_spec_backed_concept_answer(
     return None
 
 
+def render_registered_workflow_contract_answer(
+    task: str,
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Answer a named workflow's contract without re-routing alternatives."""
+    if not (decision.in_scope and decision.action == "no_tool"):
+        return None
+    if not _WORKFLOW_CONTRACT_PATTERN.search(task):
+        return None
+    action = solely_named_run_action(task)
+    if action is None:
+        return None
+    spec = policy.workflows.get(action)
+    if spec is None or spec.output_capability is None:
+        return None
+    capability = spec.output_capability
+    inputs = ", ".join(spec.required_inputs) or "no registered required inputs"
+    if capability.artifact_type == "coexpression_network":
+        output = (
+            "one gene-gene co-expression network per selected sample"
+            if "sample_specific" in capability.granularities
+            else "a gene-gene co-expression network"
+        )
+    else:
+        output = _capability_phrase(spec, decision)
+    lines = [
+        f"{spec.workflow}: {spec.description}",
+        f"Registered required inputs: {inputs}.",
+    ]
+    if spec.controls:
+        controls = ", ".join(
+            f"{control.name} (type={control.control_type}, default={control.default!r})"
+            for control in spec.controls
+        )
+        lines.append(f"Registered workflow controls: {controls}.")
+    lines.append(f"Output: {output}.")
+    if capability.artifact_type == "coexpression_network":
+        lines.append(
+            "This is a co-expression result, not a regulatory network (TF/miRNA) "
+            "or a covariance-decomposition artifact."
+        )
+    for conditional in capability.conditional_outputs:
+        if not conditional.valid:
+            continue
+        conditions = " and ".join(
+            f"`{name}={value}`" for name, value in conditional.when.items()
+        )
+        lines.append(f"When {conditions}: {conditional.semantics}.")
+    return _ui_text("\n".join(lines) + "\n\nNo files were inspected and no analysis ran.")
+
+
 def render_ambiguous_workflow_guidance(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
@@ -483,10 +670,13 @@ def render_recovered_workflow_guidance(
 __all__ = [
     "render_ambiguous_workflow_guidance",
     "render_capability_gap",
+    "render_sample_specific_coexpression_handoff_boundary",
     "render_cobra_expression_boundary",
+    "render_unsupported_algorithm_boundary",
     "render_registered_handoff_script_guidance",
     "render_outcome_clarification",
     "render_recovered_workflow_guidance",
     "render_spec_backed_concept_answer",
+    "render_registered_workflow_contract_answer",
     "render_workflow_composition_guidance",
 ]

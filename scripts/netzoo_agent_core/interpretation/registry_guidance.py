@@ -45,12 +45,26 @@ def _workflow_records(workflows: Mapping[str, object]) -> list[dict]:
                     "artifact_type": capability.artifact_type,
                     "entity_types": sorted(capability.entity_types),
                     "granularities": sorted(capability.granularities),
+                    "accepted_input_granularities": sorted(
+                        capability.accepted_input_granularities
+                    ),
                     "regulator_types": sorted(capability.regulator_types),
                     "target_types": sorted(capability.target_types),
                     "guidance_predecessors": list(capability.guidance_predecessors),
                     "input_artifacts": sorted(capability.input_artifacts),
                     "handoff_targets": list(capability.handoff_targets),
                     "selection_tags": sorted(capability.selection_tags),
+                    "produced_artifacts": sorted(capability.produced_artifacts),
+                    "conditional_outputs": [
+                        {
+                            "when": dict(item.when),
+                            "produced_artifacts": sorted(item.produced_artifacts),
+                            "semantics": item.semantics,
+                            "manifest_expectations": dict(item.manifest_expectations),
+                            "valid": item.valid,
+                        }
+                        for item in capability.conditional_outputs
+                    ],
                     "handoff_contract": capability.handoff_contract,
                 },
             }

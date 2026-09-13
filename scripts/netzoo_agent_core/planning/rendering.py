@@ -9,6 +9,20 @@ __all__ = ["render_plan"]
 
 def render_plan(plan: WorkflowPlan) -> str:
     lines = [f"Workflow: {plan.workflow}", "Evidence ledger:"]
+    if plan.workflow_handoff is not None:
+        handoff = plan.workflow_handoff
+        lines.extend(
+            [
+                "Workflow handoff:",
+                f"- {handoff.producer_workflow} -> "
+                f"{handoff.consumer_workflow or 'unregistered consumer'} "
+                f"({handoff.status})",
+                f"- artifact: {handoff.source_artifact_type} "
+                f"({handoff.source_granularity})",
+                f"- samples: {len(handoff.sample_ids)}; genes: {len(handoff.gene_ids)}",
+                f"- contract: {handoff.reason}",
+            ]
+        )
     if not plan.evidence:
         lines.append("- This task does not require local data files.")
     for item in plan.evidence:

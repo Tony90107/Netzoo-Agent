@@ -5,20 +5,28 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
+from types import UnionType
+from typing import Any, Literal, Union, get_args, get_origin
 
 import yaml
+from pydantic import TypeAdapter
 
 from workflow_registry import (
     ACTION_DEFINITIONS,
+    ConditionalOutputDefinition,
     OutputCapabilityDefinition,
     RUN_ACTIONS,
+    SELECTION_TAG_GLOSSARY,
+    WorkflowControlDefinition,
 )
 
 from .contracts import (
     AgentsPolicyHeader,
+    ConditionalOutputSpec,
     PROJECT_ROOT,
     ProjectPolicySnapshot,
     TaskDecision,
+    WorkflowControlSpec,
     WorkflowPolicySpec,
     _display_path,
 )
@@ -31,6 +39,175 @@ __all__ = [
 
 class ProjectPolicyError(RuntimeError):
     """Raised when project policy is missing, malformed, or conflicts with code."""
+
+
+def _control_from_spec(spec: WorkflowControlSpec) -> WorkflowControlDefinition:
+    return WorkflowControlDefinition(
+        name=spec.name,
+        control_type=spec.control_type,
+        default=spec.default,
+        allowed_values=tuple(spec.allowed_values),
+        minimum=spec.minimum,
+        maximum=spec.maximum,
+        nullable=spec.nullable,
+        selection_tags=frozenset(spec.selection_tags),
+        executor_argument=spec.executor_argument,
+        description=spec.description,
+    )
+
+
+def _conditional_output_from_spec(
+    spec: ConditionalOutputSpec,
+) -> ConditionalOutputDefinition:
+    return ConditionalOutputDefinition(
+        when=dict(spec.when),
+        produced_artifacts=frozenset(spec.produced_artifacts),
+        semantics=spec.semantics,
+        manifest_expectations=dict(spec.manifest_expectations),
+        valid=spec.valid,
+    )
+
+
+def _control_type_for_annotation(annotation: Any) -> str | None:
+    origin = get_origin(annotation)
+    if origin in {Union, UnionType}:
+        non_null = [item for item in get_args(annotation) if item is not type(None)]
+        if len(non_null) == 1:
+            return _control_type_for_annotation(non_null[0])
+    if origin is Literal:
+        return "enum"
+    if origin is list:
+        return "string_list"
+    if annotation is bool:
+        return "boolean"
+    if annotation is int:
+        return "integer"
+    if annotation is float:
+        return "number"
+    if annotation is str:
+        return "string"
+    return None
+
+
+def _validate_control_value(
+    action: str,
+    control: WorkflowControlSpec,
+    value: Any,
+    label: str,
+    adapter: TypeAdapter,
+) -> None:
+    if value is None:
+        if not control.nullable:
+            raise ProjectPolicyError(
+                f"{action} control {control.name} has a null {label} but is not nullable."
+            )
+        return
+    try:
+        adapter.validate_python(value)
+    except Exception as error:
+        raise ProjectPolicyError(
+            f"{action} control {control.name} has an invalid {label}: {error}."
+        ) from error
+    if control.control_type in {"integer", "number"} and isinstance(value, (int, float)):
+        if control.minimum is not None and value < control.minimum:
+            raise ProjectPolicyError(
+                f"{action} control {control.name} {label} is below minimum {control.minimum}."
+            )
+        if control.maximum is not None and value > control.maximum:
+            raise ProjectPolicyError(
+                f"{action} control {control.name} {label} exceeds maximum {control.maximum}."
+            )
+    if control.allowed_values and value not in control.allowed_values:
+        raise ProjectPolicyError(
+            f"{action} control {control.name} {label} is not an allowed value."
+        )
+
+
+def _validate_controls(
+    action: str,
+    spec: WorkflowPolicySpec,
+    definition,
+    known_fields: set[str],
+) -> tuple[WorkflowControlDefinition, ...]:
+    controls = spec.controls
+    names = [item.name for item in controls]
+    if len(names) != len(set(names)):
+        raise ProjectPolicyError(f"{action} declares duplicate workflow controls.")
+    executor_arguments = [item.executor_argument for item in controls]
+    if len(executor_arguments) != len(set(executor_arguments)):
+        raise ProjectPolicyError(f"{action} declares duplicate control executor arguments.")
+    required = set(spec.required_inputs)
+    optional = set(spec.optional_inputs)
+    executor_fields = set(definition.executor_fields)
+    unknown_executor_fields = executor_fields - known_fields
+    if unknown_executor_fields:
+        raise ProjectPolicyError(
+            f"{action} has unknown executor arguments: {sorted(unknown_executor_fields)}."
+        )
+    converted = tuple(_control_from_spec(item) for item in controls)
+    expected = tuple(definition.controls)
+    if converted != expected:
+        raise ProjectPolicyError(
+            f"{action} controls conflict with the registry declaration: "
+            f"yaml={converted}, code={expected}."
+        )
+    for item in controls:
+        if item.name not in known_fields:
+            raise ProjectPolicyError(f"{action} control {item.name} is not a TaskDecision field.")
+        if item.name in required or item.name in optional and item.name in required:
+            raise ProjectPolicyError(
+                f"{action} control {item.name} collides with a required input."
+            )
+        if item.executor_argument not in executor_fields or item.executor_argument not in known_fields:
+            raise ProjectPolicyError(
+                f"{action} control {item.name} references unknown executor argument "
+                f"{item.executor_argument}."
+            )
+        if item.control_type not in {"boolean", "integer", "number", "string", "string_list", "enum"}:
+            raise ProjectPolicyError(f"{action} control {item.name} has unknown control type.")
+        field = TaskDecision.model_fields[item.name]
+        expected_type = _control_type_for_annotation(field.annotation)
+        if expected_type != item.control_type:
+            raise ProjectPolicyError(
+                f"{action} control {item.name} type {item.control_type} does not match "
+                f"TaskDecision type {expected_type}."
+            )
+        adapter = TypeAdapter(field.annotation)
+        _validate_control_value(action, item, item.default, "default", adapter)
+        if item.control_type == "enum" and not item.allowed_values:
+            raise ProjectPolicyError(
+                f"{action} enum control {item.name} must declare allowed values."
+            )
+        if (
+            item.default is not None
+            and item.allowed_values
+            and item.default not in item.allowed_values
+        ):
+            raise ProjectPolicyError(
+                f"{action} control {item.name} default is not an allowed value."
+            )
+        for allowed in item.allowed_values:
+            _validate_control_value(action, item, allowed, "allowed value", adapter)
+        if (
+            (item.minimum is not None or item.maximum is not None)
+            and item.control_type not in {"integer", "number"}
+        ):
+            raise ProjectPolicyError(
+                f"{action} control {item.name} declares a range for a non-numeric type."
+            )
+        if item.minimum is not None and item.maximum is not None and item.minimum > item.maximum:
+            raise ProjectPolicyError(f"{action} control {item.name} has an inverted range.")
+        if item.selection_tags and not set(item.selection_tags).issubset(SELECTION_TAG_GLOSSARY):
+            unknown = sorted(set(item.selection_tags) - set(SELECTION_TAG_GLOSSARY))
+            raise ProjectPolicyError(f"{action} control {item.name} uses unknown selection tags: {unknown}.")
+    modeled = required | optional | {item.executor_argument for item in controls}
+    unmodeled = executor_fields - modeled
+    if unmodeled:
+        raise ProjectPolicyError(
+            f"{action} has executor arguments without an input or control declaration: "
+            f"{sorted(unmodeled)}."
+        )
+    return converted
 
 
 class ProjectPolicyLoader:
@@ -144,6 +321,53 @@ class ProjectPolicyLoader:
                 raise ProjectPolicyError(
                     f"{action} workflow must be {definition.workflow}."
                 )
+            _validate_controls(action, spec, definition, known_fields)
+            output_capability = definition.output_capability
+            if output_capability is None:
+                raise ProjectPolicyError(f"{action} has no output capability definition.")
+            unknown_tags = set(spec.output_capability.selection_tags) - set(SELECTION_TAG_GLOSSARY)
+            if unknown_tags:
+                raise ProjectPolicyError(
+                    f"{action} uses unregistered selection tags: {sorted(unknown_tags)}."
+                )
+            referenced_controls = {item.name: item for item in spec.controls}
+            seen_conditions: set[tuple[tuple[str, Any], ...]] = set()
+            for conditional in spec.output_capability.conditional_outputs:
+                undeclared_artifacts = set(conditional.produced_artifacts) - set(
+                    spec.output_capability.produced_artifacts
+                )
+                if undeclared_artifacts:
+                    raise ProjectPolicyError(
+                        f"{action} conditional output references unregistered artifacts: "
+                        f"{sorted(undeclared_artifacts)}."
+                    )
+                unknown_condition_controls = set(conditional.when) - set(referenced_controls)
+                if unknown_condition_controls:
+                    raise ProjectPolicyError(
+                        f"{action} conditional output references unknown controls: "
+                        f"{sorted(unknown_condition_controls)}."
+                    )
+                condition_key = tuple(
+                    sorted((name, repr(value)) for name, value in conditional.when.items())
+                )
+                if condition_key in seen_conditions:
+                    raise ProjectPolicyError(
+                        f"{action} declares duplicate conditional output rules."
+                    )
+                seen_conditions.add(condition_key)
+                for name, value in conditional.when.items():
+                    control = referenced_controls[name]
+                    _validate_control_value(
+                        action,
+                        control,
+                        value,
+                        f"conditional value for {name}",
+                        TypeAdapter(TaskDecision.model_fields[name].annotation),
+                    )
+                if not conditional.valid and conditional.produced_artifacts:
+                    raise ProjectPolicyError(
+                        f"{action} invalid conditional output rules cannot produce artifacts."
+                    )
             yaml_capability = OutputCapabilityDefinition(
                 operation=spec.output_capability.operation,
                 artifact_type=spec.output_capability.artifact_type,
@@ -151,6 +375,9 @@ class ProjectPolicyLoader:
                 granularities=frozenset(spec.output_capability.granularities),
                 accepted_input_modalities=frozenset(
                     spec.output_capability.accepted_input_modalities
+                ),
+                accepted_input_granularities=frozenset(
+                    spec.output_capability.accepted_input_granularities
                 ),
                 produced_artifacts=frozenset(
                     spec.output_capability.produced_artifacts
@@ -176,6 +403,10 @@ class ProjectPolicyLoader:
                 handoff_targets=tuple(spec.output_capability.handoff_targets),
                 selection_tags=frozenset(spec.output_capability.selection_tags),
                 handoff_contract=spec.output_capability.handoff_contract,
+                conditional_outputs=tuple(
+                    _conditional_output_from_spec(item)
+                    for item in spec.output_capability.conditional_outputs
+                ),
             )
             if yaml_capability != definition.output_capability:
                 raise ProjectPolicyError(

@@ -5,6 +5,41 @@ description: Subtype somatic-mutation samples through pathway mutation scores wi
 required_inputs: [mutation_file, exon_size_file, cancer_gene_file, pathway_file, output_dir]
 optional_inputs: [norm_patient, kmin, kmax, gmt_msigdb, subset_cancer_genes, distance, linkage, cluster]
 validation_steps: [inspect_sambar_inputs]
+controls:
+  - name: norm_patient
+    type: boolean
+    default: true
+    executor_argument: norm_patient
+  - name: kmin
+    type: integer
+    default: 2
+    minimum: 2
+    executor_argument: kmin
+  - name: kmax
+    type: integer
+    default: 4
+    minimum: 2
+    executor_argument: kmax
+  - name: gmt_msigdb
+    type: boolean
+    default: true
+    executor_argument: gmt_msigdb
+  - name: subset_cancer_genes
+    type: boolean
+    default: true
+    executor_argument: subset_cancer_genes
+  - name: distance
+    type: string
+    default: binomial
+    executor_argument: distance
+  - name: linkage
+    type: string
+    default: complete
+    executor_argument: linkage
+  - name: cluster
+    type: boolean
+    default: true
+    executor_argument: cluster
 execution_step: run_sambar
 output_capability:
   operation: analyze

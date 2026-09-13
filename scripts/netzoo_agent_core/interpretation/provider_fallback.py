@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 
 from pydantic import ValidationError
 
@@ -10,6 +11,7 @@ from ..contracts import TaskDecision
 from ..routing.capability import MIN_TOOL_CONFIDENCE, has_direct_execution_intent
 from ..routing.named_labels import solely_named_run_action
 from ..routing.outcome_matching import guidance_actions_for
+from .request_parameters import has_explicit_request_parameters
 __all__: list[str] = []
 
 
@@ -46,6 +48,45 @@ def recover_registry_guidance(
 ) -> TaskDecision | None:
     """Compatibility entry point: failed semantics never selects a tool from text."""
     return None
+
+
+def recover_ambiguous_input(
+    task: str,
+    error: BaseException | None = None,
+) -> TaskDecision | None:
+    """Turn a validated-input-only request into a safe result clarification.
+
+    This is deliberately narrower than workflow recovery: explicit paths and
+    controls are echoed, but no scientific outcome or workflow is inferred.
+    Requests without those concrete witnesses continue to use the generic
+    provider/validation failure boundary.
+    """
+    if not isinstance(error, (ValidationError, ValueError)):
+        return None
+    if not has_explicit_request_parameters(task):
+        return None
+    if not re.search(
+        r"(?:analy[sz]e|infer|run|execute|produce|generate|分析|估計|推估|產生|執行|跑)",
+        task,
+        flags=re.IGNORECASE,
+    ):
+        return None
+    return TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.0,
+        reason=(
+            "The request provides input parameters but does not specify the "
+            "requested NetZoo result, so no workflow was selected."
+        ),
+        clarification_question=(
+            "Which registered NetZoo result should I produce from these inputs? "
+            "Please specify the result type and whether it should be aggregate or sample-specific."
+        ),
+        match_basis="semantic_validation_recovery",
+    )
 
 
 def recover_explicit_run(

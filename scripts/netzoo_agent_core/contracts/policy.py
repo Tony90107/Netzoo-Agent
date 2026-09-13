@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from workflow_registry import (
@@ -21,6 +21,45 @@ class AgentsPolicyHeader(BaseModel):
     workflow_spec_dir: str = Field(min_length=1, max_length=200)
     conventions: list[str] = Field(default_factory=list, max_length=20)
 
+
+ControlType = Literal[
+    "boolean", "integer", "number", "string", "string_list", "enum"
+]
+
+
+class WorkflowControlSpec(BaseModel):
+    """YAML representation of one registry-owned workflow control."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    name: str = Field(min_length=1, max_length=80)
+    control_type: ControlType = Field(alias="type")
+    default: Any = None
+    allowed_values: list[Any] = Field(default_factory=list, max_length=32)
+    minimum: float | None = None
+    maximum: float | None = None
+    nullable: bool = False
+    selection_tags: list[str] = Field(default_factory=list, max_length=8)
+    executor_argument: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=400)
+
+    @property
+    def type(self) -> ControlType:
+        """Compatibility accessor for callers that use the YAML field name."""
+        return self.control_type
+
+
+class ConditionalOutputSpec(BaseModel):
+    """YAML representation of a control-dependent output rule."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    when: dict[str, Any] = Field(min_length=1, max_length=8)
+    produced_artifacts: list[ArtifactType] = Field(default_factory=list, max_length=8)
+    semantics: str = Field(min_length=1, max_length=800)
+    manifest_expectations: dict[str, Any] = Field(default_factory=dict, max_length=16)
+    valid: bool = True
+
 class WorkflowOutputCapabilitySpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -30,6 +69,9 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     granularities: list[Granularity] = Field(max_length=3)
     accepted_input_modalities: list[InputModality] = Field(
         default_factory=list, max_length=8
+    )
+    accepted_input_granularities: list[Granularity] = Field(
+        default_factory=list, max_length=3
     )
     produced_artifacts: list[ArtifactType] = Field(default_factory=list, max_length=8)
     transformations: list[str] = Field(default_factory=list, max_length=16)
@@ -49,6 +91,9 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     handoff_targets: list[RecommendedAction] = Field(default_factory=list, max_length=4)
     selection_tags: list[str] = Field(default_factory=list, max_length=12)
     handoff_contract: str = Field(default="", max_length=800)
+    conditional_outputs: list[ConditionalOutputSpec] = Field(
+        default_factory=list, max_length=8
+    )
 
 
 class WorkflowPolicySpec(BaseModel):
@@ -82,6 +127,7 @@ class WorkflowPolicySpec(BaseModel):
     ]] = Field(
         default_factory=list, max_length=4
     )
+    controls: list[WorkflowControlSpec] = Field(default_factory=list, max_length=32)
     execution_step: Literal[
         "run_panda",
         "run_puma",
@@ -121,6 +167,8 @@ class ProjectPolicySnapshot(BaseModel):
                 f"targets={','.join(capability.target_types) or 'none'}, "
                 f"granularities={','.join(capability.granularities)}. "
                 f"Input modalities: {','.join(capability.accepted_input_modalities) or 'unspecified'}. "
+                f"Accepted input granularities: "
+                f"{','.join(capability.accepted_input_granularities) or 'unspecified'}. "
                 f"Produced artifacts: {','.join(capability.produced_artifacts) or capability.artifact_type}. "
                 f"Transformations: {','.join(capability.transformations) or 'none'}. "
                 f"Objectives: {','.join(capability.scientific_objectives) or 'none'}. "
@@ -131,6 +179,8 @@ class ProjectPolicySnapshot(BaseModel):
                 f"Required inputs: {', '.join(spec.required_inputs)}. "
                 f"Required input alternatives: "
                 f"{' AND '.join(' OR '.join(group) for group in spec.required_input_groups) or 'none'}. "
+                f"Controls: "
+                f"{', '.join(item.name for item in spec.controls) or 'none'}. "
                 f"Handoff contract: {capability.handoff_contract or 'none'}."
             )
         return "\n".join(lines)
@@ -138,6 +188,8 @@ class ProjectPolicySnapshot(BaseModel):
 __all__ = [
     "AgentsPolicyHeader",
     "ProjectPolicySnapshot",
+    "WorkflowControlSpec",
+    "ConditionalOutputSpec",
     "WorkflowOutputCapabilitySpec",
     "WorkflowPolicySpec",
 ]

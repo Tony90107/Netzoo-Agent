@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from .context import _PlanningContext
+from ..data.bonobo import bonobo_artifact_paths, load_bonobo_inputs
 from ..data.bundles import MULTI_FILE_ACTIONS, discover_bundle_candidates
 from ..data.content_mapping import infer_input_roles
 from ..data.preflight import validate_workflow_inputs
@@ -64,6 +65,28 @@ def _apply_bonobo_parameter_bindings(context: _PlanningContext) -> None:
         names = [item.strip() for item in raw.split(",") if item.strip()]
         if names:
             decision.sample_names = names
+    else:
+        # Natural-language sample selection is a parameter binding too. Keep
+        # this deliberately narrow: only identifiers containing a letter and
+        # a digit are collected, so a cohort size such as "20 samples" cannot
+        # become a sample name. Validation against the expression header still
+        # happens in the Bonobo preflight/executor path.
+        selection = re.search(
+            r"(?:只|僅)?(?:分析|處理|查看|選擇|選用)"
+            r"(?P<zh>[^,.;。！？!?；\n]{1,100})|"
+            r"(?:analy[sz]e|process|inspect|use)\s+(?:only\s+)?"
+            r"(?P<en>[^,.;。！？!?；\n]{1,100})",
+            task,
+            flags=re.IGNORECASE,
+        )
+        if selection:
+            candidate_text = selection.group("zh") or selection.group("en") or ""
+            names = re.findall(
+                r"(?<![A-Za-z0-9_-])[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*(?![A-Za-z0-9_-])",
+                candidate_text,
+            )
+            if names:
+                decision.sample_names = list(dict.fromkeys(names))
     format_match = re.search(
         r"(?:bonobo[_ -]?output[_ -]?format|output[_ -]?format)\s*=\s*(\.?h5|\.?hdf|\.?txt|\.?csv)",
         task,
@@ -549,4 +572,46 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         context.preflight_errors[:] = list(dict.fromkeys(
             [*context.preflight_errors, *validate_workflow_inputs(action, decision)]
         ))
+    handoff = context.workflow_handoff
+    if (
+        action == "run_bonobo"
+        and handoff is not None
+        and handoff.status == "validated"
+        and not context.preflight_errors
+        and decision.expression_file
+        and decision.output_dir
+    ):
+        try:
+            bundle = load_bonobo_inputs(
+                decision.expression_file,
+                decision.sample_names,
+                genes_axis=decision.genes_axis,
+                log_transformed=decision.log_transformed,
+                centered=decision.centered,
+            )
+            paths = bonobo_artifact_paths(
+                decision.output_dir,
+                bundle.selected_sample_ids,
+                decision.bonobo_output_format,
+                save_pvals=decision.save_pvals,
+            )
+            artifact_paths = {
+                "coexpression_network": [str(path) for path in paths["networks"]],
+            }
+            if decision.save_pvals:
+                artifact_paths["pvalue_matrix"] = [
+                    str(path) for path in paths["pvalues"]
+                ]
+            context.workflow_handoff = handoff.model_copy(
+                update={
+                    "sample_ids": list(bundle.selected_sample_ids),
+                    "gene_ids": list(bundle.gene_ids),
+                    "source_artifact_paths": artifact_paths["coexpression_network"],
+                    "artifact_paths": artifact_paths,
+                }
+            )
+        except (OSError, TypeError, ValueError) as error:
+            context.preflight_errors.append(
+                f"BONOBO handoff identity could not be validated: {error}"
+            )
     return evidence

@@ -108,12 +108,20 @@ def clarification_continuation(
     carried_markers = " ".join(
         f"CARRIED_DISCOVERED_FIELD={item.field}." for item in carried
     )
-    return (
+    continuation = (
         f"PREVIOUS_ACTION={decision.action}. Continue the previous {plan.workflow} task; "
         "do not treat this as a new task. "
         "Selected input: " + "; ".join(selected_fields) + ". "
         f"{selected_markers} {carried_markers}".rstrip()
     )
+    if plan.workflow_handoff is not None:
+        handoff = plan.workflow_handoff
+        continuation += (
+            f" Preserve the validated {handoff.producer_workflow} downstream handoff to "
+            f"{handoff.consumer_workflow or 'the registered consumer'} "
+            "with the same sample IDs and gene order."
+        )
+    return continuation
 
 def bundle_clarification_continuation(plan: WorkflowPlan, answer: str) -> str:
     """Apply one complete typed bundle atomically to the pending workflow."""
@@ -354,6 +362,13 @@ def input_confirmation_continuation(
         f"{prefix}. PREVIOUS_ACTION={decision.action}. Continue the previous "
         f"{plan.workflow} task; do not treat this as a new conceptual question."
     )
+    if plan.workflow_handoff is not None:
+        handoff = plan.workflow_handoff
+        continuation += (
+            f" Preserve the validated {handoff.producer_workflow} downstream handoff to "
+            f"{handoff.consumer_workflow or 'the registered consumer'} "
+            "with the same sample IDs and gene order."
+        )
     if approved:
         for item in plan.evidence:
             if (

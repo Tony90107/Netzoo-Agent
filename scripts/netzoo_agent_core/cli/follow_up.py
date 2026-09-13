@@ -107,16 +107,22 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
     ):
         action = decision.alternative_actions[0]
         capability = OUTPUT_CAPABILITIES[action]
+        workflow = _workflow_name(action)
         requested_granularity = (
             decision.requested_outcome.granularity
             if decision.requested_outcome
             else None
         )
+        granularity = (
+            f" ({requested_granularity.replace('_', ' ')})"
+            if requested_granularity in capability.granularities
+            else ""
+        )
         return NextTurnPrompt(
             kind="alternative_outcome",
             question=_ui_text(
-                "State whether you want the supported alternative above, or describe "
-                "another NetZoo goal."
+                f"The supported alternative is {workflow}{granularity}. "
+                f"Confirm that you want {workflow}, or describe another NetZoo goal."
             ),
             alternative_action=action,
             alternative_granularity=(

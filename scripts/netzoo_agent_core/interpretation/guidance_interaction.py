@@ -38,10 +38,21 @@ def guidance_interaction(decision: TaskDecision) -> GuidanceInteraction | None:
         )
     question = decision.clarification_question
     if question:
+        if decision.capability_match_status == "fallback":
+            return GuidanceInteraction(
+                "clarification_required",
+                "? Clarification needed — Fallback recommendation is not an exact semantic match",
+                "This is registry-based guidance, not an exact semantic match. " + question,
+                "Answer the clarification above, ask a follow-up question, or describe another NetZoo goal.",
+                question,
+            )
         return GuidanceInteraction(
-            "clarification_required", "! Fallback recommendation — not an exact semantic match",
-            "This is registry-based guidance, not an exact semantic match. " + question,
-            "Answer the clarification above, ask a follow-up question, or describe another NetZoo goal.", question,
+            "clarification_required", "? Clarification needed",
+            "The requested result is not specific enough to select a workflow. "
+            "No workflow has been selected. " + question,
+            "Specify the requested result type and whether it should be aggregate "
+            "or sample-specific. The workflow will be selected only after the result "
+            "is clear; the captured inputs will be carried forward, and nothing will run yet.", question,
         )
     if not decision.recommended_actions and not decision.matched_actions:
         return GuidanceInteraction(

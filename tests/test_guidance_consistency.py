@@ -14,6 +14,7 @@ from netzoo_agent_core.graph.response_context import validated_workflow_context 
 from netzoo_agent_core.interpretation.assembly import assemble_task_decision  # noqa: E402
 from netzoo_agent_core.interpretation.outcome_validation import validate_outcome_hypotheses  # noqa: E402
 from netzoo_agent_core.contracts.decisions import IntentDecision  # noqa: E402
+from netzoo_agent_core.contracts.policy import WorkflowControlSpec  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_registry_guidance_features, match_semantic_request,
@@ -126,6 +127,60 @@ def test_final_answer_rejects_wrong_method_and_separates_artifacts():
         assert f"`{field_name}`" in answer
     assert "`output_dir`" not in answer
     assert "No files were inspected and no analysis ran." in answer
+
+
+def test_response_blocks_unnamed_sample_specific_coexpression_handoff():
+    task = (
+        "先產生 S01 和 S07 的 sample-specific gene-gene co-expression，"
+        "然後直接把這些矩陣交給 PANDA 作為 coexpression_file；"
+        "不要做 aggregation 或 sample selection。"
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="The requested direct handoff is incompatible.",
+        requested_outcome=agent.RequestedOutcome(
+            operation="infer",
+            input_artifacts=["expression_matrix"],
+            artifact_type="coexpression_network",
+            entity_types=["gene"],
+            granularity="sample_specific",
+        ),
+        capability_match_status="unsupported",
+        alternative_actions=["run_lioness_panda"],
+    )
+    plan = agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    class AdversarialResponse:
+        def invoke(self, messages):
+            pytest.fail("The deterministic handoff boundary must run first")
+
+    result = respond(SimpleNamespace(
+        project_policy=policy,
+        response_llm=AdversarialResponse(),
+    ), {
+        "messages": [agent.HumanMessage(content=task)],
+        "decision": decision.model_dump(),
+        "plan": plan.model_dump(),
+        "tool_results": [],
+    })
+    answer = result["messages"][0].content
+
+    assert "PANDA" in answer
+    assert "sample-specific gene-gene co-expression" in answer
+    assert "aggregate" in answer
+    assert "explicitly forbids aggregation or sample selection" in answer
+    assert "LIONESS-PANDA can instead" not in answer
+    assert "No execution is permitted" in answer
 
 
 @pytest.mark.parametrize("action", sorted(OUTPUT_CAPABILITIES))
@@ -241,6 +296,128 @@ def test_otter_guidance_declares_expression_or_coexpression_source_and_optimizat
     assert "continuous-relaxation" in answer
     assert "Required alternative (provide one):" in answer
     assert "`expression_file`" in answer and "`coexpression_file`" in answer
+
+
+def test_bonobo_guidance_exposes_sample_and_pvalue_controls_without_claiming_thresholding():
+    outcome = agent.RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="coexpression_network",
+        entity_types=["gene"],
+        selection_tags=["sample_specific", "sparse_pvalue_coexpression"],
+        granularity="sample_specific",
+    )
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        requested_outcome=outcome,
+        capability_match_status="exact",
+        match_basis="registry_features",
+        matched_actions=["run_bonobo"],
+        recommended_actions=["run_bonobo"],
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+
+    answer = render_verified_guidance(
+        decision,
+        guidance_contract(
+            decision,
+            policy,
+            "Select two samples and save sparsification p-values.",
+        ),
+    )
+
+    assert answer is not None
+    assert "Selected path: **BONOBO**" in answer
+    assert "`sample_names`" in answer
+    assert "`sparsify`" in answer
+    assert "`save_pvals`" in answer
+    assert "retains the full co-expression matrix" in answer
+    assert "does not also emit an already-thresholded network" in answer
+
+
+def test_bonobo_guidance_echoes_explicit_request_parameters():
+    task = (
+        "請對 expression_file=data/toy/expression.tsv 的 S01 與 S07 執行 "
+        "sample-specific gene-gene co-expression 分析，sparsify=true，"
+        "save_pvals=true，output_dir=outputs/pvalues，log_transformed=true，"
+        "centered=true。"
+    )
+    outcome = agent.RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="coexpression_network",
+        entity_types=["gene"],
+        selection_tags=["sample_specific", "sparse_pvalue_coexpression"],
+        granularity="sample_specific",
+    )
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        requested_outcome=outcome,
+        capability_match_status="exact",
+        match_basis="registry_features",
+        matched_actions=["run_bonobo"],
+        recommended_actions=["run_bonobo"],
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+
+    answer = render_verified_guidance(decision, guidance_contract(decision, policy, task))
+
+    assert answer is not None
+    assert "Captured request parameters:" in answer
+    assert "`expression_file`: data/toy/expression.tsv" in answer
+    assert "`expression_file`: data/toy/expression.tsv 的" not in answer
+    assert "Sample IDs (`sample_names`): S01, S07" in answer
+    assert "`output_dir`: outputs/pvalues" in answer
+    assert "`sparsify`: true" in answer
+    assert "`save_pvals`: true" in answer
+    assert "`log_transformed`: true" in answer
+    assert "`centered`: true" in answer
+
+
+def test_guidance_renders_an_injected_registry_control_without_renderer_changes():
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+    custom_control = WorkflowControlSpec(
+        name="fixture_control",
+        type="string",
+        default="fixture-default",
+        executor_argument="fixture_control",
+        description="A test-only registry control.",
+    )
+    bonobo = policy.workflows["run_bonobo"].model_copy(
+        update={
+            "controls": [*policy.workflows["run_bonobo"].controls, custom_control]
+        }
+    )
+    injected_policy = policy.model_copy(
+        update={"workflows": {**policy.workflows, "run_bonobo": bonobo}}
+    )
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        capability_match_status="exact",
+        matched_actions=["run_bonobo"],
+        recommended_actions=["run_bonobo"],
+    )
+
+    answer = render_verified_guidance(
+        decision,
+        guidance_contract(decision, injected_policy, "Explain BONOBO controls"),
+    )
+
+    assert answer is not None
+    assert "fixture_control" in answer
+    assert "fixture-default" in answer
 
 
 def test_signed_linear_effect_guidance_is_typed_and_explains_tfa_regression():

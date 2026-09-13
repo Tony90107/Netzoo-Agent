@@ -100,6 +100,25 @@ def test_a_cited_input_the_request_does_not_witness_is_not_restored():
     assert restored == []
 
 
+def test_sample_specific_coexpression_keeps_samples_as_selection_constraints_not_nodes():
+    interpretation_with_sample = interpretation(
+        artifact_type="coexpression_network",
+        entity_types=["gene", "sample"],
+        input_artifacts=["expression_matrix"],
+        regulator_types=[],
+        target_types=[],
+    )
+
+    result, restored = restore_stated_fields(
+        "I want one sparsified gene-gene co-expression network and p-value matrix for each sample.",
+        interpretation_with_sample,
+    )
+
+    outcome = result.outcome_hypotheses[0].outcome
+    assert outcome.entity_types == ["gene"]
+    assert any(item["field"] == "entity_types" for item in restored)
+
+
 def test_a_historical_mention_is_never_restored():
     """Log 41's failure class cannot arrive here: past clauses are not current."""
     result, restored = restore_stated_fields(

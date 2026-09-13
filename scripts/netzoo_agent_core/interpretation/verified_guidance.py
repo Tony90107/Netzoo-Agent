@@ -10,9 +10,11 @@ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.method_rejections import rejected_methods_for
 from ..settings import INPUT_ROLE_FIELDS
+from workflow_registry import get_controls
 from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
+from .request_parameters import extract_explicit_request_parameters, render_request_parameters
 
 
 def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str) -> dict:
@@ -34,6 +36,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         "match_status": decision.capability_match_status, "match_basis": decision.match_basis,
         "rejected_methods": [item.model_dump() for item in rejections],
         "artifact_definitions": {artifact: rule.description for artifact, rule in ARTIFACT_SEMANTICS.items()},
+        "requested_parameters": extract_explicit_request_parameters(task),
         "workflows": [dict(action=action, workflow=policy.workflows[action].workflow,
                            description=policy.workflows[action].description,
                            required_inputs=[
@@ -44,6 +47,11 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
                            required_input_groups=[
                                [field for field in group if field in INPUT_ROLE_FIELDS]
                                for group in policy.workflows[action].required_input_groups
+                           ],
+                           optional_inputs=list(policy.workflows[action].optional_inputs),
+                           controls=[
+                               control.model_dump(mode="json")
+                               for control in get_controls(action, registry=policy.workflows)
                            ],
                            role_labels={
                                field: INPUT_LABELS.get(field, field.replace("_", " "))
@@ -62,6 +70,11 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     rejected_actions = {item["action"] for item in rejected}
     selected = list(dict.fromkeys(decision.recommended_actions or decision.matched_actions))
     selected = [action for action in selected if action not in rejected_actions]
+    requested_tags = set(
+        decision.requested_outcome.selection_tags
+        if decision.requested_outcome is not None
+        else ()
+    )
     if not rejected and not (selected and decision.capability_match_status in {"exact", "fallback"}):
         return None
     lines = []
@@ -83,6 +96,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             lines.append(f"Fallback recommendation: **{names}**. {interaction.explanation}")
         else:
             lines.append(f"Selected path: **{names}**.")
+        requested_parameters = facts.get("requested_parameters") or {}
+        if requested_parameters:
+            lines.append(render_request_parameters(requested_parameters))
         explanations = facts.get("explanations", [])
         if explanations:
             lines.append("Why this recommendation:\n\n" + "\n\n".join(explanations))
@@ -109,6 +125,31 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                             for field in group
                         )
                     )
+            relevant_controls = [
+                control for control in item.get("controls", [])
+                if (
+                    not requested_tags
+                    or not set(control.get("selection_tags", []))
+                    or set(control.get("selection_tags", [])) & requested_tags
+                )
+            ]
+            if relevant_controls:
+                lines.append(
+                    "Relevant workflow controls for this request:\n\n"
+                    + "\n".join(
+                        _render_control(control) for control in relevant_controls
+                    )
+                )
+            conditional_outputs = capability.get("conditional_outputs", [])
+            for conditional in conditional_outputs:
+                if not conditional.get("valid", True):
+                    continue
+                conditions = " and ".join(
+                    f"`{name}={value}`" for name, value in conditional["when"].items()
+                )
+                lines.append(
+                    f"When {conditions}: {conditional['semantics']}."
+                )
             transformations = capability["transformations"]
             if transformations and not explanations:
                 lines.append("Declared transformations:\n\n" + "\n".join(
@@ -124,3 +165,19 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     lines.append("This is workflow guidance only; no execution was authorized. "
                  "No files were inspected and no analysis ran.")
     return "\n\n".join(lines)
+
+
+def _render_control(control: dict) -> str:
+    """Render only metadata declared by the workflow registry."""
+    details = [f"type={control.get('type', control.get('control_type'))}"]
+    if "default" in control:
+        details.append(f"default={control['default']}")
+    if control.get("allowed_values"):
+        details.append("allowed=" + ", ".join(map(str, control["allowed_values"])))
+    if control.get("minimum") is not None or control.get("maximum") is not None:
+        details.append(
+            f"range={control.get('minimum', '-∞')}..{control.get('maximum', '∞')}"
+        )
+    description = control.get("description")
+    suffix = f" — {description}" if description else ""
+    return f"- `{control['name']}` ({'; '.join(details)}){suffix}"

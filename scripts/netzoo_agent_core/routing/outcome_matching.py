@@ -36,7 +36,7 @@ from .capability_compatibility import (
     _supported_entities,
     explicit_input_artifacts,
 )
-from .method_rejections import rejected_methods_for
+from .method_rejections import rejected_methods_for, unsupported_algorithm_request
 from .named_labels import (
     _current_scope_text,
     named_registered_action,
@@ -589,6 +589,12 @@ def _match_semantic_request(
     ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Match typed meaning, using explicit registry identifiers only as a fallback."""
+    unsupported_method = unsupported_algorithm_request(task)
+    if unsupported_method is not None:
+        return CapabilityMatch(
+            status="unsupported",
+            mismatch_dimensions=["unsupported_algorithm", unsupported_method],
+        )
     marker = re.search(
         r"(?:CONFIRMED_OUTCOME_ACTION|PREVIOUS_ACTION)=(run_[a-z_]+)",
         task,

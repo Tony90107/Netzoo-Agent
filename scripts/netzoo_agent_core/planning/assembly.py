@@ -23,6 +23,7 @@ def _assemble_workflow_plan(
     memory_notes = context.memory_notes
     policy_hash = context.policy_hash
     policy_notes = context.policy_notes
+    workflow_handoff = context.workflow_handoff
     missing = [item.field for item in evidence if item.status == "missing"]
     decision.missing_inputs = missing
     decision.should_execute = not missing
@@ -102,6 +103,7 @@ def _assemble_workflow_plan(
             workflow=workflow,
             objective=decision.reason,
             decision=decision.model_dump(),
+            workflow_handoff=workflow_handoff,
             evidence=evidence,
             input_bundle_options=input_bundle_options,
             missing_inputs=missing,
@@ -119,6 +121,7 @@ def _assemble_workflow_plan(
             workflow=workflow,
             objective=decision.reason,
             decision=decision.model_dump(),
+            workflow_handoff=workflow_handoff,
             evidence=evidence,
             missing_inputs=[],
             status="needs_input",
@@ -166,6 +169,7 @@ def _assemble_workflow_plan(
             workflow=workflow,
             objective=decision.reason,
             decision=decision.model_dump(),
+            workflow_handoff=workflow_handoff,
             evidence=evidence,
             missing_inputs=[],
             status="needs_confirmation",
@@ -197,10 +201,38 @@ def _assemble_workflow_plan(
             purpose="Execute the requested NetZoo workflow.",
         )
     )
+    if workflow_handoff is not None and workflow_handoff.status == "validated":
+        consumer_spec = (
+            context.policy.workflows.get(workflow_handoff.consumer_action)
+            if context.policy is not None and workflow_handoff.consumer_action
+            else None
+        )
+        if consumer_spec is not None:
+            for validation_action in consumer_spec.validation_steps:
+                steps.append(
+                    WorkflowStep(
+                        action=validation_action,
+                        purpose=(
+                            "Validate the registered BONOBO handoff artifact, preserving "
+                            "sample identity and gene order before downstream execution."
+                        ),
+                    )
+                )
+            steps.append(
+                WorkflowStep(
+                    action=consumer_spec.execution_step,
+                    purpose=(
+                        "Execute the registered downstream consumer using the validated "
+                        "BONOBO artifact and declared prior inputs."
+                    ),
+                )
+            )
+        workflow = f"{workflow} -> {workflow_handoff.consumer_workflow}"
     return WorkflowPlan(
         workflow=workflow,
         objective=decision.reason,
         decision=decision.model_dump(),
+        workflow_handoff=workflow_handoff,
         evidence=evidence,
         steps=steps,
         status="ready",

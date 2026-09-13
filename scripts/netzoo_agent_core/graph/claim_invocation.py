@@ -10,9 +10,11 @@ from ..interpretation.outcome_validation import (
 )
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
+from ..interpretation.stated_field_restoration import restore_stated_fields
 from ..llm import append_llm_usage
 from ..routing.outcome_matching import match_semantic_request
 from .context import preflight_budget, record_event
+from .discriminator import _recover_explicit_selection_tag
 
 
 def invoke_claim_interpreter(
@@ -101,6 +103,17 @@ def invoke_claim_interpreter(
             if attempt == 0:
                 proposal = claims
             interpretation = claims.to_internal()
+            interpretation, restorations = restore_stated_fields(
+                user_task, interpretation,
+            )
+            if restorations:
+                record_event(
+                    context,
+                    state,
+                    "routing.outcome_input_restored",
+                    "classify",
+                    {"attempt": attempt + 1, "restored": restorations},
+                )
             validation = validate_outcome_hypotheses(
                 user_task, interpretation.outcome_hypotheses
             )
@@ -203,6 +216,44 @@ def invoke_claim_interpreter(
             interpretation.outcome_hypotheses,
             request_mode=interpretation.request_mode,
         )
+        if match.status == "ambiguous" and len(interpretation.outcome_hypotheses) == 1:
+            candidate_tags = {
+                tag
+                for action in match.hypothesis_actions
+                for tag in context.project_policy.workflows[action].output_capability.selection_tags
+            }
+            recovered = _recover_explicit_selection_tag(user_task, candidate_tags)
+            if recovered is not None:
+                recovered_tag, recovered_evidence = recovered
+                hypothesis = interpretation.outcome_hypotheses[0]
+                outcome = hypothesis.outcome.model_copy(update={
+                    "selection_tags": sorted(
+                        set(hypothesis.outcome.selection_tags) | {recovered_tag}
+                    )
+                })
+                interpretation = interpretation.model_copy(update={
+                    "outcome_hypotheses": [hypothesis.model_copy(update={
+                        "outcome": outcome,
+                        "evidence": [*hypothesis.evidence, recovered_evidence],
+                    })]
+                })
+                match = match_semantic_request(
+                    user_task,
+                    interpretation.outcome_hypotheses,
+                    request_mode=interpretation.request_mode,
+                )
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_discriminator_recovered",
+                    "classify",
+                    {
+                        "selection_tags": sorted(outcome.selection_tags),
+                        "evidence": recovered_evidence.model_dump(mode="json"),
+                        "candidate_actions": list(match.hypothesis_actions),
+                        "contract": "claims",
+                    },
+                )
         valid = interpretation
         complete = (
             match.status in {"exact", "not_applicable"}

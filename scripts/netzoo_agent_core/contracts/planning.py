@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ..settings import MAX_RECOVERY_ATTEMPTS
 from .decisions import PreferenceProposal
+from .handoffs import WorkflowHandoff
 
 class InputEvidence(BaseModel):
     """Where a workflow input came from and why it is (or is not) usable."""
@@ -69,6 +70,7 @@ class WorkflowPlan(BaseModel):
     missing_inputs: list[str] = Field(default_factory=list)
     status: Literal["ready", "needs_input", "needs_confirmation", "respond_only"]
     question: str | None = None
+    workflow_handoff: WorkflowHandoff | None = None
     preference_proposals: list[PreferenceProposal] = Field(default_factory=list)
     memory_notes: list[str] = Field(default_factory=list)
     policy_hash: str | None = None
@@ -86,4 +88,5 @@ __all__ = [
     'InputEvidence',
     'WorkflowStep',
     'WorkflowPlan',
+    'WorkflowHandoff',
 ]

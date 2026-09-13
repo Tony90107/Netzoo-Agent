@@ -145,6 +145,33 @@ def test_guidance_promotes_one_advisory_candidate_to_an_exact_registry_match():
     assert result.hypothesis_actions == []
 
 
+def test_guidance_with_current_rnaseq_input_routes_to_dragon():
+    task = (
+        "我有同一批病患的兩個已配對連續 omics layers：RNA-seq gene-expression "
+        "matrix，以及 exon-level methylation beta-value matrix。"
+        "我希望建立 cohort-level、two-layer Gaussian Graphical Model，"
+        "估計 precision matrix 與 partial-correlation network。"
+        "這是無向的統計關聯網路，不是 causal network。"
+        "我目前只想詢問 NetZooPy 應使用哪個 workflow，不要執行分析。"
+    )
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="multi_omic_network",
+        entity_types=[],
+        granularity="aggregate",
+    )
+
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_dragon"]
+
+
 def test_optional_registry_tags_do_not_make_a_known_scientific_result_ambiguous():
     requested = outcome(unresolved_dimensions=["selection_tag", "registry_tags"])
 

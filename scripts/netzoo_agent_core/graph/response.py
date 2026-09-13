@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import time
 from workflow_registry import LOCAL_EXECUTION_ACTIONS
-
 from ..contracts import (
     AIMessage,
     AgentState,
@@ -28,9 +27,13 @@ from ..evaluation import (
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
+    render_capability_gap,
     render_outcome_clarification,
+    render_registered_workflow_contract_answer,
+    render_sample_specific_coexpression_handoff_boundary,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
+    render_unsupported_algorithm_boundary,
 )
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
@@ -39,6 +42,9 @@ from ..presentation import strip_cli_owned_guidance_tail
 from .context import _GraphContext, preflight_budget, record_event
 from .response_context import validated_workflow_context
 from ..interpretation.verified_guidance import render_verified_guidance
+from ..interpretation.unresolved_router_fallback import (
+    render_unresolved_router_fallback as _render_unresolved_router_fallback,
+)
 
 __all__: list[str] = []
 
@@ -57,28 +63,15 @@ def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
     )
 
 
-def _render_unresolved_router_fallback(decision: TaskDecision) -> str:
-    from ..interpretation.guidance_interaction import guidance_interaction
-
-    interaction = guidance_interaction(decision)
-    if interaction:
-        return (f"{decision.reason}\n\n{interaction.explanation}\n\n{interaction.next_step}\n\n"
-                "No files were inspected and no analysis ran.")
-    reason = decision.reason.strip()
-    clarification = (
-        decision.clarification_question.strip()
-        if decision.clarification_question
-        else "Please restate the desired NetZoo result after the router is available."
-    )
-    return f"{reason}\n\n{clarification}\n\nNo files were inspected and no analysis ran."
-
-
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     task = latest_user_task(state["messages"])
     cobra_boundary = render_cobra_expression_boundary(task)
     if cobra_boundary is not None:
         return {"messages": [AIMessage(content=cobra_boundary)]}
+    algorithm_boundary = render_unsupported_algorithm_boundary(task)
+    if algorithm_boundary is not None:
+        return {"messages": [AIMessage(content=algorithm_boundary)]}
     workflow_context = validated_workflow_context(
         decision, context.project_policy,
         include_all=should_expand_guidance_catalog(decision, task), task=task,
@@ -94,6 +87,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         ToolExecutionResult.model_validate(item)
         for item in state.get("tool_results", [])
     ]
+    sample_handoff_boundary = render_sample_specific_coexpression_handoff_boundary(
+        task, context.project_policy,
+    )
+    if sample_handoff_boundary is not None and not structured_results:
+        return {"messages": [AIMessage(content=sample_handoff_boundary)]}
     evaluation = (
         EvaluationResult.model_validate(state["evaluation"])
         if state.get("evaluation")
@@ -120,6 +118,10 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
                 AIMessage(content=render_plan_rejection_response(plan_evaluation))
             ]
         }
+    if decision.requested_outcome is not None:
+        capability_gap = render_capability_gap(decision, context.project_policy)
+        if capability_gap is not None:
+            return {"messages": [AIMessage(content=capability_gap)]}
     if _is_unresolved_router_fallback(decision):
         _trace(
             "done",
@@ -127,7 +129,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         )
         return {
             "messages": [
-                AIMessage(content=_render_unresolved_router_fallback(decision))
+                AIMessage(content=_render_unresolved_router_fallback(decision, task))
             ]
         }
     # Plan gates have priority. Rejections/fallback provenance must then precede
@@ -137,6 +139,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     handoff_script = render_registered_handoff_script_guidance(task, decision, context.project_policy)
     if handoff_script is not None:
         return {"messages": [AIMessage(content=handoff_script)]}
+    workflow_contract_answer = render_registered_workflow_contract_answer(
+        task, decision, context.project_policy,
+    )
+    if workflow_contract_answer is not None:
+        return {"messages": [AIMessage(content=workflow_contract_answer)]}
     outcome_clarification = render_outcome_clarification(
         decision,
         context.project_policy,
