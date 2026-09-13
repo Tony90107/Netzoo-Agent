@@ -213,6 +213,13 @@ Dimension semantics:
   Sample cluster assignments and sample distances have entity_types=[sample],
   even when computed from genes. Pathway mutation scores concern pathway/sample,
   not gene entities. For networks, sample indexing alone does not make sample a node.
+  For multi_omic_network, two generic continuous assay layers should normally use
+  entity_types=[omics_layer_1_feature, omics_layer_2_feature] (or remain empty when
+  the feature labels are not needed). Do not emit assay names such as transcriptomics,
+  metabolomics, or methylation as entity_type literals. If the request explicitly
+  identifies supported feature biology, gene, mirna, protein, or metabolite may be
+  included as feature labels, but they are not regulator_types or target_types for a
+  multi_omic_network.
 - regulator_types and target_types describe biological roles inside an artifact.
   These roles and their unresolved dimensions apply only to regulatory-network
   artifact types, including signed and joint regulatory outputs.

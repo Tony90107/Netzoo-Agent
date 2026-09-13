@@ -112,7 +112,7 @@ InputModality = Literal[
     "unknown",
 ]
 EntityType = Literal[
-    "tf", "mirna", "gene", "protein", "sample", "pathway",
+    "tf", "mirna", "gene", "protein", "metabolite", "sample", "pathway",
     "omics_layer_1_feature", "omics_layer_2_feature", "unknown",
 ]
 Granularity = Literal["aggregate", "sample_specific", "not_applicable", "unknown"]
@@ -757,7 +757,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         output_capability=OutputCapabilityDefinition(
             operation="infer",
             artifact_type="multi_omic_network",
-            entity_types=frozenset({"omics_layer_1_feature", "omics_layer_2_feature"}),
+            entity_types=frozenset({
+                "omics_layer_1_feature", "omics_layer_2_feature",
+                "gene", "mirna", "protein", "metabolite",
+            }),
             granularities=frozenset({"aggregate"}),
             accepted_input_modalities=frozenset({"multi_omic_continuous"}),
             # `expression_matrix` is one concrete form of the measured omics
@@ -769,6 +772,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             guidance_notes=(
                 "DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, "
                 "rather than a generic Graphical Lasso penalty matrix.",
+                "DRAGON's precision-derived partial correlations estimate within-layer and "
+                "cross-layer conditional associations after accounting for the other modeled "
+                "features; this is an undirected association graph, not a causal guarantee "
+                "or proof that every indirect effect is removed.",
                 "The declared DRAGON API does not expose a separately tunable third "
                 "cross-layer penalty such as lambda_inter; three independently controlled "
                 "intra/inter-omics penalties are outside this workflow contract.",

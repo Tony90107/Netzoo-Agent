@@ -29,7 +29,7 @@ execution_step: run_dragon
 output_capability:
   operation: infer
   artifact_type: multi_omic_network
-  entity_types: [omics_layer_1_feature, omics_layer_2_feature]
+  entity_types: [omics_layer_1_feature, omics_layer_2_feature, gene, mirna, protein, metabolite]
   granularities: [aggregate]
   regulator_types: []
   target_types: []
@@ -40,6 +40,7 @@ output_capability:
   selection_tags: [multi_omic_network, partial_correlation, aggregate_network]
   guidance_notes:
     - DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+    - DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.
     - The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
   handoff_contract: >-
     DRAGON consumes exactly two paired sample-by-feature continuous omics tables
