@@ -21,6 +21,9 @@ from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa:
 from netzoo_agent_core.interpretation.stated_field_restoration import (  # noqa: E402
     restore_stated_fields,
 )
+from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
+    match_semantic_request,
+)
 from netzoo_agent_core.interpretation.request_integrity import (  # noqa: E402
     request_integrity_issues,
 )
@@ -117,6 +120,40 @@ def test_sample_specific_coexpression_keeps_samples_as_selection_constraints_not
     outcome = result.outcome_hypotheses[0].outcome
     assert outcome.entity_types == ["gene"]
     assert any(item["field"] == "entity_types" for item in restored)
+
+
+def test_multi_omic_network_keeps_features_and_drops_sample_count_from_nodes():
+    """A cohort size is observation metadata, not a node in a feature network."""
+    source = interpretation(
+        artifact_type="multi_omic_network",
+        entity_types=["gene", "mirna", "sample"],
+        input_artifacts=["expression_matrix"],
+        regulator_types=[],
+        target_types=[],
+        granularity="aggregate",
+    )
+
+    task = (
+        "I have mRNA and miRNA expression measurements from 150 tumor samples "
+        "and want one joint conditional-dependency network."
+    )
+    result, restored = restore_stated_fields(task, source)
+
+    outcome = result.outcome_hypotheses[0].outcome
+    assert outcome.entity_types == ["gene", "mirna"]
+    assert not any(
+        item.dimension == "entity_type" and item.value == "sample"
+        for item in result.outcome_hypotheses[0].evidence
+    )
+    assert any(item["field"] == "entity_types" for item in restored)
+
+    match = match_semantic_request(
+        task,
+        result.outcome_hypotheses,
+        request_mode="guidance",
+    )
+    assert match.status == "exact"
+    assert match.matched_actions == ["run_dragon"]
 
 
 def test_a_historical_mention_is_never_restored():

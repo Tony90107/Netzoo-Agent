@@ -111,6 +111,24 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
                     "the user's stated goal, with matching evidence."
                 ),
             )
+            if isinstance(user_task, str) and re.search(
+                r"(?:omics|transcriptomics|metabolomics|methylation|mRNA|miRNA|多體學|組學|轉錄組|代謝組|甲基化)",
+                user_task,
+                re.IGNORECASE,
+            ) and re.search(
+                r"(?:precision|partial[- ]?correlation|conditional[- ]?depend|逆共變異|偏相關|條件依賴|聯合建模|joint|two[- ]layer)",
+                user_task,
+                re.IGNORECASE,
+            ):
+                expected["multi_omic_recovery_rule"] = (
+                    "For paired continuous omics layers requesting one joint precision, "
+                    "partial-correlation, or conditional-dependency network, recover "
+                    "artifact_type=multi_omic_network, operation=infer, and "
+                    "granularity=aggregate unless the request explicitly asks for a "
+                    "separately inferred network per sample. Use feature entities, not "
+                    "regulator/target roles; a no-motif or no-sequence-prior statement "
+                    "is a negative constraint, not an input artifact."
+                )
         if "missing_current_input:" in issue or "noncurrent_input:" in issue:
             artifact_literal = issue.rsplit(":", 1)[-1]
             expected.update(

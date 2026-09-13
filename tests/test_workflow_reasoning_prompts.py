@@ -93,6 +93,37 @@ def test_semantic_prompt_defines_multi_omic_feature_entity_mapping():
     assert "not regulator_types or target_types" in prompt
 
 
+def test_semantic_prompt_maps_joint_precision_language_to_the_multi_omic_result():
+    prompt = " ".join(build_semantic_interpreter_prompt().split())
+
+    assert "paired continuous omics" in prompt
+    assert "precision" in prompt
+    assert "partial-correlation" in prompt
+    assert "conditional-dependency" in prompt
+    assert "artifact_type=multi_omic_network" in prompt
+    assert "No motif or sequence prior" in prompt
+    assert "not a regulatory_network" in prompt
+    assert "granularity=aggregate" in prompt
+    assert "does not ask for a separately inferred network per sample" in prompt
+    assert "Never put entity_type=sample merely because" in prompt
+
+
+def test_semantic_reviewer_feedback_has_a_multi_omic_recovery_rule():
+    messages = build_semantic_reviewer_messages(
+        build_semantic_interpreter_prompt(),
+        "我有 transcriptomics 與 metabolomics，想用 precision matrix 建立 joint "
+        "conditional-dependency network。請問哪個 workflow？",
+        {"request_mode": "guidance"},
+        ("hypothesis[0].inconsistent_not_applicable_outcome",),
+    )
+
+    reviewer_prompt = messages[0].content
+    feedback = messages[2].content
+    assert "multi_omic_network" in reviewer_prompt
+    assert "multi_omic_recovery_rule" in feedback
+    assert "separately inferred network per sample" in feedback
+
+
 def test_semantic_contract_separates_a_proposed_method_from_the_terminal_goal():
     """A method under evaluation is context, not a competing outcome."""
     prompt = build_semantic_interpreter_prompt()
