@@ -376,6 +376,7 @@ class ProjectPolicyLoader:
                 accepted_input_modalities=frozenset(
                     spec.output_capability.accepted_input_modalities
                 ),
+                guidance_notes=tuple(spec.output_capability.guidance_notes),
                 accepted_input_granularities=frozenset(
                     spec.output_capability.accepted_input_granularities
                 ),

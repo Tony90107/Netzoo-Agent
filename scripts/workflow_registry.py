@@ -239,6 +239,7 @@ class OutputCapabilityDefinition:
     required_input_artifacts: frozenset[str] = frozenset()
     handoff_targets: tuple[RecommendedAction, ...] = ()
     selection_tags: frozenset[str] = frozenset()
+    guidance_notes: tuple[str, ...] = ()
     handoff_contract: str = ""
     conditional_outputs: tuple[ConditionalOutputDefinition, ...] = ()
 
@@ -758,12 +759,20 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             artifact_type="multi_omic_network",
             entity_types=frozenset({"omics_layer_1_feature", "omics_layer_2_feature"}),
             granularities=frozenset({"aggregate"}),
+            accepted_input_modalities=frozenset({"multi_omic_continuous"}),
             # `expression_matrix` is one concrete form of the measured omics
             # table that DRAGON can consume. Keep the generic value as well:
             # semantic routing may know only that the inputs are measurements,
             # while the executor still requires exactly two layer files.
             input_artifacts=frozenset({"measurement_dataset", "expression_matrix"}),
             selection_tags=frozenset({"multi_omic_network", "partial_correlation", "aggregate_network"}),
+            guidance_notes=(
+                "DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, "
+                "rather than a generic Graphical Lasso penalty matrix.",
+                "The declared DRAGON API does not expose a separately tunable third "
+                "cross-layer penalty such as lambda_inter; three independently controlled "
+                "intra/inter-omics penalties are outside this workflow contract.",
+            ),
             handoff_contract=(
                 "DRAGON consumes exactly two paired sample-by-feature continuous omics tables "
                 "and produces one aggregate undirected multi-omic network. The matrix is a "

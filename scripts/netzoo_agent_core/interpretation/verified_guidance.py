@@ -108,6 +108,12 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             modalities = capability["accepted_input_modalities"] or capability["input_artifacts"]
             lines.append(f"**{item['workflow']}**: {item['description']}\n\n"
                          f"Routing-level input modality: {', '.join(value.replace('_', ' ') for value in modalities)}.")
+            guidance_notes = capability.get("guidance_notes", [])
+            if guidance_notes:
+                lines.append(
+                    "Workflow-specific scientific notes:\n\n"
+                    + "\n".join(f"- {note}" for note in guidance_notes)
+                )
             required_inputs = item.get("required_inputs", [])
             if required_inputs:
                 role_labels = item.get("role_labels", {})
