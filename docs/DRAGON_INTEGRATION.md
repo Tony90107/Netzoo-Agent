@@ -26,10 +26,11 @@ and merges its two files on a common sample index.
 
 ## Agent input contract
 
-At routing time, `expression_matrix` is accepted as one concrete measured omics
-input for DRAGON; the generic `measurement_dataset` value remains valid when the
-modality is not specified. Execution still requires the two separate layer files
-below.
+At routing time, `multi_omic_continuous` is the advertised modality for paired
+continuous omics layers. `expression_matrix` remains accepted as one concrete
+measured omics input for DRAGON, and the generic `measurement_dataset` value
+remains valid when the modality is not specified. Execution still requires the
+two separate layer files below.
 
 `omics_layer_1` and `omics_layer_2` are separate CSV/TSV/TAB/TXT files with a
 header. The first column is a unique sample identifier; every remaining column
@@ -49,7 +50,10 @@ files before `run_dragon`.
 The only optional numerical controls are `lambda1` and `lambda2`. They must be
 provided together and lie in `[0, 1]`; when omitted, the adapter calls
 `estimate_penalty_parameters_dragon`. `output_format` is `matrix` by default or
-`edge_list`.
+`edge_list`. These are layer-specific shrinkage controls. The verified DRAGON
+contract does not expose a separately tunable third cross-layer parameter such
+as `lambda_inter`; three independently controlled intra/inter-omics penalties
+are outside this workflow contract.
 
 ## Output contract
 

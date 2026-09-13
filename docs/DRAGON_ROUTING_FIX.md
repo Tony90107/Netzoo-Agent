@@ -18,7 +18,7 @@ Required inputs: omics_layer_1, omics_layer_2
 Guidance only: no execution
 ```
 
-輸出中的 `expression_matrix` 是 routing ontology 中「一種具體的 measured omics input」標籤，不代表第二層 methylation 被誤認成 expression。真正執行時仍然需要兩個分開的 layer files：`omics_layer_1` 與 `omics_layer_2`。
+第一版修復後輸出中的 `expression_matrix` 是 routing ontology 中「一種具體的 measured omics input」標籤，不代表第二層 methylation 被誤認成 expression。真正執行時仍然需要兩個分開的 layer files：`omics_layer_1` 與 `omics_layer_2`。本輪補強後，guidance 會優先顯示更貼近研究問題的 `multi_omic_continuous` modality。
 
 ## 問題與根因
 
@@ -105,6 +105,7 @@ DRAGON 論文也明確描述：它同時使用兩個 omics layers、假設 paire
 | semantic outcome | 已產生 | 已產生 |
 | `input_artifacts` | `expression_matrix` | `expression_matrix` |
 | DRAGON accepted input artifacts | `measurement_dataset` | `measurement_dataset`, `expression_matrix` |
+| DRAGON accepted input modality | 未宣告 | `multi_omic_continuous` |
 | outcome matching status | `ambiguous` | `exact` |
 | matched action | `[]` | `[run_dragon]` |
 | guidance action | `[]` | `[run_dragon]` |
@@ -130,7 +131,20 @@ DRAGON 論文也明確描述：它同時使用兩個 omics layers、假設 paire
 4. `lambda1`、`lambda2` 與 `output_format` 被列為 controls，符合 DRAGON 的兩層 shrinkage 與輸出需求。
 5. 系統明確說明沒有執行分析，符合使用者的授權範圍。
 
-因此，這一輪的核心問題已修復。若下一步要真的執行，應另行確認兩個檔案的 sample-ID 對齊、特徵數與樣本數、缺失值、連續性與近似 Gaussian preprocessing；那是資料與統計 validity 檢查，不應在 workflow selection 階段假裝已完成。
+## 第二階段補強：讓 guidance 回答正則化限制
+
+上一輪已經修好 workflow matching，但新的成功輸出仍暴露兩個 guidance 層級的缺口：它把 routing modality 顯示成較泛化的 `measurement_dataset, expression_matrix`，而且使用者明確詢問「是否有獨立 cross-layer penalty」時，輸出只列出 `lambda1`、`lambda2`，沒有回答這個限制。
+
+本輪做了四件事：
+
+1. 在 registry 與 `workflows/dragon.yaml` 同步宣告 `accepted_input_modalities: [multi_omic_continuous]`，因此 renderer 不再從較低層的 artifact fallback 推導 modality。
+2. 在 typed output-capability contract 增加 `guidance_notes`，讓科學限制成為 registry/policy 可驗證的資料，而不是 renderer 中針對 DRAGON 的硬編碼文字。
+3. 在 verified guidance renderer 顯示 workflow-specific scientific notes，明確寫出 DRAGON 使用兩個 layer-specific shrinkage parameters（`lambda1`、`lambda2`），而目前 API 沒有獨立的第三個 `lambda_inter`；三個 intra/inter block 都獨立調參不屬於目前 workflow contract。
+4. 新增 `test_dragon_guidance_states_modality_and_cross_layer_penalty_limit`，逐字驗證 modality、正則化限制與 guidance-only 邊界，避免未來 contract 漂移。
+
+這樣的文字與 DRAGON 的統計定位一致：它是 paired two-layer、aggregate、undirected GGM，利用 layer-specific covariance shrinkage 估計 joint precision/partial-correlation structure；這不等同於宣稱存在任意 blockwise Graphical Lasso penalty，也不會把 observational association 解讀成 causal effect。若下一步要真的執行，仍應另行確認兩個檔案的 sample-ID 對齊、特徵數與樣本數、缺失值、連續性與近似 Gaussian preprocessing；那是資料與統計 validity 檢查，不應在 workflow selection 階段假裝已完成。
+
+本輪驗證結果：DRAGON guidance/registry/policy/outcome matching 相關測試為 `48 passed, 1 warning`；完整 suite 仍為 `216 passed, 14 skipped, 1 failed, 2 warnings`。唯一 failure 仍是既有的 `test_a_reading_that_resolves_a_capability_still_skips_it` semantic-review 行為測試，並非本輪 DRAGON 測試；`git diff --check` 通過。
 
 ## 參考資料
 

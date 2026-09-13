@@ -33,10 +33,14 @@ output_capability:
   granularities: [aggregate]
   regulator_types: []
   target_types: []
+  accepted_input_modalities: [multi_omic_continuous]
   guidance_predecessors: []
   input_artifacts: [measurement_dataset, expression_matrix]
   handoff_targets: []
   selection_tags: [multi_omic_network, partial_correlation, aggregate_network]
+  guidance_notes:
+    - DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+    - The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
   handoff_contract: >-
     DRAGON consumes exactly two paired sample-by-feature continuous omics tables
     and produces one aggregate undirected multi-omic network. The matrix is a

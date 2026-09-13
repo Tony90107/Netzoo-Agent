@@ -199,6 +199,41 @@ def test_all_registered_workflows_inherit_artifact_separation(action):
         assert f"`{artifact}`: {ARTIFACT_SEMANTICS[artifact].description}." in answer
 
 
+def test_dragon_guidance_states_modality_and_cross_layer_penalty_limit():
+    outcome = agent.RequestedOutcome(
+        operation="infer",
+        artifact_type="multi_omic_network",
+        entity_types=[],
+        granularity="aggregate",
+    )
+    decision = agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=.95,
+        reason="Guidance",
+        requested_outcome=outcome,
+        capability_match_status="exact",
+        match_basis="registry_features",
+        matched_actions=["run_dragon"],
+        recommended_actions=["run_dragon"],
+    )
+    policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+
+    answer = render_verified_guidance(
+        decision,
+        guidance_contract(decision, policy, "Which workflow fits two continuous omics layers?"),
+    )
+
+    assert answer is not None
+    assert "Selected path: **DRAGON**" in answer
+    assert "Routing-level input modality: multi omic continuous." in answer
+    assert "two layer-specific shrinkage parameters" in answer
+    assert "does not expose a separately tunable third cross-layer penalty" in answer
+    assert "three independently controlled intra/inter-omics penalties are outside" in answer
+    assert "No files were inspected and no analysis ran." in answer
+
+
 def test_reverse_history_does_not_reject_compatible_expression_workflows():
     task = "Previously used SAMBAR for mutations; now use PANDA with expression data."
     decision = agent.TaskDecision(

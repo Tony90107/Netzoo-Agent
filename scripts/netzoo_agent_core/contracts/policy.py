@@ -70,6 +70,7 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     accepted_input_modalities: list[InputModality] = Field(
         default_factory=list, max_length=8
     )
+    guidance_notes: list[str] = Field(default_factory=list, max_length=8)
     accepted_input_granularities: list[Granularity] = Field(
         default_factory=list, max_length=3
     )
