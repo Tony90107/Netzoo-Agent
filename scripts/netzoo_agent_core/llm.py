@@ -220,6 +220,19 @@ Dimension semantics:
   identifies supported feature biology, gene, mirna, protein, or metabolite may be
   included as feature labels, but they are not regulator_types or target_types for a
   multi_omic_network.
+- Multi-omic result mapping is explicit: when the request describes paired
+  continuous omics layers and asks for one joint precision-matrix,
+  partial-correlation, or conditional-dependency network, set
+  artifact_type=multi_omic_network and operation=infer. If it describes one
+  joint/cohort network and does not ask for a separately inferred network per
+  sample, set granularity=aggregate. Use the generic feature entity labels above
+  (or the explicitly named gene, mirna, protein, or metabolite labels). A
+  statement such as "No motif or sequence prior" is a negative constraint on
+  candidate methods, not a current input; it is not a regulatory_network
+  artifact. This mapping applies whether the layers are transcriptomics,
+  metabolomics, methylation, mRNA, or miRNA measurements. Never put
+  entity_type=sample merely because the request gives a cohort size or sample
+  index; samples are observations, while network nodes are omics features.
 - regulator_types and target_types describe biological roles inside an artifact.
   These roles and their unresolved dimensions apply only to regulatory-network
   artifact types, including signed and joint regulatory outputs.
@@ -380,7 +393,11 @@ def build_semantic_reviewer_messages(
                 "not_applicable outcome. If validation reports "
                 "inconsistent_not_applicable_outcome, reconstruct the goal: "
                 "基因調控網路→regulatory_network; loss/objective + regularization + "
-                "鬆弛化→relaxed_graph_matching, with exact original-language evidence."
+                "鬆弛化→relaxed_graph_matching; paired continuous omics plus a joint "
+                "precision/partial-correlation/conditional-dependency network→"
+                "multi_omic_network with aggregate granularity unless the request "
+                "explicitly asks for one separately inferred network per sample, with "
+                "exact original-language evidence."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
@@ -451,7 +468,10 @@ def build_semantic_patch_messages(
                 "longer contains, including granularity=not_applicable after recovering "
                 "a scientific result. If the user asks which tool fits a stated "
                 "scientific goal, retain that goal as the terminal outcome; guidance "
-                "intent must not turn it into an empty or not_applicable outcome."
+                "intent must not turn it into an empty or not_applicable outcome. For "
+                "paired continuous omics plus a joint precision/partial-correlation/"
+                "conditional-dependency network, retain multi_omic_network and use "
+                "aggregate unless one separately inferred network per sample is explicit."
             )
         ),
         HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),

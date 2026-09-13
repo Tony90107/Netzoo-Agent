@@ -104,21 +104,26 @@ def _without_sample_entity(
     task: str,
     outcome: RequestedOutcome,
 ) -> RequestedOutcome | None:
-    """Keep sample IDs as selection constraints, not co-expression nodes.
+    """Keep sample counts as observation metadata, not network nodes.
 
     ``sample_specific`` means one separately inferred network per sample; the
-    nodes in each gene-gene matrix are still genes. This normalization does not
-    select a workflow and is limited to the co-expression artifact.
+    nodes in each gene-gene or multi-omic feature network are still features.
+    This normalization does not select a workflow. It only removes the
+    ``sample`` entity when a semantic review incorrectly promoted sample count
+    or sample indexing to a network node.
     """
-    if not (
-        re.search(r"\b(?:sparsif(?:y|ied|ication)|sparse)\b|稀疏化|稀疏", task, re.I)
-        and re.search(r"\bp[- ]?values?\b|p值", task, re.I)
-        and
-        outcome.artifact_type == "coexpression_network"
-        and outcome.granularity == "sample_specific"
-        and "gene" in outcome.entity_types
-        and "sample" in outcome.entity_types
-    ):
+    if outcome.artifact_type == "multi_omic_network":
+        eligible = "sample" in outcome.entity_types
+    else:
+        eligible = (
+            re.search(r"\b(?:sparsif(?:y|ied|ication)|sparse)\b|稀疏化|稀疏", task, re.I)
+            and re.search(r"\bp[- ]?values?\b|p值", task, re.I)
+            and outcome.artifact_type == "coexpression_network"
+            and outcome.granularity == "sample_specific"
+            and "gene" in outcome.entity_types
+            and "sample" in outcome.entity_types
+        )
+    if not eligible:
         return None
     payload = outcome.model_dump()
     payload["entity_types"] = [
@@ -168,7 +173,7 @@ def restore_stated_fields(
             restored.append({
                 "hypothesis": index,
                 "field": "entity_types",
-                "value": "gene",
+                "value": "sample",
                 "previous_value": list(outcome.entity_types),
                 "source": "artifact_ontology",
                 "witnessed_span": None,
