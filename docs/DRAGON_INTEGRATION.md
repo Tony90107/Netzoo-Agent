@@ -32,6 +32,12 @@ measured omics input for DRAGON, and the generic `measurement_dataset` value
 remains valid when the modality is not specified. Execution still requires the
 two separate layer files below.
 
+For a generic two-layer network, semantic routing should use the entity roles
+`omics_layer_1_feature` and `omics_layer_2_feature`. When the request names the
+biological feature classes explicitly, `gene`, `mirna`, `protein`, and `metabolite`
+are also valid DRAGON feature labels; they are not TF/miRNA regulatory roles or
+causal direction claims.
+
 `omics_layer_1` and `omics_layer_2` are separate CSV/TSV/TAB/TXT files with a
 header. The first column is a unique sample identifier; every remaining column
 name is a unique feature identifier. Both files use rows=samples and
@@ -54,6 +60,11 @@ provided together and lie in `[0, 1]`; when omitted, the adapter calls
 contract does not expose a separately tunable third cross-layer parameter such
 as `lambda_inter`; three independently controlled intra/inter-omics penalties
 are outside this workflow contract.
+
+The precision-derived partial correlations estimate within-layer and cross-layer
+conditional associations after accounting for the other modeled features. The
+result is an undirected association graph, not a causal guarantee or proof that
+every indirect effect has been removed.
 
 ## Output contract
 

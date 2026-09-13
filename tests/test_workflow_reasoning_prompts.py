@@ -84,6 +84,15 @@ def test_generated_reasoning_prompts_cover_implicit_workflow_intent():
     assert "output_files" in response_prompt
 
 
+def test_semantic_prompt_defines_multi_omic_feature_entity_mapping():
+    prompt = build_semantic_interpreter_prompt()
+
+    assert "multi_omic_network" in prompt
+    assert "omics_layer_1_feature, omics_layer_2_feature" in prompt
+    assert "gene, mirna, protein, or metabolite" in prompt
+    assert "not regulator_types or target_types" in prompt
+
+
 def test_semantic_contract_separates_a_proposed_method_from_the_terminal_goal():
     """A method under evaluation is context, not a competing outcome."""
     prompt = build_semantic_interpreter_prompt()

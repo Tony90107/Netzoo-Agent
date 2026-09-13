@@ -17,6 +17,20 @@ from ..interpretation.request_integrity import input_mentions
 from .candidate_ranking import _UNKNOWN
 
 
+_MIRNA_PRIOR = re.compile(
+    r"\bmi[- ]?RNA\b(?:\s+(?:prior|priors|list|file)\b|"
+    r"\s*(?:先驗|清單|列表|檔案)|"
+    r"[^。！？!?;；\n]{0,48}(?:\b(?:motif|PPI)\b"
+    r"[^。！？!?;；\n]{0,24}\bpriors?\b|先驗))",
+    re.IGNORECASE,
+)
+_NEGATED_INPUT = re.compile(
+    r"\b(?:no|not|without|don't|do not|doesn't|does not|never)\b|"
+    r"沒有|不需要|無|非",
+    re.IGNORECASE,
+)
+
+
 def _produced_artifacts(capability: OutputCapabilityDefinition) -> frozenset[str]:
     """Return every artifact a workflow can deliberately expose to the user."""
     return capability.produced_artifacts or frozenset({capability.artifact_type})
@@ -79,17 +93,25 @@ def explicit_input_artifacts(task: str) -> frozenset[str]:
         for mention in input_mentions(task)
         if mention.status == "current"
     }
-    # Comma-separated bundles such as "miRNA, motif and PPI priors" are split
-    # into separate lexical clauses by the temporal scoper. Preserve the
-    # bounded bundle witness here, while avoiding a bare "miRNA regulators"
-    # phrase that does not establish a prior file.
-    if re.search(
-        r"\bmi[- ]?RNA\b.{0,80}\b(?:prior|priors|data|matrix|file)\b|"
-        r"mi[- ]?RNA.{0,80}(?:先驗|資料|矩陣|檔案)",
-        task,
-        re.IGNORECASE,
-    ):
+    # Comma-separated bundles such as "miRNA, motif and PPI priors" are not
+    # handled by the general input vocabulary because priors are executor
+    # prerequisites rather than user-facing outcome artifacts. Recognize only
+    # prior-specific phrases here. In particular, do not use generic words such
+    # as "data" or "matrix": "miRNA expression data" is a measured omics layer,
+    # not a miRNA prior. Also ignore a local negation such as "without miRNA
+    # priors"; a missing prior is evidence against PUMA, not evidence that one is
+    # present.
+    for match in _MIRNA_PRIOR.finditer(task):
+        clause_start = max(
+            task.rfind(delimiter, 0, match.start())
+            for delimiter in (".", "。", "！", "!", "？", "?", ";", "；", "\n")
+        ) + 1
+        prefix = task[clause_start:match.start()]
+        phrase = match.group()
+        if _NEGATED_INPUT.search(prefix[-40:]) or _NEGATED_INPUT.search(phrase):
+            continue
         artifacts.add("mirna_prior")
+        break
     return frozenset(artifacts)
 
 

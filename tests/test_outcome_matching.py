@@ -15,6 +15,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     RequestedOutcome,
 )
 from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
+    explicit_input_artifacts,
     has_granularity_only_ambiguity,
     match_outcome_hypotheses,
     match_registry_guidance_features,
@@ -158,12 +159,68 @@ def test_guidance_with_current_rnaseq_input_routes_to_dragon():
         operation="infer",
         input_artifacts=["expression_matrix"],
         artifact_type="multi_omic_network",
-        entity_types=[],
+        entity_types=["gene", "mirna"],
         granularity="aggregate",
     )
 
     result = match_semantic_request(
         task,
+        [OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_dragon"]
+
+
+def test_mirna_expression_data_is_not_misread_as_a_mirna_prior():
+    task = (
+        "同時收集了 150 個腫瘤樣本的 mRNA 表現量與 miRNA 表現量數據。"
+        "我不需要藉助外部已知的序列結合位點資料庫，純粹想推論兩個組學矩陣的"
+        "條件依賴網絡。"
+    )
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="multi_omic_network",
+        entity_types=[],
+        granularity="aggregate",
+    )
+
+    assert "mirna_prior" not in explicit_input_artifacts(task)
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "exact"
+    assert result.matched_actions == ["run_dragon"]
+
+
+@pytest.mark.parametrize(
+    ("task", "expects_prior"),
+    [
+        ("I have an expression matrix and a miRNA prior list.", True),
+        ("I have miRNA, motif and PPI priors.", True),
+        ("I do not have miRNA priors.", False),
+    ],
+)
+def test_mirna_prior_detection_requires_a_current_prior_phrase(task, expects_prior):
+    assert ("mirna_prior" in explicit_input_artifacts(task)) is expects_prior
+
+
+def test_dragon_accepts_biological_feature_labels_for_multi_omic_network():
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="multi_omic_network",
+        entity_types=["gene", "metabolite"],
+        granularity="aggregate",
+    )
+
+    result = match_semantic_request(
+        "Which workflow infers a joint transcriptomics-metabolomics network?",
         [OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=[])],
         request_mode="guidance",
     )
