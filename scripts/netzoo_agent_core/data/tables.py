@@ -13,6 +13,8 @@ from netzoo_table_io import (
     table_read_info as _table_read_info,
 )
 
+from .gene_validation import GeneValidationSummary, validate_gene_identifiers
+
 from .paths import _resolve_user_path
 
 __all__ = [
@@ -25,6 +27,7 @@ __all__ = [
     "_validate_expression",
     "_validate_edge_or_bed",
     "_validate_mirna_list",
+    "validate_gene_identifiers",
     "_identifier_overlap_report",
     "_inspect_panda_inputs_impl",
     "inspect_netzoo_inputs_report",
@@ -41,6 +44,14 @@ class TableCheck:
     secondary_identifiers: set[str] = field(default_factory=set)
     format_name: str = "unknown"
     has_header: bool = False
+    header_label: str | None = None
+    header_role: str = "unknown"
+    identifier_namespace: str = "unknown"
+    secondary_identifier_namespace: str = "unknown"
+    canonical_identifiers: dict[str, str] = field(default_factory=dict)
+    regulator_canonical_identifiers: dict[str, str] = field(default_factory=dict)
+    node_canonical_identifiers: dict[str, str] = field(default_factory=dict)
+    gene_validation: GeneValidationSummary | None = None
     delimiter_name: str = "unknown"
     skipped_annotation_rows: int = 0
     errors: list[str] = field(default_factory=list)
@@ -52,8 +63,6 @@ class TableCheck:
         return not self.errors
 
 
-
-
 def _read_expression_source(path: Path) -> pd.DataFrame:
     """Read a TSV or CSV expression table without assuming its orientation."""
     return _read_table(path, min_fields=2)
@@ -63,12 +72,86 @@ def _looks_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce").notna()
 
 
+def _normalise_header_label(value: object) -> str:
+    """Return a stable comparison token for a first-cell axis label."""
+    return re.sub(r"[^a-z0-9]+", "_", str(value).strip().casefold()).strip("_")
+
+
+def _header_role(value: object) -> str:
+    """Classify a first-cell label without claiming that IDs are biologically valid."""
+    token = _normalise_header_label(value)
+    if token in {
+        "gene",
+        "genes",
+        "gene_id",
+        "geneid",
+        "gene_symbol",
+        "genesymbol",
+        "symbol",
+        "feature",
+        "feature_id",
+    }:
+        return "gene"
+    if token in {
+        "sample",
+        "samples",
+        "sample_id",
+        "sampleid",
+        "subject",
+        "subject_id",
+        "patient",
+        "patient_id",
+        "cell",
+        "cell_id",
+    }:
+        return "sample"
+    return "unknown"
+
+
+_ENSEMBL_GENE = re.compile(r"^ENS[A-Z0-9]*G[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
+_ENSEMBL_TRANSCRIPT = re.compile(r"^ENS[A-Z0-9]*T[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
+_SYMBOL_LIKE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
+
+
+def _identifier_namespace(values: object) -> str:
+    """Infer a conservative identifier namespace from observed values.
+
+    This is intentionally a namespace observation, not an online gene database
+    lookup. Numeric IDs may be Entrez IDs, and symbol-like IDs may belong to a
+    non-human organism or a project-local namespace.
+    """
+    identifiers = [str(value).strip() for value in values if str(value).strip()]
+    if not identifiers:
+        return "unknown"
+    if all(_ENSEMBL_GENE.fullmatch(value) for value in identifiers):
+        return "ensembl_gene"
+    if all(_ENSEMBL_TRANSCRIPT.fullmatch(value) for value in identifiers):
+        return "ensembl_transcript"
+    if all(value.isdigit() for value in identifiers):
+        return "numeric_identifier"
+    if all(_SYMBOL_LIKE.fullmatch(value) for value in identifiers):
+        return "symbol_like"
+    if any(
+        _ENSEMBL_GENE.fullmatch(value) or _ENSEMBL_TRANSCRIPT.fullmatch(value)
+        for value in identifiers
+    ):
+        return "mixed_ensembl"
+    return "opaque"
+
+
+def _namespace_union(*namespaces: str) -> str:
+    values = {value for value in namespaces if value and value != "unknown"}
+    if not values:
+        return "unknown"
+    return next(iter(values)) if len(values) == 1 else "mixed"
+
+
 def _drop_common_header(frame: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
     if frame.empty:
         return frame, False
 
     first_value = str(frame.iloc[0, 0]).strip().lower()
-    if first_value in {"", "gene", "genes", "gene_id", "geneid", "symbol"}:
+    if first_value == "" or _header_role(first_value) in {"gene", "sample"}:
         return frame.iloc[1:, :].reset_index(drop=True), True
 
     edge_header_first_cells = {
@@ -158,6 +241,24 @@ def _validate_expression(check: TableCheck) -> TableCheck:
 
     frame, has_header = _drop_common_header(check.frame)
     check.has_header = has_header
+    if has_header and check.frame is not None:
+        raw_label = str(check.frame.iloc[0, 0]).strip()
+        check.header_label = raw_label or None
+        check.header_role = _header_role(raw_label)
+        if check.header_role == "sample":
+            check.errors.append(
+                f"expression first header cell {raw_label!r} labels a sample axis; "
+                "gene IDs must be in the first column."
+            )
+        elif check.header_role == "gene":
+            check.notes.append(
+                f"gene-axis header label observed: {raw_label!r}."
+            )
+        else:
+            check.warnings.append(
+                f"expression first header cell {raw_label!r} has unknown axis semantics; "
+                "the first column is treated as gene IDs by position."
+            )
     if frame.empty:
         check.errors.append("expression table has no data rows.")
         return check
@@ -167,6 +268,10 @@ def _validate_expression(check: TableCheck) -> TableCheck:
         _looks_numeric(numeric_block.stack()).mean() if not numeric_block.empty else 0.0
     )
     row_ids = frame.iloc[:, 0].dropna().astype(str).str.strip()
+    check.identifier_namespace = _identifier_namespace(row_ids)
+    check.notes.append(
+        f"gene ID namespace observed: {check.identifier_namespace}."
+    )
 
     header_ids = (
         set(check.frame.iloc[0, 1:].dropna().astype(str).str.strip())
@@ -303,6 +408,14 @@ def _validate_edge_or_bed(check: TableCheck, label: str) -> TableCheck:
         )
     check.identifiers = set(left_ids)
     check.secondary_identifiers = set(right_ids)
+    check.identifier_namespace = _identifier_namespace(left_ids)
+    check.secondary_identifier_namespace = _identifier_namespace(right_ids)
+    check.notes.append(
+        f"{label} first-column ID namespace observed: {check.identifier_namespace}."
+    )
+    check.notes.append(
+        f"{label} second-column ID namespace observed: {check.secondary_identifier_namespace}."
+    )
     duplicated = frame.iloc[:, :2].astype(str).duplicated()
     if duplicated.any():
         check.warnings.append(
@@ -381,6 +494,10 @@ def _identifier_overlap_report(
     reference_ids: set[str],
     source_name: str,
     reference_name: str,
+    source_namespace: str = "unknown",
+    reference_namespace: str = "unknown",
+    source_canonical_ids: dict[str, str] | None = None,
+    reference_canonical_ids: dict[str, str] | None = None,
 ) -> tuple[list[str], bool]:
     """Report exact cross-file ID compatibility and return whether it is invalid."""
     overlap = source_ids & reference_ids
@@ -394,9 +511,33 @@ def _identifier_overlap_report(
 
     unmatched = sorted(source_ids - reference_ids)
     if not overlap:
+        canonical_source = set((source_canonical_ids or {}).values())
+        canonical_reference = set((reference_canonical_ids or {}).values())
+        canonical_overlap = canonical_source & canonical_reference
+        if canonical_overlap:
+            lines.append(
+                "  status: canonical gene matches found after identifier mapping "
+                f"({len(canonical_overlap)} unique gene(s))."
+            )
+            if source_canonical_ids and reference_canonical_ids:
+                lines[0] = (
+                    f"- {label}: {len(canonical_overlap)}/{source_count} "
+                    f"({len(canonical_overlap) / source_count:.1%} canonical coverage)"
+                )
+            return lines, False
         lines.append(
             f"  error: no exact ID overlap between {source_name} and {reference_name}."
         )
+        if (
+            source_namespace not in {"unknown", "mixed"}
+            and reference_namespace not in {"unknown", "mixed"}
+            and source_namespace != reference_namespace
+        ):
+            lines.append(
+                "  observation: identifier namespaces differ "
+                f"({source_namespace} vs {reference_namespace}); map both files "
+                "to one namespace before relying on overlap."
+            )
 
         casefold_overlap = {identifier.casefold() for identifier in source_ids} & {
             identifier.casefold() for identifier in reference_ids
@@ -434,12 +575,103 @@ def _inspect_panda_inputs_impl(
     motif_file: str,
     ppi_file: str,
     mirna_file: str = "",
+    taxon: str = "",
 ) -> tuple[str, bool, bool]:
     expression = _validate_expression(
         _read_checked_table("expression", expression_file)
     )
     motif = _validate_edge_or_bed(_read_checked_table("motif", motif_file), "motif")
     ppi = _validate_edge_or_bed(_read_checked_table("PPI", ppi_file), "PPI")
+
+    # Validate the gene axis and motif target axis independently before
+    # comparing them.  The validator is cache-first; a configured Websearch
+    # MCP is consulted only for cache misses.  Unverified results remain
+    # warnings, while authoritative invalid results become preflight errors.
+    if expression.identifiers:
+        expression.gene_validation = validate_gene_identifiers(
+            expression.identifiers,
+            expression.identifier_namespace,
+            taxon,
+        )
+        expression.canonical_identifiers = expression.gene_validation.canonical_map
+    if motif.format_name == "edge list" and motif.secondary_identifiers:
+        motif.gene_validation = validate_gene_identifiers(
+            motif.secondary_identifiers,
+            motif.secondary_identifier_namespace,
+            taxon,
+        )
+        motif.canonical_identifiers = motif.gene_validation.canonical_map
+    if motif.format_name == "edge list" and motif.identifiers:
+        motif.regulator_canonical_identifiers = validate_gene_identifiers(
+            motif.identifiers,
+            motif.identifier_namespace,
+            taxon,
+        ).canonical_map
+    if ppi.format_name == "edge list":
+        ppi_nodes = ppi.identifiers | ppi.secondary_identifiers
+        if ppi_nodes:
+            ppi.node_canonical_identifiers = validate_gene_identifiers(
+                ppi_nodes,
+                _namespace_union(
+                    ppi.identifier_namespace,
+                    ppi.secondary_identifier_namespace,
+                ),
+                taxon,
+            ).canonical_map
+
+    for check, role in (
+        (expression, "expression genes"),
+        (motif, "motif target genes"),
+    ):
+        summary = check.gene_validation
+        if summary is None:
+            continue
+        counts = summary.status_counts()
+        parts = [f"{count} {status}" for status, count in sorted(counts.items())]
+        lookup_parts = [f"{summary.cache_hits} cache hit(s)"]
+        if summary.online_queries:
+            lookup_parts.append(f"{summary.online_queries} online lookup batch(es)")
+        scope = f" for taxon {taxon!r}" if taxon else ""
+        check.notes.append(
+            f"{role} authority validation{scope}: {', '.join(parts)} "
+            f"({', '.join(lookup_parts)})."
+        )
+        if summary.stale_cache_hits:
+            check.warnings.append(
+                f"{role} used {summary.stale_cache_hits} stale cache fallback(s); "
+                "refresh the gene authority cache when online lookup is available."
+            )
+        invalid_ids = sorted(
+            record.identifier
+            for record in summary.records.values()
+            if record.status == "invalid"
+        )
+        if invalid_ids:
+            check.errors.append(
+                f"{role} not recognized by the configured gene authority: "
+                + ", ".join(invalid_ids[:5])
+            )
+        ambiguous_ids = sorted(
+            record.identifier
+            for record in summary.records.values()
+            if record.status == "ambiguous"
+        )
+        if ambiguous_ids:
+            check.warnings.append(
+                f"{role} have multiple authority matches; taxon may be required: "
+                + ", ".join(ambiguous_ids[:5])
+            )
+        unverified_ids = sorted(
+            record.identifier
+            for record in summary.records.values()
+            if record.status == "unverified"
+        )
+        if unverified_ids:
+            check.warnings.append(
+                f"{role} could not be authority-verified; exact schema and cross-file "
+                "matching will still be used: "
+                + ", ".join(unverified_ids[:5])
+            )
 
     all_checks = [expression, motif, ppi]
 
@@ -476,6 +708,10 @@ def _inspect_panda_inputs_impl(
             expression.identifiers,
             "motif target gene",
             "expression gene IDs",
+            motif.secondary_identifier_namespace,
+            expression.identifier_namespace,
+            motif.canonical_identifiers,
+            expression.canonical_identifiers,
         )
         lines.extend(id_lines)
         cross_id_error = cross_id_error or invalid
@@ -529,6 +765,10 @@ def _inspect_panda_inputs_impl(
             ppi.identifiers | ppi.secondary_identifiers,
             "motif TF",
             "PPI TF IDs",
+            motif.identifier_namespace,
+            _namespace_union(ppi.identifier_namespace, ppi.secondary_identifier_namespace),
+            motif.regulator_canonical_identifiers,
+            ppi.node_canonical_identifiers,
         )
         lines.extend(id_lines)
         cross_id_error = cross_id_error or invalid
@@ -545,6 +785,7 @@ def inspect_netzoo_inputs_report(
     motif_file: str,
     ppi_file: str,
     mirna_file: str = "",
+    taxon: str = "",
 ) -> str:
     """Inspect PANDA/PUMA input files and report format, readability, and ID overlaps."""
     report, _, _ = _inspect_panda_inputs_impl(
@@ -552,5 +793,6 @@ def inspect_netzoo_inputs_report(
         motif_file=motif_file,
         ppi_file=ppi_file,
         mirna_file=mirna_file,
+        taxon=taxon,
     )
     return report

@@ -71,6 +71,7 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
     motif = _value(decision, "motif_file")
     ppi = _value(decision, "ppi_file")
     mirna = _value(decision, "mirna_file")
+    taxon = _value(decision, "taxon")
     coexpression = _value(decision, "coexpression_file")
 
     if action in {"inspect_inputs", "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma"}:
@@ -81,6 +82,7 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
             mirna
             if action in {"inspect_inputs", "run_puma", "run_lioness_puma"}
             else "",
+            taxon=taxon,
         )
         errors.extend(_report_errors("PANDA/PUMA inputs", report, ok))
         if action == "run_puma" and inferred_header:

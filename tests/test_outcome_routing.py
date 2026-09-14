@@ -44,8 +44,11 @@ from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_semantic_request,
 )
 from netzoo_agent_core.routing.capability import (  # noqa: E402
+    has_direct_execution_intent,
+    has_explicit_execution_request,
     is_workflow_information_request,
     is_workflow_selection_request,
+    reconcile_request_mode,
 )
 from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
@@ -316,6 +319,36 @@ def test_execution_intent_cannot_authorize_a_workflow_selection_question():
     assert decision.action == "no_tool"
     assert decision.should_execute is False
     assert decision.intent_type == "answer_question"
+
+
+@pytest.mark.parametrize(
+    "task",
+    [
+        "請直接執行 PANDA 的 dry-run。",
+        "請試跑 PUMA。",
+        "幫我測試 CONDOR。",
+        "Please run OTTER now.",
+        "Please perform a GIRAFFE dry-run.",
+    ],
+)
+def test_explicit_execution_language_is_workflow_independent(task):
+    assert has_explicit_execution_request(task)
+    assert has_direct_execution_intent(task)
+    assert reconcile_request_mode(task, "guidance") == "execute"
+
+
+@pytest.mark.parametrize(
+    "task",
+    [
+        "請解釋如何執行 PANDA。",
+        "我要知道 PANDA 需要哪些輸入。",
+        "請產生一個執行 PANDA 的 script。",
+        "How do I run OTTER?",
+    ],
+)
+def test_explanations_and_script_requests_remain_advisory(task):
+    assert not has_explicit_execution_request(task)
+    assert reconcile_request_mode(task, "guidance") == "guidance"
 
 
 def test_semantic_guidance_mode_blocks_execution_even_when_intent_misfires():

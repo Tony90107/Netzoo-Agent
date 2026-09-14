@@ -117,6 +117,15 @@ class TaskDecision(BaseModel):
     ppi_file: str | None = None
     mirna_file: str | None = None
     coexpression_file: str | None = None
+    taxon: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=120,
+        description=(
+            "Requested organism or taxon for gene validation, such as "
+            "Homo sapiens or Mus musculus; leave unset when the user did not specify one."
+        ),
+    )
     output_file: str | None = None
     lioness_output: str | None = None
     network_file: str | None = None

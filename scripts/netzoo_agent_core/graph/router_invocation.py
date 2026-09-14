@@ -43,6 +43,7 @@ from ..llm import (
     build_semantic_patch_messages,
     build_semantic_reviewer_messages,
 )
+from ..routing.capability import has_explicit_execution_request, reconcile_request_mode
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
 from .continuation_invocation import continue_workflow
@@ -820,6 +821,22 @@ def invoke_router(
             reason_code=("budget_fallback" if semantic_error is None else "semantic_fallback"),
         )
 
+    reconciled_request_mode = reconcile_request_mode(
+        user_task,
+        interpretation.request_mode,
+    )
+    if reconciled_request_mode != interpretation.request_mode:
+        interpretation = interpretation.model_copy(
+            update={"request_mode": reconciled_request_mode}
+        )
+        record_event(
+            context,
+            state,
+            "routing.explicit_execution_reconciled",
+            "classify",
+            {"request_mode": reconciled_request_mode},
+        )
+
     _trace(
         "reasoning",
         "Checking registered workflow capabilities",
@@ -886,6 +903,23 @@ def invoke_router(
         usage,
         budget_warnings,
     )
+    if has_explicit_execution_request(user_task) and intent.mode != "execute":
+        intent = intent.model_copy(
+            update={
+                "mode": "execute",
+                "reason": (
+                    "The request contains an explicit execution instruction; "
+                    "deterministic command-language routing selected execute."
+                ),
+            }
+        )
+        record_event(
+            context,
+            state,
+            "routing.explicit_execution_reconciled",
+            "classify",
+            {"intent_mode": "execute"},
+        )
     decision = assemble_task_decision(
         interpretation,
         capability_match,

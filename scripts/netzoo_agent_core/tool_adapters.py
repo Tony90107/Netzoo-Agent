@@ -20,6 +20,7 @@ def inspect_netzoo_inputs(
     motif_file: str,
     ppi_file: str,
     mirna_file: str = "",
+    taxon: str = "",
 ) -> str:
     """Inspect PANDA/PUMA input readability, formats, and identifier overlaps."""
     return inspect_netzoo_inputs_report(
@@ -27,6 +28,7 @@ def inspect_netzoo_inputs(
         motif_file,
         ppi_file,
         mirna_file,
+        taxon=taxon,
     )
 
 

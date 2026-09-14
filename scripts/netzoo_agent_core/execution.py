@@ -97,12 +97,14 @@ def run_panda(
     with_header: bool = False,
     extra_args: str = "",
     coexpression_file: str = "",
+    taxon: str = "",
 ) -> str:
     """Run PANDA through the container wrapper."""
     validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
         expression_file=expression_file,
         motif_file=motif_file,
         ppi_file=ppi_file,
+        taxon=taxon,
     )
     if not inputs_ok:
         return (
@@ -159,6 +161,7 @@ def run_puma(
     extra_args: str = "",
     coexpression_file: str = "",
     mode_process: str = "",
+    taxon: str = "",
 ) -> str:
     """Run PUMA using a one-regulator-per-line miRNA list.
 
@@ -174,6 +177,7 @@ def run_puma(
         motif_file=motif_file,
         ppi_file=ppi_file,
         mirna_file=mirna_file,
+        taxon=taxon,
     )
     if inferred_header:
         return (
@@ -295,6 +299,7 @@ def _run_lioness_command(
     ppi_file: str = "",
     mirna_file: str = "",
     mode_process: str = "",
+    taxon: str = "",
 ) -> str:
     lioness_suffix = Path(lioness_output).suffix.casefold()
     allowed_suffixes = (
@@ -339,6 +344,7 @@ def _run_lioness_command(
             motif_file,
             ppi_file,
             mirna_file if mode == "puma" else "",
+            taxon=taxon,
         )
         if not inputs_ok:
             return (
@@ -398,6 +404,7 @@ def run_lioness_panda(
     ppi_file: str,
     output_file: str,
     lioness_output: str,
+    taxon: str = "",
 ) -> str:
     """Run aggregate PANDA plus LIONESS-PANDA sample-specific networks."""
     return _run_lioness_command(
@@ -407,6 +414,7 @@ def run_lioness_panda(
         lioness_output,
         motif_file,
         ppi_file,
+        taxon=taxon,
     )
 
 
@@ -419,6 +427,7 @@ def run_lioness_puma(
     output_file: str,
     lioness_output: str,
     mode_process: str = "",
+    taxon: str = "",
 ) -> str:
     """Run aggregate PUMA plus LIONESS-PUMA sample-specific networks.
 
@@ -437,6 +446,7 @@ def run_lioness_puma(
         ppi_file,
         mirna_file,
         mode_process=mode_process,
+        taxon=taxon,
     )
 
 

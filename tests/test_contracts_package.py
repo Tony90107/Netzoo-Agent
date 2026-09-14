@@ -141,8 +141,8 @@ HISTORICAL_EXPORTS = [
 # guidance can state expression_file OR coexpression_file without making both
 # sources mandatory.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "f8173ed369c9b4e31d42e7141873f04914c6cbf4baca3620712c195c7567531e",
-    "RouterDecision": "fe64ba8a2c630f241273b7bebef9ff59bf7c12aa0c3547619de2b4628975ffe7",
+    "TaskDecision": "0e22c87f83ceba841db81836fa4a307ceff9190bbcca691526b8744fb7aec906",
+    "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "adeea85942782cee47f34cc56cd3bf6b2385334c7eeaf76286e220d8189a2887",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "3470a96bfbd4c67d4f0436f444db71ae8a899c3671ecc213f218785d22317ea9",
