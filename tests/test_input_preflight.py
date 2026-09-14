@@ -12,6 +12,9 @@ from netzoo_agent_core.cli.clarification import (  # noqa: E402
     input_confirmation_continuation,
 )
 from netzoo_agent_core.contracts import PlanEvaluationResult  # noqa: E402
+from netzoo_agent_core.data.tables import _inspect_panda_inputs_impl  # noqa: E402
+from netzoo_agent_core.tool_adapters import inspect_netzoo_inputs  # noqa: E402
+from workflow_registry import executor_arguments  # noqa: E402
 
 
 def _write(path: Path, content: str) -> Path:
@@ -115,3 +118,96 @@ def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_
     assert result.execute_once is False
     assert "final input validation failed" in result.message
     assert "motif" in result.message.casefold()
+
+
+def test_expression_header_and_identifier_namespace_are_code_owned_observations(tmp_path):
+    expression = _write(
+        tmp_path / "expression.tsv",
+        "gene_id\ts1\ts2\nENSG00000141510\t1\t2\nENSG00000139618\t2\t1\n",
+    )
+    motif = _write(
+        tmp_path / "motif.tsv",
+        "TF1\tENSG00000141510\t1\nTF2\tENSG00000139618\t1\n",
+    )
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+
+    report, ok, inferred_header = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi)
+    )
+
+    assert ok, report
+    assert inferred_header is True
+    assert "gene-axis header label observed: 'gene_id'" in report
+    assert "gene ID namespace observed: ensembl_gene" in report
+
+
+def test_sample_axis_header_is_rejected_for_gene_by_sample_expression(tmp_path):
+    expression = _write(
+        tmp_path / "expression.tsv",
+        "sample_id\ts1\ts2\ng1\t1\t2\ng2\t2\t1\n",
+    )
+    motif = _write(tmp_path / "motif.tsv", "TF1\tg1\t1\nTF2\tg2\t1\n")
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi)
+    )
+
+    assert not ok
+    assert "labels a sample axis" in report
+
+
+def test_cross_file_namespace_mismatch_is_reported_without_online_lookup(tmp_path):
+    expression = _write(
+        tmp_path / "expression.tsv",
+        "gene_id\ts1\ts2\nENSG00000141510\t1\t2\nENSG00000139618\t2\t1\n",
+    )
+    motif = _write(tmp_path / "motif.tsv", "TF1\tTP53\t1\nTF2\tBRCA2\t1\n")
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi)
+    )
+
+    assert not ok
+    assert "identifier namespaces differ" in report
+
+
+def test_taxon_reaches_inspect_tool_and_executor_payload(tmp_path, monkeypatch):
+    expression = _write(
+        tmp_path / "expression.tsv",
+        "gene_id\ts1\ts2\nQSOX1\t1\t2\n",
+    )
+    motif = _write(tmp_path / "motif.tsv", "TF1\tQSOX1\t1\nTF2\tQSOX1\t1\n")
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+
+    report = inspect_netzoo_inputs.invoke(
+        {
+            "expression_file": str(expression),
+            "motif_file": str(motif),
+            "ppi_file": str(ppi),
+            "taxon": "Homo sapiens",
+        }
+    )
+
+    assert "authority validation for taxon 'Homo sapiens'" in report
+
+
+def test_taxon_is_forwarded_to_panda_executor_arguments():
+    decision = TaskDecision(
+        action="run_panda",
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="Run PANDA.",
+        expression_file="expression.tsv",
+        motif_file="motif.tsv",
+        ppi_file="ppi.tsv",
+        output_file="output.tsv",
+        taxon="Homo sapiens",
+    )
+
+    arguments = executor_arguments("run_panda", decision)
+
+    assert arguments["taxon"] == "Homo sapiens"

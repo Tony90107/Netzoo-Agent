@@ -26,6 +26,8 @@ __all__ = [
     "infer_advisory_capabilities",
     "inferred_execution_action",
     "has_direct_execution_intent",
+    "has_explicit_execution_request",
+    "reconcile_request_mode",
     "validate_task_text",
     "normalize_context7_library",
     "enforce_capability_gate",
@@ -90,8 +92,9 @@ WORKFLOW_INFORMATION_PATTERNS = (
     r"(?:需要哪些|要哪些|需要什麼|要什麼).*?(?:input|輸入|資料|檔案)",
     r"(?:input|輸入|資料|檔案).*?(?:格式|要求|需要哪些|要哪些|應該提供)",
     r"(?:input|輸入).*?(?:是什麼|有哪些)",
-    r"怎麼.*?(?:跑|執行|使用|準備)",
-    r"(?:怎麼|如何).*?(?:做|建立|建構|產生|推論|完成)",
+    r"怎麼.*?(?:跑|執行|測試|檢查|驗證|使用|準備)",
+    r"(?:怎麼|如何).*?(?:做|建立|建構|產生|推論|執行|測試|檢查|驗證|完成)",
+    r"\b(?:how|what|which)\b.{0,80}\b(?:run|execute|test|dry[- ]?run|inspect|validate|check)\b",
     r"\bhow\s+(?:do|should|can|would)\s+i\s+"
     r"(?:build|create|make|infer|generate|produce|perform|complete)\b",
 )
@@ -102,6 +105,19 @@ WORKFLOW_SELECTION_PATTERNS = (
     r"\b(?:what|which)\s+(?:tools?|workflows?|methods?)\b.{0,80}\b(?:should|can)\s+i\s+use\b",
     r"(?:需要|要|應該用).*?(?:哪些|什麼).{0,20}(?:工具|workflow|方法)",
     r"(?:哪些|什麼).{0,20}(?:工具|workflow|方法).*?(?:需要|要|應該用)",
+)
+
+
+# This is intentionally workflow-independent.  It only recognizes an
+# imperative request to perform work now; it must not select a workflow or
+# interpret the scientific result.  Information questions are filtered first
+# so phrases such as "how do I run" remain advisory.
+EXPLICIT_EXECUTION_PATTERNS = (
+    r"(?:^|[，,。！？!?;；\n])\s*(?:請|幫我|替我|我要|我想(?:要)?|please\s+)?"
+    r"(?:直接\s*)?(?:執行|跑|試跑|測試|檢查|驗證|分析)\b",
+    r"(?:^|[,.!?;\n])\s*(?:(?:please|can you|could you)\s+|"
+    r"i\s+(?:want|need)\s+to\s+)?(?:directly\s+)?"
+    r"(?:run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b",
 )
 
 
@@ -151,12 +167,34 @@ def has_direct_execution_intent(task: str) -> bool:
         return False
     return bool(
         re.search(
-            r"((?:請|幫我|替我).{0,24}(?:建立|建構|產生|推論|執行|跑|分析|做)|"
-            r"\b(?:please\s+)?(?:build|create|generate|infer|run|execute|perform)\b)",
+            r"((?:請|幫我|替我).{0,24}(?:建立|建構|產生|推論|執行|跑|試跑|測試|檢查|驗證|分析|做)|"
+            r"\b(?:please\s+)?(?:build|create|generate|infer|run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b)",
             task,
             flags=re.IGNORECASE | re.DOTALL,
         )
     )
+
+
+def has_explicit_execution_request(task: str) -> bool:
+    """Return whether the task explicitly asks the agent to perform work now.
+
+    This narrow signal is separate from workflow matching.  It is used only to
+    reconcile a model's request-mode reading when the user used an imperative
+    execution phrase such as ``請試跑`` or ``please run``.
+    """
+    if is_workflow_information_request(task):
+        return False
+    return any(
+        re.search(pattern, task, flags=re.IGNORECASE | re.DOTALL)
+        for pattern in EXPLICIT_EXECUTION_PATTERNS
+    )
+
+
+def reconcile_request_mode(task: str, request_mode: str) -> str:
+    """Preserve explicit execution authorization without choosing a workflow."""
+    if request_mode != "execute" and has_explicit_execution_request(task):
+        return "execute"
+    return request_mode
 
 
 def validate_task_text(

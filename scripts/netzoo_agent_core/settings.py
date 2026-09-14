@@ -60,6 +60,7 @@ INPUT_ROLE_FIELDS = {
 OUTPUT_ROLE_FIELDS = {"output_file", "lioness_output", "output_dir"}
 PARAMETER_FIELDS = {
     "prefix", "with_header", "genes_axis", "norm_patient", "kmin", "kmax",
+    "taxon",
     "gmt_msigdb", "subset_cancer_genes", "distance", "linkage", "cluster",
     "output_format", "bonobo_output_format", "sample_names", "sparsify",
     "bonobo_confidence", "save_pvals", "keep_in_memory", "delta", "log_transformed",

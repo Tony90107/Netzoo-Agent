@@ -764,6 +764,35 @@ class StrictRoutingPipelineLLM:
         return semantic_review(self._interpret(messages, record_call=False))
 
 
+def test_explicit_execution_phrase_reconciles_model_guidance_for_any_workflow():
+    """Imperative run/test language wins over a model's advisory-mode drift."""
+    router = StrictRoutingPipelineLLM()
+    context = SimpleNamespace(
+        semantic_interpreter=router.with_structured_output(SemanticInterpretation),
+        semantic_reviewer=router.with_structured_output(SemanticReview),
+        intent_router=router.with_structured_output(IntentDecision),
+        semantic_prompt="Interpret scientific outcomes.",
+        semantic_model_name="fake",
+        intent_prompt="Classify intent.",
+        router_model_name="fake",
+        router_max_tokens=800,
+        task_token_budget=20_000,
+        recorder=legacy_agent.NullTraceRecorder(),
+        project_policy=legacy_agent.ProjectPolicyLoader().load(),
+        price_catalog=legacy_agent.PriceCatalog.from_environment(),
+    )
+
+    result = router_invocation.invoke_router(
+        context,
+        {},
+        "請試跑 LIONESS PUMA sample-specific miRNA regulatory network.",
+    )
+
+    assert result.decision.should_execute is True
+    assert result.decision.action == "run_lioness_puma"
+    assert result.decision.capability_match_status == "exact"
+
+
 def test_session_retains_the_trace_run_id_without_changing_legacy_load_shape(
     tmp_path: Path,
     monkeypatch,
