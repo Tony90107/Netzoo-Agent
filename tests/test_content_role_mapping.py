@@ -25,7 +25,15 @@ def _write(path: Path, content: str = "id\tvalue\nA\t1\n") -> Path:
     return path
 
 
-def test_unknown_filenames_are_mapped_by_content_and_need_confirmation(tmp_path):
+def test_unknown_filenames_are_mapped_by_content_and_need_confirmation(
+    tmp_path, monkeypatch
+):
+    # The fixtures below carry placeholder gene labels, so the plan only reaches
+    # confirmation under Synthetic Test mode; in Planning mode the gene-authority
+    # gate correctly refuses them. This test is about content role mapping.
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
     expression = _write(
         tmp_path / "a.tsv",
         "gene\ts1\ts2\nG1\t1\t2\nG2\t2\t1\n",
@@ -154,3 +162,166 @@ def test_content_mapping_is_available_for_all_registered_netzoopy_input_roles(tm
             if item.reason.startswith("Role inferred from file contents by the LLM")
         }
         assert set(fields) <= mapped, (action, plan.status, plan.evidence)
+
+
+def _panda_plan(task, mapper):
+    return build_workflow_plan(
+        TaskDecision(
+            action="run_panda",
+            in_scope=True,
+            should_execute=True,
+            confidence=1.0,
+            reason="Run PANDA.",
+        ),
+        task,
+        content_mapper=mapper,
+    )
+
+
+def _crossed_fixtures(tmp_path):
+    """Correct contents behind misleading filenames, labelled by their names."""
+    expression = _write(
+        tmp_path / "motif.tsv", "gene\ts1\ts2\nG1\t1\t2\nG2\t2\t1\n"
+    )
+    motif = _write(tmp_path / "expression.tsv", "TF1\tG1\t1\nTF2\tG2\t1\n")
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+    task = (
+        f"Run PANDA with expression_file={motif} motif_file={expression} "
+        f"ppi_file={ppi}."
+    )
+    return expression, motif, ppi, task
+
+
+class ContentSniffingMapper:
+    """Answer from the previews alone, the way an unbiased reader would.
+
+    The correction probe withholds filenames, so a fake that keys off paths
+    would not exercise it. This one reads the prompt it is actually given.
+    """
+
+    def __init__(self, confidence=0.92):
+        self.confidence = confidence
+        self.calls = []
+
+    @staticmethod
+    def _blocks(prompt):
+        blocks = {}
+        for chunk in prompt.split("FILE: ")[1:]:
+            label, _, preview = chunk.partition("\nCONTENT PREVIEW:\n")
+            blocks[label.strip()] = preview.split("\n\n")[0]
+        return blocks
+
+    def invoke(self, messages):
+        self.calls.append(messages)
+        prompt = messages[-1].content
+        blocks = self._blocks(prompt)
+        genes = {
+            line.split("\t")[0]
+            for preview in blocks.values()
+            if preview.strip().lower().startswith("gene")
+            for line in preview.strip().splitlines()[1:]
+        }
+        assignments = []
+        for label, preview in blocks.items():
+            lines = preview.strip().splitlines()
+            first = lines[0] if lines else ""
+            columns = first.split("\t")
+            if first.lower().startswith("gene"):
+                role = "expression"
+            elif len(columns) == 3 and columns[1] in genes:
+                # Both priors are three-column edge lists; only the motif's
+                # second column holds target genes from the expression matrix.
+                role = "motif"
+            else:
+                role = "ppi"
+            assignments.append(
+                {
+                    "path": label,
+                    "role": role,
+                    "confidence": self.confidence,
+                    "rationale": f"First row is {first!r}.",
+                }
+            )
+        return InputRoleMapping(assignments=assignments)
+
+
+def _content_truth(expression, motif, ppi, confidence=0.92):
+    return ContentSniffingMapper(confidence)
+
+
+def test_explicitly_crossed_roles_are_reported_as_crossed_not_only_as_shape_errors(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression, motif, ppi, task = _crossed_fixtures(tmp_path)
+
+    plan = _panda_plan(task, _content_truth(expression, motif, ppi))
+
+    assert plan.status == "needs_input"
+    assert "the input roles are crossed" in plan.question
+    assert f"expression_file: {motif.resolve()} does not match this role" in plan.question
+    assert str(expression.resolve()) in plan.question
+    assert f"motif_file: {expression.resolve()} does not match this role" in plan.question
+    # The role hint replaces the generic remedy rather than being added to it.
+    assert "Please provide corrected files" not in plan.question
+
+
+def test_a_low_confidence_reassignment_is_not_reported_as_a_crossed_role(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression, motif, ppi, task = _crossed_fixtures(tmp_path)
+
+    plan = _panda_plan(task, _content_truth(expression, motif, ppi, confidence=0.6))
+
+    assert plan.status == "needs_input"
+    assert "the input roles are crossed" not in plan.question
+    assert "Please provide corrected files" in plan.question
+
+
+def test_a_partial_reassignment_is_not_reported_as_a_crossed_role(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression, motif, ppi, task = _crossed_fixtures(tmp_path)
+    partial = FakeContentMapper(
+        [
+            {
+                "path": str(expression),
+                "role": "expression",
+                "confidence": 0.95,
+                "rationale": "Gene-by-sample numeric matrix.",
+            }
+        ]
+    )
+
+    plan = _panda_plan(task, partial)
+
+    assert "the input roles are crossed" not in plan.question
+
+
+def test_a_valid_plan_never_pays_for_the_crossed_role_probe(tmp_path, monkeypatch):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression = _write(
+        tmp_path / "expression.tsv", "gene\ts1\ts2\nG1\t1\t2\nG2\t2\t1\n"
+    )
+    motif = _write(tmp_path / "motif.tsv", "TF1\tG1\t1\nTF2\tG2\t1\n")
+    ppi = _write(tmp_path / "ppi.tsv", "TF1\tTF2\t1\n")
+    mapper = _content_truth(expression, motif, ppi)
+
+    plan = _panda_plan(
+        f"Run PANDA with expression_file={expression} motif_file={motif} "
+        f"ppi_file={ppi}.",
+        mapper,
+    )
+
+    assert plan.status != "needs_input"
+    assert mapper.calls == []

@@ -10,7 +10,7 @@ from ..contracts import InputRoleAssignment, InputRoleMapping, PROJECT_ROOT
 from ..data.paths import _resolve_user_path
 from ..framework_compat import HumanMessage, SystemMessage
 
-__all__ = ["infer_input_roles"]
+__all__ = ["detect_role_mismatches", "infer_input_roles"]
 
 
 _PATH_RE = re.compile(
@@ -24,6 +24,9 @@ _SUPPORTED_SUFFIXES = frozenset(
 )
 _MAX_CANDIDATES = 120
 _MAX_PREVIEW_CHARS = 4_000
+# Filling an open role is a suggestion the user then confirms; contradicting
+# a role the user typed is a correction, so it needs stronger evidence.
+_MISMATCH_CONFIDENCE = 0.7
 _ROLE_ALIASES = {
     "expression": "expression_file",
     "expr": "expression_file",
@@ -138,6 +141,39 @@ def _prompt(action: str, fields: list[str], candidates: list[Path]) -> str:
     )
 
 
+def _anonymous_prompt(
+    action: str,
+    fields: list[str],
+    labelled: list[tuple[str, Path]],
+) -> str:
+    """Render the same mapping task with every filename withheld.
+
+    The correction probe exists because a filename disagreed with its contents,
+    so showing the filename hands the model the very anchor being questioned --
+    in practice it then echoes the names straight back. Anonymous labels leave
+    only the contents to decide on.
+    """
+    role_text = "\n".join(
+        f"- {field}: {_ROLE_GUIDANCE.get(field, 'registered NetZoo input role')}"
+        for field in fields
+    )
+    file_text = "\n\n".join(
+        f"FILE: {label}\nCONTENT PREVIEW:\n{_preview(path)}"
+        for label, path in labelled
+    )
+    return (
+        "You are the NetZoo input-role resolver. Assign each listed role to "
+        "exactly one of the listed files. Filenames are withheld on purpose: "
+        "decide only from content structure, headers, column counts, "
+        "identifier patterns, and the workflow contract. Return only JSON "
+        "matching the supplied schema, using the given file label verbatim as "
+        "the path. Give one assignment per role, a confidence from 0 to 1, and "
+        "a short rationale.\n\n"
+        f"WORKFLOW ACTION: {action}\nROLES:\n{role_text}\n\n"
+        f"CANDIDATE FILES:\n{file_text}"
+    )
+
+
 def _payload(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump()
@@ -213,3 +249,97 @@ def infer_input_roles(
         )
         used_paths.add(path)
     return accepted
+
+
+def detect_role_mismatches(
+    action: str,
+    bindings: dict[str, str],
+    mapper: Any | None = None,
+) -> dict[str, str]:
+    """Re-read already-bound files by content and report disagreeing roles.
+
+    ``infer_input_roles`` only fills roles the user left open, so a role the
+    user named explicitly never gets a content check. When two labels are
+    crossed, the workflow's own validator can only report the downstream shape
+    error -- "expression values must be numeric" -- which never says that the
+    files are fine and only the labels are swapped. This runs after validation
+    has already failed, over exactly the files the user supplied, and reports
+    the assignment their contents support.
+
+    Returns the roles whose file should change, or an empty mapping when the
+    contents do not clearly contradict the labels.
+    """
+    if mapper is None or len(bindings) < 2:
+        return {}
+    resolved: dict[str, Path] = {}
+    for role, value in bindings.items():
+        if not value:
+            continue
+        try:
+            path = _resolve_user_path(value).resolve()
+        except (OSError, RuntimeError, TypeError):
+            return {}
+        if not path.is_file() or path.is_symlink():
+            return {}
+        resolved[role] = path
+    candidates = list(dict.fromkeys(resolved.values()))
+    if len(resolved) < 2 or len(candidates) != len(resolved):
+        return {}
+
+    roles = list(resolved)
+    labelled = [
+        (f"FILE_{index}", path) for index, path in enumerate(candidates, 1)
+    ]
+    by_label = {label: path for label, path in labelled}
+    messages = [
+        SystemMessage(
+            content=(
+                "NetZoo role mapping is advisory only. Assign each listed role to "
+                "exactly one of the listed files, using file contents only."
+            )
+        ),
+        HumanMessage(content=_anonymous_prompt(action, roles, labelled)),
+    ]
+    try:
+        structured_mapper = (
+            mapper.with_structured_output(
+                InputRoleMapping,
+                method="function_calling",
+                include_raw=False,
+            )
+            if hasattr(mapper, "with_structured_output")
+            else mapper
+        )
+        mapping = InputRoleMapping.model_validate(
+            _payload(structured_mapper.invoke(messages))
+        )
+    except Exception:
+        return {}
+
+    proposed: dict[str, Path] = {}
+    used: set[Path] = set()
+    for assignment in sorted(
+        mapping.assignments,
+        key=lambda item: (-item.confidence, item.role, item.path),
+    ):
+        role = _ROLE_ALIASES.get(assignment.role.casefold(), assignment.role.casefold())
+        if (
+            role not in resolved
+            or role in proposed
+            or assignment.confidence < _MISMATCH_CONFIDENCE
+        ):
+            continue
+        path = by_label.get(assignment.path.strip().upper())
+        if path is None or path in used:
+            continue
+        proposed[role] = path
+        used.add(path)
+
+    # Only a complete rearrangement of the same files is evidence that the
+    # labels are crossed. A partial answer, or one that drops a file, says the
+    # mapper was unsure rather than that the user was wrong.
+    if set(proposed) != set(resolved) or set(proposed.values()) != set(candidates):
+        return {}
+    return {
+        role: str(path) for role, path in proposed.items() if path != resolved[role]
+    }

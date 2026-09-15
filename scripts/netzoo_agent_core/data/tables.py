@@ -14,7 +14,11 @@ from netzoo_table_io import (
     table_read_info as _table_read_info,
 )
 
-from .gene_validation import GeneValidationSummary, validate_gene_identifiers
+from .gene_validation import (
+    TAXON_REQUIRED_SOURCE,
+    GeneValidationSummary,
+    validate_gene_identifiers,
+)
 
 from .paths import _resolve_user_path
 
@@ -112,6 +116,10 @@ def _header_role(value: object) -> str:
 _ENSEMBL_GENE = re.compile(r"^ENS[A-Z0-9]*G[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
 _ENSEMBL_TRANSCRIPT = re.compile(r"^ENS[A-Z0-9]*T[0-9]+(?:\.[0-9]+)?$", re.IGNORECASE)
 _SYMBOL_LIKE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
+# High enough that a genuinely mixed file stays opaque, low enough that a
+# handful of spreadsheet-mangled labels do not disable the whole axis.
+_DOMINANT_NAMESPACE_RATIO = 0.9
+_DOMINANT_NAMESPACE_MIN_IDENTIFIERS = 10
 
 
 def _identifier_namespace(values: object) -> str:
@@ -137,6 +145,19 @@ def _identifier_namespace(values: object) -> str:
         for value in identifiers
     ):
         return "mixed_ensembl"
+    # A real expression matrix routinely carries a few corrupted labels -- the
+    # classic case is a spreadsheet rewriting MARCH7 or SEPT9 as a date serial.
+    # Treating the whole axis as unresolvable because of them means the other
+    # thousand genes go unverified and the corrupted ones are never named. Keep
+    # the dominant namespace so each outlier is reported on its own merits.
+    symbol_like = sum(
+        1 for value in identifiers if _SYMBOL_LIKE.fullmatch(value)
+    )
+    if (
+        len(identifiers) >= _DOMINANT_NAMESPACE_MIN_IDENTIFIERS
+        and symbol_like / len(identifiers) >= _DOMINANT_NAMESPACE_RATIO
+    ):
+        return "symbol_like"
     return "opaque"
 
 
@@ -617,6 +638,7 @@ def _inspect_panda_inputs_impl(
     ppi_file: str,
     mirna_file: str = "",
     taxon: str = "",
+    check_gene_authority: bool = True,
 ) -> tuple[str, bool, bool]:
     expression = _validate_expression(
         _read_checked_table("expression", expression_file)
@@ -630,28 +652,28 @@ def _inspect_panda_inputs_impl(
     # comparing them.  The validator is cache-first; a configured Websearch
     # MCP is consulted only for cache misses.  Unverified results remain
     # warnings, while authoritative invalid results become preflight errors.
-    if expression.identifiers:
+    if check_gene_authority and expression.identifiers:
         expression.gene_validation = validate_gene_identifiers(
             expression.identifiers,
             expression.identifier_namespace,
             taxon,
         )
         expression.canonical_identifiers = expression.gene_validation.canonical_map
-    if motif.format_name == "edge list" and motif.secondary_identifiers:
+    if check_gene_authority and motif.format_name == "edge list" and motif.secondary_identifiers:
         motif.gene_validation = validate_gene_identifiers(
             motif.secondary_identifiers,
             motif.secondary_identifier_namespace,
             taxon,
         )
         motif.canonical_identifiers = motif.gene_validation.canonical_map
-    if motif.format_name == "edge list" and motif.identifiers:
+    if check_gene_authority and motif.format_name == "edge list" and motif.identifiers:
         motif_regulator_validation = validate_gene_identifiers(
             motif.identifiers,
             motif.identifier_namespace,
             taxon,
         )
         motif.regulator_canonical_identifiers = motif_regulator_validation.canonical_map
-    if ppi.format_name == "edge list":
+    if check_gene_authority and ppi.format_name == "edge list":
         ppi_nodes = ppi.identifiers | ppi.secondary_identifiers
         if ppi_nodes:
             ppi_node_validation = validate_gene_identifiers(
@@ -715,10 +737,30 @@ def _inspect_panda_inputs_impl(
                 )
             else:
                 check.errors.append(message)
+        taxon_required_ids = sorted(
+            record.identifier
+            for record in summary.records.values()
+            if record.source == TAXON_REQUIRED_SOURCE
+        )
+        if taxon_required_ids:
+            message = (
+                f"{role} are gene symbols and cannot be verified without a "
+                "species; set taxon (for example 'human', 'Homo sapiens', or "
+                "'9606'), or supply NCBI/Ensembl gene IDs instead: "
+                + ", ".join(taxon_required_ids[:5])
+            )
+            if settings.TEST_DATA_MODE:
+                check.warnings.append(
+                    message
+                    + "; accepted as test-only identifiers because Synthetic Test mode is enabled."
+                )
+            else:
+                check.errors.append(message)
         ambiguous_ids = sorted(
             record.identifier
             for record in summary.records.values()
             if record.status == "ambiguous"
+            and record.source != TAXON_REQUIRED_SOURCE
         )
         if ambiguous_ids:
             message = (

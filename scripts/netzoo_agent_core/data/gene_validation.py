@@ -12,11 +12,14 @@ import json
 import os
 import re
 import sqlite3
+import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 from urllib.parse import quote, urlparse
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from ..settings import PROJECT_ROOT
@@ -27,6 +30,10 @@ __all__ = [
     "GeneCache",
     "validate_gene_identifiers",
     "_structured_gene_lookup",
+    "TAXON_REQUIRED_SOURCE",
+    "TruncatedAuthorityResponseError",
+    "UnsupportedNamespaceError",
+    "WebsearchScopeError",
     "_websearch_gene_lookup",
     "_query_web_search",
 ]
@@ -41,10 +48,127 @@ _DEFAULT_CACHE_TTL_DAYS = 90
 _DEFAULT_CACHE_REVIEW_TTL_DAYS = 30
 _DEFAULT_CACHE_MAX_ROWS = 100_000
 _REMOTE_BATCH_SIZE = 100
+# One symbol can resolve to several reports (synonyms shared across genes),
+# so a page must comfortably exceed the batch size.
+_NCBI_PAGE_SIZE = 1000
+_NCBI_MAX_PAGES = 20
 _WEBSEARCH_BATCH_SIZE = 5
+# Websearch can only ever produce "unverified", so it is an annotation for a
+# handful of leftover labels, never a way to clear a whole axis. Past this
+# many identifiers it would issue hundreds of sequential MCP calls to reach
+# a verdict that cannot authorize execution anyway.
+_WEBSEARCH_MAX_IDENTIFIERS = 20
 _TRUSTED_HOSTS = ("ncbi.nlm.nih.gov", "ensembl.org")
 _NCBI_GENE_URL = re.compile(r"/gene/(\d+)(?:[/?#]|$)", re.IGNORECASE)
 _ENSEMBL_GENE_ID = re.compile(r"\bENS[A-Z0-9]*G\d+(?:\.\d+)?\b", re.IGNORECASE)
+# Equivalent spellings for the organisms these workflows are actually run on.
+# Each group holds the NCBI tax ID, the scientific name, and the common names
+# that NCBI and Ensembl accept as query selectors.
+_TAXON_GROUPS: tuple[frozenset[str], ...] = (
+    frozenset({"9606", "homo sapiens", "human"}),
+    frozenset({"10090", "mus musculus", "mouse", "house mouse"}),
+    frozenset({"10116", "rattus norvegicus", "rat", "norway rat"}),
+    frozenset({"7227", "drosophila melanogaster", "fruit fly"}),
+    frozenset({"6239", "caenorhabditis elegans", "roundworm", "nematode"}),
+    frozenset({"4932", "saccharomyces cerevisiae", "yeast", "baker's yeast"}),
+    frozenset({"7955", "danio rerio", "zebrafish"}),
+    frozenset({"3702", "arabidopsis thaliana", "thale cress"}),
+    frozenset({"9615", "canis lupus familiaris", "dog"}),
+    frozenset({"9913", "bos taurus", "cattle", "cow"}),
+    frozenset({"9823", "sus scrofa", "pig"}),
+    frozenset({"9544", "macaca mulatta", "rhesus monkey"}),
+    frozenset({"9031", "gallus gallus", "chicken"}),
+    frozenset({"8355", "xenopus laevis", "african clawed frog"}),
+)
+_TAXON_ALIASES: dict[str, frozenset[str]] = {
+    name: group for group in _TAXON_GROUPS for name in group
+}
+TAXON_REQUIRED_SOURCE = "taxon_required"
+_TAXON_REQUIRED_SOURCE = TAXON_REQUIRED_SOURCE
+
+# Published unauthenticated ceilings: NCBI allows about 3 requests/second and
+# raises that to 10 with a key; Ensembl REST allows 15. Stay under each, and
+# leave every number overridable because a shared deployment may need to be
+# gentler still.
+_AUTHORITY_MIN_INTERVAL_SECONDS = {
+    "api.ncbi.nlm.nih.gov": 0.11 if os.environ.get("NCBI_API_KEY") else 0.35,
+    "rest.ensembl.org": 0.08,
+}
+_DEFAULT_MIN_INTERVAL_SECONDS = 0.1
+_AUTHORITY_MAX_ATTEMPTS = int(os.environ.get("NETZOO_GENE_HTTP_ATTEMPTS", "4"))
+_AUTHORITY_BACKOFF_SECONDS = float(
+    os.environ.get("NETZOO_GENE_HTTP_BACKOFF_SECONDS", "1.0")
+)
+_AUTHORITY_MAX_BACKOFF_SECONDS = float(
+    os.environ.get("NETZOO_GENE_HTTP_MAX_BACKOFF_SECONDS", "8.0")
+)
+_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+_THROTTLE_LOCK = threading.Lock()
+_LAST_REQUEST_AT: dict[str, float] = {}
+
+
+def _min_interval(host: str) -> float:
+    return _AUTHORITY_MIN_INTERVAL_SECONDS.get(host, _DEFAULT_MIN_INTERVAL_SECONDS)
+
+
+def _throttle(host: str) -> None:
+    """Space out requests to one authority host across the whole process."""
+    interval = _min_interval(host)
+    with _THROTTLE_LOCK:
+        previous = _LAST_REQUEST_AT.get(host)
+        now = time.monotonic()
+        wait = 0.0 if previous is None else previous + interval - now
+        _LAST_REQUEST_AT[host] = now + max(wait, 0.0)
+    if wait > 0:
+        time.sleep(wait)
+
+
+def _retry_after_seconds(error: HTTPError, attempt: int) -> float:
+    """Honor an explicit Retry-After, otherwise back off exponentially."""
+    header = error.headers.get("Retry-After") if error.headers else None
+    if header:
+        try:
+            return min(float(header), _AUTHORITY_MAX_BACKOFF_SECONDS)
+        except ValueError:
+            pass
+    return min(
+        _AUTHORITY_BACKOFF_SECONDS * (2 ** attempt),
+        _AUTHORITY_MAX_BACKOFF_SECONDS,
+    )
+
+
+def _authority_headers(host: str) -> dict[str, str]:
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "NetZoo-Agent gene-validator",
+    }
+    api_key = os.environ.get("NCBI_API_KEY", "").strip()
+    if api_key and host.endswith("ncbi.nlm.nih.gov"):
+        # An NCBI key raises the per-IP ceiling; it is never required.
+        headers["api-key"] = api_key
+    return headers
+
+
+class TruncatedAuthorityResponseError(RuntimeError):
+    """The authority reported more matches than it actually returned.
+
+    A partial page is indistinguishable from a gene the authority does not
+    know, so acting on one silently converts real genes into "not recognized".
+    Fail instead: not knowing is a reportable state, being wrong is not.
+    """
+
+
+class WebsearchScopeError(RuntimeError):
+    """Too many identifiers to annotate through the Websearch fallback."""
+
+
+class UnsupportedNamespaceError(ValueError):
+    """No structured gene authority is configured for this namespace.
+
+    Distinct from a transport failure: retrying elsewhere cannot help, so the
+    Websearch fallback must not be attempted for it.
+    """
 
 
 @dataclass(frozen=True)
@@ -280,7 +404,18 @@ class GeneCache:
                 )
         return _CacheLookup(records=records, stale_records=stale_records)
 
-    def upsert(self, records: Iterable[GeneRecord]) -> None:
+    def upsert(
+        self,
+        records: Iterable[GeneRecord],
+        requested_taxon: str | None = None,
+    ) -> None:
+        """Store resolved records under the taxon the caller actually queried.
+
+        A record's own ``taxon`` is the organism the authority reported, which
+        for a rejected match is a different organism from the requested one.
+        Keying on that would file "TP53 is invalid" under the very taxon where
+        TP53 is valid, so a later correct query reads back a false refusal.
+        """
         rows = list(records)
         if not rows:
             return
@@ -307,7 +442,13 @@ class GeneCache:
                 """,
                 [
                     (
-                        self._key(record.identifier, record.namespace, record.taxon or ""),
+                        self._key(
+                            record.identifier,
+                            record.namespace,
+                            requested_taxon
+                            if requested_taxon is not None
+                            else (record.taxon or ""),
+                        ),
                         record.identifier,
                         record.normalized_identifier,
                         record.namespace,
@@ -352,10 +493,12 @@ def _online_lookup_enabled() -> bool:
         return False
     if mode in {"1", "true", "on", "always"}:
         return True
-    # Avoid surprising network calls in local/test environments where the
-    # Websearch MCP has not been configured. Docker supplies this URL when the
-    # agent is intentionally configured for external retrieval.
-    return bool(os.environ.get("TAVILY_API_KEY") or os.environ.get("WEBSEARCH_MCP_URL"))
+    # NCBI Datasets and Ensembl REST are the resolvers that actually decide a
+    # verdict, and neither needs a credential. Gating them on a Websearch key
+    # left a deployment with no Tavily account unable to verify anything, and
+    # planning then refused every real gene as "unverified offline" -- a setup
+    # problem reported as a data problem. Tavily only affects the fallback.
+    return True
 
 
 def _trusted_url(url: str) -> bool:
@@ -441,20 +584,44 @@ def _query_authority_json(
     method: str = "GET",
     payload: dict[str, object] | None = None,
 ) -> object:
-    """Fetch one structured authority response through a tiny injectable seam."""
+    """Fetch one structured authority response through a tiny injectable seam.
+
+    Throttled per host and retried on the statuses that mean "slow down or try
+    again". Without this a single large expression matrix issues its batches
+    back to back, trips the per-IP ceiling, and the resulting failure is
+    reported downstream as if the genes themselves could not be verified.
+    """
+    host = (urlparse(url).hostname or "").casefold()
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
-    request = Request(
-        url,
-        data=body,
-        method=method,
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "NetZoo-Agent gene-validator",
-        },
+    last_error: Exception | None = None
+    for attempt in range(_AUTHORITY_MAX_ATTEMPTS):
+        request = Request(
+            url,
+            data=body,
+            method=method,
+            headers=_authority_headers(host),
+        )
+        _throttle(host)
+        try:
+            with urlopen(request, timeout=20) as response:  # noqa: S310 - fixed trusted hosts
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            last_error = error
+            if error.code not in _RETRYABLE_STATUS:
+                raise
+            delay = _retry_after_seconds(error, attempt)
+        except (URLError, TimeoutError, OSError) as error:
+            last_error = error
+            delay = min(
+                _AUTHORITY_BACKOFF_SECONDS * (2 ** attempt),
+                _AUTHORITY_MAX_BACKOFF_SECONDS,
+            )
+        if attempt == _AUTHORITY_MAX_ATTEMPTS - 1:
+            break
+        time.sleep(delay)
+    raise last_error if last_error is not None else RuntimeError(
+        f"No authority response from {host}."
     )
-    with urlopen(request, timeout=20) as response:  # noqa: S310 - fixed trusted hosts
-        return json.loads(response.read().decode("utf-8"))
 
 
 def _gene_payload(report: object) -> dict[str, object]:
@@ -472,15 +639,35 @@ def _field(payload: dict[str, object], *names: str) -> object:
     return None
 
 
-def _taxon_matches(requested: str, tax_id: object, taxname: object) -> bool:
+def _taxon_tokens(value: str) -> set[str]:
+    """Expand one taxon spelling into every equivalent spelling we accept."""
+    normalized = str(value or "").casefold().strip().replace("_", " ")
+    if not normalized:
+        return set()
+    return {normalized, *_TAXON_ALIASES.get(normalized, frozenset())}
+
+
+def _taxon_matches(
+    requested: str,
+    tax_id: object,
+    taxname: object,
+    common_name: object = None,
+) -> bool:
+    """Compare a requested taxon against every identity field the API returned.
+
+    NCBI and Ensembl both accept a common name such as ``human`` as a query
+    selector, but the dataset report echoes the tax ID and the scientific name.
+    Matching only those two fields rejects a correct gene whenever the caller
+    wrote the same common name the API itself accepted, so the common name and
+    a small model-organism alias table are part of the comparison.
+    """
     if not requested.strip():
         return True
-    wanted = requested.casefold().strip().replace("_", " ")
-    observed = {
-        str(tax_id or "").casefold().strip(),
-        str(taxname or "").casefold().strip().replace("_", " "),
-    }
-    return wanted in observed
+    wanted = _taxon_tokens(requested)
+    observed: set[str] = set()
+    for value in (tax_id, taxname, common_name):
+        observed |= _taxon_tokens(str(value or ""))
+    return bool(wanted & observed)
 
 
 def _invalid_record(
@@ -505,12 +692,84 @@ def _invalid_record(
     )
 
 
+def _paged_reports(url: str) -> list[dict[str, object]]:
+    """Collect every dataset report, following NCBI's paging to the end.
+
+    The endpoint answers with at most 20 reports unless a page size is given,
+    and reports beyond the first page are simply absent. Reading only the first
+    page made every symbol it did not reach look unrecognized, so a matrix of
+    real genes came back almost entirely invalid.
+    """
+    reports: list[dict[str, object]] = []
+    page_token = ""
+    total_count: int | None = None
+    complete = False
+    for _ in range(_NCBI_MAX_PAGES):
+        separator = "&" if "?" in url else "?"
+        page_url = f"{url}{separator}page_size={_NCBI_PAGE_SIZE}"
+        if page_token:
+            page_url = f"{page_url}&page_token={quote(page_token, safe='')}"
+        response = _query_authority_json(page_url)
+        if not isinstance(response, dict):
+            break
+        page = response.get("reports", [])
+        if isinstance(page, list):
+            reports.extend(item for item in page if isinstance(item, dict))
+        if total_count is None:
+            try:
+                total_count = int(response["total_count"])
+            except (KeyError, TypeError, ValueError):
+                total_count = None
+        page_token = str(response.get("next_page_token") or "")
+        if not page_token:
+            complete = True
+            break
+        if not page:
+            # A further page was promised but nothing came back; stopping here
+            # would silently drop the rest.
+            break
+    if not complete:
+        raise TruncatedAuthorityResponseError(
+            f"Paging stopped after {len(reports)} report(s) with more pages pending."
+        )
+    if total_count is not None and len(reports) < total_count:
+        raise TruncatedAuthorityResponseError(
+            f"Authority reported {total_count} match(es) but returned "
+            f"{len(reports)}."
+        )
+    return reports
+
+
+def _taxon_required_record(identifier: str, namespace: str) -> GeneRecord:
+    """Report a symbol that cannot be resolved because no species was given."""
+    return GeneRecord(
+        identifier=identifier,
+        normalized_identifier=_normalise_identifier(identifier),
+        namespace=namespace,
+        canonical_id=None,
+        symbol=identifier,
+        taxon=None,
+        status="ambiguous",
+        authority="NCBI Gene",
+        source=_TAXON_REQUIRED_SOURCE,
+    )
+
+
 def _structured_ncbi_lookup(
     identifiers: Sequence[str], namespace: str, taxon: str
 ) -> list[GeneRecord]:
+    if namespace == "symbol_like" and not taxon.strip():
+        # The NCBI symbol endpoint requires a species token; "all" is rejected
+        # as a taxonomy level above species, so every gene would come back with
+        # no report and be recorded as invalid. A bare symbol without a species
+        # genuinely is ambiguous across organisms, so say that instead.
+        return [
+            _taxon_required_record(identifier, namespace)
+            for identifier in identifiers
+        ]
     encoded_ids = quote(",".join(identifiers), safe=",")
     if namespace == "symbol_like":
-        encoded_taxon = quote(taxon or "all", safe="")
+        encoded_taxon = quote(taxon, safe="")
         url = (
             "https://api.ncbi.nlm.nih.gov/datasets/v2/gene/symbol/"
             f"{encoded_ids}/taxon/{encoded_taxon}/dataset_report"
@@ -520,12 +779,11 @@ def _structured_ncbi_lookup(
             "https://api.ncbi.nlm.nih.gov/datasets/v2/gene/id/"
             f"{encoded_ids}/dataset_report"
         )
-    response = _query_authority_json(url)
-    reports = response.get("reports", []) if isinstance(response, dict) else []
+    reports = _paged_reports(url)
     candidates: dict[str, list[dict[str, object]]] = {
         _normalise_identifier(identifier): [] for identifier in identifiers
     }
-    for report in reports if isinstance(reports, list) else []:
+    for report in reports:
         gene = _gene_payload(report)
         symbol = str(_field(gene, "symbol") or "")
         gene_id = str(_field(gene, "geneId", "gene_id") or "")
@@ -549,6 +807,7 @@ def _structured_ncbi_lookup(
                 taxon,
                 _field(gene, "taxId", "tax_id"),
                 _field(gene, "taxname", "tax_name"),
+                _field(gene, "commonName", "common_name"),
             )
         ]
         if len(taxon_matches) > 1:
@@ -669,7 +928,9 @@ def _structured_gene_lookup(
         return _structured_ensembl_lookup(requested, namespace, taxon)
     if namespace in {"symbol_like", "ncbi_gene", "numeric_identifier"}:
         return _structured_ncbi_lookup(requested, namespace, taxon)
-    raise ValueError(f"No structured gene authority is configured for {namespace!r}.")
+    raise UnsupportedNamespaceError(
+        f"No structured gene authority is configured for {namespace!r}."
+    )
 
 
 def _online_gene_lookup(
@@ -677,6 +938,13 @@ def _online_gene_lookup(
 ) -> list[GeneRecord]:
     try:
         return _structured_gene_lookup(identifiers, namespace, taxon)
+    except (UnsupportedNamespaceError, TruncatedAuthorityResponseError):
+        # Websearch resolves the same namespaces the structured resolver does.
+        # Sending it labels no authority is configured for buys nothing and,
+        # on a real expression matrix, costs hundreds of sequential calls. A
+        # truncated page is the same: the batch is large by definition, so the
+        # fallback would only spend calls to arrive at "unverified" anyway.
+        raise
     except Exception:
         if os.environ.get("TAVILY_API_KEY") or os.environ.get("WEBSEARCH_MCP_URL"):
             return _websearch_gene_lookup(identifiers, namespace, taxon)
@@ -692,6 +960,11 @@ def _websearch_gene_lookup(
     requested = list(dict.fromkeys(identifier for identifier in identifiers if identifier))
     if not requested:
         return []
+    if len(requested) > _WEBSEARCH_MAX_IDENTIFIERS:
+        raise WebsearchScopeError(
+            f"{len(requested)} identifiers exceed the Websearch fallback bound "
+            f"of {_WEBSEARCH_MAX_IDENTIFIERS}."
+        )
     if len(requested) > _WEBSEARCH_BATCH_SIZE:
         return [
             record
@@ -870,8 +1143,11 @@ def validate_gene_identifiers(
                     )
             records[normalized] = record
             if record.status in {"valid", "ambiguous", "invalid"}:
-                if record.source != "stale_cache":
+                # "stale_cache" is already stored, and a taxon_required verdict
+                # describes the missing query, not the identifier, so caching it
+                # would answer a later well-formed query with a stale refusal.
+                if record.source not in {"stale_cache", _TAXON_REQUIRED_SOURCE}:
                     cacheable.append(record)
-        cache.upsert(cacheable)
+        cache.upsert(cacheable, requested_taxon=taxon)
 
     return summary

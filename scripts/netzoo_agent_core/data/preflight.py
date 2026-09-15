@@ -11,7 +11,10 @@ from .cobra import inspect_cobra_inputs_impl, load_cobra_inputs
 from .bonobo import inspect_bonobo_inputs_impl, load_bonobo_inputs
 from .dragon import inspect_dragon_inputs_impl
 from .giraffe import inspect_giraffe_inputs_impl, load_giraffe_inputs
-from .gene_validation import validate_gene_identifiers
+from .gene_validation import (
+    TAXON_REQUIRED_SOURCE,
+    validate_gene_identifiers,
+)
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
 from .otter import inspect_otter_inputs_impl, load_otter_inputs
@@ -116,10 +119,15 @@ def _gene_axis_errors(
         for record in summary.records.values()
         if record.status == "invalid"
     )
+    taxon_required = sorted(
+        record.identifier
+        for record in summary.records.values()
+        if record.source == TAXON_REQUIRED_SOURCE
+    )
     ambiguous = sorted(
         record.identifier
         for record in summary.records.values()
-        if record.status == "ambiguous"
+        if record.status == "ambiguous" and record.source != TAXON_REQUIRED_SOURCE
     )
     online_unverified = sorted(
         record.identifier
@@ -138,6 +146,13 @@ def _gene_axis_errors(
         return []
 
     errors: list[str] = []
+    if taxon_required:
+        errors.append(
+            f"{label}: gene symbols cannot be verified without a species. Set "
+            "taxon (for example 'human', 'Homo sapiens', or '9606'), or supply "
+            "NCBI/Ensembl gene IDs instead: "
+            + ", ".join(taxon_required[:5])
+        )
     if invalid:
         errors.append(
             f"{label}: not recognized by the configured gene authority: "
