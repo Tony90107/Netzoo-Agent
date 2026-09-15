@@ -365,11 +365,12 @@ def test_execute_after_preview_confirms_and_reuses_the_validated_task(capsys):
             _workflow_result(task, status="dry_run"),
             _workflow_result(task, status="success"),
         ],
-        interactive_answers=[task, "/execute", "yes", "exit"],
+        interactive_answers=["/test", task, "/execute", "yes", "exit"],
     )
     previous = settings.EXECUTE_TOOLS
+    previous_test_mode = settings.TEST_DATA_MODE
     try:
-        configure_runtime(EXECUTE_TOOLS=False)
+        configure_runtime(EXECUTE_TOOLS=False, TEST_DATA_MODE=False)
 
         assert conversation.run_conversation(
             SimpleNamespace(task=None, keep_session=False), runtime
@@ -390,7 +391,10 @@ def test_execute_after_preview_confirms_and_reuses_the_validated_task(capsys):
             for prompt in prompts
         )
     finally:
-        configure_runtime(EXECUTE_TOOLS=previous)
+        configure_runtime(
+            EXECUTE_TOOLS=previous,
+            TEST_DATA_MODE=previous_test_mode,
+        )
 
 
 def test_mode_menu_selection_blocks_execute_without_graph_or_trace(

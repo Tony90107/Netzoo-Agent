@@ -166,9 +166,9 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     if retrieval_failure is not None:
         _trace("done", "A retrieval failure was rendered without response-model guessing")
         return {"messages": [AIMessage(content=retrieval_failure)]}
-    authority_report = render_authority_search_response(
-        task, decision, structured_results
-    )
+    authority_report = None
+    if decision.action == "web_search":
+        authority_report = render_authority_search_response(task, decision, structured_results)
     if authority_report is not None:
         _trace("done", "An authority search report was rendered deterministically")
         return {"messages": [AIMessage(content=authority_report)]}

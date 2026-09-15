@@ -14,6 +14,7 @@ from types import ModuleType
 MUTABLE_RUNTIME_NAMES = frozenset(
     {
         "EXECUTE_TOOLS",
+        "TEST_DATA_MODE",
         "TRACE_ENABLED",
         "VERBOSE_OUTPUT",
         "TRANSIENT_TRACE",

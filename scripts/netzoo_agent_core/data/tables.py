@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .. import settings
 from netzoo_table_io import (
     read_table as _read_table,
     table_read_info as _table_read_info,
@@ -594,10 +595,13 @@ def _gene_authority_report_lines(
         source = record.source or "(none)"
         taxon = record.taxon or "(none)"
         symbol = record.symbol or "(none)"
+        display_status = record.status
+        if settings.TEST_DATA_MODE and record.status != "valid":
+            display_status = "test_only"
         lines.append(
             "    - "
             f"id: {identifier}; "
-            f"status: {record.status}; "
+            f"status: {display_status}; "
             f"canonical_id: {canonical_id}; "
             f"authority: {authority}; "
             f"source: {source}; "
@@ -669,7 +673,18 @@ def _inspect_panda_inputs_impl(
         if summary is None:
             continue
         counts = summary.status_counts()
-        parts = [f"{count} {status}" for status, count in sorted(counts.items())]
+        display_counts: dict[str, int] = {}
+        for status, count in counts.items():
+            display_status = (
+                "test_only"
+                if settings.TEST_DATA_MODE and status != "valid"
+                else status
+            )
+            display_counts[display_status] = display_counts.get(display_status, 0) + count
+        parts = [
+            f"{count} {status}"
+            for status, count in sorted(display_counts.items())
+        ]
         lookup_parts = [f"{summary.cache_hits} cache hit(s)"]
         if summary.online_queries:
             lookup_parts.append(f"{summary.online_queries} online lookup batch(es)")
@@ -689,19 +704,34 @@ def _inspect_panda_inputs_impl(
             if record.status == "invalid"
         )
         if invalid_ids:
-            check.errors.append(
+            message = (
                 f"{role} not recognized by the configured gene authority: "
                 + ", ".join(invalid_ids[:5])
             )
+            if settings.TEST_DATA_MODE:
+                check.warnings.append(
+                    message
+                    + "; accepted as test-only identifiers because Synthetic Test mode is enabled."
+                )
+            else:
+                check.errors.append(message)
         ambiguous_ids = sorted(
             record.identifier
             for record in summary.records.values()
             if record.status == "ambiguous"
         )
         if ambiguous_ids:
-            check.warnings.append(
+            message = (
                 f"{role} have multiple authority matches; taxon may be required: "
                 + ", ".join(ambiguous_ids[:5])
+            )
+            check.warnings.append(
+                message
+                + (
+                    "; accepted as test-only identifiers because Synthetic Test mode is enabled."
+                    if settings.TEST_DATA_MODE
+                    else ""
+                )
             )
         unverified_ids = sorted(
             record.identifier
@@ -716,18 +746,35 @@ def _inspect_panda_inputs_impl(
                 and record.source not in {"offline", "stale_cache"}
             )
             if online_unverified:
-                check.errors.append(
+                message = (
                     f"{role} could not be authoritatively verified because the "
                     "structured NCBI/Ensembl lookup was unavailable; Websearch "
                     "cannot authorize execution: "
                     + ", ".join(online_unverified[:5])
                 )
+                if settings.TEST_DATA_MODE:
+                    check.warnings.append(
+                        message
+                        + "; accepted as test-only identifiers because Synthetic Test mode is enabled."
+                    )
+                else:
+                    check.errors.append(message)
             else:
-                check.warnings.append(
+                message = (
                     f"{role} could not be authority-verified in offline mode; exact "
                     "schema and cross-file matching will still be used: "
                     + ", ".join(unverified_ids[:5])
                 )
+                if settings.TEST_DATA_MODE:
+                    check.warnings.append(
+                        message
+                        + "; accepted as test-only identifiers because Synthetic Test mode is enabled."
+                    )
+                else:
+                    check.errors.append(
+                        message
+                        + "; production validation requires authoritative confirmation."
+                    )
 
     all_checks = [expression, motif, ppi]
     authority_summaries = {

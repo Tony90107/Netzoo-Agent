@@ -645,8 +645,13 @@ What would you like to accomplish with NetZoo?
 Planning is the default preview-only state and has no prompt label. Press `/` at
 an empty prompt to show the muted `execute` completion; the input itself still
 contains only `/`. Press Enter to submit `/execute`, or continue typing to enter
-`/planning`, `/status`, or `/help`. `/execute` remains active until `/planning`
-or the session ends. A slash typed after other text remains literal. Path prompts
+`/test`, `/planning`, `/status`, or `/help`. `/test` enters Synthetic Test mode:
+schema, numeric, and cross-file checks remain enforced, while unresolved gene
+labels are marked test-only rather than treated as biological evidence. A
+resulting plan still requires `/execute` before any workflow runs. Use
+`/planning` to leave Synthetic Test mode and return to strict validation. `/execute`
+remains active until `/planning`, `/test`, or the session ends. A slash typed after other text remains literal.
+Path prompts
 intentionally do not open the completion, so absolute paths and slash commands
 can be typed normally. To interrupt analysis already running, use Ctrl-C;
 `/planning` applies only after the prompt becomes available again.
@@ -668,6 +673,7 @@ gene 在 rows、sample 在 columns，且 LIONESS 至少需要三個 samples。
 
 ```text
 /execute
+/test
 /status
 /planning
 ```
