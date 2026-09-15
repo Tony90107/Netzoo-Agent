@@ -237,6 +237,11 @@ def _apply_public_progress_event(
     if stage == "input" and message == "The Planner requires additional input":
         state.attention("next_step", "Input required")
         return True
+    if stage == "input" and message == "The Planner requires confirmation":
+        # Without this the live line stays on "Preparing next step…" while the
+        # Planner is in fact waiting on the user, which reads as a hang.
+        state.attention("next_step", "Confirmation required")
+        return True
     if state_name is None:
         return False
     if isinstance(detail, dict) and detail.get("kind") == "next_step":

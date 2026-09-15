@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from .context import _PlanningContext
 from ..data.bonobo import bonobo_artifact_paths, load_bonobo_inputs
 from ..data.bundles import MULTI_FILE_ACTIONS, discover_bundle_candidates
-from ..data.content_mapping import infer_input_roles
+from ..data.content_mapping import detect_role_mismatches, infer_input_roles
 from ..data.preflight import validate_workflow_inputs
 from ..contracts import InputEvidence, OUTPUT_ROLE_FIELDS, PROJECT_ROOT, _is_demo_request
 from ..interpretation import (
@@ -572,6 +573,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         context.preflight_errors[:] = list(dict.fromkeys(
             [*context.preflight_errors, *validate_workflow_inputs(action, decision)]
         ))
+        if context.preflight_errors:
+            context.role_mismatch_hints[:] = _role_mismatch_hints(
+                action, decision, input_fields, context.content_mapper
+            )
     handoff = context.workflow_handoff
     if (
         action == "run_bonobo"
@@ -615,3 +620,29 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 f"BONOBO handoff identity could not be validated: {error}"
             )
     return evidence
+
+
+def _role_mismatch_hints(
+    action: str,
+    decision: Any,
+    input_fields: list[str],
+    mapper: Any | None,
+) -> list[str]:
+    """Explain a failed preflight as crossed role labels when contents say so.
+
+    Only reached once validation has already failed, so the extra content read
+    is not on the path of a run that is going to succeed.
+    """
+    bindings = {
+        field_name: str(getattr(decision, field_name, None) or "")
+        for field_name in input_fields
+        if getattr(decision, field_name, None)
+    }
+    corrections = detect_role_mismatches(action, bindings, mapper)
+    if not corrections:
+        return []
+    return [
+        f"{field_name}: {_resolve_user_path(bindings[field_name]).resolve()} does "
+        f"not match this role; {path} does"
+        for field_name, path in sorted(corrections.items())
+    ]

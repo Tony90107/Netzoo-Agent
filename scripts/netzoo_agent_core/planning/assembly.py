@@ -117,6 +117,19 @@ def _assemble_workflow_plan(
     if context.preflight_errors:
         decision.should_execute = False
         errors = "\n".join(f"- {error}" for error in context.preflight_errors)
+        if context.role_mismatch_hints:
+            hints = "\n".join(f"- {hint}" for hint in context.role_mismatch_hints)
+            remedy = (
+                "\nThe file contents suggest the input roles are crossed:\n\n"
+                f"{hints}\n\n"
+                "Confirm the corrected assignment, or supply the intended paths, "
+                "and I will re-check them."
+            )
+        else:
+            remedy = (
+                "\nPlease provide corrected files or fix the file contents, then "
+                "I will re-check them."
+            )
         return WorkflowPlan(
             workflow=workflow,
             objective=decision.reason,
@@ -127,8 +140,7 @@ def _assemble_workflow_plan(
             status="needs_input",
             question=(
                 "Input preflight failed, so the Work Plan is not ready:\n\n"
-                f"{errors}\n\n"
-                "Please provide corrected files or fix the file contents, then I will re-check them."
+                f"{errors}\n{remedy}"
             ),
             memory_notes=memory_notes,
             policy_hash=policy_hash,

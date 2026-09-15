@@ -2,6 +2,21 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolated_gene_authority(tmp_path_factory, monkeypatch):
+    """Keep every test off the gene authority and out of the project cache.
+
+    Online lookup is enabled by default in production because NCBI and Ensembl
+    need no credentials. A test that wants the online path patches the resolver
+    or overrides these variables itself.
+    """
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    monkeypatch.setenv(
+        "NETZOO_GENE_CACHE_PATH",
+        str(tmp_path_factory.mktemp("gene-cache") / "gene_validation.sqlite3"),
+    )
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--fail-on-skip", action="store_true", default=False,

@@ -246,11 +246,17 @@ def _bundle_in_directory(
             values["ppi_file"],
         )
     else:
+        # Discovery answers "which directories hold a coherent input set", so
+        # it checks structure and cross-file identity only. Querying the gene
+        # authority once per candidate directory turned listing candidates into
+        # hundreds of network calls, and the chosen bundle is validated in full
+        # by preflight anyway -- both after planning and again at /execute.
         _, valid, _ = _inspect_panda_inputs_impl(
             values["expression_file"],
             values["motif_file"],
             values["ppi_file"],
             values.get("mirna_file", ""),
+            check_gene_authority=False,
         )
     if not valid:
         return None

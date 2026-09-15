@@ -39,6 +39,13 @@ WEBSEARCH_URL = os.environ.get("WEBSEARCH_MCP_URL", "https://mcp.tavily.com/mcp"
 WEBSEARCH_MAX_CHARS = 6500
 
 
+# The MCP client has no deadline of its own, so an unreachable or slow endpoint
+# blocks the calling turn indefinitely. Bound every lookup instead.
+WEBSEARCH_TIMEOUT_SECONDS = float(
+    os.environ.get("NETZOO_WEBSEARCH_TIMEOUT_SECONDS", "25")
+)
+
+
 def _tool_text(result) -> str:
     """Convert LangChain/MCP tool results into bounded plain text."""
     content = getattr(result, "content", result)
@@ -287,8 +294,14 @@ async def _web_search_async(query: str) -> str:
 
 def query_web_search(query: str) -> str:
     """Search the web through the read-only Tavily-compatible MCP endpoint."""
+    async def bounded() -> str:
+        return await asyncio.wait_for(
+            _web_search_async(_authority_scoped_query(query)),
+            timeout=WEBSEARCH_TIMEOUT_SECONDS,
+        )
+
     try:
-        return asyncio.run(_web_search_async(_authority_scoped_query(query)))
+        return asyncio.run(bounded())
     except Exception as error:
         key_hint = (
             "\nSet TAVILY_API_KEY or configure WEBSEARCH_MCP_URL for an "

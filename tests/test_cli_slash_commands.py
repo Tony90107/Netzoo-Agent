@@ -13,6 +13,10 @@ from netzoo_agent_core.cli.slash_commands import (  # noqa: E402
     handle_slash_command,
     render_mode_prompt,
 )
+from netzoo_agent_core.data.gene_validation import (  # noqa: E402
+    GeneCache,
+    GeneRecord,
+)
 from netzoo_agent_core.runtime import configure_runtime  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
     PlanEvaluationResult,
@@ -20,6 +24,40 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     WorkflowPlan,
     WorkflowStep,
 )
+
+
+@pytest.fixture(autouse=True)
+def seeded_gene_authority(monkeypatch, tmp_path):
+    """Seed the genes used by data/auto-check-valid into an isolated cache.
+
+    These tests are about the /execute gate, not about gene resolution, but the
+    gate deliberately re-runs full input validation. Without seeded records the
+    axes come back unverified and the gate blocks for the wrong reason.
+    """
+    cache_path = tmp_path / "gene.sqlite3"
+    GeneCache(cache_path).upsert(
+        [
+            GeneRecord(
+                identifier=identifier,
+                normalized_identifier=identifier.casefold(),
+                namespace=namespace,
+                canonical_id=canonical_id,
+                symbol=identifier,
+                taxon="",
+                status="valid",
+                authority="NCBI Gene",
+                source="test",
+            )
+            for identifier, namespace, canonical_id in (
+                ("ENSG00000141510", "ensembl_gene", "ensembl_gene:ENSG00000141510"),
+                ("ENSG00000012048", "ensembl_gene", "ensembl_gene:ENSG00000012048"),
+                ("ENSG00000146648", "ensembl_gene", "ensembl_gene:ENSG00000146648"),
+                ("MYC", "symbol_like", "ncbi_gene:4609"),
+                ("SOX2", "symbol_like", "ncbi_gene:6657"),
+            )
+        ]
+    )
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(cache_path))
 
 
 @pytest.fixture(autouse=True)
