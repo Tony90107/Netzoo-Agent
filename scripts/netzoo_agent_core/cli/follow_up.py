@@ -307,12 +307,19 @@ def build_follow_up_context(
             or decision.hypothesis_actions
         )
     )
+    # Direct read-only actions (WEB-SEARCH/CONTEXT7) are valid router actions,
+    # but they are not local workflows and therefore cannot be represented by
+    # WorkflowConversationFact or offered as a workflow continuation.  Keep
+    # them out of the workflow-only conversational contract instead of letting
+    # a direct action reach a narrower RecommendedAction literal and crash the
+    # CLI after the tool result has already been recorded.
+    workflow_candidates = [action for action in candidates if action in RUN_ACTIONS]
     return FollowUpContext(
         prior_user_goal=prior_user_goal[-4000:],
         prompt_kind=prompt.kind,
         prompt_question=prompt.question,
         allow_workflow_continuation=prompt.allow_workflow_continuation,
-        candidate_actions=candidates,
+        candidate_actions=workflow_candidates,
         candidate_workflows=[
             WorkflowConversationFact(
                 action=action,
@@ -324,7 +331,7 @@ def build_follow_up_context(
                     else ()
                 ),
             )
-            for action in candidates
+            for action in workflow_candidates
         ],
         continuation_action=prompt.continuation_action,
         expected_field=prompt.expected_field,

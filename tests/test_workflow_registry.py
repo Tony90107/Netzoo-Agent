@@ -10,8 +10,13 @@ import netzoo_agent as agent  # noqa: E402
 from workflow_registry import (  # noqa: E402
     ACTION_DEFINITIONS,
     ACTION_NAMES,
+    RUN_ACTIONS,
     get_controls,
     resolve_conditional_output,
+)
+from netzoo_agent_core.data.preflight import (  # noqa: E402
+    WORKFLOW_GENE_EXTRACTORS,
+    WORKFLOW_INPUT_VALIDATORS,
 )
 
 
@@ -38,6 +43,21 @@ class WorkflowRegistryTests(unittest.TestCase):
                     agent.CODE_VALIDATION_STEPS[action],
                     list(definition.validation_steps),
                 )
+
+    def test_every_run_action_has_exactly_one_fail_closed_input_validator(self):
+        self.assertEqual(set(WORKFLOW_INPUT_VALIDATORS), set(RUN_ACTIONS))
+        for action in RUN_ACTIONS:
+            with self.subTest(action=action):
+                self.assertEqual(
+                    ACTION_DEFINITIONS[action].input_validator,
+                    action,
+                )
+
+    def test_gene_axes_are_declared_for_gene_bearing_workflows_only(self):
+        self.assertEqual(
+            set(WORKFLOW_GENE_EXTRACTORS),
+            set(RUN_ACTIONS) - {"run_condor", "run_dragon"},
+        )
 
     def test_controls_are_typed_and_non_bonobo_workflows_do_not_leak_bonobo_controls(self):
         bonobo_controls = get_controls("run_bonobo")

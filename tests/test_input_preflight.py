@@ -13,6 +13,9 @@ from netzoo_agent_core.cli.clarification import (  # noqa: E402
 )
 from netzoo_agent_core.contracts import PlanEvaluationResult  # noqa: E402
 from netzoo_agent_core.data.tables import _inspect_panda_inputs_impl  # noqa: E402
+from netzoo_agent_core.data.gene_validation import GeneCache, GeneRecord  # noqa: E402
+from netzoo_agent_core.data.preflight import validate_workflow_inputs  # noqa: E402
+from netzoo_agent_core.routing.capability import apply_input_preflight_intent  # noqa: E402
 from netzoo_agent_core.tool_adapters import inspect_netzoo_inputs  # noqa: E402
 from workflow_registry import executor_arguments  # noqa: E402
 
@@ -120,6 +123,35 @@ def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_
     assert "motif" in result.message.casefold()
 
 
+def test_input_only_panda_preflight_does_not_require_output_file(tmp_path, monkeypatch):
+    expression, motif, ppi = _valid_panda_files(tmp_path)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    task = (
+        "請執行 PANDA input preflight。"
+        f" expression_file={expression} motif_file={motif} ppi_file={ppi}"
+        " 只回報驗證結果，不要執行 PANDA。"
+    )
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The request looks informational.",
+        expression_file=str(expression),
+        motif_file=str(motif),
+        ppi_file=str(ppi),
+    )
+
+    routed = apply_input_preflight_intent(decision, task)
+    plan = build_workflow_plan(routed, task)
+
+    assert plan.status == "ready"
+    assert [step.action for step in plan.steps] == ["inspect_inputs"]
+    assert plan.decision["output_file"] is None
+
+
 def test_expression_header_and_identifier_namespace_are_code_owned_observations(tmp_path):
     expression = _write(
         tmp_path / "expression.tsv",
@@ -194,6 +226,48 @@ def test_taxon_reaches_inspect_tool_and_executor_payload(tmp_path, monkeypatch):
     assert "authority validation for taxon 'Homo sapiens'" in report
 
 
+def test_input_inspection_reports_per_gene_authority_evidence(tmp_path, monkeypatch):
+    expression, motif, ppi = _valid_panda_files(tmp_path)
+    cache_path = tmp_path / "gene.sqlite3"
+    records = []
+    for index, identifier in enumerate(("G1", "G2", "TF1", "TF2"), 1):
+        records.append(
+            GeneRecord(
+                identifier=identifier,
+                normalized_identifier=identifier.casefold(),
+                namespace="symbol_like",
+                canonical_id=f"ncbi_gene:{index}",
+                symbol=identifier,
+                taxon="Homo sapiens",
+                status="valid",
+                authority="NCBI Gene",
+                source="cache",
+            )
+        )
+    GeneCache(cache_path).upsert(records)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(cache_path))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+
+    report = inspect_netzoo_inputs.invoke(
+        {
+            "expression_file": str(expression),
+            "motif_file": str(motif),
+            "ppi_file": str(ppi),
+            "taxon": "Homo sapiens",
+        }
+    )
+
+    assert "gene authority records (expression genes):" in report
+    assert (
+        "id: G1; status: valid; canonical_id: ncbi_gene:1; "
+        "authority: NCBI Gene; source: cache"
+    ) in report
+    assert (
+        "id: TF1; status: valid; canonical_id: ncbi_gene:3; "
+        "authority: NCBI Gene; source: cache"
+    ) in report
+
+
 def test_taxon_is_forwarded_to_panda_executor_arguments():
     decision = TaskDecision(
         action="run_panda",
@@ -211,3 +285,45 @@ def test_taxon_is_forwarded_to_panda_executor_arguments():
     arguments = executor_arguments("run_panda", decision)
 
     assert arguments["taxon"] == "Homo sapiens"
+
+
+def test_bonobo_preflight_rejects_authoritatively_invalid_gene_id(
+    tmp_path, monkeypatch
+):
+    cache_path = tmp_path / "gene.sqlite3"
+    GeneCache(cache_path).upsert(
+        [
+            GeneRecord(
+                identifier="NOTAGENE",
+                normalized_identifier="notagene",
+                namespace="symbol_like",
+                canonical_id=None,
+                symbol="NOTAGENE",
+                taxon="Homo sapiens",
+                status="invalid",
+                authority="NCBI Gene",
+                source="test",
+            )
+        ]
+    )
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(cache_path))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression = _write(
+        tmp_path / "totally-unrelated-name.tsv",
+        "gene\ts1\ts2\ts3\nNOTAGENE\t-1\t0\t1\n",
+    )
+
+    errors = validate_workflow_inputs(
+        "run_bonobo",
+        {
+            "expression_file": str(expression),
+            "output_dir": str(tmp_path / "out"),
+            "genes_axis": "rows",
+            "log_transformed": True,
+            "centered": True,
+            "taxon": "Homo sapiens",
+        },
+    )
+
+    assert any("not recognized" in error for error in errors)
+    assert any("NOTAGENE" in error for error in errors)

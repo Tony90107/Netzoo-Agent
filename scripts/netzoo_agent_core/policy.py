@@ -317,6 +317,11 @@ class ProjectPolicyLoader:
                     f"{action} validation_steps conflict with Python: "
                     f"yaml={spec.validation_steps}, code={expected_validation}."
                 )
+            if spec.input_validator != definition.input_validator:
+                raise ProjectPolicyError(
+                    f"{action} input_validator conflict with Python: "
+                    f"yaml={spec.input_validator}, code={definition.input_validator}."
+                )
             if spec.workflow != definition.workflow:
                 raise ProjectPolicyError(
                     f"{action} workflow must be {definition.workflow}."

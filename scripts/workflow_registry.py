@@ -257,6 +257,8 @@ class ActionDefinition:
     executor_fields: tuple[str, ...] = ()
     executor_defaults: Mapping[str, Any] = field(default_factory=dict)
     validation_steps: tuple[str, ...] = ()
+    # Stable fail-closed semantic-preflight key. Every run action must set it.
+    input_validator: ActionName | None = None
     local: bool = False
     run: bool = False
     memory_metadata: Mapping[str, str] = field(default_factory=dict)
@@ -377,6 +379,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         ),
         executor_defaults={"taxon": ""},
         validation_steps=("inspect_inputs",),
+        input_validator="run_panda",
         local=True,
         run=True,
         memory_metadata={"method_family": "panda"},
@@ -436,6 +439,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_defaults={"taxon": ""},
         optional_inputs=("coexpression_file", "taxon"),
         validation_steps=("inspect_inputs",),
+        input_validator="run_puma",
         local=True,
         run=True,
         memory_metadata={"method_family": "puma"},
@@ -488,6 +492,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_defaults={"taxon": ""},
         optional_inputs=("taxon",),
         validation_steps=("inspect_inputs",),
+        input_validator="run_lioness_panda",
         local=True,
         run=True,
         memory_metadata={"method_family": "lioness", "base_method": "panda"},
@@ -536,6 +541,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_defaults={"taxon": ""},
         optional_inputs=("taxon",),
         validation_steps=("inspect_inputs",),
+        input_validator="run_lioness_puma",
         local=True,
         run=True,
         memory_metadata={"method_family": "lioness", "base_method": "puma"},
@@ -565,7 +571,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "run_lioness_coexpression",
         "LIONESS-COEXPRESSION",
         required_inputs=("expression_file", "output_file", "lioness_output"),
+        optional_inputs=("taxon",),
         executor_fields=("expression_file", "output_file", "lioness_output"),
+        input_validator="run_lioness_coexpression",
         local=True,
         run=True,
         memory_metadata={
@@ -598,6 +606,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         executor_fields=("network_file", "output_dir", "prefix"),
         executor_defaults={"prefix": "condor"},
         validation_steps=("inspect_condor_inputs",),
+        input_validator="run_condor",
         local=True,
         run=True,
         memory_metadata={"method_family": "condor"},
@@ -622,8 +631,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "run_cobra",
         "COBRA",
         required_inputs=("expression_file", "design_file", "output_dir"),
+        optional_inputs=("taxon",),
         executor_fields=("expression_file", "design_file", "output_dir"),
         validation_steps=("inspect_cobra_inputs",),
+        input_validator="run_cobra",
         local=True,
         run=True,
         memory_metadata={"method_family": "cobra"},
@@ -674,6 +685,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             "distance",
             "linkage",
             "cluster",
+            "taxon",
         ),
         executor_fields=(
             "mutation_file",
@@ -701,6 +713,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             "cluster": True,
         },
         validation_steps=("inspect_sambar_inputs",),
+        input_validator="run_sambar",
         local=True,
         run=True,
         memory_metadata={"method_family": "sambar"},
@@ -768,6 +781,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         ),
         executor_defaults={"output_format": "matrix"},
         validation_steps=("inspect_dragon_inputs",),
+        input_validator="run_dragon",
         local=True,
         run=True,
         memory_metadata={"method_family": "dragon", "api": "netZooPy.dragon"},
@@ -815,13 +829,14 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         required_input_groups=(("expression_file", "coexpression_file"),),
         optional_inputs=(
             "expression_file", "coexpression_file", "output_format", "computing",
-            "precision", "lam", "gamma", "iterations", "eta", "bexp",
+            "precision", "lam", "gamma", "iterations", "eta", "bexp", "taxon",
         ),
         executor_fields=(
             "expression_file", "coexpression_file", "motif_file", "ppi_file", "output_file",
             "output_format", "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp",
         ),
         validation_steps=("inspect_otter_inputs",),
+        input_validator="run_otter",
         local=True,
         run=True,
         memory_metadata={"method_family": "otter", "api": "netZooPy.otter.otter"},
@@ -861,8 +876,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "run_giraffe",
         "GIRAFFE",
         required_inputs=("expression_file", "motif_file", "ppi_file", "output_file"),
+        optional_inputs=("taxon",),
         executor_fields=("expression_file", "motif_file", "ppi_file", "output_file"),
         validation_steps=("inspect_giraffe_inputs",),
+        input_validator="run_giraffe",
         local=True,
         run=True,
         memory_metadata={
@@ -906,8 +923,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "regulatory effects interpretable as linear-model coefficients: positive "
                 "for activation and negative for repression. It returns the aggregate "
                 "TF-by-gene R matrix and a TF-by-sample TFA matrix. "
-                "A CONDOR handoff requires validated matrix-to-edge-list conversion and "
-                "user confirmation. No other direct handoff is registered."
+                "This is not a direct CONDOR handoff: it requires validated "
+                "matrix-to-edge-list conversion and user confirmation. No other "
+                "direct handoff is registered."
             ),
         ),
     ),
@@ -918,7 +936,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         optional_inputs=(
             "bonobo_output_format", "sample_names", "sparsify", "bonobo_confidence",
             "save_pvals", "precision", "keep_in_memory", "delta", "genes_axis",
-            "log_transformed", "centered",
+            "log_transformed", "centered", "taxon",
         ),
         executor_fields=(
             "expression_file", "output_dir", "bonobo_output_format", "sample_names",
@@ -936,6 +954,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             "genes_axis": "auto",
         },
         validation_steps=("inspect_bonobo_inputs",),
+        input_validator="run_bonobo",
         local=True,
         run=True,
         memory_metadata={

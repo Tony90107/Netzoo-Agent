@@ -570,6 +570,43 @@ def _identifier_overlap_report(
     return lines, False
 
 
+def _gene_authority_report_lines(
+    role: str,
+    summary: GeneValidationSummary | None,
+) -> list[str]:
+    """Render the per-identifier authority evidence used by input preflight.
+
+    The aggregate status note above is useful for large tables, but it is not
+    enough to diagnose one bad label or to explain whether a result came from
+    the local cache, NCBI/Ensembl, or the non-authoritative Websearch fallback.
+    Keep the complete records in the inspection report so the CLI can show the
+    same evidence that the execution gate used.
+    """
+    if summary is None or not summary.records:
+        return []
+    lines = [f"  gene authority records ({role}):"]
+    for _, record in sorted(
+        summary.records.items(), key=lambda item: item[1].identifier.casefold()
+    ):
+        identifier = record.identifier
+        canonical_id = record.canonical_id or "(none)"
+        authority = record.authority or "(none)"
+        source = record.source or "(none)"
+        taxon = record.taxon or "(none)"
+        symbol = record.symbol or "(none)"
+        lines.append(
+            "    - "
+            f"id: {identifier}; "
+            f"status: {record.status}; "
+            f"canonical_id: {canonical_id}; "
+            f"authority: {authority}; "
+            f"source: {source}; "
+            f"taxon: {taxon}; "
+            f"symbol: {symbol}"
+        )
+    return lines
+
+
 def _inspect_panda_inputs_impl(
     expression_file: str,
     motif_file: str,
@@ -582,6 +619,8 @@ def _inspect_panda_inputs_impl(
     )
     motif = _validate_edge_or_bed(_read_checked_table("motif", motif_file), "motif")
     ppi = _validate_edge_or_bed(_read_checked_table("PPI", ppi_file), "PPI")
+    motif_regulator_validation: GeneValidationSummary | None = None
+    ppi_node_validation: GeneValidationSummary | None = None
 
     # Validate the gene axis and motif target axis independently before
     # comparing them.  The validator is cache-first; a configured Websearch
@@ -602,28 +641,31 @@ def _inspect_panda_inputs_impl(
         )
         motif.canonical_identifiers = motif.gene_validation.canonical_map
     if motif.format_name == "edge list" and motif.identifiers:
-        motif.regulator_canonical_identifiers = validate_gene_identifiers(
+        motif_regulator_validation = validate_gene_identifiers(
             motif.identifiers,
             motif.identifier_namespace,
             taxon,
-        ).canonical_map
+        )
+        motif.regulator_canonical_identifiers = motif_regulator_validation.canonical_map
     if ppi.format_name == "edge list":
         ppi_nodes = ppi.identifiers | ppi.secondary_identifiers
         if ppi_nodes:
-            ppi.node_canonical_identifiers = validate_gene_identifiers(
+            ppi_node_validation = validate_gene_identifiers(
                 ppi_nodes,
                 _namespace_union(
                     ppi.identifier_namespace,
                     ppi.secondary_identifier_namespace,
                 ),
                 taxon,
-            ).canonical_map
+            )
+            ppi.node_canonical_identifiers = ppi_node_validation.canonical_map
 
-    for check, role in (
-        (expression, "expression genes"),
-        (motif, "motif target genes"),
+    for check, summary, role in (
+        (expression, expression.gene_validation, "expression genes"),
+        (motif, motif.gene_validation, "motif target genes"),
+        (motif, motif_regulator_validation, "motif regulator genes"),
+        (ppi, ppi_node_validation, "PPI regulator genes"),
     ):
-        summary = check.gene_validation
         if summary is None:
             continue
         counts = summary.status_counts()
@@ -667,13 +709,35 @@ def _inspect_panda_inputs_impl(
             if record.status == "unverified"
         )
         if unverified_ids:
-            check.warnings.append(
-                f"{role} could not be authority-verified; exact schema and cross-file "
-                "matching will still be used: "
-                + ", ".join(unverified_ids[:5])
+            online_unverified = sorted(
+                record.identifier
+                for record in summary.records.values()
+                if record.status == "unverified"
+                and record.source not in {"offline", "stale_cache"}
             )
+            if online_unverified:
+                check.errors.append(
+                    f"{role} could not be authoritatively verified because the "
+                    "structured NCBI/Ensembl lookup was unavailable; Websearch "
+                    "cannot authorize execution: "
+                    + ", ".join(online_unverified[:5])
+                )
+            else:
+                check.warnings.append(
+                    f"{role} could not be authority-verified in offline mode; exact "
+                    "schema and cross-file matching will still be used: "
+                    + ", ".join(unverified_ids[:5])
+                )
 
     all_checks = [expression, motif, ppi]
+    authority_summaries = {
+        "expression": [("expression genes", expression.gene_validation)],
+        "motif": [
+            ("motif target genes", motif.gene_validation),
+            ("motif regulator genes", motif_regulator_validation),
+        ],
+        "PPI": [("PPI regulator genes", ppi_node_validation)],
+    }
 
     lines = ["Input inspection:"]
     for check in all_checks:
@@ -699,6 +763,8 @@ def _inspect_panda_inputs_impl(
             lines.append(f"  warning: {warning}")
         for error in check.errors:
             lines.append(f"  error: {error}")
+        for role, summary in authority_summaries.get(check.label, ()):
+            lines.extend(_gene_authority_report_lines(role, summary))
 
     cross_id_error = False
     if motif.format_name == "edge list" and expression.identifiers:

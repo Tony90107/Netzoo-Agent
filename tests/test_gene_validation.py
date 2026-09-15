@@ -11,6 +11,7 @@ from netzoo_agent_core.data.gene_validation import (  # noqa: E402
     GeneCache,
     GeneRecord,
     _websearch_gene_lookup,
+    _structured_gene_lookup,
     validate_gene_identifiers,
 )
 from netzoo_agent_core.data.tables import _inspect_panda_inputs_impl  # noqa: E402
@@ -94,9 +95,126 @@ def test_websearch_accepts_only_trusted_exact_gene_results(monkeypatch):
         ["TP53", "BRCA2"], "symbol_like", "Homo sapiens"
     )
 
-    assert records[0].status == "valid"
+    # Search results are discovery evidence, not an authoritative existence check.
+    assert records[0].status == "unverified"
     assert records[0].canonical_id == "ncbi_gene:7157"
     assert records[1].status == "unverified"
+
+
+def test_websearch_fallback_cannot_authorize_panda_execution(tmp_path, monkeypatch):
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "on")
+
+    def discovery_only(ids, namespace, taxon):
+        return [
+            GeneRecord(
+                identifier=identifier,
+                normalized_identifier=identifier.casefold(),
+                namespace=namespace,
+                canonical_id=None,
+                symbol=identifier,
+                taxon=taxon or None,
+                status="unverified",
+                authority="NCBI/Ensembl",
+                source="websearch",
+            )
+            for identifier in ids
+        ]
+
+    monkeypatch.setattr(
+        "netzoo_agent_core.data.gene_validation._online_gene_lookup",
+        discovery_only,
+    )
+    expression = tmp_path / "expression.tsv"
+    expression.write_text("gene\ts1\ts2\nTP53\t1\t2\n", encoding="utf-8")
+    motif = tmp_path / "motif.tsv"
+    motif.write_text("MYC\tTP53\t1\nMAX\tTP53\t1\n", encoding="utf-8")
+    ppi = tmp_path / "ppi.tsv"
+    ppi.write_text("MYC\tMAX\t1\n", encoding="utf-8")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi), taxon="Homo sapiens"
+    )
+
+    assert not ok
+    assert "Websearch cannot authorize execution" in report
+
+
+def test_structured_ncbi_lookup_marks_authoritative_absence_invalid(monkeypatch):
+    monkeypatch.setattr(
+        "netzoo_agent_core.data.gene_validation._query_authority_json",
+        lambda *args, **kwargs: {
+            "reports": [
+                {
+                    "gene": {
+                        "geneId": "7157",
+                        "symbol": "TP53",
+                        "taxId": 9606,
+                        "taxname": "Homo sapiens",
+                    }
+                }
+            ]
+        },
+    )
+
+    records = _structured_gene_lookup(
+        ["TP53", "NOTAGENE"], "symbol_like", "Homo sapiens"
+    )
+
+    assert records[0].status == "valid"
+    assert records[0].canonical_id == "ncbi_gene:7157"
+    assert records[1].status == "invalid"
+    assert records[1].source == "ncbi_datasets"
+
+
+def test_structured_lookup_uses_response_taxon_not_query_text(monkeypatch):
+    monkeypatch.setattr(
+        "netzoo_agent_core.data.gene_validation._query_authority_json",
+        lambda *args, **kwargs: {
+            "reports": [
+                {
+                    "gene": {
+                        "geneId": "22059",
+                        "symbol": "Trp53",
+                        "taxId": 10090,
+                        "taxname": "Mus musculus",
+                    }
+                }
+            ]
+        },
+    )
+
+    [record] = _structured_gene_lookup(
+        ["Trp53"], "symbol_like", "Homo sapiens"
+    )
+
+    assert record.status == "invalid"
+    assert record.taxon == "Mus musculus"
+
+
+def test_remote_validation_does_not_stop_after_fifty_identifiers(tmp_path):
+    calls: list[list[str]] = []
+
+    def remote_lookup(ids, namespace, taxon):
+        calls.append(list(ids))
+        return [
+            _record(identifier, namespace, f"ncbi_gene:{index}")
+            for index, identifier in enumerate(ids)
+        ]
+
+    identifiers = [f"GENE{index}" for index in range(51)]
+    result = validate_gene_identifiers(
+        identifiers,
+        "symbol_like",
+        "Homo sapiens",
+        cache_path=tmp_path / "many.sqlite3",
+        remote_lookup=remote_lookup,
+    )
+
+    assert sum(len(call) for call in calls) == 51
+    assert len(calls) == 1
+    assert set(result.status_counts()) == {"valid"}
+    assert all(record.source != "remote_limit" for record in result.records.values())
 
 
 def test_canonical_gene_mapping_matches_expression_and_motif_across_namespaces(
@@ -174,6 +292,31 @@ def test_authoritative_invalid_cache_entry_is_a_preflight_error(tmp_path, monkey
 
     assert not ok
     assert "not recognized by the configured gene authority" in report
+
+
+def test_authoritative_invalid_regulator_is_also_a_preflight_error(
+    tmp_path, monkeypatch
+):
+    cache_path = tmp_path / "gene.sqlite3"
+    GeneCache(cache_path).upsert(
+        [_record("NOTATF", "symbol_like", None, status="invalid")]
+    )
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(cache_path))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression = tmp_path / "expression.tsv"
+    expression.write_text("gene\ts1\ts2\nTP53\t1\t2\n", encoding="utf-8")
+    motif = tmp_path / "motif.tsv"
+    motif.write_text("NOTATF\tTP53\t1\nMAX\tTP53\t1\n", encoding="utf-8")
+    ppi = tmp_path / "ppi.tsv"
+    ppi.write_text("NOTATF\tMAX\t1\n", encoding="utf-8")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi)
+    )
+
+    assert not ok
+    assert "motif regulator genes not recognized" in report
+    assert "NOTATF" in report
 
 
 def test_taxon_scopes_cache_matching(tmp_path):

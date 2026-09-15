@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
+from urllib.parse import urlparse
 
 from ..contracts import (
     EvaluationResult,
@@ -297,6 +299,124 @@ def render_execution_response(
         else render_compact_execution_response
     )
     return renderer(plan, results, evaluation)
+
+
+def render_retrieval_failure_response(
+    decision, results: list[ToolExecutionResult]
+) -> str | None:
+    """Render retrieval failure without converting it into a negative hit."""
+    if decision.action not in {"web_search", "query_context7"}:
+        return None
+    failed = [item for item in results if item.status == "failed"]
+    if not failed:
+        return None
+    label = "Websearch" if decision.action == "web_search" else "Context7"
+    lines = [
+        f"{label} lookup failed before an authoritative result was retrieved.",
+        "This is an unavailable/unknown result, not evidence that the requested record was not found.",
+        "No local analysis workflow was executed.",
+    ]
+    details = list(dict.fromkeys(
+        detail for item in failed for detail in (item.errors or [item.summary])
+    ))
+    if details:
+        lines.extend(["", "Details:", *[f"- {detail}" for detail in details]])
+    return "\n".join(lines)
+
+
+def render_authority_search_response(
+    task: str, decision, results: list[ToolExecutionResult]
+) -> str | None:
+    """Render exact NCBI/Ensembl discovery requests from trusted URLs only."""
+    lowered = task.casefold()
+    if not ("ncbi" in lowered or "ensembl" in lowered) or not any(
+        item.status == "success" for item in results
+    ):
+        return None
+    identifiers = list(dict.fromkeys(
+        re.findall(r"\bENSG\d{5,}\b", task, re.IGNORECASE)
+        + re.findall(r"(?:資料|data|gene)\s*[:：]\s*([A-Za-z][A-Za-z0-9_-]{1,20})", task, re.IGNORECASE)
+    ))
+    if not identifiers:
+        identifiers = [
+            token for token in re.findall(r"\b[A-Z][A-Z0-9_-]{2,20}\b", task)
+            if token not in {"NCBI", "GENE", "ENSEMBL", "WEB", "SEARCH"}
+        ]
+    if not identifiers:
+        return None
+
+    def payload(raw: str) -> dict:
+        _, separator, body = raw.partition("\n\n")
+        if not separator:
+            return {}
+        try:
+            value = json.loads(body)
+        except json.JSONDecodeError:
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    def authority(url: str) -> str | None:
+        host = (urlparse(url).hostname or "").casefold().lstrip("www.")
+        if host == "ncbi.nlm.nih.gov" and re.search(r"/gene/\d+", url):
+            return "NCBI Gene"
+        if host == "ensembl.org" and urlparse(url).scheme in {"http", "https"}:
+            return "Ensembl"
+        return None
+
+    matches: dict[str, list[dict[str, object]]] = {identifier: [] for identifier in identifiers}
+    for item in results:
+        for result in payload(item.raw_output).get("results", []):
+            if not isinstance(result, dict):
+                continue
+            url = str(result.get("url") or "")
+            source = authority(url)
+            if source is None:
+                continue
+            title_url = " ".join(str(result.get(key) or "") for key in ("title", "url"))
+            content = str(result.get("content") or "")
+            for identifier in identifiers:
+                pattern = rf"(?<![A-Za-z0-9]){re.escape(identifier)}(?![A-Za-z0-9])"
+                if identifier.upper().startswith("ENSG"):
+                    exact = re.search(pattern, title_url, re.IGNORECASE)
+                else:
+                    title = str(result.get("title") or "")
+                    exact = re.match(
+                        rf"\s*{re.escape(identifier)}(?![A-Za-z0-9])",
+                        title,
+                        re.IGNORECASE,
+                    ) or re.search(
+                        rf"Official Symbol\s+{re.escape(identifier)}(?![A-Za-z0-9])",
+                        content,
+                        re.IGNORECASE,
+                    )
+                if exact:
+                    matches[identifier].append({"source": source, "url": url, "result": result})
+
+    taxon_match = re.search(r"\b(Homo sapiens|Mus musculus)\b", task, re.IGNORECASE)
+    taxon = taxon_match.group(1) if taxon_match else ""
+    lines = ["Official NCBI/Ensembl Websearch exact-match report (discovery evidence):"]
+    for identifier in identifiers:
+        candidates = matches[identifier]
+        if not candidates:
+            lines.append(f"- {identifier}: Websearch 未找到 exact trusted result.")
+            continue
+        for candidate in candidates[:3]:
+            result = candidate["result"]
+            url = str(candidate["url"])
+            gene_id = (re.search(r"/gene/(\d+)", url) or [None, ""])[1]
+            ensembl = (re.search(r"\bENSG\d{5,}\b", " ".join(str(result.get(k) or "") for k in ("title", "content", "url")), re.IGNORECASE) or [""])[0].upper()
+            symbol = identifier if not identifier.upper().startswith("ENSG") else ""
+            symbol_match = re.search(r"Official Symbol\s+([A-Za-z0-9_-]+)", str(result.get("content") or ""), re.IGNORECASE)
+            symbol = symbol_match.group(1) if symbol_match else symbol
+            evidence = " ".join(str(result.get("content") or "").split())[:320]
+            lines.extend([
+                f"- {identifier}: exact trusted match",
+                f"  authority={candidate['source']}; canonical_id={gene_id or ensembl or 'unparsed'}; symbol={symbol or 'unparsed'}; taxon={taxon or 'from source'}",
+                f"  url={url}",
+                f"  evidence={evidence}",
+            ])
+    lines.append("Websearch evidence alone does not authorize a workflow or prove authoritative absence.")
+    return "\n".join(lines)
 
 
 def render_needs_input_response(plan: WorkflowPlan) -> str:

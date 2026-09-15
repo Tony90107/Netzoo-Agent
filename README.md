@@ -39,6 +39,7 @@ memory consolidation`。Evaluator 通過後可
 | [docs/OTTER_INTEGRATION.md](docs/OTTER_INTEGRATION.md) | OTTER API、CLI、輸入／輸出契約與 handoff 規範 |
 | [docs/GIRAFFE_INTEGRATION.md](docs/GIRAFFE_INTEGRATION.md) | GIRAFFE API、Docker runtime、輸入／輸出契約與 workflow 規範 |
 | [NEW_TASK_COMPLETE_DEMO_GUIDE.md](NEW_TASK_COMPLETE_DEMO_GUIDE.md) | 四個新任務的完整說明、Demo 與結果驗證 |
+| [docs/WEBSEARCH_GENE_TEST_PROMPTS.md](docs/WEBSEARCH_GENE_TEST_PROMPTS.md) | Websearch 與 gene authority 的手動測試 prompts |
 | [docs/archive/](docs/archive/) | 歷史進度、舊 demo 與 PR 草稿（不作為現行規格） |
 
 ## Docker 快速開始
@@ -91,7 +92,21 @@ export NETZOO_MAX_TASK_TOKENS=20000
 export CONTEXT7_API_KEY="ctx7-..."
 # Websearch MCP
 export TAVILY_API_KEY="tvly-..."
+# Gene authority lookup: auto/on/off. auto enables it when Websearch is configured.
+export NETZOO_GENE_ONLINE_LOOKUP="auto"
 ```
+
+基因 ID 驗證採 cache-first。cache miss 時先查結構化的 NCBI Datasets API
+（gene symbol／NCBI Gene ID）或 Ensembl REST API（Ensembl gene ID），並從回傳欄位
+核對 taxon/species；權威 API 成功回覆但沒有該 ID 才標記為 `invalid` 並阻擋執行。
+只有在結構化 API 無法連線時才使用 Websearch，且搜尋結果只視為 discovery evidence，
+不會單獨把 ID 判成有效或無效。沒有網路時仍可使用未過期 cache；未查證的 ID 會標成
+`unverified`，格式與跨檔案 ID 相容性檢查仍會繼續。
+
+所有 12 個 run workflow 都在 planning 後與 `/execute` 前共用同一個 fail-closed
+preflight gate。檔名只提供弱提示；內容 schema、gene-like label、樣本軸，以及多檔案
+集合/順序相容性才是是否可執行的依據。CONDOR node 與 DRAGON feature 允許非基因標籤，
+因此不強制查 gene authority，但仍執行各自的二分圖與雙層資料契約檢查。
 
 讓 agent 判斷任務，但先不真的執行：
 

@@ -2,23 +2,55 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
-from .cobra import inspect_cobra_inputs_impl
-from .bonobo import inspect_bonobo_inputs_impl
+from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
+
+from .cobra import inspect_cobra_inputs_impl, load_cobra_inputs
+from .bonobo import inspect_bonobo_inputs_impl, load_bonobo_inputs
 from .dragon import inspect_dragon_inputs_impl
-from .giraffe import inspect_giraffe_inputs_impl
+from .giraffe import inspect_giraffe_inputs_impl, load_giraffe_inputs
+from .gene_validation import validate_gene_identifiers
 from .coexpression import read_coexpression_matrix
 from .inspection import inspect_condor_inputs_impl
-from .otter import inspect_otter_inputs_impl
-from .tables import _inspect_panda_inputs_impl, _read_checked_table, _validate_expression
-from .sambar import inspect_sambar_inputs_impl
+from .otter import inspect_otter_inputs_impl, load_otter_inputs
+from .tables import (
+    _identifier_namespace,
+    _inspect_panda_inputs_impl,
+    _read_checked_table,
+    _validate_expression,
+)
+from .sambar import (
+    _read_cancer_genes,
+    _read_csv,
+    _read_gmt,
+    inspect_sambar_inputs_impl,
+)
 from .transforms import (
     convert_expression_to_coexpression_impl,
     format_expression_for_netzoo_impl,
 )
 
-__all__ = ["validate_workflow_inputs"]
+# CONDOR accepts arbitrary bipartite node labels and DRAGON accepts arbitrary
+# omics feature labels. Every other registered workflow has explicit gene axes.
+WORKFLOW_GENE_EXTRACTORS: dict[str, str] = {
+    "run_panda": "panda_bundle",
+    "run_puma": "panda_bundle",
+    "run_lioness_panda": "panda_bundle",
+    "run_lioness_puma": "panda_bundle",
+    "run_lioness_coexpression": "expression_genes",
+    "run_cobra": "cobra_expression_genes",
+    "run_sambar": "sambar_gene_sets",
+    "run_otter": "otter_gene_and_tf_ids",
+    "run_giraffe": "giraffe_gene_and_tf_ids",
+    "run_bonobo": "bonobo_expression_genes",
+}
+
+__all__ = [
+    "WORKFLOW_GENE_EXTRACTORS",
+    "WORKFLOW_INPUT_VALIDATORS",
+    "validate_workflow_inputs",
+]
 
 
 def _value(decision: Any, field_name: str) -> str:
@@ -58,7 +90,137 @@ def _validate_lioness_sample_count(path: str) -> list[str]:
     return []
 
 
-def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
+def _gene_axis_errors(
+    identifiers: Any,
+    label: str,
+    taxon: str,
+) -> list[str]:
+    values = [str(value).strip() for value in identifiers if str(value).strip()]
+    namespace = _identifier_namespace(values)
+    if namespace == "ensembl_transcript":
+        return [f"{label}: transcript IDs were supplied where gene IDs are required."]
+    if namespace == "mixed_ensembl":
+        return [f"{label}: gene and transcript identifier types are mixed."]
+    if namespace in {"unknown", "opaque"}:
+        return [
+            f"{label}: identifiers do not form a supported gene namespace "
+            "(gene symbol, NCBI Gene ID, or Ensembl gene ID)."
+        ]
+
+    summary = validate_gene_identifiers(values, namespace, taxon)
+    invalid = sorted(
+        record.identifier
+        for record in summary.records.values()
+        if record.status == "invalid"
+    )
+    ambiguous = sorted(
+        record.identifier
+        for record in summary.records.values()
+        if record.status == "ambiguous"
+    )
+    online_unverified = sorted(
+        record.identifier
+        for record in summary.records.values()
+        if record.status == "unverified"
+        and record.source not in {"offline", "stale_cache"}
+    )
+    errors: list[str] = []
+    if invalid:
+        errors.append(
+            f"{label}: not recognized by the configured gene authority: "
+            + ", ".join(invalid[:5])
+        )
+    if ambiguous:
+        errors.append(
+            f"{label}: ambiguous gene identifiers; provide taxon or canonical IDs: "
+            + ", ".join(ambiguous[:5])
+        )
+    if online_unverified:
+        errors.append(
+            f"{label}: structured NCBI/Ensembl verification was unavailable; "
+            "Websearch cannot authorize execution for: "
+            + ", ".join(online_unverified[:5])
+        )
+    return errors
+
+
+def _workflow_gene_errors(action: str, decision: Any, taxon: str) -> list[str]:
+    """Extract and validate every declared gene axis after structural preflight."""
+    if action not in WORKFLOW_GENE_EXTRACTORS or action in {
+        "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma"
+    }:
+        # PANDA-family inspectors validate all of their axes in-place so their
+        # canonical maps remain available to cross-file compatibility checks.
+        return []
+
+    expression = _value(decision, "expression_file")
+    if action == "run_lioness_coexpression":
+        check = _validate_expression(_read_checked_table("expression", expression))
+        return _gene_axis_errors(check.identifiers, "expression genes", taxon)
+    if action == "run_cobra":
+        matrix, _ = load_cobra_inputs(expression, _value(decision, "design_file"))
+        return _gene_axis_errors(matrix.index, "COBRA expression genes", taxon)
+    if action == "run_sambar":
+        mutation, _ = _read_csv(_value(decision, "mutation_file"), "mutation_file")
+        lengths, _ = _read_csv(_value(decision, "exon_size_file"), "exon_size_file")
+        cancer_genes, _ = _read_cancer_genes(_value(decision, "cancer_gene_file"))
+        pathway_genes, _, _ = _read_gmt(_value(decision, "pathway_file"))
+        axes = [
+            (mutation.columns if mutation is not None else [], "SAMBAR mutation genes"),
+            (lengths.columns if lengths is not None else [], "SAMBAR exon-size genes"),
+            (cancer_genes, "SAMBAR cancer genes"),
+            (pathway_genes, "SAMBAR pathway genes"),
+        ]
+        return [
+            error
+            for identifiers, label in axes
+            for error in _gene_axis_errors(identifiers, label, taxon)
+        ]
+    if action == "run_otter":
+        bundle = load_otter_inputs(
+            expression,
+            _value(decision, "coexpression_file"),
+            _value(decision, "motif_file"),
+            _value(decision, "ppi_file"),
+            _value(decision, "precision") or "double",
+        )
+        return [
+            *_gene_axis_errors(bundle.gene_ids, "OTTER target genes", taxon),
+            *_gene_axis_errors(bundle.tf_ids, "OTTER regulator genes", taxon),
+        ]
+    if action == "run_giraffe":
+        bundle = load_giraffe_inputs(
+            expression,
+            _value(decision, "motif_file"),
+            _value(decision, "ppi_file"),
+        )
+        return [
+            *_gene_axis_errors(bundle.gene_ids, "GIRAFFE target genes", taxon),
+            *_gene_axis_errors(bundle.tf_ids, "GIRAFFE regulator genes", taxon),
+        ]
+    if action == "run_bonobo":
+        if isinstance(decision, dict):
+            sample_names = decision.get("sample_names", [])
+            genes_axis = decision.get("genes_axis", "auto")
+            log_transformed = decision.get("log_transformed")
+            centered = decision.get("centered")
+        else:
+            sample_names = getattr(decision, "sample_names", [])
+            genes_axis = getattr(decision, "genes_axis", "auto")
+            log_transformed = getattr(decision, "log_transformed", None)
+            centered = getattr(decision, "centered", None)
+        bundle = load_bonobo_inputs(
+            expression,
+            sample_names,
+            genes_axis=genes_axis,
+            log_transformed=log_transformed,
+            centered=centered,
+        )
+        return _gene_axis_errors(bundle.gene_ids, "BONOBO expression genes", taxon)
+    return [f"{action}: registered gene-axis extractor is not implemented."]
+
+
+def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
     """Return actionable content/format errors without writing any files.
 
     The same function is called after Planning resolves inputs and immediately
@@ -193,4 +355,49 @@ def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
         except (OSError, ValueError) as error:
             errors.append(f"coexpression_file: {error}")
 
+    if action in WORKFLOW_GENE_EXTRACTORS and not errors:
+        try:
+            errors.extend(_workflow_gene_errors(action, decision, taxon))
+        except (OSError, ValueError) as error:
+            errors.append(f"{action}: gene-axis validation failed: {error}")
+
     return list(dict.fromkeys(errors))
+
+
+def _bound_validator(action: str) -> Callable[[Any], list[str]]:
+    def validate(decision: Any) -> list[str]:
+        return _validate_workflow_inputs_impl(action, decision)
+
+    return validate
+
+
+# Deliberately explicit: adding a run action without adding its real preflight
+# handler makes the set-equality contract fail and blocks execution.
+WORKFLOW_INPUT_VALIDATORS: dict[str, Callable[[Any], list[str]]] = {
+    "run_panda": _bound_validator("run_panda"),
+    "run_puma": _bound_validator("run_puma"),
+    "run_lioness_panda": _bound_validator("run_lioness_panda"),
+    "run_lioness_puma": _bound_validator("run_lioness_puma"),
+    "run_lioness_coexpression": _bound_validator("run_lioness_coexpression"),
+    "run_condor": _bound_validator("run_condor"),
+    "run_cobra": _bound_validator("run_cobra"),
+    "run_sambar": _bound_validator("run_sambar"),
+    "run_dragon": _bound_validator("run_dragon"),
+    "run_otter": _bound_validator("run_otter"),
+    "run_giraffe": _bound_validator("run_giraffe"),
+    "run_bonobo": _bound_validator("run_bonobo"),
+}
+
+
+def validate_workflow_inputs(action: str, decision: Any) -> list[str]:
+    """Dispatch registered run actions through a fail-closed semantic gate."""
+    if action in RUN_ACTIONS:
+        validator = WORKFLOW_INPUT_VALIDATORS.get(action)
+        registered_key = ACTION_DEFINITIONS[action].input_validator
+        if validator is None or registered_key != action:
+            return [
+                f"{action}: no matching semantic input validator is registered; "
+                "execution is blocked."
+            ]
+        return validator(decision)
+    return _validate_workflow_inputs_impl(action, decision)

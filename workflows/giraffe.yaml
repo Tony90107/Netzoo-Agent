@@ -1,9 +1,10 @@
 policy_version: 2
 workflow: GIRAFFE
 action: run_giraffe
+input_validator: run_giraffe
 description: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
 required_inputs: [expression_file, motif_file, ppi_file, output_file]
-optional_inputs: []
+optional_inputs: [taxon]
 validation_steps: [inspect_giraffe_inputs]
 controls: []
 execution_step: run_giraffe
@@ -26,9 +27,9 @@ output_capability:
     R times absolute TFA. TFA supplies the sample-varying predictors, while entries of R
     are signed partial regulatory effects interpretable as linear-model coefficients:
     positive for activation and negative for repression. It returns the aggregate
-    TF-by-gene R matrix and a TF-by-sample TFA matrix. A CONDOR handoff requires
-    validated matrix-to-edge-list conversion and user confirmation. No other direct
-    handoff is registered.
+    TF-by-gene R matrix and a TF-by-sample TFA matrix. This is not a direct CONDOR
+    handoff: it requires validated matrix-to-edge-list conversion and user confirmation.
+    No other direct handoff is registered.
 conventions:
   - >-
     The verified netZooPy 0.11.0 API is `netZooPy.giraffe.Giraffe(expression,

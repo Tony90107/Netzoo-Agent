@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -69,6 +70,235 @@ def test_semantic_failure_recovers_explicit_workflow_guidance():
     assert result.decision.matched_actions == []
     assert result.decision.recommended_actions == []
     assert result.decision.requested_outcome is None  # Candidate capabilities are not the user's goal.
+
+
+def test_semantic_failure_recovers_explicit_web_search_tool():
+    router_invocation = importlib.import_module(
+        "netzoo_agent_core.graph.router_invocation"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    task = "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53。"
+    context = SimpleNamespace(
+        project_policy=policy,
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+
+    result = router_invocation._semantic_failure(
+        context,
+        {},
+        task,
+        legacy_agent.LLMUsage(budget_tokens=20_000),
+        [],
+        error=ValueError("semantic schema validation failed"),
+        reason_code="semantic_fallback",
+    )
+
+    assert result.decision.action == "web_search"
+    assert result.decision.should_execute is True
+    assert result.decision.web_query == task
+    assert result.decision.matched_actions == ["web_search"]
+
+
+def test_failed_web_search_is_not_rendered_as_a_negative_match():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="web_search",
+        in_scope=True,
+        should_execute=True,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="direct retrieval",
+        matched_actions=["web_search"],
+        web_query="official NCBI Gene TP53 Homo sapiens",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="WEB-SEARCH",
+        objective="retrieve official gene records",
+        decision=decision.model_dump(),
+        status="ready",
+    )
+
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(content="Search official NCBI Gene TP53.")
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [
+                legacy_agent.ToolExecutionResult(
+                    action="web_search",
+                    status="failed",
+                    summary="The tool or its validation failed.",
+                    errors=["ImportError: MCP adapter is unavailable"],
+                ).model_dump()
+            ],
+            "evaluation": {
+                "status": "failed",
+                "reason": "retrieval failed",
+            },
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "lookup failed" in content
+    assert "not evidence that the requested record was not found" in content
+    assert "未找到" not in content
+
+
+def test_successful_authority_search_preserves_exact_ncbi_match():
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="web_search",
+        in_scope=True,
+        should_execute=True,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="direct retrieval",
+        matched_actions=["web_search"],
+        web_query="site:ncbi.nlm.nih.gov/gene TP53 Homo sapiens",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="WEB-SEARCH",
+        objective="retrieve official gene records",
+        decision=decision.model_dump(),
+        status="ready",
+    )
+    raw = (
+        "Websearch MCP result (external, untrusted reference content):\n"
+        "- server: https://mcp.tavily.com/mcp\n\n"
+        '{"results":[{"url":"https://www.ncbi.nlm.nih.gov/gene/7157",'
+        '"title":"TP53 tumor protein p53 [Homo sapiens] - Gene",'
+        '"content":"Official Symbol TP53 provided by HGNC Organism Homo sapiens GeneID 7157"}]}'
+    )
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [legacy_agent.HumanMessage(content="Search NCBI Gene TP53.")],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [
+                legacy_agent.ToolExecutionResult(
+                    action="web_search",
+                    status="success",
+                    summary="The tool completed and passed structured result checks.",
+                    raw_output=raw,
+                ).model_dump()
+            ],
+            "evaluation": {"status": "completed", "reason": "done"},
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "exact trusted match" in content
+    assert "canonical_id=7157" in content
+    assert "https://www.ncbi.nlm.nih.gov/gene/7157" in content
+    assert "Websearch 未找到" not in content
+
+
+def test_large_websearch_result_stays_parseable_for_authority_report():
+    retrieval = importlib.import_module("netzoo_agent_core.routing.retrieval")
+    results_module = importlib.import_module("netzoo_agent_core.routing.results")
+    rendering = importlib.import_module("netzoo_agent_core.evaluation.rendering")
+    task = "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53，物種為 Homo sapiens。"
+    decision = legacy_agent.TaskDecision(
+        action="web_search",
+        in_scope=True,
+        should_execute=True,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="direct retrieval",
+        matched_actions=["web_search"],
+        web_query=task,
+    )
+    payload = {
+        "query": "TP53",
+        "results": [
+            {
+                "url": f"https://www.ncbi.nlm.nih.gov/gene/{7157 + index}",
+                "title": "TP53 tumor protein p53 [Homo sapiens] - Gene",
+                "content": "Official Symbol TP53 provided by HGNC " + "x" * 20_000,
+            }
+            for index in range(5)
+        ],
+    }
+    raw = (
+        "Websearch MCP result (external, untrusted reference content):\n"
+        "- server: https://mcp.tavily.com/mcp\n"
+        "- query: site:ncbi.nlm.nih.gov/gene TP53 Homo sapiens\n\n"
+        + retrieval._bound_websearch_text(json.dumps(payload))
+    )
+    result = results_module.structure_tool_result("web_search", decision, raw)
+    assert result.status == "success"
+    assert len(result.raw_output) <= legacy_agent.TOOL_RAW_MAX_CHARS
+
+    report = rendering.render_authority_search_response(task, decision, [result])
+    assert report is not None
+    assert "canonical_id=7157" in report
+    assert "Websearch 未找到" not in report
+
+
+def test_direct_websearch_overrides_answer_intent_without_running_workflow(monkeypatch):
+    router_invocation = importlib.import_module(
+        "netzoo_agent_core.graph.router_invocation"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    task = (
+        "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 與 Ensembl：ENSG00000999999，"
+        "物種為 Homo sapiens。只回報官方來源是否有精確匹配、查詢到的 URL 與證據摘要；"
+        "若沒有精確匹配，請明確寫 Websearch 未找到，不要執行任何 workflow。"
+    )
+    interpretation = legacy_agent.SemanticInterpretation(
+        request_mode="guidance",
+        semantic_goal="retrieve authoritative gene reference material",
+        outcome_hypotheses=[
+            legacy_agent.OutcomeHypothesis(
+                outcome=legacy_agent.RequestedOutcome(
+                    operation="unknown", artifact_type="unknown", granularity="unknown",
+                ),
+                confidence=0.5,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        router_invocation,
+        "_invoke_semantic_interpreter",
+        lambda _context, _state, _task, usage: (
+            interpretation, usage, [], None, frozenset()
+        ),
+    )
+    monkeypatch.setattr(
+        router_invocation,
+        "_invoke_semantic_discriminator",
+        lambda _context, _state, _task, current_interpretation, match, usage, warnings: (
+            current_interpretation, match, usage, warnings
+        ),
+    )
+    monkeypatch.setattr(
+        router_invocation,
+        "_invoke_intent_router",
+        lambda _context, _state, _task, _interpretation, _match, usage, warnings: (
+            legacy_agent.IntentDecision(mode="answer", confidence=0.95, reason="guidance"),
+            usage,
+            warnings,
+            False,
+        ),
+    )
+    context = SimpleNamespace(
+        project_policy=policy,
+        recorder=legacy_agent.NullTraceRecorder(),
+        task_token_budget=20_000,
+    )
+
+    result = router_invocation.invoke_router(context, {"run_id": "direct-search"}, task)
+
+    assert result.decision.action == "web_search"
+    assert result.decision.should_execute is True
+    assert result.decision.web_query == task
+    assert result.decision.intent_type == "answer_question"
 
 
 def test_semantic_failure_recovers_sambar_from_declared_scientific_signals():

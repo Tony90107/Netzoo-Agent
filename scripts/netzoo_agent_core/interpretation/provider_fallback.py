@@ -8,8 +8,12 @@ import re
 from pydantic import ValidationError
 
 from ..contracts import TaskDecision
-from ..routing.capability import MIN_TOOL_CONFIDENCE, has_direct_execution_intent
-from ..routing.named_labels import solely_named_run_action
+from ..routing.capability import (
+    MIN_TOOL_CONFIDENCE,
+    has_direct_execution_intent,
+    has_direct_retrieval_request,
+)
+from ..routing.named_labels import named_registered_action, solely_named_run_action
 from ..routing.outcome_matching import guidance_actions_for
 from .request_parameters import has_explicit_request_parameters
 __all__: list[str] = []
@@ -97,33 +101,55 @@ def recover_explicit_run(
     """Keep an unambiguous run command when only semantic validation failed.
 
     This does not infer a scientific goal or guess a workflow.  It accepts only
-    one currently scoped registry label plus a direct execution instruction;
+    one currently scoped registry label plus a direct execution instruction, or
+    one explicitly named read-only retrieval action with a search instruction;
     transport failures, informational questions, historical mentions and
     multi-workflow requests still fail closed.  Planning and input validation
     remain downstream gates, so this recovery cannot execute a file unchecked.
     """
     if not isinstance(error, (ValidationError, ValueError)):
         return None
+    direct_action = named_registered_action(task)
+    if (
+        direct_action in {"query_context7", "web_search"}
+        and has_direct_retrieval_request(task)
+    ):
+        return TaskDecision(
+            action=direct_action,
+            in_scope=True,
+            should_execute=True,
+            intent_type="answer_question",
+            confidence=MIN_TOOL_CONFIDENCE,
+            reason=(
+                "Semantic output failed validation, but the request directly and "
+                "unambiguously names this read-only retrieval action."
+            ),
+            match_basis="workflow_name",
+            capability_match_status="exact",
+            matched_actions=[direct_action],
+        )
+
     if not has_direct_execution_intent(task):
         return None
     action = solely_named_run_action(task)
-    if action is None or action not in workflows:
-        return None
-    return TaskDecision(
-        action=action,
-        in_scope=True,
-        should_execute=True,
-        intent_type="run_analysis",
-        confidence=MIN_TOOL_CONFIDENCE,
-        reason=(
-            "Semantic output failed validation, but the request directly and "
-            "unambiguously names this registered workflow."
-        ),
-        match_basis="workflow_name",
-        capability_match_status="exact",
-        matched_actions=[action],
-        recommended_actions=guidance_actions_for(action),
-    )
+    if action is not None and action in workflows:
+        return TaskDecision(
+            action=action,
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=MIN_TOOL_CONFIDENCE,
+            reason=(
+                "Semantic output failed validation, but the request directly and "
+                "unambiguously names this registered workflow."
+            ),
+            match_basis="workflow_name",
+            capability_match_status="exact",
+            matched_actions=[action],
+            recommended_actions=guidance_actions_for(action),
+        )
+
+    return None
 
 
 def _is_fatal_exception(error: BaseException) -> bool:

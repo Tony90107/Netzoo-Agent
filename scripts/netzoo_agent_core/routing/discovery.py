@@ -49,7 +49,13 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
 
 
 def _extract_explicit_role_path(task: str, role: str) -> str | None:
-    match = re.search(rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?))(?=\s+[A-Za-z_]+\s*=|[，,；;]|$)", task, re.IGNORECASE)
+    match = re.search(
+        rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
+        rf"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?))"
+        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,；;]|$)",
+        task,
+        re.IGNORECASE,
+    )
     if not match:
         return None
     return (match.group("quoted") if match.group("q") else match.group("plain")).strip().rstrip(".。")

@@ -24,6 +24,7 @@ from ..evaluation import (
     render_input_confirmation_response,
     render_preference_confirmation_response,
 )
+from ..evaluation.rendering import render_authority_search_response, render_retrieval_failure_response
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
     render_cobra_expression_boundary,
@@ -159,6 +160,18 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         return {"messages": [AIMessage(content=composition_guidance)]}
     if verified_guidance is not None and not structured_results:
         return {"messages": [AIMessage(content=verified_guidance)]}
+    retrieval_failure = render_retrieval_failure_response(
+        decision, structured_results
+    )
+    if retrieval_failure is not None:
+        _trace("done", "A retrieval failure was rendered without response-model guessing")
+        return {"messages": [AIMessage(content=retrieval_failure)]}
+    authority_report = render_authority_search_response(
+        task, decision, structured_results
+    )
+    if authority_report is not None:
+        _trace("done", "An authority search report was rendered deterministically")
+        return {"messages": [AIMessage(content=authority_report)]}
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
         return {

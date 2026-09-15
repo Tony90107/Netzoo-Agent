@@ -200,6 +200,47 @@ def test_cobra_panda_handoff_prompt_requires_the_complete_bundle_before_execute(
     assert "motif_file=data/motif.tsv" in continuation
 
 
+def test_direct_retrieval_action_does_not_enter_workflow_follow_up_contract():
+    decision = TaskDecision(
+        action="web_search",
+        in_scope=True,
+        should_execute=True,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="direct retrieval",
+        matched_actions=["web_search"],
+    )
+    plan = WorkflowPlan(
+        workflow="WEB-SEARCH",
+        objective="retrieve official gene records",
+        decision=decision.model_dump(),
+        status="ready",
+    )
+
+    prompt = build_next_turn_prompt(
+        {
+            "plan": plan.model_dump(),
+            "tool_results": [
+                {
+                    "action": "web_search",
+                    "status": "failed",
+                    "summary": "The tool or its validation failed.",
+                    "errors": ["ImportError: MCP adapter is unavailable"],
+                }
+            ],
+            "evaluation": {"status": "failed"},
+        }
+    )
+    context = build_follow_up_context(
+        {"plan": plan.model_dump()},
+        prompt,
+        "Search NCBI Gene for TP53.",
+    )
+
+    assert context.candidate_actions == []
+    assert context.candidate_workflows == []
+
+
 def test_guidance_classification_labels_condor_as_final_result_boundary():
     decision = TaskDecision(
         action="no_tool",

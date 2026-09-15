@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 from workflow_registry import (
+    ActionName,
     LOCAL_WORKFLOW_ACTIONS,
     REQUIRED_INPUTS,
-    RecommendedAction,
 )
 
 from ..contracts import TaskDecision
@@ -27,6 +27,9 @@ __all__ = [
     "inferred_execution_action",
     "has_direct_execution_intent",
     "has_explicit_execution_request",
+    "has_direct_retrieval_request",
+    "is_input_preflight_request",
+    "apply_input_preflight_intent",
     "reconcile_request_mode",
     "validate_task_text",
     "normalize_context7_library",
@@ -121,6 +124,100 @@ EXPLICIT_EXECUTION_PATTERNS = (
 )
 
 
+# Input preflight is an inspection request, not a workflow contract question or
+# an authorization to run an analysis.  Keep this deliberately narrow: a
+# concrete input binding plus an explicit validation/preflight marker is
+# required, so ordinary questions such as ``PANDA 需要哪些輸入？`` remain
+# informational.
+_INPUT_PREFLIGHT_MARKER_PATTERNS = (
+    r"\binput\s+preflight\b",
+    r"\bpreflight\b",
+    r"(?:輸入|檔案|資料).{0,12}(?:預檢|檢查|驗證)",
+    r"(?:預檢|檢查|驗證).{0,12}(?:輸入|檔案|資料)",
+    r"(?:只|僅)\s*(?:回報|返回|報告).{0,16}(?:輸入|檔案|基因|gene).{0,16}(?:結果|驗證|檢查|authority)",
+    r"(?:不要|勿|不直接)\s*(?:執行|跑).{0,20}(?:分析|workflow|panda|puma)",
+    r"\b(?:gene\s+authority|authority\s+lookup)\b",
+)
+_INPUT_PREFLIGHT_BINDING_PATTERN = re.compile(
+    r"\b(?:expression_file|motif_file|ppi_file)\s*(?:=|:|：)",
+    flags=re.IGNORECASE,
+)
+
+_DIRECT_RETRIEVAL_ACTION_PATTERN = re.compile(
+    r"\b(?:web[- ]?search|context7)\b", flags=re.IGNORECASE
+)
+_DIRECT_RETRIEVAL_QUERY_PATTERN = re.compile(
+    r"(?:搜尋|查詢|查找|查網路|上網|search|lookup|look\s+up|query)",
+    flags=re.IGNORECASE,
+)
+
+
+def is_input_preflight_request(task: str) -> bool:
+    """Return whether *task* explicitly requests input-only validation.
+
+    The marker and binding requirements are intentionally independent of the
+    LLM's selected action.  This lets a deterministic boundary repair a
+    ``no_tool``/workflow-contract classification without inferring a
+    scientific outcome or silently treating a normal requirements question as
+    executable work.
+    """
+    if not _INPUT_PREFLIGHT_BINDING_PATTERN.search(task):
+        return False
+    return any(
+        re.search(pattern, task, flags=re.IGNORECASE | re.DOTALL)
+        for pattern in _INPUT_PREFLIGHT_MARKER_PATTERNS
+    )
+
+
+def _explicit_taxon_binding(task: str) -> str | None:
+    """Extract a simple ``taxon=Genus species`` binding for preflight only."""
+    match = re.search(
+        r"\btaxon\s*(?:=|:|：)\s*"
+        r"(?P<taxon>[A-Za-z][A-Za-z0-9_-]*(?:\s+[A-Za-z][A-Za-z0-9_-]*){0,2})"
+        r"(?=\s*(?:$|[^\x00-\x7F]|[\n,，;；。]|(?:expression_file|motif_file|ppi_file|output_file)\s*(?:=|:|：)))",
+        task,
+        flags=re.IGNORECASE,
+    )
+    return match.group("taxon").strip() if match else None
+
+
+def apply_input_preflight_intent(task_decision: TaskDecision, task: str) -> TaskDecision:
+    """Promote an explicit input-preflight request to ``inspect_inputs``.
+
+    This is a deterministic intent repair only.  File parsing, schema checks,
+    gene authority lookup, and execution authorization remain downstream
+    planner/executor responsibilities.
+    """
+    if not is_input_preflight_request(task):
+        return task_decision
+    missing = [
+        field_name
+        for field_name in REQUIRED_INPUTS["inspect_inputs"]
+        if not getattr(task_decision, field_name, None)
+    ]
+    updates = {
+        "action": "inspect_inputs",
+        "in_scope": True,
+        "should_execute": True,
+        "intent_type": "inspect_input",
+        "confidence": max(task_decision.confidence, MIN_TOOL_CONFIDENCE),
+        "reason": "The user explicitly requested input preflight without analysis execution.",
+        "candidate_actions": ["inspect_inputs", "no_tool"],
+        "recommended_actions": ["inspect_inputs"],
+        "matched_actions": ["inspect_inputs"],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "capability_match_status": "exact",
+        "clarification_question": None,
+        "missing_inputs": missing,
+    }
+    if not task_decision.taxon:
+        taxon = _explicit_taxon_binding(task)
+        if taxon:
+            updates["taxon"] = taxon
+    return task_decision.model_copy(update=updates)
+
+
 def is_workflow_information_request(task: str) -> bool:
     """Return True when the user asks how/what to prepare, not to run now."""
     normalized = task.casefold()
@@ -190,9 +287,26 @@ def has_explicit_execution_request(task: str) -> bool:
     )
 
 
+def has_direct_retrieval_request(task: str) -> bool:
+    """Recognize an imperative Websearch/Context7 request.
+
+    Retrieval is a direct tool operation even when the request does not use a
+    workflow verb such as ``run`` or ``execute``.  Informational questions are
+    excluded so ``How do I use WEB-SEARCH?`` remains guidance-only.
+    """
+    return (
+        not is_workflow_information_request(task)
+        and bool(_DIRECT_RETRIEVAL_ACTION_PATTERN.search(task))
+        and bool(_DIRECT_RETRIEVAL_QUERY_PATTERN.search(task))
+    )
+
+
 def reconcile_request_mode(task: str, request_mode: str) -> str:
     """Preserve explicit execution authorization without choosing a workflow."""
-    if request_mode != "execute" and has_explicit_execution_request(task):
+    if request_mode != "execute" and (
+        has_explicit_execution_request(task)
+        or has_direct_retrieval_request(task)
+    ):
         return "execute"
     return request_mode
 
@@ -201,7 +315,7 @@ def validate_task_text(
     task: str,
     action: str,
     *,
-    matched_actions: Sequence[RecommendedAction] = (),
+    matched_actions: Sequence[ActionName] = (),
 ) -> str | None:
     """Return a rejection reason when user text cannot authorize the action."""
     normalized = task.casefold()

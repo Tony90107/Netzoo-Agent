@@ -128,6 +128,11 @@ class WorkflowPolicySpec(BaseModel):
     ]] = Field(
         default_factory=list, max_length=4
     )
+    input_validator: Literal[
+        "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma",
+        "run_lioness_coexpression", "run_condor", "run_cobra", "run_sambar",
+        "run_dragon", "run_otter", "run_giraffe", "run_bonobo",
+    ]
     controls: list[WorkflowControlSpec] = Field(default_factory=list, max_length=32)
     execution_step: Literal[
         "run_panda",
