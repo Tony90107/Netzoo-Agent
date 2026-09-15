@@ -33,7 +33,10 @@ CONTEXT7_MAX_CHARS = 12000
 WEBSEARCH_URL = os.environ.get("WEBSEARCH_MCP_URL", "https://mcp.tavily.com/mcp")
 
 
-WEBSEARCH_MAX_CHARS = 12000
+# Keep the structured payload below the executor's 8,000-character raw-output
+# bound.  Unlike generic command output, Websearch is parsed downstream, so a
+# head/tail cut would make an otherwise valid JSON response unusable.
+WEBSEARCH_MAX_CHARS = 6500
 
 
 def _tool_text(result) -> str:
@@ -52,6 +55,62 @@ def _tool_text(result) -> str:
                 parts.append(str(item))
         return "\n".join(parts)
     return str(content)
+
+
+def _bound_websearch_text(text: str) -> str:
+    """Bound Websearch output without cutting a structured JSON payload."""
+    if len(text) <= WEBSEARCH_MAX_CHARS:
+        return text
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return text[:WEBSEARCH_MAX_CHARS] + "\n[Web search result truncated]"
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("results"), list):
+        return text[:WEBSEARCH_MAX_CHARS] + "\n[Web search result truncated]"
+    source_results = [item for item in parsed["results"][:5] if isinstance(item, dict)]
+    query_value = str(parsed.get("query") or "")[:1_000]
+    # Prefer preserving all result URLs/titles while progressively shortening
+    # evidence text.  Every candidate remains valid JSON, and the first result
+    # (where authoritative searches normally place the exact hit) is retained.
+    for content_limit in (1600, 1200, 900, 700, 500, 320, 180, 80, 0):
+        compact = {"query": query_value, "results": []}
+        for result in source_results:
+            item = {
+                key: value
+                for key, value in result.items()
+                if key in {"url", "title", "content", "raw_content", "score", "id"}
+            }
+            for key in ("content", "raw_content"):
+                if isinstance(item.get(key), str):
+                    item[key] = item[key][:content_limit]
+            compact["results"].append(item)
+        encoded = json.dumps(compact, ensure_ascii=False)
+        if len(encoded) <= WEBSEARCH_MAX_CHARS:
+            return encoded
+
+    # Extremely long titles/URLs can still exceed the budget.  Drop later
+    # results only as a last resort; the first result's identity and evidence
+    # are more useful than a malformed or head/tail-truncated payload.
+    compact = {"query": query_value, "results": []}
+    for result in source_results[:1]:
+        compact["results"].append({
+            key: str(result.get(key) or "")[:500]
+            for key in ("url", "title", "content")
+        })
+    return json.dumps(compact, ensure_ascii=False)
+
+
+def _websearch_depth(query: str) -> str:
+    """Use content retrieval for source-scoped gene authority searches."""
+    return (
+        "advanced"
+        if re.search(
+            r"site:(?:ncbi\.nlm\.nih\.gov/gene|ensembl\.org)",
+            query,
+            re.IGNORECASE,
+        )
+        else "basic"
+    )
 
 
 def _exception_text(error: BaseException) -> str:
@@ -134,6 +193,36 @@ async def _query_context7_async(
     )
 
 
+def _authority_scoped_query(query: str) -> str:
+    """Turn explicit NCBI/Ensembl gene requests into source-scoped searches."""
+    lowered = query.casefold()
+    authorities = []
+    if "ncbi" in lowered and "gene" in lowered:
+        authorities.append("site:ncbi.nlm.nih.gov/gene")
+    if "ensembl" in lowered:
+        authorities.append("site:ensembl.org")
+    if not authorities:
+        return query
+    identifiers = re.findall(r"\bENSG\d{5,}\b", query, re.IGNORECASE)
+    identifiers += re.findall(
+        r"(?:資料|data|gene)\s*[:：]\s*([A-Za-z][A-Za-z0-9_-]{1,20})",
+        query,
+        re.IGNORECASE,
+    )
+    if not identifiers:
+        identifiers = [
+            token
+            for token in re.findall(r"\b[A-Z][A-Z0-9_-]{2,20}\b", query)
+            if token not in {"NCBI", "GENE", "ENSEMBL", "WEB", "SEARCH"}
+        ]
+    if not identifiers:
+        return query
+    taxon = re.search(r"\b(Homo sapiens|Mus musculus)\b", query, re.IGNORECASE)
+    taxon_text = f" {taxon.group(1)}" if taxon else ""
+    ids = " OR ".join(dict.fromkeys(identifiers))
+    return f"{' OR '.join(authorities)} {ids}{taxon_text}"
+
+
 def query_context7_docs(
     library_name: str,
     query: str,
@@ -178,19 +267,20 @@ async def _web_search_async(query: str) -> str:
     result = await search_tool.ainvoke(
         {
             "query": query,
-            "search_depth": "basic",
+            # Authority-scoped gene lookups need the indexed page content to
+            # distinguish TP53 from related symbols such as TP53BP1/WRAP53.
+            # Keep ordinary informational searches on the cheaper basic path.
+            "search_depth": _websearch_depth(query),
             "max_results": 5,
         }
     )
     search_text = _tool_text(result)
-    if len(search_text) > WEBSEARCH_MAX_CHARS:
-        search_text = (
-            search_text[:WEBSEARCH_MAX_CHARS] + "\n[Web search result truncated]"
-        )
+    search_text = _bound_websearch_text(search_text)
+    query_preview = query[:1_000]
     return (
         "Websearch MCP result (external, untrusted reference content):\n"
         f"- server: {WEBSEARCH_URL}\n"
-        f"- query: {query}\n\n"
+        f"- query: {query_preview}\n\n"
         f"{search_text}"
     )
 
@@ -198,7 +288,7 @@ async def _web_search_async(query: str) -> str:
 def query_web_search(query: str) -> str:
     """Search the web through the read-only Tavily-compatible MCP endpoint."""
     try:
-        return asyncio.run(_web_search_async(query))
+        return asyncio.run(_web_search_async(_authority_scoped_query(query)))
     except Exception as error:
         key_hint = (
             "\nSet TAVILY_API_KEY or configure WEBSEARCH_MCP_URL for an "

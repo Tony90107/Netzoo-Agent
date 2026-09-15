@@ -1,0 +1,8 @@
+# Unified input validation for all registered workflows
+
+1. Add a fail-closed validation contract to the workflow registry and policy YAML schema. Every registered run action must name exactly one semantic inspector, and tests must prove the validator registry and the 12 run actions are identical sets.
+2. Replace search-result-based gene decisions with a structured authority resolver. Query NCBI Datasets for NCBI IDs/symbols and Ensembl REST for Ensembl IDs/symbols, verify taxon/species from response fields, cache valid/invalid/ambiguous outcomes, and use Websearch only as a non-authoritative discovery fallback when the structured services are unavailable.
+3. Apply gene-label validation to every workflow input that is explicitly gene-like: PANDA/PUMA/LIONESS-PANDA/LIONESS-PUMA, LIONESS coexpression, COBRA, SAMBAR, OTTER, GIRAFFE, and BONOBO. Keep CONDOR nodes and DRAGON features namespace-neutral, while retaining their graph/layer compatibility checks.
+4. Make preflight dispatch registry-driven and fail closed for missing validators. Preserve the final `/execute` gate so a filename guess, content mapping, or modified file can never bypass schema, identifier, and cross-file compatibility checks.
+5. Add a 12-workflow regression matrix covering validator registration, malformed content rejection, arbitrary filenames with valid content, gene authority outcomes, provider outages, and cache behavior. Fix the local tool-schema fallback if needed so every registered executor exposes a testable argument schema without optional LangChain packages.
+6. Run focused tests, the full suite with baseline comparison, and rebuild the persisted codebase graph. Record any unrelated pre-existing failures separately rather than weakening the new gates.

@@ -1,10 +1,9 @@
 """Offline-first gene identifier validation with a small SQLite cache.
 
 The cache stores only identifiers that the agent has actually observed.  A
-cache miss may use the existing Websearch MCP adapter, but external search is
-treated as untrusted discovery: only exact identifier matches on NCBI/Ensembl
-results are accepted, and search failures become ``unverified`` rather than
-``invalid``.
+cache miss uses structured NCBI Datasets or Ensembl REST responses when online
+validation is enabled. Websearch is only a discovery fallback after an API
+failure; search presence or absence never becomes an authoritative verdict.
 """
 
 from __future__ import annotations
@@ -17,7 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
+from urllib.request import Request, urlopen
 
 from ..settings import PROJECT_ROOT
 
@@ -26,6 +26,7 @@ __all__ = [
     "GeneValidationSummary",
     "GeneCache",
     "validate_gene_identifiers",
+    "_structured_gene_lookup",
     "_websearch_gene_lookup",
     "_query_web_search",
 ]
@@ -39,8 +40,8 @@ _ONLINE_ENV = "NETZOO_GENE_ONLINE_LOOKUP"
 _DEFAULT_CACHE_TTL_DAYS = 90
 _DEFAULT_CACHE_REVIEW_TTL_DAYS = 30
 _DEFAULT_CACHE_MAX_ROWS = 100_000
-_REMOTE_BATCH_SIZE = 5
-_REMOTE_MAX_IDS = 50
+_REMOTE_BATCH_SIZE = 100
+_WEBSEARCH_BATCH_SIZE = 5
 _TRUSTED_HOSTS = ("ncbi.nlm.nih.gov", "ensembl.org")
 _NCBI_GENE_URL = re.compile(r"/gene/(\d+)(?:[/?#]|$)", re.IGNORECASE)
 _ENSEMBL_GENE_ID = re.compile(r"\bENS[A-Z0-9]*G\d+(?:\.\d+)?\b", re.IGNORECASE)
@@ -367,6 +368,34 @@ def _contains_identifier(text: str, identifier: str) -> bool:
     return re.search(pattern, text, re.IGNORECASE) is not None
 
 
+def _result_matches_identifier(
+    result: dict[str, object], identifier: str, namespace: str
+) -> bool:
+    """Require the queried label in an authoritative result's identity fields."""
+    title_url = " ".join(str(result.get(field) or "") for field in ("title", "url"))
+    if namespace == "symbol_like":
+        title = str(result.get("title") or "")
+        return bool(
+            re.match(
+                rf"\s*{re.escape(identifier)}(?![A-Za-z0-9])",
+                title,
+                re.IGNORECASE,
+            )
+        ) or bool(
+            re.search(
+                rf"Official Symbol\s+{re.escape(identifier)}(?![A-Za-z0-9])",
+                str(result.get("content") or ""),
+                re.IGNORECASE,
+            )
+        )
+    if namespace == "ensembl_gene":
+        return _contains_identifier(title_url, identifier)
+    return _contains_identifier(
+        " ".join(str(result.get(field) or "") for field in ("title", "content", "url")),
+        identifier,
+    )
+
+
 def _search_results(text: str) -> list[dict[str, object]]:
     _, separator, payload = text.partition("\n\n")
     if not separator:
@@ -406,6 +435,254 @@ def _query_web_search(query: str) -> str:
     return query_web_search(query)
 
 
+def _query_authority_json(
+    url: str,
+    *,
+    method: str = "GET",
+    payload: dict[str, object] | None = None,
+) -> object:
+    """Fetch one structured authority response through a tiny injectable seam."""
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = Request(
+        url,
+        data=body,
+        method=method,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "NetZoo-Agent gene-validator",
+        },
+    )
+    with urlopen(request, timeout=20) as response:  # noqa: S310 - fixed trusted hosts
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _gene_payload(report: object) -> dict[str, object]:
+    if not isinstance(report, dict):
+        return {}
+    nested = report.get("gene")
+    return nested if isinstance(nested, dict) else report
+
+
+def _field(payload: dict[str, object], *names: str) -> object:
+    for name in names:
+        value = payload.get(name)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _taxon_matches(requested: str, tax_id: object, taxname: object) -> bool:
+    if not requested.strip():
+        return True
+    wanted = requested.casefold().strip().replace("_", " ")
+    observed = {
+        str(tax_id or "").casefold().strip(),
+        str(taxname or "").casefold().strip().replace("_", " "),
+    }
+    return wanted in observed
+
+
+def _invalid_record(
+    identifier: str,
+    namespace: str,
+    taxon: str,
+    *,
+    authority: str,
+    source: str,
+    observed_taxon: str | None = None,
+) -> GeneRecord:
+    return GeneRecord(
+        identifier=identifier,
+        normalized_identifier=_normalise_identifier(identifier),
+        namespace=namespace,
+        canonical_id=None,
+        symbol=identifier if namespace == "symbol_like" else None,
+        taxon=observed_taxon or taxon or None,
+        status="invalid",
+        authority=authority,
+        source=source,
+    )
+
+
+def _structured_ncbi_lookup(
+    identifiers: Sequence[str], namespace: str, taxon: str
+) -> list[GeneRecord]:
+    encoded_ids = quote(",".join(identifiers), safe=",")
+    if namespace == "symbol_like":
+        encoded_taxon = quote(taxon or "all", safe="")
+        url = (
+            "https://api.ncbi.nlm.nih.gov/datasets/v2/gene/symbol/"
+            f"{encoded_ids}/taxon/{encoded_taxon}/dataset_report"
+        )
+    else:
+        url = (
+            "https://api.ncbi.nlm.nih.gov/datasets/v2/gene/id/"
+            f"{encoded_ids}/dataset_report"
+        )
+    response = _query_authority_json(url)
+    reports = response.get("reports", []) if isinstance(response, dict) else []
+    candidates: dict[str, list[dict[str, object]]] = {
+        _normalise_identifier(identifier): [] for identifier in identifiers
+    }
+    for report in reports if isinstance(reports, list) else []:
+        gene = _gene_payload(report)
+        symbol = str(_field(gene, "symbol") or "")
+        gene_id = str(_field(gene, "geneId", "gene_id") or "")
+        synonyms = _field(gene, "synonyms")
+        aliases = [symbol, gene_id]
+        if isinstance(synonyms, list):
+            aliases.extend(str(value) for value in synonyms)
+        for alias in aliases:
+            normalized = _normalise_identifier(alias)
+            if normalized in candidates:
+                candidates[normalized].append(gene)
+
+    records: list[GeneRecord] = []
+    for identifier in identifiers:
+        normalized = _normalise_identifier(identifier)
+        matches = candidates.get(normalized, [])
+        taxon_matches = [
+            gene
+            for gene in matches
+            if _taxon_matches(
+                taxon,
+                _field(gene, "taxId", "tax_id"),
+                _field(gene, "taxname", "tax_name"),
+            )
+        ]
+        if len(taxon_matches) > 1:
+            records.append(
+                GeneRecord(
+                    identifier=identifier,
+                    normalized_identifier=normalized,
+                    namespace=namespace,
+                    canonical_id=None,
+                    symbol=identifier if namespace == "symbol_like" else None,
+                    taxon=taxon or None,
+                    status="ambiguous",
+                    authority="NCBI Gene",
+                    source="ncbi_datasets",
+                )
+            )
+            continue
+        if len(taxon_matches) == 1:
+            gene = taxon_matches[0]
+            gene_id = str(_field(gene, "geneId", "gene_id") or "")
+            records.append(
+                GeneRecord(
+                    identifier=identifier,
+                    normalized_identifier=normalized,
+                    namespace=namespace,
+                    canonical_id=f"ncbi_gene:{gene_id}" if gene_id else None,
+                    symbol=str(_field(gene, "symbol") or "") or None,
+                    # Cache under the caller's taxon token when one was supplied
+                    # (for example both "9606" and "Homo sapiens" are valid API
+                    # selectors); response fields were already checked above.
+                    taxon=(
+                        taxon
+                        or str(_field(gene, "taxname", "tax_name") or "")
+                        or None
+                    ),
+                    status="valid" if gene_id else "invalid",
+                    authority="NCBI Gene",
+                    source="ncbi_datasets",
+                    url=f"https://www.ncbi.nlm.nih.gov/gene/{gene_id}" if gene_id else None,
+                )
+            )
+            continue
+        observed_taxon = None
+        if matches:
+            observed_taxon = str(
+                _field(matches[0], "taxname", "tax_name") or ""
+            ) or None
+        records.append(
+            _invalid_record(
+                identifier,
+                namespace,
+                taxon,
+                authority="NCBI Gene",
+                source="ncbi_datasets",
+                observed_taxon=observed_taxon,
+            )
+        )
+    return records
+
+
+def _structured_ensembl_lookup(
+    identifiers: Sequence[str], namespace: str, taxon: str
+) -> list[GeneRecord]:
+    response = _query_authority_json(
+        "https://rest.ensembl.org/lookup/id",
+        method="POST",
+        payload={"ids": list(identifiers)},
+    )
+    payload = response if isinstance(response, dict) else {}
+    records: list[GeneRecord] = []
+    for identifier in identifiers:
+        gene = payload.get(identifier)
+        if not isinstance(gene, dict):
+            records.append(
+                _invalid_record(
+                    identifier,
+                    namespace,
+                    taxon,
+                    authority="Ensembl",
+                    source="ensembl_rest",
+                )
+            )
+            continue
+        species = str(gene.get("species") or "")
+        gene_id = str(gene.get("id") or "").split(".", 1)[0].upper()
+        is_gene = str(gene.get("object_type") or "").casefold() == "gene"
+        is_taxon = _taxon_matches(taxon, None, species)
+        valid = bool(gene_id and is_gene and is_taxon)
+        records.append(
+            GeneRecord(
+                identifier=identifier,
+                normalized_identifier=_normalise_identifier(identifier),
+                namespace=namespace,
+                canonical_id=f"ensembl_gene:{gene_id}" if valid else None,
+                symbol=str(gene.get("display_name") or "") or None,
+                taxon=(
+                    taxon
+                    if valid and taxon
+                    else species.replace("_", " ") or taxon or None
+                ),
+                status="valid" if valid else "invalid",
+                authority="Ensembl",
+                source="ensembl_rest",
+                url=(
+                    f"https://www.ensembl.org/id/{gene_id}" if gene_id else None
+                ),
+            )
+        )
+    return records
+
+
+def _structured_gene_lookup(
+    identifiers: Sequence[str], namespace: str, taxon: str = ""
+) -> list[GeneRecord]:
+    """Resolve IDs using response fields from an authoritative gene API."""
+    requested = list(dict.fromkeys(identifier for identifier in identifiers if identifier))
+    if namespace == "ensembl_gene":
+        return _structured_ensembl_lookup(requested, namespace, taxon)
+    if namespace in {"symbol_like", "ncbi_gene", "numeric_identifier"}:
+        return _structured_ncbi_lookup(requested, namespace, taxon)
+    raise ValueError(f"No structured gene authority is configured for {namespace!r}.")
+
+
+def _online_gene_lookup(
+    identifiers: Sequence[str], namespace: str, taxon: str = ""
+) -> list[GeneRecord]:
+    try:
+        return _structured_gene_lookup(identifiers, namespace, taxon)
+    except Exception:
+        if os.environ.get("TAVILY_API_KEY") or os.environ.get("WEBSEARCH_MCP_URL"):
+            return _websearch_gene_lookup(identifiers, namespace, taxon)
+        raise
+
+
 def _websearch_gene_lookup(
     identifiers: Sequence[str],
     namespace: str,
@@ -415,6 +692,14 @@ def _websearch_gene_lookup(
     requested = list(dict.fromkeys(identifier for identifier in identifiers if identifier))
     if not requested:
         return []
+    if len(requested) > _WEBSEARCH_BATCH_SIZE:
+        return [
+            record
+            for start in range(0, len(requested), _WEBSEARCH_BATCH_SIZE)
+            for record in _websearch_gene_lookup(
+                requested[start : start + _WEBSEARCH_BATCH_SIZE], namespace, taxon
+            )
+        ]
 
     quoted = " OR ".join(f'"{identifier}"' for identifier in requested)
     taxon_clause = f' "{taxon}"' if taxon else ""
@@ -429,10 +714,9 @@ def _websearch_gene_lookup(
         matching_candidates: dict[str, tuple[str, str]] = {}
         for result in results:
             url = str(result.get("url") or "")
-            combined = " ".join(
-                str(result.get(field) or "") for field in ("title", "content", "url")
-            )
-            if not _trusted_url(url) or not _contains_identifier(combined, identifier):
+            if not _trusted_url(url) or not _result_matches_identifier(
+                result, identifier, namespace
+            ):
                 continue
             candidate = _candidate_from_result(result)
             if candidate:
@@ -450,7 +734,7 @@ def _websearch_gene_lookup(
                     canonical_id=canonical_id,
                     symbol=identifier if namespace == "symbol_like" else None,
                     taxon=taxon or None,
-                    status="valid",
+                    status="unverified",
                     authority=authority,
                     source="websearch",
                     url=url,
@@ -531,7 +815,7 @@ def validate_gene_identifiers(
 
     resolver = remote_lookup
     if resolver is None and _online_lookup_enabled():
-        resolver = _websearch_gene_lookup
+        resolver = _online_gene_lookup
 
     if resolver is None:
         records.update(stale_records)
@@ -553,7 +837,7 @@ def validate_gene_identifiers(
             )
         return summary
 
-    for start in range(0, min(len(missing), _REMOTE_MAX_IDS), _REMOTE_BATCH_SIZE):
+    for start in range(0, len(missing), _REMOTE_BATCH_SIZE):
         batch = missing[start : start + _REMOTE_BATCH_SIZE]
         summary.online_queries += 1
         try:
@@ -590,22 +874,4 @@ def validate_gene_identifiers(
                     cacheable.append(record)
         cache.upsert(cacheable)
 
-    for identifier in missing[_REMOTE_MAX_IDS:]:
-        normalized = _normalise_identifier(identifier)
-        stale_record = stale_records.get(normalized)
-        if stale_record is not None:
-            records[normalized] = stale_record
-            summary.stale_cache_hits += 1
-        else:
-            records[normalized] = GeneRecord(
-                identifier=identifier,
-                normalized_identifier=normalized,
-                namespace=namespace,
-                canonical_id=None,
-                symbol=identifier if namespace == "symbol_like" else None,
-                taxon=taxon or None,
-                status="unverified",
-                authority="NCBI/Ensembl",
-                source="remote_limit",
-            )
     return summary

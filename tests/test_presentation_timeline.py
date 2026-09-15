@@ -264,6 +264,27 @@ def test_state_machine_shows_router_then_registry_activity(monkeypatch, capsys):
     assert "● Matching registered workflows…" in output
 
 
+def test_router_failure_hides_provider_exception_type(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "router",
+        "Router classification failed",
+        {
+            "kind": "router_activity",
+            "operation": "semantic_interpreter",
+            "status": "failed",
+            "error_type": "ValidationError",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "Router output invalid" in output
+    assert "using deterministic fallback" in output
+    assert "ValidationError" not in output
+
+
 def test_state_machine_presents_initial_semantic_interpretation_as_classification(
     monkeypatch, capsys
 ):

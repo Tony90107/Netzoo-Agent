@@ -174,12 +174,14 @@ def _apply_public_progress_event(
             state.activate("understand", "Router response received")
             return True
         if detail.get("status") == "failed":
-            error_type = str(detail.get("error_type") or "RouterError")
+            # Keep provider/schema exception classes in the private trace only.
+            # The public progress surface should describe the recoverable state,
+            # not leak implementation details such as ``ValidationError``.
             _commit_public_activity(
                 f"router:{operation}:failed:{detail.get('call_id', operation)}",
-                f"✗ Router classification failed — {error_type}",
+                "↻ Router output invalid — using deterministic fallback",
             )
-            state.fail("understand", "Router call failed")
+            state.activate("understand", "Using deterministic fallback")
             return True
     if isinstance(detail, dict) and detail.get("kind") == "registry_activity":
         if detail.get("status") == "started":

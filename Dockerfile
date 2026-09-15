@@ -5,6 +5,11 @@ COPY --chown=mambauser:mambauser environment.yml /tmp/environment.yml
 RUN micromamba env create -y -f /tmp/environment.yml \
     && micromamba clean -a -y
 
+# Fail the image build if the pinned MCP adapter/API pair cannot be imported;
+# otherwise Websearch and Context7 only reveal this dependency drift at runtime.
+RUN micromamba run -n netzoo python -c \
+    'from langchain_mcp_adapters.client import MultiServerMCPClient; from mcp.shared.context import RequestContext; print("MCP adapter compatibility OK")'
+
 USER root
 ARG NETZOOPY_REF=60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822
 RUN micromamba run -n netzoo git clone https://github.com/netZoo/netZooPy.git /opt/netZooPy \

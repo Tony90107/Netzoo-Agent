@@ -108,17 +108,20 @@ def test_mapping_ranks_candidates_and_keeps_the_highest_confidence_assignment(tm
 
 def test_content_mapping_is_available_for_all_registered_netzoopy_input_roles(tmp_path):
     cases = {
+        "run_panda": ("expression_file", "motif_file", "ppi_file"),
         "run_puma": ("expression_file", "motif_file", "ppi_file", "mirna_file"),
         "run_lioness_panda": ("expression_file", "motif_file", "ppi_file"),
         "run_lioness_puma": ("expression_file", "motif_file", "ppi_file", "mirna_file"),
         "run_lioness_coexpression": ("expression_file",),
         "run_condor": ("network_file",),
         "run_cobra": ("expression_file", "design_file"),
-        "inspect_inputs": ("expression_file", "motif_file", "ppi_file"),
-        "inspect_condor_inputs": ("network_file",),
-        "inspect_cobra_inputs": ("expression_file", "design_file"),
-        "format_expression": ("expression_file",),
-        "convert_expression": ("expression_file",),
+        "run_sambar": (
+            "mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file"
+        ),
+        "run_dragon": ("omics_layer_1", "omics_layer_2"),
+        "run_otter": ("expression_file", "motif_file", "ppi_file"),
+        "run_giraffe": ("expression_file", "motif_file", "ppi_file"),
+        "run_bonobo": ("expression_file",),
     }
     for index, (action, fields) in enumerate(cases.items()):
         paths = [_write(tmp_path / f"{index}-{position}.tsv") for position, _ in enumerate(fields)]

@@ -23,10 +23,8 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
     repair_router_decision,
 )
 from netzoo_agent_core.interpretation.provider_fallback import (  # noqa: E402
+    recover_explicit_run,
     recover_registry_guidance,
-)
-from netzoo_agent_core.graph.response_context import (  # noqa: E402
-    validated_workflow_context,
 )
 from netzoo_agent_core.interpretation.assembly import (  # noqa: E402
     assemble_task_decision,
@@ -44,8 +42,11 @@ from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_semantic_request,
 )
 from netzoo_agent_core.routing.capability import (  # noqa: E402
+    apply_input_preflight_intent,
     has_direct_execution_intent,
+    has_direct_retrieval_request,
     has_explicit_execution_request,
+    is_input_preflight_request,
     is_workflow_information_request,
     is_workflow_selection_request,
     reconcile_request_mode,
@@ -53,6 +54,152 @@ from netzoo_agent_core.routing.capability import (  # noqa: E402
 from netzoo_agent_core.settings import DEFAULT_ROUTER_MAX_TOKENS  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.settings import PROJECT_ROOT  # noqa: E402
+
+
+def test_explicit_input_preflight_is_routed_to_inspection():
+    task = (
+        "請執行 PANDA input preflight。"
+        " expression_file=data/my-test/expression.tsv"
+        " motif_file=data/my-test/motif.tsv"
+        " ppi_file=data/my-test/ppi.tsv"
+        " 只回報輸入驗證結果，不要執行 PANDA。"
+    )
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The request looks informational.",
+        expression_file="data/my-test/expression.tsv",
+        motif_file="data/my-test/motif.tsv",
+        ppi_file="data/my-test/ppi.tsv",
+    )
+
+    assert is_input_preflight_request(task)
+    routed = apply_input_preflight_intent(decision, task)
+
+    assert routed.action == "inspect_inputs"
+    assert routed.should_execute is True
+    assert routed.intent_type == "inspect_input"
+    assert routed.missing_inputs == []
+    assert routed.taxon is None
+
+
+def test_input_preflight_recovery_extracts_explicit_taxon():
+    task = (
+        "請執行 PANDA input preflight。"
+        " expression_file=data/expression.tsv"
+        " motif_file=data/motif.tsv"
+        " ppi_file=data/ppi.tsv"
+        " taxon=Homo sapiens"
+        " 只回報驗證結果，不要執行 PANDA。"
+    )
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The request looks informational.",
+        expression_file="data/expression.tsv",
+        motif_file="data/motif.tsv",
+        ppi_file="data/ppi.tsv",
+    )
+
+    routed = apply_input_preflight_intent(decision, task)
+
+    assert routed.action == "inspect_inputs"
+    assert routed.taxon == "Homo sapiens"
+
+
+def test_router_failure_fallback_preserves_explicit_input_preflight():
+    from netzoo_agent_core.interpretation.provider_fallback import (
+        deterministic_router_fallback,
+    )
+
+    task = (
+        "請執行 PANDA input preflight。"
+        " expression_file=data/expression.tsv"
+        " motif_file=data/motif.tsv"
+        " ppi_file=data/ppi.tsv"
+        " 只回報驗證結果，不要執行 PANDA。"
+    )
+    decision = deterministic_router_fallback(task, ValueError("invalid router output"))
+
+    routed = apply_input_preflight_intent(decision, task)
+
+    assert routed.action == "inspect_inputs"
+    assert routed.intent_type == "inspect_input"
+    assert routed.should_execute is True
+
+
+def test_explicit_web_search_can_be_assembled_as_a_direct_tool_action():
+    task = "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53。"
+    interpretation = SemanticInterpretation(
+        request_mode="execute",
+        semantic_goal="retrieve authoritative gene reference material",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=RequestedOutcome(
+                    operation="unknown",
+                    artifact_type="unknown",
+                    granularity="unknown",
+                ),
+                confidence=0.5,
+            )
+        ],
+    )
+    match = match_semantic_request(
+        task, interpretation.outcome_hypotheses, request_mode="execute"
+    )
+
+    assert match.matched_actions == ["web_search"]
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        IntentDecision(mode="execute", confidence=0.99, reason="explicit search"),
+        task=task,
+    )
+
+    assert decision.action == "web_search"
+    assert decision.should_execute is True
+
+
+def test_direct_web_search_request_reconciles_guidance_to_tool_execution():
+    task = "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53。不要執行 PANDA。"
+
+    assert has_direct_retrieval_request(task)
+    assert reconcile_request_mode(task, "guidance") == "execute"
+    assert reconcile_request_mode(task, "answer") == "execute"
+
+
+def test_semantic_failure_recovers_an_explicit_web_search_request():
+    task = "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53。"
+    recovered = recover_explicit_run(
+        task,
+        ProjectPolicyLoader(PROJECT_ROOT).load().workflows,
+        ValueError("semantic routing unavailable"),
+    )
+
+    assert recovered is not None
+    assert recovered.action == "web_search"
+    assert recovered.should_execute is True
+
+
+def test_ordinary_panda_input_question_is_not_input_preflight():
+    task = "PANDA 需要哪些輸入？"
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The user asks for requirements.",
+    )
+
+    assert not is_input_preflight_request(task)
+    assert apply_input_preflight_intent(decision, task) is decision
 
 
 def test_router_schema_allows_a_repairable_empty_outcome_classification():

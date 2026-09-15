@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from pathlib import Path
 
@@ -69,6 +70,76 @@ def test_routing_is_responsibility_oriented_package():
         "results",
     ):
         importlib.import_module(f"netzoo_agent_core.routing.{module_name}")
+
+
+def test_authority_gene_search_is_scoped_to_requested_sources():
+    retrieval = importlib.import_module("netzoo_agent_core.routing.retrieval")
+
+    ncbi = retrieval._authority_scoped_query(
+        "請使用 WEB-SEARCH 搜尋官方 NCBI Gene 資料：TP53，物種為 Homo sapiens。"
+    )
+    both = retrieval._authority_scoped_query(
+        "請搜尋官方 NCBI Gene 與 Ensembl：ENSG00000999999，物種為 Homo sapiens。"
+    )
+
+    assert ncbi.startswith("site:ncbi.nlm.nih.gov/gene TP53")
+    assert "site:ensembl.org" in both
+    assert "ENSG00000999999" in both
+    assert "Homo sapiens" in both
+
+
+def test_authority_gene_search_uses_advanced_content_retrieval():
+    retrieval = importlib.import_module("netzoo_agent_core.routing.retrieval")
+
+    assert retrieval._websearch_depth("site:ncbi.nlm.nih.gov/gene TP53 Homo sapiens") == "advanced"
+    assert retrieval._websearch_depth("site:ensembl.org ENSG00000141510") == "advanced"
+    assert retrieval._websearch_depth("latest PANDA documentation") == "basic"
+
+
+def test_large_websearch_payload_remains_valid_json_after_bounding():
+    retrieval = importlib.import_module("netzoo_agent_core.routing.retrieval")
+    bounded = retrieval._bound_websearch_text(
+        json.dumps(
+            {
+                "query": "TP53",
+                "results": [
+                    {
+                        "url": "https://www.ncbi.nlm.nih.gov/gene/7157",
+                        "title": "TP53 [Homo sapiens]",
+                        "content": "x" * 20_000,
+                    }
+                ],
+            }
+        )
+    )
+
+    parsed = json.loads(bounded)
+    assert parsed["results"][0]["url"].endswith("/7157")
+    assert len(parsed["results"][0]["content"]) == 1_600
+
+
+def test_websearch_bounding_keeps_multiple_results_under_tool_limit():
+    retrieval = importlib.import_module("netzoo_agent_core.routing.retrieval")
+    bounded = retrieval._bound_websearch_text(
+        json.dumps(
+            {
+                "query": "TP53",
+                "results": [
+                    {
+                        "url": f"https://www.ncbi.nlm.nih.gov/gene/{7157 + index}",
+                        "title": "TP53 tumor protein p53 [Homo sapiens] - Gene",
+                        "content": "x" * 20_000,
+                    }
+                    for index in range(5)
+                ],
+            }
+        )
+    )
+
+    assert len(bounded) <= 7_000
+    parsed = json.loads(bounded)
+    assert parsed["results"][0]["url"].endswith("/7157")
+    assert parsed["results"][1]["url"].endswith("/7158")
 
 
 def test_historical_routing_surface_is_preserved():

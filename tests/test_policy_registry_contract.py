@@ -32,6 +32,24 @@ def test_project_policy_round_trip_contains_registry_controls_and_conditions():
         rule.when == {"sparsify": True, "save_pvals": True}
         for rule in bonobo.output_capability.conditional_outputs
     )
+    assert all(
+        spec.input_validator == action
+        for action, spec in policy.workflows.items()
+    )
+
+
+def test_input_validator_cannot_drift_from_the_code_registry():
+    policy = _policy()
+    panda = policy.workflows["run_panda"]
+    with pytest.raises(ProjectPolicyError, match="input_validator conflict"):
+        ProjectPolicyLoader._validate_against_code(
+            {
+                **policy.workflows,
+                "run_panda": panda.model_copy(
+                    update={"input_validator": "run_cobra"}
+                ),
+            }
+        )
 
 
 def test_unknown_control_type_is_rejected_by_the_typed_policy_schema():

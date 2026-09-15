@@ -140,8 +140,12 @@ HISTORICAL_EXPORTS = [
 # 2026-09-11: WorkflowPolicySpec records conditional required-input groups so
 # guidance can state expression_file OR coexpression_file without making both
 # sources mandatory.
+# 2026-09-14: TaskDecision.matched_actions now uses ActionName rather than the
+# narrower RecommendedAction because direct read-only tools (WEB-SEARCH and
+# Context7) are valid exact matches but are not scientific workflow
+# recommendations.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "0e22c87f83ceba841db81836fa4a307ceff9190bbcca691526b8744fb7aec906",
+    "TaskDecision": "8a42af2fe950ea22247a087dad24b295ed84126d9b148ec03e2faa1cb019240b",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "adeea85942782cee47f34cc56cd3bf6b2385334c7eeaf76286e220d8189a2887",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

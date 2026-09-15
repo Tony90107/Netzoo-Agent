@@ -100,7 +100,12 @@ class TaskDecision(BaseModel):
     capability_match_status: CapabilityMatchStatus | None = None
     match_basis: MatchBasis = "semantic"
     rejected_methods: list[RejectedMethod] = Field(default_factory=list)
-    matched_actions: list[RecommendedAction] = Field(default_factory=list)
+    # Exact matches can be either a runnable scientific capability or a direct
+    # retrieval action such as ``web_search``/``query_context7``.  Keep this
+    # field aligned with the registry's ActionName contract; the narrower
+    # RecommendedAction type is reserved for workflow recommendations and
+    # compositions.
+    matched_actions: list[ActionName] = Field(default_factory=list)
     # Same bound as CapabilityMatch, from the same registry-derived source.
     # `assembly` copies the match straight into this field, so a cap of its own
     # only decides how many candidates it takes to abort the run.

@@ -8,10 +8,10 @@ import time
 
 from pydantic import ValidationError
 
-from ..contracts import AgentState, LLMUsage, TaskDecision, _trace
+from ..contracts import AgentState, LLMUsage, _trace
 from ..contracts.outcomes import (
+    CapabilityMatch,
     EvidenceDimension,
-    RequestedOutcome,
     SemanticInterpretation,
     SemanticPatch,
     SemanticReview,
@@ -43,13 +43,23 @@ from ..llm import (
     build_semantic_patch_messages,
     build_semantic_reviewer_messages,
 )
-from ..routing.capability import has_explicit_execution_request, reconcile_request_mode
+from ..routing.capability import (
+    apply_input_preflight_intent,
+    has_direct_retrieval_request,
+    reconcile_request_mode,
+)
+from ..routing.named_labels import named_registered_action
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, preflight_budget, record_event
 from .continuation_invocation import continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .structured_calls import _serialized_structured_input, _validation_issue_types
+from .discriminator import (
+    discriminator_context as _discriminator_context,
+    invoke_semantic_discriminator as _invoke_semantic_discriminator,
+    _fill_inferred_role_evidence,
+)
 
 __all__: list[str] = []
 
@@ -60,13 +70,6 @@ __all__: list[str] = []
 # it was meant to fix survived. Overall passes were unchanged, so it bought an
 # extra call and nothing else. See tests/test_semantic_attempt_bound.py.
 MAX_SEMANTIC_ATTEMPTS = 2
-
-
-from .discriminator import (
-    discriminator_context as _discriminator_context,
-    invoke_semantic_discriminator as _invoke_semantic_discriminator,
-    _fill_inferred_role_evidence,
-)
 
 
 def _current_usage(context: _GraphContext, state: AgentState) -> LLMUsage:
@@ -114,6 +117,26 @@ def _semantic_failure(
                 "match_status": decision.capability_match_status,
             },
         )
+    else:
+        # Even when semantic routing fails, an explicit input-preflight request
+        # is safe to route deterministically because inspection does not infer a
+        # scientific outcome or execute a workflow.  Hydrate first so concrete
+        # file bindings are preserved for the downstream inspector.
+        decision = hydrate_router_decision(decision, user_task)
+    preflight_decision = apply_input_preflight_intent(decision, user_task)
+    if preflight_decision is not decision:
+        record_event(
+            context,
+            state,
+            "routing.input_preflight_reconciled",
+            "classify",
+            {
+                "action": "inspect_inputs",
+                "missing_inputs": preflight_decision.missing_inputs,
+                "fallback": True,
+            },
+        )
+    decision = preflight_decision
     return _RouterInvocation(
         decision=decision,
         routing_state=outcome_routing_state(decision),
@@ -862,12 +885,30 @@ def invoke_router(
         usage,
         budget_warnings,
     )
+    # A direct read-only retrieval request is already an explicit capability
+    # selection. It must not be held behind the scientific-outcome evidence gate:
+    # an empty/irrelevant semantic hypothesis can make the generic matcher
+    # ``unverified`` even though WEB-SEARCH/CONTEXT7 is the exact requested tool.
+    direct_retrieval_action = (
+        named_registered_action(user_task)
+        if has_direct_retrieval_request(user_task)
+        else None
+    )
+    if direct_retrieval_action in {"web_search", "query_context7"}:
+        capability_match = CapabilityMatch(
+            status="exact",
+            match_basis="workflow_name",
+            matched_actions=[direct_retrieval_action],
+        )
     # An interpretation reaches the registry either fully grounded or explicitly
     # marked. Re-deriving that here from the same validator, rather than trusting
     # a flag passed down, is what makes the bound checkable at the one place it
     # has to hold: nothing whose quotes the request does not contain may present
     # itself as an exact match or authorize an action.
-    if not validate_outcome_hypotheses(user_task, interpretation.outcome_hypotheses).valid:
+    if (
+        direct_retrieval_action is None
+        and not validate_outcome_hypotheses(user_task, interpretation.outcome_hypotheses).valid
+    ):
         capability_match = bounded_match(capability_match)
         record_event(
             context,
@@ -903,13 +944,14 @@ def invoke_router(
         usage,
         budget_warnings,
     )
-    if has_explicit_execution_request(user_task) and intent.mode != "execute":
+    reconciled_intent_mode = reconcile_request_mode(user_task, intent.mode)
+    if reconciled_intent_mode != intent.mode:
         intent = intent.model_copy(
             update={
                 "mode": "execute",
                 "reason": (
-                    "The request contains an explicit execution instruction; "
-                    "deterministic command-language routing selected execute."
+                    "The request explicitly authorizes execution or direct read-only "
+                    "retrieval; deterministic command-language routing selected execute."
                 ),
             }
         )
@@ -927,6 +969,8 @@ def invoke_router(
         task=user_task,
     )
     decision = hydrate_router_decision(decision, user_task)
+    if direct_retrieval_action in {"web_search", "query_context7"}:
+        decision = decision.model_copy(update={"intent_type": "answer_question"})
     if capability_match.match_basis == UNVERIFIED_BASIS:
         # The second half of the bound. A reading whose quotes were not found is
         # something to show the user, never something to act on, whatever the
@@ -934,6 +978,19 @@ def invoke_router(
         decision = decision.model_copy(update={
             "should_execute": False, "action": "no_tool",
         })
+    preflight_decision = apply_input_preflight_intent(decision, user_task)
+    if preflight_decision is not decision:
+        record_event(
+            context,
+            state,
+            "routing.input_preflight_reconciled",
+            "classify",
+            {
+                "action": "inspect_inputs",
+                "missing_inputs": preflight_decision.missing_inputs,
+            },
+        )
+    decision = preflight_decision
     return _RouterInvocation(
         decision=decision,
         routing_state=outcome_routing_state(
