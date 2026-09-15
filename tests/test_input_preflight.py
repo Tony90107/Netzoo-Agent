@@ -96,7 +96,10 @@ def test_preflight_error_accepts_corrected_input_assignments(tmp_path):
     assert "CORRECTED_INPUT_motif_file=" in continuation
 
 
-def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_path):
+def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
     expression, motif, ppi = _valid_panda_files(tmp_path)
     plan = build_workflow_plan(
         _panda_decision(),
@@ -124,6 +127,7 @@ def test_valid_explicit_inputs_pass_preflight_and_execute_rechecks_contents(tmp_
 
 
 def test_input_only_panda_preflight_does_not_require_output_file(tmp_path, monkeypatch):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
     expression, motif, ppi = _valid_panda_files(tmp_path)
     monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
     monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
@@ -152,7 +156,10 @@ def test_input_only_panda_preflight_does_not_require_output_file(tmp_path, monke
     assert plan.decision["output_file"] is None
 
 
-def test_expression_header_and_identifier_namespace_are_code_owned_observations(tmp_path):
+def test_expression_header_and_identifier_namespace_are_code_owned_observations(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
     expression = _write(
         tmp_path / "expression.tsv",
         "gene_id\ts1\ts2\nENSG00000141510\t1\t2\nENSG00000139618\t2\t1\n",

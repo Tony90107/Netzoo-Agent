@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 _COMMAND_TOKEN = re.compile(r"^/[A-Za-z][A-Za-z0-9_-]*(?:\s+.*)?$")
-_KNOWN_COMMANDS = frozenset({"/planning", "/execute", "/status", "/help"})
+_KNOWN_COMMANDS = frozenset({"/test", "/planning", "/execute", "/status", "/help"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,10 +29,14 @@ class SlashCommandResult:
 
 
 def current_mode_label() -> str:
+    if settings.TEST_DATA_MODE:
+        return "Test"
     return "Execute" if settings.EXECUTE_TOOLS else "Planning"
 
 
 def render_mode_prompt(prompt: str) -> str:
+    if settings.TEST_DATA_MODE:
+        return f"[Test] {prompt}"
     return f"[Execute] {prompt}" if settings.EXECUTE_TOOLS else prompt
 
 
@@ -97,10 +101,23 @@ def handle_slash_command(
             execute_once=True,
         )
     if normalized == "/planning":
-        configure_runtime(EXECUTE_TOOLS=False)
+        configure_runtime(EXECUTE_TOOLS=False, TEST_DATA_MODE=False)
         return SlashCommandResult(
             handled=True,
             message="Planning mode enabled. Future workflow tasks will only create previews.",
+        )
+    if normalized == "/test":
+        configure_runtime(EXECUTE_TOOLS=False, TEST_DATA_MODE=True)
+        return SlashCommandResult(
+            handled=True,
+            message=(
+                "Synthetic Test mode enabled. Future workflow tasks will still require "
+                "the explicit /execute confirmation, while unresolved gene labels are "
+                "accepted as test-only identifiers. Schema, numeric, and cross-file "
+                "compatibility checks remain enforced.\n"
+                "Results from this mode are for software testing only and are not "
+                "biological evidence."
+            ),
         )
     if normalized == "/status":
         return SlashCommandResult(
@@ -113,7 +130,8 @@ def handle_slash_command(
             "Press / at an empty prompt, then Enter, to use /execute.\n"
             "Type after / to enter another slash command.\n"
             "Slash commands:\n"
-            "  /planning Return future workflow tasks to preview-only Planning.\n"
+            "  /test     Allow synthetic labels for test-only previews and execution.\n"
+            "  /planning Return to strict, preview-only Planning mode.\n"
             "  /execute  Execute the current approved Work Plan once.\n"
             "  /status   Show the current execution mode.\n"
             "  /help     Show this help."

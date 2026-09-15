@@ -25,9 +25,10 @@ from netzoo_agent_core.contracts import (  # noqa: E402
 @pytest.fixture(autouse=True)
 def restore_execution_mode():
     previous = settings.EXECUTE_TOOLS
-    configure_runtime(EXECUTE_TOOLS=False)
+    previous_test_mode = settings.TEST_DATA_MODE
+    configure_runtime(EXECUTE_TOOLS=False, TEST_DATA_MODE=False)
     yield
-    configure_runtime(EXECUTE_TOOLS=previous)
+    configure_runtime(EXECUTE_TOOLS=previous, TEST_DATA_MODE=previous_test_mode)
 
 
 def test_natural_language_and_absolute_paths_are_not_slash_commands():
@@ -66,9 +67,9 @@ def test_execute_is_one_shot_and_leaves_planning_mode_enabled():
         should_execute=True,
         confidence=1.0,
         reason="Run PANDA.",
-        expression_file="data/lioness-toy/expression.tsv",
-        motif_file="data/lioness-toy/motif-panda.tsv",
-        ppi_file="data/lioness-toy/ppi.tsv",
+        expression_file="data/auto-check-valid/expression.tsv",
+        motif_file="data/auto-check-valid/motif.tsv",
+        ppi_file="data/auto-check-valid/ppi.tsv",
         output_file="outputs/panda.tsv",
     )
     plan = WorkflowPlan(
@@ -107,9 +108,9 @@ def test_execute_checks_the_current_plan_and_evaluation():
         should_execute=True,
         confidence=1.0,
         reason="Run PANDA.",
-        expression_file="data/lioness-toy/expression.tsv",
-        motif_file="data/lioness-toy/motif-panda.tsv",
-        ppi_file="data/lioness-toy/ppi.tsv",
+        expression_file="data/auto-check-valid/expression.tsv",
+        motif_file="data/auto-check-valid/motif.tsv",
+        ppi_file="data/auto-check-valid/ppi.tsv",
         output_file="outputs/panda.tsv",
     )
     plan = WorkflowPlan(
@@ -156,11 +157,31 @@ def test_status_and_help_report_without_changing_mode():
     assert help_result.handled is True
     assert "Press / at an empty prompt, then Enter, to use /execute." in help_result.message
     assert "Type after / to enter another slash command." in help_result.message
-    for command in ("/planning", "/execute", "/status", "/help"):
+    for command in ("/test", "/planning", "/execute", "/status", "/help"):
         assert command in help_result.message
-    assert "future workflow tasks" in help_result.message
+    assert "test-only" in help_result.message
     assert "interrupt" not in help_result.message.casefold()
     assert settings.EXECUTE_TOOLS is False
+
+
+def test_test_enables_synthetic_mode_and_planning_disables_it():
+    configure_runtime(EXECUTE_TOOLS=True)
+
+    result = handle_slash_command("/test")
+
+    assert result.handled is True
+    assert result.execute_once is False
+    assert "Synthetic Test mode enabled" in result.message
+    assert "test-only identifiers" in result.message
+    assert settings.EXECUTE_TOOLS is False
+    assert settings.TEST_DATA_MODE is True
+    assert current_mode_label() == "Test"
+    assert render_mode_prompt("Question") == "[Test] Question"
+
+    planning = handle_slash_command("/planning")
+    assert planning.handled is True
+    assert settings.TEST_DATA_MODE is False
+    assert current_mode_label() == "Planning"
 
 
 def test_unknown_command_and_trailing_arguments_are_consumed_locally():

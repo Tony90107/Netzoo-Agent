@@ -294,6 +294,29 @@ def test_authoritative_invalid_cache_entry_is_a_preflight_error(tmp_path, monkey
     assert "not recognized by the configured gene authority" in report
 
 
+def test_synthetic_test_mode_allows_unknown_labels_with_explicit_warning(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+
+    expression = tmp_path / "expression.tsv"
+    expression.write_text("gene\ts1\ts2\nGeneA\t1\t2\nGeneB\t2\t1\n", encoding="utf-8")
+    motif = tmp_path / "motif.tsv"
+    motif.write_text("TF1\tGeneA\t1\nTF2\tGeneB\t1\n", encoding="utf-8")
+    ppi = tmp_path / "ppi.tsv"
+    ppi.write_text("TF1\tTF2\t1\n", encoding="utf-8")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi), taxon="Homo sapiens"
+    )
+
+    assert ok, report
+    assert "status: test_only" in report
+    assert "accepted as test-only identifiers" in report
+
+
 def test_authoritative_invalid_regulator_is_also_a_preflight_error(
     tmp_path, monkeypatch
 ):

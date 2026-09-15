@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
+from .. import settings
 from .cobra import inspect_cobra_inputs_impl, load_cobra_inputs
 from .bonobo import inspect_bonobo_inputs_impl, load_bonobo_inputs
 from .dragon import inspect_dragon_inputs_impl
@@ -102,6 +103,8 @@ def _gene_axis_errors(
     if namespace == "mixed_ensembl":
         return [f"{label}: gene and transcript identifier types are mixed."]
     if namespace in {"unknown", "opaque"}:
+        if settings.TEST_DATA_MODE:
+            return []
         return [
             f"{label}: identifiers do not form a supported gene namespace "
             "(gene symbol, NCBI Gene ID, or Ensembl gene ID)."
@@ -124,6 +127,16 @@ def _gene_axis_errors(
         if record.status == "unverified"
         and record.source not in {"offline", "stale_cache"}
     )
+    offline_unverified = sorted(
+        record.identifier
+        for record in summary.records.values()
+        if record.status == "unverified" and record.source == "offline"
+    )
+    if settings.TEST_DATA_MODE:
+        # Synthetic Test mode deliberately permits unresolved or ambiguous gene
+        # labels. Structural and cross-file checks still run in their callers.
+        return []
+
     errors: list[str] = []
     if invalid:
         errors.append(
@@ -140,6 +153,12 @@ def _gene_axis_errors(
             f"{label}: structured NCBI/Ensembl verification was unavailable; "
             "Websearch cannot authorize execution for: "
             + ", ".join(online_unverified[:5])
+        )
+    if offline_unverified:
+        errors.append(
+            f"{label}: identifiers could not be authoritatively verified offline; "
+            "production validation requires NCBI/Ensembl confirmation: "
+            + ", ".join(offline_unverified[:5])
         )
     return errors
 

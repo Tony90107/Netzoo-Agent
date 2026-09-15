@@ -3,6 +3,10 @@
 from pathlib import Path
 
 EXECUTE_TOOLS = False
+# Synthetic test mode keeps schema and cross-file checks but permits labels that
+# are not present in NCBI/Ensembl. It is session-scoped and never enabled by
+# default.
+TEST_DATA_MODE = False
 TRACE_ENABLED = False
 VERBOSE_OUTPUT = False
 TRANSIENT_TRACE = False
@@ -69,7 +73,7 @@ PARAMETER_FIELDS = {
 }
 
 __all__ = [
-    "EXECUTE_TOOLS", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",
+    "EXECUTE_TOOLS", "TEST_DATA_MODE", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",
     "PRESENTATION_MODE",
     "TOOL_TIMEOUT_SECONDS", "TRANSIENT_TRACE_MIN_SECONDS",
     "USER_VISIBLE_OUTPUT_LANGUAGE", "LIONESS_MODE_QUESTION", "PROJECT_ROOT",

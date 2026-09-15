@@ -168,7 +168,12 @@ What would you like to accomplish with NetZoo?
 Planning is the default preview-only state and has no prompt label. Press `/` at
 an empty prompt to show the muted `execute` completion; the input itself still
 contains only `/`. Press Enter to submit `/execute`, or continue typing to enter
-`/planning`, `/status`, or `/help`. `/execute` first checks the current Work Plan,
+`/test`, `/planning`, `/status`, or `/help`. `/test` enters Synthetic Test mode:
+schema, numeric, and cross-file checks remain enforced, while unresolved gene
+labels are explicitly marked test-only instead of being treated as biological
+evidence. A resulting plan still requires `/execute` before any workflow runs.
+Use `/planning` to leave Synthetic Test mode and return to strict validation.
+`/execute` first checks the current Work Plan,
 asks for confirmation, grants execution authority to that graph turn only, and then
 automatically returns to Planning mode. A slash typed after other text remains
 literal. Path prompts intentionally do not open the completion, so absolute paths

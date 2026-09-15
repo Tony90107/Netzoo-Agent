@@ -241,6 +241,80 @@ def test_large_websearch_result_stays_parseable_for_authority_report():
     assert "Websearch 未找到" not in report
 
 
+def test_authority_report_requires_web_search_action():
+    rendering = importlib.import_module("netzoo_agent_core.evaluation.rendering")
+    decision = legacy_agent.TaskDecision(
+        action="inspect_inputs",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=1.0,
+        reason="input preflight",
+        matched_actions=["inspect_inputs"],
+    )
+    result = legacy_agent.ToolExecutionResult(
+        action="inspect_inputs",
+        status="success",
+        summary="Input validation passed.",
+        raw_output="structured input inspection result",
+    )
+
+    report = rendering.render_authority_search_response(
+        "請使用 NCBI/Ensembl 檢查 TP53。", decision, [result]
+    )
+
+    assert report is None
+
+
+def test_input_preflight_does_not_call_authority_renderer(monkeypatch):
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    decision = legacy_agent.TaskDecision(
+        action="inspect_inputs",
+        in_scope=True,
+        should_execute=True,
+        intent_type="inspect_input",
+        confidence=1.0,
+        reason="input preflight",
+        matched_actions=["inspect_inputs"],
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="INPUTS",
+        objective="validate PANDA inputs",
+        decision=decision.model_dump(),
+        status="ready",
+    )
+
+    def fail_if_called(*_args, **_kwargs):
+        pytest.fail("authority renderer must only run for web_search")
+
+    monkeypatch.setattr(response_module, "render_authority_search_response", fail_if_called)
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [
+                legacy_agent.HumanMessage(
+                    content="檢查 PANDA labels，並以 NCBI/Ensembl 作為 authority。"
+                )
+            ],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "tool_results": [
+                legacy_agent.ToolExecutionResult(
+                    action="inspect_inputs",
+                    status="success",
+                    summary="Input validation passed.",
+                    raw_output="Input formats and identifier compatibility passed.",
+                ).model_dump()
+            ],
+        },
+    )
+
+    content = result["messages"][0].content
+    assert "Input formats and identifier compatibility passed" in content
+    assert "Websearch" not in content
+
+
 def test_direct_websearch_overrides_answer_intent_without_running_workflow(monkeypatch):
     router_invocation = importlib.import_module(
         "netzoo_agent_core.graph.router_invocation"

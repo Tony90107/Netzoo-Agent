@@ -328,9 +328,15 @@ def render_authority_search_response(
     task: str, decision, results: list[ToolExecutionResult]
 ) -> str | None:
     """Render exact NCBI/Ensembl discovery requests from trusted URLs only."""
+    # Authority reports are presentation for the dedicated web-search
+    # workflow, not a generic post-processing step for every successful tool.
+    # Input preflight tasks may mention NCBI/Ensembl as validation policy; those
+    # results must keep their own structured validation response.
+    if getattr(decision, "action", None) != "web_search":
+        return None
     lowered = task.casefold()
     if not ("ncbi" in lowered or "ensembl" in lowered) or not any(
-        item.status == "success" for item in results
+        item.action == "web_search" and item.status == "success" for item in results
     ):
         return None
     identifiers = list(dict.fromkeys(
