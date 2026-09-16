@@ -340,3 +340,61 @@ def test_model_failure_fails_safe_and_records_failed_usage():
     assert result.resolution.kind == "needs_detail"
     assert result.usage.calls[-1].role == "follow_up"
     assert result.usage.calls[-1].status == "failed"
+
+
+def _context_without_candidates():
+    """The turn a routing failure produces: a question, but nothing to pick."""
+    return FollowUpContext(
+        prior_user_goal="Run PANDA on three local files for human.",
+        prompt_kind="clarification",
+        prompt_question=(
+            "Specify the requested result type and whether it should be "
+            "aggregate or sample-specific."
+        ),
+        candidate_actions=[],
+        continuation_action=None,
+        alternative_action=None,
+    )
+
+
+def test_an_answer_is_revalidated_when_the_turn_carries_no_candidate():
+    """Asking which result, then refusing the answer, is not a safe default."""
+    model = Mock()
+    model.invoke.return_value = _decision("accept_workflow", selected_action="run_panda")
+    reply = "PANDA 的 aggregate TF-gene 調控網路"
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        _context_without_candidates(), reply, None, "run-1"
+    )
+
+    assert result.resolution.kind == "follow_up"
+    assert result.resolution.selected_action is None
+    assert reply in result.resolution.resolved_task
+    assert "Run PANDA on three local files" in result.resolution.resolved_task
+
+
+def test_revalidation_authorizes_nothing_by_itself():
+    model = Mock()
+    model.invoke.return_value = _decision("accept_workflow", selected_action="run_sambar")
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        _context_without_candidates(), "run sambar", None, "run-1"
+    )
+
+    # The named action is carried as text for routing to judge, never as a
+    # selection this turn made.
+    assert result.resolution.selected_action is None
+    assert result.resolution.kind == "follow_up"
+
+
+def test_an_action_outside_a_populated_trusted_set_is_still_refused():
+    """The empty-set allowance must not become a way around the trusted set."""
+    model = Mock()
+    model.invoke.return_value = _decision("accept_workflow", selected_action="run_sambar")
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        _context(), "run sambar instead", None, "run-1"
+    )
+
+    assert result.resolution.kind == "needs_detail"
+    assert result.resolution.resolved_task is None
