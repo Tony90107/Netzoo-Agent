@@ -14,6 +14,10 @@ from .extraction import (
     extract_preference_proposals,
 )
 from .outcome_consistency import select_primary_hypothesis
+from .request_parameters import (
+    extract_explicit_request_parameters,
+    extract_recognized_input_files,
+)
 
 __all__: list[str] = []
 
@@ -64,6 +68,25 @@ def hydrate_router_decision(
         parsed = _task_path(task, field_name)
         if parsed:
             setattr(decision, field_name, parsed)
+
+    # A failed semantic pass must not discard concrete request parameters.
+    # Filename hints only establish candidate roles; normal workflow preflight
+    # still validates each file's content before a plan can execute.
+    required_fields = REQUIRED_INPUTS.get(decision.action, ())
+    recognized_inputs = extract_recognized_input_files(task)
+    for field_name in required_fields:
+        if not getattr(decision, field_name, None) and field_name in recognized_inputs:
+            setattr(decision, field_name, recognized_inputs[field_name])
+
+    explicit_parameters = extract_explicit_request_parameters(task)
+    if taxon := explicit_parameters.get("taxon"):
+        decision.taxon = str(taxon)
+    if output_file := explicit_parameters.get("output_file"):
+        decision.output_file = str(output_file)
+        if "output_dir" not in explicit_parameters:
+            decision.output_dir = None
+    elif output_dir := explicit_parameters.get("output_dir"):
+        decision.output_dir = str(output_dir)
 
     prefix = _extract_named_path(task, ("prefix", "前綴"))
     if prefix:

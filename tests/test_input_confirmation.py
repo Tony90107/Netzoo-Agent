@@ -14,6 +14,7 @@ from netzoo_agent_core.cli.follow_up import (  # noqa: E402
     build_next_turn_prompt,
     render_next_turn_prompt,
 )
+from netzoo_agent_core.interpretation import hydrate_router_decision  # noqa: E402
 from workflow_registry import executor_arguments  # noqa: E402
 
 
@@ -68,6 +69,29 @@ def test_rejected_input_confirmation_accepts_corrected_role_paths():
     assert replanned.decision["expression_file"] == "local/expression.tsv"
     assert replanned.decision["motif_file"] == "local/prior.tsv"
     assert "ppi_file" in replanned.missing_inputs
+
+
+def test_accepted_input_confirmation_preserves_output_and_taxon():
+    task = (
+        "Run PANDA using data/official-toy/ToyExpressionData.txt, "
+        "data/official-toy/ToyMotifData.txt, and "
+        "data/official-toy/ToyPPIData.txt; species is human; "
+        "output_file=outputs/gene_existence_a.tsv"
+    )
+    decision = _panda_decision().model_copy(
+        update={
+            "taxon": "human",
+            "output_file": "outputs/gene_existence_a.tsv",
+        }
+    )
+    plan = build_workflow_plan(decision, task)
+
+    continuation = input_confirmation_continuation(plan, "y", approved=True)
+    hydrated = hydrate_router_decision(_panda_decision(), continuation)
+    replanned = build_workflow_plan(hydrated, continuation)
+
+    assert replanned.decision["taxon"] == "human"
+    assert replanned.decision["output_file"] == "outputs/gene_existence_a.tsv"
 
 
 def test_optional_coexpression_argument_is_normalized_for_strict_tools():
