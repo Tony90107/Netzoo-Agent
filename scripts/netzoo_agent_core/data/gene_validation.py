@@ -59,6 +59,7 @@ _WEBSEARCH_BATCH_SIZE = 5
 # many identifiers it would issue hundreds of sequential MCP calls to reach
 # a verdict that cannot authorize execution anyway.
 _WEBSEARCH_MAX_IDENTIFIERS = 20
+_IDENTIFIER_PREVIEW_LIMIT = 5
 _TRUSTED_HOSTS = ("ncbi.nlm.nih.gov", "ensembl.org")
 _NCBI_GENE_URL = re.compile(r"/gene/(\d+)(?:[/?#]|$)", re.IGNORECASE)
 _ENSEMBL_GENE_ID = re.compile(r"\bENS[A-Z0-9]*G\d+(?:\.\d+)?\b", re.IGNORECASE)
@@ -216,6 +217,18 @@ class GeneValidationSummary:
 
 def _normalise_identifier(value: object) -> str:
     return str(value).strip().casefold()
+
+
+def _identifier_preview(values: Sequence[str]) -> str:
+    """Render bounded identifier diagnostics without hiding truncation."""
+    items = [str(value) for value in values]
+    if len(items) <= _IDENTIFIER_PREVIEW_LIMIT:
+        return ", ".join(items)
+    remaining = len(items) - _IDENTIFIER_PREVIEW_LIMIT
+    return (
+        ", ".join(items[:_IDENTIFIER_PREVIEW_LIMIT])
+        + f" (and {remaining} more; see detailed input inspection)"
+    )
 
 
 def _cache_path(path: str | Path | None = None) -> Path:

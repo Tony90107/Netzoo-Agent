@@ -130,14 +130,29 @@ def _assemble_workflow_plan(
                 "\nPlease provide corrected files or fix the file contents, then "
                 "I will re-check them."
             )
+        if any(
+            "gene authority" in error.casefold()
+            or "gene symbols cannot be verified" in error.casefold()
+            or "authority-verified" in error.casefold()
+            for error in context.preflight_errors
+        ):
+            remedy += (
+                "\n\nIf these are synthetic software fixtures rather than biological "
+                "data, enter /test and retry. Test mode permits unresolved gene "
+                "labels for test-only previews/execution, while schema, numeric, "
+                "and cross-file checks remain enforced; its outputs are not "
+                "biological evidence."
+            )
         if context.gene_repair_hints:
             hints = "\n".join(f"- {hint}" for hint in context.gene_repair_hints)
-            # Flagged as a hint on purpose: a named symbol was confirmed by the
-            # gene authority, but the explanation beside it is a model's guess
-            # and authorizes nothing.
+            # Flagged as advisory on purpose: a candidate symbol was confirmed
+            # by the gene authority, but the label-to-symbol mapping and the
+            # explanation beside it are model guesses and authorize nothing.
             remedy += (
-                "\n\nPossible readings of the unrecognized labels (hints, not "
-                f"findings; nothing is verified by this list):\n\n{hints}"
+                "\n\nPossible readings of the unrecognized labels (advisory only; "
+                "candidate symbols were checked for existence in the requested "
+                "taxon, but the intended mapping and explanation are not verified):"
+                f"\n\n{hints}"
             )
         return WorkflowPlan(
             workflow=workflow,

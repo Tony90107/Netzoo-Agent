@@ -113,3 +113,66 @@ def test_compact_response_labels_derived_input():
     )
 
     assert "[derived input]" in response
+
+
+def test_compact_response_distinguishes_normalized_and_raw_expression_shapes():
+    inspection = legacy_agent.ToolExecutionResult(
+        action="inspect_inputs",
+        status="success",
+        summary="passed",
+        raw_output=(
+            "Input inspection:\n"
+            "- expression: data/expression.tsv\n"
+            "  format: expression matrix\n"
+            "  shape: 6 rows x 5 columns\n"
+            "  data shape: 5 genes x 4 samples\n"
+            "- motif target genes overlapping expression genes: 5/5 (100.0%)\n"
+            "- motif TFs overlapping PPI TFs: 2/2 (100.0%)"
+        ),
+    )
+
+    highlights = evaluation._compact_validation_highlights([inspection])
+
+    assert highlights[:2] == [
+        "Expression shape: 5 genes × 4 samples",
+        "Raw table shape: 6 rows × 5 columns",
+    ]
+
+
+def test_compact_response_labels_synthetic_gene_acceptance():
+    decision = legacy_agent.TaskDecision(
+        action="run_panda",
+        in_scope=True,
+        should_execute=True,
+        confidence=1.0,
+        reason="Run PANDA.",
+        output_file="outputs/test.tsv",
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="PANDA",
+        objective=decision.reason,
+        decision=decision.model_dump(),
+        steps=[legacy_agent.WorkflowStep(action="inspect_inputs", purpose="Validate.")],
+        status="ready",
+    )
+    inspection = legacy_agent.ToolExecutionResult(
+        action="inspect_inputs",
+        status="success",
+        summary="passed",
+        raw_output=(
+            "Input inspection:\n"
+            "- expression: data/expression.tsv\n"
+            "  shape: 3 rows x 3 columns\n"
+            "  warning: expression genes could not be authority-verified; "
+            "accepted as test-only identifiers because Synthetic Test mode is enabled."
+        ),
+    )
+
+    rendered = evaluation.render_compact_execution_response(
+        plan,
+        [inspection],
+        legacy_agent.EvaluationResult(status="completed", reason="done"),
+    )
+
+    assert "unresolved gene labels are accepted for Synthetic Test mode only" in rendered
+    assert "not biological evidence" in rendered

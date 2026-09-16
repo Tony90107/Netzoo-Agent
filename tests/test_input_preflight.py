@@ -78,6 +78,27 @@ def test_preflight_errors_are_shown_by_interactive_clarification_prompt(tmp_path
     assert "No additional input is required." not in prompt
 
 
+def test_gene_authority_failure_explains_synthetic_test_mode(tmp_path, monkeypatch):
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", False)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression, motif, ppi = _valid_panda_files(tmp_path)
+
+    plan = build_workflow_plan(
+        _panda_decision(),
+        (
+            "Run PANDA with "
+            f"expression_file={expression} motif_file={motif} ppi_file={ppi} "
+            "taxon=human"
+        ),
+    )
+
+    assert plan.status == "needs_input"
+    assert "synthetic software fixtures" in (plan.question or "")
+    assert "enter /test and retry" in (plan.question or "")
+    assert "not biological evidence" in (plan.question or "")
+
+
 def test_preflight_error_accepts_corrected_input_assignments(tmp_path):
     expression, motif, ppi = _valid_panda_files(tmp_path)
     motif.write_text("not an edge list\n", encoding="utf-8")
