@@ -126,6 +126,26 @@ def test_the_labels_are_read_back_from_the_preflight_errors():
     assert _unrecognized_labels(errors) == ["MDM7", "RB7", "E2F9"]
 
 
+def test_truncated_preflight_label_lists_are_read_without_the_suffix():
+    from netzoo_agent_core.planning.evidence import _unrecognized_labels
+    from netzoo_agent_core.data.gene_validation import UNRECOGNIZED_PHRASE
+
+    errors = [
+        "expression genes "
+        + UNRECOGNIZED_PHRASE
+        + "BAD1, BAD2, BAD3, BAD4, BAD5 "
+        + "(and 2 more; see detailed input inspection)"
+    ]
+
+    assert _unrecognized_labels(errors) == [
+        "BAD1",
+        "BAD2",
+        "BAD3",
+        "BAD4",
+        "BAD5",
+    ]
+
+
 @pytest.mark.parametrize("errors", [[], ["expression: values must be numeric."]])
 def test_a_failure_with_no_rejected_label_asks_no_model(errors):
     from netzoo_agent_core.planning.evidence import _gene_repair_hints

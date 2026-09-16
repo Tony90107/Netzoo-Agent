@@ -14,6 +14,7 @@ from .giraffe import inspect_giraffe_inputs_impl, load_giraffe_inputs
 from .gene_validation import (
     TAXON_REQUIRED_SOURCE,
     UNRECOGNIZED_PHRASE,
+    _identifier_preview,
     validate_gene_identifiers,
 )
 from .coexpression import read_coexpression_matrix
@@ -156,7 +157,7 @@ def _gene_axis_errors(
         )
     if invalid:
         errors.append(
-            f"{label}: {UNRECOGNIZED_PHRASE}" + ", ".join(invalid[:5])
+            f"{label}: {UNRECOGNIZED_PHRASE}" + _identifier_preview(invalid)
         )
     if ambiguous:
         errors.append(

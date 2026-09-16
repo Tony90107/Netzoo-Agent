@@ -748,9 +748,12 @@ def _unrecognized_labels(errors: list[str]) -> list[str]:
         _, separator, listed = error.partition(UNRECOGNIZED_PHRASE)
         if not separator:
             continue
-        labels.extend(
-            value.strip() for value in listed.split(",") if value.strip()
+        listed = re.sub(
+            r"\s+\(and \d+ more; see detailed input inspection\)\s*$",
+            "",
+            listed,
         )
+        labels.extend(value.strip() for value in listed.split(",") if value.strip())
     return list(dict.fromkeys(labels))
 
 

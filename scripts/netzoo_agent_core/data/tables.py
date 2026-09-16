@@ -18,6 +18,7 @@ from .gene_validation import (
     TAXON_REQUIRED_SOURCE,
     UNRECOGNIZED_PHRASE,
     GeneValidationSummary,
+    _identifier_preview,
     validate_gene_identifiers,
 )
 
@@ -54,6 +55,10 @@ class TableCheck:
     header_role: str = "unknown"
     identifier_namespace: str = "unknown"
     secondary_identifier_namespace: str = "unknown"
+    # Shape after expression header/ID-axis normalization. ``frame`` remains
+    # the raw parsed table so the report can show both views without ambiguity.
+    data_rows: int | None = None
+    data_columns: int | None = None
     canonical_identifiers: dict[str, str] = field(default_factory=dict)
     regulator_canonical_identifiers: dict[str, str] = field(default_factory=dict)
     node_canonical_identifiers: dict[str, str] = field(default_factory=dict)
@@ -291,6 +296,8 @@ def _validate_expression(check: TableCheck) -> TableCheck:
         _looks_numeric(numeric_block.stack()).mean() if not numeric_block.empty else 0.0
     )
     row_ids = frame.iloc[:, 0].dropna().astype(str).str.strip()
+    check.data_rows = len(row_ids)
+    check.data_columns = max(frame.shape[1] - 1, 0)
     check.identifier_namespace = _identifier_namespace(row_ids)
     check.notes.append(
         f"gene ID namespace observed: {check.identifier_namespace}."
@@ -728,7 +735,7 @@ def _inspect_panda_inputs_impl(
         )
         if invalid_ids:
             message = (
-                f"{role} {UNRECOGNIZED_PHRASE}" + ", ".join(invalid_ids[:5])
+                f"{role} {UNRECOGNIZED_PHRASE}" + _identifier_preview(invalid_ids)
             )
             if settings.TEST_DATA_MODE:
                 check.warnings.append(
@@ -844,6 +851,16 @@ def _inspect_panda_inputs_impl(
                 f"  shape: {shape}",
             ]
         )
+        if (
+            check.label.casefold() == "expression"
+            and check.format_name == "expression matrix"
+            and check.data_rows is not None
+            and check.data_columns is not None
+        ):
+            lines.append(
+                f"  data shape: {check.data_rows} genes x "
+                f"{check.data_columns} samples"
+            )
         if check.has_header:
             lines.append("  header: detected")
         for note in check.notes:

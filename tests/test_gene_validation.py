@@ -306,6 +306,51 @@ def test_authoritative_invalid_cache_entry_is_a_preflight_error(tmp_path, monkey
     assert "not recognized by the configured gene authority" in report
 
 
+def test_invalid_identifier_diagnostic_states_when_labels_are_truncated(
+    tmp_path, monkeypatch
+):
+    cache_path = tmp_path / "gene.sqlite3"
+    bad_labels = [f"BAD{index}" for index in range(1, 8)]
+    valid_regulators = [
+        _record("TF1", "symbol_like", "ncbi_gene:1"),
+        _record("TF2", "symbol_like", "ncbi_gene:2"),
+    ]
+    GeneCache(cache_path).upsert(
+        [_record(label, "symbol_like", None, status="invalid") for label in bad_labels]
+        + valid_regulators,
+        requested_taxon="human",
+    )
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(cache_path))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+
+    expression = tmp_path / "expression.tsv"
+    expression.write_text(
+        "gene_id\ts1\ts2\n"
+        + "\n".join(f"{label}\t1\t2" for label in bad_labels)
+        + "\n",
+        encoding="utf-8",
+    )
+    motif = tmp_path / "motif.tsv"
+    motif.write_text(
+        "\n".join(f"TF1\t{label}\t1" for label in bad_labels) + "\n",
+        encoding="utf-8",
+    )
+    ppi = tmp_path / "ppi.tsv"
+    ppi.write_text("TF1\tTF2\t1\n", encoding="utf-8")
+
+    report, ok, _ = _inspect_panda_inputs_impl(
+        str(expression), str(motif), str(ppi), taxon="human"
+    )
+
+    assert not ok
+    assert (
+        "BAD1, BAD2, BAD3, BAD4, BAD5 "
+        "(and 2 more; see detailed input inspection)"
+    ) in report
+    # The detailed authority section still contains every observed label.
+    assert all(f"id: {label};" in report for label in bad_labels)
+
+
 def test_synthetic_test_mode_allows_unknown_labels_with_explicit_warning(
     tmp_path, monkeypatch
 ):

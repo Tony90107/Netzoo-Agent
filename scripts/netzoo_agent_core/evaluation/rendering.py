@@ -163,12 +163,30 @@ def _compact_validation_highlights(results: list[ToolExecutionResult]) -> list[s
         return []
     highlights = []
     expression_section = re.search(
-        r"- expression:.*?\n(?:.*\n){0,5}?\s*shape:\s*([^\n]+)",
+        r"- expression:.*?(?=\n- |\Z)",
         inspection.raw_output,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE | re.DOTALL,
     )
     if expression_section:
-        highlights.append(f"Expression shape: {expression_section.group(1).strip()}")
+        section = expression_section.group(0)
+        data_shape = re.search(
+            r"^\s*data shape:\s*([^\n]+)", section, flags=re.IGNORECASE | re.MULTILINE
+        )
+        raw_shape = re.search(
+            r"^\s*shape:\s*([^\n]+)", section, flags=re.IGNORECASE | re.MULTILINE
+        )
+        if data_shape:
+            highlights.append(
+                f"Expression shape: {data_shape.group(1).strip().replace(' x ', ' × ')}"
+            )
+            if raw_shape:
+                highlights.append(
+                    f"Raw table shape: {raw_shape.group(1).strip().replace(' x ', ' × ')}"
+                )
+        elif raw_shape:
+            # Backward-compatible fallback for older tool reports that did not
+            # expose the normalized biological shape yet.
+            highlights.append(f"Expression shape: {raw_shape.group(1).strip()}")
     labels = {
         "motif target genes overlapping expression genes": "Motif targets ↔ expression genes",
         "motif tfs overlapping ppi tfs": "Motif TFs ↔ PPI TFs",
@@ -223,11 +241,16 @@ def render_compact_execution_response(
     if inspection:
         lines.extend(["", "Validation"])
         marker = "✓" if inspection.status == "success" else "✗"
-        verdict = (
-            "Input formats and identifier compatibility passed."
-            if inspection.status == "success"
-            else "Input validation failed."
-        )
+        test_only_labels = "accepted as test-only identifiers" in inspection.raw_output.casefold()
+        if inspection.status == "success" and test_only_labels:
+            verdict = (
+                "Input formats passed; unresolved gene labels are accepted for "
+                "Synthetic Test mode only (not biological evidence)."
+            )
+        elif inspection.status == "success":
+            verdict = "Input formats and identifier compatibility passed."
+        else:
+            verdict = "Input validation failed."
         lines.append(f"{marker} {verdict}")
         for highlight in _compact_validation_highlights(results):
             lines.append(f"- {highlight}")
