@@ -118,3 +118,56 @@ per-sample-coexpression         ['run_lioness_coexpression', 'run_bonobo']
 
 改 prompt 措辭是已知無效的補救方式，所以下一步若要動，必須是契約形狀：
 讓區分維度成為一等欄位，而不是自由填寫的標籤。
+
+---
+
+## 再追加：A 的主體不是 selection_tags（同日）
+
+把 A 的 77 個 trial 按候選數量拆開：
+
+| 候選數 | trials | discriminator 會觸發嗎 |
+| --- | --- | --- |
+| 0 | **64** | 不會（閘門要求 ≥2） |
+| ≥2 | 13 | 會，而且有觸發 |
+
+discriminator 的閘門是 `status == "ambiguous" and len(hypothesis_actions) >= 2`。
+**64 個根本沒有平手可以區分**，`selection_tags` 對它們無關。
+把 selection_tags 改成一等欄位最多影響 13/77，約 17%。
+
+順帶：discriminator 有跑的 trial 通過率 56%（32/57），全體 38%。
+**機制有效，只是多數需要它的情況根本到不了它。**
+
+### 那 64 個是什麼問題
+
+把它們最終記錄的 outcome 直接餵回底層 `match_requested_outcome`：
+
+| 結果 | trials |
+| --- | --- |
+| **得到完全正確的答案** | **38（59%）** |
+| 底層比對器也說 unsupported | 25 |
+| 其他 | 1 |
+
+例如：
+
+```
+sparse-expression-not-mutation  outcome 正確 -> exact ['run_lioness_panda']  正是期望
+mirna-current-goal              outcome 正確 -> exact ['run_lioness_puma']   正是期望
+aggregate-tf-activity           outcome 正確 -> exact ['run_giraffe']        正是期望
+```
+
+實跑時這些卻回 ambiguous、零候選、問了一句多餘的澄清。
+**outcome 是對的，底層比對器也認得，但實際路徑沒有採用這個結果。**
+實跑走的是 `match_semantic_request`（帶 hypotheses、request_mode、ignore_tags），
+不是 `match_requested_outcome`；差異在那層包裝。
+
+剩下 25 個（per-sample-coexpression 系列、aggregate-tf-baseline-misspelled 等）
+連底層比對器都說 unsupported，那是註冊表覆蓋或 outcome 本身的問題，另一類。
+
+### 修正後的優先序
+
+1. **`match_semantic_request` 為何丟棄底層比對器認得的正確結果** —— 38 trials，
+   佔全部 trial 的 12.8%，而且 outcome 已經是對的，不需要模型再做任何事。
+2. 25 個底層也不支援的 —— 要先分清是註冊表缺覆蓋還是 outcome 錯。
+3. selection_tags 一等欄位化 —— 只值 13 trials，而且面積橫跨 ~20 模組與 12 測試檔。
+
+**第 3 項原本是我上一則的建議，在量過之後應該排到最後。**
