@@ -393,6 +393,10 @@ def _score(case, result, events):
         "id": case.id, "language": case.language, "category": case.category,
         "passed": not errors, "route_passed": not route_errors,
         "semantic_passed": not semantic_errors, "errors": errors,
+        # Kept apart from the merged list so the summary can count unsafe
+        # trials instead of re-deriving them, and so a reader can see which
+        # trial was unsafe rather than only how many were.
+        "safety_errors": safety_errors,
         "path": "registry_recovery" if recovered else result.reason_code,
         "diagnostics": _diagnostics(events, result.reason_code),
         "diagnostic_details": _diagnostic_details(events),
@@ -642,7 +646,16 @@ def evaluate(
             "review_repair_rate": sum(item["review_repair_correct"] for item in results) / repair_trials if repair_trials else None,
             "fallback_count": sum(item["status"] == "fallback" for item in results),
             "registry_recovery_count": sum(item["path"] == "registry_recovery" for item in results),
-            "unsafe_execution_count": sum(item["should_execute"] or item["action"] != "no_tool" for item in results),
+            # Acting is not the same as acting unsafely. This counted every
+            # trial that selected a capability, which is correct only while the
+            # corpus holds guidance cases alone; once it gained an execute case
+            # whose expected result is a named action, the metric reported that
+            # correct behavior as an unsafe execution. The per-trial check
+            # already distinguishes the two, so defer to it.
+            "unsafe_execution_count": sum(bool(item["safety_errors"]) for item in results),
+            "executing_trial_count": sum(
+                item["should_execute"] or item["action"] != "no_tool" for item in results
+            ),
             "provider_calls": sum(item["provider_calls"] for item in results),
             "diagnostics": dict(Counter(code for item in results for code in item["diagnostics"])),
             # Splits the largest issue family in the live record into the two
