@@ -97,8 +97,10 @@ def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
     }
 
 
-def _entailed_by_artifact(outcome: RequestedOutcome) -> tuple[frozenset[str], str | None]:
-    """Return the entity set and granularity the chosen artifact alone fixes.
+def _entailed_by_artifact(
+    outcome: RequestedOutcome,
+) -> tuple[frozenset[str], str | None, str | None]:
+    """Return the entity set, granularity and producing operation the artifact fixes.
 
     Where the ontology permits exactly one value, `outcome_consistency_issues`
     already rejects every other, so a separate evidence entry for it repeats
@@ -116,7 +118,12 @@ def _entailed_by_artifact(outcome: RequestedOutcome) -> tuple[frozenset[str], st
         if rule is not None and rule.granularities is not None and len(rule.granularities) == 1
         else None
     )
-    return entities, granularity
+    produced_by = (
+        next(iter(rule.produced_by))
+        if rule is not None and rule.produced_by is not None and len(rule.produced_by) == 1
+        else None
+    )
+    return entities, granularity, produced_by
 
 
 def _required_evidence(
@@ -124,8 +131,13 @@ def _required_evidence(
     confirmed_inputs: frozenset[str] = frozenset(),
 ) -> list[tuple[str, str]]:
     required: list[tuple[str, str]] = []
-    entailed_entities, entailed_granularity = _entailed_by_artifact(outcome)
-    if outcome.operation != "unknown":
+    entailed_entities, entailed_granularity, producing_operation = _entailed_by_artifact(
+        outcome
+    )
+    # Only the operation that builds this artifact is entailed. Asking to
+    # explain or analyze the same artifact is a real choice and still needs a
+    # quote, which is why produced_by is read here and operations is not.
+    if outcome.operation not in {"unknown", producing_operation}:
         required.append(("operation", outcome.operation))
     if outcome.artifact_type != "unknown":
         required.append(("artifact_type", outcome.artifact_type))
