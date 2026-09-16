@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from ..contracts import PROSE_PATH_TERMINATORS
 from .discovery import _unlabeled_input_bindings
 from .extraction import _task_path
 
@@ -75,7 +76,7 @@ def _sample_names(task: str) -> list[str]:
 
 def _explicit_path(task: str, field_name: str) -> str | None:
     assignment = re.search(
-        rf"\b{field_name}\s*=\s*(?:'([^']+)'|\"([^\"]+)\"|([^\s,，;；。!?！？]+))",
+        rf"\b{field_name}\s*=\s*(?:'([^']+)'|\"([^\"]+)\"|([^{PROSE_PATH_TERMINATORS}]+))",
         task,
         flags=re.IGNORECASE,
     )

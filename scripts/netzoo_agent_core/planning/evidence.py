@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from .context import _PlanningContext
@@ -125,6 +126,39 @@ def _cobra_unlabeled_input_paths(task: str) -> tuple[str | None, str | None]:
     return (paths[0], paths[1]) if len(paths) >= 2 else (None, None)
 
 
+_TABLE_SUFFIXES = (
+    ".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy", ".npz", ".bed", ".mtx",
+    ".h5", ".hdf5", ".gz",
+)
+# A path-like token with at least one separator and no file suffix. Used only to
+# recognize a directory the user typed; nothing here proposes a path.
+_TASK_DIRECTORY_RE = re.compile(
+    r"(?<![A-Za-z0-9_.~/-])(?P<path>[A-Za-z0-9_.~-]+(?:/[A-Za-z0-9_.~-]+)+/?)"
+)
+
+
+def _task_directory(task: str) -> Path | None:
+    """Return the one existing directory the request names, if it names one.
+
+    A request that says which folder holds its data ("用 data/case-1 裡的三個
+    檔案") previously anchored discovery at the project data root instead,
+    which scanned every dataset directory and could settle on an unrelated one.
+    Two named directories are ambiguous, so neither is used.
+    """
+    found: list[Path] = []
+    for match in _TASK_DIRECTORY_RE.finditer(task):
+        token = match.group("path").rstrip("/")
+        if "/" not in token or token.casefold().endswith(_TABLE_SUFFIXES):
+            continue
+        try:
+            candidate = _resolve_user_path(token).resolve()
+        except (OSError, RuntimeError, ValueError):
+            continue
+        if candidate.is_dir() and not candidate.is_symlink() and candidate not in found:
+            found.append(candidate)
+    return found[0] if len(found) == 1 else None
+
+
 def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     decision = context.decision
     task = context.task
@@ -208,7 +242,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     content_nearby = (
         _resolve_user_path(expression_hint).parent
         if expression_hint
-        else PROJECT_ROOT / "data"
+        else _task_directory(task) or PROJECT_ROOT / "data"
     )
     content_bindings = infer_input_roles(
         action,
@@ -345,7 +379,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     if expression_hint:
         nearby = _resolve_user_path(expression_hint).parent
     else:
-        nearby = PROJECT_ROOT / "data"
+        nearby = _task_directory(task) or PROJECT_ROOT / "data"
 
     if action in MULTI_FILE_ACTIONS and not autonomous_values:
         discovery_anchors = {
@@ -576,14 +610,39 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             [*context.preflight_errors, *validate_workflow_inputs(action, decision)]
         ))
         if context.preflight_errors:
-            context.role_mismatch_hints[:] = _role_mismatch_hints(
+            corrections = _role_corrections(
                 action, decision, input_fields, context.content_mapper
             )
-            context.gene_repair_hints[:] = _gene_repair_hints(
-                context.preflight_errors,
-                getattr(decision, "taxon", "") or "",
-                context.content_mapper,
-            )
+            if corrections and _apply_role_corrections(
+                action, decision, corrections
+            ):
+                # The files were right and only their roles were crossed. The
+                # corrected assignment now passes, so offer it for confirmation
+                # instead of handing back an error the user has to translate.
+                context.preflight_errors.clear()
+                context.role_corrections.update(corrections)
+                for field_name, value in corrections.items():
+                    explicit_input_values.pop(field_name, None)
+                    natural_bindings[field_name] = value
+                    for item in evidence:
+                        if item.field != field_name:
+                            continue
+                        item.value = value
+                        item.status = "discovered"
+                        item.reason = (
+                            "Role read from the file contents after the filename "
+                            "reading failed input validation. Awaiting user "
+                            "confirmation."
+                        )
+            else:
+                context.role_mismatch_hints[:] = _render_role_hints(
+                    decision, corrections
+                )
+                context.gene_repair_hints[:] = _gene_repair_hints(
+                    context.preflight_errors,
+                    getattr(decision, "taxon", "") or "",
+                    context.content_mapper,
+                )
     handoff = context.workflow_handoff
     if (
         action == "run_bonobo"
@@ -629,28 +688,55 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     return evidence
 
 
-def _role_mismatch_hints(
+def _role_corrections(
     action: str,
     decision: Any,
     input_fields: list[str],
     mapper: Any | None,
-) -> list[str]:
-    """Explain a failed preflight as crossed role labels when contents say so.
+) -> dict[str, str]:
+    """Read the supplied files by content when validation has already failed.
 
-    Only reached once validation has already failed, so the extra content read
-    is not on the path of a run that is going to succeed.
+    Only reached once validation failed, so the extra content read is never on
+    the path of a run that is going to succeed.
     """
     bindings = {
         field_name: str(getattr(decision, field_name, None) or "")
         for field_name in input_fields
         if getattr(decision, field_name, None)
     }
-    corrections = detect_role_mismatches(action, bindings, mapper)
-    if not corrections:
-        return []
+    return detect_role_mismatches(action, bindings, mapper)
+
+
+def _apply_role_corrections(
+    action: str,
+    decision: Any,
+    corrections: dict[str, str],
+) -> bool:
+    """Try the corrected assignment, and keep it only if it actually validates.
+
+    Reporting a crossed pair without acting on it leaves the user to retype
+    paths the agent already worked out. Acting on it without revalidating would
+    trade one wrong assignment for another, so the correction has to earn its
+    place: it is kept only when the workflow's own validator accepts it, and it
+    still reaches the user as a confirmation rather than as a decision.
+    """
+    previous = {
+        field_name: getattr(decision, field_name, None) for field_name in corrections
+    }
+    for field_name, value in corrections.items():
+        setattr(decision, field_name, value)
+    if not validate_workflow_inputs(action, decision):
+        return True
+    for field_name, value in previous.items():
+        setattr(decision, field_name, value)
+    return False
+
+
+def _render_role_hints(decision: Any, corrections: dict[str, str]) -> list[str]:
+    """Report a crossed pair the corrected assignment could not resolve."""
     return [
-        f"{field_name}: {_resolve_user_path(bindings[field_name]).resolve()} does "
-        f"not match this role; {path} does"
+        f"{field_name}: {_resolve_user_path(str(getattr(decision, field_name, '')))}"
+        f" does not match this role; {path} does"
         for field_name, path in sorted(corrections.items())
     ]
 

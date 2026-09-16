@@ -124,7 +124,13 @@ _CONTRACT_IMPLEMENTATION_MODULES = (
     state,
 )
 
+# Characters that end a path in free prose. The enumeration comma is the one a
+# Chinese request actually uses to list files ("a.tsv、b.tsv"); omitting it made
+# a path regex run past the separator and capture the rest of the sentence.
+PROSE_PATH_TERMINATORS = "\\s，,、；;。！？!?"
+
 __all__ = [
+    "PROSE_PATH_TERMINATORS",
     "EXECUTE_TOOLS", "TEST_DATA_MODE", "TRACE_ENABLED", "VERBOSE_OUTPUT", "TRANSIENT_TRACE",
     "TOOL_TIMEOUT_SECONDS", "_TRANSIENT_TRACE_ACTIVE",
     "_TRANSIENT_TRACE_UPDATED_AT", "TRANSIENT_TRACE_MIN_SECONDS",
