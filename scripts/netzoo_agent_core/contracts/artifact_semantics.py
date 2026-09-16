@@ -24,10 +24,25 @@ class OutcomeFields(Protocol):
 
 @dataclass(frozen=True)
 class ArtifactSemantics:
+    """What an artifact is, and what a request may say about it.
+
+    ``operations`` are the operations a request may ask *about* this artifact.
+    Any artifact can be the subject of a question, so restricting this set
+    rejects guidance -- "which tools produce a regulatory network?" carries the
+    operation ``explain``, not the operation that would build one.
+
+    ``produced_by`` answers the different question of which operation creates
+    the artifact. Where exactly one does, naming it in a request adds nothing
+    that choosing the artifact had not already established, so evidence for it
+    is not required. It constrains nothing: an artifact with a single producing
+    operation can still be explained, analyzed or acquired.
+    """
+
     description: str
     entities: frozenset[str] | None = None
     granularities: frozenset[str] | None = None
     operations: frozenset[str] | None = None
+    produced_by: frozenset[str] | None = None
 
 
 ARTIFACT_SEMANTICS = {
@@ -52,7 +67,11 @@ ARTIFACT_SEMANTICS = {
         frozenset({"infer"}),
     ),
     "mutation_matrix": ArtifactSemantics("Gene-by-sample mutation measurements", frozenset({"gene", "sample"})),
-    "regulatory_network": ArtifactSemantics("Inferred regulator-to-target associations", granularities=frozenset({"aggregate", "sample_specific"})),
+    "regulatory_network": ArtifactSemantics(
+        "Inferred regulator-to-target associations",
+        granularities=frozenset({"aggregate", "sample_specific"}),
+        produced_by=frozenset({"infer"}),
+    ),
     "coexpression_network": ArtifactSemantics("Inferred gene-to-gene associations", frozenset({"gene", "sample"}), frozenset({"aggregate", "sample_specific"})),
     "pvalue_matrix": ArtifactSemantics(
         "P-value matrix paired with a sample-specific gene-gene co-expression result",

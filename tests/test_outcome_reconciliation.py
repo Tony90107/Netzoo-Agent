@@ -119,6 +119,25 @@ def test_declining_to_commit_is_not_a_contradiction():
 
 def test_an_unsupported_outcome_value_is_still_missing_evidence():
     """The reconciliation must not become a way to skip justifying a choice."""
+    # artifact_type, not operation: infer is entailed for a regulatory network,
+    # so it is no longer the dimension that proves the point.
+    evidence = [
+        _grounded("input_artifact", "expression_matrix", "data/expression.tsv"),
+        _inferred("granularity", "aggregate"),
+    ]
+    hypothesis = _hypothesis(input_artifacts=[], evidence=evidence)
+
+    result = validate_outcome_hypotheses(_TASK, [hypothesis])
+
+    assert not result.valid
+    assert any(
+        "missing_evidence:artifact_type=regulatory_network" in issue
+        for issue in result.issues
+    )
+
+
+def test_the_operation_that_builds_the_artifact_needs_no_separate_evidence():
+    """Naming infer for a regulatory network repeats the artifact choice."""
     evidence = [
         _grounded("input_artifact", "expression_matrix", "data/expression.tsv"),
         _inferred("artifact_type", "regulatory_network"),
@@ -128,5 +147,62 @@ def test_an_unsupported_outcome_value_is_still_missing_evidence():
 
     result = validate_outcome_hypotheses(_TASK, [hypothesis])
 
-    assert not result.valid
+    assert result.valid, result.issues
+
+
+def test_asking_about_an_artifact_is_still_a_choice_that_needs_evidence():
+    """"Which tools produce a regulatory network?" is explain, not infer."""
+    for operation in ("explain", "analyze", "acquire"):
+        hypothesis = OutcomeHypothesis(
+            outcome=RequestedOutcome(
+                operation=operation,
+                input_artifacts=["expression_matrix"],
+                artifact_type="regulatory_network",
+                granularity="aggregate",
+            ),
+            confidence=1.0,
+            evidence=[
+                _grounded("input_artifact", "expression_matrix", "data/expression.tsv"),
+                _inferred("granularity", "aggregate"),
+                _inferred("artifact_type", "regulatory_network"),
+            ],
+        )
+
+        result = validate_outcome_hypotheses(_TASK, [hypothesis])
+
+        assert any(
+            f"missing_evidence:operation={operation}" in issue
+            for issue in result.issues
+        ), operation
+
+
+def test_an_artifact_without_a_declared_producer_still_needs_evidence():
+    from netzoo_agent_core.contracts.artifact_semantics import ARTIFACT_SEMANTICS
+
+    undeclared = next(
+        artifact
+        for artifact, rule in ARTIFACT_SEMANTICS.items()
+        if rule.produced_by is None and artifact != "unknown"
+    )
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="infer", artifact_type=undeclared, granularity="aggregate"
+        ),
+        confidence=1.0,
+        evidence=[_inferred("artifact_type", undeclared)],
+    )
+
+    result = validate_outcome_hypotheses(_TASK, [hypothesis])
+
     assert any("missing_evidence:operation=infer" in issue for issue in result.issues)
+
+
+def test_produced_by_does_not_constrain_what_a_request_may_ask():
+    """It answers what builds the artifact, never what may be asked of it."""
+    from netzoo_agent_core.contracts.artifact_semantics import (
+        ARTIFACT_SEMANTICS,
+        artifact_field_constraints,
+    )
+
+    assert ARTIFACT_SEMANTICS["regulatory_network"].operations is None
+    assert "operation" not in artifact_field_constraints("regulatory_network")
