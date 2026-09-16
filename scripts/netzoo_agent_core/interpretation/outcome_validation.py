@@ -199,6 +199,68 @@ def evidence_census(
     )
 
 
+_LIST_FIELD_BY_DIMENSION = {
+    "input_artifact": "input_artifacts",
+    "entity_type": "entity_types",
+    "regulator_type": "regulator_types",
+    "target_type": "target_types",
+    "selection_tag": "selection_tags",
+}
+_SCALAR_FIELD_BY_DIMENSION = {
+    "operation": "operation",
+    "artifact_type": "artifact_type",
+    "granularity": "granularity",
+}
+
+
+def reconcile_outcome_with_grounded_evidence(
+    user_task: str,
+    hypothesis: OutcomeHypothesis,
+) -> None:
+    """Carry a quoted fact the evidence establishes into the outcome itself.
+
+    The contract asks for the same fact twice: once as an outcome field and
+    once as an evidence entry. Providers routinely write one and omit the
+    other, and the omission is reported as the entry contradicting the
+    outcome -- which reads as disagreement where there is none, and sends the
+    repair call chasing a conflict that does not exist.
+
+    Only a gap is closed, never a disagreement. The value must come from an
+    entry marked explicit whose quote was verified against the request, and
+    the outcome side must be genuinely absent: an empty list, or the scalar
+    "unknown". A field that already holds a different value is a real
+    contradiction and is left for validation to report.
+    """
+    outcome = hypothesis.outcome
+    for item in hypothesis.evidence:
+        value = str(item.value)
+        if (
+            value == "unknown"
+            or item.source != "explicit"
+            or not explicit_evidence_grounded(user_task, item)
+        ):
+            continue
+        list_field = _LIST_FIELD_BY_DIMENSION.get(item.dimension)
+        if list_field is not None:
+            current = list(getattr(outcome, list_field) or [])
+            if current:
+                continue
+            _assign_if_valid(outcome, list_field, [value])
+            continue
+        scalar_field = _SCALAR_FIELD_BY_DIMENSION.get(item.dimension)
+        if scalar_field is not None and getattr(outcome, scalar_field) == "unknown":
+            _assign_if_valid(outcome, scalar_field, value)
+
+
+def _assign_if_valid(outcome: RequestedOutcome, field: str, value: object) -> None:
+    """Assign only a value the outcome schema itself accepts."""
+    try:
+        RequestedOutcome.model_validate({**outcome.model_dump(), field: value})
+    except Exception:
+        return
+    setattr(outcome, field, value)
+
+
 def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],
@@ -210,6 +272,11 @@ def validate_outcome_hypotheses(
     issues: list[str] = []
     evidence_shapes: list[dict[str, str | int]] = []
     confirmed_inputs = frozenset(confirmed_current_inputs(user_task))
+    for hypothesis in hypotheses:
+        # Deliberately before judging, and deliberately in place: every caller
+        # goes on to use the hypothesis it passed in, so an outcome completed
+        # from its own grounded evidence has to reach them too.
+        reconcile_outcome_with_grounded_evidence(user_task, hypothesis)
     for index, hypothesis in enumerate(hypotheses):
         # `prefixed` rather than an f-string: plain formatting would return a
         # bare `str` and drop the field scope each rule declared.
@@ -249,6 +316,12 @@ def validate_outcome_hypotheses(
             valid_values = {
                 _normalized(value) for value in outcome_values[item.dimension]
             }
+            # "unknown" is how this vocabulary declines to commit, and
+            # `_required_evidence` already reads it that way on the outcome
+            # side. Treating it as a claim here made an entry that commits to
+            # nothing contradict an outcome it never disagreed with.
+            if normalized_value == "unknown":
+                continue
             if normalized_value not in valid_values:
                 # The entry contradicts one field. Either that field is wrong
                 # or the entry is; both fixes live inside this scope.
