@@ -156,6 +156,16 @@ def _assemble_workflow_plan(
             policy_notes=policy_notes,
         )
 
+    if context.role_corrections:
+        corrected = "\n".join(
+            f"- {field_name}: {value}"
+            for field_name, value in sorted(context.role_corrections.items())
+        )
+        decision.reason = (
+            f"{decision.reason}\n\nThe roles first read from the filenames did "
+            "not match the file contents. The assignment below is what the "
+            f"contents support, and it passes input validation:\n\n{corrected}"
+        )
     # Discovery and inference are evidence, not execution authority. Every
     # discovered or demo-selected local input must be deliberately confirmed.
     confirmation_evidence = [

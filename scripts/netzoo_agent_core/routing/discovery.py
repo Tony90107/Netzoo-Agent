@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from ..data.discovery import score_candidate_file as _score_candidate_file
-from ..contracts import PROJECT_ROOT, _display_path
+from ..contracts import PROJECT_ROOT, PROSE_PATH_TERMINATORS, _display_path
 
 __all__ = [
     "FILE_DISCOVERY_MAX_DEPTH",
@@ -37,7 +37,8 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
     pattern = re.compile(
         rf"(?<![A-Za-z0-9_])(?:{name_pattern})(?![A-Za-z0-9_])"
         r"\s*(?:是|為|=|:|：|at|as|is|to)?\s*"
-        r"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)|(?P<plain>[^\s，,。；;]+))",
+        rf"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)"
+        rf"|(?P<plain>[^{PROSE_PATH_TERMINATORS}]+))",
         flags=re.IGNORECASE,
     )
     match = pattern.search(task)
@@ -52,7 +53,7 @@ def _extract_explicit_role_path(task: str, role: str) -> str | None:
     match = re.search(
         rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
         rf"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?))"
-        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,；;]|$)",
+        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,、；;]|$)",
         task,
         re.IGNORECASE,
     )

@@ -45,6 +45,7 @@ class _PlanningContext:
     preflight_errors: list[str] = field(default_factory=list)
     role_mismatch_hints: list[str] = field(default_factory=list)
     gene_repair_hints: list[str] = field(default_factory=list)
+    role_corrections: dict[str, str] = field(default_factory=dict)
 
 
 def _prepare_planning_context(

@@ -6,7 +6,7 @@ import re
 
 from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
 
-from ..contracts import PreferenceProposal, _ui_text
+from ..contracts import PROSE_PATH_TERMINATORS, PreferenceProposal, _ui_text
 from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
 from ..routing.discovery import _extract_explicit_role_path
 
@@ -57,7 +57,7 @@ def _reverse_named_path(task: str, aliases: tuple[str, ...]) -> str | None:
     names = _alias_pattern(aliases)
     match = re.search(
         rf"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)|"
-        rf"(?P<plain>[^\s，,。；;]+))\s+(?:as|for)\s+(?:the\s+)?(?:{names})",
+        rf"(?P<plain>[^{PROSE_PATH_TERMINATORS}]+))\s+(?:as|for)\s+(?:the\s+)?(?:{names})",
         task,
         flags=re.IGNORECASE,
     )

@@ -249,9 +249,10 @@ def _content_truth(expression, motif, ppi, confidence=0.92):
     return ContentSniffingMapper(confidence)
 
 
-def test_explicitly_crossed_roles_are_reported_as_crossed_not_only_as_shape_errors(
+def test_crossed_roles_are_corrected_and_offered_for_confirmation(
     tmp_path, monkeypatch
 ):
+    """Working out the right assignment and then withholding it helps nobody."""
     monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
     monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
     monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
@@ -259,13 +260,37 @@ def test_explicitly_crossed_roles_are_reported_as_crossed_not_only_as_shape_erro
 
     plan = _panda_plan(task, _content_truth(expression, motif, ppi))
 
+    assert plan.status == "needs_confirmation"
+    bound = {item.field: item.value for item in plan.evidence}
+    assert bound["expression_file"] == str(expression.resolve())
+    assert bound["motif_file"] == str(motif.resolve())
+    assert bound["ppi_file"] == str(ppi.resolve())
+    # Corrected, but still the user's call: nothing is authorized to run.
+    assert plan.decision["should_execute"] is False
+    assert not plan.missing_inputs
+    assert "did not match the file contents" in plan.objective
+
+
+def test_a_correction_that_does_not_validate_is_not_adopted(tmp_path, monkeypatch):
+    """A rearrangement has to earn its place by passing the same validator."""
+    monkeypatch.setattr("netzoo_agent_core.settings.TEST_DATA_MODE", True)
+    monkeypatch.setenv("NETZOO_GENE_CACHE_PATH", str(tmp_path / "gene.sqlite3"))
+    monkeypatch.setenv("NETZOO_GENE_ONLINE_LOOKUP", "off")
+    expression, motif, ppi, task = _crossed_fixtures(tmp_path)
+    # A complete permutation that is simply wrong: every role gets the file
+    # that does not fit it.
+    wrong = FakeContentMapper(
+        [
+            {"path": "FILE_1", "role": "ppi", "confidence": 0.95, "rationale": "x"},
+            {"path": "FILE_2", "role": "expression", "confidence": 0.95, "rationale": "x"},
+            {"path": "FILE_3", "role": "motif", "confidence": 0.95, "rationale": "x"},
+        ]
+    )
+
+    plan = _panda_plan(task, wrong)
+
     assert plan.status == "needs_input"
-    assert "the input roles are crossed" in plan.question
-    assert f"expression_file: {motif.resolve()} does not match this role" in plan.question
-    assert str(expression.resolve()) in plan.question
-    assert f"motif_file: {expression.resolve()} does not match this role" in plan.question
-    # The role hint replaces the generic remedy rather than being added to it.
-    assert "Please provide corrected files" not in plan.question
+    assert "preflight failed" in plan.question
 
 
 def test_a_low_confidence_reassignment_is_not_reported_as_a_crossed_role(
