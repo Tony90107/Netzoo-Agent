@@ -80,6 +80,8 @@ from .outcomes import (
 )
 from .planning import InputBundleOption  # noqa: F401 -- typed internal plan detail
 from .planning import (
+    GeneLabelSuggestion,  # noqa: F401 -- compatibility facade attribute
+    GeneLabelSuggestions,  # noqa: F401 -- compatibility facade attribute
     InputEvidence,
     InputRoleAssignment,  # noqa: F401 -- compatibility facade attribute
     InputRoleMapping,  # noqa: F401 -- compatibility facade attribute

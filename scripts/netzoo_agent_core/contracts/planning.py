@@ -48,6 +48,22 @@ class InputRoleMapping(BaseModel):
 
     assignments: list[InputRoleAssignment] = Field(default_factory=list, max_length=50)
 
+class GeneLabelSuggestion(BaseModel):
+    """One LLM-proposed reading of a label the gene authority did not accept."""
+
+    label: str = Field(min_length=1, max_length=200)
+    likely_symbol: str = Field(default="", max_length=200)
+    reason: str = Field(default="", max_length=500)
+
+
+class GeneLabelSuggestions(BaseModel):
+    """Structured, bounded output for gene label repair hints."""
+
+    suggestions: list[GeneLabelSuggestion] = Field(
+        default_factory=list, max_length=20
+    )
+
+
 class InputBundleOption(BaseModel):
     """One complete coherent input bundle offered as an atomic selection."""
 

@@ -130,6 +130,15 @@ def _assemble_workflow_plan(
                 "\nPlease provide corrected files or fix the file contents, then "
                 "I will re-check them."
             )
+        if context.gene_repair_hints:
+            hints = "\n".join(f"- {hint}" for hint in context.gene_repair_hints)
+            # Flagged as a hint on purpose: a named symbol was confirmed by the
+            # gene authority, but the explanation beside it is a model's guess
+            # and authorizes nothing.
+            remedy += (
+                "\n\nPossible readings of the unrecognized labels (hints, not "
+                f"findings; nothing is verified by this list):\n\n{hints}"
+            )
         return WorkflowPlan(
             workflow=workflow,
             objective=decision.reason,

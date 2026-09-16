@@ -31,6 +31,7 @@ __all__ = [
     "validate_gene_identifiers",
     "_structured_gene_lookup",
     "TAXON_REQUIRED_SOURCE",
+    "UNRECOGNIZED_PHRASE",
     "TruncatedAuthorityResponseError",
     "UnsupportedNamespaceError",
     "WebsearchScopeError",
@@ -84,6 +85,10 @@ _TAXON_ALIASES: dict[str, frozenset[str]] = {
     name: group for group in _TAXON_GROUPS for name in group
 }
 TAXON_REQUIRED_SOURCE = "taxon_required"
+# Both preflight paths end an unrecognized-label error with this phrase and
+# the comma-joined labels. The repair-hint reader parses it, so the wording
+# lives here rather than being repeated as a literal in three places.
+UNRECOGNIZED_PHRASE = "not recognized by the configured gene authority: "
 _TAXON_REQUIRED_SOURCE = TAXON_REQUIRED_SOURCE
 
 # Published unauthenticated ceilings: NCBI allows about 3 requests/second and
