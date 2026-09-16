@@ -9,6 +9,8 @@ from .context import _PlanningContext
 from ..data.bonobo import bonobo_artifact_paths, load_bonobo_inputs
 from ..data.bundles import MULTI_FILE_ACTIONS, discover_bundle_candidates
 from ..data.content_mapping import detect_role_mismatches, infer_input_roles
+from ..data.gene_repair_hints import suggest_gene_corrections
+from ..data.gene_validation import UNRECOGNIZED_PHRASE
 from ..data.preflight import validate_workflow_inputs
 from ..contracts import InputEvidence, OUTPUT_ROLE_FIELDS, PROJECT_ROOT, _is_demo_request
 from ..interpretation import (
@@ -577,6 +579,11 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             context.role_mismatch_hints[:] = _role_mismatch_hints(
                 action, decision, input_fields, context.content_mapper
             )
+            context.gene_repair_hints[:] = _gene_repair_hints(
+                context.preflight_errors,
+                getattr(decision, "taxon", "") or "",
+                context.content_mapper,
+            )
     handoff = context.workflow_handoff
     if (
         action == "run_bonobo"
@@ -645,4 +652,40 @@ def _role_mismatch_hints(
         f"{field_name}: {_resolve_user_path(bindings[field_name]).resolve()} does "
         f"not match this role; {path} does"
         for field_name, path in sorted(corrections.items())
+    ]
+
+
+def _unrecognized_labels(errors: list[str]) -> list[str]:
+    """Read back the labels the authority rejected, from the shared phrase."""
+    labels: list[str] = []
+    for error in errors:
+        _, separator, listed = error.partition(UNRECOGNIZED_PHRASE)
+        if not separator:
+            continue
+        labels.extend(
+            value.strip() for value in listed.split(",") if value.strip()
+        )
+    return list(dict.fromkeys(labels))
+
+
+def _gene_repair_hints(
+    preflight_errors: list[str],
+    taxon: str,
+    mapper: Any | None,
+) -> list[str]:
+    """Explain what a rejected label was probably meant to be.
+
+    Advisory only, and only on a path that has already failed. A proposed
+    symbol appears solely when the gene authority confirms it exists.
+    """
+    labels = _unrecognized_labels(preflight_errors)
+    if not labels:
+        return []
+    return [
+        (
+            f"{label}: probably {symbol}. {reason}".strip()
+            if symbol
+            else f"{label}: {reason}"
+        )
+        for label, symbol, reason in suggest_gene_corrections(labels, taxon, mapper)
     ]

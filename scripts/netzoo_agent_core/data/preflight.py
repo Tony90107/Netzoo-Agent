@@ -13,6 +13,7 @@ from .dragon import inspect_dragon_inputs_impl
 from .giraffe import inspect_giraffe_inputs_impl, load_giraffe_inputs
 from .gene_validation import (
     TAXON_REQUIRED_SOURCE,
+    UNRECOGNIZED_PHRASE,
     validate_gene_identifiers,
 )
 from .coexpression import read_coexpression_matrix
@@ -155,8 +156,7 @@ def _gene_axis_errors(
         )
     if invalid:
         errors.append(
-            f"{label}: not recognized by the configured gene authority: "
-            + ", ".join(invalid[:5])
+            f"{label}: {UNRECOGNIZED_PHRASE}" + ", ".join(invalid[:5])
         )
     if ambiguous:
         errors.append(

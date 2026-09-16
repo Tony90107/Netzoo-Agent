@@ -44,6 +44,7 @@ class _PlanningContext:
     content_mapper: Any | None = None
     preflight_errors: list[str] = field(default_factory=list)
     role_mismatch_hints: list[str] = field(default_factory=list)
+    gene_repair_hints: list[str] = field(default_factory=list)
 
 
 def _prepare_planning_context(

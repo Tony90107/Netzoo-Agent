@@ -16,6 +16,7 @@ from netzoo_table_io import (
 
 from .gene_validation import (
     TAXON_REQUIRED_SOURCE,
+    UNRECOGNIZED_PHRASE,
     GeneValidationSummary,
     validate_gene_identifiers,
 )
@@ -727,8 +728,7 @@ def _inspect_panda_inputs_impl(
         )
         if invalid_ids:
             message = (
-                f"{role} not recognized by the configured gene authority: "
-                + ", ".join(invalid_ids[:5])
+                f"{role} {UNRECOGNIZED_PHRASE}" + ", ".join(invalid_ids[:5])
             )
             if settings.TEST_DATA_MODE:
                 check.warnings.append(
