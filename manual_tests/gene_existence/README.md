@@ -58,3 +58,30 @@ PPI 調控子）都要報。
 2. b 的錯誤訊息有沒有**指名道姓**，還是只給一句籠統的失敗
 3. b 有沒有**誤傷**——訊息裡不該出現任何 dataset_a 的基因
 4. 兩邊花的時間差多少（b 要多做幾次 NCBI 查詢是正常的）
+
+---
+
+## 目前 prompt 走不到基因驗證（已實測，2026-09-16）
+
+三個 prompt 都會被 router 擋在最前面，根本進不到基因檢查。實測紀錄：
+
+- 同一個 prompt 連跑三次，三種不同結果：router schema 驗證失敗 / 直接要求澄清 /
+  成功路由但列出六個相容 workflow 要你選。溫度是 0，但仍不穩定。
+- router 失敗時，deterministic fallback **把三個輸入檔全部丟掉**，只抓到
+  `output_dir: outputs/ge_a.tsv`（那是個 .tsv 檔案，不是資料夾）。
+  澄清訊息寫「captured inputs will be carried forward」，但其實沒有東西可以 carry。
+- 用中文回答它的澄清問題會被拒絕（「Please enter a concrete follow-up question…」），
+  英文同義句會被接受。各試兩次，結果一致。
+- 即使英文答案成功路由到 PANDA，原本給的三個檔案已經遺失，所以只吐出一段
+  「PANDA 需要哪些輸入」的說明，不是可執行的 Work Plan。
+
+這是路由層的問題，跟基因驗證無關。在修好之前，用下面的方式跑這個比對。
+
+## 不經過 router 的跑法
+
+```bash
+python manual_tests/gene_existence/run_comparison.py
+```
+
+直接對兩份測資跑輸入驗證，每次自動用全新快取，輸出三個案例的結果。
+測的就是 prompt 原本想測的那一段。
