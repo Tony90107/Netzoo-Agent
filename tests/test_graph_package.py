@@ -99,6 +99,44 @@ def test_semantic_failure_recovers_explicit_web_search_tool():
     assert result.decision.matched_actions == ["web_search"]
 
 
+def test_semantic_failure_recovers_chinese_panda_run_with_listed_inputs():
+    router_invocation = importlib.import_module(
+        "netzoo_agent_core.graph.router_invocation"
+    )
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    dataset = "manual_tests/gene_existence/dataset_a"
+    task = (
+        f"用 {dataset}/expression.tsv {dataset}/motif.tsv {dataset}/ppi.tsv "
+        "這三個檔案跑 PANDA，物種是 human，"
+        "輸出到 outputs/gene_existence_a.tsv"
+    )
+    context = SimpleNamespace(
+        project_policy=policy,
+        recorder=legacy_agent.NullTraceRecorder(),
+    )
+
+    result = router_invocation._semantic_failure(
+        context,
+        {},
+        task,
+        legacy_agent.LLMUsage(budget_tokens=20_000),
+        [],
+        error=ValueError("semantic schema validation failed"),
+        reason_code="semantic_fallback",
+    )
+
+    decision = result.decision
+    assert decision.action == "run_panda"
+    assert decision.should_execute is True
+    assert decision.expression_file == f"{dataset}/expression.tsv"
+    assert decision.motif_file == f"{dataset}/motif.tsv"
+    assert decision.ppi_file == f"{dataset}/ppi.tsv"
+    assert decision.taxon == "human"
+    assert decision.output_file == "outputs/gene_existence_a.tsv"
+    assert decision.output_dir is None
+    assert decision.missing_inputs == []
+
+
 def test_failed_web_search_is_not_rendered_as_a_negative_match():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()

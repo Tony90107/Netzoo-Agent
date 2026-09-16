@@ -369,6 +369,14 @@ def input_confirmation_continuation(
             f"{handoff.consumer_workflow or 'the registered consumer'} "
             "with the same sample IDs and gene order."
         )
+    # Input confirmation is about inferred file roles, not permission to replace
+    # already parsed run controls. Keep the organism and output destinations in
+    # the trusted continuation so the second planning pass cannot silently fall
+    # back to a default output or lose the gene-validation scope.
+    for field_name in ("taxon", "output_file", "lioness_output", "output_dir"):
+        value = getattr(decision, field_name, None)
+        if value:
+            continuation += f" {field_name}={value};"
     if approved:
         for item in plan.evidence:
             if (

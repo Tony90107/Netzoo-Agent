@@ -61,21 +61,19 @@ PPI 調控子）都要報。
 
 ---
 
-## 目前 prompt 走不到基因驗證（已實測，2026-09-16）
+## Router regression（已修正，2026-09-16）
 
-三個 prompt 都會被 router 擋在最前面，根本進不到基因檢查。實測紀錄：
+原本 semantic router 輸出驗證失敗時，deterministic fallback 無法把「用三個檔案跑
+PANDA」辨識為執行指令，也會丟失三個輸入檔、物種與輸出檔。現在 fallback 會：
 
-- 同一個 prompt 連跑三次，三種不同結果：router schema 驗證失敗 / 直接要求澄清 /
-  成功路由但列出六個相容 workflow 要你選。溫度是 0，但仍不穩定。
-- router 失敗時，deterministic fallback **把三個輸入檔全部丟掉**，只抓到
-  `output_dir: outputs/ge_a.tsv`（那是個 .tsv 檔案，不是資料夾）。
-  澄清訊息寫「captured inputs will be carried forward」，但其實沒有東西可以 carry。
-- 用中文回答它的澄清問題會被拒絕（「Please enter a concrete follow-up question…」），
-  英文同義句會被接受。各試兩次，結果一致。
-- 即使英文答案成功路由到 PANDA，原本給的三個檔案已經遺失，所以只吐出一段
-  「PANDA 需要哪些輸入」的說明，不是可執行的 Work Plan。
+- 將這種中文句型恢復為明確的 `run_panda`。
+- 以檔名提示保留 `expression_file` / `motif_file` / `ppi_file`，再由 preflight
+  檢查內容與基因標籤。
+- 正確保留 `taxon=human` 與 `.tsv` `output_file`，包含檔案角色確認後的第二次規劃。
 
-這是路由層的問題，跟基因驗證無關。在修好之前，用下面的方式跑這個比對。
+prompt_a 可能會先要求確認三個由檔名推定的角色；輸入 `y` 後應通過並產生
+Work Plan。prompt_b 應在 preflight 直接被擋下。下面的無 router 比對仍保留作為
+gene-authority 層的獨立診斷工具。
 
 ## 不經過 router 的跑法
 

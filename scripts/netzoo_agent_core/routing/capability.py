@@ -118,6 +118,8 @@ WORKFLOW_SELECTION_PATTERNS = (
 EXPLICIT_EXECUTION_PATTERNS = (
     r"(?:^|[，,。！？!?;；\n])\s*(?:請|幫我|替我|我要|我想(?:要)?|please\s+)?"
     r"(?:直接\s*)?(?:執行|跑|試跑|測試|檢查|驗證|分析)\b",
+    r"(?:^|[，,。！？!?;；\n])\s*(?:請|幫我|替我|我要|我想(?:要)?)?"
+    r"(?:用|使用)[^，,。！？!?;；\n]{1,400}?(?:執行|跑|試跑|測試|檢查|驗證|分析)\b",
     r"(?:^|[,.!?;\n])\s*(?:(?:please|can you|could you)\s+|"
     r"i\s+(?:want|need)\s+to\s+)?(?:directly\s+)?"
     r"(?:run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b",
@@ -262,6 +264,8 @@ def has_direct_execution_intent(task: str) -> bool:
     """Require an instruction to act; goals phrased as how-to questions stay advisory."""
     if is_workflow_information_request(task):
         return False
+    if has_explicit_execution_request(task):
+        return True
     return bool(
         re.search(
             r"((?:請|幫我|替我).{0,24}(?:建立|建構|產生|推論|執行|跑|試跑|測試|檢查|驗證|分析|做)|"

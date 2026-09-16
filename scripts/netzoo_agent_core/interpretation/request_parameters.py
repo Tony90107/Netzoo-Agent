@@ -46,6 +46,24 @@ _BOOLEAN_FIELDS = (
     "centered",
 )
 
+_TAXON_NEXT_FIELD = (
+    r"expression_file|motif_file|ppi_file|output_file|output_dir|taxon|species|organism"
+)
+
+
+def extract_explicit_taxon(task: str) -> str | None:
+    """Return an explicitly labelled organism without interpreting free prose."""
+    match = re.search(
+        rf"(?:(?<![A-Za-z0-9_])(?:taxon|species|organism)(?![A-Za-z0-9_])|物種)"
+        rf"\s*(?:=|:|：|is\b|是|為)\s*"
+        rf"(?P<taxon>[A-Za-z0-9_-]+"
+        rf"(?:\s+(?!(?:{_TAXON_NEXT_FIELD})\b)[A-Za-z][A-Za-z0-9_-]+)?)"
+        rf"(?=\s*(?:$|[,，;；。!?！？\n]|[^A-Za-z0-9_\s]|(?:{_TAXON_NEXT_FIELD})\b))",
+        task,
+        flags=re.IGNORECASE,
+    )
+    return match.group("taxon").strip() if match else None
+
 
 def _sample_names(task: str) -> list[str]:
     assignment = re.search(
@@ -122,6 +140,9 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
         if value:
             parameters[field_name] = value
     _place_output_by_shape(parameters)
+    taxon = extract_explicit_taxon(task)
+    if taxon:
+        parameters["taxon"] = taxon
     names = _sample_names(task)
     if names:
         parameters["sample_names"] = names
