@@ -70,3 +70,51 @@ tfa-factorization-rejects-named-panda。
 3. **C**：先釐清這是路由缺陷還是 harness 期望的問題，再決定要不要動。
 
 **不要再用單一失敗案例推論優先序。** 這份分析的起因就是上一次那樣做的代價。
+
+---
+
+## 追加：B 做不得，而且 B 也不是主因（同日）
+
+### B 撞上一條刻意的設計
+
+用確定性證人回填 `input_artifacts` 會弄壞 15 個既有測試，名稱直接寫著意圖：
+`test_omitting_a_confirmed_input_is_still_rejected`、
+`test_repeated_omission_of_explicit_current_input_cannot_pass`。
+其中一個的 docstring 講得最清楚：
+
+> Dropping the evidence demand must not drop the completeness demand.
+
+證人豁免的是「舉證義務」，不是「宣告義務」。outcome 仍然必須自己宣告它理解到的
+輸入，因為下游比對讀的是那個欄位。把兩者混為一談正是那些測試在防的事。已全部退回。
+
+### B 本來也不是獨立的失敗原因
+
+| 切法 | trials | 通過 |
+| --- | --- | --- |
+| `missing_current_input:expression_matrix` 且同時中 A | 55 | **0** |
+| 同樣的問題但**沒有**中 A | 51 | 31（61%） |
+| A 且完全沒有 input 問題 | 22 | **0** |
+
+**A 單獨就致命（77 trials，0 通過），B 單獨不致命（61% 通過）。**
+先前把 B 排在 A 前面是錯的，理由是我看計數而沒看共現。
+
+### A 的根因是已知的 selection_tags 失效
+
+A 的觸發條件是「期望 exact 卻問了澄清」，而那些 trial 的 `status` 是 ambiguous
+或 unsupported，`match_basis` 全部是 semantic。候選集合本身就是多路的：
+
+```
+reverse-history-expression      ['run_lioness_panda', 'run_lioness_puma']
+aggregate-tf-relaxed-matching   ['run_panda', 'run_lioness_panda', 'run_otter', 'run_giraffe']
+per-sample-coexpression         ['run_lioness_coexpression', 'run_bonobo']
+```
+
+這些候選在 artifact / granularity / 角色上全部相同，唯一能區分的是
+`selection_tags`——而 77 個 A trial 裡有 **66 個的 selection_tags 是空的**，
+全語料庫的填答率是 **15.8%（47/297）**。
+
+也就是說：**pass_rate 卡在 36–39% 的天花板，不在證據契約，在區分機制沒有被填。**
+證據契約修到完美也只值大約 7 點（無問題 trial 的通過率是 45.5%）。
+
+改 prompt 措辭是已知無效的補救方式，所以下一步若要動，必須是契約形狀：
+讓區分維度成為一等欄位，而不是自由填寫的標籤。
