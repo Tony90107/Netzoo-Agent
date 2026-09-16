@@ -82,6 +82,22 @@ def _needs_detail(reason: str) -> ContextualReplyResolution:
     )
 
 
+def _revalidate(context: FollowUpContext, reply: str, reason: str) -> ContextualReplyResolution:
+    """Send a substantive reply back through semantic validation.
+
+    A follow_up authorizes nothing; it only restates the prior goal alongside
+    the reply so routing decides again. It is therefore the safe answer
+    wherever the alternative is refusing to process an answer we asked for.
+    """
+    return ContextualReplyResolution(
+        kind="follow_up",
+        reason=reason[:240],
+        resolved_task=(
+            f"Previous NetZoo goal: {context.prior_user_goal}\nUser follow-up: {reply}"
+        ),
+    )
+
+
 def _validated_resolution(
     decision: ReplyIntentDecision,
     context: FollowUpContext,
@@ -108,6 +124,17 @@ def _validated_resolution(
         if selected_action is None:
             selected_action = context.continuation_action or context.alternative_action
         if selected_action is None or selected_action not in trusted_actions:
+            if not trusted_actions:
+                # Routing failed, so the turn carries no validated candidate.
+                # Refusing the answer here asked the user which result they
+                # wanted and then told them their choice was absent from a set
+                # that was empty. Revalidate instead; nothing is authorized by
+                # it, and the named workflow still has to survive routing.
+                return _revalidate(
+                    context,
+                    reply,
+                    "No validated candidate was carried into this turn.",
+                )
             return _needs_detail(
                 "The selected workflow is not present in trusted conversation context."
             )

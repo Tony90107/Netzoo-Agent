@@ -4,9 +4,23 @@ from __future__ import annotations
 
 import re
 
+from .discovery import _unlabeled_input_bindings
 from .extraction import _task_path
 
 __all__: list[str] = []
+
+# Roles whose file a request may name without saying which role it is.
+_INPUT_ROLE_FIELDS = tuple(
+    field_name for field_name in (
+        "expression_file", "design_file", "motif_file", "ppi_file",
+        "mirna_file", "coexpression_file", "network_file", "mutation_file",
+        "exon_size_file", "cancer_gene_file", "pathway_file",
+    )
+)
+_FILE_SUFFIXES = (
+    ".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy", ".npz", ".bed", ".mtx",
+    ".h5", ".hdf5", ".gz",
+)
 
 _PATH_FIELDS = (
     "expression_file",
@@ -70,6 +84,35 @@ def _explicit_path(task: str, field_name: str) -> str | None:
     return _task_path(task, field_name)
 
 
+def _looks_like_file(value: object) -> bool:
+    return str(value).casefold().endswith(_FILE_SUFFIXES)
+
+
+def _place_output_by_shape(parameters: dict[str, object]) -> None:
+    """Let the value decide whether an output is a file or a directory.
+
+    "輸出到 X" and "output to X" mean the same thing, but the first matches an
+    output_dir alias and the second an output_file alias, so the same request
+    echoed a path as a directory in one language and a file in the other. A
+    value ending in a table suffix is a file whichever phrase introduced it.
+    """
+    directory = parameters.get("output_dir")
+    if directory is not None and _looks_like_file(directory):
+        parameters.pop("output_dir")
+        parameters.setdefault("output_file", directory)
+
+
+def extract_recognized_input_files(task: str) -> dict[str, str]:
+    """Return input files the request names without naming their role.
+
+    The echo exists to show the user what survived a routing failure. Listing
+    only role-labelled paths meant a request that simply listed its files
+    reported nothing at all, under a sentence promising those inputs would be
+    carried forward.
+    """
+    return _unlabeled_input_bindings(task, _INPUT_ROLE_FIELDS)
+
+
 def extract_explicit_request_parameters(task: str) -> dict[str, object]:
     """Return only values explicitly present in the latest user request."""
     parameters: dict[str, object] = {}
@@ -77,6 +120,7 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
         value = _explicit_path(task, field_name)
         if value:
             parameters[field_name] = value
+    _place_output_by_shape(parameters)
     names = _sample_names(task)
     if names:
         parameters["sample_names"] = names
@@ -137,4 +181,22 @@ def render_request_parameters(parameters: dict[str, object]) -> str:
 
 def render_explicit_request_parameters(task: str) -> str | None:
     parameters = extract_explicit_request_parameters(task)
-    return render_request_parameters(parameters) if parameters else None
+    recognized = {
+        field_name: value
+        for field_name, value in extract_recognized_input_files(task).items()
+        if field_name not in parameters
+    }
+    if not parameters and not recognized:
+        return None
+    sections = []
+    if parameters:
+        sections.append(render_request_parameters(parameters))
+    if recognized:
+        lines = "\n".join(
+            f"- `{field_name}`: {value}" for field_name, value in recognized.items()
+        )
+        sections.append(
+            "Input files recognized by filename (role not stated in the "
+            f"request, so it is still to be confirmed):\n\n{lines}"
+        )
+    return "\n\n".join(sections)
