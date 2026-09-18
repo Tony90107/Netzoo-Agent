@@ -226,6 +226,62 @@ def test_current_input_artifact_requires_its_own_consistent_evidence():
     assert not validate_outcome_hypotheses(task, [conflicting]).valid
 
 
+def test_explicit_input_evidence_must_use_the_canonical_artifact_in_its_quote():
+    task = "I have expression, TF motif prior, and PPI inputs."
+    hypothesis = OutcomeHypothesis(
+        outcome=RequestedOutcome(
+            operation="infer",
+            input_artifacts=[
+                "expression_matrix",
+                "tf_activity_matrix",
+                "regulatory_network",
+            ],
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="aggregate",
+        ),
+        confidence=0.9,
+        evidence=[
+            evidence("operation", "infer", source="inferred"),
+            evidence("artifact_type", "regulatory_network", source="inferred"),
+            evidence("entity_type", "tf", source="inferred"),
+            evidence("entity_type", "gene", source="inferred"),
+            evidence("regulator_type", "tf", source="inferred"),
+            evidence("target_type", "gene", source="inferred"),
+            evidence("granularity", "aggregate", source="inferred"),
+            evidence(
+                "input_artifact",
+                "expression_matrix",
+                text_span="expression, TF motif prior, and PPI inputs",
+            ),
+            evidence(
+                "input_artifact",
+                "tf_activity_matrix",
+                text_span="expression, TF motif prior, and PPI inputs",
+            ),
+            evidence(
+                "input_artifact",
+                "regulatory_network",
+                text_span="expression, TF motif prior, and PPI inputs",
+            ),
+        ],
+    )
+
+    result = validate_outcome_hypotheses(task, [hypothesis])
+
+    assert result.valid is False
+    assert (
+        "hypothesis[0].conflicting_evidence:input_artifact=tf_activity_matrix"
+        in result.issues
+    )
+    assert (
+        "hypothesis[0].conflicting_evidence:input_artifact=regulatory_network"
+        in result.issues
+    )
+
+
 def test_evidence_validator_rejects_an_ungrounded_explicit_span():
     task = "Infer a sample-specific miRNA regulatory network."
     hypothesis = OutcomeHypothesis(

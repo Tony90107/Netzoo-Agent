@@ -22,6 +22,19 @@ INPUT_PATTERNS = {
     "expression_matrix": r"\bRNA[- ]?Seq\b|\b(?:gene )?expression (?:matrix|data|dataset)\b|"
                          r"(?:基因)?表現量?(?:矩陣|資料)",
 }
+_INPUT_EVIDENCE_PATTERNS = {
+    **INPUT_PATTERNS,
+    # These aliases validate only the meaning of an evidence quote. They do not
+    # expand the temporal input witness above, whose deliberately small surface
+    # is pinned by spelling and history corpus tests.
+    "expression_matrix": INPUT_PATTERNS["expression_matrix"]
+                         + r"|\bexpression\b(?=\s*[,，]|\s+inputs?\b)",
+    "motif_prior": r"\b(?:TF[- ]?)?motifs?\b(?:\s+(?:priors?|data|file|matrix|inputs?)\b)?|"
+                   r"(?:TF[- ]?)?motif[^。！？!?;；\n]{0,12}先驗",
+    "ppi_prior": r"\bPPI\b(?:\s+(?:priors?|data|matrix|file|inputs?)\b)?|"
+                 r"\bprotein[- ]protein interaction(?:s|\s+(?:priors?|data|matrix|file|inputs?))?\b|"
+                 r"(?:蛋白質交互作用|蛋白質互作)[^。！？!?;；\n]{0,12}(?:先驗|資料|矩陣)?",
+}
 # Completion is bound to a verb, never to a bare adverb. Scope is decided per
 # clause and a history hit overrides a current hit in the same clause, so a bare
 # `already` would read "I already have an expression matrix" as history and make
@@ -58,12 +71,26 @@ _PATIENT_CLUSTER = re.compile(
     r"(?:分群|分組).{0,10}(?:病患|病人|患者)", re.I,
 )
 _GOAL_NEGATED = re.compile(r"\b(?:not|no|without)\b|不要|不做|不需要|不進行", re.I)
+_REGULATORY_ROLE_PAIR = re.compile(
+    r"\b(?P<regulator>TFs?|transcription\s+factors?|mi(?:cro)?[- ]?RNAs?)\b"
+    r"(?:\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*|\s*(?:-|–|—|→)\s*)"
+    r"(?P<target>genes?)\b",
+    re.I,
+)
 
 
 @dataclass(frozen=True)
 class InputMention:
     artifact: str
     status: str
+    text_span: str
+
+
+@dataclass(frozen=True)
+class RegulatoryRoleMention:
+    regulator_type: str
+    target_type: str
+    entity_types: tuple[str, str]
     text_span: str
 
 
@@ -103,9 +130,41 @@ def input_mentions(task: str) -> tuple[InputMention, ...]:
     return tuple(mentions)
 
 
+def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
+    """Return only explicit current regulator-to-target role phrases."""
+    mentions = []
+    for clause, scope in _scoped_clauses(task):
+        if scope != "current":
+            continue
+        for match in _REGULATORY_ROLE_PAIR.finditer(clause):
+            if _NEGATED.search(clause[:match.start()]):
+                continue
+            regulator_text = match.group("regulator").casefold()
+            regulator = "tf" if (
+                regulator_text.startswith("tf")
+                or regulator_text.startswith("transcription")
+            ) else "mirna"
+            mentions.append(RegulatoryRoleMention(
+                regulator_type=regulator,
+                target_type="gene",
+                entity_types=(regulator, "gene"),
+                text_span=match.group(0),
+            ))
+    return tuple(mentions)
+
+
 def confirmed_current_inputs(task: str) -> set[str]:
     """Return the artifacts these witnesses locate in the request as current."""
     return {item.artifact for item in input_mentions(task) if item.status == "current"}
+
+
+def canonical_input_artifacts_in_text(text: str) -> frozenset[str]:
+    """Map known input words in one evidence quote to canonical artifacts."""
+    return frozenset(
+        artifact
+        for artifact, pattern in _INPUT_EVIDENCE_PATTERNS.items()
+        if re.search(pattern, text, re.I)
+    )
 
 
 def request_integrity_issues(task: str, outcome) -> list[str]:

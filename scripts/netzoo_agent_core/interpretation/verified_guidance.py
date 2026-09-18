@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
+from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
 from ..settings import INPUT_ROLE_FIELDS
 from workflow_registry import get_controls
@@ -19,7 +20,13 @@ from .request_parameters import extract_explicit_request_parameters, render_requ
 
 def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str) -> dict:
     """Recompute trusted response assertions; model-supplied reasons are not facts."""
-    inputs = decision.requested_outcome.input_artifacts if decision.requested_outcome else decision.guidance_input_artifacts
+    semantic_inputs = (
+        decision.requested_outcome.input_artifacts
+        if decision.requested_outcome
+        else decision.guidance_input_artifacts
+    )
+    inputs = sorted(set(semantic_inputs) - {"unknown"})
+    stated_input_availability = input_availability(task)
     actions = list(dict.fromkeys([*decision.matched_actions, *decision.recommended_actions]))
     rejections = rejected_methods_for(
         task, inputs, actions=[*actions, *(item.action for item in decision.rejected_methods)],
@@ -27,7 +34,11 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         names={action: spec.workflow for action, spec in policy.workflows.items()},
     )
     return {
-        "input_compatibility": "assessed" if set(inputs) - {"unknown"} else "not_assessed",
+        "input_compatibility": (
+            "assessed"
+            if inputs or stated_input_availability.present or stated_input_availability.absent
+            else "not_assessed"
+        ),
         "explanations": scientific_explanations(
             task, [policy.workflows[action].output_capability.model_dump() for action in actions
                    if action in policy.workflows and action not in {item.action for item in rejections}],

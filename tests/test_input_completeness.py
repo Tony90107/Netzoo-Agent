@@ -162,6 +162,40 @@ def test_unknown_input_compatibility_is_explicit_in_guidance():
     assert "Input compatibility has not been assessed" in render_verified_guidance(decision, facts)
 
 
+def test_grounded_task_inputs_prevent_a_false_not_assessed_guidance_claim():
+    from netzoo_agent_core.contracts import RequestedOutcome, TaskDecision
+    from netzoo_agent_core.interpretation.verified_guidance import (
+        guidance_contract,
+        render_verified_guidance,
+    )
+    from netzoo_agent_core.policy import ProjectPolicyLoader
+
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        confidence=0.9,
+        reason="Scientific output match",
+        capability_match_status="exact",
+        matched_actions=["run_otter"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="aggregate",
+        ),
+    )
+    task = "I have expression, TF motif prior, and PPI inputs. Advice only."
+
+    facts = guidance_contract(decision, ProjectPolicyLoader().load(), task)
+    answer = render_verified_guidance(decision, facts)
+
+    assert facts["input_compatibility"] == "assessed"
+    assert "Input compatibility has not been assessed" not in answer
+
+
 def test_current_input_survives_a_question_about_an_unconfirmed_method():
     task = "I have a WES somatic mutation matrix. Could PANDA cluster patients with it?"
     result = validation(task, omit_inputs(cluster_item()))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 import re
 
 from workflow_registry import OutputCapabilityDefinition
@@ -13,7 +14,12 @@ from ..contracts.artifact_semantics import (
     ARTIFACT_SEMANTICS,
     outcome_consistency_issues,
 )
-from ..interpretation.request_integrity import input_mentions
+from ..interpretation.request_integrity import (
+    _CURRENT,
+    _HISTORY,
+    _scoped_clauses,
+    input_mentions,
+)
 from .candidate_ranking import _UNKNOWN
 
 
@@ -29,6 +35,50 @@ _NEGATED_INPUT = re.compile(
     r"沒有|不需要|無|非",
     re.IGNORECASE,
 )
+_PRIOR_PATTERNS = {
+    "mirna_prior": _MIRNA_PRIOR,
+    "motif_prior": re.compile(
+        r"\b(?:TF[- ]?)?motifs?\b(?:\s+(?:priors?|data|file|matrix)\b|"
+        r"[^。！？!?;；\n]{0,40}\bPPI\b[^。！？!?;；\n]{0,24}\bpriors?\b)|"
+        r"(?:TF[- ]?)?motif[^。！？!?;；\n]{0,12}先驗",
+        re.IGNORECASE,
+    ),
+    "ppi_prior": re.compile(
+        r"\bPPI\b(?:\s+(?:priors?|data|network|matrix|file)\b)?|"
+        r"\bprotein[- ]protein interaction(?:s|\s+(?:priors?|data|network|matrix))?\b|"
+        r"(?:蛋白質交互作用|蛋白質互作)[^。！？!?;；\n]{0,12}(?:先驗|網路|資料|矩陣)?",
+        re.IGNORECASE,
+    ),
+}
+_MIRNA_SHARED_PRIOR_BUNDLE = re.compile(
+    r"\bmi[- ]?RNA\b\s*[,，][^。！？!?;；\n]{0,64}\b(?:motif|PPI)\b"
+    r"[^。！？!?;；\n]{0,32}\bpriors?\b",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class InputAvailability:
+    """Three-state input evidence: present, absent, or unmentioned/unknown."""
+
+    present: frozenset[str] = frozenset()
+    absent: frozenset[str] = frozenset()
+
+    def status(self, artifact: str) -> str:
+        if artifact in self.present:
+            return "present"
+        if artifact in self.absent:
+            return "absent"
+        return "unknown"
+
+
+InputAvailabilityLike = InputAvailability | Sequence[str]
+
+
+def _as_input_availability(value: InputAvailabilityLike) -> InputAvailability:
+    if isinstance(value, InputAvailability):
+        return value
+    return InputAvailability(present=frozenset(value) - {_UNKNOWN})
 
 
 def _produced_artifacts(capability: OutputCapabilityDefinition) -> frozenset[str]:
@@ -63,22 +113,15 @@ def _supported_entities(
 def _accepts_inputs(
     outcome: RequestedOutcome,
     capability: OutputCapabilityDefinition,
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
 ) -> bool:
     requested = set(outcome.input_artifacts) - {_UNKNOWN}
-    # A requested artifact is not evidence that the user actually has it. The
-    # separate lexical scope is the only negative evidence used to eliminate a
-    # capability whose executor requires an additional prior.
-    observed = set(available_inputs) - {_UNKNOWN}
-    missing_required = set(capability.required_input_artifacts) - observed
-    # A stated miRNA regulator role is itself evidence that the miRNA prior is
-    # available. This preserves guidance requests that describe the biological
-    # role but omit the file noun; an explicitly TF-only request, however, must
-    # not keep PUMA alive when its required miRNA prior is absent.
-    if observed and missing_required and not (
-        missing_required == {"mirna_prior"}
-        and "mirna" in set(outcome.regulator_types)
-    ):
+    availability = _as_input_availability(available_inputs)
+    # Open-world rule: an unmentioned prerequisite is unknown, not absent.
+    # Only an explicit negative statement may eliminate a capability here.
+    if set(capability.required_input_artifacts) & set(availability.absent):
+        return False
+    if requested & set(availability.absent):
         return False
     return (
         requested.issubset(capability.input_artifacts)
@@ -86,33 +129,61 @@ def _accepts_inputs(
     )
 
 
-def explicit_input_artifacts(task: str) -> frozenset[str]:
-    """Share the validator's current-input scope, including on fallback paths."""
-    artifacts = {
+def input_availability(task: str) -> InputAvailability:
+    """Extract bounded present/absent evidence without closing the input world."""
+    present = {
         mention.artifact
         for mention in input_mentions(task)
         if mention.status == "current"
     }
-    # Comma-separated bundles such as "miRNA, motif and PPI priors" are not
-    # handled by the general input vocabulary because priors are executor
-    # prerequisites rather than user-facing outcome artifacts. Recognize only
-    # prior-specific phrases here. In particular, do not use generic words such
-    # as "data" or "matrix": "miRNA expression data" is a measured omics layer,
-    # not a miRNA prior. Also ignore a local negation such as "without miRNA
-    # priors"; a missing prior is evidence against PUMA, not evidence that one is
-    # present.
-    for match in _MIRNA_PRIOR.finditer(task):
-        clause_start = max(
+    absent = {
+        mention.artifact
+        for mention in input_mentions(task)
+        if mention.status == "negated"
+    }
+    # Priors are executor prerequisites rather than public output-ontology
+    # values, so they stay out of INPUT_PATTERNS while sharing its temporal
+    # clause scope here.  This recognizes bundles such as "miRNA, motif and PPI
+    # priors" without confusing measured miRNA expression with a miRNA prior.
+    for clause, scope in _scoped_clauses(task):
+        if scope != "current":
+            continue
+        for artifact, pattern in _PRIOR_PATTERNS.items():
+            for match in pattern.finditer(clause):
+                prefix = clause[:match.start()]
+                negated = bool(
+                    _NEGATED_INPUT.search(prefix[-40:])
+                    or _NEGATED_INPUT.search(match.group())
+                )
+                (absent if negated else present).add(artifact)
+    # The clause iterator intentionally splits commas, while English commonly
+    # shares the final noun across a list: "miRNA, motif and PPI priors".  Keep
+    # this narrow whole-sentence witness so the first list item is not lost.
+    for match in _MIRNA_SHARED_PRIOR_BUNDLE.finditer(task):
+        sentence_start = max(
             task.rfind(delimiter, 0, match.start())
             for delimiter in (".", "。", "！", "!", "？", "?", ";", "；", "\n")
         ) + 1
-        prefix = task[clause_start:match.start()]
-        phrase = match.group()
-        if _NEGATED_INPUT.search(prefix[-40:]) or _NEGATED_INPUT.search(phrase):
+        scope_prefix = task[sentence_start:match.start()]
+        history_at = max((item.start() for item in _HISTORY.finditer(scope_prefix)), default=-1)
+        current_at = max((item.start() for item in _CURRENT.finditer(scope_prefix)), default=-1)
+        if history_at > current_at:
             continue
-        artifacts.add("mirna_prior")
-        break
-    return frozenset(artifacts)
+        prefix = scope_prefix[-40:]
+        if _NEGATED_INPUT.search(prefix) or _NEGATED_INPUT.search(match.group()):
+            absent.add("mirna_prior")
+        else:
+            present.add("mirna_prior")
+    absent.difference_update(present)
+    return InputAvailability(
+        present=frozenset(present),
+        absent=frozenset(absent),
+    )
+
+
+def explicit_input_artifacts(task: str) -> frozenset[str]:
+    """Backward-compatible view of inputs explicitly present in the request."""
+    return input_availability(task).present
 
 
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
@@ -142,7 +213,7 @@ def _has_unknown(outcome: RequestedOutcome) -> bool:
 def _matches(
     outcome: RequestedOutcome,
     capability: OutputCapabilityDefinition,
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
 ) -> bool:
     if _has_unknown(outcome) or outcome_consistency_issues(outcome):
         return False
@@ -171,7 +242,7 @@ def _known_set_matches(requested: Sequence[str], supported: frozenset[str]) -> b
 def _partially_compatible(
     outcome: RequestedOutcome,
     capability: OutputCapabilityDefinition,
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
 ) -> bool:
     return (
         _known_scalar_matches(outcome.operation, capability.operation)
@@ -246,6 +317,8 @@ def _matches_explicit_evidence(
 
 
 __all__ = [
+    "InputAvailability",
+    "InputAvailabilityLike",
     "_accepts_inputs",
     "_complete_guidance_match",
     "_has_unknown",
@@ -260,4 +333,5 @@ __all__ = [
     "_supported_artifacts",
     "_supported_entities",
     "explicit_input_artifacts",
+    "input_availability",
 ]

@@ -395,6 +395,43 @@ def test_measurement_request_explains_gap_before_offering_network():
     assert "No files were inspected and no analysis ran." in answer
 
 
+def test_input_availability_gap_does_not_claim_the_outcome_is_unsupported():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=False,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="required input explicitly unavailable",
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            display_entities=["TF", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="aggregate",
+            unresolved_dimensions=[],
+        ),
+        capability_match_status="unsupported",
+        mismatch_dimensions=["input_artifacts"],
+        clarification_question=(
+            "A required input was explicitly marked unavailable. "
+            "Which compatible input bundle can you provide?"
+        ),
+    )
+
+    answer = render_capability_gap(decision, policy)
+
+    assert answer is not None
+    assert "requested result is supported" in answer
+    assert "input availability" in answer
+    assert decision.clarification_question in answer
+    assert "do not infer" not in answer
+    assert "Registered outputs are:" not in answer
+
+
 def test_ambiguous_outcome_asks_only_the_validated_question():
     decision = TaskDecision(
         action="no_tool",

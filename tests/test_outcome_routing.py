@@ -607,6 +607,49 @@ def test_explicit_panda_request_recovers_when_router_used_no_tool_for_clarificat
     assert repaired.clarification_question is None
 
 
+def test_named_panda_execution_recovers_when_semantic_provider_returns_no_hypothesis():
+    """A complete imperative PANDA request must not become a contract question."""
+    task = (
+        "請執行 PANDA 的 dry-run，目標是 aggregate TF-to-gene regulatory network。"
+        " expression_file=data/expression.tsv"
+        " motif_file=data/motif.tsv"
+        " ppi_file=data/ppi.tsv"
+        " output_file=outputs/panda.tsv taxon=Homo sapiens"
+    )
+
+    match = match_semantic_request(task, [], request_mode="execute")
+
+    assert match.status == "exact"
+    assert match.match_basis == "workflow_name"
+    assert match.matched_actions == ["run_panda"]
+
+
+def test_named_panda_execution_repairs_analyze_infer_surface_slip():
+    """Result-summary wording must not block the explicitly named PANDA run."""
+    task = (
+        "請執行 PANDA 的 dry-run，目標是 aggregate TF-to-gene regulatory network。"
+        " expression_file=data/expression.tsv"
+        " motif_file=data/motif.tsv"
+        " ppi_file=data/ppi.tsv"
+        " output_file=outputs/panda.tsv taxon=Homo sapiens"
+    )
+    outcome = RequestedOutcome(
+        operation="analyze",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+    hypothesis = OutcomeHypothesis(outcome=outcome, confidence=0.95)
+
+    match = match_semantic_request(task, [hypothesis], request_mode="execute")
+
+    assert match.status == "exact"
+    assert match.match_basis == "workflow_name"
+    assert match.matched_actions == ["run_panda"]
+
+
 def test_intent_router_prompt_does_not_render_registry_actions():
     prompt = build_routing_prompt(ProjectPolicyLoader(PROJECT_ROOT).load())
 

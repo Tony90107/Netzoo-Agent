@@ -23,7 +23,7 @@ export NETZOO_GENE_CACHE_PATH="/tmp/netzoo-ge-$(date +%s).sqlite3"
 
 ```text
 請執行 PANDA 的 dry-run，目標是 aggregate TF-to-gene regulatory network。
-請先完成 input preflight，檢查 schema、gene namespace，以及 expression、motif、PPI 的對應關係。
+請在結果摘要中說明 schema、gene namespace，以及 expression、motif、PPI 的對應關係。
 僅產生 dry-run，不進入實際分析階段；不要輸入 /execute。
 
 expression_file=/work/manual_tests/gene_validation_flow/taxon_ambiguous/expression.tsv
@@ -46,7 +46,7 @@ output_file=/work/outputs/manual/gene_existence/multi_species.tsv
 
 ```text
 請執行 PANDA 的 dry-run，目標是 aggregate TF-to-gene regulatory network。
-請先完成 input preflight，並在檢查結果中列出每個輸入軸的 identifier status、canonical gene ID 與資料來源。
+請在結果摘要中列出每個輸入軸的 identifier status、canonical gene ID 與資料來源。
 僅產生 dry-run，不進入實際分析階段；不要輸入 /execute。
 
 expression_file=/work/manual_tests/gene_validation_flow/valid_canonical_match/expression.tsv

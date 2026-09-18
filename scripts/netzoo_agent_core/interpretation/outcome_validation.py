@@ -13,7 +13,11 @@ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consisten
 from ..contracts.repair_scope import (
     FIELD_BY_DIMENSION, NO_OUTCOME_FIELDS, OUTCOME_FIELDS, Issue,
 )
-from .request_integrity import confirmed_current_inputs, request_integrity_issues
+from .request_integrity import (
+    canonical_input_artifacts_in_text,
+    confirmed_current_inputs,
+    request_integrity_issues,
+)
 from .span_alignment import aligned_span
 
 __all__: list[str] = []
@@ -82,6 +86,19 @@ def explicit_evidence_grounded(user_task: str, evidence: OutcomeEvidence) -> boo
         return False
     variants = tuple(dict.fromkeys((_normalized(user_task), _hard_wrap_normalized(user_task))))
     return any(_grounded_span(span, task) for task in variants)
+
+
+def grounded_selection_tags(
+    user_task: str,
+    evidence: Sequence[OutcomeEvidence],
+) -> frozenset[str]:
+    """Return registry tags backed by explicit, grounded request evidence."""
+    return frozenset(
+        item.value
+        for item in evidence
+        if item.dimension == "selection_tag"
+        and explicit_evidence_grounded(user_task, item)
+    )
 
 
 def _outcome_values(outcome: RequestedOutcome) -> dict[str, set[str]]:
@@ -345,6 +362,18 @@ def validate_outcome_hypotheses(
                 ))
             if item.source == "explicit":
                 span = _normalized(item.text_span or "")
+                if item.dimension == "input_artifact" and item.text_span:
+                    quoted_inputs = canonical_input_artifacts_in_text(item.text_span)
+                    if quoted_inputs and str(item.value) not in quoted_inputs:
+                        # A verbatim quote proves only that the words occurred;
+                        # it does not prove the provider mapped those words to
+                        # the right canonical artifact. Keep that ontology
+                        # authority in deterministic code for known inputs.
+                        issues.append(Issue(
+                            f"hypothesis[{index}].conflicting_evidence:"
+                            f"{item.dimension}={item.value}",
+                            {FIELD_BY_DIMENSION[item.dimension]},
+                        ))
                 if not explicit_evidence_grounded(user_task, item):
                     # About the quote, not about the value. Nothing in the
                     # outcome was questioned, so nothing in it may be rewritten.

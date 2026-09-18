@@ -341,6 +341,33 @@ def test_typed_outcome_matching_rejects_incompatible_input_contracts(
     assert "input_artifacts" in result.mismatch_dimensions
 
 
+def test_guidance_with_an_explicitly_absent_required_prior_is_unsupported():
+    task = (
+        "I currently have a gene expression matrix and TF motif prior, but I do "
+        "not have PPI data. I want one aggregate TF-to-gene regulatory network. "
+        "Which workflow should I use? Advice only."
+    )
+    requested = RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+
+    result = match_semantic_request(
+        task,
+        [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+        request_mode="guidance",
+    )
+
+    assert result.status == "unsupported"
+    assert result.hypothesis_actions == []
+    assert "input_artifacts" in result.mismatch_dimensions
+
+
 def test_named_method_cannot_override_an_unsupported_scientific_result():
     requested = RequestedOutcome(
         operation="acquire", artifact_type="measurement_dataset",
@@ -770,19 +797,37 @@ def test_tf_activity_is_selected_by_its_registry_tag():
     )
     task = "Previously PANDA; now infer TF regulation and TF activity."
 
-    def match(**extra):
+    def match(*, tag_span=None, task_text=task, **extra):
         requested = RequestedOutcome(**dimensions, **extra)
+        tags = extra.get("selection_tags", [])
+        evidence = [] if not tags or tag_span is None else [OutcomeEvidence(
+            dimension="selection_tag",
+            value=tags[0],
+            source="explicit",
+            text_span=tag_span,
+            rationale="The request explicitly states this modeling requirement.",
+        )]
         return match_semantic_request(
-            task, [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=[])],
+            task_text,
+            [OutcomeHypothesis(outcome=requested, confidence=0.95, evidence=evidence)],
             request_mode="guidance",
         )
 
     assert match().status == "ambiguous"
-    assert match(selection_tags=["tfa"]).matched_actions == ["run_giraffe"]
+    assert match(selection_tags=["tfa"], tag_span="TF activity").matched_actions == ["run_giraffe"]
     assert match(
-        selection_tags=["biologically_informed_matrix_factorization"]
+        selection_tags=["biologically_informed_matrix_factorization"],
+        tag_span="factor gene expression using motif and TF-protein interaction priors",
+        task_text=(
+            "Now infer TF regulation and factor gene expression using motif and "
+            "TF-protein interaction priors."
+        ),
     ).matched_actions == ["run_giraffe"]
-    assert match(selection_tags=["joint_grn_tfa_inference"]).matched_actions == [
+    assert match(
+        selection_tags=["joint_grn_tfa_inference"],
+        tag_span="jointly infer TF regulation and TF activity",
+        task_text="Now jointly infer TF regulation and TF activity.",
+    ).matched_actions == [
         "run_giraffe"
     ]
     # A generic aggregate network no longer silently defaults to PANDA now that

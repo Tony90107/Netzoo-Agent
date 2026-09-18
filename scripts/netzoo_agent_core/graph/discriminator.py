@@ -10,7 +10,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
 from ..contracts import AgentState, LLMUsage
 from ..contracts.outcomes import OutcomeEvidence, SemanticDiscriminator, SemanticInterpretation
 from ..interpretation.outcome_validation import (
-    explicit_evidence_grounded,
+    grounded_selection_tags,
     validate_outcome_hypotheses,
 )
 from ..interpretation.provider_fallback import _is_fatal_exception
@@ -90,13 +90,7 @@ def _selection_evidence_grounds_tags(
     evidence: list[OutcomeEvidence],
 ) -> bool:
     """Require each tie-breaking tag to have its own grounded explicit quote."""
-    grounded = {
-        item.value
-        for item in evidence
-        if item.dimension == "selection_tag"
-        and explicit_evidence_grounded(user_task, item)
-    }
-    return selected.issubset(grounded)
+    return selected.issubset(grounded_selection_tags(user_task, evidence))
 
 
 def _recover_explicit_selection_tag(
