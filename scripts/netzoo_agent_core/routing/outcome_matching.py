@@ -18,12 +18,16 @@ from ..contracts import (
     TaskDecision,
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
+from ..interpretation.outcome_validation import grounded_selection_tags
 from .candidate_ranking import (
     _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
     _hypothesis_evidence_score, _specificity_score, stated_dimension_score,
     _UNKNOWN,
 )
+from .clarification_planner import plan_clarification
 from .capability_compatibility import (
+    InputAvailability,
+    InputAvailabilityLike,
     _accepts_inputs,
     _complete_guidance_match,
     _explicit_evidence_values,
@@ -35,7 +39,9 @@ from .capability_compatibility import (
     _supported_artifacts,
     _supported_entities,
     explicit_input_artifacts,
+    input_availability,
 )
+from .capability import has_direct_execution_intent
 from .method_rejections import rejected_methods_for, unsupported_algorithm_request
 from .named_labels import (
     _current_scope_text,
@@ -59,24 +65,16 @@ def _selection_question(
     outcome: RequestedOutcome,
     candidates: list[tuple[RecommendedAction, OutputCapabilityDefinition]],
 ) -> str:
-    regulator_sets = {item[1].regulator_types for item in candidates}
-    if outcome.artifact_type == "regulatory_network" and (
-        not outcome.regulator_types or len(regulator_sets) > 1
-    ):
-        return (
-            "Which regulator type should the network model: transcription factors, "
-            "miRNA regulators, or both?"
-        )
+    decision = plan_clarification(
+        [action for action, _ in candidates],
+        outcomes=[outcome],
+        capabilities=dict(candidates),
+    )
+    if decision is not None:
+        return decision.question
     if outcome.artifact_type == "unknown":
         return "What artifact should NetZoo produce?"
-    candidate_granularities = {
-        granularity
-        for _, capability in candidates
-        for granularity in capability.granularities
-    }
-    if outcome.granularity == "unknown" and len(candidate_granularities) > 1:
-        return "Should the result be aggregate or sample-specific?"
-    return "Which of the registered result types do you want NetZoo to produce?"
+    return "Which scientific result do you want NetZoo to produce?"
 
 
 def _alternative_actions(
@@ -88,6 +86,16 @@ def _alternative_actions(
         return []
     ranked: list[tuple[int, int, RecommendedAction]] = []
     for index, (action, capability) in enumerate(capabilities.items()):
+        # A workflow can be a useful alternative to an unsupported acquisition
+        # request when the user names a meaningful relationship (for example
+        # miRNA + gene).  A lone broad entity such as protein is not enough to
+        # redirect an acquisition request to an unrelated inference workflow.
+        if (
+            capability.operation != outcome.operation
+            and len(requested_entities) < 2
+            and requested_entities.isdisjoint({"mirna", "tf", "gene"})
+        ):
+            continue
         entity_overlap = requested_entities & _supported_entities(
             outcome.artifact_type, capability
         )
@@ -106,7 +114,7 @@ def _alternative_actions(
 def _mismatch_dimensions(
     outcome: RequestedOutcome,
     capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
 ) -> list[str]:
     values = list(capabilities.values())
     mismatches = []
@@ -150,7 +158,7 @@ def match_requested_outcome(
         RecommendedAction, OutputCapabilityDefinition
     ] = OUTPUT_CAPABILITIES,
     *,
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
 ) -> CapabilityMatch:
     """Return a fail-closed match derived only from typed outcome dimensions."""
     issues = outcome_consistency_issues(outcome)
@@ -164,9 +172,32 @@ def match_requested_outcome(
         if _matches(outcome, capability, available_inputs)
     ]
     if _has_unknown(outcome):
+        partial_candidates = [
+            (action, capability)
+            for action, capability in capabilities.items()
+            if _partially_compatible(outcome, capability, available_inputs)
+        ]
+        if (
+            not partial_candidates
+            and isinstance(available_inputs, InputAvailability)
+            and available_inputs.absent
+            and any(
+                _partially_compatible(outcome, capability, ())
+                for capability in capabilities.values()
+            )
+        ):
+            return CapabilityMatch(
+                status="unsupported",
+                mismatch_dimensions=["input_artifacts"],
+                clarification_question=(
+                    "A required input was explicitly marked unavailable. "
+                    "Which compatible input bundle can you provide?"
+                ),
+            )
         return CapabilityMatch(
             status="ambiguous",
-            clarification_question=_selection_question(outcome, candidates),
+            hypothesis_actions=[action for action, _ in partial_candidates],
+            clarification_question=_selection_question(outcome, partial_candidates),
         )
     if len(candidates) == 1:
         return CapabilityMatch(status="exact", matched_actions=[candidates[0][0]])
@@ -295,6 +326,8 @@ def _tag_discriminated_action(
     candidates: Sequence[RecommendedAction],
     capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
     ignore_tags: frozenset[str] = frozenset(),
+    *,
+    user_task: str = "",
 ) -> RecommendedAction | None:
     """Break a tie with the registry tags the outcome declared, or return None.
 
@@ -311,16 +344,16 @@ def _tag_discriminated_action(
     becomes reachable that was not already a candidate, and one whose stated
     dimensions differ is never rescued.
 
-    Known limitation, accepted deliberately and pinned by a test: a tag the
-    request does not support still discriminates, because tags need no evidence.
-    Sixteen of sixteen tags in the live record were catalogue entries naming the
-    expected tool, and the live criterion vetoes on any wrong recommendation.
+    A tag has routing authority only when explicit evidence quotes it from the
+    current user request.  This is the same authority rule used by the optional
+    semantic discriminator; an ungrounded catalogue value remains advisory.
     """
-    # A tag the harness moved into the field is bookkeeping, not a choice the
-    # model made about the outcome, and a repair must never pick a tool.
-    declared = {
-        tag for item in hypotheses for tag in item.outcome.selection_tags
-    } - ignore_tags
+    declared = set()
+    for item in hypotheses:
+        outcome_tags = set(item.outcome.selection_tags) - ignore_tags
+        declared.update(
+            outcome_tags & grounded_selection_tags(user_task, item.evidence)
+        )
     if not declared or len(candidates) < 2:
         return None
     outcomes = [item.outcome for item in hypotheses]
@@ -356,7 +389,8 @@ def match_outcome_hypotheses(
     *,
     assumed_guidance: bool = False,
     ignore_tags: frozenset[str] = frozenset(),
-    available_inputs: Sequence[str] = (),
+    available_inputs: InputAvailabilityLike = (),
+    user_task: str = "",
 ) -> CapabilityMatch:
     """Match complete outcomes strictly and incomplete hypotheses advisably."""
     issues = list(dict.fromkeys(
@@ -463,7 +497,11 @@ def match_outcome_hypotheses(
         ]
         unique_top_actions = list(dict.fromkeys(top_actions))
         discriminated = _tag_discriminated_action(
-            hypotheses, unique_top_actions, capabilities, ignore_tags,
+            hypotheses,
+            unique_top_actions,
+            capabilities,
+            ignore_tags,
+            user_task=user_task,
         )
         if discriminated is not None:
             return CapabilityMatch(
@@ -471,6 +509,11 @@ def match_outcome_hypotheses(
                 match_basis="registry_features",
                 matched_actions=[discriminated],
             )
+        clarification = plan_clarification(
+            unique_top_actions,
+            outcomes=[item.outcome for item in hypotheses],
+            capabilities=capabilities,
+        )
         return CapabilityMatch(
             status="ambiguous",
             hypothesis_actions=unique_top_actions,
@@ -481,6 +524,7 @@ def match_outcome_hypotheses(
                         unique_top_actions,
                         capabilities,
                     )
+                    or (clarification.question if clarification is not None else None)
                     or "Which compatible network result do you mean?"
                 )
                 if len(unique_top_actions) > 1
@@ -521,10 +565,9 @@ def _enforce_input_compatibility(
         explicit_input_artifacts(task)
         if input_artifacts is None else frozenset(input_artifacts)
     )
-    # Only lexical input witnesses can establish that a required prior is
-    # absent. Fields supplied by the semantic interpreter are claims to match,
-    # not proof that the user explicitly listed the complete input bundle.
-    observed_task_inputs = explicit_input_artifacts(task)
+    # Only an explicit negative lexical witness can establish absence. Missing
+    # from a partial list remains unknown and cannot eliminate a workflow.
+    availability = input_availability(task)
     incompatible_actions = [
         action
         for action in match.matched_actions
@@ -539,14 +582,8 @@ def _enforce_input_compatibility(
                 ).issubset(OUTPUT_CAPABILITIES[action].input_artifacts)
             )
             or bool(
-                observed_task_inputs
-                and OUTPUT_CAPABILITIES[action].required_input_artifacts
-                - observed_task_inputs
-                and not (
-                    OUTPUT_CAPABILITIES[action].required_input_artifacts
-                    - observed_task_inputs == {"mirna_prior"}
-                    and re.search(r"\bmi[- ]?RNA\b", task, re.I)
-                )
+                OUTPUT_CAPABILITIES[action].required_input_artifacts
+                & availability.absent
             )
         )
     ]
@@ -581,6 +618,92 @@ def _compatible_candidate_count(
     return sum(1 for capability in capabilities.values() if _matches(outcome, capability))
 
 
+def _named_execution_repair(
+    task: str,
+    hypotheses: Sequence[OutcomeHypothesis],
+    match: CapabilityMatch,
+    *,
+    request_mode: str,
+    input_artifacts: Sequence[str] = (),
+) -> CapabilityMatch | None:
+    """Recover one explicit runnable method from a weak semantic reading.
+
+    The semantic interpreter is deliberately not allowed to choose a workflow,
+    but an empty response (or the common ``analyze``/``infer`` wording slip for
+    a named inference method) should not turn a complete imperative request
+    into a contract question.  This repair is intentionally narrow: it needs a
+    direct execution instruction, exactly one runnable label, and either no
+    hypothesis or an outcome that agrees with the named capability after only
+    the operation verb is normalized.  Input compatibility is still enforced
+    by the normal gate below.
+    """
+    if request_mode != "execute" or not has_direct_execution_intent(task):
+        return None
+    available = tuple(input_artifacts or ())
+    action = solely_named_run_action(task)
+    capability = OUTPUT_CAPABILITIES.get(action) if action else None
+    if action is None or capability is None:
+        return None
+
+    # No semantic hypothesis is an incomplete reading, not evidence that the
+    # user's explicit method name is incompatible with the request.
+    if not hypotheses:
+        return _enforce_input_compatibility(
+            task,
+            CapabilityMatch(
+                status="exact", match_basis="workflow_name", matched_actions=[action]
+            ),
+            request_mode=request_mode,
+            input_artifacts=available,
+        )
+
+    # A structured response can be syntactically valid yet remain ambiguous or
+    # assumption-backed.  When every hypothesis is at least compatible with the
+    # sole method named by an imperative request, the method name resolves that
+    # routing ambiguity; it does not waive any scientific/input checks.
+    if (
+        match.status in {"ambiguous", "fallback"}
+        and all(
+            _partially_compatible(item.outcome, capability, available)
+            for item in hypotheses
+        )
+    ):
+        return _enforce_input_compatibility(
+            task,
+            CapabilityMatch(
+                status="exact", match_basis="workflow_name", matched_actions=[action]
+            ),
+            request_mode=request_mode,
+            input_artifacts=available,
+        )
+
+    # A provider occasionally calls an inference request "analyze" because the
+    # prompt asks for a result summary.  Permit that one surface mismatch only
+    # when every scientific dimension otherwise matches the named infer method.
+    if (
+        match.status == "unsupported"
+        and capability.operation == "infer"
+        and all(item.outcome.operation == "analyze" for item in hypotheses)
+        and all(
+            _matches(
+                item.outcome.model_copy(update={"operation": capability.operation}),
+                capability,
+                available,
+            )
+            for item in hypotheses
+        )
+    ):
+        return _enforce_input_compatibility(
+            task,
+            CapabilityMatch(
+                status="exact", match_basis="workflow_name", matched_actions=[action]
+            ),
+            request_mode=request_mode,
+            input_artifacts=available,
+        )
+    return None
+
+
 def _match_semantic_request(
     task: str,
     hypotheses: Sequence[OutcomeHypothesis],
@@ -610,7 +733,8 @@ def _match_semantic_request(
         for artifact in hypothesis.outcome.input_artifacts
         if artifact != _UNKNOWN
     }
-    lexical_inputs = explicit_input_artifacts(task)
+    availability = input_availability(task)
+    lexical_inputs = availability.present
     current_inputs = sorted(declared_inputs | set(lexical_inputs)) or None
     matching_hypotheses = hypotheses
     if request_mode == "guidance":
@@ -631,8 +755,18 @@ def _match_semantic_request(
         OUTPUT_CAPABILITIES,
         assumed_guidance=request_mode != "execute",
         ignore_tags=ignore_tags,
-        available_inputs=lexical_inputs,
+        available_inputs=availability,
+        user_task=task,
     )
+    repaired_named_match = _named_execution_repair(
+        task,
+        matching_hypotheses,
+        match,
+        request_mode=request_mode,
+        input_artifacts=current_inputs,
+    )
+    if repaired_named_match is not None:
+        return repaired_named_match
     if match.status == "fallback" and match.match_basis == "partial_evidence":
         capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
         if request_mode == "guidance" and all(

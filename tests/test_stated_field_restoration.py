@@ -291,6 +291,43 @@ def test_a_role_no_evidence_states_is_never_invented():
     assert result.outcome_hypotheses[0].outcome.regulator_types == []
 
 
+def test_an_explicit_tf_to_gene_role_witness_restores_the_bounded_roles():
+    task = (
+        "I have an expression matrix, TF motif priors and PPI data. "
+        "I want one aggregate TF-to-gene regulatory network."
+    )
+    source = role_interpretation(
+        [],
+        entity_types=[],
+        regulator_types=[],
+        target_types=[],
+        granularity="aggregate",
+    )
+
+    result, restored = restore_stated_fields(task, source)
+    outcome = result.outcome_hypotheses[0].outcome
+
+    assert outcome.regulator_types == ["tf"]
+    assert outcome.target_types == ["gene"]
+    assert set(outcome.entity_types) == {"tf", "gene"}
+    assert {
+        (item.dimension, item.value, item.source)
+        for item in result.outcome_hypotheses[0].evidence
+    } >= {
+        ("regulator_type", "tf", "explicit"),
+        ("target_type", "gene", "explicit"),
+    }
+    assert any(item["source"] == "explicit_role_witness" for item in restored)
+
+    match = match_semantic_request(
+        task,
+        result.outcome_hypotheses,
+        request_mode="guidance",
+    )
+    assert "run_puma" not in match.hypothesis_actions
+    assert "run_lioness_puma" not in match.hypothesis_actions
+
+
 def test_a_move_that_would_create_a_new_consistency_issue_is_reverted():
     """`role_entity` fires when a role is not among the declared entity types.
 

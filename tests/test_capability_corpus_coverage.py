@@ -21,9 +21,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from evaluate_routing import DEFAULT_SCENARIOS, load_scenarios  # noqa: E402
-from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import OutcomeEvidence, OutcomeHypothesis  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
-from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
+from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY  # noqa: E402
 
 # Reachability is a registry property, not a model one. PANDA, OTTER and GIRAFFE
 # now carry distinct algorithmic tags, as do LIONESS-coexpression and BONOBO, so
@@ -54,10 +54,26 @@ def _best_outcome(action):
 
 
 def _match(action):
+    tags = _best_outcome(action)["selection_tags"]
+    spans = [SELECTION_TAG_GLOSSARY[tag] for tag in tags]
     hypothesis = OutcomeHypothesis.model_validate(
-        {"outcome": _best_outcome(action), "confidence": 0.9, "evidence": []}
+        {
+            "outcome": _best_outcome(action),
+            "confidence": 0.9,
+            "evidence": [
+                OutcomeEvidence(
+                    dimension="selection_tag",
+                    value=tag,
+                    source="explicit",
+                    text_span=span,
+                    rationale="Synthetic reachability request states this registry signal.",
+                )
+                for tag, span in zip(tags, spans)
+            ],
+        }
     )
-    return match_semantic_request(TASK, [hypothesis], request_mode="guidance")
+    task = f"{TASK} {'; '.join(spans)}"
+    return match_semantic_request(task, [hypothesis], request_mode="guidance")
 
 
 @pytest.mark.parametrize("action", sorted(OUTPUT_CAPABILITIES))
@@ -108,6 +124,7 @@ COEXPRESSION_TASK = (
 
 
 def _coexpression_match(entity_types, selection_tags=()):
+    spans = [SELECTION_TAG_GLOSSARY[tag] for tag in selection_tags]
     hypothesis = OutcomeHypothesis.model_validate({
         "outcome": {
             "operation": "infer",
@@ -120,9 +137,19 @@ def _coexpression_match(entity_types, selection_tags=()):
             "granularity": "sample_specific",
         },
         "confidence": 0.9,
-        "evidence": [],
+        "evidence": [
+            OutcomeEvidence(
+                dimension="selection_tag",
+                value=tag,
+                source="explicit",
+                text_span=span,
+                rationale="Synthetic request states this algorithmic requirement.",
+            )
+            for tag, span in zip(selection_tags, spans)
+        ],
     })
-    return match_semantic_request(COEXPRESSION_TASK, [hypothesis], request_mode="guidance")
+    task = f"{COEXPRESSION_TASK} {'; '.join(spans)}"
+    return match_semantic_request(task, [hypothesis], request_mode="guidance")
 
 
 def test_declaring_sample_an_entity_no_longer_switches_the_recommended_tool():

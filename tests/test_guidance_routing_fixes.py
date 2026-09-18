@@ -57,7 +57,33 @@ BONOBO_BAYESIAN_TASK = (
 )
 
 
-def tf_aggregate(*, tags: list[str] | None = None) -> OutcomeHypothesis:
+def tf_aggregate(
+    *, tags: list[str] | None = None, tag_span: str | None = None,
+) -> OutcomeHypothesis:
+    evidence = [
+        OutcomeEvidence(
+            dimension=dimension,
+            value=value,
+            source="inferred",
+            rationale=f"Fixture supplies the validated {dimension}.",
+        )
+        for dimension, value in (
+            ("operation", "infer"),
+            ("artifact_type", "regulatory_network"),
+            ("input_artifact", "expression_matrix"),
+            ("granularity", "aggregate"),
+            ("regulator_type", "tf"),
+            ("target_type", "gene"),
+        )
+    ]
+    if tags and tag_span is not None:
+        evidence.append(OutcomeEvidence(
+            dimension="selection_tag",
+            value=tags[0],
+            source="explicit",
+            text_span=tag_span,
+            rationale="The request explicitly states the method discriminator.",
+        ))
     return OutcomeHypothesis(
         outcome=RequestedOutcome(
             operation="infer",
@@ -70,44 +96,7 @@ def tf_aggregate(*, tags: list[str] | None = None) -> OutcomeHypothesis:
             granularity="aggregate",
         ),
         confidence=0.95,
-        evidence=[
-            OutcomeEvidence(
-                dimension="operation",
-                value="infer",
-                source="inferred",
-                rationale="Fixture supplies the validated operation.",
-            ),
-            OutcomeEvidence(
-                dimension="artifact_type",
-                value="regulatory_network",
-                source="inferred",
-                rationale="Fixture supplies the validated output artifact.",
-            ),
-            OutcomeEvidence(
-                dimension="input_artifact",
-                value="expression_matrix",
-                source="inferred",
-                rationale="Fixture supplies the validated input artifact.",
-            ),
-            OutcomeEvidence(
-                dimension="granularity",
-                value="aggregate",
-                source="inferred",
-                rationale="Fixture supplies the validated granularity.",
-            ),
-            OutcomeEvidence(
-                dimension="regulator_type",
-                value="tf",
-                source="inferred",
-                rationale="Fixture supplies the validated regulator role.",
-            ),
-            OutcomeEvidence(
-                dimension="target_type",
-                value="gene",
-                source="inferred",
-                rationale="Fixture supplies the validated target role.",
-            ),
-        ],
+        evidence=evidence,
     )
 
 
@@ -138,7 +127,10 @@ def bonobo_coexpression() -> OutcomeHypothesis:
 def test_q1_objective_and_continuous_optimization_selects_otter():
     result = match_semantic_request(
         Q1,
-        [tf_aggregate(tags=["relaxed_graph_matching"])],
+        [tf_aggregate(
+            tags=["relaxed_graph_matching"],
+            tag_span="continuous convex optimization",
+        )],
         request_mode="guidance",
     )
 
@@ -147,10 +139,15 @@ def test_q1_objective_and_continuous_optimization_selects_otter():
 
 
 def test_q2_lioness_first_stage_selects_panda_and_excludes_puma_without_mirna():
-    assert explicit_input_artifacts(Q2) == {"expression_matrix"}
+    assert explicit_input_artifacts(Q2) == {
+        "expression_matrix", "motif_prior", "ppi_prior",
+    }
     result = match_semantic_request(
         Q2,
-        [tf_aggregate(tags=["lioness_base_compatibility"])],
+        [tf_aggregate(
+            tags=["lioness_base_compatibility"],
+            tag_span="First build one aggregate network, then apply LIONESS",
+        )],
         request_mode="guidance",
     )
 

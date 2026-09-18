@@ -209,6 +209,16 @@ def render_capability_gap(
     """Explain an unsupported deliverable without promoting a related workflow."""
     if decision.capability_match_status != "unsupported":
         return None
+    if "input_artifacts" in decision.mismatch_dimensions:
+        question = decision.clarification_question or (
+            "Which compatible input bundle can you provide?"
+        )
+        return _ui_text(
+            "The requested result is supported, but no compatible registered "
+            "workflow matches the input availability you stated.\n\n"
+            f"{question}\n\n"
+            "No files were inspected and no analysis ran."
+        )
     operation = (
         _OPERATION_VERBS[decision.requested_outcome.operation]
         if decision.requested_outcome

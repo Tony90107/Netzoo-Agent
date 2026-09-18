@@ -14,11 +14,9 @@ dimensions have already qualified, and can only shrink that set.
 from pathlib import Path
 import sys
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
-from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis  # noqa: E402
+from netzoo_agent_core.contracts.outcomes import OutcomeEvidence, OutcomeHypothesis  # noqa: E402
 from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
 
 MIRNA_TASK = (
@@ -35,7 +33,14 @@ TF_TASK = (
 )
 
 
-def match(task, *, tags=(), artifact_type="regulatory_network", **overrides):
+def match(
+    task,
+    *,
+    tags=(),
+    tag_span: str | None = None,
+    artifact_type="regulatory_network",
+    **overrides,
+):
     outcome = {
         "operation": "infer",
         "input_artifacts": ["expression_matrix"],
@@ -47,15 +52,28 @@ def match(task, *, tags=(), artifact_type="regulatory_network", **overrides):
         "granularity": "sample_specific",
         **overrides,
     }
-    hypothesis = OutcomeHypothesis.model_validate(
-        {"outcome": outcome, "confidence": 0.9, "evidence": []}
-    )
+    evidence = []
+    if tags and tag_span is not None:
+        evidence.append(OutcomeEvidence(
+            dimension="selection_tag",
+            value=tags[0],
+            source="explicit",
+            text_span=tag_span,
+            rationale="The request explicitly states the scientific discriminator.",
+        ))
+    hypothesis = OutcomeHypothesis.model_validate({
+        "outcome": outcome, "confidence": 0.9, "evidence": evidence,
+    })
     return match_semantic_request(task, [hypothesis], request_mode="guidance")
 
 
 def test_a_tag_carried_by_one_tied_candidate_selects_it():
     """The observed failure: roles empty, both LIONESS variants compatible."""
-    result = match(MIRNA_TASK, tags=["mirna_regulation"])
+    result = match(
+        MIRNA_TASK,
+        tags=["mirna_regulation"],
+        tag_span="miRNA-to-gene regulatory network",
+    )
 
     assert result.status == "exact"
     assert result.matched_actions == ["run_lioness_puma"]
@@ -104,7 +122,7 @@ def test_an_unsupported_tag_does_not_discriminate():
     assert result.matched_actions != ["run_lioness_puma"]
 
 
-def test_a_tag_the_harness_moved_does_not_pick_a_tool():
+def test_an_ungrounded_tag_does_not_pick_a_tool():
     """A repair may not become a recommendation.
 
     Syncing `selection_tags` from evidence removes the largest remaining
@@ -128,7 +146,7 @@ def test_a_tag_the_harness_moved_does_not_pick_a_tool():
         "evidence": [],
     })
 
-    chosen = match_semantic_request(
+    ungrounded = match_semantic_request(
         MIRNA_TASK, [hypothesis], request_mode="guidance",
     )
     ignored = match_semantic_request(
@@ -136,6 +154,7 @@ def test_a_tag_the_harness_moved_does_not_pick_a_tool():
         ignore_tags=frozenset({"mirna_regulation"}),
     )
 
-    assert chosen.matched_actions == ["run_lioness_puma"]
+    assert ungrounded.status == "ambiguous"
+    assert ungrounded.matched_actions == []
     assert ignored.status == "ambiguous"
     assert ignored.matched_actions == []

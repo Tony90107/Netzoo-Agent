@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
-    OutcomeHypothesis, RequestedOutcome,
+    OutcomeEvidence, OutcomeHypothesis, RequestedOutcome,
 )
 from netzoo_agent_core.routing.candidate_ranking import (  # noqa: E402
     stated_dimension_score,
@@ -46,10 +46,11 @@ def outcome(**fields) -> RequestedOutcome:
     })
 
 
-def semantic(**fields):
+def semantic(task="", evidence=(), **fields):
     return match_semantic_request(
-        "", [OutcomeHypothesis.model_validate({
-            "outcome": outcome(**fields).model_dump(), "confidence": 0.9, "evidence": [],
+        task, [OutcomeHypothesis.model_validate({
+            "outcome": outcome(**fields).model_dump(), "confidence": 0.9,
+            "evidence": list(evidence),
         })],
         request_mode="guidance",
     )
@@ -87,13 +88,17 @@ def test_the_request_stating_the_separating_dimension_still_gives_an_exact_match
     assert match.matched_actions == ["run_lioness_panda"]
 
 
-def test_a_tag_the_model_declared_still_discriminates():
-    """Tags are a dimension the model supplied, so they are the request's doing.
-
-    This path must be untouched: it is the one case where a tie is broken by
-    something the model actually said rather than by a default.
-    """
+def test_a_grounded_tag_the_model_declared_still_discriminates():
+    """A model tag discriminates only when it quotes the user's request."""
     match = semantic(
+        task="Use iterative message passing to infer the TF regulatory network.",
+        evidence=[OutcomeEvidence(
+            dimension="selection_tag",
+            value="message_passing",
+            source="explicit",
+            text_span="message passing",
+            rationale="The request explicitly names the algorithmic philosophy.",
+        )],
         regulator_types=["tf"], target_types=["gene"],
         selection_tags=["message_passing"],
     )

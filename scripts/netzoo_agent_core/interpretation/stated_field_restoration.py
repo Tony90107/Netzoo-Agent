@@ -2,9 +2,10 @@
 
 This is the one place the deterministic layer writes an outcome field, and the
 rules are narrow: it may **move** a value the hypothesis wrote in its own
-evidence, or align an under-specified or impossible scalar to the sole value
-declared by the already selected artifact. It never selects an artifact or
-workflow.
+evidence, restore the roles in an explicit current ``TF-to-gene`` or
+``miRNA-to-gene`` phrase, or align an under-specified or impossible scalar to
+the sole value declared by the already selected artifact. It never selects an
+artifact or workflow.
 
 The failure it repairs was the largest single family in the live record on both
 models: the model says the same thing twice, in evidence and in the outcome
@@ -15,9 +16,9 @@ carrying no outcome at all.
 
 Six structural guarantees, not promises:
 
-1. A candidate value must appear verbatim in this hypothesis's own evidence
-   under the matching dimension. Nothing is derived from a tool name, from the
-   registry, or from matching the request text.
+1. A candidate value must appear in this hypothesis's own evidence under the
+   matching dimension, except for the closed regulator-to-gene phrase witness.
+   Nothing is derived from a tool name or from the registry.
 2. `input_artifact` additionally requires the request's own witnesses to have
    scoped that artifact as current -- two independent sources. Role fields and
    selection tags have no such witness, so they are only ever moved.
@@ -51,7 +52,7 @@ import re
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
 from ..contracts.outcomes import OutcomeEvidence, RequestedOutcome, SemanticInterpretation
 from ..contracts.repair_scope import DIMENSION_BY_FIELD
-from .request_integrity import input_mentions
+from .request_integrity import input_mentions, regulatory_role_mentions
 
 __all__ = ["restore_stated_fields"]
 
@@ -152,6 +153,30 @@ def _with_scalar(outcome: RequestedOutcome, field: str, value: str) -> Requested
         return None
 
 
+def _with_explicit_roles(
+    outcome: RequestedOutcome,
+    regulator: str,
+    target: str,
+) -> RequestedOutcome | None:
+    """Fill only missing roles/entities from one closed explicit role phrase."""
+    payload = outcome.model_dump()
+    if not payload["regulator_types"]:
+        payload["regulator_types"] = [regulator]
+    if not payload["target_types"]:
+        payload["target_types"] = [target]
+    for entity in (regulator, target):
+        if entity not in payload["entity_types"]:
+            payload["entity_types"].append(entity)
+    payload["unresolved_dimensions"] = [
+        item for item in payload["unresolved_dimensions"]
+        if item not in _ROLE_DIMENSIONS and item != "entity_type"
+    ]
+    try:
+        return RequestedOutcome.model_validate(payload)
+    except Exception:
+        return None
+
+
 def restore_stated_fields(
     user_task: str, interpretation: SemanticInterpretation,
     *, align_artifact_constraints: bool = False,
@@ -164,6 +189,49 @@ def restore_stated_fields(
         outcome = hypothesis.outcome
         evidence = list(hypothesis.evidence)
         baseline = set(outcome_consistency_issues(outcome))
+        if outcome.artifact_type in {
+            "regulatory_network", "signed_regulatory_effect_network", _UNKNOWN,
+        }:
+            role_mentions = regulatory_role_mentions(user_task)
+            if len(role_mentions) == 1:
+                mention = role_mentions[0]
+                candidate = _with_explicit_roles(
+                    outcome, mention.regulator_type, mention.target_type,
+                )
+                if candidate is not None and not (
+                    set(outcome_consistency_issues(candidate)) - baseline
+                ):
+                    changed = candidate != outcome
+                    if changed:
+                        for dimension, value in (
+                            ("regulator_type", mention.regulator_type),
+                            ("target_type", mention.target_type),
+                        ):
+                            if not any(
+                                item.dimension == dimension and item.value == value
+                                for item in evidence
+                            ) and len(evidence) < 12:
+                                evidence.append(OutcomeEvidence(
+                                    dimension=dimension,
+                                    value=value,
+                                    source="explicit",
+                                    text_span=mention.text_span,
+                                    rationale=(
+                                        "The request explicitly states the bounded "
+                                        "regulator-to-target role."
+                                    ),
+                                ))
+                        restored.append({
+                            "hypothesis": index,
+                            "field": "roles",
+                            "value": (
+                                f"{mention.regulator_type}-to-{mention.target_type}"
+                            ),
+                            "source": "explicit_role_witness",
+                            "witnessed_span": mention.text_span,
+                        })
+                        outcome = candidate
+                        baseline = set(outcome_consistency_issues(outcome))
         normalized_entities = _without_sample_entity(user_task, outcome)
         if normalized_entities is not None:
             evidence = [
