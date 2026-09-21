@@ -104,9 +104,13 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
     }
   };
 
-  const parent = listing && listing.path.includes("/")
-    ? listing.path.slice(0, listing.path.lastIndexOf("/"))
-    : null;
+  // `listing.path` is project-relative and always starts at `outputs`; the
+  // crumbs are what lies beyond it.
+  const segments = listing ? listing.path.split("/").slice(1) : [];
+  const crumbs = segments.map((name, index) => ({
+    name,
+    path: ["outputs", ...segments.slice(0, index + 1)].join("/"),
+  }));
 
   return (
     <section className="pane">
@@ -122,11 +126,24 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
         </button>
       </header>
 
-      {/* Where you are. "Files" alone did not say these are the agent's own
-          results, nor which directory you had navigated into. */}
-      <div className="fl__where" title={listing?.host_path ?? ""}>
-        {listing ? listing.path : "outputs"}
-      </div>
+      {/* Only shown once you are somewhere: at the root it would just repeat
+          the pane's own title. Segments are relative to outputs/ and each one
+          is a way back. */}
+      {crumbs.length > 0 ? (
+        <nav className="fl__where" title={listing?.host_path ?? ""}>
+          <button type="button" onClick={() => void browse("")}>
+            outputs
+          </button>
+          {crumbs.map((crumb) => (
+            <span key={crumb.path}>
+              <span className="fl__sep">/</span>
+              <button type="button" onClick={() => void browse(crumb.path)}>
+                {crumb.name}
+              </button>
+            </span>
+          ))}
+        </nav>
+      ) : null}
 
       <div className="pane__scroll">
         {error ? <div className="fv__error">{error}</div> : null}
@@ -148,14 +165,6 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
           </div>
         ) : listing ? (
           <ul className="fl">
-            {parent !== null ? (
-              <li>
-                <button className="fl__row" type="button" onClick={() => void browse(parent)}>
-                  <span className="fl__icon">↰</span>
-                  <span className="fl__name">..</span>
-                </button>
-              </li>
-            ) : null}
             {listing.entries.length === 0 ? (
               <li className="fl__empty">
                 Nothing here yet. Results the agent writes appear in this tree.
