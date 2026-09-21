@@ -185,9 +185,24 @@ def _required_evidence(
     return required
 
 
+# Operations that do not themselves ask for a scientific result.  `explain`
+# belongs beside `unknown` here: explaining a method produces no artifact, so
+# pairing it with an unknown `artifact_type` and `not_applicable` granularity
+# is the coherent reading, not a contradiction.
+#
+# Requiring `operation == "unknown"` made the only passing shape for a
+# conceptual question one where the interpreter claimed to have understood
+# nothing. The contract asks for the opposite — `operation` is documented as
+# "Required scientific operation, even for guidance requests" — and the
+# matcher already erases `operation` for guidance before selecting anything,
+# so the strict reading rejected a hypothesis whose extra field could not have
+# influenced the outcome.
+_NO_RESULT_OPERATIONS = frozenset({"unknown", "explain"})
+
+
 def _is_not_applicable(outcome: RequestedOutcome) -> bool:
     return (
-        outcome.operation == "unknown"
+        outcome.operation in _NO_RESULT_OPERATIONS
         and outcome.artifact_type == "unknown"
         and outcome.granularity == "not_applicable"
         and not outcome.input_artifacts
