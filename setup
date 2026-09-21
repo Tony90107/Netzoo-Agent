@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# One-shot setup for a fresh clone.
+#
+# Four things have to be true before the agent runs: Docker is up, the image
+# exists, `.env` names a model the allowlist permits, and — for the desktop
+# window — the app has been built. Each of those fails in its own way, and
+# the failure a newcomer actually hits is usually the least informative one
+# (`docker compose` printing a stack trace because the daemon is not running).
+# So every step here checks its precondition first and, when it cannot
+# continue, says what to do rather than what went wrong.
+#
+# The app is deliberately built here rather than shipped prebuilt. A binary
+# compiled on this machine carries no `com.apple.quarantine` attribute, so
+# Gatekeeper never assesses it; a downloaded one would be blocked, because the
+# bundle is ad-hoc signed and has no Team ID. Building locally is the cheaper
+# of the two, given that Docker and the image are required either way.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+BUILD_DESKTOP=1
+BUILD_IMAGE=1
+
+usage() {
+  cat <<'USAGE'
+Usage: ./setup [options]
+
+  --cli-only     Set up the Docker environment only; skip the desktop app.
+  --skip-image   Assume the Docker image is already built.
+  -h, --help     Show this message.
+
+Run with no options for a first-time setup.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cli-only) BUILD_DESKTOP=0 ;;
+    --skip-image) BUILD_IMAGE=0 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+step=0
+say() { step=$((step + 1)); printf '\n[%d] %s\n' "$step" "$1"; }
+ok()   { printf '    ok: %s\n' "$1"; }
+info() { printf '    %s\n' "$1"; }
+
+# A missing prerequisite is not an error in this script; it is an error in the
+# machine's setup, and the only useful output is the install instruction.
+need() {
+  local binary="$1" what="$2" where="$3"
+  if ! command -v "$binary" >/dev/null 2>&1; then
+    printf '\n%s is not installed, and %s needs it.\n  Install: %s\n' \
+      "$binary" "$what" "$where" >&2
+    exit 1
+  fi
+}
+
+# ---------------------------------------------------------------- 1. Docker
+
+say 'Checking Docker'
+need docker 'the agent runtime' 'https://www.docker.com/products/docker-desktop/'
+if ! docker info >/dev/null 2>&1; then
+  cat >&2 <<'MSG'
+
+Docker is installed but not running.
+  Start Docker Desktop, wait for the whale icon to stop animating, and re-run.
+MSG
+  exit 1
+fi
+ok "$(docker --version)"
+ok "$(docker compose version)"
+
+# ------------------------------------------------------------------ 2. .env
+
+say 'Checking .env'
+if [[ -f .env ]]; then
+  if grep -qE '^OPENROUTER_API_KEY=.+' .env; then
+    ok '.env exists and sets OPENROUTER_API_KEY'
+  else
+    info '.env exists but OPENROUTER_API_KEY is empty.'
+    info 'Add your key to .env before running the agent; setup continues.'
+  fi
+else
+  if [[ ! -t 0 ]]; then
+    cat >&2 <<'MSG'
+
+No .env, and no terminal to ask for a key on.
+  Copy .env.example to .env and set OPENROUTER_API_KEY, then re-run.
+MSG
+    exit 1
+  fi
+  cat <<'MSG'
+    No .env yet. The agent calls models through OpenRouter, so it needs a key.
+    Get one at https://openrouter.ai/keys — it starts with "sk-or-v1-".
+    Nothing is printed back, and .env is created readable only by you.
+MSG
+  printf '    OPENROUTER_API_KEY (leave empty to skip): '
+  # Ctrl-D closes stdin and makes `read` fail, which under `set -e` would
+  # abort here with no output at all. An interrupted prompt means "no key",
+  # not "no .env": the rest of the setup is still worth doing.
+  read -rs api_key || api_key=""
+  printf '\n'
+  # The file holds a credential, so it is created under a restrictive umask
+  # rather than chmod'd afterwards: there is no window where it is readable.
+  (
+    umask 077
+    cat > .env <<ENV
+# Created by ./setup. See .env.example for every supported variable.
+OPENROUTER_API_KEY=${api_key}
+
+# gpt-4o-mini is what the routing measurements were run against. The two
+# allowlists are the limit that stops a stray request reaching an expensive
+# model — widen them deliberately, not by accident.
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_ROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_SEMANTIC_MODEL=openai/gpt-4o-mini
+NETZOO_RESPONSE_MODEL_ALLOWLIST=openai/gpt-4o-mini
+NETZOO_ROUTER_MODEL_ALLOWLIST=openai/gpt-4o-mini
+NETZOO_MAX_TASK_TOKENS=20000
+ENV
+  )
+  if [[ -n "$api_key" ]]; then
+    ok 'wrote .env (mode 600) with your key and gpt-4o-mini defaults'
+  else
+    ok 'wrote .env (mode 600) with gpt-4o-mini defaults'
+    info 'OPENROUTER_API_KEY is empty — set it before running the agent.'
+  fi
+  unset api_key
+fi
+
+# ------------------------------------------------------------- 3. The image
+
+if [[ "$BUILD_IMAGE" == 1 ]]; then
+  say 'Building the Docker image'
+  info 'The image is about 5.6GB. A cold build takes tens of minutes, mostly'
+  info 'downloading and compiling dependencies; later runs are cached.'
+  started=$(date +%s)
+  docker compose build netzoo
+  ok "built in $(( ($(date +%s) - started) / 60 )) min"
+else
+  say 'Skipping the image build (--skip-image)'
+fi
+
+# ----------------------------------------------------------- 4. The desktop
+
+if [[ "$BUILD_DESKTOP" == 1 ]]; then
+  say 'Building the desktop app'
+  need node 'the desktop app' 'https://nodejs.org/ (v20 or newer)'
+  need cargo 'the desktop app' 'https://rustup.rs/'
+  ok "node $(node --version), $(cargo --version)"
+
+  ( cd desktop && npm ci --silent )
+  ok 'installed desktop dependencies'
+
+  info 'Compiling. The first Rust build takes several minutes.'
+  started=$(date +%s)
+  ( cd desktop && npm run tauri build )
+  ok "built in $(( ($(date +%s) - started) / 60 )) min"
+
+  app="desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
+  [[ -d "$app" ]] && ok "app at $app"
+else
+  say 'Skipping the desktop app (--cli-only)'
+fi
+
+# ------------------------------------------------------------------ Summary
+
+cat <<'DONE'
+
+Setup complete.
+
+  Desktop:  open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
+  Terminal: ./netzoo-chat
+
+Keep the app inside this directory: it locates docker-compose.yml by walking
+up from its own path, and an app moved to /Applications has no repo above it.
+DONE
