@@ -12,6 +12,7 @@ import { FilesPane } from "../features/files/FilesPane";
 import { PlanPane } from "../features/plan/PlanPane";
 import { SessionsPane } from "../features/sessions/SessionsPane";
 import { SettingsView } from "../features/sessions/SettingsView";
+import { TranscriptView } from "../features/sessions/TranscriptView";
 import { Timeline } from "../features/timeline/Timeline";
 import {
   DaemonConfig,
@@ -91,6 +92,8 @@ function StatusBar({
 export function App() {
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
   const [showSettings, setShowSettings] = useState(false);
+  // An earlier session being read. Reading one never touches the live session.
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [session, setSession] = useState<SessionState | null>(null);
   const socket = useRef<SessionSocket | null>(null);
   const startedAt = useRef(0);
@@ -145,18 +148,32 @@ export function App() {
         <SessionsPane
           config={phase.config}
           currentId={session.sessionId}
+          selectedId={viewingSessionId}
+          onOpen={(sessionId) => {
+            setShowSettings(false);
+            setViewingSessionId(sessionId);
+          }}
           onResume={(sessionId) => {
+            setViewingSessionId(null);
             socket.current?.close();
             void connect(sessionId);
           }}
         />
         <nav className="sidebar__links">
-          <button type="button" onClick={() => setShowSettings((value) => !value)}>
+          <button
+            type="button"
+            onClick={() => {
+              setViewingSessionId(null);
+              setShowSettings((value) => !value);
+            }}
+          >
             {showSettings ? "Conversation" : "Settings"}
           </button>
           <button
             type="button"
             onClick={() => {
+              setViewingSessionId(null);
+              setShowSettings(false);
               socket.current?.close();
               void connect();
             }}
@@ -169,6 +186,17 @@ export function App() {
       <main className="conversation">
         {showSettings ? (
           <SettingsView config={phase.config} onClose={() => setShowSettings(false)} />
+        ) : viewingSessionId ? (
+          <TranscriptView
+            config={phase.config}
+            sessionId={viewingSessionId}
+            onClose={() => setViewingSessionId(null)}
+            onResume={(sessionId) => {
+              setViewingSessionId(null);
+              socket.current?.close();
+              void connect(sessionId);
+            }}
+          />
         ) : (
         <Conversation
           session={session}

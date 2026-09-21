@@ -22,11 +22,15 @@ function when(seconds: number): string {
 export function SessionsPane({
   config,
   currentId,
+  selectedId,
   onResume,
+  onOpen,
 }: {
   config: DaemonConfig;
   currentId: string | null;
+  selectedId: string | null;
   onResume: (sessionId: string) => void;
+  onOpen: (sessionId: string) => void;
 }) {
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,16 +69,25 @@ export function SessionsPane({
                 key={session.session_id}
                 className={`sl__item${
                   session.session_id === currentId ? " is-current" : ""
-                }`}
+                }${session.session_id === selectedId ? " is-selected" : ""}`}
               >
-                <div className="sl__title">{session.title || "(no request recorded)"}</div>
-                <div className="sl__meta">
-                  <span>{session.workflow || "—"}</span>
-                  <span>{when(session.updated_at)}</span>
-                  {session.total_tokens > 0 ? (
-                    <span>{session.total_tokens.toLocaleString()}t</span>
-                  ) : null}
-                </div>
+                <button
+                  className="sl__open"
+                  type="button"
+                  title="Read this session"
+                  onClick={() => onOpen(session.session_id)}
+                >
+                  <span className="sl__title">
+                    {session.title || "(no request recorded)"}
+                  </span>
+                  <span className="sl__meta">
+                    <span>{session.workflow || "—"}</span>
+                    <span>{when(session.updated_at)}</span>
+                    {session.total_tokens > 0 ? (
+                      <span>{session.total_tokens.toLocaleString()}t</span>
+                    ) : null}
+                  </span>
+                </button>
                 {session.resumable && session.session_id !== currentId ? (
                   <button
                     className="btn btn--quiet btn--small"

@@ -111,7 +111,7 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
   return (
     <section className="pane">
       <header className="pane__header">
-        Files
+        Outputs
         <button
           className="pane__action"
           type="button"
@@ -121,6 +121,12 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
           refresh
         </button>
       </header>
+
+      {/* Where you are. "Files" alone did not say these are the agent's own
+          results, nor which directory you had navigated into. */}
+      <div className="fl__where" title={listing?.host_path ?? ""}>
+        {listing ? listing.path : "outputs"}
+      </div>
 
       <div className="pane__scroll">
         {error ? <div className="fv__error">{error}</div> : null}
@@ -151,7 +157,9 @@ export function FilesPane({ config }: { config: DaemonConfig }) {
               </li>
             ) : null}
             {listing.entries.length === 0 ? (
-              <li className="fl__empty">Nothing here yet.</li>
+              <li className="fl__empty">
+                Nothing here yet. Results the agent writes appear in this tree.
+              </li>
             ) : null}
             {listing.entries.map((entry) => (
               <li key={entry.path}>
