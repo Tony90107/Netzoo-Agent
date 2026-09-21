@@ -309,3 +309,36 @@ def test_cors_never_allows_credentials(client):
     """Loopback plus a bearer token is the boundary; ambient credentials are not."""
     response = client.get("/health", headers={"Origin": DESKTOP_ORIGIN_FOR_TEST})
     assert "access-control-allow-credentials" not in response.headers
+
+
+def test_a_browser_authenticates_over_the_subprotocol(client):
+    """Browsers cannot set Authorization on a WebSocket."""
+    from netzoo_agent_core.server.app import WS_TOKEN_SUBPROTOCOL
+
+    _open_session(client, "subproto")
+    with client.websocket_connect(
+        "/ws/session/subproto",
+        subprotocols=[WS_TOKEN_SUBPROTOCOL, TOKEN],
+    ) as socket:
+        assert _receive(socket, "ready").session_id == "subproto"
+
+
+def test_a_token_in_the_query_string_no_longer_authenticates(client):
+    """It used to, and uvicorn wrote it straight into the access log."""
+    _open_session(client, "queryauth")
+    with pytest.raises(Exception):
+        with client.websocket_connect(
+            f"/ws/session/queryauth?token={TOKEN}"
+        ) as socket:
+            socket.receive_text()
+
+
+def test_a_wrong_token_in_the_subprotocol_is_rejected(client):
+    from netzoo_agent_core.server.app import WS_TOKEN_SUBPROTOCOL
+
+    _open_session(client, "badsub")
+    with pytest.raises(Exception):
+        with client.websocket_connect(
+            "/ws/session/badsub", subprotocols=[WS_TOKEN_SUBPROTOCOL, "nope"]
+        ) as socket:
+            socket.receive_text()

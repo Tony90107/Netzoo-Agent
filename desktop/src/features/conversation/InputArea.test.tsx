@@ -1,0 +1,261 @@
+/**
+ * The input area's job is to emit strings the agent's own state machine
+ * accepts. These tests pin the mapping, because getting it wrong produces a
+ * confusing rejection from the agent rather than a visible UI bug.
+ *
+ * The accepted forms come from `cli/clarification.py`:
+ *  - the per-field wizard takes a 1-based candidate number or a full path,
+ *    and explicitly rejects `field=value`
+ *  - the bundle chooser takes a 1-based index, a directory, or "custom"
+ */
+import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { ViewPayload } from "../../transport/protocol";
+import { InputArea } from "./InputArea";
+
+const PLAN = {
+  workflow: "LIONESS-PUMA",
+  objective: "run it",
+  decision: {},
+  evidence: [
+    {
+      field: "expression_file",
+      status: "missing" as const,
+      value: null,
+      reason: "required",
+      candidates: ["data/study-a/expression.tsv", "data/study-b/expression.tsv"],
+      candidate_bundle_ids: [],
+      bundle_id: null,
+    },
+  ],
+  input_bundle_options: [
+    {
+      bundle_id: "directory:data/study-a",
+      directory: "data/study-a",
+      inputs: { expression_file: "data/study-a/expression.tsv" },
+    },
+    {
+      bundle_id: "directory:data/study-b",
+      directory: "data/study-b",
+      inputs: { expression_file: "data/study-b/expression.tsv" },
+    },
+  ],
+  steps: [],
+  missing_inputs: ["expression_file"],
+  status: "needs_input" as const,
+  question: null,
+  memory_notes: [],
+  policy_notes: [],
+  recovery_action: null,
+  recovery_attempt: 0,
+  preference_proposals: [],
+};
+
+function view(overrides: Partial<ViewPayload>): ViewPayload {
+  return {
+    prompt_kind: "main",
+    text: "",
+    menu_enabled: true,
+    mode: "Planning",
+    plan: null,
+    plan_hash: null,
+    next_prompt: null,
+    target_field: null,
+    choosing_bundle: false,
+    preflight_correction: false,
+    ...overrides,
+  };
+}
+
+function harness(payload: ViewPayload, busy = false) {
+  const onAnswer = vi.fn();
+  const onApprove = vi.fn();
+  const onDecline = vi.fn();
+  render(
+    <InputArea
+      view={payload}
+      busy={busy}
+      onAnswer={onAnswer}
+      onApprove={onApprove}
+      onDecline={onDecline}
+    />,
+  );
+  return { onAnswer, onApprove, onDecline };
+}
+
+afterEach(() => {
+  document.body.innerHTML = "";
+});
+
+describe("the clarification wizard", () => {
+  it("sends a 1-based candidate number, not the path and not field=value", () => {
+    const { onAnswer } = harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        target_field: "expression_file",
+      }),
+    );
+
+    fireEvent.click(screen.getByText("data/study-b/expression.tsv"));
+
+    expect(onAnswer).toHaveBeenCalledWith("2");
+  });
+
+  it("sends a typed path unchanged", () => {
+    const { onAnswer } = harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        target_field: "expression_file",
+      }),
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Or type the full path"), {
+      target: { value: " /work/data/mine.tsv " },
+    });
+    fireEvent.click(screen.getByText("Use this path"));
+
+    expect(onAnswer).toHaveBeenCalledWith("/work/data/mine.tsv");
+  });
+
+  it("names the field it is asking about", () => {
+    harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        target_field: "expression_file",
+      }),
+    );
+
+    expect(screen.getByText("expression_file")).toBeTruthy();
+  });
+});
+
+describe("the bundle chooser", () => {
+  it("sends a 1-based index", () => {
+    const { onAnswer } = harness(
+      view({ prompt_kind: "clarification", plan: PLAN, choosing_bundle: true }),
+    );
+
+    fireEvent.click(screen.getByText("data/study-b"));
+
+    expect(onAnswer).toHaveBeenCalledWith("2");
+  });
+
+  it("offers the custom escape hatch the wizard understands", () => {
+    const { onAnswer } = harness(
+      view({ prompt_kind: "clarification", plan: PLAN, choosing_bundle: true }),
+    );
+
+    fireEvent.click(screen.getByText("Compose inputs myself"));
+
+    expect(onAnswer).toHaveBeenCalledWith("custom");
+  });
+});
+
+describe("execution", () => {
+  it("asks for the preview with /execute rather than approving anything", () => {
+    const { onAnswer, onApprove } = harness(
+      view({
+        prompt_kind: "main",
+        next_prompt: { kind: "dry_run", question: "ready", expected_field: null, required_fields: [] },
+      }),
+    );
+
+    fireEvent.click(screen.getByText("Review and execute this plan"));
+
+    expect(onAnswer).toHaveBeenCalledWith("/execute");
+    expect(onApprove).not.toHaveBeenCalled();
+  });
+
+  it("approves by naming the plan hash", () => {
+    const { onApprove } = harness(
+      view({ prompt_kind: "execution_confirmation", plan: PLAN, plan_hash: "abc123" }),
+    );
+
+    fireEvent.click(screen.getByText("Execute this plan"));
+
+    expect(onApprove).toHaveBeenCalledWith("abc123");
+  });
+
+  it("cannot approve when the daemon sent no hash", () => {
+    const { onApprove } = harness(
+      view({ prompt_kind: "execution_confirmation", plan: PLAN, plan_hash: null }),
+    );
+
+    fireEvent.click(screen.getByText("Execute this plan"));
+
+    expect(onApprove).not.toHaveBeenCalled();
+  });
+
+  it("declines without sending a free-text answer", () => {
+    const { onAnswer, onDecline } = harness(
+      view({ prompt_kind: "execution_confirmation", plan: PLAN, plan_hash: "abc123" }),
+    );
+
+    fireEvent.click(screen.getByText("Cancel"));
+
+    expect(onDecline).toHaveBeenCalled();
+    expect(onAnswer).not.toHaveBeenCalled();
+  });
+});
+
+describe("while a turn is running", () => {
+  it("offers no way to answer", () => {
+    harness(view({ prompt_kind: "main" }), true);
+
+    expect(screen.queryByPlaceholderText(/accomplish with NetZoo/)).toBeNull();
+    expect(screen.getByText("Working…")).toBeTruthy();
+  });
+});
+
+describe("confirmation prompts", () => {
+  it("sends the y/n the state machine reads", () => {
+    const { onAnswer } = harness(
+      view({ prompt_kind: "preference_confirmation", plan: PLAN }),
+    );
+
+    fireEvent.click(screen.getByText("Save"));
+    expect(onAnswer).toHaveBeenCalledWith("y");
+  });
+});
+
+describe("preflight correction", () => {
+  it("is a different form from the per-field wizard, and accepts field=path", () => {
+    const { onAnswer } = harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        preflight_correction: true,
+        text: "[Planning] Input preflight failed, so the Work Plan is not ready:\n- expression genes are gene symbols",
+      }),
+    );
+
+    // The per-field wizard's control must not be offered here.
+    expect(screen.queryByText("Use this path")).toBeNull();
+    // And the agent's own reason has to reach the user.
+    expect(screen.getByText(/Input preflight failed/)).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText("Corrected inputs, as field=path"), {
+      target: { value: "expression_file=/work/data/mine.tsv" },
+    });
+    fireEvent.click(screen.getByText("Use these inputs"));
+
+    expect(onAnswer).toHaveBeenCalledWith("expression_file=/work/data/mine.tsv");
+  });
+
+  it("strips the mode prefix from the agent's question", () => {
+    harness(
+      view({
+        prompt_kind: "clarification",
+        plan: PLAN,
+        target_field: "expression_file",
+        text: "[Test] Which expression file should I use?",
+      }),
+    );
+
+    expect(screen.getByText("Which expression file should I use?")).toBeTruthy();
+  });
+});

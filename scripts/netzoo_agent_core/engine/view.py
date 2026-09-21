@@ -41,6 +41,21 @@ class Prompt:
     Only set for the prompts a pending plan raises; those are the ones a
     non-interactive terminal cannot answer.
     """
+    target_field: str | None = None
+    """The one input the clarification wizard is asking for right now.
+
+    A terminal reads this out of the rendered prompt text. A UI needs it as
+    data: the plan alone cannot say which field is current, because the
+    answers collected so far live in the machine, not in the plan.
+    """
+    choosing_bundle: bool = False
+    """True while the answer selects a whole input bundle rather than a field."""
+    preflight_correction: bool = False
+    """True when the plan failed input validation rather than lacking an input.
+
+    This mode accepts ``field=path`` assignments, which the per-field wizard
+    rejects, so a driver must not offer the same form for both.
+    """
 
 
 @dataclass(frozen=True, slots=True)
