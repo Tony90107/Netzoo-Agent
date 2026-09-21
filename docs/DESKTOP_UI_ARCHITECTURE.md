@@ -435,6 +435,13 @@ class BroadcastTraceStore(LocalTraceStore):
 | 網路邊表 | 圖檢視（可選，v1.5） | 依權重取 top-K 邊，超過門檻只顯示摘要 |
 
 實作補充：
+- 面板叫 **Outputs** 而不是 Files，並顯示目前路徑。「Files」沒有說出這些是 agent
+  自己產出的結果，也看不出你導覽到哪一層。
+- 側欄的 session 可以點開成**唯讀對話**（`GET /v1/history/{id}`）。看歷史不會動到
+  進行中的 session——socket 活在檢視之上。只有 agent 停在提問中的才顯示 Resume，
+  其餘顯示「沒有東西在等你」而不是一個按下去會失敗的按鈕。`save_session` 會壓縮長
+  對話，所以檢視會標明那是 agent 保留的部分，而不是把修剪過的歷史當成完整的。
+- session id 必須是純 id：帶分隔符的東西不是 session，在它能指涉路徑之前就被拒絕。
 - 檔案樹只服務 `outputs/`，路徑一律經檔案系統解析，指向樹外的 symlink 會被抓到而不是
   照名字信任；任何逃逸回 403 而不是被夾回根目錄。
 - `.npz` 從 archive header 讀形狀，**不載入任何陣列**。
