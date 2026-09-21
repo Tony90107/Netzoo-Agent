@@ -120,21 +120,21 @@ docker compose run --rm netzoo
 
 ```bash
 run-panda \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -o outputs/panda_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -o outputs/panda_network.txt
 ```
 
 跑 PUMA：
 
 ```bash
 run-puma \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -i data/mir.tsv \
-  -o outputs/puma_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -i data/official-toy/ToyMiRList.txt \
+  -o outputs/puma_network.txt
 ```
 
 ## Agent 快速開始
@@ -174,7 +174,7 @@ preflight gate。檔名只提供弱提示；內容 schema、gene-like label、�
 docker compose run --rm \
   -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   netzoo python scripts/netzoo_agent.py \
-  --task "我要用 data/expression.tsv data/motif.tsv data/ppi.tsv 跑 PANDA，輸出到 outputs/panda.tsv"
+  --task "我要用 data/official-toy/ToyExpressionData.txt data/official-toy/ToyMotifData.txt data/official-toy/ToyPPIData.txt 跑 PANDA，輸出到 outputs/panda.txt"
 ```
 
 檢查 project policy，不需 OpenRouter key：
@@ -263,7 +263,7 @@ netZooPy 共用格式是每列一個 gene、第一欄為 gene ID、後續欄位�
 Agent 可把 sample 在 rows、gene 在 columns 的 CSV/TSV 轉置：
 
 ```text
-把 data/raw.csv 的 samples×genes 整理成 PANDA 格式，
+把 data/format-demo/sample-by-gene.tsv 的 samples×genes 整理成 PANDA 格式，
 genes 在 columns，輸出 data/expression.tsv
 ```
 
