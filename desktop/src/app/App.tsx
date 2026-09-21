@@ -27,6 +27,7 @@ import {
   createSession,
   emptySession,
 } from "../transport/session";
+import { Splitter, usePaneSize } from "./Splitter";
 import { Startup } from "./Startup";
 
 function connectionText(session: SessionState | null, port: number): string {
@@ -94,6 +95,13 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   // An earlier session being read. Reading one never touches the live session.
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+
+  // Pane sizes, remembered per divider. Minimums keep any pane from being
+  // dragged out of existence.
+  const [sidebarWidth, setSidebarWidth] = usePaneSize("sidebar", 240, 170, 520);
+  const [inspectorWidth, setInspectorWidth] = usePaneSize("inspector", 340, 260, 760);
+  const [planHeight, setPlanHeight] = usePaneSize("plan", 330, 120, 1000);
+  const [timelineHeight, setTimelineHeight] = usePaneSize("timeline", 260, 120, 1000);
   const [session, setSession] = useState<SessionState | null>(null);
   const socket = useRef<SessionSocket | null>(null);
   const startedAt = useRef(0);
@@ -142,8 +150,13 @@ export function App() {
   const plan = session.view?.plan ?? null;
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
+    <div
+      className="shell"
+      style={{
+        gridTemplateColumns: `${sidebarWidth}px 5px minmax(0, 1fr) 5px ${inspectorWidth}px`,
+      }}
+    >
+      <aside className="sidebar" style={{ width: sidebarWidth }}>
         <div className="sidebar__brand">NetZoo Agent</div>
         <SessionsPane
           config={phase.config}
@@ -183,6 +196,12 @@ export function App() {
         </nav>
       </aside>
 
+      <Splitter
+        orientation="vertical"
+        label="Resize the session list"
+        onDelta={(delta) => setSidebarWidth(sidebarWidth + delta)}
+      />
+
       <main className="conversation">
         {showSettings ? (
           <SettingsView config={phase.config} onClose={() => setShowSettings(false)} />
@@ -209,10 +228,32 @@ export function App() {
         )}
       </main>
 
-      <aside className="inspector">
-        <PlanPane plan={plan} hash={session.view?.plan_hash ?? null} />
-        <Timeline trace={session.trace} />
-        <FilesPane config={phase.config} />
+      <Splitter
+        orientation="vertical"
+        label="Resize the inspector"
+        onDelta={(delta) => setInspectorWidth(inspectorWidth - delta)}
+      />
+
+      <aside className="inspector" style={{ width: inspectorWidth }}>
+        <div className="inspector__slot" style={{ height: planHeight }}>
+          <PlanPane plan={plan} hash={session.view?.plan_hash ?? null} />
+        </div>
+        <Splitter
+          orientation="horizontal"
+          label="Resize the plan"
+          onDelta={(delta) => setPlanHeight(planHeight + delta)}
+        />
+        <div className="inspector__slot" style={{ height: timelineHeight }}>
+          <Timeline trace={session.trace} />
+        </div>
+        <Splitter
+          orientation="horizontal"
+          label="Resize the timeline"
+          onDelta={(delta) => setTimelineHeight(timelineHeight + delta)}
+        />
+        <div className="inspector__slot inspector__slot--rest">
+          <FilesPane config={phase.config} />
+        </div>
       </aside>
 
       <StatusBar
