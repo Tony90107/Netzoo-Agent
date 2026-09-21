@@ -17,6 +17,44 @@ use serde::Serialize;
 /// How long a compose invocation may take before we stop waiting on it.
 const COMPOSE_TIMEOUT: Duration = Duration::from_secs(120);
 
+/// Where Docker actually lives, for an app that has no useful PATH.
+///
+/// A window launched from Finder inherits launchd's environment, which on a
+/// stock macOS is `/usr/bin:/bin:/usr/sbin:/sbin` — and Docker Desktop
+/// installs its CLI at `/usr/local/bin/docker`. Relying on PATH meant that
+/// double-clicking the app told someone who had Docker installed and running
+/// to go and install Docker.
+const DOCKER_CANDIDATES: &[&str] = &[
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "/Applications/Docker.app/Contents/Resources/bin/docker",
+    "/usr/bin/docker",
+];
+
+fn docker_program() -> PathBuf {
+    if let Ok(configured) = std::env::var("NETZOO_DOCKER") {
+        let path = PathBuf::from(configured);
+        if path.is_file() {
+            return path;
+        }
+    }
+    // Docker Desktop 4.18+ also installs into the user's home.
+    if let Some(home) = std::env::var_os("HOME") {
+        let in_home = PathBuf::from(home).join(".docker/bin/docker");
+        if in_home.is_file() {
+            return in_home;
+        }
+    }
+    for candidate in DOCKER_CANDIDATES {
+        let path = PathBuf::from(candidate);
+        if path.is_file() {
+            return path;
+        }
+    }
+    // Launched from a shell, PATH is usually enough.
+    PathBuf::from("docker")
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DaemonFault {
@@ -71,7 +109,7 @@ pub fn project_root() -> Result<PathBuf, DaemonFault> {
 }
 
 fn run(root: &Path, args: &[&str], token: Option<&str>) -> Result<Output, DaemonFault> {
-    let mut command = Command::new("docker");
+    let mut command = Command::new(docker_program());
     command.current_dir(root).args(args);
     if let Some(token) = token {
         command.env("NETZOO_DESKTOP_TOKEN", token);
@@ -80,8 +118,9 @@ fn run(root: &Path, args: &[&str], token: Option<&str>) -> Result<Output, Daemon
         if error.kind() == std::io::ErrorKind::NotFound {
             DaemonFault::new(
                 "docker_missing",
-                "Docker is not installed, or is not on this app's PATH.",
-                "Install Docker Desktop, then reopen NetZoo Agent.",
+                "Could not find the docker command.",
+                "If Docker Desktop is installed, set NETZOO_DOCKER to the full path \
+of its `docker` binary. Otherwise install Docker Desktop and reopen NetZoo Agent.",
                 error.to_string(),
             )
         } else {
@@ -145,7 +184,7 @@ pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
 fn run_with_timeout(root: &Path, token: &str, port: &str) -> Result<Output, DaemonFault> {
     // `docker compose up -d` returns once the container is created; the image
     // build it may trigger is what can take minutes, hence the generous cap.
-    let mut command = Command::new("docker");
+    let mut command = Command::new(docker_program());
     command
         .current_dir(root)
         .args(["compose", "up", "-d", "netzoo-daemon"])
@@ -191,7 +230,7 @@ fn run_with_timeout(root: &Path, token: &str, port: &str) -> Result<Output, Daem
 pub fn stop(root: &Path) {
     // Best effort: the app is closing either way, and leaving a stopped
     // container behind is better than blocking quit on Docker.
-    let _ = Command::new("docker")
+    let _ = Command::new(docker_program())
         .current_dir(root)
         .args(["compose", "stop", "netzoo-daemon"])
         .output();
@@ -229,5 +268,40 @@ mod tests {
         // The daemon service must be the one the shell starts.
         let compose = std::fs::read_to_string(root.join("docker-compose.yml")).unwrap();
         assert!(compose.contains("netzoo-daemon:"), "compose file has no daemon service");
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+
+    #[test]
+    fn docker_is_found_without_a_useful_path() {
+        // A Finder-launched app has launchd's PATH, which does not include
+        // /usr/local/bin, so resolution must not depend on PATH at all.
+        let program = docker_program();
+        assert!(
+            program.is_absolute() || program == PathBuf::from("docker"),
+            "unexpected docker program: {program:?}"
+        );
+        if DOCKER_CANDIDATES.iter().any(|c| PathBuf::from(c).is_file()) {
+            assert!(program.is_file(), "an installed docker must resolve to a file");
+        }
+    }
+
+    #[test]
+    fn an_explicit_override_wins_when_it_exists() {
+        let previous = std::env::var("NETZOO_DOCKER").ok();
+        std::env::set_var("NETZOO_DOCKER", "/definitely/not/here/docker");
+        let ignored = docker_program();
+        std::env::set_var("NETZOO_DOCKER", "/bin/sh");
+        let honoured = docker_program();
+        match previous {
+            Some(value) => std::env::set_var("NETZOO_DOCKER", value),
+            None => std::env::remove_var("NETZOO_DOCKER"),
+        }
+
+        assert_ne!(ignored, PathBuf::from("/definitely/not/here/docker"));
+        assert_eq!(honoured, PathBuf::from("/bin/sh"));
     }
 }
