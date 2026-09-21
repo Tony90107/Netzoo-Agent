@@ -164,20 +164,28 @@ if [[ "$BUILD_DESKTOP" == 1 ]]; then
   ok "built in $(( ($(date +%s) - started) / 60 )) min"
 
   app="desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
-  [[ -d "$app" ]] && ok "app at $app"
+  if [[ -d "$app" ]]; then
+    ok "app at $app"
+  else
+    # Tauri names its output per platform (.deb, .AppImage, .msi). Only macOS
+    # has been tested here, so point at the directory rather than guess.
+    ok 'bundle under desktop/src-tauri/target/release/bundle/'
+  fi
 else
   say 'Skipping the desktop app (--cli-only)'
 fi
 
 # ------------------------------------------------------------------ Summary
 
+printf '\nSetup complete.\n\n'
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  printf '  Desktop:  open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"\n'
+else
+  printf '  Desktop:  see desktop/src-tauri/target/release/bundle/ (only macOS is tested)\n'
+fi
 cat <<'DONE'
-
-Setup complete.
-
-  Desktop:  open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
   Terminal: ./netzoo-chat
 
 Keep the app inside this directory: it locates docker-compose.yml by walking
-up from its own path, and an app moved to /Applications has no repo above it.
+up from its own path, and an app moved elsewhere has no repo above it.
 DONE

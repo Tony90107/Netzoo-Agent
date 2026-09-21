@@ -49,6 +49,8 @@ memory consolidation`。Evaluator 通過後可
 | OpenRouter API key | agent 的 LLM 呼叫 | <https://openrouter.ai/keys>，按 token 計費 |
 | Node.js 20+ 與 Rust | 編譯桌面 app | 只有桌面版需要，`--cli-only` 可略過 |
 
+桌面版只在 **macOS（Apple Silicon）** 上驗證過。Docker 環境與終端版不限平台；Tauri 在 Linux／Windows 上會產出 `.deb`／`.AppImage`／`.msi`，但未經測試。
+
 映像是 `netzoo_agent:latest`，實測 **5.58GB**；冷啟建置需要數十分鐘，主要花在下載與
 編譯相依套件，之後都走 layer cache。
 
