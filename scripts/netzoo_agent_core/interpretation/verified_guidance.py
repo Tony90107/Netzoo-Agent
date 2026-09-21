@@ -10,6 +10,7 @@ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
+from ..runtime_constraints import runtime_control_constraints
 from ..settings import INPUT_ROLE_FIELDS
 from workflow_registry import get_controls
 from .extraction import INPUT_LABELS
@@ -154,7 +155,7 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                 lines.append(
                     "Relevant workflow controls for this request:\n\n"
                     + "\n".join(
-                        _render_control(control) for control in relevant_controls
+                        _render_control(action, control) for control in relevant_controls
                     )
                 )
             conditional_outputs = capability.get("conditional_outputs", [])
@@ -184,7 +185,7 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     return "\n\n".join(lines)
 
 
-def _render_control(control: dict) -> str:
+def _render_control(action: str, control: dict) -> str:
     """Render only metadata declared by the workflow registry."""
     details = [f"type={control.get('type', control.get('control_type'))}"]
     if "default" in control:
@@ -197,4 +198,22 @@ def _render_control(control: dict) -> str:
         )
     description = control.get("description")
     suffix = f" — {description}" if description else ""
+    constraint = runtime_control_constraints(action).get(control["name"])
+    if constraint is not None:
+        unavailable = sorted(
+            set(map(str, control.get("allowed_values", [])))
+            & set(constraint.unavailable_values)
+        )
+        if unavailable:
+            fallback = (
+                f"; use `{control['name']}={constraint.fallback}`"
+                if constraint.fallback is not None
+                else ""
+            )
+            suffix += (
+                " — current runtime unavailable: "
+                + ", ".join(unavailable)
+                + fallback
+                + "."
+            )
     return f"- `{control['name']}` ({'; '.join(details)}){suffix}"

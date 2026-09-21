@@ -165,21 +165,20 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             required_fields=composition_fields,
         )
 
-    if decision.action == "no_tool" and request_mode == "guidance":
-        return NextTurnPrompt(
-            kind="completed",
-            question=_ui_text(
-                "Enter a follow-up question, provide inputs only if you want to "
-                "execute the complete recommended pipeline, or describe another "
-                "NetZoo goal."
-            ),
-        )
-
     if (
         decision.action == "no_tool"
         and semantic_relationship == "alternatives"
         and len(semantic_candidates) > 1
     ):
+        if decision.clarification_question:
+            return NextTurnPrompt(
+                kind="clarify_outcome",
+                question=_ui_text(
+                    f"{decision.clarification_question}\n"
+                    "Answer this clarification or describe another NetZoo goal."
+                ),
+                allow_workflow_continuation=False,
+            )
         return NextTurnPrompt(
             kind="recommended_workflow",
             question=_ui_text(
@@ -194,7 +193,18 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text(
-                "Enter the requested clarification or describe another NetZoo goal."
+                f"{decision.clarification_question}\n"
+                "Answer this clarification or describe another NetZoo goal."
+            ),
+        )
+
+    if decision.action == "no_tool" and request_mode == "guidance":
+        return NextTurnPrompt(
+            kind="completed",
+            question=_ui_text(
+                "Enter a follow-up question, provide inputs only if you want to "
+                "execute the complete recommended pipeline, or describe another "
+                "NetZoo goal."
             ),
         )
 

@@ -27,6 +27,9 @@ from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
 from netzoo_agent_core.interpretation.request_integrity import (  # noqa: E402
     request_integrity_issues,
 )
+from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
+    validate_outcome_hypotheses,
+)
 
 CURRENT = "Now I have a gene expression matrix, TF motif priors and PPI data. Which workflow infers a per-patient regulatory network?"
 HISTORICAL = "Previously I used a somatic mutation matrix. That analysis is finished. Which workflow infers a per-patient regulatory network?"
@@ -326,6 +329,78 @@ def test_an_explicit_tf_to_gene_role_witness_restores_the_bounded_roles():
     )
     assert "run_puma" not in match.hypothesis_actions
     assert "run_lioness_puma" not in match.hypothesis_actions
+
+
+def test_explicit_aggregate_witness_restores_only_missing_evidence():
+    task = (
+        "Previous NetZoo goal: Infer one aggregate TF-to-gene regulatory network.\n"
+        "User follow-up: Use continuous relaxed graph matching."
+    )
+    source = role_interpretation(
+        [("artifact_type", "regulatory_network")],
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+
+    before = validate_outcome_hypotheses(task, source.outcome_hypotheses)
+    result, restored = restore_stated_fields(
+        task, source, restore_explicit_scalar_evidence=True,
+    )
+    after = validate_outcome_hypotheses(task, result.outcome_hypotheses)
+
+    assert "hypothesis[0].missing_evidence:granularity=aggregate" in before.issues
+    assert not any("missing_evidence:granularity" in issue for issue in after.issues)
+    assert result.outcome_hypotheses[0].outcome == source.outcome_hypotheses[0].outcome
+    assert any(
+        item["source"] == "explicit_granularity_witness"
+        and item["witnessed_span"] == "aggregate"
+        for item in restored
+    )
+
+
+def test_granularity_witness_never_overrides_a_conflicting_model_field():
+    source = role_interpretation(
+        [("artifact_type", "regulatory_network")],
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="sample_specific",
+    )
+
+    result, restored = restore_stated_fields(
+        "Infer one aggregate TF-to-gene regulatory network.", source,
+        restore_explicit_scalar_evidence=True,
+    )
+
+    assert result.outcome_hypotheses[0].outcome.granularity == "sample_specific"
+    assert not any(
+        item["source"] == "explicit_granularity_witness" for item in restored
+    )
+
+
+def test_conflicting_explicit_granularity_phrases_are_not_repaired():
+    source = role_interpretation(
+        [("artifact_type", "regulatory_network")],
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+
+    result, restored = restore_stated_fields(
+        "Compare aggregate and sample-specific TF-to-gene networks.", source,
+        restore_explicit_scalar_evidence=True,
+    )
+
+    assert not any(
+        item.dimension == "granularity"
+        for item in result.outcome_hypotheses[0].evidence
+    )
+    assert not any(
+        item["source"] == "explicit_granularity_witness" for item in restored
+    )
 
 
 def test_a_move_that_would_create_a_new_consistency_issue_is_reverted():

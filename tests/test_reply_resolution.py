@@ -229,6 +229,41 @@ def test_substantive_follow_up_becomes_bounded_self_contained_task():
     )
 
 
+def test_concrete_answer_to_scientific_clarification_is_revalidated():
+    context = _outcome_clarification_context()
+    context.prompt_question = (
+        "Which modeling assumption best matches your experiment: iterative message "
+        "passing; continuous relaxed graph matching?"
+    )
+    model = Mock()
+    model.invoke.return_value = _decision("needs_detail")
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        context,
+        "Continuous relaxed graph matching with an explicit objective.",
+        None,
+        "run-1",
+    )
+
+    assert result.resolution.kind == "follow_up"
+    assert "Previous NetZoo goal:" in result.resolution.resolved_task
+    assert "continuous relaxed graph matching" in (
+        result.resolution.resolved_task.casefold()
+    )
+
+
+def test_bare_acknowledgement_still_does_not_answer_a_clarification():
+    context = _outcome_clarification_context()
+    model = Mock()
+    model.invoke.return_value = _decision("needs_detail")
+
+    result = ContextualReplyResolver.for_test(model).resolve(
+        context, "okay", None, "run-1"
+    )
+
+    assert result.resolution.kind == "needs_detail"
+
+
 def test_context_wrapper_does_not_invent_a_current_documentation_request():
     model = Mock()
     model.invoke.return_value = _decision("follow_up")
@@ -268,7 +303,8 @@ def test_reply_prompt_treats_questions_about_trusted_workflow_facts_as_follow_up
     resolved = ContextualReplyResolver.for_test(model).resolve(
         context, "What format should that prior input use?", None, "run-1"
     )
-    assert "Registered workflow context: PUMA" in resolved.resolution.resolved_task
+    assert "Registered workflow context:" not in resolved.resolution.resolved_task
+    assert "Previous NetZoo goal:" in resolved.resolution.resolved_task
 
 
 def test_low_confidence_resolution_fails_safe():

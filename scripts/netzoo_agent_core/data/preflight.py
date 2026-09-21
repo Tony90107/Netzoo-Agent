@@ -7,6 +7,7 @@ from typing import Any, Callable
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 from .. import settings
+from ..runtime_constraints import runtime_control_constraints
 from .cobra import inspect_cobra_inputs_impl, load_cobra_inputs
 from .bonobo import inspect_bonobo_inputs_impl, load_bonobo_inputs
 from .dragon import inspect_dragon_inputs_impl
@@ -358,10 +359,11 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             _value(decision, "precision") or "double",
         )
         errors.extend(_report_errors("OTTER inputs", report, ok))
-        if action == "run_otter" and _value(decision, "computing") == "gpu":
-            errors.append(
-                "OTTER computing=gpu is not enabled by this Docker runtime; use computing=cpu."
-            )
+        computing_constraint = runtime_control_constraints(action).get("computing")
+        if computing_constraint is not None:
+            issue = computing_constraint.issue(_value(decision, "computing"))
+            if issue is not None:
+                errors.append(issue)
     elif action == "run_lioness_coexpression":
         errors.extend(_validate_expression_file(expression))
         errors.extend(_validate_lioness_sample_count(expression))

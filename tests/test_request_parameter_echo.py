@@ -63,3 +63,12 @@ def test_a_stated_role_is_not_repeated_as_a_recognized_file():
 
 def test_a_request_naming_nothing_still_echoes_nothing():
     assert render_explicit_request_parameters("What can NetZoo do?") is None
+
+
+def test_gpu_preference_is_extracted_as_a_typed_workflow_control():
+    assert extract_explicit_request_parameters(
+        "Prefer GPU acceleration if the selected workflow supports it."
+    )["computing"] == "gpu"
+    assert extract_explicit_request_parameters(
+        "Run OTTER with computing=cpu and precision=single."
+    ) == {"computing": "cpu", "precision": "single"}

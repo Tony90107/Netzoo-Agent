@@ -77,6 +77,19 @@ _REGULATORY_ROLE_PAIR = re.compile(
     r"(?P<target>genes?)\b",
     re.I,
 )
+_GRANULARITY_PATTERNS = {
+    "aggregate": re.compile(
+        r"\b(?:aggregate|cohort[- ]wide|population[- ]level)\b|"
+        r"(?:整體|群體|族群)(?:層級|層次)?",
+        re.I,
+    ),
+    "sample_specific": re.compile(
+        r"\b(?:sample|patient|subject)[- ]specific\b|"
+        r"\bper[- ](?:sample|patient|subject)\b|"
+        r"(?:每個|各個|逐一)(?:樣本|病患|病人|患者)(?:各自|個別)?",
+        re.I,
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -91,6 +104,12 @@ class RegulatoryRoleMention:
     regulator_type: str
     target_type: str
     entity_types: tuple[str, str]
+    text_span: str
+
+
+@dataclass(frozen=True)
+class GranularityMention:
+    granularity: str
     text_span: str
 
 
@@ -150,6 +169,28 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
                 entity_types=(regulator, "gene"),
                 text_span=match.group(0),
             ))
+    return tuple(mentions)
+
+
+def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
+    """Return explicit, current output-granularity phrases.
+
+    These witnesses only quote a closed vocabulary value already present in
+    the request.  They do not infer granularity from a workflow name, input
+    shape, or conversational candidate.
+    """
+    mentions = []
+    for clause, scope in _scoped_clauses(task):
+        if scope != "current":
+            continue
+        for granularity, pattern in _GRANULARITY_PATTERNS.items():
+            for match in pattern.finditer(clause):
+                if _NEGATED.search(clause[:match.start()]):
+                    continue
+                mentions.append(GranularityMention(
+                    granularity=granularity,
+                    text_span=match.group(0),
+                ))
     return tuple(mentions)
 
 

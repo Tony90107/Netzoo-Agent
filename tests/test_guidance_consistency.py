@@ -333,6 +333,8 @@ def test_otter_guidance_declares_expression_or_coexpression_source_and_optimizat
     assert "continuous-relaxation" in answer
     assert "Required alternative (provide one):" in answer
     assert "`expression_file`" in answer and "`coexpression_file`" in answer
+    assert "current runtime unavailable: gpu" in answer
+    assert "use `computing=cpu`" in answer
 
 
 def test_bonobo_guidance_exposes_sample_and_pvalue_controls_without_claiming_thresholding():

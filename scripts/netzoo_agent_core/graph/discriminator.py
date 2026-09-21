@@ -24,6 +24,7 @@ __all__ = ["invoke_semantic_discriminator"]
 
 
 _RELAXED_GRAPH_MARKERS = (
+    re.compile(r"(?:連續|连续)?\s*(?:鬆弛|松弛)(?:化)?(?:圖|图)?匹配|(?:continuous\s+)?relaxed\s+graph[- ]matching", re.IGNORECASE),
     re.compile(r"(?:目標|目标)\s*函數|objective\s+function|(?:損失|损失)(?:函數|函数)?|loss(?:\s+function)?", re.IGNORECASE),
     re.compile(r"(?:連續|连续).{0,4}(?:凸).{0,8}(?:最佳化|优化)|continuous.{0,24}convex.{0,24}(?:optimization|optimisation)|convex.{0,24}(?:optimization|optimisation)", re.IGNORECASE),
     re.compile(r"(?:理論)?(?:收斂|收敛)(?:保證|保证)?|convergence(?:\s+(?:guarantee|guarantees|proof))?|converges?", re.IGNORECASE),
@@ -43,6 +44,7 @@ _BONOBO_PVALUE_MARKERS = (
 )
 _DISCRIMINATOR_TAG_ALIASES = {
     "explicit objective/loss": "relaxed_graph_matching",
+    "explicit_objective/loss": "relaxed_graph_matching",
     "objective/loss": "relaxed_graph_matching",
     "continuous convex optimization": "relaxed_graph_matching",
     "gradient descent": "relaxed_graph_matching",
@@ -122,7 +124,7 @@ def _recover_explicit_selection_tag(
         # contrast such as "not heuristic". The second signal still gates the
         # recovery, but the quote should explain why the method is selected.
         evidence_match = next(
-            match for preferred in (1, 2, 0, 3)
+            match for preferred in (2, 0, 3, 1, 4)
             for index, match in present
             if index == preferred
         )

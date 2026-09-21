@@ -366,6 +366,9 @@ def test_guidance_with_an_explicitly_absent_required_prior_is_unsupported():
     assert result.status == "unsupported"
     assert result.hypothesis_actions == []
     assert "input_artifacts" in result.mismatch_dimensions
+    assert result.clarification_question is not None
+    assert "PPI prior" in result.clarification_question
+    assert "marked unavailable" in result.clarification_question
 
 
 def test_named_method_cannot_override_an_unsupported_scientific_result():

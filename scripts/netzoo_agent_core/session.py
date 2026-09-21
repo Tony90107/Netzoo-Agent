@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import time
@@ -23,7 +24,6 @@ from .contracts import (
 from .trace_contracts import RunManifest
 
 from .memory import (
-    _harden_private_tree,
     _write_json_atomic,
 )
 
@@ -101,9 +101,15 @@ def cleanup_runtime_storage(
     hard_cutoff = time.time() - max(hard_retention_days, retention_days, 1) * 86_400
     removed = {"sessions": 0, "logs": 0}
     if SESSION_ROOT.exists():
-        _harden_private_tree(SESSION_ROOT)
-        for path in SESSION_ROOT.glob("*.json"):
-            modified_at = path.stat().st_mtime
+        SESSION_ROOT.chmod(0o700)
+        for entry in os.scandir(SESSION_ROOT):
+            if not entry.is_file(follow_symlinks=False) or not entry.name.endswith(".json"):
+                continue
+            path = Path(entry.path)
+            metadata = entry.stat(follow_symlinks=False)
+            if metadata.st_mode & 0o077:
+                path.chmod(0o600)
+            modified_at = metadata.st_mtime
             if modified_at < hard_cutoff:
                 path.unlink()
                 removed["sessions"] += 1
@@ -122,10 +128,16 @@ def cleanup_runtime_storage(
             except (OSError, ValueError, TypeError):
                 continue
     if TOOL_LOG_ROOT.exists():
-        _harden_private_tree(TOOL_LOG_ROOT)
-        for path in TOOL_LOG_ROOT.glob("*.log"):
+        TOOL_LOG_ROOT.chmod(0o700)
+        for entry in os.scandir(TOOL_LOG_ROOT):
+            if not entry.is_file(follow_symlinks=False) or not entry.name.endswith(".log"):
+                continue
+            path = Path(entry.path)
             try:
-                if path.stat().st_mtime < cutoff:
+                metadata = entry.stat(follow_symlinks=False)
+                if metadata.st_mode & 0o077:
+                    path.chmod(0o600)
+                if metadata.st_mtime < cutoff:
                     path.unlink()
                     removed["logs"] += 1
             except OSError:
@@ -144,19 +156,31 @@ def cleanup_trace_storage(
         return 0
     cutoff = datetime.now(timezone.utc).timestamp() - max(retention_days, 1) * 86_400
     removed = 0
-    for candidate in root.iterdir():
-        if not candidate.is_dir():
+    for entry in os.scandir(root):
+        if not entry.is_dir(follow_symlinks=False):
             continue
         try:
-            UUID(candidate.name)
+            UUID(entry.name)
         except ValueError:
             continue
+        try:
+            if entry.stat(follow_symlinks=False).st_mtime >= cutoff:
+                continue
+        except OSError:
+            continue
+        candidate = Path(entry.path)
         resolved = candidate.resolve()
         if resolved.parent != root:
             continue
+        manifest_path = resolved / "manifest.json"
         try:
+            # Active and recently completed runs cannot be expired. Avoid
+            # parsing every manifest on each CLI startup; large local trace
+            # stores otherwise make retention cleanup dominate boot time.
+            if manifest_path.stat().st_mtime >= cutoff:
+                continue
             manifest = RunManifest.model_validate_json(
-                (resolved / "manifest.json").read_text(encoding="utf-8")
+                manifest_path.read_text(encoding="utf-8")
             )
         except (OSError, ValueError):
             continue

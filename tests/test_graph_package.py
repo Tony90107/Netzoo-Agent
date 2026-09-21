@@ -914,7 +914,7 @@ def test_ambiguous_guidance_uses_deterministic_clarification():
     )
 
 
-def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():
+def test_guidance_ambiguity_preserves_the_cli_clarification_follow_up():
     decision = legacy_agent.TaskDecision(
         action="no_tool",
         in_scope=True,
@@ -944,8 +944,9 @@ def test_guidance_ambiguity_does_not_force_a_cli_clarification_follow_up():
         }
     )
 
-    assert prompt.kind == "completed"
-    assert "Enter a follow-up question" in prompt.question
+    assert prompt.kind == "clarify_outcome"
+    assert "aggregate or sample-specific" in prompt.question
+    assert prompt.allow_workflow_continuation is False
 
 
 def test_no_tool_response_context_follows_validated_actions_without_name_rules():

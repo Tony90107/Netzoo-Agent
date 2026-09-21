@@ -52,7 +52,11 @@ import re
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
 from ..contracts.outcomes import OutcomeEvidence, RequestedOutcome, SemanticInterpretation
 from ..contracts.repair_scope import DIMENSION_BY_FIELD
-from .request_integrity import input_mentions, regulatory_role_mentions
+from .request_integrity import (
+    granularity_mentions,
+    input_mentions,
+    regulatory_role_mentions,
+)
 
 __all__ = ["restore_stated_fields"]
 
@@ -180,6 +184,7 @@ def _with_explicit_roles(
 def restore_stated_fields(
     user_task: str, interpretation: SemanticInterpretation,
     *, align_artifact_constraints: bool = False,
+    restore_explicit_scalar_evidence: bool = False,
 ) -> tuple[SemanticInterpretation, list[dict[str, object]]]:
     """Return the interpretation with stated values moved into place, plus a record."""
     witnessed = _witnessed_current(user_task)
@@ -189,6 +194,40 @@ def restore_stated_fields(
         outcome = hypothesis.outcome
         evidence = list(hypothesis.evidence)
         baseline = set(outcome_consistency_issues(outcome))
+        granularity_witnesses = (
+            {
+                mention.granularity: mention.text_span
+                for mention in granularity_mentions(user_task)
+            }
+            if restore_explicit_scalar_evidence else {}
+        )
+        if (
+            len(granularity_witnesses) == 1
+            and outcome.granularity in granularity_witnesses
+            and not any(
+                item.dimension == "granularity"
+                and item.value == outcome.granularity
+                for item in evidence
+            )
+            and len(evidence) < 12
+        ):
+            witnessed_span = granularity_witnesses[outcome.granularity]
+            evidence.append(OutcomeEvidence(
+                dimension="granularity",
+                value=outcome.granularity,
+                source="explicit",
+                text_span=witnessed_span,
+                rationale=(
+                    "The request explicitly states the output granularity."
+                ),
+            ))
+            restored.append({
+                "hypothesis": index,
+                "field": "granularity_evidence",
+                "value": outcome.granularity,
+                "source": "explicit_granularity_witness",
+                "witnessed_span": witnessed_span,
+            })
         if outcome.artifact_type in {
             "regulatory_network", "signed_regulatory_effect_network", _UNKNOWN,
         }:

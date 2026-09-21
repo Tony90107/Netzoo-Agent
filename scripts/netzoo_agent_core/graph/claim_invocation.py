@@ -105,6 +105,7 @@ def invoke_claim_interpreter(
             interpretation = claims.to_internal()
             interpretation, restorations = restore_stated_fields(
                 user_task, interpretation,
+                restore_explicit_scalar_evidence=True,
             )
             if restorations:
                 record_event(
