@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
+from . import files
+from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
 
@@ -104,6 +106,10 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     async def _unknown_session(_request: Request, error: UnknownSession):
         return JSONResponse({"detail": str(error)}, status_code=404)
 
+    @app.exception_handler(files.OutsideRoot)
+    async def _outside_root(_request: Request, error: files.OutsideRoot):
+        return JSONResponse({"detail": str(error)}, status_code=403)
+
     @app.exception_handler(SupervisorError)
     async def _supervisor_error(_request: Request, error: SupervisorError):
         return JSONResponse({"detail": str(error)}, status_code=409)
@@ -142,6 +148,59 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         _scope: None = Depends(require_token),
     ) -> None:
         await supervisor.close(session_id)
+
+    mapper = PathMapper.from_environment()
+
+    @app.get("/v1/files")
+    def browse(
+        path: str = Query(default="", max_length=1024),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        listing = files.list_directory(path)
+        return {
+            "path": listing.path,
+            "host_path": _host(listing.path),
+            "entries": [
+                {
+                    "name": entry.name,
+                    "path": entry.path,
+                    "kind": entry.kind,
+                    "size_bytes": entry.size_bytes,
+                    "modified_at": entry.modified_at,
+                }
+                for entry in listing.entries
+            ],
+        }
+
+    @app.get("/v1/files/preview")
+    def file_preview(
+        path: str = Query(max_length=1024),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        result = files.preview(path)
+        return {
+            "path": result.path,
+            "host_path": _host(result.path),
+            "kind": result.kind,
+            "size_bytes": result.size_bytes,
+            "truncated": result.truncated,
+            "columns": result.columns,
+            "rows": result.rows,
+            "text": result.text,
+            "arrays": result.arrays,
+            "note": result.note,
+        }
+
+    def _host(relative: str) -> str:
+        """The path as the user would find it, when the shell said where.
+
+        Falls back to the container path rather than guessing: a wrong host
+        path is worse than an honest one the user has to translate.
+        """
+        try:
+            return mapper.to_host(relative)
+        except PathOutsideProject:
+            return relative
 
     @app.post("/v1/sessions/{session_id}/cancel")
     def cancel_turn(
