@@ -229,6 +229,7 @@ Observer 用 SSE 是因為它單向唯讀。桌面版需要雙向（送出回答
 | type | payload | 對應 CLI 行為 |
 | --- | --- | --- |
 | `answer` | `{text}` | 所有一般輸入：主提示、clarification、bundle 選擇、slash 指令 |
+| `answer`（不回音） | `{text}` | 模式切換：UI 送 `/planning` / `/test`，但不把它當成一句話放進對話串 |
 | `approve_execution` | `{plan_hash}` | 執行確認的 `y` |
 | `decline_execution` | `{}` | 執行確認的 `n` |
 | `cancel` | `{}` | Ctrl-C |
@@ -243,6 +244,21 @@ UI 仍然照 `view.prompt_kind` 決定要畫哪種輸入元件。
 UI 離它看到的那份計畫有一個網路來回的距離。所以它必須指名自己核准的是哪一份計畫，
 hash 對不上就拒絕。在執行確認提示上送 `answer` 會被拒絕（`ExecutionApprovalRequired`），
 兩段確認（先預覽、再核准）在兩個 driver 上都成立。
+
+**WebSocket 的 token 走 subprotocol，不走 query string。** 瀏覽器不能在 WebSocket 上設
+Authorization header，而 query string 會被 uvicorn 的 access log 原封不動記下來
+（`docker logs` 就讀得到）。`["netzoo.bearer", <token>]` 是 WebSocket 協定為此提供的
+機制，不會被記錄。非瀏覽器客戶端仍可用 Authorization header。
+
+**模式是狀態，所以用控制項而非打字。** 終端只能靠 `/planning` / `/test`，那是終端唯一
+的手段；在視窗裡打字會把指令留在對話紀錄裡，而且兩則訊息之間看不出目前是什麼模式。
+UI 仍然把指令送給 engine（`TEST_DATA_MODE` 與 `EXECUTE_TOOLS` 是 engine 的，視窗不得
+自己設），只是不回音；agent 自己那段說明照常進入對話串，因為它帶著「合成結果不是生物
+證據」這句警告。
+
+**`view` 多帶三個欄位**：`target_field`、`choosing_bundle`、`preflight_correction`。
+計畫本身說不出精靈正在問哪一個輸入——已收集的答案在 machine 裡而不在 plan 上——去解析
+提示詞的散文等於再造一個沉默的狀態機。
 
 ### 6.4 Server → Client
 
@@ -351,7 +367,7 @@ class PathMapper:
 
 | `NextTurnPrompt.kind` / plan status | 輸入區元件 |
 | --- | --- |
-| `initial` | 多行自由輸入 + slash 選單 |
+| `initial` | 多行自由輸入；模式切換是標頭上的控制項，不是打字 |
 | plan `needs_input`（有 bundle options） | Bundle 卡片選擇器 + 「自訂」 |
 | plan `needs_input`（逐欄） | 針對 `missing_inputs[0]` 的欄位表單；路徑欄位掛原生檔案選擇器 |
 | plan `needs_confirmation` | 輸入清單確認（是／否／改路徑） |
@@ -483,7 +499,7 @@ netzoo_agent/
 | **M0 狀態機抽取** ✅ 已完成 | `engine/` 落地，CLI 改為 adapter | 失敗集合在本機（83）與容器（107）皆與重構前逐行相同、13 個 golden transcript 逐字元相同、使用者可見字串零遺失 |
 | **M1 Daemon 骨架** ✅ 已完成 | FastAPI + supervisor + worker 行程 + WS | 容器內實跑一輪 planning turn：routing → PANDA → evidence ledger → clarification，`view` 帶完整 plan 與 hash；同一個 prompt 走 CLI 得到相同結果；19 個新測試（含真行程隔離驗證） |
 | **M2 Tauri 殼層** ✅ 已完成 | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動 2.7s（門檻 15s）；每次啟動新鑄 token、舊 token 立即失效；Docker 三種失敗各有專屬補救訊息 |
-| **M3 對話與計畫審核** | 對話串、輸入區形態機、Plan Card、兩段執行確認 | 能完整跑完 PANDA toy：提問 → 補輸入 → dry-run → 執行 → 結果 |
+| **M3 對話與計畫審核** ✅ 已完成 | 對話串、輸入區形態機、Plan Card、兩段執行確認、模式切換器 | 原生視窗實跑完整 PANDA toy：提問 → preflight 失敗 → Test 模式 → 修正輸入 → 確認 → Ready 計畫 → 兩段核准 → 寫出 3.1MB 網路；19 個 UI 測試 |
 | **M4 推理時間軸** | BroadcastTraceRecorder、時間軸、事件折疊 | 一次 run 的時間軸事件數與 `.netzoo/traces/` 內的筆數一致 |
 | **M5 結果與 Session** | 檔案樹、TSV/npz/md 檢視、session 歷史、設定頁、成本列 | 12 個 workflow 的輸出都能在視窗內開啟 |
 
