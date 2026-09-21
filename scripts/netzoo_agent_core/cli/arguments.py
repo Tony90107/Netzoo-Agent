@@ -173,8 +173,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trace-retention-days",
         type=int,
-        default=int(os.environ.get("NETZOO_TRACE_RETENTION_DAYS", "90")),
-        help="Retention period for sealed local traces.",
+        default=int(os.environ.get("NETZOO_TRACE_RETENTION_DAYS", "30")),
+        help=(
+            "Retention period for sealed local traces. Matched to the session "
+            "retention so a run's trace and its checkpoint expire together "
+            "rather than leaving one without the other."
+        ),
     )
     parser.add_argument(
         "--retention-days",

@@ -20,6 +20,7 @@ from ..settings import SESSION_ROOT
 
 __all__ = [
     "SessionSummary",
+    "measure_storage",
     "SessionTranscript",
     "describe_settings",
     "list_sessions",
@@ -157,6 +158,52 @@ def _safe(session_id: str) -> str:
     return cleaned
 
 
+def measure_storage() -> dict:
+    """How much the runtime stores keep, so the question is answerable.
+
+    Reported rather than guessed at: a trace run is small, but there are a lot
+    of them, and "is this wasting space?" should be a thing you can look at.
+    Unsealed runs are counted separately because retention never removes them.
+    """
+    def _walk(root: Path) -> tuple[int, int]:
+        if not root.exists():
+            return 0, 0
+        count = total = 0
+        for path in root.rglob("*"):
+            if path.is_file():
+                count += 1
+                try:
+                    total += path.stat().st_size
+                except OSError:
+                    continue
+        return count, total
+
+    session_files, session_bytes = _walk(SESSION_ROOT)
+    trace_files, trace_bytes = _walk(runtime_settings.TRACE_ROOT)
+    trace_runs = unsealed = 0
+    if runtime_settings.TRACE_ROOT.exists():
+        for entry in runtime_settings.TRACE_ROOT.iterdir():
+            if not entry.is_dir():
+                continue
+            trace_runs += 1
+            try:
+                manifest = json.loads((entry / "manifest.json").read_text())
+            except (OSError, ValueError):
+                unsealed += 1
+                continue
+            if not (manifest.get("sealed") and manifest.get("finished_at")):
+                unsealed += 1
+    return {
+        "sessions": {"files": session_files, "bytes": session_bytes},
+        "traces": {
+            "files": trace_files,
+            "bytes": trace_bytes,
+            "runs": trace_runs,
+            "unsealed_runs": unsealed,
+        },
+    }
+
+
 def _model(name: str, default: str = "") -> str:
     return os.environ.get(name, default).strip() or "(unset)"
 
@@ -194,5 +241,13 @@ def describe_settings() -> dict:
             "traces": str(runtime_settings.TRACE_ROOT),
             "sessions": str(SESSION_ROOT),
         },
+        "retention_days": {
+            "sessions": int(
+                os.environ.get("NETZOO_SESSION_RETENTION_DAYS")
+                or runtime_settings.DEFAULT_RETENTION_DAYS
+            ),
+            "traces": int(os.environ.get("NETZOO_TRACE_RETENTION_DAYS") or 30),
+        },
+        "storage": measure_storage(),
         "api_key_present": bool(os.environ.get("OPENROUTER_API_KEY")),
     }
