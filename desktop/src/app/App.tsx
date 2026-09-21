@@ -10,6 +10,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Conversation } from "../features/conversation/Conversation";
 import { FilesPane } from "../features/files/FilesPane";
 import { PlanPane } from "../features/plan/PlanPane";
+import { SessionsPane } from "../features/sessions/SessionsPane";
+import { SettingsView } from "../features/sessions/SettingsView";
 import { Timeline } from "../features/timeline/Timeline";
 import {
   DaemonConfig,
@@ -25,15 +27,6 @@ import {
   emptySession,
 } from "../transport/session";
 import { Startup } from "./Startup";
-
-function Pane({ title, hint }: { title: string; hint: string }) {
-  return (
-    <section className="pane">
-      <header className="pane__header">{title}</header>
-      <div className="pane__empty">{hint}</div>
-    </section>
-  );
-}
 
 function connectionText(session: SessionState | null, port: number): string {
   if (!session) return "Connecting…";
@@ -97,11 +90,12 @@ function StatusBar({
 
 export function App() {
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
+  const [showSettings, setShowSettings] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
   const socket = useRef<SessionSocket | null>(null);
   const startedAt = useRef(0);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (resume?: string) => {
     startedAt.current = Date.now();
     setPhase({ name: "starting", step: "Starting", sinceMs: 0 });
     try {
@@ -112,7 +106,7 @@ export function App() {
           sinceMs: Date.now() - startedAt.current,
         }),
       );
-      const sessionId = await createSession(config);
+      const sessionId = await createSession(config, resume);
       setSession(emptySession(sessionId));
       socket.current = new SessionSocket(config, sessionId, (apply) =>
         setSession((current) => (current ? apply(current) : current)),
@@ -148,18 +142,34 @@ export function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar__brand">NetZoo Agent</div>
-        <Pane title="Sessions" hint="Conversation history arrives in M5." />
+        <SessionsPane
+          config={phase.config}
+          currentId={session.sessionId}
+          onResume={(sessionId) => {
+            socket.current?.close();
+            void connect(sessionId);
+          }}
+        />
         <nav className="sidebar__links">
-          <button type="button" disabled>
-            Settings
+          <button type="button" onClick={() => setShowSettings((value) => !value)}>
+            {showSettings ? "Conversation" : "Settings"}
           </button>
-          <button type="button" disabled>
-            Outputs
+          <button
+            type="button"
+            onClick={() => {
+              socket.current?.close();
+              void connect();
+            }}
+          >
+            New session
           </button>
         </nav>
       </aside>
 
       <main className="conversation">
+        {showSettings ? (
+          <SettingsView config={phase.config} onClose={() => setShowSettings(false)} />
+        ) : (
         <Conversation
           session={session}
           onAnswer={(text) => socket.current?.answer(text)}
@@ -168,6 +178,7 @@ export function App() {
           onDecline={() => socket.current?.declineExecution()}
           onCancel={() => socket.current?.cancel()}
         />
+        )}
       </main>
 
       <aside className="inspector">

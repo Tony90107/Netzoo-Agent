@@ -10,6 +10,7 @@ so that claim is tested with real processes rather than assumed.
 from __future__ import annotations
 
 import asyncio
+import json
 import queue
 import sys
 import threading
@@ -372,3 +373,43 @@ def test_a_listing_reports_the_path_a_person_can_find(client, monkeypatch):
     """Without a host root the daemon must not invent one."""
     body = client.get("/v1/files", headers=_auth()).json()
     assert body["host_path"].endswith("outputs")
+
+
+# ---------------------------------------------------------------------------
+# History and settings
+# ---------------------------------------------------------------------------
+
+
+def test_history_needs_a_token_and_lists_newest_first(client):
+    assert client.get("/v1/history").status_code == 401
+
+    rows = client.get("/v1/history", params={"limit": 5}, headers=_auth()).json()[
+        "sessions"
+    ]
+    assert len(rows) <= 5
+    assert [row["updated_at"] for row in rows] == sorted(
+        (row["updated_at"] for row in rows), reverse=True
+    )
+
+
+def test_history_says_which_sessions_can_be_resumed(client):
+    rows = client.get("/v1/history", headers=_auth()).json()["sessions"]
+    for row in rows:
+        assert row["resumable"] == (
+            row["status"] in {"needs_input", "needs_confirmation"}
+        )
+
+
+def test_settings_are_reported_and_carry_no_secret(client):
+    assert client.get("/v1/settings").status_code == 401
+
+    body = client.get("/v1/settings", headers=_auth()).json()
+    assert set(body) == {"models", "allowlists", "limits", "paths", "api_key_present"}
+    # The key's presence is useful; the key itself must never leave the daemon.
+    assert isinstance(body["api_key_present"], bool)
+    assert "sk-" not in json.dumps(body)
+
+
+def test_settings_cannot_be_written(client):
+    """A window that could edit the allowlist could remove the limit."""
+    assert client.post("/v1/settings", json={}, headers=_auth()).status_code == 405
