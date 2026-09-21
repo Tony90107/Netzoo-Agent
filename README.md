@@ -23,6 +23,62 @@ memory consolidation`。Evaluator 通過後可
 同一個 resumable session 等待使用者補充。PANDA、PUMA、三種 LIONESS 與 CONDOR
 都走同一套 graph，不再由 LIONESS 專用的前置選單攔截。
 
+## 快速開始
+
+第一次使用跑這一個指令就好：
+
+```bash
+./setup
+```
+
+它會依序檢查 Docker、建立 `.env`（互動詢問 OpenRouter API key，輸入不回顯、檔案權限
+600）、建置映像，最後編譯桌面 app。任何一步的前置條件沒滿足時會直接說明要做什麼，
+而不是把 compose 的堆疊訊息丟出來。
+
+| 指令 | 用途 |
+|---|---|
+| `./setup` | 完整安裝：Docker 環境 + 桌面 app |
+| `./setup --cli-only` | 只裝 Docker 環境，不編譯桌面 app |
+| `./setup --skip-image` | 映像已建好，只做其餘步驟 |
+
+### 前置需求
+
+| 需要 | 用途 | 備註 |
+|---|---|---|
+| Docker Desktop | 所有 workflow 都在容器裡執行 | 跑 `./setup` 前要先啟動 |
+| OpenRouter API key | agent 的 LLM 呼叫 | <https://openrouter.ai/keys>，按 token 計費 |
+| Node.js 20+ 與 Rust | 編譯桌面 app | 只有桌面版需要，`--cli-only` 可略過 |
+
+映像是 `netzoo_agent:latest`，實測 **5.58GB**；冷啟建置需要數十分鐘，主要花在下載與
+編譯相依套件，之後都走 layer cache。
+
+預設寫入 `.env` 的模型是 `openai/gpt-4o-mini`——這也是 routing 量測所用的模型。
+`NETZOO_RESPONSE_MODEL_ALLOWLIST` 與 `NETZOO_ROUTER_MODEL_ALLOWLIST` 是防止請求誤打到
+昂貴模型的那道限制，要放寬請明確修改，不要順手拿掉。
+
+### 啟動
+
+```bash
+# 桌面版
+open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
+
+# 終端版
+./netzoo-chat
+```
+
+### 為什麼不提供編譯好的 .app
+
+macOS 的 `com.apple.quarantine` 屬性是**下載器**（瀏覽器、AirDrop、郵件）貼上去的。
+本機編譯出來的執行檔沒有這個屬性，Gatekeeper 因此不會評估它，可以直接打開——不需要
+「右鍵 → 打開」，也不需要 Apple Developer 簽名。
+
+反過來說，若把編譯好的 .app 當成 GitHub Release 讓人下載，它**會**被擋：這個 bundle 是
+ad-hoc 簽名、沒有 Team ID。而使用者無論如何都得安裝 Docker 並建置 5.58GB 的映像，
+相比之下多編譯一次 app 的邊際成本很低。因此本專案只支援從原始碼建置。
+
+app 請留在 repo 目錄內：它是從自己的路徑往上走去找 `docker-compose.yml` 的，
+搬到 `/Applications` 之後上層就沒有 repo 可找了。
+
 ## 主要文件
 
 | 檔案 | 內容 |
@@ -33,6 +89,8 @@ memory consolidation`。Evaluator 通過後可
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
 | [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
 | [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR、COBRA、DRAGON、OTTER 的 versioned YAML 規格 |
+| [docs/DESKTOP_UI_ARCHITECTURE.md](docs/DESKTOP_UI_ARCHITECTURE.md) | 桌面版的分層、程序模型、協定與里程碑設計 |
+| [docs/DESKTOP_UI_REPORT.md](docs/DESKTOP_UI_REPORT.md) | 桌面版整合結論、routing 對照實驗與可量測結果 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
 | [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |
