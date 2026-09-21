@@ -9,7 +9,11 @@ import unicodedata
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.outcomes import OutcomeEvidence
-from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, outcome_consistency_issues
+from ..contracts.artifact_semantics import (
+    ARTIFACT_SEMANTICS,
+    is_outcome_not_applicable as _is_not_applicable,
+    outcome_consistency_issues,
+)
 from ..contracts.repair_scope import (
     FIELD_BY_DIMENSION, NO_OUTCOME_FIELDS, OUTCOME_FIELDS, Issue,
 )
@@ -197,22 +201,6 @@ def _required_evidence(
 # matcher already erases `operation` for guidance before selecting anything,
 # so the strict reading rejected a hypothesis whose extra field could not have
 # influenced the outcome.
-_NO_RESULT_OPERATIONS = frozenset({"unknown", "explain"})
-
-
-def _is_not_applicable(outcome: RequestedOutcome) -> bool:
-    return (
-        outcome.operation in _NO_RESULT_OPERATIONS
-        and outcome.artifact_type == "unknown"
-        and outcome.granularity == "not_applicable"
-        and not outcome.input_artifacts
-        and not outcome.entity_types
-        and not outcome.regulator_types
-        and not outcome.target_types
-        and not outcome.unresolved_dimensions
-    )
-
-
 def evidence_census(
     hypotheses: Sequence[OutcomeHypothesis],
 ) -> tuple[dict[str, str | int], ...]:

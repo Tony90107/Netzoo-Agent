@@ -15,11 +15,41 @@ from .repair_scope import Issue
 class OutcomeFields(Protocol):
     operation: str
     artifact_type: str
+    input_artifacts: list[str]
     entity_types: list[str]
     granularity: str
     regulator_types: list[str]
     target_types: list[str]
     unresolved_dimensions: list[str]
+
+
+#: Operations that ask for an explanation rather than for a result. A request
+#: of this shape produces no artifact, so no capability can satisfy it and
+#: none should be offered.
+NO_RESULT_OPERATIONS = frozenset({"unknown", "explain"})
+
+
+def is_outcome_not_applicable(outcome: OutcomeFields) -> bool:
+    """True when the request asks for no result at all.
+
+    This predicate existed twice -- once in interpretation, once in capability
+    matching -- and the two copies disagreed. Validation accepted `explain`
+    while matching required `unknown`, so a concept question read correctly as
+    `explain` passed validation and then came back from the matcher as
+    `ambiguous`: the reader was asked a clarifying question instead of being
+    answered. One definition is the only thing that keeps the two layers from
+    drifting apart again.
+    """
+    return (
+        outcome.operation in NO_RESULT_OPERATIONS
+        and outcome.artifact_type == "unknown"
+        and outcome.granularity == "not_applicable"
+        and not outcome.input_artifacts
+        and not outcome.entity_types
+        and not outcome.regulator_types
+        and not outcome.target_types
+        and not outcome.unresolved_dimensions
+    )
 
 
 @dataclass(frozen=True)

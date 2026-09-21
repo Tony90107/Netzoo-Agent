@@ -10,6 +10,7 @@ from workflow_registry import OutputCapabilityDefinition
 
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.artifact_semantics import (
+    is_outcome_not_applicable as _is_not_applicable,
     ARTIFACT_COMPONENTS,
     ARTIFACT_SEMANTICS,
     outcome_consistency_issues,
@@ -186,17 +187,6 @@ def explicit_input_artifacts(task: str) -> frozenset[str]:
     return input_availability(task).present
 
 
-def _is_not_applicable(outcome: RequestedOutcome) -> bool:
-    return (
-        outcome.operation == _UNKNOWN
-        and outcome.artifact_type == _UNKNOWN
-        and outcome.granularity == "not_applicable"
-        and not outcome.input_artifacts
-        and not outcome.entity_types
-        and not outcome.regulator_types
-        and not outcome.target_types
-        and not outcome.unresolved_dimensions
-    )
 
 
 def _has_unknown(outcome: RequestedOutcome) -> bool:
