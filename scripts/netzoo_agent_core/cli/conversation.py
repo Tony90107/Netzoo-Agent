@@ -14,7 +14,7 @@ import sys
 # ruff: noqa: F401 -- NextTurnPrompt is imported for callers that patch this
 # module's seams (TerminalInputReader, initial_next_turn_prompt) in tests.
 from ..contracts.state import NextTurnPrompt
-from ..engine import ConversationMachine, Event, Stop, Turn
+from ..engine.view import Event, Stop, Turn
 from ..presentation import _clear_transient_trace, _ui_text
 from .bootstrap import CliRuntime
 from .follow_up import initial_next_turn_prompt
@@ -31,6 +31,12 @@ def _render(event: Event) -> None:
 
 
 def run_conversation(args, runtime: CliRuntime) -> int:
+    # Imported here, not at module scope: the engine reaches back into
+    # ``cli.clarification`` and ``cli.follow_up`` for prompt rendering, and
+    # ``cli/__init__`` imports this module, so a module-level import would
+    # close the loop. ``engine.view`` has no such dependency and stays above.
+    from ..engine.machine import ConversationMachine
+
     reader = TerminalInputReader(
         runtime.input_func,
         is_tty=sys.stdin.isatty,
