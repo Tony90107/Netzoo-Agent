@@ -56,10 +56,10 @@ PANDA 主要需要三個檔案：
 
 ```bash
 run-panda \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -o outputs/panda_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -o outputs/panda_network.txt
 ```
 
 ### 1. `-e` expression file
@@ -154,11 +154,11 @@ PUMA 比 PANDA 多一個 miRNA file：
 
 ```bash
 run-puma \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -i data/mir.tsv \
-  -o outputs/puma_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -i data/official-toy/ToyMiRList.txt \
+  -o outputs/puma_network.txt
 ```
 
 ### 1. `-e` expression file
@@ -288,14 +288,16 @@ data/
 outputs/
 ```
 
-把你的 input 放在 `data/`，例如：
+專案已附一組官方 toy data，可直接使用：
 
 ```text
-data/expression.tsv
-data/motif.tsv
-data/ppi.tsv
-data/mir.tsv
+data/official-toy/ToyExpressionData.txt   expression
+data/official-toy/ToyMotifData.txt        motif prior
+data/official-toy/ToyPPIData.txt          PPI prior
+data/official-toy/ToyMiRList.txt          PUMA 的 miRNA 清單
 ```
+
+自己的資料放在 `data/` 底下即可，下面的指令換成你的檔名。
 
 ### 4. 跑 PANDA
 
@@ -303,20 +305,20 @@ data/mir.tsv
 
 ```bash
 run-panda \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -o outputs/panda_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -o outputs/panda_network.txt
 ```
 
 或不進 container，直接從本機執行：
 
 ```bash
 docker compose run --rm netzoo run-panda \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -o outputs/panda_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -o outputs/panda_network.txt
 ```
 
 ### 5. 跑 PUMA
@@ -325,22 +327,22 @@ docker compose run --rm netzoo run-panda \
 
 ```bash
 run-puma \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -i data/mir.tsv \
-  -o outputs/puma_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -i data/official-toy/ToyMiRList.txt \
+  -o outputs/puma_network.txt
 ```
 
 或不進 container：
 
 ```bash
 docker compose run --rm netzoo run-puma \
-  -e data/expression.tsv \
-  -m data/motif.tsv \
-  -p data/ppi.tsv \
-  -i data/mir.tsv \
-  -o outputs/puma_network.tsv
+  -e data/official-toy/ToyExpressionData.txt \
+  -m data/official-toy/ToyMotifData.txt \
+  -p data/official-toy/ToyPPIData.txt \
+  -i data/official-toy/ToyMiRList.txt \
+  -o outputs/puma_network.txt
 ```
 
 ## 你需要特別注意的資料整理問題
