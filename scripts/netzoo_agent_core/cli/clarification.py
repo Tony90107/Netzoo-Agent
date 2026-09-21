@@ -17,6 +17,7 @@ from ..contracts import (
     _ui_text,
 )
 from ..interpretation import INPUT_LABELS
+from ..interpretation.request_parameters import extract_explicit_taxon
 
 
 _FIELD_ASSIGNMENT = re.compile(
@@ -373,8 +374,18 @@ def input_confirmation_continuation(
     # already parsed run controls. Keep the organism and output destinations in
     # the trusted continuation so the second planning pass cannot silently fall
     # back to a default output or lose the gene-validation scope.
+    # A preflight failure can ask for the organism rather than a path: gene
+    # symbols cannot be checked without one. Until now that request was
+    # unanswerable here, because only file roles were accepted — the single
+    # correction the error told the reader to make was the one this refused.
+    # The same reader the rest of the system uses parses it, so `taxon=human`,
+    # `species=Homo sapiens` and the Chinese forms all mean here what they
+    # mean in a request.
+    answered_taxon = None if approved else extract_explicit_taxon(answer)
     for field_name in ("taxon", "output_file", "lioness_output", "output_dir"):
         value = getattr(decision, field_name, None)
+        if field_name == "taxon" and answered_taxon:
+            value = answered_taxon
         if value:
             continuation += f" {field_name}={value};"
     if approved:
@@ -401,9 +412,10 @@ def input_confirmation_continuation(
         for field_name, value in assignments
         if field_name in allowed
     }
-    if not corrected:
+    if not corrected and not answered_taxon:
         raise ClarificationInputError(
-            "Provide at least one corrected input as field=path."
+            "Provide a corrected input as field=path, or the organism as "
+            "taxon=human."
         )
     for field_name, value in corrected.items():
         continuation += f" CORRECTED_INPUT_{field_name}={value};"
