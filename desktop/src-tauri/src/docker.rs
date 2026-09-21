@@ -189,7 +189,10 @@ fn run_with_timeout(root: &Path, token: &str, port: &str) -> Result<Output, Daem
         .current_dir(root)
         .args(["compose", "up", "-d", "netzoo-daemon"])
         .env("NETZOO_DESKTOP_TOKEN", token)
-        .env("NETZOO_DAEMON_PORT", port);
+        .env("NETZOO_DAEMON_PORT", port)
+        // The container sees the project as /work and cannot know what it is
+        // called out here; a path shown to the user has to be findable.
+        .env("NETZOO_HOST_PROJECT_ROOT", root);
     let mut child = command
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

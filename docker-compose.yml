@@ -44,6 +44,9 @@ services:
       - "127.0.0.1:${NETZOO_DAEMON_PORT:-8765}:8765"
     environment:
       NETZOO_DESKTOP_TOKEN: ${NETZOO_DESKTOP_TOKEN:-}
+      # Only the desktop shell knows where the project lives on the host; the
+      # daemon needs it to show paths a person can actually find in Finder.
+      NETZOO_HOST_PROJECT_ROOT: ${NETZOO_HOST_PROJECT_ROOT:-}
       # The image bakes scripts/ into /opt/netzoo-app/scripts and puts it on
       # PYTHONPATH. Without this override the daemon would run the code as of
       # the last image build instead of the mounted working tree.

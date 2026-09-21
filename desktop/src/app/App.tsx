@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Conversation } from "../features/conversation/Conversation";
+import { FilesPane } from "../features/files/FilesPane";
 import { PlanPane } from "../features/plan/PlanPane";
 import { Timeline } from "../features/timeline/Timeline";
 import {
@@ -172,7 +173,7 @@ export function App() {
       <aside className="inspector">
         <PlanPane plan={plan} hash={session.view?.plan_hash ?? null} />
         <Timeline trace={session.trace} />
-        <Pane title="Files" hint="Outputs and result viewers (M5)." />
+        <FilesPane config={phase.config} />
       </aside>
 
       <StatusBar

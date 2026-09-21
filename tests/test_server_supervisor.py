@@ -342,3 +342,33 @@ def test_a_wrong_token_in_the_subprotocol_is_rejected(client):
             "/ws/session/badsub", subprotocols=[WS_TOKEN_SUBPROTOCOL, "nope"]
         ) as socket:
             socket.receive_text()
+
+
+# ---------------------------------------------------------------------------
+# Browsing what a run produced
+# ---------------------------------------------------------------------------
+
+
+def test_the_outputs_tree_is_browsable(client):
+    body = client.get("/v1/files", headers=_auth()).json()
+    assert body["path"] == "outputs"
+    assert all(entry["path"].startswith("outputs") for entry in body["entries"])
+
+
+def test_browsing_needs_a_token(client):
+    assert client.get("/v1/files").status_code == 401
+    assert client.get("/v1/files/preview?path=outputs").status_code == 401
+
+
+def test_a_path_outside_outputs_is_refused_over_http(client):
+    for requested in ("../.env", "scripts/netzoo_agent.py", "/etc/passwd"):
+        response = client.get(
+            "/v1/files/preview", params={"path": requested}, headers=_auth()
+        )
+        assert response.status_code == 403, requested
+
+
+def test_a_listing_reports_the_path_a_person_can_find(client, monkeypatch):
+    """Without a host root the daemon must not invent one."""
+    body = client.get("/v1/files", headers=_auth()).json()
+    assert body["host_path"].endswith("outputs")
