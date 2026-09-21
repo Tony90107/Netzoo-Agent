@@ -66,3 +66,31 @@ export function formatBytes(bytes: number): string {
   }
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }
+
+export type SessionSummary = {
+  session_id: string;
+  profile_id: string;
+  updated_at: number;
+  auto_generated: boolean;
+  workflow: string;
+  status: string;
+  resumable: boolean;
+  title: string;
+  total_tokens: number;
+};
+
+export type EffectiveSettings = {
+  models: Record<string, string>;
+  allowlists: Record<string, string>;
+  limits: Record<string, number>;
+  paths: Record<string, string>;
+  api_key_present: boolean;
+};
+
+export function listSessions(config: DaemonConfig): Promise<{ sessions: SessionSummary[] }> {
+  return get<{ sessions: SessionSummary[] }>(config, "/v1/history");
+}
+
+export function readSettings(config: DaemonConfig): Promise<EffectiveSettings> {
+  return get<EffectiveSettings>(config, "/v1/settings");
+}

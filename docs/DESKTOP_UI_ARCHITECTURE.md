@@ -433,6 +433,14 @@ class BroadcastTraceStore(LocalTraceStore):
 | `.npz` | 陣列摘要 | 列出 key、shape、dtype、數值摘要，不做完整渲染 |
 | `execution-*.md` | Markdown 檢視 | 既有的執行報告格式 |
 | 網路邊表 | 圖檢視（可選，v1.5） | 依權重取 top-K 邊，超過門檻只顯示摘要 |
+
+實作補充：
+- 檔案樹只服務 `outputs/`，路徑一律經檔案系統解析，指向樹外的 symlink 會被抓到而不是
+  照名字信任；任何逃逸回 403 而不是被夾回根目錄。
+- `.npz` 從 archive header 讀形狀，**不載入任何陣列**。
+- 有些 NetZoo 輸出的表頭是空白分隔、資料列是 tab 分隔，讀起來會變成一整格。檢視器
+  只在「重切後欄數與資料列完全相同」時才重切表頭，否則原樣顯示——不為了讓表格好看
+  而猜。
 | `manifest.json` | 結構化檢視 | 對應 `outputs/demo/manifest.json` |
 
 檔案樹以 `outputs/` 為根，透過 daemon 的 REST 讀取（不讓 WebView 直接碰檔案系統），路徑一律經 PathMapper + `path_safety`。
@@ -509,7 +517,7 @@ netzoo_agent/
 | **M2 Tauri 殼層** ✅ 已完成 | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動 2.7s（門檻 15s）；每次啟動新鑄 token、舊 token 立即失效；Docker 三種失敗各有專屬補救訊息 |
 | **M3 對話與計畫審核** ✅ 已完成 | 對話串、輸入區形態機、Plan Card、兩段執行確認、模式切換器 | 原生視窗實跑完整 PANDA toy：提問 → preflight 失敗 → Test 模式 → 修正輸入 → 確認 → Ready 計畫 → 兩段核准 → 寫出 3.1MB 網路；19 個 UI 測試 |
 | **M4 推理時間軸** ✅ 已完成 | 事件廣播、階段時間軸、細節折疊、契約型別生成 | 實跑驗證：UI 26 筆 = trace 檔 26 筆；24 個 UI 測試 + 5 個廣播覆蓋測試 + 6 個型別漂移測試 |
-| **M5 結果與 Session** | 檔案樹、TSV/npz/md 檢視、session 歷史、設定頁、成本列 | 12 個 workflow 的輸出都能在視窗內開啟 |
+| **M5 結果與 Session** ✅ 已完成 | PathMapper、outputs 檔案樹、TSV/npz/md 檢視、session 歷史與 resume、唯讀設定頁、成本列 | 實跑驗證：3.1MB 網路串讀 200 列、npz 只讀 header、resume 還原暫停中的 PANDA 計畫；35 個新測試 |
 
 M0 是硬性前置。M1–M2 可並行。M4 依賴 M1。
 
@@ -591,7 +599,12 @@ Rust 測試會真的呼叫 `docker`，並用 `DOCKER_HOST` 指向不存在的 so
   websocket，兩者都不存在於出貨的 bundle，所以 dev 有自己的一份較寬政策，不去動
   產品實際執行的那份。
 
-**未定案（待 M2 後再決定）**
+**已定案**
+- **設定頁唯讀。** 模型 allowlist 與 token 上限正是「防止一個誤送的請求打到昂貴模型」
+  的那道限制；能從視窗改它的視窗，就是能拿掉那道限制的視窗。設定頁報告生效值
+  （含容器與 host 兩邊的專案根），`OPENROUTER_API_KEY` 只報告存在與否、金鑰本身
+  不離開 daemon。要改就改容器啟動時的環境。
+
+**仍未定案**
 - 時間軸是否需要「重播」模式（讀舊 run 的 trace 檔逐步播放）。
 - Observer 的 share 功能要不要從桌面版一鍵觸發。
-- 設定頁能改到多深（模型 allowlist、token 上限是否開放 UI 修改，或維持唯讀顯示 `.env`）。

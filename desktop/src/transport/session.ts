@@ -125,14 +125,19 @@ export const emptySession = (sessionId: string): SessionState => ({
 let nextEntryId = 1;
 const entryId = () => nextEntryId++;
 
-export async function createSession(config: DaemonConfig): Promise<string> {
+export async function createSession(
+  config: DaemonConfig,
+  resume?: string,
+): Promise<string> {
   const response = await fetch(`${config.baseUrl}/v1/sessions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.token}`,
       "Content-Type": "application/json",
     },
-    body: "{}",
+    // Resuming hands the checkpoint id to the worker, which is the same path
+    // `--resume` takes in the terminal.
+    body: JSON.stringify(resume ? { resume } : {}),
   });
   if (!response.ok) {
     throw new Error(`could not start a session (${response.status})`);

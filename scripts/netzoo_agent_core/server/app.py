@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
-from . import files
+from . import files, history
 from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
@@ -201,6 +201,34 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             return mapper.to_host(relative)
         except PathOutsideProject:
             return relative
+
+    @app.get("/v1/history")
+    def session_history(
+        limit: int = Query(default=history.DEFAULT_LIMIT, ge=1, le=500),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        return {
+            "sessions": [
+                {
+                    "session_id": item.session_id,
+                    "profile_id": item.profile_id,
+                    "updated_at": item.updated_at,
+                    "auto_generated": item.auto_generated,
+                    "workflow": item.workflow,
+                    "status": item.status,
+                    "resumable": item.resumable,
+                    "title": item.title,
+                    "total_tokens": item.total_tokens,
+                }
+                for item in history.list_sessions(limit=limit)
+            ]
+        }
+
+    @app.get("/v1/settings")
+    def effective_settings(_scope: None = Depends(require_token)) -> dict:
+        # Read-only on purpose: the allowlists and the token budget are what
+        # stop a stray request reaching an expensive model.
+        return history.describe_settings()
 
     @app.post("/v1/sessions/{session_id}/cancel")
     def cancel_turn(
