@@ -14,6 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..contracts.planning import WorkflowPlan
+from ..contracts.state import NextTurnPrompt
 from ..trace_contracts import canonical_json
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "ClientMessage",
     "Envelope",
     "ServerMessageType",
+    "ViewPayload",
     "plan_hash",
 ]
 
@@ -94,3 +96,34 @@ class ClientMessage(BaseModel):
     @classmethod
     def from_envelope(cls, envelope: Envelope) -> "ClientMessage":
         return cls.model_validate({"type": envelope.type, **envelope.payload})
+
+
+class ViewPayload(BaseModel):
+    """Everything a client needs to render the current question.
+
+    A contract rather than a hand-built dict: this is the payload the window
+    reads most closely and the one that has grown the most, and each field
+    added to it previously had to be mirrored into the TypeScript by hand.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt_kind: Literal[
+        "main",
+        "clarification",
+        "input_confirmation",
+        "preference_confirmation",
+        "execution_confirmation",
+    ]
+    text: str
+    """The exact string the terminal prints, mode prefix included."""
+    menu_enabled: bool
+    mode: Literal["Planning", "Execute", "Test"]
+    plan: WorkflowPlan | None = None
+    plan_hash: str | None = None
+    next_prompt: NextTurnPrompt | None = None
+    target_field: str | None = None
+    """The one input the clarification wizard is asking for right now."""
+    choosing_bundle: bool = False
+    preflight_correction: bool = False
+    """True when the plan failed validation; this mode accepts field=path."""

@@ -11,22 +11,21 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { makeNextTurnPrompt, makePlan, makeView } from "../../test-support/fixtures";
 import { ViewPayload } from "../../transport/protocol";
 import { InputArea } from "./InputArea";
 
-const PLAN = {
-  workflow: "LIONESS-PUMA",
-  objective: "run it",
-  decision: {},
+const PLAN = makePlan({
   evidence: [
     {
       field: "expression_file",
-      status: "missing" as const,
+      status: "missing",
       value: null,
       reason: "required",
       candidates: ["data/study-a/expression.tsv", "data/study-b/expression.tsv"],
       candidate_bundle_ids: [],
       bundle_id: null,
+      derived_from: null,
     },
   ],
   input_bundle_options: [
@@ -41,32 +40,10 @@ const PLAN = {
       inputs: { expression_file: "data/study-b/expression.tsv" },
     },
   ],
-  steps: [],
   missing_inputs: ["expression_file"],
-  status: "needs_input" as const,
-  question: null,
-  memory_notes: [],
-  policy_notes: [],
-  recovery_action: null,
-  recovery_attempt: 0,
-  preference_proposals: [],
-};
+});
 
-function view(overrides: Partial<ViewPayload>): ViewPayload {
-  return {
-    prompt_kind: "main",
-    text: "",
-    menu_enabled: true,
-    mode: "Planning",
-    plan: null,
-    plan_hash: null,
-    next_prompt: null,
-    target_field: null,
-    choosing_bundle: false,
-    preflight_correction: false,
-    ...overrides,
-  };
-}
+const view = (overrides: Partial<ViewPayload>): ViewPayload => makeView(overrides);
 
 function harness(payload: ViewPayload, busy = false) {
   const onAnswer = vi.fn();
@@ -160,7 +137,7 @@ describe("execution", () => {
     const { onAnswer, onApprove } = harness(
       view({
         prompt_kind: "main",
-        next_prompt: { kind: "dry_run", question: "ready", expected_field: null, required_fields: [] },
+        next_prompt: makeNextTurnPrompt({ kind: "dry_run", question: "ready" }),
       }),
     );
 

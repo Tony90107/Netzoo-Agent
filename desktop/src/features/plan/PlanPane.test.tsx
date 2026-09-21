@@ -1,25 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { makePlan } from "../../test-support/fixtures";
 import { WorkflowPlan } from "../../transport/protocol";
 import { PlanPane } from "./PlanPane";
 
-const plan = (workflow: string): WorkflowPlan => ({
-  workflow,
-  objective: "x",
-  decision: {},
-  evidence: [],
-  input_bundle_options: [],
-  steps: [],
-  missing_inputs: [],
-  status: "needs_input",
-  question: null,
-  memory_notes: [],
-  policy_notes: [],
-  recovery_action: null,
-  recovery_attempt: 0,
-  preference_proposals: [],
-});
+const plan = (workflow: string): WorkflowPlan => makePlan({ workflow, objective: "x" });
 
 afterEach(() => {
   document.body.innerHTML = "";

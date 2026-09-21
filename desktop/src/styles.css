@@ -456,3 +456,60 @@ body {
   font-size: 11px;
   padding: 0 8px;
 }
+
+/* ---------- timeline ---------- */
+
+.pane__count {
+  float: right;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tl { list-style: none; margin: 0; padding: 6px 0; }
+
+.tl__head {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.tl__head:hover:not(:disabled) { background: var(--panel-2); }
+.tl__head:disabled { cursor: default; }
+
+.tl__marker { color: var(--accent); width: 10px; flex: none; }
+.tl__stage.is-running .tl__marker { color: var(--muted); }
+.tl__stage.is-failed .tl__marker { color: var(--danger); }
+.tl__stage.is-failed .tl__label { color: var(--danger); }
+
+.tl__label { flex: 1; min-width: 0; }
+.tl__tokens, .tl__duration, .tl__count { color: var(--muted); font-size: 11px; flex: none; }
+.tl__count { width: 26px; text-align: right; }
+
+.tl__rows { list-style: none; margin: 0 0 6px; padding: 0 14px 0 32px; }
+.tl__row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  padding-left: 10px;
+}
+.tl__event { font-family: ui-monospace, monospace; flex: none; }
+.tl__summary { word-break: break-word; }
+.tl__row--error .tl__event, .tl__row--error .tl__summary { color: var(--danger); }
+.tl__row--tool .tl__event { color: var(--accent); }
+.tl__row--llm .tl__event { color: #8ea9c9; }
+
+/* The inspector is narrow and event names are long; stack the name above its
+   summary rather than letting either be clipped. */
+.tl__row { flex-direction: column; gap: 1px; }
+.tl__event { white-space: pre-wrap; word-break: break-all; }
