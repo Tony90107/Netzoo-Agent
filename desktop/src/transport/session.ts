@@ -13,7 +13,7 @@ import {
   Envelope,
   PROTOCOL_VERSION,
   TraceEvent,
-  UsagePayload,
+  LLMUsage,
   ViewPayload,
   WS_TOKEN_SUBPROTOCOL,
 } from "./protocol";
@@ -32,7 +32,7 @@ export type SessionState = {
   busy: boolean;
   progress: string | null;
   trace: TraceEvent[];
-  usage: UsagePayload | null;
+  usage: LLMUsage | null;
   stopped: boolean;
   connection: "connecting" | "open" | "closed";
 };
@@ -190,7 +190,7 @@ export function reduce(
     case "turn_finished":
       return { ...state, busy: false, progress: null };
     case "usage":
-      return { ...state, usage: body as unknown as UsagePayload };
+      return { ...state, usage: body as unknown as LLMUsage };
     case "error":
       return {
         ...state,

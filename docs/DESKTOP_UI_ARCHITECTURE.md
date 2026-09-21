@@ -296,8 +296,10 @@ contracts/*.py  --(pydantic .model_json_schema())-->  schemas/*.json
                 --(json-schema-to-typescript)-->      ui/src/generated/contracts.ts
 ```
 
-- 生成腳本 `scripts/generate_ui_types.py`，輸出進 git（方便 review contract 變更）。
-- CI 測試 `tests/test_ui_contract_sync.py`：重新生成後 `git diff --exit-code`，漂移即失敗。
+- 生成腳本 `scripts/generate_ui_types.py`，輸出 `desktop/src/generated/contracts.ts`，進 git（方便 review contract 變更）。
+- 測試 `tests/test_ui_contract_sync.py`：重新生成並比對，漂移即失敗（已實測：往契約加一個欄位會讓它失敗）。
+- **走訪 Pydantic 模型，不走 JSON Schema**：`RequestedOutcome` 有 `__get_pydantic_json_schema__` hook，會展開成每個 artifact type 一個條件分支——那對引導模型是對的，對生成 interface 是災難。
+- 生成器遇到無法誠實表達的型別會**拋錯而不是猜**。無參數的 `dict`（`decision`、`arguments`、trace 的 `payload`）對映成 `Record<string, unknown>`。
 - 需要生成的型別：`WorkflowPlan` `InputEvidence` `InputBundleOption` `WorkflowStep` `NextTurnPrompt` `LLMUsage` `TraceEvent` `FollowUpContext` `ViewState`。
 
 ---
@@ -388,17 +390,23 @@ class PathMapper:
 
 ### 10.1 事件來源
 
-worker 用 `BroadcastTraceRecorder` 包住既有的 `TraceRecorder`：
+worker 用 `BroadcastTraceStore` 包住 `LocalTraceStore`：
 
 ```python
-class BroadcastTraceRecorder(TraceRecorder):
-    """先落地到 LocalTraceStore（hash chain 不變），再推一份到 UI 佇列。"""
-    def append(self, run_id, event_type, node, payload, **options):
-        event = super().append(run_id, event_type, node, payload, **options)
-        self._sink(event)
+class BroadcastTraceStore(LocalTraceStore):
+    def append(self, *args, **kwargs):
+        event = super().append(*args, **kwargs)   # 先落地 hash chain
+        self._sink(event.model_dump(mode="json")) # 再推給 UI
         return event
 ```
-落地順序不能反過來：**UI 看到的事件必須是已經寫入 hash chain 的事件**，否則時間軸會出現 trace 檔裡不存在的內容。
+
+落地順序不能反過來：**UI 看到的事件必須是已經寫入 hash chain 的事件**，否則時間軸會
+出現 trace 檔裡不存在的內容。
+
+**包在 store 而不是 recorder。** 第一版包在 `TraceRecorder` 上，結果 `pause_run` 與
+`finish_run` 是直接呼叫 store 的 `append`，完全繞過 recorder——一個暫停的 run 送到視窗
+時比自己的 trace 檔少一筆 `run.paused`。這正是本節驗收條件（事件數一致）抓到的，
+`tests/test_broadcast_covers_the_chain.py` 把它釘住。
 
 ### 10.2 事件 → 時間軸的映射
 
@@ -500,7 +508,7 @@ netzoo_agent/
 | **M1 Daemon 骨架** ✅ 已完成 | FastAPI + supervisor + worker 行程 + WS | 容器內實跑一輪 planning turn：routing → PANDA → evidence ledger → clarification，`view` 帶完整 plan 與 hash；同一個 prompt 走 CLI 得到相同結果；19 個新測試（含真行程隔離驗證） |
 | **M2 Tauri 殼層** ✅ 已完成 | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動 2.7s（門檻 15s）；每次啟動新鑄 token、舊 token 立即失效；Docker 三種失敗各有專屬補救訊息 |
 | **M3 對話與計畫審核** ✅ 已完成 | 對話串、輸入區形態機、Plan Card、兩段執行確認、模式切換器 | 原生視窗實跑完整 PANDA toy：提問 → preflight 失敗 → Test 模式 → 修正輸入 → 確認 → Ready 計畫 → 兩段核准 → 寫出 3.1MB 網路；19 個 UI 測試 |
-| **M4 推理時間軸** | BroadcastTraceRecorder、時間軸、事件折疊 | 一次 run 的時間軸事件數與 `.netzoo/traces/` 內的筆數一致 |
+| **M4 推理時間軸** ✅ 已完成 | 事件廣播、階段時間軸、細節折疊、契約型別生成 | 實跑驗證：UI 26 筆 = trace 檔 26 筆；24 個 UI 測試 + 5 個廣播覆蓋測試 + 6 個型別漂移測試 |
 | **M5 結果與 Session** | 檔案樹、TSV/npz/md 檢視、session 歷史、設定頁、成本列 | 12 個 workflow 的輸出都能在視窗內開啟 |
 
 M0 是硬性前置。M1–M2 可並行。M4 依賴 M1。

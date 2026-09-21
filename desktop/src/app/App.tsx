@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Conversation } from "../features/conversation/Conversation";
 import { PlanPane } from "../features/plan/PlanPane";
+import { Timeline } from "../features/timeline/Timeline";
 import {
   DaemonConfig,
   DaemonFault,
@@ -133,10 +134,7 @@ export function App() {
 
       <aside className="inspector">
         <PlanPane plan={plan} hash={session.view?.plan_hash ?? null} />
-        <Pane
-          title={`Timeline (${session.trace.length})`}
-          hint="Trace events are arriving; M4 renders them."
-        />
+        <Timeline trace={session.trace} />
         <Pane title="Files" hint="Outputs and result viewers (M5)." />
       </aside>
 

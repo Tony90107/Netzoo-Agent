@@ -18,7 +18,7 @@ from __future__ import annotations
 from ..cli.slash_commands import current_mode_label
 from ..engine import ConversationMachine, Event, Stop, Turn
 from .channel import Channel, ClosedChannel
-from .protocol import ClientMessage, Envelope, plan_hash
+from .protocol import ClientMessage, Envelope, ViewPayload, plan_hash
 
 __all__ = ["ProgressWriter", "WorkerDriver"]
 
@@ -97,25 +97,19 @@ class WorkerDriver:
 
     def _send_view(self, prompt) -> None:
         plan = self._current_plan(prompt)
-        self._send(
-            "view",
-            {
-                "prompt_kind": prompt.kind,
-                "text": prompt.text,
-                "menu_enabled": prompt.menu_enabled,
-                "mode": current_mode_label(),
-                "target_field": prompt.target_field,
-                "choosing_bundle": prompt.choosing_bundle,
-                "preflight_correction": prompt.preflight_correction,
-                "plan": plan.model_dump(mode="json") if plan is not None else None,
-                "plan_hash": plan_hash(plan),
-                "next_prompt": (
-                    prompt.next_prompt.model_dump(mode="json")
-                    if prompt.next_prompt is not None
-                    else None
-                ),
-            },
+        view = ViewPayload(
+            prompt_kind=prompt.kind,
+            text=prompt.text,
+            menu_enabled=prompt.menu_enabled,
+            mode=current_mode_label(),
+            target_field=prompt.target_field,
+            choosing_bundle=prompt.choosing_bundle,
+            preflight_correction=prompt.preflight_correction,
+            plan=plan,
+            plan_hash=plan_hash(plan),
+            next_prompt=prompt.next_prompt,
         )
+        self._send("view", view.model_dump(mode="json"))
 
     # -- inbound -----------------------------------------------------------
 

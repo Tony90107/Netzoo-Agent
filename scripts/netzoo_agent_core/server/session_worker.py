@@ -57,7 +57,7 @@ def _run(request: dict, channel: QueueChannel) -> int:
     from ..cli.bootstrap import bootstrap_memory, bootstrap_runtime, load_project_policy
     from ..engine import ConversationMachine
     from ..runtime import configure_runtime
-    from .broadcast_recorder import BroadcastTraceRecorder
+    from .broadcast_recorder import broadcast_recorder_factory
     from .driver import ProgressWriter, WorkerDriver
 
     # A worker takes its settings from the session request, not from the
@@ -91,8 +91,7 @@ def _run(request: dict, channel: QueueChannel) -> int:
             Envelope(type="trace", session_id=session_id, payload=event)
         )
 
-    def recorder_factory(store):
-        return BroadcastTraceRecorder(store, publish_trace)
+    recorder_factory = broadcast_recorder_factory(publish_trace)
 
     memory_runtime = bootstrap_memory(args)
     policy = load_project_policy()
