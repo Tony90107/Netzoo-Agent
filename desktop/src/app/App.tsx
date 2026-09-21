@@ -34,19 +34,56 @@ function Pane({ title, hint }: { title: string; hint: string }) {
   );
 }
 
-function StatusBar({ session, port }: { session: SessionState | null; port: number }) {
+function connectionText(session: SessionState | null, port: number): string {
+  if (!session) return "Connecting…";
+  switch (session.connection) {
+    case "open":
+      return `Session ${session.sessionId} · port ${port}`;
+    case "reconnecting":
+      return "Reconnecting…";
+    case "closed":
+      return session.closedReason ?? "Disconnected.";
+    default:
+      return "Connecting…";
+  }
+}
+
+function StatusBar({
+  session,
+  port,
+  onNewSession,
+}: {
+  session: SessionState | null;
+  port: number;
+  onNewSession: () => void;
+}) {
   const usage = session?.usage;
   return (
     <footer className="statusbar">
       <span
-        className={`statusbar__dot${session?.connection === "open" ? "" : " is-idle"}`}
+        className={`statusbar__dot${
+          session?.connection === "open"
+            ? ""
+            : session?.connection === "reconnecting"
+              ? " is-warn"
+              : " is-idle"
+        }`}
         aria-hidden="true"
       />
-      <span>
-        {session?.connection === "open"
-          ? `Session ${session.sessionId} · port ${port}`
-          : "Connecting…"}
-      </span>
+      <span>{connectionText(session, port)}</span>
+      {session?.missedEvents ? (
+        <span
+          className="statusbar__warn"
+          title="The daemon could only replay its most recent events, so the timeline above is missing part of this run."
+        >
+          timeline incomplete
+        </span>
+      ) : null}
+      {session?.connection === "closed" ? (
+        <button className="btn btn--quiet btn--small" type="button" onClick={onNewSession}>
+          Start a new session
+        </button>
+      ) : null}
       <span className="statusbar__spacer" />
       {usage ? (
         <span>
@@ -138,7 +175,11 @@ export function App() {
         <Pane title="Files" hint="Outputs and result viewers (M5)." />
       </aside>
 
-      <StatusBar session={session} port={phase.config.port} />
+      <StatusBar
+        session={session}
+        port={phase.config.port}
+        onNewSession={() => void connect()}
+      />
     </div>
   );
 }

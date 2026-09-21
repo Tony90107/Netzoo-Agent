@@ -34,8 +34,79 @@ export type SessionState = {
   trace: TraceEvent[];
   usage: LLMUsage | null;
   stopped: boolean;
-  connection: "connecting" | "open" | "closed";
+  connection: Connection;
+  /** Why the socket closed for good, when it did. */
+  closedReason: string | null;
+  /**
+   * True once the daemon could not replay everything that was missed.
+   *
+   * It keeps the last 500 events per session. Past that, a reconnect resumes
+   * from a later event than the one the client last saw, and the timeline is
+   * no longer the whole run — which is precisely the claim the timeline makes,
+   * so it has to be said rather than quietly papered over.
+   */
+  missedEvents: boolean;
 };
+
+export type Connection = "connecting" | "open" | "reconnecting" | "closed";
+
+/**
+ * Close codes that mean "do not come back".
+ *
+ * Short, because a rejected handshake cannot carry one: when the daemon
+ * closes before accepting — an unknown session, a bad token — the browser
+ * reports 1006, the same code a killed daemon produces. Telling those apart
+ * needs a question the socket cannot answer, so `sessionVerdict` asks over
+ * HTTP instead.
+ */
+const TERMINAL_CLOSE: Record<number, string> = {
+  1000: "The session ended.",
+};
+
+export const SESSION_GONE = "That session is no longer running.";
+export const NOT_AUTHORISED = "This window is no longer authorised.";
+
+/**
+ * Should a dropped socket be retried?
+ *
+ * Returns a reason to stop, or null to keep trying. A daemon that does not
+ * answer at all is restarting, which is exactly the case reconnecting exists
+ * for; a daemon that answers and does not know this session has lost it.
+ */
+export async function sessionVerdict(
+  config: DaemonConfig,
+  sessionId: string,
+): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await fetch(`${config.baseUrl}/v1/sessions`, {
+      headers: { Authorization: `Bearer ${config.token}` },
+    });
+  } catch {
+    return null;
+  }
+  if (response.status === 401) return NOT_AUTHORISED;
+  if (!response.ok) return null;
+  try {
+    const body = await response.json();
+    const alive = (body.sessions ?? []).some(
+      (entry: { session_id: string }) => entry.session_id === sessionId,
+    );
+    return alive ? null : SESSION_GONE;
+  } catch {
+    return null;
+  }
+}
+
+/** Retry delay in ms; flat after a few tries so a long outage stays cheap. */
+export function backoffDelay(attempt: number): number {
+  return Math.min(250 * 2 ** attempt, 5_000);
+}
+
+export function closeReason(code: number, closedByUs: boolean): string | null {
+  if (closedByUs) return "Disconnected.";
+  return TERMINAL_CLOSE[code] ?? null;
+}
 
 export const emptySession = (sessionId: string): SessionState => ({
   sessionId,
@@ -47,6 +118,8 @@ export const emptySession = (sessionId: string): SessionState => ({
   usage: null,
   stopped: false,
   connection: "connecting",
+  closedReason: null,
+  missedEvents: false,
 });
 
 let nextEntryId = 1;
@@ -70,6 +143,9 @@ export async function createSession(config: DaemonConfig): Promise<string> {
 export class SessionSocket {
   private socket: WebSocket | null = null;
   private lastSeq = 0;
+  private attempt = 0;
+  private closedByUs = false;
+  private retry: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly config: DaemonConfig,
@@ -85,14 +161,54 @@ export class SessionSocket {
     const socket = new WebSocket(url, [WS_TOKEN_SUBPROTOCOL, this.config.token]);
     this.socket = socket;
 
-    socket.onopen = () => this.onChange((s) => ({ ...s, connection: "open" }));
-    socket.onclose = () => this.onChange((s) => ({ ...s, connection: "closed" }));
+    socket.onopen = () => {
+      this.attempt = 0;
+      this.onChange((s) => ({ ...s, connection: "open", closedReason: null }));
+    };
+    socket.onclose = (event) => this.handleClose(event.code);
     socket.onmessage = (event) => this.receive(event.data as string);
   }
 
   close(): void {
+    this.closedByUs = true;
+    if (this.retry !== null) clearTimeout(this.retry);
+    this.retry = null;
     this.socket?.close();
     this.socket = null;
+  }
+
+  /**
+   * A dropped socket is not a dead session.
+   *
+   * The worker keeps running across a daemon restart, a sleep, or a blip, and
+   * the daemon can replay what was missed from `since`. Without this the
+   * window simply went quiet and the only way back was to relaunch it.
+   */
+  private handleClose(code: number): void {
+    const reason = closeReason(code, this.closedByUs);
+    if (reason !== null) {
+      this.onChange((s) => ({ ...s, connection: "closed", closedReason: reason }));
+      return;
+    }
+    const delay = backoffDelay(this.attempt);
+    this.attempt += 1;
+    this.onChange((s) => ({ ...s, connection: "reconnecting" }));
+    this.retry = setTimeout(() => {
+      this.retry = null;
+      if (this.closedByUs) return;
+      void sessionVerdict(this.config, this.sessionId).then((verdict) => {
+        if (this.closedByUs) return;
+        if (verdict !== null) {
+          this.onChange((s) => ({
+            ...s,
+            connection: "closed",
+            closedReason: verdict,
+          }));
+          return;
+        }
+        this.open();
+      });
+    }, delay);
   }
 
   private send(message: ClientMessage): void {
@@ -156,9 +272,15 @@ export class SessionSocket {
     } catch {
       return;
     }
+    // Envelopes are numbered per session, so a jump means the daemon's replay
+    // buffer had already rolled past what this client last saw.
+    const gap = envelope.seq > this.lastSeq + 1 && this.lastSeq > 0;
     if (envelope.seq > this.lastSeq) this.lastSeq = envelope.seq;
     const payload = envelope.payload as never;
-    this.onChange((state) => reduce(state, envelope.type, payload));
+    this.onChange((state) => {
+      const next = reduce(state, envelope.type, payload);
+      return gap ? { ...next, missedEvents: true } : next;
+    });
   }
 }
 
