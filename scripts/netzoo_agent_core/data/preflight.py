@@ -151,9 +151,14 @@ def _gene_axis_errors(
     errors: list[str] = []
     if taxon_required:
         errors.append(
-            f"{label}: gene symbols cannot be verified without a species. Set "
-            "taxon (for example 'human', 'Homo sapiens', or '9606'), or supply "
-            "NCBI/Ensembl gene IDs instead: "
+            # The species is read as an assignment, never from prose, so the
+            # message gives the spelling that is actually parsed. Asking to
+            # "set taxon" invited prose, prose was not matched, and the
+            # request then failed here again with no clue as to why.
+            f"{label}: gene symbols cannot be verified without a species. "
+            "Write it as an assignment - taxon=human, taxon=Homo sapiens or "
+            "taxon=9606 - ending it with a comma or semicolon if more text "
+            "follows. Or supply NCBI/Ensembl gene IDs instead: "
             + ", ".join(taxon_required[:5])
         )
     if invalid:
