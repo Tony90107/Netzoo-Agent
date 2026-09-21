@@ -413,3 +413,32 @@ def test_settings_are_reported_and_carry_no_secret(client):
 def test_settings_cannot_be_written(client):
     """A window that could edit the allowlist could remove the limit."""
     assert client.post("/v1/settings", json={}, headers=_auth()).status_code == 405
+
+
+def test_a_transcript_can_be_read_back(client):
+    rows = client.get("/v1/history", params={"limit": 1}, headers=_auth()).json()[
+        "sessions"
+    ]
+    if not rows:
+        pytest.skip("no checkpoints on this machine")
+    body = client.get(
+        f"/v1/history/{rows[0]['session_id']}", headers=_auth()
+    ).json()
+    assert body["session_id"] == rows[0]["session_id"]
+    assert all({"role", "content"} <= set(m) for m in body["messages"])
+
+
+def test_a_transcript_needs_a_token(client):
+    assert client.get("/v1/history/anything").status_code == 401
+
+
+def test_an_unknown_session_is_a_404_not_an_empty_transcript(client):
+    response = client.get("/v1/history/doesnotexist", headers=_auth())
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("bad", ["../../etc/passwd", "a/b", "..", "a b"])
+def test_a_session_id_that_is_not_one_is_refused(client, bad):
+    """Only a bare id names a checkpoint."""
+    response = client.get(f"/v1/history/{bad}", headers=_auth())
+    assert response.status_code in {400, 404}

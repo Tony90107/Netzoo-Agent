@@ -224,6 +224,26 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             ]
         }
 
+    @app.get("/v1/history/{session_id}")
+    def session_transcript(
+        session_id: str,
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        try:
+            transcript = history.read_transcript(session_id)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        if transcript is None:
+            raise HTTPException(status_code=404, detail="no such session")
+        return {
+            "session_id": transcript.session_id,
+            "status": transcript.status,
+            "workflow": transcript.workflow,
+            "resumable": transcript.resumable,
+            "messages": transcript.messages,
+            "truncated": transcript.truncated,
+        }
+
     @app.get("/v1/settings")
     def effective_settings(_scope: None = Depends(require_token)) -> dict:
         # Read-only on purpose: the allowlists and the token budget are what

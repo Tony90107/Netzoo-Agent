@@ -18,7 +18,13 @@ from pathlib import Path
 from .. import settings as runtime_settings
 from ..settings import SESSION_ROOT
 
-__all__ = ["SessionSummary", "describe_settings", "list_sessions"]
+__all__ = [
+    "SessionSummary",
+    "SessionTranscript",
+    "describe_settings",
+    "list_sessions",
+    "read_transcript",
+]
 
 #: Summaries are cheap but there are hundreds of checkpoints; show the recent.
 DEFAULT_LIMIT = 60
@@ -38,6 +44,18 @@ class SessionSummary:
     resumable: bool
     title: str
     total_tokens: int
+
+
+@dataclass(frozen=True, slots=True)
+class SessionTranscript:
+    session_id: str
+    status: str
+    workflow: str
+    resumable: bool
+    messages: list[dict]
+    """`{role, content}`, the compacted form `save_session` already writes."""
+    truncated: bool
+    """True when the checkpoint itself is a compacted view of a longer run."""
 
 
 def _first_request(payload: dict) -> str:
@@ -97,6 +115,46 @@ def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "") -> list[Sess
         if len(summaries) >= limit:
             break
     return summaries
+
+
+def read_transcript(session_id: str) -> SessionTranscript | None:
+    """The conversation as the checkpoint holds it.
+
+    Read-only, and read from the same file the terminal writes, so a session
+    is the same session whichever driver produced it. `save_session` compacts
+    long runs, so this is what the agent kept, not necessarily every turn —
+    `truncated` says so rather than presenting a trimmed history as complete.
+    """
+    path = SESSION_ROOT / f"{_safe(session_id)}.json"
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    plan = payload.get("plan") or {}
+    status = str(plan.get("status") or "unknown")
+    messages = [
+        {"role": str(item.get("role") or "user"), "content": str(item.get("content") or "")}
+        for item in (payload.get("messages") or [])
+        if isinstance(item, dict)
+    ]
+    return SessionTranscript(
+        session_id=str(payload.get("session_id") or path.stem),
+        status=status,
+        workflow=str(plan.get("workflow") or ""),
+        resumable=status in RESUMABLE,
+        messages=messages,
+        truncated=bool(payload.get("compacted") or payload.get("truncated")),
+    )
+
+
+def _safe(session_id: str) -> str:
+    """Only a bare id names a checkpoint; anything else is not a session."""
+    cleaned = "".join(c for c in session_id if c.isalnum() or c in "-_")
+    if not cleaned or cleaned != session_id:
+        raise ValueError(f"{session_id!r} is not a session id")
+    return cleaned
 
 
 def _model(name: str, default: str = "") -> str:

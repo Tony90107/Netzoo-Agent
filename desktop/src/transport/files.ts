@@ -94,3 +94,19 @@ export function listSessions(config: DaemonConfig): Promise<{ sessions: SessionS
 export function readSettings(config: DaemonConfig): Promise<EffectiveSettings> {
   return get<EffectiveSettings>(config, "/v1/settings");
 }
+
+export type Transcript = {
+  session_id: string;
+  status: string;
+  workflow: string;
+  resumable: boolean;
+  messages: { role: string; content: string }[];
+  truncated: boolean;
+};
+
+export function readTranscript(
+  config: DaemonConfig,
+  sessionId: string,
+): Promise<Transcript> {
+  return get<Transcript>(config, `/v1/history/${encodeURIComponent(sessionId)}`);
+}
