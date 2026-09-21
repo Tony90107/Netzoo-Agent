@@ -173,7 +173,18 @@ class ConversationMachine:
 
 ### 5.1 為什麼是「一 session 一行程」
 
-`EXECUTE_TOOLS`、`PRESENTATION_MODE`、`TOOL_TIMEOUT_SECONDS` 都是 `runtime.py` 的行程全域值。把它們改成 per-invocation 參數會觸及 graph 的每個節點——風險遠大於多開幾個行程。**用行程隔離換取零語意變更**是這裡的正確取捨。
+`runtime.MUTABLE_RUNTIME_NAMES` 共 14 個成員，全部是行程全域值：
+
+```
+EXECUTE_TOOLS  TEST_DATA_MODE  TRACE_ENABLED  VERBOSE_OUTPUT  TRANSIENT_TRACE
+PRESENTATION_MODE  TRANSIENT_TRACE_MIN_SECONDS  TOOL_TIMEOUT_SECONDS
+PROJECT_ROOT  SESSION_ROOT  TOOL_LOG_ROOT  TRACE_ROOT  PROFILE_ROOT  EPISODE_ROOT
+```
+
+不只 `EXECUTE_TOOLS`。`TEST_DATA_MODE`（`/test`）同樣是每個 session 各自的使用者狀態，
+共用行程會讓一個視窗進入合成測試模式時，另一個視窗的 gene label 驗證也一起放寬。
+把這些改成 per-invocation 參數會觸及 graph 的每個節點——風險遠大於多開幾個行程。
+**用行程隔離換取零語意變更**是這裡的正確取捨。
 
 ### 5.2 分工
 
@@ -217,25 +228,44 @@ Observer 用 SSE 是因為它單向唯讀。桌面版需要雙向（送出回答
 
 | type | payload | 對應 CLI 行為 |
 | --- | --- | --- |
-| `submit` | `{text}` | 主提示下的一般輸入 |
-| `answer_prompt` | `{text}` 或 `{assignments:{field:path}}` | clarification / input confirmation |
-| `select_bundle` | `{bundle_id}` \| `{custom:true}` | `InputBundleOption` 選擇 |
-| `approve_execution` | `{plan_hash}` | `/execute` + `y` |
-| `slash` | `{command}` | `/planning` `/status` `/test` `/help` |
+| `answer` | `{text}` | 所有一般輸入：主提示、clarification、bundle 選擇、slash 指令 |
+| `approve_execution` | `{plan_hash}` | 執行確認的 `y` |
+| `decline_execution` | `{}` | 執行確認的 `n` |
 | `cancel` | `{}` | Ctrl-C |
+| `ping` | `{}` | 無（daemon 直接回 `pong`，不轉給 worker） |
+
+原設計把 `submit` / `answer_prompt` / `select_bundle` / `slash` 分成四種。實作時合併成
+一個 `answer`：狀態機對這四者的處理**本來就是同一個 `submit(text)`**，分開只會讓
+daemon 重新推導「現在是哪一種提示」，也就是把 §6.4 明令的「`view` 是唯一真相」破壞掉。
+UI 仍然照 `view.prompt_kind` 決定要畫哪種輸入元件。
+
+`approve_execution` 是唯一的例外，而且是刻意的：終端問 `[y/N]` 然後相信下一行輸入，但
+UI 離它看到的那份計畫有一個網路來回的距離。所以它必須指名自己核准的是哪一份計畫，
+hash 對不上就拒絕。在執行確認提示上送 `answer` 會被拒絕（`ExecutionApprovalRequired`），
+兩段確認（先預覽、再核准）在兩個 driver 上都成立。
 
 ### 6.4 Server → Client
 
 | type | payload | UI 去處 |
 | --- | --- | --- |
-| `view` | `ViewState` | 驅動輸入區的形態（唯一真相） |
-| `message` | `{role, content}` | 對話串 |
-| `plan` | `WorkflowPlan` + `plan_evaluation` | Inspector 的 Plan 分頁 |
+| `ready` | `{session_id}` | worker 已啟動 |
+| `view` | `{prompt_kind, text, menu_enabled, mode, plan, plan_hash, next_prompt}` | 驅動輸入區的形態（唯一真相） |
+| `message` | `{text}` | 對話串（agent 的最終回覆） |
+| `notice` | `{text}` | 對話串中的系統訊息 |
+| `progress` | `{text}` | 進度列（見下） |
 | `trace` | `TraceEvent` | Inspector 的 Timeline 分頁 |
+| `turn_started` / `turn_finished` | `{task, execute_once}` / `{}` | 忙碌狀態 |
 | `usage` | `LLMUsage` | 底部成本列 |
-| `artifact` | `{path, kind, bytes}` | Inspector 的 Files 分頁 |
-| `notice` | `{level, text}` | Toast |
 | `error` | `{error_type, message}` | 錯誤卡片 |
+| `stopped` | `{exit_code}` | session 結束 |
+
+`plan` 沒有獨立事件：它跟著 `view` 走。計畫只在「該問使用者什麼」改變時才有新版本，
+拆成兩個事件會讓 UI 需要自己對齊兩者的先後。`artifact` 留到 M5 檔案檢視再加。
+
+`progress` 是 §4.4 提到的那個邊界：`_trace` 與 `_clear_transient_trace` 直接寫
+stdout，因為終端是它們的原生輸出。worker 行程把自己的 stdout 重導向成 `progress`
+事件——**這件事由行程做，不是 driver 做**，因為 `sys.stdout` 是行程層級的，driver
+去改會連帶蓋掉同一個直譯器裡的其他輸出。
 
 **原則：`view` 是唯一決定「現在能輸入什麼」的訊息。** UI 不自行推導狀態，避免 GUI 與 CLI 的狀態機漂移。
 
@@ -389,8 +419,18 @@ class BroadcastTraceRecorder(TraceRecorder):
 
 1. **綁定範圍**：daemon 只綁 `127.0.0.1:8765`，不對 LAN 開放。
 2. **Token**：Tauri 每次啟動產生一次性 bearer token，經環境變數傳給容器，不寫入 `.env`、不出現在日誌。
+2b. **跨來源**：視窗是瀏覽器，它的請求是跨來源的——打包後的 Tauri 是
+   `tauri://localhost`（Windows 為 `http://tauri.localhost`），Vite dev server 是
+   `http://localhost:5173`。daemon 必須對這幾個 origin 開 CORS，否則殼層能透過 IPC
+   把容器叫起來，卻連不上它，畫面上看起來就像 daemon 從來沒啟動。
+   這不是放寬：綁定仍是 loopback、除 `/health` 外每條路由仍要 bearer token，且
+   **刻意不允許 credentials**，避免任何頁面靠環境 cookie 搭便車。WebSocket 不受
+   CORS 管轄，但 REST 受，所以兩者都要驗。
 3. **API key 隔離**：`OPENROUTER_API_KEY` 只存在於容器環境，WebView 與 Rust 端都拿不到。
-4. **Tauri capability**：關閉 `shell:execute`、`fs` 全域存取；只開檔案對話框與 `docker compose` 這一條白名單命令。
+4. **Tauri capability**：完全不掛 shell / fs / http plugin。`docker compose` 由 Rust 端用
+   `std::process::Command` 執行，只透過具名的 `start_daemon` / `stop_daemon` command
+   暴露給 webview——renderer 能要求「啟動 daemon」，但無法指定要跑什麼命令。這比開
+   shell plugin 再用白名單過濾更緊。
 5. **CSP**：WebView 禁止外部來源；所有資產內嵌。
 6. **檔案存取**：UI 不直接讀檔，一律走 daemon REST，重用既有的 `path_safety` 與 trace redaction。
 7. **執行授權**：僅 `approve_execution` 能開啟 `EXECUTE_TOOLS`，作用域限單一 turn，且需 `plan_hash` 相符。
@@ -441,8 +481,8 @@ netzoo_agent/
 | 里程碑 | 內容 | 驗收 |
 | --- | --- | --- |
 | **M0 狀態機抽取** ✅ 已完成 | `engine/` 落地，CLI 改為 adapter | 失敗集合在本機（83）與容器（107）皆與重構前逐行相同、13 個 golden transcript 逐字元相同、使用者可見字串零遺失 |
-| **M1 Daemon 骨架** | FastAPI + supervisor + worker + WS echo | 用 `websocat` 能跑完一輪 planning turn，行為與 CLI 相同 |
-| **M2 Tauri 殼層** | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動到可輸入 < 15s；Docker 未啟動時給出可操作訊息 |
+| **M1 Daemon 骨架** ✅ 已完成 | FastAPI + supervisor + worker 行程 + WS | 容器內實跑一輪 planning turn：routing → PANDA → evidence ledger → clarification，`view` 帶完整 plan 與 hash；同一個 prompt 走 CLI 得到相同結果；19 個新測試（含真行程隔離驗證） |
+| **M2 Tauri 殼層** ✅ 已完成 | 視窗、docker 生命週期、token、三欄空版面 | 冷啟動 2.7s（門檻 15s）；每次啟動新鑄 token、舊 token 立即失效；Docker 三種失敗各有專屬補救訊息 |
 | **M3 對話與計畫審核** | 對話串、輸入區形態機、Plan Card、兩段執行確認 | 能完整跑完 PANDA toy：提問 → 補輸入 → dry-run → 執行 → 結果 |
 | **M4 推理時間軸** | BroadcastTraceRecorder、時間軸、事件折疊 | 一次 run 的時間軸事件數與 `.netzoo/traces/` 內的筆數一致 |
 | **M5 結果與 Session** | 檔案樹、TSV/npz/md 檢視、session 歷史、設定頁、成本列 | 12 個 workflow 的輸出都能在視窗內開啟 |
@@ -480,6 +520,33 @@ docker run --rm -v "$PWD:/work" -w /work netzoo_agent:test python -m pytest test
 
 本機與容器的 skip 集合不同，兩邊都要跑。目前基準：本機 83 失敗 / 容器 107 失敗。
 
+### 15.2 Daemon 冒煙測試
+
+```bash
+docker run -d --name netzoo-daemon-smoke \
+  -v "$PWD:/work" -w /work -p 127.0.0.1:8765:8765 \
+  --env-file .env -e NETZOO_DESKTOP_TOKEN=smoke-token \
+  -e PYTHONPATH=/work/scripts:/opt/netZooPy:/opt/netzoo-harness \
+  netzoo_agent:test python -m netzoo_agent_core.server --host 0.0.0.0 --port 8765
+```
+
+`PYTHONPATH` 必須明寫。映像把 `scripts/` 烘進 `/opt/netzoo-app/scripts` 並放在
+預設 `PYTHONPATH`，不覆寫的話跑到的是建置當下那份舊程式碼，不是掛載進來的 `/work`。
+
+### 15.3 桌面殼層
+
+```bash
+cd desktop
+npm install
+npm run tauri dev                    # 開發
+npm run tauri build -- --bundles app # 產出 .app
+cd src-tauri && cargo test -- --test-threads=1
+```
+
+Rust 測試會真的呼叫 `docker`，並用 `DOCKER_HOST` 指向不存在的 socket 來驗證
+「Docker Desktop 沒開」這條路徑的錯誤分類與補救訊息。因為要改行程環境變數，必須
+單執行緒跑。
+
 ---
 
 ## 16. 風險與未定案
@@ -490,7 +557,15 @@ docker run --rm -v "$PWD:/work" -w /work netzoo_agent:test python -m pytest test
 | 長時間執行（tool timeout 86400s）跨越視窗關閉 | 使用者以為工作遺失 | worker 為獨立行程可存活；重開後用 `run_id` 重新附著（M5 之後） |
 | 大型 TSV 撐爆 WebView | 當機 | 一律串流分頁，daemon 端限制單次回傳列數 |
 | ~~Rust 工具鏈缺席~~（已排除） | — | 已確認本機有 `cargo` 1.x、Docker 29.5.3、Xcode CLT，M2 無環境前置阻擋 |
-| session 全域狀態外還有別的行程全域值 | 行程隔離不完整 | M1 前先盤點 `runtime.py` 的 `MUTABLE_RUNTIME_NAMES` 全部成員 |
+| ~~還有別的行程全域值~~（已盤點） | — | 14 個全部列於 §5.1，全是行程全域；`TEST_DATA_MODE` 與 `EXECUTE_TOOLS` 同樣需要隔離，已用真行程測試驗證 |
+
+**M2 已知限制**
+- 打包後的 `.app` 用 `project_root()` 從執行檔往上找 `docker-compose.yml`。放在專案
+  目錄內可用；真正安裝到 `/Applications` 後必須設 `NETZOO_PROJECT_ROOT`。要做成可
+  安裝的產品，M5 之後得改成把專案路徑存在應用設定裡並提供選擇器。
+- 開發模式需要 `devCsp`：Vite 會注入 inline 的 React-refresh preamble 與 HMR
+  websocket，兩者都不存在於出貨的 bundle，所以 dev 有自己的一份較寬政策，不去動
+  產品實際執行的那份。
 
 **未定案（待 M2 後再決定）**
 - 時間軸是否需要「重播」模式（讀舊 run 的 trace 檔逐步播放）。

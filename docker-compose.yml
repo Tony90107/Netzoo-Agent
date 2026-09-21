@@ -34,6 +34,29 @@ services:
       NETZOO_OBSERVER_ALLOW_INSECURE: "true"
     command: bash
 
+  # Long-lived daemon for the desktop UI. Same image and environment as the
+  # interactive service; it differs only in what it runs and in binding a
+  # loopback port.
+  netzoo-daemon:
+    extends:
+      service: netzoo
+    ports:
+      - "127.0.0.1:${NETZOO_DAEMON_PORT:-8765}:8765"
+    environment:
+      NETZOO_DESKTOP_TOKEN: ${NETZOO_DESKTOP_TOKEN:-}
+      # The image bakes scripts/ into /opt/netzoo-app/scripts and puts it on
+      # PYTHONPATH. Without this override the daemon would run the code as of
+      # the last image build instead of the mounted working tree.
+      PYTHONPATH: /work/scripts:/opt/netZooPy:/opt/netzoo-harness
+    command:
+      - python
+      - -m
+      - netzoo_agent_core.server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+
 # The optional observer stack lives in docker-compose.observer.yml. Keeping
 # its required secrets out of this default file lets `docker compose run
 # netzoo ...` work without pretending observer credentials exist.
