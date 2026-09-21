@@ -96,7 +96,16 @@ def bootstrap_runtime(
     args,
     memory_runtime: MemoryRuntime,
     policy: ProjectPolicySnapshot,
+    *,
+    recorder_factory=TraceRecorder,
 ) -> CliRuntime:
+    """Build the runtime one conversation needs.
+
+    ``recorder_factory`` exists so a non-terminal driver can wrap the recorder
+    and forward trace events to a UI.  The wrapper must still persist through
+    ``LocalTraceStore`` first; a UI may not see an event the hash chain does
+    not have.
+    """
     if not os.environ.get("OPENROUTER_API_KEY"):
         raise SystemExit(
             "Missing OPENROUTER_API_KEY. Export it first, for example:\n"
@@ -137,7 +146,7 @@ def bootstrap_runtime(
     active_usage = None
     trace_store = LocalTraceStore(TRACE_ROOT)
     trace_store.preflight()
-    recorder = TraceRecorder(trace_store)
+    recorder = recorder_factory(trace_store)
     collector_url = os.environ.get("NETZOO_OBSERVER_URL", "").strip()
     collector_agent_key = os.environ.get("NETZOO_OBSERVER_AGENT_KEY", "").strip()
     allow_insecure_observer = os.environ.get(
