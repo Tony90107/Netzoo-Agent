@@ -84,6 +84,11 @@ export type EffectiveSettings = {
   allowlists: Record<string, string>;
   limits: Record<string, number>;
   paths: Record<string, string>;
+  retention_days: Record<string, number>;
+  storage: {
+    sessions: { files: number; bytes: number };
+    traces: { files: number; bytes: number; runs: number; unsealed_runs: number };
+  };
   api_key_present: boolean;
 };
 

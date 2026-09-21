@@ -404,10 +404,30 @@ def test_settings_are_reported_and_carry_no_secret(client):
     assert client.get("/v1/settings").status_code == 401
 
     body = client.get("/v1/settings", headers=_auth()).json()
-    assert set(body) == {"models", "allowlists", "limits", "paths", "api_key_present"}
+    assert set(body) == {
+        "models",
+        "allowlists",
+        "limits",
+        "paths",
+        "retention_days",
+        "storage",
+        "api_key_present",
+    }
     # The key's presence is useful; the key itself must never leave the daemon.
     assert isinstance(body["api_key_present"], bool)
     assert "sk-" not in json.dumps(body)
+
+
+def test_settings_report_what_retention_will_and_will_not_remove(client):
+    body = client.get("/v1/settings", headers=_auth()).json()
+
+    assert body["retention_days"]["sessions"] > 0
+    assert body["retention_days"]["traces"] > 0
+    traces = body["storage"]["traces"]
+    # Interrupted runs are never pruned, so the count that retention cannot
+    # touch has to be visible next to the one it can.
+    assert traces["unsealed_runs"] <= traces["runs"]
+    assert body["storage"]["sessions"]["bytes"] >= 0
 
 
 def test_settings_cannot_be_written(client):

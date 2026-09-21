@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
-import { EffectiveSettings, readSettings } from "../../transport/files";
+import { EffectiveSettings, formatBytes, readSettings } from "../../transport/files";
 
 function Group({ title, rows }: { title: string; rows: [string, string][] }) {
   return (
@@ -69,6 +69,40 @@ export function SettingsView({ config, onClose }: { config: DaemonConfig; onClos
                 k,
                 typeof v === "number" ? v.toLocaleString() : String(v),
               ])}
+            />
+            <Group
+              title="Retention"
+              rows={[
+                [
+                  "sessions",
+                  `${settings.retention_days.sessions} days (paused ones are kept)`,
+                ],
+                [
+                  "sealed traces",
+                  `${settings.retention_days.traces} days`,
+                ],
+              ]}
+            />
+            <Group
+              title="Storage"
+              rows={[
+                [
+                  "sessions",
+                  `${settings.storage.sessions.files} files · ${formatBytes(
+                    settings.storage.sessions.bytes,
+                  )}`,
+                ],
+                [
+                  "traces",
+                  `${settings.storage.traces.runs} runs · ${formatBytes(
+                    settings.storage.traces.bytes,
+                  )}`,
+                ],
+                [
+                  "never pruned",
+                  `${settings.storage.traces.unsealed_runs} interrupted runs`,
+                ],
+              ]}
             />
             <Group
               title="Paths"
