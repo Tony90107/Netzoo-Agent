@@ -104,6 +104,9 @@ class WorkerDriver:
                 "text": prompt.text,
                 "menu_enabled": prompt.menu_enabled,
                 "mode": current_mode_label(),
+                "target_field": prompt.target_field,
+                "choosing_bundle": prompt.choosing_bundle,
+                "preflight_correction": prompt.preflight_correction,
                 "plan": plan.model_dump(mode="json") if plan is not None else None,
                 "plan_hash": plan_hash(plan),
                 "next_prompt": (

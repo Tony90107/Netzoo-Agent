@@ -194,12 +194,20 @@ class ConversationMachine:
             )
             kind = "clarification"
             noninteractive = "\n" + clarification_prompt(plan)
+        preflight_correction, choosing_bundle, target_field = (
+            self._clarification_context()
+            if kind == "clarification"
+            else (False, False, None)
+        )
         return Prompt(
             kind=kind,
             text=render_mode_prompt("\n" + body),
             menu_enabled=False,
             plan=plan,
             noninteractive_text=noninteractive,
+            target_field=target_field,
+            choosing_bundle=choosing_bundle,
+            preflight_correction=preflight_correction,
         )
 
     def _main_prompt(self) -> Prompt:

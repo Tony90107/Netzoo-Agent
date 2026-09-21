@@ -208,3 +208,251 @@ body {
 }
 
 .statusbar__spacer { flex: 1; }
+
+/* ---------- conversation ---------- */
+
+.pane__badge {
+  float: right;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.pane__scroll { flex: 1; overflow: auto; padding: 14px; min-height: 0; }
+
+.thread {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.thread__empty {
+  margin: auto;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.bubble { max-width: 74ch; border-radius: 10px; padding: 11px 14px; line-height: 1.6; }
+.bubble__body { white-space: pre-wrap; }
+.bubble--user { align-self: flex-end; background: #23303f; }
+.bubble--agent { align-self: flex-start; background: var(--panel-2); }
+.bubble--notice {
+  align-self: flex-start;
+  background: transparent;
+  border-left: 2px solid var(--line);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 2px 0 2px 12px;
+}
+.bubble--error {
+  align-self: flex-start;
+  background: #2a1e1d;
+  border: 1px solid #4a2d29;
+}
+.bubble__label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+  margin-bottom: 4px;
+}
+
+.thread__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.thread__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+/* ---------- input area ---------- */
+
+.composer-slot { border-top: 1px solid var(--line); padding: 14px 24px 18px; }
+
+.composer { display: flex; gap: 10px; align-items: flex-end; }
+.composer--busy { color: var(--muted); font-size: 13px; padding: 6px 0; }
+
+.composer__text {
+  flex: 1;
+  resize: vertical;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.composer__text:focus { outline: none; border-color: var(--accent); }
+
+.btn {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: #0d1117; font-weight: 600; }
+.btn--danger { background: var(--danger); border-color: var(--danger); color: #1b0f0d; font-weight: 600; }
+.btn--quiet { background: transparent; color: var(--muted); }
+.btn--small { padding: 4px 9px; font-size: 12px; }
+
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choices__title { font-size: 13px; color: var(--muted); }
+.choices__list { display: flex; flex-direction: column; gap: 7px; }
+
+.choice {
+  text-align: left;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.choice:hover { border-color: var(--accent); }
+.choice__label { display: block; }
+.choice__detail { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+
+.wizard { display: flex; flex-direction: column; gap: 12px; }
+.wizard__field { font-size: 13px; }
+.wizard__field code {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.wizard__reason { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+.main-input { display: flex; flex-direction: column; gap: 10px; }
+.main-input__question { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+.approval {
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #221715;
+}
+.approval__title { font-weight: 600; margin-bottom: 6px; }
+.approval__note { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.approval__actions { display: flex; gap: 10px; }
+
+/* ---------- plan card ---------- */
+
+.plan { font-size: 13px; }
+.plan__head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.plan__workflow { font-weight: 600; font-size: 14px; }
+.plan__status {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 7px;
+  color: var(--muted);
+}
+.plan__status--ready { color: var(--accent); border-color: var(--accent); }
+.plan__status--needs_input, .plan__status--needs_confirmation { color: #d9b26a; border-color: #4a3f28; }
+.plan__objective { color: var(--muted); margin: 0 0 12px; line-height: 1.6; }
+
+.plan__evidence { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.plan__evidence td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+.plan__evidence tr.is-missing .plan__field { color: #d9b26a; }
+.plan__field { white-space: nowrap; color: var(--muted); }
+.plan__value { word-break: break-all; }
+.plan__origin { white-space: nowrap; color: var(--muted); font-size: 12px; text-align: right; }
+
+.plan__steps, .plan__notes { margin-bottom: 10px; color: var(--muted); }
+.plan__steps ol { margin: 8px 0 0; padding-left: 20px; }
+.plan__steps li { margin-bottom: 5px; color: var(--text); }
+.plan__steps code {
+  background: var(--panel-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 7px;
+}
+.plan__steps span { color: var(--muted); }
+.plan__notes ul { margin: 8px 0 0; padding-left: 18px; }
+.plan__recovery { color: #d9b26a; }
+.plan__hash { color: var(--muted); font-size: 11px; font-family: ui-monospace, monospace; }
+
+.statusbar__dot.is-idle { background: var(--muted); }
+
+.agent-question {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-height: 22vh;
+  overflow: auto;
+  border-left: 2px solid var(--line);
+  padding-left: 12px;
+}
+
+/* The plan is the tallest thing in the inspector; let it take the room and
+   scroll, instead of clipping the evidence ledger at a fixed share. */
+.inspector > .pane:first-child { flex: 2 1 0; min-height: 220px; }
+
+/* The mode switch lives in the conversation header, where the mode is always
+   visible instead of being implied by the last command someone typed. */
+.modeswitch {
+  float: right;
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.modeswitch__option {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.modeswitch__option:hover:not(:disabled) { color: var(--text); }
+.modeswitch__option.is-active {
+  background: var(--panel-2);
+  color: var(--accent);
+  cursor: default;
+}
+.modeswitch__option:disabled:not(.is-active) { opacity: 0.45; cursor: not-allowed; }
+
+.modeswitch__executing {
+  align-self: center;
+  color: var(--danger);
+  font-size: 11px;
+  padding: 0 8px;
+}

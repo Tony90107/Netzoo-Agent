@@ -58,16 +58,77 @@ async function health(config: DaemonConfig): Promise<boolean> {
   }
 }
 
+/**
+ * Does the daemon on that port accept *our* token?
+ *
+ * `/health` needs no token, so a daemon left over from an earlier launch — one
+ * that was force-killed before it could stop its container — answers it
+ * happily while holding a different secret. Reusing it on the strength of
+ * /health alone produced a window that started cleanly and then failed every
+ * request with 401.
+ */
+async function authorized(config: DaemonConfig): Promise<boolean> {
+  try {
+    const response = await fetch(`${config.baseUrl}/v1/sessions`, {
+      headers: { Authorization: `Bearer ${config.token}` },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Key a developer sets by hand to run this UI in a plain browser. */
+const DEV_CONFIG_KEY = "netzoo.daemon";
+
+function inTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+function developerConfig(): DaemonConfig | null {
+  // Outside Tauri there is no shell to mint a token or start a container, so
+  // the daemon has to be running already and its token supplied by hand. This
+  // exists so the window's own code can be exercised in a browser; it grants
+  // nothing, because whoever sets it already holds the token.
+  try {
+    const raw = window.localStorage.getItem(DEV_CONFIG_KEY);
+    return raw ? (JSON.parse(raw) as DaemonConfig) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function startDaemon(
   report: (step: string) => void,
 ): Promise<{ config: DaemonConfig }> {
   report("Reading shell configuration");
+  if (!inTauri()) {
+    const config = developerConfig();
+    if (!config) {
+      throw {
+        kind: "no_shell",
+        message: "This page is not running inside the NetZoo Agent window.",
+        remedy:
+          `Start the daemon yourself and put its config in localStorage under "${DEV_CONFIG_KEY}".`,
+        detail: "",
+      } satisfies DaemonFault;
+    }
+    report("Waiting for the agent to answer");
+    if (await health(config)) return { config };
+    throw {
+      kind: "health_timeout",
+      message: "No daemon answered on the configured port.",
+      remedy: "Start it with `docker compose up -d netzoo-daemon`.",
+      detail: config.baseUrl,
+    } satisfies DaemonFault;
+  }
   const config = await invoke<DaemonConfig>("daemon_config");
 
-  // An already-running daemon (a previous launch, or one started by hand for
-  // debugging) is reused rather than restarted.
+  // An already-running daemon is reused only when it answers to this launch's
+  // token; otherwise it is a leftover and compose recreates it below, because
+  // the changed token changes the service definition.
   report("Looking for a running daemon");
-  if (await health(config)) return { config };
+  if ((await health(config)) && (await authorized(config))) return { config };
 
   report("Starting the daemon container");
   try {
@@ -83,7 +144,7 @@ export async function startDaemon(
   report("Waiting for the agent to answer");
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (await health(config)) return { config };
+    if ((await health(config)) && (await authorized(config))) return { config };
     await new Promise((resolve) => setTimeout(resolve, HEALTH_INTERVAL_MS));
   }
   throw {

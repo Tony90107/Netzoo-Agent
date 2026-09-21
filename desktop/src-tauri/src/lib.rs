@@ -91,6 +91,13 @@ pub fn run() {
             start_daemon,
             stop_daemon
         ])
+        .setup(|app| {
+            // Without an application menu, macOS never delivers Cmd-C/V/X or
+            // Cmd-A to the webview, so the task box cannot be pasted into.
+            // Pasting a file path is the ordinary way to answer this agent.
+            app.set_menu(tauri::menu::Menu::default(app.handle())?)?;
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("failed to start the NetZoo Agent window")
         .run(|handle, event| {

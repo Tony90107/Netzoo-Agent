@@ -22,7 +22,14 @@ from starlette.websockets import WebSocketDisconnect
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
 
-__all__ = ["DESKTOP_ORIGINS", "create_app", "resolve_token"]
+__all__ = ["DESKTOP_ORIGINS", "WS_TOKEN_SUBPROTOCOL", "create_app", "resolve_token"]
+
+# Browsers cannot set an Authorization header on a WebSocket, and a token in
+# the query string is written verbatim into the uvicorn access log, where
+# `docker logs` keeps it. The subprotocol header carries it instead: it is
+# not logged, and it is the mechanism the WebSocket protocol provides for
+# exactly this.
+WS_TOKEN_SUBPROTOCOL = "netzoo.bearer"
 
 # The window is a browser, so its requests are cross-origin: a packaged Tauri
 # app is `tauri://localhost` (`http://tauri.localhost` on Windows) and the Vite
@@ -149,11 +156,7 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         session_id: str,
         since: int = Query(default=0, ge=0),
     ) -> None:
-        header = websocket.headers.get("authorization", "")
-        scheme, _, value = header.partition(" ")
-        supplied = value.strip() if scheme.casefold() == "bearer" else (
-            websocket.query_params.get("token", "")
-        )
+        supplied, subprotocol = _websocket_credentials(websocket)
         if not _authorized(supplied):
             await websocket.close(code=4401)
             return
@@ -162,7 +165,7 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         except UnknownSession:
             await websocket.close(code=4404)
             return
-        await websocket.accept()
+        await websocket.accept(subprotocol=subprotocol)
         try:
             for envelope in backlog:
                 await websocket.send_text(envelope.to_json())
@@ -173,6 +176,23 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             supervisor.unsubscribe(session_id, subscriber)
 
     return app
+
+
+def _websocket_credentials(websocket: WebSocket) -> tuple[str, str | None]:
+    """Read the bearer token from a header, or from the subprotocol.
+
+    Non-browser clients keep using Authorization. A browser offers
+    ``[WS_TOKEN_SUBPROTOCOL, <token>]``, and the accepted subprotocol has to be
+    echoed back or the handshake fails.
+    """
+    header = websocket.headers.get("authorization", "")
+    scheme, _, value = header.partition(" ")
+    if scheme.casefold() == "bearer" and value.strip():
+        return value.strip(), None
+    offered = list(websocket.scope.get("subprotocols") or [])
+    if len(offered) >= 2 and offered[0] == WS_TOKEN_SUBPROTOCOL:
+        return offered[1], WS_TOKEN_SUBPROTOCOL
+    return "", None
 
 
 async def _relay(websocket, supervisor, session_id, subscriber) -> None:
