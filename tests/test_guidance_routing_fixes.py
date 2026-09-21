@@ -204,6 +204,92 @@ def test_empty_provider_tags_recover_chinese_q1_to_otter(tmp_path):
     assert recovery.payload["evidence"]["text_span"] == "連續凸最佳化"
 
 
+def test_provider_algorithm_aliases_converge_on_otter(tmp_path):
+    task = (
+        "Infer one aggregate TF-to-gene regulatory network. Continuous relaxed "
+        "graph matching with an explicit objective and convergence."
+    )
+    provider_payload = {
+        "selection_tags": [
+            "aggregate_network",
+            "relaxed_graph_matching",
+            "explicit_objective/loss",
+            "convergence",
+        ],
+        "evidence": [
+            {
+                "dimension": "selection_tag",
+                "value": "aggregate_network",
+                "source": "explicit",
+                "text_span": "one aggregate TF-to-gene regulatory network",
+                "rationale": "The request asks for one aggregate network.",
+            },
+            {
+                "dimension": "selection_tag",
+                "value": "relaxed_graph_matching",
+                "source": "explicit",
+                "text_span": "Continuous relaxed graph matching",
+                "rationale": "The request names relaxed graph matching.",
+            },
+            {
+                "dimension": "selection_tag",
+                "value": "explicit_objective/loss",
+                "source": "explicit",
+                "text_span": "explicit objective",
+                "rationale": "The request names an explicit objective.",
+            },
+            {
+                "dimension": "selection_tag",
+                "value": "convergence",
+                "source": "explicit",
+                "text_span": "convergence",
+                "rationale": "The request requires convergence.",
+            },
+        ],
+    }
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="alias-recovery", profile_id="default")
+    context = SimpleNamespace(
+        semantic_discriminator=SimpleNamespace(invoke=lambda _messages: {
+            "parsed": provider_payload,
+            "raw": object(),
+        }),
+        semantic_claims=False,
+        semantic_model_name="fixture",
+        router_max_tokens=200,
+        task_token_budget=10_000,
+        recorder=recorder,
+        price_catalog=PriceCatalog(),
+    )
+    match = CapabilityMatch(
+        status="ambiguous",
+        hypothesis_actions=[
+            "run_panda", "run_lioness_panda", "run_otter", "run_giraffe",
+        ],
+    )
+
+    updated, narrowed, _, _ = invoke_semantic_discriminator(
+        context,
+        {"run_id": str(run_id)},
+        task,
+        SemanticInterpretation(
+            request_mode="guidance",
+            semantic_goal="Choose a regulatory-network method",
+            outcome_hypotheses=[tf_aggregate()],
+        ),
+        match,
+        LLMUsage(),
+        [],
+    )
+
+    assert narrowed.status == "exact"
+    assert narrowed.matched_actions == ["run_otter"]
+    assert "relaxed_graph_matching" in (
+        updated.outcome_hypotheses[0].outcome.selection_tags
+    )
+
+
 def test_empty_provider_tags_recover_chinese_q2_to_panda(tmp_path):
     store = LocalTraceStore(tmp_path / "traces")
     recorder = TraceRecorder(store)

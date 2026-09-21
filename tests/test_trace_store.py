@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 import tarfile
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
@@ -156,6 +157,8 @@ def test_trace_retention_removes_only_old_sealed_runs(tmp_path: Path):
     manifest["finished_at"] = old.isoformat().replace("+00:00", "Z")
     manifest["updated_at"] = manifest["finished_at"]
     manifest_path.write_text(json.dumps(manifest))
+    os.utime(manifest_path, (old.timestamp(), old.timestamp()))
+    os.utime(store.run_path(sealed_id), (old.timestamp(), old.timestamp()))
 
     removed = cleanup_trace_storage(90, trace_root=root)
 

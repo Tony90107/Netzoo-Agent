@@ -89,6 +89,42 @@ def test_multiple_semantic_candidates_do_not_select_one_workflow():
     )
 
 
+def test_alternative_candidates_preserve_the_planners_exact_question():
+    question = (
+        "Which modeling assumption best matches your experiment: iterative message "
+        "passing; continuous relaxed graph matching?"
+    )
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="ambiguous",
+        capability_match_status="ambiguous",
+        clarification_question=question,
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="ambiguous",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt({
+        "plan": plan.model_dump(),
+        "semantic_goal": {
+            "candidates": ["run_panda", "run_otter"],
+            "relationship": "alternatives",
+            "request_mode": "guidance",
+        },
+    })
+
+    assert prompt.kind == "clarify_outcome"
+    assert question in prompt.question
+    assert prompt.allow_workflow_continuation is False
+
+
 def test_workflow_composition_recommends_its_final_registered_action():
     decision = TaskDecision(
         action="no_tool",
@@ -614,6 +650,37 @@ def test_ambiguous_outcome_asks_for_clarification_without_continuation():
 
     assert prompt.kind == "clarify_outcome"
     assert prompt.continuation_action is None
+    assert "Which result do you want?" in prompt.question
+
+
+def test_guidance_mode_keeps_the_exact_ambiguous_question_for_the_reply_resolver():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="ambiguous",
+        capability_match_status="ambiguous",
+        clarification_question=(
+            "Which modeling assumption best matches your experiment: iterative "
+            "message passing; continuous relaxed graph matching?"
+        ),
+    )
+    plan = WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="ambiguous guidance",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+
+    prompt = build_next_turn_prompt({
+        "plan": plan.model_dump(),
+        "semantic_goal": {"request_mode": "guidance"},
+    })
+
+    assert prompt.kind == "clarify_outcome"
+    assert "continuous relaxed graph matching" in prompt.question
 
 
 def test_ranked_advisory_outcome_does_not_force_a_clarification_prompt():

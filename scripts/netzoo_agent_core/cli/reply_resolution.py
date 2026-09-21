@@ -31,6 +31,9 @@ selected_granularity only when the reply resolves a granularity offered by the t
 workflow facts. A follow_up depends on the prior conversation; a new_goal is
 self-contained. A direct question about an entity, input, output, local resource, or
 workflow in trusted context is a follow_up and does not need to restate the prior goal.
+When prompt_kind is clarify_outcome, a concrete answer that selects one scientific
+option in prompt_question is also a follow_up even when it is a phrase rather than a
+question. It does not authorize execution.
 Candidate workflow facts establish valid conversation referents but do not authorize
 execution by themselves. A bare acknowledgement without a question, selection, or
 concrete requested outcome is needs_detail. Do not rewrite file paths or infer that
@@ -98,11 +101,42 @@ def _revalidate(context: FollowUpContext, reply: str, reason: str) -> Contextual
     )
 
 
+def _answers_clarification(context: FollowUpContext, reply: str) -> bool:
+    """Recognize a concrete answer to the exact question the CLI just asked.
+
+    A match only sends the combined request back through semantic validation;
+    it neither chooses a workflow nor grants execution authority.
+    """
+    if context.prompt_kind != "clarify_outcome":
+        return False
+    normalized = " ".join(reply.casefold().split())
+    if normalized in {
+        "", "ok", "okay", "sure", "yes", "no", "thanks", "thank you",
+        "continue", "exit", "quit", "back",
+    }:
+        return False
+    question = context.prompt_question.casefold()
+    reply_terms = set(re.findall(r"[a-z0-9]+|[\u4e00-\u9fff]{2,}", normalized))
+    question_terms = set(re.findall(r"[a-z0-9]+|[\u4e00-\u9fff]{2,}", question))
+    ignored = {
+        "a", "an", "and", "or", "the", "this", "that", "one", "which",
+        "what", "should", "result", "answer", "clarification", "describe",
+        "another", "netzoo", "goal",
+    }
+    return bool((reply_terms - ignored) & (question_terms - ignored))
+
+
 def _validated_resolution(
     decision: ReplyIntentDecision,
     context: FollowUpContext,
     reply: str,
 ) -> ContextualReplyResolution:
+    if decision.kind == "needs_detail" and _answers_clarification(context, reply):
+        return _revalidate(
+            context,
+            reply,
+            "The reply answers the prior scientific clarification.",
+        )
     if decision.confidence < 0.80:
         return _needs_detail("The contextual reply classification was uncertain.")
     if decision.kind == "accept_workflow":
@@ -158,15 +192,8 @@ def _validated_resolution(
         )
     resolved_task = None
     if decision.kind == "follow_up":
-        workflow_context = ""
-        if context.candidate_workflows:
-            workflow_names = ", ".join(
-                item.workflow for item in context.candidate_workflows
-            )
-            workflow_context = f"Registered workflow context: {workflow_names}\n"
         resolved_task = (
             f"Previous NetZoo goal: {context.prior_user_goal}\n"
-            f"{workflow_context}"
             f"User follow-up: {reply}"
         )
     elif decision.kind == "new_goal":

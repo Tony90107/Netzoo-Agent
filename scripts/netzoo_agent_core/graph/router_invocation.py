@@ -548,6 +548,7 @@ def _invoke_semantic_interpreter(
             user_task,
             interpretation,
             align_artifact_constraints=patch is not None,
+            restore_explicit_scalar_evidence=True,
         )
         if patch is not None:
             interpretation = _fill_inferred_role_evidence(interpretation)

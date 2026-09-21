@@ -152,6 +152,48 @@ def _mismatch_dimensions(
     return mismatches
 
 
+_INPUT_GAP_LABELS = {
+    "expression_matrix": "gene-expression matrix",
+    "mirna_prior": "miRNA prior",
+    "motif_prior": "TF-motif prior",
+    "ppi_prior": "PPI prior",
+}
+
+
+def _input_gap_question(
+    outcome: RequestedOutcome,
+    candidates: Sequence[tuple[RecommendedAction, OutputCapabilityDefinition]],
+    availability: InputAvailability,
+) -> str:
+    """Explain the smallest explicit absence that eliminated every candidate."""
+    requested_absent = (
+        set(outcome.input_artifacts) - {_UNKNOWN}
+    ) & set(availability.absent)
+    missing_sets = [
+        (set(capability.required_input_artifacts) & set(availability.absent))
+        | requested_absent
+        for _, capability in candidates
+    ]
+    missing_sets = [missing for missing in missing_sets if missing]
+    common_missing = set.intersection(*missing_sets) if missing_sets else set()
+    if common_missing:
+        labels = [
+            _INPUT_GAP_LABELS.get(value, value.replace("_", " "))
+            for value in sorted(common_missing)
+        ]
+        subject = " and ".join(labels)
+        pronoun = "them" if len(labels) > 1 else "it"
+        return (
+            f"Every otherwise compatible workflow requires {subject}, which you "
+            f"marked unavailable. Can you provide {pronoun}, or should NetZoo "
+            "target a different scientific result?"
+        )
+    return (
+        "A required input was explicitly marked unavailable. "
+        "Which compatible input bundle can you provide?"
+    )
+
+
 def match_requested_outcome(
     outcome: RequestedOutcome,
     capabilities: Mapping[
@@ -181,17 +223,25 @@ def match_requested_outcome(
             not partial_candidates
             and isinstance(available_inputs, InputAvailability)
             and available_inputs.absent
-            and any(
-                _partially_compatible(outcome, capability, ())
-                for capability in capabilities.values()
-            )
         ):
+            candidates_without_availability = [
+                (action, capability)
+                for action, capability in capabilities.items()
+                if _partially_compatible(outcome, capability, ())
+            ]
+            if not candidates_without_availability:
+                return CapabilityMatch(
+                    status="ambiguous",
+                    hypothesis_actions=[],
+                    clarification_question=_selection_question(outcome, []),
+                )
             return CapabilityMatch(
                 status="unsupported",
                 mismatch_dimensions=["input_artifacts"],
-                clarification_question=(
-                    "A required input was explicitly marked unavailable. "
-                    "Which compatible input bundle can you provide?"
+                clarification_question=_input_gap_question(
+                    outcome,
+                    candidates_without_availability,
+                    available_inputs,
                 ),
             )
         return CapabilityMatch(

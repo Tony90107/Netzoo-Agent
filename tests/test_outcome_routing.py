@@ -862,6 +862,28 @@ def test_router_outcome_metadata_does_not_replace_the_router_selection():
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
 
 
+def test_hydration_applies_explicit_typed_workflow_controls():
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.95,
+        reason="Guidance",
+        capability_match_status="exact",
+        matched_actions=["run_otter"],
+    )
+
+    hydrated = hydrate_router_decision(
+        decision,
+        "Prefer GPU acceleration and use precision=single. Advice only.",
+    )
+
+    assert hydrated.computing == "gpu"
+    assert hydrated.precision == "single"
+    assert hydrated.should_execute is False
+
+
 def test_hydration_preserves_tied_hypotheses_without_primary_outcome():
     route = RouterDecision(
         action="no_tool",

@@ -8,6 +8,7 @@ from workflow_registry import REQUIRED_INPUTS
 
 from ..contracts import RouterDecision, TaskDecision
 from ..routing import _extract_named_path
+from ..settings import PARAMETER_FIELDS
 from .extraction import (
     _task_path,
     documentation_library_for_task,
@@ -79,8 +80,16 @@ def hydrate_router_decision(
             setattr(decision, field_name, recognized_inputs[field_name])
 
     explicit_parameters = extract_explicit_request_parameters(task)
-    if taxon := explicit_parameters.get("taxon"):
-        decision.taxon = str(taxon)
+    parameter_updates = {
+        field_name: value
+        for field_name, value in explicit_parameters.items()
+        if field_name in PARAMETER_FIELDS
+    }
+    if parameter_updates:
+        decision = TaskDecision.model_validate({
+            **decision.model_dump(),
+            **parameter_updates,
+        })
     if output_file := explicit_parameters.get("output_file"):
         decision.output_file = str(output_file)
         if "output_dir" not in explicit_parameters:

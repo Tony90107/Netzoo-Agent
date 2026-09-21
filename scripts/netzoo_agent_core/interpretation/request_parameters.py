@@ -155,6 +155,7 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
         if match:
             parameters[field_name] = match.group(1).casefold() == "true"
     for field_name, aliases in (
+        ("computing", r"cpu|gpu"),
         ("precision", r"single|double"),
         ("bonobo_output_format", r"\.?h5|\.?hdf|\.?txt|\.?csv"),
     ):
@@ -168,6 +169,21 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
             if field_name == "bonobo_output_format" and not value.startswith("."):
                 value = "." + value
             parameters[field_name] = value
+    if "computing" not in parameters:
+        if re.search(
+            r"\b(?:prefer|use|enable|with)\s+(?:the\s+)?gpu(?:\s+acceleration)?\b|"
+            r"(?:偏好|優先使用|使用|啟用).{0,8}\bGPU\b",
+            task,
+            flags=re.IGNORECASE,
+        ):
+            parameters["computing"] = "gpu"
+        elif re.search(
+            r"\b(?:prefer|use|force|with)\s+(?:the\s+)?cpu\b|"
+            r"(?:偏好|優先使用|使用|強制).{0,8}\bCPU\b",
+            task,
+            flags=re.IGNORECASE,
+        ):
+            parameters["computing"] = "cpu"
     for field_name in ("bonobo_confidence", "confidence", "delta"):
         match = re.search(
             rf"\b{field_name}\s*=\s*([0-9]*\.?[0-9]+)\b",
