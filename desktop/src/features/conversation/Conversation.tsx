@@ -72,7 +72,14 @@ export function Conversation({
           <div className="thread__progress">
             <span className="thread__spinner" aria-hidden="true" />
             {session.progress ?? "Working…"}
-            <button className="btn btn--quiet btn--small" type="button" onClick={onCancel}>
+            <button
+              className="btn btn--quiet btn--small"
+              type="button"
+              // Interrupting ends the session, the same way Ctrl-C does in the
+              // terminal. Say so here rather than surprising someone with it.
+              title="Stop this turn. Nothing unfinished is reported as completed, and the session ends."
+              onClick={onCancel}
+            >
               Interrupt
             </button>
           </div>

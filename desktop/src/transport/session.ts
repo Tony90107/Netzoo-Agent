@@ -127,8 +127,26 @@ export class SessionSocket {
     this.send({ type: "decline_execution" });
   }
 
-  cancel(): void {
-    this.send({ type: "cancel" });
+  /**
+   * Interrupt the turn that is running.
+   *
+   * Not a socket message: while a turn runs the worker is inside
+   * `app.invoke()` and is not reading the channel, so a `cancel` envelope
+   * would sit in the queue and only be read at the *next* prompt — where it
+   * ends the session, long after the analysis it was meant to stop has
+   * finished. The daemon's cancel endpoint signals the process instead,
+   * which is the path the agent already handles.
+   */
+  async cancel(): Promise<void> {
+    try {
+      await fetch(`${this.config.baseUrl}/v1/sessions/${this.sessionId}/cancel`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.config.token}` },
+      });
+    } catch {
+      // The turn either stops or it does not; a failed request is reported by
+      // the session going quiet, not by a second error box.
+    }
   }
 
   private receive(raw: string): void {
