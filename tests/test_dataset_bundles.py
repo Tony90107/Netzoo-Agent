@@ -16,6 +16,10 @@ class DatasetBundlePlanningTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        # This suite uses placeholder IDs to isolate coherent-bundle behavior.
+        mode = patch.object(agent.settings, "TEST_DATA_MODE", True)
+        mode.start()
+        self.addCleanup(mode.stop)
 
     @staticmethod
     def write(directory: Path, name: str, text: str) -> Path:

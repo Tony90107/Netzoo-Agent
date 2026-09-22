@@ -10,6 +10,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core import TaskDecision, build_workflow_plan  # noqa: E402
+from netzoo_agent_core import settings  # noqa: E402
 from netzoo_agent_core.data.artifacts import validate_output_artifacts  # noqa: E402
 from netzoo_agent_core.data.inspection import inspect_condor_inputs_impl  # noqa: E402
 from netzoo_agent_core.data.bundles import discover_coherent_bundles  # noqa: E402
@@ -209,7 +210,10 @@ def test_otter_output_rejects_non_bipartite_or_incomplete_edge_artifacts(tmp_pat
     assert any("bipartite" in error or "source IDs" in error or "grid" in error for error in errors)
 
 
-def test_otter_plans_expression_and_precomputed_variants_and_declares_handoffs(tmp_path):
+def test_otter_plans_expression_and_precomputed_variants_and_declares_handoffs(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression, coexpression, motif, ppi = _inputs(tmp_path)
     expression_plan = build_workflow_plan(
         _decision(
@@ -244,7 +248,8 @@ def test_otter_plans_expression_and_precomputed_variants_and_declares_handoffs(t
     assert "identifier/order" in cobra.handoff_contract
 
 
-def test_otter_execute_slash_requires_a_ready_approved_plan(tmp_path):
+def test_otter_execute_slash_requires_a_ready_approved_plan(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression, _, motif, ppi = _inputs(tmp_path)
     output = tmp_path / "result.tsv"
     plan = build_workflow_plan(

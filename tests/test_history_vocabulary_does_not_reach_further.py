@@ -28,8 +28,8 @@ CORPUS = json.loads(
     (Path(__file__).parents[1] / "tests" / "routing_scenarios.json").read_text()
 )
 
-#: Every corpus prompt with at least one historical clause. Each is one a reader
-#: can confirm by eye: all six report a method or an analysis as already done.
+#: Every corpus prompt with at least one historical clause. Each reports a
+#: method, analysis, or artifact as already completed or previously built.
 PROMPTS_WITH_HISTORY = {
     "mirna-current-goal",
     "mirna-current-goal-misspelled",
@@ -37,6 +37,7 @@ PROMPTS_WITH_HISTORY = {
     "original-q3",
     "reverse-history-expression",
     "run-named-tool-finished-then-new-goal",
+    "signed-linear-regulatory-effects-select-giraffe",
     "unsupported-protein-acquisition",
 }
 

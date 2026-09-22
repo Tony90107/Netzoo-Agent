@@ -3,6 +3,7 @@ import tempfile
 import unittest
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
@@ -175,6 +176,11 @@ class OutcomeContractTests(unittest.TestCase):
 class DatasetBundleTests(unittest.TestCase):
     def setUp(self):
         self.source = Path(__file__).parents[1] / "data" / "lioness-toy"
+        # These bundle fixtures intentionally use GeneA/TF1-style labels. The
+        # tests exercise atomic discovery/provenance, not biological authority.
+        mode = patch.object(agent.settings, "TEST_DATA_MODE", True)
+        mode.start()
+        self.addCleanup(mode.stop)
 
     def copy(self, directory: Path, name: str) -> None:
         directory.mkdir(parents=True, exist_ok=True)

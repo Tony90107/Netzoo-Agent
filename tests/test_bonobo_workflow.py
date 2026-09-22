@@ -13,6 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core import TaskDecision, build_workflow_plan  # noqa: E402
+from netzoo_agent_core import settings  # noqa: E402
 from netzoo_agent_core.contracts import (  # noqa: E402
     ToolExecutionResult,
     WorkflowPlan,
@@ -293,7 +294,8 @@ def test_bonobo_missing_runtime_is_typed(tmp_path):
     assert result.error_code == "BONOBO_NETZOOPY_MISSING"
 
 
-def test_bonobo_plan_gate_and_no_direct_panda_puma_handoff(tmp_path):
+def test_bonobo_plan_gate_and_no_direct_panda_puma_handoff(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression = _expression(tmp_path)
     output = tmp_path / "planned"
     decision = _decision(expression, output, sample_names=["s2"])
@@ -475,7 +477,8 @@ def test_bonobo_handoff_output_verification_preserves_planned_artifacts_and_iden
     assert "handoff contract" in evaluation.reason
 
 
-def test_bonobo_binds_natural_language_sample_selection(tmp_path):
+def test_bonobo_binds_natural_language_sample_selection(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression = tmp_path / "expression-20.tsv"
     samples = [f"S{index:02d}" for index in range(1, 21)]
     rows = ["gene_id\t" + "\t".join(samples)]
