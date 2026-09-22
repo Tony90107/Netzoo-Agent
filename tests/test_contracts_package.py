@@ -148,21 +148,26 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # narrower RecommendedAction because direct read-only tools (WEB-SEARCH and
 # Context7) are valid exact matches but are not scientific workflow
 # recommendations.
+# 2026-09-22: refresh the six pins that transitively embed already-reviewed
+# contract changes: the expanded RequestedOutcome selection-tag description and
+# artifact/action vocabulary, WorkflowPlan handoff/recovery fields, and the
+# registry-owned WorkflowPolicySpec input_validator. The direct contract tests
+# for those fields remain the source of meaning; these hashes detect later drift.
 SCHEMA_DIGESTS = {
     "TaskDecision": "8a42af2fe950ea22247a087dad24b295ed84126d9b148ec03e2faa1cb019240b",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
-    "RequestedOutcome": "adeea85942782cee47f34cc56cd3bf6b2385334c7eeaf76286e220d8189a2887",
+    "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
-    "OutcomeHypothesis": "3470a96bfbd4c67d4f0436f444db71ae8a899c3671ecc213f218785d22317ea9",
-    "CapabilityMatch": "430684751dc5fd4f7e6251ff6aba2bce250d4ca21968c61e650fd92e6aaa73c0",
-    "WorkflowPlan": "29287f95a1dde44319d645a86e89d3992c0d5cb53ddfa95d70d30167d5ae1263",
+    "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
+    "CapabilityMatch": "d63685082e4942999c608089fecaf81aaf8691c2c1b0d54bece9a779e9036acc",
+    "WorkflowPlan": "7c58377e5072e5190b4db662664106ead18cd09e25a75e07b9401d1afb6a0c3d",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "52f7d1952ce9083af23baeb5911f4e3df7d8e7d35cf042a85b8c653db3c7c0a6",
+    "ProjectPolicySnapshot": "a359e840505a903717d34328232995e461ef78a5d7cf1590347e678c281390d8",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
-    "Episode": "05ce6485a00b9fb0ef59297ed175e5612fca3aceae66ebad20c9199f2ec0862a",
+    "Episode": "90413517536ca2e8fc6c1dfde5d02cc6085d8ccb5179f8fd47524be9e06ac566",
 }
 
 

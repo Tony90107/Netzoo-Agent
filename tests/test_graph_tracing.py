@@ -21,6 +21,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     RequestedOutcome,
 )
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
+    SemanticDiscriminator,
     SemanticInterpretation,
     SemanticPatch,
     SemanticReview,
@@ -694,6 +695,8 @@ class StrictRoutingPipelineLLM:
             return SimpleNamespace(invoke=self._interpret)
         if schema in _REVIEW_SCHEMAS:
             return SimpleNamespace(invoke=self._review)
+        if schema is SemanticDiscriminator:
+            return SimpleNamespace(invoke=lambda _messages: SemanticDiscriminator())
         if schema is IntentDecision:
             return SimpleNamespace(invoke=self._route_intent)
         raise AssertionError(f"unexpected routing schema: {schema.__name__}")

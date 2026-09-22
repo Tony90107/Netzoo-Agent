@@ -3275,6 +3275,9 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 # adapter and must include the raw reply for the same reason
                 # the other two do.
                 "SemanticPatch": True,
+                # The bounded tie-breaker also retains invalid function
+                # arguments so diagnostics can fail closed.
+                "SemanticDiscriminator": True,
                 "IntentDecision": False,
             },
         )
