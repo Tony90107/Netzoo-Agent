@@ -42,11 +42,11 @@ from .data.giraffe import (
 )
 from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
+from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
 
 from .data.tables import (
     _drop_common_header,
-    _inspect_panda_inputs_impl,
     _read_checked_table,
     _resolve_user_path,
     _validate_expression,
@@ -100,11 +100,8 @@ def run_panda(
     taxon: str = "",
 ) -> str:
     """Run PANDA through the container wrapper."""
-    validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
-        expression_file=expression_file,
-        motif_file=motif_file,
-        ppi_file=ppi_file,
-        taxon=taxon,
+    validation_report, inputs_ok, inferred_header, _ = inspect_panda_inputs_with_provenance(
+        "run_panda", expression_file, motif_file, ppi_file, taxon=taxon
     )
     if not inputs_ok:
         return (
@@ -172,12 +169,8 @@ def run_puma(
     it, so the capability's numbers could never be compared against a
     third-party file. Leaving it empty changes nothing.
     """
-    validation_report, inputs_ok, inferred_header = _inspect_panda_inputs_impl(
-        expression_file=expression_file,
-        motif_file=motif_file,
-        ppi_file=ppi_file,
-        mirna_file=mirna_file,
-        taxon=taxon,
+    validation_report, inputs_ok, inferred_header, _ = inspect_panda_inputs_with_provenance(
+        "run_puma", expression_file, motif_file, ppi_file, mirna_file, taxon
     )
     if inferred_header:
         return (
@@ -339,12 +332,13 @@ def _run_lioness_command(
             if Path(command_expression_file).exists()
             else expression_file
         )
-        validation_report, inputs_ok, _ = _inspect_panda_inputs_impl(
+        validation_report, inputs_ok, _, _ = inspect_panda_inputs_with_provenance(
+            f"run_lioness_{mode}",
             validation_expression_file,
             motif_file,
             ppi_file,
             mirna_file if mode == "puma" else "",
-            taxon=taxon,
+            taxon,
         )
         if not inputs_ok:
             return (

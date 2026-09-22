@@ -5,9 +5,7 @@ import json
 import re
 from pathlib import Path
 
-from workflow_registry import REQUIRED_INPUTS, REQUIRED_INPUT_GROUPS, workflow_name as _workflow_name
-
-from ..contracts import Episode, PROJECT_ROOT, _display_path
+from ..contracts import PROJECT_ROOT, _display_path
 from ..data.discovery import (
     best_named_file as _best_named_file,
     candidate_keywords as _candidate_keywords,  # noqa: F401 -- package facade
@@ -22,8 +20,9 @@ from ..data.sambar import inspect_sambar_inputs_impl
 from ..data.dragon import inspect_dragon_inputs_impl
 from ..data.otter import inspect_otter_inputs_impl
 from . import bonobo_demo, giraffe_demo
+from .episode_reuse import reusable_episode_inputs as reusable_episode_inputs
 from ..data.paths import _resolve_user_path
-from ..data.tables import _inspect_panda_inputs_impl
+from ..data.panda_preflight import inspect_panda_inputs_with_provenance
 __all__: list[str] = []
 
 _UNLABELED_PATH_RE = re.compile(
@@ -225,12 +224,6 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
         )
         if not motif or not ppi or (mode == "puma" and not mirna):
             continue
-        _, ok, _ = _inspect_panda_inputs_impl(
-            str(expression), str(motif), str(ppi), str(mirna or "")
-        )
-        sample_count, _ = _expression_sample_count(str(expression))
-        if not ok or ("lioness" in action and sample_count < 3):
-            continue
         bundle = {
             "expression_file": _display_path(expression),
             "motif_file": _display_path(motif),
@@ -238,6 +231,12 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
         }
         if mirna:
             bundle["mirna_file"] = _display_path(mirna)
+        _, ok, _, _ = inspect_panda_inputs_with_provenance(
+            action, str(expression), str(motif), str(ppi), str(mirna or "")
+        )
+        sample_count, _ = _expression_sample_count(str(expression))
+        if not ok or ("lioness" in action and sample_count < 3):
+            continue
         location = str(directory).casefold()
         score = 0
         if "lioness" in action and "lioness" in location:
@@ -265,56 +264,3 @@ def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
             + " identifier validation passed."
         ),
     )
-
-
-def reusable_episode_inputs(action: str, episodes: list[Episode]) -> tuple[dict[str, str], str] | None:
-    expected_workflow = _workflow_name(action)
-    for episode in episodes:
-        if episode.status != "completed" or episode.workflow != expected_workflow:
-            continue
-        required_fields = [
-            field_name
-            for field_name in REQUIRED_INPUTS.get(action, ())
-            if field_name not in {"output_file", "lioness_output", "output_dir"}
-        ]
-        if (any(field_name not in episode.inputs for field_name in required_fields)
-                or any(not any(field_name in episode.inputs for field_name in group)
-                       for group in REQUIRED_INPUT_GROUPS.get(action, ()) )):
-            continue
-        values = {
-            field_name: episode.inputs[field_name] for field_name in required_fields
-        }
-        if any(not _resolve_user_path(path).exists() for path in values.values()):
-            continue
-        if action == "run_condor":
-            _, ok = _inspect_condor_inputs_impl(values["network_file"])
-        elif action == "run_sambar":
-            _, ok = inspect_sambar_inputs_impl(
-                values["mutation_file"], values["exon_size_file"],
-                values["cancer_gene_file"], values["pathway_file"],
-            )
-        elif action == "run_giraffe":
-            ok = giraffe_demo.validate_giraffe_episode_inputs(values)
-        elif action in {
-            "run_panda",
-            "run_puma",
-            "run_lioness_panda",
-            "run_lioness_puma",
-        }:
-            _, ok, _ = _inspect_panda_inputs_impl(
-                values["expression_file"],
-                values["motif_file"],
-                values["ppi_file"],
-                values.get("mirna_file", ""),
-            )
-            if ok and "lioness" in action:
-                sample_count, _ = _expression_sample_count(values["expression_file"])
-                ok = sample_count >= 3
-        else:
-            ok = True
-        if ok:
-            return (
-                values,
-                f"Reused validated inputs from successful episode {episode.episode_id[:8]} under the confirmed reuse_last_inputs preference.",
-            )
-    return None

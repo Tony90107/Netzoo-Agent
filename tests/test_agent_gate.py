@@ -4488,7 +4488,7 @@ class PandaInputInspectionTests(unittest.TestCase):
             ppi = self.write(root, "patient_ppi.tsv", "TF1\tTF2\t1\n")
 
             report, ok, with_header = agent._inspect_panda_inputs_impl(
-                expression, motif, ppi
+                expression, motif, ppi, check_gene_authority=False
             )
 
             self.assertTrue(ok, report)
@@ -4545,7 +4545,9 @@ class PandaInputInspectionTests(unittest.TestCase):
             )
             ppi = self.write(root, "ppi.tsv", "TF1\tTF2\t1\n")
 
-            report, ok, _ = agent._inspect_panda_inputs_impl(expression, motif, ppi)
+            report, ok, _ = agent._inspect_panda_inputs_impl(
+                expression, motif, ppi, check_gene_authority=False
+            )
 
             self.assertTrue(ok, report)
             self.assertIn(
@@ -4893,6 +4895,7 @@ class PumaValidationTests(unittest.TestCase):
                 files["motif"],
                 files["ppi"],
                 files["mirna"],
+                check_gene_authority=False,
             )
             self.assertTrue(ok, report)
             self.assertIn(
