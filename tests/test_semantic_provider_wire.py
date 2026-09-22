@@ -70,10 +70,16 @@ def test_provider_wire_preserves_required_fields_in_every_artifact_branch(model)
             if operations is not None
             else "analyze"
         )
+        granularities = ARTIFACT_SEMANTICS[artifact].granularities
+        valid_granularity = (
+            next(value for value in sorted(granularities) if value != "unknown")
+            if granularities is not None
+            else "aggregate"
+        )
         valid = {
             "operation": valid_operation,
             "artifact_type": artifact,
-            "granularity": "aggregate",
+            "granularity": valid_granularity,
         }
         validator.validate(valid)
         for field in outcome["required"]:

@@ -370,6 +370,17 @@ def test_the_patch_names_which_hypothesis_it_adjudicates(index, expected):
     assert merged.outcome_hypotheses[0].outcome.artifact_type == expected
 
 
+def test_patch_rejects_a_hypothesis_index_the_proposal_does_not_have():
+    proposal = SemanticInterpretation.model_validate({
+        "request_mode": "guidance",
+        "semantic_goal": "Subtype patients",
+        "outcome_hypotheses": [grounded_item()],
+    })
+
+    with pytest.raises(ValueError, match="existing hypothesis index"):
+        apply_semantic_patch(proposal, SemanticPatch(hypothesis_index=2))
+
+
 def test_a_first_pass_that_did_not_parse_still_gets_the_whole_review():
     """There is nothing to carry forward, so the review owns the structure."""
     provider = PatchProvider(

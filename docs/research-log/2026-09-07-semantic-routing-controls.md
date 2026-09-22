@@ -21,6 +21,12 @@ schemas and selects `review_policy="when_needed"`.
 - An explicit registered method identifier can still disambiguate a compatible,
   complete typed goal. Incomplete interpretations cannot be promoted by that name.
   Input and terminal-goal guards remain validation boundaries, not tool selectors.
+- The default per-task token ceiling is 30,000. A measured interpreter + review +
+  intent path used about 15,800 conservatively estimated tokens when provider usage
+  metadata was absent; the final response brought the same four-call path to about
+  25,500. A 25,000 ceiling therefore blocked a valid response. This is bounded
+  capacity for the existing route, not evidence that a larger context improves
+  semantic accuracy.
 
 ## Experimental contract (off by default)
 
@@ -54,6 +60,26 @@ wrong recommendation, call count, latency, and repair regressions separately.
 Do not equate fewer validator issues with improved tool selection. Case-folding
 and scripted SDK tests establish deterministic boundary behavior, not LLM semantic
 invariance. No paid model evaluation was run for this change.
+
+`scripts/compare_semantic_contracts.py` is the offline promotion gate for two
+saved live reports. It rejects different corpora, models, review settings,
+repetition counts, and case/trial identities; it also rejects stale summary counts.
+Claims must not reduce pass, route-pass, or semantic-pass counts, introduce a
+wrong tool or unsafe execution, increase terminal-goal/evidence conflicts, or
+increase provider/repair calls. Passing these routing guardrails still says
+nothing about execution or biological outputs.
+
+The comparator's `--interleaved` option is an explicit attestation, not a
+scheduler. Use it only when the two arms were actually alternated under the same
+run conditions. Without that attestation, or with fewer than three repetitions,
+the command deliberately reports `promotion_ready=false` even if all numerical
+guardrails pass:
+
+```bash
+python scripts/compare_semantic_contracts.py legacy.json claims.json
+# Only for reports from a genuinely interleaved run:
+python scripts/compare_semantic_contracts.py legacy.json claims.json --interleaved
+```
 
 ## Benchmark limits and next execution milestone
 

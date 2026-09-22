@@ -31,6 +31,39 @@ class Support(BaseModel):
             raise ValueError("Explicit support requires an original request quote")
         return self
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        """Expose the explicit-quote invariant to structured-output providers."""
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        quote = {
+            key: value
+            for key, value in schema["properties"]["text_span"].items()
+            if key not in {"anyOf", "default", "title"}
+        }
+        quote.update({"type": "string", "minLength": 1, "maxLength": 160})
+
+        def variant(source: str, extra: dict[str, dict]) -> dict:
+            fields = {
+                name: {
+                    key: value
+                    for key, value in schema["properties"][name].items()
+                    if key not in {"title", "description"}
+                }
+                for name in schema["required"]
+            }
+            fields["source"] = {"enum": [source]}
+            return {
+                "type": "object",
+                "required": [*schema["required"], *extra],
+                "properties": {**fields, **extra},
+            }
+
+        schema["anyOf"] = [
+            variant("explicit", {"text_span": quote}),
+            variant("inferred", {}),
+        ]
+        return schema
+
 
 class Claim(BaseModel, Generic[T]):
     model_config = ConfigDict(extra="forbid")

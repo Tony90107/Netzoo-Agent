@@ -486,7 +486,8 @@ class GuidanceResponseLLM:
         return legacy_agent.AIMessage(
             content=(
                 "Use PUMA followed by LIONESS-PUMA for sample-specific miRNA "
-                "regulatory networks. No files were inspected and no analysis ran."
+                "regulatory networks.\n\n"
+                "No files were inspected and no analysis ran."
             )
         )
 
@@ -1137,13 +1138,14 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
-    assert response_llm.calls == 0
-    # Verified capability guidance is code-owned: the response model is never
-    # asked to rewrite a validated recommendation.
+    # One surviving advisory candidate has no deterministic clarification to
+    # render, so this is the explicitly response-model-owned ambiguity branch.
+    assert response_llm.calls == 1
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
+        "response",
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(

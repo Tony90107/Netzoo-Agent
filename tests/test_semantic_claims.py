@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import sys
 from types import SimpleNamespace
+from typing import get_type_hints
 
 import pytest
 
@@ -13,9 +14,11 @@ from pydantic import ValidationError
 from workflow_registry import OUTPUT_CAPABILITIES
 from netzoo_agent_core.contracts import LLMUsage
 from netzoo_agent_core.contracts.semantic_claims import (
+    Support,
     SemanticClaims,
     SemanticClaimRepair,
 )
+from netzoo_agent_core.contracts.outcomes import SemanticInterpretation
 from netzoo_agent_core.graph.router_invocation import _invoke_semantic_interpreter
 from netzoo_agent_core.interpretation.outcome_validation import (
     validate_outcome_hypotheses,
@@ -134,6 +137,28 @@ def test_explicit_quote_is_required_at_schema_boundary():
     )
     with pytest.raises(ValidationError):
         SemanticClaims.model_validate(data)
+
+
+def test_explicit_quote_requirement_is_visible_in_provider_json_schema():
+    schema = Support.model_json_schema()
+    variants = {
+        branch["properties"]["source"]["enum"][0]: branch
+        for branch in schema["anyOf"]
+    }
+
+    assert "text_span" in variants["explicit"]["required"]
+    assert variants["explicit"]["properties"]["text_span"]["type"] == "string"
+    assert "text_span" not in variants["inferred"]["required"]
+
+
+def test_semantic_interpreter_return_annotation_matches_runtime_contract():
+    assert get_type_hints(_invoke_semantic_interpreter)["return"] == tuple[
+        SemanticInterpretation | None,
+        LLMUsage,
+        list[str],
+        BaseException | None,
+        frozenset[str],
+    ]
 
 
 def test_complete_unique_result_does_not_call_reviewer():

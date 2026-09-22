@@ -25,8 +25,6 @@ is silently dropped.
 """
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from ..contracts.outcomes import (
     OutcomeHypothesis, RequestedOutcome, SemanticInterpretation, SemanticPatch,
 )
@@ -48,8 +46,11 @@ def _values(value) -> set[str]:
 
 
 def patched_hypothesis_index(proposal: SemanticInterpretation, patch: SemanticPatch) -> int:
-    """Resolve the adjudicated hypothesis, clamped to what the proposal has."""
-    return min(patch.hypothesis_index, len(proposal.outcome_hypotheses) - 1)
+    """Resolve the adjudicated hypothesis without changing the review's target."""
+    index = patch.hypothesis_index
+    if index >= len(proposal.outcome_hypotheses):
+        raise ValueError("Patch requires an existing hypothesis index")
+    return index
 
 
 def apply_semantic_patch(
