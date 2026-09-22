@@ -3819,18 +3819,20 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         # carries only one hypothesis. Fixed, and asserted above.
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
-            ["semantic_interpreter", "semantic_reviewer", "intent_router"],
+            [
+                "semantic_interpreter",
+                "semantic_reviewer",
+                "intent_router",
+                "response",
+            ],
         )
-        # A second, separate defect this fix exposed and does not address: with
-        # the ambiguity kept, the clarification is assembled deterministically
-        # and the response model is never reached, so it cannot phrase the choice
-        # using the real candidates -- which this test's name says was the
-        # intent. The assertions that required it are replaced by pinning what
-        # actually happens, so the gap is visible here and recorded in the
-        # research log (Log 84) rather than quietly dropped. An expected-failure
-        # test was written for it and removed: it failed on its own missing
-        # fixture rather than on the behaviour, which pins nothing.
-        self.assertEqual(captured, [])
+        # With no deterministic clarification question, the response model gets
+        # the validated advisory candidate in trusted context. The larger task
+        # budget must not turn that call into an ungrounded free-text branch.
+        self.assertTrue(captured)
+        rendered_context = "\n".join(str(message.content) for message in captured)
+        self.assertIn('"hypothesis_actions": [', rendered_context)
+        self.assertIn('"run_lioness_puma"', rendered_context)
 
 
     @patch("netzoo_agent.build_llm")

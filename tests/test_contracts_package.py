@@ -93,6 +93,10 @@ HISTORICAL_EXPORTS = [
     "_is_demo_request",
 ]
 
+
+def test_default_task_budget_covers_the_full_semantic_repair_route():
+    assert contracts.DEFAULT_TASK_TOKEN_BUDGET == 30_000
+
 # Updated deliberately on 2026-09-05: input_artifacts now names the closed
 # artifact_type vocabulary and declares that its items are plain strings, after a
 # live run recorded an object at input_artifacts[0]. Field meaning is unchanged.

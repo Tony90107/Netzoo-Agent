@@ -241,7 +241,13 @@ def _invoke_semantic_interpreter(
     state: AgentState,
     user_task: str,
     usage: LLMUsage,
-) -> tuple[SemanticInterpretation | None, LLMUsage, list[str], BaseException | None]:
+) -> tuple[
+    SemanticInterpretation | None,
+    LLMUsage,
+    list[str],
+    BaseException | None,
+    frozenset[str],
+]:
     if getattr(context, "semantic_claims", False):
         from .claim_invocation import invoke_claim_interpreter
         return invoke_claim_interpreter(context, state, user_task, usage,

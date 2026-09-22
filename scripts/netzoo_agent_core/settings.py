@@ -35,9 +35,10 @@ DEFAULT_SESSION_HARD_RETENTION_DAYS = 180
 DEFAULT_ROUTER_MODEL = "openai/gpt-4o-mini"
 DEFAULT_ROUTER_MAX_TOKENS = 1_200
 DEFAULT_RESPONSE_MAX_TOKENS = 800
-# Briefly raised to 28_000 for a third semantic attempt; both were reverted when
-# that attempt measured worse. A three-call route costs ~10_600 tokens.
-DEFAULT_TASK_TOKEN_BUDGET = 20_000
+# A valid interpreter + review + intent route can consume about 15_800 tokens
+# when provider usage metadata is unavailable. Its final response can bring the
+# conservative estimate above 25_000, so keep bounded headroom for all four calls.
+DEFAULT_TASK_TOKEN_BUDGET = 30_000
 DEFAULT_LLM_TIMEOUT_SECONDS = 30.0
 DEFAULT_LLM_MAX_RETRIES = 0
 ROUTER_CONTEXT_MAX_CHARS = 6_000

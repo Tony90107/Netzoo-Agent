@@ -21,7 +21,7 @@ from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
 
 
 PUBLIC_EXPORTS = ["build_graph", "invoke_graph_turn"]
-BUILD_GRAPH_SIGNATURE = '(model_name: \'str\', temperature: \'float\', profile_id: \'str\' = \'default\', profile_store: \'UserProfileStore | None\' = None, episode_store: \'EpisodeStore | None\' = None, project_policy: \'ProjectPolicySnapshot | None\' = None, router_model_name: \'str | None\' = None, semantic_model_name: \'str | None\' = None, router_max_tokens: \'int\' = 1200, response_max_tokens: \'int\' = 800, task_token_budget: \'int\' = 20000, timeout_seconds: \'float\' = 30.0, trace_recorder: \'TraceRecorder | None\' = None, semantic_contract: "Literal[\'claims\', \'legacy\']" = \'legacy\', review_policy: "Literal[\'when_needed\', \'always\']" = \'when_needed\')'
+BUILD_GRAPH_SIGNATURE = '(model_name: \'str\', temperature: \'float\', profile_id: \'str\' = \'default\', profile_store: \'UserProfileStore | None\' = None, episode_store: \'EpisodeStore | None\' = None, project_policy: \'ProjectPolicySnapshot | None\' = None, router_model_name: \'str | None\' = None, semantic_model_name: \'str | None\' = None, router_max_tokens: \'int\' = 1200, response_max_tokens: \'int\' = 800, task_token_budget: \'int\' = 30000, timeout_seconds: \'float\' = 30.0, trace_recorder: \'TraceRecorder | None\' = None, semantic_contract: "Literal[\'claims\', \'legacy\']" = \'legacy\', review_policy: "Literal[\'when_needed\', \'always\']" = \'when_needed\')'
 
 
 def test_graph_public_surface_is_characterized():
@@ -1214,7 +1214,7 @@ def test_unsupported_guidance_receives_full_validated_catalog_for_pipeline_mappi
         response_prompt="Use only validated workflow facts.",
         response_model_name="fake",
         response_max_tokens=800,
-        task_token_budget=20_000,
+        task_token_budget=legacy_agent.DEFAULT_TASK_TOKEN_BUDGET,
         price_catalog=legacy_agent.PriceCatalog.from_environment(),
         recorder=legacy_agent.NullTraceRecorder(),
     )
