@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sqlite3
 import threading
 import time
@@ -23,6 +22,21 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from ..settings import PROJECT_ROOT
+from .gene_authority_records import (
+    TAXON_REQUIRED_SOURCE,
+    UNRECOGNIZED_PHRASE,
+    GeneRecord,
+    _candidate_from_result,
+    _field,
+    _gene_payload,
+    _invalid_record,
+    _normalise_identifier,
+    _result_matches_identifier,
+    _search_results,
+    _taxon_matches,
+    _taxon_required_record,
+    _trusted_url,
+)
 
 __all__ = [
     "GeneRecord",
@@ -60,38 +74,6 @@ _WEBSEARCH_BATCH_SIZE = 5
 # a verdict that cannot authorize execution anyway.
 _WEBSEARCH_MAX_IDENTIFIERS = 20
 _IDENTIFIER_PREVIEW_LIMIT = 5
-_TRUSTED_HOSTS = ("ncbi.nlm.nih.gov", "ensembl.org")
-_NCBI_GENE_URL = re.compile(r"/gene/(\d+)(?:[/?#]|$)", re.IGNORECASE)
-_ENSEMBL_GENE_ID = re.compile(r"\bENS[A-Z0-9]*G\d+(?:\.\d+)?\b", re.IGNORECASE)
-# Equivalent spellings for the organisms these workflows are actually run on.
-# Each group holds the NCBI tax ID, the scientific name, and the common names
-# that NCBI and Ensembl accept as query selectors.
-_TAXON_GROUPS: tuple[frozenset[str], ...] = (
-    frozenset({"9606", "homo sapiens", "human"}),
-    frozenset({"10090", "mus musculus", "mouse", "house mouse"}),
-    frozenset({"10116", "rattus norvegicus", "rat", "norway rat"}),
-    frozenset({"7227", "drosophila melanogaster", "fruit fly"}),
-    frozenset({"6239", "caenorhabditis elegans", "roundworm", "nematode"}),
-    frozenset({"4932", "saccharomyces cerevisiae", "yeast", "baker's yeast"}),
-    frozenset({"7955", "danio rerio", "zebrafish"}),
-    frozenset({"3702", "arabidopsis thaliana", "thale cress"}),
-    frozenset({"9615", "canis lupus familiaris", "dog"}),
-    frozenset({"9913", "bos taurus", "cattle", "cow"}),
-    frozenset({"9823", "sus scrofa", "pig"}),
-    frozenset({"9544", "macaca mulatta", "rhesus monkey"}),
-    frozenset({"9031", "gallus gallus", "chicken"}),
-    frozenset({"8355", "xenopus laevis", "african clawed frog"}),
-)
-_TAXON_ALIASES: dict[str, frozenset[str]] = {
-    name: group for group in _TAXON_GROUPS for name in group
-}
-TAXON_REQUIRED_SOURCE = "taxon_required"
-# Both preflight paths end an unrecognized-label error with this phrase and
-# the comma-joined labels. The repair-hint reader parses it, so the wording
-# lives here rather than being repeated as a literal in three places.
-UNRECOGNIZED_PHRASE = "not recognized by the configured gene authority: "
-_TAXON_REQUIRED_SOURCE = TAXON_REQUIRED_SOURCE
-
 # Published unauthenticated ceilings: NCBI allows about 3 requests/second and
 # raises that to 10 with a key; Ensembl REST allows 15. Stay under each, and
 # leave every number overridable because a shared deployment may need to be
@@ -177,22 +159,6 @@ class UnsupportedNamespaceError(ValueError):
     """
 
 
-@dataclass(frozen=True)
-class GeneRecord:
-    """One authoritative or provisional resolution for an observed ID."""
-
-    identifier: str
-    normalized_identifier: str
-    namespace: str
-    canonical_id: str | None
-    symbol: str | None
-    taxon: str | None
-    status: str
-    authority: str
-    source: str
-    url: str | None = None
-
-
 @dataclass
 class GeneValidationSummary:
     records: dict[str, GeneRecord]
@@ -213,10 +179,6 @@ class GeneValidationSummary:
         for record in self.records.values():
             counts[record.status] = counts.get(record.status, 0) + 1
         return counts
-
-
-def _normalise_identifier(value: object) -> str:
-    return str(value).strip().casefold()
 
 
 def _identifier_preview(values: Sequence[str]) -> str:
@@ -519,76 +481,6 @@ def _online_lookup_enabled() -> bool:
     return True
 
 
-def _trusted_url(url: str) -> bool:
-    hostname = (urlparse(url).hostname or "").casefold().lstrip("www.")
-    return any(hostname == host or hostname.endswith("." + host) for host in _TRUSTED_HOSTS)
-
-
-def _contains_identifier(text: str, identifier: str) -> bool:
-    pattern = rf"(?<![A-Za-z0-9]){re.escape(identifier)}(?![A-Za-z0-9])"
-    return re.search(pattern, text, re.IGNORECASE) is not None
-
-
-def _result_matches_identifier(
-    result: dict[str, object], identifier: str, namespace: str
-) -> bool:
-    """Require the queried label in an authoritative result's identity fields."""
-    title_url = " ".join(str(result.get(field) or "") for field in ("title", "url"))
-    if namespace == "symbol_like":
-        title = str(result.get("title") or "")
-        return bool(
-            re.match(
-                rf"\s*{re.escape(identifier)}(?![A-Za-z0-9])",
-                title,
-                re.IGNORECASE,
-            )
-        ) or bool(
-            re.search(
-                rf"Official Symbol\s+{re.escape(identifier)}(?![A-Za-z0-9])",
-                str(result.get("content") or ""),
-                re.IGNORECASE,
-            )
-        )
-    if namespace == "ensembl_gene":
-        return _contains_identifier(title_url, identifier)
-    return _contains_identifier(
-        " ".join(str(result.get(field) or "") for field in ("title", "content", "url")),
-        identifier,
-    )
-
-
-def _search_results(text: str) -> list[dict[str, object]]:
-    _, separator, payload = text.partition("\n\n")
-    if not separator:
-        return []
-    try:
-        parsed = json.loads(payload)
-    except json.JSONDecodeError:
-        return []
-    results = parsed.get("results", []) if isinstance(parsed, dict) else []
-    return [result for result in results if isinstance(result, dict)]
-
-
-def _candidate_from_result(result: dict[str, object]) -> tuple[str, str, str] | None:
-    url = str(result.get("url") or "")
-    if not _trusted_url(url):
-        return None
-    ncbi_match = _NCBI_GENE_URL.search(url)
-    if ncbi_match:
-        return f"ncbi_gene:{ncbi_match.group(1)}", "NCBI Gene", url
-    combined = " ".join(
-        str(result.get(field) or "") for field in ("title", "content", "url")
-    )
-    ensembl_match = _ENSEMBL_GENE_ID.search(combined)
-    if ensembl_match:
-        return (
-            f"ensembl_gene:{ensembl_match.group(0).upper()}",
-            "Ensembl",
-            url,
-        )
-    return None
-
-
 def _query_web_search(query: str) -> str:
     """Load the routing adapter only when a cache miss needs network access."""
     from ..routing.retrieval import query_web_search
@@ -642,74 +534,6 @@ def _query_authority_json(
     )
 
 
-def _gene_payload(report: object) -> dict[str, object]:
-    if not isinstance(report, dict):
-        return {}
-    nested = report.get("gene")
-    return nested if isinstance(nested, dict) else report
-
-
-def _field(payload: dict[str, object], *names: str) -> object:
-    for name in names:
-        value = payload.get(name)
-        if value not in (None, ""):
-            return value
-    return None
-
-
-def _taxon_tokens(value: str) -> set[str]:
-    """Expand one taxon spelling into every equivalent spelling we accept."""
-    normalized = str(value or "").casefold().strip().replace("_", " ")
-    if not normalized:
-        return set()
-    return {normalized, *_TAXON_ALIASES.get(normalized, frozenset())}
-
-
-def _taxon_matches(
-    requested: str,
-    tax_id: object,
-    taxname: object,
-    common_name: object = None,
-) -> bool:
-    """Compare a requested taxon against every identity field the API returned.
-
-    NCBI and Ensembl both accept a common name such as ``human`` as a query
-    selector, but the dataset report echoes the tax ID and the scientific name.
-    Matching only those two fields rejects a correct gene whenever the caller
-    wrote the same common name the API itself accepted, so the common name and
-    a small model-organism alias table are part of the comparison.
-    """
-    if not requested.strip():
-        return True
-    wanted = _taxon_tokens(requested)
-    observed: set[str] = set()
-    for value in (tax_id, taxname, common_name):
-        observed |= _taxon_tokens(str(value or ""))
-    return bool(wanted & observed)
-
-
-def _invalid_record(
-    identifier: str,
-    namespace: str,
-    taxon: str,
-    *,
-    authority: str,
-    source: str,
-    observed_taxon: str | None = None,
-) -> GeneRecord:
-    return GeneRecord(
-        identifier=identifier,
-        normalized_identifier=_normalise_identifier(identifier),
-        namespace=namespace,
-        canonical_id=None,
-        symbol=identifier if namespace == "symbol_like" else None,
-        taxon=observed_taxon or taxon or None,
-        status="invalid",
-        authority=authority,
-        source=source,
-    )
-
-
 def _paged_reports(url: str) -> list[dict[str, object]]:
     """Collect every dataset report, following NCBI's paging to the end.
 
@@ -756,21 +580,6 @@ def _paged_reports(url: str) -> list[dict[str, object]]:
             f"{len(reports)}."
         )
     return reports
-
-
-def _taxon_required_record(identifier: str, namespace: str) -> GeneRecord:
-    """Report a symbol that cannot be resolved because no species was given."""
-    return GeneRecord(
-        identifier=identifier,
-        normalized_identifier=_normalise_identifier(identifier),
-        namespace=namespace,
-        canonical_id=None,
-        symbol=identifier,
-        taxon=None,
-        status="ambiguous",
-        authority="NCBI Gene",
-        source=_TAXON_REQUIRED_SOURCE,
-    )
 
 
 def _structured_ncbi_lookup(
@@ -1164,7 +973,7 @@ def validate_gene_identifiers(
                 # "stale_cache" is already stored, and a taxon_required verdict
                 # describes the missing query, not the identifier, so caching it
                 # would answer a later well-formed query with a stale refusal.
-                if record.source not in {"stale_cache", _TAXON_REQUIRED_SOURCE}:
+                if record.source not in {"stale_cache", TAXON_REQUIRED_SOURCE}:
                     cacheable.append(record)
         cache.upsert(cacheable, requested_taxon=taxon)
 
