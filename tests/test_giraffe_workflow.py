@@ -9,6 +9,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core import TaskDecision, build_workflow_plan  # noqa: E402
+from netzoo_agent_core import settings  # noqa: E402
 from netzoo_agent_core.data.giraffe import (  # noqa: E402
     inspect_giraffe_inputs_impl,
     load_giraffe_inputs,
@@ -86,7 +87,8 @@ def test_giraffe_rejects_identifier_and_ppi_contract_mismatches(tmp_path):
     assert "unknown" in report.casefold()
 
 
-def test_giraffe_plan_is_ready_only_after_explicit_valid_inputs(tmp_path):
+def test_giraffe_plan_is_ready_only_after_explicit_valid_inputs(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression, motif, ppi = _inputs(tmp_path)
     output = tmp_path / "giraffe.tsv"
     decision = _decision(expression, motif, ppi, output)

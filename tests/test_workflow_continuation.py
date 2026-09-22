@@ -56,6 +56,9 @@ def runtime(tmp_path, request):
         "TRACE_ROOT": tmp_path / "traces",
         "TOOL_LOG_ROOT": tmp_path / "tool_logs",
         "EXECUTE_TOOLS": False,
+        # The conversation bundle below intentionally uses synthetic GeneA/TF1
+        # labels so the test can isolate continuation and confirmation state.
+        "TEST_DATA_MODE": True,
         "TRACE_ENABLED": False,
         "TRANSIENT_TRACE": False,
     }

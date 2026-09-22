@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -23,6 +24,13 @@ from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 ROOT = Path(__file__).parents[1]
 TOY = ROOT / "data" / "sambar-toy"
+
+
+@pytest.fixture(autouse=True)
+def synthetic_gene_labels(monkeypatch):
+    # SAMBAR's compact toy bundle uses placeholder gene labels; these tests
+    # cover workflow composition and artifacts rather than authority lookup.
+    monkeypatch.setattr(agent.settings, "TEST_DATA_MODE", True)
 
 
 def decision(**overrides):
