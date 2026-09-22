@@ -19,11 +19,12 @@ from .gene_validation import (
     validate_gene_identifiers,
 )
 from .coexpression import read_coexpression_matrix
+from .demo_provenance import is_verified_bundled_demo
 from .inspection import inspect_condor_inputs_impl
 from .otter import inspect_otter_inputs_impl, load_otter_inputs
+from .panda_preflight import inspect_panda_inputs_with_provenance
 from .tables import (
     _identifier_namespace,
-    _inspect_panda_inputs_impl,
     _read_checked_table,
     _validate_expression,
 )
@@ -276,17 +277,25 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
     mirna = _value(decision, "mirna_file")
     taxon = _value(decision, "taxon")
     coexpression = _value(decision, "coexpression_file")
+    candidate_inputs = {
+        "expression_file": expression,
+        "motif_file": motif,
+        "ppi_file": ppi,
+        "mirna_file": mirna,
+        "design_file": _value(decision, "design_file"),
+    }
+    bundled_demo = is_verified_bundled_demo(action, candidate_inputs)
 
     if action in {"inspect_inputs", "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma"}:
-        report, ok, inferred_header = _inspect_panda_inputs_impl(
+        report, ok, inferred_header, panda_bundled_demo = inspect_panda_inputs_with_provenance(
+            action,
             expression,
             motif,
             ppi,
-            mirna
-            if action in {"inspect_inputs", "run_puma", "run_lioness_puma"}
-            else "",
-            taxon=taxon,
+            mirna if action in {"inspect_inputs", "run_puma", "run_lioness_puma"} else "",
+            taxon,
         )
+        bundled_demo = bundled_demo or panda_bundled_demo
         errors.extend(_report_errors("PANDA/PUMA inputs", report, ok))
         if action == "run_puma" and inferred_header:
             errors.append(
@@ -397,7 +406,7 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
         except (OSError, ValueError) as error:
             errors.append(f"coexpression_file: {error}")
 
-    if action in WORKFLOW_GENE_EXTRACTORS and not errors:
+    if action in WORKFLOW_GENE_EXTRACTORS and not errors and not bundled_demo:
         try:
             errors.extend(_workflow_gene_errors(action, decision, taxon))
         except (OSError, ValueError) as error:
