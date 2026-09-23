@@ -85,20 +85,20 @@ def build_graph(
         max_output_tokens=response_max_tokens,
         timeout_seconds=timeout_seconds,
     )
+    semantic_options = {"method": "function_calling", "include_raw": True}
+    if semantic_contract == "claims":
+        semantic_options["strict"] = True
     semantic_interpreter = semantic_llm.with_structured_output(
         SemanticClaims if semantic_contract == "claims" else SemanticInterpretation,
-        method="function_calling",
-        include_raw=True,
+        **semantic_options,
     )
     semantic_reviewer = semantic_llm.with_structured_output(
         SemanticClaims if semantic_contract == "claims" else SemanticReview,
-        method="function_calling",
-        include_raw=True,
+        **semantic_options,
     )
     semantic_patcher = semantic_llm.with_structured_output(
         SemanticClaimRepair if semantic_contract == "claims" else SemanticPatch,
-        method="function_calling",
-        include_raw=True,
+        **semantic_options,
     )
     semantic_discriminator = semantic_llm.with_structured_output(SemanticDiscriminator, method="function_calling", include_raw=True)
     intent_router = router_llm.with_structured_output(

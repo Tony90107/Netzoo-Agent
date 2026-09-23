@@ -10,7 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from evaluate_routing import (  # noqa: E402
-    DEFAULT_SCENARIOS, RoutingScenario, evaluate, load_scenarios, main,
+    DEFAULT_SCENARIOS, RoutingScenario, _review_patch_payload, evaluate, load_scenarios, main,
 )
 from netzoo_agent_core.contracts import IntentDecision  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
@@ -98,6 +98,45 @@ class FixtureProvider:
 
 def run(provider, case=None, **kwargs):
     return evaluate([case or scenario()], provider=provider, model_name="fixture", **kwargs)
+
+
+def test_claims_evaluation_uses_the_same_strict_binding_as_production():
+    bindings = []
+
+    class InvalidProvider:
+        def with_structured_output(self, schema, **kwargs):
+            bindings.append((schema.__name__, kwargs))
+
+            class Adapter:
+                def invoke(self, messages):
+                    return {}
+
+            return Adapter()
+
+    report = run(InvalidProvider(), semantic_contract="claims")
+
+    claim_bindings = [
+        kwargs
+        for name, kwargs in bindings
+        if name in {"SemanticClaims", "SemanticClaimRepair"}
+    ]
+    assert report["metadata"]["semantic_contract"] == "claims"
+    assert claim_bindings and all(kwargs.get("strict") is True for kwargs in claim_bindings)
+
+
+def test_claim_patch_event_is_scored_without_legacy_only_fields():
+    event = {
+        "payload": {
+            "attempt": 2,
+            "repairs": [
+                {"hypothesis_index": 0, "changed_fields": ["granularity"]}
+            ],
+        }
+    }
+
+    assert _review_patch_payload(event) == {
+        "repairs": [{"hypothesis_index": 0, "changed_fields": ["granularity"]}]
+    }
 
 
 def test_production_routing_boundary_receives_only_prompt_not_answer_key():
