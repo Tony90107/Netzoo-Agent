@@ -27,6 +27,34 @@ from .capability_compatibility import (
 from .clarification_planner import plan_clarification
 
 
+def _without_superseded_successors(
+    actions: Sequence[RecommendedAction],
+    granularity: str,
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+) -> list[RecommendedAction]:
+    """Drop a pipeline whose own first stage already delivers this granularity.
+
+    LIONESS-PUMA declares `aggregate` because it computes PUMA's cohort network
+    on the way to the per-sample ones; that network is PUMA's result, not a
+    second method for it. Leaving both as candidates made every explicit
+    aggregate miRNA request -- first pass correct, granularity stated -- end in
+    "Should the result be aggregate or sample-specific?", the one question the
+    request had already answered. Only declared `guidance_predecessors` count,
+    and only for a stated granularity; nothing is inferred from names.
+    """
+    if granularity in {_UNKNOWN, "not_applicable"}:
+        return list(actions)
+    present = set(actions)
+    return [
+        action for action in actions
+        if not any(
+            predecessor in present
+            and granularity in capabilities[predecessor].granularities
+            for predecessor in capabilities[action].guidance_predecessors
+        )
+    ]
+
+
 def _selection_question(
     outcome: RequestedOutcome,
     candidates: list[tuple[RecommendedAction, OutputCapabilityDefinition]],
@@ -181,12 +209,22 @@ def match_requested_outcome(
         for action, capability in capabilities.items()
         if _matches(outcome, capability, available_inputs)
     ]
+    kept = set(_without_superseded_successors(
+        [action for action, _ in candidates], outcome.granularity, capabilities,
+    ))
+    candidates = [item for item in candidates if item[0] in kept]
     if _has_unknown(outcome):
         partial_candidates = [
             (action, capability)
             for action, capability in capabilities.items()
             if _partially_compatible(outcome, capability, available_inputs)
         ]
+        kept = set(_without_superseded_successors(
+            [action for action, _ in partial_candidates],
+            outcome.granularity,
+            capabilities,
+        ))
+        partial_candidates = [item for item in partial_candidates if item[0] in kept]
         if (
             not partial_candidates
             and isinstance(available_inputs, InputAvailability)

@@ -264,12 +264,8 @@ def test_atomic_repair_preserves_other_fields_and_hypotheses():
     base = SemanticClaims.model_validate(original)
     repair = SemanticClaimRepair.model_validate(
         {
-            "repairs": [
-                {
-                    "hypothesis_index": 1,
-                    "outcome": {"granularity": claim("aggregate", "network")},
-                }
-            ]
+            "hypothesis_index": 1,
+            "outcome": {"granularity": claim("aggregate", "network")},
         }
     )
     updated = repair.apply(base)
@@ -282,31 +278,40 @@ def test_atomic_repair_preserves_other_fields_and_hypotheses():
     ]
 
 
-def test_repair_rejects_unknown_or_duplicate_indices():
-    for indices in ([1], [0, 0]):
-        repair = SemanticClaimRepair.model_validate(
-            {"repairs": [{"hypothesis_index": i, "outcome": {}} for i in indices]}
-        )
-        with pytest.raises(ValueError):
-            repair.apply(SemanticClaims.model_validate(payload()))
+def test_repair_rejects_unknown_index():
+    repair = SemanticClaimRepair.model_validate(
+        {"hypothesis_index": 1, "outcome": {}}
+    )
+    with pytest.raises(ValueError):
+        repair.apply(SemanticClaims.model_validate(payload()))
+
+
+def test_repair_cannot_express_a_repeated_hypothesis_index():
+    """The live failure: one outcome restated under index 0 two or three times."""
+    repeated = {"repairs": [
+        {"hypothesis_index": 0, "outcome": {}},
+        {"hypothesis_index": 0, "outcome": {}},
+    ]}
+    with pytest.raises(ValidationError):
+        SemanticClaimRepair.model_validate(repeated)
+    schema = json.dumps(SemanticClaimRepair.model_json_schema())
+    assert '"repairs"' not in schema
+    assert SemanticClaimRepair.model_json_schema()["properties"]["hypothesis_index"]["type"] == "integer"
 
 
 def test_bad_quote_is_repaired_without_retyping_outcome():
+    # artifact_type has no deterministic witness, so only the review can fix it.
     bad = payload()
-    bad["outcome_hypotheses"][0]["outcome"]["granularity"] = claim(
-        "sample_specific", "not in original request"
+    bad["outcome_hypotheses"][0]["outcome"]["artifact_type"] = claim(
+        "regulatory_network", "not in original request"
     )
     ctx = context(
         bad,
         {
-            "repairs": [
-                {
-                    "hypothesis_index": 0,
-                    "outcome": {
-                        "granularity": claim("sample_specific", "sample specific")
-                    },
-                }
-            ]
+            "hypothesis_index": 0,
+            "outcome": {
+                "artifact_type": claim("regulatory_network", "regulator network")
+            },
         },
     )
     result, _, _, error, _ = run(ctx)
@@ -314,6 +319,55 @@ def test_bad_quote_is_repaired_without_retyping_outcome():
     assert len(ctx.semantic_patcher.calls) == 1
     assert validate_outcome_hypotheses(TASK, result.outcome_hypotheses).valid
     assert result.outcome_hypotheses[0].outcome.regulator_types == ["mirna"]
+
+
+def test_translated_chinese_quote_is_repaired_as_inferred_support():
+    task = "請推薦能為每位病患各自建立 miRNA 對基因調控網路的方法。"
+    bad = payload()
+    outcome = bad["outcome_hypotheses"][0]["outcome"]
+    outcome["artifact_type"] = claim(
+        "regulatory_network", "a regulatory network"
+    )
+    outcome["granularity"] = claim("sample_specific", "每位病患各自")
+    outcome["regulator_types"] = [claim("mirna", "miRNA")]
+    outcome["entity_types"] = []
+    patch = {
+        "hypothesis_index": 0,
+        "outcome": {"artifact_type": claim("regulatory_network")},
+    }
+    ctx = context(bad, patch)
+
+    result, _, _, error, _ = _invoke_semantic_interpreter(
+        ctx, {}, task, LLMUsage(budget_tokens=100000)
+    )
+
+    assert result is not None and error is None
+    hypothesis = result.outcome_hypotheses[0]
+    assert validate_outcome_hypotheses(task, [hypothesis]).valid
+    assert hypothesis.outcome.granularity == "sample_specific"
+    assert hypothesis.outcome.regulator_types == ["mirna"]
+    assert hypothesis.outcome.target_types == ["gene"]
+    assert set(hypothesis.outcome.entity_types) == {"mirna", "gene"}
+    assert ctx.semantic_patcher.calls
+    system_prompt = ctx.semantic_patcher.calls[0][0].content
+    assert "Do not translate or paraphrase a quote" in system_prompt
+
+
+def test_noop_claim_patch_is_discarded_and_first_valid_interpretation_is_kept():
+    first = payload()
+    first["request_mode"] = "unknown"
+    ctx = context(first, {"hypothesis_index": 0, "outcome": {}})
+
+    result, _, _, error, _ = run(ctx)
+
+    assert result is not None and error is None
+    assert result.request_mode == "unknown"
+    discarded = [
+        event for event, data in ctx.recorder.events
+        if event == "routing.semantic_review_discarded"
+        and data.get("reason") == "no_material_changes"
+    ]
+    assert discarded
 
 
 def test_schema_failure_uses_full_claim_repair_not_legacy_contract():
@@ -592,3 +646,144 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
     assert result["plan"]["status"] == "respond_only"
     assert result["tool_results"] == []
     assert "LIONESS-PUMA" in result["messages"][-1].content
+
+
+def test_granularity_witness_replaces_an_unmatched_quote_without_a_review():
+    """A verbatim granularity phrase outranks the model's own paraphrased quote."""
+    bad = payload()
+    bad["outcome_hypotheses"][0]["outcome"]["granularity"] = claim(
+        "sample_specific", "not in original request"
+    )
+    ctx = context(bad, AssertionError("Reviewer must not run"))
+    result, _, _, error, _ = run(ctx)
+    assert result and error is None
+    assert not ctx.semantic_patcher.calls and not ctx.semantic_reviewer.calls
+    evidence = [
+        item for item in result.outcome_hypotheses[0].evidence
+        if item.dimension == "granularity"
+    ]
+    assert [(e.source, e.text_span) for e in evidence] == [("explicit", "sample specific")]
+
+
+# --- structured repair feedback for ontology rejections -------------------
+
+SUBTYPE_TASK = (
+    "Previously I ran PANDA on an expression matrix. This time I want to cluster "
+    "patients into subtypes from somatic mutation data. Which workflow? Advice only."
+)
+
+
+def _mutation_as_result():
+    """The traced claims shape: the input artifact written as the result."""
+    return {
+        "request_mode": "guidance",
+        "semantic_goal": "Subtype patients from mutations",
+        "outcome_hypotheses": [{
+            "confidence": 0.9,
+            "outcome": {
+                "operation": claim("analyze", "cluster patients"),
+                "artifact_type": claim("mutation_matrix", "somatic mutation data"),
+                "granularity": claim("sample_specific", "cluster patients into subtypes"),
+                "input_artifacts": [claim("mutation_matrix", "somatic mutation data")],
+                "entity_types": [claim("sample", "patients")],
+            },
+        }],
+    }
+
+
+def _diagnostics(messages):
+    return json.loads(messages[-1].content.split("\n", 1)[1])
+
+
+def test_quote_only_rejection_sends_the_same_diagnostics_as_before():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_messages
+
+    proposal = SemanticClaims.model_validate(payload())
+    issues = ("hypothesis[0].ungrounded_evidence:regulator_type=mirna",)
+    data = _diagnostics(claim_messages(TASK, proposal, issues, patching=True))
+    assert set(data) == {"proposal", "issues"}
+
+
+def test_terminal_goal_conflict_names_the_required_artifact_and_request_facts():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
+
+    proposal = SemanticClaims.model_validate(_mutation_as_result())
+    issues = validate_outcome_hypotheses(
+        SUBTYPE_TASK, proposal.to_internal().outcome_hypotheses,
+    ).issues
+    feedback = claim_repair_feedback(SUBTYPE_TASK, proposal, issues)
+    goal = next(i for i in feedback["repair_feedback"] if "terminal_goal_conflict" in i["issue"])
+    assert goal["required_value"] == {"field": "artifact_type", "value": "sample_cluster_assignment"}
+    assert goal["repairable_fields"] == ["artifact_type"]
+    fields = goal["artifact_constraints"]["fields"]
+    assert fields["granularity"] == {"enum": ["aggregate", "unknown"]}
+    assert {(f["artifact"], f["status"]) for f in feedback["request_facts"]["inputs"]} == {
+        ("expression_matrix", "historical"), ("mutation_matrix", "current"),
+    }
+
+
+def test_conflicting_evidence_reports_the_restored_outcome_the_validator_judged():
+    """A multi-omic reading loses its roles in restoration; the feedback must say so."""
+    from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
+    from netzoo_agent_core.interpretation.stated_field_restoration import restore_stated_fields
+
+    task = "cohort-wide miRNA-gene network, which tool?"
+    data = payload()
+    # The recorded gran-mirna-agg-terse first pass: every support inferred.
+    data["outcome_hypotheses"][0]["outcome"] = {
+        "operation": claim("infer"),
+        "artifact_type": claim("multi_omic_network"),
+        "granularity": claim("aggregate"),
+        "entity_types": [claim("mirna"), claim("gene")],
+        "regulator_types": [claim("mirna")],
+        "target_types": [claim("gene")],
+    }
+    proposal = SemanticClaims.model_validate(data)
+    restored, _ = restore_stated_fields(
+        task, proposal.to_internal(), restore_explicit_scalar_evidence=True,
+    )
+    issues = validate_outcome_hypotheses(task, restored.outcome_hypotheses).issues
+    items = claim_repair_feedback(task, proposal, issues)["repair_feedback"]
+    conflict = next(i for i in items if "conflicting_evidence:regulator_type=mirna" in i["issue"])
+    assert conflict["outcome_value"] == {"field": "regulator_types", "value": []}
+    assert conflict["artifact_constraints"]["fields"]["regulator_types"] == {"maxItems": 0}
+
+
+def test_repair_feedback_carries_no_prose_instructions():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
+
+    proposal = SemanticClaims.model_validate(_mutation_as_result())
+    issues = validate_outcome_hypotheses(
+        SUBTYPE_TASK, proposal.to_internal().outcome_hypotheses,
+    ).issues
+    text = json.dumps(claim_repair_feedback(SUBTYPE_TASK, proposal, issues))
+    for key in ('"instruction"', '"field_constraints_note"', '"shape"', '"roles":"'):
+        assert key not in text
+
+
+def test_patcher_receives_structured_feedback_for_an_ontology_rejection():
+    ctx = context(_mutation_as_result(), {"hypothesis_index": 0, "outcome": {}})
+    _invoke_semantic_interpreter(ctx, {}, SUBTYPE_TASK, LLMUsage(budget_tokens=100000))
+    assert ctx.semantic_patcher.calls
+    data = _diagnostics(ctx.semantic_patcher.calls[0])
+    assert any(
+        item.get("required_value", {}).get("value") == "sample_cluster_assignment"
+        for item in data["repair_feedback"]
+    )
+
+
+def test_undecided_granularity_feedback_names_unknown_as_the_required_value():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
+
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? I have not decided "
+        "between one cohort network and separate per-patient networks."
+    )
+    data = payload()
+    data["outcome_hypotheses"][0]["outcome"]["granularity"] = claim("aggregate")
+    proposal = SemanticClaims.model_validate(data)
+    issues = validate_outcome_hypotheses(task, proposal.to_internal().outcome_hypotheses).issues
+    items = claim_repair_feedback(task, proposal, issues)["repair_feedback"]
+    open_item = next(i for i in items if "undecided_granularity" in i["issue"])
+    assert open_item["required_value"] == {"field": "granularity", "value": "unknown"}
+    assert open_item["repairable_fields"] == ["granularity"]

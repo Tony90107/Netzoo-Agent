@@ -20,6 +20,7 @@ from ..contracts.repair_scope import (
 from .request_integrity import (
     canonical_input_artifacts_in_text,
     confirmed_current_inputs,
+    granularity_left_open,
     request_integrity_issues,
 )
 from .span_alignment import aligned_span
@@ -403,6 +404,21 @@ def validate_outcome_hypotheses(
                     NO_OUTCOME_FIELDS,
                 ))
 
+    committed = {item.outcome.granularity for item in hypotheses}
+    if (
+        len(committed) == 1
+        and committed <= {"aggregate", "sample_specific"}
+        and granularity_left_open(user_task)
+    ):
+        # Judged over the interpretation, not per hypothesis: keeping
+        # `[unknown, sample_specific]` side by side is how an open choice is
+        # expressed, and it passed. Only a reading where every hypothesis picked
+        # the same side decided what the request left open -- and once a stated
+        # aggregate selects PUMA, that became an exact answer to it.
+        issues.extend(
+            Issue(f"hypothesis[{index}].undecided_granularity", {"granularity"})
+            for index in range(len(hypotheses))
+        )
     unique_issues = tuple(dict.fromkeys(issues))
     recoverable = bool(unique_issues) and all(
         ".ungrounded_evidence:" in issue for issue in unique_issues

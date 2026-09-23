@@ -17,6 +17,10 @@ from .context import preflight_budget, record_event
 from .discriminator import _recover_explicit_selection_tag
 
 
+class _NoOpClaimRepair(ValueError):
+    """A reviewer returned a valid patch that changed none of the proposal."""
+
+
 def invoke_claim_interpreter(
     context, state, user_task, usage, *, serialize, schema_errors
 ):
@@ -80,6 +84,10 @@ def invoke_claim_interpreter(
             output = decoded.model_dump_json()
             if patching:
                 claims = decoded.apply(proposal)
+                if claims == proposal:
+                    raise _NoOpClaimRepair(
+                        "semantic_repair:no_changes"
+                    )
                 record_event(
                     context,
                     state,
@@ -87,14 +95,15 @@ def invoke_claim_interpreter(
                     "classify",
                     {
                         "attempt": attempt + 1,
+                        # Kept as a one-item list so reports written before
+                        # the single-index shape still read the same way.
                         "repairs": [
                             {
-                                "hypothesis_index": r.hypothesis_index,
+                                "hypothesis_index": decoded.hypothesis_index,
                                 "changed_fields": sorted(
-                                    r.outcome.model_dump(exclude_none=True)
+                                    decoded.outcome.model_dump(exclude_none=True)
                                 ),
                             }
-                            for r in decoded.repairs
                         ],
                     },
                 )
@@ -191,7 +200,15 @@ def invoke_claim_interpreter(
                     state,
                     "routing.semantic_review_discarded",
                     "classify",
-                    {"attempt": 2, "issues": list(issues)},
+                    {
+                        "attempt": 2,
+                        "issues": list(issues),
+                        "reason": (
+                            "no_material_changes"
+                            if isinstance(exc, _NoOpClaimRepair)
+                            else "repair_failed_validation"
+                        ),
+                    },
                 )
             return (
                 valid,

@@ -25,6 +25,7 @@ from netzoo_agent_core.routing.outcome_matching import (  # noqa: E402
     match_semantic_request,
 )
 from netzoo_agent_core.interpretation.request_integrity import (  # noqa: E402
+    granularity_mentions,
     request_integrity_issues,
 )
 from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
@@ -281,7 +282,9 @@ def test_a_role_stated_in_evidence_is_moved_into_its_field():
 
     assert outcome.regulator_types == ["mirna"]
     assert outcome.target_types == ["gene"]
-    assert {item["field"] for item in restored} == {"regulator_types", "target_types"}
+    assert {item["field"] for item in restored} == {
+        "regulator_types", "target_types", "entity_types",
+    }
     # Roles have no independent witness, so none is claimed for them.
     assert all(item["witnessed_span"] is None for item in restored)
 
@@ -403,20 +406,79 @@ def test_conflicting_explicit_granularity_phrases_are_not_repaired():
     )
 
 
-def test_a_move_that_would_create_a_new_consistency_issue_is_reverted():
-    """`role_entity` fires when a role is not among the declared entity types.
+def test_english_and_chinese_granularity_paraphrases_are_detected():
+    cases = (
+        ("A shared network across the whole cohort.", "aggregate"),
+        ("Infer one network shared across the entire cohort.", "aggregate"),
+        ("整群病患共用的一張 miRNA 對基因調控網路。", "aggregate"),
+        ("將所有病患合併成單一網路。", "aggregate"),
+        ("One independently inferred network per sample.", "sample_specific"),
+        ("A separate estimated network for every individual patient.", "sample_specific"),
+        ("每位病患各自估計一張調控網路。", "sample_specific"),
+    )
 
-    Trading `conflicting_evidence` for `role_entity` repairs nothing, so the
-    move is dropped rather than applied.
-    """
+    for task, expected in cases:
+        assert {item.granularity for item in granularity_mentions(task)} == {expected}
+
+
+def test_a_supported_role_and_its_entailed_entity_are_restored_together():
+    """A grounded role entails the same biological entity type."""
     source = role_interpretation(
         [("regulator_type", "tf")], entity_types=["gene"],
     )
 
     result, restored = restore_stated_fields(CURRENT, source)
+    outcome = result.outcome_hypotheses[0].outcome
 
-    assert result.outcome_hypotheses[0].outcome.regulator_types == []
-    assert restored == []
+    assert outcome.regulator_types == ["tf"]
+    assert set(outcome.entity_types) == {"tf", "gene"}
+    assert {item["field"] for item in restored} == {
+        "regulator_types", "entity_types",
+    }
+    assert any(
+        item["source"] == "supported_role_entailment"
+        for item in restored
+    )
+
+
+def test_chinese_role_and_granularity_witnesses_replace_unknown_roles():
+    source = role_interpretation(
+        [], entity_types=[], regulator_types=["unknown"], target_types=["unknown"],
+        granularity="unknown",
+        unresolved_dimensions=["regulator_type", "target_type", "granularity"],
+    )
+
+    task = "我手邊有表現量矩陣，想要每位病患各自的微小核糖核酸對基因的調控網路。"
+    result, restored = restore_stated_fields(
+        task,
+        source,
+        restore_explicit_scalar_evidence=True,
+    )
+
+    outcome = result.outcome_hypotheses[0].outcome
+    assert outcome.regulator_types == ["mirna"]
+    assert outcome.target_types == ["gene"]
+    assert set(outcome.entity_types) == {"mirna", "gene"}
+    assert outcome.granularity == "sample_specific"
+    assert not outcome.unresolved_dimensions
+    assert any(
+        item["source"] == "explicit_role_witness"
+        and item["witnessed_span"] == "微小核糖核酸對基因"
+        for item in restored
+    )
+    assert any(
+        item["source"] == "explicit_granularity_witness"
+        # The witness now runs to the network noun it qualifies.
+        and item["witnessed_span"] == "每位病患各自的微小核糖核酸對基因的調控網路"
+        for item in restored
+    )
+    from netzoo_agent_core.routing.outcome_matching import match_semantic_request
+
+    match = match_semantic_request(
+        task, result.outcome_hypotheses, request_mode="guidance"
+    )
+    assert match.status == "exact"
+    assert match.matched_actions == ["run_lioness_puma"]
 
 
 def test_a_value_outside_the_closed_vocabulary_cannot_be_written():

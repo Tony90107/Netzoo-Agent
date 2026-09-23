@@ -247,6 +247,12 @@ def test_fallback_does_not_restore_noncurrent_input_from_lexical_mentions(task, 
         # the run named the right tool while declaring no input at all.
         ("Which workflow would you recommend for assigning cancer patients to "
          "subgroups from somatic mutation counts?", {"mutation_matrix"}),
+        ("Previously I used an expression matrix with PANDA. This time I want to "
+         "cluster patients from a somatic mutation matrix.", {"mutation_matrix"}),
+        ("我之前用表現量矩陣跑過 PANDA，這次想用突變矩陣做病患分群。",
+         {"mutation_matrix"}),
+        ("Previously I used an expression matrix. This time I have a new expression "
+         "matrix for a patient-specific network.", {"expression_matrix"}),
         ("我之前做過 PANDA；現在以 WES 資料對病人做分組。請問工具箱中哪一項適合？",
          {"mutation_matrix"}),
         # The assay name alone is not the dataset: these are sequencing reads.

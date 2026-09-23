@@ -6,6 +6,7 @@ the model's filled fields. They are not a complete natural-language parser.
 from dataclasses import dataclass
 import re
 
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts.repair_scope import Issue
 
 
@@ -50,9 +51,19 @@ _HISTORY = re.compile(
     r"|曾經|之前|先前|過去|剛剛|跑完|上次|當初|已經(?:跑|做|執行|完成|用)",
     re.I,
 )
-_CURRENT = re.compile(r"\b(?:now|currently|current|have|received)\b|現在|目前|手邊|這份|我有|拿到|給了我", re.I)
-_UNCERTAIN = re.compile(r"\b(?:if|hypothetical|might|would obtain|could obtain)\b|假如|假設|如果|尚未|還沒有", re.I)
-_NEGATED = re.compile(r"\b(?:not|without|no)\b|不是|並非|沒有|不含", re.I)
+_CURRENT = re.compile(
+    r"\b(?:now|currently|current|have|received|this time|this request|this analysis)\b"
+    r"|現在|目前|手邊|這份|我有|拿到|給了我|這次|本次|這回|此次",
+    re.I,
+)
+# 也許 / 或許 are the direct equivalents of `might`; the broader 可能 is left
+# out because it also frames ordinary questions (是否可能).
+_UNCERTAIN = re.compile(r"\b(?:if|hypothetical|might|would obtain|could obtain)\b|假如|假設|如果|尚未|還沒有|也許|或許", re.I)
+# `不需要` / `不要` / `不用` / `無需` decline a result the way `not` does. Without
+# them “不需要每位病患各自的網路” was read as a *stated* sample-specific request,
+# so an explicit aggregate request carried both granularities and lost its
+# witness.
+_NEGATED = re.compile(r"\b(?:not|without|no)\b|不是|並非|沒有|不含|不需要|不要|不用|無需", re.I)
 _OUTPUT = re.compile(r"\b(?:produce[sd]?|generate[sd]?|create[sd]?)\b|產生|生成", re.I)
 _PROPOSAL = re.compile(r"\b(?:can|could|should|would)\b|能不能|可以|是否|應該", re.I)
 # A modal that governs "which tool do you recommend" is asking about the tool,
@@ -72,24 +83,86 @@ _PATIENT_CLUSTER = re.compile(
 )
 _GOAL_NEGATED = re.compile(r"\b(?:not|no|without)\b|不要|不做|不需要|不進行", re.I)
 _REGULATORY_ROLE_PAIR = re.compile(
-    r"\b(?P<regulator>TFs?|transcription\s+factors?|mi(?:cro)?[- ]?RNAs?)\b"
-    r"(?:\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*|\s*(?:-|–|—|→)\s*)"
-    r"(?P<target>genes?)\b",
+    r"(?P<regulator>\bTFs?\b|\btranscription\s+factors?\b|"
+    r"\bmi(?:cro)?[- ]?RNAs?\b|微小核糖核酸|微小RNA|微RNA|轉錄因子)"
+    r"(?:\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*|\s*(?:-|–|—|→)\s*|"
+    r"\s*(?:regulat(?:e|es|ing)|調控|作用於|對)\s*|"
+    # The noun form: “TF regulation of genes”. Missing it let “both miRNA and
+    # TF regulation of genes” reach DRAGON as an exact legacy answer.
+    r"\s+regulation\s+of\s+)"
+    r"(?P<target>\bgenes?\b|基因)",
     re.I,
 )
 _GRANULARITY_PATTERNS = {
     "aggregate": re.compile(
         r"\b(?:aggregate|cohort[- ]wide|population[- ]level)\b|"
-        r"(?:整體|群體|族群)(?:層級|層次)?",
+        r"\b(?:one|single|shared|common)\s+(?:cohort[- ]wide\s+)?network\s+"
+        r"(?:shared\s+)?(?:across|for)\s+(?:the\s+)?(?:whole|entire)\s+cohort\b|"
+        r"\bshared\s+(?:cohort[- ]wide\s+)?networks?\s+across\s+"
+        r"(?:the\s+)?(?:(?:whole|entire|all)\s+)?(?:cohort|population|patients?|samples?)\b|"
+        r"\b(?:one|single)\s+(?:[\w-]+\s+){0,3}network\s+shared\s+across\s+"
+        r"(?:the\s+)?(?:whole|entire)\s+(?:cohort|population)\b|"
+        # Chinese witnesses must reach a network noun, as every English one
+        # does: bare 整體 matched “整體突變負荷量” (overall mutation burden), and
+        # 單一 matched “單一樣本網路”, which is a single-*sample* network.
+        r"(?:整體|群體|族群)(?:層級|層次)|"
+        r"(?:整體|群體|族群)(?:的)?[^。！？!?;；\n，,]{0,8}(?:網路|網絡)|"
+        r"(?:整群|全體|所有)(?:的)?(?:病患|病人|患者|樣本)?"
+        r"[^。！？!?;；\n]{0,18}(?:共用|共同|合併|單一)(?:的)?"
+        r"[^。！？!?;；\n]{0,18}網路|"
+        r"(?:單一(?!(?:的)?(?:樣本|病患|病人|患者|個體))|共用|共同|合併成?)(?:的)?"
+        r"(?:整體|群體|族群|全體|整群)?(?:病患|病人|患者|樣本)?"
+        r"[^。！？!?;；\n]{0,16}網路",
         re.I,
     ),
     "sample_specific": re.compile(
         r"\b(?:sample|patient|subject)[- ]specific\b|"
-        r"\bper[- ](?:sample|patient|subject)\b|"
-        r"(?:每個|各個|逐一)(?:樣本|病患|病人|患者)(?:各自|個別)?",
+        r"\bper[- ](?:sample|patient|subject|person|individual)\b|"
+        r"\b(?:separate|independently\s+estimated)\s+(?:[\w-]+\s+){0,3}networks?\s+"
+        r"for\s+(?:each|every)\s+(?:sample|patient|subject|person|individual)s?\b|"
+        r"\b(?:a\s+)?(?:separate|individual)\s+(?:estimated\s+|inferred\s+|constructed\s+)?networks?\s+"
+        r"for\s+(?:each|every)\s+(?:individual\s+)?(?:sample|patient|subject)s?\b|"
+        r"\b(?:one|a)\s+(?:(?:separate|independently|separately)\s+)?"
+        r"(?:estimated\s+|inferred\s+|constructed\s+)?network\s+"
+        r"(?:per\s+(?:sample|patient|subject)|for\s+(?:each|every)\s+"
+        r"(?:individual\s+)?(?:sample|patient|subject)s?)\b|"
+        # Bound to a network noun in the same clause: “每個樣本狀態的 TFA 矩陣”
+        # describes a per-sample matrix beside one aggregate network.
+        r"(?:每個|各個|逐一|每位|各位)(?:樣本|病患|病人|患者)(?:各自|個別|分別)?"
+        r"[^。！？!?;；\n，,]{0,20}(?:網路|網絡)",
         re.I,
     ),
 }
+
+
+# A request that names both granularities while saying it has not chosen one.
+# Each part is required in the same sentence, so "not sure which tool" alone,
+# or a sentence naming one granularity, never qualifies.
+_UNDECIDED = re.compile(
+    r"\b(?:not|haven't|hasn't|have\s+not|has\s+not)\s+(?:yet\s+)?decided\b|"
+    r"\bundecided\b|\bnot\s+sure\s+(?:whether|if)\b|"
+    r"還沒(?:有)?決定|尚未決定|不確定(?:要|是)",
+    re.I,
+)
+_AGGREGATE_ALTERNATIVE = re.compile(
+    r"\bcohort\b|\baggregate\b|\bshared\b|\bone\s+(?:[\w-]+\s+){0,3}network\b|"
+    r"整群|群體|共用|整體",
+    re.I,
+)
+_SAMPLE_ALTERNATIVE = re.compile(
+    r"\bper[- ](?:sample|patient|subject|person|individual)\b|"
+    r"\b(?:each|every)\s+(?:sample|patient|subject|person|individual)\b|"
+    r"\bsample[- ]specific\b|每位|每個|各自",
+    re.I,
+)
+#: Network artifacts with no regulator or target roles. A stated
+#: regulator-to-target relation cannot be carried by them, so choosing one
+#: discards what the request said; a partition of a regulatory network
+#: (`community_assignment`) is a different deliverable and is not listed.
+_ROLELESS_NETWORKS = frozenset({"coexpression_network", "multi_omic_network"})
+_REGULATORY_WITH_ENTITY_RULE = frozenset({
+    "regulatory_network_and_tf_activity", "signed_regulatory_effect_network",
+})
 
 
 @dataclass(frozen=True)
@@ -162,6 +235,7 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
             regulator = "tf" if (
                 regulator_text.startswith("tf")
                 or regulator_text.startswith("transcription")
+                or regulator_text == "轉錄因子"
             ) else "mirna"
             mentions.append(RegulatoryRoleMention(
                 regulator_type=regulator,
@@ -220,6 +294,26 @@ def request_integrity_issues(task: str, outcome) -> list[str]:
         + [Issue(f"noncurrent_input:{artifact}", {"input_artifacts"})
            for artifact in sorted(noncurrent & supplied)]
     )
+    stated_roles = regulatory_role_mentions(task)
+    entity_rule = ARTIFACT_SEMANTICS[outcome.artifact_type].entities
+    if stated_roles and (
+        outcome.artifact_type in _ROLELESS_NETWORKS
+        # A regulatory artifact whose ontology excludes a stated regulator: the
+        # TF-activity product has no miRNA, so restoration's attempt to add the
+        # stated miRNA role was refused and the role vanished without a trace.
+        or (
+            outcome.artifact_type in _REGULATORY_WITH_ENTITY_RULE
+            and entity_rule is not None
+            and any(item.regulator_type not in entity_rule for item in stated_roles)
+        )
+    ):
+        # Traced 2026-09-23: “miRNA-gene network” and “both miRNA and TF
+        # regulation of genes” read as multi-omic networks lost their roles in
+        # restoration, and the review then deleted the conflicting evidence, so
+        # DRAGON was recommended -- as fallback in claims, as exact in legacy.
+        issues.append(Issue(
+            f"stated_roles_conflict:{outcome.artifact_type}", {"artifact_type"},
+        ))
     if patient_clustering_goal(task) and outcome.artifact_type != "sample_cluster_assignment":
         # Read `artifact_type` only. What the corrected artifact then constrains
         # is opened by the ontology at merge time, not listed here.
@@ -239,6 +333,24 @@ def patient_clustering_goal(task: str) -> bool:
         if scope == "historical":
             continue
         for match in _PATIENT_CLUSTER.finditer(clause):
+            # A supposed goal is not the current one, exactly as a supposed
+            # input is not a current input in `input_mentions`. “If I later
+            # obtain somatic mutation data I might cluster patients, but right
+            # now … a separate TF-to-gene network for each sample” forced a
+            # clustering artifact onto the network request in all six traced
+            # trials of both contracts.
+            if _UNCERTAIN.search(clause[:match.start()]):
+                continue
             if not _GOAL_NEGATED.search(clause[:match.end()]):
                 return True
     return False
+
+
+def granularity_left_open(task: str) -> bool:
+    """Whether one sentence names both granularities and says neither is chosen."""
+    return any(
+        _UNDECIDED.search(sentence)
+        and _AGGREGATE_ALTERNATIVE.search(sentence)
+        and _SAMPLE_ALTERNATIVE.search(sentence)
+        for sentence in re.split(r"[。！？!?;；\n]|\.(?:\s|$)", task)
+    )
