@@ -58,17 +58,24 @@ class Support(BaseModel):
                 "properties": {**fields, **extra},
             }
 
-        schema["anyOf"] = [
-            variant("explicit", {"text_span": quote}),
-            variant("inferred", {}),
-        ]
-        return schema
+        # Return the alternatives themselves, not alternatives plus the original
+        # optional-field object. OpenAI strict conversion marks every property on
+        # an object as required; retaining the outer `text_span` property made it
+        # required while the inferred branch forbade it, so that branch could
+        # never validate and providers were forced to fabricate explicit quotes.
+        return {
+            "title": schema.get("title", "Support"),
+            "anyOf": [
+                variant("explicit", {"text_span": quote}),
+                variant("inferred", {}),
+            ],
+        }
 
 
 class Claim(BaseModel, Generic[T]):
     model_config = ConfigDict(extra="forbid")
     value: T
-    support: Support | None = None
+    support: Support
 
 
 class ClaimedOutcome(BaseModel):
@@ -112,7 +119,7 @@ def project_outcome(outcome: ClaimedOutcome):
         items = claims if many else [claims]
         values[field] = [c.value for c in items] if many else claims.value
         for claim in items:
-            if claim.support is not None:
+            if claim.value not in {"unknown", "not_applicable"}:
                 evidence.append(
                     OutcomeEvidence(
                         dimension=dimension,

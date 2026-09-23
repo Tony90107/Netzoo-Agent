@@ -139,6 +139,19 @@ def test_explicit_quote_is_required_at_schema_boundary():
         SemanticClaims.model_validate(data)
 
 
+@pytest.mark.parametrize("missing", [True, False])
+def test_every_claim_requires_support_at_provider_boundary(missing):
+    data = payload()
+    operation = data["outcome_hypotheses"][0]["outcome"]["operation"]
+    if missing:
+        operation.pop("support")
+    else:
+        operation["support"] = None
+
+    with pytest.raises(ValidationError):
+        SemanticClaims.model_validate(data)
+
+
 def test_explicit_quote_requirement_is_visible_in_provider_json_schema():
     schema = Support.model_json_schema()
     variants = {
@@ -149,6 +162,82 @@ def test_explicit_quote_requirement_is_visible_in_provider_json_schema():
     assert "text_span" in variants["explicit"]["required"]
     assert variants["explicit"]["properties"]["text_span"]["type"] == "string"
     assert "text_span" not in variants["inferred"]["required"]
+
+
+def test_strict_provider_schema_keeps_inferred_support_satisfiable():
+    from jsonschema import Draft202012Validator
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+
+    schema = convert_to_openai_tool(SemanticClaims, strict=True)["function"][
+        "parameters"
+    ]
+    support = schema["properties"]["outcome_hypotheses"]["items"]["properties"][
+        "outcome"
+    ]["properties"]["operation"]["properties"]["support"]
+
+    validator = Draft202012Validator(support)
+    validator.validate(
+        {
+            "source": "inferred",
+            "rationale": "Network inference is entailed by the requested artifact.",
+        }
+    )
+    validator.validate(
+        {
+            "source": "explicit",
+            "text_span": "sample specific",
+            "rationale": "The request states this granularity.",
+        }
+    )
+
+
+def test_claim_prompt_requires_support_even_for_an_unknown_value():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_messages
+
+    prompt = claim_messages(TASK)[0].content
+
+    assert "Every claim requires support" in prompt
+    assert "null support" not in prompt
+
+
+def test_claim_prompt_forbids_empty_inferred_text_spans():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_messages
+
+    prompt = claim_messages(TASK)[0].content
+
+    assert "omit text_span or set it to null; never use an empty string" in prompt
+
+
+def test_claim_prompt_stays_within_small_model_instruction_budget():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_messages
+
+    tags = {
+        tag
+        for capability in OUTPUT_CAPABILITIES.values()
+        for tag in capability.selection_tags
+    }
+    prompt = claim_messages(TASK, selection_tags=tags)[0].content
+
+    assert len(prompt) <= 4200
+
+
+def test_unknown_and_not_applicable_support_do_not_become_scientific_evidence():
+    data = payload()
+    outcome = data["outcome_hypotheses"][0]["outcome"]
+    outcome.update(
+        operation=claim("unknown"),
+        artifact_type=claim("unknown"),
+        granularity=claim("not_applicable"),
+        input_artifacts=[],
+        entity_types=[],
+        regulator_types=[],
+        target_types=[],
+        unresolved_dimensions=[],
+    )
+
+    hypothesis = SemanticClaims.model_validate(data).to_internal().outcome_hypotheses[0]
+
+    assert hypothesis.evidence == []
 
 
 def test_semantic_interpreter_return_annotation_matches_runtime_contract():
@@ -369,8 +458,11 @@ def test_default_schema_and_experimental_schema_remain_separate_in_factory(monke
         SemanticReview,
     )
 
+    bindings = []
+
     class Provider:
         def with_structured_output(self, schema, **kwargs):
+            bindings.append((schema, kwargs))
             return schema
 
     monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "offline")
@@ -391,6 +483,8 @@ def test_default_schema_and_experimental_schema_remain_separate_in_factory(monke
         experimental.semantic_claims
         and experimental.semantic_interpreter is SemanticClaims
     )
+    claims_bindings = [kwargs for schema, kwargs in bindings if schema is SemanticClaims]
+    assert claims_bindings and all(kwargs.get("strict") is True for kwargs in claims_bindings)
 
 
 def test_no_text_can_add_missing_semantic_selection_tags():

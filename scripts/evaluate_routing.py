@@ -319,6 +319,16 @@ def _diagnostic_details(events) -> list[dict]:
     return details
 
 
+def _review_patch_payload(event):
+    payload = event["payload"]
+    keys = (
+        "changed_fields", "evidence_removed", "evidence_added",
+        "evidence_retired_as_stale", "permitted_fields",
+        "ignored_instructions", "repairs",
+    )
+    return {key: payload[key] for key in keys if key in payload}
+
+
 def _score(case, result, events):
     decision, expected = result.decision, case.expected
     event_types = {event["type"] for event in events}
@@ -442,12 +452,7 @@ def _score(case, result, events):
             "review" if repair_attempted else None,
         ),
         "review_patch": next(
-            ({key: event["payload"][key] for key in
-              (
-                  "changed_fields", "evidence_removed", "evidence_added",
-                  "evidence_retired_as_stale", "permitted_fields",
-                  "ignored_instructions",
-              )}
+            (_review_patch_payload(event)
              for event in events if event["type"] == "routing.semantic_patch_applied"),
             None,
         ),
@@ -540,14 +545,18 @@ def evaluate(
     # always exercises the current production contract, unless explicitly replaying.
     review_policy = review_policy or ("when_needed" if source == "live" and not replay else "always")
     schemas = (SemanticClaims, SemanticClaims, SemanticClaimRepair) if semantic_contract == "claims" else (SemanticInterpretation, SemanticReview, SemanticPatch)
+    claim_output_options = {"strict": True} if semantic_contract == "claims" else {}
     semantic_interpreter = provider.with_structured_output(
         schemas[0], method="function_calling", include_raw=True,
+        **claim_output_options,
     )
     semantic_reviewer = provider.with_structured_output(
         schemas[1], method="function_calling", include_raw=True,
+        **claim_output_options,
     )
     semantic_patcher = provider.with_structured_output(
         schemas[2], method="function_calling", include_raw=True,
+        **claim_output_options,
     )
     semantic_discriminator = (
         provider.with_structured_output(

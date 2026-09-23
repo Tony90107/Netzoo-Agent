@@ -3,7 +3,6 @@
 import json
 from ..contracts import HumanMessage, SystemMessage
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
-from ..contracts import output_language_policy
 
 
 def claim_messages(
@@ -13,58 +12,46 @@ def claim_messages(
         f"- {name}: {rule.description}"
         for name, rule in sorted(ARTIFACT_SEMANTICS.items())
     )
-    prompt = f"""Interpret the full scientific request by meaning, including synonyms, paraphrases,
-negation, history and hypothetical statements. Do not select a tool by keyword.
-Describe the user's requested result independently of what any tool happens to produce.
-The harness compares that meaning with registered input/output capabilities and alone
-controls execution. Never authorize execution or manufacture an input from a tool name.
+    prompt = f"""Classify the scientific result by meaning, including negation, history,
+hypotheticals, synonyms, and paraphrases. Never choose by tool keyword or alter the
+result to fit a tool. The harness matches workflows and controls execution.
 
-Return SemanticClaims. request_mode is guidance when the user asks about methods,
-explanations, plans or hypothetical work; execute only when asked to perform analysis
-now; unknown when that distinction is genuinely unresolved. A tool recommendation
-question still has a scientific outcome: interpret the result the tool would produce.
+Return exactly SemanticClaims. Each outcome_hypotheses item is
+{{outcome, confidence, assumptions}}. Keep all scientific fields inside outcome; never
+put operation/artifact_type/granularity beside it. Keep incompatible meanings as 1-3
+hypotheses.
 
-Each scientific field is one claim {{value, support}}. Lists contain claims per value.
-Support contains source, text_span and rationale, never a second value or dimension.
-Explicit support quotes a contiguous phrase from the original user request, in its
-original language. Inferred support explains the scientific entailment. Never change
-fabricated or translated explicit evidence into inference just to pass validation.
-Known dimensions need support. Unknown values may have null support and should identify
-material uncertainty in unresolved_dimensions. Do not guess merely to fill the schema.
-Entities and granularity fixed uniquely by the chosen artifact need no repeated support.
+request_mode: guidance for method/explanation/plan/hypothetical questions; execute only
+for analysis requested now; otherwise unknown. A tool question still needs its intended
+scientific outcome.
 
-Interpret these dimensions:
-- operation is the scientific transformation required to produce the result, not the
-  surface wording of the question: acquire retrieves an existing artifact; prepare
-  transforms representation; validate checks constraints; infer constructs latent
-  structure; analyze derives properties of existing artifacts; explain gives concepts.
-- input_artifacts are CURRENT inputs only. Exclude historical, hypothetical and future
-  intermediate datasets. Rejecting a proposed method does not erase the current dataset.
-  Empty means input compatibility is unassessed, not confirmed.
-- artifact_type is the terminal scientific deliverable. Distinguish means, intermediate
-  outputs and final goals. Do not replace the goal with a proposed method's output.
-- entity_types are objects inside the result, not all entities in upstream data. An
-  individual network's sample index is not itself a network node.
-- regulator_types and target_types describe roles within regulatory_network only.
-  Unstated roles stay empty unless scientifically entailed with inferred support.
-- granularity: sample_specific means a separately inferred result per sample; aggregate
-  means one cohort result. A cohort distance matrix or clustering remains aggregate
-  even with a row or label per patient. Infer this from the purpose, not a trigger phrase.
-- selection_tags are optional scientific constraints from this registry vocabulary:
-  {", ".join(sorted(selection_tags)) or "(none)"}. Interpret their scientific meaning;
-  never infer them by matching a tag's spelling, and never use them as tool names.
-- display_entities are short readable biological names. unresolved_dimensions contains
-  only uncertainties that change the scientific result, not optional unstated details.
+Every claim requires support and is {{value, support}}; lists contain one claim per value.
+Support never contains another value/dimension.
+- explicit: source=explicit; text_span is an exact request quote; rationale explains it.
+- inferred: source=inferred; rationale explains entailment; omit text_span or set it to null; never use an empty string.
+Unknown/not_applicable also need inferred support. Never invent/translate quotes or
+guess. unresolved_dimensions contains only material unknowns.
 
-Artifact ontology (input_artifacts and artifact_type use these exact literals):
+Dimensions:
+- operation: acquire retrieves, prepare changes representation, validate checks, infer
+  constructs latent structure, analyze derives properties, explain gives concepts.
+- artifact_type is the terminal deliverable, not an intermediate.
+- input_artifacts are current inputs only; exclude historical/hypothetical/future
+  intermediates. Empty means unassessed.
+- sample_specific is a separately inferred result per sample; aggregate is one cohort
+  result. Cohort distances/clusters stay aggregate despite per-patient rows.
+- entity_types are result objects, not all upstream entities; a sample index is not a
+  node. regulator_types/target_types apply only to regulatory_network. Leave unstated
+  roles empty unless entailed.
+Artifact literals:
 {ontology}
 
-For a request with no scientific result, use operation=unknown, artifact_type=unknown,
-granularity=not_applicable, empty entity/input/role/unresolved lists and null support.
-Preserve genuine incompatible interpretations as separate hypotheses (one to three);
-never collapse uncertainty simply to obtain one matching tool. No workflow selection
-or execution authority can be added to this schema.
-{output_language_policy()}
+Optional selection_tags are scientific constraints, never tool names. Allowed:
+{", ".join(sorted(selection_tags)) or "(none)"}.
+
+For no scientific result, use inferred-support claims for operation=unknown,
+artifact_type=unknown, granularity=not_applicable, plus empty optional lists. Never add
+workflow choice/execution authority. Use English except exact text_span quotes.
 """
     if proposal is not None:
         prompt += (
