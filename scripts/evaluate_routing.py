@@ -394,12 +394,33 @@ def _score(case, result, events):
         f"pipeline: {result.reason_code}",
     ]
     errors = route_errors + semantic_errors + safety_errors + pipeline_errors
+    # A recommendation of a capability the case does not expect, exact or not.
+    # A wrong fallback still names a tool to the user; counting only wrong
+    # exact matches missed three DRAGON recommendations in one traced round.
+    wrong_recommendation = (
+        decision.capability_match_status
+        if decision.matched_actions
+        and set(decision.matched_actions) != set(expected.actions)
+        else None
+    )
     repair_attempted = any(event["type"] == "routing.semantic_interpretation_rejected"
                            and event["payload"].get("attempt") == 1 for event in events)
+    review_call_attempted = "semantic_reviewer" in roles
+    review_attempt_reason = (
+        "contract_repair" if repair_attempted
+        else "semantic_completeness" if review_call_attempted
+        else None
+    )
     return {
         "review_repair_attempted": repair_attempted,
         "review_repair_validated": repair_attempted and accepted,
         "review_repair_correct": repair_attempted and not semantic_errors and not route_errors,
+        "semantic_review_attempted": review_call_attempted,
+        "semantic_review_validated": review_call_attempted and accepted,
+        "semantic_review_correct": (
+            review_call_attempted and not semantic_errors and not route_errors
+        ),
+        "semantic_review_reason": review_attempt_reason,
         "id": case.id, "language": case.language, "category": case.category,
         "passed": not errors, "route_passed": not route_errors,
         "semantic_passed": not semantic_errors, "errors": errors,
@@ -425,6 +446,7 @@ def _score(case, result, events):
             if event["type"] == "routing.outcome_input_restored"
             for item in event["payload"].get("restored", [])
         ],
+        "wrong_recommendation": wrong_recommendation,
         "status": decision.capability_match_status, "matched_actions": decision.matched_actions,
         # The candidates an ambiguous decision is holding. Without them a report
         # cannot tell "underdetermined, and here are the four it is between"
@@ -457,6 +479,11 @@ def _score(case, result, events):
             None,
         ),
         "total_tokens": result.usage.total_tokens,
+        # Split as well as totalled: the two sides are priced differently and
+        # by very different factors, so a cost comparison between models
+        # cannot be made from the total alone.
+        "input_tokens": result.usage.input_tokens,
+        "output_tokens": result.usage.output_tokens,
     }
 
 
@@ -604,6 +631,11 @@ def evaluate(
             results.append(row)
     total = len(results)
     repair_trials = sum(item["review_repair_attempted"] for item in results)
+    semantic_review_trials = sum(item["semantic_review_attempted"] for item in results)
+    prompt_hash_by_id = {case.id: _fingerprint(case.prompt) for case in cases}
+    prompt_passes: dict[str, list[bool]] = {}
+    for item in results:
+        prompt_passes.setdefault(prompt_hash_by_id[item["id"]], []).append(item["passed"])
     return {
         "metadata": {
             "source": source, "model": model_name, "temperature": 0.0,
@@ -626,6 +658,18 @@ def evaluate(
         },
         "summary": {
             "cases": len(cases), "trials": total,
+            "unique_prompts": len(prompt_passes),
+            "repeat_count": repeat,
+            "prompts_passed_every_repeat": sum(
+                all(passes) for passes in prompt_passes.values()
+            ),
+            "prompt_repeat_disagreements": sum(
+                len(set(passes)) > 1 for passes in prompt_passes.values()
+            ),
+            "statistical_unit": (
+                "unique prompt; repeats are within-prompt stability checks, "
+                "not independent cases"
+            ),
             "passed": sum(item["passed"] for item in results),
             "pass_rate": sum(item["passed"] for item in results) / total,
             "route_pass_rate": sum(item["route_passed"] for item in results) / total,
@@ -634,6 +678,22 @@ def evaluate(
             "answer_failure_count": sum(bool(item["answer_errors"]) for item in results),
             "interaction_failure_count": sum(bool(item.get("interaction_errors")) for item in results),
             "review_repair_attempts": repair_trials,
+            # Review calls include both validation repair and semantic
+            # completeness checks. Keep this denominator separate from the
+            # historical repair metric, which counts only rejected first passes.
+            "semantic_review_attempts": semantic_review_trials,
+            "semantic_review_reasons": dict(Counter(
+                item["semantic_review_reason"] for item in results
+                if item["semantic_review_reason"] is not None
+            )),
+            "semantic_review_validation_rate": (
+                sum(item["semantic_review_validated"] for item in results)
+                / semantic_review_trials if semantic_review_trials else None
+            ),
+            "semantic_review_success_rate": (
+                sum(item["semantic_review_correct"] for item in results)
+                / semantic_review_trials if semantic_review_trials else None
+            ),
             "review_repair_shapes": dict(Counter(
                 item["review_repair_shape"] for item in results
                 if item["review_repair_shape"] is not None
@@ -662,6 +722,12 @@ def evaluate(
             # correct behavior as an unsafe execution. The per-trial check
             # already distinguishes the two, so defer to it.
             "unsafe_execution_count": sum(bool(item["safety_errors"]) for item in results),
+            "wrong_exact_recommendations": sum(
+                item["wrong_recommendation"] == "exact" for item in results
+            ),
+            "wrong_fallback_recommendations": sum(
+                item["wrong_recommendation"] not in {None, "exact"} for item in results
+            ),
             "executing_trial_count": sum(
                 item["should_execute"] or item["action"] != "no_tool" for item in results
             ),

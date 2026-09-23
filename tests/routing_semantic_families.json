@@ -1,0 +1,717 @@
+[
+  {
+    "id": "gran-mirna-ss-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "I need a separate miRNA-to-gene regulatory network for every patient in my cohort. Which method should I use? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "gran-mirna-agg-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "I need one miRNA-to-gene regulatory network for the whole cohort, not one network per patient. Which method should I use? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "gran-tf-ss-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Which workflow builds an individual TF-to-gene regulatory network for each sample? Guidance only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "gran-tf-agg-relaxed-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I need one cohort-wide TF-to-gene regulatory network solved as a relaxed graph matching problem, not per-sample networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_otter"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_panda"
+      ],
+      "required_discriminators": {
+        "selection_tags": [
+          "relaxed_graph_matching"
+        ]
+      },
+      "answer_required": [
+        "OTTER"
+      ]
+    }
+  },
+  {
+    "id": "gran-mirna-ss-terse",
+    "language": "en",
+    "category": "terse",
+    "prompt": "per-sample miRNA-gene networks, which tool?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "gran-mirna-agg-terse",
+    "language": "en",
+    "category": "terse",
+    "prompt": "cohort-wide miRNA-gene network, which tool?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "gran-mirna-unstated-control",
+    "language": "en",
+    "category": "negative",
+    "prompt": "Which workflow infers a miRNA-to-gene regulatory network? I have not decided between one cohort network and separate per-patient networks, so please ask me.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": null,
+      "require_clarification": true
+    }
+  },
+  {
+    "id": "gran-tf-ss-individual-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "For each individual in my study I want their own transcription-factor-to-gene regulatory network. What method fits? Do not run anything.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "hist-agg-then-ss-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "Last year I built one cohort-wide miRNA-to-gene network with PUMA. Now I want a separate miRNA-to-gene network for each patient. Which method fits? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "hist-ss-then-agg-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "Previously I estimated per-patient TF networks. This time I only need one miRNA-to-gene regulatory network shared across the whole cohort. Which method? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma",
+        "run_lioness_panda"
+      ],
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "hist-expression-then-mutation-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "Previously I ran PANDA on an expression matrix. This time I want to cluster patients into subtypes from somatic mutation data. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_panda"
+      ],
+      "answer_required": [
+        "SAMBAR"
+      ]
+    }
+  },
+  {
+    "id": "hist-mutation-then-expression-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "Last month I clustered patients from somatic mutations with SAMBAR. This time I have an expression matrix and want a separate miRNA-to-gene regulatory network for each patient. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "forbidden_actions": [
+        "run_sambar"
+      ],
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "hist-reuse-control-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "I previously ran PANDA with this expression matrix, and I still have the same expression matrix now. I want a separate TF-to-gene regulatory network for each sample. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "hist-expression-then-mutation-zh",
+    "language": "zh",
+    "category": "history",
+    "prompt": "之前用基因表現量矩陣跑過 PANDA，這次我想用體細胞突變資料把病患分成亞型。請推薦工具，不用執行。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_sambar"
+      ],
+      "input_artifacts": [
+        "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_panda"
+      ],
+      "answer_required": [
+        "SAMBAR"
+      ]
+    }
+  },
+  {
+    "id": "hist-agg-then-ss-zh",
+    "language": "zh",
+    "category": "history",
+    "prompt": "上次我用 PUMA 做了整群病患共用的 miRNA 調控網路，這次想為每位病患建立各自的 miRNA 對基因調控網路。哪個方法適合？只要建議。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "hist-hypothetical-control-en",
+    "language": "en",
+    "category": "history",
+    "prompt": "If I later obtain somatic mutation data I might cluster patients, but right now I have an expression matrix and want a separate TF-to-gene regulatory network for each sample. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [
+        "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "forbidden_actions": [
+        "run_sambar"
+      ],
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "role-mirna-ss-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Which method estimates how microRNAs regulate their target genes separately in each patient? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-tf-ss-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Which method estimates how transcription factors regulate their target genes separately in each patient? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "role-mirna-agg-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "I want one network for the whole cohort describing which microRNAs regulate which genes, not one per patient. Which method? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-both-agg-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I want a single cohort-wide network of both miRNA and TF regulation of genes. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna",
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-both-ss-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I want per-patient networks that capture both TF and miRNA regulation of genes. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna",
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-target-first-en",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Genes targeted by miRNAs: I want that regulatory network estimated for every patient separately. Which method? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-mir-abbrev-terse",
+    "language": "en",
+    "category": "terse",
+    "prompt": "per-sample miR->gene regulatory networks: which workflow?",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "role-tf-agg-control-en",
+    "language": "en",
+    "category": "negative",
+    "prompt": "I want one cohort-wide network of transcription factors regulating genes. Which method? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_panda"
+      ],
+      "require_clarification": true
+    }
+  },
+  {
+    "id": "zh-mirna-ss",
+    "language": "zh",
+    "category": "paraphrase",
+    "prompt": "我想為每位病患各自建立 miRNA 對基因的調控網路，請推薦方法，先不用執行。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "zh-mirna-agg",
+    "language": "zh",
+    "category": "paraphrase",
+    "prompt": "我只需要整個病患群體共用的一張 miRNA 對基因調控網路，不要每位病患各自一張。請推薦工具。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "zh-tf-ss",
+    "language": "zh",
+    "category": "paraphrase",
+    "prompt": "請推薦能為每個樣本分別建立轉錄因子對基因調控網路的方法，只要建議。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_panda"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PANDA"
+      ]
+    }
+  },
+  {
+    "id": "zh-tf-agg-control",
+    "language": "zh",
+    "category": "negative",
+    "prompt": "我想建立整群樣本共用的一張轉錄因子對基因調控網路，該用哪個方法？只要建議。",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_panda"
+      ],
+      "require_clarification": true
+    }
+  },
+  {
+    "id": "zh-mirna-fullname-ss",
+    "language": "zh",
+    "category": "paraphrase",
+    "prompt": "請問哪個方法可以估計每位病人各自的微小RNA調控基因網路？只要建議。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "zh-mixed-language-ss",
+    "language": "mixed",
+    "category": "paraphrase",
+    "prompt": "我想要 sample-specific 的 miRNA-gene regulatory network，每個 patient 一張，請推薦 tool。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  },
+  {
+    "id": "zh-both-regulators-agg",
+    "language": "zh",
+    "category": "positive",
+    "prompt": "我想要一張整群病患共用、同時包含轉錄因子與 miRNA 調控基因的網路，請推薦方法，不用執行。",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "aggregate",
+      "forbidden_actions": [
+        "run_lioness_puma"
+      ],
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna",
+          "tf"
+        ]
+      },
+      "answer_required": [
+        "PUMA"
+      ]
+    }
+  },
+  {
+    "id": "zh-compare-patients-ss",
+    "language": "zh",
+    "category": "paraphrase",
+    "prompt": "想比較不同病人之間 miRNA 如何調控基因，需要替每一位病人各估一張調控網路，哪個方法合適？",
+    "expected": {
+      "status": "exact",
+      "actions": [
+        "run_lioness_puma"
+      ],
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "granularity": "sample_specific",
+      "required_discriminators": {
+        "regulator_types": [
+          "mirna"
+        ]
+      },
+      "answer_required": [
+        "LIONESS-PUMA"
+      ]
+    }
+  }
+]

@@ -44,7 +44,10 @@ from .named_labels import (
     named_workflow_action,
     solely_named_run_action,
 )
-from .requested_outcome_matching import match_requested_outcome
+from .requested_outcome_matching import (
+    _without_superseded_successors,
+    match_requested_outcome,
+)
 
 
 def match_registry_guidance_features(
@@ -310,6 +313,14 @@ def match_outcome_hypotheses(
             if (evidence_score, confidence, specificity_score) == top_score
         ]
         unique_top_actions = list(dict.fromkeys(top_actions))
+        stated_granularities = {item.outcome.granularity for item in hypotheses}
+        if len(stated_granularities) == 1:
+            # The same terminal-versus-pipeline rule as the strict matcher. The
+            # explicit-evidence branch above re-admits the pipeline, so without
+            # this a correct aggregate reading tied here instead.
+            unique_top_actions = _without_superseded_successors(
+                unique_top_actions, next(iter(stated_granularities)), capabilities,
+            )
         discriminated = _tag_discriminated_action(
             hypotheses,
             unique_top_actions,

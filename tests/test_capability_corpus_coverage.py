@@ -40,7 +40,17 @@ def _best_outcome(action):
     """The outcome that capability's own definition implies, at its own values."""
     capability = OUTPUT_CAPABILITIES[action]
     granularities = capability.granularities or {"aggregate"}
-    granularity = "aggregate" if "aggregate" in granularities else sorted(granularities)[0]
+    # A granularity a declared predecessor already delivers is that
+    # predecessor's result, not this pipeline's defining one: LIONESS-PUMA's
+    # cohort network is PUMA's. Prefer the granularity only this step adds.
+    own = {
+        value for value in granularities
+        if not any(
+            value in OUTPUT_CAPABILITIES[predecessor].granularities
+            for predecessor in capability.guidance_predecessors
+        )
+    } or granularities
+    granularity = "aggregate" if "aggregate" in own else sorted(own)[0]
     return {
         "operation": capability.operation,
         "input_artifacts": sorted(capability.input_artifacts)[:1],

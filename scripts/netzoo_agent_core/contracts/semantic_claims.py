@@ -180,31 +180,31 @@ class ClaimChanges(BaseModel):
     unresolved_dimensions: list[str] | None = Field(default=None, max_length=4)
 
 
-class HypothesisRepair(BaseModel):
+class SemanticClaimRepair(BaseModel):
+    """Atomic field replacements for one hypothesis; the rest is preserved.
+
+    This was a list of `{hypothesis_index, outcome}` items. In two live
+    gpt-4o-mini rounds (2026-09-23), 14 of 21 repairs repeated an index or
+    named a hypothesis that did not exist -- the model restated its whole
+    outcome two or three times -- and 5 more ran into the 1,200-token output
+    cap doing so, which drops the tool call. None of the 21 reached
+    validation. One index per repair, as the legacy patch has always had,
+    makes a repeated index unrepresentable rather than a rejected value.
+    """
+
     model_config = ConfigDict(extra="forbid")
     hypothesis_index: int = Field(ge=0, le=2)
     outcome: ClaimChanges
-
-
-class SemanticClaimRepair(BaseModel):
-    """Atomic field replacements. Other hypotheses and fields are preserved."""
-
-    model_config = ConfigDict(extra="forbid")
-    repairs: list[HypothesisRepair] = Field(default_factory=list, max_length=3)
     request_mode: Literal["guidance", "execute", "unknown"] | None = None
     semantic_goal: str | None = Field(default=None, min_length=1, max_length=240)
 
     def apply(self, proposal: SemanticClaims) -> SemanticClaims:
         data = proposal.model_dump()
-        seen = set()
-        for repair in self.repairs:
-            index = repair.hypothesis_index
-            if index >= len(data["outcome_hypotheses"]) or index in seen:
-                raise ValueError("Repair requires a unique existing hypothesis index")
-            seen.add(index)
-            data["outcome_hypotheses"][index]["outcome"].update(
-                repair.outcome.model_dump(exclude_none=True)
-            )
+        if self.hypothesis_index >= len(data["outcome_hypotheses"]):
+            raise ValueError("Repair requires an existing hypothesis index")
+        data["outcome_hypotheses"][self.hypothesis_index]["outcome"].update(
+            self.outcome.model_dump(exclude_none=True)
+        )
         for field in ("request_mode", "semantic_goal"):
             if getattr(self, field) is not None:
                 data[field] = getattr(self, field)

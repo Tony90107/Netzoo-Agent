@@ -60,16 +60,36 @@ def test_a_winner_separated_only_by_an_unstated_dimension_is_not_exact():
     """The shape this rule exists for, taken from a live round.
 
     PUMA and LIONESS-PUMA both carry exactly the regulators and targets this
-    request names. What separates them is that LIONESS-PUMA has a predecessor
-    step -- nothing the request said anything about. Before this rule the answer
-    came back as an exact match for PUMA.
+    request names. With granularity unstated, what separates them is only that
+    LIONESS-PUMA has a predecessor step -- nothing the request said anything
+    about. Before this rule the answer came back as an exact match for PUMA.
+
+    Until 2026-09-23 this was pinned with `granularity="aggregate"`, on the
+    reading that LIONESS-PUMA's declared aggregate output made granularity
+    non-separating too. The traced A/B showed that reading cost every explicit
+    aggregate miRNA request its answer; the cohort network LIONESS-PUMA reports
+    is its PUMA stage's, so a *stated* aggregate now selects PUMA (see
+    `test_a_stated_aggregate_selects_the_first_stage_not_the_pipeline`). The
+    principle pinned here is unchanged: an unstated dimension certifies nothing.
     """
     match = match_requested_outcome(
-        outcome(regulator_types=["mirna", "tf"], target_types=["gene"]),
+        outcome(
+            regulator_types=["mirna", "tf"], target_types=["gene"],
+            granularity="unknown",
+        ),
     )
 
     assert match.status == "ambiguous"
     assert match.matched_actions == []
+
+
+def test_a_stated_aggregate_selects_the_first_stage_not_the_pipeline():
+    match = match_requested_outcome(
+        outcome(regulator_types=["mirna", "tf"], target_types=["gene"]),
+    )
+
+    assert match.status == "exact"
+    assert match.matched_actions == ["run_puma"]
 
 
 def test_the_request_stating_the_separating_dimension_still_gives_an_exact_match():

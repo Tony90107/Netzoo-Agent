@@ -159,6 +159,25 @@ def test_production_routing_boundary_receives_only_prompt_not_answer_key():
     assert "synthetic-case" not in "\n".join(str(m.content) for m in first_messages)
 
 
+def test_repeat_runs_do_not_inflate_unique_prompt_sample_count():
+    first = scenario()
+    duplicate = first.model_copy(update={"id": "same-prompt-different-id"})
+
+    report = evaluate(
+        [first, duplicate],
+        provider=FixtureProvider(),
+        model_name="fixture",
+        repeat=3,
+    )
+
+    assert report["summary"]["cases"] == 2
+    assert report["summary"]["trials"] == 6
+    assert report["summary"]["unique_prompts"] == 1
+    assert report["summary"]["prompts_passed_every_repeat"] == 1
+    assert report["summary"]["prompt_repeat_disagreements"] == 0
+    assert "not independent cases" in report["summary"]["statistical_unit"]
+
+
 def test_discriminator_contract_can_select_otter_from_a_validated_panda_tie():
     task = (
         "I have an expression matrix, motif priors and PPI data. Infer one aggregate "
@@ -317,10 +336,15 @@ def test_transport_outage_fails_closed_without_review_or_intent_calls():
 
 def test_schema_failure_gets_one_review_repair_and_is_reported():
     provider = FixtureProvider(first={"outcome_hypotheses": []})
-    result = run(provider)["results"][0]
+    report = run(provider)
+    result = report["results"][0]
 
     assert result["passed"]
     assert "schema_validation" in result["diagnostics"]
+    assert result["semantic_review_attempted"]
+    assert result["semantic_review_reason"] == "contract_repair"
+    assert report["summary"]["semantic_review_attempts"] == 1
+    assert report["summary"]["semantic_review_validation_rate"] == 1
     assert len(provider.calls) == 3
     assert "schema_validation" in str(provider.calls[1][1][-1].content)
 
@@ -857,3 +881,18 @@ def test_naming_the_right_tool_without_the_discriminator_is_reported():
         for error in row["errors"]
     )
     assert not row["passed"]
+
+
+def test_summary_counts_wrong_recommendations_whether_exact_or_fallback():
+    """A wrong fallback still names a tool; counting only wrong exact hid three."""
+    report = run(FixtureProvider())
+    summary, rows = report["summary"], report["results"]
+    assert summary["wrong_exact_recommendations"] == sum(
+        row["wrong_recommendation"] == "exact" for row in rows
+    )
+    assert summary["wrong_fallback_recommendations"] == sum(
+        row["wrong_recommendation"] not in {None, "exact"} for row in rows
+    )
+    for row in rows:
+        if row["passed"]:
+            assert row["wrong_recommendation"] is None
