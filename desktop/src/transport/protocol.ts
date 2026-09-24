@@ -37,9 +37,9 @@ export type PromptKind = ViewPayload["prompt_kind"];
 
 /** What the window is allowed to say. Mirrors `ClientMessage` in protocol.py. */
 export type ClientMessage =
-  | { type: "answer"; text: string }
-  | { type: "approve_execution"; plan_hash: string }
-  | { type: "decline_execution" }
+  | { type: "answer"; text: string; prompt_seq: number }
+  | { type: "approve_execution"; plan_hash: string; prompt_seq: number }
+  | { type: "decline_execution"; prompt_seq: number }
   | { type: "cancel" }
   | { type: "ping" };
 

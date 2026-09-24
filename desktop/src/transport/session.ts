@@ -148,6 +148,7 @@ export async function createSession(
 export class SessionSocket {
   private socket: WebSocket | null = null;
   private lastSeq = 0;
+  private promptSeq = 0;
   private attempt = 0;
   private closedByUs = false;
   private retry: ReturnType<typeof setTimeout> | null = null;
@@ -235,17 +236,21 @@ export class SessionSocket {
       entries: echo ? [...s.entries, { kind: "user", id: entryId(), text }] : s.entries,
       view: null,
     }));
-    this.send({ type: "answer", text });
+    this.send({ type: "answer", text, prompt_seq: this.promptSeq });
   }
 
   approveExecution(planHash: string): void {
     this.onChange((s) => ({ ...s, view: null }));
-    this.send({ type: "approve_execution", plan_hash: planHash });
+    this.send({
+      type: "approve_execution",
+      plan_hash: planHash,
+      prompt_seq: this.promptSeq,
+    });
   }
 
   declineExecution(): void {
     this.onChange((s) => ({ ...s, view: null }));
-    this.send({ type: "decline_execution" });
+    this.send({ type: "decline_execution", prompt_seq: this.promptSeq });
   }
 
   /**
@@ -281,6 +286,7 @@ export class SessionSocket {
     // buffer had already rolled past what this client last saw.
     const gap = envelope.seq > this.lastSeq + 1 && this.lastSeq > 0;
     if (envelope.seq > this.lastSeq) this.lastSeq = envelope.seq;
+    if (envelope.type === "view") this.promptSeq = envelope.seq;
     const payload = envelope.payload as never;
     this.onChange((state) => {
       const next = reduce(state, envelope.type, payload);
