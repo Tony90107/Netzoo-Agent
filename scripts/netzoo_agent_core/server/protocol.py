@@ -92,6 +92,7 @@ class ClientMessage(BaseModel):
     type: ClientMessageType
     text: str = Field(default="", max_length=100_000)
     plan_hash: str = Field(default="", max_length=64)
+    prompt_seq: int | None = Field(default=None, ge=0)
 
     @classmethod
     def from_envelope(cls, envelope: Envelope) -> "ClientMessage":

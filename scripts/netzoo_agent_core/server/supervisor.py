@@ -28,6 +28,14 @@ __all__ = [
 
 HISTORY_LIMIT = 500
 DEFAULT_IDLE_TIMEOUT_SECONDS = 30 * 60
+_PROMPT_RESPONSE_TYPES = {"answer", "approve_execution", "decline_execution"}
+_PROMPT_VALIDATION_ERRORS = {
+    "InvalidMessage",
+    "UnexpectedMessage",
+    "ExecutionApprovalRequired",
+    "NoPreviewedPlan",
+    "StalePlanHash",
+}
 
 
 class SupervisorError(RuntimeError):
@@ -59,6 +67,9 @@ class SessionHandle:
     history: deque = field(default_factory=lambda: deque(maxlen=HISTORY_LIMIT))
     subscribers: set = field(default_factory=set)
     seq: int = 0
+    active_prompt_seq: int | None = None
+    pending_prompt_seq: int | None = None
+    active_view: Envelope | None = None
     last_activity: float = field(default_factory=time.monotonic)
     stopped: bool = False
     pid: int | None = None
@@ -187,6 +198,38 @@ class SessionSupervisor:
     def send(self, session_id: str, envelope: Envelope) -> None:
         handle = self.get(session_id)
         handle.last_activity = time.monotonic()
+        if envelope.type in _PROMPT_RESPONSE_TYPES:
+            prompt_seq = envelope.payload.get("prompt_seq")
+            stale = (
+                prompt_seq is not None and prompt_seq != handle.active_prompt_seq
+            ) or (
+                prompt_seq is None
+                and handle.active_prompt_seq is None
+                and handle.pending_prompt_seq is not None
+            )
+            if stale:
+                self._publish(
+                    handle,
+                    Envelope(
+                        type="error",
+                        session_id=session_id,
+                        payload={
+                            "error_type": "StalePromptSeq",
+                            "message": (
+                                "This response belongs to an older prompt. "
+                                "Use the current question and try again."
+                            ),
+                        },
+                    ),
+                )
+                if handle.active_prompt_seq is not None and handle.active_view is not None:
+                    # A client with an out-of-date view has just cleared its
+                    # input. Replay the current question under a fresh sequence
+                    # so it can recover without answering the wrong prompt.
+                    self._publish(handle, handle.active_view)
+                return
+            handle.pending_prompt_seq = handle.active_prompt_seq
+            handle.active_prompt_seq = None
         handle.to_worker.put(envelope.to_json())
 
     def cancel_turn(self, session_id: str) -> bool:
@@ -246,10 +289,26 @@ class SessionSupervisor:
     def _publish(self, handle: SessionHandle, envelope: Envelope) -> None:
         handle.seq += 1
         envelope = envelope.model_copy(update={"seq": handle.seq})
+        refresh_prompt = False
+        if envelope.type == "view":
+            handle.active_prompt_seq = envelope.seq
+            handle.pending_prompt_seq = None
+            handle.active_view = envelope
+        elif envelope.type == "error" and (
+            envelope.payload.get("error_type") in _PROMPT_VALIDATION_ERRORS
+            and handle.pending_prompt_seq is not None
+        ):
+            # The worker rejected the action but kept the prompt open. Reissue
+            # it below with a fresh sequence so the client can retry safely.
+            handle.active_prompt_seq = handle.pending_prompt_seq
+            handle.pending_prompt_seq = None
+            refresh_prompt = True
         handle.history.append(envelope)
         handle.last_activity = time.monotonic()
         for subscriber in list(handle.subscribers):
             subscriber.put_nowait(envelope)
+        if refresh_prompt and handle.active_view is not None:
+            self._publish(handle, handle.active_view)
 
     def _mark_stopped(self, handle: SessionHandle) -> None:
         handle.stopped = True
