@@ -6,7 +6,10 @@ the model's filled fields. They are not a complete natural-language parser.
 from dataclasses import dataclass
 import re
 
-from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
+from ..contracts.artifact_semantics import (
+    ARTIFACT_SEMANTICS,
+    is_outcome_not_applicable,
+)
 from ..contracts.repair_scope import Issue
 
 
@@ -366,10 +369,19 @@ def request_integrity_issues(task: str, outcome) -> list[str]:
     current = {m.artifact for m in mentions if m.status == "current"}
     noncurrent = {m.artifact for m in mentions if m.status != "current"} - current
     supplied = set(outcome.input_artifacts)
-    # Both input rules compared the request's witnesses against one field.
+    # Current inputs are required when the outcome describes a scientific
+    # result. A no-result explanation can mention available data without
+    # requesting a workflow; requiring its inputs here would turn the coherent
+    # `explain / unknown / not_applicable` outcome into an impossible repair:
+    # adding the input itself makes that outcome inconsistent.
+    missing_current = (
+        [] if is_outcome_not_applicable(outcome)
+        else [Issue(f"missing_current_input:{artifact}", {"input_artifacts"})
+              for artifact in sorted(current - supplied)]
+    )
+    # Both input rules compare the request's witnesses against one field.
     issues = (
-        [Issue(f"missing_current_input:{artifact}", {"input_artifacts"})
-         for artifact in sorted(current - supplied)]
+        missing_current
         + [Issue(f"noncurrent_input:{artifact}", {"input_artifacts"})
            for artifact in sorted(noncurrent & supplied)]
     )

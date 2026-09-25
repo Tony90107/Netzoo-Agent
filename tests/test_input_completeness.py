@@ -31,6 +31,30 @@ def omit_inputs(item):
     return item
 
 
+def no_result_item():
+    return {
+        "outcome": {
+            "operation": "explain",
+            "input_artifacts": [],
+            "artifact_type": "unknown",
+            "entity_types": [],
+            "display_entities": [],
+            "regulator_types": [],
+            "target_types": [],
+            "selection_tags": [],
+            "granularity": "not_applicable",
+            "unresolved_dimensions": [],
+        },
+        "confidence": 0.9,
+        "evidence": [{
+            "dimension": "operation", "value": "explain", "source": "explicit",
+            "text_span": "我該怎麼開始",
+            "rationale": "The user asks for an explanation of how to begin.",
+        }],
+        "assumptions": [],
+    }
+
+
 @pytest.mark.parametrize("case", ORIGINALS, ids=lambda c: c.id)
 def test_repeated_omission_of_explicit_current_input_cannot_pass(case):
     provider = provider_for(omit_inputs(cluster_item()))
@@ -70,6 +94,18 @@ def validation(task, item):
     from netzoo_agent_core.contracts import OutcomeHypothesis
     from netzoo_agent_core.interpretation.outcome_validation import validate_outcome_hypotheses
     return validate_outcome_hypotheses(task, [OutcomeHypothesis.model_validate(item)])
+
+
+def test_no_result_guidance_does_not_require_inputs_for_a_workflow():
+    task = (
+        "我有兩組病人（癌症 vs. 正常）的 RNA-seq count 資料，想知道這兩組之間有沒有什麼"
+        "關鍵的轉錄因子調控差異，但我以前沒用過網路分析，我該怎麼開始？"
+    )
+
+    result = validation(task, no_result_item())
+
+    assert result.valid
+    assert not any("missing_current_input" in issue for issue in result.issues)
 
 
 @pytest.mark.parametrize("task", [
