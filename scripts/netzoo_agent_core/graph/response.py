@@ -146,8 +146,8 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     if workflow_contract_answer is not None:
         return {"messages": [AIMessage(content=workflow_contract_answer)]}
     outcome_clarification = render_outcome_clarification(
-        decision,
-        context.project_policy,
+        decision, context.project_policy, task=task,
+        semantic_goal=state.get("semantic_goal"),
     )
     if outcome_clarification is not None:
         return {"messages": [AIMessage(content=outcome_clarification)]}

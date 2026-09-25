@@ -40,6 +40,12 @@ _WORKFLOW_CONTRACT_PATTERN = re.compile(
     r".{0,100}(?:input|inputs|file|files|data|parameter|parameters|輸入|檔案|資料|先驗)",
     flags=re.IGNORECASE | re.DOTALL,
 )
+_TWO_GROUP_COMPARISON_PATTERN = re.compile(
+    r"\b(?:between|compare|comparison)\b.{0,100}\b(?:groups?|conditions?)\b"
+    r"|\b(?:groups?|conditions?)\b.{0,100}\b(?:differences?|differential|compare)\b"
+    r"|兩組|兩群|組間|組別.{0,12}(?:差異|比較)|癌症.{0,12}正常|正常.{0,12}癌症",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 _OPERATION_VERBS = {
     "acquire": "acquire",
     "prepare": "prepare",
@@ -228,8 +234,16 @@ def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot) -> list
 def render_outcome_clarification(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
+    *,
+    task: str = "",
+    semantic_goal: dict | None = None,
 ) -> str | None:
     """Explain compatible hypotheses before asking one validated clarification."""
+    beginner_guidance = _render_beginner_group_network_guidance(
+        task, decision, semantic_goal,
+    )
+    if beginner_guidance is not None:
+        return beginner_guidance
     if (
         decision.capability_match_status != "ambiguous"
         or not decision.clarification_question
@@ -323,6 +337,50 @@ def render_outcome_clarification(
     return _ui_text(
         "I cannot select a workflow until the requested result is clear. "
         f"{decision.clarification_question}\n\n"
+        "No files were inspected and no analysis ran."
+    )
+
+
+def _render_beginner_group_network_guidance(
+    task: str,
+    decision: TaskDecision,
+    semantic_goal: dict | None,
+) -> str | None:
+    """Explain group-vs-sample network comparison before asking about methods."""
+    outcome = decision.requested_outcome
+    if not (
+        (semantic_goal or {}).get("request_mode") == "guidance"
+        and decision.action == "no_tool"
+        and decision.intent_type == "answer_question"
+        and decision.capability_match_status == "ambiguous"
+        and decision.clarification_question
+        and decision.clarification_question.casefold().startswith(
+            "which modeling assumption"
+        )
+        and outcome is not None
+        and outcome.artifact_type == "regulatory_network"
+        and "tf" in outcome.regulator_types
+        and "gene" in outcome.target_types
+        and "run_panda" in decision.hypothesis_actions
+        and _TWO_GROUP_COMPARISON_PATTERN.search(task)
+    ):
+        return None
+
+    return _ui_text(
+        "Your goal is to compare TF-to-gene regulation between cancer and normal groups. "
+        "You do not need to choose among matrix factorization, message passing, or graph "
+        "matching assumptions before getting started.\n\n"
+        "A straightforward first step is to prepare a normalized or appropriately "
+        "transformed gene-by-sample expression matrix and sample group labels. Infer one "
+        "aggregate network for each group, then compare TF-to-gene edges. PANDA is a "
+        "common starting method; "
+        "it requires expression data, a TF-motif prior, and a PPI prior.\n\n"
+        "If you want to retain patient-level differences, LIONESS-PANDA can infer one "
+        "network per sample, followed by a group comparison of edge weights. That "
+        "statistical comparison is a later analysis step; network inference alone does "
+        "not prove causal regulation.\n\n"
+        "About how many patients are in each group? Are the cancer and normal samples "
+        "paired, and do you already have TF-motif and PPI priors?\n\n"
         "No files were inspected and no analysis ran."
     )
 
