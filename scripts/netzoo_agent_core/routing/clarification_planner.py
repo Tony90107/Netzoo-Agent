@@ -8,7 +8,7 @@ one structured decision that any presentation layer can render.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from math import log2
 
@@ -78,6 +78,20 @@ _ALGORITHM_LABELS = {
     "relaxed_graph_matching": "continuous relaxed graph matching",
     "signed_partial_regulatory_effects": "signed partial regulatory effects",
 }
+
+
+def algorithm_selection_tags(selection_tags: Iterable[str]) -> tuple[str, ...]:
+    """Return the registered method signals used to compare candidate workflows."""
+    return tuple(sorted(set(selection_tags) - _NON_ALGORITHMIC_TAGS))
+
+
+def algorithmic_assumptions_for(selection_tags: Iterable[str]) -> tuple[str, ...]:
+    """Explain registered method signals using the shared registry glossary."""
+    return tuple(
+        SELECTION_TAG_GLOSSARY[tag]
+        for tag in algorithm_selection_tags(selection_tags)
+        if tag in SELECTION_TAG_GLOSSARY
+    )
 
 
 def _partition_gain(groups: Mapping[tuple[str, ...], Sequence[str]]) -> float:
@@ -195,7 +209,7 @@ class ClarificationPlanner:
         )
         algorithm_values: dict[RecommendedAction, tuple[str, ...]] = {}
         for action, capability in capabilities.items():
-            method_tags = capability.selection_tags - _NON_ALGORITHMIC_TAGS
+            method_tags = set(algorithm_selection_tags(capability.selection_tags))
             distinctive = sorted(
                 method_tags or capability.selection_tags,
                 key=lambda tag: (

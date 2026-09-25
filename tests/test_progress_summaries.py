@@ -406,6 +406,43 @@ def test_exact_guidance_exposes_registry_derived_workflow_path():
     assert detail["workflow_path"] == ["PANDA", "LIONESS-PANDA"]
 
 
+def test_sample_specific_guidance_exposes_final_workflow_for_user_display():
+    policy = ProjectPolicyLoader().load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="guidance",
+        capability_match_status="exact",
+        matched_actions=["run_lioness_panda"],
+        recommended_actions=["run_panda", "run_lioness_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="sample_specific",
+        ),
+    )
+
+    detail = classification_progress_detail(
+        {
+            "candidates": ["run_panda", "run_lioness_panda"],
+            "request_mode": "guidance",
+            "relationship": "composition",
+            "match_status": "exact",
+        },
+        decision,
+        policy,
+    )
+
+    assert detail["workflow_path"] == ["PANDA", "LIONESS-PANDA"]
+    assert detail["display_workflow"] == "LIONESS-PANDA"
+
+
 def test_exact_guidance_uses_conditional_handoff_path_for_batch_effects():
     policy = ProjectPolicyLoader().load()
     decision = TaskDecision(

@@ -3672,14 +3672,14 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             )
 
         response = result["messages"][-1].content
-        self.assertIn("Inputs", response)
+        self.assertIn("Required inputs", response)
         self.assertNotIn("Would you like", response)
 
     @patch("netzoo_agent.build_llm")
     @unittest.skipIf(
         agent.StateGraph is None, "LangGraph runtime is available in Docker"
     )
-    def test_explicit_sample_specific_guidance_reaches_response_llm(
+    def test_explicit_sample_specific_guidance_uses_terminal_workflow_directly(
         self, build_llm
     ):
         motivating_request = (
@@ -3806,36 +3806,21 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
                 {"messages": [agent.HumanMessage(content=motivating_request)]}
             )
 
+        self.assertEqual(result["decision"]["capability_match_status"], "exact")
         self.assertEqual(
-            result["decision"]["capability_match_status"], "ambiguous"
+            result["decision"]["matched_actions"], ["run_lioness_puma"]
         )
         self.assertEqual(result["decision"]["action"], "no_tool")
+        self.assertFalse(result["decision"]["should_execute"])
         self.assertEqual(result["tool_results"], [])
-        self.assertIn("PUMA", result["messages"][-1].content)
+        self.assertIn("LIONESS-PUMA", result["messages"][-1].content)
+        self.assertNotIn("aggregate or sample-specific", result["messages"][-1].content)
+        # The prompt explicitly says sample-specific. A stale aggregate
+        # hypothesis from the classifier must not force a free-form fallback.
         self.assertNotIn(
-            "aggregate or sample-specific",
-            result["messages"][-1].content,
+            "response", [call["role"] for call in result["token_usage"]["calls"]]
         )
-        # The ambiguity itself is now preserved, which is what this test was
-        # failing on: a first pass offering two granularities used to be
-        # collapsed into a confident single answer by a whole-review reply that
-        # carries only one hypothesis. Fixed, and asserted above.
-        self.assertEqual(
-            [call["role"] for call in result["token_usage"]["calls"]],
-            [
-                "semantic_interpreter",
-                "semantic_reviewer",
-                "intent_router",
-                "response",
-            ],
-        )
-        # With no deterministic clarification question, the response model gets
-        # the validated advisory candidate in trusted context. The larger task
-        # budget must not turn that call into an ungrounded free-text branch.
-        self.assertTrue(captured)
-        rendered_context = "\n".join(str(message.content) for message in captured)
-        self.assertIn('"hypothesis_actions": [', rendered_context)
-        self.assertIn('"run_lioness_puma"', rendered_context)
+        self.assertFalse(captured)
 
 
     @patch("netzoo_agent.build_llm")
@@ -4160,6 +4145,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         build_graph.return_value = fake_app
         with (
             tempfile.TemporaryDirectory() as tmp,
+            patch(
+                "netzoo_agent_core.cli.bootstrap.build_llm",
+                return_value=unittest.mock.Mock(),
+            ),
             patch.object(agent, "SESSION_ROOT", Path(tmp)),
             patch.dict(agent.os.environ, {"OPENROUTER_API_KEY": "test"}),
             patch.object(
@@ -4248,6 +4237,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         input_mock = unittest.mock.Mock(side_effect=["1", "2"])
         with (
             tempfile.TemporaryDirectory() as tmp,
+            patch(
+                "netzoo_agent_core.cli.bootstrap.build_llm",
+                return_value=unittest.mock.Mock(),
+            ),
             patch.object(agent, "SESSION_ROOT", Path(tmp)),
             patch.dict(agent.os.environ, {"OPENROUTER_API_KEY": "test"}),
             patch.object(
@@ -4323,6 +4316,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         )
         with (
             tempfile.TemporaryDirectory() as tmp,
+            patch(
+                "netzoo_agent_core.cli.bootstrap.build_llm",
+                return_value=unittest.mock.Mock(),
+            ),
             patch.object(agent, "SESSION_ROOT", Path(tmp)),
             patch.dict(agent.os.environ, {"OPENROUTER_API_KEY": "test"}),
             patch.object(agent.sys, "argv", ["netzoo_agent.py", "--quiet"]),
@@ -4387,6 +4384,10 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         output = io.StringIO()
         with (
             tempfile.TemporaryDirectory() as tmp,
+            patch(
+                "netzoo_agent_core.cli.bootstrap.build_llm",
+                return_value=unittest.mock.Mock(),
+            ),
             patch.object(agent, "SESSION_ROOT", Path(tmp)),
             patch.dict(agent.os.environ, {"OPENROUTER_API_KEY": "test"}),
             patch.object(

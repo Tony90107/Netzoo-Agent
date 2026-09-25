@@ -1,20 +1,28 @@
 """Bounded semantic inference with atomic claims and conditional repair."""
 
 import time
+from workflow_registry import OUTPUT_CAPABILITIES
 from ..contracts import _trace
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 from ..interpretation.claim_prompt import claim_messages
+from ..interpretation.outcome_consistency import (
+    complete_open_granularity_alternatives,
+)
 from ..interpretation.outcome_validation import (
     validate_outcome_hypotheses,
     evidence_census,
 )
 from ..interpretation.provider_fallback import _is_fatal_exception
+from ..interpretation.request_integrity import patient_clustering_goal
 from ..interpretation.semantic_repair import semantic_payload
 from ..interpretation.stated_field_restoration import restore_stated_fields
 from ..llm import append_llm_usage
+from ..routing.capability import reconcile_request_mode
+from ..routing.capability_compatibility import _complete_guidance_match
 from ..routing.outcome_matching import match_semantic_request
 from .context import preflight_budget, record_event
 from .discriminator import _recover_explicit_selection_tag
+from .semantic_review_validation import normalize_advice_operation_evidence
 
 
 class _NoOpClaimRepair(ValueError):
@@ -29,6 +37,15 @@ def invoke_claim_interpreter(
     valid = None
     issues = ()
     error = None
+    # A stated patient-clustering terminal goal deterministically requires
+    # sample_cluster_assignment. Only if that artifact is selected may its
+    # single legal granularity be restored from ontology; a different artifact
+    # (such as TF activity) is never aligned by this rule.
+    artifact_alignment_targets = (
+        frozenset({"sample_cluster_assignment"})
+        if patient_clustering_goal(user_task)
+        else frozenset()
+    )
     tags = {
         tag
         for spec in context.project_policy.workflows.values()
@@ -78,6 +95,27 @@ def invoke_claim_interpreter(
         )
         try:
             payload, raw = semantic_payload(adapter.invoke(messages))
+            payload, advice_normalizations = normalize_advice_operation_evidence(
+                payload,
+                user_task,
+                proposal_request_mode=(
+                    proposal.request_mode
+                    if isinstance(proposal, SemanticClaims)
+                    else "unknown"
+                ),
+            )
+            if advice_normalizations:
+                record_event(
+                    context,
+                    state,
+                    "routing.semantic_evidence_normalized",
+                    "classify",
+                    {
+                        "attempt": attempt + 1,
+                        "contract": "claims",
+                        "normalizations": advice_normalizations,
+                    },
+                )
             if attempt == 0:
                 proposal = payload
             decoded = schema.model_validate(payload)
@@ -114,6 +152,7 @@ def invoke_claim_interpreter(
             interpretation = claims.to_internal()
             interpretation, restorations = restore_stated_fields(
                 user_task, interpretation,
+                align_artifact_constraints_for=artifact_alignment_targets,
                 restore_explicit_scalar_evidence=True,
             )
             if restorations:
@@ -124,6 +163,56 @@ def invoke_claim_interpreter(
                     "classify",
                     {"attempt": attempt + 1, "restored": restorations},
                 )
+            previous_mode = interpretation.request_mode
+            reconciled_mode = reconcile_request_mode(user_task, previous_mode)
+            if reconciled_mode != previous_mode:
+                interpretation = interpretation.model_copy(
+                    update={"request_mode": reconciled_mode}
+                )
+                record_event(
+                    context,
+                    state,
+                    "routing.request_mode_reconciled",
+                    "classify",
+                    {
+                        "previous_mode": previous_mode,
+                        "request_mode": reconciled_mode,
+                        "reason": "deterministic_request_mode_reconciliation",
+                    },
+                )
+            before_alternatives = interpretation.outcome_hypotheses
+            completed_hypotheses = complete_open_granularity_alternatives(
+                user_task, before_alternatives
+            )
+            if completed_hypotheses != before_alternatives:
+                completion_validation = validate_outcome_hypotheses(
+                    user_task, completed_hypotheses
+                )
+                if completion_validation.valid:
+                    interpretation = interpretation.model_copy(
+                        update={"outcome_hypotheses": completed_hypotheses}
+                    )
+                    record_event(
+                        context,
+                        state,
+                        "routing.granularity_alternatives_completed",
+                        "classify",
+                        {
+                            "alternatives": [
+                                item.outcome.granularity
+                                for item in completed_hypotheses
+                            ],
+                            "source": "explicit_undecided_request_witnesses",
+                        },
+                    )
+                else:
+                    record_event(
+                        context,
+                        state,
+                        "routing.granularity_alternative_completion_rejected",
+                        "classify",
+                        {"issues": list(completion_validation.issues)},
+                    )
             validation = validate_outcome_hypotheses(
                 user_task, interpretation.outcome_hypotheses
             )
@@ -273,19 +362,37 @@ def invoke_claim_interpreter(
                     },
                 )
         valid = interpretation
+        hypotheses = interpretation.outcome_hypotheses
+        guided_complete = False
+        if (
+            interpretation.request_mode == "guidance"
+            and match.status == "exact"
+            and len(match.matched_actions) == 1
+        ):
+            capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
+            guided_complete = all(
+                _complete_guidance_match(hypothesis.outcome, capability)
+                for hypothesis in hypotheses
+            )
+        semantic_complete = (
+            match.status == "not_applicable"
+            and len(hypotheses) == 1
+        ) or (
+            match.status == "exact"
+            and len(match.matched_actions) == 1
+            and (
+                guided_complete
+                if interpretation.request_mode == "guidance"
+                else len(hypotheses) == 1
+                and hypotheses[0].outcome.operation != "unknown"
+            )
+        )
         complete = (
             match.status in {"exact", "not_applicable"}
             and interpretation.request_mode != "unknown"
-            and len(interpretation.outcome_hypotheses) == 1
-            and not interpretation.outcome_hypotheses[0].outcome.unresolved_dimensions
-            and (
-                match.status == "not_applicable"
-                or (
-                    len(match.matched_actions) == 1
-                    and interpretation.outcome_hypotheses[0].outcome.operation
-                    != "unknown"
-                )
-            )
+            and bool(hypotheses)
+            and all(not item.outcome.unresolved_dimensions for item in hypotheses)
+            and semantic_complete
             and getattr(context, "review_policy", "when_needed") == "when_needed"
         )
         event = (

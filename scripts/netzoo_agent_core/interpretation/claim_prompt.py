@@ -5,7 +5,11 @@ import json
 import re
 
 from ..contracts import HumanMessage, SystemMessage
-from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, artifact_field_constraints
+from ..contracts.artifact_semantics import (
+    ARTIFACT_SEMANTICS,
+    artifact_field_constraints,
+    artifacts_supporting_regulatory_roles,
+)
 from ..contracts.repair_scope import FIELD_BY_DIMENSION
 from .request_integrity import (
     granularity_mentions,
@@ -49,6 +53,32 @@ def claim_repair_feedback(user_task, proposal, issues) -> dict:
     internal, _ = restore_stated_fields(
         user_task, proposal.to_internal(), restore_explicit_scalar_evidence=True,
     )
+    role_mentions = regulatory_role_mentions(user_task)
+    role_facts = [
+        {"regulator_type": item.regulator_type, "target_type": item.target_type,
+         "text_span": item.text_span}
+        for item in role_mentions
+    ]
+    role_artifacts = artifacts_supporting_regulatory_roles(
+        (item.regulator_type, item.target_type) for item in role_mentions
+    )
+    role_artifact = next(iter(role_artifacts)) if len(role_artifacts) == 1 else None
+    corrected_artifacts = {}
+    for issue in issues:
+        value = None
+        if "terminal_goal_conflict:" in str(issue):
+            value = str(issue).rsplit(":", 1)[-1]
+        elif "stated_roles_conflict:" in str(issue) and role_artifact:
+            value = role_artifact
+        if value is not None:
+            found = re.search(r"hypothesis\[(\d+)\]", str(issue))
+            index = int(found[1]) if found else 0
+            corrected_artifacts.setdefault(index, set()).add(value)
+    corrected_artifacts = {
+        index: next(iter(values))
+        for index, values in corrected_artifacts.items()
+        if len(values) == 1
+    }
     items = []
     for issue in issues[:12]:
         code = str(issue).split(".", 1)[-1] if "hypothesis[" in str(issue) else str(issue)
@@ -64,15 +94,29 @@ def claim_repair_feedback(user_task, proposal, issues) -> dict:
         scope = getattr(issue, "fields", None)
         if scope:
             item["repairable_fields"] = sorted(scope)
+        corrected_artifact = corrected_artifacts.get(index)
         if kind == "terminal_goal_conflict":
             item["required_value"] = {"field": "artifact_type", "value": argument}
             target = argument
+        elif kind == "stated_roles_conflict":
+            target = corrected_artifact
+            if target:
+                item["required_value"] = {"field": "artifact_type", "value": target}
         elif kind == "undecided_granularity":
             # The request names both granularities and chooses neither.
             item["required_value"] = {"field": "granularity", "value": "unknown"}
             target = outcome.artifact_type
         else:
-            target = outcome.artifact_type
+            repairable_fields = set(scope or ())
+            if kind in {
+                "stated_roles_conflict", "artifact_roles", "artifact_entity",
+                "artifact_granularity",
+            }:
+                repairable_fields.add("artifact_type")
+            target = corrected_artifact or (
+                outcome.artifact_type
+                if "artifact_type" not in repairable_fields else None
+            )
         if target in ARTIFACT_SEMANTICS and target != "unknown":
             if kind not in {"missing_current_input", "noncurrent_input"}:
                 item["artifact_constraints"] = {
@@ -103,10 +147,7 @@ def claim_repair_feedback(user_task, proposal, issues) -> dict:
         "request_facts": {
             "inputs": [asdict(item) for item in input_mentions(user_task)][:12],
             "granularity": [asdict(item) for item in granularity_mentions(user_task)][:4],
-            "roles": [
-                {k: v for k, v in asdict(item).items() if k != "entity_types"}
-                for item in regulatory_role_mentions(user_task)
-            ][:4],
+            "roles": role_facts[:4],
         },
     }
 

@@ -14,6 +14,9 @@ from ..contracts.outcomes import (
 from ..contracts.repair_scope import permitted_fields
 from ..interpretation.assembly import assemble_task_decision
 from ..interpretation.hydration import hydrate_router_decision
+from ..interpretation.outcome_consistency import (
+    complete_open_granularity_alternatives,
+)
 from ..interpretation.stated_field_restoration import restore_stated_fields
 from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
 from ..interpretation.provider_fallback import (
@@ -49,7 +52,12 @@ from .context import _GraphContext, preflight_budget, record_event
 from .continuation_invocation import continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
-from .semantic_review_validation import _as_semantic_patch, _validated_review
+from .semantic_review_validation import (
+    _as_semantic_patch,
+    _validated_review,
+    normalize_advice_operation_evidence,
+    normalize_role_entailed_artifact_evidence,
+)
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .discriminator import (
     discriminator_context as _discriminator_context,
@@ -252,6 +260,19 @@ def _invoke_semantic_interpreter(
             payload, raw = semantic_payload(structured)
             if attempt == 0:
                 proposal = payload
+            patch_evidence_normalizations = []
+            if patching:
+                payload, patch_evidence_normalizations = (
+                    normalize_role_entailed_artifact_evidence(payload, user_task)
+                )
+                payload, advice_evidence_normalizations = (
+                    normalize_advice_operation_evidence(
+                        payload,
+                        user_task,
+                        proposal_request_mode=proposal.request_mode,
+                    )
+                )
+                patch_evidence_normalizations.extend(advice_evidence_normalizations)
             # `patching` is only ever true on the second attempt, so this reads
             # the reply as a patch exactly when one was asked for.
             patch, ignored_instructions = (
@@ -286,11 +307,19 @@ def _invoke_semantic_interpreter(
                         "evidence_added": len(patch.evidence_additions),
                         # Entries the patch itself made stale by changing their
                         # dimension. Recorded, never silently dropped.
-                        "evidence_retired_as_stale": retired_evidence,
+                        "evidence_retired_as_stale": [
+                            item for item in retired_evidence
+                            if "reason" not in item
+                        ],
+                        "evidence_additions_dropped": [
+                            item for item in retired_evidence
+                            if "reason" in item
+                        ],
                         # What the rules that fired declared they examined.
                         # Overrides outside this set were not applied; an empty
                         # set is the citation-only case.
                         "permitted_fields": sorted(licensed),
+                        "evidence_normalizations": patch_evidence_normalizations,
                         # Instructions that could not be carried out, set aside
                         # rather than costing the repair. Never silent.
                         "ignored_instructions": ignored_instructions,
@@ -490,6 +519,39 @@ def _invoke_semantic_interpreter(
                 "classify",
                 {"attempt": attempt + 1, "restored": stated_restorations},
             )
+        before_alternatives = interpretation.outcome_hypotheses
+        completed_hypotheses = complete_open_granularity_alternatives(
+            user_task, before_alternatives
+        )
+        if completed_hypotheses != before_alternatives:
+            completion_validation = validate_outcome_hypotheses(
+                user_task, completed_hypotheses
+            )
+            if completion_validation.valid:
+                interpretation = interpretation.model_copy(
+                    update={"outcome_hypotheses": completed_hypotheses}
+                )
+                record_event(
+                    context,
+                    state,
+                    "routing.granularity_alternatives_completed",
+                    "classify",
+                    {
+                        "alternatives": [
+                            item.outcome.granularity
+                            for item in completed_hypotheses
+                        ],
+                        "source": "explicit_undecided_request_witnesses",
+                    },
+                )
+            else:
+                record_event(
+                    context,
+                    state,
+                    "routing.granularity_alternative_completion_rejected",
+                    "classify",
+                    {"issues": list(completion_validation.issues)},
+                )
         validation = validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,

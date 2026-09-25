@@ -32,7 +32,7 @@ def hydrate_router_decision(
         decision = raw_decision.model_copy(deep=True)
     else:
         route = RouterDecision.model_validate(raw_decision)
-        primary = select_primary_hypothesis(route.outcome_hypotheses)
+        primary = select_primary_hypothesis(route.outcome_hypotheses, user_task=task)
         selected_action = route.selected_action or route.action
         candidates = list(dict.fromkeys([*route.candidate_actions, selected_action]))
         decision = TaskDecision(

@@ -8,6 +8,7 @@ from .capability import (
     enforce_capability_gate,
     has_direct_execution_intent,
     has_explicit_execution_request as has_explicit_execution_request,
+    has_explicit_advice_intent as has_explicit_advice_intent,
     infer_advisory_capabilities,
     infer_goal_capabilities,
     inferred_execution_action,

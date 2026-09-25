@@ -15,6 +15,8 @@ is removed, and the merged outcome faces the identical strict validation.
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
@@ -224,17 +226,29 @@ def test_artifact_alignment_resolves_a_uniquely_entailed_unknown():
     ]
 
 
-def test_a_full_input_list_is_left_alone_rather_than_overflowed():
-    """The field is bounded at four; re-validation refuses, nothing raises."""
+def test_stale_inputs_are_removed_and_bounded_input_lists_cannot_overflow():
+    """Only current witnessed inputs survive, and a fifth value fails validation."""
+    from netzoo_agent_core.interpretation.stated_field_restoration import _with_value
+
     full = interpretation(input_artifacts=[
         "regulatory_network", "coexpression_network", "multi_omic_network",
         "community_assignment",
     ])
 
+    assert _with_value(
+        full.outcome_hypotheses[0].outcome,
+        "input_artifacts",
+        "mutation_matrix",
+    ) is None
+
     result, restored = restore_stated_fields(CURRENT, full)
 
-    assert len(result.outcome_hypotheses[0].outcome.input_artifacts) == 4
-    assert restored == []
+    assert result.outcome_hypotheses[0].outcome.input_artifacts == ["expression_matrix"]
+    assert len(result.outcome_hypotheses[0].outcome.input_artifacts) <= 4
+    assert {item["value"] for item in restored if item["source"] == "removed_without_current_input_witness"} == {
+        "regulatory_network", "coexpression_network", "multi_omic_network",
+        "community_assignment",
+    }
 
 
 def test_nothing_else_about_the_outcome_changes():
@@ -334,6 +348,111 @@ def test_an_explicit_tf_to_gene_role_witness_restores_the_bounded_roles():
     assert "run_lioness_puma" not in match.hypothesis_actions
 
 
+@pytest.mark.parametrize(("task", "granularity", "action"), [
+    (
+        "I want a single cohort-wide network of both miRNA and TF regulation of genes.",
+        "aggregate", "run_puma",
+    ),
+    (
+        "I want separate sample-specific networks of both miRNA and TF regulation of genes.",
+        "sample_specific", "run_lioness_puma",
+    ),
+    (
+        "I want a single cohort-wide network of both TF and miRNA regulation of genes.",
+        "aggregate", "run_puma",
+    ),
+    (
+        "I want separate sample-specific networks of both TF and miRNA regulation of genes.",
+        "sample_specific", "run_lioness_puma",
+    ),
+])
+def test_coordinated_role_witnesses_restore_every_explicit_regulator(task, granularity, action):
+    source = role_interpretation(
+        [], operation="unknown", input_artifacts=[], entity_types=[],
+        regulator_types=[], target_types=[], granularity=granularity,
+    )
+
+    result, restored = restore_stated_fields(
+        task, source, restore_explicit_scalar_evidence=True,
+    )
+    outcome = result.outcome_hypotheses[0].outcome
+
+    assert set(outcome.regulator_types) == {"mirna", "tf"}
+    assert outcome.target_types == ["gene"]
+    assert set(outcome.entity_types) == {"mirna", "tf", "gene"}
+    evidence = result.outcome_hypotheses[0].evidence
+    assert {
+        (item.dimension, item.value, item.source)
+        for item in evidence
+    } >= {
+        ("regulator_type", "mirna", "explicit"),
+        ("regulator_type", "tf", "explicit"),
+        ("target_type", "gene", "explicit"),
+    }
+    assert len([
+        item for item in restored
+        if item["source"] == "explicit_role_witness" and item["field"] == "roles"
+    ]) == 2
+
+    match = match_semantic_request(task, result.outcome_hypotheses, request_mode="guidance")
+    assert match.status == "exact"
+    assert match.matched_actions == [action]
+
+
+def test_role_witness_replaces_bad_role_quotes_and_supports_a_corrected_artifact():
+    task = "I want per-patient networks that capture both TF and miRNA regulation of genes."
+    source = role_interpretation(
+        [
+            ("operation", "infer"),
+            ("regulator_type", "tf"),
+            ("regulator_type", "mirna"),
+            ("target_type", "gene"),
+            ("entity_type", "sample"),
+        ],
+        operation="infer",
+        input_artifacts=[],
+        artifact_type="regulatory_network",
+        entity_types=["tf", "mirna", "gene", "sample"],
+        regulator_types=["tf", "mirna"],
+        target_types=["gene"],
+        granularity="sample_specific",
+    )
+    body = source.model_dump(mode="python")
+    evidence = body["outcome_hypotheses"][0]["evidence"]
+    for item in evidence:
+        if item["dimension"] == "regulator_type":
+            item.update(
+                source="explicit",
+                text_span="TF regulation" if item["value"] == "tf" else "miRNA regulation",
+            )
+    source = SemanticInterpretation.model_validate(body)
+
+    before = validate_outcome_hypotheses(task, source.outcome_hypotheses)
+    result, restored = restore_stated_fields(
+        task, source, restore_explicit_scalar_evidence=True,
+    )
+    after = validate_outcome_hypotheses(task, result.outcome_hypotheses)
+    role_evidence = [
+        item for item in result.outcome_hypotheses[0].evidence
+        if item.dimension == "regulator_type"
+    ]
+    artifact_evidence = [
+        item for item in result.outcome_hypotheses[0].evidence
+        if item.dimension == "artifact_type"
+    ]
+
+    assert any("missing_evidence:artifact_type=regulatory_network" in issue for issue in before.issues)
+    assert any("ungrounded_evidence:regulator_type=tf" in issue for issue in before.issues)
+    assert after.valid, after.issues
+    assert {(item.value, item.source, item.text_span) for item in role_evidence} == {
+        ("tf", "explicit", "both TF and miRNA regulation of genes"),
+        ("mirna", "explicit", "miRNA regulation"),
+    }
+    assert len(artifact_evidence) == 1
+    assert artifact_evidence[0].source == "inferred"
+    assert any(item["field"] == "artifact_type_evidence" for item in restored)
+
+
 def test_explicit_aggregate_witness_restores_only_missing_evidence():
     task = (
         "Previous NetZoo goal: Infer one aggregate TF-to-gene regulatory network.\n"
@@ -341,6 +460,7 @@ def test_explicit_aggregate_witness_restores_only_missing_evidence():
     )
     source = role_interpretation(
         [("artifact_type", "regulatory_network")],
+        input_artifacts=[],
         entity_types=["tf", "gene"],
         regulator_types=["tf"],
         target_types=["gene"],
@@ -527,7 +647,7 @@ def test_roles_made_illegal_by_the_artifact_are_cleared():
     source = role_interpretation(
         [], artifact_type="sample_cluster_assignment", granularity="aggregate",
         regulator_types=["tf"], target_types=["gene"], entity_types=["sample"],
-        input_artifacts=["mutation_matrix"], operation="analyze",
+        input_artifacts=[], operation="analyze",
     )
 
     result, restored = restore_stated_fields(CURRENT, source)

@@ -216,10 +216,15 @@ def _apply_public_progress_event(
             return True
         state.complete("understand", outcome)
         if workflow_path:
-            state.complete("match", " → ".join(workflow_path))
+            display_workflow = detail.get("display_workflow")
+            displayed_path = (
+                [str(display_workflow)] if display_workflow else workflow_path
+            )
+            display_label = " → ".join(displayed_path)
+            state.complete("match", display_label)
             _commit_public_activity(
                 f"workflow-path:{','.join(workflow_path)}",
-                f"✓ Workflow — {' → '.join(workflow_path)}",
+                f"✓ Workflow — {display_label}",
             )
         elif workflows:
             state.complete("match", ", ".join(workflows))

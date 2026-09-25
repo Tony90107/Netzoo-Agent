@@ -3,8 +3,13 @@ from collections.abc import Mapping
 import json
 import re
 
-from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS, artifact_field_constraints
+from ..contracts.artifact_semantics import (
+    ARTIFACT_SEMANTICS,
+    artifact_field_constraints,
+    artifacts_supporting_regulatory_roles,
+)
 from ..contracts.outcomes import SemanticInterpretation
+from .request_integrity import regulatory_role_mentions
 
 
 def proposal_data(proposal):
@@ -36,11 +41,31 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
     # Constraints must describe the outcome the review should return. Deriving
     # them from the artifact validation has just rejected pins that artifact with
     # a const, contradicting the correction requested in the same message.
+    role_mentions = regulatory_role_mentions(user_task)
+    role_facts = [
+        {"regulator_type": item.regulator_type, "target_type": item.target_type,
+         "text_span": item.text_span}
+        for item in role_mentions
+    ]
+    role_artifacts = artifacts_supporting_regulatory_roles(
+        (item.regulator_type, item.target_type) for item in role_mentions
+    )
+    role_artifact = next(iter(role_artifacts)) if len(role_artifacts) == 1 else None
+    corrections: dict[int, set[str]] = {}
+    for issue in issues:
+        if "terminal_goal_conflict:" in issue:
+            value = issue.rsplit(":", 1)[-1]
+        elif "stated_roles_conflict:" in issue:
+            value = role_artifact
+        else:
+            continue
+        match = re.search(r"(?:hypothesis\[|outcome_hypotheses\.)(\d+)", issue)
+        if value is not None and match:
+            corrections.setdefault(int(match[1]), set()).add(value)
     corrected = {
-        int(match[1]): issue.rsplit(":", 1)[-1]
-        for issue in issues
-        if "terminal_goal_conflict:" in issue
-        and (match := re.search(r"(?:hypothesis\[|outcome_hypotheses\.)(\d+)", issue))
+        index: next(iter(values))
+        for index, values in corrections.items()
+        if len(values) == 1
     }
     feedback = []
     for issue in issues[:12]:
@@ -49,8 +74,16 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
         index = int(match[1]) if match else 0
         item = hypotheses[index] if isinstance(hypotheses, list) and index < len(hypotheses) else {}
         outcome = item.get("outcome", {}) if isinstance(item, Mapping) else {}
+        repairable_fields = set(getattr(issue, "fields", ()))
+        if not repairable_fields and any(marker in issue for marker in (
+            "stated_roles_conflict:", "artifact_entity:",
+            "artifact_granularity:", "artifact_roles:",
+        )):
+            repairable_fields.add("artifact_type")
         artifact = corrected.get(index) or (
-            outcome.get("artifact_type") if isinstance(outcome, Mapping) else None
+            outcome.get("artifact_type")
+            if isinstance(outcome, Mapping) and "artifact_type" not in repairable_fields
+            else None
         )
         fields = (
             artifact_field_constraints(artifact)
@@ -67,6 +100,11 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
                 "into a list. input_artifacts holds plain artifact_type literals."
             ),
         } if fields else {}
+        if "stated_roles_conflict:" in issue and index in corrected:
+            expected.update(
+                required_value={"field": "artifact_type", "value": corrected[index]},
+                request_facts={"roles": role_facts[:4]},
+            )
         if "terminal_goal_conflict:" in issue:
             expected.update(
                 action="restore_terminal_goal",
@@ -187,7 +225,13 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
                 "Explicit evidence must quote the original request; inferred evidence needs a scientific rationale. "
                 "Remove evidence for removed fields. Do not invent quotes or relabel an invalid quote as inference."
             )
-        if "roles" in issue:
+        if "artifact_roles:" in issue and not (
+            isinstance(artifact, str) and artifact in {
+                "regulatory_network",
+                "regulatory_network_and_tf_activity",
+                "signed_regulatory_effect_network",
+            }
+        ):
             expected["roles"] = "Non-regulatory outputs have empty role lists and no unresolved regulator/target fields."
         feedback.append({"issue": issue, "location": location, "actual": outcome, "expected": expected})
     return feedback

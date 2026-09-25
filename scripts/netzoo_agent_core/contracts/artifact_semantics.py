@@ -7,6 +7,7 @@ Unknown fields remain unresolved rather than being silently filled in.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 from .repair_scope import Issue
@@ -163,6 +164,27 @@ def artifact_field_constraints(artifact: str) -> dict:
     if artifact not in _REGULATORY_ARTIFACTS:
         fields.update(regulator_types={"maxItems": 0}, target_types={"maxItems": 0})
     return fields
+
+
+def artifacts_supporting_regulatory_roles(
+    roles: Iterable[tuple[str, str]],
+) -> frozenset[str]:
+    """Return ontology artifacts that can carry every witnessed regulator/target role."""
+    role_entities = {
+        entity
+        for regulator, target in roles
+        for entity in (regulator, target)
+        if entity != "unknown"
+    }
+    if not role_entities:
+        return frozenset()
+    return frozenset(
+        artifact
+        for artifact, rule in ARTIFACT_SEMANTICS.items()
+        if artifact != "unknown"
+        and artifact in _REGULATORY_ARTIFACTS
+        and (rule.entities is None or role_entities.issubset(rule.entities))
+    )
 
 
 def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:

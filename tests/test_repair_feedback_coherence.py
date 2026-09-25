@@ -200,8 +200,8 @@ ARTIFACT_CONSISTENCY = {
 
 
 @pytest.mark.parametrize("issue_code", sorted(ARTIFACT_CONSISTENCY), ids=sorted(ARTIFACT_CONSISTENCY))
-def test_an_artifact_consistency_issue_states_its_action_and_allowed_values(issue_code):
-    field, allowed = ARTIFACT_CONSISTENCY[issue_code]
+def test_an_artifact_consistency_issue_does_not_pin_the_artifact_under_review(issue_code):
+    field, _allowed = ARTIFACT_CONSISTENCY[issue_code]
     proposal = {"outcome_hypotheses": [{
         "outcome": {"operation": "analyze", "artifact_type": "sample_cluster_assignment",
                     "granularity": "sample_specific"},
@@ -214,7 +214,8 @@ def test_an_artifact_consistency_issue_states_its_action_and_allowed_values(issu
 
     assert expected["action"] == "align_with_artifact_ontology"
     assert expected["review_path"] == f"outcome_hypothesis.outcome.{field}"
-    assert expected["allowed_values"] == allowed
+    assert "allowed_values" not in expected
+    assert "field_constraints" not in expected
     instruction = expected["instruction"].casefold()
     assert "artifact_type" in instruction
     assert "evidence" in instruction
@@ -251,3 +252,42 @@ def test_an_artifact_without_a_declared_restriction_states_no_allowed_values():
 
     assert "allowed_values" not in expected
     assert expected["action"] == "align_with_artifact_ontology"
+
+
+def test_stated_multi_regulator_roles_point_review_to_a_supporting_artifact():
+    from netzoo_agent_core.contracts.outcomes import RequestedOutcome
+    from netzoo_agent_core.interpretation.request_integrity import request_integrity_issues
+
+    task = (
+        "I want a single cohort-wide network of both miRNA and TF regulation "
+        "of genes. Which workflow? Advice only."
+    )
+    outcome = RequestedOutcome(
+        operation="infer", artifact_type="multi_omic_network",
+        granularity="aggregate",
+    )
+    issues = request_integrity_issues(task, outcome)
+    assert any("stated_roles_conflict:multi_omic_network" in item for item in issues)
+
+    proposal = hedged_proposal()
+    proposal["outcome_hypotheses"][0]["outcome"].update(
+        operation="infer", artifact_type="multi_omic_network", granularity="aggregate",
+    )
+    prefixed_issues = tuple(
+        issue.prefixed("hypothesis[0].") for issue in issues
+    )
+    expected = next(
+        entry["expected"]
+        for entry in repair_feedback(proposal, prefixed_issues, task)
+        if "stated_roles_conflict" in entry["issue"]
+    )
+
+    assert expected["required_value"] == {
+        "field": "artifact_type", "value": "regulatory_network",
+    }
+    assert expected["field_constraints"]["artifact_type"] == {
+        "const": "regulatory_network",
+    }
+    assert {item["regulator_type"] for item in expected["request_facts"]["roles"]} == {
+        "mirna", "tf",
+    }

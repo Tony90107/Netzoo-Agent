@@ -33,6 +33,7 @@ from netzoo_agent_core.graph.router_invocation import invoke_router
 from netzoo_agent_core.graph.response import respond
 from netzoo_agent_core.evaluation.guidance_surface import capture_progress, score_surface
 from netzoo_agent_core.interpretation.semantic_goal import publish_routing_progress
+from netzoo_agent_core.interpretation.request_integrity import granularity_left_open
 from netzoo_agent_core.presentation import _trace
 from netzoo_agent_core.llm import build_llm, build_semantic_reviewer_messages, validate_router_model
 from netzoo_agent_core.policy import ProjectPolicyLoader
@@ -122,11 +123,180 @@ def load_scenarios(path: Path) -> list[RoutingScenario]:
 class _EventRecorder:
     """Capture only in-memory route diagnostics, without persistent user state."""
 
-    def __init__(self):
+    def __init__(self, trace_capture=None):
         self.events: list[dict] = []
+        self.trace_capture = trace_capture
 
     def append(self, _run_id, event_type, _node, payload):
-        self.events.append({"type": event_type, "payload": payload})
+        event = {
+            "type": event_type,
+            "payload": _json_snapshot(payload),
+        }
+        self.events.append(event)
+        if self.trace_capture is not None:
+            self.trace_capture.record_event(event)
+
+
+def _json_snapshot(value):
+    """Copy provider/event data into JSON-safe values without retaining objects."""
+    return json.loads(json.dumps(value, ensure_ascii=False, default=str))
+
+
+def _message_record(message) -> dict:
+    content = str(getattr(message, "content", ""))
+    result = {"type": type(message).__name__}
+    if type(message).__name__ == "SystemMessage":
+        result["content_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    else:
+        result["content"] = content
+    return result
+
+
+def _validation_error_record(error) -> dict:
+    record = {"type": type(error).__name__}
+    errors = getattr(error, "errors", None)
+    if callable(errors):
+        record["issues"] = [
+            {
+                "location": [str(part) for part in item.get("loc", ())],
+                "type": str(item.get("type", "unknown")),
+            }
+            for item in errors()[:20]
+        ]
+    return record
+
+
+class _TraceCapture:
+    """Opt-in raw structured-call and routing-event capture for one evaluation."""
+
+    def __init__(self):
+        self.trials: list[dict] = []
+        self.current: dict | None = None
+
+    def begin_trial(self, case_id: str, trial: int, prompt: str) -> None:
+        self.current = {
+            "id": case_id,
+            "trial": trial,
+            "prompt": prompt,
+            "calls": [],
+            "events": [],
+        }
+        self.trials.append(self.current)
+
+    def record_call(self, call: dict) -> None:
+        if self.current is not None:
+            self.current["calls"].append(call)
+
+    def record_event(self, event: dict) -> None:
+        if self.current is not None:
+            self.current["events"].append(event)
+
+    def finish_trial(self, decision, reason_code: str | None) -> None:
+        if self.current is not None:
+            self.current["decision"] = _json_snapshot(decision.model_dump(mode="json"))
+            self.current["reason_code"] = reason_code
+            self.current = None
+
+    def document(self, metadata: dict) -> dict:
+        return {
+            "metadata": {
+                **metadata,
+                "capture": "raw_structured_provider_io_and_routing_events_v1",
+                "credentials_recorded": False,
+            },
+            "results": self.trials,
+        }
+
+
+class _RecordingAdapter:
+    """Capture a structured provider call while preserving its return value."""
+
+    def __init__(self, inner, schema, trace_capture: _TraceCapture):
+        self.inner = inner
+        self.schema = schema
+        self.trace_capture = trace_capture
+
+    def invoke(self, messages, *args, **kwargs):
+        entry = {
+            "schema": self.schema.__name__,
+            "schema_sha256": _fingerprint(self.schema.model_json_schema()),
+            "messages": [_message_record(message) for message in messages],
+        }
+        try:
+            output = self.inner.invoke(messages, *args, **kwargs)
+        except Exception as error:
+            # Provider exception text may contain request data; the type is enough
+            # to locate this call without copying headers, credentials, or bodies.
+            entry["exception"] = {"type": type(error).__name__}
+            self.trace_capture.record_call(entry)
+            raise
+
+        if isinstance(output, dict):
+            raw = output.get("raw")
+            raw_calls = getattr(raw, "tool_calls", None) or []
+            entry["raw_tool_calls"] = [
+                {"name": item.get("name"), "args": _json_snapshot(item.get("args"))}
+                for item in raw_calls
+            ]
+            entry["raw_content"] = str(getattr(raw, "content", ""))[:2000]
+            entry["finish_reason"] = (
+                (getattr(raw, "response_metadata", {}) or {}).get("finish_reason")
+            )
+            entry["usage"] = _json_snapshot(getattr(raw, "usage_metadata", None))
+            entry["invalid_tool_calls"] = [
+                {
+                    "name": item.get("name"),
+                    "error_type": type(item.get("error")).__name__,
+                    "args_length": len(str(item.get("args") or "")),
+                }
+                for item in (getattr(raw, "invalid_tool_calls", None) or [])
+            ]
+            parsed = output.get("parsed")
+            entry["parsed"] = _json_snapshot(
+                parsed.model_dump(mode="json") if hasattr(parsed, "model_dump") else parsed
+            )
+            parse_error = output.get("parsing_error")
+            entry["parsing_error"] = (
+                _validation_error_record(parse_error) if parse_error else None
+            )
+        else:
+            entry["result"] = _json_snapshot(
+                output.model_dump(mode="json") if hasattr(output, "model_dump") else output
+            )
+        self.trace_capture.record_call(entry)
+        return output
+
+
+class _RecordingProvider:
+    """Proxy structured-output adapters only when the user requests a trace."""
+
+    def __init__(self, inner, trace_capture: _TraceCapture):
+        self.inner = inner
+        self.trace_capture = trace_capture
+
+    def with_structured_output(self, schema, **kwargs):
+        return _RecordingAdapter(
+            self.inner.with_structured_output(schema, **kwargs),
+            schema,
+            self.trace_capture,
+        )
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+    def __setattr__(self, name, value):
+        if name in {"inner", "trace_capture"}:
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self.inner, name, value)
+
+
+def _write_trace(path: Path, capture: _TraceCapture, metadata: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(capture.document(metadata), ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
 
 
 def _fingerprint(value) -> str:
@@ -323,7 +493,8 @@ def _review_patch_payload(event):
     payload = event["payload"]
     keys = (
         "changed_fields", "evidence_removed", "evidence_added",
-        "evidence_retired_as_stale", "permitted_fields",
+        "evidence_retired_as_stale", "evidence_additions_dropped",
+        "permitted_fields",
         "ignored_instructions", "repairs",
     )
     return {key: payload[key] for key in keys if key in payload}
@@ -356,6 +527,27 @@ def _score(case, result, events):
         actual = actual_outcome.get(dimension)
         if wanted is not None and (set(actual or []) != set(wanted) if isinstance(wanted, list) else actual != wanted):
             semantic_errors.append(f"{dimension}: expected {wanted}, got {actual}")
+    if (
+        expected.require_clarification
+        and granularity_left_open(case.prompt)
+        and actual_outcome.get("granularity") != "unknown"
+    ):
+        semantic_errors.append(
+            "clarification_consistency: requested_outcome.granularity must remain "
+            f"unknown until the user answers, got {actual_outcome.get('granularity')}"
+        )
+    if expected.require_clarification and granularity_left_open(case.prompt):
+        represented = {
+            item.outcome.granularity for item in decision.outcome_hypotheses
+        }
+        missing = sorted(
+            {"aggregate", "sample_specific"} - represented
+        )
+        if missing:
+            semantic_errors.append(
+                "clarification_consistency: outcome_hypotheses must represent "
+                f"both undecided granularity alternatives; missing {missing}"
+            )
     # The dimension that actually distinguishes the expected capability. Naming
     # the right tool while omitting it means the harness resolved the tie, not
     # the model: one prompt scored 3/3 with two trials naming no distinguishing
@@ -556,6 +748,7 @@ def evaluate(
     task_token_budget: int = DEFAULT_TASK_TOKEN_BUDGET,
     semantic_contract: Literal["claims", "legacy"] = "legacy",
     review_policy: Literal["when_needed", "always"] | None = None,
+    trace_capture: _TraceCapture | None = None,
 ) -> dict:
     if not cases or not 1 <= repeat <= 5:
         raise ValueError("Evaluation requires cases and 1-5 repetitions.")
@@ -567,7 +760,9 @@ def evaluate(
         raise ValueError("Repair replay supports only the prompts its suite reconstructs.")
     policy = ProjectPolicyLoader(PROJECT_ROOT).load()
     prompts = build_graph_prompts(policy)
-    recorder = _EventRecorder()
+    recorder = _EventRecorder(trace_capture)
+    if trace_capture is not None:
+        provider = _RecordingProvider(provider, trace_capture)
     # Historical fixtures/replay keep their recorded wire format. Live acceptance
     # always exercises the current production contract, unless explicitly replaying.
     review_policy = review_policy or ("when_needed" if source == "live" and not replay else "always")
@@ -615,6 +810,8 @@ def evaluate(
             recorder.events.clear()
             if replay:
                 provider.case_id = case.id
+            if trace_capture is not None:
+                trace_capture.begin_trial(case.id, trial, case.prompt)
             # The answer key is deliberately never sent to the runtime or provider.
             with capture_progress() as progress:
                 _trace("intent", "Interpreting the request and capability boundaries")
@@ -622,6 +819,8 @@ def evaluate(
                 publish_routing_progress(result.decision, result.routing_state["semantic_goal"], policy, case.prompt)
                 row = {**_score(case, result, recorder.events),
                        **_score_answer(case, result, context, progress), "trial": trial}
+            if trace_capture is not None:
+                trace_capture.finish_trial(result.decision, result.reason_code)
             row["unknown_core"] = _unknown_core(row)
             row["errors"].extend(row["answer_errors"])
             row["errors"].extend(row.get("interaction_errors", []))
@@ -832,8 +1031,25 @@ def main(argv=None) -> int:
     parser.add_argument("--max-calls", type=int, default=12, help="Reject runs whose worst-case call count exceeds this cap.")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--trace-out",
+        type=Path,
+        help=(
+            "Save structured provider calls and routing events to this JSON path. "
+            "Requires --live; credentials and system prompt text are not recorded."
+        ),
+    )
     args = parser.parse_args(argv)
+    trace_capture = _TraceCapture() if args.trace_out is not None else None
+    trace_metadata = {
+        "source": "live",
+        "model": args.model,
+        "semantic_contract": args.semantic_contract,
+        "review_policy": args.review_policy,
+    }
     try:
+        if args.trace_out is not None and not args.live:
+            raise _ConfigurationError("--trace-out requires --live.")
         if args.repair_replay_suite and not args.repair_replay:
             raise _ConfigurationError("--repair-replay-suite requires --repair-replay.")
         cases = load_scenarios(args.scenarios)
@@ -864,8 +1080,17 @@ def main(argv=None) -> int:
             if args.repair_replay:
                 provider = RepairReplayProvider(provider, suite=args.repair_replay_suite or "cross-field")
             report = evaluate(cases, provider=provider, model_name=model, source="live", repeat=args.repeat,
-                              semantic_contract=args.semantic_contract, review_policy=args.review_policy)
+                              semantic_contract=args.semantic_contract, review_policy=args.review_policy,
+                              trace_capture=trace_capture)
+            if args.trace_out is not None:
+                report["metadata"]["trace_out"] = str(args.trace_out)
+                _write_trace(args.trace_out, trace_capture, report["metadata"])
     except (ValueError, OSError, ImportError) as error:
+        if args.trace_out is not None and trace_capture is not None and trace_capture.trials:
+            try:
+                _write_trace(args.trace_out, trace_capture, trace_metadata)
+            except OSError:
+                pass
         # Do not echo provider payloads, credentials, or Pydantic input values.
         # A missing dependency is a setup mistake, usually the wrong interpreter,
         # and its module name is neither a payload nor a secret; withholding it
@@ -894,6 +1119,8 @@ def main(argv=None) -> int:
             for error in item["errors"]:
                 print(f"  - {error}")
         print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+        if args.trace_out is not None:
+            print(f"Trace saved: {args.trace_out}")
     return 0 if not args.live or report["summary"]["passed"] == report["summary"]["trials"] else 1
 
 
