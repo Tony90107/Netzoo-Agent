@@ -109,8 +109,8 @@ def context(first, second):
     )
 
 
-def run(ctx):
-    return _invoke_semantic_interpreter(ctx, {}, TASK, LLMUsage(budget_tokens=100000))
+def run(ctx, task=TASK):
+    return _invoke_semantic_interpreter(ctx, {}, task, LLMUsage(budget_tokens=100000))
 
 
 @pytest.mark.parametrize(
@@ -322,6 +322,50 @@ def test_bad_quote_is_repaired_without_retyping_outcome():
     assert len(ctx.semantic_patcher.calls) == 1
     assert validate_outcome_hypotheses(TASK, result.outcome_hypotheses).valid
     assert result.outcome_hypotheses[0].outcome.regulator_types == ["mirna"]
+
+
+def test_claim_repair_cannot_rewrite_fields_outside_rejected_scope():
+    task = (
+        "I have an expression matrix and want a sample specific mi-RNA "
+        "regulator network, what tools do I need?"
+    )
+    patch = {
+        "hypothesis_index": 0,
+        "request_mode": "unknown",
+        "semantic_goal": "Only explain how to begin.",
+        "outcome": {
+            "input_artifacts": [claim("expression_matrix", "expression matrix")],
+            "operation": claim("explain", "what tools do I need?"),
+            "artifact_type": claim("unknown"),
+            "granularity": claim("not_applicable"),
+        },
+    }
+    ctx = context(payload(), patch)
+
+    result, _, _, error, _ = run(ctx, task)
+
+    assert result is not None and error is None
+    hypothesis = result.outcome_hypotheses[0]
+    assert hypothesis.outcome.input_artifacts == ["expression_matrix"]
+    assert hypothesis.outcome.operation == "infer"
+    assert hypothesis.outcome.artifact_type == "regulatory_network"
+    assert hypothesis.outcome.granularity == "sample_specific"
+    assert result.request_mode == "guidance"
+    assert result.semantic_goal == "Individual miRNA regulatory networks"
+
+    rejected = next(data for event, data in ctx.recorder.events
+                    if event == "routing.semantic_interpretation_rejected")
+    assert rejected["issues"] == [
+        "hypothesis[0].missing_current_input:expression_matrix"
+    ]
+    applied = next(data for event, data in ctx.recorder.events
+                   if event == "routing.semantic_patch_applied")
+    repair = applied["repairs"][0]
+    assert repair["permitted_fields"] == ["input_artifacts"]
+    assert repair["changed_fields"] == ["input_artifacts"]
+    assert {
+        "operation", "artifact_type", "granularity", "request_mode", "semantic_goal"
+    }.issubset(repair["ignored_fields"])
 
 
 def test_translated_chinese_quote_is_repaired_as_inferred_support():
