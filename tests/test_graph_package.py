@@ -929,6 +929,69 @@ def test_ambiguous_guidance_uses_deterministic_clarification():
     )
 
 
+@pytest.mark.parametrize(
+    "task",
+    [
+        "我有兩組病人（癌症 vs. 正常）的 RNA-seq count 資料，想知道這兩組之間有沒有什麼"
+        "關鍵的轉錄因子調控差異，但我以前沒用過網路分析，我該怎麼開始？",
+        "I have RNA-seq count data from two patient groups (cancer vs. normal) and want "
+        "to find differences in key transcription-factor regulation. I am new to network "
+        "analysis. How should I get started?",
+    ],
+)
+def test_beginner_group_network_guidance_does_not_ask_for_algorithm_assumptions(task):
+    response_module = importlib.import_module("netzoo_agent_core.graph.response")
+    policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
+    requested = legacy_agent.RequestedOutcome(
+        operation="infer",
+        input_artifacts=["expression_matrix"],
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="aggregate",
+    )
+    decision = legacy_agent.TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The user asks how to begin comparing two groups.",
+        requested_outcome=requested,
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_panda", "run_otter", "run_giraffe"],
+        clarification_question=(
+            "Which modeling assumption best matches your experiment: "
+            "biologically informed matrix factorization; iterative message passing; "
+            "continuous relaxed graph matching?"
+        ),
+    )
+    plan = legacy_agent.WorkflowPlan(
+        workflow="NO-TOOL",
+        objective="Give beginner guidance for a two-group regulatory comparison.",
+        decision=decision.model_dump(),
+        status="respond_only",
+    )
+    result = response_module.respond(
+        SimpleNamespace(project_policy=policy),
+        {
+            "messages": [legacy_agent.HumanMessage(content=task)],
+            "decision": decision.model_dump(),
+            "plan": plan.model_dump(),
+            "semantic_goal": {"request_mode": "guidance"},
+            "tool_results": [],
+        },
+    )
+
+    answer = result["messages"][0].content
+    assert "cancer" in answer.casefold() and "normal" in answer.casefold()
+    assert "PANDA" in answer and "LIONESS-PANDA" in answer
+    assert "each group" in answer.casefold() and "paired" in answer.casefold()
+    assert "Which modeling assumption" not in answer
+    assert "No files were inspected and no analysis ran." in answer
+
+
 def test_guidance_ambiguity_preserves_the_cli_clarification_follow_up():
     decision = legacy_agent.TaskDecision(
         action="no_tool",
