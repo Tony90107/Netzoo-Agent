@@ -206,6 +206,8 @@ workflow choice/execution authority. Use English except exact text_span quotes.
             "including their attached support atomically. Omitted/null fields are unchanged; "
             "an empty list explicitly clears a list. Preserve other hypotheses. Repair every "
             "reported issue; related fields may change when required for consistency. "
+            "For evidence-only issues, keep each named claim value unchanged and repair only "
+            "its support; do not change values outside the reported repairable fields. "
             "Do not return an empty patch or repeat a field without changing it. For "
             "ungrounded_evidence, use an exact contiguous substring from the original "
             "request, in its original language. If the value is an inference rather than "

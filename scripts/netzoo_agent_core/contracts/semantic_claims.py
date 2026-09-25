@@ -198,14 +198,61 @@ class SemanticClaimRepair(BaseModel):
     request_mode: Literal["guidance", "execute", "unknown"] | None = None
     semantic_goal: str | None = Field(default=None, min_length=1, max_length=240)
 
-    def apply(self, proposal: SemanticClaims) -> SemanticClaims:
+    def apply(
+        self,
+        proposal: SemanticClaims,
+        *,
+        permitted_fields: frozenset[str] | None = None,
+        support_repair_values: dict[str, frozenset[str]] | None = None,
+    ) -> SemanticClaims:
+        """Merge this patch, optionally limited to fields the rejection licensed.
+
+        `None` preserves the standalone contract's historical merge behavior.
+        Production routing supplies the validator's field scope, so a repair
+        for one outcome field cannot rewrite the rest of the scientific claim.
+        Top-level interpretation fields have no outcome-validator scope and are
+        therefore preserved whenever a scope is supplied.
+        """
         data = proposal.model_dump()
         if self.hypothesis_index >= len(data["outcome_hypotheses"]):
             raise ValueError("Repair requires an existing hypothesis index")
-        data["outcome_hypotheses"][self.hypothesis_index]["outcome"].update(
-            self.outcome.model_dump(exclude_none=True)
-        )
-        for field in ("request_mode", "semantic_goal"):
-            if getattr(self, field) is not None:
-                data[field] = getattr(self, field)
+        requested = self.outcome.model_dump(exclude_none=True)
+        if permitted_fields is not None:
+            allowed = frozenset(permitted_fields)
+            outcome = data["outcome_hypotheses"][self.hypothesis_index]["outcome"]
+            updates = {field: value for field, value in requested.items() if field in allowed}
+            for field, values in (support_repair_values or {}).items():
+                if field in allowed or field not in requested:
+                    continue
+                current = outcome[field]
+                replacement = requested[field]
+                allowed_values = frozenset(values)
+                if isinstance(current, list) and isinstance(replacement, list):
+                    replacement_by_value = {
+                        item["value"]: item
+                        for item in replacement
+                        if item["value"] in allowed_values
+                    }
+                    outcome[field] = [
+                        ({**item, "support": replacement_by_value[item["value"]]["support"]}
+                         if item["value"] in replacement_by_value else item)
+                        for item in current
+                    ]
+                elif (
+                    isinstance(current, dict)
+                    and isinstance(replacement, dict)
+                    and current["value"] == replacement["value"]
+                    and current["value"] in allowed_values
+                ):
+                    outcome[field] = {
+                        **current,
+                        "support": replacement["support"],
+                    }
+            outcome.update(updates)
+        else:
+            data["outcome_hypotheses"][self.hypothesis_index]["outcome"].update(requested)
+        if permitted_fields is None:
+            for field in ("request_mode", "semantic_goal"):
+                if getattr(self, field) is not None:
+                    data[field] = getattr(self, field)
         return SemanticClaims.model_validate(data)

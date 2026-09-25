@@ -1,9 +1,11 @@
 """Bounded semantic inference with atomic claims and conditional repair."""
 
+import re
 import time
 from workflow_registry import OUTPUT_CAPABILITIES
 from ..contracts import _trace
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
+from ..contracts.repair_scope import FIELD_BY_DIMENSION, permitted_fields
 from ..interpretation.claim_prompt import claim_messages
 from ..interpretation.outcome_consistency import (
     complete_open_granularity_alternatives,
@@ -28,6 +30,37 @@ from .semantic_review_validation import normalize_advice_operation_evidence
 
 class _NoOpClaimRepair(ValueError):
     """A reviewer returned a valid patch that changed none of the proposal."""
+
+
+def _claim_repair_issues(issues, hypothesis_index: int):
+    """Return only the validation issues relevant to one hypothesis.
+
+    Validation issues retain their field declarations as well as their string
+    codes. Keep indexed issues for other hypotheses out of this patch's scope;
+    unindexed issues describe interpretation-wide constraints and still apply.
+    """
+    relevant = []
+    for issue in issues:
+        match = re.match(r"hypothesis\[(\d+)\]\.", str(issue))
+        if match and int(match.group(1)) != hypothesis_index:
+            continue
+        relevant.append(issue)
+    return relevant
+
+
+def _support_repair_values(issues) -> dict[str, frozenset[str]]:
+    """Map evidence-only issues to claim values whose support may be repaired."""
+    values: dict[str, set[str]] = {}
+    for issue in issues:
+        code = re.sub(r"^hypothesis\[\d+\]\.", "", str(issue))
+        kind, separator, evidence = code.partition(":")
+        if not separator or kind not in {"ungrounded_evidence", "missing_evidence"}:
+            continue
+        dimension, separator, value = evidence.partition("=")
+        field = FIELD_BY_DIMENSION.get(dimension)
+        if separator and value and field:
+            values.setdefault(field, set()).add(value)
+    return {field: frozenset(items) for field, items in values.items()}
 
 
 def invoke_claim_interpreter(
@@ -122,11 +155,38 @@ def invoke_claim_interpreter(
             decoded = schema.model_validate(payload)
             output = decoded.model_dump_json()
             if patching:
-                claims = decoded.apply(proposal)
+                repair_issues = _claim_repair_issues(
+                    issues, decoded.hypothesis_index
+                )
+                licensed = permitted_fields(repair_issues)
+                support_targets = _support_repair_values(repair_issues)
+                claims = decoded.apply(
+                    proposal,
+                    permitted_fields=licensed,
+                    support_repair_values=support_targets,
+                )
                 if claims == proposal:
                     raise _NoOpClaimRepair(
                         "semantic_repair:no_changes"
                     )
+                requested_fields = set(
+                    decoded.outcome.model_dump(exclude_none=True)
+                )
+                updated_outcome = claims.outcome_hypotheses[
+                    decoded.hypothesis_index
+                ].outcome
+                original_outcome = proposal.outcome_hypotheses[
+                    decoded.hypothesis_index
+                ].outcome
+                updated_support_fields = {
+                    field for field in support_targets
+                    if getattr(updated_outcome, field) != getattr(original_outcome, field)
+                }
+                ignored_fields = requested_fields - licensed - updated_support_fields
+                ignored_fields.update(
+                    field for field in ("request_mode", "semantic_goal")
+                    if getattr(decoded, field) is not None
+                )
                 record_event(
                     context,
                     state,
@@ -140,8 +200,11 @@ def invoke_claim_interpreter(
                             {
                                 "hypothesis_index": decoded.hypothesis_index,
                                 "changed_fields": sorted(
-                                    decoded.outcome.model_dump(exclude_none=True)
+                                    (requested_fields & licensed) | updated_support_fields
                                 ),
+                                "permitted_fields": sorted(licensed),
+                                "support_fields": sorted(updated_support_fields),
+                                "ignored_fields": sorted(ignored_fields),
                             }
                         ],
                     },
