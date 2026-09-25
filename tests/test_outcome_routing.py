@@ -1040,6 +1040,31 @@ def test_open_granularity_candidates_are_completed_from_both_literal_alternative
     assert decision.requested_outcome.granularity == "unknown"
 
 
+def test_open_granularity_completion_keeps_distinct_scientific_assumptions():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate "
+        "per-patient networks, so please ask me."
+    )
+    unresolved = mirna_network_outcome().model_copy(update={
+        "granularity": "unknown",
+    })
+    hypotheses = [
+        OutcomeHypothesis(
+            outcome=unresolved,
+            confidence=0.9,
+            assumptions=["The expression matrix has already been normalized."],
+        ),
+        OutcomeHypothesis(
+            outcome=mirna_network_outcome(),
+            confidence=0.8,
+            assumptions=["The request also needs patient cluster labels."],
+        ),
+    ]
+
+    assert complete_open_granularity_alternatives(task, hypotheses) == hypotheses
+
+
 def test_tied_granularity_alternatives_project_unknown_without_picking_one():
     task = (
         "Which workflow infers a miRNA-to-gene regulatory network? "
