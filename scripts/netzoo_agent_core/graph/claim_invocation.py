@@ -7,6 +7,7 @@ from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 from ..interpretation.claim_prompt import claim_messages
 from ..interpretation.outcome_consistency import (
     complete_open_granularity_alternatives,
+    has_complete_open_granularity_alternatives,
 )
 from ..interpretation.outcome_validation import (
     validate_outcome_hypotheses,
@@ -374,6 +375,15 @@ def invoke_claim_interpreter(
                 _complete_guidance_match(hypothesis.outcome, capability)
                 for hypothesis in hypotheses
             )
+        granularity_clarification_complete = (
+            interpretation.request_mode == "guidance"
+            and match.status == "ambiguous"
+            and bool(match.clarification_question)
+            and len(match.hypothesis_actions) > 1
+            and has_complete_open_granularity_alternatives(
+                user_task, hypotheses
+            )
+        )
         semantic_complete = (
             match.status == "not_applicable"
             and len(hypotheses) == 1
@@ -386,9 +396,12 @@ def invoke_claim_interpreter(
                 else len(hypotheses) == 1
                 and hypotheses[0].outcome.operation != "unknown"
             )
-        )
+        ) or granularity_clarification_complete
         complete = (
-            match.status in {"exact", "not_applicable"}
+            (
+                match.status in {"exact", "not_applicable"}
+                or granularity_clarification_complete
+            )
             and interpretation.request_mode != "unknown"
             and bool(hypotheses)
             and all(not item.outcome.unresolved_dimensions for item in hypotheses)

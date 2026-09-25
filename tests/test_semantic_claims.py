@@ -20,6 +20,9 @@ from netzoo_agent_core.contracts.semantic_claims import (
 )
 from netzoo_agent_core.contracts.outcomes import SemanticInterpretation
 from netzoo_agent_core.graph.router_invocation import _invoke_semantic_interpreter
+from netzoo_agent_core.interpretation.outcome_consistency import (
+    select_primary_hypothesis,
+)
 from netzoo_agent_core.interpretation.outcome_validation import (
     validate_outcome_hypotheses,
 )
@@ -388,16 +391,32 @@ def test_undecided_granularity_claims_gain_both_grounded_candidate_hypotheses():
     ]
     outcome["regulator_types"] = [claim("mirna", quote)]
     outcome["target_types"] = [claim("gene", quote)]
+    first_hypothesis = first["outcome_hypotheses"][0]
+    first_hypothesis["assumptions"] = [
+        "The workflow is capable of inferring regulatory relationships "
+        "between miRNAs and genes."
+    ]
+    sample_hypothesis = deepcopy(first_hypothesis)
+    sample_hypothesis["outcome"]["granularity"] = claim("sample_specific")
+    sample_hypothesis["assumptions"] = [
+        "The workflow can infer separate regulatory networks for each patient."
+    ]
+    first["outcome_hypotheses"].append(sample_hypothesis)
     ctx = context(
         first,
-        {"hypothesis_index": 0, "outcome": {}},
+        AssertionError("A complete granularity clarification needs no review."),
     )
 
-    result, _, _, error, _ = _invoke_semantic_interpreter(
+    result, usage, _, error, _ = _invoke_semantic_interpreter(
         ctx, {}, task, LLMUsage(budget_tokens=100000)
     )
 
     assert result is not None and error is None
+    assert [call.role for call in usage.calls] == ["semantic_interpreter"]
+    assert ctx.semantic_reviewer.calls == []
+    assert "routing.semantic_interpretation_accepted" in {
+        event for event, _ in ctx.recorder.events
+    }
     hypotheses = result.outcome_hypotheses
     assert [item.outcome.granularity for item in hypotheses] == [
         "aggregate",
@@ -417,6 +436,9 @@ def test_undecided_granularity_claims_gain_both_grounded_candidate_hypotheses():
     assert match.clarification_question == (
         "Should the result be aggregate or sample-specific?"
     )
+    primary = select_primary_hypothesis(hypotheses, user_task=task)
+    assert primary is not None
+    assert primary.outcome.granularity == "unknown"
 
 
 def test_schema_failure_uses_full_claim_repair_not_legacy_contract():
