@@ -975,7 +975,10 @@ def test_open_granularity_candidates_are_completed_from_both_literal_alternative
             outcome=unresolved,
             confidence=0.9,
             evidence=common_evidence,
-            assumptions=["The network granularity is undecided."],
+            assumptions=[
+                "The workflow is capable of inferring regulatory relationships "
+                "between miRNAs and genes."
+            ],
         ),
         OutcomeHypothesis(
             outcome=mirna_network_outcome(),
@@ -989,7 +992,9 @@ def test_open_granularity_candidates_are_completed_from_both_literal_alternative
                     rationale="Separate networks per patient are plausible.",
                 ),
             ],
-            assumptions=["The network granularity is undecided."],
+            assumptions=[
+                "The workflow can infer separate regulatory networks for each patient."
+            ],
         ),
     ]
 
@@ -1001,6 +1006,10 @@ def test_open_granularity_candidates_are_completed_from_both_literal_alternative
     ]
     assert all(
         item.outcome.unresolved_dimensions == []
+        and item.assumptions == [
+            "The workflow is capable of inferring regulatory relationships "
+            "between miRNAs and genes."
+        ]
         and any(
             evidence.dimension == "granularity"
             and evidence.source == "explicit"
