@@ -66,10 +66,19 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
                                for control in get_controls(action, registry=policy.workflows)
                            ],
                            role_labels={
-                               field: INPUT_LABELS.get(field, field.replace("_", " "))
-                               for field in policy.workflows[action].required_inputs
-                               if field in INPUT_ROLE_FIELDS
-                           },
+                                field: INPUT_LABELS.get(field, field.replace("_", " "))
+                                for field in dict.fromkeys(
+                                    [
+                                        *policy.workflows[action].required_inputs,
+                                        *(
+                                            field
+                                            for group in policy.workflows[action].required_input_groups
+                                            for field in group
+                                        ),
+                                    ]
+                                )
+                                if field in INPUT_ROLE_FIELDS
+                            },
                            output_capability=policy.workflows[action].output_capability.model_dump())
                       for action in actions if action in policy.workflows],
     }
@@ -90,6 +99,17 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     if not rejected and not (selected and decision.capability_match_status in {"exact", "fallback"}):
         return None
     lines = []
+    assumptions = list(dict.fromkeys(
+        " ".join(assumption.split())
+        for hypothesis in decision.outcome_hypotheses
+        for assumption in hypothesis.assumptions
+        if assumption.strip()
+    ))
+    if assumptions:
+        lines.append(
+            "Assumptions behind this recommendation (not confirmed facts):\n\n"
+            + "\n".join(f"- {item}" for item in assumptions[:6])
+        )
     if facts.get("input_compatibility") == "not_assessed":
         lines.append("Input compatibility has not been assessed because no current input is established.")
     for item in rejected:

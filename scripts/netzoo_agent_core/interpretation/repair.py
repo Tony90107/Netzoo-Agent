@@ -22,6 +22,9 @@ from ..contracts import (
 )
 from ..routing import (
     MIN_TOOL_CONFIDENCE,
+    has_direct_execution_intent,
+    has_explicit_advice_intent,
+    is_workflow_information_request,
     is_workflow_selection_request,
 )
 from ..routing.outcome_matching import (
@@ -215,7 +218,10 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
 
     if raw_decision.outcome_hypotheses:
         match = match_outcome_hypotheses(raw_decision.outcome_hypotheses)
-        primary = select_primary_hypothesis(raw_decision.outcome_hypotheses)
+        primary = select_primary_hypothesis(
+            raw_decision.outcome_hypotheses,
+            user_task=task,
+        )
         decision = raw_decision.model_copy(
             update={
                 "requested_outcome": primary.outcome if primary else None,
@@ -235,13 +241,19 @@ def repair_router_decision(raw_decision: TaskDecision, task: str) -> TaskDecisio
     else:
         decision = raw_decision.model_copy(deep=True)
 
-    if is_workflow_selection_request(task) and decision.outcome_hypotheses:
+    advice_only = (
+        is_workflow_selection_request(task)
+        or is_workflow_information_request(task)
+        or has_explicit_advice_intent(task)
+    ) and not has_direct_execution_intent(task)
+    if advice_only and decision.action in LOCAL_WORKFLOW_ACTIONS:
         decision = decision.model_copy(
             update={
                 "action": "no_tool",
                 "in_scope": True,
                 "should_execute": False,
                 "intent_type": "answer_question",
+                "reason": "The user asked for workflow guidance; no local workflow was executed.",
                 "missing_inputs": [],
             }
         )

@@ -151,7 +151,10 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     "leave_one_out_network_inference": (
         "derive each sample network from all-sample and leave-one-out networks"
     ),
-    "message_passing": "iteratively pass messages among expression, motif, and PPI networks",
+    "message_passing": (
+        "iteratively exchange information across biological evidence networks; "
+        "the participating layers depend on the registered workflow"
+    ),
     "lioness_base_compatibility": (
         "aggregate LIONESS-compatible base network"
     ),
@@ -459,7 +462,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             input_artifacts=frozenset({"expression_matrix", "coexpression_network"}),
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior", "mirna_prior"}),
             handoff_targets=("run_condor",),
-            selection_tags=frozenset({"mirna_regulation", "aggregate_network"}),
+            selection_tags=frozenset({
+                "mirna_regulation", "aggregate_network", "message_passing",
+            }),
+            guidance_notes=(
+                "PUMA uses message passing to integrate miRNA-target predictions "
+                "with target-gene co-expression alongside TF motif and PPI evidence.",
+            ),
             handoff_contract=(
                 "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, "
                 "and miRNA priors, or a validated adjusted gene-by-gene co-expression "
@@ -509,7 +518,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             guidance_predecessors=("run_panda",),
             input_artifacts=frozenset({"expression_matrix"}),
-            selection_tags=frozenset({"sample_specific", "tf_gene_regulation"}),
+            selection_tags=frozenset({
+                "sample_specific", "tf_gene_regulation", "message_passing",
+                "leave_one_out_network_inference",
+            }),
             handoff_contract=(
                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
                 "motif and PPI priors to internally infer the aggregate PANDA "
@@ -558,7 +570,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior", "mirna_prior"}),
             guidance_predecessors=("run_puma",),
             input_artifacts=frozenset({"expression_matrix"}),
-            selection_tags=frozenset({"sample_specific", "mirna_regulation"}),
+            selection_tags=frozenset({
+                "sample_specific", "mirna_regulation", "message_passing",
+                "leave_one_out_network_inference",
+            }),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "

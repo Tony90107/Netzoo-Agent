@@ -4,15 +4,22 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from evaluate_routing import (  # noqa: E402
-    DEFAULT_SCENARIOS, RoutingScenario, _review_patch_payload, evaluate, load_scenarios, main,
+    DEFAULT_SCENARIOS, RoutingScenario, _review_patch_payload, _score, evaluate,
+    load_scenarios, main,
 )
-from netzoo_agent_core.contracts import IntentDecision  # noqa: E402
+from netzoo_agent_core.contracts import (  # noqa: E402
+    IntentDecision,
+    OutcomeHypothesis,
+    RequestedOutcome,
+    TaskDecision,
+)
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticDiscriminator, SemanticInterpretation, SemanticPatch, SemanticReview,
 )
@@ -98,6 +105,131 @@ class FixtureProvider:
 
 def run(provider, case=None, **kwargs):
     return evaluate([case or scenario()], provider=provider, model_name="fixture", **kwargs)
+
+
+def test_evaluator_rejects_selected_granularity_while_asking_for_it():
+    case = RoutingScenario.model_validate({
+        "id": "gran-mirna-unstated-control",
+        "language": "en",
+        "category": "negative",
+        "prompt": (
+            "Which workflow infers a miRNA-to-gene regulatory network? "
+            "I have not decided between one cohort network and separate "
+            "per-patient networks, so please ask me."
+        ),
+        "expected": {
+            "status": "ambiguous",
+            "actions": [],
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "granularity": None,
+            "require_clarification": True,
+        },
+    })
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The workflow choice is unresolved.",
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            regulator_types=["mirna"],
+            target_types=["gene"],
+            granularity="sample_specific",
+        ),
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+    result = SimpleNamespace(
+        decision=decision,
+        routing_state={"semantic_goal": {"request_mode": "guidance"}},
+        reason_code="semantic_registry_intent",
+        usage=SimpleNamespace(calls=[], total_tokens=0, input_tokens=0, output_tokens=0),
+    )
+
+    scored = _score(
+        case,
+        result,
+        [{"type": "routing.semantic_interpretation_accepted", "payload": {}}],
+    )
+
+    assert scored["route_passed"]
+    assert not scored["semantic_passed"]
+    assert any("clarification_consistency" in error for error in scored["errors"])
+
+
+def test_evaluator_rejects_missing_aggregate_hypothesis_while_choice_is_open():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate "
+        "per-patient networks, so please ask me."
+    )
+    case = RoutingScenario.model_validate({
+        "id": "gran-mirna-unstated-control",
+        "language": "en",
+        "category": "negative",
+        "prompt": task,
+        "expected": {
+            "status": "ambiguous",
+            "actions": [],
+            "input_artifacts": [],
+            "artifact_type": "regulatory_network",
+            "granularity": None,
+            "require_clarification": True,
+        },
+    })
+    unknown = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        regulator_types=["mirna"],
+        target_types=["gene"],
+        granularity="unknown",
+        unresolved_dimensions=["granularity"],
+    )
+    sample = unknown.model_copy(update={
+        "granularity": "sample_specific",
+        "unresolved_dimensions": [],
+    })
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=0.9,
+        reason="The network granularity is unresolved.",
+        requested_outcome=unknown,
+        outcome_hypotheses=[
+            OutcomeHypothesis(outcome=unknown, confidence=0.9),
+            OutcomeHypothesis(outcome=sample, confidence=0.85),
+        ],
+        capability_match_status="ambiguous",
+        hypothesis_actions=["run_puma", "run_lioness_puma"],
+        clarification_question="Should the result be aggregate or sample-specific?",
+    )
+    result = SimpleNamespace(
+        decision=decision,
+        routing_state={"semantic_goal": {"request_mode": "guidance"}},
+        reason_code="semantic_registry_intent",
+        usage=SimpleNamespace(calls=[], total_tokens=0, input_tokens=0, output_tokens=0),
+    )
+
+    scored = _score(
+        case,
+        result,
+        [{"type": "routing.semantic_interpretation_accepted", "payload": {}}],
+    )
+
+    assert scored["route_passed"]
+    assert not scored["semantic_passed"]
+    assert any(
+        "outcome_hypotheses must represent both undecided granularity alternatives"
+        in error
+        for error in scored["errors"]
+    )
 
 
 def test_claims_evaluation_uses_the_same_strict_binding_as_production():

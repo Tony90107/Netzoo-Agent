@@ -651,7 +651,7 @@ def test_unresolved_router_fallback_does_not_let_response_model_guess_workflows(
     assert "LIONESS-PANDA" not in content
 
 
-def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
+def test_sample_specific_panda_advice_recommends_lioness_not_its_predecessor():
     response_module = importlib.import_module("netzoo_agent_core.graph.response")
     policy = legacy_agent.ProjectPolicyLoader(legacy_agent.PROJECT_ROOT).load()
     decision = legacy_agent.TaskDecision(
@@ -660,13 +660,21 @@ def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
         should_execute=False,
         intent_type="answer_question",
         confidence=1.0,
-        reason="The registry selected the sample-specific miRNA workflow.",
-        matched_actions=["run_lioness_puma"],
-        recommended_actions=["run_puma", "run_lioness_puma"],
+        reason="The registry selected the sample-specific TF workflow.",
+        matched_actions=["run_lioness_panda"],
+        recommended_actions=["run_panda", "run_lioness_panda"],
+        requested_outcome=legacy_agent.RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="sample_specific",
+        ),
     )
     plan = legacy_agent.WorkflowPlan(
         workflow="NO-TOOL",
-        objective="Explain the sample-specific miRNA workflow.",
+        objective="Explain the sample-specific TF workflow.",
         decision=decision.model_dump(),
         status="respond_only",
     )
@@ -677,8 +685,12 @@ def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
             "messages": [
                 legacy_agent.HumanMessage(
                     content=(
-                        "Which tools create a sample-specific miRNA regulatory "
-                        "network?"
+                        "My lab has tumour RNA profiles from about 90 patients plus "
+                        "binding-motif and protein-interaction reference files. I want "
+                        "to know how the wiring between transcription factors and "
+                        "their target genes differs from one patient to the next, so "
+                        "each patient ends up with their own picture. What should I "
+                        "use? Just advise."
                     )
                 )
             ],
@@ -689,9 +701,12 @@ def test_unique_mirna_composition_uses_registry_renderer_not_response_model():
     )
 
     content = result["messages"][0].content
-    assert "**PUMA**" in content
-    assert "**LIONESS-PUMA**" in content
-    assert "LIONESS-PANDA" not in content
+    assert "For the sample-specific output you described, use **LIONESS-PANDA**." in content
+    assert "I matched your goal to an aggregate and a sample-specific workflow." not in content
+    assert "1. **PANDA**" not in content
+    assert "**LIONESS-PANDA**" in content
+    assert "lioness_output" in content
+    assert "No files were inspected and no analysis ran." in content
 
 
 def test_graph_is_a_package_with_factory_child():

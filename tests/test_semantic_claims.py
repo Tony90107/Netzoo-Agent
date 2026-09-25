@@ -353,7 +353,7 @@ def test_translated_chinese_quote_is_repaired_as_inferred_support():
     assert "Do not translate or paraphrase a quote" in system_prompt
 
 
-def test_noop_claim_patch_is_discarded_and_first_valid_interpretation_is_kept():
+def test_unknown_request_mode_for_workflow_selection_becomes_guidance():
     first = payload()
     first["request_mode"] = "unknown"
     ctx = context(first, {"hypothesis_index": 0, "outcome": {}})
@@ -361,13 +361,62 @@ def test_noop_claim_patch_is_discarded_and_first_valid_interpretation_is_kept():
     result, _, _, error, _ = run(ctx)
 
     assert result is not None and error is None
-    assert result.request_mode == "unknown"
-    discarded = [
-        event for event, data in ctx.recorder.events
-        if event == "routing.semantic_review_discarded"
-        and data.get("reason") == "no_material_changes"
+    # A workflow-selection question is deterministically guidance even when
+    # the claims model left its request mode unknown.
+    assert result.request_mode == "guidance"
+
+
+def test_undecided_granularity_claims_gain_both_grounded_candidate_hypotheses():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate "
+        "per-patient networks, so please ask me."
+    )
+    first = payload()
+    first["request_mode"] = "guidance"
+    first["semantic_goal"] = "Identify a miRNA-to-gene network workflow"
+    outcome = first["outcome_hypotheses"][0]["outcome"]
+    quote = "miRNA-to-gene regulatory network"
+    outcome["operation"] = claim(
+        "infer", "infers a miRNA-to-gene regulatory network"
+    )
+    outcome["artifact_type"] = claim("regulatory_network", quote)
+    outcome["granularity"] = claim("unknown")
+    outcome["entity_types"] = [
+        claim("mirna", quote),
+        claim("gene", quote),
     ]
-    assert discarded
+    outcome["regulator_types"] = [claim("mirna", quote)]
+    outcome["target_types"] = [claim("gene", quote)]
+    ctx = context(
+        first,
+        {"hypothesis_index": 0, "outcome": {}},
+    )
+
+    result, _, _, error, _ = _invoke_semantic_interpreter(
+        ctx, {}, task, LLMUsage(budget_tokens=100000)
+    )
+
+    assert result is not None and error is None
+    hypotheses = result.outcome_hypotheses
+    assert [item.outcome.granularity for item in hypotheses] == [
+        "aggregate",
+        "sample_specific",
+    ]
+    assert all(
+        any(
+            evidence.dimension == "granularity"
+            and evidence.source == "explicit"
+            for evidence in item.evidence
+        )
+        for item in hypotheses
+    )
+    assert validate_outcome_hypotheses(task, hypotheses).valid
+    match = match_semantic_request(task, hypotheses, request_mode="guidance")
+    assert match.status == "ambiguous"
+    assert match.clarification_question == (
+        "Should the result be aggregate or sample-specific?"
+    )
 
 
 def test_schema_failure_uses_full_claim_repair_not_legacy_contract():
@@ -390,7 +439,10 @@ def test_two_failed_attempts_never_become_keyword_recommendation():
 
 def test_wire_contract_through_real_sdk_and_production_interpreter():
     import httpx
-    from langchain_openai import ChatOpenAI
+    ChatOpenAI = pytest.importorskip(
+        "langchain_openai",
+        reason="The real-SDK wire contract runs in the acceptance dependency set.",
+    ).ChatOpenAI
 
     bodies = []
 
@@ -662,7 +714,9 @@ def test_granularity_witness_replaces_an_unmatched_quote_without_a_review():
         item for item in result.outcome_hypotheses[0].evidence
         if item.dimension == "granularity"
     ]
-    assert [(e.source, e.text_span) for e in evidence] == [("explicit", "sample specific")]
+    assert [(e.source, e.text_span) for e in evidence] == [(
+        "explicit", "sample specific mi-rna regulator network",
+    )]
 
 
 # --- structured repair feedback for ontology rejections -------------------
@@ -722,8 +776,8 @@ def test_terminal_goal_conflict_names_the_required_artifact_and_request_facts():
     }
 
 
-def test_conflicting_evidence_reports_the_restored_outcome_the_validator_judged():
-    """A multi-omic reading loses its roles in restoration; the feedback must say so."""
+def test_role_restoration_resolves_a_multiomic_reading_before_claim_repair():
+    """Closed role witnesses correct this proposal without another model repair."""
     from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
     from netzoo_agent_core.interpretation.stated_field_restoration import restore_stated_fields
 
@@ -739,14 +793,54 @@ def test_conflicting_evidence_reports_the_restored_outcome_the_validator_judged(
         "target_types": [claim("gene")],
     }
     proposal = SemanticClaims.model_validate(data)
-    restored, _ = restore_stated_fields(
+    restored, restorations = restore_stated_fields(
         task, proposal.to_internal(), restore_explicit_scalar_evidence=True,
     )
+    outcome = restored.outcome_hypotheses[0].outcome
     issues = validate_outcome_hypotheses(task, restored.outcome_hypotheses).issues
-    items = claim_repair_feedback(task, proposal, issues)["repair_feedback"]
-    conflict = next(i for i in items if "conflicting_evidence:regulator_type=mirna" in i["issue"])
-    assert conflict["outcome_value"] == {"field": "regulator_types", "value": []}
-    assert conflict["artifact_constraints"]["fields"]["regulator_types"] == {"maxItems": 0}
+    assert outcome.artifact_type == "regulatory_network"
+    assert outcome.regulator_types == ["mirna"]
+    assert outcome.target_types == ["gene"]
+    assert any(item["source"] == "unique_role_ontology_correction" for item in restorations)
+    assert not issues
+    assert claim_repair_feedback(task, proposal, issues) == {}
+
+
+def test_stated_multi_regulator_conflict_requires_the_supporting_artifact():
+    from netzoo_agent_core.interpretation.claim_prompt import claim_repair_feedback
+
+    task = (
+        "I want a single cohort-wide network of both miRNA and TF regulation "
+        "of genes. Which workflow? Advice only."
+    )
+    data = payload()
+    data["outcome_hypotheses"][0]["outcome"].update(
+        artifact_type=claim("multi_omic_network", "network"),
+        granularity=claim("aggregate", "cohort-wide"),
+        regulator_types=[claim("mirna", "miRNA"), claim("tf", "TF")],
+        target_types=[claim("gene", "genes")],
+    )
+    proposal = SemanticClaims.model_validate(data)
+    issues = validate_outcome_hypotheses(
+        task, proposal.to_internal().outcome_hypotheses,
+    ).issues
+    assert any("stated_roles_conflict:multi_omic_network" in item for item in issues)
+
+    feedback = claim_repair_feedback(task, proposal, issues)
+    conflict = next(
+        item for item in feedback["repair_feedback"]
+        if "stated_roles_conflict" in item["issue"]
+    )
+
+    assert conflict["required_value"] == {
+        "field": "artifact_type", "value": "regulatory_network",
+    }
+    assert conflict["artifact_constraints"]["fields"]["artifact_type"] == {
+        "const": "regulatory_network",
+    }
+    assert {item["regulator_type"] for item in feedback["request_facts"]["roles"]} == {
+        "mirna", "tf",
+    }
 
 
 def test_repair_feedback_carries_no_prose_instructions():

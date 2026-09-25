@@ -189,11 +189,27 @@ def explicit_input_artifacts(task: str) -> frozenset[str]:
 
 
 
+def _unknown_entity_is_role_placeholder(outcome: RequestedOutcome) -> bool:
+    known_entities = set(outcome.entity_types) - {_UNKNOWN}
+    role_entities = (
+        set(outcome.regulator_types) | set(outcome.target_types)
+    ) - {_UNKNOWN}
+    return (
+        outcome.artifact_type == "regulatory_network"
+        and _UNKNOWN in outcome.entity_types
+        and bool(role_entities)
+        and known_entities == role_entities
+    )
+
+
 def _has_unknown(outcome: RequestedOutcome) -> bool:
     return bool(
         outcome.unresolved_dimensions
         or _UNKNOWN in {outcome.operation, outcome.artifact_type, outcome.granularity}
-        or _UNKNOWN in outcome.entity_types
+        or (
+            _UNKNOWN in outcome.entity_types
+            and not _unknown_entity_is_role_placeholder(outcome)
+        )
         or _UNKNOWN in outcome.input_artifacts
         or _UNKNOWN in outcome.regulator_types
         or _UNKNOWN in outcome.target_types
@@ -207,12 +223,15 @@ def _matches(
 ) -> bool:
     if _has_unknown(outcome) or outcome_consistency_issues(outcome):
         return False
+    requested_entities = set(outcome.entity_types)
+    if _unknown_entity_is_role_placeholder(outcome):
+        requested_entities.discard(_UNKNOWN)
     return (
         outcome.operation == capability.operation
         and _accepts_inputs(outcome, capability, available_inputs)
         and outcome.artifact_type in _supported_artifacts(capability)
         and outcome.granularity in capability.granularities
-        and set(outcome.entity_types).issubset(
+        and requested_entities.issubset(
             _supported_entities(outcome.artifact_type, capability)
         )
         and set(outcome.regulator_types).issubset(capability.regulator_types)
@@ -256,6 +275,8 @@ def _partially_compatible(
 
 def _complete_guidance_match(outcome, capability) -> bool:
     """Only explanatory operation may be omitted for an exact guidance match."""
+    if outcome.operation not in {_UNKNOWN, capability.operation}:
+        return False
     return _matches(
         outcome.model_copy(update={
             "operation": capability.operation,

@@ -22,7 +22,10 @@ def assemble_task_decision(
     task: str,
 ) -> TaskDecision:
     """Combine facts in authority order without letting intent choose a workflow."""
-    primary = select_primary_hypothesis(interpretation.outcome_hypotheses)
+    primary = select_primary_hypothesis(
+        interpretation.outcome_hypotheses,
+        user_task=task,
+    )
     exact_action = (
         match.matched_actions[0]
         if match.status == "exact" and len(match.matched_actions) == 1

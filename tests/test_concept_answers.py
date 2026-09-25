@@ -370,6 +370,41 @@ def test_composition_guidance_does_not_assume_mirna_or_puma():
     assert "PUMA" not in answer
 
 
+def test_sample_specific_composition_guidance_recommends_the_final_workflow():
+    policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
+    decision = TaskDecision(
+        action="no_tool",
+        in_scope=True,
+        should_execute=False,
+        intent_type="answer_question",
+        confidence=1.0,
+        reason="The user asked for sample-specific guidance.",
+        capability_match_status="exact",
+        matched_actions=["run_lioness_panda"],
+        recommended_actions=["run_panda", "run_lioness_panda"],
+        requested_outcome=RequestedOutcome(
+            operation="infer",
+            artifact_type="regulatory_network",
+            entity_types=["tf", "gene"],
+            regulator_types=["tf"],
+            target_types=["gene"],
+            granularity="sample_specific",
+        ),
+    )
+
+    answer = render_workflow_composition_guidance(decision, policy, None)
+
+    assert answer is not None
+    assert "For the sample-specific output you described, use **LIONESS-PANDA**." in answer
+    assert "I matched your goal to an aggregate and a sample-specific workflow." not in answer
+    assert "1. **PANDA**" not in answer
+    assert "Aggregate network (`output_file`)" in answer
+    assert "Sample-specific network for each patient/sample (`lioness_output`)" in answer
+    assert "You do not need to run **PANDA** separately" in answer
+    assert "**PANDA** alone" in answer
+    assert "No files were inspected and no analysis ran." in answer
+
+
 def test_measurement_request_explains_gap_before_offering_network():
     policy = ProjectPolicyLoader(Path(__file__).parents[1]).load()
     decision = TaskDecision(

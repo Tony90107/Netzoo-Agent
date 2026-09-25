@@ -104,10 +104,17 @@ WORKFLOW_INFORMATION_PATTERNS = (
 
 
 WORKFLOW_SELECTION_PATTERNS = (
+    r"\b(?:which|what)\s+(?:tools?|workflows?|methods?|pipelines?)\b",
     r"\b(?:what|which)\s+(?:tools?|workflows?|methods?)\b.{0,80}\b(?:need|use)\b",
     r"\b(?:what|which)\s+(?:tools?|workflows?|methods?)\b.{0,80}\b(?:should|can)\s+i\s+use\b",
     r"(?:需要|要|應該用).*?(?:哪些|什麼).{0,20}(?:工具|workflow|方法)",
     r"(?:哪些|什麼).{0,20}(?:工具|workflow|方法).*?(?:需要|要|應該用)",
+)
+
+_EXPLICIT_ADVICE_INTENT = re.compile(
+    r"\b(?:advice|advise|recommend(?:ed|s|ing|ation|ations)?|"
+    r"suggest(?:ed|s|ing|ion|ions)?)\b|建議|推薦|諮詢",
+    re.I,
 )
 
 
@@ -237,6 +244,11 @@ def is_workflow_selection_request(task: str) -> bool:
     )
 
 
+def has_explicit_advice_intent(task: str) -> bool:
+    """Return True when the user explicitly asks for advice or a recommendation."""
+    return _EXPLICIT_ADVICE_INTENT.search(task) is not None
+
+
 def infer_goal_capability_match(task: str) -> _GoalCapabilityMatch:
     """Return no domain guess; semantic interpretation owns workflow selection."""
     del task
@@ -306,12 +318,17 @@ def has_direct_retrieval_request(task: str) -> bool:
 
 
 def reconcile_request_mode(task: str, request_mode: str) -> str:
-    """Preserve explicit execution authorization without choosing a workflow."""
+    """Preserve explicit execution and classify workflow questions as guidance."""
     if request_mode != "execute" and (
         has_explicit_execution_request(task)
         or has_direct_retrieval_request(task)
     ):
         return "execute"
+    if request_mode == "unknown" and (
+        is_workflow_selection_request(task)
+        or has_explicit_advice_intent(task)
+    ):
+        return "guidance"
     return request_mode
 
 

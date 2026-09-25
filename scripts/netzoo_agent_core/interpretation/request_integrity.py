@@ -75,6 +75,11 @@ _REQUEST_FRAMING = re.compile(
     r"建議|推薦|哪(?:一)?(?:項|個|種)",
     re.I,
 )
+_EXPLICIT_ADVICE_INTENT = re.compile(
+    r"\b(?:advice|advise|recommend(?:ed|s|ing|ation|ations)?|"
+    r"suggest(?:ed|s|ing|ion|ions)?)\b|建議|推薦|諮詢",
+    re.I,
+)
 _PATIENT_CLUSTER = re.compile(
     r"\b(?:cluster\w*|group\w*|subtyp\w*)\s+(?:the\s+|cancer\s+)?patients?\b|"
     r"\bpatients?\b.{0,30}\b(?:cluster\w*|subtyp\w*|subgroups?)\b|"
@@ -83,19 +88,33 @@ _PATIENT_CLUSTER = re.compile(
 )
 _GOAL_NEGATED = re.compile(r"\b(?:not|no|without)\b|不要|不做|不需要|不進行", re.I)
 _REGULATORY_ROLE_PAIR = re.compile(
-    r"(?P<regulator>\bTFs?\b|\btranscription\s+factors?\b|"
-    r"\bmi(?:cro)?[- ]?RNAs?\b|微小核糖核酸|微小RNA|微RNA|轉錄因子)"
-    r"(?:\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*|\s*(?:-|–|—|→)\s*|"
-    r"\s*(?:regulat(?:e|es|ing)|調控|作用於|對)\s*|"
+    r"(?P<regulator>\bTFs?\b|\btranscription[- ]factors?\b|"
+    r"\bmi(?:cro)?[- ]?RNAs?\b|\bmiR\b|微小核糖核酸|微小RNA|微RNA|轉錄因子)"
+    r"(?:\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*|\s*(?:->|[-–—→])\s*|"
+    r"\s*(?:regulat(?:e|es|ing)|如何調控|調控|作用於|對)\s*"
+    # “microRNAs regulate their target genes” states the same bounded role
+    # as “microRNA-to-gene”; keep the possessive target phrase attached to
+    # this regulator instead of treating it as an unpaired role mention.
+    r"(?:\b(?:their|its|the)\s+target\s+)?|"
     # The noun form: “TF regulation of genes”. Missing it let “both miRNA and
     # TF regulation of genes” reach DRAGON as an exact legacy answer.
     r"\s+regulation\s+of\s+)"
     r"(?P<target>\bgenes?\b|基因)",
     re.I,
 )
+_COORDINATED_REGULATORY_ROLE_PAIR = re.compile(
+    r"\bboth\s+(?P<first>\bTFs?\b|\btranscription\s+factors?\b|"
+    r"\bmi(?:cro)?[- ]?RNAs?\b)\s+and\s+"
+    r"(?P<second>\bTFs?\b|\btranscription\s+factors?\b|"
+    r"\bmi(?:cro)?[- ]?RNAs?\b)\s+regulation\s+of\s+(?P<target>\bgenes?\b)",
+    re.I,
+)
 _GRANULARITY_PATTERNS = {
     "aggregate": re.compile(
-        r"\b(?:aggregate|cohort[- ]wide|population[- ]level)\b|"
+        r"\b(?:aggregate|cohort[- ]wide|cohort[- ]level|population[- ]level)\b|"
+        r"\b(?:one|single|shared|common)\s+cohort\s+networks?\b|"
+        r"\b(?:one|single|shared|common)\s+(?:[\w-]+\s+){0,5}network\s+"
+        r"for\s+(?:the\s+)?(?:whole|entire)\s+(?:cohort|population)\b|"
         r"\b(?:one|single|shared|common)\s+(?:cohort[- ]wide\s+)?network\s+"
         r"(?:shared\s+)?(?:across|for)\s+(?:the\s+)?(?:whole|entire)\s+cohort\b|"
         r"\bshared\s+(?:cohort[- ]wide\s+)?networks?\s+across\s+"
@@ -116,19 +135,46 @@ _GRANULARITY_PATTERNS = {
         re.I,
     ),
     "sample_specific": re.compile(
-        r"\b(?:sample|patient|subject)[- ]specific\b|"
-        r"\bper[- ](?:sample|patient|subject|person|individual)\b|"
+        # Keep per-unit language attached to the output network. A phrase such
+        # as “per-patient expression matrices” is an input description, not a
+        # request for one network per patient.
+        r"\b(?:sample|patient|subject)[- ]specific\s+(?:[\w-]+\s+){0,5}networks?\b|"
+        r"\bper[- ](?:sample|patient|subject|person|individual)\s+"
+        r"(?:[\w<>/→-]+\s+){0,4}networks?\b|"
         r"\b(?:separate|independently\s+estimated)\s+(?:[\w-]+\s+){0,3}networks?\s+"
         r"for\s+(?:each|every)\s+(?:sample|patient|subject|person|individual)s?\b|"
-        r"\b(?:a\s+)?(?:separate|individual)\s+(?:estimated\s+|inferred\s+|constructed\s+)?networks?\s+"
+        r"\b(?:a\s+)?(?:separate|individual)\s+(?:[\w-]+\s+){0,6}networks?\s+"
         r"for\s+(?:each|every)\s+(?:individual\s+)?(?:sample|patient|subject)s?\b|"
         r"\b(?:one|a)\s+(?:(?:separate|independently|separately)\s+)?"
-        r"(?:estimated\s+|inferred\s+|constructed\s+)?network\s+"
+        r"(?:[\w-]+\s+){0,5}network\s+"
         r"(?:per\s+(?:sample|patient|subject)|for\s+(?:each|every)\s+"
         r"(?:individual\s+)?(?:sample|patient|subject)s?)\b|"
+        # Also cover “for each individual ... their own network” and clauses
+        # that state the per-patient relation with a verb instead of naming a
+        # network noun (“estimate ... regulation ... separately in each
+        # patient”).
+        r"\bfor\s+(?:each|every)\s+(?:individual\s+)?"
+        r"(?:sample|patient|subject|person|individual)\b[^.;!?]{0,100}"
+        r"\b(?:their|its|one's)\s+own"
+        r"(?:\s+(?!and\b|but\b|then\b|while\b)[\w-]+){0,7}\s+networks?\b|"
+        r"\b(?:estimat\w*|infer\w*|construct\w*|build\w*|learn\w*)\b"
+        r"[^.;!?]{0,120}\b(?:network\w*|regulat\w*|interaction\w*)\b"
+        r"[^.;!?]{0,80}\bseparately\s+in\s+each\s+"
+        r"(?:individual\s+)?(?:sample|patient|subject|person)\b|"
+        r"\bnetworks?\s+(?:(?:estimated|inferred|constructed|built)\s+)?"
+        r"for\s+(?:each|every)\s+(?:individual\s+)?"
+        r"(?:sample|patient|subject|person|individual)s?\b|"
+        # "The wiring differs from one patient to the next" states separate
+        # network results even when the user calls the output a picture rather
+        # than repeating the noun "network".
+        r"\b(?:network\w*|wiring|edges?|links?)\b"
+        r"[^.;!?]{0,120}\b(?:differ\w*|vary\w*|change\w*)\b"
+        r"[^.;!?]{0,60}\bfrom one (?:sample|patient|subject|individual) "
+        r"to (?:the )?next\b|"
         # Bound to a network noun in the same clause: “每個樣本狀態的 TFA 矩陣”
         # describes a per-sample matrix beside one aggregate network.
-        r"(?:每個|各個|逐一|每位|各位)(?:樣本|病患|病人|患者)(?:各自|個別|分別)?"
+        r"(?:每(?:一)?(?:個|位)|各個|逐一|每位|各位)"
+        r"(?:樣本|病患|病人|患者)(?:各自|個別|分別)?"
         r"[^。！？!?;；\n，,]{0,20}(?:網路|網絡)",
         re.I,
     ),
@@ -228,15 +274,25 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
     for clause, scope in _scoped_clauses(task):
         if scope != "current":
             continue
-        for match in _REGULATORY_ROLE_PAIR.finditer(clause):
+        coordinated = []
+        for match in _COORDINATED_REGULATORY_ROLE_PAIR.finditer(clause):
             if _NEGATED.search(clause[:match.start()]):
                 continue
-            regulator_text = match.group("regulator").casefold()
-            regulator = "tf" if (
-                regulator_text.startswith("tf")
-                or regulator_text.startswith("transcription")
-                or regulator_text == "轉錄因子"
-            ) else "mirna"
+            coordinated.append(match.span())
+            for group in ("first", "second"):
+                regulator = _normalize_regulator(match.group(group))
+                mentions.append(RegulatoryRoleMention(
+                    regulator_type=regulator,
+                    target_type="gene",
+                    entity_types=(regulator, "gene"),
+                    text_span=match.group(0),
+                ))
+        for match in _REGULATORY_ROLE_PAIR.finditer(clause):
+            if any(start <= match.start() and match.end() <= end for start, end in coordinated):
+                continue
+            if _NEGATED.search(clause[:match.start()]):
+                continue
+            regulator = _normalize_regulator(match.group("regulator"))
             mentions.append(RegulatoryRoleMention(
                 regulator_type=regulator,
                 target_type="gene",
@@ -244,6 +300,15 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
                 text_span=match.group(0),
             ))
     return tuple(mentions)
+
+
+def _normalize_regulator(regulator_text: str) -> str:
+    regulator_text = regulator_text.casefold()
+    return "tf" if (
+        regulator_text.startswith("tf")
+        or regulator_text.startswith("transcription")
+        or regulator_text == "轉錄因子"
+    ) else "mirna"
 
 
 def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
@@ -259,8 +324,17 @@ def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
             continue
         for granularity, pattern in _GRANULARITY_PATTERNS.items():
             for match in pattern.finditer(clause):
-                if _NEGATED.search(clause[:match.start()]):
-                    continue
+                negative = _NEGATED.search(clause[:match.start()])
+                if negative:
+                    # In "not decided between aggregate and sample-specific,"
+                    # not negates the decision, not either alternative.
+                    undecided = _UNDECIDED.search(clause)
+                    if not (
+                        undecided
+                        and undecided.start() <= negative.start()
+                        and negative.end() <= undecided.end()
+                    ):
+                        continue
                 mentions.append(GranularityMention(
                     granularity=granularity,
                     text_span=match.group(0),
@@ -271,6 +345,11 @@ def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
 def confirmed_current_inputs(task: str) -> set[str]:
     """Return the artifacts these witnesses locate in the request as current."""
     return {item.artifact for item in input_mentions(task) if item.status == "current"}
+
+
+def has_explicit_advice_intent(task: str) -> bool:
+    """Whether the request explicitly asks for advice or a recommendation."""
+    return _EXPLICIT_ADVICE_INTENT.search(task) is not None
 
 
 def canonical_input_artifacts_in_text(text: str) -> frozenset[str]:

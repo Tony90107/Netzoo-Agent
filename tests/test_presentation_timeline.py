@@ -370,6 +370,28 @@ def test_state_machine_renders_registry_derived_guidance_path(monkeypatch, capsy
     assert "✓ Workflow — PANDA → LIONESS-PANDA" in output
 
 
+def test_state_machine_shows_only_selected_sample_specific_workflow(monkeypatch, capsys):
+    _enable_state_machine(monkeypatch)
+    monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)
+
+    presentation._trace(
+        "intent",
+        "Classified as no_tool",
+        {
+            "kind": "classification",
+            "outcome": "TF regulatory network",
+            "workflow_path": ["PANDA", "LIONESS-PANDA"],
+            "display_workflow": "LIONESS-PANDA",
+            "workflow_scope": "composition",
+            "match_status": "exact",
+        },
+    )
+
+    output = capsys.readouterr().out
+    assert "✓ Workflow — LIONESS-PANDA" in output
+    assert "✓ Workflow — PANDA → LIONESS-PANDA" not in output
+
+
 def test_single_stream_hides_legacy_stage_labels(monkeypatch, capsys):
     _enable_state_machine(monkeypatch)
     monkeypatch.setattr(presentation.sys.stdout, "isatty", lambda: False)

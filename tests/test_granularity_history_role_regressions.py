@@ -152,12 +152,17 @@ def test_aggregate_tf_request_stays_a_real_method_choice():
      ["sample_specific"]),
     ("Which registered method estimates a separate microRNA-to-gene regulatory network for each person?",
      ["sample_specific"]),
+    ("The wiring between transcription factors and their target genes differs from one patient to the next.",
+     ["sample_specific"]),
+    ("Which workflow infers a miRNA-to-gene regulatory network? I have not decided between one cohort network and separate per-patient networks, so please ask me.",
+     ["aggregate", "sample_specific"]),
     # Matched pair, one phrase apart.
     ("我要每位病患各自的 miRNA 對基因調控網路。", ["sample_specific"]),
     ("我要整群病患共用的一張 miRNA 對基因調控網路。", ["aggregate"]),
     # None of these states a network granularity.
     ("不需要每位病患各自的網路。", []),
     ("不同病患的整體突變負荷量差異很大。", []),
+    ("Gene expression differs from one patient to the next.", []),
     ("LIONESS 在數學上是怎麼定義「單一樣本網路」的？", []),
     ("另一個是能反映每個樣本狀態的 (TF x n) 轉錄因子活性矩陣。", []),
 ])
@@ -334,18 +339,30 @@ def test_role_phrase_replaces_unknown_role_without_duplicating_entities():
     assert sorted(outcome.entity_types) == ["gene", "tf"]
 
 
-@pytest.mark.parametrize("artifact,kept", [
-    ("regulatory_network", ["mirna", "gene"]),
+@pytest.mark.parametrize("artifact,task,regulator,kept", [
+    (
+        "regulatory_network",
+        "我想知道每位病患各自的微小核糖核酸對基因的調控關係，"
+        "請推薦能為每位病患建立一張調控網路的方法，先不用執行。",
+        "mirna",
+        ["mirna", "gene"],
+    ),
     # A TF-by-sample activity matrix really has sample rows; nothing is dropped.
-    ("regulatory_network_and_tf_activity", ["mirna", "gene", "sample"]),
+    (
+        "regulatory_network_and_tf_activity",
+        "I want an aggregate TF-to-gene network and TF activity values across samples.",
+        "tf",
+        ["tf", "gene", "sample"],
+    ),
 ])
-def test_sample_is_not_a_node_of_a_regulator_to_target_network(artifact, kept):
-    """Every legacy mirna-chinese trial of the after-fix round read 每位病患 as a node."""
-    task = "我想知道每位病患各自的微小核糖核酸對基因的調控關係，請推薦能為每位病患建立一張調控網路的方法，先不用執行。"
+def test_sample_entity_depends_on_the_selected_output_artifact(
+    artifact, task, regulator, kept,
+):
+    """Per-sample network indexing is not a node; TF activity has sample rows."""
     source = _roles(
-        [("regulator_type", "mirna"), ("target_type", "gene")],
-        artifact_type=artifact, regulator_types=["mirna"], target_types=["gene"],
-        entity_types=["mirna", "gene", "sample"],
+        [("regulator_type", regulator), ("target_type", "gene")],
+        artifact_type=artifact, regulator_types=[regulator], target_types=["gene"],
+        entity_types=[regulator, "gene", "sample"],
     )
     restored, _ = restore_stated_fields(task, source, restore_explicit_scalar_evidence=True)
     assert restored.outcome_hypotheses[0].outcome.entity_types == kept

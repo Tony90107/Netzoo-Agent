@@ -22,6 +22,9 @@ from netzoo_agent_core.interpretation import (  # noqa: E402
     hydrate_router_decision,
     repair_router_decision,
 )
+from netzoo_agent_core.interpretation.stated_field_restoration import (  # noqa: E402
+    restore_stated_fields,
+)
 from netzoo_agent_core.interpretation.provider_fallback import (  # noqa: E402
     recover_explicit_run,
     recover_registry_guidance,
@@ -30,6 +33,7 @@ from netzoo_agent_core.interpretation.assembly import (  # noqa: E402
     assemble_task_decision,
 )
 from netzoo_agent_core.interpretation.outcome_consistency import (  # noqa: E402
+    complete_open_granularity_alternatives,
     needs_outcome_repair,
     select_primary_hypothesis,
 )
@@ -839,6 +843,255 @@ def test_tied_hypotheses_have_no_primary_outcome():
     assert select_primary_hypothesis([first, second]) is None
 
 
+def test_open_granularity_question_keeps_assembled_outcome_unknown():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate per-patient "
+        "networks, so please ask me."
+    )
+    common_evidence = [
+        OutcomeEvidence(
+            dimension="operation",
+            value="infer",
+            source="explicit",
+            text_span="infers",
+            rationale="The user asks to infer a network.",
+        ),
+        OutcomeEvidence(
+            dimension="artifact_type",
+            value="regulatory_network",
+            source="explicit",
+            text_span="regulatory network",
+            rationale="The requested result is a regulatory network.",
+        ),
+        OutcomeEvidence(
+            dimension="regulator_type",
+            value="mirna",
+            source="explicit",
+            text_span="miRNA",
+            rationale="The request names miRNA regulators.",
+        ),
+    ]
+    unresolved = mirna_network_outcome().model_copy(update={
+        "granularity": "unknown",
+        "unresolved_dimensions": ["granularity"],
+    })
+    hypotheses = [
+        hypothesis(outcome=unresolved, confidence=0.9, evidence=common_evidence),
+        hypothesis(
+            outcome=mirna_network_outcome(),
+            confidence=0.85,
+            evidence=[
+                *common_evidence,
+                OutcomeEvidence(
+                    dimension="granularity",
+                    value="sample_specific",
+                    source="inferred",
+                    rationale="Separate networks per patient are one candidate.",
+                ),
+            ],
+        ),
+    ]
+    interpretation = SemanticInterpretation(
+        request_mode="guidance",
+        semantic_goal="Identify miRNA-to-gene network workflows",
+        outcome_hypotheses=hypotheses,
+    )
+    match = match_semantic_request(task, hypotheses, request_mode="guidance")
+
+    assert match.status == "ambiguous"
+    assert match.clarification_question == (
+        "Should the result be aggregate or sample-specific?"
+    )
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        IntentDecision(mode="answer", confidence=0.9, reason="Guidance only."),
+        task=task,
+    )
+
+    assert decision.requested_outcome is not None
+    assert decision.requested_outcome.granularity == "unknown"
+
+
+def test_open_granularity_candidates_are_completed_from_both_literal_alternatives():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate "
+        "per-patient networks, so please ask me."
+    )
+    unresolved = mirna_network_outcome().model_copy(update={
+        "granularity": "unknown",
+        "unresolved_dimensions": [
+            "The network granularity has not been decided.",
+        ],
+    })
+    common_evidence = [
+        OutcomeEvidence(
+            dimension="operation",
+            value="infer",
+            source="explicit",
+            text_span="infers a miRNA-to-gene regulatory network",
+            rationale="The user asks to infer a network.",
+        ),
+        OutcomeEvidence(
+            dimension="artifact_type",
+            value="regulatory_network",
+            source="explicit",
+            text_span="miRNA-to-gene regulatory network",
+            rationale="The user requests a regulatory network.",
+        ),
+        OutcomeEvidence(
+            dimension="entity_type",
+            value="mirna",
+            source="explicit",
+            text_span="miRNA-to-gene regulatory network",
+            rationale="The network contains miRNA regulators.",
+        ),
+        OutcomeEvidence(
+            dimension="entity_type",
+            value="gene",
+            source="explicit",
+            text_span="miRNA-to-gene regulatory network",
+            rationale="The network contains gene targets.",
+        ),
+        OutcomeEvidence(
+            dimension="regulator_type",
+            value="mirna",
+            source="explicit",
+            text_span="miRNA-to-gene regulatory network",
+            rationale="miRNA is the named regulator type.",
+        ),
+        OutcomeEvidence(
+            dimension="target_type",
+            value="gene",
+            source="explicit",
+            text_span="miRNA-to-gene regulatory network",
+            rationale="Gene is the named target type.",
+        ),
+    ]
+    hypotheses = [
+        OutcomeHypothesis(
+            outcome=unresolved,
+            confidence=0.9,
+            evidence=common_evidence,
+            assumptions=["The network granularity is undecided."],
+        ),
+        OutcomeHypothesis(
+            outcome=mirna_network_outcome(),
+            confidence=0.85,
+            evidence=[
+                *common_evidence,
+                OutcomeEvidence(
+                    dimension="granularity",
+                    value="sample_specific",
+                    source="inferred",
+                    rationale="Separate networks per patient are plausible.",
+                ),
+            ],
+            assumptions=["The network granularity is undecided."],
+        ),
+    ]
+
+    completed = complete_open_granularity_alternatives(task, hypotheses)
+
+    assert [item.outcome.granularity for item in completed] == [
+        "aggregate",
+        "sample_specific",
+    ]
+    assert all(
+        item.outcome.unresolved_dimensions == []
+        and any(
+            evidence.dimension == "granularity"
+            and evidence.source == "explicit"
+            for evidence in item.evidence
+        )
+        for item in completed
+    )
+    from netzoo_agent_core.interpretation.outcome_validation import (
+        validate_outcome_hypotheses,
+    )
+
+    assert validate_outcome_hypotheses(task, completed).valid
+    match = match_semantic_request(task, completed, request_mode="guidance")
+    assert match.status == "ambiguous"
+    assert match.clarification_question == (
+        "Should the result be aggregate or sample-specific?"
+    )
+    decision = assemble_task_decision(
+        SemanticInterpretation(
+            request_mode="guidance",
+            semantic_goal="Choose miRNA-to-gene network granularity",
+            outcome_hypotheses=completed,
+        ),
+        match,
+        IntentDecision(mode="answer", confidence=0.9, reason="Guidance only."),
+        task=task,
+    )
+    assert decision.requested_outcome.granularity == "unknown"
+
+
+def test_tied_granularity_alternatives_project_unknown_without_picking_one():
+    task = (
+        "Which workflow infers a miRNA-to-gene regulatory network? "
+        "I have not decided between one cohort network and separate per-patient "
+        "networks, so please ask me."
+    )
+    evidence = [
+        OutcomeEvidence(
+            dimension="operation",
+            value="infer",
+            source="explicit",
+            text_span="infers",
+            rationale="The user asks to infer a network.",
+        ),
+        OutcomeEvidence(
+            dimension="artifact_type",
+            value="regulatory_network",
+            source="explicit",
+            text_span="regulatory network",
+            rationale="The requested result is a regulatory network.",
+        ),
+        OutcomeEvidence(
+            dimension="regulator_type",
+            value="mirna",
+            source="explicit",
+            text_span="miRNA",
+            rationale="The request names miRNA regulators.",
+        ),
+    ]
+    aggregate = mirna_network_outcome().model_copy(update={"granularity": "aggregate"})
+    hypotheses = [
+        hypothesis(outcome=aggregate, confidence=0.9, evidence=evidence),
+        hypothesis(
+            outcome=mirna_network_outcome(),
+            confidence=0.9,
+            evidence=evidence,
+        ),
+    ]
+    interpretation = SemanticInterpretation(
+        request_mode="guidance",
+        semantic_goal="Identify miRNA-to-gene network workflows",
+        outcome_hypotheses=hypotheses,
+    )
+    match = match_semantic_request(task, hypotheses, request_mode="guidance")
+
+    assert match.status == "ambiguous"
+    decision = assemble_task_decision(
+        interpretation,
+        match,
+        IntentDecision(mode="answer", confidence=0.9, reason="Guidance only."),
+        task=task,
+    )
+
+    assert decision.requested_outcome is not None
+    assert decision.requested_outcome.granularity == "unknown"
+    assert [item.outcome.granularity for item in decision.outcome_hypotheses] == [
+        "aggregate",
+        "sample_specific",
+    ]
+
+
 def test_router_outcome_metadata_does_not_replace_the_router_selection():
     task = "Please build sample-specific miRNA-to-gene regulatory networks"
     hydrated = hydrate_router_decision(
@@ -1131,7 +1384,7 @@ def test_outcome_metadata_does_not_replace_router_selection_for_measurements(
         ),
     ],
 )
-def test_language_variations_preserve_the_router_selected_network_action(task, should_execute):
+def test_language_variations_respect_advisory_vs_execution_intent(task, should_execute):
     hydrated = hydrate_router_decision(
         RouterDecision(
             action="run_lioness_puma",
@@ -1146,8 +1399,10 @@ def test_language_variations_preserve_the_router_selected_network_action(task, s
 
     repaired = repair_router_decision(hydrated, task)
 
-    assert repaired.should_execute is True
-    assert repaired.action == "run_lioness_puma"
+    assert repaired.should_execute is should_execute
+    assert repaired.action == (
+        "run_lioness_puma" if should_execute else "no_tool"
+    )
     assert repaired.capability_match_status == "exact"
     assert repaired.matched_actions == ["run_lioness_puma"]
     assert repaired.recommended_actions == ["run_puma", "run_lioness_puma"]
@@ -1304,7 +1559,6 @@ def test_generic_sample_network_keeps_compatible_families_unranked():
     [
         "I need sample-specific miRNA expression measurements, not a network.",
         "取得每個樣本的 miRNA 原始數值，不要推論網路。",
-        "Which tool downloads per-patient microRNA abundance data?",
     ],
 )
 def test_measurement_metadata_is_retained_without_reselecting_action(task):
@@ -1340,6 +1594,106 @@ def test_measurement_metadata_is_retained_without_reselecting_action(task):
     assert decision.matched_actions == []
     assert decision.action == "run_lioness_puma"
     assert decision.should_execute is True
+
+
+def test_measurement_tool_question_is_advice_only_when_router_proposes_network():
+    task = "Which tool downloads per-patient microRNA abundance data?"
+    decision = repair_router_decision(
+        TaskDecision(
+            action="run_lioness_puma",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="provider proposed a related network",
+            outcome_hypotheses=[
+                OutcomeHypothesis(
+                    outcome=mirna_measurement_outcome(),
+                    confidence=0.99,
+                    evidence=[
+                        OutcomeEvidence(
+                            dimension="artifact_type",
+                            value="measurement_dataset",
+                            source="explicit",
+                            text_span="microRNA abundance data",
+                            rationale="The user asks for measured abundance data.",
+                        )
+                    ],
+                    assumptions=[],
+                )
+            ],
+        ),
+        task,
+    )
+
+    assert decision.capability_match_status == "unsupported"
+    assert decision.matched_actions == []
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
+
+
+def test_patient_specific_wiring_advice_is_recommended_without_execution():
+    task = (
+        "My lab has tumour RNA profiles from about 90 patients plus binding-motif "
+        "and protein-interaction reference files. I want to know how the wiring "
+        "between transcription factors and their target genes differs from one "
+        "patient to the next, so each patient ends up with their own picture. "
+        "What should I use? Just advise."
+    )
+    unknown_granularity = RequestedOutcome(
+        operation="infer",
+        artifact_type="regulatory_network",
+        entity_types=["tf", "gene"],
+        display_entities=["transcription factor", "gene"],
+        regulator_types=["tf"],
+        target_types=["gene"],
+        granularity="unknown",
+        unresolved_dimensions=["granularity"],
+    )
+    interpretation = SemanticInterpretation(
+        request_mode=reconcile_request_mode(task, "unknown"),
+        semantic_goal="Recommend a per-patient TF regulatory network workflow",
+        outcome_hypotheses=[
+            OutcomeHypothesis(
+                outcome=unknown_granularity,
+                confidence=0.9,
+                evidence=[
+                    OutcomeEvidence(
+                        dimension="artifact_type",
+                        value="regulatory_network",
+                        source="explicit",
+                        text_span="wiring between transcription factors and their target genes",
+                        rationale="The user asks about TF-to-gene wiring.",
+                    )
+                ],
+                assumptions=[],
+            )
+        ],
+    )
+    restored, _ = restore_stated_fields(
+        task, interpretation, restore_explicit_scalar_evidence=True
+    )
+    route = RouterDecision(
+        action="run_lioness_panda",
+        in_scope=True,
+        intent_type="run_analysis",
+        confidence=0.9,
+        reason="The raw router selected the matching workflow.",
+        outcome_hypotheses=restored.outcome_hypotheses,
+    )
+
+    hydrated = hydrate_router_decision(route, task)
+    decision = repair_router_decision(hydrated, task)
+
+    assert restored.request_mode == "guidance"
+    assert decision.requested_outcome is not None
+    assert decision.requested_outcome.granularity == "sample_specific"
+    assert decision.capability_match_status == "exact"
+    assert decision.matched_actions == ["run_lioness_panda"]
+    assert decision.recommended_actions == ["run_panda", "run_lioness_panda"]
+    assert decision.clarification_question is None
+    assert decision.action == "no_tool"
+    assert decision.should_execute is False
 
 
 def test_motivating_sentences_are_not_production_routing_rules():

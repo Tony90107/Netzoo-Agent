@@ -7,6 +7,7 @@ import re
 from workflow_registry import ACTION_DEFINITIONS
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
+from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..presentation import _ui_text
 from ..routing.outcome_matching import (
     guidance_actions_for,
@@ -19,6 +20,8 @@ from .registry_guidance import (
     preferred_registry_composition_actions,
 )
 from ..handoff import sample_specific_coexpression_handoff_requested
+from ..settings import INPUT_ROLE_FIELDS
+from .extraction import INPUT_LABELS
 
 _PURPOSE_PATTERN = re.compile(
     r"\b(?:function|purpose|what\s+is|what\s+does)\b|(?:功能|用途|是什麼)",
@@ -50,6 +53,8 @@ _ARTIFACT_LABELS = {
     "measurement_dataset": "measurement data",
     "expression_matrix": "expression matrices",
     "regulatory_network": "regulatory networks",
+    "signed_regulatory_effect_network": "signed regulatory-effect networks",
+    "tf_activity_matrix": "TF activity matrices",
     "coexpression_network": "co-expression networks",
     "pvalue_matrix": "matching p-value matrices",
     "community_assignment": "community assignments",
@@ -130,13 +135,94 @@ def _network_family_label(spec) -> str:
     capability = spec.output_capability
     if capability.artifact_type == "coexpression_network":
         return "Gene co-expression network"
-    if capability.artifact_type == "regulatory_network":
+    if capability.artifact_type in {
+        "regulatory_network",
+        "signed_regulatory_effect_network",
+    }:
         regulators = set(capability.regulator_types)
+        signed = capability.artifact_type == "signed_regulatory_effect_network"
         if regulators == {"tf"}:
+            if signed:
+                return "TF-only signed regulatory-effect network"
             return "TF-only regulatory network"
         labels = "/".join(_ENTITY_LABELS[item] for item in capability.regulator_types)
+        if signed:
+            return f"{labels} signed regulatory-effect network"
         return f"{labels} regulatory network"
     return _artifact_label(capability.artifact_type).capitalize()
+
+
+def _decision_assumptions(decision: TaskDecision) -> list[str]:
+    assumptions = []
+    seen = set()
+    for hypothesis in decision.outcome_hypotheses:
+        for assumption in hypothesis.assumptions:
+            normalized = " ".join(assumption.split())
+            if normalized and normalized.casefold() not in seen:
+                assumptions.append(normalized)
+                seen.add(normalized.casefold())
+    return assumptions[:6]
+
+
+def _assumptions_block(decision: TaskDecision, heading: str) -> str:
+    assumptions = _decision_assumptions(decision)
+    if not assumptions:
+        return ""
+    return heading + "\n" + "\n".join(f"- {item}" for item in assumptions)
+
+
+def _input_summary(spec) -> str:
+    required_fields = [field for field in spec.required_inputs if field in INPUT_ROLE_FIELDS]
+    parts = []
+    if required_fields:
+        labels = [
+            INPUT_LABELS.get(field, field.replace("_", " "))
+            for field in required_fields
+        ]
+        parts.append("all of: " + ", ".join(labels))
+    for group in spec.required_input_groups:
+        labels = [
+            INPUT_LABELS.get(field, field.replace("_", " "))
+            for field in group
+            if field in INPUT_ROLE_FIELDS
+        ]
+        if labels:
+            parts.append("one of: " + " or ".join(labels))
+    return (
+        "; and ".join(parts)
+        if parts
+        else "no required biological input fields are registered"
+    )
+
+
+def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot) -> list[str]:
+    capability = spec.output_capability
+    sequence = _workflow_sequence(action, policy) or spec.workflow
+    lines = [f"- **{_network_family_label(spec)} — {sequence}**"]
+    lines.append("  - Registered purpose: " + spec.description)
+    method_notes = list(algorithmic_assumptions_for(capability.selection_tags))
+    if capability.guidance_notes:
+        detail = capability.guidance_notes[0]
+        if detail not in method_notes:
+            method_notes.append(detail)
+    if method_notes:
+        lines.append("  - Method premise: " + "; ".join(method_notes[:2]))
+    lines.append("  - Required inputs: " + _input_summary(spec) + ".")
+    artifacts = sorted(capability.produced_artifacts or {capability.artifact_type})
+    output_labels = [_artifact_label(artifact) for artifact in artifacts]
+    granularities = [
+        label
+        for value, label in (
+            ("aggregate", "cohort-level aggregate"),
+            ("sample_specific", "sample-specific, one network per sample"),
+        )
+        if value in capability.granularities
+    ]
+    output = ", ".join(output_labels)
+    if granularities:
+        output += " (" + "; ".join(granularities) + ")"
+    lines.append("  - Declared output: " + output + ".")
+    return lines
 
 
 def render_outcome_clarification(
@@ -168,32 +254,71 @@ def render_outcome_clarification(
                     else _capability_phrase(spec, decision)
                 )
             )
-            return _ui_text(
-                f"It sounds like you want {interpretation}.\n\n"
-                "The compatible workflow composition is "
-                f"{_workflow_sequence(action, policy)}.\n\n"
-                f"{decision.clarification_question}\n\n"
-                "No files were inspected and no analysis ran."
+            details = "\n".join(_candidate_details(action, spec, policy))
+            assumptions = _assumptions_block(
+                decision,
+                "Unconfirmed assumptions in my current interpretation (please correct me if needed):",
             )
+            if granularity_ambiguous:
+                sections = [
+                    f"It sounds like you want {interpretation}.",
+                    decision.clarification_question,
+                    "Compatible workflow method and input/output details:\n"
+                    f"{details}",
+                ]
+                if assumptions:
+                    sections.append(assumptions)
+                sections.append("No files were inspected and no analysis ran.")
+                return _ui_text("\n\n".join(sections))
+            sections = [
+                f"It sounds like you want {interpretation}.\n\n"
+                "Registered method and input/output fit:\n"
+                f"{details}"
+            ]
+            if assumptions:
+                sections.append(assumptions)
+            sections.extend(
+                [
+                    decision.clarification_question,
+                    "No files were inspected and no analysis ran.",
+                ]
+            )
+            return _ui_text("\n\n".join(sections))
     if len(decision.hypothesis_actions) > 1:
         options = []
         for action in decision.hypothesis_actions:
             spec = policy.workflows.get(action)
             if spec is None:
                 continue
-            options.append(
-                (_network_family_label(spec), _workflow_sequence(action, policy))
-            )
+            options.append((
+                _network_family_label(spec),
+                action,
+                _candidate_details(action, spec, policy),
+            ))
         if options:
             lines = "\n".join(
-                f"- {label}: {sequence}"
-                for label, sequence in sorted(options, key=lambda item: item[0])
+                line
+                for _, _, details in sorted(options, key=lambda item: (item[0], item[1]))
+                for line in details
+            )
+            assumptions = _assumptions_block(
+                decision,
+                "Unconfirmed assumptions in these interpretations (please correct me if needed):",
+            )
+            sections = [
+                "I can map this to more than one compatible network result:",
+                lines,
+            ]
+            if assumptions:
+                sections.append(assumptions)
+            sections.extend(
+                [
+                    decision.clarification_question,
+                    "No files were inspected and no analysis ran.",
+                ]
             )
             return _ui_text(
-                "I can map this to more than one compatible network result:\n"
-                f"{lines}\n\n"
-                f"{decision.clarification_question}\n\n"
-                "No files were inspected and no analysis ran."
+                "\n\n".join(sections)
             )
     return _ui_text(
         "I cannot select a workflow until the requested result is clear. "
@@ -595,12 +720,28 @@ def render_ambiguous_workflow_guidance(
     registered = [spec for spec in specs if spec is not None]
     if len(registered) < 2:
         return None
-    options = "\n".join(f"- {spec.workflow}: {spec.description}" for spec in registered)
+    options = "\n".join(
+        line
+        for spec in sorted(registered, key=lambda item: item.workflow)
+        for line in _candidate_details(spec.action, spec, policy)
+    )
+    assumptions = _assumptions_block(
+        decision,
+        "Unconfirmed assumptions in these interpretations (please correct me if needed):",
+    )
+    sections = [
+        "I can match your goal to more than one registered workflow:",
+        options,
+    ]
+    if assumptions:
+        sections.append(assumptions)
+    sections.append(
+        "Which result and modeling premise best matches your experiment? "
+        "This answer will narrow the recommendation; no analysis will run yet."
+    )
     return _ui_text(
-        "I can match your goal to more than one registered workflow:\n"
-        f"{options}\n\n"
-        "To recommend one workflow, please clarify which regulatory relationship "
-        "you want to model. No files were inspected and no analysis ran."
+        "\n\n".join(sections)
+        + "\n\nNo files were inspected and no analysis ran."
     )
 
 
@@ -643,6 +784,28 @@ def render_workflow_composition_guidance(
         for field_name in biological_inputs
     )
     aggregate, final = registered[0], registered[-1]
+    requested = decision.requested_outcome
+    final_granularities = final.output_capability.granularities
+    if (
+        requested is not None
+        and requested.granularity == "sample_specific"
+        and requested.artifact_type == final.output_capability.artifact_type
+        and {"aggregate", "sample_specific"}.issubset(final_granularities)
+        and "output_file" in final.required_inputs
+        and "lioness_output" in final.required_inputs
+    ):
+        return _ui_text(
+            f"For the sample-specific output you described, use **{final.workflow}**.\n\n"
+            f"Required inputs:\n{inputs}\n\n"
+            "Outputs:\n"
+            "   - Aggregate network (`output_file`).\n"
+            "   - Sample-specific network for each patient/sample (`lioness_output`).\n\n"
+            f"You do not need to run **{aggregate.workflow}** separately; "
+            f"**{final.workflow}** also produces the aggregate output. Use "
+            f"**{aggregate.workflow}** alone only when a cohort-level aggregate "
+            "result is sufficient.\n\n"
+            "No files were inspected and no analysis ran."
+        )
     return _ui_text(
         "I matched your goal to an aggregate and a sample-specific workflow. "
         "They use the same biological inputs:\n\n"

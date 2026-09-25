@@ -125,7 +125,22 @@ def apply_semantic_patch(
             retired.append({"dimension": item.dimension, "value": item.value, "field": field})
             continue
         evidence.append(item)
-    evidence.extend(patch.evidence_additions)
+    for item in patch.evidence_additions:
+        field = FIELD_BY_DIMENSION.get(item.dimension)
+        if field is None or item.value in _values(getattr(outcome, field)):
+            evidence.append(item)
+            continue
+        # A patch can return evidence for a field its licensed outcome patch
+        # did not change. Carrying that unmatched claim creates a merge-only
+        # conflict (for example, an input_artifact citation when the input field
+        # was outside scope). Evidence is useful only when it supports a value
+        # that survived the field-scoped merge; keep the dropped pair visible.
+        retired.append({
+            "dimension": item.dimension,
+            "value": item.value,
+            "field": field,
+            "reason": "addition_does_not_match_merged_outcome",
+        })
 
     hypothesis = OutcomeHypothesis(
         outcome=outcome,

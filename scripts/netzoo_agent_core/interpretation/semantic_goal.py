@@ -50,6 +50,7 @@ def classification_progress_detail(
     ]
     workflow_path = []
     workflow_scope = "match"
+    display_workflow = None
     if match_status == "fallback":
         outcome_label = "Fallback recommendation (not an exact semantic match)"
         workflow_scope = "fallback"
@@ -84,6 +85,19 @@ def classification_progress_detail(
             workflow_scope = (
                 "composition" if len(workflow_path) > 1 else "final_result"
             )
+        if (
+            outcome is not None
+            and outcome.granularity == "sample_specific"
+            and len(decision.matched_actions) == 1
+            and policy is not None
+        ):
+            selected = policy.workflows.get(decision.matched_actions[0])
+            if (
+                selected is not None
+                and selected.output_capability.artifact_type == outcome.artifact_type
+                and "sample_specific" in selected.output_capability.granularities
+            ):
+                display_workflow = selected.workflow
     return {
         "kind": "classification",
         "interaction": (interaction.__dict__ if (interaction := guidance_interaction(decision)) else None),
@@ -91,6 +105,7 @@ def classification_progress_detail(
         "workflows": list(dict.fromkeys(workflows)),
         "workflow_path": list(dict.fromkeys(workflow_path)),
         "workflow_scope": workflow_scope,
+        "display_workflow": display_workflow,
         "match_status": match_status,
         "match_basis": decision.match_basis,
     }

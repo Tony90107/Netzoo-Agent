@@ -18,6 +18,7 @@ from ..contracts import (
     TaskDecision,
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
+from ..interpretation.request_integrity import granularity_left_open
 from ..interpretation.outcome_validation import grounded_selection_tags
 from .candidate_ranking import (
     _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
@@ -583,6 +584,50 @@ def _match_semantic_request(
         available_inputs=availability,
         user_task=task,
     )
+    if (
+        match.status in {"exact", "fallback"}
+        and granularity_left_open(task)
+        and any(
+            item.outcome.granularity in {"aggregate", "sample_specific"}
+            for item in matching_hypotheses
+        )
+    ):
+        # A workflow that can produce both granularities should not silently
+        # resolve a choice the user explicitly left open. Re-check the shared
+        # scientific goal with granularity withheld; retain the clarification
+        # when distinct aggregate and sample-specific workflows remain.
+        unresolved_hypotheses = []
+        for item in matching_hypotheses:
+            if item.outcome.granularity not in {
+                "aggregate", "sample_specific", _UNKNOWN,
+            }:
+                unresolved_hypotheses.append(item)
+                continue
+            unresolved = list(dict.fromkeys([
+                *item.outcome.unresolved_dimensions,
+                "granularity",
+            ]))[:4]
+            outcome = item.outcome.model_copy(update={
+                "granularity": _UNKNOWN,
+                "unresolved_dimensions": unresolved,
+            })
+            unresolved_hypotheses.append(item.model_copy(update={
+                "outcome": outcome,
+                "evidence": [
+                    evidence for evidence in item.evidence
+                    if evidence.dimension != "granularity"
+                ],
+            }))
+        open_match = match_outcome_hypotheses(
+            unresolved_hypotheses,
+            OUTPUT_CAPABILITIES,
+            assumed_guidance=request_mode != "execute",
+            ignore_tags=ignore_tags,
+            available_inputs=availability,
+            user_task=task,
+        )
+        if open_match.status == "ambiguous" and open_match.clarification_question:
+            match = open_match
     repaired_named_match = _named_execution_repair(
         task,
         matching_hypotheses,
@@ -638,10 +683,10 @@ def _match_semantic_request(
     if (
         request_mode == "guidance"
         and match.status == "ambiguous"
-        and len(hypotheses) == 1
+        and bool(hypotheses)
         and len(match.hypothesis_actions) == 1
-        and not any(
-            not _complete_guidance_match(
+        and all(
+            _complete_guidance_match(
                 hypothesis.outcome,
                 OUTPUT_CAPABILITIES[match.hypothesis_actions[0]],
             )
@@ -649,10 +694,11 @@ def _match_semantic_request(
         )
     ):
         # A guidance question may omit the operation because it asks which
-        # workflow to use. If every other requested dimension points to one
-        # registry capability, expose that capability as an exact *guidance*
-        # match. `assemble_task_decision` still blocks execution whenever the
-        # semantic request mode is not `execute`.
+        # workflow to use. If every interpretation is fully compatible with
+        # the same capability, expose it as an exact *guidance* match. This
+        # also collapses duplicate or convergent hypotheses without choosing
+        # among distinct workflows. `assemble_task_decision` still blocks
+        # execution whenever the semantic request mode is not `execute`.
         promoted = CapabilityMatch(
             status="exact",
             matched_actions=list(match.hypothesis_actions),
