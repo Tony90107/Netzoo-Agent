@@ -1,0 +1,295 @@
+diff --git a/scripts/netzoo_agent_core/graph/input_inspection.py b/scripts/netzoo_agent_core/graph/input_inspection.py
+index ee25cee..3b840ba 100644
+--- a/scripts/netzoo_agent_core/graph/input_inspection.py
++++ b/scripts/netzoo_agent_core/graph/input_inspection.py
+@@ -38,6 +38,7 @@ from ..data.tables import _inspect_panda_inputs_impl
+ from ..interpretation.discovery import _unlabeled_input_bindings
+ from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
+ from .context import record_event
++from .mixed_prior import mirna_capable_candidate, mixed_prior_conditions, tf_only_counterpart
+ 
+ __all__ = [
+     "INSPECTED_AXIS",
+@@ -64,18 +65,24 @@ _NUMBER = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
+ 
+ 
+ def named_directories(task: str, root: Path = PROJECT_ROOT) -> list[tuple[str, Path]]:
+-    """Directories the request names that exist inside the project root."""
++    """Directories the request names that exist inside the project root.
++
++    A named file names its folder too (Log 186): "my prior (data/x/prior.tsv)
++    ... the files in the same folder" points at `data/x/`.
++    """
+     base = root.resolve()
+-    found: list[tuple[str, Path]] = []
++    found: dict[Path, str] = {}
+     for written in dict.fromkeys(_PATH_TOKEN.findall(task)):
+         if "/" not in written:
+             continue
+         candidate = (base / written).resolve()
++        if candidate.is_file() and not candidate.is_symlink():
++            written, candidate = written.rstrip("/").rsplit("/", 1)[0] + "/", candidate.parent
+         if candidate == base or not candidate.is_relative_to(base):
+             continue
+         if candidate.is_dir():
+-            found.append((written, candidate))
+-    return found
++            found.setdefault(candidate, written)
++    return [(written, candidate) for candidate, written in found.items()]
+ 
+ 
+ def _shape(path: Path) -> str | None:
+@@ -132,6 +139,7 @@ def _validates(action: str, values: dict[str, Path]) -> bool:
+ def equipped_candidates(
+     directory: Path,
+     candidates: list[str],
++    exclude: frozenset[Path] = frozenset(),
+ ) -> dict[str, dict[str, Path]] | None:
+     """Candidates whose inputs some file assignment content-validates, with that assignment.
+ 
+@@ -143,6 +151,7 @@ def equipped_candidates(
+     files = _candidate_files(directory)
+     if not files:
+         return None
++    files = [path for path in files if path not in exclude]
+     shapes = {path: _shape(path) for path in files}
+     hinted = _unlabeled_input_bindings(" ".join(path.name for path in files), tuple(_ROLE_SHAPES))
+     budget = _MAX_VALIDATIONS
+@@ -186,18 +195,43 @@ def advise_from_inspected_inputs(
+         decision.capability_match_status != "ambiguous"
+         or len(candidates) < 2
+         or decision.advisory_recommendation is not None
+-        or not set(candidates) <= _PANDA_FAMILY
+     ):
+         return decision
+     fields_by_action = {
+         action: {f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS}
+         for action in candidates
+     }
+-    if len({frozenset(value) for value in fields_by_action.values()}) < 2:
++    by_equipment = (
++        set(candidates) <= _PANDA_FAMILY
++        and len({frozenset(value) for value in fields_by_action.values()}) >= 2
++    )
++    mirna_action = mirna_capable_candidate(candidates, _PANDA_FAMILY)
++    if not by_equipment and mirna_action is None:
+         return decision
+     inspected: list[str] = []
+     for written, directory in named_directories(task, root):
+         inspected.append(written)
++        if mirna_action is not None:
++            mixed = (equipped_candidates(directory, [mirna_action]) or {}).get(mirna_action, {})
++            conditions = mixed_prior_conditions(mixed, written)
++            counterpart = tf_only_counterpart(mirna_action, _PANDA_FAMILY)
++            clean = (
++                equipped_candidates(directory, [counterpart], frozenset({mixed["motif_file"]}))
++                if conditions and counterpart is not None else None
++            )
++            if conditions and clean == {}:
++                return decision.model_copy(update={
++                    "advisory_recommendation": AdvisoryRecommendation(
++                        action=mirna_action, conditions=conditions,
++                    ),
++                    "clarification_question": (
++                        f"Should I use {_workflow_name(mirna_action)}, or does another listed "
++                        "option fit your study better?"
++                    ),
++                    "inspected_directories": inspected,
++                })
++        if not by_equipment:
++            continue
+         equipped = equipped_candidates(directory, candidates)
+         if not equipped or len(equipped) != 1:
+             continue
+diff --git a/scripts/netzoo_agent_core/graph/mixed_prior.py b/scripts/netzoo_agent_core/graph/mixed_prior.py
+new file mode 100644
+index 0000000..5c5cf3d
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/mixed_prior.py
+@@ -0,0 +1,71 @@
++"""Whether a named folder's prior mixes miRNA regulators with TFs (Log 186).
++
++Log 154 recommends among tied workflows only when exactly one candidate's
++inputs validate: a folder holding a miRNA list equips both PANDA and PUMA, so
++it said nothing. What separates them is not whether a miRNA list exists but
++whether the prior uses it -- PUMA models miRNA regulators, while a TF-only
++method would read every regulator in the prior as a transcription factor.
++
++The signal is read from content only: the miRNA-capable candidate must be
++equipped by its own validator (`equipped_candidates`), and the regulator
++column of the file validated as its prior must contain names from the file
++validated as its miRNA list, and the TF-only counterpart must not be equipped
++once that prior is set aside: a folder that also holds a clean TF prior (like
++the toy folder with both `motif-panda.tsv` and `prior-puma.tsv`) says nothing.
++Candidates are told apart by their registered regulator types, never by name.
++Advisory only: nothing is eliminated.
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++from workflow_registry import OUTPUT_CAPABILITIES, REQUIRED_INPUTS
++
++from ..contracts.outcomes import AdvisoryCondition
++
++__all__ = ["MIXED_PRIOR", "mirna_capable_candidate", "mixed_prior_conditions", "tf_only_counterpart"]
++
++MIXED_PRIOR = "mixed_prior"
++
++
++def mirna_capable_candidate(candidates: list[str], family: frozenset[str]) -> str | None:
++    """The one tied candidate that models miRNA regulators, when TF-only candidates tie with it."""
++    capable = [a for a in candidates if "mirna" in OUTPUT_CAPABILITIES[a].regulator_types]
++    tf_only = [a for a in candidates if "mirna" not in OUTPUT_CAPABILITIES[a].regulator_types]
++    if len(capable) == 1 and tf_only and capable[0] in family:
++        return capable[0]
++    return None
++
++
++def tf_only_counterpart(action: str, family: frozenset[str]) -> str | None:
++    """The family workflow needing exactly this one's inputs without the miRNA list."""
++    wanted = set(REQUIRED_INPUTS[action]) - {"mirna_file"}
++    matches = [a for a in sorted(family) if set(REQUIRED_INPUTS[a]) == wanted]
++    return matches[0] if len(matches) == 1 else None
++
++
++def _names(path: Path, column: int | None) -> set[str]:
++    names = set()
++    with path.open("r", encoding="utf-8", errors="replace") as handle:
++        for line in handle:
++            if not line.strip() or line.startswith("#"):
++                continue
++            cells = re.split(r"\t|,", line.rstrip("\r\n"))
++            names.add((cells[0] if column == 0 else line).strip())
++    return names
++
++
++def mixed_prior_conditions(values: dict[str, Path], written: str) -> list[AdvisoryCondition]:
++    """Conditions recording a content-validated input set whose prior uses its miRNA list."""
++    try:
++        overlap = _names(values["mirna_file"], None) & _names(values["motif_file"], 0)
++    except (KeyError, OSError):
++        return []
++    if not overlap:
++        return []
++    return [
++        AdvisoryCondition(axis="inspected_inputs", value=f"validated:{field}={path.name}", text_span=written)
++        for field, path in values.items()
++    ] + [AdvisoryCondition(axis="inspected_inputs", value=f"{MIXED_PRIOR}:{len(overlap)}", text_span=written)]
+diff --git a/scripts/netzoo_agent_core/interpretation/inspected_answers.py b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+index 6f79c8a..ef175e8 100644
+--- a/scripts/netzoo_agent_core/interpretation/inspected_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+@@ -58,14 +58,28 @@ def render_inspected_recommendation(
+         f"`{quoted(name)}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
+     )
+     missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
++    names = dict(validated)
++    mixed = [
++        item.value.split(":", 1)[1] for item in recommendation.conditions
++        if item.value.startswith("mixed_prior:")
++    ]
++    if mixed:
++        reason = (
++            f"`{quoted(names.get('motif_file', ''))}` lists {mixed[0]} regulator(s) that "
++            f"`{quoted(names.get('mirna_file', ''))}` validates as miRNAs, so the prior mixes "
++            f"TF and miRNA regulators and **{spec.workflow}** models both."
++        )
++        other_text = "would read every regulator in the prior as a transcription factor."
++    else:
++        reason = f"No file there validates as a {missing_text}, so **{spec.workflow}** fits."
++        other_text = f"would also need a {missing_text}."
+     lines = [
+         f"By content, the files in `{quoted(folder)}` validate as a complete input set for "
+-        f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
+-        f"so **{spec.workflow}** fits.",
++        f"**{spec.workflow}**: {found}. {reason}",
+         "\n".join(details),
+     ]
+     others = [
+-        f"- **{policy.workflows[action].workflow}** — would also need a {missing_text}."
++        f"- **{policy.workflows[action].workflow}** — {other_text}"
+         for action in decision.hypothesis_actions
+         if action != recommendation.action and action in policy.workflows
+     ]
+diff --git a/tests/test_input_inspection.py b/tests/test_input_inspection.py
+index ddd9fa4..3624c48 100644
+--- a/tests/test_input_inspection.py
++++ b/tests/test_input_inspection.py
+@@ -96,7 +96,13 @@ def test_a_mirna_list_with_an_uninformative_name_still_counts(tmp_path):
+ 
+     advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+ 
+-    assert advised.advisory_recommendation is None
++    # Log 186: this prior lists a regulator from the list, so the list now
++    # recommends LIONESS-PUMA; before, both candidates were equipped and
++    # nothing was recommended. Either way it counts by content, not name.
++    assert advised.advisory_recommendation.action == "run_lioness_puma"
++    values = {c.value for c in advised.advisory_recommendation.conditions}
++    assert "validated:mirna_file=list_04.dat" in values
++    assert "mixed_prior:1" in values
+     assert advised.inspected_directories == [written]
+ 
+ 
+@@ -159,3 +165,59 @@ def test_form_a_quotes_non_english_folder_and_file_names_verbatim(tmp_path):
+ 
+     assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
+     assert "`基序.tsv` as the TF-motif prior" in answer
++
++
++CASE_5 = {"expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
++          "ppi.tsv": "ppi.tsv", "mirna.txt": "mirna.txt"}
++MIXED_TIE = ["run_panda", "run_puma", "run_otter", "run_giraffe"]
++
++
++def _case_5_task(written: str) -> str:
++    return (f"My prior regulatory table ({written}prior.tsv) also has small RNAs, listed in "
++            "mirna.txt. Use the expression and PPI files in the same folder.")
++
++
++def test_a_named_file_names_its_folder(tmp_path):
++    """Log 186: the request names only data/study/prior.tsv."""
++    written = _folder(tmp_path, CASE_5)
++
++    assert named_directories(_case_5_task(written), tmp_path) == [
++        (written, (tmp_path / "data" / "study").resolve()),
++    ]
++
++
++def test_a_prior_that_uses_its_mirna_list_recommends_puma_over_tf_only_candidates(tmp_path):
++    written = _folder(tmp_path, CASE_5)
++    decision = _decision(hypothesis_actions=list(MIXED_TIE))
++
++    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
++
++    assert advised.advisory_recommendation.action == "run_puma"
++    assert "mixed_prior:1" in {c.value for c in advised.advisory_recommendation.conditions}
++    for field in AUTHORITY:
++        assert getattr(advised, field) == getattr(decision, field), field
++
++    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
++
++    assert "`prior.tsv` lists 1 regulator(s) that `mirna.txt` validates as miRNAs" in answer
++    assert "**OTTER** — would read every regulator in the prior as a transcription factor." in answer
++
++
++def test_a_mirna_list_the_prior_never_uses_recommends_nothing(tmp_path):
++    written = _folder(tmp_path, {**CASE_5, "prior.tsv": "motif-panda.tsv"})
++    decision = _decision(hypothesis_actions=list(MIXED_TIE))
++
++    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
++
++    assert advised.advisory_recommendation is None
++    assert advised.inspected_directories == [written]
++
++
++def test_a_folder_that_also_holds_a_clean_tf_prior_recommends_nothing(tmp_path):
++    """Log 186: the toy folder holds both priors, so the mixed one decides nothing."""
++    written = _folder(tmp_path, {**CASE_5, "motif.tsv": "motif-panda.tsv"})
++    decision = _decision(hypothesis_actions=list(MIXED_TIE))
++
++    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
++
++    assert advised.advisory_recommendation is None

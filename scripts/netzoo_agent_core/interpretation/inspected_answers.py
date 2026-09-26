@@ -58,14 +58,28 @@ def render_inspected_recommendation(
         f"`{quoted(name)}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
     )
     missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
+    names = dict(validated)
+    mixed = [
+        item.value.split(":", 1)[1] for item in recommendation.conditions
+        if item.value.startswith("mixed_prior:")
+    ]
+    if mixed:
+        reason = (
+            f"`{quoted(names.get('motif_file', ''))}` lists {mixed[0]} regulator(s) that "
+            f"`{quoted(names.get('mirna_file', ''))}` validates as miRNAs, so the prior mixes "
+            f"TF and miRNA regulators and **{spec.workflow}** models both."
+        )
+        other_text = "would read every regulator in the prior as a transcription factor."
+    else:
+        reason = f"No file there validates as a {missing_text}, so **{spec.workflow}** fits."
+        other_text = f"would also need a {missing_text}."
     lines = [
         f"By content, the files in `{quoted(folder)}` validate as a complete input set for "
-        f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
-        f"so **{spec.workflow}** fits.",
+        f"**{spec.workflow}**: {found}. {reason}",
         "\n".join(details),
     ]
     others = [
-        f"- **{policy.workflows[action].workflow}** — would also need a {missing_text}."
+        f"- **{policy.workflows[action].workflow}** — {other_text}"
         for action in decision.hypothesis_actions
         if action != recommendation.action and action in policy.workflows
     ]

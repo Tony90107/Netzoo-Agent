@@ -11524,3 +11524,118 @@ Log 143 的 V3 刻意排除只有 aggregate 的矩陣（「那裡的 sample 是�
 ### 範圍外
 
 擴大 Log 154 內容檢查到含 GIRAFFE 的混合平手：本輪沒有觀察到需要它的實跑，暫不處理。
+
+## Log 186｜事前宣告：先驗表用到 miRNA 清單時，依內容推薦能模型 miRNA 的工具（Case 5 PUMA；擴充 Log 154）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+套在 `43abd6a` 之上。候選 patch：`docs/research-log/log186_candidate.patch`（4 個檔案，逐字套用）。
+使用者決定：採用「內容檢查擴充」的 (1)(2)(3)。
+
+### 成因（重放確認）
+
+Log 179 英文 Case 5 三次都是 {PANDA, PUMA, OTTER, GIRAFFE} 平手，反問「TF 還是 miRNA」，而原句已經說了兩者都有。
+1. 第一次解讀沒有填 regulator。review 在 T1、T3 寫了 `regulator_types=[tf, mirna]`，但 patch 只能改 issue 點名的欄位
+   （`permitted_fields=["input_artifacts"]`），也沒有附引文，所以被丟掉。
+2. discriminator 在 T1、T2 回傳非 selection_tag 的證據而整個失敗（ValidationError），T3 回傳空集合。
+3. Log 154 的資料夾檢查沒有執行：請求只寫了檔案路徑 `data/blind-neutral/case-5/prior.tsv`，沒有寫資料夾；
+   而且平手不是純 PANDA 家族。就算執行，資料夾有 miRNA 清單時 PANDA 與 PUMA 都「具備」，Log 154 也不給建議。
+
+模型從未引用 regulator，所以改契約形狀救不回來；依使用者的「以內容為主」，從資料夾內容取得區分訊號。
+
+### 修正
+
+1. `named_directories`：請求指名的**檔案**，其所在資料夾也算被指名（同樣限制在專案根目錄內，不跟隨符號連結）。
+2. 新模組 `graph/mixed_prior.py`，在 `advise_from_inspected_inputs` 中、Log 154 的判斷之前執行。觸發條件：
+   平手中**恰好一個**候選在註冊表宣告的 regulator_types 含 `mirna`（且屬 PANDA 家族），並且至少有一個只模型 TF 的候選。
+   只依註冊表的 regulator_types 區分，不依工具名稱。
+3. 訊號，全部依內容：
+   - 該候選能被自己的驗證器具備（`equipped_candidates`）；
+   - 被驗證為先驗的檔案，其 regulator 欄含有被驗證為 miRNA 清單的名字；
+   - 它的 TF-only 對應工具（所需輸入相同、只少 miRNA 清單）在排除該先驗後**無法**被具備。
+     也就是資料夾裡沒有另一份乾淨的 TF 先驗。
+     例如 `data/lioness-toy/` 同時有 `motif-panda.tsv` 與 `prior-puma.tsv`，所以不下結論。
+4. 成立時給咨詢式推薦（A 版），條件記錄各角色的驗證檔名與 `mixed_prior:<重疊數>`。
+   不淘汰任何候選，不改執行權限。A 版渲染器的說明是：先驗列出 N 個被 miRNA 清單驗證為 miRNA 的 regulator，所以先驗混有兩種 regulator；
+   其他候選「會把先驗中的每個 regulator 都當成轉錄因子」。
+
+### 釘住測試（事前宣告的修改）
+
+- `test_ties_outside_the_panda_family_are_not_read`（{panda, otter}）：**不受影響**，平手中沒有能模型 miRNA 的候選，仍回傳同一個物件。
+- **修改 1 項**：`test_a_mirna_list_with_an_uninformative_name_still_counts`。
+  - 原本斷言 `advisory_recommendation is None`，因為兩者都具備，Log 154 不給建議。
+  - 該資料夾的 `prior-puma.tsv` 含 `list_04.dat` 裡的 miR-1，而且沒有乾淨的 TF 先驗，所以新規則推薦 LIONESS-PUMA。
+  - 改為斷言推薦 LIONESS-PUMA、條件含 `validated:mirna_file=list_04.dat` 與 `mixed_prior:1`。
+  - 測試原意「miRNA 清單依內容而非檔名計入」保留，而且更直接。
+- 其餘既有測試都未修改。`test_reading_without_recommending_still_says_files_were_read` 照常通過，因為 A 版頁尾含同一句話。
+
+### 已在 worktree 量得的事實
+
+- 新測試 4 項：
+  - 指名檔案即指名其資料夾；
+  - Case 5 形狀推薦 PUMA，並渲染說明與 OTTER 的對照句；
+  - 先驗沒有用到 miRNA 清單時不推薦；
+  - 資料夾另有乾淨的 TF 先驗時不推薦。
+  前 3 項加上修改的那 1 項在舊程式碼上失敗。
+- 全套 **2172 passed、0 failed**。
+- 五個網格逐位元組相同（新規則在比對器之外）；指紋不變。
+- 重放錄下的 302 個 ambiguous 決策：
+  - case5-en ×3 由「無推薦」變成推薦 PUMA；
+  - case4-anon 1 次沒有推薦，但現在會讀資料夾並記錄 `inspected_directories`；
+  - 其餘不變。
+  worktree 第一版沒有「乾淨 TF 先驗」條件，使用者原始的 Case 4（`data/lioness-toy/`）會被錯誤推薦 LIONESS-PUMA。
+  加上條件後該題不變，並新增測試守住。
+
+### 判準
+
+| 判準 | 內容 |
+| --- | --- |
+| **H-a** | 逐字套用；0 failed；網格與指紋同上 |
+| **H-b** | 主 repo 重放與 worktree 逐項相同 |
+| **H-c（實跑，否決）** | 英文 Case 5 ×3、英文 Case 4 ×3、中文 Case 5 ×1：授權外洩 0；Case 4 被推薦 PUMA 系列 = 0 |
+| **H-d（實跑，描述）** | Case 5 是否平手、是否觸發內容推薦及推薦對象；Case 4 的推薦。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- H-a、H-b、H-c 任一失敗 → 撤回。
+
+### 已知風險
+
+1. 重疊只要 ≥1 個名字就成立。先驗裡偶然出現與 miRNA 清單同名的 regulator 是可能的，但那個名字本來就被使用者列為 miRNA。
+2. 指名檔案所在的資料夾，可能含有與本次分析無關的檔案；所有上限（12 個檔案、20 MB、40 次驗證）不變，超出就不下結論。
+
+## Log 187｜Log 186 結果：H-a～H-c 成立，混合先驗的內容推薦**保留**；Log 184 的已知風險在 Case 4 出現 1 次
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 186 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| H-a 逐字套用、0 failed、網格與指紋 | **通過**（2172 passed、35 skipped） |
+| H-b 重放 | **通過**：主 repo 與 worktree 逐項相同 |
+| H-c 外洩 0；Case 4 被推薦 PUMA 系列 0 | **通過** |
+
+### 實跑
+
+| 試驗 | 結果 |
+| --- | --- |
+| case5-en #1 | `semantic_fallback`：模型沒有引用 artifact_type（與 Case 7 T2 同型），在內容檢查之前就失敗，與本規則無關 |
+| case5-en #2、#3 | 平手 {PANDA, PUMA, OTTER, GIRAFFE} → **依內容推薦 PUMA**（`mixed_prior:1`；讀取 `data/blind-neutral/case-5/`，由指名的 `prior.tsv` 推得） |
+| case5-zh #1 | 直接 exact `run_puma`（模型填了 miRNA regulator） |
+| case4-en #1、#3 | 平手 {LIONESS-PANDA, LIONESS-PUMA} → 依內容推薦 LIONESS-PANDA（Log 154，`missing:mirna_file`），與先前相同 |
+| case4-en #2 | 平手 {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE}，**沒有推薦** |
+
+- 回覆（#2）以英文說明：`prior.tsv` 列出 1 個被 `mirna.txt` 驗證為 miRNA 的 regulator，所以先驗混有兩種 regulator，PUMA 兩者都模型；
+  PANDA／OTTER／GIRAFFE 各列一句「會把先驗中的每個 regulator 都當成轉錄因子」。
+- Log 179 同題英文 0/3 得到 PUMA（全部反問 TF 或 miRNA）；本輪 2/3 依內容推薦 PUMA。依 Log 120／124 不作比率主張。
+
+### case4-en #2：Log 184 已知風險 1 的實例
+
+GIRAFFE 讀法是 `tf_activity_matrix`、`entity_types=[sample, tf]`（完整集合）、沒有實體引文。Log 184 之前它會因缺 sample／tf 引文被拒。
+結果是兩種讀法並列（使用者測試文件的理想答案），但混合平手既不觸發 Log 154 的完整性檢查，
+而且資料夾沒有 miRNA 清單，所以 Log 186 也不觸發，於是沒有推薦。這不是 Log 186 的撤回條件（沒有推薦 PUMA 系列）。
+
+### 下一步候選（未實作）
+
+- 混合平手（PANDA 家族＋GIRAFFE）的內容比較：GIRAFFE 與 LIONESS-PANDA 的輸入相同，內容無法區分，需要的是實驗假設層級的條件
+  （每個樣本的網路接線 vs TF 活性）——即 Log 139 條件推薦的軸，而非資料夾內容。

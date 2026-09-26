@@ -38,6 +38,7 @@ from ..data.tables import _inspect_panda_inputs_impl
 from ..interpretation.discovery import _unlabeled_input_bindings
 from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
 from .context import record_event
+from .mixed_prior import mirna_capable_candidate, mixed_prior_conditions, tf_only_counterpart
 
 __all__ = [
     "INSPECTED_AXIS",
@@ -64,18 +65,24 @@ _NUMBER = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
 
 
 def named_directories(task: str, root: Path = PROJECT_ROOT) -> list[tuple[str, Path]]:
-    """Directories the request names that exist inside the project root."""
+    """Directories the request names that exist inside the project root.
+
+    A named file names its folder too (Log 186): "my prior (data/x/prior.tsv)
+    ... the files in the same folder" points at `data/x/`.
+    """
     base = root.resolve()
-    found: list[tuple[str, Path]] = []
+    found: dict[Path, str] = {}
     for written in dict.fromkeys(_PATH_TOKEN.findall(task)):
         if "/" not in written:
             continue
         candidate = (base / written).resolve()
+        if candidate.is_file() and not candidate.is_symlink():
+            written, candidate = written.rstrip("/").rsplit("/", 1)[0] + "/", candidate.parent
         if candidate == base or not candidate.is_relative_to(base):
             continue
         if candidate.is_dir():
-            found.append((written, candidate))
-    return found
+            found.setdefault(candidate, written)
+    return [(written, candidate) for candidate, written in found.items()]
 
 
 def _shape(path: Path) -> str | None:
@@ -132,6 +139,7 @@ def _validates(action: str, values: dict[str, Path]) -> bool:
 def equipped_candidates(
     directory: Path,
     candidates: list[str],
+    exclude: frozenset[Path] = frozenset(),
 ) -> dict[str, dict[str, Path]] | None:
     """Candidates whose inputs some file assignment content-validates, with that assignment.
 
@@ -143,6 +151,7 @@ def equipped_candidates(
     files = _candidate_files(directory)
     if not files:
         return None
+    files = [path for path in files if path not in exclude]
     shapes = {path: _shape(path) for path in files}
     hinted = _unlabeled_input_bindings(" ".join(path.name for path in files), tuple(_ROLE_SHAPES))
     budget = _MAX_VALIDATIONS
@@ -186,18 +195,43 @@ def advise_from_inspected_inputs(
         decision.capability_match_status != "ambiguous"
         or len(candidates) < 2
         or decision.advisory_recommendation is not None
-        or not set(candidates) <= _PANDA_FAMILY
     ):
         return decision
     fields_by_action = {
         action: {f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS}
         for action in candidates
     }
-    if len({frozenset(value) for value in fields_by_action.values()}) < 2:
+    by_equipment = (
+        set(candidates) <= _PANDA_FAMILY
+        and len({frozenset(value) for value in fields_by_action.values()}) >= 2
+    )
+    mirna_action = mirna_capable_candidate(candidates, _PANDA_FAMILY)
+    if not by_equipment and mirna_action is None:
         return decision
     inspected: list[str] = []
     for written, directory in named_directories(task, root):
         inspected.append(written)
+        if mirna_action is not None:
+            mixed = (equipped_candidates(directory, [mirna_action]) or {}).get(mirna_action, {})
+            conditions = mixed_prior_conditions(mixed, written)
+            counterpart = tf_only_counterpart(mirna_action, _PANDA_FAMILY)
+            clean = (
+                equipped_candidates(directory, [counterpart], frozenset({mixed["motif_file"]}))
+                if conditions and counterpart is not None else None
+            )
+            if conditions and clean == {}:
+                return decision.model_copy(update={
+                    "advisory_recommendation": AdvisoryRecommendation(
+                        action=mirna_action, conditions=conditions,
+                    ),
+                    "clarification_question": (
+                        f"Should I use {_workflow_name(mirna_action)}, or does another listed "
+                        "option fit your study better?"
+                    ),
+                    "inspected_directories": inspected,
+                })
+        if not by_equipment:
+            continue
         equipped = equipped_candidates(directory, candidates)
         if not equipped or len(equipped) != 1:
             continue
