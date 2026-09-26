@@ -1,0 +1,347 @@
+diff --git a/scripts/netzoo_agent_core/contracts/policy.py b/scripts/netzoo_agent_core/contracts/policy.py
+index 79f5f99..3fe7f2d 100644
+--- a/scripts/netzoo_agent_core/contracts/policy.py
++++ b/scripts/netzoo_agent_core/contracts/policy.py
+@@ -71,6 +71,11 @@ class WorkflowOutputCapabilitySpec(BaseModel):
+         default_factory=list, max_length=8
+     )
+     guidance_notes: list[str] = Field(default_factory=list, max_length=8)
++    # Experimental conditions under which a user should prefer this workflow
++    # over a registered alternative with the same output. Rendered only by the
++    # deterministic candidate comparison; excluded from every dump so it can
++    # never reach a model prompt or context (Log 136).
++    prefer_when: list[str] = Field(default_factory=list, max_length=4, exclude=True)
+     accepted_input_granularities: list[Granularity] = Field(
+         default_factory=list, max_length=3
+     )
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 1ed3012..9b10c75 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -213,6 +213,8 @@ def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot) -> list
+             method_notes.append(detail)
+     if method_notes:
+         lines.append("  - Method premise: " + "; ".join(method_notes[:2]))
++    if capability.prefer_when:
++        lines.append("  - Prefer when: " + " ".join(capability.prefer_when))
+     lines.append("  - Required inputs: " + _input_summary(spec) + ".")
+     artifacts = sorted(capability.produced_artifacts or {capability.artifact_type})
+     output_labels = [_artifact_label(artifact) for artifact in artifacts]
+diff --git a/scripts/netzoo_agent_core/policy.py b/scripts/netzoo_agent_core/policy.py
+index 2f65858..47475d9 100644
+--- a/scripts/netzoo_agent_core/policy.py
++++ b/scripts/netzoo_agent_core/policy.py
+@@ -382,6 +382,7 @@ class ProjectPolicyLoader:
+                     spec.output_capability.accepted_input_modalities
+                 ),
+                 guidance_notes=tuple(spec.output_capability.guidance_notes),
++                prefer_when=tuple(spec.output_capability.prefer_when),
+                 accepted_input_granularities=frozenset(
+                     spec.output_capability.accepted_input_granularities
+                 ),
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index c21ff14..716fff4 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -243,6 +243,7 @@ class OutputCapabilityDefinition:
+     handoff_targets: tuple[RecommendedAction, ...] = ()
+     selection_tags: frozenset[str] = frozenset()
+     guidance_notes: tuple[str, ...] = ()
++    prefer_when: tuple[str, ...] = ()
+     handoff_contract: str = ""
+     conditional_outputs: tuple[ConditionalOutputDefinition, ...] = ()
+ 
+@@ -408,6 +409,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "tf_gene_regulation", "aggregate_network", "message_passing",
+                 "lioness_base_compatibility",
+             }),
++            prefer_when=(
++                "You want one established consensus TF-gene network per condition from expression, TF motif and PPI data.",
++                "You plan to compare with published PANDA networks or later derive per-sample networks with LIONESS.",
++            ),
+             handoff_contract=(
+                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
+                 "PPI priors, or a validated adjusted gene-by-gene co-expression "
+@@ -469,6 +474,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "PUMA uses message passing to integrate miRNA-target predictions "
+                 "with target-gene co-expression alongside TF motif and PPI evidence.",
+             ),
++            prefer_when=(
++                "Your regulatory prior includes miRNA-target predictions; miRNAs are modelled as regulators that do not form protein complexes.",
++            ),
+             handoff_contract=(
+                 "PUMA consumes a gene-by-sample expression matrix plus motif, PPI, "
+                 "and miRNA priors, or a validated adjusted gene-by-gene co-expression "
+@@ -522,6 +530,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "tf_gene_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
++            prefer_when=(
++                "You have TF motif and PPI priors and need one TF-gene network per sample, for example per-sample TF targeting scores to test against clinical outcomes.",
++                "The cohort is large enough that leaving one sample out changes the aggregate network only slightly (the LIONESS linearity assumption).",
++            ),
+             handoff_contract=(
+                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
+                 "motif and PPI priors to internally infer the aggregate PANDA "
+@@ -574,6 +586,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "mirna_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
++            prefer_when=(
++                "Your prior includes miRNA-target predictions and you need one miRNA/TF-gene network per sample.",
++                "The cohort is large enough that leaving one sample out changes the aggregate network only slightly (the LIONESS linearity assumption).",
++            ),
+             handoff_contract=(
+                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
+                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
+@@ -607,6 +623,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             selection_tags=frozenset({
+                 "sample_specific", "coexpression", "leave_one_out_network_inference",
+             }),
++            prefer_when=(
++                "You need per-sample gene-gene co-expression from expression alone and the cohort is large enough for leave-one-out differences to be stable.",
++                "You accept that each sample network is defined relative to the cohort, so sample networks are not statistically independent.",
++            ),
+             handoff_contract=(
+                 "LIONESS co-expression consumes a gene-by-sample expression matrix "
+                 "and produces sample-specific co-expression networks."
+@@ -635,6 +655,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             granularities=frozenset({"aggregate"}),
+             input_artifacts=frozenset({"regulatory_network"}),
+             selection_tags=frozenset({"bipartite_community_detection", "modules"}),
++            prefer_when=(
++                "You already have a two-mode network (for example TF-gene or SNP-gene) and want communities containing both node types plus each node's core score.",
++            ),
+             handoff_contract=(
+                 "CONDOR consumes a weighted source-target bipartite edge list made "
+                 "from a validated regulator-gene network and returns community "
+@@ -670,6 +693,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                     "high_order_correlation",
+                 }
+             ),
++            prefer_when=(
++                "Co-expression may be driven by batch, site or other sample covariates that you want to separate or adjust for.",
++                "You want covariate-specific co-expression components rather than separate networks per group.",
++            ),
+             handoff_contract=(
+                 "COBRA consumes a gene-by-sample expression matrix and numeric sample "
+                 "covariates, then produces a covariate-associated covariance "
+@@ -775,6 +802,9 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             ),
+             input_artifacts=frozenset({"mutation_matrix"}),
+             selection_tags=frozenset({"somatic_mutation", "cancer_subtyping", "pathway_scores"}),
++            prefer_when=(
++                "Somatic mutation data are too sparse for gene-level clustering and should be corrected for gene length and aggregated to pathways before subtyping.",
++            ),
+             handoff_contract=(
+                 "SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length "
+                 "CSV, a tab-delimited cancer-gene list, and a GMT pathway file. It produces "
+@@ -826,6 +856,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "cross-layer penalty such as lambda_inter; three independently controlled "
+                 "intra/inter-omics penalties are outside this workflow contract.",
+             ),
++            prefer_when=(
++                "You have two omics layers measured on the same samples and want direct (conditional) associations rather than marginal correlations.",
++                "The layers differ in size or noise, so each layer needs its own shrinkage.",
++            ),
+             handoff_contract=(
+                 "DRAGON consumes exactly two paired sample-by-feature continuous omics tables "
+                 "and produces one aggregate undirected multi-omic network. The matrix is a "
+@@ -868,6 +902,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
+             handoff_targets=("run_condor",),
+             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
++            prefer_when=(
++                "The network is large and the memory or runtime of iterative message passing is a concern.",
++                "You want the network defined as the optimum of an explicit objective solved by gradient descent.",
++            ),
+             handoff_contract=(
+                 "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI "
+                 "projection P, and either a gene-by-sample expression matrix (from which "
+@@ -929,6 +967,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "signed_partial_regulatory_effects",
+                 "tfa_covariate_regression",
+             }),
++            prefer_when=(
++                "You suspect a TF's activity differs across samples even though its own mRNA level does not.",
++                "You need signed (activating versus repressing) TF-gene effects or a TF-by-sample activity matrix.",
++            ),
+             handoff_contract=(
+                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
+                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
+@@ -1038,6 +1080,10 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "coexpression", "bayesian",
+                 "sparse_pvalue_coexpression",
+             }),
++            prefer_when=(
++                "You have few samples, or you need per-edge uncertainty (p-values) in each sample's co-expression network.",
++                "You prefer a Bayesian per-sample estimate that does not rely on the LIONESS leave-one-out linearity assumption.",
++            ),
+             handoff_contract=(
+                 "BONOBO consumes a labelled gene-by-sample expression matrix and "
+                 "produces one gene-by-gene sample-specific co-expression matrix per "
+diff --git a/workflows/bonobo.yaml b/workflows/bonobo.yaml
+index d2c8d9b..4439799 100644
+--- a/workflows/bonobo.yaml
++++ b/workflows/bonobo.yaml
+@@ -110,6 +110,9 @@ output_capability:
+       produced_artifacts: []
+       semantics: "invalid: save_pvals requires sparsify"
+       valid: false
++  prefer_when:
++    - "You have few samples, or you need per-edge uncertainty (p-values) in each sample's co-expression network."
++    - "You prefer a Bayesian per-sample estimate that does not rely on the LIONESS leave-one-out linearity assumption."
+   handoff_contract: >-
+     BONOBO consumes a labelled gene-by-sample expression matrix and produces one
+     gene-by-gene sample-specific co-expression matrix per selected sample, plus
+diff --git a/workflows/cobra.yaml b/workflows/cobra.yaml
+index 078ae92..5a7e878 100644
+--- a/workflows/cobra.yaml
++++ b/workflows/cobra.yaml
+@@ -25,6 +25,9 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: [run_panda, run_puma, run_otter]
+   selection_tags: [covariate_association, hospital_effect_assessment, sequencing_batch_effect_assessment, batch_correction, high_order_correlation]
++  prefer_when:
++    - "Co-expression may be driven by batch, site or other sample covariates that you want to separate or adjust for."
++    - "You want covariate-specific co-expression components rather than separate networks per group."
+   handoff_contract: >-
+     COBRA consumes a gene-by-sample expression matrix and numeric sample covariates,
+     then produces a covariate-associated covariance decomposition and a labeled
+diff --git a/workflows/condor.yaml b/workflows/condor.yaml
+index 6d02fa6..457510c 100644
+--- a/workflows/condor.yaml
++++ b/workflows/condor.yaml
+@@ -24,6 +24,8 @@ output_capability:
+   input_artifacts: [regulatory_network]
+   handoff_targets: []
+   selection_tags: [bipartite_community_detection, modules]
++  prefer_when:
++    - "You already have a two-mode network (for example TF-gene or SNP-gene) and want communities containing both node types plus each node's core score."
+   handoff_contract: >-
+     CONDOR consumes a weighted source-target bipartite edge list made from a
+     validated regulator-gene network and returns community assignments with
+diff --git a/workflows/dragon.yaml b/workflows/dragon.yaml
+index 6298141..0903ba6 100644
+--- a/workflows/dragon.yaml
++++ b/workflows/dragon.yaml
+@@ -43,6 +43,9 @@ output_capability:
+     - DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+     - DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.
+     - The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
++  prefer_when:
++    - "You have two omics layers measured on the same samples and want direct (conditional) associations rather than marginal correlations."
++    - "The layers differ in size or noise, so each layer needs its own shrinkage."
+   handoff_contract: >-
+     DRAGON consumes exactly two paired sample-by-feature continuous omics tables
+     and produces one aggregate undirected multi-omic network. The matrix is a
+diff --git a/workflows/giraffe.yaml b/workflows/giraffe.yaml
+index 90f7f77..db1f506 100644
+--- a/workflows/giraffe.yaml
++++ b/workflows/giraffe.yaml
+@@ -20,6 +20,9 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: []
+   selection_tags: [tf_gene_regulation, tfa, aggregate_network, biologically_informed_matrix_factorization, joint_grn_tfa_inference, linear_model_coefficients, signed_partial_regulatory_effects, tfa_covariate_regression]
++  prefer_when:
++    - "You suspect a TF's activity differs across samples even though its own mRNA level does not."
++    - "You need signed (activating versus repressing) TF-gene effects or a TF-by-sample activity matrix."
+   handoff_contract: >-
+     GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a
+     TF-by-TF PPI matrix after explicit labelled-file conversion. Through biologically
+diff --git a/workflows/lioness-coexpression.yaml b/workflows/lioness-coexpression.yaml
+index 03681bd..577827a 100644
+--- a/workflows/lioness-coexpression.yaml
++++ b/workflows/lioness-coexpression.yaml
+@@ -22,6 +22,9 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: []
+   selection_tags: [sample_specific, coexpression, leave_one_out_network_inference]
++  prefer_when:
++    - "You need per-sample gene-gene co-expression from expression alone and the cohort is large enough for leave-one-out differences to be stable."
++    - "You accept that each sample network is defined relative to the cohort, so sample networks are not statistically independent."
+   handoff_contract: >-
+     LIONESS co-expression consumes a gene-by-sample expression matrix and produces
+     sample-specific co-expression networks.
+diff --git a/workflows/lioness-panda.yaml b/workflows/lioness-panda.yaml
+index 798dda8..137db05 100644
+--- a/workflows/lioness-panda.yaml
++++ b/workflows/lioness-panda.yaml
+@@ -26,6 +26,9 @@ output_capability:
+     - tf_gene_regulation
+     - message_passing
+     - leave_one_out_network_inference
++  prefer_when:
++    - "You have TF motif and PPI priors and need one TF-gene network per sample, for example per-sample TF targeting scores to test against clinical outcomes."
++    - "The cohort is large enough that leaving one sample out changes the aggregate network only slightly (the LIONESS linearity assumption)."
+   handoff_contract: >-
+     LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI
+     priors to internally infer the aggregate PANDA network and derive sample-specific
+diff --git a/workflows/lioness-puma.yaml b/workflows/lioness-puma.yaml
+index 3265087..d0e87ac 100644
+--- a/workflows/lioness-puma.yaml
++++ b/workflows/lioness-puma.yaml
+@@ -26,6 +26,9 @@ output_capability:
+     - mirna_regulation
+     - message_passing
+     - leave_one_out_network_inference
++  prefer_when:
++    - "Your prior includes miRNA-target predictions and you need one miRNA/TF-gene network per sample."
++    - "The cohort is large enough that leaving one sample out changes the aggregate network only slightly (the LIONESS linearity assumption)."
+   handoff_contract: >-
+     LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI,
+     and miRNA priors to internally infer the aggregate PUMA network and derive
+diff --git a/workflows/otter.yaml b/workflows/otter.yaml
+index ceb452e..9f26dd3 100644
+--- a/workflows/otter.yaml
++++ b/workflows/otter.yaml
+@@ -66,6 +66,9 @@ output_capability:
+   input_artifacts: [expression_matrix, coexpression_network]
+   handoff_targets: [run_condor]
+   selection_tags: [tf_gene_regulation, aggregate_network, relaxed_graph_matching]
++  prefer_when:
++    - "The network is large and the memory or runtime of iterative message passing is a concern."
++    - "You want the network defined as the optimum of an explicit objective solved by gradient descent."
+   handoff_contract: >-
+     OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI
+     projection P, and either a gene-by-sample expression matrix (from which
+diff --git a/workflows/panda.yaml b/workflows/panda.yaml
+index cf94870..b43fa7c 100644
+--- a/workflows/panda.yaml
++++ b/workflows/panda.yaml
+@@ -28,6 +28,9 @@ output_capability:
+   input_artifacts: [expression_matrix, coexpression_network]
+   handoff_targets: [run_condor]
+   selection_tags: [tf_gene_regulation, aggregate_network, message_passing, lioness_base_compatibility]
++  prefer_when:
++    - "You want one established consensus TF-gene network per condition from expression, TF motif and PPI data."
++    - "You plan to compare with published PANDA networks or later derive per-sample networks with LIONESS."
+   handoff_contract: >-
+     PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or
+     a validated adjusted gene-by-gene co-expression matrix through coexpression_file.
+diff --git a/workflows/puma.yaml b/workflows/puma.yaml
+index a2afb6f..dca2ae9 100644
+--- a/workflows/puma.yaml
++++ b/workflows/puma.yaml
+@@ -27,6 +27,8 @@ output_capability:
+     - >-
+       PUMA uses message passing to integrate miRNA-target predictions with target-gene
+       co-expression alongside TF motif and PPI evidence.
++  prefer_when:
++    - "Your regulatory prior includes miRNA-target predictions; miRNAs are modelled as regulators that do not form protein complexes."
+   handoff_contract: >-
+     PUMA consumes a gene-by-sample expression matrix plus motif, PPI, and miRNA
+     priors, or a validated adjusted gene-by-gene co-expression matrix through
+diff --git a/workflows/sambar.yaml b/workflows/sambar.yaml
+index 45ed3ff..e7f8623 100644
+--- a/workflows/sambar.yaml
++++ b/workflows/sambar.yaml
+@@ -59,6 +59,8 @@ output_capability:
+   input_artifacts: [mutation_matrix]
+   handoff_targets: []
+   selection_tags: [somatic_mutation, cancer_subtyping, pathway_scores]
++  prefer_when:
++    - "Somatic mutation data are too sparse for gene-level clustering and should be corrected for gene length and aggregated to pathways before subtyping."
+   handoff_contract: >-
+     SAMBAR consumes a samples-by-genes somatic mutation CSV, a gene-length CSV, a
+     tab-delimited cancer-gene list, and a GMT pathway file. It produces gene and

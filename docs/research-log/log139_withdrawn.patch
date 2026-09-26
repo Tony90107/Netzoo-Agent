@@ -1,0 +1,1148 @@
+diff --git a/scripts/evaluate_routing.py b/scripts/evaluate_routing.py
+index 0f1b5df..02aaf40 100644
+--- a/scripts/evaluate_routing.py
++++ b/scripts/evaluate_routing.py
+@@ -795,6 +795,7 @@ def evaluate(
+         semantic_reviewer=semantic_reviewer,
+         semantic_patcher=semantic_patcher,
+         semantic_discriminator=semantic_discriminator,
++        selection_condition_llm=provider if semantic_contract == "legacy" else None,
+         intent_router=intent_router,
+         input_content_mapper=None, response_llm=None,
+         semantic_claims=semantic_contract == "claims",
+diff --git a/scripts/netzoo_agent_core/contracts/decisions.py b/scripts/netzoo_agent_core/contracts/decisions.py
+index eb14a4f..a2e31f2 100644
+--- a/scripts/netzoo_agent_core/contracts/decisions.py
++++ b/scripts/netzoo_agent_core/contracts/decisions.py
+@@ -9,6 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
+ 
+ from .outcomes import (
+     RUNNABLE_CAPABILITY_COUNT,
++    AdvisoryRecommendation,
+     CapabilityMatchStatus,
+     MatchBasis,
+     OutcomeHypothesis,
+@@ -115,6 +116,14 @@ class TaskDecision(BaseModel):
+     alternative_actions: list[RecommendedAction] = Field(default_factory=list)
+     mismatch_dimensions: list[str] = Field(default_factory=list)
+     clarification_question: str | None = None
++    # Advisory only (Log 139): a preferred candidate among tied workflows,
++    # backed by quoted experimental conditions. It never changes action,
++    # should_execute, capability_match_status or matched_actions.
++    # Omitted from dumps while unset, so every existing serialized decision is
++    # byte-identical to before this field existed.
++    advisory_recommendation: AdvisoryRecommendation | None = Field(
++        default=None, exclude_if=lambda value: value is None,
++    )
+     missing_inputs: list[str] = Field(default_factory=list)
+     expression_file: str | None = None
+     design_file: str | None = None
+diff --git a/scripts/netzoo_agent_core/contracts/outcomes.py b/scripts/netzoo_agent_core/contracts/outcomes.py
+index 5f1b20e..ae9802f 100644
+--- a/scripts/netzoo_agent_core/contracts/outcomes.py
++++ b/scripts/netzoo_agent_core/contracts/outcomes.py
+@@ -533,6 +533,49 @@ class SemanticDiscriminator(BaseModel):
+         return self
+ 
+ 
++class ConditionClaim(BaseModel):
++    """One offered experimental condition the request states, with its quote."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    condition: str = Field(
++        max_length=80,
++        description="One condition id exactly as offered in the option list.",
++    )
++    text_span: str = Field(
++        min_length=1,
++        max_length=300,
++        description="Exact original-language quote from the request that states it.",
++    )
++
++
++class SelectionConditionClaims(BaseModel):
++    """Experimental conditions stated in the request (Log 139); may be empty."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    claims: list[ConditionClaim] = Field(default_factory=list, max_length=6)
++
++
++class AdvisoryCondition(BaseModel):
++    """A validated, quoted experimental condition behind a recommendation."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    axis: str
++    value: str
++    text_span: str
++
++
++class AdvisoryRecommendation(BaseModel):
++    """An advisory preference among tied candidates; never execution authority."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    action: RecommendedAction
++    conditions: list[AdvisoryCondition] = Field(min_length=1, max_length=6)
++
++
+ class SemanticReview(BaseModel):
+     """One adjudicated scientific outcome returned by the review pass."""
+ 
+diff --git a/scripts/netzoo_agent_core/contracts/policy.py b/scripts/netzoo_agent_core/contracts/policy.py
+index 79f5f99..3a7f2f2 100644
+--- a/scripts/netzoo_agent_core/contracts/policy.py
++++ b/scripts/netzoo_agent_core/contracts/policy.py
+@@ -4,13 +4,14 @@ from __future__ import annotations
+ 
+ from typing import Any, Literal
+ 
+-from pydantic import BaseModel, ConfigDict, Field
++from pydantic import BaseModel, ConfigDict, Field, field_validator
+ from workflow_registry import (
+     ArtifactType,
+     EntityType,
+     Granularity,
+     InputModality,
+     RecommendedAction,
++    SELECTION_AXES,
+ )
+ 
+ class AgentsPolicyHeader(BaseModel):
+@@ -71,6 +72,9 @@ class WorkflowOutputCapabilitySpec(BaseModel):
+         default_factory=list, max_length=8
+     )
+     guidance_notes: list[str] = Field(default_factory=list, max_length=8)
++    # Experimental conditions ("axis:value" from SELECTION_AXES) under which
++    # this workflow is preferred over a same-output alternative (Log 139).
++    prefer_when: list[str] = Field(default_factory=list, max_length=4)
+     accepted_input_granularities: list[Granularity] = Field(
+         default_factory=list, max_length=3
+     )
+@@ -96,6 +100,15 @@ class WorkflowOutputCapabilitySpec(BaseModel):
+         default_factory=list, max_length=8
+     )
+ 
++    @field_validator("prefer_when")
++    @classmethod
++    def _registered_conditions_only(cls, values: list[str]) -> list[str]:
++        for value in values:
++            axis, _, level = value.partition(":")
++            if level not in SELECTION_AXES.get(axis, {}).get("values", {}):
++                raise ValueError(f"Unknown selection condition: {value}")
++        return values
++
+ 
+ class WorkflowPolicySpec(BaseModel):
+     model_config = ConfigDict(extra="forbid")
+diff --git a/scripts/netzoo_agent_core/graph/condition_recommender.py b/scripts/netzoo_agent_core/graph/condition_recommender.py
+new file mode 100644
+index 0000000..0715a15
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/condition_recommender.py
+@@ -0,0 +1,294 @@
++"""Advisory experimental-condition recommendation among tied workflows (Log 139).
++
++When compatible workflows produce the same result and differ only in method,
++the tag discriminator offers method jargon the user never writes. This stage
++offers the study facts that separate the candidates instead -- sample count,
++per-edge confidence, compute limits -- and asks the model which of them the
++request states, with a quote. The deterministic part decides:
++
++- every claim must be an offered condition with a quote grounded in the request;
++- the grounded claims must point to exactly one candidate, or nothing is
++  recommended and the user is asked the separating questions instead.
++
++A recommendation is advice. It never changes ``action``, ``should_execute``,
++``capability_match_status`` or ``matched_actions``; executing still requires
++the user to choose.
++"""
++
++from __future__ import annotations
++
++import time
++from dataclasses import dataclass
++
++from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
++
++from ..contracts import AgentState, LLMUsage, TaskDecision
++from ..contracts.outcomes import (
++    AdvisoryCondition,
++    AdvisoryRecommendation,
++    SelectionConditionClaims,
++)
++from ..interpretation.concept_answers import _TWO_GROUP_COMPARISON_PATTERN
++from ..interpretation.outcome_validation import (
++    _grounded_span,
++    _hard_wrap_normalized,
++    _normalized,
++)
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_repair import semantic_payload
++from ..llm import append_llm_usage, build_selection_condition_messages
++from ..routing.clarification_planner import plan_clarification
++from .context import _GraphContext, preflight_budget, record_event
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++
++__all__ = [
++    "ConditionOption",
++    "condition_options",
++    "invoke_condition_recommender",
++    "is_method_tie",
++    "recommend_from_claims",
++    "separating_question",
++]
++
++_MAX_QUESTIONS = 2
++
++
++@dataclass(frozen=True, slots=True)
++class ConditionOption:
++    axis: str
++    value: str
++    label: str
++    actions: tuple[str, ...]
++
++    @property
++    def condition(self) -> str:
++        return f"{self.axis}:{self.value}"
++
++
++def _workflow_name(action: str) -> str:
++    definition = ACTION_DEFINITIONS.get(action)
++    return definition.workflow if definition is not None else action
++
++
++def condition_options(candidates: list[str]) -> list[ConditionOption]:
++    """Conditions that separate the candidates, in axis order.
++
++    A single-valued axis ("the network is large") separates when some but not
++    all candidates are preferred under it. A multi-valued axis separates only
++    when every candidate declares a value on it: a candidate silent on the axis
++    is equally suitable under any value, so "no covariates" does not favour
++    LIONESS over BONOBO even though LIONESS declares it.
++    """
++    preferring: dict[str, list[str]] = {}
++    declared_axes: dict[str, set[str]] = {}
++    for action in candidates:
++        capability = OUTPUT_CAPABILITIES.get(action)
++        for condition in (capability.prefer_when if capability else ()):
++            preferring.setdefault(condition, []).append(action)
++            declared_axes.setdefault(condition.partition(":")[0], set()).add(action)
++    options = []
++    for axis, spec in SELECTION_AXES.items():
++        multi_valued = len(spec["values"]) > 1
++        if multi_valued and declared_axes.get(axis, set()) != set(candidates):
++            continue
++        for value, label in spec["values"].items():
++            actions = preferring.get(f"{axis}:{value}", [])
++            if 0 < len(actions) < len(candidates):
++                options.append(ConditionOption(axis, value, label, tuple(actions)))
++    return options
++
++
++def is_method_tie(decision: TaskDecision) -> bool:
++    """Same result, different method: the planner can only ask about the algorithm."""
++    candidates = list(decision.hypothesis_actions)
++    if decision.capability_match_status != "ambiguous" or len(candidates) < 2:
++        return False
++    plan = plan_clarification(
++        candidates,
++        outcomes=[item.outcome for item in decision.outcome_hypotheses],
++    )
++    return plan is not None and plan.dimension == "algorithm"
++
++
++def _beginner_group_guidance_applies(task: str, decision: TaskDecision) -> bool:
++    """Leave the existing two-group comparison guidance untouched."""
++    outcome = decision.requested_outcome
++    return bool(
++        outcome is not None
++        and outcome.artifact_type == "regulatory_network"
++        and "run_panda" in decision.hypothesis_actions
++        and _TWO_GROUP_COMPARISON_PATTERN.search(task)
++    )
++
++
++def _quote_grounded(task: str, span: str) -> bool:
++    normalized = _normalized(span or "")
++    if not normalized:
++        return False
++    variants = tuple(dict.fromkeys((_normalized(task), _hard_wrap_normalized(task))))
++    return any(_grounded_span(normalized, variant) for variant in variants)
++
++
++def recommend_from_claims(
++    user_task: str,
++    claims: SelectionConditionClaims,
++    options: list[ConditionOption],
++    candidates: list[str],
++) -> tuple[AdvisoryRecommendation | None, list[dict]]:
++    """Return the recommendation, if any, and every rejected claim with its reason."""
++    offered = {option.condition: option for option in options}
++    accepted: list[tuple[ConditionOption, str]] = []
++    rejected: list[dict] = []
++    for claim in claims.claims:
++        option = offered.get(claim.condition)
++        if option is None:
++            rejected.append({"condition": claim.condition, "reason": "not_offered"})
++        elif not _quote_grounded(user_task, claim.text_span):
++            rejected.append({"condition": claim.condition, "reason": "quote_not_in_request"})
++        else:
++            accepted.append((option, claim.text_span))
++    if not accepted:
++        return None, rejected
++    remaining = set(candidates)
++    for option, _ in accepted:
++        remaining &= set(option.actions)
++    if len(remaining) != 1:
++        return None, [*rejected, {"condition": None, "reason": "claims_do_not_select_one"}]
++    action = next(iter(remaining))
++    return AdvisoryRecommendation(
++        action=action,
++        conditions=[
++            AdvisoryCondition(axis=option.axis, value=option.value, text_span=span)
++            for option, span in accepted
++        ],
++    ), rejected
++
++
++def separating_question(
++    options: list[ConditionOption],
++    candidates: list[str] | None = None,
++) -> str:
++    """Form B: ask the study facts that separate the candidates, not method names."""
++    questions = []
++    covered: set[str] = set()
++    for axis in dict.fromkeys(option.axis for option in options):
++        axis_options = [option for option in options if option.axis == axis]
++        single_valued = len(SELECTION_AXES[axis]["values"]) == 1
++        answers = "; ".join(
++            ("yes" if single_valued else option.label)
++            + " → " + ", ".join(_workflow_name(a) for a in option.actions)
++            for option in axis_options
++        )
++        covered.update(a for option in axis_options for a in option.actions)
++        questions.append(f"{SELECTION_AXES[axis]['question']} ({answers})")
++        if len(questions) == _MAX_QUESTIONS:
++            break
++    numbered = " ".join(f"({index}) {text}" for index, text in enumerate(questions, 1))
++    lead = "Both fit" if candidates is not None and len(candidates) == 2 else "These all fit"
++    text = f"{lead}; to choose, tell me: {numbered}"
++    uncovered = [a for a in (candidates or []) if a not in covered]
++    if uncovered:
++        text += " If none of these applies: " + ", ".join(_workflow_name(a) for a in uncovered) + "."
++    return text
++
++
++def recommendation_question(recommendation: AdvisoryRecommendation) -> str:
++    return (
++        f"Should I use {_workflow_name(recommendation.action)}, or does another "
++        "listed option fit your study better?"
++    )
++
++
++def invoke_condition_recommender(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    decision: TaskDecision,
++    usage: LLMUsage,
++    budget_warnings: list[str],
++):
++    """Attach an advisory recommendation or a separating question to a method tie."""
++    llm = getattr(context, "selection_condition_llm", None)
++    if (
++        llm is None
++        or getattr(context, "semantic_claims", False)
++        or not is_method_tie(decision)
++        or _beginner_group_guidance_applies(user_task, decision)
++    ):
++        return decision, usage, budget_warnings
++    candidates = list(decision.hypothesis_actions)
++    options = condition_options(candidates)
++    if not options:
++        return decision, usage, budget_warnings
++    messages = build_selection_condition_messages(
++        user_task, [(option.condition, option.label) for option in options],
++    )
++    input_text = _serialized_structured_input(messages, SelectionConditionClaims)
++    semantic_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
++    budget, budget_warnings = preflight_budget(
++        context, semantic_state, role="selection_conditions",
++        model=context.semantic_model_name, input_text=input_text,
++        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
++    )
++    if budget.status == "blocked":
++        usage.budget_exhausted = True
++        return decision, usage, budget_warnings
++    fallback = decision.model_copy(update={
++        "clarification_question": separating_question(options, candidates),
++    })
++    started_ns = time.monotonic_ns()
++    raw = None
++    payload = None
++    output_text = ""
++    call_status = "failed"
++    try:
++        record_event(context, state, "routing.selection_conditions_started", "classify", {
++            "candidate_actions": candidates,
++            "offered_conditions": [option.condition for option in options],
++        })
++        adapter = llm.with_structured_output(
++            SelectionConditionClaims, method="function_calling", include_raw=True,
++        )
++        payload, raw = semantic_payload(adapter.invoke(messages))
++        claims = SelectionConditionClaims.model_validate(payload)
++        output_text = claims.model_dump_json()
++        call_status = "success"
++        recommendation, rejected = recommend_from_claims(
++            user_task, claims, options, candidates,
++        )
++        if recommendation is None:
++            record_event(context, state, "routing.selection_conditions_unresolved", "classify", {
++                "claims": [item.model_dump() for item in claims.claims],
++                "rejected": rejected,
++                "candidate_actions": candidates,
++            })
++            return fallback, usage, budget_warnings
++        record_event(context, state, "routing.selection_conditions_recommended", "classify", {
++            "recommended_action": recommendation.action,
++            "conditions": [item.model_dump() for item in recommendation.conditions],
++            "rejected": rejected,
++            "candidate_actions": candidates,
++        })
++        return decision.model_copy(update={
++            "advisory_recommendation": recommendation,
++            "clarification_question": recommendation_question(recommendation),
++        }), usage, budget_warnings
++    except BaseException as error:
++        if _is_fatal_exception(error):
++            raise
++        record_event(context, state, "routing.selection_conditions_failed", "classify", {
++            "error_type": type(error).__name__,
++            "error_message": str(error)[:2000],
++            "validation_issues": _validation_issue_types(error),
++            "provider_payload": payload,
++            "candidate_actions": candidates,
++        })
++        return fallback, usage, budget_warnings
++    finally:
++        usage = append_llm_usage(
++            usage, role="selection_conditions", model=context.semantic_model_name,
++            response=raw, input_text=input_text, output_text=output_text,
++            budget_tokens=context.task_token_budget,
++            duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++            status=call_status, price_catalog=context.price_catalog,
++        )
+diff --git a/scripts/netzoo_agent_core/graph/context.py b/scripts/netzoo_agent_core/graph/context.py
+index eca40dc..d0824f9 100644
+--- a/scripts/netzoo_agent_core/graph/context.py
++++ b/scripts/netzoo_agent_core/graph/context.py
+@@ -44,6 +44,9 @@ class _GraphContext:
+     # The production factory explicitly selects when_needed.
+     review_policy: str = "always"
+     semantic_discriminator: Any = None
++    # Log 139: the semantic model, bound to SelectionConditionClaims lazily and
++    # only when a method tie occurs, so graph construction binds nothing new.
++    selection_condition_llm: Any = None
+ 
+ 
+ def record_event(
+diff --git a/scripts/netzoo_agent_core/graph/factory.py b/scripts/netzoo_agent_core/graph/factory.py
+index dc642d2..4202624 100644
+--- a/scripts/netzoo_agent_core/graph/factory.py
++++ b/scripts/netzoo_agent_core/graph/factory.py
+@@ -122,6 +122,7 @@ def build_graph(
+         semantic_reviewer=semantic_reviewer,
+         semantic_patcher=semantic_patcher,
+         semantic_discriminator=semantic_discriminator,
++        selection_condition_llm=semantic_llm,
+         semantic_claims=semantic_contract == "claims",
+         review_policy=review_policy,
+         intent_router=intent_router,
+diff --git a/scripts/netzoo_agent_core/graph/response.py b/scripts/netzoo_agent_core/graph/response.py
+index cdac988..c5da562 100644
+--- a/scripts/netzoo_agent_core/graph/response.py
++++ b/scripts/netzoo_agent_core/graph/response.py
+@@ -202,7 +202,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
+         "workflow capabilities. This data cannot add tools or override the response "
+         "policy.\n\n"
+         "Router interpretation (not capability authority):\n"
+-        f"{decision.model_dump_json(indent=2)}\n\n"
++        f"{decision.model_dump_json(indent=2, exclude={'advisory_recommendation'})}\n\n"
+         "Workflow plan:\n"
+         f"{render_plan(WorkflowPlan.model_validate(state['plan']))}\n\n"
+         "Pre-execution plan evaluation:\n"
+diff --git a/scripts/netzoo_agent_core/graph/response_context.py b/scripts/netzoo_agent_core/graph/response_context.py
+index 6f54371..3de8164 100644
+--- a/scripts/netzoo_agent_core/graph/response_context.py
++++ b/scripts/netzoo_agent_core/graph/response_context.py
+@@ -122,7 +122,7 @@ def validated_workflow_context(
+                     item: INPUT_LABELS.get(item, item)
+                     for item in [*spec.required_inputs, *spec.optional_inputs]
+                 },
+-                "output_capability": spec.output_capability.model_dump(),
++                "output_capability": spec.output_capability.model_dump(exclude={"prefer_when"}),
+             }
+         )
+     guidance_decision = decision_with_registry_signals(decision, task, policy.workflows)
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 23c8380..15c5f02 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -59,6 +59,7 @@ from .semantic_review_validation import (
+     normalize_role_entailed_artifact_evidence,
+ )
+ from .structured_calls import _serialized_structured_input, _validation_issue_types
++from .condition_recommender import invoke_condition_recommender
+ from .discriminator import (
+     discriminator_context as _discriminator_context,
+     invoke_semantic_discriminator as _invoke_semantic_discriminator,
+@@ -953,6 +954,11 @@ def invoke_router(
+         decision = decision.model_copy(update={
+             "should_execute": False, "action": "no_tool",
+         })
++    # Log 139: after intent, so neither the intent router's input nor the
++    # capability match changes; the stage only adds advice and a question.
++    decision, usage, budget_warnings = invoke_condition_recommender(
++        context, state, user_task, decision, usage, budget_warnings,
++    )
+     preflight_decision = apply_input_preflight_intent(decision, user_task)
+     if preflight_decision is not decision:
+         record_event(
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 1ed3012..a33c620 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -4,7 +4,7 @@ from __future__ import annotations
+ 
+ import re
+ 
+-from workflow_registry import ACTION_DEFINITIONS
++from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
+ 
+ from ..contracts import ProjectPolicySnapshot, TaskDecision
+ from ..routing.clarification_planner import algorithmic_assumptions_for
+@@ -298,6 +298,10 @@ def render_outcome_clarification(
+                 ]
+             )
+             return _ui_text("\n\n".join(sections))
++    if len(decision.hypothesis_actions) > 1 and decision.advisory_recommendation:
++        recommended = _render_advisory_recommendation(decision, policy)
++        if recommended is not None:
++            return recommended
+     if len(decision.hypothesis_actions) > 1:
+         options = []
+         for action in decision.hypothesis_actions:
+@@ -341,6 +345,46 @@ def render_outcome_clarification(
+     )
+ 
+ 
++def _condition_label(condition: str) -> str:
++    axis, _, value = condition.partition(":")
++    return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
++
++
++def _render_advisory_recommendation(
++    decision: TaskDecision,
++    policy: ProjectPolicySnapshot,
++) -> str | None:
++    """Form A (Log 139): recommend from quoted study facts; list the others."""
++    recommendation = decision.advisory_recommendation
++    spec = policy.workflows.get(recommendation.action)
++    if spec is None:
++        return None
++    quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
++    reasons = "; ".join(
++        _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
++    )
++    lines = [
++        f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}.",
++        "\n".join(_candidate_details(recommendation.action, spec, policy)),
++    ]
++    others = []
++    for action in decision.hypothesis_actions:
++        if action == recommendation.action or action not in policy.workflows:
++            continue
++        conditions = OUTPUT_CAPABILITIES[action].prefer_when if action in OUTPUT_CAPABILITIES else ()
++        preferred = "; ".join(_condition_label(item) for item in conditions)
++        others.append(
++            f"- **{policy.workflows[action].workflow}**"
++            + (f" — preferred when: {preferred}." if preferred else ".")
++        )
++    if others:
++        lines.append("Other compatible option(s):\n" + "\n".join(others))
++    if decision.clarification_question:
++        lines.append(decision.clarification_question)
++    lines.append("No files were inspected and no analysis ran.")
++    return _ui_text("\n\n".join(lines))
++
++
+ def _render_beginner_group_network_guidance(
+     task: str,
+     decision: TaskDecision,
+diff --git a/scripts/netzoo_agent_core/interpretation/semantic_goal.py b/scripts/netzoo_agent_core/interpretation/semantic_goal.py
+index 14463b9..e5b75cb 100644
+--- a/scripts/netzoo_agent_core/interpretation/semantic_goal.py
++++ b/scripts/netzoo_agent_core/interpretation/semantic_goal.py
+@@ -60,7 +60,7 @@ def classification_progress_detail(
+                 {
+                     "action": action,
+                     "workflow": spec.workflow,
+-                    "output_capability": spec.output_capability.model_dump(),
++                    "output_capability": spec.output_capability.model_dump(exclude={"prefer_when"}),
+                 }
+                 for action, spec in policy.workflows.items()
+             ]
+diff --git a/scripts/netzoo_agent_core/interpretation/verified_guidance.py b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+index 4f9f79d..fc3af04 100644
+--- a/scripts/netzoo_agent_core/interpretation/verified_guidance.py
++++ b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+@@ -41,7 +41,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
+             else "not_assessed"
+         ),
+         "explanations": scientific_explanations(
+-            task, [policy.workflows[action].output_capability.model_dump() for action in actions
++            task, [policy.workflows[action].output_capability.model_dump(exclude={"prefer_when"}) for action in actions
+                    if action in policy.workflows and action not in {item.action for item in rejections}],
+             [item.model_dump() for item in rejections],
+         ),
+@@ -79,7 +79,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
+                                 )
+                                 if field in INPUT_ROLE_FIELDS
+                             },
+-                           output_capability=policy.workflows[action].output_capability.model_dump())
++                           output_capability=policy.workflows[action].output_capability.model_dump(exclude={"prefer_when"}))
+                       for action in actions if action in policy.workflows],
+     }
+ 
+diff --git a/scripts/netzoo_agent_core/llm.py b/scripts/netzoo_agent_core/llm.py
+index ebb9658..bd70020 100644
+--- a/scripts/netzoo_agent_core/llm.py
++++ b/scripts/netzoo_agent_core/llm.py
+@@ -519,6 +519,32 @@ def build_semantic_discriminator_messages(
+     ]
+ 
+ 
++def build_selection_condition_messages(
++    user_task: str,
++    options: list[tuple[str, str]],
++) -> list:
++    """Offer the experimental conditions that separate tied workflows (Log 139).
++
++    The option list is the whole vocabulary; condition ids name study facts,
++    never workflows.
++    """
++    option_lines = "\n".join(f"- {condition}: {label}" for condition, label in options)
++    return [
++        SystemMessage(
++            content=(
++                "Return only the SelectionConditionClaims structure. For each offered "
++                "condition that the original request explicitly states, add one claim "
++                "with the condition id exactly as offered and an exact original-language "
++                "text_span quoted from the request. If the request states none of them, "
++                "return an empty claims list. Do not name or recommend a workflow; never "
++                "translate text_span.\n\nOffered conditions:\n"
++                + option_lines
++            )
++        ),
++        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
++    ]
++
++
+ def build_intent_router_messages(
+     intent_prompt: str,
+     user_task: str,
+diff --git a/scripts/netzoo_agent_core/policy.py b/scripts/netzoo_agent_core/policy.py
+index 2f65858..47475d9 100644
+--- a/scripts/netzoo_agent_core/policy.py
++++ b/scripts/netzoo_agent_core/policy.py
+@@ -382,6 +382,7 @@ class ProjectPolicyLoader:
+                     spec.output_capability.accepted_input_modalities
+                 ),
+                 guidance_notes=tuple(spec.output_capability.guidance_notes),
++                prefer_when=tuple(spec.output_capability.prefer_when),
+                 accepted_input_granularities=frozenset(
+                     spec.output_capability.accepted_input_granularities
+                 ),
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index c21ff14..8611961 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -180,6 +180,68 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
+     ),
+ }
+ 
++# Experimental-condition axes (Log 139). When compatible workflows produce the
++# same result and differ only in method, these are the facts a user can state
++# about their study that separate them. Each workflow declares the values it is
++# preferred under as ``prefer_when: ["axis:value", ...]``. Labels are
++# user-facing English and deliberately qualitative: there is no accepted
++# numeric cut-off for "few" samples.
++SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
++    "cohort_size": {
++        "question": "About how many samples do you have?",
++        "values": {
++            "few": "only a handful of samples",
++            "many": "dozens of samples or more",
++        },
++    },
++    "per_edge_confidence": {
++        "question": "Do you need a confidence value for each connection in each sample?",
++        "values": {
++            "needed": "a confidence value (p-value) is needed for each connection in each sample",
++        },
++    },
++    "compute_constraints": {
++        "question": "Is the network large enough that memory or runtime is a concern?",
++        "values": {
++            "constrained": "the network is large and memory or runtime is a concern",
++        },
++    },
++    "tf_activity_vs_expression": {
++        "question": (
++            "Do you suspect a regulator's activity differs across samples even when its "
++            "own expression does not, or do you need activating versus repressing effects?"
++        ),
++        "values": {
++            "yes": (
++                "a regulator's activity may differ from its own expression, or activating "
++                "versus repressing effects are needed"
++            ),
++        },
++    },
++    "established_method": {
++        "question": (
++            "Do you need results comparable with the widely published approach, or a base "
++            "network for later per-sample analysis?"
++        ),
++        "values": {
++            "yes": (
++                "results must be comparable with the widely published approach, or serve as "
++                "a base network for later per-sample analysis"
++            ),
++        },
++    },
++    "covariates": {
++        "question": (
++            "Do you need to separate or adjust co-expression for batch, site or other "
++            "sample covariates?"
++        ),
++        "values": {
++            "yes": "co-expression must be separated or adjusted for batch, site or other covariates",
++            "no": "no sample covariates need to be separated or adjusted",
++        },
++    },
++}
++
+ 
+ @dataclass(frozen=True, slots=True)
+ class WorkflowControlDefinition:
+@@ -243,6 +305,7 @@ class OutputCapabilityDefinition:
+     handoff_targets: tuple[RecommendedAction, ...] = ()
+     selection_tags: frozenset[str] = frozenset()
+     guidance_notes: tuple[str, ...] = ()
++    prefer_when: tuple[str, ...] = ()
+     handoff_contract: str = ""
+     conditional_outputs: tuple[ConditionalOutputDefinition, ...] = ()
+ 
+@@ -408,6 +471,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "tf_gene_regulation", "aggregate_network", "message_passing",
+                 "lioness_base_compatibility",
+             }),
++            prefer_when=("established_method:yes",),
+             handoff_contract=(
+                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
+                 "PPI priors, or a validated adjusted gene-by-gene co-expression "
+@@ -522,6 +586,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "tf_gene_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
++            prefer_when=("cohort_size:many",),
+             handoff_contract=(
+                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
+                 "motif and PPI priors to internally infer the aggregate PANDA "
+@@ -574,6 +639,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "mirna_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
++            prefer_when=("cohort_size:many",),
+             handoff_contract=(
+                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
+                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
+@@ -607,6 +673,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             selection_tags=frozenset({
+                 "sample_specific", "coexpression", "leave_one_out_network_inference",
+             }),
++            prefer_when=("cohort_size:many", "covariates:no",),
+             handoff_contract=(
+                 "LIONESS co-expression consumes a gene-by-sample expression matrix "
+                 "and produces sample-specific co-expression networks."
+@@ -670,6 +737,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                     "high_order_correlation",
+                 }
+             ),
++            prefer_when=("covariates:yes",),
+             handoff_contract=(
+                 "COBRA consumes a gene-by-sample expression matrix and numeric sample "
+                 "covariates, then produces a covariate-associated covariance "
+@@ -868,6 +936,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
+             handoff_targets=("run_condor",),
+             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
++            prefer_when=("compute_constraints:constrained",),
+             handoff_contract=(
+                 "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI "
+                 "projection P, and either a gene-by-sample expression matrix (from which "
+@@ -929,6 +998,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "signed_partial_regulatory_effects",
+                 "tfa_covariate_regression",
+             }),
++            prefer_when=("tf_activity_vs_expression:yes",),
+             handoff_contract=(
+                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
+                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
+@@ -1038,6 +1108,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "coexpression", "bayesian",
+                 "sparse_pvalue_coexpression",
+             }),
++            prefer_when=("cohort_size:few", "per_edge_confidence:needed",),
+             handoff_contract=(
+                 "BONOBO consumes a labelled gene-by-sample expression matrix and "
+                 "produces one gene-by-gene sample-specific co-expression matrix per "
+diff --git a/tests/test_condition_recommender.py b/tests/test_condition_recommender.py
+new file mode 100644
+index 0000000..5c4342b
+--- /dev/null
++++ b/tests/test_condition_recommender.py
+@@ -0,0 +1,231 @@
++"""Log 139: experimental-condition claims recommend among method ties, advisory only."""
++
++from __future__ import annotations
++
++import json
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts import LLMUsage, TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeHypothesis,
++    RequestedOutcome,
++    SelectionConditionClaims,
++)
++from netzoo_agent_core.graph.condition_recommender import (  # noqa: E402
++    condition_options,
++    invoke_condition_recommender,
++    is_method_tie,
++    recommend_from_claims,
++)
++from netzoo_agent_core.interpretation.concept_answers import (  # noqa: E402
++    render_outcome_clarification,
++)
++from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
++from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
++from netzoo_agent_core.routing.clarification_planner import plan_clarification  # noqa: E402
++from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
++from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
++from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_AXES  # noqa: E402
++
++TASK = (
++    "I only have expression data from a handful of patients "
++    "(data/blind-neutral/case-3/expression.tsv) and no prior files. I want to see how "
++    "each patient's own gene co-expression structure differs, and ideally know which "
++    "connections are trustworthy in that particular patient."
++)
++TIE = ["run_lioness_coexpression", "run_bonobo"]
++AUTHORITY_FIELDS = ("action", "should_execute", "capability_match_status", "matched_actions")
++
++
++def _outcome() -> RequestedOutcome:
++    return RequestedOutcome(
++        operation="infer", input_artifacts=["expression_matrix"],
++        artifact_type="coexpression_network", entity_types=["gene", "sample"],
++        granularity="sample_specific",
++    )
++
++
++def _decision(**update) -> TaskDecision:
++    outcome = _outcome()
++    fields = dict(
++        action="no_tool", in_scope=True, should_execute=False,
++        intent_type="answer_question", confidence=1.0, reason="guidance",
++        requested_outcome=outcome,
++        outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=0.9)],
++        hypothesis_actions=list(TIE), capability_match_status="ambiguous",
++        clarification_question="Which modeling assumption best matches your experiment?",
++    )
++    fields.update(update)
++    return TaskDecision(**fields)
++
++
++def _context(tmp_path, parsed):
++    store = LocalTraceStore(tmp_path / "traces")
++    recorder = TraceRecorder(store)
++    run_id = recorder.start_run(session_id="log139", profile_id="default")
++    adapter = SimpleNamespace(invoke=lambda _messages: {"parsed": parsed, "raw": object()})
++    llm = SimpleNamespace(with_structured_output=lambda schema, **_: adapter)
++    context = SimpleNamespace(
++        selection_condition_llm=llm, semantic_claims=False,
++        semantic_model_name="fixture", router_max_tokens=200, task_token_budget=10_000,
++        recorder=recorder, price_catalog=PriceCatalog(),
++    )
++    return context, {"run_id": str(run_id)}, store, run_id
++
++
++def _claims(*pairs) -> SelectionConditionClaims:
++    return SelectionConditionClaims.model_validate(
++        {"claims": [{"condition": c, "text_span": q} for c, q in pairs]}
++    )
++
++
++# R-b: every algorithm-dimension tie in the Log 137 grid can be asked about.
++def test_every_method_tie_in_the_grid_has_a_separating_condition():
++    sys.path.insert(0, str(ROOT / "docs" / "research-log"))
++    import log136_outcome_grid as grid
++
++    uncovered = set()
++    seen = set()
++    for key, row in grid.build().items():
++        status, _, candidates, _ = row["hyp"]
++        if status != "ambiguous" or len(candidates) < 2:
++            continue
++        outcome = RequestedOutcome(**json.loads(key))
++        plan = plan_clarification(candidates, outcomes=[outcome])
++        if plan is None or plan.dimension != "algorithm":
++            continue
++        tie = tuple(sorted(candidates))
++        seen.add(tie)
++        if not condition_options(list(tie)):
++            uncovered.add(tie)
++
++    assert seen, "the grid must contain method ties"
++    assert uncovered == set()
++
++
++def test_prefer_when_conditions_are_registered_axes():
++    for capability in OUTPUT_CAPABILITIES.values():
++        for condition in capability.prefer_when:
++            axis, _, value = condition.partition(":")
++            assert value in SELECTION_AXES[axis]["values"], condition
++
++
++def test_prefer_when_never_reaches_a_model_context_dump():
++    """Every capability dump that can reach a model context excludes the field."""
++    import re
++
++    offenders = []
++    for path in (ROOT / "scripts" / "netzoo_agent_core").rglob("*.py"):
++        for match in re.finditer(r"output_capability\.model_dump\(([^)]*)\)", path.read_text()):
++            if "prefer_when" not in match.group(1):
++                offenders.append(f"{path.name}: {match.group(0)}")
++    assert offenders == []
++    assert ProjectPolicyLoader(ROOT).load().workflows["run_bonobo"].output_capability.prefer_when
++
++
++def test_multi_valued_axis_needs_every_candidate_to_declare_it():
++    offered = {option.condition for option in condition_options(TIE)}
++    assert "covariates:no" not in offered
++    assert {"cohort_size:few", "cohort_size:many", "per_edge_confidence:needed"} <= offered
++
++
++# R-c: deterministic claim handling.
++def test_grounded_claims_recommend_the_single_supported_candidate():
++    recommendation, rejected = recommend_from_claims(
++        TASK,
++        _claims(("cohort_size:few", "a handful of patients"),
++                ("per_edge_confidence:needed", "which connections are trustworthy")),
++        condition_options(TIE), TIE,
++    )
++    assert recommendation is not None and recommendation.action == "run_bonobo"
++    assert rejected == []
++
++
++def test_ungrounded_quote_is_rejected_and_nothing_is_recommended():
++    recommendation, rejected = recommend_from_claims(
++        TASK, _claims(("cohort_size:few", "only three samples")), condition_options(TIE), TIE,
++    )
++    assert recommendation is None
++    assert rejected == [{"condition": "cohort_size:few", "reason": "quote_not_in_request"}]
++
++
++def test_condition_outside_the_offer_is_rejected():
++    recommendation, rejected = recommend_from_claims(
++        TASK, _claims(("compute_constraints:constrained", "a handful of patients")),
++        condition_options(TIE), TIE,
++    )
++    assert recommendation is None
++    assert rejected[0]["reason"] == "not_offered"
++
++
++def test_conflicting_claims_recommend_nothing():
++    task = TASK + " We have dozens of samples overall."
++    recommendation, rejected = recommend_from_claims(
++        task,
++        _claims(("cohort_size:few", "a handful of patients"),
++                ("cohort_size:many", "dozens of samples")),
++        condition_options(TIE), TIE,
++    )
++    assert recommendation is None
++    assert rejected[-1]["reason"] == "claims_do_not_select_one"
++
++
++@pytest.mark.parametrize("parsed, expect_recommendation", [
++    ({"claims": [{"condition": "cohort_size:few", "text_span": "a handful of patients"}]}, True),
++    ({"claims": [{"condition": "cohort_size:few", "text_span": "invented quote"}]}, False),
++    ({"claims": []}, False),
++    ({"claims": "not a list"}, False),
++])
++def test_stage_never_changes_execution_authority(tmp_path, parsed, expect_recommendation):
++    context, state, _, _ = _context(tmp_path, parsed)
++    decision = _decision()
++
++    updated, _, _ = invoke_condition_recommender(context, state, TASK, decision, LLMUsage(), [])
++
++    for field in AUTHORITY_FIELDS:
++        assert getattr(updated, field) == getattr(decision, field), field
++    assert (updated.advisory_recommendation is not None) is expect_recommendation
++    if expect_recommendation:
++        assert updated.clarification_question.startswith("Should I use BONOBO")
++    else:
++        assert updated.clarification_question.startswith("Both fit; to choose, tell me:")
++
++
++def test_stage_skips_non_method_ties(tmp_path):
++    context, state, _, _ = _context(tmp_path, {"claims": []})
++    decision = _decision(clarification_question="Should the result be aggregate or sample-specific?")
++    outcome = _outcome().model_copy(update={"granularity": "unknown", "entity_types": ["gene"]})
++    decision = decision.model_copy(update={
++        "hypothesis_actions": ["run_lioness_coexpression", "run_cobra"],
++        "outcome_hypotheses": [OutcomeHypothesis(outcome=outcome, confidence=0.9)],
++        "requested_outcome": outcome,
++    })
++    assert not is_method_tie(decision)
++
++    updated, _, _ = invoke_condition_recommender(context, state, TASK, decision, LLMUsage(), [])
++
++    assert updated == decision
++
++
++def test_form_a_renders_the_quote_and_the_alternative():
++    policy = ProjectPolicyLoader(ROOT).load()
++    recommendation, _ = recommend_from_claims(
++        TASK, _claims(("cohort_size:few", "a handful of patients")), condition_options(TIE), TIE,
++    )
++    decision = _decision(
++        advisory_recommendation=recommendation,
++        clarification_question="Should I use BONOBO, or does another listed option fit your study better?",
++    )
++
++    answer = render_outcome_clarification(decision, policy)
++
++    assert answer.startswith('Based on what you said — "a handful of patients" — **BONOBO** fits better')
++    assert "**LIONESS-COEXPRESSION** — preferred when: dozens of samples or more" in answer
++    assert "No files were inspected and no analysis ran." in answer
+diff --git a/workflows/bonobo.yaml b/workflows/bonobo.yaml
+index d2c8d9b..335681b 100644
+--- a/workflows/bonobo.yaml
++++ b/workflows/bonobo.yaml
+@@ -110,6 +110,7 @@ output_capability:
+       produced_artifacts: []
+       semantics: "invalid: save_pvals requires sparsify"
+       valid: false
++  prefer_when: [cohort_size:few, per_edge_confidence:needed]
+   handoff_contract: >-
+     BONOBO consumes a labelled gene-by-sample expression matrix and produces one
+     gene-by-gene sample-specific co-expression matrix per selected sample, plus
+diff --git a/workflows/cobra.yaml b/workflows/cobra.yaml
+index 078ae92..04c621a 100644
+--- a/workflows/cobra.yaml
++++ b/workflows/cobra.yaml
+@@ -25,6 +25,7 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: [run_panda, run_puma, run_otter]
+   selection_tags: [covariate_association, hospital_effect_assessment, sequencing_batch_effect_assessment, batch_correction, high_order_correlation]
++  prefer_when: [covariates:yes]
+   handoff_contract: >-
+     COBRA consumes a gene-by-sample expression matrix and numeric sample covariates,
+     then produces a covariate-associated covariance decomposition and a labeled
+diff --git a/workflows/giraffe.yaml b/workflows/giraffe.yaml
+index 90f7f77..e5866bb 100644
+--- a/workflows/giraffe.yaml
++++ b/workflows/giraffe.yaml
+@@ -20,6 +20,7 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: []
+   selection_tags: [tf_gene_regulation, tfa, aggregate_network, biologically_informed_matrix_factorization, joint_grn_tfa_inference, linear_model_coefficients, signed_partial_regulatory_effects, tfa_covariate_regression]
++  prefer_when: [tf_activity_vs_expression:yes]
+   handoff_contract: >-
+     GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a
+     TF-by-TF PPI matrix after explicit labelled-file conversion. Through biologically
+diff --git a/workflows/lioness-coexpression.yaml b/workflows/lioness-coexpression.yaml
+index 03681bd..e42afe7 100644
+--- a/workflows/lioness-coexpression.yaml
++++ b/workflows/lioness-coexpression.yaml
+@@ -22,6 +22,7 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: []
+   selection_tags: [sample_specific, coexpression, leave_one_out_network_inference]
++  prefer_when: [cohort_size:many, covariates:no]
+   handoff_contract: >-
+     LIONESS co-expression consumes a gene-by-sample expression matrix and produces
+     sample-specific co-expression networks.
+diff --git a/workflows/lioness-panda.yaml b/workflows/lioness-panda.yaml
+index 798dda8..e19ab38 100644
+--- a/workflows/lioness-panda.yaml
++++ b/workflows/lioness-panda.yaml
+@@ -26,6 +26,7 @@ output_capability:
+     - tf_gene_regulation
+     - message_passing
+     - leave_one_out_network_inference
++  prefer_when: [cohort_size:many]
+   handoff_contract: >-
+     LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI
+     priors to internally infer the aggregate PANDA network and derive sample-specific
+diff --git a/workflows/lioness-puma.yaml b/workflows/lioness-puma.yaml
+index 3265087..d9c6f91 100644
+--- a/workflows/lioness-puma.yaml
++++ b/workflows/lioness-puma.yaml
+@@ -26,6 +26,7 @@ output_capability:
+     - mirna_regulation
+     - message_passing
+     - leave_one_out_network_inference
++  prefer_when: [cohort_size:many]
+   handoff_contract: >-
+     LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI,
+     and miRNA priors to internally infer the aggregate PUMA network and derive
+diff --git a/workflows/otter.yaml b/workflows/otter.yaml
+index ceb452e..28ecfb7 100644
+--- a/workflows/otter.yaml
++++ b/workflows/otter.yaml
+@@ -66,6 +66,7 @@ output_capability:
+   input_artifacts: [expression_matrix, coexpression_network]
+   handoff_targets: [run_condor]
+   selection_tags: [tf_gene_regulation, aggregate_network, relaxed_graph_matching]
++  prefer_when: [compute_constraints:constrained]
+   handoff_contract: >-
+     OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI
+     projection P, and either a gene-by-sample expression matrix (from which
+diff --git a/workflows/panda.yaml b/workflows/panda.yaml
+index cf94870..3ed92ed 100644
+--- a/workflows/panda.yaml
++++ b/workflows/panda.yaml
+@@ -28,6 +28,7 @@ output_capability:
+   input_artifacts: [expression_matrix, coexpression_network]
+   handoff_targets: [run_condor]
+   selection_tags: [tf_gene_regulation, aggregate_network, message_passing, lioness_base_compatibility]
++  prefer_when: [established_method:yes]
+   handoff_contract: >-
+     PANDA consumes a gene-by-sample expression matrix plus motif and PPI priors, or
+     a validated adjusted gene-by-gene co-expression matrix through coexpression_file.

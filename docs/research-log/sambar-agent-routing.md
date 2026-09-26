@@ -8818,3 +8818,589 @@ R-c 那條守衛測試「通過」這件事本身是最好的註腳：
 四個偏好函式的改動、`tests/test_ranking_ignores_entity_breadth.py`（R-c／R-d）
 全部撤回。閘門回到基線 15 筆。
 Log 134 為事前宣告，不修改。
+
+## Log 136｜事前宣告：`sample` 是 granularity 軸而非節點實體；已解析維度不再成為澄清問題；註冊表新增 `prefer_when`（尚未實作）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+依據：使用者盲測 Case 3（BONOBO）／Case 4（LIONESS-PANDA），
+`TEST_PROMPTS_推論與工具選擇.md`。traced harness，gpt-4o-mini，legacy contract
+（`cli/bootstrap.py` 的預設），repeat 3：**0/6**。
+使用者指示：先做修正 1、2。
+
+### 已查證的成因（離線 replay，非推測）
+
+**成因 A｜entity 契約自相矛盾（決定性）。**
+Case 3 的 3 次 trial，模型的 outcome 都是 `coexpression_network`／`sample_specific`，
+其中 2 次在 patch 後帶 `entity_types=[gene, sample]`。
+`ARTIFACT_SEMANTICS["coexpression_network"].entities = {gene, sample}`，
+所以 `outcome_consistency_issues` 判它合法；但 `_supported_entities` 在
+`artifact_type == capability.artifact_type` 時回傳能力自己的 `{gene}`，
+導致 strict 判 `unsupported`（`mismatch_dimensions=['entity_types']`）。
+**本體說合法、卻沒有任何能力能匹配的 outcome。**
+離線把 `sample` 拿掉，`hypothesis_actions` 就變成 `[run_lioness_coexpression, run_bonobo]`。
+
+**成因 B｜澄清問題問的是已解析的維度。**
+拿掉 `sample` 後，`plan_clarification` 對 BONOBO 與 LIONESS-coexpression 的評分是：
+`artifact_type` 1.00（BONOBO 多宣告了 `pvalue_matrix`）、`granularity` 0.95
+（LIONESS-coexpression 也宣告了 `aggregate`）、`algorithm` 0.75。
+所以問的是「What artifact should NetZoo produce?」——但 outcome 已經指定
+`coexpression_network` 與 `sample_specific`，而且兩個候選都支援。
+**真正區分兩者的是方法假設，排在最後。**
+
+### 形狀
+
+**修正 1｜`sample` 作為 granularity 軸。**
+`_supported_entities` 增加 `granularity` 參數：當 outcome 的 granularity 是
+`sample_specific` 且能力宣告了 `sample_specific` 時，`sample` 視為被支援——
+「一個樣本一張網路」的那個 sample 就是 granularity 本身，不是網路的節點類型。
+四個呼叫點（`_matches`、`_partially_compatible`、`_alternative_actions`、
+`_mismatch_dimensions`）傳入 `outcome.granularity`。
+**能力宣告不動、四個偏好函式不動**（它們算的是 `capability.entity_types - outcome`，
+能力一側沒變，所以 Log 133／135 的排序機制不受影響）。
+
+**修正 2a｜planner 跳過已解析且候選全支援的維度。**
+在 `candidate_differences` 中，若 outcome 已解析 `artifact_type`（非 unknown、
+各 outcome 一致），且每個候選的 `_supported_artifacts` 都含它，就不以
+`artifact_type` 分割；`granularity` 同理（值為 aggregate／sample_specific，
+且每個候選的 `granularities` 都含它）。
+
+**修正 2b｜註冊表新增 typed 欄位 `prefer_when`。**
+`output_capability.prefer_when: list[str]`（≤4 項）寫入 12 份 YAML、
+`WorkflowOutputCapabilitySpec`、`OutputCapabilityDefinition` 與 Python 註冊表；
+既有 YAML／Python 一致性檢查照舊把關。
+`_candidate_details` 多渲染一行 `Prefer when:`。
+**此欄位不進任何模型提示**——只由確定性渲染器讀取。
+
+### 事前判準
+
+基線（改動前量測）：
+- 測試：**2073 passed, 35 skipped, 0 failed**。
+- 提示／schema 指紋：legacy `1f68bfde…0dff0`，claims `348a144c…1aca`。
+- 生成網格：`docs/research-log/log136_outcome_grid.py`，**15273** 個合法 outcome，
+  兩次生成逐位元相同。
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **S-a** | 網格中 matcher 結果（strict 或 hypotheses）改變的 outcome，**全部**都是 `granularity=sample_specific` 且 `entity_types` 含 `sample`；違反數 = 0 | — |
+| **S-b** | 改變的 outcome 中，原本 `exact`／`fallback` 者：狀態不得離開已解析、`matched_actions` 不得改變；違反數 = 0 | — |
+| **S-c** | Case 3 的 outcome（`[gene, sample]`／`coexpression_network`／`sample_specific`／`expression_matrix`）的候選 = {`run_bonobo`, `run_lioness_coexpression`} | **失敗**（今為 `unsupported`） |
+| **T-a** | 同一 outcome 的 planner 維度 = `algorithm` | **失敗**（今為 `artifact_type`） |
+| **T-b** | 網格中候選集合未變、但 planner 維度改變的 outcome，其原維度必須是 outcome 已解析的 `artifact_type` 或 `granularity`；違反數 = 0 | — |
+| **T-c** | 12 個能力都有非空 `prefer_when`；YAML＝Python；`_candidate_details` 渲染它 | **失敗** |
+| **T-d** | 提示／schema 指紋兩者都**不變** | — |
+| **G** | 測試：0 failed。唯一允許修改的既有測試，是斷言「對已解析維度提問」的測試，而且其 outcome 必須在網格中符合 T-b；逐一列在結果節 | — |
+
+### 撤回條件（寫死，事後不得調整）
+
+- **Y-1**：S-a 或 S-b 違反數 > 0 → 撤回修正 1。修正 2 可獨立保留（它不依賴修正 1），
+  但 S-c 的結果要如實報告為失敗。
+- **Y-2**：T-b 違反數 > 0 或 T-d 指紋改變 → 撤回修正 2a／2b 全部。
+- **Y-3**：G 出現不屬於上列允許範圍的失敗 → 撤回造成它的那一項。
+
+### 實跑（描述性，非判準）
+
+依 Log 120／124：兩題 × repeat 3 的實跑不能支持任何比率主張，只報結構計數。
+另以今天已存的 trace 做**離線 replay**（同一份模型輸出、只換程式碼），
+報告每個 trial 的 `registry_match_completed` 候選與澄清維度。
+
+### 事前預測
+
+- S-a／S-b／T-b 預測通過：修正 1 只放寬一個本體本來就允許的組合；
+  修正 2a 只移除「對已知值提問」。
+- **不預測** Case 4。它的失敗是成因 C（多 hypothesis 被 patch 單選）與
+  成因 D（輸入只由文字判斷），**不在本輪範圍**。若 Case 4 仍失敗，
+  要如實報告為「範圍外」，不是修正失敗。
+
+### 已知風險，事前寫明
+
+1. `_render_beginner_group_network_guidance` 會在問題以
+   「which modeling assumption」開頭時觸發。2a 會讓更多問題落到 `algorithm`，
+   可能讓這個渲染器在新情境觸發。網格的維度移動數要如實列出。
+2. **2b 沒有自動推薦。** 「依使用者給的事實推薦」需要一個模型可靠填寫的 typed 維度；
+   selection_tags 已證實惰性，本輪不處理。`prefer_when` 只是讓使用者自己對照。
+3. 修正 1 讓 `sample` 在 `sample_specific` 請求中不再區分任何能力。
+   若未來有能力把 `sample` 當作真正的節點類型、又支援 `sample_specific`，
+   本規則就會錯誤放行。這個前提要釘在測試裡。
+
+## Log 137｜Log 136 結果：修正 1、2a 成立並保留；**2b 依 Y-3 撤回**；Case 3 的 BONOBO 其實來自路徑名
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 136 事前寫死的條件執行。
+
+### 判準結果
+
+| 判準 | 結果 |
+| --- | --- |
+| **S-a** matcher 改變者全為 `sample_specific`＋`sample` | **通過，0 違反**（580 個改變） |
+| **S-b** 已解析者不失去解析、不換工具 | **通過，0 違反** |
+| **S-c** Case 3 outcome 候選 = {BONOBO, LIONESS-coexpression} | **通過**（改動前 `unsupported`） |
+| **T-a** 同一 outcome 的 planner 維度 = `algorithm` | **通過**（改動前 `artifact_type`） |
+| **T-b** planner 只從已解析維度移開 | **通過，0 違反**（另 1 筆人工核對，見下） |
+| **T-c** `prefer_when` 存在並被渲染 | 實作時通過，**但 2b 已撤回** |
+| **T-d** 提示／schema 指紋不變 | **通過**（legacy `1f68bfde…`、claims `348a144c…`，改動前後相同） |
+| **G** 0 failed | 修正 1＋2a：**2079 passed, 35 skipped, 0 failed**，未修改任何既有測試 |
+
+**Y-3 觸發：撤回 2b。** 加入 2b 後出現 30 個失敗，分成兩類：
+
+1. **可修的實作錯誤（20+ 個）**：我用 Pydantic `exclude=True` 讓欄位不進任何 dump；
+   但 graph state 把 policy snapshot 存成 dump 過的 dict，planning 節點
+   （`planning/context.py:78`）再 `model_validate` 並跑 `_validate_against_code`，
+   欄位在往返中遺失，觸發 YAML／Python 衝突。
+2. **無法避開的失敗**：`test_contract_model_schemas_are_unchanged` 釘住
+   `ProjectPolicySnapshot` 的 schema 雜湊。**任何**新增的 policy 欄位都會改變它。
+   G 只允許修改「對已解析維度提問」的測試，這不在允許範圍內。
+
+第 2 類說明 2b 的形狀本身就需要一條 G 沒寫到的測試修改。patch 存於 `docs/research-log/log136_fix2b_withdrawn.patch`。
+**判準不事後放寬**：2b 全部撤回，patch 另存。要重做，必須另寫事前宣告，
+並把 schema 雜湊更新列為預期修改，同時改用「在各 dump 呼叫點明確排除」而非 `exclude=True`。
+
+### 網格量測工具的修正（如實記錄）
+
+`log136_outcome_grid.py` 第一版把 `clarification_question` 算進 matcher 元組。
+加上 2a 後，S-a 報出 19 個「違反」，但它們只有問題文字不同，是 2a 的預期效果；
+而且因為被歸進 matcher 類，**T-b 反而沒有檢查到它們**。
+修正方式：matcher 元組排除問題文字（strict[5]、hyp[3]），問題改由 T-b 判斷。
+修正後：只有修正 1 時 S-a = 0；修正 1＋2a 時 S-a = 0，planner-only 19 筆，T-b = 0。
+19 筆中有 18 筆的維度從 `artifact_type`／`granularity` 移到 `algorithm`（12＋6）。
+第 19 筆的 `plan_dimension` 欄沒變，因為該欄是在 strict 的 7 個候選上計算的；
+但它 hypothesis 層的問題從 granularity 改成 algorithm（候選 LIONESS-coexpression／COBRA，
+outcome 已指定 aggregate，兩者都支援）。人工核對符合 T-b 規則。
+
+### 網格上修正 1 新解析出的 26 個 outcome（全部檢視）
+
+都是 `regulatory_network`／`sample_specific` 且含 `sample`：
+TF-only 解析成 `run_lioness_panda`，含 miRNA 解析成 `run_lioness_puma`。科學上正確。
+仍為 `unsupported` 的 272 個，`mismatch_dimensions` 不再錯誤地歸咎 `entity_types`，
+替代方案也從 PUMA 改為 sample-specific 的 LIONESS 系列。
+
+### 離線 replay（描述性，非判準）
+
+Case 4 的 3 個 trial 逐次完全相同（GIRAFFE ×2、LIONESS-PANDA／PUMA 平手 ×1）——
+符合事前「範圍外」的宣告。
+
+Case 3 的 3 個 trial 都在 IntentDecision（call 2）分歧，因為它的輸入包含
+registry 結果，而 registry 結果變了——這本身就是 match 改變的結構證據。
+用錄下的最終 hypotheses 直接跑 `match_semantic_request`：3/3 都是 **exact → `run_bonobo`**。
+
+**但這不是修正的功勞。** 原因是 `named_registered_action(_current_scope_text(task))`
+把路徑 `data/bonobo-toy/expression.tsv` 裡的 `bonobo` 讀成使用者點名了工作流程。
+把路徑換成中性的 `data/cohort_a/expression.tsv`，結果是 `ambiguous`、候選
+{LIONESS-coexpression, BONOBO}、問題是 algorithm 維度——這才是修正 1＋2a 的真正行為。
+
+這暴露兩件事：
+
+1. **盲測設計缺陷**：`data/*-toy/` 的目錄名（bonobo、giraffe、otter、cobra、dragon、
+   condor、sambar）會洩漏答案。盲測必須改用中性路徑。
+2. **獨立的路由問題（本輪範圍外）**：檔案路徑中的 token 不應算作使用者點名方法。
+
+### 事前預測的對帳
+
+S-a／S-b／T-b 預測通過，**通過**。2b 我沒有預測到 schema 雜湊測試——
+這個風險在 Log 136 的「已知風險」裡沒寫，應該寫。
+
+## Log 138｜Case 3 中性路徑實跑（描述性，非判準）
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，repeat 3，traced harness。
+Prompt 與使用者盲測 Case 3 相同，只把路徑換成 `data/blind-neutral/case-3/expression.tsv`。
+
+結構計數：3/3 trial 的 outcome 都是 `coexpression_network`／`sample_specific`／
+`[gene, sample]`；3/3 的 `registry_match_completed` 都是 `ambiguous`，候選
+{LIONESS-coexpression, BONOBO}；3/3 的澄清維度都是 `algorithm`。
+改動前（Log 136 的 trace）3/3 都沒有候選。依 Log 120／124，這不支持任何比率主張。
+
+觀察（未量化）：使用者原句已經包含區分兩者的事實——「a handful of patients」
+（樣本少）、「which connections are trustworthy」（逐邊不確定性）。
+目前的回覆沒有用上這兩個事實，反而用方法術語反問使用者。
+
+## Log 139｜事前宣告：把平手時模型挑選的詞彙從「方法 tag」換成「實驗條件」，並分兩種回覆（尚未實作）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+依據：Log 138。使用者決定：候選平手時分兩種回覆——原句有區分事實就推薦並說明理由，
+沒有就用實驗語言提問。
+
+### 已查證的現況（Log 136／138 的 trace，非推測）
+
+候選平手時，`invoke_semantic_discriminator` 會多呼叫一次模型，讓它從候選的
+**方法 tag** 中挑選並引用原句。Case 3 中性路徑的 3 次 trial 中：
+
+- 模型挑的是 `sample_specific` 或 `sample_specific`＋`coexpression`，
+  **兩者都是候選共有、不能區分候選的 tag**；`bayesian` 為 0/3。
+- 3 次都沒有引用「a handful of patients」或「which connections are trustworthy」。
+- 2/3 因為在 evidence 裡回顯 outcome 維度而 schema 驗證失敗。
+
+這和 memory `netzoo-selection-tags-are-inert` 的全語料量測一致：會區分方法的 tag
+幾乎不被填寫，重述主題的 tag 才會被填。**tag 是方法術語，使用者不會說出來；
+使用者說出的是實驗事實（樣本數、要不要逐邊可信度、記憶體不夠）。**
+詞彙裡沒有這些事實可以選，模型自然無從引用。
+
+### 假設
+
+同一個專用呼叫，如果可選的詞彙是**用實驗語言寫的條件**，而且只列出**能區分候選**的條件，
+模型就會選擇原句中已說出的條件並引用。
+這是「詞彙形狀」的改動，不是措辭的改動：提示只描述新的選項與輸出格式。
+
+### 範圍
+
+只處理 planner 維度是 `algorithm` 的平手，也就是輸出相同、只有方法不同。
+Log 137 網格上共有四組：{BONOBO, LIONESS-coexpression}、{PANDA, OTTER, GIRAFFE}（以及加上
+LIONESS-PANDA 或 PUMA 系列的變體）、{COBRA, LIONESS-coexpression}。
+granularity、regulator_type、artifact_type 的平手是真正的輸出選擇，**不動**。
+只接在 legacy contract 上（chat 的預設）；claims 路徑不處理。
+
+### 形狀
+
+**1｜註冊表：實驗條件軸（typed）。**
+`workflow_registry.py` 新增全域 `SELECTION_AXES`，格式與 `SELECTION_TAG_GLOSSARY` 相同，只放在 Python。
+每個軸有一句實驗語言的問題，以及數個值（id＋使用者可讀的敘述）：
+
+| 軸 | 提問 | 值 → 偏好的工作流程 |
+| --- | --- | --- |
+| `cohort_size` | About how many samples do you have? | `few` → BONOBO；`many` → LIONESS-coexpression、LIONESS-PANDA、LIONESS-PUMA |
+| `per_edge_confidence` | Do you need a confidence value for each connection in each sample? | `needed` → BONOBO |
+| `compute_constraints` | Is the network large enough that memory or runtime is a concern? | `constrained` → OTTER |
+| `tf_activity_vs_expression` | Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? | `yes` → GIRAFFE |
+| `established_method` | Do you need results comparable with the widely published approach, or a base network for later per-sample analysis? | `yes` → PANDA |
+| `covariates` | Do you need to separate or adjust co-expression for batch, site or other sample covariates? | `yes` → COBRA；`no` → LIONESS-coexpression |
+
+每個工作流程在 YAML 與 Python 的 `output_capability` 宣告 `prefer_when: [axis:value, ...]`，
+由既有的 YAML／Python 一致性檢查把關。
+**這次不用 `exclude=True`**（Log 137 已證實它會在 policy snapshot 往返時遺失欄位）；
+改為在會把 capability 送進模型 context 的四個 `model_dump` 呼叫點明確排除它：
+`semantic_goal.py:63`、`verified_guidance.py:44`、`verified_guidance.py:82`、`response_context.py:125`。
+原因：軸的敘述只該出現在新呼叫的選項清單中，不該擴散到其他提示。
+
+**2｜新的專用呼叫 `SelectionConditionClaims`。**
+觸發條件：既有的 tag discriminator 跑完後，狀態仍是 `ambiguous`，
+且 `plan_clarification` 的維度是 `algorithm`。
+選項只列出**能區分目前候選**的 `axis:value`（至少一個候選偏好、且不是所有候選都偏好）。
+輸出：`claims: list[{condition: <本次選項的 enum>, text_span: str}]`，可以是空的。
+驗證（確定性）：
+- condition 必須在本次選項中。
+- text_span 必須逐字（或經既有拼字對齊）出現在原句中，沿用 `outcome_validation._grounded_span`。
+
+**既有的 tag discriminator 與它的 regex recovery 完全不動**；新呼叫只在它沒解開時才跑。
+
+**3｜推薦只是建議，不給授權。**
+取所有通過驗證的 claim，各自對應到候選集合，再取交集。交集恰好只剩一個候選時，
+產生 `advisory_recommendation = {action, conditions: [{axis, value, text_span}]}`，
+寫進 `CapabilityMatch` 與 `TaskDecision`。
+**`status` 仍是 `ambiguous`，`matched_actions`、`should_execute`、`action` 一律不變。**
+要執行，仍需使用者選擇或確認。
+
+**4｜兩種回覆（確定性渲染，改在 `render_outcome_clarification`）。**
+- **A｜有推薦**：
+  「Based on what you said — "<text_span>" — **<workflow>** fits better: <值敘述>.」
+  接著列出其他候選各自偏好的條件，最後請使用者確認要用哪一個。
+- **B｜沒有推薦**：
+  「Both fit; to choose, tell me:」接著列出區分候選的軸問題（最多 2 題），
+  每題標出各個答案對應的工作流程。
+  取代現在的「Which modeling assumption best matches your experiment: …」。
+
+### 事前判準
+
+基線：Log 137 之後的 working tree。測試 2079 passed／35 skipped／0 failed；
+網格 `grid_final`（15273 筆）；提示指紋 legacy `1f68bfde…`、claims `348a144c…`。
+
+| 判準 | 內容 | 修好前必須 |
+| --- | --- | --- |
+| **R-a** | 網格逐位元相同（新階段在 matcher 之外，matcher 結果不得有任何改變） | — |
+| **R-b** | 網格中每個 planner 維度為 `algorithm` 的平手，候選之間至少在一個軸上有差異（否則 B 無題可問）；未覆蓋數 = 0 | **失敗** |
+| **R-c** | 離線單元測試，用手寫的 provider payload 驗證：有依據的 claim → 推薦；沒有依據的 quote → 拒絕並走 B；互相衝突的 claim → 走 B；不在選項中的 condition → 拒絕；**任何情況下推薦都不改變 status／matched_actions／should_execute／action** | **失敗** |
+| **R-d** | 既有提示／schema 指紋（legacy、claims）都**不變**；新呼叫的訊息是新增的，不得修改既有訊息 | — |
+| **R-e** | 測試 0 failed。允許修改的只有兩類：(1) `test_contract_model_schemas_are_unchanged` 的 digest，限於因為包含 `prefer_when` 或 `advisory_recommendation` 而改變的模型，逐一列出並說明包含關係；(2) golden transcript 中屬於 `algorithm` 平手的回合，逐一列出。其他任何修改都算違反 | — |
+
+### 實跑（gpt-4o-mini 已預先授權；traced harness；中性路徑；英文）
+
+- **P1（有事實）**：Case 3 中性路徑原句。預期條件：`cohort_size:few` 和／或 `per_edge_confidence:needed` → 推薦 BONOBO。
+- **P2（有事實）**：盲測 Case 2 英文版，路徑換成中性。預期條件：`compute_constraints:constrained` → 推薦 OTTER。
+  若 tag discriminator 已先解開，新呼叫不會執行，如實記為「未觸及」。
+- **P3（沒有事實）**：「I want per-sample gene co-expression networks from my expression matrix
+  (data/blind-neutral/case-3/expression.tsv). Which workflow fits?」預期：走 B，不推薦。
+
+各跑 repeat 3。只報結構計數：新呼叫執行次數、通過驗證的 claim 數、A／B 次數、
+推薦是否指向預期工作流程。依 Log 120／124，不得計算比率或 p 值。
+
+### 撤回條件（寫死，事後不得調整）
+
+- **Z-1｜離線**：R-a 不相同、R-d 指紋改變，或 R-e 出現允許範圍外的失敗 → 撤回全部。
+- **Z-2｜模型不用新詞彙（比照 Log 131 的 W-1）**：在 P1＋P2 中新呼叫有執行的 trial 裡，
+  指向預期工作流程、且通過驗證的 claim 數 = 0 → 撤回全部，**不做任何措辭上的重試**。
+- **Z-3｜捏造事實**：P3 的 3 次 trial 中有 ≥2 次產生推薦 → 撤回全部。
+- **Z-4｜授權外洩**：任何 trial 因新階段而出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回全部。這是結構計數，必須為 0。
+
+### 事前預測
+
+- R-a、R-d 預測通過：新階段在 matcher 之後，也不碰既有訊息。
+- **Z-2 我不預測通過。** 支持的理由：這是專用呼叫，選項是短清單，而且用的是使用者自己的語言；
+  Log 131 失敗的是「大 schema 裡的選填欄位」，形狀不同。反對的理由：Log 138 中同一個專用呼叫
+  仍然挑了不能區分候選的選項，而且 2/3 回顯了無關的 evidence。
+- Z-3 預測通過，但依據很弱：P3 沒有可引用的事實句，逐字驗證應該會擋下大部分。
+
+### 已知風險，事前寫明
+
+1. **逐字驗證只證明句子存在，不證明它支持該條件。** 模型可能引用「expression data」
+   當作 `cohort_size:few` 的依據。緩解：A 會把引用顯示給使用者看，而推薦沒有執行權。
+   P3 就是用來量這個風險的；每一個推薦的 quote 都要在結果節逐一列出、人工判讀。
+2. **軸的敘述是新的使用者可見文字，屬於科學主張。** 門檻刻意寫成定性描述
+   （「a handful」／「dozens or more」），不寫數字，因為沒有公認的切點。
+3. **多一次模型呼叫**，只在 `algorithm` 平手時發生，走既有的 budget preflight。
+4. schema digest 會變（Log 137 的教訓）；R-e 已把它列為預期修改，並要求逐一說明。
+5. 若 Z-2 觸發，代表「換詞彙」這條路也被否證；剩下的方向是讓使用者直接回答 B 的問題，
+   不經過模型判讀。這一點先寫在這裡，避免觸發後臨時改判準。
+
+## Log 140｜Log 139 結果：**Z-1 觸發，全部撤回**；但直接探測顯示「換詞彙」假設有強烈訊號
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 139 事前寫死的條件執行。
+patch 存於 `docs/research-log/log139_withdrawn.patch`（25 個檔案區段，含 2 個新檔，可乾淨重新套用）。
+
+### 實作中的兩個偏離（事前未寫明，如實記錄）
+
+1. **推薦只寫進 `TaskDecision`，沒有寫進 `CapabilityMatch`。**
+   intent router 的輸入包含整個 `capability_match.model_dump()`；
+   加欄位（即使是 null）會改變每一次 intent 呼叫的輸入，違反 R-d 的「不得修改既有訊息」。
+   所以新階段放在 intent 之後。這比宣告更嚴格。
+2. **新階段在「兩組比較」的初學者引導情境下跳過。**
+   `_render_beginner_group_network_guidance` 以問題開頭是
+   「which modeling assumption」作為觸發條件；改寫問題會讓它失效。這是觸發條件的收窄。
+
+另外實作中發現，並在程式碼裡修正（不是測試）：
+- 多值軸需要每個候選都有宣告，否則 BONOBO 對 LIONESS 的平手會錯誤地提供
+  `covariates:no → LIONESS`。
+- factory 改為延遲綁定 schema（照 input mapper 的前例）。
+- `advisory_recommendation` 用 `exclude_if=None`，讓既有的 dump 逐位元不變。
+
+### 判準結果
+
+| 判準 | 結果 |
+| --- | --- |
+| **R-a** 網格逐位元相同 | **通過** |
+| **R-b** 每個 algorithm 平手都有可問的軸 | **通過**（測試） |
+| **R-c** 手寫 payload：推薦／拒絕／衝突／不在選項中；授權欄位不變 | **通過**（14 個測試） |
+| **R-d** legacy／claims 指紋不變 | **通過**（`1f68bfde…`、`348a144c…`） |
+| **R-e** 0 failed，只改允許的測試 | **失敗**：2 個失敗，見下 |
+
+R-e 的 2 個失敗：
+1. `test_contract_model_schemas_are_unchanged`：`TaskDecision`、`ProjectPolicySnapshot`，
+   都能用包含新欄位解釋。**屬於允許範圍。**
+2. `test_ambiguous_guidance_is_scored::test_scoring_the_ambiguous_answer_costs_no_provider_call`：
+   它釘住 ambiguous 情境下的完整呼叫順序
+   `[SemanticInterpretation, SemanticPatch, SemanticDiscriminator, IntentDecision]`，
+   新階段在其後多出 `SelectionConditionClaims`。**不在允許範圍。**
+
+**Z-1 觸發：全部撤回。** 風險 3 寫了「多一次模型呼叫」，卻沒有把釘住呼叫順序的測試
+列為預期修改——和 Log 137 漏列 schema digest 是**同一類錯誤**：
+事前宣告沒有先搜尋所有會被行為改變觸及的釘住測試。
+
+### 實跑（描述性；Z-1 已觸發，結果不能挽回改動）
+
+撤回前，用這份 patch 跑預定的 P1／P2／P3 各 3 次：
+
+| Prompt | registry 結果 | 新階段 | 結果 |
+| --- | --- | --- | --- |
+| P1（有事實，Case 3） | **3/3 未到達**：語意解讀驗證失敗（`semantic_fallback`），與本輪程式碼無關；同一句在 Log 138 是 3/3 正確 | 未觸及 | — |
+| P2（有事實，Case 2） | 3/3 exact OTTER（1 次由 tag discriminator 解開） | 未觸及 | — |
+| P3（無事實） | 3/3 ambiguous {LIONESS-coexpression, BONOBO} | 3/3 執行，claims 都是空的 | 3/3 走 B，**0/3 推薦** |
+
+Z-2 的分母是 0，**無法判定**。Z-3（P3 推薦 ≥2）= 0，Z-4（授權外洩）= 0。
+
+### 直接探測（描述性）
+
+因為 P1 沒到達新階段，我改成直接對 gpt-4o-mini 呼叫新階段 3 次：P1 原句、
+BONOBO／LIONESS 的選項。結果 3/3 相同：
+
+- `cohort_size:few`，引用 "I only have expression data from a handful of patients"
+- `per_edge_confidence:needed`，引用 "ideally know which connections are trustworthy in that particular patient"
+- 引用都通過逐字驗證，推薦 BONOBO，拒絕 0 個。
+
+對照 Log 138：同一句、方法 tag 詞彙、`bayesian` 0/3。
+**限制：temperature 0、輸入完全相同，3 次不是獨立樣本；而且這是單獨呼叫，不是完整流程。**
+它只能說明假設值得重做，不能說明假設成立。
+
+### 重做時必須事先處理
+
+1. R-e 的允許清單要加入 `test_scoring_the_ambiguous_answer_costs_no_provider_call`
+   的呼叫順序，並說明多出來的呼叫只在 algorithm 平手時發生。
+2. **事前宣告前先搜尋所有釘住測試**：呼叫順序、schema digest、dump 雜湊、
+   factory 綁定清單、factory 行數。本輪實作期間這五類都撞到了。
+3. P1 的語意解讀失敗是獨立問題（Log 138 同一句 3/3 成功），
+   實跑的分母要改成「新階段有執行的 trial」，並增加 prompt 數量，避免分母再次為 0。
+
+## Log 141｜事前宣告：逐字重做 Log 139，事先列出所有被觸及的釘住測試，並擴大實跑（尚未實作）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於改動之前，之後不得修改。**
+依據：Log 140。使用者指示：照 Log 140「重做時必須事先處理」的三點重寫。
+
+### 要證明的東西
+
+與 Log 139 相同：候選平手時，把模型可選的詞彙從方法 tag 換成實驗條件，
+模型就會引用使用者已說出的事實；推薦只是建議，沒有執行權。
+Log 140 的直接探測（3/3，非獨立樣本）是重做的理由，**不是證據**。
+
+### 形狀：逐字重新套用，不做任何修改
+
+`git apply docs/research-log/log139_withdrawn.patch`，程式碼**一個字都不改**。
+若需要修改 patch 才能通過任何判準，那就不是本輪要證的東西，依 Z-1 撤回。
+（比照 Log 134 Phase 2 的規則。）
+
+### 第 1 點｜事前搜尋所有釘住測試（寫本節之前已完成）
+
+**靜態搜尋**，五類：
+
+| 類別 | 找到的測試檔 |
+| --- | --- |
+| 雜湊釘住 | test_contracts_package、test_planning_package、test_routing_evaluation、test_semantic_contract_comparison、test_saved_routing_trace_replay、test_sambar_container |
+| 呼叫順序 | test_agent_gate、test_ambiguous_guidance_is_scored、test_graph_tracing、test_input_completeness、test_ontology_vocabulary、test_routing_evaluation、test_semantic_claims、test_repair_feedback_coherence、test_semantic_contract_comparison、test_semantic_repair_interaction、test_semantic_attempt_bound、test_semantic_patch_repair、test_validated_first_pass_retained |
+| 綁定清單 | test_agent_gate、test_graph_package、test_graph_tracing、test_saved_routing_trace_replay、test_semantic_patch_repair、test_routing_evaluation、test_semantic_claims、test_semantic_attempt_bound、test_semantic_provider_wire、test_validated_first_pass_retained |
+| 行數上限 | test_graph_package（factory ≤150、graph 子模組）、test_interpretation_package、test_cli_package、test_planning_package |
+| golden transcript | tests/golden/conversation |
+
+**動態確認**：在臨時 git worktree 套用「目前 working tree＋patch」後跑完整測試，
+結果是 **2 failed, 2091 passed, 35 skipped**，失敗的**恰好**是：
+
+1. `test_contracts_package.py::test_contract_model_schemas_are_unchanged`：
+   改變的 digest 恰為 `TaskDecision`、`ProjectPolicySnapshot`（逐一重算確認）。
+2. `test_ambiguous_guidance_is_scored.py::test_scoring_the_ambiguous_answer_costs_no_provider_call`：
+   釘住的呼叫順序多出一個 `SelectionConditionClaims`，位在 `IntentDecision` 之後。
+
+**行數餘裕**（套用 patch 後量測）：`graph/response.py` 340/340（**0 行**）、
+`graph/factory.py` 149/150（1 行）、`graph/response_context.py` 137/140、
+`graph/context.py` 106/140。因為本輪逐字套用，這些數字不會變；
+若未來再修改這幾個檔，這是硬限制。
+
+### 事前判準
+
+基線：目前 working tree（Log 137 的修正 1＋2a）。測試 2079 passed／35 skipped／0 failed；
+網格 `grid_final`（15273 筆）；指紋 legacy `1f68bfde…0dff0`、claims `348a144c…1aca`。
+
+| 判準 | 內容 |
+| --- | --- |
+| **R-a** | 網格逐位元相同 |
+| **R-b／R-c** | patch 內的 `tests/test_condition_recommender.py` 全部通過（14 個） |
+| **R-d** | legacy／claims 指紋不變 |
+| **R-e** | 0 failed。**允許且只允許**兩處測試修改：(i) `SCHEMA_DIGESTS` 中 `TaskDecision` 與 `ProjectPolicySnapshot` 兩個值；(ii) `test_scoring_the_ambiguous_answer_costs_no_provider_call` 的預期清單在 `"IntentDecision"` 之後加上 `"SelectionConditionClaims"`，並把註解改成說明多出的呼叫只發生在 algorithm 平手。其他任何測試修改或失敗都算違反 |
+
+### 第 3 點｜擴大實跑（gpt-4o-mini 已預先授權；traced harness；中性路徑；英文）
+
+所有 prompt 都指向 {BONOBO, LIONESS-coexpression} 這組平手：Log 138 的 3/3 與 Log 140 的 P3 3/3
+都顯示它在實跑中會穩定出現。
+
+有事實（F）：
+- **F1**：Case 3 中性路徑原句 → 預期推薦 BONOBO（`cohort_size:few`、`per_edge_confidence:needed`）。
+- **F2**：「Our cohort has about 400 tumour samples with RNA-seq (data/blind-neutral/case-3/expression.tsv) and no prior files. I want to see each tumour's own gene co-expression network.」→ 預期推薦 LIONESS-coexpression（`cohort_size:many`）。
+- **F3**：「I have RNA-seq from only six donors (data/blind-neutral/case-3/expression.tsv) and no priors. For each donor I want their own gene-gene co-expression network, with a p-value on every link.」→ 預期推薦 BONOBO。
+
+沒有事實（N）：
+- **N1**：「I want per-sample gene co-expression networks from my expression matrix (data/blind-neutral/case-3/expression.tsv). Which workflow fits?」
+- **N2**：「Build a separate gene co-expression network for each sample in data/blind-neutral/case-3/expression.tsv. What should I use?」
+
+各跑 repeat 3，共 15 次 trial。
+
+**分母規則（第 3 點）**：D = F 類 trial 中，新階段確實執行的次數
+（有 `routing.selection_conditions_started` 事件）。
+- 若 D < 3，**只再加跑一輪** F1–F3 repeat 3。
+- 若仍然 D < 3 → **無法判定 → 撤回**。沒有證據就不保留。
+
+N 類的分母同樣只算新階段有執行的 trial；若 N 類分母 < 3，Z-3 同樣視為無法判定 → 撤回。
+
+### 撤回條件（寫死，事後不得調整）
+
+- **Z-1｜離線**：R-a／R-b／R-c／R-d 任一失敗，或 R-e 出現允許範圍外的失敗或修改，
+  或需要修改 patch → 撤回全部。
+- **Z-2｜模型不用新詞彙**：D 次 trial 中，推薦等於預期工作流程的次數 = 0 → 撤回全部，不做措辭重試。
+- **Z-2b｜方向錯誤**：D 次 trial 中，推薦**不等於**預期工作流程的次數 ≥ 2 → 撤回全部。
+- **Z-3｜捏造事實**：N 類中新階段有執行的 trial 裡，產生推薦的次數 ≥ 2 → 撤回全部。
+- **Z-4｜授權外洩**：任何 trial 因新階段而出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回全部。
+- **Z-5｜分母不足**：依上面的分母規則，無法判定 → 撤回全部。
+
+依 Log 120／124：這些都是結構計數，不計比率、不計 p 值；
+結果節要逐一列出每個推薦引用的 quote，並做人工判讀（Log 139 風險 1）。
+
+### 事前預測
+
+- **Z-1 預測通過**：臨時 worktree 已經實測，恰好只有上列 2 個失敗。
+  這不是事後觀察：本節正是依據那次量測寫的，判準沒有因此放寬，
+  只是把 Log 139 漏列的項目補進允許清單。
+- **Z-5 我不確定。** Log 140 的 P1 曾經 3/3 在語意解讀階段失敗（`semantic_fallback`），
+  這可能讓 F1 無法到達新階段。F2、F3 是新句子，沒有歷史資料。
+- **Z-2 傾向通過**，依據是 Log 140 的直接探測；但那 3 次不是獨立樣本，而且不是完整流程。
+- **Z-2b 我不預測。** F2 的「about 400 tumour samples」是新條件（`cohort_size:many`），從未測過。
+- Z-3 傾向通過：Log 140 的 P3 是 0/3 推薦。
+
+### 已知風險，事前寫明
+
+1. F 類三句都針對同一組平手；PANDA／OTTER／GIRAFFE 與 COBRA／LIONESS 兩組平手在實跑中
+   **不在本輪量測範圍**（Log 140 的 P2 顯示 OTTER 常在更早就被解開）。
+   即使本輪成立，也只能主張 {BONOBO, LIONESS-coexpression} 這組。
+2. F1 的語意解讀失敗是**獨立的問題**，本輪不處理；它只影響分母。
+3. 重複的 trial 共享漂移中的 provider 狀態，不是獨立樣本（memory
+   `netzoo-routing-measurement-power`）。
+4. 允許清單是在實測之後才寫下的。這是刻意的：Log 137／140 的教訓正是「沒有先量就寫清單」。
+   但這也代表如果 patch 以外的程式碼在實作前又被改動，清單就會失效——
+   實作時先確認 `git status` 與本節基線相同。
+
+## Log 142｜Log 141 結果：所有撤回條件都未觸發，改動**保留**；但實際只驗證了一個方向
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 141 事前寫死的條件執行。
+計數腳本：`docs/research-log/log141_count.py`。
+
+### 實作
+
+- 實作前 `git status` 與 Log 141 的基線相同。
+- `git apply docs/research-log/log139_withdrawn.patch`，**未修改任何字**。
+- 兩處允許的測試修改：
+  - `SCHEMA_DIGESTS`：`TaskDecision` `8a42af2f…` → `dcaf4f6a…`；`ProjectPolicySnapshot` `a359e840…` → `5994735f…`。
+  - 呼叫順序清單加上 `"SelectionConditionClaims"`，並更新註解。
+
+### 離線判準
+
+| 判準 | 結果 |
+| --- | --- |
+| R-a 網格逐位元相同 | **通過** |
+| R-b／R-c `test_condition_recommender.py` | **通過**（14/14） |
+| R-d 指紋 | **通過**（legacy `1f68bfde…`、claims `348a144c…`） |
+| R-e | **通過**：2093 passed, 35 skipped, 0 failed；只有上列兩處修改 |
+
+### 實跑（第一輪 15 次＋依分母規則補跑 F1–F3 一輪 9 次）
+
+各 prompt 的路徑（24 次 trial）：
+
+| Prompt | 路徑 | 次數 |
+| --- | --- | ---: |
+| F1（few＋trust → BONOBO） | 新階段 → **推薦 BONOBO** | 3 |
+| F1 | 語意解讀失敗（`semantic_fallback`） | 3 |
+| F2（400 samples → LIONESS） | 語意解讀失敗 | 4 |
+| F2 | ambiguous {LIONESS-coexp, COBRA, BONOBO}（不是 algorithm 平手，新階段不執行） | 2 |
+| F3（six donors＋p-value → BONOBO） | 既有路徑直接 exact BONOBO（新階段不需要） | 6 |
+| N1（無事實） | 新階段 → claims 空 → B | 3 |
+| N2（無事實） | 新階段 → claims 空 → B | 3 |
+
+撤回條件：
+
+| 條件 | 結果 |
+| --- | --- |
+| Z-5 分母 | 第一輪 D=1 → 依規則補跑一輪 → **D=3**，達到門檻 |
+| Z-2 推薦＝預期 | **3/3**（未觸發） |
+| Z-2b 推薦≠預期 | **0**（未觸發） |
+| Z-3 N 類推薦 | 分母 6，**0**（未觸發） |
+| Z-4 授權外洩 | 24 次 trial 中 **0** |
+
+**全部未觸發：改動保留。**
+
+### 推薦引用的人工判讀（Log 139 風險 1）
+
+3 次推薦的引用完全相同：
+- `cohort_size:few` ← "I only have expression data from a handful of patients"：**正確**。
+- `per_edge_confidence:needed` ← "ideally know which connections are trustworthy in that particular patient"：**正確**，「trustworthy」對應逐邊可信度。
+
+### 必須如實說明的限制
+
+1. **D=3 全部來自同一句 F1。** 實際驗證的只有「樣本少＋要可信度 → BONOBO」這一個方向。
+   F2 的「樣本多 → LIONESS」**6 次都沒到達新階段**，這個方向**完全沒被驗證**。
+   Log 141 的 Z-2b 是為它寫的，但分母是 0。
+2. **F3 從未到達新階段**，因為既有路徑（tag discriminator 的 p-value regex recovery）先解開了。
+   這是正確的行為，不是失敗，但它不提供新階段的證據。
+3. **語意解讀失敗率很高**：F1 3/6、F2 4/6（合計 F 類 7/18）落到 `semantic_fallback`，
+   都在新階段之前，與本輪程式碼無關。N1、N2 是 0/6。
+   **帶有具體實驗事實的長句比較容易在語意解讀階段失敗**——這是下一個該處理的獨立問題。
+4. F2 有 2 次出現三候選 {LIONESS-coexp, COBRA, BONOBO}：「400 tumour samples」讓 COBRA
+   進入候選，planner 維度不是 algorithm，所以沿用既有的提問。
+5. 依 Log 120／124，這些都是結構計數；重複的 trial 不是獨立樣本，不能主張比率。
