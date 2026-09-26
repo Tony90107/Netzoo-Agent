@@ -11335,3 +11335,101 @@ A 版回覆（Log 139）把使用者的中文原句（例如「少數幾個病�
 
 資料夾內容推薦（`render_inspected_recommendation`）的中文路徑本輪沒有實測，由離線測試
 `test_form_a_quotes_non_english_folder_and_file_names_verbatim` 涵蓋。
+
+## Log 182｜事前宣告：含省略號的引文逐段接地（Case 7 DRAGON；更正 Log 179 問題 2 的歸因）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+套在 `ea1a745` 之上。候選 patch：`docs/research-log/log182_candidate.patch`（2 個檔案，逐字套用）。
+
+### 更正 Log 179 的歸因
+
+Log 179 寫「granularity 必須有引用，而 multi_omic_network 的粒度不被視為蘊含」。
+重放三次錄下的 fallback 後，這個說法**不成立**：
+
+| trial | H0：multi_omic_network（正確讀法） | H1 | 真正的阻礙 |
+| --- | --- | --- | --- |
+| T1 | granularity 有引用且接地；artifact_type 兩則引文都是 `"I have gene expression... and methylation..."` | regulatory_network TF→gene（錯誤讀法），缺 granularity 證據 | H0 的**省略號引文**被判無依據 |
+| T2 | artifact_type **完全沒有證據**；granularity 也沒有 | 無 | 模型沒有引用 artifact_type |
+| T3 | artifact_type 一則接地、一則是同一句省略號引文；granularity 有引用 | 同 T1 | H0 的**省略號引文**被判無依據 |
+
+Log 156 的部分有效性只在「至少一個 hypothesis 單獨合法」時保留它；T1、T3 的 H0 因省略號引文不合法，
+所以兩個讀法一起被拒。依註冊表把粒度視為蘊含，三次都救不回來（T1／T3 的 H0 粒度本來就有引用，
+而 H1 的 regulatory_network 有兩種粒度的工具，粒度是真正的選擇）。所以不採用那個方向。
+
+### 成因
+
+`explicit_evidence_grounded` 先把引文正規化，把 `...` 變成空白，然後找一段**連續**的字。
+省略號引文的意思是「中間省略了原文」，所以永遠找不到連續的那一段。
+
+### 修正（接地判定的形狀，不改 prompt 文字）
+
+引文在 `...`（三個以上的點）或 `…` 處切段，每一段都必須用**未修改的** `_grounded_span`
+（逐字，或 Log 96 的拼字對齊）接地。全部接地才算接地；只要有一段原文沒有，整則引文就無依據。
+只有省略號、沒有文字的引文仍然無依據。
+
+**為什麼不是放寬**：今天任何一段本身就是可以接受的引文（例如單獨引用 "and methylation"）。
+逐段接地接受的東西，模型本來就可以只引用其中一段而得到。原文沒有的字，照樣被拒
+（負向控制：`"regulatory ... network"` 對上只說 "network" 的原文，仍然無依據）。
+`condition_recommender._quote_grounded` 使用自己的判定，本輪不動。
+
+### 已在 worktree 量得的事實
+
+- 新測試 `tests/test_elided_quote_grounding.py` 8 項：4 項正向（含 Case 7 讀法整體驗證）在未修正程式碼上失敗、修正後通過；
+  4 項負向控制在修正前後都通過。
+- 全套 **2165 passed、0 failed**；不修改任何既有測試。
+- 五個網格（Log 136／148／170／174 tag／150 pair）與 HEAD 逐位元組相同。
+- 指紋不變：legacy `1f68bfde4081`、claims `348a144cd9b4`。
+- 重放全部 78 次錄下且帶解讀的 `semantic_fallback`（scratch traces 與 `live-semantic-trace-*`）：
+  **恰好 2 次改變**，就是 Case 7 的 T1、T3，兩者都變成 guidance 模式的 exact `run_dragon`（H1 被 Log 156 移除）；其餘 76 次不變。
+- 歷史紀錄中的省略號引文共 17 則，分布在 4 個檔案；另一種形狀是 `"separate ... for every patient"`（sample_specific），
+  那幾次原本就通過，不受影響。
+
+### 判準
+
+| 判準 | 內容 |
+| --- | --- |
+| **E-a** | 逐字套用 patch；套用後全套 0 failed、網格與指紋同上 |
+| **E-b** | 重放：恰好 T1、T3 改變，其餘 76 次不變 |
+| **E-c（實跑，否決）** | 英文 Case 7 ×3、中文 Case 7 ×1：授權外洩 0；exact 或推薦出現 DRAGON 以外的工具 = 0 |
+| **E-d（實跑，描述）** | 記錄 fallback 次數與每次的阻礙；若出現省略號引文，記錄它是否接地。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- E-a、E-b、E-c 任一失敗 → 撤回。
+- 實跑中出現新的 issue 種類，而且可以追溯到逐段接地 → 撤回。
+
+### 已知風險與範圍外
+
+1. T2 型失敗（模型根本沒有引用 artifact_type）仍會 fallback，這是設計如此：artifact_type 必須有引用。
+2. 省略號兩側的段落可能來自原文相距很遠的地方。因為每一段單獨就能接地，這不會讓接地比今天更容易，
+   但引文作為「引用」的忠實度無法保證。本輪不要求段落順序。
+
+## Log 183｜Log 182 結果：E-a～E-c 成立，逐段接地**保留**；省略號引文在實跑中救回一次
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 182 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| E-a 逐字套用、0 failed、網格與指紋 | **通過**（2165 passed、35 skipped） |
+| E-b 重放 | **通過**：主 repo 重放結果與 worktree 逐項相同，只有 T1、T3 改變 |
+| E-c 外洩 0、DRAGON 以外的工具 0 | **通過** |
+
+### 實跑
+
+| trial | 結果 | 經過 |
+| --- | --- | --- |
+| en #1 | exact `run_dragon` | 第 2 次嘗試：artifact_type 兩則引文都是 `"I have gene expression... and methylation..."`，**逐段接地成立**；錯誤的 H1（regulatory_network，缺 granularity 證據）被 Log 156 移除 |
+| en #2 | `semantic_fallback` | T2 型：兩次嘗試都 `missing_evidence:artifact_type=multi_omic_network`、`missing_evidence:granularity=aggregate`——模型沒有引用 |
+| en #3 | exact `run_dragon` | 第一次解讀就通過，沒有省略號引文 |
+| zh #1 | exact `run_dragon` | 第 1 次被拒（缺證據），第 2 次通過 |
+
+- 沒有出現新的 issue 種類；撤回條件都沒有觸發。
+- en #1 是 Log 182 預測的機制在實跑中實際生效的一例：修正前，這一次會與 Log 179 的 T1 一樣 fallback。
+- 依 Log 120／124，這是描述性結果，不作比率主張（Log 179 是 0/3，本輪 2/3，兩者不是獨立樣本）。
+
+### 剩下的 Case 7 失敗
+
+T2 型：模型對 artifact_type 與 granularity 都不給引文。artifact_type 必須有引用是契約的核心，
+本輪不動；可行的方向只能是契約形狀（例如讓 review 能針對缺引用的欄位要求引文），不是 prompt 措辭。
