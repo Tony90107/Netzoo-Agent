@@ -712,6 +712,13 @@ def restore_stated_fields(
             if cleared is not None and not (
                 set(outcome_consistency_issues(cleared)) - baseline
             ):
+                # Retire the role evidence with the roles (Log 143). Left in
+                # place, validation's gap-closing reconcile re-adds the quoted
+                # role to the emptied field and `artifact_roles` returns.
+                evidence = [
+                    item for item in evidence
+                    if item.dimension not in {"regulator_type", "target_type"}
+                ]
                 restored.append({
                     "hypothesis": index,
                     "field": "roles",
