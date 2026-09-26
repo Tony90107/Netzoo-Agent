@@ -1,0 +1,621 @@
+diff --git a/scripts/netzoo_agent_core/contracts/decisions.py b/scripts/netzoo_agent_core/contracts/decisions.py
+index a2e31f2..7857ab0 100644
+--- a/scripts/netzoo_agent_core/contracts/decisions.py
++++ b/scripts/netzoo_agent_core/contracts/decisions.py
+@@ -124,6 +124,12 @@ class TaskDecision(BaseModel):
+     advisory_recommendation: AdvisoryRecommendation | None = Field(
+         default=None, exclude_if=lambda value: value is None,
+     )
++    # Folders whose file contents routing read to advise among tied
++    # workflows (Log 154); lets every reply say so truthfully. Omitted from
++    # dumps while empty.
++    inspected_directories: list[str] = Field(
++        default_factory=list, exclude_if=lambda value: not value,
++    )
+     missing_inputs: list[str] = Field(default_factory=list)
+     expression_file: str | None = None
+     design_file: str | None = None
+diff --git a/scripts/netzoo_agent_core/graph/input_inspection.py b/scripts/netzoo_agent_core/graph/input_inspection.py
+index 8ff6b97..ee25cee 100644
+--- a/scripts/netzoo_agent_core/graph/input_inspection.py
++++ b/scripts/netzoo_agent_core/graph/input_inspection.py
+@@ -1,57 +1,66 @@
+-"""Advisory choice among tied workflows from a folder the user named (Log 152).
++"""Advisory choice among tied workflows from a folder the user named.
+ 
+ When a request names a local folder and the tied candidates differ in the
+-priors they require, the folder's file names can say which candidate the user
+-is equipped to run: a folder with a TF-motif and a PPI prior but no miRNA list
+-fits LIONESS-PANDA rather than LIONESS-PUMA.
++inputs they require, the folder's *contents* can say which candidate the user
++is equipped to run: a folder whose files validate as an expression matrix, a
++TF-motif prior and a PPI prior, but none as a miRNA list, fits LIONESS-PANDA
++rather than LIONESS-PUMA.
++
++Contents decide, not names (Log 154). Each tied candidate counts as equipped
++only if some assignment of the folder's files to its input roles passes that
++workflow's own content validator -- the same check preflight runs before
++execution. A file called `mirna.txt` that is not a miRNA list does not count;
++a miRNA list called `list_04.dat` does. Filename hints only order the search.
+ 
+ Bounds, all deliberate:
+ 
+-- Only a directory the request names, inside the project root, is listed;
+-  nothing is followed outside it and nothing is recursed into.
+-- Only file names are read, never contents; roles come from the same filename
+-  hints the request parser already uses, and content validation stays
+-  authoritative at planning time.
+-- A missing file is not evidence the user lacks it. The open-world rule stands:
+-  no candidate is eliminated, and the result is an advisory recommendation
+-  with no execution authority, which the user confirms or overrides.
++- Only a directory the request names, inside the project root; nothing is
++  followed outside it and nothing is recursed into.
++- At most 12 regular, non-hidden, non-symlink files of at most 20 MB, a 64 KB
++  preview per file to shortlist roles, and at most 40 validator calls.
++- A file that validates nowhere is not evidence the user lacks one. The
++  open-world rule stands: no candidate is eliminated, and the result is an
++  advisory recommendation with no execution authority.
+ """
+ 
+ from __future__ import annotations
+ 
++import itertools
+ import re
+ from pathlib import Path
+ 
+-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
++from workflow_registry import ACTION_DEFINITIONS, REQUIRED_INPUTS
+ 
+ from ..contracts import TaskDecision
+ from ..contracts.outcomes import AdvisoryCondition, AdvisoryRecommendation
++from ..data.inspection import expression_sample_count
++from ..data.tables import _inspect_panda_inputs_impl
+ from ..interpretation.discovery import _unlabeled_input_bindings
+-from ..settings import PROJECT_ROOT
++from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
+ from .context import record_event
+ 
+ __all__ = [
+     "INSPECTED_AXIS",
+-    "PRIOR_LABELS",
+     "advise_from_inspected_inputs",
++    "equipped_candidates",
+     "invoke_input_inspection",
+     "named_directories",
+-    "present_priors",
+ ]
+ 
+ INSPECTED_AXIS = "inspected_inputs"
+-PRIOR_LABELS = {
+-    "motif_prior": "TF-motif prior",
+-    "ppi_prior": "protein-interaction prior",
+-    "mirna_prior": "miRNA list",
+-}
+-_PRIOR_BY_FIELD = {
+-    "motif_file": "motif_prior",
+-    "ppi_file": "ppi_prior",
+-    "mirna_file": "mirna_prior",
++_PANDA_FAMILY = frozenset({"run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma"})
++_ROLE_SHAPES = {
++    "expression_file": "matrix",
++    "motif_file": "edges",
++    "ppi_file": "edges",
++    "mirna_file": "list",
+ }
+-_MAX_ENTRIES = 200
++_MAX_FILES = 12
++_MAX_BYTES = 20 * 1024 * 1024
++_PREVIEW_BYTES = 64 * 1024
++_MAX_VALIDATIONS = 40
+ _PATH_TOKEN = re.compile(r"(?<![\w./~-])((?:\./)?[\w.-]+(?:/[\w.-]+)*/?)")
++_NUMBER = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
+ 
+ 
+ def named_directories(task: str, root: Path = PROJECT_ROOT) -> list[tuple[str, Path]]:
+@@ -69,13 +78,96 @@ def named_directories(task: str, root: Path = PROJECT_ROOT) -> list[tuple[str, P
+     return found
+ 
+ 
+-def present_priors(directory: Path) -> set[str]:
+-    """Registry prior names whose filename hint appears in the directory listing."""
+-    names = sorted(
+-        entry.name for entry in directory.iterdir() if entry.is_file()
+-    )[:_MAX_ENTRIES]
+-    bindings = _unlabeled_input_bindings(" ".join(names), tuple(_PRIOR_BY_FIELD))
+-    return {_PRIOR_BY_FIELD[field] for field in bindings}
++def _shape(path: Path) -> str | None:
++    """A cheap content shortlist: matrix, edges or list, from a bounded preview."""
++    try:
++        with path.open("r", encoding="utf-8", errors="strict") as handle:
++            lines = [line.rstrip("\r\n") for line in handle.read(_PREVIEW_BYTES).splitlines()]
++    except (OSError, UnicodeDecodeError):
++        return None
++    rows = [
++        re.split(r"\t|,", line) for line in lines
++        if line.strip() and not line.startswith("#")
++    ][:50]
++    if not rows:
++        return None
++    widths = [len(row) for row in rows]
++    width = max(set(widths), key=widths.count)
++    if width == 1:
++        return "list"
++    body = [row for row in rows[1:] if len(row) == width] or rows
++    numeric = max(sum(bool(_NUMBER.match(cell.strip())) for cell in row[1:]) for row in body)
++    if width >= 3 and numeric >= 2:
++        return "matrix"
++    return "edges" if width in (2, 3) else None
++
++
++def _candidate_files(directory: Path) -> list[Path] | None:
++    files = [
++        entry for entry in sorted(directory.iterdir())
++        if entry.is_file() and not entry.is_symlink() and not entry.name.startswith(".")
++    ]
++    if len(files) > _MAX_FILES:
++        return None
++    return [entry for entry in files if entry.stat().st_size <= _MAX_BYTES]
++
++
++def _validates(action: str, values: dict[str, Path]) -> bool:
++    try:
++        _, valid, _ = _inspect_panda_inputs_impl(
++            str(values["expression_file"]),
++            str(values["motif_file"]),
++            str(values["ppi_file"]),
++            str(values["mirna_file"]) if "mirna_file" in values else "",
++            check_gene_authority=False,
++        )
++        if valid and "lioness" in action:
++            samples, _ = expression_sample_count(str(values["expression_file"]))
++            valid = samples >= 3
++    except Exception:
++        return False
++    return bool(valid)
++
++
++def equipped_candidates(
++    directory: Path,
++    candidates: list[str],
++) -> dict[str, dict[str, Path]] | None:
++    """Candidates whose inputs some file assignment content-validates, with that assignment.
++
++    Returns None when the folder is outside the bounds or a candidate is not a
++    PANDA-family workflow, so nothing can be concluded.
++    """
++    if not set(candidates) <= _PANDA_FAMILY:
++        return None
++    files = _candidate_files(directory)
++    if not files:
++        return None
++    shapes = {path: _shape(path) for path in files}
++    hinted = _unlabeled_input_bindings(" ".join(path.name for path in files), tuple(_ROLE_SHAPES))
++    budget = _MAX_VALIDATIONS
++    equipped: dict[str, dict[str, Path]] = {}
++    for action in candidates:
++        fields = [f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS]
++        pools = [
++            sorted(
++                (path for path in files if shapes[path] == _ROLE_SHAPES[field]),
++                # Names only order the search: a hinted file is tried first.
++                key=lambda path, field=field: (hinted.get(field) != path.name, path.name),
++            )
++            for field in fields
++        ]
++        for assignment in itertools.product(*pools):
++            if len(set(assignment)) != len(assignment):
++                continue
++            if budget <= 0:
++                return None
++            budget -= 1
++            values = dict(zip(fields, assignment))
++            if _validates(action, values):
++                equipped[action] = values
++                break
++    return equipped
+ 
+ 
+ def _workflow_name(action: str) -> str:
+@@ -88,56 +180,80 @@ def advise_from_inspected_inputs(
+     decision: TaskDecision,
+     root: Path = PROJECT_ROOT,
+ ) -> TaskDecision:
+-    """Recommend the one tied candidate whose required priors the folder holds."""
++    """Recommend the one tied candidate whose inputs the named folder content-validates."""
+     candidates = list(decision.hypothesis_actions)
+     if (
+         decision.capability_match_status != "ambiguous"
+         or len(candidates) < 2
+         or decision.advisory_recommendation is not None
++        or not set(candidates) <= _PANDA_FAMILY
+     ):
+         return decision
+-    required = {
+-        action: set(OUTPUT_CAPABILITIES[action].required_input_artifacts)
+-        for action in candidates if action in OUTPUT_CAPABILITIES
++    fields_by_action = {
++        action: {f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS}
++        for action in candidates
+     }
+-    if len({frozenset(value) for value in required.values()}) < 2:
++    if len({frozenset(value) for value in fields_by_action.values()}) < 2:
+         return decision
++    inspected: list[str] = []
+     for written, directory in named_directories(task, root):
+-        present = present_priors(directory)
+-        satisfied = [action for action, needs in required.items() if needs <= present]
+-        if len(satisfied) != 1:
++        inspected.append(written)
++        equipped = equipped_candidates(directory, candidates)
++        if not equipped or len(equipped) != 1:
+             continue
+-        action = satisfied[0]
++        action, values = next(iter(equipped.items()))
+         missing = sorted(
+-            {need for needs in required.values() for need in needs} - present
++            set().union(*fields_by_action.values()) - fields_by_action[action]
+         )
+         if not missing:
+             continue
+-        recommendation = AdvisoryRecommendation(
+-            action=action,
+-            conditions=[
+-                AdvisoryCondition(axis=INSPECTED_AXIS, value=f"missing:{need}", text_span=written)
+-                for need in missing
+-            ],
+-        )
+-        missing_labels = " or ".join(PRIOR_LABELS.get(need, need) for need in missing)
++        conditions = [
++            AdvisoryCondition(axis=INSPECTED_AXIS, value=f"validated:{field}={path.name}", text_span=written)
++            for field, path in values.items()
++        ] + [
++            AdvisoryCondition(axis=INSPECTED_AXIS, value=f"missing:{field}", text_span=written)
++            for field in missing
++        ]
++        missing_labels = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
+         return decision.model_copy(update={
+-            "advisory_recommendation": recommendation,
++            "advisory_recommendation": AdvisoryRecommendation(action=action, conditions=conditions),
+             "clarification_question": (
+                 f"Should I use {_workflow_name(action)}, or do you also have a "
+                 f"{missing_labels} elsewhere?"
+             ),
++            "inspected_directories": inspected,
+         })
++    if inspected:
++        return decision.model_copy(update={"inspected_directories": inspected})
+     return decision
+ 
+ 
++_ROLE_LABELS = {
++    "expression_file": "expression matrix",
++    "motif_file": "TF-motif prior",
++    "ppi_file": "protein-interaction prior",
++    "mirna_file": "miRNA list",
++}
++
++
+ def invoke_input_inspection(context, state, user_task: str, decision: TaskDecision) -> TaskDecision:
+-    """Graph entry point: advise from a named folder and record what was advised."""
++    """Graph entry point: advise from a named folder and record what was read."""
+     advised = advise_from_inspected_inputs(user_task, decision)
+-    if advised is not decision:
+-        record_event(context, state, "routing.inspected_inputs_recommended", "classify", {
+-            "recommended_action": advised.advisory_recommendation.action,
+-            "conditions": [item.model_dump() for item in advised.advisory_recommendation.conditions],
++    if advised.inspected_directories:
++        record_event(context, state, "routing.inspected_inputs_read", "classify", {
++            "directories": list(advised.inspected_directories),
++            "recommended_action": (
++                advised.advisory_recommendation.action
++                if advised.advisory_recommendation is not None
++                and advised.advisory_recommendation is not decision.advisory_recommendation
++                else None
++            ),
++            "conditions": (
++                [item.model_dump() for item in advised.advisory_recommendation.conditions]
++                if advised.advisory_recommendation is not None
++                and advised.advisory_recommendation is not decision.advisory_recommendation
++                else []
++            ),
+             "candidate_actions": list(decision.hypothesis_actions),
+         })
+     return advised
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 2a54528..809c8bb 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -9,7 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION
+ from ..contracts import ProjectPolicySnapshot, TaskDecision
+ from ..routing.clarification_planner import algorithmic_assumptions_for
+ from ..presentation import _ui_text
+-from .inspected_answers import render_inspected_recommendation
++from .inspected_answers import render_inspected_recommendation, with_inspection_footer
+ from ..routing.outcome_matching import (
+     guidance_actions_for,
+     has_granularity_only_ambiguity,
+@@ -240,6 +240,19 @@ def render_outcome_clarification(
+     semantic_goal: dict | None = None,
+ ) -> str | None:
+     """Explain compatible hypotheses before asking one validated clarification."""
++    return with_inspection_footer(
++        _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
++        decision.inspected_directories,
++    )
++
++
++def _render_outcome_clarification(
++    decision: TaskDecision,
++    policy: ProjectPolicySnapshot,
++    *,
++    task: str = "",
++    semantic_goal: dict | None = None,
++) -> str | None:
+     beginner_guidance = _render_beginner_group_network_guidance(
+         task, decision, semantic_goal,
+     )
+diff --git a/scripts/netzoo_agent_core/interpretation/inspected_answers.py b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+index 942f45a..d8b3f32 100644
+--- a/scripts/netzoo_agent_core/interpretation/inspected_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+@@ -1,51 +1,65 @@
+-"""Form A for an advisory recommendation from a named folder's file names (Log 152)."""
++"""Replies for advice drawn from a named folder's file contents (Log 154)."""
+ 
+ from __future__ import annotations
+ 
+-from workflow_registry import OUTPUT_CAPABILITIES
+-
+ from ..presentation import _ui_text
+ 
+-__all__ = ["render_inspected_recommendation"]
+-
++__all__ = ["inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
+ 
+-_INSPECTED_PRIOR_LABELS = {
+-    "motif_prior": "TF-motif prior",
+-    "ppi_prior": "protein-interaction prior",
+-    "mirna_prior": "miRNA list",
++_ROLE_LABELS = {
++    "expression_file": "expression matrix",
++    "motif_file": "TF-motif prior",
++    "ppi_file": "protein-interaction prior",
++    "mirna_file": "miRNA list",
+ }
++_NOT_INSPECTED = "No files were inspected and no analysis ran."
++
++
++def inspection_footer(directories: list[str]) -> str:
++    folders = ", ".join(f"`{item}`" for item in directories)
++    return (
++        f"I read the files in {folders} only to check which inputs they contain; "
++        "no analysis ran."
++    )
++
++
++def with_inspection_footer(text: str | None, directories: list[str]) -> str | None:
++    """Replace the 'no files were inspected' footer once routing read a folder."""
++    if text is None or not directories:
++        return text
++    return text.replace(_NOT_INSPECTED, inspection_footer(directories))
+ 
+ 
+ def render_inspected_recommendation(decision, policy, spec, details: list[str]) -> str:
+-    """Form A from a named folder's file names (Log 152); contents are never read."""
++    """Form A: which files validated for which roles, and what nothing validated as."""
+     recommendation = decision.advisory_recommendation
+     folder = recommendation.conditions[0].text_span
+-    missing = [item.value.removeprefix("missing:") for item in recommendation.conditions]
+-    missing_text = " or ".join(_INSPECTED_PRIOR_LABELS.get(item, item) for item in missing)
+-    needs = OUTPUT_CAPABILITIES[recommendation.action].required_input_artifacts
+-    has_text = " and ".join(_INSPECTED_PRIOR_LABELS.get(item, item) for item in sorted(needs))
++    validated = [
++        item.value.removeprefix("validated:").split("=", 1)
++        for item in recommendation.conditions if item.value.startswith("validated:")
++    ]
++    missing = [
++        item.value.removeprefix("missing:")
++        for item in recommendation.conditions if item.value.startswith("missing:")
++    ]
++    found = ", ".join(
++        f"`{name}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
++    )
++    missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
+     lines = [
+-        f"The file names in `{folder}` look like a {has_text}, and none looks like a "
+-        f"{missing_text}, so **{spec.workflow}** fits: it needs no {missing_text}.",
++        f"By content, the files in `{folder}` validate as a complete input set for "
++        f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
++        f"so **{spec.workflow}** fits.",
+         "\n".join(details),
+     ]
+     others = [
+-        f"- **{policy.workflows[action].workflow}** — would also need a "
+-        + " and ".join(
+-            _INSPECTED_PRIOR_LABELS.get(item, item)
+-            for item in sorted(OUTPUT_CAPABILITIES[action].required_input_artifacts - needs)
+-        ) + "."
++        f"- **{policy.workflows[action].workflow}** — would also need a {missing_text}."
+         for action in decision.hypothesis_actions
+         if action != recommendation.action and action in policy.workflows
+-        and action in OUTPUT_CAPABILITIES
+-        and OUTPUT_CAPABILITIES[action].required_input_artifacts - needs
+     ]
+     if others:
+         lines.append("Other compatible option(s):\n" + "\n".join(others))
+     if decision.clarification_question:
+         lines.append(decision.clarification_question)
+-    lines.append(
+-        f"Only the file names in `{folder}` were listed; no file contents were read "
+-        "and no analysis ran."
+-    )
++    lines.append(inspection_footer(decision.inspected_directories or [folder]))
+     return _ui_text("\n\n".join(lines))
+diff --git a/tests/test_contracts_package.py b/tests/test_contracts_package.py
+index 88ffe29..79454ce 100644
+--- a/tests/test_contracts_package.py
++++ b/tests/test_contracts_package.py
+@@ -154,7 +154,7 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
+ # registry-owned WorkflowPolicySpec input_validator. The direct contract tests
+ # for those fields remain the source of meaning; these hashes detect later drift.
+ SCHEMA_DIGESTS = {
+-    "TaskDecision": "dcaf4f6a1629a4f50528ac01db786427a8422633a08b2b1bee81bfa181fc5ade",
++    "TaskDecision": "1cdd307d67238a69b0d8d43f7794c5756bbe7606a4ae125fa7b4d31edb7c8ffd",
+     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
+     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
+     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
+diff --git a/tests/test_input_inspection.py b/tests/test_input_inspection.py
+index 46fa2f7..5d5dce5 100644
+--- a/tests/test_input_inspection.py
++++ b/tests/test_input_inspection.py
+@@ -1,13 +1,15 @@
+-"""Log 152: advice from the file names in a folder the user named."""
++"""Log 154: advice from the *contents* of a folder the user named, not its file names."""
+ 
+ from __future__ import annotations
+ 
++import shutil
+ import sys
+ from pathlib import Path
+ 
+ import pytest
+ 
+ ROOT = Path(__file__).parents[1]
++TOY = ROOT / "data" / "lioness-toy"
+ sys.path.insert(0, str(ROOT / "scripts"))
+ 
+ from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
+@@ -37,63 +39,105 @@ def _decision(**update) -> TaskDecision:
+     return TaskDecision(**fields)
+ 
+ 
+-def _folder(root: Path, *names: str) -> str:
++def _folder(root: Path, files: dict[str, str]) -> str:
++    """files maps the name to write -> the toy file whose content it gets."""
+     folder = root / "data" / "study"
+     folder.mkdir(parents=True)
+-    for name in names:
+-        (folder / name).write_text("x\n")
++    for name, source in files.items():
++        shutil.copy(TOY / source, folder / name)
+     return "data/study/"
+ 
+ 
+ def _task(written: str) -> str:
+-    return f"{written} has expression, motif and PPI files. I want per-patient TF networks."
++    return f"{written} has my data. I want per-patient TF networks."
+ 
+ 
+-def test_folder_without_a_mirna_list_recommends_the_panda_variant(tmp_path):
+-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
++PANDA_SET = {"expression.tsv": "expression.tsv", "motif.tsv": "motif-panda.tsv", "ppi.tsv": "ppi.tsv"}
++
++
++def test_contents_without_a_mirna_list_recommend_the_panda_variant(tmp_path):
++    written = _folder(tmp_path, PANDA_SET)
+     decision = _decision()
+ 
+     advised = advise_from_inspected_inputs(_task(written), decision, root=tmp_path)
+ 
+     assert advised.advisory_recommendation.action == "run_lioness_panda"
+-    assert [c.value for c in advised.advisory_recommendation.conditions] == ["missing:mirna_prior"]
++    assert advised.inspected_directories == [written]
+     for field in AUTHORITY:
+         assert getattr(advised, field) == getattr(decision, field), field
+ 
+ 
+-def test_folder_with_every_prior_recommends_nothing(tmp_path):
+-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv", "mirna.txt")
+-    decision = _decision()
++def test_contents_decide_when_names_say_nothing(tmp_path):
++    written = _folder(tmp_path, {
++        "table_01.dat": "expression.tsv", "table_02.dat": "motif-panda.tsv", "table_03.dat": "ppi.tsv",
++    })
+ 
+-    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
++    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+ 
++    assert advised.advisory_recommendation.action == "run_lioness_panda"
++    values = {c.value for c in advised.advisory_recommendation.conditions}
++    assert "validated:motif_file=table_02.dat" in values
++    assert "validated:ppi_file=table_03.dat" in values
+ 
+-@pytest.mark.parametrize("written", ["../outside/", "data/missing/"])
+-def test_folders_outside_the_root_or_missing_are_ignored(tmp_path, written):
+-    (tmp_path.parent / "outside").mkdir(exist_ok=True)
+-    (tmp_path.parent / "outside" / "motif.tsv").write_text("x\n")
+-    (tmp_path.parent / "outside" / "ppi.tsv").write_text("x\n")
+ 
+-    assert named_directories(_task(written), root=tmp_path) == []
+-    decision = _decision()
+-    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
++def test_a_file_named_like_a_mirna_list_does_not_count_unless_its_content_is_one(tmp_path):
++    written = _folder(tmp_path, {**PANDA_SET, "mirna.txt": "ppi.tsv"})
+ 
++    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+ 
+-def test_candidates_with_the_same_required_priors_are_left_alone(tmp_path):
+-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
+-    decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
++    assert advised.advisory_recommendation.action == "run_lioness_panda"
+ 
+-    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
+ 
++def test_a_mirna_list_with_an_uninformative_name_still_counts(tmp_path):
++    written = _folder(tmp_path, {
++        "expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
++        "ppi.tsv": "ppi.tsv", "list_04.dat": "mirna.txt",
++    })
+ 
+-def test_form_a_names_the_folder_and_says_contents_were_not_read(tmp_path):
+-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
++    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
++
++    assert advised.advisory_recommendation is None
++    assert advised.inspected_directories == [written]
++
++
++def test_reading_without_recommending_still_says_files_were_read(tmp_path):
++    written = _folder(tmp_path, {
++        "expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
++        "ppi.tsv": "ppi.tsv", "list_04.dat": "mirna.txt",
++    })
+     advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+ 
+     answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+ 
+-    assert answer.startswith("The file names in `data/study/` look like a")
+-    assert "**LIONESS-PANDA** fits" in answer
++    assert "No files were inspected" not in answer
++    assert f"I read the files in `{written}` only to check which inputs they contain" in answer
++
++
++def test_form_a_reports_what_validated_by_content(tmp_path):
++    written = _folder(tmp_path, PANDA_SET)
++    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
++
++    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
++
++    assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
++    assert "`motif.tsv` as the TF-motif prior" in answer
+     assert "**LIONESS-PUMA** — would also need a miRNA list." in answer
+-    assert "no file contents were read" in answer
+     assert "No files were inspected" not in answer
++
++
++@pytest.mark.parametrize("written", ["../outside/", "data/missing/"])
++def test_folders_outside_the_root_or_missing_are_never_read(tmp_path, written):
++    outside = tmp_path.parent / "outside"
++    outside.mkdir(exist_ok=True)
++    shutil.copy(TOY / "motif-panda.tsv", outside / "motif.tsv")
++
++    assert named_directories(_task(written), root=tmp_path) == []
++    decision = _decision()
++    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
++
++
++def test_ties_outside_the_panda_family_are_not_read(tmp_path):
++    written = _folder(tmp_path, PANDA_SET)
++    decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
++
++    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision

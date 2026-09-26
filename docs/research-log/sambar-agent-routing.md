@@ -10080,3 +10080,137 @@ Y-2 授權外洩 0/3；Y-3（列出根目錄外的目錄）0。**全部未觸發
 exact LIONESS-PANDA 的回覆只列出輸入與輸出，沒有提到使用者真正的目標：
 把「每個人各 TF 對其目標的調控強度」（每個樣本的 TF outdegree，即 targeting 分數）拿去和存活時間做關聯，
 也沒有提醒需要臨床存活資料。這是回覆內容的缺口，不是路由問題。
+
+## Log 154｜事前宣告：資料夾建議改為**以內容為準**（取代 Log 152 的檔名判斷；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：使用者指示——「不能只看檔名，有時候內容是有問題的，還是要以內容為主；萬一檔名不對但內容對怎麼辦？」
+候選 patch：`docs/research-log/log154_candidate.patch`（6 個檔案區段，套在 `3ea4fff` 之上，逐字使用）。
+
+### Log 152 的問題
+
+Log 152 只看檔名：miRNA 清單若取名 `list_04.dat` 會被忽略，因而錯誤建議 LIONESS-PANDA；
+名為 `mirna.txt` 但內容不是 miRNA 清單，會被當成有 miRNA，因而不給建議。
+建議沒有執行權，preflight 仍會在執行前依內容驗證，所以最壞是誤導、不會跑錯分析；
+但建議本身應以內容為準。
+
+### 形狀
+
+`graph/input_inspection.py` 改寫：
+1. **以內容判斷**：平手的每個候選，只有在資料夾中**某一種檔案分配**能通過該工作流程自己的內容驗證器
+   （`_inspect_panda_inputs_impl`，`check_gene_authority=False`，與 bundle discovery 相同；
+   LIONESS 另要求 ≥3 個樣本）時，才算「具備」。**檔名只用來決定先試哪個分配**，不是依據。
+2. **粗篩縮小組合**：每個檔案讀取前 64 KB，分成 matrix／edges／list，只把形狀相符的檔案放進對應角色。
+3. **範圍**：只處理 PANDA 家族的平手（PANDA、PUMA、LIONESS-PANDA、LIONESS-PUMA）；
+   其他工作流程的平手不讀取。
+4. **上限**：最多 12 個一般檔案（排除隱藏檔與符號連結）、每個 ≤ 20 MB、驗證器最多 40 次；
+   超出就不下結論。
+5. **只在平手時建議**：恰好一個候選具備、且其他候選還需要它沒有的角色時，產生 `advisory_recommendation`，
+   條件記錄「哪個檔案依內容驗證為哪個角色」與「缺少的角色」。
+6. **新欄位 `TaskDecision.inspected_directories`**（空時不出現在 dump 中）：記錄路由讀過內容的資料夾。
+   這樣「讀了內容但沒給建議」時，頁尾也能如實說明——原本的「No files were inspected」
+   在讀取內容後就不再正確。`render_outcome_clarification` 會替換該頁尾。
+
+### 與 Log 152 的關係
+
+推翻 Log 152 的第 2 點「只列檔名、不讀內容」。**不變的部分**：只看使用者指名、位於 `PROJECT_ROOT` 內的資料夾、
+不遞迴、沒有候選被排除、建議沒有執行權。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+套用程式碼後：**1 failed**——`test_contract_model_schemas_are_unchanged`，改變的 digest **恰為** `TaskDecision`
+（`dcaf4f6a…` → `1cdd307d…`，因為新欄位）。更新後：**2116 passed, 35 skipped, 0 failed**。
+
+既有測試的修改（兩處，逐一說明）：
+1. `test_contracts_package.py`：`TaskDecision` 的 digest。
+2. `test_input_inspection.py`（Log 152 加入，內容是假檔 `x`）：它測的是**被本輪刻意推翻**的檔名行為，
+   整份改寫為內容版的 9 個測試。
+
+行數：`router_invocation.py` 992／1000，`concept_answers.py` 975／1000。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 正常檔名（expression／motif／ppi） | 只有 LIONESS-PANDA 具備 → 建議 LIONESS-PANDA |
+| 匿名檔名（`table_01.dat`…） | **仍然**只有 LIONESS-PANDA 具備，並正確指出哪個檔案是 motif、哪個是 PPI |
+| `mirna.txt` 的內容其實是邊列表 | 不算 miRNA 清單 → 建議 LIONESS-PANDA |
+| miRNA 清單取名 `list_04.dat`，配 PUMA 先驗 | 兩者都具備 → **不建議**（使用者確實有 miRNA） |
+| motif 與 PPI 對調的分配 | 驗證器拒絕；會找到正確分配，所以回覆中的角色是經過驗證的 |
+| 三個網格（Log 136／148／150）、指紋 | 逐位元相同 |
+| Log 151 trial 1 的決策重跑 | 依內容建議 LIONESS-PANDA，頁尾如實說明讀過檔案 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **U-a** | 逐字套用 patch |
+| **U-b** | 完整測試 0 failed；既有測試只有上述兩處修改；改變的 digest 只有 `TaskDecision` |
+| **U-c** | 三個網格逐位元相同；指紋不變 |
+| **U-d** | Log 151 trial 1 的決策重跑得到 LIONESS-PANDA，且回覆不含「No files were inspected」 |
+
+### 實跑（中性路徑 Case 4 ×3，描述性）
+
+另加一個**匿名檔名**的變體資料夾 `data/blind-neutral/case-4-anon/`（同樣三個檔案，改名為 `table_0N.dat`），
+同一句 prompt 改指向它，各跑 3 次。只有在平手時才會觸發。
+
+### 撤回條件（寫死）
+
+- **Y-1**：U-a～U-d 任一失敗 → 撤回，回到 Log 152 的狀態。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：任何 trial 讀取了 `PROJECT_ROOT` 以外的目錄 → 撤回。
+
+### 已知風險
+
+1. **這是新的讀取行為**：路由現在會讀取使用者指名資料夾內檔案的前 64 KB，並把完整檔案交給驗證器。
+   僅限 repo 內、僅限指名的資料夾、有檔案數量與大小上限。
+2. 驗證器解析完整檔案；在大型真實資料（例如 2 萬個基因）上會增加路由延遲。上限可以避免失控，但沒有量過實際延遲。
+3. 粗篩形狀判斷很簡單（例如 expression 需要 ≥2 個數值欄），不尋常的格式可能被排除在外；
+   被排除時只會「不給建議」，不會給錯建議。
+4. 只替換 `render_outcome_clarification` 的頁尾。平手決策幾乎都走這個渲染器，
+   但若走其他渲染路徑，頁尾可能仍寫「No files were inspected」。
+
+## Log 155｜Log 154 結果：U-a～U-d 全部成立，內容優先**保留**；實跑揭露 Log 150 C1 的一個回歸
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 154 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| U-a 逐字套用 | **通過** |
+| U-b 0 failed；只有兩處既有測試修改；只有 `TaskDecision` digest 改變 | **通過**（2116 passed, 35 skipped） |
+| U-c 三個網格、指紋 | **通過** |
+| U-d Log 151 trial 1 決策重跑 | **通過**：LIONESS-PANDA，回覆不含「No files were inspected」 |
+
+實跑（`case-4` 與匿名檔名的 `case-4-anon` 各 3 次）：3 次 exact LIONESS-PANDA，3 次 `semantic_fallback`；
+沒有平手，所以沒有讀取任何資料夾。Y-2 授權外洩 0/6；Y-3 讀取根目錄外 0。**Log 154 保留。**
+
+### 3 次 fallback 的成因（離線重建）
+
+Log 154 的程式碼在 intent 之後才執行，不可能影響語意解讀；但成因必須查清楚，不能假設：
+
+| trial | 修補對象 | 修補後各 hypothesis 是否合法 | Log 150 之前（只留下被修補者） |
+| --- | --- | --- | --- |
+| case-4 #0 | hyp1（tf_activity） | hyp0 **合法**、hyp1 不合法 | 失敗 |
+| case-4 #2 | hyp1（tf_activity） | hyp0 **合法**、hyp1 不合法 | 失敗 |
+| case-4-anon #1 | hyp0 | hyp0 **合法**、hyp1（expression_matrix，證據無依據）不合法 | **成功** |
+
+**case-4-anon #1 是 Log 150 C1 造成的回歸。** C1 讓修補保留未被修補的 hypothesis；
+但驗證要求**全部** hypothesis 都合法，所以一個沒被修好的不合法讀法，會拖垮另一個合法的讀法。
+Log 150 的配對網格與單元測試都只量了「兩個讀法都合法」的情況，沒有涵蓋「合法與不合法混合」。
+
+另外兩次在 Log 150 之前也一樣失敗；但 3 次的 hyp0 都是合法的。
+
+### 對 Log 150 撤回條件的說明
+
+Log 150 的 Y-3 寫的是「**實跑中**出現……可追溯到 C1／C2 → 撤回全部」，指的是 Log 150 自己的實跑，
+那次沒有觸發。本次證據來自 Log 154 的實跑。**不溯及既往地套用 Y-3**，但如實記錄：
+C1 有一個已證實的回歸，必須另案處理。
+
+### 下一步（待使用者決定）
+
+- **修正方向（建議）**：最後一次驗證後，若至少一個 hypothesis 合法、另有不合法者，
+  保留合法者、移除不合法者並記錄。留下的每個 hypothesis 仍經完整驗證，沒有放寬。
+  依離線重建，這會讓上述 3 次都得以繼續（全部保留 hyp0）。
+- **或**撤回 C1，回到修補只保留被修補者（Case 4 的 GIRAFFE 塌縮會回來）。
