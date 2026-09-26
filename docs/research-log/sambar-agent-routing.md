@@ -10938,3 +10938,86 @@ outcome 為 `coexpression_network`／aggregate，並帶有 **explicit** 的 `ent
 Log 136 的軸規則只在 sample_specific 下把 `sample` 視為 granularity 軸；aggregate 下沒有任何能力接受 `sample`，
 而 explicit-evidence 分支也因為 `entity_type=sample` 排除所有候選，結果是沒有候選、回覆只問「Which scientific result…」。
 這與 Log 136 的成因 A 同類（模型把輸入矩陣的樣本軸寫進了網路的實體）。
+
+## Log 172｜事前宣告：在軸 artifact 上，`sample` 不論粒度都是樣本軸（成因 J；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 171 的成因 J。使用者指示：先 commit，再處理成因 J。
+候選 patch：`docs/research-log/log172_candidate.patch`（2 個檔案區段，套在 `871d3f5` 之上，逐字使用）。
+
+### 形狀
+
+`_supported_entities` 新增一條規則：請求的 artifact 在本體中**同時列有 `sample` 實體、且允許 sample_specific 粒度**，
+而能力能產生該 artifact 時，`sample` 視為被支援——不論請求的粒度。
+這與 Log 143 V3（證據蘊含）使用的是同一個判準；目前符合的 artifact 只有 `coexpression_network` 與 `pvalue_matrix`。
+Log 136 的規則（sample_specific 請求）保留不動；`regulatory_network` 的本體沒有列實體，新規則不適用。
+explicit-evidence 分支（`_matches_explicit_evidence`）也使用 `_supported_entities`，因此一併涵蓋。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2149 passed, 35 skipped, 0 failed**。既有測試的修改：`test_sample_axis_and_settled_dimensions.py` **只附加** 2 個測試（+19／−0）。
+Log 136 的守衛測試 `test_sample_axis_premise_no_capability_uses_sample_as_a_node_type_per_sample` 仍通過。
+
+### 量測（新增 `docs/research-log/log172_diff.py`：改變的列必須含 `sample` 且 artifact 在上述兩者之中；已解析者不得失去解析或換工具）
+
+| 網格 | 改變 | 範圍外 | 失去解析或換工具 | 主要轉變 |
+| --- | ---: | ---: | ---: | --- |
+| Log 136 單一 hypothesis | 31 | 0 | 0 | unsupported→exact 8（analyze→COBRA、infer→LIONESS-coexp，與只帶 `gene` 時相同） |
+| Log 148 帶證據 | 60 | 0 | 0 | |
+| Log 150 配對（**同一批配對**重算；候選池因本規則改變，重新抽樣不可比） | 0 | 0 | 0 | |
+| Log 170 guidance | 32 | 0 | 0 | |
+
+指紋不變。Log 171 T2-none 的 3 個最終 hypothesis 重算：3/3 變成 ambiguous {LIONESS-coexp, COBRA}，planner 維度 `algorithm`。
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AE-a** | 逐字套用 patch |
+| **AE-b** | 完整測試 0 failed；既有測試只有上述附加 |
+| **AE-c** | 四個網格：範圍外 0、失去解析或換工具 0；指紋不變 |
+| **AE-d** | T2-none 重算為 {LIONESS-coexp, COBRA} 且 planner 維度為 `algorithm` |
+
+### 實跑（T2 三句各 3 次）
+
+T2-none 預期到達平手 2，新階段執行、走 B（無事實，不推薦）。依 Log 168 的處置規則繼續計數：
+無事實推薦 ≥ 2 → 撤回 `covariates` 的 `prefer_when`。T2-cobra／T2-lioness 若到達平手，方向錯誤 ≥ 2 → 同樣撤回。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AE-a～AE-d 任一失敗 → 撤回本輪。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回本輪。
+
+### 已知風險
+
+只帶 `sample`、不帶 `gene` 的共表現請求，現在也會匹配到基因共表現工作流程（網格中各 2 列）。
+這與規則的前提一致（共表現網路的節點只有 gene），但模型若真的想要「樣本對樣本」的網路，註冊表中本來就沒有對應的工作流程。
+
+## Log 173｜Log 172 結果：AE-a～AE-d 全部成立，成因 J 修正**保留**；平手 2 第一次到達實驗條件推薦
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 172 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AE-a 逐字套用 | **通過** |
+| AE-b 0 failed、只有附加 | **通過**（2149 passed, 35 skipped） |
+| AE-c 四個網格、指紋 | **通過**：範圍外 0、失去解析或換工具 0（配對網格以同一批配對重算，0 改變）；與 worktree 逐位元相同 |
+| AE-d T2-none 重算 | **通過**：3/3 {LIONESS-coexp, COBRA}，planner `algorithm` |
+
+### 實跑（T2 三句各 3 次）
+
+| prompt | 結果 |
+| --- | --- |
+| T2-cobra | 2 exact COBRA；1 平手 → 推薦 **COBRA**（`covariates:yes` ← 「separate the co-expression that comes from the sequencing batch.」） |
+| T2-lioness | 2 exact LIONESS-coexp；1 平手 → 推薦 **LIONESS-coexp**（`covariates:no` ← 「there are no batch or site covariates to adjust for.」） |
+| T2-none | 1 平手 → 新階段執行、claims 空、走 B；2 exact LIONESS-coexp（tag discriminator，見下） |
+
+依 Log 168 的處置規則：平手 2 的 D = 2，正確 2、錯誤 0；無事實推薦 0 → 不撤回。
+人工判讀：兩條引用都正確。Y-2 授權外洩 0/9。**全部未觸發：保留。**
+
+### 觀察：tag discriminator 的主題 tag 偏向
+
+T2-none 兩次被判定為 LIONESS-coexp，依據是模型標出的 `coexpression`（一次另有 `sample_specific`）。
+這些是重述主題的 tag（memory `netzoo-selection-tags-are-inert` 所述的類型），但 `coexpression` 恰好只在
+LIONESS-coexp（與 BONOBO）的 tag 中、不在 COBRA 的 tag 中，所以 tag discriminator 據此選了 LIONESS。
+使用者並沒有表達方法偏好。這是既有機制的行為，不是本輪造成的；是否讓「主題 tag」不參與鑑別，另案處理。
