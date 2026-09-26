@@ -243,6 +243,26 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
 }
 
 
+# What a user typically does with a workflow's output next, and what that
+# needs beyond the workflow's own inputs (Log 160). Rendered by the
+# deterministic composition guidance only; never part of a model prompt.
+_LIONESS_TARGETING_NOTES = (
+    "Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights "
+    "to its targets) or a gene's indegree, computed in each sample's network, gives a "
+    "regulator-by-sample (or gene-by-sample) matrix you can relate to sample-level "
+    "variables -- survival, for example, with a Cox model.",
+    "That association needs a clinical table (for survival: follow-up time and event "
+    "status) keyed by the same sample IDs as the expression matrix; it is not a "
+    "workflow input, so supply it separately.",
+    "All LIONESS networks are derived from the same cohort, so they are not "
+    "statistically independent; account for this in the association test, which is a "
+    "later analysis step rather than part of this workflow.",
+)
+DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, ...]] = {
+    "run_lioness_panda": _LIONESS_TARGETING_NOTES,
+    "run_lioness_puma": _LIONESS_TARGETING_NOTES,
+}
+
 @dataclass(frozen=True, slots=True)
 class WorkflowControlDefinition:
     """One user-facing control and its executor schema contract."""

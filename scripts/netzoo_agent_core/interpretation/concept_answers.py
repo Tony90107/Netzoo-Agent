@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
+from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OUTPUT_CAPABILITIES, SELECTION_AXES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
@@ -904,6 +904,10 @@ def render_workflow_composition_guidance(
         for field_name in biological_inputs
     )
     aggregate, final = registered[0], registered[-1]
+    downstream = "".join(
+        f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(final.action, ())
+    )
+    downstream = f"Downstream use of the sample-specific networks:\n{downstream}\n" if downstream else ""
     requested = decision.requested_outcome
     final_granularities = final.output_capability.granularities
     if (
@@ -924,6 +928,7 @@ def render_workflow_composition_guidance(
             f"**{final.workflow}** also produces the aggregate output. Use "
             f"**{aggregate.workflow}** alone only when a cohort-level aggregate "
             "result is sufficient.\n\n"
+            f"{downstream}"
             "No files were inspected and no analysis ran."
         )
     return _ui_text(
@@ -942,7 +947,8 @@ def render_workflow_composition_guidance(
         f"Use {aggregate.workflow} when you only need the aggregate result. "
         f"Use {final.workflow} directly when you need the sample-specific result; "
         "it also produces its aggregate output, so running the aggregate workflow "
-        "first is unnecessary. "
+        "first is unnecessary.\n\n"
+        f"{downstream}"
         "No files were inspected and no analysis ran."
     )
 
