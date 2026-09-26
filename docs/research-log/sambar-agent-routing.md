@@ -11218,3 +11218,48 @@ worktree 已丟棄，主 repo 沒有改動。
 
 提議任何「由系統補上模型沒寫的值」之前，先在 research log 搜尋該欄位是否有既有的決定。
 這次的 grep 找到了 Log 33 的「安全規則」論述，卻沒有搜到 Log 62／63，因為沒有用測試名稱搜尋。
+
+## Log 179｜完整盲測 10 題重跑（Log 136 以來的修正之後；僅量測，未改程式碼）
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。
+英文版每題 3 次，中文版每題 1 次；全部使用中性路徑 `data/blind-neutral/case-N/`
+（case-5 的 `prior-puma.tsv` 改名為 `prior.tsv`，避免檔名洩漏答案）。
+依 Log 120／124，這是描述性量測，不作比率主張。
+
+### 英文版（30 次）
+
+| Case | 預期 | 結果 |
+| --- | --- | --- |
+| 1 | GIRAFFE | 1 exact GIRAFFE；**2 `semantic_fallback`**（`missing_evidence:entity_type=sample`） |
+| 2 | OTTER | 3/3 exact OTTER |
+| 3 | BONOBO | 3/3 平手 → 依實驗條件推薦 BONOBO |
+| 4 | LIONESS-PANDA | 2 平手 → 依資料夾內容推薦 LIONESS-PANDA；1 exact LIONESS-PANDA |
+| 5 | PUMA | 3/3 ambiguous {PANDA, PUMA, OTTER, GIRAFFE}：regulator 沒有被填成 miRNA，改問「TF 還是 miRNA」 |
+| 6 | COBRA | 2 exact COBRA；1 平手 → 推薦 COBRA |
+| 7 | DRAGON | **3/3 `semantic_fallback`**（`multi_omic_network` 的 artifact 引用無依據或缺漏、granularity 缺引用） |
+| 8 | SAMBAR | 3/3 exact SAMBAR |
+| 9 | CONDOR | 1 exact；2 次 ambiguous 但唯一候選是 CONDOR、沒有澄清問題 → 交給 response 模型（本 harness 不評估） |
+| 10 | 不執行、先澄清 | 3/3 沒有執行；回覆列出 OTTER／PANDA／GIRAFFE 與其必要輸入（motif、PPI） |
+
+合計：正確 20、部分 5、fallback 5、**判錯 0**；授權外洩 0/30。
+
+### 中文版（10 次）
+
+**Case 3 中文版崩潰**：`ValueError: Agent-authored user-visible UI text must be English`。
+A 版回覆（Log 139）把使用者的中文原句（例如「少數幾個病人」）當作引用，組進整段回覆後再交給 `_ui_text`，
+而 `_ui_text` 會拒絕任何中文字。錯誤訊息本身寫明「引用的使用者資料」可以是非英文，所以這是 A 版渲染器的 bug：
+應該只檢查模板，檢查後再放入使用者引用。英文實測從未觸發，因為引用都是英文。
+
+其餘 9 題：正確 5（Case 2、5、7、8、10）、fallback 3（Case 1、4、6）、判錯 1（Case 9：ambiguous 且沒有候選）。
+依 memory `netzoo-english-first-priority`，中文結果只作回歸參考。
+
+### 觀察到的問題（依嚴重度）
+
+1. **中文 A 版回覆崩潰**：確定性 bug，任何中文原句觸發推薦時都會發生。
+2. **Case 7 DRAGON 3/3 fallback**：模型對 `multi_omic_network` 的引用品質差，而 granularity 必須有引用；
+   註冊表中能產生 multi_omic_network 的只有 DRAGON（只支援 aggregate），但本體允許兩種粒度，所以驗證器不視為蘊含。
+3. **Case 1 GIRAFFE 2/3 fallback**：TF activity 類 artifact（TF×sample）的 `sample` 需要引用；
+   這類矩陣的形狀由 artifact 決定，但 Log 143 釘住的原則是「只有 aggregate 的矩陣，其實體是一種選擇」。
+4. **Case 5 PUMA**：「small RNAs」與 `mirna.txt` 都沒讓模型填入 miRNA regulator；平手含 OTTER／GIRAFFE，不是純 PANDA 家族，所以 Log 154 的內容檢查不會執行。
+5. **Case 10**：使用者說「All I have is this expression matrix」，回覆卻列出需要 motif 與 PPI 的工具，沒有指出他缺少這些先驗，也沒有提到只需表現矩陣的共表現選項。
+6. **Case 9**：只有一個候選的 ambiguous 交給 response 模型；本量測無法評估其回覆品質。
