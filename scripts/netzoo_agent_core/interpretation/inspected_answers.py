@@ -30,7 +30,9 @@ def with_inspection_footer(text: str | None, directories: list[str]) -> str | No
     return text.replace(_NOT_INSPECTED, inspection_footer(directories))
 
 
-def render_inspected_recommendation(decision, policy, spec, details: list[str]) -> str:
+def render_inspected_recommendation(
+    decision, policy, spec, details: list[str], downstream: str = "",
+) -> str:
     """Form A: which files validated for which roles, and what nothing validated as."""
     recommendation = decision.advisory_recommendation
     folder = recommendation.conditions[0].text_span
@@ -59,6 +61,8 @@ def render_inspected_recommendation(decision, policy, spec, details: list[str]) 
     ]
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
+    if downstream:
+        lines.append(downstream.rstrip("\n"))
     if decision.clarification_question:
         lines.append(decision.clarification_question)
     lines.append(inspection_footer(decision.inspected_directories or [folder]))

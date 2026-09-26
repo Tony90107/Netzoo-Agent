@@ -359,6 +359,12 @@ def _render_outcome_clarification(
     )
 
 
+def downstream_section(action: str) -> str:
+    """The registered downstream-use notes for a workflow, or '' (Log 160/162)."""
+    notes = "".join(f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(action, ()))
+    return f"Downstream use of the sample-specific networks:\n{notes}" if notes else ""
+
+
 def _condition_label(condition: str) -> str:
     axis, _, value = condition.partition(":")
     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
@@ -376,6 +382,7 @@ def _render_advisory_recommendation(
     if all(item.axis == "inspected_inputs" for item in recommendation.conditions):
         return render_inspected_recommendation(
             decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
+            downstream_section(recommendation.action),
         )
     quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
     reasons = "; ".join(
@@ -397,6 +404,8 @@ def _render_advisory_recommendation(
         )
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
+    if downstream := downstream_section(recommendation.action):
+        lines.append(downstream.rstrip("\n"))
     if decision.clarification_question:
         lines.append(decision.clarification_question)
     lines.append("No files were inspected and no analysis ran.")
@@ -904,10 +913,8 @@ def render_workflow_composition_guidance(
         for field_name in biological_inputs
     )
     aggregate, final = registered[0], registered[-1]
-    downstream = "".join(
-        f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(final.action, ())
-    )
-    downstream = f"Downstream use of the sample-specific networks:\n{downstream}\n" if downstream else ""
+    downstream = downstream_section(final.action)
+    downstream = f"{downstream}\n" if downstream else ""
     requested = decision.requested_outcome
     final_granularities = final.output_capability.granularities
     if (
