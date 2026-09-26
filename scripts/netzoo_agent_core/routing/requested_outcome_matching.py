@@ -91,7 +91,7 @@ def _alternative_actions(
         ):
             continue
         entity_overlap = requested_entities & _supported_entities(
-            outcome.artifact_type, capability
+            outcome.artifact_type, capability, outcome.granularity
         )
         if not entity_overlap:
             continue
@@ -131,7 +131,9 @@ def _mismatch_dimensions(
         mismatches.append("granularity")
     requested_entities = set(outcome.entity_types) - {_UNKNOWN}
     if requested_entities and not any(
-        requested_entities.issubset(_supported_entities(outcome.artifact_type, item))
+        requested_entities.issubset(
+            _supported_entities(outcome.artifact_type, item, outcome.granularity)
+        )
         for item in values
     ):
         mismatches.append("entity_types")

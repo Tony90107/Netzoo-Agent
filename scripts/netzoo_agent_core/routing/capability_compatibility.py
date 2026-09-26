@@ -101,14 +101,27 @@ def _supported_artifacts(capability: OutputCapabilityDefinition) -> frozenset[st
 def _supported_entities(
     artifact_type: str,
     capability: OutputCapabilityDefinition,
+    granularity: str = _UNKNOWN,
 ) -> frozenset[str]:
-    """Return entity support for the particular artifact being requested."""
+    """Return entity support for the particular artifact being requested.
+
+    In a sample-specific request, ``sample`` names the granularity axis -- one
+    result per sample -- not a node type of the result. A capability that
+    declares ``sample_specific`` already supports that axis, so it supports the
+    entity for that request (Log 136). The capability declaration itself is
+    unchanged, which keeps the ranking terms of Log 133/135 untouched.
+    """
     if artifact_type == capability.artifact_type or artifact_type == _UNKNOWN:
-        return capability.entity_types
-    semantics = ARTIFACT_SEMANTICS.get(artifact_type)
-    if artifact_type in _supported_artifacts(capability) and semantics is not None:
-        return semantics.entities or capability.entity_types
-    return capability.entity_types
+        supported = capability.entity_types
+    else:
+        semantics = ARTIFACT_SEMANTICS.get(artifact_type)
+        if artifact_type in _supported_artifacts(capability) and semantics is not None:
+            supported = semantics.entities or capability.entity_types
+        else:
+            supported = capability.entity_types
+    if granularity == "sample_specific" and "sample_specific" in capability.granularities:
+        return supported | {"sample"}
+    return supported
 
 
 def _accepts_inputs(
@@ -232,7 +245,9 @@ def _matches(
         and outcome.artifact_type in _supported_artifacts(capability)
         and outcome.granularity in capability.granularities
         and requested_entities.issubset(
-            _supported_entities(outcome.artifact_type, capability)
+            _supported_entities(
+                outcome.artifact_type, capability, outcome.granularity,
+            )
         )
         and set(outcome.regulator_types).issubset(capability.regulator_types)
         and set(outcome.target_types).issubset(capability.target_types)
@@ -266,7 +281,9 @@ def _partially_compatible(
         )
         and _known_set_matches(
             outcome.entity_types,
-            _supported_entities(outcome.artifact_type, capability),
+            _supported_entities(
+                outcome.artifact_type, capability, outcome.granularity,
+            ),
         )
         and _known_set_matches(outcome.regulator_types, capability.regulator_types)
         and _known_set_matches(outcome.target_types, capability.target_types)
