@@ -1,0 +1,183 @@
+diff --git a/scripts/netzoo_agent_core/graph/partial_validity.py b/scripts/netzoo_agent_core/graph/partial_validity.py
+new file mode 100644
+index 0000000..cd93f8e
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/partial_validity.py
+@@ -0,0 +1,59 @@
++"""Keep the valid readings when a final attempt still carries an invalid one (Log 156).
++
++A review patch repairs the one hypothesis it names and carries the others
++forward unchanged (Log 150). Validation requires every hypothesis to pass, so
++an invalid reading nobody repaired used to sink a valid one beside it: Case 4
++lost its sample-specific regulatory-network reading because an unrelated
++expression-matrix reading still quoted evidence the request did not contain.
++
++After the last attempt only, each hypothesis is validated on its own. The
++valid ones are kept and the rest are dropped and recorded; the kept set is
++validated again as a whole before it is used. Nothing is relaxed: every
++remaining hypothesis passed the unchanged validator. Earlier attempts are left
++alone so a repair can still turn an invalid reading into a valid one.
++"""
++
++from __future__ import annotations
++
++from ..contracts.outcomes import SemanticInterpretation
++from ..interpretation.outcome_validation import OutcomeValidation, validate_outcome_hypotheses
++from .context import record_event
++
++__all__ = ["keep_valid_hypotheses"]
++
++
++def keep_valid_hypotheses(
++    context,
++    state,
++    user_task: str,
++    interpretation: SemanticInterpretation,
++    validation: OutcomeValidation,
++    attempt: int,
++) -> tuple[SemanticInterpretation, OutcomeValidation]:
++    hypotheses = interpretation.outcome_hypotheses
++    if validation.valid or len(hypotheses) < 2:
++        return interpretation, validation
++    kept, dropped = [], []
++    for index, hypothesis in enumerate(hypotheses):
++        # The validator completes outcomes in place; judge a copy.
++        alone = validate_outcome_hypotheses(
++            user_task, [hypothesis.model_copy(deep=True)], interpretation.request_mode,
++        )
++        if alone.valid:
++            kept.append(hypothesis)
++        else:
++            dropped.append({"hypothesis": index, "issues": [
++                issue.replace("hypothesis[0].", f"hypothesis[{index}].") for issue in alone.issues
++            ]})
++    if not kept or not dropped:
++        return interpretation, validation
++    reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
++    revalidated = validate_outcome_hypotheses(
++        user_task, reduced.outcome_hypotheses, reduced.request_mode,
++    )
++    if not revalidated.valid:
++        return interpretation, validation
++    record_event(context, state, "routing.invalid_hypotheses_dropped", "classify", {
++        "attempt": attempt + 1, "kept": len(kept), "dropped": dropped,
++    })
++    return reduced, revalidated
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index db4e6d2..ab2b848 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -61,6 +61,7 @@ from .semantic_review_validation import (
+ from .structured_calls import _serialized_structured_input, _validation_issue_types
+ from .condition_recommender import invoke_condition_recommender
+ from .input_inspection import invoke_input_inspection
++from .partial_validity import keep_valid_hypotheses
+ from .discriminator import (
+     discriminator_context as _discriminator_context,
+     invoke_semantic_discriminator as _invoke_semantic_discriminator,
+@@ -559,6 +560,9 @@ def _invoke_semantic_interpreter(
+             interpretation.outcome_hypotheses,
+             interpretation.request_mode,
+         )
++        if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
++            interpretation, validation = keep_valid_hypotheses(
++                context, state, user_task, interpretation, validation, attempt)
+         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+         if not validation.valid:
+             usage = append_llm_usage(
+diff --git a/tests/test_partial_validity.py b/tests/test_partial_validity.py
+new file mode 100644
+index 0000000..8604f5c
+--- /dev/null
++++ b/tests/test_partial_validity.py
+@@ -0,0 +1,90 @@
++"""Log 156: an unrepaired invalid reading no longer sinks a valid one."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeEvidence,
++    OutcomeHypothesis,
++    RequestedOutcome,
++    SemanticInterpretation,
++)
++from netzoo_agent_core.graph.partial_validity import keep_valid_hypotheses  # noqa: E402
++from netzoo_agent_core.interpretation.outcome_validation import validate_outcome_hypotheses  # noqa: E402
++from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
++from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
++from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
++
++TASK = "I believe each patient's regulatory wiring is different; I want per-TF targeting per patient."
++SPAN = "each patient's regulatory wiring is different"
++
++
++def _valid() -> OutcomeHypothesis:
++    return OutcomeHypothesis(
++        outcome=RequestedOutcome(operation="infer", artifact_type="regulatory_network",
++                                 granularity="sample_specific"),
++        confidence=0.9,
++        evidence=[OutcomeEvidence(dimension=d, value=v, source="explicit", text_span=SPAN, rationale="t")
++                  for d, v in (("artifact_type", "regulatory_network"), ("granularity", "sample_specific"))],
++    )
++
++
++def _invalid() -> OutcomeHypothesis:
++    """Quotes evidence the request does not contain."""
++    return OutcomeHypothesis(
++        outcome=RequestedOutcome(operation="infer", artifact_type="expression_matrix",
++                                 granularity="sample_specific", entity_types=["gene"]),
++        confidence=0.8,
++        evidence=[OutcomeEvidence(dimension="artifact_type", value="expression_matrix",
++                                  source="explicit", text_span="an expression matrix", rationale="t")],
++    )
++
++
++def _context(tmp_path):
++    store = LocalTraceStore(tmp_path / "traces")
++    recorder = TraceRecorder(store)
++    run_id = recorder.start_run(session_id="log156", profile_id="default")
++    return SimpleNamespace(recorder=recorder, price_catalog=PriceCatalog()), {"run_id": str(run_id)}, store, run_id
++
++
++def _run(tmp_path, hypotheses):
++    interpretation = SemanticInterpretation(request_mode="guidance", semantic_goal="g",
++                                            outcome_hypotheses=hypotheses)
++    validation = validate_outcome_hypotheses(
++        TASK, [h.model_copy(deep=True) for h in hypotheses], "guidance")
++    context, state, store, run_id = _context(tmp_path)
++    kept, result = keep_valid_hypotheses(context, state, TASK, interpretation, validation, 1)
++    return interpretation, validation, kept, result, store.read_events(run_id)
++
++
++def test_the_valid_reading_survives_an_unrepaired_invalid_one(tmp_path):
++    original, before, kept, after, events = _run(tmp_path, [_valid(), _invalid()])
++
++    assert not before.valid
++    assert after.valid
++    assert [h.outcome.artifact_type for h in kept.outcome_hypotheses] == ["regulatory_network"]
++    dropped = [e for e in events if e.event_type == "routing.invalid_hypotheses_dropped"]
++    assert dropped and dropped[0].payload["dropped"][0]["hypothesis"] == 1
++
++
++def test_nothing_changes_when_every_reading_is_invalid(tmp_path):
++    original, before, kept, after, _ = _run(tmp_path, [_invalid(), _invalid()])
++
++    assert kept is original and after is before and not after.valid
++
++
++def test_nothing_changes_when_every_reading_is_valid(tmp_path):
++    original, before, kept, after, _ = _run(tmp_path, [_valid(), _valid()])
++
++    assert before.valid and kept is original
++
++
++def test_a_single_invalid_reading_is_still_rejected(tmp_path):
++    original, before, kept, after, _ = _run(tmp_path, [_invalid()])
++
++    assert kept is original and not after.valid

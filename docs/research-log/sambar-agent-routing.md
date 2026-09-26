@@ -10214,3 +10214,111 @@ C1 有一個已證實的回歸，必須另案處理。
   保留合法者、移除不合法者並記錄。留下的每個 hypothesis 仍經完整驗證，沒有放寬。
   依離線重建，這會讓上述 3 次都得以繼續（全部保留 hyp0）。
 - **或**撤回 C1，回到修補只保留被修補者（Case 4 的 GIRAFFE 塌縮會回來）。
+
+## Log 156｜事前宣告：最後一次驗證後保留合法讀法、移除仍不合法的讀法（修正 Log 150 C1 的回歸；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 155。使用者決定：採用建議的修正方向。
+候選 patch：`docs/research-log/log156_candidate.patch`（3 個檔案區段，套在 `fc56761` 之上，逐字使用）。
+
+### 回歸（Log 155，已離線重建）
+
+Log 150 C1 讓修補保留未被修補的 hypothesis；但驗證要求**全部** hypothesis 合法。
+一個沒被修好的不合法讀法（例如證據無依據的 expression_matrix），會讓同時存在的合法讀法一起被拒，
+整個請求落到 `semantic_fallback`。
+
+### 形狀
+
+新模組 `graph/partial_validity.py`，只在**最後一次嘗試**（`attempt + 1 >= MAX_SEMANTIC_ATTEMPTS`）且驗證失敗、
+hypothesis ≥ 2 時執行：
+1. 每個 hypothesis 用 deep copy **單獨**驗證（驗證器會原地補完 outcome）。
+2. 保留合法者、移除不合法者；保留下來的組合**再完整驗證一次**，通過才採用。
+3. 記錄事件 `routing.invalid_hypotheses_dropped`（被移除者的索引與原因）。
+4. 全部合法、全部不合法、或只有一個 hypothesis 時**完全不動**。
+5. 較早的嘗試不套用，讓修補仍有機會把不合法的讀法修成合法，保留兩種讀法的選擇。
+
+**沒有放寬**：留下的每個 hypothesis 都通過未修改的驗證器。
+這與 Log 28「保留已驗證的第一次結果」是同一條界線：保留模型自己寫出且已驗證的內容，不發明任何值。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2120 passed, 35 skipped, 0 failed**，**不修改任何既有測試**。
+`router_invocation.py` 996／1000 行（呼叫只佔 3 行，邏輯在新模組）。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 錄下的全部 16 次 `semantic_fallback`（Log 139 以後所有 trace） | 多 hypothesis 的 **3 次全部救回**（皆保留 regulatory_network／sample_specific）；13 次單一 hypothesis **不受影響** |
+| 救回後的比對 | case-4 兩次 → ambiguous {LIONESS-PANDA, LIONESS-PUMA}（此時 Log 154 的內容檢查會觸發）；case-4-anon → exact LIONESS-PANDA |
+| 三個網格（Log 136／148／150）、指紋 | 逐位元相同（新規則在 matcher 之外） |
+| 新測試 `tests/test_partial_validity.py` | 4 passed：合法讀法存活並記錄事件；全不合法、全合法、單一不合法都不動 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **W-a** | 逐字套用 patch |
+| **W-b** | 完整測試 0 failed，不修改任何既有測試 |
+| **W-c** | 三個網格逐位元相同；指紋不變 |
+| **W-d** | 錄下的 16 次 fallback 重算：多 hypothesis 的 3 次全部救回，單一 hypothesis 的 13 次全部不變 |
+
+### 實跑（描述性；`case-4` 與 `case-4-anon` 各 3 次）
+
+記錄 `semantic_fallback` 次數、`invalid_hypotheses_dropped` 事件、registry 結果，
+以及平手時 Log 154 的內容檢查是否觸發與其建議。依 Log 120／124，不作比率主張。
+
+### 撤回條件（寫死）
+
+- **Y-1**：W-a～W-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：任何 trial 的 `invalid_hypotheses_dropped` 移除了**合法**的 hypothesis，
+  或保留下來的組合未通過驗證卻被採用 → 撤回。（結構上不應發生；列出來是為了在實跑中檢查。）
+
+### 已知風險
+
+1. 被移除的讀法可能是使用者真正的意思，只是模型沒寫好證據。緩解：只在最後一次嘗試後才移除，
+   而且移除有事件紀錄；但使用者不會在回覆中看到「另一種讀法被移除了」。
+2. 若合法的讀法本身是錯的，而正確的讀法因為證據問題被移除，使用者會得到一個有把握但錯誤的答案。
+   在 Log 150 之前，這種情況同樣存在（只保留被修補者），本輪並未讓它更常發生。
+
+## Log 157｜Log 156 結果：W-a～W-d 全部成立，修正**保留**；內容優先的資料夾建議首次在實跑中生效
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 156 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| W-a 逐字套用 | **通過** |
+| W-b 0 failed、不改既有測試 | **通過**（2120 passed, 35 skipped） |
+| W-c 三個網格、指紋 | **通過** |
+| W-d 16 次錄下的 fallback 重算 | **通過**：多 hypothesis 3/3 救回；單一 hypothesis 0/13 改變 |
+
+### 實跑（`case-4`、`case-4-anon` 各 3 次）
+
+| trial | 結果 |
+| --- | --- |
+| case-4 #0、#1 | exact LIONESS-PANDA |
+| case-4 #2 | `semantic_fallback`（成因 G，見下） |
+| case-4-anon #0 | 移除不合法的 hyp1 → exact LIONESS-PANDA |
+| case-4-anon #1 | 平手 {LIONESS-PANDA, LIONESS-PUMA} → **讀取 `case-4-anon/` 的內容 → 建議 LIONESS-PANDA** |
+| case-4-anon #2 | 移除不合法的 hyp1 → 平手 → **讀取內容 → 建議 LIONESS-PANDA** |
+
+- Y-2 授權外洩 0/6。
+- Y-3：兩次移除的 hypothesis 都確實不合法（`ungrounded_evidence:artifact_type=expression_matrix`、
+  `inconsistent_not_applicable_outcome`），保留下來的組合都重新通過驗證 → 未觸發。
+
+**全部未觸發：修正保留。**
+
+這是 Log 150（保留讀法）、Log 156（移除仍不合法的讀法）、Log 154（依內容建議）
+第一次在同一個實跑中串接生效：`case-4-anon` 的檔名是 `table_0N.dat`，
+agent 仍然依檔案內容判斷出 motif 與 PPI、沒有 miRNA 清單，並建議 LIONESS-PANDA。
+
+### 成因 G（新發現，本輪範圍外）
+
+case-4 #2：第一輪 hyp0 合法、hyp1（tf_activity）不合法；修補呼叫回傳的 patch **本身不符合 schema**
+（`evidence_additions[1]` 驗證錯誤），所以最後沒有任何解讀可以縮減，整個請求 fallback。
+但第一輪的 hyp0 本來就合法。可能的修正方向：最後一次嘗試沒有產生可用解讀時，
+改用前一次嘗試中已經合法的 hypothesis。這與 Log 28「保留已驗證的第一次結果」同一條界線，
+差別在於 Log 28 只處理「第一輪整體合法」的情況。
