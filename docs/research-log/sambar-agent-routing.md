@@ -10421,3 +10421,101 @@ Log 157 case-4 #2：第一輪 hyp0 合法、hyp1（tf_activity）不合法；修
 ### 維護提醒
 
 `router_invocation.py` 已達 1000／1000 行。之後的任何修改都必須先把既有邏輯移出這個檔案。
+
+## Log 160｜事前宣告：LIONESS 組合回覆補上「後續用途」（Case 4 回覆內容缺口；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 153 記錄的回覆內容缺口。使用者指示：先 commit Log 158／159，再處理回覆內容缺口。
+候選 patch：`docs/research-log/log160_candidate.patch`（3 個檔案區段，套在 `90b6c75` 之上，逐字使用）。
+
+### 缺口
+
+Case 4 直接判定 LIONESS-PANDA 時，回覆（`render_workflow_composition_guidance` 的確定性模板）只列輸入、輸出，
+以及「不需要另外跑 PANDA」。使用者真正的目標——把每位病人各 TF 的調控強度拿去和存活時間做關聯——完全沒被回應：
+沒有說明每樣本的 targeting 分數（outdegree／indegree），沒有提醒需要臨床存活資料，
+也沒有提到 LIONESS 樣本網路彼此不獨立。
+
+### 兩種做法與選擇
+
+1. 註冊表加上固定顯示的「後續用途」說明：不增加模型呼叫，但不會針對使用者的句子量身寫。
+2. 多一次專用呼叫，讓模型判斷原句提到哪種後續分析（比照 Log 139，引用原句作為依據）：較貼切，但每個相關回覆多一次呼叫。
+
+**本輪做第 1 種**：它直接補上 Case 4 缺的三件事，且不影響路由或任何模型提示。第 2 種留待之後。
+
+### 形狀
+
+- `workflow_registry.py` 新增 Python 常數 `DOWNSTREAM_ANALYSES`（比照 `SELECTION_AXES` 的前例），
+  目前只有 `run_lioness_panda`、`run_lioness_puma` 兩項，內容相同的三條說明：
+  1. 每樣本的 targeting 分數：regulator 的 outdegree（對其目標的邊權重總和）或基因的 indegree，
+     可與樣本層級變數做關聯，例如以 Cox 模型分析存活。
+  2. 關聯分析需要以相同樣本 ID 對應的臨床表（存活需追蹤時間與事件狀態），這不是工作流程的輸入，需另外提供。
+  3. 所有 LIONESS 網路都來自同一個 cohort，彼此不具統計獨立性；做關聯檢定時要考慮這一點，那是後續分析步驟，不在本工作流程內。
+- `render_workflow_composition_guidance` 的兩個分支在頁尾之前加入「Downstream use of the sample-specific networks:」段落。
+- **不動 YAML、不動 policy schema**，所以沒有 schema digest 變更，也不會進入任何模型提示。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2127 passed, 35 skipped, 0 failed**，**不修改任何既有測試**
+（釘住這段回覆的 `test_concept_answers.py`、`test_graph_package.py` 都用子字串比對）。
+schema digest 改變：無。`concept_answers.py` 981／1000 行。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| Log 158 實跑錄下的 exact LIONESS-PANDA 決策重新渲染 | 回覆含新的後續用途段落（三條說明），其餘內容不變 |
+| 三個網格、指紋、schema digest | 全部不變 |
+| 新測試 `tests/test_downstream_guidance.py` | 2 passed（LIONESS-PANDA、LIONESS-PUMA）；在舊程式碼上 2 failed |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **Z-a** | 逐字套用 patch |
+| **Z-b** | 完整測試 0 failed；不修改任何既有測試；schema digest 不變 |
+| **Z-c** | 三個網格逐位元相同；指紋不變 |
+| **Z-d** | Log 158 的 exact LIONESS-PANDA 決策重新渲染後含三條後續用途說明 |
+
+### 實跑（描述性；`case-4` ×3）
+
+記錄每次回覆是否含後續用途段落。只有走到 LIONESS 組合回覆時才會出現。
+
+### 撤回條件（寫死）
+
+- **Y-1**：Z-a～Z-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+
+### 已知風險
+
+1. 說明固定顯示，沒有提到存活分析的使用者也會看到「survival」的例子。
+2. 說明是科學主張（Cox 模型、樣本網路不獨立），寫成一般性建議；實際的統計方法應由使用者依研究設計決定。
+3. 只涵蓋 LIONESS-PANDA／PUMA 的組合回覆；BONOBO、GIRAFFE 等其他工作流程的後續用途尚未處理。
+
+## Log 161｜Log 160 結果：Z-a～Z-d 全部成立，後續用途說明**保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 160 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| Z-a 逐字套用 | **通過** |
+| Z-b 0 failed、不改既有測試、schema digest 不變 | **通過**（2127 passed, 35 skipped；digest 改變：無） |
+| Z-c 三個網格、指紋 | **通過** |
+| Z-d 錄下的 exact 決策重新渲染 | **通過**：含三條後續用途說明 |
+
+實跑（`case-4` ×3）：
+
+| trial | 結果 | 後續用途段落 |
+| --- | --- | --- |
+| 1 | 平手 → Log 154 依內容建議 LIONESS-PANDA（A 版回覆） | **無**（A 版渲染不在本輪範圍） |
+| 2 | exact LIONESS-PANDA（組合回覆） | **有** |
+| 3 | `semantic_fallback` | — |
+
+Y-2 授權外洩 0/3。**全部未觸發：保留。**
+
+### 觀察
+
+1. **A 版回覆的延伸缺口**：依內容建議 LIONESS-PANDA 時，回覆同樣應該附上後續用途說明，但本輪只改了組合回覆。
+2. **trial 3 的 fallback 與本輪無關**（本輪只改渲染）：最後一次嘗試時兩個讀法都不合法，
+   而且修補後 hyp0 反而少了 `artifact_type` 的引用（第一輪缺的是 granularity 引用）；
+   第一輪也沒有任何合法讀法。Log 156、Log 158 的規則在這種情況下都不適用。
+   這是模型修補本身的品質問題，另案記錄。
