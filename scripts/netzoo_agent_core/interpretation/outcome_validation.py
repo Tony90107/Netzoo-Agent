@@ -148,6 +148,35 @@ def _entailed_by_artifact(
     return entities, granularity, produced_by
 
 
+def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
+    """Entities that need no quote of their own once `sample` is read as an axis.
+
+    In a sample-specific outcome, `sample` names the granularity -- one result
+    per sample -- which the granularity evidence already quotes (the same
+    reading as Log 136's `_supported_entities`). And for an artifact that can
+    exist per sample, `sample` in its ontology is that axis, so if exactly one
+    other entity remains it is the only node type: a co-expression network is a
+    network of genes. Neither is a real choice, so neither needs a second quote
+    (Log 143). An aggregate-only matrix such as pathway-by-sample scores keeps
+    `sample` as a genuine dimension, and its entities stay a choice.
+    """
+    entailed = set()
+    if outcome.granularity == "sample_specific":
+        entailed.add("sample")
+    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
+    if (
+        rule is not None
+        and rule.entities is not None
+        and "sample" in rule.entities
+        and rule.granularities is not None
+        and "sample_specific" in rule.granularities
+    ):
+        node_types = rule.entities - {"sample"}
+        if len(node_types) == 1:
+            entailed.update(node_types)
+    return frozenset(entailed)
+
+
 def _required_evidence(
     outcome: RequestedOutcome,
     confirmed_inputs: frozenset[str] = frozenset(),
@@ -156,6 +185,7 @@ def _required_evidence(
     entailed_entities, entailed_granularity, producing_operation = _entailed_by_artifact(
         outcome
     )
+    entailed_entities = entailed_entities | _axis_entailed_entities(outcome)
     # Only the operation that builds this artifact is entailed. Asking to
     # explain or analyze the same artifact is a real choice and still needs a
     # quote, which is why produced_by is read here and operations is not.
