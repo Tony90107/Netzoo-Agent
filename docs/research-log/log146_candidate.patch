@@ -1,0 +1,200 @@
+diff --git a/scripts/netzoo_agent_core/graph/discriminator.py b/scripts/netzoo_agent_core/graph/discriminator.py
+index 18457d9..4f32ea3 100644
+--- a/scripts/netzoo_agent_core/graph/discriminator.py
++++ b/scripts/netzoo_agent_core/graph/discriminator.py
+@@ -228,7 +228,9 @@ def _recover_failed_discriminator(
+             "evidence": [*hypothesis.evidence, recovered_evidence],
+         })]
+     })
+-    if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
++    if not validate_outcome_hypotheses(
++        user_task, updated.outcome_hypotheses, updated.request_mode,
++    ).valid:
+         return None
+     narrowed = match_semantic_request(
+         user_task,
+@@ -344,7 +346,9 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
+             "outcome": hypothesis.outcome.model_copy(update={"selection_tags": sorted(set(hypothesis.outcome.selection_tags) | selected)}),
+             "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
+         })]})
+-        if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
++        if not validate_outcome_hypotheses(
++            user_task, updated.outcome_hypotheses, updated.request_mode,
++        ).valid:
+             selection_evidence = [
+                 *result.evidence,
+                 *([recovered_evidence] if recovered_evidence else []),
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 15c5f02..5261792 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -526,7 +526,7 @@ def _invoke_semantic_interpreter(
+         )
+         if completed_hypotheses != before_alternatives:
+             completion_validation = validate_outcome_hypotheses(
+-                user_task, completed_hypotheses
++                user_task, completed_hypotheses, interpretation.request_mode,
+             )
+             if completion_validation.valid:
+                 interpretation = interpretation.model_copy(
+@@ -556,6 +556,7 @@ def _invoke_semantic_interpreter(
+         validation = validate_outcome_hypotheses(
+             user_task,
+             interpretation.outcome_hypotheses,
++            interpretation.request_mode,
+         )
+         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+         if not validation.valid:
+@@ -883,7 +884,9 @@ def invoke_router(
+     # itself as an exact match or authorize an action.
+     if (
+         direct_retrieval_action is None
+-        and not validate_outcome_hypotheses(user_task, interpretation.outcome_hypotheses).valid
++        and not validate_outcome_hypotheses(
++            user_task, interpretation.outcome_hypotheses, interpretation.request_mode,
++        ).valid
+     ):
+         capability_match = bounded_match(capability_match)
+         record_event(
+diff --git a/scripts/netzoo_agent_core/interpretation/outcome_validation.py b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+index 98a8206..864a569 100644
+--- a/scripts/netzoo_agent_core/interpretation/outcome_validation.py
++++ b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+@@ -180,6 +180,7 @@ def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
+ def _required_evidence(
+     outcome: RequestedOutcome,
+     confirmed_inputs: frozenset[str] = frozenset(),
++    request_mode: str = "unknown",
+ ) -> list[tuple[str, str]]:
+     required: list[tuple[str, str]] = []
+     entailed_entities, entailed_granularity, producing_operation = _entailed_by_artifact(
+@@ -189,7 +190,15 @@ def _required_evidence(
+     # Only the operation that builds this artifact is entailed. Asking to
+     # explain or analyze the same artifact is a real choice and still needs a
+     # quote, which is why produced_by is read here and operations is not.
+-    if outcome.operation not in {"unknown", producing_operation}:
++    # A guidance request's operation cannot select anything: the matcher sets
++    # it to unknown before matching (`_match_semantic_request`), so a quote for
++    # it would justify a value that is never read (Log 145). Kept when the
++    # artifact is unknown too, where it is the only evidenced field and
++    # dropping it would turn a repairable reading into an unusable one.
++    operation_is_read = not (
++        request_mode == "guidance" and outcome.artifact_type != "unknown"
++    )
++    if outcome.operation not in {"unknown", producing_operation} and operation_is_read:
+         required.append(("operation", outcome.operation))
+     if outcome.artifact_type != "unknown":
+         required.append(("artifact_type", outcome.artifact_type))
+@@ -327,6 +336,7 @@ def _assign_if_valid(outcome: RequestedOutcome, field: str, value: object) -> No
+ def validate_outcome_hypotheses(
+     user_task: str,
+     hypotheses: Sequence[OutcomeHypothesis],
++    request_mode: str = "unknown",
+ ) -> OutcomeValidation:
+     """Validate evidence without selecting or naming a workflow."""
+     if not hypotheses:
+@@ -352,7 +362,9 @@ def validate_outcome_hypotheses(
+             for issue in outcome_consistency_issues(hypothesis.outcome)
+         )
+         outcome_values = _outcome_values(hypothesis.outcome)
+-        required_evidence = _required_evidence(hypothesis.outcome, confirmed_inputs)
++        required_evidence = _required_evidence(
++            hypothesis.outcome, confirmed_inputs, request_mode,
++        )
+         if (
+             hypothesis.outcome.granularity == "not_applicable"
+             and hypothesis.outcome.artifact_type == "unknown"
+diff --git a/tests/test_guidance_operation_evidence.py b/tests/test_guidance_operation_evidence.py
+new file mode 100644
+index 0000000..35396d1
+--- /dev/null
++++ b/tests/test_guidance_operation_evidence.py
+@@ -0,0 +1,57 @@
++"""Log 146: a guidance request's operation needs no quote when the artifact is known."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeEvidence,
++    OutcomeHypothesis,
++    RequestedOutcome,
++)
++from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
++    validate_outcome_hypotheses,
++)
++
++TASK = "Our cohort has about 400 tumour samples. I want to see each tumour's own gene co-expression network."
++SPAN = "I want to see each tumour's own gene co-expression network."
++MISSING = "hypothesis[0].missing_evidence:operation=infer"
++
++
++def _hypothesis(artifact="coexpression_network") -> OutcomeHypothesis:
++    outcome = RequestedOutcome(
++        operation="infer", artifact_type=artifact, entity_types=["gene"],
++        granularity="sample_specific" if artifact != "unknown" else "unknown",
++    )
++    evidence = [] if artifact == "unknown" else [
++        OutcomeEvidence(dimension=d, value=v, source="explicit", text_span=SPAN, rationale="t")
++        for d, v in (("artifact_type", artifact), ("granularity", "sample_specific"))
++    ]
++    return OutcomeHypothesis(outcome=outcome, confidence=0.9, evidence=evidence)
++
++
++def test_guidance_request_does_not_owe_a_quote_for_an_erased_operation():
++    result = validate_outcome_hypotheses(TASK, [_hypothesis()], "guidance")
++    assert MISSING not in result.issues
++    assert result.valid
++
++
++@pytest.mark.parametrize("mode", ["execute", "unknown"])
++def test_requests_whose_operation_is_read_still_need_the_quote(mode):
++    assert MISSING in validate_outcome_hypotheses(TASK, [_hypothesis()], mode).issues
++
++
++def test_default_mode_is_unchanged():
++    assert MISSING in validate_outcome_hypotheses(TASK, [_hypothesis()]).issues
++
++
++def test_unknown_artifact_keeps_the_operation_requirement_in_guidance():
++    """Otherwise the only evidenced field disappears and the reading becomes unusable."""
++    issues = validate_outcome_hypotheses(TASK, [_hypothesis("unknown")], "guidance").issues
++    assert MISSING in issues
++    assert "hypothesis[0].unusable_outcome" not in issues
+diff --git a/tests/test_semantic_repair_interaction.py b/tests/test_semantic_repair_interaction.py
+index aa1437d..b509559 100644
+--- a/tests/test_semantic_repair_interaction.py
++++ b/tests/test_semantic_repair_interaction.py
+@@ -19,17 +19,20 @@ def test_generation_schema_constrains_output_dependent_fields():
+     assert "regulator_types" not in variants["regulatory_network"]
+ 
+ 
+-@pytest.mark.parametrize("artifact,changes,missing", [
+-    ("sample_distance_matrix", {"granularity": "sample_specific", "regulator_types": ["tf"]}, None),
+-    ("sample_cluster_assignment", {"granularity": "sample_specific"}, "operation"),
+-    ("multi_omic_network", {"target_types": ["gene"]}, None),
++# The operation case runs as an execute request (Log 146): a guidance
++# request's operation is erased before matching, so only a request whose
++# operation is read still owes it a quote and an actionable repair for it.
++@pytest.mark.parametrize("artifact,changes,missing,mode", [
++    ("sample_distance_matrix", {"granularity": "sample_specific", "regulator_types": ["tf"]}, None, "guidance"),
++    ("sample_cluster_assignment", {"granularity": "sample_specific"}, "operation", "execute"),
++    ("multi_omic_network", {"target_types": ["gene"]}, None, "guidance"),
+ ])
+-def test_observed_cross_field_errors_receive_actionable_repair(artifact, changes, missing):
++def test_observed_cross_field_errors_receive_actionable_repair(artifact, changes, missing, mode):
+     item = hypothesis()
+     item["outcome"].update(artifact_type=artifact, **changes)
+     if missing:
+         item["evidence"] = [e for e in item["evidence"] if e["dimension"] != missing]
+-    provider = FixtureProvider(first={"request_mode": "guidance", "semantic_goal": "Grouping",
++    provider = FixtureProvider(first={"request_mode": mode, "semantic_goal": "Grouping",
+                                       "outcome_hypotheses": [item]})
+     row = run(provider)["results"][0]
+     message = provider.calls[1][1][-1].content

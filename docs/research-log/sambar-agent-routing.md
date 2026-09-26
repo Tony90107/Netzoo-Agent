@@ -9554,3 +9554,148 @@ worktree 量測：
 並斷言修補訊息要求 `operation=analyze`——這是 repo 先前的**明確設計決定**：
 guidance 請求也必須引用 operation。V4 會推翻這個決定，因此需要使用者決定，
 不在 Log 143 的授權範圍內，也沒有套用。
+
+## Log 146｜事前宣告：guidance 請求的 operation 不需引用——推翻 Log 04 的一部分（尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 145。使用者決定：採用 V4，推翻相應的既有設計；先 commit Log 143，再寫本節。
+候選 patch：`docs/research-log/log146_candidate.patch`（5 個檔案區段，套在 `cd01533` 之上，逐字使用）。
+
+### 被推翻的是什麼，以及沒有被推翻的是什麼
+
+Log 04（2026-09-04）的決策：
+「修生成與修復資訊，保留嚴格驗證。不透過自動補上 `operation=analyze`、更換成工具預設產物，
+或放寬必要欄位來取得成功狀態。」
+測試 `test_observed_cross_field_errors_receive_actionable_repair[...operation]`
+與它同在 commit `933f4ea` 加入，守住「guidance 請求缺少 operation 引用時，修補訊息必須要求 `operation=analyze`」。
+
+**本輪推翻的範圍**：只有「guidance 請求、artifact 已知時，operation 必須有引用」這一條。
+**沒有推翻的部分**：
+- operation 仍是 schema 必填欄位，值不會被自動補上（Log 04 的第一句仍然成立）。
+- 不更換工具預設產物。
+- execute 與 unknown 模式、以及 artifact 為 unknown 的 guidance 請求，仍然必須引用 operation。
+
+推翻的理由（可查證的程式事實，不是偏好）：
+`_match_semantic_request` 在 `request_mode == "guidance"` 時，**比對之前**就把每個 hypothesis 的
+operation 設為 unknown（`outcome_matching.py` 的 `matching_hypotheses`）。
+所以在 guidance 模式下，這個值影響不到工作流程的選擇；要求它有引用，
+等於要求使用者的原句去佐證一個從來不會被讀取的值。
+Log 143 的實測中，F2 的 3 次 fallback 都只卡在這一條。
+
+### 形狀
+
+1. `validate_outcome_hypotheses` 與 `_required_evidence` 新增參數 `request_mode`，預設 `"unknown"`（行為不變）。
+2. 規則：`request_mode == "guidance"` **且** `artifact_type != "unknown"` 時，不要求 operation 的引用。
+3. legacy 路由的 5 個呼叫點傳入 `interpretation.request_mode`：router_invocation 3 處、discriminator 2 處。
+   claims 路徑（`claim_invocation.py`）**不動**，維持預設值。
+4. 測試修改（唯一一處）：上述被推翻設計的測試，把 operation 案例改成 **execute** 模式，
+   其餘兩個案例維持 guidance。原本的保護「缺少 operation 引用 → 修補訊息要求 `operation=analyze`」
+   在 operation 會被讀取的請求上**完整保留**。
+5. 新測試 `tests/test_guidance_operation_evidence.py`（5 個）。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+- 只套用程式碼：**1 failed**，恰為上述測試的 operation 案例。
+- 加上第 4 點的修改與新測試：**2101 passed, 35 skipped, 0 failed**。
+- 新測試在舊程式碼上：5 個中 4 個失敗（第 5 個驗證預設值不變，本來就會通過）。
+
+### 已在 worktree 量得的事實（Log 145）
+
+| 項目 | 結果 |
+| --- | --- |
+| 驗證網格（省略 operation 證據；guidance 對 unknown） | 放寬 4215 筆，全部是 `missing_evidence:operation=*`；新增 0 |
+| 第一版（不限 artifact） | 新增 8 筆 `unusable_outcome` → 收窄為「artifact 已知」後為 0 |
+| execute／unknown 模式 | 與 Log 143 逐位元相同 |
+| matcher 網格、指紋 | 不變 |
+| replay（錄下的 13 次失敗） | 11/13 通過；F2 7 次中 6 次（剩下 1 次的 request_mode 不是 guidance） |
+
+### 判準（套用到主 repo 後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **J-a** | 逐字 `git apply docs/research-log/log146_candidate.patch` |
+| **J-b** | 完整測試 0 failed；既有測試**只有**第 4 點那一處修改 |
+| **J-c** | matcher 網格逐位元等於 `grid_final`；legacy／claims 指紋不變 |
+| **J-d** | 驗證網格：預設、execute 模式與 Log 143 逐位元相同；guidance（省略 operation）放寬的只有 `missing_evidence:operation=*`，新增 0 |
+| **J-e** | replay ≥ 11/13 通過 |
+
+### 實跑（描述性；gpt-4o-mini；traced harness；中性路徑）
+
+F1、F2、N1 各 3 次。結構計數：`semantic_fallback` 次數與殘留 issue、registry 結果、
+新階段是否執行及其推薦、授權欄位。依 Log 120／124，不作比率主張，也不作為閘門。
+
+另外記錄：F2 若到達新階段，推薦是否為 LIONESS-coexpression（`cohort_size:many`）——
+這是 Log 142 從未到達的方向。**只記錄，不作主張**：Log 141 的 Z-2b 已經結案。
+
+### 撤回條件（寫死）
+
+- **Y-1**：J-a～J-e 任一失敗 → 撤回全部。
+- **Y-2｜授權**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回全部。
+- **Y-3｜新 issue 種類**：實跑中出現可追溯到 V4 的新 issue 種類 → 撤回全部。
+
+### 事前預測
+
+J-a～J-e 預測通過（worktree 已量）。F2 預測多數 trial 不再 fallback。
+F2 若到達新階段，預測會出現三候選 {LIONESS-coexp, COBRA, BONOBO}（Log 142 出現 2 次），
+這不是 algorithm 平手，新階段不會執行——**所以 LIONESS 方向很可能仍然測不到**。
+
+### 已知風險
+
+1. `request_mode` 本身由模型判斷。若把 execute 請求誤標為 guidance，operation 就不再需要引用；
+   但同一個標記也讓 matcher 在比對前抹掉 operation，所以選擇不受影響。
+   之後即使 `reconcile_request_mode` 改判為 execute，被選中的工作流程也是在 operation=unknown 下比對出來的，
+   本輪沒有改變這件事。
+2. 未引用的 operation 仍會出現在部分使用者可見文字中（例如 `_requested_outcome_phrase` 的動詞）。
+   那是呈現用途，不影響選擇；若要處理，屬於另一輪。
+3. 這是本專案第一次推翻 Log 04 的決策。推翻範圍已在上面逐條列出，
+   任何超出範圍的放寬都必須另寫宣告。
+
+## Log 147｜Log 146 結果：J-a～J-e 全部成立，V4 **保留**；F2 不再在語意解讀失敗，但暴露成因 F
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 146 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| J-a 逐字套用 | **通過** |
+| J-b 0 failed，只改一處既有測試 | **通過**（2101 passed, 35 skipped；只改 `test_semantic_repair_interaction.py` 的 operation 案例） |
+| J-c matcher 網格、指紋 | **通過** |
+| J-d 驗證網格 | **通過**：預設與 execute 模式都和 Log 143 逐位元相同；guidance（省略 operation）放寬 4215 筆，全為 `missing_evidence:operation=*`，新增 0 |
+| J-e replay | **通過**（11/13） |
+
+### 實跑（描述性）
+
+| Prompt | Log 143 | 本輪 |
+| --- | --- | --- |
+| F1 | fallback 0/3 | fallback 0/3；3/3 推薦 BONOBO |
+| F2 | fallback 3/3（只差 `operation=infer`） | **fallback 0/3**；3/3 到達 registry |
+| N1 | 0/3 | 0/3；3/3 走 B |
+
+- Y-2 授權外洩：0/9。
+- Y-3 新 issue 種類：無。第一輪被拒的原因只有 `missing_current_input` 與
+  `conflicting_evidence:input_artifact=<路徑>`，兩者在 Log 141／143 的 F2 就已出現；
+  它們在修補後都被解決。
+
+**全部未觸發：V4 保留。**
+
+### 事前預測的對帳
+
+「F2 會變成三候選 {LIONESS-coexp, COBRA, BONOBO}，新階段不會執行，LIONESS 方向仍測不到」——
+**3/3 如預測。** `cohort_size:many → LIONESS` 這個方向仍然從未被量測。
+
+### 成因 F（新發現，本輪範圍外）
+
+F2 的最終 outcome 是 `coexpression_network`／`sample_specific`，strict 比對只給
+{LIONESS-coexp, BONOBO}，這是正確的。但 `match_semantic_request` 最後回傳三候選，
+並反問「Should the result be aggregate or sample-specific?」——**使用者已經說了「each tumour's own」**。
+
+離線查證：3 次 trial 的 granularity 證據都標為 `inferred`（不是 `explicit`）。
+`match_outcome_hypotheses` 在 strict 不是 exact 時會走「explicit evidence」分支，
+它只用 explicit 證據篩選候選，所以 granularity 沒有被約束，
+只能產生 aggregate 的 COBRA 就被重新放了進來。
+這與程式碼中 `_without_superseded_successors` 註解描述的
+「explicit 分支重新放入候選」是同一類問題。
+
+後果：只要模型把 granularity 證據標成 inferred，BONOBO／LIONESS 的平手就會被 COBRA 稀釋，
+planner 改問 granularity，新階段不會執行。這也是 LIONESS 方向一直量不到的直接原因之一。
