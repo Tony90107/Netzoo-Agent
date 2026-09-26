@@ -239,10 +239,19 @@ def match_outcome_hypotheses(
         score = _hypothesis_evidence_score(hypothesis)
         explicit_evidence = _explicit_evidence_values(hypothesis)
         if strict.status != "exact" and explicit_evidence.get("artifact_type"):
+            # Explicit evidence may narrow the candidates the typed outcome
+            # admits, never widen them (Log 148). Without this, a value the
+            # outcome states but the model marked `inferred` -- a sample-specific
+            # granularity, say -- stops constraining this branch, and an
+            # aggregate-only workflow rejoins a sample-specific tie. When the
+            # strict match admits nothing, the branch still recovers from the
+            # explicit evidence alone, as before.
+            admitted = set(strict.hypothesis_actions) | set(strict.matched_actions)
             explicit_candidates = [
                 (index, action, capability)
                 for index, (action, capability) in enumerate(capabilities.items())
                 if _matches_explicit_evidence(explicit_evidence, capability)
+                and (not admitted or action in admitted)
             ]
             if len(explicit_candidates) == 1:
                 evidence_exact.append(explicit_candidates[0][1])
