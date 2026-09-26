@@ -46,3 +46,39 @@ def test_sample_specific_guidance_explains_targeting_clinical_data_and_dependenc
     assert "clinical table" in answer
     assert "not statistically independent" in answer
     assert answer.rstrip().endswith("No files were inspected and no analysis ran.")
+
+
+# Log 162: the advisory (form A) replies carry the same notes for the recommended workflow.
+import shutil  # noqa: E402
+
+from netzoo_agent_core.graph.input_inspection import advise_from_inspected_inputs  # noqa: E402
+from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
+
+
+def _tie() -> TaskDecision:
+    outcome = RequestedOutcome(operation="infer", artifact_type="regulatory_network",
+                               granularity="sample_specific")
+    return TaskDecision(
+        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
+        confidence=1.0, reason="guidance", requested_outcome=outcome,
+        outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=0.9)],
+        hypothesis_actions=["run_lioness_panda", "run_lioness_puma"],
+        capability_match_status="ambiguous",
+        clarification_question="Which regulator type should the network model?",
+    )
+
+
+def test_folder_based_recommendation_includes_the_downstream_notes(tmp_path):
+    folder = tmp_path / "data" / "study"
+    folder.mkdir(parents=True)
+    toy = ROOT / "data" / "lioness-toy"
+    for name, source in (("expression.tsv", "expression.tsv"), ("motif.tsv", "motif-panda.tsv"),
+                         ("ppi.tsv", "ppi.tsv")):
+        shutil.copy(toy / source, folder / name)
+    advised = advise_from_inspected_inputs("data/study/ has my data.", _tie(), root=tmp_path)
+
+    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+
+    assert "Downstream use of the sample-specific networks:" in answer
+    assert answer.index("Downstream use") < answer.index("Should I use LIONESS-PANDA")
+    assert "clinical table" in answer
