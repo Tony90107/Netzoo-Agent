@@ -19,17 +19,20 @@ def test_generation_schema_constrains_output_dependent_fields():
     assert "regulator_types" not in variants["regulatory_network"]
 
 
-@pytest.mark.parametrize("artifact,changes,missing", [
-    ("sample_distance_matrix", {"granularity": "sample_specific", "regulator_types": ["tf"]}, None),
-    ("sample_cluster_assignment", {"granularity": "sample_specific"}, "operation"),
-    ("multi_omic_network", {"target_types": ["gene"]}, None),
+# The operation case runs as an execute request (Log 146): a guidance
+# request's operation is erased before matching, so only a request whose
+# operation is read still owes it a quote and an actionable repair for it.
+@pytest.mark.parametrize("artifact,changes,missing,mode", [
+    ("sample_distance_matrix", {"granularity": "sample_specific", "regulator_types": ["tf"]}, None, "guidance"),
+    ("sample_cluster_assignment", {"granularity": "sample_specific"}, "operation", "execute"),
+    ("multi_omic_network", {"target_types": ["gene"]}, None, "guidance"),
 ])
-def test_observed_cross_field_errors_receive_actionable_repair(artifact, changes, missing):
+def test_observed_cross_field_errors_receive_actionable_repair(artifact, changes, missing, mode):
     item = hypothesis()
     item["outcome"].update(artifact_type=artifact, **changes)
     if missing:
         item["evidence"] = [e for e in item["evidence"] if e["dimension"] != missing]
-    provider = FixtureProvider(first={"request_mode": "guidance", "semantic_goal": "Grouping",
+    provider = FixtureProvider(first={"request_mode": mode, "semantic_goal": "Grouping",
                                       "outcome_hypotheses": [item]})
     row = run(provider)["results"][0]
     message = provider.calls[1][1][-1].content

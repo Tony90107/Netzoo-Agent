@@ -180,6 +180,7 @@ def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
 def _required_evidence(
     outcome: RequestedOutcome,
     confirmed_inputs: frozenset[str] = frozenset(),
+    request_mode: str = "unknown",
 ) -> list[tuple[str, str]]:
     required: list[tuple[str, str]] = []
     entailed_entities, entailed_granularity, producing_operation = _entailed_by_artifact(
@@ -189,7 +190,15 @@ def _required_evidence(
     # Only the operation that builds this artifact is entailed. Asking to
     # explain or analyze the same artifact is a real choice and still needs a
     # quote, which is why produced_by is read here and operations is not.
-    if outcome.operation not in {"unknown", producing_operation}:
+    # A guidance request's operation cannot select anything: the matcher sets
+    # it to unknown before matching (`_match_semantic_request`), so a quote for
+    # it would justify a value that is never read (Log 145). Kept when the
+    # artifact is unknown too, where it is the only evidenced field and
+    # dropping it would turn a repairable reading into an unusable one.
+    operation_is_read = not (
+        request_mode == "guidance" and outcome.artifact_type != "unknown"
+    )
+    if outcome.operation not in {"unknown", producing_operation} and operation_is_read:
         required.append(("operation", outcome.operation))
     if outcome.artifact_type != "unknown":
         required.append(("artifact_type", outcome.artifact_type))
@@ -327,6 +336,7 @@ def _assign_if_valid(outcome: RequestedOutcome, field: str, value: object) -> No
 def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],
+    request_mode: str = "unknown",
 ) -> OutcomeValidation:
     """Validate evidence without selecting or naming a workflow."""
     if not hypotheses:
@@ -352,7 +362,9 @@ def validate_outcome_hypotheses(
             for issue in outcome_consistency_issues(hypothesis.outcome)
         )
         outcome_values = _outcome_values(hypothesis.outcome)
-        required_evidence = _required_evidence(hypothesis.outcome, confirmed_inputs)
+        required_evidence = _required_evidence(
+            hypothesis.outcome, confirmed_inputs, request_mode,
+        )
         if (
             hypothesis.outcome.granularity == "not_applicable"
             and hypothesis.outcome.artifact_type == "unknown"

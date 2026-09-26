@@ -228,7 +228,9 @@ def _recover_failed_discriminator(
             "evidence": [*hypothesis.evidence, recovered_evidence],
         })]
     })
-    if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
+    if not validate_outcome_hypotheses(
+        user_task, updated.outcome_hypotheses, updated.request_mode,
+    ).valid:
         return None
     narrowed = match_semantic_request(
         user_task,
@@ -344,7 +346,9 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
             "outcome": hypothesis.outcome.model_copy(update={"selection_tags": sorted(set(hypothesis.outcome.selection_tags) | selected)}),
             "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
         })]})
-        if not validate_outcome_hypotheses(user_task, updated.outcome_hypotheses).valid:
+        if not validate_outcome_hypotheses(
+            user_task, updated.outcome_hypotheses, updated.request_mode,
+        ).valid:
             selection_evidence = [
                 *result.evidence,
                 *([recovered_evidence] if recovered_evidence else []),
