@@ -10847,3 +10847,94 @@ T2-cobra 的最終 outcome：`coexpression_network`／aggregate／`operation=inf
 **guidance 模式抹掉了 operation，卻讓它透過證據重新生效。** 這讓「要分離批次效應」的請求被導向一個不處理共變量的工具。
 若修正（guidance 模式同時忽略 operation 證據），T2-cobra 會進入 {COBRA, LIONESS-coexpression} 平手，
 由實驗條件推薦依 `covariates:yes` 判斷。修正會**擴大** guidance 模式的候選，屬於比對行為的改變，待使用者決定。
+
+## Log 170｜事前宣告：guidance 模式抹掉 operation 時，連同 operation 證據一起移除（成因 I；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 169 的成因 I。使用者指示：先 commit，再修正成因 I。
+候選 patch：`docs/research-log/log170_candidate.patch`（2 個檔案區段，套在 `6691e5f` 之上，逐字使用）。
+
+### 形狀
+
+`_match_semantic_request` 的 guidance 分支原本只把每個 hypothesis 的 outcome operation 設為 unknown；
+現在同時從該 hypothesis 的證據中移除 `operation` 條目。其他路徑、execute 模式、驗證都不變。
+與 Log 146（V4：guidance 請求的 operation 不需引用）一致：operation 在 guidance 下既不需要引用，也不參與比對。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2147 passed, 35 skipped, 0 failed**，**不修改任何既有測試**。
+新測試 `tests/test_guidance_operation_erasure.py`（2 個）：T2-cobra 形狀在 guidance 下得到 {COBRA, LIONESS-coexpression}
+且實驗條件選項含 `covariates:yes／no`；execute 模式仍為 LIONESS-coexpression。舊程式碼上第一個失敗、第二個通過。
+
+### 量測工具
+
+新增 `docs/research-log/log170_guidance_grid.py`：operation 為 infer／analyze 的合法且 artifact 已知的 outcome，
+每個欄位都有 explicit 引用，分別以 guidance 與 execute 模式經 `match_semantic_request` 比對（9996 列，兩次生成逐位元相同）。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| guidance 網格 | 316 列改變；**execute 模式改變 0**；**exact 換工具 0**；新加入的候選 operation **全部**與證據不同 |
+| 改變的種類 | 298 列 ambiguous→exact／fallback，**候選工具不變**（原本只有一個候選，卻因證據中的 operation 與該工具登記的不同而卡在 ambiguous）；18 列 exact／fallback→ambiguous，全部是共表現的 {COBRA, LIONESS-coexpression}（＋BONOBO，當 granularity 未知時） |
+| Log 136／148／150 網格 | 逐位元相同（它們直接呼叫 `match_outcome_hypotheses`，不經 guidance 分支） |
+| 指紋 | 不變 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AD-a** | 逐字套用 patch |
+| **AD-b** | 完整測試 0 failed，不修改任何既有測試 |
+| **AD-c** | Log 136／148／150 網格逐位元相同；指紋不變 |
+| **AD-d** | guidance 網格：execute 改變 0、換工具 0、同 operation 的新候選 0 |
+
+### 實跑（描述性；Log 168 的 T2-cobra、T2-lioness、T2-none 各 3 次）
+
+預期 T2-cobra／T2-lioness 會到達 {COBRA, LIONESS-coexpression} 平手，由實驗條件推薦判斷。
+依 Log 168 的處置規則計數：平手 2 的推薦方向錯誤 ≥ 2 → 撤回 `covariates` 的 `prefer_when`；
+無事實推薦 ≥ 2 → 同樣撤回；D < 3 → 無法判定，不撤回。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AD-a～AD-d 任一失敗 → 撤回本輪。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回本輪。
+
+### 已知風險
+
+298 列 ambiguous→exact 讓 guidance 回覆更有把握；在 guidance 下沒有執行權，但若使用者引用的 operation
+真的是關鍵差異（例如刻意要「分析」而非「推論」），這個差異在 guidance 模式下不再被考慮——這與 Log 146 的前提相同。
+
+## Log 171｜Log 170 結果：AD-a～AD-d 全部成立，成因 I 修正**保留**；批次請求從 LIONESS 改判為 COBRA
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 170 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AD-a 逐字套用 | **通過** |
+| AD-b 0 failed、不改既有測試 | **通過**（2147 passed, 35 skipped） |
+| AD-c Log 136／148／150 網格、指紋 | **通過** |
+| AD-d guidance 網格 | **通過**：execute 改變 0、換工具 0、同 operation 的新候選 0 |
+
+### 實跑（T2 三句各 3 次）
+
+| prompt | Log 168（修正前） | 本輪 |
+| --- | --- | --- |
+| T2-cobra | 6/6 exact **LIONESS-coexpression**（錯） | **3/3 exact COBRA** |
+| T2-lioness | 5/6 exact LIONESS-coexpression | 3/3 exact LIONESS-coexpression |
+| T2-none | 3/3 ambiguous，候選為空 | 3/3 ambiguous，候選為空（成因 J，見下） |
+
+- Y-2 授權外洩 0/9。**全部未觸發：保留。**
+- **歸因（離線）**：把本輪 T2-cobra 的 3 個最終 hypothesis 分別交給修正前後的程式碼：
+  修正前 3/3 exact LIONESS-coexpression，修正後 3/3 exact COBRA。
+  這次模型把「sequencing batch」標成 `sequencing_batch_effect_assessment` tag；
+  修正前 COBRA 在 tag discriminator 之前就被 operation 證據排除，所以 tag 也選不到它。
+- 平手 2 依然沒有到達新階段（兩句都被直接判定），實驗條件推薦在這組平手上仍**未被量到**（Log 168 的處置：無法判定，不撤回）。
+
+### 成因 J（新發現，本輪範圍外）
+
+T2-none（「Which workflow gives one cohort-level gene co-expression network from my expression matrix?」）：
+outcome 為 `coexpression_network`／aggregate，並帶有 **explicit** 的 `entity_type=sample`。
+Log 136 的軸規則只在 sample_specific 下把 `sample` 視為 granularity 軸；aggregate 下沒有任何能力接受 `sample`，
+而 explicit-evidence 分支也因為 `entity_type=sample` 排除所有候選，結果是沒有候選、回覆只問「Which scientific result…」。
+這與 Log 136 的成因 A 同類（模型把輸入矩陣的樣本軸寫進了網路的實體）。
