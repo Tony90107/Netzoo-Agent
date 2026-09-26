@@ -204,6 +204,11 @@ def test_a_citation_only_repair_ignores_withdrawals_too():
     assert ("operation", "infer") in kept_pairs
     assert ("artifact_type", "regulatory_network") in kept_pairs
     assert ("regulator_type", "mirna") in kept_pairs
-    # The scope guard: elsewhere a withdrawal still withdraws.
-    assert ("operation", "infer") not in dropped_pairs
-    assert ("artifact_type", "regulatory_network") not in dropped_pairs
+    # Log 164 narrows the scope guard by one case: an entry that is not an
+    # ungrounded explicit quote, for a value the merged outcome still asserts,
+    # withdrawn with no replacement, can only recreate `missing_evidence` -- so
+    # both inferred entries survive here too. Where a withdrawal still
+    # withdraws (a replacement quote, an ungrounded quote, a changed value) is
+    # pinned in test_withdrawal_of_asserted_value.py.
+    assert ("operation", "infer") in dropped_pairs
+    assert ("artifact_type", "regulatory_network") in dropped_pairs

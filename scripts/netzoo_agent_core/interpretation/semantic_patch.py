@@ -58,6 +58,7 @@ def apply_semantic_patch(
     patch: SemanticPatch,
     *,
     permitted_fields: frozenset[str] | None = None,
+    user_task: str = "",
 ) -> tuple[SemanticInterpretation, list[dict]]:
     """Return the merged interpretation and the stale evidence the patch retired.
 
@@ -108,8 +109,37 @@ def apply_semantic_patch(
             FIELD_BY_DIMENSION.get(item.dimension, ""), None
         ) is not None and FIELD_BY_DIMENSION[item.dimension] in allowed
     }
-    evidence = []
     retired: list[dict] = []
+    # A withdrawal of a grounded entry for a value the merged outcome still
+    # asserts can only recreate `missing_evidence` for it; the citation-only
+    # guard above covers the case with no licensed fields, this covers a licensed
+    # field the patch left unchanged (Log 164). It is deliberately narrow, not a
+    # licence to ignore removals: a withdrawal with a replacement quote for the
+    # same value, or of an explicit quote the request does not contain, is
+    # honoured, and so is any withdrawal for a value the patch changed.
+    from .outcome_validation import explicit_evidence_grounded
+
+    added_pairs = {(item.dimension, item.value) for item in patch.evidence_additions}
+    for dimension, value in sorted(withdrawn):
+        field = FIELD_BY_DIMENSION.get(dimension)
+        entries = [
+            item for item in base.evidence
+            if (item.dimension, item.value) == (dimension, value)
+        ]
+        if (
+            field is not None
+            and value in _values(getattr(outcome, field))
+            and (dimension, value) not in added_pairs
+            and entries
+            and all(
+                item.source != "explicit" or explicit_evidence_grounded(user_task, item)
+                for item in entries
+            )
+        ):
+            withdrawn.discard((dimension, value))
+            retired.append({"dimension": dimension, "value": value, "field": field,
+                            "reason": "withdrawal_of_asserted_value"})
+    evidence = []
     for item in base.evidence:
         if (item.dimension, item.value) in withdrawn:
             continue
