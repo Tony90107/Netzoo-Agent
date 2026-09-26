@@ -9699,3 +9699,134 @@ F2 的最終 outcome 是 `coexpression_network`／`sample_specific`，strict 比
 
 後果：只要模型把 granularity 證據標成 inferred，BONOBO／LIONESS 的平手就會被 COBRA 稀釋，
 planner 改問 granularity，新階段不會執行。這也是 LIONESS 方向一直量不到的直接原因之一。
+
+## Log 148｜事前宣告：explicit 證據只能縮小、不能擴大 typed outcome 的候選（成因 F；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 147 的成因 F。使用者指示：先 commit Log 146／147，再處理成因 F。
+候選 patch：`docs/research-log/log148_candidate.patch`（2 個檔案區段，套在 `8efbe76` 之上，逐字使用）。
+
+### 成因（已查證）
+
+`match_outcome_hypotheses` 在 strict 比對不是 exact 時，會走 explicit-evidence 分支：
+它只用 `source="explicit"` 的證據篩選能力。F2 的 3 次 trial 中，模型把 granularity 證據
+標成 `inferred`，所以這個分支不受 granularity 約束，只能產生 aggregate 的 COBRA 被重新放入，
+和 strict 給出的 {LIONESS-coexp, BONOBO} 一起並列。
+直接追蹤確認：同一個 outcome，把 granularity 證據改成 explicit，COBRA 就不會出現。
+
+### 形狀
+
+在 explicit-evidence 分支加上一個條件：若 strict 比對有候選（`hypothesis_actions ∪ matched_actions`
+非空），explicit 候選必須落在其中。strict 沒有候選時，行為與原本完全相同（recovery 用途）。
+這和 `_tag_discriminated_action` 的「候選集合只會縮小」是同一個原則。
+
+### 授權
+
+縮到單一候選時，結果是 `fallback`／`partial_evidence`。`assemble_task_decision` 只在
+`status == "exact"` 時設定 `exact_action`，所以 fallback **永遠不會執行**；
+guidance 模式下 fallback 可能被升級為 exact，但 guidance 本來就不執行。執行權限沒有擴大。
+
+### 量測工具
+
+Log 136 的網格沒有證據，explicit 分支從不觸發。新增 `docs/research-log/log148_evidence_grid.py`：
+每個合法且 artifact 已知的 outcome，在三種證據組態下比對，共 22491 列，兩次生成逐位元相同。
+三種組態：只有 artifact 是 explicit／artifact＋granularity 是 explicit／全部 explicit。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 帶證據網格 | 656 列改變；**擴大候選 0**；已解析者失去解析或換工具 0；移除 strict 所接受的候選 0 |
+| 改變的種類 | ambiguous→ambiguous（縮小）296；ambiguous→fallback（縮到一個，且等於 strict 的唯一候選）360 |
+| 無證據網格（Log 136） | 逐位元相同 |
+| 指紋 | 不變 |
+| 完整測試 | 2101 passed, 35 skipped, **0 failed**，**不需修改任何既有測試** |
+| 新測試 `tests/test_explicit_evidence_narrows.py` | 3 passed；在舊程式碼上 F2 那一個失敗，另兩個（explicit granularity、strict 無候選時的 recovery）新舊都通過——刻意用來釘住不應改變的行為 |
+| F2 replay（Log 146 錄下的 3 個最終 hypotheses） | 3/3 變成 {LIONESS-coexp, BONOBO}，planner 維度 `algorithm` |
+
+360 列 ambiguous→fallback 已逐類檢視：都是 outcome 本身寫明、證據卻標為 inferred 的值
+（例如 miRNA regulator → PUMA；sample_specific＋miRNA → LIONESS-PUMA），
+舊行為把整個 artifact 家族重新放回，新行為與 strict 的唯一候選一致。
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **L-a** | 逐字套用 patch |
+| **L-b** | 完整測試 0 failed，不修改任何既有測試 |
+| **L-c** | Log 136 網格逐位元等於 `grid_final`；指紋不變 |
+| **L-d** | 帶證據網格：擴大 0、失去解析或換工具 0、移除 strict 所接受的候選 0 |
+
+### 實跑（gpt-4o-mini；traced harness；中性路徑）
+
+F1、F2、N1 各 3 次。
+
+### 撤回條件（寫死）
+
+- **Y-1**：L-a～L-d 任一失敗 → 撤回本輪。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回本輪。
+- **Y-3｜推薦方向（延續 Log 141 的 Z-2b）**：F2 是 Log 142 從未到達的
+  `cohort_size:many → LIONESS-coexpression` 方向。若 F2 的新階段有執行，且推薦**不等於**
+  LIONESS-coexpression 的次數 ≥ 2 → 視同 Log 141 的 Z-2b 觸發，**撤回 Log 139／141 的推薦器**
+  （不撤回本輪，因為本輪只負責讓 F2 到達新階段）。
+
+### 事前預測
+
+- L-a～L-d 預測通過（worktree 已量）。
+- F2 預測會到達新階段。推薦方向**我不預測**：`cohort_size:many` 從未被量測，
+  而且 F2 原句同時說了「no prior files」，模型可能不引用任何條件而走 B。
+
+### 已知風險
+
+1. 本輪讓 typed outcome 中標為 inferred 的值，在 explicit 分支裡重新具有約束力。
+   如果模型的 inferred 值是**錯的**，而 strict 仍有候選，explicit 證據就不再能把正確答案救回來。
+   網格中 F-c = 0 只證明沒有移除 strict 所接受的候選，不能證明 inferred 值都正確。
+2. 360 列 ambiguous→fallback 會讓使用者看到單一建議而不是問題。在 guidance 下這是建議，
+   沒有執行權；但如果 inferred 值是錯的，建議也會是錯的。
+
+## Log 149｜Log 148 結果：L-a～L-d 全部成立，成因 F 修正**保留**；F2 到達新階段，但 `cohort_size:many` 0/3
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 148 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| L-a 逐字套用 | **通過** |
+| L-b 0 failed、不改既有測試 | **通過**（2104 passed, 35 skipped） |
+| L-c Log 136 網格、指紋 | **通過** |
+| L-d 帶證據網格 | **通過**（656 列改變；擴大 0；失去解析或換工具 0；移除 strict 候選 0） |
+
+### 實跑
+
+| Prompt | Log 147 | 本輪 |
+| --- | --- | --- |
+| F1 | 3/3 推薦 BONOBO | 3/3 推薦 BONOBO（引用與 Log 142 相同） |
+| F2 | 3/3 三候選 {LIONESS, COBRA, BONOBO}，反問 granularity | **3/3 兩候選 {LIONESS, BONOBO}**，新階段 **3/3 執行** |
+| N1 | 3/3 走 B | 3/3 走 B |
+
+- Y-2 授權外洩：0/9。
+- Y-3：F2 的新階段 3/3 執行，**推薦 0 次**（claims 3/3 為空），推薦錯誤 0 → 未觸發。
+
+**全部未觸發：成因 F 修正保留。**
+
+### 事前預測的對帳
+
+F2 到達新階段：**如預測**。推薦方向我沒有預測；結果是模型 3/3 沒有把
+「about 400 tumour samples」對應到 `cohort_size:many`（「dozens of samples or more」），
+全部走 B 直接提問。
+
+### 這代表什麼
+
+- 「樣本多 → LIONESS」方向第一次被**觸及**，但模型沒有提出條件。
+  所以這個方向目前的行為是「問使用者」，不是「推薦 LIONESS」——安全，但沒有用上使用者給的事實。
+- 對照 F1：模型能把「a handful of patients」對應到 `few`，卻不能把「about 400 tumour samples」
+  對應到 `many`。可能的差異是：前者的用字和條件敘述幾乎相同，後者需要把數字對應到定性描述。
+- **不做措辭上的修改**（memory `netzoo-no-prompt-wording-fixes`）。若要處理，方向應是 contract 形狀：
+  例如讓模型只抽取原句中的樣本數與引用，再由程式判斷 few／many。但這需要一個數字門檻，
+  而 Log 139 已寫明沒有公認的切點——這本身是一個需要使用者決定的科學問題。
+
+### 使用者決定（2026-09-26）
+
+樣本數門檻**維持現狀**：不設數字切點；當原句給的是樣本數而不是定性描述時，
+agent 走 B 直接詢問使用者。`cohort_size` 的條件敘述不變，不為此新增 contract 欄位。
