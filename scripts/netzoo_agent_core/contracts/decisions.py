@@ -9,6 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
+    AdvisoryRecommendation,
     CapabilityMatchStatus,
     MatchBasis,
     OutcomeHypothesis,
@@ -115,6 +116,14 @@ class TaskDecision(BaseModel):
     alternative_actions: list[RecommendedAction] = Field(default_factory=list)
     mismatch_dimensions: list[str] = Field(default_factory=list)
     clarification_question: str | None = None
+    # Advisory only (Log 139): a preferred candidate among tied workflows,
+    # backed by quoted experimental conditions. It never changes action,
+    # should_execute, capability_match_status or matched_actions.
+    # Omitted from dumps while unset, so every existing serialized decision is
+    # byte-identical to before this field existed.
+    advisory_recommendation: AdvisoryRecommendation | None = Field(
+        default=None, exclude_if=lambda value: value is None,
+    )
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None

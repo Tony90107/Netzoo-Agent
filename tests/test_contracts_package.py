@@ -154,7 +154,7 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # registry-owned WorkflowPolicySpec input_validator. The direct contract tests
 # for those fields remain the source of meaning; these hashes detect later drift.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "8a42af2fe950ea22247a087dad24b295ed84126d9b148ec03e2faa1cb019240b",
+    "TaskDecision": "dcaf4f6a1629a4f50528ac01db786427a8422633a08b2b1bee81bfa181fc5ade",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
@@ -163,7 +163,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "7c58377e5072e5190b4db662664106ead18cd09e25a75e07b9401d1afb6a0c3d",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "a359e840505a903717d34328232995e461ef78a5d7cf1590347e678c281390d8",
+    "ProjectPolicySnapshot": "5994735f6f14aa7855b282737c55a9f22d18f4d9fb4279b05b28b88c94a05862",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.

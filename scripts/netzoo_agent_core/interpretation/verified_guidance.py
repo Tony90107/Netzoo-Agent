@@ -41,7 +41,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
             else "not_assessed"
         ),
         "explanations": scientific_explanations(
-            task, [policy.workflows[action].output_capability.model_dump() for action in actions
+            task, [policy.workflows[action].output_capability.model_dump(exclude={"prefer_when"}) for action in actions
                    if action in policy.workflows and action not in {item.action for item in rejections}],
             [item.model_dump() for item in rejections],
         ),
@@ -79,7 +79,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
                                 )
                                 if field in INPUT_ROLE_FIELDS
                             },
-                           output_capability=policy.workflows[action].output_capability.model_dump())
+                           output_capability=policy.workflows[action].output_capability.model_dump(exclude={"prefer_when"}))
                       for action in actions if action in policy.workflows],
     }
 

@@ -533,6 +533,49 @@ class SemanticDiscriminator(BaseModel):
         return self
 
 
+class ConditionClaim(BaseModel):
+    """One offered experimental condition the request states, with its quote."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    condition: str = Field(
+        max_length=80,
+        description="One condition id exactly as offered in the option list.",
+    )
+    text_span: str = Field(
+        min_length=1,
+        max_length=300,
+        description="Exact original-language quote from the request that states it.",
+    )
+
+
+class SelectionConditionClaims(BaseModel):
+    """Experimental conditions stated in the request (Log 139); may be empty."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    claims: list[ConditionClaim] = Field(default_factory=list, max_length=6)
+
+
+class AdvisoryCondition(BaseModel):
+    """A validated, quoted experimental condition behind a recommendation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    axis: str
+    value: str
+    text_span: str
+
+
+class AdvisoryRecommendation(BaseModel):
+    """An advisory preference among tied candidates; never execution authority."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: RecommendedAction
+    conditions: list[AdvisoryCondition] = Field(min_length=1, max_length=6)
+
+
 class SemanticReview(BaseModel):
     """One adjudicated scientific outcome returned by the review pass."""
 

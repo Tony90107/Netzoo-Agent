@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS
+from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
@@ -298,6 +298,10 @@ def render_outcome_clarification(
                 ]
             )
             return _ui_text("\n\n".join(sections))
+    if len(decision.hypothesis_actions) > 1 and decision.advisory_recommendation:
+        recommended = _render_advisory_recommendation(decision, policy)
+        if recommended is not None:
+            return recommended
     if len(decision.hypothesis_actions) > 1:
         options = []
         for action in decision.hypothesis_actions:
@@ -339,6 +343,46 @@ def render_outcome_clarification(
         f"{decision.clarification_question}\n\n"
         "No files were inspected and no analysis ran."
     )
+
+
+def _condition_label(condition: str) -> str:
+    axis, _, value = condition.partition(":")
+    return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
+
+
+def _render_advisory_recommendation(
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+) -> str | None:
+    """Form A (Log 139): recommend from quoted study facts; list the others."""
+    recommendation = decision.advisory_recommendation
+    spec = policy.workflows.get(recommendation.action)
+    if spec is None:
+        return None
+    quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
+    reasons = "; ".join(
+        _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
+    )
+    lines = [
+        f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}.",
+        "\n".join(_candidate_details(recommendation.action, spec, policy)),
+    ]
+    others = []
+    for action in decision.hypothesis_actions:
+        if action == recommendation.action or action not in policy.workflows:
+            continue
+        conditions = OUTPUT_CAPABILITIES[action].prefer_when if action in OUTPUT_CAPABILITIES else ()
+        preferred = "; ".join(_condition_label(item) for item in conditions)
+        others.append(
+            f"- **{policy.workflows[action].workflow}**"
+            + (f" — preferred when: {preferred}." if preferred else ".")
+        )
+    if others:
+        lines.append("Other compatible option(s):\n" + "\n".join(others))
+    if decision.clarification_question:
+        lines.append(decision.clarification_question)
+    lines.append("No files were inspected and no analysis ran.")
+    return _ui_text("\n\n".join(lines))
 
 
 def _render_beginner_group_network_guidance(

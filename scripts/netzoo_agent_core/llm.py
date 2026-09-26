@@ -519,6 +519,32 @@ def build_semantic_discriminator_messages(
     ]
 
 
+def build_selection_condition_messages(
+    user_task: str,
+    options: list[tuple[str, str]],
+) -> list:
+    """Offer the experimental conditions that separate tied workflows (Log 139).
+
+    The option list is the whole vocabulary; condition ids name study facts,
+    never workflows.
+    """
+    option_lines = "\n".join(f"- {condition}: {label}" for condition, label in options)
+    return [
+        SystemMessage(
+            content=(
+                "Return only the SelectionConditionClaims structure. For each offered "
+                "condition that the original request explicitly states, add one claim "
+                "with the condition id exactly as offered and an exact original-language "
+                "text_span quoted from the request. If the request states none of them, "
+                "return an empty claims list. Do not name or recommend a workflow; never "
+                "translate text_span.\n\nOffered conditions:\n"
+                + option_lines
+            )
+        ),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+    ]
+
+
 def build_intent_router_messages(
     intent_prompt: str,
     user_task: str,
