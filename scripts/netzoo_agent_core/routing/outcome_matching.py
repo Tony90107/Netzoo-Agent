@@ -139,6 +139,31 @@ def _stated_dimensions_match(
     )
 
 
+# Tags that only restate a typed dimension (Log 174). Once the outcome fixes
+# that dimension, every candidate already satisfies it by construction, so the
+# tag cannot separate them; letting it try only rewards whichever capability
+# happens to list it -- `coexpression` is on LIONESS-coexpression and BONOBO
+# but not on COBRA, which produces the same artifact.
+_RESTATING_TAGS = {
+    "coexpression": "artifact_type",
+    "multi_omic_network": "artifact_type",
+    "sample_specific": "granularity",
+    "aggregate_network": "granularity",
+    "mirna_regulation": "regulator_types",
+    "tf_gene_regulation": "regulator_types",
+}
+
+
+def restated_tags(outcome) -> frozenset[str]:
+    """Tags whose typed dimension the outcome has already fixed."""
+    fixed = {
+        "artifact_type": outcome.artifact_type != _UNKNOWN,
+        "granularity": outcome.granularity in {"aggregate", "sample_specific"},
+        "regulator_types": bool(set(outcome.regulator_types) - {_UNKNOWN}),
+    }
+    return frozenset(tag for tag, dimension in _RESTATING_TAGS.items() if fixed[dimension])
+
+
 def _tag_discriminated_action(
     hypotheses: Sequence[OutcomeHypothesis],
     candidates: Sequence[RecommendedAction],
@@ -168,7 +193,7 @@ def _tag_discriminated_action(
     """
     declared = set()
     for item in hypotheses:
-        outcome_tags = set(item.outcome.selection_tags) - ignore_tags
+        outcome_tags = set(item.outcome.selection_tags) - ignore_tags - restated_tags(item.outcome)
         declared.update(
             outcome_tags & grounded_selection_tags(user_task, item.evidence)
         )

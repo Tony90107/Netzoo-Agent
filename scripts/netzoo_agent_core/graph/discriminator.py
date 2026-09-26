@@ -16,7 +16,7 @@ from ..interpretation.outcome_validation import (
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_semantic_discriminator_messages
-from ..routing.outcome_matching import match_semantic_request
+from ..routing.outcome_matching import match_semantic_request, restated_tags
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
@@ -310,7 +310,11 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
         output_text = result.model_dump_json()
         call_status = "success"
         candidate_tags = {tag for action in actions for tag in OUTPUT_CAPABILITIES[action].selection_tags}
-        selected = set(result.selection_tags)
+        # Log 174: a tag that restates a dimension the outcome fixed cannot
+        # discriminate; it is set aside together with its evidence.
+        restated = restated_tags(interpretation.outcome_hypotheses[0].outcome)
+        selected = set(result.selection_tags) - restated
+        result_evidence = [item for item in result.evidence if item.value not in restated]
         recovered_evidence = None
         # Broad shared tags can leave LIONESS-COEXPRESSION and BONOBO tied even
         # when the request explicitly asks for Bonobo's p-value artifacts.
@@ -344,13 +348,13 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
         hypothesis = interpretation.outcome_hypotheses[0]
         updated = interpretation.model_copy(update={"outcome_hypotheses": [hypothesis.model_copy(update={
             "outcome": hypothesis.outcome.model_copy(update={"selection_tags": sorted(set(hypothesis.outcome.selection_tags) | selected)}),
-            "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
+            "evidence": [*hypothesis.evidence, *result_evidence, *([recovered_evidence] if recovered_evidence else [])],
         })]})
         if not validate_outcome_hypotheses(
             user_task, updated.outcome_hypotheses, updated.request_mode,
         ).valid:
             selection_evidence = [
-                *result.evidence,
+                *result_evidence,
                 *([recovered_evidence] if recovered_evidence else []),
             ]
             tag_actions = [
