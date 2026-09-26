@@ -11021,3 +11021,99 @@ T2-none 兩次被判定為 LIONESS-coexp，依據是模型標出的 `coexpressio
 這些是重述主題的 tag（memory `netzoo-selection-tags-are-inert` 所述的類型），但 `coexpression` 恰好只在
 LIONESS-coexp（與 BONOBO）的 tag 中、不在 COBRA 的 tag 中，所以 tag discriminator 據此選了 LIONESS。
 使用者並沒有表達方法偏好。這是既有機制的行為，不是本輪造成的；是否讓「主題 tag」不參與鑑別，另案處理。
+
+## Log 174｜事前宣告：重述型別欄位的 tag 不再參與鑑別（tag 偏向；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 173 的觀察。使用者指示：先 commit，再處理 tag 偏向。
+候選 patch：`docs/research-log/log174_candidate.patch`（3 個檔案區段，套在 `7e69a0a` 之上，逐字使用）。
+
+### 問題
+
+Log 173 T2-none（沒有表達方法偏好）有 2 次被判定為 LIONESS-coexpression，依據是模型標出的 `coexpression`
+（一次另有 `sample_specific`）。`coexpression` 只重述 artifact 已經是 `coexpression_network`；
+所有候選在比對階段就已符合這個型別條件，所以它不可能正當地區分候選。
+偏向來自註冊表 tag 分佈不一致：COBRA 產出同一種 artifact，tag 中卻沒有 `coexpression`；
+LIONESS 系列支援 aggregate，tag 中卻沒有 `aggregate_network`。
+
+### 做法：改 matcher 規則，不補註冊表資料
+
+補註冊表（例如在 COBRA 加上 `coexpression`）只能修這一處，其他重述型 tag 仍會以同樣方式偏向。
+
+`outcome_matching.py` 新增 `restated_tags(outcome)`：只在 outcome 已經用型別欄位確定對應的值時，才把該 tag 視為重述：
+
+| tag | 對應的型別欄位（已確定時才忽略） |
+| --- | --- |
+| `coexpression`、`multi_omic_network` | `artifact_type` 已知 |
+| `sample_specific`、`aggregate_network` | `granularity` 為 aggregate 或 sample_specific |
+| `mirna_regulation`、`tf_gene_regulation` | `regulator_types` 非空 |
+
+- 確定性的 `_tag_discriminated_action`：宣告的 tag 扣除 `restated_tags`。
+- LLM discriminator（`graph/discriminator.py`）的採納判斷：選出的 tag 扣除 `restated_tags`，
+  **並一併移除這些 tag 的證據條目**（第一版沒移除，導致更新後的 outcome 出現「有證據、沒 tag」的矛盾）。
+- 方法訊號 tag（bayesian、relaxed_graph_matching、tfa、批次相關、lioness_base_compatibility……）照常參與鑑別。
+- 不改任何提示內容（discriminator 提供給模型的選項不變）。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+第一版（未移除證據）：1 failed——`test_provider_algorithm_aliases_converge_on_otter`；**修的是程式碼，不是測試**。
+最終：**2153 passed, 35 skipped, 0 failed**，**不修改任何既有測試**。
+新測試 `tests/test_restating_tags.py`（4 個）：主題 tag 不再決定 COBRA／LIONESS 平手；`bayesian` 仍選出 BONOBO；
+型別欄位未確定時，重述型 tag 仍參與鑑別。在舊程式碼上匯入失敗（`restated_tags` 不存在）。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 新增 `docs/research-log/log174_tag_grid.py`（20619 列：每個合法 outcome × 每個已登錄 tag，附有依據的 explicit 引用） | 4 列改變，全部是 `coexpression`／`sample_specific`，exact→ambiguous；**方法 tag 的列 0 改變**；換工具或遺失候選 0 |
+| Log 136／148／170 網格 | 與 HEAD 逐位元相同（網格的 selection_tags 皆為空） |
+| Log 172 實跑 T2-none 兩次的 discriminator 回傳重跑 | 舊程式碼 2/2 exact LIONESS-coexp → 新程式碼 2/2 保留 {LIONESS-coexp, COBRA} 平手 |
+| 指紋 | 不變 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AF-a** | 逐字套用 patch |
+| **AF-b** | 完整測試 0 failed，不修改任何既有測試 |
+| **AF-c** | tag 網格：方法 tag 的列 0 改變、換工具或遺失候選 0；Log 136／148／170 網格逐位元相同；指紋不變 |
+| **AF-d** | 上述 discriminator 重跑：2/2 保留平手 |
+
+### 實跑（描述性；T2-none、T1-none 各 3 次）
+
+T2-none 預期不再被主題 tag 判定為 LIONESS，而是走到平手並改問實驗問題；
+T1-none 的三個候選共有 `aggregate_network`、`tf_gene_regulation`，本來就不會被這類 tag 鑑別，作為對照。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AF-a～AF-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：T1-none 或 T2-none 中，實驗條件推薦在沒有事實的情況下產生推薦 ≥ 2 次 → 撤回（本輪讓更多平手到達新階段，這是它的捏造風險檢查）。
+
+## Log 175｜Log 174 結果：AF-a～AF-d 全部成立，重述型 tag 規則**保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 174 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AF-a 逐字套用 | **通過** |
+| AF-b 0 failed、不改既有測試 | **通過**（2153 passed, 35 skipped） |
+| AF-c tag 網格、其他網格、指紋 | **通過**：方法 tag 的列 0 改變、換工具或遺失候選 0；Log 136／148／170 與 HEAD 逐位元相同 |
+| AF-d discriminator 重跑 | **通過**：2/2 保留 {LIONESS-coexp, COBRA} 平手 |
+
+實跑（各 3 次）：
+
+| prompt | 結果 |
+| --- | --- |
+| T2-none | 2/3 平手 {LIONESS-coexp, COBRA} → 新階段執行、claims 空、走 B（Log 173 同一句曾有 2/3 被主題 tag 判定為 LIONESS）；1/3 `semantic_fallback` |
+| T1-none（對照） | 3/3 平手 {PANDA, OTTER, GIRAFFE} → 走 B |
+
+Y-2 授權外洩 0/6；Y-3 無事實推薦 0。**全部未觸發：保留。**
+
+### 成因 K（新發現，本輪範圍外）
+
+T2-none 的 fallback：第一輪輸出 schema 錯誤（`text_span` 為空字串）→ 完整 review → 剩下
+`missing_current_input:expression_matrix` 與 `missing_evidence:entity_type=sample`。
+後者是 **Log 172 與 Log 143 之間的不一致**：比對已把軸 artifact（共表現、p-value 矩陣）上的 `sample` 視為任何粒度下的樣本軸，
+但驗證的 V2 只在 sample_specific 時免除 `sample` 的引用；aggregate 時驗證器仍要求它有引用。
+修正方向：驗證的 `sample` 蘊含改用與 Log 172 相同的判準（軸 artifact 上不論粒度都蘊含）。

@@ -1,0 +1,180 @@
+diff --git a/scripts/netzoo_agent_core/graph/discriminator.py b/scripts/netzoo_agent_core/graph/discriminator.py
+index 4f32ea3..48f7439 100644
+--- a/scripts/netzoo_agent_core/graph/discriminator.py
++++ b/scripts/netzoo_agent_core/graph/discriminator.py
+@@ -16,7 +16,7 @@ from ..interpretation.outcome_validation import (
+ from ..interpretation.provider_fallback import _is_fatal_exception
+ from ..interpretation.semantic_repair import semantic_payload
+ from ..llm import append_llm_usage, build_semantic_discriminator_messages
+-from ..routing.outcome_matching import match_semantic_request
++from ..routing.outcome_matching import match_semantic_request, restated_tags
+ from .context import _GraphContext, preflight_budget, record_event
+ from .structured_calls import _serialized_structured_input, _validation_issue_types
+ 
+@@ -310,7 +310,11 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
+         output_text = result.model_dump_json()
+         call_status = "success"
+         candidate_tags = {tag for action in actions for tag in OUTPUT_CAPABILITIES[action].selection_tags}
+-        selected = set(result.selection_tags)
++        # Log 174: a tag that restates a dimension the outcome fixed cannot
++        # discriminate; it is set aside together with its evidence.
++        restated = restated_tags(interpretation.outcome_hypotheses[0].outcome)
++        selected = set(result.selection_tags) - restated
++        result_evidence = [item for item in result.evidence if item.value not in restated]
+         recovered_evidence = None
+         # Broad shared tags can leave LIONESS-COEXPRESSION and BONOBO tied even
+         # when the request explicitly asks for Bonobo's p-value artifacts.
+@@ -344,13 +348,13 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
+         hypothesis = interpretation.outcome_hypotheses[0]
+         updated = interpretation.model_copy(update={"outcome_hypotheses": [hypothesis.model_copy(update={
+             "outcome": hypothesis.outcome.model_copy(update={"selection_tags": sorted(set(hypothesis.outcome.selection_tags) | selected)}),
+-            "evidence": [*hypothesis.evidence, *result.evidence, *([recovered_evidence] if recovered_evidence else [])],
++            "evidence": [*hypothesis.evidence, *result_evidence, *([recovered_evidence] if recovered_evidence else [])],
+         })]})
+         if not validate_outcome_hypotheses(
+             user_task, updated.outcome_hypotheses, updated.request_mode,
+         ).valid:
+             selection_evidence = [
+-                *result.evidence,
++                *result_evidence,
+                 *([recovered_evidence] if recovered_evidence else []),
+             ]
+             tag_actions = [
+diff --git a/scripts/netzoo_agent_core/routing/outcome_matching.py b/scripts/netzoo_agent_core/routing/outcome_matching.py
+index 068941c..151080f 100644
+--- a/scripts/netzoo_agent_core/routing/outcome_matching.py
++++ b/scripts/netzoo_agent_core/routing/outcome_matching.py
+@@ -139,6 +139,31 @@ def _stated_dimensions_match(
+     )
+ 
+ 
++# Tags that only restate a typed dimension (Log 174). Once the outcome fixes
++# that dimension, every candidate already satisfies it by construction, so the
++# tag cannot separate them; letting it try only rewards whichever capability
++# happens to list it -- `coexpression` is on LIONESS-coexpression and BONOBO
++# but not on COBRA, which produces the same artifact.
++_RESTATING_TAGS = {
++    "coexpression": "artifact_type",
++    "multi_omic_network": "artifact_type",
++    "sample_specific": "granularity",
++    "aggregate_network": "granularity",
++    "mirna_regulation": "regulator_types",
++    "tf_gene_regulation": "regulator_types",
++}
++
++
++def restated_tags(outcome) -> frozenset[str]:
++    """Tags whose typed dimension the outcome has already fixed."""
++    fixed = {
++        "artifact_type": outcome.artifact_type != _UNKNOWN,
++        "granularity": outcome.granularity in {"aggregate", "sample_specific"},
++        "regulator_types": bool(set(outcome.regulator_types) - {_UNKNOWN}),
++    }
++    return frozenset(tag for tag, dimension in _RESTATING_TAGS.items() if fixed[dimension])
++
++
+ def _tag_discriminated_action(
+     hypotheses: Sequence[OutcomeHypothesis],
+     candidates: Sequence[RecommendedAction],
+@@ -168,7 +193,7 @@ def _tag_discriminated_action(
+     """
+     declared = set()
+     for item in hypotheses:
+-        outcome_tags = set(item.outcome.selection_tags) - ignore_tags
++        outcome_tags = set(item.outcome.selection_tags) - ignore_tags - restated_tags(item.outcome)
+         declared.update(
+             outcome_tags & grounded_selection_tags(user_task, item.evidence)
+         )
+diff --git a/tests/test_restating_tags.py b/tests/test_restating_tags.py
+new file mode 100644
+index 0000000..37edcab
+--- /dev/null
++++ b/tests/test_restating_tags.py
+@@ -0,0 +1,87 @@
++"""Log 174: a tag that restates a fixed typed dimension cannot pick a workflow."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts import LLMUsage  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    CapabilityMatch,
++    OutcomeEvidence,
++    OutcomeHypothesis,
++    RequestedOutcome,
++    SemanticInterpretation,
++)
++from netzoo_agent_core.graph.discriminator import invoke_semantic_discriminator  # noqa: E402
++from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
++from netzoo_agent_core.routing.outcome_matching import restated_tags  # noqa: E402
++
++TASK = "Which workflow gives one cohort-level gene co-expression network from my expression matrix?"
++
++
++class _Recorder:
++    def append(self, *args, **kwargs):
++        pass
++
++
++def _hypothesis(granularity="aggregate") -> OutcomeHypothesis:
++    return OutcomeHypothesis(
++        outcome=RequestedOutcome(operation="infer", input_artifacts=["expression_matrix"],
++                                 artifact_type="coexpression_network", entity_types=["gene"],
++                                 granularity=granularity),
++        confidence=0.9,
++        evidence=[OutcomeEvidence(dimension="artifact_type", value="coexpression_network",
++                                  source="explicit", text_span="gene co-expression network",
++                                  rationale="t")],
++    )
++
++
++def _discriminate(tags, spans, candidates, hypothesis):
++    payload = {"selection_tags": tags, "evidence": [
++        {"dimension": "selection_tag", "value": tag, "source": "explicit",
++         "text_span": span, "rationale": "t"} for tag, span in zip(tags, spans)
++    ]}
++    context = SimpleNamespace(
++        semantic_discriminator=SimpleNamespace(invoke=lambda _m: {"parsed": payload, "raw": object()}),
++        semantic_claims=False, semantic_model_name="fixture", router_max_tokens=200,
++        task_token_budget=10_000, recorder=_Recorder(), price_catalog=PriceCatalog(),
++    )
++    interpretation = SemanticInterpretation(request_mode="guidance", semantic_goal="g",
++                                            outcome_hypotheses=[hypothesis])
++    match = CapabilityMatch(status="ambiguous", hypothesis_actions=list(candidates))
++    return invoke_semantic_discriminator(context, {"run_id": "x"}, TASK, interpretation,
++                                         match, LLMUsage(), [])[1]
++
++
++def test_topic_tag_no_longer_decides_the_cobra_lioness_tie():
++    """The recorded Log 172 T2-none shape."""
++    match = _discriminate(["coexpression"], ["gene co-expression network"],
++                          ["run_lioness_coexpression", "run_cobra"], _hypothesis())
++
++    assert match.status == "ambiguous"
++    assert set(match.hypothesis_actions) == {"run_lioness_coexpression", "run_cobra"}
++
++
++def test_a_method_tag_still_decides():
++    match = _discriminate(["bayesian"], ["gene co-expression network"],
++                          ["run_lioness_coexpression", "run_bonobo"],
++                          _hypothesis(granularity="sample_specific"))
++
++    assert match.status == "exact"
++    assert match.matched_actions == ["run_bonobo"]
++
++
++@pytest.mark.parametrize("field, value, tag", [
++    ("artifact_type", "unknown", "coexpression"),
++    ("granularity", "unknown", "sample_specific"),
++])
++def test_a_restating_tag_still_counts_while_its_dimension_is_open(field, value, tag):
++    outcome = _hypothesis().outcome.model_copy(update={field: value})
++
++    assert tag not in restated_tags(outcome)
