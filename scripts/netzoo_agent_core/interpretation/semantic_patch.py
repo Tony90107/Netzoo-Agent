@@ -148,11 +148,17 @@ def apply_semantic_patch(
         evidence=evidence,
         assumptions=base.assumptions if patch.assumptions is None else patch.assumptions,
     )
+    # The patch adjudicates one hypothesis; the others are first-pass values
+    # the review did not touch, so they are carried forward unchanged. Keeping
+    # only the patched one discarded a valid reading whenever the rejection
+    # was about a different hypothesis (Log 150).
+    hypotheses = list(proposal.outcome_hypotheses)
+    hypotheses[index] = hypothesis
     return (
         SemanticInterpretation(
             request_mode=proposal.request_mode if patch.request_mode is None else patch.request_mode,
             semantic_goal=proposal.semantic_goal if patch.semantic_goal is None else patch.semantic_goal,
-            outcome_hypotheses=[hypothesis],
+            outcome_hypotheses=hypotheses,
         ),
         retired,
     )
