@@ -124,6 +124,12 @@ class TaskDecision(BaseModel):
     advisory_recommendation: AdvisoryRecommendation | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
+    # Folders whose file contents routing read to advise among tied
+    # workflows (Log 154); lets every reply say so truthfully. Omitted from
+    # dumps while empty.
+    inspected_directories: list[str] = Field(
+        default_factory=list, exclude_if=lambda value: not value,
+    )
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None

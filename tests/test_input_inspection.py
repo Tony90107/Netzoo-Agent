@@ -1,13 +1,15 @@
-"""Log 152: advice from the file names in a folder the user named."""
+"""Log 154: advice from the *contents* of a folder the user named, not its file names."""
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).parents[1]
+TOY = ROOT / "data" / "lioness-toy"
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
@@ -37,63 +39,105 @@ def _decision(**update) -> TaskDecision:
     return TaskDecision(**fields)
 
 
-def _folder(root: Path, *names: str) -> str:
+def _folder(root: Path, files: dict[str, str]) -> str:
+    """files maps the name to write -> the toy file whose content it gets."""
     folder = root / "data" / "study"
     folder.mkdir(parents=True)
-    for name in names:
-        (folder / name).write_text("x\n")
+    for name, source in files.items():
+        shutil.copy(TOY / source, folder / name)
     return "data/study/"
 
 
 def _task(written: str) -> str:
-    return f"{written} has expression, motif and PPI files. I want per-patient TF networks."
+    return f"{written} has my data. I want per-patient TF networks."
 
 
-def test_folder_without_a_mirna_list_recommends_the_panda_variant(tmp_path):
-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
+PANDA_SET = {"expression.tsv": "expression.tsv", "motif.tsv": "motif-panda.tsv", "ppi.tsv": "ppi.tsv"}
+
+
+def test_contents_without_a_mirna_list_recommend_the_panda_variant(tmp_path):
+    written = _folder(tmp_path, PANDA_SET)
     decision = _decision()
 
     advised = advise_from_inspected_inputs(_task(written), decision, root=tmp_path)
 
     assert advised.advisory_recommendation.action == "run_lioness_panda"
-    assert [c.value for c in advised.advisory_recommendation.conditions] == ["missing:mirna_prior"]
+    assert advised.inspected_directories == [written]
     for field in AUTHORITY:
         assert getattr(advised, field) == getattr(decision, field), field
 
 
-def test_folder_with_every_prior_recommends_nothing(tmp_path):
-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv", "mirna.txt")
-    decision = _decision()
+def test_contents_decide_when_names_say_nothing(tmp_path):
+    written = _folder(tmp_path, {
+        "table_01.dat": "expression.tsv", "table_02.dat": "motif-panda.tsv", "table_03.dat": "ppi.tsv",
+    })
 
-    assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
+    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+
+    assert advised.advisory_recommendation.action == "run_lioness_panda"
+    values = {c.value for c in advised.advisory_recommendation.conditions}
+    assert "validated:motif_file=table_02.dat" in values
+    assert "validated:ppi_file=table_03.dat" in values
+
+
+def test_a_file_named_like_a_mirna_list_does_not_count_unless_its_content_is_one(tmp_path):
+    written = _folder(tmp_path, {**PANDA_SET, "mirna.txt": "ppi.tsv"})
+
+    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+
+    assert advised.advisory_recommendation.action == "run_lioness_panda"
+
+
+def test_a_mirna_list_with_an_uninformative_name_still_counts(tmp_path):
+    written = _folder(tmp_path, {
+        "expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
+        "ppi.tsv": "ppi.tsv", "list_04.dat": "mirna.txt",
+    })
+
+    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+
+    assert advised.advisory_recommendation is None
+    assert advised.inspected_directories == [written]
+
+
+def test_reading_without_recommending_still_says_files_were_read(tmp_path):
+    written = _folder(tmp_path, {
+        "expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
+        "ppi.tsv": "ppi.tsv", "list_04.dat": "mirna.txt",
+    })
+    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+
+    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+
+    assert "No files were inspected" not in answer
+    assert f"I read the files in `{written}` only to check which inputs they contain" in answer
+
+
+def test_form_a_reports_what_validated_by_content(tmp_path):
+    written = _folder(tmp_path, PANDA_SET)
+    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
+
+    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+
+    assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
+    assert "`motif.tsv` as the TF-motif prior" in answer
+    assert "**LIONESS-PUMA** — would also need a miRNA list." in answer
+    assert "No files were inspected" not in answer
 
 
 @pytest.mark.parametrize("written", ["../outside/", "data/missing/"])
-def test_folders_outside_the_root_or_missing_are_ignored(tmp_path, written):
-    (tmp_path.parent / "outside").mkdir(exist_ok=True)
-    (tmp_path.parent / "outside" / "motif.tsv").write_text("x\n")
-    (tmp_path.parent / "outside" / "ppi.tsv").write_text("x\n")
+def test_folders_outside_the_root_or_missing_are_never_read(tmp_path, written):
+    outside = tmp_path.parent / "outside"
+    outside.mkdir(exist_ok=True)
+    shutil.copy(TOY / "motif-panda.tsv", outside / "motif.tsv")
 
     assert named_directories(_task(written), root=tmp_path) == []
     decision = _decision()
     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
 
 
-def test_candidates_with_the_same_required_priors_are_left_alone(tmp_path):
-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
+def test_ties_outside_the_panda_family_are_not_read(tmp_path):
+    written = _folder(tmp_path, PANDA_SET)
     decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
 
     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
-
-
-def test_form_a_names_the_folder_and_says_contents_were_not_read(tmp_path):
-    written = _folder(tmp_path, "expression.tsv", "motif.tsv", "ppi.tsv")
-    advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
-
-    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
-
-    assert answer.startswith("The file names in `data/study/` look like a")
-    assert "**LIONESS-PANDA** fits" in answer
-    assert "**LIONESS-PUMA** — would also need a miRNA list." in answer
-    assert "no file contents were read" in answer
-    assert "No files were inspected" not in answer

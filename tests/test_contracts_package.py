@@ -154,7 +154,7 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # registry-owned WorkflowPolicySpec input_validator. The direct contract tests
 # for those fields remain the source of meaning; these hashes detect later drift.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "dcaf4f6a1629a4f50528ac01db786427a8422633a08b2b1bee81bfa181fc5ade",
+    "TaskDecision": "1cdd307d67238a69b0d8d43f7794c5756bbe7606a4ae125fa7b4d31edb7c8ffd",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

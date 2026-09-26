@@ -1,51 +1,65 @@
-"""Form A for an advisory recommendation from a named folder's file names (Log 152)."""
+"""Replies for advice drawn from a named folder's file contents (Log 154)."""
 
 from __future__ import annotations
 
-from workflow_registry import OUTPUT_CAPABILITIES
-
 from ..presentation import _ui_text
 
-__all__ = ["render_inspected_recommendation"]
+__all__ = ["inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
 
-
-_INSPECTED_PRIOR_LABELS = {
-    "motif_prior": "TF-motif prior",
-    "ppi_prior": "protein-interaction prior",
-    "mirna_prior": "miRNA list",
+_ROLE_LABELS = {
+    "expression_file": "expression matrix",
+    "motif_file": "TF-motif prior",
+    "ppi_file": "protein-interaction prior",
+    "mirna_file": "miRNA list",
 }
+_NOT_INSPECTED = "No files were inspected and no analysis ran."
+
+
+def inspection_footer(directories: list[str]) -> str:
+    folders = ", ".join(f"`{item}`" for item in directories)
+    return (
+        f"I read the files in {folders} only to check which inputs they contain; "
+        "no analysis ran."
+    )
+
+
+def with_inspection_footer(text: str | None, directories: list[str]) -> str | None:
+    """Replace the 'no files were inspected' footer once routing read a folder."""
+    if text is None or not directories:
+        return text
+    return text.replace(_NOT_INSPECTED, inspection_footer(directories))
 
 
 def render_inspected_recommendation(decision, policy, spec, details: list[str]) -> str:
-    """Form A from a named folder's file names (Log 152); contents are never read."""
+    """Form A: which files validated for which roles, and what nothing validated as."""
     recommendation = decision.advisory_recommendation
     folder = recommendation.conditions[0].text_span
-    missing = [item.value.removeprefix("missing:") for item in recommendation.conditions]
-    missing_text = " or ".join(_INSPECTED_PRIOR_LABELS.get(item, item) for item in missing)
-    needs = OUTPUT_CAPABILITIES[recommendation.action].required_input_artifacts
-    has_text = " and ".join(_INSPECTED_PRIOR_LABELS.get(item, item) for item in sorted(needs))
+    validated = [
+        item.value.removeprefix("validated:").split("=", 1)
+        for item in recommendation.conditions if item.value.startswith("validated:")
+    ]
+    missing = [
+        item.value.removeprefix("missing:")
+        for item in recommendation.conditions if item.value.startswith("missing:")
+    ]
+    found = ", ".join(
+        f"`{name}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
+    )
+    missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
     lines = [
-        f"The file names in `{folder}` look like a {has_text}, and none looks like a "
-        f"{missing_text}, so **{spec.workflow}** fits: it needs no {missing_text}.",
+        f"By content, the files in `{folder}` validate as a complete input set for "
+        f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
+        f"so **{spec.workflow}** fits.",
         "\n".join(details),
     ]
     others = [
-        f"- **{policy.workflows[action].workflow}** — would also need a "
-        + " and ".join(
-            _INSPECTED_PRIOR_LABELS.get(item, item)
-            for item in sorted(OUTPUT_CAPABILITIES[action].required_input_artifacts - needs)
-        ) + "."
+        f"- **{policy.workflows[action].workflow}** — would also need a {missing_text}."
         for action in decision.hypothesis_actions
         if action != recommendation.action and action in policy.workflows
-        and action in OUTPUT_CAPABILITIES
-        and OUTPUT_CAPABILITIES[action].required_input_artifacts - needs
     ]
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
     if decision.clarification_question:
         lines.append(decision.clarification_question)
-    lines.append(
-        f"Only the file names in `{folder}` were listed; no file contents were read "
-        "and no analysis ran."
-    )
+    lines.append(inspection_footer(decision.inspected_directories or [folder]))
     return _ui_text("\n\n".join(lines))
