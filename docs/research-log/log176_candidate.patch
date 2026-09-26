@@ -1,0 +1,31 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/outcome_validation.py b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+index 864a569..f5f37bf 100644
+--- a/scripts/netzoo_agent_core/interpretation/outcome_validation.py
++++ b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+@@ -174,6 +174,9 @@ def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
+         node_types = rule.entities - {"sample"}
+         if len(node_types) == 1:
+             entailed.update(node_types)
++        # `sample` is this artifact's axis at any granularity, as matching
++        # already reads it (Log 172); validation now agrees (Log 176).
++        entailed.add("sample")
+     return frozenset(entailed)
+ 
+ 
+diff --git a/tests/test_sample_axis_evidence.py b/tests/test_sample_axis_evidence.py
+index c90e521..5187037 100644
+--- a/tests/test_sample_axis_evidence.py
++++ b/tests/test_sample_axis_evidence.py
+@@ -56,9 +56,10 @@ def test_sample_specific_granularity_carries_the_sample_entity():
+     assert validate_outcome_hypotheses(TASK, [_hypothesis()]).valid
+ 
+ 
+-def test_aggregate_request_still_needs_a_quote_for_sample():
++def test_aggregate_request_needs_no_quote_for_the_sample_axis_either():
++    """Log 176: on an axis artifact `sample` is the axis at any granularity (Log 172)."""
+     issues = validate_outcome_hypotheses(TASK, [_hypothesis("aggregate")]).issues
+-    assert "hypothesis[0].missing_evidence:entity_type=sample" in issues
++    assert "hypothesis[0].missing_evidence:entity_type=sample" not in issues
+     assert "hypothesis[0].missing_evidence:entity_type=gene" not in issues
+ 
+ 

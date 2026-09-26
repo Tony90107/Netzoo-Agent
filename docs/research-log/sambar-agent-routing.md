@@ -11117,3 +11117,77 @@ T2-none 的 fallback：第一輪輸出 schema 錯誤（`text_span` 為空字串�
 後者是 **Log 172 與 Log 143 之間的不一致**：比對已把軸 artifact（共表現、p-value 矩陣）上的 `sample` 視為任何粒度下的樣本軸，
 但驗證的 V2 只在 sample_specific 時免除 `sample` 的引用；aggregate 時驗證器仍要求它有引用。
 修正方向：驗證的 `sample` 蘊含改用與 Log 172 相同的判準（軸 artifact 上不論粒度都蘊含）。
+
+## Log 176｜事前宣告：驗證的 `sample` 蘊含與 Log 172 的比對判準一致（成因 K；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 175 的成因 K。使用者指示：先 commit，再處理成因 K。
+候選 patch：`docs/research-log/log176_candidate.patch`（2 個檔案區段，套在 `ef16491` 之上，逐字使用）。
+
+### 形狀
+
+`outcome_validation._axis_entailed_entities` 的軸 artifact 分支（本體列有 `sample` 且允許 sample_specific：
+共表現網路、p-value 矩陣）除了蘊含唯一的節點類型（gene），**也蘊含 `sample` 本身，不論粒度**。
+與 Log 172 的比對判準相同。其他 artifact（例如只有 aggregate 的 pathway 分數矩陣）不受影響。
+
+### 與既有測試的關係
+
+推翻 Log 143 自己加入的 `test_sample_axis_evidence.py::test_aggregate_request_still_needs_a_quote_for_sample`：
+當時保守地讓 aggregate 仍需 `sample` 引用；Log 172 已把原則改為「軸 artifact 上的 sample 在任何粒度都是軸」。
+該測試改為斷言 aggregate 也不需 `sample`（與 `gene`）的引用。這是唯一的既有測試修改。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 完整測試 | 2153 passed, 35 skipped, **0 failed**（含上述一處修改） |
+| Log 143 驗證網格 | 54 列改變，**全部**是軸 artifact 上移除 `missing_evidence:entity_type=sample`；新增問題 0；範圍外放寬 0 |
+| Log 136／148／170 比對網格 | 與 HEAD 逐位元相同（驗證不在 matcher 中） |
+| 指紋 | 不變 |
+| 錄下的 18 次有解讀的 fallback 重算 | 救回 1 次（Log 168 T2-lioness 的 fallback，唯一問題就是 `sample`）；Log 174 T2-none 的 `sample` 問題消失但仍有 `missing_current_input`（如事前說明，救不回）；合法→不合法 0 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AG-a** | 逐字套用 patch |
+| **AG-b** | 完整測試 0 failed；既有測試只有上述一處修改 |
+| **AG-c** | 驗證網格：新增 0、範圍外放寬 0；比對網格逐位元相同；指紋不變 |
+| **AG-d** | fallback 重算：救回 Log 168 #15；合法→不合法 0 |
+
+### 實跑（描述性；T2-lioness、T2-none 各 3 次）
+
+### 撤回條件（寫死）
+
+- **Y-1**：AG-a～AG-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+
+## Log 177｜Log 176 結果：AG-a～AG-d 全部成立，成因 K 修正**保留**；平手 2 達到分母門檻
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 176 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AG-a 逐字套用 | **通過** |
+| AG-b 0 failed、只有一處既有測試修改 | **通過**（2153 passed, 35 skipped） |
+| AG-c 驗證網格、比對網格、指紋 | **通過**（驗證網格與 worktree 逐位元相同；比對網格與 HEAD 相同） |
+| AG-d fallback 重算 | **通過**：救回 Log 168 #15；合法→不合法 0 |
+
+實跑（各 3 次）：**6/6 沒有 `semantic_fallback`**。
+
+| prompt | 結果 |
+| --- | --- |
+| T2-lioness | 3/3 平手 {LIONESS-coexp, COBRA} → 推薦 **LIONESS-coexp**（`covariates:no` ← 「there are no batch or site covariates to adjust for.」） |
+| T2-none | 3/3 平手 → 新階段執行、claims 空、走 B |
+
+Y-2 授權外洩 0/6。**全部未觸發：保留。**
+
+### 三組方法平手的累計實跑（描述性；依 Log 120／124 不作比率主張）
+
+| 平手 | 有事實、新階段執行 | 推薦正確 | 推薦錯誤 | 無事實時的推薦 |
+| --- | ---: | ---: | ---: | ---: |
+| BONOBO／LIONESS-coexp（Log 142、167） | 5 | 5 | 0 | 0 |
+| PANDA／OTTER／GIRAFFE（Log 169） | 9 | 9 | 0 | 0 |
+| COBRA／LIONESS-coexp（Log 173、177） | 5 | 5 | 0 | 0 |
+
+每一條推薦引用都已逐一人工判讀，全部正確。這些是不同輪次、共享漂移中 provider 狀態的觀察，不是獨立樣本。
