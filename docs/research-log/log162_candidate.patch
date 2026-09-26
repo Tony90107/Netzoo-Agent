@@ -1,0 +1,115 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 7b7f7bc..48e2d41 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -359,6 +359,12 @@ def _render_outcome_clarification(
+     )
+ 
+ 
++def downstream_section(action: str) -> str:
++    """The registered downstream-use notes for a workflow, or '' (Log 160/162)."""
++    notes = "".join(f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(action, ()))
++    return f"Downstream use of the sample-specific networks:\n{notes}" if notes else ""
++
++
+ def _condition_label(condition: str) -> str:
+     axis, _, value = condition.partition(":")
+     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
+@@ -376,6 +382,7 @@ def _render_advisory_recommendation(
+     if all(item.axis == "inspected_inputs" for item in recommendation.conditions):
+         return render_inspected_recommendation(
+             decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
++            downstream_section(recommendation.action),
+         )
+     quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
+     reasons = "; ".join(
+@@ -397,6 +404,8 @@ def _render_advisory_recommendation(
+         )
+     if others:
+         lines.append("Other compatible option(s):\n" + "\n".join(others))
++    if downstream := downstream_section(recommendation.action):
++        lines.append(downstream.rstrip("\n"))
+     if decision.clarification_question:
+         lines.append(decision.clarification_question)
+     lines.append("No files were inspected and no analysis ran.")
+@@ -904,10 +913,8 @@ def render_workflow_composition_guidance(
+         for field_name in biological_inputs
+     )
+     aggregate, final = registered[0], registered[-1]
+-    downstream = "".join(
+-        f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(final.action, ())
+-    )
+-    downstream = f"Downstream use of the sample-specific networks:\n{downstream}\n" if downstream else ""
++    downstream = downstream_section(final.action)
++    downstream = f"{downstream}\n" if downstream else ""
+     requested = decision.requested_outcome
+     final_granularities = final.output_capability.granularities
+     if (
+diff --git a/scripts/netzoo_agent_core/interpretation/inspected_answers.py b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+index d8b3f32..44f4b12 100644
+--- a/scripts/netzoo_agent_core/interpretation/inspected_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+@@ -30,7 +30,9 @@ def with_inspection_footer(text: str | None, directories: list[str]) -> str | No
+     return text.replace(_NOT_INSPECTED, inspection_footer(directories))
+ 
+ 
+-def render_inspected_recommendation(decision, policy, spec, details: list[str]) -> str:
++def render_inspected_recommendation(
++    decision, policy, spec, details: list[str], downstream: str = "",
++) -> str:
+     """Form A: which files validated for which roles, and what nothing validated as."""
+     recommendation = decision.advisory_recommendation
+     folder = recommendation.conditions[0].text_span
+@@ -59,6 +61,8 @@ def render_inspected_recommendation(decision, policy, spec, details: list[str])
+     ]
+     if others:
+         lines.append("Other compatible option(s):\n" + "\n".join(others))
++    if downstream:
++        lines.append(downstream.rstrip("\n"))
+     if decision.clarification_question:
+         lines.append(decision.clarification_question)
+     lines.append(inspection_footer(decision.inspected_directories or [folder]))
+diff --git a/tests/test_downstream_guidance.py b/tests/test_downstream_guidance.py
+index 82de394..3deb88c 100644
+--- a/tests/test_downstream_guidance.py
++++ b/tests/test_downstream_guidance.py
+@@ -46,3 +46,39 @@ def test_sample_specific_guidance_explains_targeting_clinical_data_and_dependenc
+     assert "clinical table" in answer
+     assert "not statistically independent" in answer
+     assert answer.rstrip().endswith("No files were inspected and no analysis ran.")
++
++
++# Log 162: the advisory (form A) replies carry the same notes for the recommended workflow.
++import shutil  # noqa: E402
++
++from netzoo_agent_core.graph.input_inspection import advise_from_inspected_inputs  # noqa: E402
++from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
++
++
++def _tie() -> TaskDecision:
++    outcome = RequestedOutcome(operation="infer", artifact_type="regulatory_network",
++                               granularity="sample_specific")
++    return TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
++        confidence=1.0, reason="guidance", requested_outcome=outcome,
++        outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=0.9)],
++        hypothesis_actions=["run_lioness_panda", "run_lioness_puma"],
++        capability_match_status="ambiguous",
++        clarification_question="Which regulator type should the network model?",
++    )
++
++
++def test_folder_based_recommendation_includes_the_downstream_notes(tmp_path):
++    folder = tmp_path / "data" / "study"
++    folder.mkdir(parents=True)
++    toy = ROOT / "data" / "lioness-toy"
++    for name, source in (("expression.tsv", "expression.tsv"), ("motif.tsv", "motif-panda.tsv"),
++                         ("ppi.tsv", "ppi.tsv")):
++        shutil.copy(toy / source, folder / name)
++    advised = advise_from_inspected_inputs("data/study/ has my data.", _tie(), root=tmp_path)
++
++    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
++
++    assert "Downstream use of the sample-specific networks:" in answer
++    assert answer.index("Downstream use") < answer.index("Should I use LIONESS-PANDA")
++    assert "clinical table" in answer

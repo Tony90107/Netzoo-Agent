@@ -10519,3 +10519,67 @@ Y-2 授權外洩 0/3。**全部未觸發：保留。**
    而且修補後 hyp0 反而少了 `artifact_type` 的引用（第一輪缺的是 granularity 引用）；
    第一輪也沒有任何合法讀法。Log 156、Log 158 的規則在這種情況下都不適用。
    這是模型修補本身的品質問題，另案記錄。
+
+## Log 162｜事前宣告：A 版（建議型）回覆也附上後續用途說明（尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 161 的觀察 1。使用者指示：先 commit Log 160／161，再把說明補到 A 版回覆。
+候選 patch：`docs/research-log/log162_candidate.patch`（3 個檔案區段，套在 `d0544bf` 之上，逐字使用）。
+
+### 形狀
+
+- `concept_answers.py` 新增共用函式 `downstream_section(action)`，讀取 `DOWNSTREAM_ANALYSES`；
+  組合回覆改用它（輸出不變）。
+- 兩個 A 版渲染器在「其他選項」之後、最後的問題之前加入該段落：
+  依實驗條件推薦（Log 139）與依資料夾內容推薦（Log 154，`inspected_answers.py`，新增選填參數 `downstream`）。
+- 只有被推薦的工作流程在 `DOWNSTREAM_ANALYSES` 中有項目時才出現；目前只有 LIONESS-PANDA／PUMA。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2128 passed, 35 skipped, 0 failed**。既有測試的修改只有一處：
+`tests/test_downstream_guidance.py`（Log 160 加入）**只附加** 1 個測試（+36／−0）。
+schema digest 改變：無。`concept_answers.py` 988／1000 行。
+
+### 已在 worktree 量得的事實（以錄下的決策重新渲染，新舊程式碼對照）
+
+| 回覆 | 結果 |
+| --- | --- |
+| 組合回覆（Log 160 實跑 trial 2） | **逐位元相同** |
+| 依資料夾內容推薦 LIONESS-PANDA（Log 160 實跑 trial 1） | 新增後續用途段落，位於「其他選項」與問題之間；其餘不變 |
+| 依實驗條件推薦 BONOBO（Log 148 實跑 F1） | **逐位元相同**（BONOBO 沒有後續用途項目） |
+| 三個網格、指紋 | 不變 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AA-a** | 逐字套用 patch |
+| **AA-b** | 完整測試 0 failed；既有測試只有上述附加；schema digest 不變 |
+| **AA-c** | 三個網格逐位元相同；指紋不變 |
+| **AA-d** | 上表三種回覆重新渲染：組合與 BONOBO 逐位元相同；資料夾推薦含後續用途段落 |
+
+### 實跑（描述性；`case-4` ×3）
+
+記錄每次回覆的形態與是否含後續用途段落。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AA-a～AA-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+
+## Log 163｜Log 162 結果：AA-a～AA-d 全部成立，A 版回覆的後續用途說明**保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 162 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AA-a 逐字套用 | **通過** |
+| AA-b 0 failed、只有附加、digest 不變 | **通過**（2128 passed, 35 skipped；digest 改變：無） |
+| AA-c 三個網格、指紋 | **通過** |
+| AA-d 三種回覆重新渲染 | **通過**：組合、BONOBO 逐位元相同；資料夾推薦含後續用途段落；主 repo 與 worktree 的渲染結果相同 |
+
+實跑（`case-4` ×3）：3/3 exact LIONESS-PANDA 的組合回覆，**3/3 含後續用途段落**；
+這次沒有平手，所以 A 版回覆沒有在實跑中出現，它的證據是 AA-d 的離線重新渲染。
+Y-2 授權外洩 0/3。**全部未觸發：保留。**
+
+現在 Case 4 的三種回覆形態（組合回覆、依資料夾內容推薦、以及它們共用的頁尾規則）都會附上後續用途說明。
