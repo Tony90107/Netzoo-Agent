@@ -121,6 +121,20 @@ def _supported_entities(
             supported = capability.entity_types
     if granularity == "sample_specific" and "sample_specific" in capability.granularities:
         return supported | {"sample"}
+    # An artifact whose ontology lists `sample` and allows a per-sample form
+    # has `sample` as its axis, never as a node: a co-expression network is a
+    # network of genes at any granularity. The same predicate entails the
+    # entity in evidence validation (Log 143); matching now agrees (Log 172).
+    semantics = ARTIFACT_SEMANTICS.get(artifact_type)
+    if (
+        semantics is not None
+        and semantics.entities is not None
+        and "sample" in semantics.entities
+        and semantics.granularities is not None
+        and "sample_specific" in semantics.granularities
+        and artifact_type in _supported_artifacts(capability)
+    ):
+        return supported | {"sample"}
     return supported
 
 
