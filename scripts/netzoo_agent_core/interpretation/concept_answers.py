@@ -360,9 +360,11 @@ def _render_outcome_clarification(
 
 
 def downstream_section(action: str) -> str:
-    """The registered downstream-use notes for a workflow, or '' (Log 160/162)."""
-    notes = "".join(f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(action, ()))
-    return f"Downstream use of the sample-specific networks:\n{notes}" if notes else ""
+    """The registered downstream-use notes for a workflow, or '' (Log 160/162/166)."""
+    if action not in DOWNSTREAM_ANALYSES:
+        return ""
+    heading, notes = DOWNSTREAM_ANALYSES[action]
+    return heading + "\n" + "".join(f"   - {note}\n" for note in notes)
 
 
 def _condition_label(condition: str) -> str:

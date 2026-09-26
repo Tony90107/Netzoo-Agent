@@ -244,8 +244,9 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
 
 
 # What a user typically does with a workflow's output next, and what that
-# needs beyond the workflow's own inputs (Log 160). Rendered by the
-# deterministic composition guidance only; never part of a model prompt.
+# needs beyond the workflow's own inputs (Log 160, extended in Log 166). Each
+# entry is (heading, notes). Rendered by deterministic guidance only; never
+# part of a model prompt. General advice: the analysis design stays the user's.
 _LIONESS_TARGETING_NOTES = (
     "Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights "
     "to its targets) or a gene's indegree, computed in each sample's network, gives a "
@@ -258,9 +259,79 @@ _LIONESS_TARGETING_NOTES = (
     "statistically independent; account for this in the association test, which is a "
     "later analysis step rather than part of this workflow.",
 )
-DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, ...]] = {
-    "run_lioness_panda": _LIONESS_TARGETING_NOTES,
-    "run_lioness_puma": _LIONESS_TARGETING_NOTES,
+_AGGREGATE_TARGETING_NOTES = (
+    "Targeting scores: a regulator's outdegree or a gene's indegree summarizes the "
+    "network per regulator or per gene; comparing them between networks built "
+    "separately for each condition shows regulators whose targeting changes.",
+    "Comparing conditions needs one run per condition on matched inputs (the same "
+    "genes and the same motif and PPI priors); edge weights are comparable only within "
+    "that shared setup.",
+)
+_SAMPLE_ANNOTATION_NOTE = (
+    "Relating per-sample results to sample-level variables needs an annotation or "
+    "clinical table keyed by the same sample IDs, supplied separately."
+)
+DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
+    "run_lioness_panda": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
+    "run_lioness_puma": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
+    "run_panda": ("Downstream use of the aggregate network:", (
+        *_AGGREGATE_TARGETING_NOTES,
+        "For per-sample scores to test against clinical variables, use LIONESS-PANDA instead.",
+    )),
+    "run_puma": ("Downstream use of the aggregate network:", (
+        *_AGGREGATE_TARGETING_NOTES,
+        "For per-sample scores to test against clinical variables, use LIONESS-PUMA instead.",
+    )),
+    "run_otter": ("Downstream use of the aggregate network:", (
+        *_AGGREGATE_TARGETING_NOTES,
+        "OTTER weights are on a different scale from PANDA's; compare OTTER networks only "
+        "with other OTTER networks built with the same parameters.",
+    )),
+    "run_giraffe": ("Downstream use of the regulatory and activity matrices:", (
+        "The TF-by-sample activity matrix (TFA) can serve as predictors in association "
+        "tests with sample-level variables -- survival, for example, with a Cox model.",
+        _SAMPLE_ANNOTATION_NOTE,
+        "Signs in the regulatory matrix are partial linear effects (positive for "
+        "activation, negative for repression); read them as model coefficients, not as "
+        "proof of direct binding.",
+    )),
+    "run_bonobo": ("Downstream use of the sample-specific co-expression networks:", (
+        "Per-sample gene degree or edge weights can be compared across samples or groups; "
+        "with p-value output, edges can be filtered per sample at a chosen confidence.",
+        _SAMPLE_ANNOTATION_NOTE,
+        "These are co-expression networks, not TF-gene regulation; turning them into "
+        "regulatory networks needs a separate, validated conversion before PANDA.",
+    )),
+    "run_lioness_coexpression": ("Downstream use of the sample-specific co-expression networks:", (
+        "Per-sample gene degree or edge weights can be compared across samples or groups.",
+        _SAMPLE_ANNOTATION_NOTE,
+        "All LIONESS networks are derived from the same cohort, so they are not "
+        "statistically independent; account for this in any test across samples.",
+    )),
+    "run_cobra": ("Downstream use of the covariate-specific co-expression:", (
+        "Each covariate's component is a gene-by-gene co-expression attributable to that "
+        "covariate; the adjusted co-expression can be passed to PANDA, PUMA or OTTER as "
+        "coexpression_file after its identifiers and order are revalidated.",
+        "Interpret each component relative to how the design matrix codes that covariate "
+        "(for example, which level is the reference).",
+    )),
+    "run_dragon": ("Downstream use of the partial-correlation network:", (
+        "The cross-layer block holds direct associations between features of the two "
+        "omics layers; filter edges by the adjusted p-values before interpreting them.",
+        "Partial correlations are conditional on every other feature in both layers, so "
+        "adding or removing features changes them.",
+    )),
+    "run_condor": ("Downstream use of the communities:", (
+        "Core scores rank each node's contribution to its community's modularity; the "
+        "top-scoring regulators and genes are candidates for the community's function.",
+        "Gene communities can be tested for pathway enrichment with standard gene-set "
+        "tools, which is a separate analysis step.",
+    )),
+    "run_sambar": ("Downstream use of the subtypes:", (
+        "Subtype labels can be compared with clinical variables -- survival between "
+        "subtypes, for example; that needs a clinical table keyed by the same sample IDs.",
+        "The pathway mutation scores show which pathways separate the subtypes.",
+    )),
 }
 
 @dataclass(frozen=True, slots=True)
