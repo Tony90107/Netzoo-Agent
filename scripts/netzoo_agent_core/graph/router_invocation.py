@@ -60,6 +60,7 @@ from .semantic_review_validation import (
 )
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .condition_recommender import invoke_condition_recommender
+from .input_inspection import invoke_input_inspection
 from .discriminator import (
     discriminator_context as _discriminator_context,
     invoke_semantic_discriminator as _invoke_semantic_discriminator,
@@ -962,6 +963,7 @@ def invoke_router(
     decision, usage, budget_warnings = invoke_condition_recommender(
         context, state, user_task, decision, usage, budget_warnings,
     )
+    decision = invoke_input_inspection(context, state, user_task, decision)
     preflight_decision = apply_input_preflight_intent(decision, user_task)
     if preflight_decision is not decision:
         record_event(

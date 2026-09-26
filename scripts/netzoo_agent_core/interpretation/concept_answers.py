@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..presentation import _ui_text
+from .inspected_answers import render_inspected_recommendation
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -359,6 +360,10 @@ def _render_advisory_recommendation(
     spec = policy.workflows.get(recommendation.action)
     if spec is None:
         return None
+    if all(item.axis == "inspected_inputs" for item in recommendation.conditions):
+        return render_inspected_recommendation(
+            decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
+        )
     quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
     reasons = "; ".join(
         _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
