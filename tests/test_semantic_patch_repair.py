@@ -364,10 +364,17 @@ def test_the_patch_names_which_hypothesis_it_adjudicates(index, expected):
         "outcome_hypotheses": [grounded_item(), second],
     })
 
-    merged, _ = apply_semantic_patch(proposal, SemanticPatch(hypothesis_index=index))
+    merged, _ = apply_semantic_patch(
+        proposal,
+        SemanticPatch(hypothesis_index=index, outcome={"granularity": "aggregate"}),
+    )
 
-    assert len(merged.outcome_hypotheses) == 1
-    assert merged.outcome_hypotheses[0].outcome.artifact_type == expected
+    # Log 150: the patch replaces the hypothesis it names and carries the
+    # untouched ones forward; it used to discard them.
+    assert len(merged.outcome_hypotheses) == 2
+    assert merged.outcome_hypotheses[index].outcome.artifact_type == expected
+    other = 1 - index
+    assert merged.outcome_hypotheses[other] == proposal.outcome_hypotheses[other]
 
 
 def test_patch_rejects_a_hypothesis_index_the_proposal_does_not_have():

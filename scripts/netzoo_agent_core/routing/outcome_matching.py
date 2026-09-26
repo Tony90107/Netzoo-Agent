@@ -199,6 +199,59 @@ def _tag_discriminated_action(
     return minimal[0] if len(minimal) == 1 else None
 
 
+def _divergent_artifact_readings(
+    hypotheses: Sequence[OutcomeHypothesis],
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+    available_inputs: InputAvailabilityLike = (),
+) -> CapabilityMatch | None:
+    """Keep a choice between readings of *what* to produce open (Log 150).
+
+    When hypotheses name different artifacts and more than one of them leads
+    to a registered workflow, they are different answers to the user's
+    question, not one answer and a spare. Letting whichever reading happens to
+    resolve to a single workflow win silently discarded the other -- a
+    sample-specific regulatory network lost to a TF-activity matrix. Granularity
+    alternatives of one artifact keep their own dedicated handling.
+    """
+    artifacts = {
+        item.outcome.artifact_type for item in hypotheses
+        if item.outcome.artifact_type != _UNKNOWN
+    }
+    if len(hypotheses) < 2 or len(artifacts) < 2:
+        return None
+    readings: list[list[RecommendedAction]] = []
+    for item in sorted(hypotheses, key=lambda hyp: -hyp.confidence):
+        strict = match_requested_outcome(
+            item.outcome, capabilities, available_inputs=available_inputs,
+        )
+        actions = list(dict.fromkeys([*strict.matched_actions, *strict.hypothesis_actions]))
+        if not actions:
+            # An underdetermined reading (no roles yet, say) admits nothing
+            # strictly but is still a reading; its compatible workflows stand in.
+            actions = [
+                action for action, capability in capabilities.items()
+                if _partially_compatible(item.outcome, capability, available_inputs)
+            ]
+        if actions:
+            readings.append(actions)
+    union = list(dict.fromkeys(action for actions in readings for action in actions))
+    if len(readings) < 2 or len(union) < 2:
+        return None
+    clarification = plan_clarification(
+        union,
+        outcomes=[item.outcome for item in hypotheses],
+        capabilities=capabilities,
+    )
+    return CapabilityMatch(
+        status="ambiguous",
+        hypothesis_actions=union,
+        clarification_question=(
+            clarification.question if clarification is not None
+            else "Which compatible network result do you mean?"
+        ),
+    )
+
+
 def match_outcome_hypotheses(
     hypotheses: Sequence[OutcomeHypothesis],
     capabilities: Mapping[
@@ -289,6 +342,11 @@ def match_outcome_hypotheses(
                 )
 
     unique_exact = list(dict.fromkeys([*exact, *evidence_exact]))
+    divergent = _divergent_artifact_readings(
+        hypotheses, capabilities, available_inputs,
+    )
+    if divergent is not None:
+        return divergent
     if len(unique_exact) == 1:
         return CapabilityMatch(
             status="exact" if unique_exact[0] in exact else "fallback",
