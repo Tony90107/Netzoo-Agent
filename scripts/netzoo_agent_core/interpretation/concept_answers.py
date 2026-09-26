@@ -8,7 +8,7 @@ from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OUTPUT_CA
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
-from ..presentation import _ui_text
+from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation, with_inspection_footer
 from ..routing.outcome_matching import (
     guidance_actions_for,
@@ -386,7 +386,8 @@ def _render_advisory_recommendation(
             decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
             downstream_section(recommendation.action),
         )
-    quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
+    spans = [item.text_span for item in recommendation.conditions]
+    quotes = "; ".join(f'"{user_data_token(index)}"' for index in range(len(spans)))
     reasons = "; ".join(
         _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
     )
@@ -411,7 +412,7 @@ def _render_advisory_recommendation(
     if decision.clarification_question:
         lines.append(decision.clarification_question)
     lines.append("No files were inspected and no analysis ran.")
-    return _ui_text("\n\n".join(lines))
+    return _ui_text_with_user_data("\n\n".join(lines), spans)
 
 
 def _render_beginner_group_network_guidance(

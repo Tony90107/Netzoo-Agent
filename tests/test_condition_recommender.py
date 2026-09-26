@@ -229,3 +229,20 @@ def test_form_a_renders_the_quote_and_the_alternative():
     assert answer.startswith('Based on what you said — "a handful of patients" — **BONOBO** fits better')
     assert "**LIONESS-COEXPRESSION** — preferred when: dozens of samples or more" in answer
     assert "No files were inspected and no analysis ran." in answer
+
+
+def test_form_a_quotes_a_non_english_request_verbatim():
+    """Log 180: a Chinese quote is user data, not agent-authored text."""
+    task = "我手上只有少數幾位病人的表現量資料，想看每位病人自己的基因共表現結構。"
+    policy = ProjectPolicyLoader(ROOT).load()
+    recommendation, _ = recommend_from_claims(
+        task, _claims(("cohort_size:few", "少數幾位病人")), condition_options(TIE), TIE,
+    )
+    decision = _decision(
+        advisory_recommendation=recommendation,
+        clarification_question="Should I use BONOBO, or does another listed option fit your study better?",
+    )
+
+    answer = render_outcome_clarification(decision, policy)
+
+    assert answer.startswith('Based on what you said — "少數幾位病人" — **BONOBO** fits better')

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..presentation import _ui_text
+from ..presentation import _ui_text_with_user_data, user_data_token
 
 __all__ = ["inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
 
@@ -33,8 +33,18 @@ def with_inspection_footer(text: str | None, directories: list[str]) -> str | No
 def render_inspected_recommendation(
     decision, policy, spec, details: list[str], downstream: str = "",
 ) -> str:
-    """Form A: which files validated for which roles, and what nothing validated as."""
+    """Form A: which files validated for which roles, and what nothing validated as.
+
+    The folder path and file names are the user's own data and may be in any
+    language, so they enter through placeholders after the template is checked.
+    """
     recommendation = decision.advisory_recommendation
+    user_data: list[str] = []
+
+    def quoted(value: str) -> str:
+        user_data.append(value)
+        return user_data_token(len(user_data) - 1)
+
     folder = recommendation.conditions[0].text_span
     validated = [
         item.value.removeprefix("validated:").split("=", 1)
@@ -45,11 +55,11 @@ def render_inspected_recommendation(
         for item in recommendation.conditions if item.value.startswith("missing:")
     ]
     found = ", ".join(
-        f"`{name}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
+        f"`{quoted(name)}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
     )
     missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
     lines = [
-        f"By content, the files in `{folder}` validate as a complete input set for "
+        f"By content, the files in `{quoted(folder)}` validate as a complete input set for "
         f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
         f"so **{spec.workflow}** fits.",
         "\n".join(details),
@@ -65,5 +75,7 @@ def render_inspected_recommendation(
         lines.append(downstream.rstrip("\n"))
     if decision.clarification_question:
         lines.append(decision.clarification_question)
-    lines.append(inspection_footer(decision.inspected_directories or [folder]))
-    return _ui_text("\n\n".join(lines))
+    lines.append(inspection_footer(
+        [quoted(item) for item in (decision.inspected_directories or [folder])]
+    ))
+    return _ui_text_with_user_data("\n\n".join(lines), user_data)
