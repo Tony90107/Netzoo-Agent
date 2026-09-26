@@ -632,13 +632,21 @@ def _match_semantic_request(
     matching_hypotheses = hypotheses
     if request_mode == "guidance":
         # Guidance asks which registered capability can produce the result; the
-        # explanatory wording is not itself a workflow operation.
+        # explanatory wording is not itself a workflow operation. The operation
+        # evidence goes with it (Log 170): left in place, the explicit-evidence
+        # branch re-imposed the erased operation and excluded every capability
+        # registered under another one -- COBRA (`analyze`) from a request to
+        # separate batch effects in co-expression.
         matching_hypotheses = [
             hypothesis.model_copy(
                 update={
                     "outcome": hypothesis.outcome.model_copy(
                         update={"operation": _UNKNOWN}
-                    )
+                    ),
+                    "evidence": [
+                        item for item in hypothesis.evidence
+                        if item.dimension != "operation"
+                    ],
                 }
             )
             for hypothesis in hypotheses
