@@ -174,6 +174,9 @@ def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
         node_types = rule.entities - {"sample"}
         if len(node_types) == 1:
             entailed.update(node_types)
+        # `sample` is this artifact's axis at any granularity, as matching
+        # already reads it (Log 172); validation now agrees (Log 176).
+        entailed.add("sample")
     return frozenset(entailed)
 
 

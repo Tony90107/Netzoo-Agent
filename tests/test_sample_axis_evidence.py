@@ -56,9 +56,10 @@ def test_sample_specific_granularity_carries_the_sample_entity():
     assert validate_outcome_hypotheses(TASK, [_hypothesis()]).valid
 
 
-def test_aggregate_request_still_needs_a_quote_for_sample():
+def test_aggregate_request_needs_no_quote_for_the_sample_axis_either():
+    """Log 176: on an axis artifact `sample` is the axis at any granularity (Log 172)."""
     issues = validate_outcome_hypotheses(TASK, [_hypothesis("aggregate")]).issues
-    assert "hypothesis[0].missing_evidence:entity_type=sample" in issues
+    assert "hypothesis[0].missing_evidence:entity_type=sample" not in issues
     assert "hypothesis[0].missing_evidence:entity_type=gene" not in issues
 
 
