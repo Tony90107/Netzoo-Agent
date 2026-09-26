@@ -502,6 +502,28 @@ def _ui_text(text: str) -> str:
         )
     return text
 
+def user_data_token(index: int) -> str:
+    """A placeholder for user-supplied text inside agent-authored UI text (Log 180).
+
+    Private-use code points, so the placeholder itself can never look like
+    non-English prose to `_ui_text`.
+    """
+    return f"\ue000{index}\ue001"
+
+
+def _ui_text_with_user_data(text: str, user_data: list[str]) -> str:
+    """Check the agent-authored template, then insert quoted user data.
+
+    `_ui_text` guards what the agent writes; a user's own words quoted back
+    (a Chinese request, a folder name) are data and may be in any language.
+    Checking the assembled reply rejected those quotes and crashed the turn.
+    """
+    checked = _ui_text(text)
+    for index, value in enumerate(user_data):
+        checked = checked.replace(user_data_token(index), value)
+    return checked
+
+
 def output_language_policy() -> str:
     return _ui_text(
         f"Always reply in {USER_VISIBLE_OUTPUT_LANGUAGE}, regardless of the "

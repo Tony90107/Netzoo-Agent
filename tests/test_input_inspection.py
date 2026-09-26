@@ -141,3 +141,21 @@ def test_ties_outside_the_panda_family_are_not_read(tmp_path):
     decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
 
     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
+
+
+def test_form_a_quotes_non_english_folder_and_file_names_verbatim(tmp_path):
+    """Log 180: folder and file names are user data and may be in any language."""
+    folder = tmp_path / "data" / "研究"
+    folder.mkdir(parents=True)
+    for name, source in {"表達.tsv": "expression.tsv", "基序.tsv": "motif-panda.tsv",
+                         "蛋白.tsv": "ppi.tsv"}.items():
+        shutil.copy(TOY / source, folder / name)
+    written = "data/研究/"
+    advised = advise_from_inspected_inputs(
+        f"{written} 裡有我的資料。我想要每位病人的 TF 網路。", _decision(), root=tmp_path,
+    )
+
+    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+
+    assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
+    assert "`基序.tsv` as the TF-motif prior" in answer

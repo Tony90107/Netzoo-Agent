@@ -1,0 +1,202 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 6d8da25..c10e8b3 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -8,7 +8,7 @@ from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OUTPUT_CA
+ 
+ from ..contracts import ProjectPolicySnapshot, TaskDecision
+ from ..routing.clarification_planner import algorithmic_assumptions_for
+-from ..presentation import _ui_text
++from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
+ from .inspected_answers import render_inspected_recommendation, with_inspection_footer
+ from ..routing.outcome_matching import (
+     guidance_actions_for,
+@@ -386,7 +386,8 @@ def _render_advisory_recommendation(
+             decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
+             downstream_section(recommendation.action),
+         )
+-    quotes = "; ".join(f'"{item.text_span}"' for item in recommendation.conditions)
++    spans = [item.text_span for item in recommendation.conditions]
++    quotes = "; ".join(f'"{user_data_token(index)}"' for index in range(len(spans)))
+     reasons = "; ".join(
+         _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
+     )
+@@ -411,7 +412,7 @@ def _render_advisory_recommendation(
+     if decision.clarification_question:
+         lines.append(decision.clarification_question)
+     lines.append("No files were inspected and no analysis ran.")
+-    return _ui_text("\n\n".join(lines))
++    return _ui_text_with_user_data("\n\n".join(lines), spans)
+ 
+ 
+ def _render_beginner_group_network_guidance(
+diff --git a/scripts/netzoo_agent_core/interpretation/inspected_answers.py b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+index 44f4b12..6f79c8a 100644
+--- a/scripts/netzoo_agent_core/interpretation/inspected_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/inspected_answers.py
+@@ -2,7 +2,7 @@
+ 
+ from __future__ import annotations
+ 
+-from ..presentation import _ui_text
++from ..presentation import _ui_text_with_user_data, user_data_token
+ 
+ __all__ = ["inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
+ 
+@@ -33,8 +33,18 @@ def with_inspection_footer(text: str | None, directories: list[str]) -> str | No
+ def render_inspected_recommendation(
+     decision, policy, spec, details: list[str], downstream: str = "",
+ ) -> str:
+-    """Form A: which files validated for which roles, and what nothing validated as."""
++    """Form A: which files validated for which roles, and what nothing validated as.
++
++    The folder path and file names are the user's own data and may be in any
++    language, so they enter through placeholders after the template is checked.
++    """
+     recommendation = decision.advisory_recommendation
++    user_data: list[str] = []
++
++    def quoted(value: str) -> str:
++        user_data.append(value)
++        return user_data_token(len(user_data) - 1)
++
+     folder = recommendation.conditions[0].text_span
+     validated = [
+         item.value.removeprefix("validated:").split("=", 1)
+@@ -45,11 +55,11 @@ def render_inspected_recommendation(
+         for item in recommendation.conditions if item.value.startswith("missing:")
+     ]
+     found = ", ".join(
+-        f"`{name}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
++        f"`{quoted(name)}` as the {_ROLE_LABELS.get(field, field)}" for field, name in validated
+     )
+     missing_text = " or ".join(_ROLE_LABELS.get(field, field) for field in missing)
+     lines = [
+-        f"By content, the files in `{folder}` validate as a complete input set for "
++        f"By content, the files in `{quoted(folder)}` validate as a complete input set for "
+         f"**{spec.workflow}**: {found}. No file there validates as a {missing_text}, "
+         f"so **{spec.workflow}** fits.",
+         "\n".join(details),
+@@ -65,5 +75,7 @@ def render_inspected_recommendation(
+         lines.append(downstream.rstrip("\n"))
+     if decision.clarification_question:
+         lines.append(decision.clarification_question)
+-    lines.append(inspection_footer(decision.inspected_directories or [folder]))
+-    return _ui_text("\n\n".join(lines))
++    lines.append(inspection_footer(
++        [quoted(item) for item in (decision.inspected_directories or [folder])]
++    ))
++    return _ui_text_with_user_data("\n\n".join(lines), user_data)
+diff --git a/scripts/netzoo_agent_core/presentation.py b/scripts/netzoo_agent_core/presentation.py
+index 8126f75..fe11371 100644
+--- a/scripts/netzoo_agent_core/presentation.py
++++ b/scripts/netzoo_agent_core/presentation.py
+@@ -502,6 +502,28 @@ def _ui_text(text: str) -> str:
+         )
+     return text
+ 
++def user_data_token(index: int) -> str:
++    """A placeholder for user-supplied text inside agent-authored UI text (Log 180).
++
++    Private-use code points, so the placeholder itself can never look like
++    non-English prose to `_ui_text`.
++    """
++    return f"\ue000{index}\ue001"
++
++
++def _ui_text_with_user_data(text: str, user_data: list[str]) -> str:
++    """Check the agent-authored template, then insert quoted user data.
++
++    `_ui_text` guards what the agent writes; a user's own words quoted back
++    (a Chinese request, a folder name) are data and may be in any language.
++    Checking the assembled reply rejected those quotes and crashed the turn.
++    """
++    checked = _ui_text(text)
++    for index, value in enumerate(user_data):
++        checked = checked.replace(user_data_token(index), value)
++    return checked
++
++
+ def output_language_policy() -> str:
+     return _ui_text(
+         f"Always reply in {USER_VISIBLE_OUTPUT_LANGUAGE}, regardless of the "
+diff --git a/tests/test_condition_recommender.py b/tests/test_condition_recommender.py
+index 5c4342b..4a32fc5 100644
+--- a/tests/test_condition_recommender.py
++++ b/tests/test_condition_recommender.py
+@@ -229,3 +229,20 @@ def test_form_a_renders_the_quote_and_the_alternative():
+     assert answer.startswith('Based on what you said — "a handful of patients" — **BONOBO** fits better')
+     assert "**LIONESS-COEXPRESSION** — preferred when: dozens of samples or more" in answer
+     assert "No files were inspected and no analysis ran." in answer
++
++
++def test_form_a_quotes_a_non_english_request_verbatim():
++    """Log 180: a Chinese quote is user data, not agent-authored text."""
++    task = "我手上只有少數幾位病人的表現量資料，想看每位病人自己的基因共表現結構。"
++    policy = ProjectPolicyLoader(ROOT).load()
++    recommendation, _ = recommend_from_claims(
++        task, _claims(("cohort_size:few", "少數幾位病人")), condition_options(TIE), TIE,
++    )
++    decision = _decision(
++        advisory_recommendation=recommendation,
++        clarification_question="Should I use BONOBO, or does another listed option fit your study better?",
++    )
++
++    answer = render_outcome_clarification(decision, policy)
++
++    assert answer.startswith('Based on what you said — "少數幾位病人" — **BONOBO** fits better')
+diff --git a/tests/test_input_inspection.py b/tests/test_input_inspection.py
+index 5d5dce5..ddd9fa4 100644
+--- a/tests/test_input_inspection.py
++++ b/tests/test_input_inspection.py
+@@ -141,3 +141,21 @@ def test_ties_outside_the_panda_family_are_not_read(tmp_path):
+     decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
+ 
+     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
++
++
++def test_form_a_quotes_non_english_folder_and_file_names_verbatim(tmp_path):
++    """Log 180: folder and file names are user data and may be in any language."""
++    folder = tmp_path / "data" / "研究"
++    folder.mkdir(parents=True)
++    for name, source in {"表達.tsv": "expression.tsv", "基序.tsv": "motif-panda.tsv",
++                         "蛋白.tsv": "ppi.tsv"}.items():
++        shutil.copy(TOY / source, folder / name)
++    written = "data/研究/"
++    advised = advise_from_inspected_inputs(
++        f"{written} 裡有我的資料。我想要每位病人的 TF 網路。", _decision(), root=tmp_path,
++    )
++
++    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
++
++    assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
++    assert "`基序.tsv` as the TF-motif prior" in answer
+diff --git a/tests/test_ui_text_user_data.py b/tests/test_ui_text_user_data.py
+new file mode 100644
+index 0000000..ea09a73
+--- /dev/null
++++ b/tests/test_ui_text_user_data.py
+@@ -0,0 +1,23 @@
++"""Log 180: agent-authored UI text stays English; quoted user data may not be."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.presentation import _ui_text_with_user_data, user_data_token  # noqa: E402
++
++
++def test_user_data_may_be_non_english():
++    text = f'You said "{user_data_token(0)}" about `{user_data_token(1)}`.'
++
++    assert _ui_text_with_user_data(text, ["少數病人", "資料/"]) == 'You said "少數病人" about `資料/`.'
++
++
++def test_the_agent_authored_template_is_still_checked():
++    with pytest.raises(ValueError, match="must be English"):
++        _ui_text_with_user_data(f"根據 {user_data_token(0)}", ["quote"])

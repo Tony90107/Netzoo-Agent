@@ -11263,3 +11263,75 @@ A 版回覆（Log 139）把使用者的中文原句（例如「少數幾個病�
 4. **Case 5 PUMA**：「small RNAs」與 `mirna.txt` 都沒讓模型填入 miRNA regulator；平手含 OTTER／GIRAFFE，不是純 PANDA 家族，所以 Log 154 的內容檢查不會執行。
 5. **Case 10**：使用者說「All I have is this expression matrix」，回覆卻列出需要 motif 與 PPI 的工具，沒有指出他缺少這些先驗，也沒有提到只需表現矩陣的共表現選項。
 6. **Case 9**：只有一個候選的 ambiguous 交給 response 模型；本量測無法評估其回覆品質。
+
+## Log 180｜事前宣告：A 版回覆只檢查模板，使用者引用在檢查後才放入（修正 Log 179 問題 1 的中文崩潰）
+
+日期／時區：2026-09-26，Asia/Taipei。套在 `8093b91` 之上。
+候選 patch：`docs/research-log/log180_candidate.patch`（6 個檔案，逐字套用）。
+
+### 成因（Log 179 已確認）
+
+`_render_advisory_recommendation`（依原句推薦）把使用者原句 `text_span` 組進回覆，
+`render_inspected_recommendation`（依資料夾內容推薦）把資料夾路徑與檔名組進回覆，
+兩者最後都把**整段**回覆交給 `_ui_text`。`_ui_text` 拒絕任何中日韓字元；
+它的錯誤訊息本身就寫明「引用的使用者資料」可以不是英文。所以中文原句、中文資料夾名或中文檔名一出現就崩潰。
+
+### 修正（形狀修正，不改任何 prompt 文字）
+
+- `presentation.py` 新增 `user_data_token(i)`：用私用區字元 `{i}` 當佔位符，它本身不是中日韓字元。
+- 新增 `_ui_text_with_user_data(text, user_data)`：先對含佔位符的**模板**呼叫 `_ui_text`，檢查通過後才代入使用者資料。
+- 兩個渲染器改用佔位符：原句引用、資料夾路徑、檔名、資料夾清單頁尾。
+  模板裡由 agent 撰寫的文字仍然全部經過 `_ui_text` 檢查。
+- `_candidate_details`、後續用途段落、`clarification_question` 仍在模板內受檢（它們來自註冊表或 agent，不是使用者資料）。
+
+### 離線驗證（在 worktree 完成，套用後重做）
+
+- 新增 3 個測試檔區段：中文原句的 A 版回覆、中文資料夾與檔名的內容推薦、`_ui_text_with_user_data` 本身
+  （使用者資料可為中文；模板若含中文仍會丟出錯誤）。
+  兩個渲染器測試在未修正的程式碼上以同一個 `ValueError` 失敗，修正後通過。
+- 沒有修改或刪除任何既有測試。
+- 全套測試：2157 passed、0 failed。
+- Log 136／148／170 三個網格與 `g_head174`／`eg_head174`／`gg_head174` 逐位元組相同（路由完全未變）。
+- prompt／schema 指紋不變：legacy `1f68bfde4081`、claims `348a144cd9b4`。
+- 所有核心模組 ≤1000 行（`concept_answers.py` 991 行）。
+
+### 事前宣告的實測判準（gpt-4o-mini，legacy，traced harness）
+
+中文 Case 3 跑 3 次，英文 Case 3 跑 1 次。
+
+- **C-1（必要）**：4 次都沒有 `ValueError`，也沒有其他例外。
+- **C-2（必要）**：授權外洩 0（`should_execute` 為假，`action == no_tool`）。
+- **C-3（描述）**：若某次產生 A 版推薦，回覆以使用者原文（中文）引用，其餘文字為英文。
+  若 3 次中文都沒有產生推薦，C-1 只證明「沒有崩潰」，不證明渲染路徑被實測走過；
+  這種情況下，路徑由上述離線測試涵蓋，並如實記錄。
+
+### 撤回條件
+
+- 任一次出現 `ValueError`（或其他例外）→ 撤回 patch，重新診斷。
+- 套用後任一既有測試失敗、網格有任何差異、或指紋改變 → 撤回。
+
+### 範圍外（記錄，不在本輪修正）
+
+其他 `_ui_text` 呼叫點大多只包 agent 文字，路徑放在外面（例如 `cli/clarification.py` 的候選清單）。
+`cli/clarification.py` 的 `_ui_text(plan.question)` 與 `cli/follow_up.py` 的 `_ui_text(interaction.next_step)`
+包的是動態文字；若其中含有使用者路徑，可能有同類問題。本輪未量測。
+
+## Log 181｜Log 180 實測結果：中文 A 版回覆不再崩潰（C-1、C-2 通過）
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。
+`log180_candidate.patch` 逐字套用在 `8093b91` 之上；套用後全套 2157 passed、0 failed。
+
+| 試驗 | 例外 | 路由 | 推薦 | 外洩 |
+| --- | --- | --- | --- | --- |
+| case3-zh ×3 | 無 | 3/3 平手 {LIONESS-COEXPRESSION, BONOBO} | 3/3 BONOBO | 0 |
+| case3-en ×1 | 無 | 平手（同上） | BONOBO | 0 |
+
+- **C-1 通過**：4 次都沒有 `ValueError`，也沒有其他例外。Log 179 在同一題上崩潰。
+- **C-2 通過**：4 次 `should_execute` 皆為假，`action == no_tool`。
+- **C-3（描述）**：中文 3 次都走過 A 版渲染路徑，所以這條路徑已實際測過，不只有離線測試。
+  回覆逐字引用使用者的兩句中文原句（「我只有少數幾個病人的表現資料」「最好還能告訴我哪些連結在那個病人身上是可信的」），
+  其餘文字全為英文，且通過 `_ui_text` 的模板檢查。
+- 撤回條件都沒有觸發。依 Log 120／124，這是描述性結果，不作比率主張。
+
+資料夾內容推薦（`render_inspected_recommendation`）的中文路徑本輪沒有實測，由離線測試
+`test_form_a_quotes_non_english_folder_and_file_names_verbatim` 涵蓋。
