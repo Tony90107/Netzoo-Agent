@@ -9,7 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..presentation import _ui_text
-from .inspected_answers import render_inspected_recommendation
+from .inspected_answers import render_inspected_recommendation, with_inspection_footer
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -240,6 +240,19 @@ def render_outcome_clarification(
     semantic_goal: dict | None = None,
 ) -> str | None:
     """Explain compatible hypotheses before asking one validated clarification."""
+    return with_inspection_footer(
+        _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
+        decision.inspected_directories,
+    )
+
+
+def _render_outcome_clarification(
+    decision: TaskDecision,
+    policy: ProjectPolicySnapshot,
+    *,
+    task: str = "",
+    semantic_goal: dict | None = None,
+) -> str | None:
     beginner_guidance = _render_beginner_group_network_guidance(
         task, decision, semantic_goal,
     )
