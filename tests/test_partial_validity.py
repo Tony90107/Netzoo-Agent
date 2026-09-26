@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
@@ -88,3 +90,41 @@ def test_a_single_invalid_reading_is_still_rejected(tmp_path):
     original, before, kept, after, _ = _run(tmp_path, [_invalid()])
 
     assert kept is original and not after.valid
+
+
+# Log 158: a review that fails outright falls back to the valid first-pass subset.
+from netzoo_agent_core.graph.partial_validity import (  # noqa: E402
+    retain_valid_first_pass,
+    valid_first_pass_subset,
+)
+
+
+def _interpretation(hypotheses):
+    return SemanticInterpretation(request_mode="guidance", semantic_goal="g",
+                                  outcome_hypotheses=hypotheses)
+
+
+def test_the_valid_part_of_a_rejected_first_pass_is_kept_for_a_failed_review():
+    subset = valid_first_pass_subset(TASK, _interpretation([_valid(), _invalid()]))
+
+    assert subset is not None
+    assert [h.outcome.artifact_type for h in subset.outcome_hypotheses] == ["regulatory_network"]
+
+
+@pytest.mark.parametrize("hypotheses", [
+    lambda: [_valid()], lambda: [_valid(), _valid()], lambda: [_invalid(), _invalid()],
+])
+def test_no_subset_unless_the_first_pass_was_partly_valid(hypotheses):
+    assert valid_first_pass_subset(TASK, _interpretation(hypotheses())) is None
+
+
+def test_a_whole_validated_first_pass_still_wins(tmp_path):
+    context, state, store, run_id = _context(tmp_path)
+    whole = _interpretation([_valid()])
+    partial = _interpretation([_valid()])
+
+    assert retain_valid_first_pass(context, state, whole, partial, 1) is whole
+    assert retain_valid_first_pass(context, state, None, None, 1) is None
+    assert retain_valid_first_pass(context, state, None, partial, 1) is partial
+    events = [e.event_type for e in store.read_events(run_id)]
+    assert events.count("routing.valid_first_pass_subset_retained") == 1
