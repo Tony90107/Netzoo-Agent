@@ -1,0 +1,190 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/semantic_patch.py b/scripts/netzoo_agent_core/interpretation/semantic_patch.py
+index af827b5..fc98199 100644
+--- a/scripts/netzoo_agent_core/interpretation/semantic_patch.py
++++ b/scripts/netzoo_agent_core/interpretation/semantic_patch.py
+@@ -148,11 +148,17 @@ def apply_semantic_patch(
+         evidence=evidence,
+         assumptions=base.assumptions if patch.assumptions is None else patch.assumptions,
+     )
++    # The patch adjudicates one hypothesis; the others are first-pass values
++    # the review did not touch, so they are carried forward unchanged. Keeping
++    # only the patched one discarded a valid reading whenever the rejection
++    # was about a different hypothesis (Log 150).
++    hypotheses = list(proposal.outcome_hypotheses)
++    hypotheses[index] = hypothesis
+     return (
+         SemanticInterpretation(
+             request_mode=proposal.request_mode if patch.request_mode is None else patch.request_mode,
+             semantic_goal=proposal.semantic_goal if patch.semantic_goal is None else patch.semantic_goal,
+-            outcome_hypotheses=[hypothesis],
++            outcome_hypotheses=hypotheses,
+         ),
+         retired,
+     )
+diff --git a/scripts/netzoo_agent_core/routing/outcome_matching.py b/scripts/netzoo_agent_core/routing/outcome_matching.py
+index d2de7f3..34e49a0 100644
+--- a/scripts/netzoo_agent_core/routing/outcome_matching.py
++++ b/scripts/netzoo_agent_core/routing/outcome_matching.py
+@@ -199,6 +199,59 @@ def _tag_discriminated_action(
+     return minimal[0] if len(minimal) == 1 else None
+ 
+ 
++def _divergent_artifact_readings(
++    hypotheses: Sequence[OutcomeHypothesis],
++    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
++    available_inputs: InputAvailabilityLike = (),
++) -> CapabilityMatch | None:
++    """Keep a choice between readings of *what* to produce open (Log 150).
++
++    When hypotheses name different artifacts and more than one of them leads
++    to a registered workflow, they are different answers to the user's
++    question, not one answer and a spare. Letting whichever reading happens to
++    resolve to a single workflow win silently discarded the other -- a
++    sample-specific regulatory network lost to a TF-activity matrix. Granularity
++    alternatives of one artifact keep their own dedicated handling.
++    """
++    artifacts = {
++        item.outcome.artifact_type for item in hypotheses
++        if item.outcome.artifact_type != _UNKNOWN
++    }
++    if len(hypotheses) < 2 or len(artifacts) < 2:
++        return None
++    readings: list[list[RecommendedAction]] = []
++    for item in sorted(hypotheses, key=lambda hyp: -hyp.confidence):
++        strict = match_requested_outcome(
++            item.outcome, capabilities, available_inputs=available_inputs,
++        )
++        actions = list(dict.fromkeys([*strict.matched_actions, *strict.hypothesis_actions]))
++        if not actions:
++            # An underdetermined reading (no roles yet, say) admits nothing
++            # strictly but is still a reading; its compatible workflows stand in.
++            actions = [
++                action for action, capability in capabilities.items()
++                if _partially_compatible(item.outcome, capability, available_inputs)
++            ]
++        if actions:
++            readings.append(actions)
++    union = list(dict.fromkeys(action for actions in readings for action in actions))
++    if len(readings) < 2 or len(union) < 2:
++        return None
++    clarification = plan_clarification(
++        union,
++        outcomes=[item.outcome for item in hypotheses],
++        capabilities=capabilities,
++    )
++    return CapabilityMatch(
++        status="ambiguous",
++        hypothesis_actions=union,
++        clarification_question=(
++            clarification.question if clarification is not None
++            else "Which compatible network result do you mean?"
++        ),
++    )
++
++
+ def match_outcome_hypotheses(
+     hypotheses: Sequence[OutcomeHypothesis],
+     capabilities: Mapping[
+@@ -289,6 +342,11 @@ def match_outcome_hypotheses(
+                 )
+ 
+     unique_exact = list(dict.fromkeys([*exact, *evidence_exact]))
++    divergent = _divergent_artifact_readings(
++        hypotheses, capabilities, available_inputs,
++    )
++    if divergent is not None:
++        return divergent
+     if len(unique_exact) == 1:
+         return CapabilityMatch(
+             status="exact" if unique_exact[0] in exact else "fallback",
+diff --git a/tests/test_divergent_readings.py b/tests/test_divergent_readings.py
+new file mode 100644
+index 0000000..2436b88
+--- /dev/null
++++ b/tests/test_divergent_readings.py
+@@ -0,0 +1,60 @@
++"""Log 150: a patch keeps untouched hypotheses; divergent artifact readings stay a choice."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeHypothesis,
++    RequestedOutcome,
++)
++from netzoo_agent_core.routing.outcome_matching import match_outcome_hypotheses  # noqa: E402
++
++
++def _regulatory(**update) -> OutcomeHypothesis:
++    fields = dict(operation="infer", artifact_type="regulatory_network",
++                  granularity="sample_specific", input_artifacts=[])
++    fields.update(update)
++    return OutcomeHypothesis(outcome=RequestedOutcome(**fields), confidence=0.9)
++
++
++def _tf_activity() -> OutcomeHypothesis:
++    return OutcomeHypothesis(
++        outcome=RequestedOutcome(operation="infer", artifact_type="tf_activity_matrix",
++                                 granularity="aggregate", input_artifacts=[]),
++        confidence=0.85,
++    )
++
++
++def test_a_single_workflow_reading_does_not_silence_another_reading():
++    """The recorded Case 4 shape: per-patient wiring versus TF activity."""
++    match = match_outcome_hypotheses([_regulatory(), _tf_activity()])
++
++    assert match.status == "ambiguous"
++    assert "run_giraffe" in match.hypothesis_actions
++    assert "run_lioness_panda" in match.hypothesis_actions
++
++
++def test_divergent_readings_never_become_executable():
++    match = match_outcome_hypotheses([
++        _regulatory(regulator_types=["tf"], target_types=["gene"], entity_types=["tf", "gene"]),
++        _tf_activity(),
++    ])
++
++    assert match.status == "ambiguous"
++    assert match.matched_actions == []
++
++
++def test_one_artifact_read_twice_keeps_its_own_handling():
++    single = match_outcome_hypotheses([
++        _regulatory(regulator_types=["tf"], target_types=["gene"], entity_types=["tf", "gene"]),
++    ])
++    twice = match_outcome_hypotheses([
++        _regulatory(regulator_types=["tf"], target_types=["gene"], entity_types=["tf", "gene"]),
++        _regulatory(regulator_types=["tf"], target_types=["gene"], entity_types=["tf", "gene"]),
++    ])
++
++    assert single.matched_actions == twice.matched_actions == ["run_lioness_panda"]
+diff --git a/tests/test_semantic_patch_repair.py b/tests/test_semantic_patch_repair.py
+index 6752843..19b0c92 100644
+--- a/tests/test_semantic_patch_repair.py
++++ b/tests/test_semantic_patch_repair.py
+@@ -364,10 +364,17 @@ def test_the_patch_names_which_hypothesis_it_adjudicates(index, expected):
+         "outcome_hypotheses": [grounded_item(), second],
+     })
+ 
+-    merged, _ = apply_semantic_patch(proposal, SemanticPatch(hypothesis_index=index))
++    merged, _ = apply_semantic_patch(
++        proposal,
++        SemanticPatch(hypothesis_index=index, outcome={"granularity": "aggregate"}),
++    )
+ 
+-    assert len(merged.outcome_hypotheses) == 1
+-    assert merged.outcome_hypotheses[0].outcome.artifact_type == expected
++    # Log 150: the patch replaces the hypothesis it names and carries the
++    # untouched ones forward; it used to discard them.
++    assert len(merged.outcome_hypotheses) == 2
++    assert merged.outcome_hypotheses[index].outcome.artifact_type == expected
++    other = 1 - index
++    assert merged.outcome_hypotheses[other] == proposal.outcome_hypotheses[other]
+ 
+ 
+ def test_patch_rejects_a_hypothesis_index_the_proposal_does_not_have():

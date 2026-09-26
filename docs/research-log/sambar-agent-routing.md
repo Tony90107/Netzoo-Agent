@@ -9830,3 +9830,149 @@ F2 到達新階段：**如預測**。推薦方向我沒有預測；結果是模�
 
 樣本數門檻**維持現狀**：不設數字切點；當原句給的是樣本數而不是定性描述時，
 agent 走 B 直接詢問使用者。`cohort_size` 的條件敘述不變，不為此新增 contract 欄位。
+
+## Log 150｜事前宣告：Case 4 成因 C——修補不再丟掉其他 hypothesis；不同 artifact 的讀法保持為選擇（尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：使用者指示「處理 Case 4 的兩個問題」。本節只處理成因 C；成因 D 另案（見文末）。
+候選 patch：`docs/research-log/log150_candidate.patch`（4 個檔案區段，套在 `08389cc` 之上，逐字使用）。
+
+### 目前程式碼上的重新量測
+
+中性路徑 `data/blind-neutral/case-4/`（只放 expression、motif、PPI 三個檔案），實跑 3 次：
+**3/3 exact LIONESS-PANDA**，成因 C、D 都沒有出現。但這不代表問題已解決：
+用目前程式碼 replay Log 136 錄下的 Case 4 失敗，
+trial 1 **逐字重現 GIRAFFE exact**，trial 3 **逐字重現 LIONESS-PANDA／PUMA 平手**。
+兩個成因在同樣的模型輸出下仍然存在，只是這次模型沒有走到。
+
+### 成因 C 的機制（離線重建，舊程式碼忠實重現 GIRAFFE exact）
+
+1. 第一輪產生兩個 hypothesis：hyp0 `regulatory_network`／sample_specific（**合法**）、
+   hyp1 `tf_activity_matrix`／sample_specific（不合法：本體只允許 aggregate）。
+2. 第一輪被拒的**唯一**原因是 `hypothesis[1].artifact_granularity:tf_activity_matrix`。
+3. 修補針對 hyp1；`apply_semantic_patch` 回傳 `outcome_hypotheses=[hypothesis]`，
+   **把合法的 hyp0 丟掉**，只剩 tf_activity_matrix → exact GIRAFFE。
+4. 只修第 3 點還不夠：保留兩個 hypothesis 後，`match_outcome_hypotheses` 看到
+   `len(unique_exact) == 1`（GIRAFFE）就直接回傳，另一個讀法依然被忽略（重建結果：fallback GIRAFFE）。
+
+### 與既有設計的關係
+
+- 被第 3 點撞到的測試 `test_the_patch_names_which_hypothesis_it_adjudicates` 斷言
+  `len(merged.outcome_hypotheses) == 1`（commit `8aa2df2`，Log 32 時期）。
+- 但 research log 本身在較後段寫的是：「`SemanticPatch` 有 `hypothesis_index` 並保留其他假設（Log 32）」，
+  同段並把「多假設被塌縮成一個」判定為**真缺陷**，修掉了 review 形狀的那條路徑。
+- Log 32 的原則是「沿用的全是第一次模型自己寫的值」——丟掉未被修補的 hypothesis 違反這一點。
+
+**文件記載的意圖與程式碼互相矛盾；本輪讓程式碼符合文件的意圖。**
+測試改為斷言：被點名的 hypothesis 被替換，其他的原樣保留。
+
+### 形狀
+
+- **C1**：`apply_semantic_patch` 只替換 `hypothesis_index` 那一個，其他 hypothesis 原樣保留。
+- **C2**：`match_outcome_hypotheses` 在回傳單一候選之前先檢查：若 hypothesis 指名**兩種以上已知的
+  artifact**，且兩個以上 hypothesis 各自有候選，就回傳 `ambiguous` 與候選聯集（依 confidence 排序），
+  問題由 planner 產生。
+  - 每個 hypothesis 的候選取 strict 比對的結果；strict 沒有候選時（例如 regulator 尚未確定），
+    改用 `_partially_compatible` 的候選。
+  - 同一個 artifact 的 granularity 替代讀法**不受影響**，沿用既有的專門處理。
+
+### 授權
+
+C2 只會把結果改成 `ambiguous`，**永遠不會產生新的 exact**。
+配對網格中 1856 筆原本是 exact 的配對變成 ambiguous：在 execute 模式下，
+兩種讀法之一不再會被直接執行。這是**收緊**，不是放寬。
+
+### 量測工具
+
+新增 `docs/research-log/log150_pair_grid.py`：從 Log 136 網格域取出 strict 比對有候選的合法 outcome
+（317 個），以固定 seed 抽樣 6000 組不同 artifact 的配對與 2000 組同 artifact 的對照配對，
+兩次生成逐位元相同。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 配對網格 | 5281 筆改變：不同 artifact 的 ambiguous→ambiguous 3425、exact→ambiguous 1856；**同 artifact 對照改變 0**；變成 exact 0 |
+| 配對網格：原本提供的工作流程消失 | **30 筆**，全部是同一種：hypothesis a 為 **aggregate** 的調控網路，被移除的是 LIONESS-PANDA／PUMA |
+| 單一 hypothesis 網格（Log 136） | 逐位元相同 |
+| 帶證據網格（Log 148） | 逐位元相同 |
+| 指紋 | 不變 |
+| 完整測試 | 2107 passed, 35 skipped, **0 failed**；既有測試只改上述一處 |
+| 新測試 `tests/test_divergent_readings.py` | 3 passed；在舊程式碼上，Case 4 形狀那一個失敗，另兩個新舊都通過（釘住不應改變的行為） |
+| Case 4 trial 1 重建 | 舊程式碼：exact GIRAFFE → 新程式碼：**ambiguous {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE}** |
+
+**關於那 30 筆，如實揭露：** 我在看到數據之後才決定如何判讀它們。對 aggregate 讀法而言，
+終端工作流程是 PANDA／PUMA；LIONESS 是「被取代的後繼」，
+既有的 `_without_superseded_successors` 在 granularity 一致時本來就會移除它。
+舊行為之所以保留它，只是因為另一個 hypothesis 是 sample_specific，導致那條規則沒有啟動。
+因此下面的 N-d 把「被取代的後繼」排除在外——**這個排除是事後定義的**，不是事先寫好的。
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **N-a** | 逐字套用 patch |
+| **N-b** | 完整測試 0 failed；既有測試只有 `test_the_patch_names_which_hypothesis_it_adjudicates` 一處修改 |
+| **N-c** | Log 136 網格、Log 148 帶證據網格逐位元相同；指紋不變 |
+| **N-d** | 配對網格：同 artifact 改變 0；變成 exact 0；消失的工作流程**只能**是對 aggregate 讀法而言被取代的 LIONESS 後繼（恰為上述 30 筆） |
+| **N-e** | Case 4 trial 1 重建結果為 ambiguous，且同時包含 LIONESS-PANDA 與 GIRAFFE |
+
+### 實跑（描述性）
+
+中性路徑 Case 4 ×3。在模型沒有產生第二種讀法的情況下，預期與目前相同（exact LIONESS-PANDA）；
+本輪無法控制模型是否產生 tf_activity 讀法，所以實跑**只能證明沒有回歸**，不能證明修正生效。
+修正生效的證據是 N-e 的離線重建。
+
+### 撤回條件（寫死）
+
+- **Y-1**：N-a～N-e 任一失敗 → 撤回全部。
+- **Y-2**：實跑中任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回全部。
+- **Y-3**：實跑中出現 Log 149 之後沒有出現過的 fallback 或 issue 種類，且可追溯到 C1／C2 → 撤回全部。
+
+### 已知風險
+
+1. C2 讓「兩種 artifact 讀法」一律變成提問。如果其中一個讀法其實是模型的雜訊，
+   使用者會多被問一題。這是刻意的取捨：寧可多問，也不要把合法的讀法靜靜丟掉。
+2. C2 的問題由既有 planner 產生，對 artifact 不同的候選會問「What artifact should NetZoo produce?」，
+   措辭偏技術，但回覆會列出每個候選的說明。改善問題的措辭不在本輪。
+
+### 成因 D（另案，未處理）
+
+trial 3 的 LIONESS-PANDA／PUMA 平手會反問「TF 還是 miRNA」，即使原句說了「per-TF」，
+而且使用者指定的資料夾裡根本沒有 miRNA 清單。要解決它，路由階段就得讀取使用者指定的資料夾，
+這牽涉 repo 的開放世界規則：「An unmentioned prerequisite is unknown, not absent.
+Only an explicit negative statement may eliminate a capability.」
+這是產品上的決定，本輪不處理。
+
+## Log 151｜Log 150 結果：N-a～N-e 全部成立，成因 C 修正**保留**；實跑重現了成因 D
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 150 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| N-a 逐字套用 | **通過** |
+| N-b 0 failed、只改一處既有測試 | **通過**（2107 passed, 35 skipped） |
+| N-c 單一 hypothesis 網格、帶證據網格、指紋 | **通過**（逐位元相同） |
+| N-d 配對網格 | **通過**：同 artifact 改變 0；變成 exact 0；消失的 30 筆與 worktree 分類的結果逐位元相同，全部是 aggregate 讀法下被取代的 LIONESS 後繼 |
+| N-e Case 4 trial 1 重建 | **通過**：ambiguous {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE} |
+
+### 實跑（中性路徑 Case 4 ×3，描述性）
+
+| trial | 結果 |
+| --- | --- |
+| 1 | ambiguous {LIONESS-PANDA, LIONESS-PUMA}，反問「TF 還是 miRNA」 |
+| 2 | exact LIONESS-PANDA |
+| 3 | exact LIONESS-PANDA |
+
+- 授權外洩 0/3。
+- trial 1 不是 C1／C2 造成的：第一輪就合法，review 回了空的 patch，
+  兩個 hypothesis（regulatory_network、expression_matrix）的 regulator 都是空的。
+  離線確認：兩個 hypothesis 一起比對，與只取 hyp0（舊的塌縮行為）比對，得到**相同**的平手；
+  expression_matrix 沒有任何候選，C2 不會觸發。Y-3 未觸發。
+- **trial 1 是成因 D 在目前程式碼上的實際重現**：原句說「per-TF」，
+  指定的資料夾裡也沒有 miRNA 清單，agent 卻問使用者要 TF 還是 miRNA。
+
+**全部未觸發：成因 C 修正保留。**
+模型這次沒有產生 tf_activity 讀法，所以實跑無法顯示 C 的修正效果；證據是 N-e 的離線重建。
