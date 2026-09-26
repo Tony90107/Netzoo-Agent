@@ -9404,3 +9404,153 @@ N 類的分母同樣只算新階段有執行的 trial；若 N 類分母 < 3，Z-
 4. F2 有 2 次出現三候選 {LIONESS-coexp, COBRA, BONOBO}：「400 tumour samples」讓 COBRA
    進入候選，planner 維度不是 algorithm，所以沿用既有的提問。
 5. 依 Log 120／124，這些都是結構計數；重複的 trial 不是獨立樣本，不能主張比率。
+
+## Log 143｜事前宣告：帶實驗事實的長句在語意解讀階段失敗——三個確定性成因（尚未套用到主 repo）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 142 的限制 3。使用者指示：先 commit，再處理語意解讀失敗；允許直接在本機跑測試。
+照 Log 141 的做法：先在臨時 worktree 實作並量測，再寫本節；候選 patch 存為
+`docs/research-log/log143_candidate.patch`，套用時逐字使用。
+
+### 已查證的成因（錄下的 10 次 `semantic_fallback`：Log 139 的 P1 ×3、Log 141 的 F1／F2 ×7）
+
+修補後仍殘留的問題：
+
+| 殘留問題 | 次數 |
+| --- | ---: |
+| 只剩 `missing_evidence:entity_type=sample` | 1 |
+| `entity_type=gene`＋`sample` | 3 |
+| `operation=infer`＋`gene`＋`sample`（都是 F2） | 3 |
+| `artifact_roles:coexpression_network` | 2 |
+| SemanticPatch schema 錯誤（evidence value 是空字串） | 1 |
+
+**成因 1｜還原規則清掉 roles，卻留下 role 證據（確定性 bug）。**
+模型把「gene co-expression」的 gene 讀成 `target_type`。`stated_field_restoration`
+對非調控 artifact 清掉 roles，docstring 說這是「retiring evidence a patch made stale 的欄位層級版本」，
+**但實際沒有移除 role 證據**。接著 `validate_outcome_hypotheses` 會先執行
+`reconcile_outcome_with_grounded_evidence`（原地修改），依據那筆有引用的 `target_type:gene`
+把 roles 補回空欄位，`artifact_roles` 因此重新出現。已離線重現：只清欄位 → 仍被拒；
+清欄位並移除 role 證據 → 通過。
+
+**成因 2｜`sample` 需要自己的引用。** 和 Log 136 同一個原則：在 sample_specific 請求中，
+`sample` 是 granularity 軸，granularity 的引用已經涵蓋它。
+
+**成因 3｜共表現網路的 `gene` 需要自己的引用。** 既有規則只在本體恰好允許一種實體時
+視為蘊含；`coexpression_network` 的本體是 {gene, sample}，所以 gene 被當成「選擇」。
+但 sample 是軸，節點類型只有 gene。
+
+### 形狀
+
+- **V1**：`stated_field_restoration` 以 `stale_under_artifact` 清掉 roles 時，一併移除
+  `regulator_type`／`target_type` 證據。
+- **V2**：`_required_evidence` 在 `granularity == sample_specific` 時，不要求 `sample` 的引用。
+- **V3**：artifact 的本體允許 `sample_specific`、實體清單含 `sample`、扣掉 `sample` 後恰好
+  剩一種實體時，該實體視為蘊含。實際只作用於 `coexpression_network` 與 `pvalue_matrix`（都是 gene）。
+  **只有 aggregate 的矩陣（如 pathway_mutation_matrix）不受影響**：那裡的 sample 是真正的資料維度，
+  既有測試 `test_an_artifact_that_permits_several_entities_still_needs_evidence` 守的正是這一點。
+  worktree 第一版的 V3 沒有這個限制，撞到了這個測試；**我收窄程式碼，沒有改測試**。
+- **不在本輪**：guidance 模式下 `operation` 不需引用（F2 的 3 次）——要改驗證函式的簽名；
+  SemanticPatch 的空字串 schema 錯誤（1 次）。
+
+### 套用前已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 完整測試 | 2093 passed, 35 skipped, **0 failed**，**不需修改任何既有測試** |
+| 新測試 `tests/test_sample_axis_evidence.py` | 3 passed；在舊程式碼上 3 failed |
+| matcher 網格（Log 136） | 逐位元相同 |
+| 指紋 | legacy `1f68bfde…`、claims `348a144c…` 不變 |
+| 驗證網格 `log143_validation_grid.py`（15273 個 outcome，補齊引用但省略所有 entity 證據） | 1467 個改變；**新增問題 0**；宣告範圍外的放寬 0；移除 `sample` 1395 筆（全為 sample_specific）、`gene` 90 筆（全為 coexpression／pvalue） |
+| 錄下的 10 次失敗 replay（同一份模型輸出，重跑還原＋驗證） | 舊程式碼 **0/10** 通過（與錄下的拒絕原因逐一相同）；新程式碼 **6/10** 通過；剩下 3 次只差 `operation=infer`，1 次是 schema 錯誤 |
+
+replay 的限制：實際重試時，重試提示裡的問題清單也會改變，模型的 patch 可能不同。
+
+### 判準（套用到主 repo 後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **K-a** | 逐字 `git apply docs/research-log/log143_candidate.patch`，不修改 |
+| **K-b** | 完整測試 0 failed，**不修改任何既有測試** |
+| **K-c** | matcher 網格逐位元等於 `grid_final`；兩個指紋不變 |
+| **K-d** | 驗證網格：新增問題 = 0，宣告範圍外的放寬 = 0 |
+| **K-e** | replay：新程式碼 ≥ 6/10 通過，且通過的每一筆都不含新增的 issue 種類 |
+
+### 實跑（描述性；gpt-4o-mini；traced harness）
+
+F1、F2 各 3 次（Log 142 的 fallback：F1 3/6、F2 4/6），N1 3 次作為回歸檢查。
+報告結構計數：`semantic_fallback` 次數、各 trial 的殘留 issue。
+依 Log 120／124：兩題各 3 次**不能**支持比率主張。實跑不作為保留或撤回的閘門，
+因為 fallback 次數取決於模型輸出（memory `netzoo-routing-measurement-power`：閘門只能建立在結構計數上）。
+
+### 撤回條件（寫死）
+
+- **Y-1**：K-a～K-e 任一失敗 → 撤回全部。
+- **Y-2**：實跑中出現**新的** issue 種類，而且可追溯到 V1～V3（例如移除 role 證據後出現
+  `conflicting_evidence`）→ 撤回造成它的那一條。
+
+### 事前預測
+
+K-a～K-e 預測通過：worktree 已經量過。實跑中 F2 預測仍會因 `operation=infer` 失敗（範圍外）；
+F1 預測 fallback 次數下降，但依 Log 120 不作主張。
+
+### 已知風險
+
+1. V2、V3 只移除「由其他已引用欄位蘊含」的要求（granularity、artifact_type 仍需逐字引用），
+   但這仍然讓驗證更寬鬆：模型可能在 `entity_types` 放入沒有根據的 `sample`，只要 granularity 有引用就會通過。
+   V2 只在 sample_specific 下生效，那時 `sample` 本來就是那個軸，所以影響有限。
+2. V1 移除的是**有引用**的 role 證據。對共表現網路來說，role 在本體上不合法，
+   所以沒有需要保留的值；但如果日後有 artifact 同時允許 roles 又被誤判為非調控，這條規則會誤刪。
+
+## Log 144｜Log 143 結果：K-a～K-e 全部成立，V1～V3 **保留**；F1 不再在語意解讀失敗
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 143 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| K-a 逐字套用 `log143_candidate.patch` | **通過** |
+| K-b 0 failed、不改既有測試 | **通過**（2096 passed, 35 skipped） |
+| K-c matcher 網格、指紋 | **通過**（逐位元相同；`1f68bfde…`、`348a144c…`） |
+| K-d 驗證網格 | **通過**（新增 0；範圍外放寬 0；`sample` −1395、`gene` −90） |
+| K-e replay | **通過**（6/10；通過者無 issue） |
+
+### 實跑（描述性）
+
+| Prompt | Log 142 | 本輪 |
+| --- | --- | --- |
+| F1 | fallback 3/6 | **0/3**：3/3 到達新階段並推薦 BONOBO |
+| F2 | fallback 4/6 | 3/3 fallback，殘留問題**全部只有** `operation=infer`（事前宣告的範圍外） |
+| N1 | 0/3 | 0/3 |
+
+Y-2（新的 issue 種類）未觸發。依 Log 120，這不支持比率主張。
+
+## Log 145｜V4（guidance 模式下 operation 不需引用）：只在 worktree 量測，**未套用**，待使用者決定
+
+日期／時區：2026-09-26，Asia/Taipei。
+
+F2 唯一的阻礙是 `missing_evidence:operation=infer`。候選 patch：
+`docs/research-log/log145_v4_candidate.patch`（套在 Log 143 之上）。
+
+形狀：
+- `validate_outcome_hypotheses`／`_required_evidence` 新增 `request_mode` 參數，預設 `"unknown"`，行為不變。
+- legacy 路由的 5 個呼叫點（router_invocation ×3、discriminator ×2）傳入 `request_mode`；claims 路徑不動。
+- 規則：`request_mode == "guidance"` **且** `artifact_type != "unknown"` 時，不要求 operation 的引用。
+- 授權論證：`_match_semantic_request` 在 guidance 模式下比對之前就把 operation 設為 unknown，
+  所以這個值影響不到選擇。
+
+worktree 量測：
+
+| 項目 | 結果 |
+| --- | --- |
+| 驗證網格（省略 operation 證據，guidance 對 unknown） | 放寬 4215 筆，**全部**是 `missing_evidence:operation=*`；新增 0 |
+| 第一版（不限 artifact） | 新增 8 筆 `unusable_outcome`（artifact 為 unknown 時 operation 是唯一有引用的欄位）→ 收窄程式碼後為 0 |
+| execute／unknown 模式 | 與 Log 143 逐位元相同 |
+| matcher 網格、指紋 | 不變 |
+| replay（錄下的 13 次失敗） | 11/13 通過；F2 7 次中 6 次通過（剩下 1 次的 request_mode 不是 guidance） |
+| 完整測試 | **1 failed**：`test_semantic_repair_interaction.py::test_observed_cross_field_errors_receive_actionable_repair[sample_cluster_assignment-changes1-operation]` |
+
+**這個失敗不是可以順手修的測試。** 它刻意移除 guidance 請求的 operation 證據，
+並斷言修補訊息要求 `operation=analyze`——這是 repo 先前的**明確設計決定**：
+guidance 請求也必須引用 operation。V4 會推翻這個決定，因此需要使用者決定，
+不在 Log 143 的授權範圍內，也沒有套用。

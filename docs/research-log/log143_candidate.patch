@@ -1,0 +1,156 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/outcome_validation.py b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+index b8b4de4..98a8206 100644
+--- a/scripts/netzoo_agent_core/interpretation/outcome_validation.py
++++ b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+@@ -148,6 +148,35 @@ def _entailed_by_artifact(
+     return entities, granularity, produced_by
+ 
+ 
++def _axis_entailed_entities(outcome: RequestedOutcome) -> frozenset[str]:
++    """Entities that need no quote of their own once `sample` is read as an axis.
++
++    In a sample-specific outcome, `sample` names the granularity -- one result
++    per sample -- which the granularity evidence already quotes (the same
++    reading as Log 136's `_supported_entities`). And for an artifact that can
++    exist per sample, `sample` in its ontology is that axis, so if exactly one
++    other entity remains it is the only node type: a co-expression network is a
++    network of genes. Neither is a real choice, so neither needs a second quote
++    (Log 143). An aggregate-only matrix such as pathway-by-sample scores keeps
++    `sample` as a genuine dimension, and its entities stay a choice.
++    """
++    entailed = set()
++    if outcome.granularity == "sample_specific":
++        entailed.add("sample")
++    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
++    if (
++        rule is not None
++        and rule.entities is not None
++        and "sample" in rule.entities
++        and rule.granularities is not None
++        and "sample_specific" in rule.granularities
++    ):
++        node_types = rule.entities - {"sample"}
++        if len(node_types) == 1:
++            entailed.update(node_types)
++    return frozenset(entailed)
++
++
+ def _required_evidence(
+     outcome: RequestedOutcome,
+     confirmed_inputs: frozenset[str] = frozenset(),
+@@ -156,6 +185,7 @@ def _required_evidence(
+     entailed_entities, entailed_granularity, producing_operation = _entailed_by_artifact(
+         outcome
+     )
++    entailed_entities = entailed_entities | _axis_entailed_entities(outcome)
+     # Only the operation that builds this artifact is entailed. Asking to
+     # explain or analyze the same artifact is a real choice and still needs a
+     # quote, which is why produced_by is read here and operations is not.
+diff --git a/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py b/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py
+index 522f2e3..d135052 100644
+--- a/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py
++++ b/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py
+@@ -712,6 +712,13 @@ def restore_stated_fields(
+             if cleared is not None and not (
+                 set(outcome_consistency_issues(cleared)) - baseline
+             ):
++                # Retire the role evidence with the roles (Log 143). Left in
++                # place, validation's gap-closing reconcile re-adds the quoted
++                # role to the emptied field and `artifact_roles` returns.
++                evidence = [
++                    item for item in evidence
++                    if item.dimension not in {"regulator_type", "target_type"}
++                ]
+                 restored.append({
+                     "hypothesis": index,
+                     "field": "roles",
+diff --git a/tests/test_sample_axis_evidence.py b/tests/test_sample_axis_evidence.py
+new file mode 100644
+index 0000000..c90e521
+--- /dev/null
++++ b/tests/test_sample_axis_evidence.py
+@@ -0,0 +1,84 @@
++"""Log 143: sample-axis evidence entailment and role-evidence retirement."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeEvidence,
++    OutcomeHypothesis,
++    RequestedOutcome,
++    SemanticInterpretation,
++)
++from netzoo_agent_core.interpretation.outcome_validation import (  # noqa: E402
++    validate_outcome_hypotheses,
++)
++from netzoo_agent_core.interpretation.stated_field_restoration import (  # noqa: E402
++    restore_stated_fields,
++)
++
++TASK = (
++    "I only have expression data from a handful of patients and no prior files. "
++    "I want to see how each patient's own gene co-expression structure differs."
++)
++SPAN = "I want to see how each patient's own gene co-expression structure differs."
++
++
++def _evidence(*pairs) -> list[OutcomeEvidence]:
++    return [
++        OutcomeEvidence(dimension=d, value=v, source="explicit", text_span=s, rationale="t")
++        for d, v, s in pairs
++    ]
++
++
++def _hypothesis(granularity="sample_specific", **update) -> OutcomeHypothesis:
++    fields = dict(
++        operation="infer", input_artifacts=["expression_matrix"],
++        artifact_type="coexpression_network", entity_types=["gene", "sample"],
++        granularity=granularity,
++    )
++    fields.update(update)
++    return OutcomeHypothesis(
++        outcome=RequestedOutcome(**fields), confidence=0.9,
++        evidence=_evidence(
++            ("operation", "infer", SPAN),
++            ("input_artifact", "expression_matrix", "expression data"),
++            ("artifact_type", "coexpression_network", SPAN),
++            ("granularity", granularity, SPAN),
++        ),
++    )
++
++
++def test_sample_specific_granularity_carries_the_sample_entity():
++    assert validate_outcome_hypotheses(TASK, [_hypothesis()]).valid
++
++
++def test_aggregate_request_still_needs_a_quote_for_sample():
++    issues = validate_outcome_hypotheses(TASK, [_hypothesis("aggregate")]).issues
++    assert "hypothesis[0].missing_evidence:entity_type=sample" in issues
++    assert "hypothesis[0].missing_evidence:entity_type=gene" not in issues
++
++
++def test_role_evidence_is_retired_with_roles_on_a_coexpression_network():
++    """The recorded Log 141 F1 shape: target_type gene quoted on a gene-gene network."""
++    hypothesis = _hypothesis(target_types=["gene"])
++    hypothesis = hypothesis.model_copy(update={
++        "evidence": [*hypothesis.evidence, *_evidence(("target_type", "gene", SPAN))],
++    })
++    interpretation = SemanticInterpretation(
++        request_mode="guidance", semantic_goal="per-patient co-expression",
++        outcome_hypotheses=[hypothesis],
++    )
++
++    restored, records = restore_stated_fields(
++        TASK, interpretation, align_artifact_constraints=True,
++        restore_explicit_scalar_evidence=True,
++    )
++
++    assert any(item["field"] == "roles" for item in records)
++    kept = restored.outcome_hypotheses[0]
++    assert not any(item.dimension == "target_type" for item in kept.evidence)
++    assert validate_outcome_hypotheses(TASK, restored.outcome_hypotheses).valid
