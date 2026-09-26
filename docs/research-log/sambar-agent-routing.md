@@ -9976,3 +9976,107 @@ Only an explicit negative statement may eliminate a capability.」
 
 **全部未觸發：成因 C 修正保留。**
 模型這次沒有產生 tf_activity 讀法，所以實跑無法顯示 C 的修正效果；證據是 N-e 的離線重建。
+
+## Log 152｜事前宣告：成因 D——依使用者指名資料夾的檔名給建議（做法 A；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 151。使用者決定：成因 D 採**做法 A**——路由階段看使用者指名的資料夾，
+**只給建議、不排除候選**，維持開放世界規則。
+候選 patch：`docs/research-log/log152_candidate.patch`（5 個檔案區段，套在 `d2691ce` 之上，逐字使用）。
+
+### 成因 D
+
+Log 151 實跑 trial 1：原句說「per-TF」，資料夾 `data/blind-neutral/case-4/` 只有 expression、motif、PPI；
+兩個 hypothesis 的 regulator 都是空的，LIONESS-PANDA／PUMA 平手，planner 反問「TF 還是 miRNA」。
+路由完全不看資料夾，所以不知道 PUMA 需要的 miRNA 清單不在那裡。
+
+### 形狀
+
+新模組 `graph/input_inspection.py`，在實驗條件推薦之後、intent 之後執行（和 Log 139 同一個位置，
+所以 intent router 的輸入與 capability match 都不變）：
+
+1. **找資料夾**：原句中含 `/` 的路徑，解析後必須是 `PROJECT_ROOT` 內**已存在的目錄**；
+   在根目錄外或不存在就忽略。
+2. **只列檔名**：不遞迴、最多 200 個檔案、**不讀內容**。角色沿用既有的
+   `_unlabeled_input_bindings` 檔名提示（motif、ppi、mirna）。
+3. **只在平手時建議**：決策是 ambiguous、至少兩個候選、各候選的註冊表
+   `required_input_artifacts` 不全相同、而且資料夾恰好只滿足其中一個候選的必要輸入時，
+   才產生 `advisory_recommendation`。**沒有候選被排除。**
+4. **沿用現有欄位**：`AdvisoryCondition(axis="inspected_inputs", value="missing:<prior>", text_span=<原句中的資料夾路徑>)`。
+   **沒有 schema 變更，digest 不變。**
+5. **A 版回覆**（新模組 `interpretation/inspected_answers.py`）：說明檔名看起來像哪些輸入、缺哪一個，
+   列出另一個候選還需要什麼，問「Should I use X, or do you also have a … elsewhere?」，
+   頁尾改為「Only the file names in `…` were listed; no file contents were read and no analysis ran.」
+
+### 授權與開放世界規則
+
+- 建議沒有執行權：`action`、`should_execute`、`capability_match_status`、`matched_actions` 一律不變。
+- 開放世界規則不變：資料夾裡沒有 miRNA 清單，不代表使用者沒有；
+  LIONESS-PUMA 仍是候選，回覆直接問使用者是否在別處有 miRNA 清單。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+- 第一版：1 failed——`test_agent_module_boundaries.py::test_core_modules_stay_reviewable`
+  （核心模組 ≤ 1000 行）：`router_invocation.py` 1001、`concept_answers.py` 1001。
+  **我改程式碼、不改測試**：事件記錄移進 `input_inspection.py`，渲染移進 `inspected_answers.py`。
+- 最終：**2113 passed, 35 skipped, 0 failed**，**不修改任何既有測試**。
+- 行數餘裕：`router_invocation.py` 992／1000，`concept_answers.py` 962／1000。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| Log 136 單一 hypothesis 網格、Log 148 帶證據網格、Log 150 配對網格 | 全部逐位元相同（新階段在 matcher 之外） |
+| 指紋 | 不變 |
+| 新測試 `tests/test_input_inspection.py` | 6 passed：無 miRNA → 建議 LIONESS-PANDA；三種都有 → 不建議；根目錄外或不存在 → 忽略；必要輸入相同的候選 → 不動作；A 版點名資料夾且頁尾如實說明 |
+| Log 151 trial 1 的決策重跑 | 建議 **LIONESS-PANDA**；回覆指出資料夾缺 miRNA 清單，並問使用者是否在別處有 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **Q-a** | 逐字套用 patch |
+| **Q-b** | 完整測試 0 failed，不修改任何既有測試 |
+| **Q-c** | 三個網格逐位元相同；指紋不變 |
+| **Q-d** | Log 151 trial 1 的決策重跑得到 LIONESS-PANDA 建議 |
+
+### 實跑（中性路徑 Case 4 ×3，描述性）
+
+只有在平手時才會觸發；若模型直接給出 exact LIONESS-PANDA（Log 150／151 共 4/6），新階段不會動作。
+
+### 撤回條件（寫死）
+
+- **Y-1**：Q-a～Q-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：任何 trial 列出了 `PROJECT_ROOT` 以外的目錄 → 撤回。
+
+### 已知風險
+
+1. 檔名提示很粗：`prior` 會被當成 motif、`protein` 或 `interaction` 會被當成 PPI。
+   建議可能因為檔名命名方式而出錯；緩解是建議會說明依據的是檔名，並直接問使用者。
+2. 有列出檔名但最後沒有給建議時，其他回覆的頁尾仍寫「No files were inspected」。
+   我把「inspected」理解為讀取檔案內容；但如果使用者認為列出檔名也算檢視，這句話就不夠精確。
+3. 使用者在原句中寫出的任何含 `/` 的路徑，只要在 repo 內，其檔名都會被列出。
+   僅限檔名、僅限 repo 內、不遞迴，但這仍是新的讀取行為。
+
+## Log 153｜Log 152 結果：Q-a～Q-d 全部成立，做法 A **保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 152 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| Q-a 逐字套用 | **通過** |
+| Q-b 0 failed、不改既有測試 | **通過**（2113 passed, 35 skipped） |
+| Q-c 三個網格、指紋 | **通過**（逐位元相同） |
+| Q-d Log 151 trial 1 的決策重跑 | **通過**：建議 LIONESS-PANDA |
+
+實跑（中性路徑 Case 4 ×3）：3/3 exact LIONESS-PANDA，沒有平手，新階段**沒有觸發**，也沒有列出任何資料夾。
+Y-2 授權外洩 0/3；Y-3（列出根目錄外的目錄）0。**全部未觸發：做法 A 保留。**
+
+實跑無法顯示做法 A 的效果，因為模型這三次沒有產生平手；證據是 Q-d 的離線重跑。
+
+### Case 4 仍未處理的觀察（不在 Log 150／152 範圍）
+
+exact LIONESS-PANDA 的回覆只列出輸入與輸出，沒有提到使用者真正的目標：
+把「每個人各 TF 對其目標的調控強度」（每個樣本的 TF outdegree，即 targeting 分數）拿去和存活時間做關聯，
+也沒有提醒需要臨床存活資料。這是回覆內容的缺口，不是路由問題。
