@@ -526,7 +526,7 @@ def _invoke_semantic_interpreter(
         )
         if completed_hypotheses != before_alternatives:
             completion_validation = validate_outcome_hypotheses(
-                user_task, completed_hypotheses
+                user_task, completed_hypotheses, interpretation.request_mode,
             )
             if completion_validation.valid:
                 interpretation = interpretation.model_copy(
@@ -556,6 +556,7 @@ def _invoke_semantic_interpreter(
         validation = validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,
+            interpretation.request_mode,
         )
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:
@@ -883,7 +884,9 @@ def invoke_router(
     # itself as an exact match or authorize an action.
     if (
         direct_retrieval_action is None
-        and not validate_outcome_hypotheses(user_task, interpretation.outcome_hypotheses).valid
+        and not validate_outcome_hypotheses(
+            user_task, interpretation.outcome_hypotheses, interpretation.request_mode,
+        ).valid
     ):
         capability_match = bounded_match(capability_match)
         record_event(
