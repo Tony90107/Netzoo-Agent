@@ -61,7 +61,7 @@ from .semantic_review_validation import (
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .condition_recommender import invoke_condition_recommender
 from .input_inspection import invoke_input_inspection
-from .partial_validity import keep_valid_hypotheses
+from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
 from .discriminator import (
     discriminator_context as _discriminator_context,
     invoke_semantic_discriminator as _invoke_semantic_discriminator,
@@ -188,6 +188,7 @@ def _invoke_semantic_interpreter(
     # one that was never committed to. Neither influences any decision below.
     first_pass_shapes: tuple[dict, ...] = ()
     patched_index: int | None = None
+    partial_first: SemanticInterpretation | None = None
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         # A patch can only be merged onto a structurally valid proposal. When the
@@ -448,6 +449,7 @@ def _invoke_semantic_interpreter(
             # live record are this branch: a first pass that passed every check,
             # replaced by a registry guess naming no workflow. Nothing is filled
             # in -- what is returned is the first pass the validator accepted.
+            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
             if validated is not None:
                 record_event(
                     context,
@@ -598,6 +600,7 @@ def _invoke_semantic_interpreter(
             )
             if attempt == 0:
                 first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
+                partial_first = valid_first_pass_subset(user_task, interpretation)
             if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
                 validation_issues = validation.issues
                 record_event(
@@ -624,6 +627,7 @@ def _invoke_semantic_interpreter(
                     ],
                 },
             )
+            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
             if validated is not None:
                 record_event(
                     context,
