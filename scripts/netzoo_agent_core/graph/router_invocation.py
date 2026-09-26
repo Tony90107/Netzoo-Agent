@@ -289,7 +289,7 @@ def _invoke_semantic_interpreter(
                 output_text = patch.model_dump_json()
                 licensed = permitted_fields(validation_issues)
                 interpretation, retired_evidence = apply_semantic_patch(
-                    proposal, patch, permitted_fields=licensed,
+                    proposal, patch, permitted_fields=licensed, user_task=user_task,
                 )
                 patched_index = patched_hypothesis_index(proposal, patch)
                 record_event(
@@ -309,15 +309,15 @@ def _invoke_semantic_interpreter(
                             for item in patch.evidence_removals
                         ],
                         "evidence_added": len(patch.evidence_additions),
-                        # Entries the patch itself made stale by changing their
-                        # dimension. Recorded, never silently dropped.
-                        "evidence_retired_as_stale": [
-                            item for item in retired_evidence
-                            if "reason" not in item
-                        ],
+                        # Entries made stale, additions dropped, withdrawals ignored (Log 164).
+                        "evidence_retired_as_stale": [i for i in retired_evidence if "reason" not in i],
                         "evidence_additions_dropped": [
-                            item for item in retired_evidence
-                            if "reason" in item
+                            i for i in retired_evidence
+                            if i.get("reason") == "addition_does_not_match_merged_outcome"
+                        ],
+                        "evidence_withdrawals_ignored": [
+                            i for i in retired_evidence
+                            if i.get("reason") == "withdrawal_of_asserted_value"
                         ],
                         # What the rules that fired declared they examined.
                         # Overrides outside this set were not applied; an empty
