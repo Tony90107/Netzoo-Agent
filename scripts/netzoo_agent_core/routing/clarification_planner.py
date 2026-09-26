@@ -122,6 +122,37 @@ def _outcome_is_unresolved(
     return False
 
 
+def _dimensions_settled_by(
+    outcomes: Sequence[RequestedOutcome],
+    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
+) -> set[str]:
+    """Dimensions the request already fixed to a value every candidate supports.
+
+    Candidates can still differ in what they *declare* there -- one may also
+    write a p-value matrix or also support aggregate output -- but asking the
+    user about a value they already stated separates nothing they care about
+    (Log 136).
+    """
+    from .capability_compatibility import _supported_artifacts
+
+    settled: set[str] = set()
+    if not outcomes:
+        return settled
+    artifacts = {item.artifact_type for item in outcomes}
+    if len(artifacts) == 1 and _UNKNOWN not in artifacts:
+        artifact = next(iter(artifacts))
+        if all(artifact in _supported_artifacts(capability)
+               for capability in capabilities.values()):
+            settled.add("artifact_type")
+    granularities = {item.granularity for item in outcomes}
+    if len(granularities) == 1 and granularities <= {"aggregate", "sample_specific"}:
+        granularity = next(iter(granularities))
+        if all(granularity in capability.granularities
+               for capability in capabilities.values()):
+            settled.add("granularity")
+    return settled
+
+
 def _label_values(dimension: str, values: tuple[str, ...]) -> str:
     if dimension == "artifact_type":
         return " + ".join(value.replace("_", " ") for value in values)
@@ -220,6 +251,8 @@ class ClarificationPlanner:
             )
             algorithm_values[action] = tuple(distinctive[:1])
         value_sets["algorithm"] = algorithm_values
+        for dimension in _dimensions_settled_by(outcomes, capabilities):
+            value_sets.pop(dimension, None)
 
         differences = []
         # A small cost model keeps questions at the user's scientific altitude:
