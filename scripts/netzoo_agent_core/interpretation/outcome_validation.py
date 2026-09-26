@@ -205,6 +205,13 @@ def _required_evidence(
         outcome
     )
     entailed_entities = entailed_entities | _axis_entailed_entities(outcome)
+    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
+    if rule is not None and rule.entities is not None and set(outcome.entity_types) == rule.entities:
+        # Listing every entity the artifact is defined over restates the
+        # artifact, as Log 25's single-entity case does; only a strict subset
+        # says which of them the user means, and that stays a choice needing a
+        # quote (Log 184, narrowing Log 143's aggregate-only exclusion).
+        entailed_entities = entailed_entities | rule.entities
     # Only the operation that builds this artifact is entailed. Asking to
     # explain or analyze the same artifact is a real choice and still needs a
     # quote, which is why produced_by is read here and operations is not.
