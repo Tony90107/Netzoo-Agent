@@ -10322,3 +10322,102 @@ case-4 #2：第一輪 hyp0 合法、hyp1（tf_activity）不合法；修補呼�
 但第一輪的 hyp0 本來就合法。可能的修正方向：最後一次嘗試沒有產生可用解讀時，
 改用前一次嘗試中已經合法的 hypothesis。這與 Log 28「保留已驗證的第一次結果」同一條界線，
 差別在於 Log 28 只處理「第一輪整體合法」的情況。
+
+## Log 158｜事前宣告：成因 G——修補失敗時，改用第一輪中已經合法的讀法（延伸 Log 28；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 157 的成因 G。使用者指示：先 commit Log 156／157，再處理成因 G。
+候選 patch：`docs/research-log/log158_candidate.patch`（3 個檔案區段，套在 `26bceac` 之上，逐字使用）。
+
+### 成因 G
+
+Log 157 case-4 #2：第一輪 hyp0 合法、hyp1（tf_activity）不合法；修補呼叫回傳的 patch 本身不符合 schema
+（`evidence_additions[1]` 驗證錯誤）。Log 28 只在「第一輪**整體**合法」時保留它（`validated`），
+這裡第一輪只有部分合法，`validated` 為 None，所以什麼都沒留下，請求 fallback。
+
+### 形狀
+
+`graph/partial_validity.py` 新增兩個函式，`router_invocation.py` 加 4 行：
+1. **第一輪驗證失敗時**，計算 `partial_first = valid_first_pass_subset(...)`：hypothesis ≥ 2，
+   每個單獨驗證（deep copy），保留合法者；保留下來的組合再完整驗證一次，通過才成立。
+   全部合法、全部不合法、或只有一個時為 None。
+2. **最後一次嘗試失敗的兩條路徑**（修補回覆無法解析，或最後的解讀仍不合法且 Log 156 也救不回）上，
+   在既有的 `if validated is not None:` 之前呼叫 `retain_valid_first_pass`：
+   只有在沒有整體合法的第一輪（`validated is None`）而且有 `partial_first` 時，才改用它，
+   並記錄事件 `routing.valid_first_pass_subset_retained`。之後沿用既有的 `validated` 回傳路徑，**沒有新的出口**。
+3. 修補成功時不使用 `partial_first`；整體合法的第一輪（Log 28）永遠優先。
+
+**沒有放寬**：使用的每個 hypothesis 都是模型自己在第一輪寫出、且通過未修改驗證器的讀法。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2125 passed, 35 skipped, 0 failed**。既有測試的修改只有一處：
+`tests/test_partial_validity.py`（Log 156 加入）**只附加**新測試並補上 `import pytest`，原有斷言一條都沒改。
+`router_invocation.py` **1000／1000 行**，已無餘裕（`test_core_modules_stay_reviewable` 的上限是 ≤1000）。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 錄下的 17 次 `semantic_fallback` 以第一輪重建 | 有合法子集的 3 次（Log 154 case-4 ×2、**Log 156 case-4 #2＝成因 G 的目標**）救回；14 次（單一 hypothesis 或第一輪沒有合法者）不受影響 |
+| 救回後的比對 | 3 次皆為 ambiguous {LIONESS-PANDA, LIONESS-PUMA}（此時 Log 154 的內容檢查會觸發） |
+| 三個網格、指紋 | 逐位元相同 |
+| 新測試（附加 5 個） | 合法子集成立；單一、全合法、全不合法時為 None；整體合法的第一輪優先且事件只記錄一次 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **X-a** | 逐字套用 patch |
+| **X-b** | 完整測試 0 failed；既有測試只有上述附加 |
+| **X-c** | 三個網格逐位元相同；指紋不變 |
+| **X-d** | 17 次 fallback 重建：成因 G 的目標救回；單一 hypothesis 者 0 改變 |
+
+### 實跑（描述性；`case-4`、`case-4-anon` 各 3 次）
+
+### 撤回條件（寫死）
+
+- **Y-1**：X-a～X-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：任何 trial 在已有整體合法第一輪（Log 28）時仍使用了 `partial_first` → 撤回。
+
+### 已知風險
+
+1. `router_invocation.py` 已達 1000 行上限；之後任何修改都必須先把邏輯移出這個檔案。
+2. 修補失敗時，被丟掉的那個讀法可能是修補原本想修好的；使用者只會看到合法的那一個讀法。
+
+## Log 159｜Log 158 結果：X-a～X-d 全部成立，成因 G 修正**保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 158 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| X-a 逐字套用 | **通過** |
+| X-b 0 failed；既有測試只有附加 | **通過**（2125 passed, 35 skipped；`test_partial_validity.py` +40／−0） |
+| X-c 三個網格、指紋 | **通過** |
+| X-d 17 次 fallback 重建 | **通過**：成因 G 的目標救回；單一 hypothesis 者 0 改變 |
+
+實跑（`case-4`、`case-4-anon` 各 3 次）：**6/6 沒有 `semantic_fallback`**。
+- 5 次 exact LIONESS-PANDA（其中 1 次由 Log 156 移除了不合法的 hypothesis）。
+- 1 次 ambiguous {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE}：Log 150 C2 的兩種讀法並列；
+  候選含 GIRAFFE（非 PANDA 家族），所以 Log 154 的內容檢查照設計不觸發。
+- `valid_first_pass_subset_retained` 0 次：這次修補呼叫都沒有格式錯誤，成因 G 沒有出現。
+  修正生效的證據是 X-d 的離線重建。
+- Y-2 授權外洩 0/6；Y-3 0。**全部未觸發：保留。**
+
+### 整條 Case 4 修正鏈的實跑紀錄（同一句 prompt）
+
+| Log | fallback | 備註 |
+| --- | --- | --- |
+| 136 | — | GIRAFFE ×2、TF／miRNA 平手 ×1（當時的路徑名） |
+| 150 | 0/3 | |
+| 154 | 3/6 | 揭露 C1 回歸與成因 G |
+| 156 | 1/6 | 回歸修正後；剩下成因 G |
+| 158 | **0/6** | |
+
+依 Log 120／124，連續的實跑不是獨立樣本，這張表**不支持比率主張**；
+它只是列出每一輪看到的結構計數，每個成因的證據都是對應的離線重建。
+
+### 維護提醒
+
+`router_invocation.py` 已達 1000／1000 行。之後的任何修改都必須先把既有邏輯移出這個檔案。
