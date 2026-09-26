@@ -108,3 +108,22 @@ def test_planner_still_asks_about_granularity_when_it_is_open():
 
     assert decision is not None
     assert decision.dimension == "granularity"
+
+
+# Log 172: on an axis artifact, `sample` is the axis at any granularity.
+def test_sample_on_an_aggregate_coexpression_request_is_not_a_node_type():
+    outcome = _per_patient_coexpression(granularity="aggregate", operation="unknown")
+
+    match = match_outcome_hypotheses([OutcomeHypothesis(outcome=outcome, confidence=0.9)])
+
+    assert set(match.hypothesis_actions) == {"run_cobra", "run_lioness_coexpression"}
+
+
+def test_sample_on_an_aggregate_regulatory_request_is_still_checked():
+    """regulatory_network lists no entities in the ontology, so the axis rule does not apply."""
+    outcome = RequestedOutcome(
+        operation="infer", artifact_type="regulatory_network", granularity="aggregate",
+        entity_types=["tf", "gene", "sample"], regulator_types=["tf"], target_types=["gene"],
+    )
+
+    assert match_requested_outcome(outcome).status == "unsupported"
