@@ -795,6 +795,7 @@ def evaluate(
         semantic_reviewer=semantic_reviewer,
         semantic_patcher=semantic_patcher,
         semantic_discriminator=semantic_discriminator,
+        selection_condition_llm=provider if semantic_contract == "legacy" else None,
         intent_router=intent_router,
         input_content_mapper=None, response_llm=None,
         semantic_claims=semantic_contract == "claims",

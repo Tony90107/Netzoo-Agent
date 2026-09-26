@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from workflow_registry import (
     ArtifactType,
     EntityType,
     Granularity,
     InputModality,
     RecommendedAction,
+    SELECTION_AXES,
 )
 
 class AgentsPolicyHeader(BaseModel):
@@ -71,6 +72,9 @@ class WorkflowOutputCapabilitySpec(BaseModel):
         default_factory=list, max_length=8
     )
     guidance_notes: list[str] = Field(default_factory=list, max_length=8)
+    # Experimental conditions ("axis:value" from SELECTION_AXES) under which
+    # this workflow is preferred over a same-output alternative (Log 139).
+    prefer_when: list[str] = Field(default_factory=list, max_length=4)
     accepted_input_granularities: list[Granularity] = Field(
         default_factory=list, max_length=3
     )
@@ -95,6 +99,15 @@ class WorkflowOutputCapabilitySpec(BaseModel):
     conditional_outputs: list[ConditionalOutputSpec] = Field(
         default_factory=list, max_length=8
     )
+
+    @field_validator("prefer_when")
+    @classmethod
+    def _registered_conditions_only(cls, values: list[str]) -> list[str]:
+        for value in values:
+            axis, _, level = value.partition(":")
+            if level not in SELECTION_AXES.get(axis, {}).get("values", {}):
+                raise ValueError(f"Unknown selection condition: {value}")
+        return values
 
 
 class WorkflowPolicySpec(BaseModel):

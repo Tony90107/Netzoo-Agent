@@ -60,7 +60,7 @@ def classification_progress_detail(
                 {
                     "action": action,
                     "workflow": spec.workflow,
-                    "output_capability": spec.output_capability.model_dump(),
+                    "output_capability": spec.output_capability.model_dump(exclude={"prefer_when"}),
                 }
                 for action, spec in policy.workflows.items()
             ]

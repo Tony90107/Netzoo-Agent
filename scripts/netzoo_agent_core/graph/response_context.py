@@ -122,7 +122,7 @@ def validated_workflow_context(
                     item: INPUT_LABELS.get(item, item)
                     for item in [*spec.required_inputs, *spec.optional_inputs]
                 },
-                "output_capability": spec.output_capability.model_dump(),
+                "output_capability": spec.output_capability.model_dump(exclude={"prefer_when"}),
             }
         )
     guidance_decision = decision_with_registry_signals(decision, task, policy.workflows)

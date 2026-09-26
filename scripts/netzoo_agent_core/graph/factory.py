@@ -122,6 +122,7 @@ def build_graph(
         semantic_reviewer=semantic_reviewer,
         semantic_patcher=semantic_patcher,
         semantic_discriminator=semantic_discriminator,
+        selection_condition_llm=semantic_llm,
         semantic_claims=semantic_contract == "claims",
         review_policy=review_policy,
         intent_router=intent_router,

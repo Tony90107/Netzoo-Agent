@@ -44,6 +44,9 @@ class _GraphContext:
     # The production factory explicitly selects when_needed.
     review_policy: str = "always"
     semantic_discriminator: Any = None
+    # Log 139: the semantic model, bound to SelectionConditionClaims lazily and
+    # only when a method tie occurs, so graph construction binds nothing new.
+    selection_condition_llm: Any = None
 
 
 def record_event(

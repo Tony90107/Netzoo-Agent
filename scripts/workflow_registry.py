@@ -180,6 +180,68 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     ),
 }
 
+# Experimental-condition axes (Log 139). When compatible workflows produce the
+# same result and differ only in method, these are the facts a user can state
+# about their study that separate them. Each workflow declares the values it is
+# preferred under as ``prefer_when: ["axis:value", ...]``. Labels are
+# user-facing English and deliberately qualitative: there is no accepted
+# numeric cut-off for "few" samples.
+SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
+    "cohort_size": {
+        "question": "About how many samples do you have?",
+        "values": {
+            "few": "only a handful of samples",
+            "many": "dozens of samples or more",
+        },
+    },
+    "per_edge_confidence": {
+        "question": "Do you need a confidence value for each connection in each sample?",
+        "values": {
+            "needed": "a confidence value (p-value) is needed for each connection in each sample",
+        },
+    },
+    "compute_constraints": {
+        "question": "Is the network large enough that memory or runtime is a concern?",
+        "values": {
+            "constrained": "the network is large and memory or runtime is a concern",
+        },
+    },
+    "tf_activity_vs_expression": {
+        "question": (
+            "Do you suspect a regulator's activity differs across samples even when its "
+            "own expression does not, or do you need activating versus repressing effects?"
+        ),
+        "values": {
+            "yes": (
+                "a regulator's activity may differ from its own expression, or activating "
+                "versus repressing effects are needed"
+            ),
+        },
+    },
+    "established_method": {
+        "question": (
+            "Do you need results comparable with the widely published approach, or a base "
+            "network for later per-sample analysis?"
+        ),
+        "values": {
+            "yes": (
+                "results must be comparable with the widely published approach, or serve as "
+                "a base network for later per-sample analysis"
+            ),
+        },
+    },
+    "covariates": {
+        "question": (
+            "Do you need to separate or adjust co-expression for batch, site or other "
+            "sample covariates?"
+        ),
+        "values": {
+            "yes": "co-expression must be separated or adjusted for batch, site or other covariates",
+            "no": "no sample covariates need to be separated or adjusted",
+        },
+    },
+}
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowControlDefinition:
@@ -243,6 +305,7 @@ class OutputCapabilityDefinition:
     handoff_targets: tuple[RecommendedAction, ...] = ()
     selection_tags: frozenset[str] = frozenset()
     guidance_notes: tuple[str, ...] = ()
+    prefer_when: tuple[str, ...] = ()
     handoff_contract: str = ""
     conditional_outputs: tuple[ConditionalOutputDefinition, ...] = ()
 
@@ -408,6 +471,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "tf_gene_regulation", "aggregate_network", "message_passing",
                 "lioness_base_compatibility",
             }),
+            prefer_when=("established_method:yes",),
             handoff_contract=(
                 "PANDA consumes a gene-by-sample expression matrix plus motif and "
                 "PPI priors, or a validated adjusted gene-by-gene co-expression "
@@ -522,6 +586,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "tf_gene_regulation", "message_passing",
                 "leave_one_out_network_inference",
             }),
+            prefer_when=("cohort_size:many",),
             handoff_contract=(
                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
                 "motif and PPI priors to internally infer the aggregate PANDA "
@@ -574,6 +639,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "mirna_regulation", "message_passing",
                 "leave_one_out_network_inference",
             }),
+            prefer_when=("cohort_size:many",),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
@@ -607,6 +673,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             selection_tags=frozenset({
                 "sample_specific", "coexpression", "leave_one_out_network_inference",
             }),
+            prefer_when=("cohort_size:many", "covariates:no",),
             handoff_contract=(
                 "LIONESS co-expression consumes a gene-by-sample expression matrix "
                 "and produces sample-specific co-expression networks."
@@ -670,6 +737,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                     "high_order_correlation",
                 }
             ),
+            prefer_when=("covariates:yes",),
             handoff_contract=(
                 "COBRA consumes a gene-by-sample expression matrix and numeric sample "
                 "covariates, then produces a covariate-associated covariance "
@@ -868,6 +936,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
             handoff_targets=("run_condor",),
             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
+            prefer_when=("compute_constraints:constrained",),
             handoff_contract=(
                 "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI "
                 "projection P, and either a gene-by-sample expression matrix (from which "
@@ -929,6 +998,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "signed_partial_regulatory_effects",
                 "tfa_covariate_regression",
             }),
+            prefer_when=("tf_activity_vs_expression:yes",),
             handoff_contract=(
                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
@@ -1038,6 +1108,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "coexpression", "bayesian",
                 "sparse_pvalue_coexpression",
             }),
+            prefer_when=("cohort_size:few", "per_edge_confidence:needed",),
             handoff_contract=(
                 "BONOBO consumes a labelled gene-by-sample expression matrix and "
                 "produces one gene-by-gene sample-specific co-expression matrix per "
