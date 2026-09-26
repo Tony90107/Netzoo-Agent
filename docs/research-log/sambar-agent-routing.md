@@ -11433,3 +11433,94 @@ Log 156 的部分有效性只在「至少一個 hypothesis 單獨合法」時保
 
 T2 型：模型對 artifact_type 與 granularity 都不給引文。artifact_type 必須有引用是契約的核心，
 本輪不動；可行的方向只能是契約形狀（例如讓 review 能針對缺引用的欄位要求引文），不是 prompt 措辭。
+
+## Log 184｜事前宣告：列出 artifact 完整實體集時不再逐一要求引文（Case 1 GIRAFFE；收窄 Log 143 的 aggregate-only 排除）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+套在 `5e02859` 之上。候選 patch：`docs/research-log/log184_candidate.patch`（2 個檔案，逐字套用）。
+使用者決定：採用「完整集合規則」，Case 4 的副作用列為已知風險。
+
+### 成因（重放確認）
+
+Log 179 的 2 次英文 fallback 與 2 次中文 fallback，最後一次嘗試的**唯一** issue 都是
+`missing_evidence:entity_type=sample`。模型填的是 `regulatory_network_and_tf_activity`、aggregate、
+`entity_types=[tf, sample, gene]`——正好是本體的完整實體集；tf 與 gene 有接地的引文，sample 沒有。
+Log 143 的 V3 刻意排除只有 aggregate 的矩陣（「那裡的 sample 是真正的資料維度」），所以 sample 需要自己的引文。
+
+### 修正
+
+`_required_evidence`：當 `set(entity_types)` **完全等於** artifact 本體的 `entities` 時，這些實體視為蘊含。
+依據與 Log 25 相同：列出 artifact 定義上就具有的全部實體，是在重述 artifact，不增加資訊。
+**嚴格子集**（例如只列 `[tf, sample]`，或 Log 143 守護的 `pathway_mutation_matrix` 只列 `[pathway]`）
+表示使用者關注其中哪些，仍然是選擇，仍然需要引文。釘住測試
+`test_an_artifact_that_permits_several_entities_still_needs_evidence` 不受影響，也沒有被修改。
+
+這**收窄**了 Log 143 V3 的排除：aggregate-only 矩陣的完整集合不再需要實體引文；子集照舊。
+
+### 已在 worktree 量得的事實
+
+- 新測試 `tests/test_complete_entity_set.py` 3 項：2 項正向在舊程式碼上失敗、修正後通過；子集的負向控制前後都通過。
+- 全套 **2168 passed、0 failed**；不修改任何既有測試。
+- 五個網格（136／148／170／174 tag／150 pair）逐位元組相同；指紋不變（`1f68bfde4081`、`348a144cd9b4`）。
+- Log 143 驗證網格（15273 個 outcome，補齊引用但省略所有 entity 證據）：**252 個改變**，
+  **新增問題 0**，全部是移除 `missing_evidence:entity_type=*`。涉及 7 種 artifact：
+  regulatory_network_and_tf_activity 72、signed_regulatory_effect_network 54、expression_matrix 36、
+  mutation_matrix 36、gene_mutation_scores 18、pathway_mutation_matrix 18、tf_activity_matrix 18。
+  （該腳本的 M-b 會把這些列為「宣告範圍外」，因為它是為 Log 143 的兩種放寬寫的；本輪的宣告範圍就是上列完整集合。）
+- 重放 79 次錄下的 `semantic_fallback`：
+  - Case 1 的 4 次（英文 2、中文 2；`blind_zh_merged` 與單檔重複計入同一次）→ exact `run_giraffe`。
+  - **副作用**：case4-zh 1 次 fallback → exact `run_giraffe`；case4-named 1 次平手
+    {LIONESS-PANDA, LIONESS-PUMA} → {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE}（原本被 Log 156 移除的 GIRAFFE 讀法現在合法）；
+    case4-anon 1 次 issue 減少、結果不變。其餘不變。
+
+### 判準
+
+| 判準 | 內容 |
+| --- | --- |
+| **F-a** | 逐字套用；0 failed；網格與指紋同上 |
+| **F-b** | 主 repo 重放與 worktree 逐項相同 |
+| **F-c（實跑，否決）** | 英文 Case 1 ×3、英文 Case 4 ×3、中文 Case 1 ×1：授權外洩 0；Case 1 的 exact 或推薦不是 GIRAFFE 的次數 = 0 |
+| **F-d（實跑，描述）** | Case 1 的 fallback 次數與阻礙；Case 4 的路由結果、候選是否含 GIRAFFE、Log 154 內容檢查是否觸發。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- F-a、F-b、F-c 任一失敗 → 撤回。
+- 實跑中出現新的 issue 種類，而且可以追溯到本規則 → 撤回。
+
+### 已知風險
+
+1. **Case 4**：GIRAFFE 讀法變得更容易通過。使用者測試文件認為 GIRAFFE「不算錯」，理想答案是兩種讀法並列；
+   但混合平手不會觸發 Log 154 的資料夾內容檢查（只對 PANDA 家族平手），也不一定觸發條件推薦。
+   若實跑中 Case 4 出現 exact GIRAFFE，那是「只給一條路」，依測試文件屬扣分訊號；本輪記錄，不列為撤回條件（使用者已接受）。
+   擴大內容檢查到混合平手，另開一項。
+2. 模型可能為了省引文而把實體集填滿。完整集合只重述 artifact，本來就不影響比對（已確認 GIRAFFE、SAMBAR
+   對任何實體子集的比對結果相同），所以不會改變選到的工具。
+
+## Log 185｜Log 184 結果：F-a～F-c 成立，完整集合規則**保留**；Case 4 副作用在實跑中沒有出現
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 184 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| F-a 逐字套用、0 failed、網格與指紋 | **通過**（2168 passed、35 skipped） |
+| F-b 重放 | **通過**：主 repo 與 worktree 逐項相同 |
+| F-c 外洩 0；Case 1 選到 GIRAFFE 以外 0 | **通過** |
+
+### 實跑
+
+| 試驗 | 結果 |
+| --- | --- |
+| case1-en ×3 | **3/3 exact `run_giraffe`**；第 1 次嘗試都因 `artifact_granularity` 被拒，第 2 次通過 |
+| case1-zh ×1 | exact `run_giraffe` |
+| case4-en ×3 | 3/3 平手 {LIONESS-PANDA, LIONESS-PUMA} → 依資料夾內容推薦 LIONESS-PANDA（Log 154 檢查照常觸發）；1 次由 Log 156 移除無依據的 expression_matrix 讀法 |
+
+- **新規則在 Case 1 的 4 次全部實際生效**：被接受的 outcome 都是 `entity_types=[tf, sample, gene]`，
+  而且**沒有任何實體引文**。舊規則下這 4 次都會被拒（Log 179 同題英文 2/3 fallback）。
+- Case 4 的已知風險（GIRAFFE 進入平手或 exact GIRAFFE）本輪 0/3 出現；候選集合與 Log 179 相同。
+- 沒有新的 issue 種類；撤回條件都沒有觸發。依 Log 120／124，這是描述性結果，不作比率主張。
+
+### 範圍外
+
+擴大 Log 154 內容檢查到含 GIRAFFE 的混合平手：本輪沒有觀察到需要它的實跑，暫不處理。
