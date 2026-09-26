@@ -10583,3 +10583,267 @@ schema digest 改變：無。`concept_answers.py` 988／1000 行。
 Y-2 授權外洩 0/3。**全部未觸發：保留。**
 
 現在 Case 4 的三種回覆形態（組合回覆、依資料夾內容推薦、以及它們共用的頁尾規則）都會附上後續用途說明。
+
+## Log 164｜事前宣告：修補不得撤回仍成立之值的有依據引用（修補弄丟引用；尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：Log 161 觀察 2。使用者指示：處理「修補反而弄丟引用」。
+候選 patch：`docs/research-log/log164_candidate.patch`（4 個檔案區段，套在 `6da0566` 之上，逐字使用）。
+
+### 成因（離線重建）
+
+Log 160 trial 3：第一輪 hyp0 缺 granularity 引用；允許修補的欄位是 `artifact_type`、`granularity`
+（`artifact_type` 是因為 hyp1 的問題才被允許）。修補只設定 granularity 並補上它的引用，
+卻**同時撤回了 `artifact_type=regulatory_network` 的引用**，而合併後的 artifact_type 沒有改變。
+結果產生 `missing_evidence:artifact_type`。
+
+commit `f7400ef` 已經處理過同一個機制，但只限「只補引用」（沒有允許修改的欄位）的路徑，
+並刻意釘住「其他情況下撤回照常執行，否則這等於授權一律忽略撤回」。
+
+### 形狀：只忽略一種撤回
+
+`apply_semantic_patch` 新增選填參數 `user_task`（router_invocation 在同一行呼叫中傳入，行數不變）。
+**只在以下四個條件同時成立時**忽略一筆撤回，並記錄為 `withdrawal_of_asserted_value`：
+1. 被撤回的值在合併後的 outcome 中**仍然成立**。
+2. 修補**沒有**為同一個 (dimension, value) 補上替換引用。
+3. 基底中確實有這筆證據。
+4. 這筆證據不是「原句中找不到的 explicit 引用」。
+
+其餘撤回照常執行：有替換引用的（重新引用）、撤回無依據引用的、撤回已被修補改掉之值的。
+因此這**不是**「一律忽略撤回」：它只排除一種只可能製造 `missing_evidence`、不可能有好處的撤回。
+
+`semantic_patch_applied` 事件新增欄位 `evidence_withdrawals_ignored`；原本把所有帶 `reason` 的條目都算進
+`evidence_additions_dropped`，改為只算 `addition_does_not_match_merged_outcome`。
+`router_invocation.py` 維持 1000／1000 行（事件程式碼原地改寫）。
+
+### 與既有設計的關係
+
+推翻 `f7400ef` 釘住的範圍的一部分。`test_citation_only_repair_keeps_the_outcome.py::test_a_citation_only_repair_ignores_withdrawals_too`
+最後兩條斷言原本要求：在允許修改全部欄位的路徑上，兩筆 `inferred` 證據的撤回照常執行。
+依本輪規則它們會被保留，所以改為斷言保留，並註明撤回仍然生效的情況改由新測試檔釘住。
+`f7400ef` 的擔憂（「一律忽略撤回」）由上面的四個條件與新測試處理。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2132 passed, 35 skipped, 0 failed**。既有測試的修改只有上述一處（+8／−3）。
+新測試 `tests/test_withdrawal_of_asserted_value.py`（4 個）：
+有依據的引用保留並記錄；有替換引用時照常撤回；無依據的引用照常撤回；值被改掉時照常撤回。
+在舊程式碼上 4 個全部失敗——**原因是舊版不接受 `user_task` 參數**，不是逐一的行為差異。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| 錄下的 76 個修補重算（新舊規則） | 觸發忽略的只有 1 個（目標 trial）；**合法→不合法：0**；不合法→合法：0 |
+| 目標 trial 的完整流程重建 | hyp0 的缺漏消失；hyp1 仍不合法 → Log 156 保留 hyp0 → ambiguous {LIONESS-PANDA, LIONESS-PUMA}（此時 Log 154 會依內容建議） |
+| 三個網格、指紋 | 不變 |
+
+「不合法→合法：0」是因為重算只到修補後的驗證，沒有套用 Log 156；套用後目標 trial 才被救回。
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AB-a** | 逐字套用 patch |
+| **AB-b** | 完整測試 0 failed；既有測試只有上述一處修改 |
+| **AB-c** | 三個網格逐位元相同；指紋不變 |
+| **AB-d** | 76 個修補重算：合法→不合法 0；觸發忽略者恰為目標 trial |
+
+### 實跑（描述性；`case-4`、`case-4-anon` 各 3 次）
+
+記錄 `evidence_withdrawals_ignored` 與 fallback 次數。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AB-a～AB-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+- **Y-3**：任何 trial 因為被保留的引用而出現新的 `ungrounded_evidence` → 撤回。
+
+## Log 165｜Log 164 結果：AB-a～AB-d 全部成立，修正**保留**
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 164 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AB-a 逐字套用 | **通過** |
+| AB-b 0 failed、只有一處既有測試修改 | **通過**（2132 passed, 35 skipped） |
+| AB-c 三個網格、指紋 | **通過** |
+| AB-d 76 個修補重算 | **通過**：合法→不合法 0；觸發忽略者恰為目標 trial |
+
+實跑（`case-4`、`case-4-anon` 各 3 次）：**6/6 沒有 `semantic_fallback`**，6/6 exact LIONESS-PANDA，
+6/6 回覆含後續用途段落；`evidence_withdrawals_ignored` 0 次（這次修補沒有撤回，規則沒有觸發）；
+新的 `ungrounded_evidence` 0。Y-2 授權外洩 0/6，Y-3 0。**全部未觸發：保留。**
+修正生效的證據是 AB-d 與目標 trial 的完整流程重建。
+
+## Log 166｜事前宣告：每個工作流程都有後續用途說明，並在單一工作流程回覆中顯示（尚未套用）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+依據：使用者指示「其他工作流程還沒有後續用途說明也要補上」。
+候選 patch：`docs/research-log/log166_candidate.patch`（4 個檔案區段，套在 Log 164 之上，逐字使用）。
+
+### 形狀
+
+- `DOWNSTREAM_ANALYSES` 改為 `action → (標題, 說明)`，涵蓋全部 12 個工作流程。
+  LIONESS-PANDA／PUMA 的標題與說明**不變**。新增的 10 個說明（均為一般性建議，需要的外部資料都註明「另外提供」）：
+  - PANDA／PUMA／OTTER：targeting 分數與「每個條件各跑一次、輸入要一致」；PANDA／PUMA 註明要每樣本分數請改用 LIONESS 版本；
+    OTTER 註明權重尺度不同，只能和同參數的 OTTER 比較。
+  - GIRAFFE：TFA 可作為關聯檢定的預測變數；需要樣本註記表；正負號是線性模型係數，不是直接結合的證據。
+  - BONOBO：每樣本度數或邊權重可跨樣本比較、可依 p 值過濾；需要樣本註記表；這是共表現，轉成調控網路需要另外經過驗證的轉換。
+  - LIONESS-coexpression：跨樣本比較；需要樣本註記表；樣本網路彼此不獨立。
+  - COBRA：各共變量成分的意義；校正後的共表現可在重新驗證後作為 PANDA／PUMA／OTTER 的 coexpression_file；
+    解讀要依 design matrix 的編碼方式。
+  - DRAGON：跨層區塊是直接關聯，先以校正後 p 值過濾；偏相關依賴其他所有特徵。
+  - CONDOR：core score 的意義；基因社群可另外做 pathway 富集分析。
+  - SAMBAR：亞型可與臨床變數比較（需要臨床表）；pathway 分數說明哪些 pathway 區分亞型。
+- `verified_guidance.py`（單一工作流程被直接判定時的回覆）在每個被選中工作流程的區塊末尾加入該段落。
+- `downstream_section()` 改讀新結構；組合回覆與兩種 A 版回覆沿用。
+- 不動 YAML、不動 policy schema、不進任何模型提示。
+
+### 釘住測試的事前搜尋（寫本節之前已在 worktree 完成）
+
+**2145 passed, 35 skipped, 0 failed**。既有測試的修改：`tests/test_downstream_guidance.py` **只附加**
+（12 個工作流程都有說明；verified guidance 對每個工作流程都渲染出標題與全部說明）。schema digest 改變：無。
+
+### 已在 worktree 量得的事實
+
+| 項目 | 結果 |
+| --- | --- |
+| LIONESS 組合回覆（Log 160 實跑 trial 2）重新渲染 | 與 Log 162 **逐位元相同** |
+| 依實驗條件推薦 BONOBO 的 A 版回覆 | 新增 BONOBO 的後續用途段落 |
+| 直接判定 GIRAFFE 的 verified guidance（Log 136 錄下的決策） | 新增 GIRAFFE 的後續用途段落，位於「This is workflow guidance only」之前 |
+| 三個網格、指紋 | 不變 |
+
+### 判準（套用後重新量測，全部必須成立）
+
+| 判準 | 內容 |
+| --- | --- |
+| **AC-a** | 逐字套用 patch |
+| **AC-b** | 完整測試 0 failed；既有測試只有附加；schema digest 不變 |
+| **AC-c** | 三個網格逐位元相同；指紋不變 |
+| **AC-d** | LIONESS 組合回覆與 Log 162 逐位元相同 |
+
+### 實跑（描述性；3 個會直接判定單一工作流程的 prompt 各 2 次）
+
+F3（→ BONOBO）、盲測 Case 1 英文版（→ GIRAFFE）、盲測 Case 8 英文版（→ SAMBAR），皆用中性路徑。
+記錄回覆是否含被選中工作流程的後續用途標題。
+
+### 撤回條件（寫死）
+
+- **Y-1**：AC-a～AC-d 任一失敗 → 撤回。
+- **Y-2**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回。
+
+### 已知風險
+
+新增 10 條科學說明，都寫成一般性建議；實際分析設計（統計方法、多重檢定校正等）仍由使用者決定。
+
+## Log 167｜Log 166 結果：AC-a～AC-d 全部成立，後續用途說明**保留**（12 個工作流程）
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 166 事前寫死的條件執行。
+
+| 判準 | 結果 |
+| --- | --- |
+| AC-a 逐字套用 | **通過** |
+| AC-b 0 failed、只有附加、digest 不變 | **通過**（2145 passed, 35 skipped；digest 改變：無） |
+| AC-c 三個網格、指紋 | **通過** |
+| AC-d LIONESS 組合回覆 | **通過**：與 Log 162 逐位元相同 |
+
+實跑（各 2 次）：
+
+| prompt | 結果 | 後續用途段落 |
+| --- | --- | --- |
+| Case 1（GIRAFFE） | 2/2 exact GIRAFFE | 2/2 有 GIRAFFE 的段落 |
+| Case 8（SAMBAR） | 2/2 exact SAMBAR | 2/2 有 SAMBAR 的段落 |
+| F3 | 2/2 平手 {LIONESS-coexp, BONOBO} → 實驗條件推薦 **BONOBO** | 2/2 有 BONOBO 的段落 |
+
+Y-2 授權外洩 0/6。**全部未觸發：保留。**
+
+### 附帶觀察：實驗條件推薦第一次在新句子上觸發
+
+Log 141／142 中 F3 6/6 都在更早的步驟被判定成 BONOBO，新階段從未執行。這次 F3 2/2 走到平手，
+新階段兩次都推薦 BONOBO，引用為：
+- `cohort_size:few` ← 「I have RNA-seq from only six donors」（模型把數字「six」對應到「少」）
+- `per_edge_confidence:needed` ← 「with a p-value on every link」
+
+人工判讀：兩條引用都正確。這是 Log 142 之外、第二句有事實的 prompt 觸發推薦（描述性，不作比率主張）。
+
+## Log 168｜事前宣告：實測另外兩組方法平手（PANDA／OTTER／GIRAFFE、COBRA／LIONESS-coexpression）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+依據：使用者指示「實測另外兩組方法平手」。本輪**不改程式碼**，只量測 Log 139／141 保留的實驗條件推薦
+在另外兩組平手上的表現。
+
+### Prompt（中性路徑；各 3 次；gpt-4o-mini；traced harness）
+
+平手 1 {PANDA, OTTER, GIRAFFE}：
+- **T1-otter**：「I need one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/). The real network will be very large, so memory and runtime are a concern.」→ 預期 `compute_constraints:constrained` → OTTER
+- **T1-giraffe**：「I need one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/). I suspect some regulators are more active in some samples even though their own expression barely changes.」→ 預期 `tf_activity_vs_expression:yes` → GIRAFFE
+- **T1-panda**：「I need one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/). The results must be comparable with the widely published approach.」→ 預期 `established_method:yes` → PANDA
+- **T1-none**：「Which workflow builds one cohort-wide TF-to-gene regulatory network from my expression matrix, TF motif prior and PPI data (data/blind-neutral/case-2/)?」→ 預期不推薦（B）
+
+平手 2 {COBRA, LIONESS-coexpression}：
+- **T2-cobra**：「I want one cohort-level gene co-expression network from my expression matrix (data/blind-neutral/case-6/expression.tsv), and I need to separate the co-expression that comes from the sequencing batch.」→ 預期 `covariates:yes` → COBRA
+- **T2-lioness**：「I want one cohort-level gene co-expression network from my expression matrix (data/blind-neutral/case-6/expression.tsv). There are no batch or site covariates to adjust for.」→ 預期 `covariates:no` → LIONESS-coexpression
+- **T2-none**：「Which workflow gives one cohort-level gene co-expression network from my expression matrix (data/blind-neutral/case-6/expression.tsv)?」→ 預期不推薦（B）
+
+### 計數（結構性）
+
+每一組平手：D = 有事實的 trial 中，新階段確實執行的次數（`routing.selection_conditions_started`）。
+推薦正確／錯誤／未推薦的次數；無事實 trial 中新階段執行時的推薦次數；授權欄位。
+每個推薦的引用都逐一列出並人工判讀。
+
+若某組平手 D < 3，**只再加跑一輪**該組有事實的 prompt。
+
+### 結果處置（寫死）
+
+實驗條件推薦已在 Log 142 保留，本輪只決定**個別平手**的 `prefer_when` 是否保留：
+- **R-1｜方向錯誤**：某組平手中，推薦**不等於**預期工作流程的次數 ≥ 2 →
+  撤回該組平手涉及的 `prefer_when` 項目（平手 1：OTTER 的 `compute_constraints`、GIRAFFE 的
+  `tf_activity_vs_expression`、PANDA 的 `established_method`；平手 2：COBRA 與 LIONESS-coexpression 的 `covariates`）。
+- **R-2｜捏造事實**：某組平手的無事實 trial 中，新階段執行且產生推薦的次數 ≥ 2 → 同 R-1 的撤回範圍。
+- **R-3｜授權外洩**：任何 trial 出現 `should_execute=True` 或 `action ≠ no_tool` → 撤回整個推薦器（Log 139／141）。
+- **分母不足**：補跑後 D 仍 < 3 → 記為「無法判定」，**不做任何撤回**
+  （與 Log 141 不同：那時是決定是否保留新功能，沒有證據就不保留；現在功能已保留，只是這組平手沒被量到）。
+
+### 事前預測
+
+- 平手 1、平手 2 都**不預測會到達新階段**：Log 140 的 P2 顯示 OTTER 方向常被 tag discriminator 的 regex 先解開；
+  「batch」的字樣可能讓 COBRA 直接被選中（`batch_correction` tag）。
+- 若到達，推薦方向不預測。
+
+## Log 169｜Log 168 結果：平手 1 全部正確；平手 2 無法判定，並發現成因 I
+
+日期／時區：2026-09-26，Asia/Taipei。依 Log 168 事前寫死的條件執行。本輪未改程式碼。
+
+### 平手 1 {PANDA, OTTER, GIRAFFE}
+
+| prompt | 新階段執行 | 推薦 | 引用 |
+| --- | --- | --- | --- |
+| T1-otter ×3 | 3/3 | **OTTER 3/3** | `compute_constraints:constrained` ← 「the real network will be very large, so memory and runtime are a concern」 |
+| T1-giraffe ×3 | 3/3 | **GIRAFFE 3/3** | `tf_activity_vs_expression:yes` ← 「I suspect some regulators are more active in some samples even though their own expression barely changes.」 |
+| T1-panda ×3 | 3/3 | **PANDA 3/3** | `established_method:yes` ← 「the results must be comparable with the widely published approach」 |
+| T1-none ×3 | 3/3 | 0（走 B） | — |
+
+D = 9，正確 9、錯誤 0；無事實推薦 0。人工判讀：9 條引用都正確。R-1、R-2 未觸發。
+**事前預測（「不會到達新階段」）錯誤**：三句都穩定到達。
+
+### 平手 2 {COBRA, LIONESS-coexpression}
+
+第一輪加補跑一輪，共 12 次有事實的 trial：**D = 0**。
+- T2-cobra 6/6：**exact LIONESS-coexpression**（應為 COBRA）。
+- T2-lioness 5/6：exact LIONESS-coexpression；1/6 `semantic_fallback`。
+- T2-none 3/3：ambiguous，候選清單為空。
+
+依宣告：**無法判定，不撤回任何項目**。R-3 授權外洩 0/33。
+
+### 成因 I（新發現，離線查證）
+
+T2-cobra 的最終 outcome：`coexpression_network`／aggregate／`operation=infer`（有 explicit 引用）、
+`selection_tags` 為空（模型沒有把「sequencing batch」標成 tag）。
+
+1. guidance 模式下，`_match_semantic_request` 在比對前把 outcome 的 operation 抹成 unknown。
+2. 但 `match_outcome_hypotheses` 的 explicit-evidence 分支讀的是**證據**；證據中的 `operation=infer` 仍在，
+   `_matches_explicit_evidence` 因此排除 operation 為 `analyze` 的 COBRA，只剩 LIONESS-coexpression → exact。
+
+**guidance 模式抹掉了 operation，卻讓它透過證據重新生效。** 這讓「要分離批次效應」的請求被導向一個不處理共變量的工具。
+若修正（guidance 模式同時忽略 operation 證據），T2-cobra 會進入 {COBRA, LIONESS-coexpression} 平手，
+由實驗條件推薦依 `covariates:yes` 判斷。修正會**擴大** guidance 模式的候選，屬於比對行為的改變，待使用者決定。

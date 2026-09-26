@@ -1,0 +1,180 @@
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index 678c456..ff79f2d 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -244,8 +244,9 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
+ 
+ 
+ # What a user typically does with a workflow's output next, and what that
+-# needs beyond the workflow's own inputs (Log 160). Rendered by the
+-# deterministic composition guidance only; never part of a model prompt.
++# needs beyond the workflow's own inputs (Log 160, extended in Log 166). Each
++# entry is (heading, notes). Rendered by deterministic guidance only; never
++# part of a model prompt. General advice: the analysis design stays the user's.
+ _LIONESS_TARGETING_NOTES = (
+     "Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights "
+     "to its targets) or a gene's indegree, computed in each sample's network, gives a "
+@@ -258,9 +259,79 @@ _LIONESS_TARGETING_NOTES = (
+     "statistically independent; account for this in the association test, which is a "
+     "later analysis step rather than part of this workflow.",
+ )
+-DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, ...]] = {
+-    "run_lioness_panda": _LIONESS_TARGETING_NOTES,
+-    "run_lioness_puma": _LIONESS_TARGETING_NOTES,
++_AGGREGATE_TARGETING_NOTES = (
++    "Targeting scores: a regulator's outdegree or a gene's indegree summarizes the "
++    "network per regulator or per gene; comparing them between networks built "
++    "separately for each condition shows regulators whose targeting changes.",
++    "Comparing conditions needs one run per condition on matched inputs (the same "
++    "genes and the same motif and PPI priors); edge weights are comparable only within "
++    "that shared setup.",
++)
++_SAMPLE_ANNOTATION_NOTE = (
++    "Relating per-sample results to sample-level variables needs an annotation or "
++    "clinical table keyed by the same sample IDs, supplied separately."
++)
++DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
++    "run_lioness_panda": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
++    "run_lioness_puma": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
++    "run_panda": ("Downstream use of the aggregate network:", (
++        *_AGGREGATE_TARGETING_NOTES,
++        "For per-sample scores to test against clinical variables, use LIONESS-PANDA instead.",
++    )),
++    "run_puma": ("Downstream use of the aggregate network:", (
++        *_AGGREGATE_TARGETING_NOTES,
++        "For per-sample scores to test against clinical variables, use LIONESS-PUMA instead.",
++    )),
++    "run_otter": ("Downstream use of the aggregate network:", (
++        *_AGGREGATE_TARGETING_NOTES,
++        "OTTER weights are on a different scale from PANDA's; compare OTTER networks only "
++        "with other OTTER networks built with the same parameters.",
++    )),
++    "run_giraffe": ("Downstream use of the regulatory and activity matrices:", (
++        "The TF-by-sample activity matrix (TFA) can serve as predictors in association "
++        "tests with sample-level variables -- survival, for example, with a Cox model.",
++        _SAMPLE_ANNOTATION_NOTE,
++        "Signs in the regulatory matrix are partial linear effects (positive for "
++        "activation, negative for repression); read them as model coefficients, not as "
++        "proof of direct binding.",
++    )),
++    "run_bonobo": ("Downstream use of the sample-specific co-expression networks:", (
++        "Per-sample gene degree or edge weights can be compared across samples or groups; "
++        "with p-value output, edges can be filtered per sample at a chosen confidence.",
++        _SAMPLE_ANNOTATION_NOTE,
++        "These are co-expression networks, not TF-gene regulation; turning them into "
++        "regulatory networks needs a separate, validated conversion before PANDA.",
++    )),
++    "run_lioness_coexpression": ("Downstream use of the sample-specific co-expression networks:", (
++        "Per-sample gene degree or edge weights can be compared across samples or groups.",
++        _SAMPLE_ANNOTATION_NOTE,
++        "All LIONESS networks are derived from the same cohort, so they are not "
++        "statistically independent; account for this in any test across samples.",
++    )),
++    "run_cobra": ("Downstream use of the covariate-specific co-expression:", (
++        "Each covariate's component is a gene-by-gene co-expression attributable to that "
++        "covariate; the adjusted co-expression can be passed to PANDA, PUMA or OTTER as "
++        "coexpression_file after its identifiers and order are revalidated.",
++        "Interpret each component relative to how the design matrix codes that covariate "
++        "(for example, which level is the reference).",
++    )),
++    "run_dragon": ("Downstream use of the partial-correlation network:", (
++        "The cross-layer block holds direct associations between features of the two "
++        "omics layers; filter edges by the adjusted p-values before interpreting them.",
++        "Partial correlations are conditional on every other feature in both layers, so "
++        "adding or removing features changes them.",
++    )),
++    "run_condor": ("Downstream use of the communities:", (
++        "Core scores rank each node's contribution to its community's modularity; the "
++        "top-scoring regulators and genes are candidates for the community's function.",
++        "Gene communities can be tested for pathway enrichment with standard gene-set "
++        "tools, which is a separate analysis step.",
++    )),
++    "run_sambar": ("Downstream use of the subtypes:", (
++        "Subtype labels can be compared with clinical variables -- survival between "
++        "subtypes, for example; that needs a clinical table keyed by the same sample IDs.",
++        "The pathway mutation scores show which pathways separate the subtypes.",
++    )),
+ }
+ 
+ @dataclass(frozen=True, slots=True)
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 48e2d41..6d8da25 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -360,9 +360,11 @@ def _render_outcome_clarification(
+ 
+ 
+ def downstream_section(action: str) -> str:
+-    """The registered downstream-use notes for a workflow, or '' (Log 160/162)."""
+-    notes = "".join(f"   - {note}\n" for note in DOWNSTREAM_ANALYSES.get(action, ()))
+-    return f"Downstream use of the sample-specific networks:\n{notes}" if notes else ""
++    """The registered downstream-use notes for a workflow, or '' (Log 160/162/166)."""
++    if action not in DOWNSTREAM_ANALYSES:
++        return ""
++    heading, notes = DOWNSTREAM_ANALYSES[action]
++    return heading + "\n" + "".join(f"   - {note}\n" for note in notes)
+ 
+ 
+ def _condition_label(condition: str) -> str:
+diff --git a/scripts/netzoo_agent_core/interpretation/verified_guidance.py b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+index fc3af04..e74909b 100644
+--- a/scripts/netzoo_agent_core/interpretation/verified_guidance.py
++++ b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+@@ -12,7 +12,7 @@ from ..routing.capability_compatibility import input_availability
+ from ..routing.method_rejections import rejected_methods_for
+ from ..runtime_constraints import runtime_control_constraints
+ from ..settings import INPUT_ROLE_FIELDS
+-from workflow_registry import get_controls
++from workflow_registry import DOWNSTREAM_ANALYSES, get_controls
+ from .extraction import INPUT_LABELS
+ from .guidance_interaction import guidance_interaction
+ from .scientific_explanations import scientific_explanations
+@@ -198,6 +198,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
+                 f"- `{artifact}`: {facts['artifact_definitions'][artifact]}."
+                 for artifact in sorted(artifacts)
+             ))
++            if action in DOWNSTREAM_ANALYSES:
++                heading, notes = DOWNSTREAM_ANALYSES[action]
++                lines.append(heading + "\n\n" + "\n".join(f"- {note}" for note in notes))
+     elif rejected:
+         lines.append("No compatible workflow has been selected for execution.")
+     lines.append("This is workflow guidance only; no execution was authorized. "
+diff --git a/tests/test_downstream_guidance.py b/tests/test_downstream_guidance.py
+index 3deb88c..e4afa28 100644
+--- a/tests/test_downstream_guidance.py
++++ b/tests/test_downstream_guidance.py
+@@ -82,3 +82,34 @@ def test_folder_based_recommendation_includes_the_downstream_notes(tmp_path):
+     assert "Downstream use of the sample-specific networks:" in answer
+     assert answer.index("Downstream use") < answer.index("Should I use LIONESS-PANDA")
+     assert "clinical table" in answer
++
++
++# Log 166: every registered workflow says what its output is for next.
++from workflow_registry import DOWNSTREAM_ANALYSES, OUTPUT_CAPABILITIES  # noqa: E402
++
++from netzoo_agent_core.graph.response_context import validated_workflow_context  # noqa: E402
++from netzoo_agent_core.interpretation.verified_guidance import render_verified_guidance  # noqa: E402
++
++
++def test_every_registered_workflow_has_downstream_notes():
++    assert set(OUTPUT_CAPABILITIES) <= set(DOWNSTREAM_ANALYSES)
++    for heading, notes in DOWNSTREAM_ANALYSES.values():
++        assert heading.startswith("Downstream use of the") and heading.endswith(":")
++        assert notes
++
++
++@pytest.mark.parametrize("action", sorted(OUTPUT_CAPABILITIES))
++def test_verified_guidance_renders_each_workflows_notes(action):
++    policy = ProjectPolicyLoader(ROOT).load()
++    decision = TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
++        confidence=1.0, reason="guidance", capability_match_status="exact",
++        matched_actions=[action], recommended_actions=[action],
++    )
++
++    answer = render_verified_guidance(decision, validated_workflow_context(decision, policy))
++
++    heading, notes = DOWNSTREAM_ANALYSES[action]
++    assert heading in answer
++    assert all(note in answer for note in notes)
++    assert answer.index(heading) < answer.index("This is workflow guidance only")
