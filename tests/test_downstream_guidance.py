@@ -82,3 +82,34 @@ def test_folder_based_recommendation_includes_the_downstream_notes(tmp_path):
     assert "Downstream use of the sample-specific networks:" in answer
     assert answer.index("Downstream use") < answer.index("Should I use LIONESS-PANDA")
     assert "clinical table" in answer
+
+
+# Log 166: every registered workflow says what its output is for next.
+from workflow_registry import DOWNSTREAM_ANALYSES, OUTPUT_CAPABILITIES  # noqa: E402
+
+from netzoo_agent_core.graph.response_context import validated_workflow_context  # noqa: E402
+from netzoo_agent_core.interpretation.verified_guidance import render_verified_guidance  # noqa: E402
+
+
+def test_every_registered_workflow_has_downstream_notes():
+    assert set(OUTPUT_CAPABILITIES) <= set(DOWNSTREAM_ANALYSES)
+    for heading, notes in DOWNSTREAM_ANALYSES.values():
+        assert heading.startswith("Downstream use of the") and heading.endswith(":")
+        assert notes
+
+
+@pytest.mark.parametrize("action", sorted(OUTPUT_CAPABILITIES))
+def test_verified_guidance_renders_each_workflows_notes(action):
+    policy = ProjectPolicyLoader(ROOT).load()
+    decision = TaskDecision(
+        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
+        confidence=1.0, reason="guidance", capability_match_status="exact",
+        matched_actions=[action], recommended_actions=[action],
+    )
+
+    answer = render_verified_guidance(decision, validated_workflow_context(decision, policy))
+
+    heading, notes = DOWNSTREAM_ANALYSES[action]
+    assert heading in answer
+    assert all(note in answer for note in notes)
+    assert answer.index(heading) < answer.index("This is workflow guidance only")

@@ -12,7 +12,7 @@ from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
 from ..runtime_constraints import runtime_control_constraints
 from ..settings import INPUT_ROLE_FIELDS
-from workflow_registry import get_controls
+from workflow_registry import DOWNSTREAM_ANALYSES, get_controls
 from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
@@ -198,6 +198,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                 f"- `{artifact}`: {facts['artifact_definitions'][artifact]}."
                 for artifact in sorted(artifacts)
             ))
+            if action in DOWNSTREAM_ANALYSES:
+                heading, notes = DOWNSTREAM_ANALYSES[action]
+                lines.append(heading + "\n\n" + "\n".join(f"- {note}" for note in notes))
     elif rejected:
         lines.append("No compatible workflow has been selected for execution.")
     lines.append("This is workflow guidance only; no execution was authorized. "
