@@ -61,6 +61,7 @@ from .semantic_review_validation import (
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .condition_recommender import invoke_condition_recommender
 from .input_inspection import invoke_input_inspection
+from .partial_validity import keep_valid_hypotheses
 from .discriminator import (
     discriminator_context as _discriminator_context,
     invoke_semantic_discriminator as _invoke_semantic_discriminator,
@@ -559,6 +560,9 @@ def _invoke_semantic_interpreter(
             interpretation.outcome_hypotheses,
             interpretation.request_mode,
         )
+        if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
+            interpretation, validation = keep_valid_hypotheses(
+                context, state, user_task, interpretation, validation, attempt)
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:
             usage = append_llm_usage(
