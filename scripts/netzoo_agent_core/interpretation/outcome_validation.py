@@ -82,15 +82,30 @@ def _grounded_span(span: str, task: str) -> bool:
     return aligned_span(span, task)
 
 
+#: An elision mark inside a quote: three or more dots, or the ellipsis character.
+_ELISION = re.compile(r"\.{3,}|\u2026")
+
+
 def explicit_evidence_grounded(user_task: str, evidence: OutcomeEvidence) -> bool:
-    """Whether an explicit evidence quote occurs in the typed terminal request."""
+    """Whether an explicit evidence quote occurs in the typed terminal request.
+
+    A quote that marks an omission ("I have gene expression... and
+    methylation...") is grounded when every segment between the marks is.
+    Normalization turns the marks into spaces, so such a quote used to be read
+    as one contiguous run the request never contains (Log 182). This admits
+    nothing new: each segment on its own is already an acceptable quote, and a
+    segment the request lacks still fails the whole quote.
+    """
     if evidence.source != "explicit":
         return False
-    span = _normalized(evidence.text_span or "")
-    if not span:
+    segments = [_normalized(part) for part in _ELISION.split(evidence.text_span or "")]
+    segments = [segment for segment in segments if segment]
+    if not segments:
         return False
     variants = tuple(dict.fromkeys((_normalized(user_task), _hard_wrap_normalized(user_task))))
-    return any(_grounded_span(span, task) for task in variants)
+    return all(
+        any(_grounded_span(segment, task) for task in variants) for segment in segments
+    )
 
 
 def grounded_selection_tags(
