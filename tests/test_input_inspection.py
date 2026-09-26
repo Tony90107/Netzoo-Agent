@@ -96,7 +96,13 @@ def test_a_mirna_list_with_an_uninformative_name_still_counts(tmp_path):
 
     advised = advise_from_inspected_inputs(_task(written), _decision(), root=tmp_path)
 
-    assert advised.advisory_recommendation is None
+    # Log 186: this prior lists a regulator from the list, so the list now
+    # recommends LIONESS-PUMA; before, both candidates were equipped and
+    # nothing was recommended. Either way it counts by content, not name.
+    assert advised.advisory_recommendation.action == "run_lioness_puma"
+    values = {c.value for c in advised.advisory_recommendation.conditions}
+    assert "validated:mirna_file=list_04.dat" in values
+    assert "mixed_prior:1" in values
     assert advised.inspected_directories == [written]
 
 
@@ -159,3 +165,59 @@ def test_form_a_quotes_non_english_folder_and_file_names_verbatim(tmp_path):
 
     assert answer.startswith(f"By content, the files in `{written}` validate as a complete input set")
     assert "`基序.tsv` as the TF-motif prior" in answer
+
+
+CASE_5 = {"expression.tsv": "expression.tsv", "prior.tsv": "prior-puma.tsv",
+          "ppi.tsv": "ppi.tsv", "mirna.txt": "mirna.txt"}
+MIXED_TIE = ["run_panda", "run_puma", "run_otter", "run_giraffe"]
+
+
+def _case_5_task(written: str) -> str:
+    return (f"My prior regulatory table ({written}prior.tsv) also has small RNAs, listed in "
+            "mirna.txt. Use the expression and PPI files in the same folder.")
+
+
+def test_a_named_file_names_its_folder(tmp_path):
+    """Log 186: the request names only data/study/prior.tsv."""
+    written = _folder(tmp_path, CASE_5)
+
+    assert named_directories(_case_5_task(written), tmp_path) == [
+        (written, (tmp_path / "data" / "study").resolve()),
+    ]
+
+
+def test_a_prior_that_uses_its_mirna_list_recommends_puma_over_tf_only_candidates(tmp_path):
+    written = _folder(tmp_path, CASE_5)
+    decision = _decision(hypothesis_actions=list(MIXED_TIE))
+
+    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
+
+    assert advised.advisory_recommendation.action == "run_puma"
+    assert "mixed_prior:1" in {c.value for c in advised.advisory_recommendation.conditions}
+    for field in AUTHORITY:
+        assert getattr(advised, field) == getattr(decision, field), field
+
+    answer = render_outcome_clarification(advised, ProjectPolicyLoader(ROOT).load())
+
+    assert "`prior.tsv` lists 1 regulator(s) that `mirna.txt` validates as miRNAs" in answer
+    assert "**OTTER** — would read every regulator in the prior as a transcription factor." in answer
+
+
+def test_a_mirna_list_the_prior_never_uses_recommends_nothing(tmp_path):
+    written = _folder(tmp_path, {**CASE_5, "prior.tsv": "motif-panda.tsv"})
+    decision = _decision(hypothesis_actions=list(MIXED_TIE))
+
+    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
+
+    assert advised.advisory_recommendation is None
+    assert advised.inspected_directories == [written]
+
+
+def test_a_folder_that_also_holds_a_clean_tf_prior_recommends_nothing(tmp_path):
+    """Log 186: the toy folder holds both priors, so the mixed one decides nothing."""
+    written = _folder(tmp_path, {**CASE_5, "motif.tsv": "motif-panda.tsv"})
+    decision = _decision(hypothesis_actions=list(MIXED_TIE))
+
+    advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
+
+    assert advised.advisory_recommendation is None
