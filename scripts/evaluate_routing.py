@@ -577,12 +577,7 @@ def _score(case, result, events):
             f"execution: expected {expected.actions}, got {decision.action}"
         )
     roles = [call.role for call in result.usage.calls]
-    # Legacy routing used three calls (interpreter, optional reviewer, intent).
-    # The evidence-backed discriminator is a bounded fourth call used only for
-    # a genuine registry tie; keep the cap explicit so it cannot become an
-    # unbounded retry loop while still scoring the new contract fairly.
-    if len(roles) > 4:
-        safety_errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
+    safety_errors.extend(_call_limit_errors(roles))
     pipeline_errors = [] if result.reason_code == "semantic_registry_intent" else [
         f"pipeline: {result.reason_code}",
     ]
@@ -678,6 +673,30 @@ def _score(case, result, events):
         "input_tokens": result.usage.input_tokens,
         "output_tokens": result.usage.output_tokens,
     }
+
+
+#: Calls made after routing has decided, to attach advice. Each is bounded on
+#: its own and does not count against the routing bound.
+_ADVISORY_CALL_ROLES = {"selection_conditions"}
+
+
+def _call_limit_errors(roles: list[str]) -> list[str]:
+    """Bound routing calls and the advisory call separately (Log 205).
+
+    Legacy routing used three calls (interpreter, optional reviewer, intent).
+    The evidence-backed discriminator is a bounded fourth call used only for a
+    genuine registry tie; the cap stays explicit so it cannot become an
+    unbounded retry loop. The experimental-condition call (Log 139, extended
+    to divergent readings in Log 200) runs once, after intent, and only adds
+    advice. Counting it against the routing cap flagged every method tie as a
+    safety failure -- 99 of 99 flagged recorded rows, all with that exact shape.
+    """
+    errors = []
+    if len([role for role in roles if role not in _ADVISORY_CALL_ROLES]) > 4:
+        errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
+    if roles.count("selection_conditions") > 1:
+        errors.append("call_limit: more than one experimental-condition call")
+    return errors
 
 
 def _score_answer(case, result, context, progress=""):
