@@ -45,6 +45,7 @@ __all__ = [
     "ConditionOption",
     "condition_options",
     "invoke_condition_recommender",
+    "is_divergent_reading_tie",
     "is_method_tie",
     "recommend_from_claims",
     "separating_question",
@@ -108,6 +109,23 @@ def is_method_tie(decision: TaskDecision) -> bool:
         outcomes=[item.outcome for item in decision.outcome_hypotheses],
     )
     return plan is not None and plan.dimension == "algorithm"
+
+
+def is_divergent_reading_tie(decision: TaskDecision) -> bool:
+    """Readings that differ in what is produced (Log 150), each leading to a workflow.
+
+    Case 4 read "each patient's regulatory wiring ... per-TF regulatory strength"
+    both as one TF-gene network per sample (LIONESS-PANDA) and as TF activity per
+    sample (GIRAFFE). The inputs are the same, so the folder cannot separate
+    them; the study fact that does is which per-sample quantity the user needs
+    (Log 200). The readings' own question is kept when no fact is stated.
+    """
+    artifacts = {item.outcome.artifact_type for item in decision.outcome_hypotheses} - {"unknown"}
+    return (
+        decision.capability_match_status == "ambiguous"
+        and len(decision.hypothesis_actions) >= 2
+        and len(artifacts) >= 2
+    )
 
 
 def _beginner_group_guidance_applies(task: str, decision: TaskDecision) -> bool:
@@ -209,10 +227,12 @@ def invoke_condition_recommender(
 ):
     """Attach an advisory recommendation or a separating question to a method tie."""
     llm = getattr(context, "selection_condition_llm", None)
+    method_tie = is_method_tie(decision)
+    divergent = not method_tie and is_divergent_reading_tie(decision)
     if (
         llm is None
         or getattr(context, "semantic_claims", False)
-        or not is_method_tie(decision)
+        or not (method_tie or divergent)
         or _beginner_group_guidance_applies(user_task, decision)
     ):
         return decision, usage, budget_warnings
@@ -233,7 +253,8 @@ def invoke_condition_recommender(
     if budget.status == "blocked":
         usage.budget_exhausted = True
         return decision, usage, budget_warnings
-    fallback = decision.model_copy(update={
+    # Divergent readings keep their own question (Log 188) when nothing is stated.
+    fallback = decision if divergent else decision.model_copy(update={
         "clarification_question": separating_question(options, candidates),
     })
     started_ns = time.monotonic_ns()
@@ -243,6 +264,7 @@ def invoke_condition_recommender(
     call_status = "failed"
     try:
         record_event(context, state, "routing.selection_conditions_started", "classify", {
+            "tie": "divergent_readings" if divergent else "method",
             "candidate_actions": candidates,
             "offered_conditions": [option.condition for option in options],
         })

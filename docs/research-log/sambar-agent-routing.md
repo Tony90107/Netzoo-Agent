@@ -12067,3 +12067,86 @@ provider 端的解析都以 `Field required` 失敗，程式照設計退回一�
 
 (a)（strict）與 (b) 都保留。Log 196 撤回的非 strict 版本（`SemanticPatch` 子類別）已由 strict 版取代，程式中不再存在。
 
+## Log 200｜事前宣告：分歧讀法也依實驗條件推薦，新增「每個樣本要的量」條件軸（第 4、10 項）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+**使用者決定（2026-09-27）：新增條件軸並推薦**（多一次 mini 呼叫）。
+
+### 成因
+
+Case 4 的兩種讀法（每個病人一張 TF-gene 網路 → LIONESS-PANDA；每個病人的 TF 活性 → GIRAFFE）輸入相同，資料夾內容無法區分（Log 187）。
+Log 139 的條件推薦只在「方法平手」（planner 維度為 algorithm）時執行；分歧讀法（Log 150）是 artifact 不同，所以從不執行，
+只剩 Log 188 的讀法提問。真正能區分兩者的是使用者要分析的「每個樣本的量」：接到目標的接線強度，還是調控因子的活性。
+
+### 修正
+
+1. `SELECTION_AXES` 新增多值軸 `per_sample_quantity`：`wiring`（每個樣本的調控因子→目標接線，邊權重或 targeting 分數）、
+   `activity`（每個樣本的調控因子活性，與其自身表現量分開）。
+2. `prefer_when`：LIONESS-PANDA、LIONESS-PUMA 加 `per_sample_quantity:wiring`；GIRAFFE 加 `per_sample_quantity:activity`。
+   註冊表與三個 YAML 同步修改。
+3. `invoke_condition_recommender`：除了方法平手，也對 `is_divergent_reading_tie`（ambiguous、≥2 個候選、讀法有 ≥2 種已知 artifact）執行。
+   沒有可提供的條件時不呼叫；呼叫後沒有推薦時**保留原本的讀法提問**（方法平手仍換成分隔問題）。推薦仍只是建議，不改 action、執行權限或比對狀態。
+   事件 `routing.selection_conditions_started` 多一個 `tie` 欄位。
+4. prompt 模板不變；新軸的標籤是註冊表資料。
+
+### 已量得的事實（離線）
+
+- Log 136 網格中的 5 種方法平手，**沒有一種**被加上新軸（多值軸要求每個候選都宣告；PANDA／OTTER、BONOBO 等都沒有）。
+- 重放 135 個錄下的 ambiguous 決策：4 個是分歧讀法；其中 2 個（{LIONESS-PANDA, LIONESS-PUMA}）沒有可提供的條件，不會多呼叫；
+  2 個 3 方平手 {LIONESS-PANDA, LIONESS-PUMA, GIRAFFE} 會被提供 `tf_activity_vs_expression:yes` 與兩個新值。
+- 新測試 `tests/test_divergent_reading_recommender.py` 5 項（套用前 2 項失敗）。全套 2257 passed；五個網格逐位元組相同；指紋不變。
+- 沒有修改任何既有測試（`test_scoring_the_ambiguous_answer_costs_no_provider_call` 是方法平手，呼叫序列不變）。
+
+### 判準
+
+實跑：`case4-en`（盲測原題）與三個變體（明說接線 `case4-wiring`、明說活性 `case4-activity`、沒說事實 `case4-open`）各 ×3，gpt-4o-mini、legacy、traced harness。
+
+| 判準 | 內容 |
+| --- | --- |
+| **M-a（離線）** | 如上 |
+| **M-b（否決）** | (1) `should_execute` 為真 = 0；(2) `case4-en`、`case4-wiring` 被推薦或 exact GIRAFFE = 0；(3) `case4-activity` 被推薦 LIONESS 系列 = 0；(4) 分歧讀法上的條件呼叫出現例外 = 0 |
+| **M-c（描述）** | 分歧讀法出現次數、條件呼叫次數、推薦對象；`case4-open` 是否保留讀法提問。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- M-a 或 M-b 失敗 → 撤回（新軸、三個 `prefer_when`、觸發條件一併撤回）。
+- 分歧讀法 0 次出現 → 機制未被實測，照實記錄，由離線測試涵蓋，不作保留或撤回的結論。
+
+### 已知限制（事前記錄）
+
+3 方平手在使用者說「接線」時會剩 {LIONESS-PANDA, LIONESS-PUMA}，依規則不推薦；要再縮小需要把條件結果與 Log 154 的資料夾內容檢查合併，本輪不做。
+
+## Log 201｜Log 200 結果：M-a、M-b 成立，新條件軸**保留**；分歧讀法實跑出現 1 次，兩個條件衝突而不推薦
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 200 事前寫死的條件執行。
+紀錄：`live-semantic-trace-2026-09-27-log200-case4-variants-legacy.json`；語料 `log200_case4_variants.json`。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| M-a | **通過** |
+| M-b(1) `should_execute` 為真 | 0 |
+| M-b(2) case4-en／case4-wiring 得到 GIRAFFE | 0（6/6 為 LIONESS-PANDA：5 exact、1 次 {LIONESS-PANDA, LIONESS-PUMA} 依內容推薦 LIONESS-PANDA） |
+| M-b(3) case4-activity 被推薦 LIONESS 系列 | 0 |
+| M-b(4) 條件呼叫例外 | 0 |
+
+### 描述（依 Log 120／124 不作比率主張）
+
+| 題目 | 結果 |
+| --- | --- |
+| case4-en ×3 | 2 exact LIONESS-PANDA；1 平手 {LIONESS-PANDA, LIONESS-PUMA} → Log 154 依內容推薦 LIONESS-PANDA |
+| case4-wiring ×3 | 3 exact LIONESS-PANDA |
+| case4-activity ×3 | 2 exact GIRAFFE；**1 次分歧讀法** {GIRAFFE, LIONESS-PANDA, LIONESS-PUMA} |
+| case4-open ×3 | 3 exact GIRAFFE（只讀成 TF 活性，沒有分歧，所以沒有提問；這是解讀層的結果，與本修改無關） |
+
+唯一的分歧讀法：條件呼叫執行（`tie=divergent_readings`），模型宣稱 `per_sample_quantity:activity`（引用「how active each transcription factor is…」，接地）
+**和** `per_sample_quantity:wiring`（引用「I also want the regulatory network.」）。兩個條件指向不同候選，依 Log 139 的規則不推薦，
+回覆保留 Log 188 的讀法提問。第二個宣稱是過度解讀（GIRAFFE 本身也輸出調控網路），但規則讓它的後果只是「不推薦」。
+單一候選的推薦路徑本輪沒有在實跑中走到，由離線測試涵蓋。
+
+### 下一步候選（未實作）
+
+- 3 方平手的「接線」條件與 Log 154 資料夾檢查合併（Log 200 已知限制）。
+- `case4-open`（「一個每位病人的 TF 層級指標」）3/3 只給 GIRAFFE：這是測試文件所說「只給一條路」的形狀，發生在解讀層，不是平手；本輪不處理。
+
