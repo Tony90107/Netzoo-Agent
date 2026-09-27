@@ -12399,3 +12399,58 @@ claims 契約下，模型對中文請求把 `assumptions` 與 `display_entities`
 
 strict patch 保留。它把 patch 呼叫的解析錯誤降為 0，而且沒有增加捏造引文或成本；本輪兩組都沒有 fallback，所以對最終結果的影響還無法量出（現行程式碼下這類 fallback 本來就只有約 2%）。
 review 仍是非 strict（Log 208 的理由）；第一輪的格式錯誤（歷史上 6 次）與 discriminator 的失敗不在本輪範圍。
+
+## Log 210｜事前宣告：平手 review 不得在沒有引文的情況下推翻已驗證的值（Case 6 粒度被改寫）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+
+### 成因（重放確認，Log 204）
+
+Case 6 #1：第一輪讀成 `analyze coexpression_network aggregate`（粒度為 inferred 證據）並**通過驗證**，唯一的問題是平手 {COBRA, LIONESS-COEXPRESSION}。
+review 收到的 issue 是 `registry_ambiguity`（「重新檢查原句中明確的 entity、regulator、target 與粒度」），這個 issue 沒有宣告範圍，所以 permitted_fields 是全部欄位。
+patch 只憑一句推論理由把粒度改成 `sample_specific`，平手變成 {LIONESS-COEXPRESSION, BONOBO}，正確答案 COBRA 被排除。
+
+### 修正
+
+`apply_semantic_patch(..., hold_validated=True)`：當第一輪已通過驗證（review 只是為了消解平手），patch 若把 `operation`、`artifact_type` 或 `granularity`
+從一個具體值改成**另一個具體值**，必須附上該新值的 explicit、且在原句中接地的引文；否則保留第一輪的值，並捨棄該新值的證據與對舊值的撤回。
+改成 `unknown`（不下結論）或填補原本為 `unknown` 的值不受影響；第一輪未通過驗證時（真正的修補）也不受影響。列表欄位不在範圍內（紀錄中沒有發生）。
+事件 `routing.semantic_patch_applied` 新增 `overrides_held`。不改 prompt、不改 schema、不改比對。
+
+### 已量得的事實（離線）
+
+- 重放全部錄下的 legacy 平手 review patch：**214 次**，其中只有 **2 次**把已驗證的 scalar 改成另一個具體值而沒有接地的引文，兩次都是粒度：
+  - `case6-en`（Log 203）：平手 {LIONESS-COEXPRESSION, BONOBO} → {LIONESS-COEXPRESSION, COBRA}（接著由 Log 139 的 covariates 條件推薦 COBRA）；
+  - `t2-cobra`（Log 168 語料，「一張 cohort-level 的共表現網路，並分離定序批次造成的共表現」）：驗證失敗（`artifact_granularity`）→ exact COBRA。
+  兩次都變對，**0 次變錯**。
+- 新測試 `tests/test_tie_review_overrides.py` 5 項（以 Case 6 的原始 payload）；停用規則時 2 項失敗。
+- 全套 2281 passed、0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；比對網格不受影響（網格不經過 patch 合併，仍逐位元組比對確認）。
+- 沒有修改任何既有測試。`test_semantic_review_receives_registry_ambiguity_without_textual_matching` 的 review 附有接地引文，照常被接受。
+
+### 判準
+
+實跑：`case6-en` ×3、`t2-cobra` ×3、`t2-lioness` ×3（沒有共變量 → 反向對照），gpt-4o-mini、legacy、traced harness。
+
+| 判準 | 內容 |
+| --- | --- |
+| **Q-a（離線）** | 如上 |
+| **Q-b（否決）** | `should_execute` 為真 = 0；有 `overrides_held` 的 trial 最後 exact 或被推薦的工具錯誤 = 0；`t2-lioness` 被推薦或 exact COBRA = 0 |
+| **Q-c（描述）** | `overrides_held` 出現次數與內容；三題的結果。這條路徑罕見（214 次中 2 次），本輪很可能 0 次觸發；若如此，機制由離線重放與測試涵蓋，照實記錄 |
+
+### 撤回條件（寫死）
+
+- Q-a 或 Q-b 失敗 → 撤回。
+
+## Log 211｜Log 210 結果：Q-a、Q-b 成立，規則**保留**；本輪 0 次觸發（如預期），三題全部正確
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness。紀錄：`live-semantic-trace-2026-09-27-log210-case6-t2-legacy.json`；語料 `log210_case6_t2.json`。
+
+| 題目 | 結果 |
+| --- | --- |
+| case6-en ×3 | 2 exact COBRA；1 平手 {LIONESS-COEXPRESSION, COBRA} → 依 covariates 條件推薦 COBRA |
+| t2-cobra ×3 | 1 exact COBRA；2 平手 → 推薦 COBRA |
+| t2-lioness ×3（反向對照） | 3 平手 → 推薦 LIONESS-COEXPRESSION，沒有 COBRA |
+
+- Q-a **通過**；Q-b **通過**：`should_execute` 為真 0；有 `overrides_held` 的 trial 0（所以其錯誤 0）；`t2-lioness` 得到 COBRA 0。
+- Q-c：`overrides_held` 9 次中 0 次出現——9 次的 review 都沒有改寫已驗證的粒度。這條路徑在紀錄中是 214 次 2 次，本輪未觸發屬於預期；
+  機制由 Log 210 的離線重放（2 次都變對、0 次變錯）與測試涵蓋。依 Log 120／124 不作比率主張。

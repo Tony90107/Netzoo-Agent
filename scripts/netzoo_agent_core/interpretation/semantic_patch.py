@@ -40,6 +40,47 @@ __all__: list[str] = []
 # display_entities and unresolved_dimensions carry no evidence of their own.
 _EVIDENCE_DIMENSIONS = DIMENSION_BY_FIELD
 
+# The scalar fields that select a workflow (Log 210).
+_VALIDATED_SCALARS = ("operation", "artifact_type", "granularity")
+
+
+def _hold_unquoted_overrides(patch: SemanticPatch, base: RequestedOutcome, user_task: str):
+    """Keep a validated first-pass scalar a tie review overturns without a quote (Log 210).
+
+    Case 6: the first pass read aggregate co-expression and validated; the only
+    issue was a tie, and the review asked to break it "re-check the original
+    request for explicit ... granularity roles". It changed aggregate to
+    sample_specific on an inferred rationale, which removed COBRA, the right
+    answer. A change from one concrete value to another must quote the request;
+    retreating to unknown or filling an unknown value is not overturning one.
+    """
+    from .outcome_validation import explicit_evidence_grounded
+
+    held: list[dict] = []
+    outcome = patch.outcome.model_copy()
+    additions, removals = list(patch.evidence_additions), list(patch.evidence_removals)
+    for field in _VALIDATED_SCALARS:
+        new, old = getattr(patch.outcome, field), getattr(base, field)
+        if new is None or new == old or "unknown" in (old, new):
+            continue
+        dimension = DIMENSION_BY_FIELD[field]
+        if any(
+            (item.dimension, item.value, item.source) == (dimension, new, "explicit")
+            and explicit_evidence_grounded(user_task, item)
+            for item in additions
+        ):
+            continue
+        setattr(outcome, field, None)
+        additions = [item for item in additions if (item.dimension, item.value) != (dimension, new)]
+        removals = [item for item in removals if (item.dimension, item.value) != (dimension, old)]
+        held.append({"dimension": dimension, "value": new, "field": field, "kept": old,
+                     "reason": "override_of_validated_value_without_quote"})
+    if not held:
+        return patch, held
+    return patch.model_copy(update={
+        "outcome": outcome, "evidence_additions": additions, "evidence_removals": removals,
+    }), held
+
 
 def _values(value) -> set[str]:
     return set(value) if isinstance(value, list) else {value}
@@ -59,6 +100,7 @@ def apply_semantic_patch(
     *,
     permitted_fields: frozenset[str] | None = None,
     user_task: str = "",
+    hold_validated: bool = False,
 ) -> tuple[SemanticInterpretation, list[dict]]:
     """Return the merged interpretation and the stale evidence the patch retired.
 
@@ -75,9 +117,16 @@ def apply_semantic_patch(
     A review allowed to correct `artifact_type` gets the fields that artifact's
     own ontology governs, or the correction would leave a combination the
     ontology forbids. That comes from `ARTIFACT_SEMANTICS`, not from a list.
+
+    `hold_validated` is set when the first pass already validated and the
+    review was only asked to break a tie: a concrete scalar it changes without
+    a grounded quote keeps its first-pass value (Log 210).
     """
     index = patched_hypothesis_index(proposal, patch)
     base = proposal.outcome_hypotheses[index]
+    held: list[dict] = []
+    if hold_validated:
+        patch, held = _hold_unquoted_overrides(patch, base.outcome, user_task)
     allowed = OUTCOME_FIELDS if permitted_fields is None else frozenset(permitted_fields)
     requested = {
         name: value
@@ -109,7 +158,7 @@ def apply_semantic_patch(
             FIELD_BY_DIMENSION.get(item.dimension, ""), None
         ) is not None and FIELD_BY_DIMENSION[item.dimension] in allowed
     }
-    retired: list[dict] = []
+    retired: list[dict] = list(held)
     # A withdrawal of a grounded entry for a value the merged outcome still
     # asserts can only recreate `missing_evidence` for it; the citation-only
     # guard above covers the case with no licensed fields, this covers a licensed
