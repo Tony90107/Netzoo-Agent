@@ -7,12 +7,16 @@ facts were missing, and they are added here without changing any candidate:
 
 - when no reading quoted its artifact type, that the kind of result was
   assumed, which inputs every option additionally needs, and which registered
-  workflows infer a different result from the stated inputs alone;
+  workflows infer a different result from the stated inputs alone. A quote
+  that says nothing about what is connected ("build me a network") grounds,
+  but does not state the kind either, so it counts as no quote here (Log 193);
 - which files in a folder routing read validated by content for an input role,
   and that they were not used.
 """
 
 from __future__ import annotations
+
+import re
 
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS
 
@@ -32,6 +36,30 @@ _ROLE_OF_ARTIFACT = {
 }
 
 
+#: Words that ask for *a* result without saying what it connects: function
+#: words, request verbs, generic result nouns, and nouns naming the input.
+_GENERIC_WORDS = frozenset("""
+    a an the me my i we us you it its this that these those some one all only just
+    and or to of for with from on in at by so then please can could would will should
+    let s is am are be have has had do want like need see show look try get give
+    build make create construct generate compute infer run find
+    network networks graph graphs model models result results analysis map
+    expression matrix data dataset table file files
+""".split())
+_GENERIC_CJK = re.compile(
+    "幫我|帮我|給我|给我|請|请|建立|建構|建构|構建|构建|建|做|一個|一个|一張|一张|個|个"
+    "|網路|网络|網絡|看看|看|吧|我|想|要|出|來|来"
+)
+
+
+def _says_what_it_connects(quote: str | None) -> bool:
+    """Whether an artifact quote carries any word beyond a generic request."""
+    text = quote or ""
+    if any(word not in _GENERIC_WORDS for word in re.findall(r"[a-z]+", text.casefold())):
+        return True
+    return bool(re.search(r"[\u3400-\u9fff]", _GENERIC_CJK.sub("", text)))
+
+
 def _roles(action: str) -> set[str]:
     return {field for field in REQUIRED_INPUTS[action] if field in INPUT_ROLE_FIELDS}
 
@@ -46,6 +74,7 @@ def _assumption_note(decision) -> str | None:
     hypotheses = decision.outcome_hypotheses
     if not hypotheses or any(
         item.dimension == "artifact_type" and item.source == "explicit"
+        and _says_what_it_connects(item.text_span)
         for hypothesis in hypotheses for item in hypothesis.evidence
     ):
         return None
