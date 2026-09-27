@@ -13,6 +13,7 @@ import {
   emptySession,
   reduce,
   sessionVerdict,
+  SessionSocket,
 } from "./session";
 
 const config = {
@@ -50,6 +51,29 @@ describe("the reconnect policy", () => {
 });
 
 describe("session state", () => {
+  it("preserves the original message time when an old envelope is replayed", () => {
+    const at = "2026-09-26T16:11:08.599212Z";
+    for (const type of ["message", "notice", "error"]) {
+      const state = reduce(emptySession("s"), type, { text: "Earlier message", message: "Earlier error", occurred_at: at } as never);
+      expect(state.entries[0].at).toBe(at);
+      expect(state.entries[0].timeSource).toBe("server");
+    }
+  });
+
+  it("marks legacy messages as received time rather than inventing an original time", () => {
+    const state = reduce(emptySession("s"), "message", { text: "Legacy" } as never);
+    expect(state.entries[0].timeSource).toBe("received");
+  });
+  it("records user controls and confirmations with timestamps for the timeline", () => {
+    let state = emptySession("s");
+    const socket = new SessionSocket(config, "s", (apply) => { state = apply(state); });
+    socket.answer("/test", false);
+    socket.approveExecution("approved-plan-hash");
+    socket.declineExecution();
+    expect(state.entries.map((entry) => entry.action)).toEqual(["command", "confirmation", "confirmation"]);
+    expect(state.entries.every((entry) => entry.kind === "user" && entry.at && Number.isFinite(Date.parse(entry.at)))).toBe(true);
+    expect(state.view).toBeNull();
+  });
   it("starts with nothing missed", () => {
     expect(emptySession("s").missedEvents).toBe(false);
   });

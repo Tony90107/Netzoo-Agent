@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TraceEvent } from "../../transport/protocol";
-import { buildStages } from "./model";
+import { buildStages, buildRuns } from "./model";
 
 let sequence = 0;
 function event(
@@ -33,6 +33,58 @@ function event(
 }
 
 describe("folding a trace into stages", () => {
+  it("groups repeated turns into distinct runs with start, end, elapsed time and ordered stages", () => {
+    const events = [
+      { ...event("cli", "run.started"), occurred_at: "2026-09-26T23:59:59Z" },
+      { ...event("plan", "node.started"), occurred_at: "2026-09-27T00:00:00Z" },
+      event("plan", "node.finished", { duration_ms: 50 }),
+      { ...event("cli", "run.finished", { status: "failed" }), occurred_at: "2026-09-27T00:00:01Z" },
+      { ...event("cli", "run.started"), run_id: "r2", occurred_at: "2026-09-27T00:00:02Z" },
+    ];
+    const runs = buildRuns(events);
+    expect(runs).toHaveLength(2);
+    expect(runs[0].elapsedMs).toBe(2000);
+    expect(runs[0].status).toBe("Failed");
+    expect(runs[0].stages.map((stage) => stage.node)).toEqual(["plan"]);
+    expect(runs[1].status).toBe("Running");
+  });
+  it("marks non-throwing tool failures as failed and keeps warnings distinct", () => {
+    const stages = buildStages([
+      event("execute_tool", "node.started"),
+      event("execute_tool", "tool.completed", { action: "run_panda", status: "failed", summary: "Output validation failed." }),
+      event("execute_tool", "node.finished", { duration_ms: 2 }),
+      event("evaluate", "node.started"),
+      event("evaluate", "evaluation.recorded", { status: "replan", reason: "Try recovery." }),
+      event("evaluate", "node.finished", { duration_ms: 1 }),
+    ]);
+    expect(stages[0].failed).toBe(true);
+    expect(stages[0].rows[0].kind).toBe("error");
+    expect(stages[0].rows[0].summary).toContain("Output validation failed.");
+    expect(stages[1].failed).toBe(false);
+    expect(stages[1].warning).toBe(true);
+  });
+
+  it("closes unfinished stages on interruption and does not mix runs", () => {
+    const secondRun = { ...event("classify", "node.started"), run_id: "another-run" };
+    const stages = buildStages([
+      event("classify", "node.started"), secondRun,
+      event("cli", "run.interrupted"),
+    ]);
+    expect(stages[0].running).toBe(false);
+    expect(stages[0].interrupted).toBe(true);
+    expect(stages[1].running).toBe(true);
+  });
+
+  it("represents a pause as waiting instead of a permanently running Session", () => {
+    const stages = buildStages([event("cli", "run.started"), event("cli", "run.paused", { status: "pending" })]);
+    expect(stages[0].running).toBe(false);
+    expect(stages[0].waiting).toBe(true);
+  });
+  it("clears waiting when a paused run resumes and finishes", () => {
+    const stages = buildStages([event("cli", "run.started"), event("cli", "run.paused"), event("cli", "run.resumed"), event("cli", "run.finished", { status: "completed" })]);
+    expect(stages[0].waiting).toBe(false);
+    expect(stages[0].running).toBe(false);
+  });
   it("groups a node's events under the node that emitted them", () => {
     const stages = buildStages([
       event("classify", "node.started"),

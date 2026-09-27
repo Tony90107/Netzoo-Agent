@@ -2,15 +2,13 @@
  * Mode is state, so it gets a control rather than a sentence.
  *
  * The terminal switches modes by typing `/planning` or `/test`, which is the
- * only affordance a terminal has. Typing it into a window would put a command
- * in the transcript and leave the current mode invisible between messages, so
- * here it is a switch that always shows where you are.
+ * only affordance a terminal has. Here the switch keeps the
+ * current mode visible between messages.
  *
  * The command still goes to the agent: `TEST_DATA_MODE` and `EXECUTE_TOOLS`
- * belong to the engine, and the window is not allowed to set them itself. Only
- * the echo is suppressed — the agent's own explanation of what the mode means
- * still lands in the thread, because it carries the warning that synthetic
- * results are not biological evidence.
+ * belong to the engine, and the window is not allowed to set them itself. Control actions
+ * are recorded in the activity log, and the agent's explanation of synthetic
+ * results stays in the thread.
  */
 import { ViewPayload } from "../../transport/protocol";
 

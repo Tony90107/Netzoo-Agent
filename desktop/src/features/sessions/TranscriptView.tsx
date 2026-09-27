@@ -10,29 +10,36 @@
  */
 import { useEffect, useState } from "react";
 
+import { Markdown } from "../conversation/Markdown";
 import { DaemonConfig } from "../../transport/daemon";
 import { Transcript, readTranscript } from "../../transport/files";
+import { HistoricalActivity } from "./HistoricalActivity";
 
 export function TranscriptView({
   config,
   sessionId,
   onClose,
   onResume,
+  onOpenOutput,
 }: {
   config: DaemonConfig;
   sessionId: string;
   onClose: () => void;
   onResume: (sessionId: string) => void;
+  onOpenOutput?: (path: string) => void;
 }) {
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"conversation" | "activity">("conversation");
 
   useEffect(() => {
+    let current = true;
     setTranscript(null);
     setError(null);
     readTranscript(config, sessionId)
-      .then(setTranscript)
-      .catch((problem) => setError(String(problem)));
+      .then((value) => { if (current) setTranscript(value); })
+      .catch((problem) => { if (current) setError(String(problem)); });
+    return () => { current = false; };
   }, [config, sessionId]);
 
   return (
@@ -45,7 +52,11 @@ export function TranscriptView({
         </button>
       </header>
 
-      <div className="thread">
+      <nav className="workspace__tabs" role="group" aria-label="Saved session views">
+        <button type="button" aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button>
+        <button type="button" aria-pressed={tab === "activity"} onClick={() => setTab("activity")}>Activity</button>
+      </nav>
+      {tab === "activity" ? <HistoricalActivity key={sessionId} config={config} sessionId={sessionId} onOpenOutput={onOpenOutput} /> : <div className="thread">
         {error ? <div className="fv__error">{error}</div> : null}
         {transcript === null && !error ? (
           <div className="thread__empty">Reading the checkpoint…</div>
@@ -64,12 +75,12 @@ export function TranscriptView({
             key={index}
             className={`bubble bubble--${message.role === "user" ? "user" : "agent"}`}
           >
-            <div className="bubble__body">{message.content}</div>
+            <div className="bubble__body">{message.role === "user" ? message.content : <Markdown>{message.content}</Markdown>}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
-      <div className="composer-slot">
+      <div className={`composer-slot${transcript?.resumable ? "" : " composer-slot--readonly"}`}>
         {transcript?.resumable ? (
           <div className="main-input">
             <p className="main-input__question">
@@ -86,7 +97,7 @@ export function TranscriptView({
           </div>
         ) : (
           <div className="composer composer--busy">
-            Finished ({transcript?.status ?? "…"}). Nothing is waiting on you here.
+            Saved session · read-only. Use Activity to review execution results.
           </div>
         )}
       </div>

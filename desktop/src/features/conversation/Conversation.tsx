@@ -4,6 +4,7 @@
 import { useEffect, useRef } from "react";
 
 import { Entry, SessionState } from "../../transport/session";
+import { Markdown } from "./Markdown";
 import { InputArea } from "./InputArea";
 import { ModeSwitch } from "./ModeSwitch";
 
@@ -12,13 +13,15 @@ function Bubble({ entry }: { entry: Entry }) {
     return (
       <div className="bubble bubble--error">
         <div className="bubble__label">{entry.errorType}</div>
-        <div className="bubble__body">{entry.text}</div>
+        <div className="bubble__body"><Markdown>{entry.text}</Markdown></div>
       </div>
     );
   }
   return (
     <div className={`bubble bubble--${entry.kind}`}>
-      <div className="bubble__body">{entry.text}</div>
+      <div className="bubble__body">
+        {entry.kind === "user" ? entry.text : <Markdown>{entry.text}</Markdown>}
+      </div>
     </div>
   );
 }
@@ -43,13 +46,15 @@ export function Conversation({
   const tail = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    tail.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    tail.current?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
   }, [session.entries.length, session.busy, session.view]);
 
   return (
     <section className="pane pane--wide">
       <header className="pane__header">
         Conversation
+        <button className="btn btn--quiet btn--small" type="button" disabled={session.busy || session.stopped || !session.view}
+          title="Check the running agent environment without executing a workflow" onClick={() => onSlash("/doctor")}>/doctor</button>
         <ModeSwitch
           mode={session.view?.mode}
           disabled={session.busy || session.stopped || !session.view}

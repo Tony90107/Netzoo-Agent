@@ -21,6 +21,10 @@ export type Listing = {
   path: string;
   host_path: string;
   entries: FileEntry[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
 };
 
 export type Preview = {
@@ -34,11 +38,16 @@ export type Preview = {
   text: string;
   arrays: { name: string; shape: number[]; dtype: string }[];
   note: string;
+  offset: number;
+  next_offset: number | null;
+  version: string;
+  total_columns: number;
 };
 
-async function get<T>(config: DaemonConfig, path: string): Promise<T> {
+export async function get<T>(config: DaemonConfig, path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${config.baseUrl}${path}`, {
     headers: { Authorization: `Bearer ${config.token}` },
+    signal,
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
@@ -47,12 +56,19 @@ async function get<T>(config: DaemonConfig, path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function listDirectory(config: DaemonConfig, path = ""): Promise<Listing> {
-  return get<Listing>(config, `/v1/files?path=${encodeURIComponent(path)}`);
+export function listDirectory(
+  config: DaemonConfig,
+  path = "",
+  offset = 0,
+  limit = 100,
+): Promise<Listing> {
+  const query = new URLSearchParams({ path, offset: String(offset), limit: String(limit) });
+  return get<Listing>(config, `/v1/files?${query.toString()}`);
 }
 
-export function previewFile(config: DaemonConfig, path: string): Promise<Preview> {
-  return get<Preview>(config, `/v1/files/preview?path=${encodeURIComponent(path)}`);
+export function previewFile(config: DaemonConfig, path: string, offset = 0, version = ""): Promise<Preview> {
+  const query = new URLSearchParams({ path, offset: String(offset), version });
+  return get<Preview>(config, `/v1/files/preview?${query.toString()}`);
 }
 
 export function formatBytes(bytes: number): string {
@@ -92,8 +108,11 @@ export type EffectiveSettings = {
   api_key_present: boolean;
 };
 
-export function listSessions(config: DaemonConfig): Promise<{ sessions: SessionSummary[] }> {
-  return get<{ sessions: SessionSummary[] }>(config, "/v1/history");
+export type SessionPage = { sessions: SessionSummary[]; offset: number; has_more: boolean; next_offset: number | null };
+export type SessionFilter = "all" | "needs_input" | "needs_confirmation" | "completed" | "failed" | "dry_run";
+export function listSessions(config: DaemonConfig, options: { query?: string; status?: SessionFilter; offset?: number } = {}, signal?: AbortSignal): Promise<SessionPage> {
+  const params = new URLSearchParams({ query: options.query ?? "", status: options.status ?? "all", offset: String(options.offset ?? 0) });
+  return get<SessionPage>(config, `/v1/history?${params}`, signal);
 }
 
 export function readSettings(config: DaemonConfig): Promise<EffectiveSettings> {

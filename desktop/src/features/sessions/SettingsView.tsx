@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
 import { EffectiveSettings, formatBytes, readSettings } from "../../transport/files";
+import { TimeZoneSettings } from "./TimeZoneSettings";
 
 function Group({ title, rows }: { title: string; rows: [string, string][] }) {
   return (
@@ -48,6 +49,7 @@ export function SettingsView({ config, onClose }: { config: DaemonConfig; onClos
         </button>
       </header>
       <div className="pane__scroll set">
+        <TimeZoneSettings />
         {error ? <div className="fv__error">{error}</div> : null}
         {settings ? (
           <>
