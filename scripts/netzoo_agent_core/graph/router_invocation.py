@@ -27,6 +27,7 @@ from .continuation_invocation import continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
+from .request_concerns import invoke_concern_matcher
 from .input_inspection import invoke_input_inspection
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -284,6 +285,10 @@ def invoke_router(
     #      outrank contents, which are open-world: a file that validates
     #      nowhere is not evidence the user lacks one.
     #   3. Input preflight: an explicit request to check inputs.
+    #   4. Concern matcher (Log 223): quoted practical concerns (memory,
+    #      stopping, per-sample activity) that the selected workflow's registry
+    #      notes answer. Exact or fallback guidance only, so it never runs in
+    #      the same trial as step 1, and only after step 3 has fixed the action.
     # A recommendation comes from one stage, since the reply renders quoted
     # facts and validated files differently. Facts narrowing a tie to two and
     # the folder choosing between them are not combined: 0 occurrences in the
@@ -305,6 +310,9 @@ def invoke_router(
             },
         )
     decision = preflight_decision
+    decision, usage, budget_warnings = invoke_concern_matcher(
+        context, state, user_task, decision, usage, budget_warnings,
+    )
     return _RouterInvocation(
         decision=decision,
         routing_state=outcome_routing_state(

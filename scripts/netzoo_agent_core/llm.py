@@ -558,6 +558,32 @@ def build_selection_condition_messages(
     ]
 
 
+def build_request_concern_messages(
+    user_task: str,
+    options: list[tuple[str, str]],
+) -> list:
+    """Offer the practical concerns the selected workflow can answer (Log 223).
+
+    The option list is the whole vocabulary; concern ids name what a user might
+    worry about, never workflows, controls or answers.
+    """
+    option_lines = "\n".join(f"- {concern}: {label}" for concern, label in options)
+    return [
+        SystemMessage(
+            content=(
+                "Return only the StatedConcernClaims structure. For each offered "
+                "concern that the original request explicitly states, add one claim "
+                "with the concern id exactly as offered and an exact original-language "
+                "text_span quoted from the request. If the request states none of them, "
+                "return an empty claims list. Do not answer the concern or name a "
+                "workflow; never translate text_span.\n\nOffered concerns:\n"
+                + option_lines
+            )
+        ),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+    ]
+
+
 def build_intent_router_messages(
     intent_prompt: str,
     user_task: str,

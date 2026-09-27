@@ -9,6 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
+    AddressedConcern,
     AdvisoryRecommendation,
     CapabilityMatchStatus,
     MatchBasis,
@@ -123,6 +124,12 @@ class TaskDecision(BaseModel):
     # byte-identical to before this field existed.
     advisory_recommendation: AdvisoryRecommendation | None = Field(
         default=None, exclude_if=lambda value: value is None,
+    )
+    # Practical concerns the request states, quoted and grounded, that the
+    # guidance reply answers from the registry (Log 223). Advisory like the
+    # recommendation above; omitted from dumps while empty.
+    addressed_concerns: list[AddressedConcern] = Field(
+        default_factory=list, max_length=6, exclude_if=lambda value: not value,
     )
     # Folders whose file contents routing read to advise among tied
     # workflows (Log 154); lets every reply say so truthfully. Omitted from

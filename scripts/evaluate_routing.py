@@ -676,8 +676,10 @@ def _score(case, result, events):
 
 
 #: Calls made after routing has decided, to attach advice. Each is bounded on
-#: its own and does not count against the routing bound.
-_ADVISORY_CALL_ROLES = {"selection_conditions"}
+#: its own and does not count against the routing bound. The condition call
+#: runs only on ties and the concern call (Log 223) only on exact or fallback
+#: guidance, so a trial makes at most one of them.
+_ADVISORY_CALL_ROLES = {"selection_conditions", "request_concerns"}
 # Per-trial provider-call bounds. `_call_limit_errors` scores a trial above
 # either as a safety failure, and the pre-run `--max-calls` check uses their
 # sum, so the two cannot drift apart again (Log 217).
@@ -689,7 +691,8 @@ def worst_case_calls(case_count: int, repeat: int, *, repair_replay: bool = Fals
     """The most provider calls a run can make without a trial breaking the scored bounds.
 
     Up to four routing calls (interpreter, reviewer or patch, discriminator,
-    intent) and one experimental-condition call per trial. A repair replay's
+    intent) and one advisory call (experimental conditions or request
+    concerns) per trial. A repair replay's
     injected first pass is not a provider call. Retries are disabled in the
     production provider, so logical calls are HTTP requests.
     """
@@ -713,6 +716,8 @@ def _call_limit_errors(roles: list[str]) -> list[str]:
         errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
     if roles.count("selection_conditions") > ADVISORY_CALL_LIMIT:
         errors.append("call_limit: more than one experimental-condition call")
+    elif len([role for role in roles if role in _ADVISORY_CALL_ROLES]) > ADVISORY_CALL_LIMIT:
+        errors.append("call_limit: more than one advisory call")
     return errors
 
 
