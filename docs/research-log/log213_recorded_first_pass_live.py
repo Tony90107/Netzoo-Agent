@@ -1,9 +1,10 @@
-"""Log 213 live check: recorded faulty first passes, answered live from the second call on.
+"""Logs 213, 215 live check: recorded faulty first passes, answered live from the second call on.
 
-Usage: python docs/research-log/log213_recorded_first_pass_live.py <repeat> <out.json>
+Usage: python docs/research-log/log213_recorded_first_pass_live.py <repeat> <out.json> [log213|log215]
 
-The five recorded first passes whose only schema faults were evidence entries
-(Log 213 table) are injected verbatim as the first call; the second semantic
+The recorded first passes of the chosen set -- log213 (default): the five whose
+only schema faults were evidence entries; log215: the one with root-level
+assumptions -- are injected verbatim as the first call; the second semantic
 call and the intent call go to gpt-4o-mini. Rows carry `_trace` in the traced
 harness format; the injected call is marked `finish_reason:
 injected_recorded_first_pass`. Needs OPENROUTER_API_KEY in the environment.
@@ -27,14 +28,17 @@ from netzoo_agent_core.llm import build_llm, validate_router_model  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
 from traces import load_report  # noqa: E402
 
-# (new case id, corpus case id, recording)
-RECORDED = (
+# set -> (new case id, corpus case id, recording)
+RECORDED = {"log213": (
     ("role-tf-ss-en-postfix", "role-tf-ss-en", "live-semantic-trace-2026-09-23-postfix-families32-legacy.json"),
     ("role-tf-ss-en-round3", "role-tf-ss-en", "live-semantic-trace-2026-09-23-round3-families32-legacy.json"),
     ("role-tf-ss-en-log198", "role-tf-ss-en", "live-semantic-trace-2026-09-27-log198-families32-legacy.json"),
     ("case5-en", "case5-en", "live-semantic-trace-2026-09-27-log196-blind-case5-case7-legacy.json"),
     ("t2-none", "t2-none", "archive/2026-09-26-session/trace_log174_live.json.gz"),
-)
+), "log215": (
+    ("gran-mirna-unstated-control", "gran-mirna-unstated-control",
+     "live-semantic-trace-2026-09-27-log208-strict-families32-legacy.json"),
+)}
 TRACE = {"current": None, "trials": []}
 
 
@@ -51,11 +55,11 @@ def recorded_first_pass(case_id: str, recording: str) -> tuple[str, dict]:
     raise LookupError(f"no failing first pass for {case_id} in {recording}")
 
 
-def scenarios() -> list:
+def scenarios(recorded) -> list:
     corpus = {case.id: case for case in er.load_scenarios(ROOT / "tests/routing_semantic_families.json")}
     corpus.update({case.id: case for case in er.load_scenarios(RESEARCH / "blind/blind_en.json")})
     cases, firsts = [], []
-    for new_id, case_id, recording in RECORDED:
+    for new_id, case_id, recording in recorded:
         prompt, first = recorded_first_pass(case_id, recording)
         base = corpus.get(case_id) or er.RoutingScenario(
             id=case_id, language="en", category="positive", prompt=prompt,
@@ -147,16 +151,17 @@ def traced_invoke(context, state, prompt):
 
 def main():
     repeat, out = int(sys.argv[1]), Path(sys.argv[2])
+    chosen = sys.argv[3] if len(sys.argv) > 3 else "log213"
     assert os.environ.get("OPENROUTER_API_KEY"), "missing provider credential in env"
     er._EventRecorder, er.invoke_router = Rec, traced_invoke
-    cases, firsts = scenarios()
+    cases, firsts = scenarios(RECORDED[chosen])
     queue = [first for first in firsts for _ in range(repeat)]
     prompts = [case.prompt for case in cases for _ in range(repeat)]
     model = validate_router_model("openai/gpt-4o-mini")
     provider = Provider(build_llm(model, 0.0, max_output_tokens=DEFAULT_ROUTER_MAX_TOKENS, timeout_seconds=60), queue, prompts)
     report = er.evaluate(cases, provider=provider, model_name=model, source="live", repeat=repeat,
                          semantic_contract="legacy", review_policy="when_needed")
-    report["metadata"]["first_pass_source"] = "recorded_raw_first_pass_injected (Log 213)"
+    report["metadata"]["first_pass_source"] = f"recorded_raw_first_pass_injected ({chosen})"
     for row, trace in zip(report["results"], TRACE["trials"]):
         row["_trace"] = trace
     out.write_text(json.dumps(report, ensure_ascii=False, indent=1, default=str))

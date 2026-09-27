@@ -81,7 +81,7 @@ def route(task: str, first: dict):
     )
     _invoke_semantic_interpreter(context, {}, task, LLMUsage(budget_tokens=100000))
     events = dict(recorder.events)
-    salvaged = events.get("routing.semantic_first_pass_salvaged", {}).get("dropped_evidence")
+    salvaged = {k: v for k, v in events.get("routing.semantic_first_pass_salvaged", {}).items() if k != "attempt"} or None
     retried = events.get("routing.semantic_interpretation_retried") or events.get("routing.semantic_interpretation_rejected") or {}
     return salvaged, taken[0] if taken else "none", retried.get("issues")
 

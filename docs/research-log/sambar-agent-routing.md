@@ -12564,3 +12564,67 @@ Log 204／205 之後所說「discriminator 只有約兩成選出結果」本身�
   第一輪格式錯誤本身很少見（1083 次中 6 次），所以這個修正影響的是那少數 trial 的結果，不是整體通過率。
 - 更正 Log 213 的分母：1083 是依「第一輪＋後續呼叫」去重的 trial 數；只依第一輪 payload 去重（`replay_first_pass.py` 的算法，temperature 0 下同一題常寫出同一份第一輪）是 **903** 份，不合 schema 的仍是 6 份、fallback 仍是 5 份。`replay_first_pass.py` 跳過本輪注入的第一輪（`finish_reason: injected_recorded_first_pass`），所以數字不會因本輪紀錄而重複。
 - 仍未處理：`gran-mirna-unstated-control` 那一種（根層多出 `assumptions`，非 fallback，照舊整份 review）。
+
+## Log 215｜事前宣告：單一假設草稿的根層 `assumptions` 視為該假設的 assumptions（等價巢狀）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+
+### 事實（紀錄重放）
+
+- 903 份不重複的第一輪中只有 **1 份**：`gran-mirna-unstated-control`（Log 208 strict round）。唯一的錯誤是 `assumptions` 寫在
+  `outcome_hypotheses` 旁邊而不是假設裡面（`assumptions:extra_forbidden`）。草稿整份無法解析，第二次呼叫變成整份 review（6466 tokens）。
+  那次 review 把第一輪錯填的 `granularity=aggregate`（使用者明說還沒決定）改回 `unknown`，最後 ambiguous {PUMA, LIONESS-PUMA}，trial 通過。
+  所以這一項**很少見，而且紀錄中唯一的一次結果是對的**；代價是走了成本較高、風險較高的整份 review（Log 213：71／83 對引入新問題）。
+- 其他出現處都不是第一輪的紀錄：Log 45 統計的 3 次是 review 回覆（`SemanticReview._normalize_hypothesis_metadata` 已接受這種巢狀）；
+  `routing_repair_replay` 的 `original-q3` 是重建的注入，不是錄下的輸出。
+
+### 修正
+
+`validate_first_pass`（Log 213 的同一個模組）新增一步：第一輪驗證失敗、且草稿**只有一個假設**時，把根層 `assumptions` 移進該假設，
+規則與 `SemanticReview` 相同——只接受等價巢狀、絕不處理衝突：假設本身已有**不同的** assumptions 時不移；有多個假設時不移（不知道屬於哪一個）。
+移完之後若只剩 Log 213 的證據內容錯誤，照 Log 213 處理；其他錯誤照舊回報原本的定位 schema 失敗。事件 `routing.semantic_first_pass_salvaged`
+改為記錄 `nested` 與／或 `dropped_evidence`。`SemanticInterpretation` 本身不放寬（新測試直接驗證它仍然拒絕）。不改 prompt、不改 schema、不改比對。
+
+### 已量得的事實（離線）
+
+- 重放：該草稿被接受 → 既有的「使用者明說未決定粒度」witness（`granularity_alternatives`）把它分成 aggregate／sample_specific 兩個假設
+  → ambiguous {PUMA, LIONESS-PUMA} → 平手 review 走 patch；即使 patch 無法使用，也保留已驗證的草稿，結果同樣是 ambiguous。沒有整份 review。
+  Log 213 的 5 份照舊被保留（路徑不變）。
+- **修改釘住的測試（宣告）**：`tests/test_semantic_repair_interaction.py` 的
+  `test_schema_invalid_proposal_is_retained_for_repair_without_relaxing_validation` 與
+  `test_raw_schema_failure_keeps_arguments_available_to_reviewer` 以「單一假設＋根層 assumptions」當作無法解析的草稿範例；
+  現在這個形狀會被接受，所以把範例改成**兩個假設**＋根層 assumptions（仍無法解析，仍送 reviewer）。**所有斷言一字未改**，只改了 fixture；
+  在舊程式碼上兩項同樣通過。Log 213 自己的測試隨回傳值改為 dict 調整，其中「根層多餘欄位」的否定案例改用 `notes`。
+- 新測試 `tests/test_first_pass_nesting.py` 7 項（以該 trial 的原始 payload）；停用巢狀時 4 項失敗，其餘 3 項是契約不放寬與兩種不應巢狀的否定案例。
+- 全套 2296 passed、0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；五個網格與 HEAD 逐位元組相同。
+
+### 判準
+
+實跑：注入錄下的那份第一輪 ×3，其後由 gpt-4o-mini 即時回答（`log213_recorded_first_pass_live.py`，新增 `log215` 題組），legacy。
+
+| 判準 | 內容 |
+| --- | --- |
+| **S-a（離線）** | 如上 |
+| **S-b（否決）** | `should_execute` 為真 = 0；exact = 0；候選不得超出 {PUMA, LIONESS-PUMA} |
+| **S-c（主要）** | 3／3 以 ambiguous 結束並詢問粒度，且沒有任何一次走整份 review（`SemanticReview`） |
+| **S-d（描述）** | 第二次呼叫的種類與 token（紀錄：整份 review 6466）；評分器的 `passed` |
+
+### 撤回條件（寫死）
+
+- S-a、S-b 或 S-c 失敗 → 撤回。
+
+## Log 216｜Log 215 結果：S-a、S-b、S-c 成立，巢狀**保留**；3／3 詢問粒度，沒有整份 review
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy。第一次呼叫注入錄下的原始第一輪，其後即時回答。
+紀錄：`live-semantic-trace-2026-09-27-log215-root-assumptions-legacy.json`；腳本 `log213_recorded_first_pass_live.py`（`log215` 題組）。
+
+| trial | 呼叫 | 結果 |
+| --- | --- | --- |
+| 1–3 | 注入的第一輪 → `SemanticPatch`（平手 review，約 5.7k tokens）→ discriminator → intent | ambiguous {PUMA, LIONESS-PUMA}，詢問「aggregate 還是 sample-specific？」，評分器 `passed` |
+
+- S-a **通過**（Log 215 所列）。S-b **通過**：`should_execute` 為真 0；exact 0；候選正好是 {PUMA, LIONESS-PUMA}。
+- S-c **通過**：3／3 ambiguous 並詢問粒度，3 次都有 `routing.semantic_first_pass_salvaged`（`nested: ["assumptions"]`），`SemanticReview` 呼叫 0 次；
+  `overrides_held` 為空（平手 review 沒有嘗試推翻粒度）。
+- S-d：第二次呼叫由整份 review（紀錄 6466 tokens）變成 patch（約 5690）；評分結果與紀錄相同（紀錄那一次也通過）。
+  同一份輸入、temperature 0，3 次不是獨立樣本；紀錄中也只有這 1 次，所以這裡能說的只是路徑變了、結果沒有變差，不作比率主張。
+- 至此 903 份第一輪中 6 份 schema 失敗全部由 `validate_first_pass` 保留草稿（Log 213 的 5 份、本節 1 份）。

@@ -51,8 +51,9 @@ FIRST = {
 
 
 def test_unquoted_explicit_entries_are_dropped_and_the_outcome_kept():
-    interpretation, dropped = validate_first_pass(FIRST)
+    interpretation, salvage = validate_first_pass(FIRST)
     hypothesis = interpretation.outcome_hypotheses[0]
+    dropped = salvage["dropped_evidence"]
 
     assert [(e.dimension, e.value) for e in hypothesis.evidence] == [("operation", "infer")]
     assert hypothesis.outcome.granularity == "sample_specific"
@@ -70,9 +71,9 @@ def test_a_valid_first_pass_is_returned_unchanged():
                             ("separately in each patient", "transcription factors", "target genes")):
         entry["text_span"] = quote
 
-    interpretation, dropped = validate_first_pass(payload)
+    interpretation, salvage = validate_first_pass(payload)
 
-    assert dropped == [] and len(interpretation.outcome_hypotheses[0].evidence) == 4
+    assert salvage == {} and len(interpretation.outcome_hypotheses[0].evidence) == 4
 
 
 @pytest.mark.parametrize("fault", ["quote_too_long", "quote_empty"])
@@ -81,9 +82,9 @@ def test_a_quote_of_the_wrong_length_is_dropped(fault):
     payload["outcome_hypotheses"][0]["evidence"][1]["text_span"] = "x" * 400 if fault == "quote_too_long" else ""
     del payload["outcome_hypotheses"][0]["evidence"][2:]
 
-    _, dropped = validate_first_pass(payload)
+    _, salvage = validate_first_pass(payload)
 
-    assert [d["dimension"] for d in dropped] == ["granularity"]
+    assert [d["dimension"] for d in salvage["dropped_evidence"]] == ["granularity"]
 
 
 @pytest.mark.parametrize("change", ["dimension_not_a_string", "value_outside_vocabulary", "extra_root_field"])
@@ -95,7 +96,7 @@ def test_any_other_fault_keeps_the_schema_failure(change):
     elif change == "value_outside_vocabulary":
         entry["dimension"] = "input_artifacts"
     else:
-        payload["assumptions"] = []
+        payload["notes"] = "Root-level assumptions are nested instead (Log 215)."
 
     with pytest.raises(ValidationError):
         validate_first_pass(payload)
