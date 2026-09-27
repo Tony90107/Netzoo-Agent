@@ -9,29 +9,38 @@ Verdicts per trial, as in Logs 179 and 204:
 - OK(no tool): case 10, nothing matched and nothing authorized.
 - PARTIAL(candidates): a tie that holds an accepted workflow but recommends none.
 - WRONG: anything else, including a forbidden workflow.
-LEAK marks `should_execute` or an action other than `no_tool`. For ambiguous
-decisions the deterministic reply is re-rendered offline and checked for the
-reply notes a case requires (case 10: the assumption note and folder discovery).
+LEAK marks `should_execute` or an action other than `no_tool`. The deterministic
+reply is re-rendered offline and checked for the reply notes a case requires
+(case 10, on ambiguous decisions: the assumption note and folder discovery;
+case 4, on every decision since Log 219: both per-sample readings, LIONESS-PANDA
+wiring and GIRAFFE activity, whatever was chosen -- its "one path" is an exact
+match, rendered through the response node).
 """
 import collections
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
 from traces import ROOT, load_report  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "scripts"))
-from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
+from langchain_core.messages import HumanMessage  # noqa: E402
+from netzoo_agent_core.contracts import TaskDecision, WorkflowPlan  # noqa: E402
+from netzoo_agent_core.graph.response import respond  # noqa: E402
 from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 
 EXPECT = json.loads((HERE / "expectations.json").read_text(encoding="utf-8"))
-NOTES = {
-    "assumption": "does not say what the network should connect",
-    "discovery": "validate for an input role",
+NOTES = {  # every string must appear
+    "assumption": ("does not say what the network should connect",),
+    "discovery": ("validate for an input role",),
+    "both_readings": ("LIONESS-PANDA", "GIRAFFE", "activity"),
 }
+# Checked on every decision; the others only on ambiguous ones, as in Logs 179-204.
+ANY_STATUS = {"both_readings"}
 POLICY = ProjectPolicyLoader(ROOT).load()
 
 
@@ -61,13 +70,25 @@ def verdict(case: dict, trace: dict) -> str:
     return "WRONG"
 
 
+def reply_for(trace: dict) -> str:
+    decision = TaskDecision.model_validate(trace["decision"])
+    task = trace.get("prompt", "")
+    if decision.capability_match_status == "ambiguous":
+        return render_outcome_clarification(decision, POLICY, task=task) or ""
+    plan = WorkflowPlan(workflow="NO-TOOL", objective="Blind scoring", decision=decision.model_dump(),
+                        status="respond_only")
+    state = {"messages": [HumanMessage(content=task)], "decision": decision.model_dump(),
+             "plan": plan.model_dump(), "tool_results": []}
+    return str(respond(SimpleNamespace(project_policy=POLICY, response_llm=None), state)["messages"][0].content)
+
+
 def missing_notes(case: dict, trace: dict) -> list[str]:
-    wanted = case.get("reply_notes", [])
-    if not wanted or trace["decision"].get("capability_match_status") != "ambiguous":
+    ambiguous = trace["decision"].get("capability_match_status") == "ambiguous"
+    wanted = [note for note in case.get("reply_notes", []) if ambiguous or note in ANY_STATUS]
+    if not wanted or trace.get("reason_code") == "semantic_fallback":
         return []
-    reply = render_outcome_clarification(TaskDecision.model_validate(trace["decision"]), POLICY,
-                                         task=trace.get("prompt", "")) or ""
-    return [note for note in wanted if NOTES[note] not in reply]
+    reply = reply_for(trace)
+    return [note for note in wanted if not all(part in reply for part in NOTES[note])]
 
 
 def main(paths: list[str]) -> None:

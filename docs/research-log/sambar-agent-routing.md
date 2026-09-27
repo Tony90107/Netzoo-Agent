@@ -12700,3 +12700,52 @@ Log 200 的已知限制被當作症狀：3 方平手 {LIONESS-PANDA, LIONESS-PUM
 
 不合併、不調整順序。現行順序在紀錄中沒有造成任何錯誤結果，要合併的情境 0 次出現。先前把這項列為「架構問題」是對的（順序確實沒寫下來），
 但「3 方平手縮不小」不是它的症狀，而是一個 0 次出現的形狀；現在順序寫在呼叫處、由測試釘住，之後若真的出現需要合併的案例，再依實例設計並改回覆層。
+
+## Log 219｜「只給一條路」：LIONESS 與 GIRAFFE 的回覆都說出另一種讀法與差別
+
+日期／時區：2026-09-27，Asia/Taipei。只改回覆內容（註冊表的下游說明）與盲測評分；不改路由、不改 prompt；以全部錄下的決策離線重新渲染驗證，不需要實跑。
+
+### 成因
+
+測試文件 Case 4（「每個人身上各 TF 對其目標基因的調控強度 → 存活」）：LIONESS-PANDA（每個樣本網路的 out-degree，衡量接線強度）
+與 GIRAFFE（TFA，衡量 TF 活性）都算對；**扣分點是只給一條路、不說明兩種讀法的差異**。
+Log 201 的 Case 4 與變體 12 次中 10 次是單一 exact（LIONESS-PANDA 5、GIRAFFE 5），這些回覆只介紹選到的那一個；
+其中 `case4-open` 3／3 exact GIRAFFE（Log 201 已記錄）。選擇本身可以接受，問題在回覆沒有並列另一種讀法。
+
+不從解讀層處理：要讓模型在這類請求上固定產生兩個讀法，只能改 prompt 措辭（禁止）或加詞彙式的判斷（脆弱）。
+而 LIONESS-PANDA、LIONESS-PUMA、GIRAFFE 的回覆本來就一定帶「下游用途」段落，第一條正是「每個樣本的 out-degree／TFA 可以拿去和存活做關聯」——
+兩種讀法的差別正好屬於這裡。註冊表已有先例：PANDA 的下游說明寫著「要每個樣本的分數做臨床檢定，改用 LIONESS-PANDA」。
+
+### 修正
+
+`workflow_registry.DOWNSTREAM_ANALYSES`：
+- LIONESS-PANDA、LIONESS-PUMA 在 out-degree 那條之後加一條：out-degree 衡量 TF 在每個樣本中和目標的接線強度；若要的是 TF 活性（與其自身 mRNA 量分開），
+  GIRAFFE 的 TF×樣本活性矩陣是另一種讀法，用相同的表現量、motif、PPI 輸入。
+- GIRAFFE 在 TFA 那條之後加對稱的一條，指向 LIONESS-PANDA 每個樣本網路的 out-degree。
+兩條都是固定的英文註冊表文字，與 Log 200 的 `per_sample_quantity` 軸（wiring／activity）一致。
+
+盲測評分 `score_blind.py`：Case 4 新增回覆檢查 `both_readings`（回覆須同時提到 LIONESS-PANDA、GIRAFFE 與 activity），**對所有決策**檢查
+（Case 4 的「一條路」是 exact，所以非平手的決策改由 response node 重新渲染）；Case 10 的既有檢查維持只看平手，與 Logs 179–204 可比。判定（OK／PARTIAL／WRONG）不變。
+
+### 已量得的事實（離線）
+
+- 以 production response node 重新渲染全部 1617 個不重複的錄下決策，並與「只拿掉這兩條」的渲染比較：788 個改變，**每一個都只多了這一行**，其餘 829 個逐字相同。
+  這 788 個涵蓋 exact LIONESS-PANDA 191、exact LIONESS-PUMA 527、fallback LIONESS-PUMA 29、exact GIRAFFE 24，以及依資料夾或條件推薦的 17 個。
+- 盲測評分（錄下的報告）：
+
+| 報告 | Case 4 缺少另一種讀法（修改前 → 修改後） | 判定合計 |
+| --- | --- | --- |
+| Log 203 blind-en | 3／3 → 0／3 | 與 HEAD 評分器相同（OK 28、FALLBACK 1、WRONG 1） |
+| Log 208 基準 blind-en | 2／2 → 0／2 | 相同 |
+| Log 208 strict blind-en | 2／2 → 0／2 | 相同 |
+| Log 200 Case 4 變體 | 11／12 → 0／12（第 12 次是分歧讀法平手，本來就並列三者） | 相同 |
+
+- 新測試 `tests/test_per_sample_readings.py` 3 項；拿掉這兩條時 3 項全部失敗。
+- 全套 2308 passed、0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；五個網格與 HEAD 逐位元組相同。沒有修改任何既有測試；沒有語料的 `answer_forbidden` 禁止這些名稱。
+
+### 代價與範圍
+
+- 每個 LIONESS-PANDA／LIONESS-PUMA／GIRAFFE 回覆多一句；即使使用者已明說要接線（`case4-wiring`）也會出現。它放在本來就會出現、正在談 out-degree 或 TFA 的下游段落裡，
+  讓使用者依假設選擇，正是測試文件要的「兩者並列」。
+- 沒有推薦的 {LIONESS-PANDA, LIONESS-PUMA} 平手（沒有資料夾）不顯示下游段落，所以不會提到 GIRAFFE；紀錄中 Case 4 都有資料夾，這個形狀沒有出現。
+- 解讀層不變：`case4-open` 仍會 exact GIRAFFE（可接受），只是回覆現在會說出 LIONESS-PANDA 是另一種讀法。

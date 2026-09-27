@@ -280,6 +280,22 @@ _LIONESS_TARGETING_NOTES = (
     "statistically independent; account for this in the association test, which is a "
     "later analysis step rather than part of this workflow.",
 )
+# Log 219: "each person's per-TF regulatory strength" has two per-sample readings
+# (TEST_PROMPTS Case 4): a TF's out-degree in each LIONESS network (wiring) or
+# GIRAFFE's TF activity. Each side names the other and the difference, so a
+# reply never gives one path without it (`per_sample_quantity`, Log 200).
+_ACTIVITY_READING_NOTE = (
+    "Out-degree measures how strongly a TF is wired to its targets in each sample. If "
+    "you mean TF activity instead -- how active a TF is apart from its own mRNA level "
+    "-- GIRAFFE's TF-by-sample activity matrix is the other reading, from the "
+    "expression, motif and PPI inputs."
+)
+_WIRING_READING_NOTE = (
+    "TF activity is how active a TF is in each sample, apart from its own mRNA level. "
+    "If you mean how strongly each TF is wired to its targets in each sample, the "
+    "out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the "
+    "same inputs."
+)
 _AGGREGATE_TARGETING_NOTES = (
     "Targeting scores: a regulator's outdegree or a gene's indegree summarizes the "
     "network per regulator or per gene; comparing them between networks built "
@@ -293,8 +309,12 @@ _SAMPLE_ANNOTATION_NOTE = (
     "clinical table keyed by the same sample IDs, supplied separately."
 )
 DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
-    "run_lioness_panda": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
-    "run_lioness_puma": ("Downstream use of the sample-specific networks:", _LIONESS_TARGETING_NOTES),
+    "run_lioness_panda": ("Downstream use of the sample-specific networks:", (
+        _LIONESS_TARGETING_NOTES[0], _ACTIVITY_READING_NOTE, *_LIONESS_TARGETING_NOTES[1:],
+    )),
+    "run_lioness_puma": ("Downstream use of the sample-specific networks:", (
+        _LIONESS_TARGETING_NOTES[0], _ACTIVITY_READING_NOTE, *_LIONESS_TARGETING_NOTES[1:],
+    )),
     "run_panda": ("Downstream use of the aggregate network:", (
         *_AGGREGATE_TARGETING_NOTES,
         "For per-sample scores to test against clinical variables, use LIONESS-PANDA instead.",
@@ -311,6 +331,7 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
     "run_giraffe": ("Downstream use of the regulatory and activity matrices:", (
         "The TF-by-sample activity matrix (TFA) can serve as predictors in association "
         "tests with sample-level variables -- survival, for example, with a Cox model.",
+        _WIRING_READING_NOTE,
         _SAMPLE_ANNOTATION_NOTE,
         "Signs in the regulatory matrix are partial linear effects (positive for "
         "activation, negative for repression); read them as model coefficients, not as "
