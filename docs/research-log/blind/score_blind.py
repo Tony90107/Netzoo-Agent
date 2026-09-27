@@ -40,7 +40,9 @@ from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 EXPECT = json.loads((HERE / "expectations.json").read_text(encoding="utf-8"))
 NOTES = {  # every string must appear
     "assumption": ("does not say what the network should connect",),
-    "discovery": ("validate for an input role",),
+    # Either discovery note: files that validate for a role, or (Log 238) a named
+    # file that validates as another role. Both start "By content,".
+    "discovery": ("By content,",),
     "both_readings": ("LIONESS-PANDA", "GIRAFFE", "activity"),
 }
 # Checked on every decision; the others only on ambiguous ones, as in Logs 179-204.

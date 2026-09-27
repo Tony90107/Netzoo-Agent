@@ -188,6 +188,25 @@ def equipped_candidates(
     return equipped
 
 
+def _selected_files_elsewhere(
+    directory: Path,
+    action: str,
+    bindings: dict[str, Path],
+) -> dict[str, Path]:
+    """Selected files that content-validate only in a role nobody selected (Log 238).
+
+    Case 10 names `expression.tsv` as the expression matrix, but by content it
+    is the TF-motif prior. A selected role is never given another file
+    (b670faa); only where the user's own file belongs is reported.
+    """
+    content = (equipped_candidates(directory, [action]) or {}).get(action, {})
+    selected = set(bindings.values())
+    return {
+        field: path for field, path in content.items()
+        if path in selected and field not in bindings
+    }
+
+
 def _workflow_name(action: str) -> str:
     definition = ACTION_DEFINITIONS.get(action)
     return definition.workflow if definition is not None else action
@@ -261,6 +280,8 @@ def advise_from_inspected_inputs(
         if not missing:
             if family:
                 probe = (equipped_candidates(directory, family[:1], bindings=bindings) or {}).get(family[0], {})
+                if not probe and bindings:
+                    probe = _selected_files_elsewhere(directory, family[0], bindings)
                 discovered.extend(f"{field}={written}{path.name}" for field, path in probe.items())
             continue
         conditions = [

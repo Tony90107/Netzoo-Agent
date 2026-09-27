@@ -13083,3 +13083,44 @@ case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DR
 - 回覆（case 2）：「What you asked about」逐條列出使用者原句與註冊表 note，`precision`、`iterations`、`eta` 升為「Controls matching this request」，其餘 5 個參數收成一行。
 - 仍未處理：case 10 的 `discovery` 缺失 3／3（Log 227：`b670faa` 程式碼的決定性變化，需使用者判斷是否符合預期）；
   case 5 仍是「平手＋推薦」而非 exact（第一輪不寫 `regulator_types`，Log 235）——目前評分為 OK，是否要做 contract 修法讓它 exact 由使用者決定。
+
+## Log 238｜事前宣告：case 10——使用者選定的檔案依內容不是它被說的角色時，說出來（但不提供替代檔案）
+
+日期／時區：2026-09-27，Asia/Taipei。使用者選擇「只標出使用者點名的檔案」。只改 input inspection 與回覆 notes；不改路由、不改 prompt、不改 schema。
+
+### 成因（Log 227 已歸因於 `b670faa`）
+
+case 10 說「this expression matrix, data/blind-tests/case-1/expression.tsv」，`request_input_bindings` 把 `expression_file` 綁到這個檔案；
+`b670faa` 讓探索也遵守綁定，而這個資料夾是刻意命名錯誤的（`expression.tsv` 依內容是 TF-motif prior），綁定下沒有任何組合通過驗證，所以 `discovered_inputs` 為空。
+這是使用者的規則如設計般運作（`test_an_explicit_missing_or_invalid_prior_is_never_replaced`：選定的角色不得提供其他檔案）。
+但現在的回覆完全沒提這件事，還說「BONOBO and LIONESS-COEXPRESSION need only the input you named」——而那個輸入依內容不是表現矩陣。
+
+### 修改
+
+- `advise_from_inspected_inputs`：只有當綁定下的探索什麼都找不到、且請求選定了檔案時，才做一次不綁定的內容探索；
+  從結果中**只保留**「某個選定檔案被放在一個不是任何選定角色的角色上」的條目。絕不為選定的角色提供其他檔案（`b670faa` 的測試原樣保留並必須通過）。
+- `reply_notes`：這種條目寫成「By content, `expression.tsv`, which you named as the expression matrix, validates as the TF-motif prior, not as an expression matrix. I have not used it …」；
+  有這種條目時不再說「need only the input you named」。
+- `score_blind.py` 的 `discovery` 檢查：除了原本的「validate for an input role」，也接受新句子中的「validates as」（事前宣告的評分修改；判定不變）。
+
+### 預期與撤回條件
+
+- X-a：以 Log 208 與 Log 236 錄下的 case 10 輸出離線重播：新回覆標出 `expression.tsv` 依內容是 TF-motif prior，不提 `ppi.tsv` 為表現矩陣，不再出現「need only the input you named」。
+- X-b：新測試——(1) 選定檔案依內容是另一個角色 → 標出且不提供替代；(2) 選定檔案無效或不存在（`b670faa` 的兩個情境）→ 不出現任何選定角色的替代檔案；
+  (3) 選定檔案本身有效 → 行為與現在相同。
+- X-c：既有測試不修改；全套 0 failed；指紋不變（`b9b01cd2db6f`）；五個網格與 HEAD 相同；Log 219 重播的 1617 個決策回覆，除 case 10 形狀外逐字相同。
+- 任何一項不成立就撤回。
+
+## Log 239｜Log 238 結果：X-a～X-c 成立，修改**保留**；case 10 的回覆說出點名的檔案依內容是 TF-motif prior
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+- X-a：以 `replay_replies.py` 重新渲染全部 684 個錄下的平手決策（含資料夾檢查），與 HEAD 比較：**25 個改變，全部是 case 10**（英文 22、中文 3），
+  都新增同一句「By content, `data/blind-tests/case-1/expression.tsv`, which you named as the expression matrix, validates as the TF-motif prior, not as the expression matrix.
+  I have not used it; tell me which file holds your expression matrix.」；這 25 個中「need only the input you named」由 25 → 0，沒有任何一個把 `ppi.tsv` 當成表現矩陣提供。其餘 659 個逐字相同。
+- X-b：新測試 `tests/test_named_file_role.py` 2 項（點名檔案是另一角色 → 標出且不提供替代；點名檔案正確 → 與現在相同）；在 HEAD 上第一項失敗。
+  `b670faa` 的 `test_an_explicit_missing_or_invalid_prior_is_never_replaced`（兩個參數）原樣通過。
+- X-c：沒有修改既有測試；全套 2542 passed、0 failed；指紋 `b9b01cd2db6f` 不變；五個網格與修改前相同。`score_blind.py` 的 `discovery` 檢查改為兩種說法共有的「By content,」（已宣告）。
+- 限制：`score_blind.py` 以錄下的決策重新渲染，舊報告的 `discovered_inputs` 是修改前寫下的，所以舊回合仍顯示 `missing=['discovery']`；新錄音才會反映。
+- live 確認（gpt-4o-mini，case 10 ×3，`live-semantic-trace-2026-09-27-log238-case10-legacy.json`）：OK 3／3，`discovery` 3／3，
+  `discovered_inputs` 3／3 只有 `motif_file=…/expression.tsv`。
