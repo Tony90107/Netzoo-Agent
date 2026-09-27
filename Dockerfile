@@ -12,6 +12,7 @@ RUN micromamba run -n netzoo python -c \
 
 USER root
 ARG NETZOOPY_REF=60bcaf5ac69ac8f002db5fc6b1b10cbc101ee822
+ENV NETZOOPY_REF=${NETZOOPY_REF}
 RUN micromamba run -n netzoo git clone https://github.com/netZoo/netZooPy.git /opt/netZooPy \
     && micromamba run -n netzoo git -C /opt/netZooPy checkout "$NETZOOPY_REF"
 # Upstream master currently uses the imported os.path module instead of the

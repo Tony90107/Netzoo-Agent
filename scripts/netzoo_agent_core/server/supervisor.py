@@ -15,6 +15,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Protocol
 
 from .protocol import Envelope
@@ -288,7 +289,10 @@ class SessionSupervisor:
 
     def _publish(self, handle: SessionHandle, envelope: Envelope) -> None:
         handle.seq += 1
-        envelope = envelope.model_copy(update={"seq": handle.seq})
+        payload = dict(envelope.payload)
+        if envelope.type in {"message", "notice", "error"}:
+            payload.setdefault("occurred_at", datetime.now(timezone.utc).isoformat())
+        envelope = envelope.model_copy(update={"seq": handle.seq, "payload": payload})
         refresh_prompt = False
         if envelope.type == "view":
             handle.active_prompt_seq = envelope.seq

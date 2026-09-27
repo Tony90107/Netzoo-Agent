@@ -24,11 +24,22 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from netzoo_agent_core.server.app import create_app  # noqa: E402
 from netzoo_agent_core.server.channel import QueueChannel  # noqa: E402
 from netzoo_agent_core.server.protocol import Envelope  # noqa: E402
-from netzoo_agent_core.server.supervisor import SessionSupervisor  # noqa: E402
+from netzoo_agent_core.server.supervisor import SessionHandle, SessionSupervisor  # noqa: E402
 
 TOKEN = "test-token"
 DESKTOP_ORIGIN_FOR_TEST = "tauri://localhost"
 TIMEOUT = 15.0
+
+
+def test_message_replay_preserves_original_time_and_system_errors_get_a_time():
+    supervisor = SessionSupervisor(worker_target=lambda: None)
+    handle = SessionHandle("time-test", None, None, None)
+    at = "2026-09-26T16:11:08.599212+00:00"
+    supervisor._publish(handle, Envelope(type="message", payload={"text": "Earlier", "occurred_at": at}))
+    supervisor._publish(handle, Envelope(type="error", payload={"message": "System error"}))
+    assert handle.snapshot(0)[0].payload["occurred_at"] == at
+    assert handle.snapshot(0)[1].payload["occurred_at"].endswith("+00:00")
+    assert handle.snapshot(0)[0].payload["occurred_at"] == at
 
 
 # ---------------------------------------------------------------------------

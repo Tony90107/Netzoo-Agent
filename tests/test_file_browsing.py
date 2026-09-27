@@ -169,3 +169,81 @@ class TestHeaderAlignment:
         result = files.preview("outputs/one.tsv")
 
         assert result.columns == ["gene symbol"]
+
+
+class TestBufferedPreviews:
+    def test_table_pages_reconstruct_every_row_without_repeating_the_header(self, tree):
+        first = files.preview("outputs/demo/net.tsv")
+        rows = list(first.rows)
+        current = first
+        while current.next_offset is not None:
+            current = files.preview("outputs/demo/net.tsv", offset=current.next_offset, version=first.version)
+            assert current.columns == first.columns
+            rows.extend(current.rows)
+        assert len(rows) == 500
+        assert [row[0] for row in rows] == [f"TF{i}" for i in range(500)]
+
+    def test_csv_pages_keep_quoted_newlines_intact(self, tree, monkeypatch):
+        monkeypatch.setattr(files, "MAX_ROWS", 1)
+        (tree / "outputs" / "quoted.csv").write_text('name,note\r\nA,"line 1\nline 2"\r\nB,last\r\n')
+        first = files.preview("outputs/quoted.csv")
+        second = files.preview("outputs/quoted.csv", offset=first.next_offset, version=first.version)
+        assert first.rows == [["A", "line 1\nline 2"]]
+        assert second.rows == [["B", "last"]]
+        assert second.next_offset is None
+
+    def test_text_pages_do_not_split_utf8_characters(self, tree, monkeypatch):
+        monkeypatch.setattr(files, "MAX_TEXT", 7)
+        text = "文字🙂test\n" * 10
+        (tree / "outputs" / "unicode.log").write_text(text)
+        current = files.preview("outputs/unicode.log")
+        parts = [current.text]
+        while current.next_offset is not None:
+            current = files.preview("outputs/unicode.log", offset=current.next_offset, version=current.version)
+            parts.append(current.text)
+        assert "".join(parts) == text
+
+    def test_changed_files_must_restart_the_preview(self, tree):
+        first = files.preview("outputs/demo/net.tsv")
+        with (tree / "outputs" / "demo" / "net.tsv").open("a") as handle:
+            handle.write("new\trow\t1\n")
+        with pytest.raises(files.FileChanged, match="changed"):
+            files.preview(first.path, offset=first.next_offset, version=first.version)
+
+    def test_wide_tables_cap_columns_and_disclose_the_actual_width(self, tree):
+        values = [str(index) for index in range(100)]
+        (tree / "outputs" / "wide.tsv").write_text("\t".join(values) + "\n" + "\t".join(values) + "\n")
+        result = files.preview("outputs/wide.tsv")
+        assert len(result.columns) == len(result.rows[0]) == files.MAX_COLUMNS
+        assert result.total_columns == 100
+        assert result.truncated and result.next_offset is None
+        assert "columns" in result.note
+
+    def test_oversized_records_are_refused_with_a_useful_message(self, tree, monkeypatch):
+        monkeypatch.setattr(files, "MAX_RECORD_BYTES", 20)
+        (tree / "outputs" / "huge.tsv").write_text("header\n" + "x" * 30)
+        with pytest.raises(files.PreviewInvalid, match="dedicated data viewer"):
+            files.preview("outputs/huge.tsv")
+
+    def test_multiline_records_are_also_bounded(self, tree, monkeypatch):
+        monkeypatch.setattr(files, "MAX_RECORD_BYTES", 20)
+        (tree / "outputs" / "huge.csv").write_text('name,note\nA,"' + "line\n" * 20 + 'end"\n')
+        with pytest.raises(files.PreviewInvalid):
+            files.preview("outputs/huge.csv")
+
+    def test_directory_pages_are_stable_and_hide_external_symlinks(self, tree):
+        directory = tree / "outputs" / "many"
+        directory.mkdir()
+        for index in range(250):
+            (directory / f"file-{index:03}.log").write_text("ok")
+        (directory / "secret.log").symlink_to(tree / ".env")
+        pages = [files.list_directory("outputs/many", offset=offset) for offset in (0, 100, 200)]
+        assert [page.has_more for page in pages] == [True, True, False]
+        assert all(page.total == 250 for page in pages)
+        assert len({entry.path for page in pages for entry in page.entries}) == 250
+
+    def test_a_project_with_no_outputs_starts_with_an_empty_listing(self, tree):
+        import shutil
+        shutil.rmtree(tree / "outputs")
+        result = files.list_directory()
+        assert result.path == "outputs" and result.total == 0
