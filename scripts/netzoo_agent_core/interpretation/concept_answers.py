@@ -8,7 +8,7 @@ from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OUTPUT_CA
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
-from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
+from ..presentation import _NON_ENGLISH, _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation, with_inspection_footer
 from .reply_notes import with_reply_notes
 from .single_candidate import single_candidate_question
@@ -93,7 +93,7 @@ def _outcome_phrase(outcome, *, include_granularity: bool = True) -> str:
     )
     if granularity:
         pieces.append(granularity)
-    entities = outcome.display_entities or [
+    entities = [item for item in outcome.display_entities if not _NON_ENGLISH.search(item)] or [
         _ENTITY_LABELS.get(item, item)
         for item in outcome.entity_types
         if item != "unknown"
@@ -168,7 +168,8 @@ def _decision_assumptions(decision: TaskDecision) -> list[str]:
     for hypothesis in decision.outcome_hypotheses:
         for assumption in hypothesis.assumptions:
             normalized = " ".join(assumption.split())
-            if normalized and normalized.casefold() not in seen:
+            # Model-written text in another language is not shown: agent output is English (Log 207).
+            if normalized and normalized.casefold() not in seen and not _NON_ENGLISH.search(normalized):
                 assumptions.append(normalized)
                 seen.add(normalized.casefold())
     return assumptions[:6]

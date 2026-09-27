@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..contracts import ProjectPolicySnapshot, TaskDecision
+from ..presentation import _NON_ENGLISH
 from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
 from ..runtime_constraints import runtime_control_constraints
@@ -103,7 +104,8 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
         " ".join(assumption.split())
         for hypothesis in decision.outcome_hypotheses
         for assumption in hypothesis.assumptions
-        if assumption.strip()
+        # Model-written text in another language is not shown (Log 207).
+        if assumption.strip() and not _NON_ENGLISH.search(assumption)
     ))
     if assumptions:
         lines.append(
