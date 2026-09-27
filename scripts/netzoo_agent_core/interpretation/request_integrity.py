@@ -405,6 +405,15 @@ def request_integrity_issues(task: str, outcome) -> list[str]:
         issues.append(Issue(
             f"stated_roles_conflict:{outcome.artifact_type}", {"artifact_type"},
         ))
+    stated = {mention.granularity for mention in granularity_mentions(task)}
+    if outcome.granularity in {"aggregate", "sample_specific"} and stated and outcome.granularity not in stated:
+        # Log 196: the request states the other granularity and never this one.
+        # "I want per-patient networks ..." read as aggregate had no granularity
+        # evidence, so it failed as missing evidence -- and any evidence at all,
+        # even the quote "per-patient networks", then passed it as exact PUMA.
+        issues.append(Issue(
+            f"granularity_contradicts_request:{outcome.granularity}", {"granularity"},
+        ))
     if patient_clustering_goal(task) and outcome.artifact_type != "sample_cluster_assignment":
         # Read `artifact_type` only. What the corrected artifact then constrains
         # is opened by the ontology at merge time, not listed here.

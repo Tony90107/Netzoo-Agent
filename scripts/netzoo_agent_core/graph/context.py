@@ -46,6 +46,7 @@ class _GraphContext:
     semantic_discriminator: Any = None
     # Log 139: the semantic model, bound to SelectionConditionClaims lazily and
     # only when a method tie occurs, so graph construction binds nothing new.
+    # Log 198 binds it the same way to a per-call strict evidence-supply schema.
     selection_condition_llm: Any = None
 
 
