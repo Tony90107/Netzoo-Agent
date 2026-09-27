@@ -12239,3 +12239,31 @@ Case 9 中文由 Log 179 的「沒有候選」變為 exact CONDOR（Log 202）�
 - 第 4／10 項：新條件軸 `per_sample_quantity`，分歧讀法也跑條件推薦（Log 201）；3 方平手的合併為已知限制。
 - 第 8 項：社群指派同時支援調控因子與基因（Log 202）；其餘中文問題依 English-first 暫不處理。
 - 本輪全部修改的 patch（相對於 HEAD＋`log188_candidate.patch`）：`docs/research-log/log190-202_applied.patch`；在只含這兩者的乾淨樹上全套 2234 passed、0 failed。
+
+## Log 205｜評估器：條件推薦呼叫另計，不算進 routing 的四次上限
+
+日期／時區：2026-09-27，Asia/Taipei。只改評估器（`scripts/evaluate_routing.py`），不改路由、不改 prompt；離線驗證，不需要實跑。
+
+### 成因
+
+評估器把每個 trial 的呼叫數與「routing 上限 4 次」（interpreter、reviewer、discriminator、intent）比較，超過就記 `call_limit` 安全錯誤。
+Log 139／141 加入的條件推薦呼叫（`selection_conditions`）在 intent 之後、只在方法平手（Log 200 起也包括分歧讀法）執行一次，
+是第 5 次呼叫，所以**每一個走到條件推薦的方法平手都被記成安全失敗**。連釘住呼叫序列的 fixture
+（`test_ambiguous_guidance_is_scored` 的 `row()`，五次呼叫）本身都是 `passed=False`。
+
+### 修正
+
+`_call_limit_errors(roles)`：routing 角色（條件推薦以外的呼叫）上限仍是 4；`selection_conditions` 另計，上限 1。兩個上限都仍然可以失敗。
+
+### 量得的事實
+
+- 所有錄下報告中有 `call_roles` 的 3792 列：舊規則標記 99 列，**99 列的呼叫序列完全相同**
+  （interpreter、reviewer、discriminator、intent、selection_conditions）；新規則清除這 99 列，新增標記 0 列。
+- 以新規則重算：Log 196 families32 passed 59 → 63／64，Log 198 families32 58 → 62／64（被清除的都是 `role-tf-agg-control-en`、`zh-tf-agg-control` 的方法平手）。
+  這是評分修正，不是路由改善；Log 197、199 的判準不受影響（它們不依賴 passed）。
+- 新測試 `tests/test_call_limit.py` 4 項；以舊規則替換時 fixture 那一項失敗。全套 2266 passed；網格、指紋不變。
+
+### 範圍外（記錄）
+
+`--max-calls` 的事前估計仍以每個 trial 3 次計算（`len(cases) * repeat * 3`），實際 legacy 最多 5 次。
+這是花費上限的預檢；改成 5 會讓目前慣用的 `--max-calls 300`（27 題 ×3）被拒跑，所以本輪不改，留待使用者決定。
