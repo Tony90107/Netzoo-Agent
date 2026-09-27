@@ -13,7 +13,7 @@ from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
 from ..runtime_constraints import runtime_control_constraints
 from ..settings import INPUT_ROLE_FIELDS
-from workflow_registry import DOWNSTREAM_ANALYSES, get_controls
+from workflow_registry import DOWNSTREAM_ANALYSES, REQUEST_CONCERNS, get_controls
 from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
@@ -50,6 +50,7 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         "rejected_methods": [item.model_dump() for item in rejections],
         "artifact_definitions": {artifact: rule.description for artifact, rule in ARTIFACT_SEMANTICS.items()},
         "requested_parameters": extract_explicit_request_parameters(task),
+        "addressed_concerns": addressed_concern_facts(decision),
         "workflows": [dict(action=action, workflow=policy.workflows[action].workflow,
                            description=policy.workflows[action].description,
                            required_inputs=[
@@ -83,6 +84,23 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
                            output_capability=policy.workflows[action].output_capability.model_dump(exclude={"prefer_when"}))
                       for action in actions if action in policy.workflows],
     }
+
+
+def addressed_concern_facts(decision: TaskDecision) -> list[dict]:
+    """Each quoted concern with the registry's note, controls and outputs (Log 223)."""
+    facts = []
+    for item in decision.addressed_concerns:
+        declared = next(
+            (entry for entry in REQUEST_CONCERNS.get(item.action, ()) if entry.concern == item.concern),
+            None,
+        )
+        if declared is not None:
+            facts.append(dict(
+                action=item.action, concern=item.concern, text_span=item.text_span,
+                note=declared.note, controls=list(declared.controls),
+                artifacts=list(declared.artifacts),
+            ))
+    return facts
 
 
 def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
@@ -136,6 +154,15 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
         explanations = facts.get("explanations", [])
         if explanations:
             lines.append("Why this recommendation:\n\n" + "\n\n".join(explanations))
+        concerns = [item for item in facts.get("addressed_concerns", []) if item["action"] in selected]
+        if concerns:
+            named = len(selected) > 1
+            lines.append("What you asked about:\n\n" + "\n".join(
+                "- "
+                + (f"**{workflows[item['action']]['workflow']}** · " if named else "")
+                + f"\"{' '.join(item['text_span'].split())}\" — {item['note']}"
+                for item in concerns
+            ))
         for action in selected:
             item = workflows[action]
             capability = item["output_capability"]
@@ -165,12 +192,18 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                             for field in group
                         )
                     )
-            # Only a control whose registry tags meet the request's tags is matched
-            # to it; the rest are declared but not claimed as relevant (Log 221).
+            # Only a control whose registry tags meet the request's tags, or that a
+            # quoted concern points to (Log 223), is matched to it; the rest are
+            # declared but not claimed as relevant (Log 221).
             controls = item.get("controls", [])
+            concern_controls = {
+                name for concern in concerns if concern["action"] == action
+                for name in concern["controls"]
+            }
             matched_controls = [
                 control for control in controls
                 if set(control.get("selection_tags", [])) & requested_tags
+                or control["name"] in concern_controls
             ]
             other_controls = [control for control in controls if control not in matched_controls]
             if matched_controls:

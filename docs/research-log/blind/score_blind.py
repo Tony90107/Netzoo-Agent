@@ -15,6 +15,10 @@ reply is re-rendered offline and checked for the reply notes a case requires
 case 4, on every decision since Log 219: both per-sample readings, LIONESS-PANDA
 wiring and GIRAFFE activity, whatever was chosen -- its "one path" is an exact
 match, rendered through the response node).
+Since Log 223 each trial also lists the concerns its reply answers
+(`concerns=`), and a case's `concerns` in expectations.json names those the
+request states: `missed=` are expected but unanswered, `extra=` answered but
+not expected. Neither changes the verdict.
 """
 import collections
 import json
@@ -108,10 +112,19 @@ def main(paths: list[str]) -> None:
             shown = decision.get("matched_actions") or decision.get("hypothesis_actions") or []
             recommended = (decision.get("advisory_recommendation") or {}).get("action")
             notes = missing_notes(case, trace)
+            addressed = sorted({item["concern"] for item in decision.get("addressed_concerns") or []})
+            expected = set(case.get("concerns", {}).get(next(iter(sorted(set(shown))), ""), []))
+            missed = sorted(expected - set(addressed))
+            extra = sorted(set(addressed) - expected)
+            for concern in addressed:
+                totals[f"concern:{concern}"] += 1
             by_case[key].append(
                 f"{result} {decision.get('capability_match_status')} {shown}"
                 + (f" rec={recommended}" if recommended else "") + (" LEAK" if leak else "")
                 + (f" missing={notes}" if notes else "")
+                + (f" concerns={addressed}" if addressed else "")
+                + (f" missed={missed}" if missed and result.startswith("OK(exact)") else "")
+                + (f" extra={extra}" if extra else "")
             )
         print(f"== {Path(path).name}")
         for key in sorted(by_case, key=lambda item: int(item[4:])):

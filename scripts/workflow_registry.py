@@ -376,6 +376,118 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
     )),
 }
 
+
+@dataclass(frozen=True, slots=True)
+class RequestConcern:
+    """A practical concern a user can state that a workflow's registry answers (Log 223).
+
+    ``concern`` is the id offered to the model and ``label`` the statement it
+    looks for, both in the user's terms; ``note`` is the registry-owned answer
+    shown with the user's quote; ``controls`` and ``artifacts`` are what the
+    note points to, and are listed in full in the reply.
+    """
+
+    concern: str
+    label: str
+    note: str
+    controls: tuple[str, ...] = ()
+    artifacts: tuple[str, ...] = ()
+
+
+# Python-only, like DOWNSTREAM_ANALYSES: not part of the policy snapshot, so
+# neither the policy hash nor any provider prompt changes. Every note must be
+# verifiable in the netZooPy source or the executor that wraps it.
+_MEMORY_LIMIT = "memory is a limiting factor (for example, an earlier run ran out of memory)"
+REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
+    # netZooPy 0.11.0 otter/otter.py:44-69; loader data/otter.py:210, 246-250.
+    "run_otter": (
+        RequestConcern(
+            concern="memory_limit", label=_MEMORY_LIMIT,
+            note=(
+                "`precision=single` keeps OTTER's largest array, the gene-by-gene "
+                "co-expression matrix, in single precision during the optimization. The "
+                "loader first computes that matrix in double precision, so peak memory while "
+                "loading is not reduced, and the optimization and the output network stay in "
+                "double precision."
+            ),
+            controls=("precision",),
+        ),
+        RequestConcern(
+            concern="iteration_stopping",
+            label="a run iterates for a long time or does not stop",
+            note=(
+                "OTTER runs exactly `iterations` gradient steps (default 60) and then stops; "
+                "there is no convergence test to wait for. `eta` is the step size of those steps."
+            ),
+            controls=("iterations", "eta"),
+        ),
+    ),
+    # giraffe/giraffe.py:161, 195-268 (fit), :225 (get_tfa returns |TFA|);
+    # executor execution.py:913 and data/giraffe.py:298-302 (the .tfa file).
+    "run_giraffe": (
+        RequestConcern(
+            concern="activity_apart_from_expression",
+            label="a regulator's activity may differ from its own mRNA level",
+            note=(
+                "GIRAFFE fits each TF's activity (`tf_activity_matrix`) from the expression of "
+                "its target genes and the TF-TF protein interactions; the TF's own mRNA level "
+                "is not an input to it. If the TF's gene is among the expression rows it still "
+                "counts as an ordinary target, so its activity is not tied to its mRNA rather "
+                "than independent of it."
+            ),
+            artifacts=("tf_activity_matrix",),
+        ),
+        RequestConcern(
+            concern="per_sample_values",
+            label="a value is needed for each sample",
+            note=(
+                "The activity matrix holds one value per TF per sample (TF by sample, written "
+                "as the `.tfa` output). GIRAFFE reports absolute activity, so every value is "
+                "zero or positive."
+            ),
+            artifacts=("tf_activity_matrix",),
+        ),
+    ),
+    # bonobo/bonobo.py:59-65, 94-121, 237-245, 350-389; executor execution_bonobo.py:207-218.
+    "run_bonobo": (
+        RequestConcern(
+            concern="per_edge_confidence",
+            label="a confidence value is needed for each connection in each sample",
+            note=(
+                "With `sparsify=true` BONOBO computes a p-value for every connection in every "
+                "sample and keeps those with a two-sided p-value below `bonobo_confidence` "
+                "(default 0.05), without multiple-testing correction. With `save_pvals=true` as "
+                "well, the full network is kept and the p-values are saved beside it instead."
+            ),
+            controls=("sparsify", "bonobo_confidence", "save_pvals"),
+        ),
+        RequestConcern(
+            concern="memory_limit", label=_MEMORY_LIMIT,
+            note=(
+                "Each sample's network is written to its own file; `keep_in_memory=false` (the "
+                "default) avoids also holding every network in memory. `precision` applies only "
+                "to the input expression table: the networks are computed and saved in double "
+                "precision either way."
+            ),
+            controls=("keep_in_memory", "precision"),
+        ),
+    ),
+    # dragon/dragon.py:17-34, 82-107; executor execution.py:740-741, 780-796.
+    "run_dragon": (
+        RequestConcern(
+            concern="penalty_choice",
+            label="it is unclear how strongly to regularize or which penalty values to use",
+            note=(
+                "Leave `lambda1` and `lambda2` empty and DRAGON estimates both shrinkage values "
+                "from the data by minimizing an analytic risk, and reports the values it used. "
+                "To set them yourself, set both."
+            ),
+            controls=("lambda1", "lambda2"),
+        ),
+    ),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class WorkflowControlDefinition:
     """One user-facing control and its executor schema contract."""

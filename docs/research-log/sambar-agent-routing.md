@@ -12820,3 +12820,45 @@ Log 201 的 Case 4 與變體 12 次中 10 次是單一 exact（LIONESS-PANDA 5�
 
 這只讓回覆誠實：不再宣稱「為這個請求」挑過參數。它**沒有**讓回覆回答使用者的實際顧慮（例如 case 2 的記憶體不足與迭代不收斂，
 仍然沒有指出 `precision`、`iterations`、`eta` 的關係）；那是方向 B，需要解讀層把使用者的顧慮對應到註冊表的參數／輸出，另立 Log 事前宣告。
+
+## Log 223｜事前宣告（方向 B）：回覆回答請求中說出的實際顧慮——註冊表宣告顧慮，strict 呼叫帶引文認領
+
+日期／時區：2026-09-27，Asia/Taipei。使用者的選擇：**獨立的 strict 呼叫**（形狀同 Log 139 條件推薦器，不放在第一輪）、範圍為**參數＋輸出**（SAMBAR 的 regex 解釋暫不改）。
+
+### 成因
+
+Log 222 之後回覆不再宣稱「為這個請求」挑過參數，但仍不回答使用者真正的顧慮：case 2 說「上次記憶體不足、迭代停不下來」，OTTER 回覆沒有指出哪個參數和它有關；
+case 1 問「TF 自己的 mRNA 沒變、活性卻不同」，GIRAFFE 回覆沒有說 TFA 正是這個。現有唯一回應顧慮的機制是 `scientific_explanations.py` 的 regex（只涵蓋 SAMBAR），
+正是使用者擔心的關鍵字比對。
+
+### 修改
+
+- 註冊表：`workflow_registry.REQUEST_CONCERNS`（Python-only，同 DOWNSTREAM_ANALYSES；不進 policy snapshot，policy hash 與任何 provider prompt 不變）。
+  每個顧慮有 id、使用者可能說的 label、註冊表撰寫的 note，以及它指向的參數或輸出。本版 5 個 workflow、8 個顧慮，每條 note 都依 netZooPy 0.11.0 原始碼與執行器核對（行號寫在註冊表註解）：
+  OTTER `memory_limit`（`precision`；明說載入時峰值不降）、`iteration_stopping`（`iterations`、`eta`；固定步數、沒有收斂檢查）；
+  GIRAFFE `activity_apart_from_expression`、`per_sample_values`（`tf_activity_matrix`；活性由目標基因表現與 PPI 擬合、不綁 TF 自身 mRNA；值皆 ≥ 0）；
+  BONOBO `per_edge_confidence`（`sparsify`、`bonobo_confidence`、`save_pvals`；未做多重檢定校正）、`memory_limit`（`keep_in_memory`、`precision`；明說 precision 不縮小網路）；
+  DRAGON `penalty_choice`（`lambda1`、`lambda2`）；SAMBAR `number_of_groups`（`kmin`、`kmax`；不自動選 k）。
+- 新階段 `graph/request_concerns.invoke_concern_matcher`：advisory 第 4 步（在 input preflight 之後），只在 exact／fallback 的 guidance（`no_tool`、不執行）且選定 workflow 宣告了顧慮時執行；
+  legacy 合約才執行（同條件推薦器）。使用 `selection_condition_llm` 原始 provider、每次呼叫綁定 strict schema，其 `concern` 限定為這次提供的 id。
+  決定性部分：認領必須是提供的 id、引文必須 grounded 在請求中；結果寫入新欄位 `TaskDecision.addressed_concerns`（空時不輸出，舊決策序列化不變）。
+  它不改 `action`、`should_execute`、`capability_match_status`、`matched_actions`。
+- 回覆：`render_verified_guidance` 在說明段之後加「What you asked about」：使用者原句 + 註冊表 note；顧慮指向的參數升為「Controls matching this request」完整列出。
+- 評估器：`request_concerns` 是 advisory 角色；每個 trial 最多一次 advisory 呼叫（它與條件推薦器互斥：一個只在平手、一個只在 exact／fallback），所以每 trial 上限仍是 5，`worst_case_calls` 不變。
+- `score_blind.py`：每個 trial 列出 `concerns=`，並與 `expectations.json` 新增的 `concerns` 比對（`missed=`、`extra=`）；判定不變。
+
+### 事前宣告的既有測試修改
+
+- `test_contract_model_schemas_are_unchanged` 的 `TaskDecision` digest（新欄位）。這是唯一一項；以空註冊表與填好註冊表各跑一次全套，都只有這一項失敗（2516 passed）。
+  釘住的呼叫序列測試（`test_call_limit`、`test_advisory_order` 等）都沒有受影響：它們走的是平手或 fixture 路徑，本階段不執行。
+
+### 預期（live，gpt-4o-mini，blind-en ×3，已預先授權）與撤回條件
+
+期望的顧慮（寫入 `expectations.json`，跑之前固定）：case 1 GIRAFFE `activity_apart_from_expression`、`per_sample_values`；case 2 OTTER `memory_limit`、`iteration_stopping`；
+case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DRAGON、case 8 SAMBAR 等）不期望任何顧慮，是負對照。
+
+- U-a（命中）：case 1、case 2 路由到期望 workflow 的 trial 中，期望的顧慮至少一半被回答（每題 ≥ 2／3 trial 至少有一個）。
+- U-b（誤認領）：所有被接受的認領逐一人工檢查；引文沒有陳述該顧慮的 ≥ 2 個，或負對照出現任何被接受的認領 ≥ 2 次 → 撤回。
+- U-c（不影響路由）：判定合計與 Log 204／208 同一範圍（英文 OK ≥ 26／30、WRONG ≤ 2）；任何 LEAK → 撤回。本階段在 intent 之後、不改路由欄位，由單元測試保證。
+- U-d（離線）：全套 0 failed（只改上面宣告的 digest）；指紋不變（legacy `d2a9afddad86`、claims `480a66264c53`）；五個網格與 HEAD 相同；新測試 `tests/test_request_concerns.py` 15 項。
+- 成本：每個宣告顧慮的 exact／fallback guidance 多一次 mini 呼叫；報告其 token 數。

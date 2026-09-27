@@ -584,6 +584,40 @@ class AdvisoryRecommendation(BaseModel):
     conditions: list[AdvisoryCondition] = Field(min_length=1, max_length=6)
 
 
+class ConcernClaim(BaseModel):
+    """One offered practical concern the request states, with its quote (Log 223)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concern: str = Field(
+        max_length=80,
+        description="One concern id exactly as offered in the option list.",
+    )
+    text_span: str = Field(
+        min_length=1,
+        max_length=300,
+        description="Exact original-language quote from the request that states it.",
+    )
+
+
+class StatedConcernClaims(BaseModel):
+    """Practical concerns stated in the request (Log 223); may be empty."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    claims: list[ConcernClaim] = Field(default_factory=list, max_length=6)
+
+
+class AddressedConcern(BaseModel):
+    """A quoted, offered concern that a guidance reply answers from the registry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: RecommendedAction
+    concern: str
+    text_span: str
+
+
 class SemanticReview(BaseModel):
     """One adjudicated scientific outcome returned by the review pass."""
 
