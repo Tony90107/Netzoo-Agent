@@ -733,7 +733,8 @@ def _score_answer(case, result, context, progress=""):
     # outside this evaluator -- but it now says so instead of being folded into
     # one undifferentiated `false`.
     # A single surviving candidate is answered deterministically too since
-    # Log 194, which supplies its question from the registry.
+    # Log 194, which supplies its question from the registry; no recorded
+    # legacy decision has reached the remainder since (Log 220).
     deterministic_ambiguity = (
         decision.capability_match_status == "ambiguous"
         and bool(decision.clarification_question or single_candidate_question(decision))

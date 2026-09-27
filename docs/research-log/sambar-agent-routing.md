@@ -12749,3 +12749,27 @@ Log 201 的 Case 4 與變體 12 次中 10 次是單一 exact（LIONESS-PANDA 5�
   讓使用者依假設選擇，正是測試文件要的「兩者並列」。
 - 沒有推薦的 {LIONESS-PANDA, LIONESS-PUMA} 平手（沒有資料夾）不顯示下游段落，所以不會提到 GIRAFFE；紀錄中 Case 4 都有資料夾，這個形狀沒有出現。
 - 解讀層不變：`case4-open` 仍會 exact GIRAFFE（可接受），只是回覆現在會說出 LIONESS-PANDA 是另一種讀法。
+
+## Log 220｜過時的測試說明：「沒有問題可問的平手交給 response model」改為符合現況
+
+日期／時區：2026-09-27，Asia/Taipei。只改一項測試與兩處說明；不改任何路由或評分行為。
+
+### 成因（Log 194 已記錄）
+
+`test_an_ambiguity_with_nothing_to_ask_says_it_went_to_the_response_model` 的說明寫著：單一候選（live `two-layer-network` 的 DRAGON）沒有問題可問，
+所以回覆交給 response model、評估器不評分。Log 194 之後單一候選的問題由註冊表產生、走確定性評分，這段說明已不成立；
+測試仍然通過，只是因為它的假 decision 是**缺少** `hypothesis_actions` 的 `SimpleNamespace`，實際上只涵蓋「沒有任何候選」的分支，名稱與說明都在描述另一件事。
+
+### 量得的事實
+
+依現行規則重新判斷全部 262 個不重複的錄下 legacy ambiguous 決策：沒有候選且有問題 47、單一候選且有註冊表問題 11、兩個以上候選且有問題 204；
+**走到「交給 response model」分支的是 0 個**。這個分支現在是防禦性的：評分器必須標記它，而不是當成沒看過。
+
+### 修改
+
+- 測試改名為 `test_an_ambiguity_with_nothing_to_ask_is_labelled_response_model_not_left_unscored`，說明改成現況：
+  先斷言 DRAGON 形狀現在會得到註冊表問題（Log 194 的轉變；端到端由 `test_single_candidate_is_scored` 涵蓋），
+  再以**明確**建構的 decision（`hypothesis_actions=[]`、沒有問題，並註明是建構的）斷言評分器把它標為 `response_model`、不評分。原本兩項斷言不變。
+- `test_ambiguous_guidance_is_scored.py` 的模組說明與 `evaluate_routing._score_answer` 的註解補上「Log 194 之後沒有錄下的決策走到這個分支」。
+- 讓單一候選問題失效時，改寫後的測試失敗（舊版不會，因為它根本沒有單一候選）。全套 2308 passed、0 failed。
+- 掃過其他測試中「交給 response model」的說法，沒有其他描述單一候選平手的過時說明。
