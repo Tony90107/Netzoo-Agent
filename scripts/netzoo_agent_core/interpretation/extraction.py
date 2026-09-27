@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
 from ..contracts import PROSE_PATH_TERMINATORS, PreferenceProposal, _ui_text
 from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
 from ..routing.discovery import _extract_explicit_role_path
+from ..routing.path_tokens import without_path_tokens
 
 __all__: list[str] = []
 
@@ -136,7 +137,7 @@ def _mentions_unspecified_data_directory(task: str) -> bool:
 
 def _needs_lioness_mode_choice(task: str) -> bool:
     """Return True when an execution request names only a workflow family."""
-    normalized = task.casefold()
+    normalized = without_path_tokens(task).casefold()  # a folder is not a name (Log 191)
     if "lioness" not in normalized:
         return False
     if is_workflow_information_request(task):

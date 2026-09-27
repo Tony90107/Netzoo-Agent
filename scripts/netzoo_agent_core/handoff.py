@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, registered_handoff_consumers
 
 from .contracts import TaskDecision
 from .contracts.handoffs import WorkflowHandoff
+from .routing.path_tokens import without_path_tokens
 
 
 _BONOBO_PATTERN = re.compile(r"\bbonobo\b", re.IGNORECASE)
@@ -88,7 +89,7 @@ def sample_specific_coexpression_handoff_requested(task: str) -> bool:
 
 
 def _named_consumer_action(task: str, registry: Mapping[str, object]) -> str | None:
-    normalized = task.casefold()
+    normalized = without_path_tokens(task).casefold()
     for action, definition in registry.items():
         if not action.startswith("run_") or action == "run_bonobo":
             continue
