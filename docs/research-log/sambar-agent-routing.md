@@ -11807,3 +11807,31 @@ handoff 的下游消費者、以及兩個概念回覆（`render_spec_backed_conc
 - 只有一個斜線、沒有副檔名、而且不存在的 token（例如 `results/dragon`）不算路徑，這是為了保留 `PANDA/PUMA` 這類寫法。
 - 中文句子裡沒有空白、與中文字黏在一起的路徑（`我在data/x-toy/放了`）不處理；依 English-first 優先順序暫不處理。
 
+## Log 192｜其他動態文字的語言守衛（第 7 項）
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+### 稽核
+
+由子代理逐一檢查 `scripts/netzoo_agent_core/` 的 116 個 `_ui_text(` 呼叫：
+6 個會把使用者資料交給守衛（AT-RISK）、9 個會交給模型寫的文字（MODEL）、101 個是靜態模板。
+Log 180 懷疑的 `cli/follow_up.py` 的 `_ui_text(interaction.next_step)` 是靜態文字，**不會**崩潰。
+
+### 修正（4 處）
+
+- 新 helper `presentation._ui_text_quoting(text, values)`：只遮蔽 `values` 中含中日韓字元的字串，其餘文字照常檢查。
+- `cli/clarification.py`（原 282 行）：部分 bundle 的問題含發現的資料夾與檔名，改用 `_ui_text_quoting`，values 只來自計畫本身的 evidence 與 bundle。
+- `cli/follow_up.py`：「Input validation did not pass: …」的錯誤訊息含使用者路徑與識別碼，改為佔位符，錯誤本身作為使用者資料。
+- `presentation.py` 的 `--timeline` 模式：`[Input required]` 與 `[Evaluating result]` 的摘要（計畫問題、評估理由）作為使用者資料放入。
+
+### 未修（範圍外，記錄）
+
+- `engine/machine.py` 的 `_notice`：`/execute` 的最終驗證錯誤與 `/doctor` 的環境路徑。這兩則訊息來自 `cli/slash_commands.py`，
+  而另一個 session 正在修改該檔並新增 `environment.py`（`/doctor`）。為避免同一工作目錄的衝突，本輪不動，留給該 session。
+- MODEL 類（模型寫的 `assumptions`、`display_entities`、Router 的 `clarification_question`）：錄下的 31 個中文 hypothesis 中 0 個含中文，未處理。
+
+### 量得的事實
+
+- 新測試 `tests/test_dynamic_ui_text_language_guard.py` 4 項；用 HEAD 版本的三個檔案覆蓋後，3 個呼叫點的測試都以同一個 `ValueError` 失敗。
+- 不影響路由：網格與指紋不變；全套通過。
+

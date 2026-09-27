@@ -333,17 +333,21 @@ CLI_FOLLOW_UP_STARTERS = (
 )
 
 
-def _bounded_timeline_detail(detail: str | dict | None) -> str:
-    """Keep timeline summaries readable and bounded."""
+def _bounded_text(detail: str | dict | None) -> str:
     if not detail:
-        return _ui_text("No additional details.")
+        return "No additional details."
     text = detail.get("text", "") if isinstance(detail, dict) else detail
     collapsed = re.sub(r"\s+", " ", text).strip()
     if not collapsed:
-        return _ui_text("No additional details.")
+        return "No additional details."
     if len(collapsed) > 240:
         collapsed = collapsed[:237].rstrip() + "..."
-    return _ui_text(collapsed)
+    return collapsed
+
+
+def _bounded_timeline_detail(detail: str | dict | None) -> str:
+    """Keep timeline summaries readable and bounded."""
+    return _ui_text(_bounded_text(detail))
 
 
 def _timeline_action_label(action: str) -> str:
@@ -460,9 +464,12 @@ def _render_timeline_block(
                 f"  Decision: {review.group(1)}"
             )
     elif stage == "input" and message == "The Planner requires additional input":
-        return _ui_text(
+        # The plan's question quotes discovered folders, file names and
+        # preflight errors; it is shown as data here (Log 192).
+        return _ui_text_with_user_data(
             "[Input required]\n"
-            f"  Next step: {_bounded_timeline_detail(detail)}"
+            f"  Next step: {user_data_token(0)}",
+            [_bounded_text(detail)],
         )
     elif stage == "tool":
         started = re.fullmatch(r"Executor \[\d+/\d+\]:\s*(\w+)", message)
@@ -484,18 +491,23 @@ def _render_timeline_block(
     elif stage == "evaluate":
         evaluation = re.fullmatch(r"Evaluator:\s*(\w+)", message)
         if evaluation:
-            return _ui_text(
+            # The evaluation reason names missing output paths (Log 192).
+            return _ui_text_with_user_data(
                 "[Evaluating result]\n"
                 f"  Decision: {evaluation.group(1)}\n"
-                f"  Reason: {_bounded_timeline_detail(detail)}"
+                f"  Reason: {user_data_token(0)}",
+                [_bounded_text(detail)],
             )
     elif stage == "recover" and message.startswith("Planner recovery plan"):
         return _ui_text("[Recovery]\n  Status: Recovery plan selected.")
     return None
 
+_NON_ENGLISH = re.compile(r"[\u3400-\u9fff]")
+
+
 def _ui_text(text: str) -> str:
     """Guard deterministic agent-authored UI text against language drift."""
-    if re.search(r"[\u3400-\u9fff]", text):
+    if _NON_ENGLISH.search(text):
         raise ValueError(
             "Agent-authored user-visible UI text must be English. "
             "Keep non-English only in user input parsing patterns or quoted user data."
@@ -522,6 +534,28 @@ def _ui_text_with_user_data(text: str, user_data: list[str]) -> str:
     for index, value in enumerate(user_data):
         checked = checked.replace(user_data_token(index), value)
     return checked
+
+
+def _ui_text_quoting(text: str, values) -> str:
+    """Check assembled text as agent-authored, except where it quotes `values` (Log 192).
+
+    For text built elsewhere that embeds known user data -- a discovered folder
+    or file name -- where the call site can list that data but not rebuild the
+    template. Only values that the guard would reject are masked, so nothing
+    else in the text escapes the check.
+    """
+    quoted = sorted(
+        {value for value in values if value and _NON_ENGLISH.search(value)},
+        key=len, reverse=True,
+    )
+    if not quoted:
+        return _ui_text(text)
+    masked = re.sub(
+        "|".join(re.escape(value) for value in quoted),
+        lambda found: user_data_token(quoted.index(found.group())),
+        text,
+    )
+    return _ui_text_with_user_data(masked, quoted)
 
 
 def output_language_policy() -> str:

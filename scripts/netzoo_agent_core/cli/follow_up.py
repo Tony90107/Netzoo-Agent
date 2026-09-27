@@ -25,6 +25,7 @@ from ..contracts import (
     _ui_text,
 )
 from ..contracts.interaction import WorkflowContinuation
+from ..presentation import _ui_text_with_user_data, user_data_token
 from ..interpretation import INPUT_LABELS
 from ..outcomes import effective_results, terminal_failed
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
@@ -241,21 +242,19 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             for error in item.errors
         ]
         if validation_errors:
-            detail = validation_errors[0]
-            question = (
-                f"Input validation did not pass: {detail} "
+            # The error quotes the user's paths and identifiers (Log 192).
+            question = _ui_text_with_user_data(
+                f"Input validation did not pass: {user_data_token(0)} "
                 "Are these local files intended for this workflow? "
-                "If not, provide the correct role=path assignments."
+                "If not, provide the correct role=path assignments.",
+                [validation_errors[0]],
             )
         else:
-            question = (
+            question = _ui_text(
                 f"The {plan.workflow} workflow stopped. Would you like to correct "
                 "its inputs or try a different workflow?"
             )
-        return NextTurnPrompt(
-            kind="failed",
-            question=_ui_text(question),
-        )
+        return NextTurnPrompt(kind="failed", question=question)
 
     if any(item.status == "dry_run" for item in results):
         return NextTurnPrompt(
