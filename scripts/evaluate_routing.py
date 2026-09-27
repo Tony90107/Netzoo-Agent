@@ -678,6 +678,23 @@ def _score(case, result, events):
 #: Calls made after routing has decided, to attach advice. Each is bounded on
 #: its own and does not count against the routing bound.
 _ADVISORY_CALL_ROLES = {"selection_conditions"}
+# Per-trial provider-call bounds. `_call_limit_errors` scores a trial above
+# either as a safety failure, and the pre-run `--max-calls` check uses their
+# sum, so the two cannot drift apart again (Log 217).
+ROUTING_CALL_LIMIT = 4
+ADVISORY_CALL_LIMIT = 1
+
+
+def worst_case_calls(case_count: int, repeat: int, *, repair_replay: bool = False) -> int:
+    """The most provider calls a run can make without a trial breaking the scored bounds.
+
+    Up to four routing calls (interpreter, reviewer or patch, discriminator,
+    intent) and one experimental-condition call per trial. A repair replay's
+    injected first pass is not a provider call. Retries are disabled in the
+    production provider, so logical calls are HTTP requests.
+    """
+    per_trial = ROUTING_CALL_LIMIT + ADVISORY_CALL_LIMIT - (1 if repair_replay else 0)
+    return case_count * repeat * per_trial
 
 
 def _call_limit_errors(roles: list[str]) -> list[str]:
@@ -692,9 +709,9 @@ def _call_limit_errors(roles: list[str]) -> list[str]:
     safety failure -- 99 of 99 flagged recorded rows, all with that exact shape.
     """
     errors = []
-    if len([role for role in roles if role not in _ADVISORY_CALL_ROLES]) > 4:
+    if len([role for role in roles if role not in _ADVISORY_CALL_ROLES]) > ROUTING_CALL_LIMIT:
         errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
-    if roles.count("selection_conditions") > 1:
+    if roles.count("selection_conditions") > ADVISORY_CALL_LIMIT:
         errors.append("call_limit: more than one experimental-condition call")
     return errors
 
@@ -1093,7 +1110,7 @@ def main(argv=None) -> int:
             if args.repair_replay:
                 report["repair_replay_suite"] = args.repair_replay_suite or "cross-field"
         else:
-            max_calls = len(cases) * args.repeat * (2 if args.repair_replay else 3)
+            max_calls = worst_case_calls(len(cases), args.repeat, repair_replay=args.repair_replay)
             if max_calls > args.max_calls or not 0 < args.timeout <= 60:
                 raise _ConfigurationError(f"Run needs a cap of at least {max_calls} calls and a timeout in (0, 60].")
             model = validate_router_model(args.model)

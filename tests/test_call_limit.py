@@ -37,3 +37,40 @@ def test_a_method_tie_with_its_condition_call_is_not_a_safety_failure():
 ])
 def test_each_bound_can_still_fail(roles, expected):
     assert _call_limit_errors(roles) == expected
+
+
+# Log 217: the pre-run `--max-calls` check assumed three calls per trial
+# (two in a repair replay) after the discriminator and the condition call had
+# made it five; 35 of 369 recorded legacy live trials made five.
+
+def test_the_pre_run_cap_is_the_scored_bound():
+    from evaluate_routing import worst_case_calls
+
+    result, _ = row()
+
+    assert worst_case_calls(1, 1) == len(result["call_roles"]) == 5
+    assert worst_case_calls(1, 1, repair_replay=True) == 4
+    assert worst_case_calls(39, 3) == 585
+
+
+@pytest.mark.parametrize("args, cap, reaches_provider", [
+    (["--case", "original-q1"], 4, False),
+    (["--case", "original-q1"], 5, True),
+    (["--repair-replay"], 11, False),
+    (["--repair-replay"], 12, True),
+])
+def test_a_run_is_admitted_only_under_its_worst_case(monkeypatch, capsys, args, cap, reaches_provider):
+    import evaluate_routing
+
+    built = []
+
+    def stop(*_args, **_kwargs):
+        built.append(True)
+        raise ValueError("stop before any provider call")
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
+    monkeypatch.setattr(evaluate_routing, "build_llm", stop)
+
+    assert evaluate_routing.main(["--live", *args, "--max-calls", str(cap), "--json"]) == 2
+    assert bool(built) is reaches_provider
+    assert ("Run needs a cap" in capsys.readouterr().err) is not reaches_provider
