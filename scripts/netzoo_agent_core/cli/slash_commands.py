@@ -9,6 +9,7 @@ from .. import settings
 from ..contracts import PlanEvaluationResult, TaskDecision, WorkflowPlan
 from ..data.preflight import validate_workflow_inputs
 from ..runtime import configure_runtime
+from ..environment import render_environment_report
 
 __all__ = [
     "SlashCommandResult",
@@ -18,7 +19,7 @@ __all__ = [
 ]
 
 _COMMAND_TOKEN = re.compile(r"^/[A-Za-z][A-Za-z0-9_-]*(?:\s+.*)?$")
-_KNOWN_COMMANDS = frozenset({"/test", "/planning", "/execute", "/status", "/help"})
+_KNOWN_COMMANDS = frozenset({"/test", "/planning", "/execute", "/status", "/help", "/doctor"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +125,8 @@ def handle_slash_command(
             handled=True,
             message=f"Current mode: {current_mode_label()}",
         )
+    if normalized == "/doctor":
+        return SlashCommandResult(handled=True, message=render_environment_report())
     return SlashCommandResult(
         handled=True,
         message=(
@@ -134,6 +137,7 @@ def handle_slash_command(
             "  /planning Return to strict, preview-only Planning mode.\n"
             "  /execute  Execute the current approved Work Plan once.\n"
             "  /status   Show the current execution mode.\n"
+            "  /doctor   Check the running Docker and netZooPy environment.\n"
             "  /help     Show this help."
         ),
     )

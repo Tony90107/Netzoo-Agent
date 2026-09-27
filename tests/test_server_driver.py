@@ -101,6 +101,7 @@ def test_first_view_is_the_main_prompt_with_the_planning_banner():
         assert harness.next("ready").payload["session_id"] == "test-session"
         banner = harness.next("notice")
         assert "started in Planning mode" in banner.payload["text"]
+        assert banner.payload["occurred_at"].endswith("+00:00")
         view = harness.next("view")
         assert view.payload["prompt_kind"] == "main"
         assert view.payload["mode"] == "Planning"

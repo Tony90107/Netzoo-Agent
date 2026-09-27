@@ -12,6 +12,7 @@ import os
 import secrets
 import uuid
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
-from . import files, history
+from . import activity, files, history
+from ..environment import environment_report
 from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
@@ -110,6 +112,18 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     async def _outside_root(_request: Request, error: files.OutsideRoot):
         return JSONResponse({"detail": str(error)}, status_code=403)
 
+    @app.exception_handler(files.FileChanged)
+    async def _file_changed(_request: Request, error: files.FileChanged):
+        return JSONResponse({"detail": str(error)}, status_code=409)
+
+    @app.exception_handler(files.PreviewInvalid)
+    async def _preview_invalid(_request: Request, error: files.PreviewInvalid):
+        return JSONResponse({"detail": str(error)}, status_code=400)
+
+    @app.exception_handler(FileNotFoundError)
+    async def _file_missing(_request: Request, _error: FileNotFoundError):
+        return JSONResponse({"detail": "This output no longer exists. Refresh the directory."}, status_code=404)
+
     @app.exception_handler(SupervisorError)
     async def _supervisor_error(_request: Request, error: SupervisorError):
         return JSONResponse({"detail": str(error)}, status_code=409)
@@ -154,12 +168,18 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     @app.get("/v1/files")
     def browse(
         path: str = Query(default="", max_length=1024),
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=100, ge=1, le=200),
         _scope: None = Depends(require_token),
     ) -> dict:
-        listing = files.list_directory(path)
+        listing = files.list_directory(path, offset=offset, limit=limit)
         return {
             "path": listing.path,
             "host_path": _host(listing.path),
+            "total": listing.total,
+            "offset": listing.offset,
+            "limit": listing.limit,
+            "has_more": listing.has_more,
             "entries": [
                 {
                     "name": entry.name,
@@ -175,9 +195,11 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     @app.get("/v1/files/preview")
     def file_preview(
         path: str = Query(max_length=1024),
+        offset: int = Query(default=0, ge=0, le=9_007_199_254_740_991),
+        version: str = Query(default="", max_length=100),
         _scope: None = Depends(require_token),
     ) -> dict:
-        result = files.preview(path)
+        result = files.preview(path, offset=offset, version=version)
         return {
             "path": result.path,
             "host_path": _host(result.path),
@@ -189,6 +211,10 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             "text": result.text,
             "arrays": result.arrays,
             "note": result.note,
+            "offset": result.offset,
+            "next_offset": result.next_offset,
+            "version": result.version,
+            "total_columns": result.total_columns,
         }
 
     def _host(relative: str) -> str:
@@ -205,9 +231,17 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
     @app.get("/v1/history")
     def session_history(
         limit: int = Query(default=history.DEFAULT_LIMIT, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
+        query: str = Query(default="", max_length=200),
+        status: Literal["all", "needs_input", "needs_confirmation", "completed", "failed", "dry_run"] = "all",
         _scope: None = Depends(require_token),
     ) -> dict:
+        page = history.list_sessions(limit=limit + 1, offset=offset, query=query, status=status)
+        items = page[:limit]
         return {
+            "offset": offset,
+            "has_more": len(page) > limit,
+            "next_offset": offset + len(items) if len(page) > limit else None,
             "sessions": [
                 {
                     "session_id": item.session_id,
@@ -220,7 +254,7 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
                     "title": item.title,
                     "total_tokens": item.total_tokens,
                 }
-                for item in history.list_sessions(limit=limit)
+                for item in items
             ]
         }
 
@@ -243,6 +277,35 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             "messages": transcript.messages,
             "truncated": transcript.truncated,
         }
+
+    @app.get("/v1/history/{session_id}/activity")
+    def saved_runs(
+        session_id: str,
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=50, ge=1, le=100),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        try:
+            return activity.list_runs(session_id, offset=offset, limit=limit)
+        except ValueError as error:
+            raise HTTPException(400, str(error)) from error
+
+    @app.get("/v1/history/{session_id}/activity/{run_id}")
+    def saved_events(
+        session_id: str, run_id: str,
+        after_sequence: int = Query(default=0, ge=0),
+        limit: int = Query(default=200, ge=1, le=200),
+        version: str = Query(default="", max_length=100),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        try:
+            return activity.read_events(session_id, run_id, after_sequence=after_sequence, limit=limit, version=version)
+        except ValueError as error:
+            raise HTTPException(400, str(error)) from error
+
+    @app.get("/v1/environment")
+    def environment(_scope: None = Depends(require_token)) -> dict:
+        return environment_report()
 
     @app.get("/v1/settings")
     def effective_settings(_scope: None = Depends(require_token)) -> dict:

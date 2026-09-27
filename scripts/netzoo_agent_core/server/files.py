@@ -13,7 +13,8 @@ that resolves outside that root is refused rather than clamped.
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+import codecs
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
@@ -24,6 +25,8 @@ __all__ = [
     "DirectoryListing",
     "Entry",
     "FilePreview",
+    "FileChanged",
+    "PreviewInvalid",
     "OutsideRoot",
     "list_directory",
     "preview",
@@ -34,8 +37,11 @@ FILE_ROOT = "outputs"
 
 #: A table preview never returns more than this many rows.
 MAX_ROWS = 200
-#: A text preview never returns more than this many characters.
+#: A text preview reads at most this many bytes, preserving UTF-8 boundaries.
 MAX_TEXT = 200_000
+MAX_RECORD_BYTES = 2_000_000
+MAX_PAGE_BYTES = 4_000_000
+MAX_COLUMNS = 50
 
 TABLE_SUFFIXES = {".tsv", ".csv", ".txt"}
 TEXT_SUFFIXES = {".md", ".json", ".yaml", ".yml", ".log"}
@@ -43,6 +49,14 @@ TEXT_SUFFIXES = {".md", ".json", ".yaml", ".yml", ".log"}
 
 class OutsideRoot(ValueError):
     """A request named something outside the browsable root."""
+
+
+class PreviewInvalid(ValueError):
+    """The requested cursor or record cannot be previewed safely."""
+
+
+class FileChanged(ValueError):
+    """A file changed between preview pages; refresh before continuing."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +73,10 @@ class Entry:
 class DirectoryListing:
     path: str
     entries: list[Entry]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +90,10 @@ class FilePreview:
     text: str
     arrays: list[dict]
     note: str
+    offset: int = 0
+    next_offset: int | None = None
+    version: str = ""
+    total_columns: int = 0
 
 
 def _root() -> Path:
@@ -98,14 +120,30 @@ def _relative(path: Path) -> str:
     return str(path.relative_to(PROJECT_ROOT))
 
 
-def list_directory(relative: str = "") -> DirectoryListing:
+def list_directory(
+    relative: str = "", *, offset: int = 0, limit: int = 100
+) -> DirectoryListing:
+    """Return one bounded page of the outputs tree.
+
+    Directory names are sorted before paging so loading another buffer keeps a
+    stable order. File metadata is only read for entries in the requested page.
+    """
     target = _resolve(relative)
+    if offset < 0 or not 1 <= limit <= 200:
+        raise PreviewInvalid("Invalid directory page.")
+    if target == _root() and not target.exists():
+        return DirectoryListing(FILE_ROOT, [], 0, offset, limit, False)
     if not target.is_dir():
         raise OutsideRoot(f"{relative!r} is not a directory")
+    visible = sorted(
+        (child for child in target.iterdir() if not child.name.startswith(".")
+         and child.resolve().is_relative_to(_root()) and child.exists()),
+        key=lambda item: (item.is_file(), item.name.lower(), item.name),
+    )
+    total = len(visible)
+    page = visible[offset : offset + limit]
     entries: list[Entry] = []
-    for child in sorted(
-        target.iterdir(), key=lambda item: (item.is_file(), item.name.lower())
-    ):
+    for child in page:
         if child.name.startswith("."):
             continue
         stat = child.stat()
@@ -118,7 +156,14 @@ def list_directory(relative: str = "") -> DirectoryListing:
                 modified_at=stat.st_mtime,
             )
         )
-    return DirectoryListing(path=_relative(target), entries=entries)
+    return DirectoryListing(
+        path=_relative(target),
+        entries=entries,
+        total=total,
+        offset=offset,
+        limit=limit,
+        has_more=offset + len(entries) < total,
+    )
 
 
 def _realigned_header(header: list[str], body: list[list[str]]) -> list[str]:
@@ -138,30 +183,67 @@ def _realigned_header(header: list[str], body: list[list[str]]) -> list[str]:
     return candidate if len(candidate) == width else header
 
 
-def _table_preview(target: Path, size: int) -> FilePreview:
+def _table_preview(target: Path, size: int, offset: int = 0) -> FilePreview:
     delimiter = "," if target.suffix.lower() == ".csv" else "\t"
     rows: list[list[str]] = []
-    truncated = False
-    with target.open("r", encoding="utf-8", errors="replace", newline="") as handle:
-        reader = csv.reader(handle, delimiter=delimiter)
-        for index, row in enumerate(reader):
-            if index >= MAX_ROWS + 1:
-                truncated = True
-                break
-            rows.append(row)
-    header = rows[0] if rows else []
-    body = rows[1:] if len(rows) > 1 else []
-    header = _realigned_header(header, body)
+    cursor = 0
+    with target.open("rb") as handle:
+        # csv.reader may consume multiple physical lines for one quoted record.
+        # Bound every record, then keep a byte cursor at a complete record boundary.
+        record_start = 0
+
+        def bounded_lines():
+            while True:
+                line = handle.readline(MAX_RECORD_BYTES + 1)
+                if not line:
+                    return
+                if handle.tell() - record_start > MAX_RECORD_BYTES:
+                    raise PreviewInvalid(
+                        "A table record exceeds the 2 MB preview limit. "
+                        "Open this file in a dedicated data viewer."
+                    )
+                yield line.decode("utf-8", errors="replace")
+
+        reader = csv.reader(bounded_lines(), delimiter=delimiter)
+        try:
+            header = next(reader, [])
+            header_end = handle.tell()
+            if offset and offset < header_end:
+                raise PreviewInvalid("Invalid table cursor. Refresh this file to restart the preview.")
+            handle.seek(offset or header_end)
+            reader = csv.reader(bounded_lines(), delimiter=delimiter)
+            page_start = handle.tell()
+            cursor = page_start
+            for _ in range(MAX_ROWS):
+                record_start = handle.tell()
+                row = next(reader, None)
+                if row is None:
+                    break
+                if rows and handle.tell() - page_start > MAX_PAGE_BYTES:
+                    cursor = record_start
+                    break
+                rows.append(row)
+                cursor = handle.tell()
+        except csv.Error as error:
+            raise PreviewInvalid(f"This table cannot be previewed: {error}") from error
+    header = _realigned_header(header, rows)
+    width = max([len(header), *(len(row) for row in rows)], default=0)
+    more = cursor < size
+    truncated = more or width > MAX_COLUMNS
+    note = (f"first {len(rows)} rows" if offset == 0 else f"{len(rows)} rows in this page") if truncated else ""
+    if width > MAX_COLUMNS:
+        note += f"; first {MAX_COLUMNS} of {width} columns"
     return FilePreview(
         path=_relative(target),
         kind="table",
         size_bytes=size,
         truncated=truncated,
-        columns=header,
-        rows=body,
+        columns=header[:MAX_COLUMNS],
+        rows=[row[:MAX_COLUMNS] for row in rows],
         text="",
         arrays=[],
-        note=f"first {len(body)} rows" if truncated else "",
+        note=note,
+        offset=offset, next_offset=cursor if more else None, total_columns=width,
     )
 
 
@@ -200,31 +282,50 @@ def _array_preview(target: Path, size: int) -> FilePreview:
     )
 
 
-def _text_preview(target: Path, size: int) -> FilePreview:
-    with target.open("r", encoding="utf-8", errors="replace") as handle:
-        text = handle.read(MAX_TEXT + 1)
-    truncated = len(text) > MAX_TEXT
+def _text_preview(target: Path, size: int, offset: int = 0) -> FilePreview:
+    with target.open("rb") as handle:
+        handle.seek(offset)
+        buffer = handle.read(MAX_TEXT)
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    text = decoder.decode(buffer, final=offset + len(buffer) >= size)
+    pending, _ = decoder.getstate()
+    cursor = offset + len(buffer) - len(pending)
+    truncated = cursor < size
     return FilePreview(
         path=_relative(target), kind="text", size_bytes=size, truncated=truncated,
-        columns=[], rows=[], text=text[:MAX_TEXT], arrays=[],
-        note=f"first {MAX_TEXT:,} characters" if truncated else "",
+        columns=[], rows=[], text=text, arrays=[],
+        note=f"up to {MAX_TEXT:,} bytes per page" if truncated else "",
+        offset=offset, next_offset=cursor if truncated else None,
     )
 
 
-def preview(relative: str) -> FilePreview:
+def preview(relative: str, *, offset: int = 0, version: str = "") -> FilePreview:
     target = _resolve(relative)
+    if not target.exists():
+        raise FileNotFoundError(relative)
     if not target.is_file():
         raise OutsideRoot(f"{relative!r} is not a file")
-    size = target.stat().st_size
+    stat = target.stat()
+    size = stat.st_size
+    current_version = f"{size}:{stat.st_mtime_ns}:{stat.st_ino}"
+    if version and version != current_version:
+        raise FileChanged("This file changed since the previous preview. Refresh it before reading another page.")
+    if offset < 0 or offset > size:
+        raise PreviewInvalid("The preview cursor is outside this file. Refresh the preview.")
     suffix = target.suffix.lower()
     if suffix == ".npz":
-        return _array_preview(target, size)
-    if suffix in TABLE_SUFFIXES:
-        return _table_preview(target, size)
-    if suffix in TEXT_SUFFIXES:
-        return _text_preview(target, size)
-    return FilePreview(
-        path=_relative(target), kind="binary", size_bytes=size, truncated=False,
-        columns=[], rows=[], text="", arrays=[],
-        note=f"no viewer for {suffix or 'this file type'}",
-    )
+        result = _array_preview(target, size)
+    elif suffix in TABLE_SUFFIXES:
+        result = _table_preview(target, size, offset)
+    elif suffix in TEXT_SUFFIXES:
+        result = _text_preview(target, size, offset)
+    else:
+        result = FilePreview(
+            path=_relative(target), kind="binary", size_bytes=size, truncated=False,
+            columns=[], rows=[], text="", arrays=[],
+            note=f"no viewer for {suffix or 'this file type'}",
+        )
+    after = target.stat()
+    if current_version != f"{after.st_size}:{after.st_mtime_ns}:{after.st_ino}":
+        raise FileChanged("This file changed while it was being read. Refresh the preview.")
+    return replace(result, version=current_version)

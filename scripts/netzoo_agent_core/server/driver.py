@@ -15,6 +15,8 @@ approve it.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from ..cli.slash_commands import current_mode_label
 from ..engine import ConversationMachine, Event, Stop, Turn
 from .channel import Channel, ClosedChannel
@@ -77,11 +79,14 @@ class WorkerDriver:
     # -- outbound ----------------------------------------------------------
 
     def _send(self, message_type: str, payload: dict | None = None) -> None:
+        payload = dict(payload or {})
+        if message_type in {"message", "notice", "error"}:
+            payload.setdefault("occurred_at", datetime.now(timezone.utc).isoformat())
         self.channel.send(
             Envelope(
                 type=message_type,
                 session_id=self.session_id,
-                payload=payload or {},
+                payload=payload,
             )
         )
 

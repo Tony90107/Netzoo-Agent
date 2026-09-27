@@ -73,6 +73,23 @@ def _first_request(payload: dict) -> str:
     return ""
 
 
+def _saved_status(payload: dict) -> str:
+    """A prepared plan is not evidence that its execution completed."""
+    plan = payload.get("plan") or {}
+    status = str(plan.get("status") or "unknown")
+    if status in RESUMABLE:
+        return status
+    evaluation = payload.get("evaluation") or {}
+    if evaluation.get("status") == "failed":
+        return "failed"
+    if evaluation.get("status") == "completed":
+        results = [item for item in payload.get("tool_results") or []
+                   if isinstance(item, dict) and not item.get("superseded")
+                   and item.get("action") != "inspect_inputs"]
+        return "dry_run" if results and all(item.get("status") == "dry_run" for item in results) else "completed"
+    return status
+
+
 def _summarise(path: Path) -> SessionSummary | None:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -80,37 +97,60 @@ def _summarise(path: Path) -> SessionSummary | None:
         # A half-written or hand-edited checkpoint is skipped, not fatal: the
         # history list must never be the reason the window fails to open.
         return None
+    if not isinstance(payload, dict):
+        return None
     plan = payload.get("plan") or {}
-    status = str(plan.get("status") or "unknown")
     usage = payload.get("token_usage") or {}
+    if not isinstance(plan, dict) or not isinstance(usage, dict) or not isinstance(payload.get("evaluation") or {}, dict):
+        return None
+    if not isinstance(payload.get("messages") or [], list) or not isinstance(payload.get("tool_results") or [], list):
+        return None
+    try:
+        updated = path.stat().st_mtime
+        tokens = int(usage.get("total_tokens") or 0)
+    except (OSError, TypeError, ValueError, OverflowError):
+        return None
+    status = _saved_status(payload)
     return SessionSummary(
         session_id=str(payload.get("session_id") or path.stem),
         profile_id=str(payload.get("profile_id") or "default"),
-        updated_at=path.stat().st_mtime,
+        updated_at=updated,
         auto_generated=bool(payload.get("auto_generated")),
         workflow=str(plan.get("workflow") or ""),
         status=status,
         resumable=status in RESUMABLE,
         title=_first_request(payload),
-        total_tokens=int(usage.get("total_tokens") or 0),
+        total_tokens=tokens,
     )
 
 
-def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "") -> list[SessionSummary]:
+def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "", *, offset: int = 0,
+                  query: str = "", status: str = "all") -> list[SessionSummary]:
     """Newest first. Resumable sessions are the ones worth coming back to."""
     if not SESSION_ROOT.exists():
         return []
-    paths = sorted(
-        SESSION_ROOT.glob("*.json"),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
+    paths = []
+    for path in SESSION_ROOT.glob("*.json"):
+        try:
+            paths.append((path.stat().st_mtime, path))
+        except OSError:
+            continue
+    paths.sort(key=lambda item: (item[0], item[1].name), reverse=True)
     summaries: list[SessionSummary] = []
-    for path in paths:
+    needle = query.strip().casefold()
+    matched = 0
+    for _, path in paths:
         summary = _summarise(path)
         if summary is None:
             continue
         if profile_id and summary.profile_id != profile_id:
+            continue
+        if status != "all" and summary.status != status:
+            continue
+        if needle and needle not in "\n".join([summary.title, summary.workflow, summary.session_id]).casefold():
+            continue
+        matched += 1
+        if matched <= offset:
             continue
         summaries.append(summary)
         if len(summaries) >= limit:
