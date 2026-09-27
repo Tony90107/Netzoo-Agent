@@ -13026,3 +13026,60 @@ case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DR
 - 含意：case 2 的 OTTER 路由取決於模型是否在第一輪寫出一個方法標籤，而這個行為會被語意 prompt 的長度（或標籤說明前後的文字量）推翻。
   任何只增加 prompt 文字的修法都可能讓它再次消失；這是 prompt-wording 修法之外，另一個不該依賴 prompt 的理由。
 - 沒有量：門檻落在哪個長度、是否只與位置（段 1 在 selection_tags 說明之前）有關、其他依方法標籤路由的案例（GIRAFFE `tfa`、BONOBO 等）是否同樣敏感。
+
+## Log 234｜事前宣告：現行程式碼下，case 5 還需要 `b670faa` 的兩段 prompt 嗎
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini（已預先授權）。使用者決定：兩段都移除，case 5 改用 contract 結構修。先量出要修的失敗形狀。
+
+- 背景：段 1 幾乎逐字引用 blind case 5（「contains not only transcription factors but also predicted targets of small RNAs」）。
+  `b670faa` 同時加了決定性程式碼（input bindings、mixed prior），依資料夾內容在平手時推薦 PUMA。
+  紀錄：`b670faa` 之前 case 5 為 exact PUMA 8、平手並推薦 PUMA 5、fallback 2（Logs 196–208，共 15）；之後 exact PUMA 6／6（Logs 223、226）。
+- 程式碼固定為 HEAD `5e631e7`；兩臂只差語意 prompt（`prompt_arm.py` 的 `pre`、`post`），交錯 pre ×5、post ×5、pre ×5、post ×5。
+- 指標：OK（exact PUMA，或平手並推薦 PUMA，同 `score_blind.py`）、其中 exact 的數目、fallback 數；另記第一輪的讀法（`regulator_types` 是否含 mirna、是否有只含 TF 的假設）。
+- 判定（跑之前固定）：
+  - pre 的 OK ≥ 9／10 → 現行程式碼下 case 5 不需要這兩段；移除後剩下的差異（exact 還是平手＋推薦）就是 contract 修法的目標形狀。
+  - pre 的 OK ≤ 7／10 → 找出失敗形狀，contract 修法必須先讓它回到 ≥ 9／10。
+  - 其他 → 回報數字。
+
+## Log 235｜Log 234 結果：沒有兩段時 case 5 反而更好（OK 9／10 對 5／10）；現行 prompt 的 fallback 是檔案路徑被寫成 input_artifact
+
+日期／時區：2026-09-27，Asia/Taipei。報告：`live-semantic-trace-2026-09-27-log234-case5-{pre,post}-r{1,2}-legacy.json`（指紋 pre `b9b01cd2db6f`、post `d2a9afddad86`）。
+
+| 語意 prompt | OK | 其中 exact PUMA | 平手並推薦 PUMA | fallback |
+| --- | --- | --- | --- | --- |
+| `pre`（兩段移除） | **9／10** | 0 | 9 | 1 |
+| `post`（現行） | 5／10 | 4 | 1 | **5** |
+
+- 判定（Log 234 事前固定）：pre 的 OK ≥ 9／10 → 現行程式碼下 case 5 **不需要**這兩段。正確的推薦來自 `b670faa` 的決定性程式碼（依資料夾內容在平手時推薦 PUMA），不是 prompt。
+- post 的 5 次 fallback 形狀相同：第一輪把**檔案路徑或檔名**當成 `input_artifact` 的證據值（`data/blind-neutral/case-5/prior.tsv`、`PPI`、`measurement_dataset`），
+  驗證判為 `conflicting_evidence`，另缺 aggregate 的粒度證據。這與段 2（「保留檔案的輸入角色 …」）的主題一致；Logs 223／226 的 6／6 exact 是較小樣本，這回合沒有重現。
+  pre 唯一一次 fallback 也是同類（`input_artifact=expression and PPI files`）。
+- pre 的第一輪 10／10 沒有寫 `regulator_types`（空），所以 registry 無法在 PANDA／PUMA／OTTER／GIRAFFE 中直接選出 PUMA，由資料夾內容推薦。
+  post 有 4 次寫出 `[tf, mirna]`，那 4 次就是 exact。若要 exact 而不是「平手＋推薦」，contract 修法的目標就是這個維度，不是 prompt。
+
+## Log 236｜事前宣告：移除 `b670faa` 的兩段 prompt，並以完整盲測確認（同時補量 Log 223 的 B）
+
+日期／時區：2026-09-27，Asia/Taipei。使用者決定移除兩段。依據：Log 233（兩段使 case 2 失去方法標籤，屬長度效應）與 Log 235（沒有兩段時 case 5 OK 9／10，有兩段 5／10）。
+
+- 修改：`llm.py` 刪除那兩段（逐字），語意 prompt 回到 `b670faa` 之前；指紋 legacy `b9b01cd2db6f`、claims `348a144cd9b4`（與 Logs 208–220 相同）。
+  `b670faa` 的決定性程式碼（input bindings、mixed prior、input inspection）不動。全套 2540 passed、0 failed，沒有測試引用這兩段。
+- 確認：blind-en ×3（gpt-4o-mini，已預先授權），以 `score_blind.py` 評分。判定（跑之前固定）：
+  - W-a：case 2 exact OTTER ≥ 2／3；case 5 OK ≥ 2／3。
+  - W-b：合計 OK ≥ 25／30、WRONG ≤ 2、LEAK 0。
+  - W-c（Log 223 的 U-a／U-b）：case 1、case 2 路由到期望 workflow 的 trial 中，≥ 2／3 至少回答一個期望的顧慮；所有被接受的認領逐一人工檢查，錯誤 ≥ 2 或負對照被接受 ≥ 2 次即撤回 B。
+  - case 10 的 `discovery` 不在判定內（Log 227：是 `b670faa` 程式碼的決定性變化，另行處理）。
+
+## Log 237｜Log 236 結果：W-a～W-c 全部成立，移除**保留**；盲測 OK 30／30，B 首次在真實路由上生效
+
+日期／時區：2026-09-27，Asia/Taipei。報告：`live-semantic-trace-2026-09-27-log236-blind-en-legacy.json`（指紋 legacy `b9b01cd2db6f`）。
+
+- W-a：case 2 exact OTTER **3／3**；case 5 OK **3／3**（皆為平手並依資料夾內容推薦 PUMA）。
+- W-b：OK **30／30**（exact 21、recommended 6、no tool 3），WRONG 0、FALLBACK 0、LEAK 0。先前最佳為 Log 204 的 28／30。
+- W-c（B，Log 223 的 U-a／U-b）：
+  - case 1（exact GIRAFFE 3／3）：3／3 回答 `activity_apart_from_expression`，引文「… even though its own mRNA barely changes.」；`per_sample_values` 0／3 被認領（期望中的第二個，未達但 U-a 只要求至少一個）。
+  - case 2（exact OTTER 3／3）：3／3 同時回答 `memory_limit`（「Last time a similar method ran out of memory」）與 `iteration_stopping`（「took forever to stop iterating」）。
+  - 負對照 case 7（DRAGON，提供 `penalty_choice`）：0／3 認領。其餘 exact 案例的 workflow 沒有宣告顧慮，不呼叫。
+  - 被接受的 9 個認領逐一檢查：引文都確實陳述該顧慮，沒有錯誤認領；被拒絕的認領 0。B **保留**。
+- 回覆（case 2）：「What you asked about」逐條列出使用者原句與註冊表 note，`precision`、`iterations`、`eta` 升為「Controls matching this request」，其餘 5 個參數收成一行。
+- 仍未處理：case 10 的 `discovery` 缺失 3／3（Log 227：`b670faa` 程式碼的決定性變化，需使用者判斷是否符合預期）；
+  case 5 仍是「平手＋推薦」而非 exact（第一輪不寫 `regulator_types`，Log 235）——目前評分為 OK，是否要做 contract 修法讓它 exact 由使用者決定。

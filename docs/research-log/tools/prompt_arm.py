@@ -12,6 +12,8 @@ the first (regulator roles of a selected prior) or only the second (a file's
 stated input role) paragraph (Log 230). `pad` replaces both, in place, with
 neutral padding of the same line count, indentation and near-equal length and
 token count, to separate a length/position effect from their content (Log 232).
+The paragraphs were removed from the prompt in Log 236, so only `post` runs on
+later commits; the other arms need a checkout from b670faa up to 5e631e7.
 """
 import runpy
 import sys
