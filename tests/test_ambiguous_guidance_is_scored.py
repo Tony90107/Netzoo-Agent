@@ -14,7 +14,9 @@ identical from the outside.
 
 The part that genuinely cannot be scored here is separated rather than hidden.
 An ambiguous decision with nothing to ask hands off to the response model, which
-this evaluator deliberately does not pay for; those rows now say so.
+this evaluator deliberately does not pay for; those rows now say so. Since
+Log 194 a lone candidate is asked from the registry, and no recorded legacy
+decision reaches that branch any more (Log 220).
 """
 from __future__ import annotations
 
@@ -146,45 +148,53 @@ def test_scoring_the_ambiguous_answer_costs_no_provider_call():
     ]
 
 
-def test_an_ambiguity_with_nothing_to_ask_says_it_went_to_the_response_model():
-    """Not every ambiguous decision can be scored here, and the difference matters.
+def test_an_ambiguity_with_nothing_to_ask_is_labelled_response_model_not_left_unscored():
+    """The scorer's one remaining out-of-scope branch is labelled, not skipped.
 
-    A single surviving candidate carries no question, so there is no
-    deterministic answer and the response model -- which this evaluator does not
-    pay for -- writes the reply. That row is genuinely out of scope, but it must
-    not be recorded the way a row nobody looked at was recorded.
+    An ambiguous decision with no clarification question and no single-candidate
+    question has no deterministic reply; the response model -- which this
+    evaluator does not pay for -- would write it. That row must say so rather
+    than be recorded the way a row nobody looked at was recorded.
 
-    Reachability is asserted first. An invented outcome for this branch turned
-    out to be unreachable and the assertion silently never ran, so the shape
-    here is one a live round actually produced: `two-layer-network`, whose only
-    candidate is DRAGON.
+    This test used to reach the branch with a lone candidate, DRAGON, from a
+    live `two-layer-network` round. Since Log 194 a lone candidate gets its
+    question from the registry, so that shape is now scored deterministically
+    (asserted first here; end to end in `test_single_candidate_is_scored`). What
+    is left -- no candidate and no question -- occurs in none of the 262 distinct
+    recorded legacy ambiguous decisions (Log 220): every candidate-less tie
+    carries a question. The branch is defensive, so the decision below is
+    constructed, and says so, instead of relying on a missing attribute.
     """
     from types import SimpleNamespace
 
     from evaluate_routing import _score_answer
     from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis
+    from netzoo_agent_core.interpretation.single_candidate import single_candidate_question
     from netzoo_agent_core.routing.outcome_matching import match_semantic_request
 
-    match = match_semantic_request("", [OutcomeHypothesis.model_validate({
+    dragon = [OutcomeHypothesis.model_validate({
         "outcome": {
             "operation": "explain", "artifact_type": "multi_omic_network",
             "granularity": "unknown",
         },
         "confidence": 0.9, "evidence": [],
-    })], request_mode="guidance")
+    })]
+    match = match_semantic_request("", dragon, request_mode="guidance")
+    assert (match.status, match.hypothesis_actions, match.clarification_question) == (
+        "ambiguous", ["run_dragon"], None,
+    )
+    assert "**DRAGON**" in single_candidate_question(SimpleNamespace(
+        capability_match_status=match.status, clarification_question=None,
+        hypothesis_actions=match.hypothesis_actions, outcome_hypotheses=dragon,
+    ))
 
-    assert match.status == "ambiguous"
-    assert match.hypothesis_actions == ["run_dragon"]
-    assert match.clarification_question is None, "the branch under test is gone"
-
+    nothing_to_ask = SimpleNamespace(
+        action="no_tool", should_execute=False, capability_match_status="ambiguous",
+        matched_actions=[], hypothesis_actions=[], outcome_hypotheses=[],
+        rejected_methods=[], match_basis="semantic", clarification_question=None,
+    )
     scored = _score_answer(
-        case(),
-        SimpleNamespace(decision=SimpleNamespace(
-            action="no_tool", should_execute=False,
-            capability_match_status=match.status,
-            matched_actions=[], rejected_methods=[], match_basis="semantic",
-            clarification_question=match.clarification_question,
-        )),
+        case(), SimpleNamespace(decision=nothing_to_ask),
         SimpleNamespace(project_policy=SimpleNamespace(workflows={})),
     )
 
