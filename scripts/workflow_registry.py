@@ -230,6 +230,27 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
             ),
         },
     },
+    # Log 200: divergent readings of one request, not a method tie. "Each
+    # patient's regulatory wiring ... per-TF regulatory strength" reads both
+    # as one TF-gene network per sample and as TF activity per sample; the
+    # inputs are the same, and the quantity the user will analyze separates them.
+    "per_sample_quantity": {
+        "question": (
+            "For each sample, do you need each regulator's wiring to its targets (edge "
+            "weights, summarised for example as targeting scores), or each regulator's "
+            "activity level?"
+        ),
+        "values": {
+            "wiring": (
+                "each sample's regulator-to-target wiring (edge weights or targeting "
+                "scores) is needed"
+            ),
+            "activity": (
+                "each sample's regulator activity level is needed, apart from the "
+                "regulator's own expression"
+            ),
+        },
+    },
     "covariates": {
         "question": (
             "Do you need to separate or adjust co-expression for batch, site or other "
@@ -677,7 +698,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "tf_gene_regulation", "message_passing",
                 "leave_one_out_network_inference",
             }),
-            prefer_when=("cohort_size:many",),
+            prefer_when=("cohort_size:many", "per_sample_quantity:wiring",),
             handoff_contract=(
                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
                 "motif and PPI priors to internally infer the aggregate PANDA "
@@ -730,7 +751,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "mirna_regulation", "message_passing",
                 "leave_one_out_network_inference",
             }),
-            prefer_when=("cohort_size:many",),
+            prefer_when=("cohort_size:many", "per_sample_quantity:wiring",),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
@@ -1089,7 +1110,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "signed_partial_regulatory_effects",
                 "tfa_covariate_regression",
             }),
-            prefer_when=("tf_activity_vs_expression:yes",),
+            prefer_when=("tf_activity_vs_expression:yes", "per_sample_quantity:activity",),
             handoff_contract=(
                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
