@@ -98,7 +98,7 @@ function developerConfig(): DaemonConfig | null {
   }
 }
 
-export async function startDaemon(
+async function bootDaemon(
   report: (step: string) => void,
 ): Promise<{ config: DaemonConfig }> {
   report("Reading shell configuration");
@@ -153,6 +153,24 @@ export async function startDaemon(
     remedy: "Check its output with `docker compose logs netzoo-daemon`.",
     detail: `No healthy response within ${HEALTH_TIMEOUT_MS / 1000}s.`,
   } satisfies DaemonFault;
+}
+
+let pendingStart: Promise<{ config: DaemonConfig }> | null = null;
+const startupListeners = new Set<(step: string) => void>();
+let startupStep = "Starting the agent";
+
+/** StrictMode and retries share an in-progress boot instead of racing Compose. */
+export function startDaemon(report: (step: string) => void): Promise<{ config: DaemonConfig }> {
+  startupListeners.add(report);
+  if (!pendingStart) {
+    pendingStart = bootDaemon((step) => {
+      startupStep = step;
+      for (const listener of startupListeners) listener(step);
+    }).finally(() => { pendingStart = null; startupListeners.clear(); });
+  } else {
+    report(startupStep);
+  }
+  return pendingStart;
 }
 
 export async function stopDaemon(): Promise<void> {

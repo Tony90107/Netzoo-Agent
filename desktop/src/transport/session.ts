@@ -18,11 +18,12 @@ import {
   WS_TOKEN_SUBPROTOCOL,
 } from "./protocol";
 
-export type Entry =
+export type Entry = (
   | { kind: "user"; id: number; text: string }
   | { kind: "agent"; id: number; text: string }
   | { kind: "notice"; id: number; text: string }
-  | { kind: "error"; id: number; errorType: string; text: string };
+  | { kind: "error"; id: number; errorType: string; text: string }
+) & { at?: string; timeSource?: "server" | "local" | "received"; action?: "message" | "command" | "confirmation" };
 
 export type SessionState = {
   sessionId: string;
@@ -124,6 +125,15 @@ export const emptySession = (sessionId: string): SessionState => ({
 
 let nextEntryId = 1;
 const entryId = () => nextEntryId++;
+function timestamped<T extends Entry>(entry: T, body?: Record<string, unknown>): T {
+  const original = body?.occurred_at;
+  const valid = typeof original === "string" && /(?:Z|[+-]\d{2}:\d{2})$/i.test(original) && Number.isFinite(Date.parse(original));
+  return { ...entry, at: valid ? original : new Date().toISOString(), timeSource: valid ? "server" : body ? "received" : "local" };
+}
+
+export function entryTimestamp(entry: Entry): string | undefined {
+  return entry.at;
+}
 
 export async function createSession(
   config: DaemonConfig,
@@ -229,18 +239,20 @@ export class SessionSocket {
     this.socket?.send(JSON.stringify(envelope));
   }
 
-  /** Answer the current prompt. Clears the view so the input area locks. */
+  /** Answer the current prompt. Clears the view so the input area locks. Records user controls for the activity log. */
   answer(text: string, echo = true): void {
     this.onChange((s) => ({
       ...s,
-      entries: echo ? [...s.entries, { kind: "user", id: entryId(), text }] : s.entries,
+      entries: [...s.entries, timestamped({ kind: "user", id: entryId(), text, action: echo ? "message" : "command" })],
       view: null,
     }));
     this.send({ type: "answer", text, prompt_seq: this.promptSeq });
   }
 
   approveExecution(planHash: string): void {
-    this.onChange((s) => ({ ...s, view: null }));
+    this.onChange((s) => ({ ...s, view: null, entries: [...s.entries, timestamped({
+      kind: "user", id: entryId(), text: `Requested execution of plan ${planHash.slice(0, 12)}.`, action: "confirmation",
+    })] }));
     this.send({
       type: "approve_execution",
       plan_hash: planHash,
@@ -249,7 +261,9 @@ export class SessionSocket {
   }
 
   declineExecution(): void {
-    this.onChange((s) => ({ ...s, view: null }));
+    this.onChange((s) => ({ ...s, view: null, entries: [...s.entries, timestamped({
+      kind: "user", id: entryId(), text: "Declined execution of the current plan.", action: "confirmation",
+    })] }));
     this.send({ type: "decline_execution", prompt_seq: this.promptSeq });
   }
 
@@ -264,6 +278,9 @@ export class SessionSocket {
    * which is the path the agent already handles.
    */
   async cancel(): Promise<void> {
+    this.onChange((s) => ({ ...s, entries: [...s.entries, timestamped({
+      kind: "user", id: entryId(), text: "Requested interruption of the current turn.", action: "command",
+    })] }));
     try {
       await fetch(`${this.config.baseUrl}/v1/sessions/${this.sessionId}/cancel`, {
         method: "POST",
@@ -307,12 +324,16 @@ export function reduce(
     case "message":
       return {
         ...state,
-        entries: [...state.entries, { kind: "agent", id: entryId(), text: String(body.text) }],
+        entries: [...state.entries, timestamped({
+          kind: "agent", id: entryId(), text: String(body.text),
+        }, body)],
       };
     case "notice":
       return {
         ...state,
-        entries: [...state.entries, { kind: "notice", id: entryId(), text: String(body.text) }],
+        entries: [...state.entries, timestamped({
+          kind: "notice", id: entryId(), text: String(body.text),
+        }, body)],
       };
     case "progress":
       return { ...state, progress: String(body.text) };
@@ -329,12 +350,12 @@ export function reduce(
         ...state,
         entries: [
           ...state.entries,
-          {
+          timestamped({
             kind: "error",
             id: entryId(),
             errorType: String(body.error_type),
             text: String(body.message),
-          },
+          }, body),
         ],
       };
     case "stopped":

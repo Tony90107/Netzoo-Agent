@@ -15,7 +15,7 @@ const RETRY_LABEL: Record<string, string> = {
   health_timeout: "Retry",
 };
 
-export function Startup({ phase, onRetry }: { phase: Phase; onRetry: () => void }) {
+export function Startup({ phase, onRetry, onEnvironment }: { phase: Phase; onRetry: () => void; onEnvironment: () => void }) {
   if (phase.name === "failed") {
     const { fault } = phase;
     return (
@@ -32,6 +32,7 @@ export function Startup({ phase, onRetry }: { phase: Phase; onRetry: () => void 
           <button className="startup__retry" type="button" onClick={onRetry}>
             {RETRY_LABEL[fault.kind] ?? "Retry"}
           </button>
+          <button className="btn btn--quiet" type="button" onClick={onEnvironment}>Check environment</button>
         </div>
       </div>
     );

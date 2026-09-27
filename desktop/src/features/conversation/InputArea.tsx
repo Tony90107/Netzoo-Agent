@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ViewPayload } from "../../transport/protocol";
+import { Markdown } from "./Markdown";
 
 type Props = {
   view: ViewPayload;
@@ -56,11 +57,12 @@ function FreeText({
         rows={3}
         value={text}
         placeholder={placeholder}
+        aria-label={placeholder}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
           // Enter sends; Shift-Enter is a newline, matching the terminal's
           // single-submission behaviour for a pasted multi-line task.
-          if (event.key === "Enter" && !event.shiftKey) {
+          if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
             submit();
           }
@@ -120,7 +122,7 @@ function AgentQuestion({ view }: { view: ViewPayload }) {
     .replace(/^\s*\[(Planning|Execute|Test)\]\s*/, "")
     .trim();
   if (!text) return null;
-  return <p className="agent-question">{text}</p>;
+  return <Markdown className="agent-question">{text}</Markdown>;
 }
 
 export function InputArea({ view, busy, onAnswer, onApprove, onDecline }: Props) {

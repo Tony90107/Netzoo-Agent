@@ -149,6 +149,142 @@ pub fn engine_ready(root: &Path) -> Result<(), DaemonFault> {
     ))
 }
 
+#[derive(Debug, Serialize)]
+pub struct EnvironmentCheck {
+    pub key: String,
+    pub label: String,
+    pub status: String,
+    pub detail: String,
+    pub remedy: String,
+}
+
+fn check(key: &str, label: &str, status: &str, detail: &str, remedy: &str) -> EnvironmentCheck {
+    EnvironmentCheck {
+        key: key.into(),
+        label: label.into(),
+        status: status.into(),
+        detail: detail.into(),
+        remedy: remedy.into(),
+    }
+}
+
+/// Fixed, read-only Docker queries. No token, shell, build, pull, or container mutation.
+fn diagnostic_query(root: &Path, args: &[&str]) -> Result<String, String> {
+    let mut child = Command::new(docker_program())
+        .current_dir(root)
+        .args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    let deadline = std::time::Instant::now() + Duration::from_secs(8);
+    loop {
+        if let Some(status) = child.try_wait().map_err(|error| error.to_string())? {
+            let output = child
+                .wait_with_output()
+                .map_err(|error| error.to_string())?;
+            return if status.success() {
+                Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            } else {
+                Err("Docker did not complete this check successfully.".into())
+            };
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Docker check timed out after 8 seconds.".into());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+pub fn environment_checks() -> Vec<EnvironmentCheck> {
+    let root = match project_root() {
+        Ok(root) => root,
+        Err(error) => {
+            return vec![check(
+                "project",
+                "Project configuration",
+                "failed",
+                &error.message,
+                &error.remedy,
+            )]
+        }
+    };
+    let mut checks = vec![check(
+        "project",
+        "Project configuration",
+        "passed",
+        &root.display().to_string(),
+        "",
+    )];
+    match diagnostic_query(&root, &["--version"]) {
+        Ok(version) => checks.push(check(
+            "docker_cli",
+            "Docker command",
+            "passed",
+            &version,
+            "",
+        )),
+        Err(error) => {
+            checks.push(check("docker_cli", "Docker command", "failed", &error,
+                "Install Docker Desktop, or set NETZOO_DOCKER to the full path of its docker binary."));
+            return checks;
+        }
+    }
+    match diagnostic_query(&root, &["info", "--format", "{{.ServerVersion}}"]) {
+        Ok(version) => checks.push(check(
+            "docker_engine",
+            "Docker engine",
+            "passed",
+            &version,
+            "",
+        )),
+        Err(error) => {
+            checks.push(check(
+                "docker_engine",
+                "Docker engine",
+                "failed",
+                &error,
+                "Start Docker Desktop and wait until the engine is ready, then check again.",
+            ));
+            checks.push(check(
+                "image",
+                "NetZoo image",
+                "unknown",
+                "Image cache cannot be checked while the engine is unavailable.",
+                "",
+            ));
+            return checks;
+        }
+    }
+    match diagnostic_query(&root, &["compose", "version", "--short"]) {
+        Ok(version) => checks.push(check("compose", "Docker Compose", "passed", &version, "")),
+        Err(error) => checks.push(check(
+            "compose",
+            "Docker Compose",
+            "failed",
+            &error,
+            "Update Docker Desktop to include Docker Compose v2.",
+        )),
+    }
+    // Resolve the image from the project's compose file, including local overrides.
+    match diagnostic_query(&root, &["compose", "config", "--images", "netzoo-daemon"]) {
+        Ok(images) if !images.is_empty() => {
+            for image in images.lines().collect::<std::collections::BTreeSet<_>>() {
+                match diagnostic_query(&root, &["image", "inspect", image, "--format", "{{.Id}}"] ) {
+                    Ok(id) => checks.push(check("image", "NetZoo image", "passed", &format!("{image} · {id}"), "")),
+                    Err(error) => checks.push(check("image", "NetZoo image", "failed", &format!("{image}: {error}"),
+                        "Check the image with docker image inspect, then build it with docker compose build netzoo and restart the desktop app.")),
+                }
+            }
+        }
+        _ => checks.push(check("image", "NetZoo image", "unknown", "Could not resolve the daemon image from Docker Compose.",
+            "Run docker compose config --images netzoo-daemon in the project directory to check the configuration.")),
+    }
+    checks
+}
+
 pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
     engine_ready(root)?;
     let port_flag = port.to_string();
@@ -157,7 +293,9 @@ pub fn start(root: &Path, token: &str, port: u16) -> Result<(), DaemonFault> {
         return Ok(());
     }
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let kind = if stderr.contains("address already in use") || stderr.contains("port is already allocated") {
+    let kind = if stderr.contains("address already in use")
+        || stderr.contains("port is already allocated")
+    {
         "port_in_use"
     } else if stderr.contains("pull access denied") || stderr.contains("not found") {
         "image_missing"
@@ -270,7 +408,10 @@ mod tests {
         assert!(root.join("docker-compose.yml").is_file());
         // The daemon service must be the one the shell starts.
         let compose = std::fs::read_to_string(root.join("docker-compose.yml")).unwrap();
-        assert!(compose.contains("netzoo-daemon:"), "compose file has no daemon service");
+        assert!(
+            compose.contains("netzoo-daemon:"),
+            "compose file has no daemon service"
+        );
     }
 }
 
@@ -288,7 +429,10 @@ mod path_tests {
             "unexpected docker program: {program:?}"
         );
         if DOCKER_CANDIDATES.iter().any(|c| PathBuf::from(c).is_file()) {
-            assert!(program.is_file(), "an installed docker must resolve to a file");
+            assert!(
+                program.is_file(),
+                "an installed docker must resolve to a file"
+            );
         }
     }
 
@@ -306,5 +450,38 @@ mod path_tests {
 
         assert_ne!(ignored, PathBuf::from("/definitely/not/here/docker"));
         assert_eq!(honoured, PathBuf::from("/bin/sh"));
+    }
+}
+
+#[cfg(all(test, unix))]
+mod diagnostic_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn diagnostics_only_inspect_and_resolve_the_compose_image() {
+        let directory =
+            std::env::temp_dir().join(format!("netzoo-diagnostics-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        let binary = directory.join("docker");
+        let log = directory.join("commands.log");
+        std::fs::write(&binary, format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\ncase \"$1 $2\" in\n  'compose config') printf 'custom-netzoo:science\\n' ;;\n  'image inspect') printf 'sha256:test\\n' ;;\n  *) printf 'test-version\\n' ;;\nesac\n", log.display()
+        )).unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let previous = std::env::var_os("NETZOO_DOCKER");
+        std::env::set_var("NETZOO_DOCKER", &binary);
+        let checks = environment_checks();
+        match previous {
+            Some(value) => std::env::set_var("NETZOO_DOCKER", value),
+            None => std::env::remove_var("NETZOO_DOCKER"),
+        }
+        let commands = std::fs::read_to_string(&log).unwrap();
+        assert!(checks.iter().all(|check| check.status == "passed"));
+        assert!(commands.contains("image inspect custom-netzoo:science --format {{.Id}}"));
+        assert!(
+            !commands.contains(" up ") && !commands.contains("build") && !commands.contains("pull")
+        );
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }
