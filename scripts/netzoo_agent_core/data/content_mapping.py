@@ -202,6 +202,12 @@ def infer_input_roles(
     mapper: Any | None = None,
 ) -> dict[str, InputRoleAssignment]:
     """Ask the configured LLM for bounded content mappings, or decline safely."""
+    # Enforce priority here as well as in callers: an advisory mapper cannot
+    # reassign a role already attached to a file in the user's request.
+    from ..interpretation.input_bindings import request_input_bindings
+
+    selected = request_input_bindings(task).values
+    fields = [field for field in fields if field not in selected]
     if mapper is None or not fields:
         return {}
     candidates = _path_candidates(task, nearby)

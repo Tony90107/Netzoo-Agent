@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any
+from workflow_registry import ACTION_DEFINITIONS
 
 from .context import _PlanningContext
 from ..data.bonobo import bonobo_artifact_paths, load_bonobo_inputs
@@ -19,7 +20,6 @@ from ..interpretation import (
     _choose_unambiguous_candidate,
     _mentions_unspecified_data_directory,
     _task_path,
-    _unlabeled_input_bindings,
     discover_demo_bundle,
     reusable_episode_inputs,
 )
@@ -29,6 +29,7 @@ from ..routing import (
     _find_candidate_files,
 )
 from ..data.paths import _resolve_user_path
+from ..interpretation.input_bindings import request_input_bindings
 
 __all__: list[str] = []
 
@@ -183,7 +184,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     ]
     optional_file_fields = [
         field_name
-        for field_name in (context.workflow_spec.optional_inputs if context.workflow_spec else ())
+        for field_name in (
+            context.workflow_spec.optional_inputs if context.workflow_spec
+            else ACTION_DEFINITIONS[action].optional_inputs
+        )
         if field_name in _FILE_INPUT_FIELDS
         and (getattr(decision, field_name, None) or _task_path(task, field_name))
     ]
@@ -210,7 +214,15 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         *required,
         *[field_name for field_name in input_fields if field_name not in required],
     ]
-    natural_bindings = _unlabeled_input_bindings(task, input_fields)
+    selections = request_input_bindings(task, input_fields)
+    natural_bindings = {
+        field: value for field, value in selections.values.items()
+        if field not in selections.explicit_fields
+    }
+    labelled_values = {
+        field: value for field, value in selections.values.items()
+        if field in selections.explicit_fields
+    }
     confirmed_bindings = {
         field_name: value
         for field_name, value in re.findall(
@@ -225,11 +237,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         )
         if field_name in input_fields
     }
-    labeled_bindings = {
-        field_name
-        for field_name in input_fields
-        if _task_path(task, field_name)
-    }
+    labeled_bindings = set(labelled_values)
     protected_bindings = (
         set(natural_bindings)
         | labeled_bindings
@@ -238,12 +246,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     )
     # Only inspect a directory explicitly named by the user. Router-proposed paths
     # are untrusted and must not steer content discovery into an unrelated folder.
-    expression_hint = _task_path(task, "expression_file") or _task_path(task, "omics_layer_1")
-    content_nearby = (
-        _resolve_user_path(expression_hint).parent
-        if expression_hint
-        else _task_directory(task) or PROJECT_ROOT / "data"
-    )
+    content_nearby = selections.directory or _task_directory(task) or PROJECT_ROOT / "data"
     content_bindings = infer_input_roles(
         action,
         task,
@@ -265,7 +268,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     )
     cobra_expression, cobra_design = _cobra_unlabeled_input_paths(task)
     for field_name in input_fields:
-        labeled = _task_path(task, field_name)
+        labeled = labelled_values.get(field_name)
         parsed = (
             confirmed_bindings.get(field_name)
             or corrected_bindings.get(field_name)
@@ -289,11 +292,10 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             setattr(decision, field_name, parsed)
             if (
                 field_name not in carried_discovered_fields
-                and field_name not in natural_bindings
-                and field_name not in content_bindings
+                and (labeled or field_name in confirmed_bindings or field_name in corrected_bindings)
             ):
                 explicit_input_values[field_name] = parsed
-            if (
+            if field_name in selections.resolved_fields or (
                 field_name in (set(natural_bindings) | set(content_bindings))
                 and not labeled
                 and field_name not in confirmed_bindings
@@ -343,7 +345,11 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         if reused:
             reused_values, reason = reused
             for field_name, value in reused_values.items():
-                if field_name not in explicit_input_values:
+                if (
+                    field_name not in protected_bindings
+                    and field_name not in content_bindings
+                    and field_name not in explicit_input_values
+                ):
                     setattr(decision, field_name, value)
                     autonomous_values[field_name] = value
                     autonomous_reasons[field_name] = reason
@@ -375,11 +381,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 decision.log_transformed = True
                 decision.centered = True
     # Outputs are safe and reversible defaults; input datasets require evidence.
-    expression_hint = decision.expression_file or _task_path(task, "expression_file")
-    if expression_hint:
-        nearby = _resolve_user_path(expression_hint).parent
-    else:
-        nearby = _task_directory(task) or PROJECT_ROOT / "data"
+    nearby = selections.directory or _task_directory(task) or PROJECT_ROOT / "data"
 
     if action in MULTI_FILE_ACTIONS and not autonomous_values:
         discovery_anchors = {
@@ -609,7 +611,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         context.preflight_errors[:] = list(dict.fromkeys(
             [*context.preflight_errors, *validate_workflow_inputs(action, decision)]
         ))
-        if context.preflight_errors:
+        if context.preflight_errors and not selections.issues:
             corrections = _role_corrections(
                 action, decision, input_fields, context.content_mapper
             )
@@ -643,6 +645,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                     getattr(decision, "taxon", "") or "",
                     context.content_mapper,
                 )
+    context.preflight_errors.extend(selections.issues)
     handoff = context.workflow_handoff
     if (
         action == "run_bonobo"

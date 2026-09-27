@@ -5,37 +5,21 @@ from __future__ import annotations
 import re
 
 from ..contracts import PROSE_PATH_TERMINATORS
-from .discovery import _unlabeled_input_bindings
+from ..settings import INPUT_ROLE_FIELDS
 from .extraction import _task_path
+from .input_bindings import request_input_bindings
 
 __all__: list[str] = []
 
-# Roles whose file a request may name without saying which role it is.
-_INPUT_ROLE_FIELDS = tuple(
-    field_name for field_name in (
-        "expression_file", "design_file", "motif_file", "ppi_file",
-        "mirna_file", "coexpression_file", "network_file", "mutation_file",
-        "exon_size_file", "cancer_gene_file", "pathway_file",
-    )
-)
 _FILE_SUFFIXES = (
     ".tsv", ".tab", ".txt", ".csv", ".gmt", ".npy", ".npz", ".bed", ".mtx",
     ".h5", ".hdf5", ".gz",
 )
 
 _PATH_FIELDS = (
-    "expression_file",
-    "design_file",
-    "motif_file",
-    "ppi_file",
-    "mirna_file",
-    "coexpression_file",
-    "network_file",
-    "mutation_file",
-    "exon_size_file",
-    "cancer_gene_file",
-    "pathway_file",
+    *sorted(INPUT_ROLE_FIELDS),
     "output_file",
+    "lioness_output",
     "output_dir",
 )
 _BOOLEAN_FIELDS = (
@@ -129,7 +113,11 @@ def extract_recognized_input_files(task: str) -> dict[str, str]:
     reported nothing at all, under a sentence promising those inputs would be
     carried forward.
     """
-    return _unlabeled_input_bindings(task, _INPUT_ROLE_FIELDS)
+    selected = request_input_bindings(task)
+    return {
+        field: value for field, value in selected.values.items()
+        if field not in selected.explicit_fields
+    }
 
 
 def extract_explicit_request_parameters(task: str) -> dict[str, object]:

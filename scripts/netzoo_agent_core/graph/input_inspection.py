@@ -36,6 +36,7 @@ from ..contracts.outcomes import AdvisoryCondition, AdvisoryRecommendation
 from ..data.inspection import expression_sample_count
 from ..data.tables import _inspect_panda_inputs_impl
 from ..interpretation.discovery import _unlabeled_input_bindings
+from ..interpretation.input_bindings import request_input_bindings
 from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
 from .context import record_event
 from .mixed_prior import mirna_capable_candidate, mixed_prior_conditions, tf_only_counterpart
@@ -144,6 +145,8 @@ def equipped_candidates(
     directory: Path,
     candidates: list[str],
     exclude: frozenset[Path] = frozenset(),
+    *,
+    bindings: dict[str, Path] | None = None,
 ) -> dict[str, dict[str, Path]] | None:
     """Candidates whose inputs some file assignment content-validates, with that assignment.
 
@@ -156,6 +159,7 @@ def equipped_candidates(
     if not files:
         return None
     files = [path for path in files if path not in exclude]
+    bindings = bindings or {}
     shapes = {path: _shape(path) for path in files}
     hinted = _unlabeled_input_bindings(" ".join(path.name for path in files), tuple(_ROLE_SHAPES))
     budget = _MAX_VALIDATIONS
@@ -163,7 +167,8 @@ def equipped_candidates(
     for action in candidates:
         fields = [f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS]
         pools = [
-            sorted(
+            ([bindings[field]] if bindings[field] in files else [])
+            if field in bindings else sorted(
                 (path for path in files if shapes[path] == _ROLE_SHAPES[field]),
                 # Names only order the search: a hinted file is tried first.
                 key=lambda path, field=field: (hinted.get(field) != path.name, path.name),
@@ -201,6 +206,13 @@ def advise_from_inspected_inputs(
         or decision.advisory_recommendation is not None
     ):
         return decision
+    selections = request_input_bindings(task, root=root)
+    if selections.issues:
+        return decision.model_copy(update={"clarification_question": " ".join(selections.issues)})
+    bindings = {
+        field: (root / value).resolve()
+        for field, value in selections.values.items()
+    }
     fields_by_action = {
         action: {f for f in REQUIRED_INPUTS[action] if f in INPUT_ROLE_FIELDS}
         for action in candidates
@@ -223,14 +235,14 @@ def advise_from_inspected_inputs(
     for written, directory in named_directories(task, root):
         inspected.append(written)
         if mirna_action is not None:
-            mixed = (equipped_candidates(directory, [mirna_action]) or {}).get(mirna_action, {})
+            mixed = (equipped_candidates(directory, [mirna_action], bindings=bindings) or {}).get(mirna_action, {})
             conditions = mixed_prior_conditions(mixed, written)
             counterpart = tf_only_counterpart(mirna_action, _PANDA_FAMILY)
             clean = (
-                equipped_candidates(directory, [counterpart], frozenset({mixed["motif_file"]}))
+                equipped_candidates(directory, [counterpart], frozenset({mixed["motif_file"]}), bindings=bindings)
                 if conditions and counterpart is not None else None
             )
-            if conditions and clean == {}:
+            if conditions and ("motif_file" in bindings or clean == {}):
                 return decision.model_copy(update={
                     "advisory_recommendation": AdvisoryRecommendation(
                         action=mirna_action, conditions=conditions,
@@ -241,14 +253,14 @@ def advise_from_inspected_inputs(
                     ),
                     "inspected_directories": inspected,
                 })
-        equipped = equipped_candidates(directory, candidates) if by_equipment else None
+        equipped = equipped_candidates(directory, candidates, bindings=bindings) if by_equipment else None
         action, values = next(iter(equipped.items())) if equipped and len(equipped) == 1 else (None, {})
         missing = sorted(
             set().union(*fields_by_action.values()) - fields_by_action[action]
         ) if action is not None else []
         if not missing:
             if family:
-                probe = (equipped_candidates(directory, family[:1]) or {}).get(family[0], {})
+                probe = (equipped_candidates(directory, family[:1], bindings=bindings) or {}).get(family[0], {})
                 discovered.extend(f"{field}={written}{path.name}" for field, path in probe.items())
             continue
         conditions = [

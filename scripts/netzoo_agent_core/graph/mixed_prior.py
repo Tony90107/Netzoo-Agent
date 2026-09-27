@@ -9,9 +9,9 @@ method would read every regulator in the prior as a transcription factor.
 The signal is read from content only: the miRNA-capable candidate must be
 equipped by its own validator (`equipped_candidates`), and the regulator
 column of the file validated as its prior must contain names from the file
-validated as its miRNA list, and the TF-only counterpart must not be equipped
-once that prior is set aside: a folder that also holds a clean TF prior (like
-the toy folder with both `motif-panda.tsv` and `prior-puma.tsv`) says nothing.
+validated as its miRNA list. For a folder-only request, the TF-only counterpart
+must not be equipped once that prior is set aside. If the user selected the
+prior, unrelated clean TF priors in its folder cannot undo that selection.
 Candidates are told apart by their registered regulator types, never by name.
 Advisory only: nothing is eliminated.
 """

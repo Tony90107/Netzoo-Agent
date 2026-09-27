@@ -50,10 +50,20 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
 
 
 def _extract_explicit_role_path(task: str, role: str) -> str | None:
+    prefix = rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
+    # A quoted location ends at its closing quote. For an unquoted data file,
+    # the extension bounds the location before trailing English prose.
+    bounded = re.search(
+        prefix + r"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|"
+        r"(?P<file>[^\n，,、；;'\"]+?\.[A-Za-z][A-Za-z0-9]{0,7}(?:\.gz)?)"
+        r"(?=\s|[，,、；;。.]|$))", task, re.IGNORECASE,
+    )
+    if bounded:
+        return (bounded.group("quoted") if bounded.group("q") else bounded.group("file")).strip().rstrip(".。")
     match = re.search(
         rf"(?<![A-Za-z0-9_]){re.escape(role)}\s*=\s*"
-        rf"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?))"
-        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,、；;]|$)",
+        rf"(?:(?P<q>['\"])(?P<quoted>.*?)(?P=q)|(?P<plain>.*?)"
+        r"(?=\s+[A-Za-z_]+\s*=|\s+[\u3400-\u9fff]|[，,、；;]|$))",
         task,
         re.IGNORECASE,
     )
