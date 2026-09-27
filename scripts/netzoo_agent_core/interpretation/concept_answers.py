@@ -246,7 +246,7 @@ def render_outcome_clarification(
     return with_inspection_footer(
         with_reply_notes(
             _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
-            decision,
+            decision, task,
         ),
         decision.inspected_directories,
     )
