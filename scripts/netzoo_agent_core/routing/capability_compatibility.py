@@ -119,6 +119,13 @@ def _supported_entities(
             supported = semantics.entities or capability.entity_types
         else:
             supported = capability.entity_types
+    if artifact_type == "community_assignment" and "regulatory_network" in capability.input_artifacts:
+        # Log 202: the communities partition the nodes of the network analyzed,
+        # and a regulator-gene network's nodes are its regulators and genes.
+        # A reading naming both sides ("groups of regulators that jointly
+        # control groups of genes") had no candidate at all. The declaration
+        # is unchanged, which keeps the ranking terms of Log 133/135 untouched.
+        supported = supported | {"tf", "mirna", "gene"}
     if granularity == "sample_specific" and "sample_specific" in capability.granularities:
         return supported | {"sample"}
     # An artifact whose ontology lists `sample` and allows a per-sample form

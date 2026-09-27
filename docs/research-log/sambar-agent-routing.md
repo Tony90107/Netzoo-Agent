@@ -12150,3 +12150,34 @@ Log 139 的條件推薦只在「方法平手」（planner 維度為 algorithm）
 - 3 方平手的「接線」條件與 Log 154 資料夾檢查合併（Log 200 已知限制）。
 - `case4-open`（「一個每位病人的 TF 層級指標」）3/3 只給 GIRAFFE：這是測試文件所說「只給一條路」的形狀，發生在解讀層，不是平手；本輪不處理。
 
+## Log 202｜社群指派同時含調控因子與基因（第 8 項：中文 Case 9 判錯的成因與語言無關）
+
+日期／時區：2026-09-27，Asia/Taipei。離線修正，沒有單獨實跑（Log 203 的盲測重跑含 Case 9）。
+
+### 成因（重放確認）
+
+Log 179 中文 Case 9 被判為「ambiguous 且沒有候選」：讀法是 `analyze community_assignment aggregate`，`entity_types=[tf, gene]`
+（「一群調控因子是一起管一群基因的」）。CONDOR 的 `entity_types` 只宣告 `gene`，所以 tf 不被支援、沒有任何候選。
+這與語言無關：英文讀法若寫出 `[tf, gene]` 也會同樣失敗；CONDOR 自己的 handoff_contract 就寫著社群有 regulator-side 與 gene-side 兩邊。
+
+### 先試過、未採用：改 CONDOR 的宣告
+
+- 宣告 `{tf, mirna, gene}`：136 網格 52 列改變，其中 4 列（artifact 未知、實體只有 `[gene]`）**失去 CONDOR 候選**——
+  正是 Log 133 記錄的「宣告越完整，特異性排名越後面」。
+- 宣告 `{tf, gene}`：20 列改變，同樣 4 列失去候選，另有 4 列模糊讀法（artifact 未知、只有 TF）把 CONDOR 加進 PANDA／OTTER／GIRAFFE 的平手。
+- （過程中一次全域 `sed` 誤改了 PUMA、LIONESS-PUMA 的實體宣告，網格立刻顯示 1852 列改變；已逐行還原並與 HEAD 比對，最終差異只有本節所述。）
+
+### 修正（Log 172 的模式）
+
+CONDOR 的宣告不變（`gene`）。`_supported_entities`：當請求的 artifact 是 `community_assignment`、而 capability 分析的是 `regulatory_network` 時，
+支援的實體加上該網路的節點——調控因子與基因（tf、mirna、gene）。特異性分數讀的是宣告，所以排名不變。
+
+### 量得的事實
+
+- 136 網格：**24 列改變，全部是 community_assignment**（18 列 ambiguous 由無候選變為 [CONDOR]、6 列 unsupported → exact CONDOR）；
+  失去候選 0、解析度損失或換工具 0。148／170 網格的改變也只在 community_assignment 列（F-b、G-b = 0；
+  F-a／G-a／G-c 是那兩輪的範圍判準，這裡的「放寬」就是本修正的目的）。150 配對網格：strict 有候選的池子多了這些列，抽樣域不同；
+  共同的 3945 組配對 0 改變。174 tag 網格相同。
+- 重放：中文 Case 9 → exact CONDOR；英文 Case 9 三次不變（兩次 ambiguous［CONDOR］由 Log 194 的確定性回覆處理）。
+- 新測試 `tests/test_community_entities.py` 5 項，3 項在舊行為下失敗。全套通過；指紋不變。
+
