@@ -165,21 +165,34 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                             for field in group
                         )
                     )
-            relevant_controls = [
-                control for control in item.get("controls", [])
-                if (
-                    not requested_tags
-                    or not set(control.get("selection_tags", []))
-                    or set(control.get("selection_tags", [])) & requested_tags
-                )
+            # Only a control whose registry tags meet the request's tags is matched
+            # to it; the rest are declared but not claimed as relevant (Log 221).
+            controls = item.get("controls", [])
+            matched_controls = [
+                control for control in controls
+                if set(control.get("selection_tags", [])) & requested_tags
             ]
-            if relevant_controls:
+            other_controls = [control for control in controls if control not in matched_controls]
+            if matched_controls:
                 lines.append(
-                    "Relevant workflow controls for this request:\n\n"
+                    "Controls matching this request:\n\n"
                     + "\n".join(
-                        _render_control(action, control) for control in relevant_controls
+                        _render_control(action, control) for control in matched_controls
                     )
                 )
+            if other_controls:
+                lines.append(
+                    "Other declared controls (not matched to this request; defaults apply "
+                    "unless you set them): "
+                    + ", ".join(_render_control_default(control) for control in other_controls)
+                    + "."
+                )
+            runtime_limits = [
+                limit for control in other_controls
+                if (limit := _runtime_limit(action, control)) is not None
+            ]
+            if runtime_limits:
+                lines.append("Runtime limits:\n\n" + "\n".join(runtime_limits))
             conditional_outputs = capability.get("conditional_outputs", [])
             for conditional in conditional_outputs:
                 if not conditional.get("valid", True):
@@ -223,22 +236,37 @@ def _render_control(action: str, control: dict) -> str:
         )
     description = control.get("description")
     suffix = f" — {description}" if description else ""
-    constraint = runtime_control_constraints(action).get(control["name"])
-    if constraint is not None:
-        unavailable = sorted(
-            set(map(str, control.get("allowed_values", [])))
-            & set(constraint.unavailable_values)
-        )
-        if unavailable:
-            fallback = (
-                f"; use `{control['name']}={constraint.fallback}`"
-                if constraint.fallback is not None
-                else ""
-            )
-            suffix += (
-                " — current runtime unavailable: "
-                + ", ".join(unavailable)
-                + fallback
-                + "."
-            )
+    limit = _runtime_limit_text(action, control)
+    if limit is not None:
+        suffix += " — " + limit
     return f"- `{control['name']}` ({'; '.join(details)}){suffix}"
+
+
+def _render_control_default(control: dict) -> str:
+    """Name and registry default only, for a control not matched to the request."""
+    if control.get("default") is None:
+        return f"`{control['name']}`"
+    return f"`{control['name']}`={control['default']}"
+
+
+def _runtime_limit(action: str, control: dict) -> str | None:
+    limit = _runtime_limit_text(action, control)
+    return None if limit is None else f"- `{control['name']}`: {limit}"
+
+
+def _runtime_limit_text(action: str, control: dict) -> str | None:
+    constraint = runtime_control_constraints(action).get(control["name"])
+    if constraint is None:
+        return None
+    unavailable = sorted(
+        set(map(str, control.get("allowed_values", [])))
+        & set(constraint.unavailable_values)
+    )
+    if not unavailable:
+        return None
+    fallback = (
+        f"; use `{control['name']}={constraint.fallback}`"
+        if constraint.fallback is not None
+        else ""
+    )
+    return "current runtime unavailable: " + ", ".join(unavailable) + fallback + "."

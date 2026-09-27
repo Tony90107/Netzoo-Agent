@@ -12773,3 +12773,50 @@ Log 201 的 Case 4 與變體 12 次中 10 次是單一 exact（LIONESS-PANDA 5�
 - `test_ambiguous_guidance_is_scored.py` 的模組說明與 `evaluate_routing._score_answer` 的註解補上「Log 194 之後沒有錄下的決策走到這個分支」。
 - 讓單一候選問題失效時，改寫後的測試失敗（舊版不會，因為它根本沒有單一候選）。全套 2308 passed、0 failed。
 - 掃過其他測試中「交給 response model」的說法，沒有其他描述單一候選平手的過時說明。
+
+## Log 221｜事前宣告：「Relevant workflow controls for this request」其實沒有篩選——只完整列出真正對上請求的參數
+
+日期／時區：2026-09-27，Asia/Taipei。只改回覆層（`verified_guidance.render_verified_guidance` 的參數段落）；不改路由、不改 prompt、不改 schema。
+
+### 成因（使用者回報：「模型照關鍵字把所有相關的輸入輸出都列給使用者看，沒有理解使用者要什麼」）
+
+選方法那一層有理解語意（Log 204 英文盲測 28／30）；問題在選定之後的回覆是固定規格表。其中最明確的一處是參數段落：
+篩選條件是「請求沒有 selection_tags，**或**參數本身沒有 tag，**或**兩者有交集」就保留。註冊表 12 個 workflow 的參數中只有 BONOBO 的 4 個有 tag，
+而第一輪幾乎不產生 tag（見 selection_tags 稽核），所以篩選從不刪任何東西，標題卻寫「for this request」。
+
+### 已量得的事實（離線，新工具 `docs/research-log/tools/replay_guidance.py`）
+
+以現行程式碼重新渲染全部 1199 個不重複的錄下 exact／fallback guidance 決策：319 個含參數段落，**沒有任何一個被篩掉參數**
+（OTTER 35 次 8／8、SAMBAR 59 次 8／8、DRAGON 23 次 3／3、BONOBO 5 次 11／11、PANDA→LIONESS-PANDA 191 次 1／1、CONDOR 6 次 1／1）。
+
+### 修改（方向 A，使用者選擇；方向 B「使用者關心的點對應到哪個參數／輸出」之後另立 Log）
+
+- 參數分兩種：tag 與請求 selection_tags 有交集的，照舊完整列出，標題改為「Controls matching this request」。
+- 其餘參數不再宣稱與請求相關：收成一行「Other declared controls (not matched to this request; defaults apply unless you set them)」，只列名稱與預設值。
+- runtime 限制（例如 OTTER `computing=gpu` 不可用）獨立成「Runtime limits」一行，保留現有文字。
+
+### 預期與撤回條件
+
+- T-a：319 個含參數段落的回覆都改變，**只有參數段落改變**，其餘 880 個逐字相同。
+- T-b：不修改任何既有測試（OTTER runtime 文字、BONOBO tag 參數、注入參數名稱與預設值三項測試照舊通過）；全套 0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；五個網格與 HEAD 相同。
+- T-c：新增測試：沒有 tag 交集時回覆不出現「for this request」式的標題；有交集時只把交集的參數完整列出。
+- 任何一項不成立就撤回。
+
+## Log 222｜Log 221 結果：T-a、T-b、T-c 成立，修改**保留**；319 個回覆只有參數段落改變
+
+日期／時區：2026-09-27，Asia/Taipei。基準為 HEAD `b670faa`（本 session 期間由使用者提交的 routing fix；基準渲染在它之後進行）。
+
+- T-a：重新渲染 1199 個不重複的錄下 guidance 決策，改變的正好是含參數段落的 319 個；把參數相關段落拿掉並統一空行後，319 個與修改前逐字相同，
+  修改前列出的參數名稱沒有任何一個從回覆中消失。其餘 880 個逐字相同。改變後：
+  - OTTER：8 個參數收成一行「Other declared controls (not matched to this request; …): `output_format`=matrix, `computing`=cpu, …」，另有「Runtime limits」一行 `computing` gpu 不可用。
+  - SAMBAR、DRAGON、PANDA、CONDOR：同樣收成一行；預設為 None 的參數（DRAGON `lambda1`／`lambda2`、BONOBO `delta`）只列名稱，不捏造預設值。
+  - BONOBO：錄下的 5 個決策中，請求 tag 與參數 tag 有交集的，只有交集參數（例如 `sparsify`、`bonobo_confidence`、`save_pvals`）完整列在「Controls matching this request」。
+- T-b：沒有修改任何既有測試；全套 2502 passed、35 skipped、0 failed；五個網格與 HEAD 相同。
+  指紋在本修改前後相同，但 HEAD 本身已不是 Log 221 記下的值：`b670faa` 改了 `llm.py` 等檔案，legacy 由 `b9b01cd2db6f` 變為 **`d2a9afddad86`**、
+  claims 由 `348a144cd9b4` 變為 **`480a66264c53`**（在 `75b2c6d` 的 worktree 重算確認舊值）。之後的比較請用新值。
+- T-c：新測試 `tests/test_guidance_controls.py` 2 項；換回 HEAD 的渲染器時 2 項全部失敗。
+
+### 範圍
+
+這只讓回覆誠實：不再宣稱「為這個請求」挑過參數。它**沒有**讓回覆回答使用者的實際顧慮（例如 case 2 的記憶體不足與迭代不收斂，
+仍然沒有指出 `precision`、`iterations`、`eta` 的關係）；那是方向 B，需要解讀層把使用者的顧慮對應到註冊表的參數／輸出，另立 Log 事前宣告。
