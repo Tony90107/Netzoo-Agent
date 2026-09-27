@@ -11835,3 +11835,23 @@ Log 180 懷疑的 `cli/follow_up.py` 的 `_ui_text(interaction.next_step)` 是�
 - 新測試 `tests/test_dynamic_ui_text_language_guard.py` 4 項；用 HEAD 版本的三個檔案覆蓋後，3 個呼叫點的測試都以同一個 `ValueError` 失敗。
 - 不影響路由：網格與指紋不變；全套通過。
 
+## Log 193｜泛稱 artifact 引文不算說明了網路要連什麼（第 1 項；只改回覆層）
+
+日期／時區：2026-09-27，Asia/Taipei。**使用者決定：只改回覆層**，不改驗證契約
+（驗證若把泛稱引文判為無依據，Case 10 會因 artifact_type 缺證據而變成 `semantic_fallback`）。
+
+### 修正
+
+`interpretation/reply_notes.py` 的假設說明原本在「任何讀法有 artifact_type 的 explicit 引文」時不出現。
+改為：只有當引文含有泛稱詞以外的字時才算數。泛稱詞是封閉集合：功能詞、請求動詞（build、make、see……）、
+泛稱結果名詞（network、graph、result……）與描述輸入的名詞（expression、matrix、data……）；中文另有一組泛稱字串（幫我、建、一個、網路……）。
+驗證與比對完全不變。
+
+### 量得的事實
+
+- 所有錄下的平手中，artifact 引文只有 `build me a network` 與 `幫我建一個網路` 被判為泛稱；
+  `regulatory wiring`、`gene co-expression`、`TF-to-gene`、`基因共表現`、`調控因子` 等都算有說明。
+- 重放 120 個錄下的 ambiguous 決策並重新渲染回覆：**恰好 3 個改變**，就是 Log 189 被擋下的三次
+  （`trace188_en` case10-en #3、#5，`trace188_zh` case10-zh #0），都新增了假設說明；沒有渲染錯誤。
+- 新測試 `tests/test_generic_artifact_quote.py` 8 項，3 項在舊判斷上失敗。
+
