@@ -11910,3 +11910,160 @@ Log 194 之後，單一候選平手的回覆由註冊表產生，所以改為：
 - 重放：**恰好 3 個改變**，都是 `trace_log148_live` 的 f2-many（「about 400 tumour samples」）B 版回覆。
 - 新測試 `tests/test_stated_count_note.py` 3 項，2 項在舊碼上失敗。全套通過；網格與指紋不變。
 
+## Log 196｜事前宣告：缺證據的 review 必須逐項補上證據，並拒絕與原句粒度證人相反的粒度（第 2 項；T2 型）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於任何實跑之前，之後不得修改。**
+**使用者決定（2026-09-27）：採用「逐項補證據的 review」，驗證不放寬。**
+
+### 成因（重放確認）
+
+T2 型（Log 183 Case 7 #2、Log 187 Case 5 #1）：第一輪寫了 artifact_type／granularity 卻**完全沒有證據**，
+驗證回報 `missing_evidence:artifact_type=multi_omic_network`。第二次呼叫是 patch，其 repair feedback 已逐項寫出
+`evidence_pair`，模型卻只替其他欄位加了證據。`SemanticPatch` 的每個欄位都是選填，契約沒有任何東西要求它回應那一項。
+
+### 事前量測：單純強制補證據不安全
+
+重放所有錄下的 fallback，最後只剩 missing_evidence 的有 21 次；其中 13 次（全部是 `role-both-ss-en`，
+「I want per-patient networks …」被讀成 aggregate）擋下的是**錯誤讀法**。對該讀法補上任何 granularity 證據——
+inferred 理由，甚至引用 "per-patient networks"——目前的驗證器都接受，比對結果為 **exact PUMA（aggregate）**。
+驗證器沒有檢查「粒度與原句的粒度證人相反」。所以 (a) 必須搭配 (b)。
+
+### 修正
+
+**(b) 驗證：粒度不得與原句所有粒度證人相反。** `request_integrity_issues` 新增
+`granularity_contradicts_request:<granularity>`（欄位範圍 `granularity`，所以 patch 可以更正它）：
+outcome 的粒度是 aggregate 或 sample_specific、原句有 `granularity_mentions`（既有的封閉詞彙證人）、而證人裡沒有這個粒度。
+原句同時寫出兩種粒度（未決定）時不觸發。
+
+**(a) review 契約形狀：** 當第一輪的 issue **全部**是同一個 hypothesis 的 `missing_evidence`，而且那些值確實是第一輪寫的，
+第二次呼叫仍是 patch、訊息**完全不變**，但綁定的 schema 是 `SemanticPatch` 的子類別 `SemanticPatchWithEvidence`，
+多出每個缺證據 pair 一個**必填**欄位 `required_evidence_<n>`（來源、引文、理由；dimension／value 由 schema 固定）。
+回覆照常走完整的 patch 路徑；必填項**只在 patch 自己的 `evidence_additions` 沒有涵蓋該 pair 時**才併入。
+所以舊路徑已經成功的 patch 行為不變，必填欄位只補缺口。missing_evidence 不授權改任何欄位（`NO_OUTCOME_FIELDS`），必填項只能為第一輪的值辯護，不能改值。
+驗證完全相同：無依據的引文照樣失敗。schema 由原始語意 provider（`selection_condition_llm`，Log 139 已用同樣方式每次呼叫綁定）逐次綁定；
+呼叫角色仍記為 `semantic_reviewer`，呼叫次數不變。新增事件 `routing.semantic_evidence_supplied`（required、folded）。
+
+### 已量得的事實（離線）
+
+- (b)：重放 2406 個錄下的解讀（第一輪、被拒、被接受）：issue 集合改變 15 個，**全部是 `role-both-ss-en` 的錯誤 aggregate 讀法**；
+  其中 round6 #60、#61 在**目前程式碼**上本來會被接受（錯誤），現在被拒。已接受的解讀 **0** 個受影響。
+- (a) 的觸發頻率：錄下的 914 個 legacy trial 中，第一輪 issue 全為 missing_evidence 的有 249 個（27%）；舊路徑下其中 228 個最後被接受、18 個 fallback、3 個 registry guidance fallback。
+  這就是 (a) 採「只補缺口」而不取代 patch 的原因。
+- 新測試 `tests/test_evidence_supply.py` 6 項；停用 (a)、(b) 時 4 項失敗。
+- 全套 0 failed；五個網格與 Log 143 驗證網格逐位元組相同；指紋不變（新的 schema 只在觸發時逐次綁定，不在指紋的 schema 清單中）。
+- 沒有修改任何既有測試。
+
+### 判準
+
+| 判準 | 內容 |
+| --- | --- |
+| **K-a（離線）** | 全套 0 failed（排除另一 session 的 golden transcript）；六個網格與指紋同上 |
+| **K-b（實跑，否決）** | families32 ×2、blind case5-en ×3、case7-en ×3（gpt-4o-mini、legacy、traced harness）：(1) `should_execute` 為真 = 0；(2) 觸發 (a) 且有 folded 的 trial，最後 exact 的工具不在該題的預期工具中 = 0；(3) `role-both-ss-en` exact 或唯一候選為 aggregate 工具（run_puma、run_panda）= 0 |
+| **K-c（實跑，否決，針對 (b)）** | 最終 issue 含 `granularity_contradicts_request:<g>`，而 `<g>` 等於該題預期粒度的 trial = 0 |
+| **K-d（描述）** | (a) 觸發次數、folded 非空次數、其中通過驗證的次數；T2 型 fallback（最終只剩 missing_evidence）次數。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- K-a 或 K-b 失敗 → 撤回 (a)。
+- K-c 失敗 → 撤回 (b)；(b) 撤回時 (a) 一併撤回（沒有 (b)，(a) 不安全）。
+- 實跑中出現新的例外種類，可追溯到 (a) 的 schema 綁定 → 撤回 (a)。
+
+## Log 197｜Log 196 結果：否決判準全部通過；(b) **保留**，(a) 在非 strict 呼叫下**完全沒有生效**，以無效撤回
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 196 事前寫死的條件執行。
+紀錄：`live-semantic-trace-2026-09-27-log196-families32-legacy.json`（families32 ×2）、`…-log196-blind-case5-case7-legacy.json`（case5-en、case7-en ×3）。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| K-a | **通過**（全套 0 failed、六個網格與指紋相同） |
+| K-b(1) `should_execute` 為真 | **0** |
+| K-b(2) 有 folded 的 trial 最後 exact 錯誤工具 | **0**（但 folded 本身是 0，見下） |
+| K-b(3) `role-both-ss-en` 得到 aggregate 工具 | **0**（2/2 exact LIONESS-PUMA） |
+| K-c 粒度證人規則拒絕了預期粒度 | **0** |
+
+families32：passed 59/64、provider 呼叫 165 次；case5／case7：Case 7 1 次 exact DRAGON、2 次 `semantic_fallback`，
+Case 5 1 次 fallback、2 次平手 {PANDA, PUMA, OTTER, GIRAFFE}。依 Log 120／124，這些數字只作描述。
+
+### (a) 沒有生效
+
+(a) 觸發 12 次，**folded 0 次**。檢查原始 tool call：12 次回覆的 args **全部沒有** `required_evidence_*` 欄位，
+provider 端的解析都以 `Field required` 失敗，程式照設計退回一般 patch 路徑。
+也就是說，gpt-4o-mini 在**非 strict** 的 function calling 下，JSON schema 的 `required` 對它沒有約束力。
+其中 case7-en #5 正是 T2 型：patch 仍然沒有 artifact_type／granularity 證據，最後 fallback。
+
+依規則：否決判準通過不代表機制有效；(a) 目前只增加 schema 複雜度、沒有任何效果，**撤回 (a)**，不在本節修改設計。
+能真正約束輸出的只有 strict 結構化輸出（claims 契約已在同一個 stack 上使用 `strict=True`），改在 Log 198 另行事前宣告。
+
+### (b) 保留
+
+`granularity_contradicts_request` 在本輪沒有出現在任何最終 issue 中；第一輪也沒有觸發。
+它的作用是 Log 196 的離線事實：擋下 `role-both-ss-en` 補上任何證據後會變成 exact PUMA 的錯誤讀法（其中兩個在目前程式碼上本來會被接受）。
+
+## Log 198｜事前宣告：缺證據時第二次呼叫改用 strict 的逐項證據 schema（第 2 項，(a) 的重做）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。** Log 196 的 (b) 保留，不在本節範圍。
+
+### 修正
+
+觸發條件與 Log 196 (a) 相同：第一輪的 issue **全部**是同一個 hypothesis 的 `missing_evidence`，且那些值確實由第一輪寫出。
+第二次呼叫的訊息仍是原本的 patch 訊息（**不改任何 prompt 文字**），但由原始語意 provider 以 **`strict=True`** 綁定到
+`SemanticEvidenceSupply`：每個缺證據的 pair 一個必填欄位，型別是 claims 契約已在使用的 strict 相容 `Support`
+（explicit 必須有引文；inferred 只有理由）。回覆轉成**只含這些 evidence additions 的 patch**，走一般 patch 路徑
+（`apply_semantic_patch`、恢復、驗證、最後一次嘗試的部分有效性處理）。missing_evidence 不授權改任何欄位，所以這個 patch 不能改值。
+呼叫角色仍記為 `semantic_reviewer`；呼叫次數不變。事件 `routing.semantic_evidence_supplied`（requested、sources）。
+
+### 已量得的事實
+
+- 單次呼叫探測：OpenRouter／gpt-4o-mini 接受這個 strict schema，兩個欄位都有填。**但在一個不含 repair feedback 的簡化訊息下，
+  兩則都是捏造的 explicit 引文**（原句沒有的句子）。正式流程的訊息含「explicit 必須引用原句、不得捏造」的 repair feedback，
+  而且無依據的引文會被驗證拒絕；即使如此，「強制填寫導致捏造引文」是本版的主要風險，列入否決判準。
+- 測試：`tests/test_evidence_supply.py` 5 項；停用 (a)、(b) 時 3 項失敗。全套除了第 4 項尚未套用註冊表的 2 個新測試外通過；指紋不變。
+
+### 判準
+
+實跑：families32 ×2、blind case5-en、case7-en ×3（gpt-4o-mini、legacy、traced harness），與 Log 196 同組以便描述性比較（兩者不是獨立樣本）。
+
+| 判準 | 內容 |
+| --- | --- |
+| **L-a（離線）** | 同 K-a |
+| **L-b（否決）** | (1) `should_execute` 為真 = 0；(2) 觸發 (a) 的 trial 最後 exact 的工具不在預期中 = 0；(3) `role-both-ss-en` 得到 aggregate 工具 = 0；(4) 觸發 (a) 的呼叫出現 provider 例外（schema 被拒、BadRequest 等）= 0 |
+| **L-c（否決，捏造引文）** | 觸發 (a) 的 trial 中，最終 issue 含**被要求 pair** 的 `ungrounded_evidence` 的 trial 數 ≤ 2。此門檻沒有量過的噪音底線，事先寫死 |
+| **L-d（描述）** | 觸發次數；觸發後通過驗證的次數；T2 型（被要求的 pair 含 artifact_type 或 granularity）救回次數；與 Log 196 同組的 families32 passed 數。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- L-a、L-b 或 L-c 任一失敗 → 撤回 (a)（連同 `evidence_supply.py` 與 hook），(b) 保留。
+- 觸發 0 次 → 結果無法判定，照實記錄，不作保留或撤回的結論，另行決定。
+
+## Log 199｜Log 198 結果：L-a～L-c 全部成立，strict 逐項證據**保留**；T2 型觸發 7 次全部通過驗證
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 198 事前寫死的條件執行。
+紀錄：`live-semantic-trace-2026-09-27-log198-families32-legacy.json`、`…-log198-blind-case5-case7-legacy.json`。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| L-a | **通過** |
+| L-b(1) `should_execute` 為真 | 0 |
+| L-b(2) 觸發後 exact 錯誤工具 | 0 |
+| L-b(3) `role-both-ss-en` aggregate | 0（2/2 exact LIONESS-PUMA） |
+| L-b(4) strict 綁定的 provider 例外 | 0 |
+| L-c 被要求 pair 的捏造引文（≤ 2） | **0** |
+
+### 描述（L-d；依 Log 120／124 不作比率主張）
+
+- (a) 觸發 10 次，**10 次通過驗證**。strict 下每次都有填：6 次單一 explicit、4 次兩則 explicit；沒有一則是原句沒有的引文。
+- T2 型（被要求的 pair 含 artifact_type 或 granularity）觸發 7 次，7 次通過。其中 case7-en 一次被要求的正是
+  `artifact_type=multi_omic_network` 與 `granularity=aggregate`——Log 183、Log 197 都在這個形狀上 fallback——本輪為 exact DRAGON。
+- Case 7：3/3 exact DRAGON（Log 196 同組 1/3）。Case 5：2 次 exact PUMA、1 次平手後依內容推薦 PUMA。
+- families32：passed 58/64（Log 196 同組 59/64）。唯一的新失敗是 `role-tf-ss-en` 一次 `semantic_fallback`：
+  第一輪 schema 驗證失敗（explicit 證據缺引文）而走 whole review，(a) 沒有觸發，與本輪修改無關。
+  其餘 4 個失敗在 Log 196 同組中也出現（`call_limit`：方法平手多了 Log 139 的條件呼叫，是既有的評估器上限問題；`gran-mirna-unstated-control`）。
+
+### 結論
+
+(a)（strict）與 (b) 都保留。Log 196 撤回的非 strict 版本（`SemanticPatch` 子類別）已由 strict 版取代，程式中不再存在。
+

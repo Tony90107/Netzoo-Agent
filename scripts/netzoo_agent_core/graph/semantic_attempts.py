@@ -51,6 +51,7 @@ from .discriminator import (
     discriminator_context as _discriminator_context,
     _fill_inferred_role_evidence,
 )
+from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
 
 __all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
 
@@ -113,8 +114,20 @@ def invoke_semantic_interpreter(
                 for issue in validation_issues
             )
         )
+        # Log 198: when every first-pass issue is evidence the proposal did not
+        # give, the same patch messages are answered in a strict schema holding
+        # exactly those entries. The raw semantic provider binds it per call.
+        supply = (
+            supplied_pairs(validation_issues, proposal)
+            if patching and getattr(context, "selection_condition_llm", None) is not None
+            else None
+        )
+        supply_schema = evidence_supply_schema(supply) if supply else None
         adapter = (
             context.semantic_interpreter if attempt == 0
+            else context.selection_condition_llm.with_structured_output(
+                supply_schema, method="function_calling", include_raw=True, strict=True,
+            ) if supply
             else context.semantic_patcher if patching
             else context.semantic_reviewer
         )
@@ -135,6 +148,7 @@ def invoke_semantic_interpreter(
         )
         schema_model = (
             SemanticInterpretation if attempt == 0
+            else supply_schema if supply
             else SemanticPatch if patching
             else SemanticReview
         )
@@ -175,6 +189,13 @@ def invoke_semantic_interpreter(
             if attempt == 0:
                 proposal = payload
             patch_evidence_normalizations = []
+            if supply:
+                payload = supply_as_patch(payload, supply)
+                record_event(context, state, "routing.semantic_evidence_supplied", "classify", {
+                    "attempt": attempt + 1,
+                    "requested": [f"hypothesis[{i}].{d}={v}" for i, d, v in supply],
+                    "sources": [item.get("source") for item in payload["evidence_additions"]],
+                })
             if patching:
                 payload, patch_evidence_normalizations = (
                     normalize_role_entailed_artifact_evidence(payload, user_task)
