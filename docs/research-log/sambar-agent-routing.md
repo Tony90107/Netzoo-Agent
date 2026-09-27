@@ -11747,3 +11747,30 @@ GIRAFFE 讀法是 `tf_activity_matrix`、`entity_types=[sample, tf]`（完整集
 「泛稱引文」：引文只含 "network"，卻用來支持特定的網路 artifact。要處理，需要決定 artifact 引文要不要包含能區分 artifact 的詞，
 這是驗證契約的變更（會影響 Log 136／148 的網格與許多實跑），應另開一項並先量測。
 
+## Log 190｜可維護性：語意解讀的嘗試迴圈搬出 `router_invocation.py`（Log 189 後問題清單第 9 項；純搬移）
+
+日期／時區：2026-09-27，Asia/Taipei。本節起處理 Log 189 之後整理的 10 項問題。
+使用者在 2026-09-27 對其中四項做了決定（見各節）。Log 188／189 的修改仍未 commit，本輪的改動疊在其上。
+
+### 動機
+
+`graph/router_invocation.py` 恰為 1000／1000 行（`test_core_modules_stay_reviewable` 的上限），
+而第 2 項要修改的正是其中 650 行的 `_invoke_semantic_interpreter`。任何修改之前必須先搬移。
+
+### 做法
+
+- `MAX_SEMANTIC_ATTEMPTS` 與 `_invoke_semantic_interpreter` **逐字**搬到新模組 `graph/semantic_attempts.py`，
+  函式改名為 `invoke_semantic_interpreter`，其餘一字不改。
+- `router_invocation` 以原名再匯出測試會 import 的名稱（`_invoke_semantic_interpreter`、`MAX_SEMANTIC_ATTEMPTS`、
+  `_discriminator_context`、`_as_semantic_patch`、`_validation_issue_types`）。
+  `invoke_router` 仍經由本模組的全域名稱呼叫三個被 monkeypatch 的函式，所以 `test_graph_package` 的三個 monkeypatch 目標不變。
+- `_current_usage`、`_semantic_failure`、`invoke_router` 留在原模組，內容不變。
+
+### 量得的事實
+
+- 以程式比對：搬移區塊與 HEAD 的原始碼逐字相同（除函式名稱）。
+- 行數：`router_invocation.py` 1000 → 309；`semantic_attempts.py` 717。
+- 全套 2206 passed、0 failed（排除另一個 session 的 `test_interactive_transcript_is_unchanged[mode_slash_commands]`，見 Log 189 附註）。
+- 五個網格與 Log 188 錄下的結果逐位元組相同；指紋不變（legacy `1f68bfde4081`、claims `348a144cd9b4`）。
+- 行為不變，沒有實跑。
+
