@@ -96,9 +96,9 @@ def build_graph(
         SemanticClaims if semantic_contract == "claims" else SemanticReview,
         **semantic_options,
     )
-    semantic_patcher = semantic_llm.with_structured_output(
+    semantic_patcher = semantic_llm.with_structured_output(  # the patch is strict (Log 208)
         SemanticClaimRepair if semantic_contract == "claims" else SemanticPatch,
-        **semantic_options,
+        **{**semantic_options, "strict": True},
     )
     semantic_discriminator = semantic_llm.with_structured_output(SemanticDiscriminator, method="function_calling", include_raw=True)
     intent_router = router_llm.with_structured_output(

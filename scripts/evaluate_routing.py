@@ -798,9 +798,9 @@ def evaluate(
         schemas[1], method="function_calling", include_raw=True,
         **claim_output_options,
     )
+    # The patch is strict in both contracts, as in production (Log 208).
     semantic_patcher = provider.with_structured_output(
-        schemas[2], method="function_calling", include_raw=True,
-        **claim_output_options,
+        schemas[2], method="function_calling", include_raw=True, strict=True,
     )
     semantic_discriminator = (
         provider.with_structured_output(
