@@ -12906,3 +12906,29 @@ case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DR
 - 另一個既有的不一致（未修改）：`TaskDecision.delta` 已要求 `gt=0.0`，而註冊表與 `workflows/bonobo.yaml` 的下限是 0；δ = 0 只能經由直接的 tool 呼叫到達執行器，測試照此呼叫。
 - 註冊表的 `delta` 說明需要同步寫進 `workflows/bonobo.yaml`（policy loader 會比對兩者，第一次只改註冊表時整個 policy 載入失敗；已補上）。說明文字不進任何 provider prompt。
 - V-b：沒有修改任何既有測試；全套 2538 passed、35 skipped、0 failed；指紋不變（legacy `d2a9afddad86`、claims `480a66264c53`）；五個網格與修改前相同。
+
+## Log 226｜Log 223 的 live 回合無效：階段接錯函式；事前宣告的測試影響也因此錯誤
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+- `live-semantic-trace-2026-09-27-log223-blind-en-legacy.json`（30 trial）中 `request_concerns` **0 次執行**，連 `started` 事件都沒有。原因：接線時以「第一個符合」的字串替換，
+  `decision = preflight_decision / return _RouterInvocation(` 在 `_semantic_failure`（語意失敗的後備路徑）中也出現，呼叫被接到那裡，主路徑沒有。
+  以錄下的 case 1 決策離線直接呼叫階段則正常觸發，確認是接線而非閘門或預算。單元測試直接呼叫階段函式，沒有涵蓋接線，所以沒有發現。
+- 已改正：呼叫移到主路徑 input preflight 之後（事前宣告的位置），`_semantic_failure` 不再呼叫。
+- **Log 223 的「只有 TaskDecision digest 一項既有測試要改」不成立**：Log 223 的全套測試是在錯誤接線下跑的。正確接線後有 32 項釘住呼叫序列／次數的既有測試失敗，
+  形狀全部相同——多一次 `request_concerns`；把 SAMBAR 的 `number_of_groups` 顧慮拿掉後 32 項全部通過（2538 passed），所以全都來自 SAMBAR 的 fixture 與重播 prompt。
+  依 Log 140 的前例，這些測試不在事前宣告的允許清單內，不修改，等使用者決定。
+- 這個回合的路由結果與 B 無關（階段在 intent 之後、而且根本沒跑），但與 Log 204／208 不同：OK 21、PARTIAL 8、FALLBACK 1（先前 28／1／1）；
+  case 2 由 exact OTTER 變成 PANDA／OTTER／GIRAFFE 平手 3／3，case 10 缺 `discovery` 3／3。兩次之間提交了 `b670faa`（routing fix，改動 evidence、hydration、input bindings），尚未歸因。
+
+## Log 227｜歸因：Log 223 回合的路由變化——case 10 是 `b670faa` 的程式碼，case 2 不是程式碼
+
+日期／時區：2026-09-27，Asia/Taipei。離線、0 次 provider 呼叫：把錄下的 provider 輸出依序重播，經過完整的 `invoke_router`，
+分別在 HEAD 與 `3c39430`（`b670faa` 之前）的 worktree 執行。重播在 HEAD 上重現每個錄下的狀態與候選，所以是忠實的。
+
+- **case 2（exact OTTER → PANDA／OTTER／GIRAFFE 平手）**：Log 223 的 3 次錄音在舊程式碼上同樣是平手；Log 208 的 2 次錄音（當時 exact OTTER）在 HEAD 上同樣是 exact。
+  路由程式碼不是原因，差別在模型輸出。之前三回合 exact OTTER 7／7，這回合 0／3。`b670faa` 在語意 prompt 加了兩段文字（指紋 `b9b01cd2db6f` → `d2a9afddad86`），
+  是兩回合之間唯一的系統性差異，但一個回合（且 trial 不獨立）無法與抽樣區分；要確認需要 prompt 前後的 A/B。
+- **case 10（缺 `discovery`）**：同一批模型輸出，舊程式碼找到三個依內容驗證的檔案（`expression_file=…/ppi.tsv`、`motif_file=…/expression.tsv`、`ppi_file=…/motif.tsv`），
+  HEAD 一個都沒有——Log 208 與 Log 223 兩批錄音都一樣。這是 `b670faa` 的程式碼（input bindings／input inspection）造成的決定性變化。
+  它可能是有意的：該提交的新規則是「使用者選定的輸入不被同資料夾的其他檔案覆蓋」，而 case 10 的 `expression.tsv` 是刻意命名錯誤的檔案。是否符合預期由使用者判斷。
