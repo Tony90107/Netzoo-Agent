@@ -238,14 +238,6 @@ Dimension semantics:
   artifact types, including signed and joint regulatory outputs.
   Empty role lists mean the user did not constrain that role; do not mark a role
   unresolved merely because it was not stated.
-  When reconstructing a network from a user-selected regulatory prior, preserve
-  the regulator and target roles described for that prior unless the user asks
-  to exclude them. "Contains not only transcription factors but also predicted
-  targets of small RNAs" describes the small RNAs as regulators, not target nodes.
-  Small RNAs are not automatically miRNAs; distinguish explicit biological
-  descriptions from filename hints and leave only genuinely unknown subtypes
-  unresolved. Do not invent a TF-only alternative that discards stated regulators.
-  Apply this input-to-output role reasoning to every artifact, not to a named tool.
 - selection_tags are registry-defined intent signals, not workflow names. Infer only
   tags whose scientific meaning is supported by the request, using this runtime
   registry catalog: {', '.join(registry_selection_tags) or 'none'}. Include every
@@ -284,11 +276,6 @@ Dimension semantics:
 Return one to three outcome_hypotheses. Preserve every scientific dimension stated
 by the user. For every known outcome dimension, add consistent evidence. Explicit
 evidence must include text_span containing the exact phrase from the user request.
-Preserve a file's stated input role independently of its name: a user-selected
-prior table is a prior, not an already inferred regulatory network. Expression,
-design, PPI, regulator lists, mutation, pathway and omics-layer files likewise
-remain current inputs when explicitly supplied. Other files in the same folder
-do not create competing scientific goals or override a selected input.
 For multilingual requests, keep text_span in the user's original language; do not
 translate a phrase such as Chinese 基因 into the canonical value gene.
 Inferred evidence must explain the entailment and may omit text_span. If a dimension
