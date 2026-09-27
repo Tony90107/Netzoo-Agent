@@ -11,6 +11,7 @@ from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation, with_inspection_footer
 from .reply_notes import with_reply_notes
+from .single_candidate import single_candidate_question
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -263,10 +264,9 @@ def _render_outcome_clarification(
     )
     if beginner_guidance is not None:
         return beginner_guidance
-    if (
-        decision.capability_match_status != "ambiguous"
-        or not decision.clarification_question
-    ):
+    # A one-candidate tie with no question still gets one (Log 194).
+    question = decision.clarification_question or single_candidate_question(decision)
+    if decision.capability_match_status != "ambiguous" or not question:
         return None
     if len(decision.hypothesis_actions) == 1:
         action = decision.hypothesis_actions[0]
@@ -295,7 +295,7 @@ def _render_outcome_clarification(
             if granularity_ambiguous:
                 sections = [
                     f"It sounds like you want {interpretation}.",
-                    decision.clarification_question,
+                    question,
                     "Compatible workflow method and input/output details:\n"
                     f"{details}",
                 ]
@@ -312,7 +312,7 @@ def _render_outcome_clarification(
                 sections.append(assumptions)
             sections.extend(
                 [
-                    decision.clarification_question,
+                    question,
                     "No files were inspected and no analysis ran.",
                 ]
             )
@@ -359,7 +359,7 @@ def _render_outcome_clarification(
             )
     return _ui_text(
         "I cannot select a workflow until the requested result is clear. "
-        f"{decision.clarification_question}\n\n"
+        f"{question}\n\n"
         "No files were inspected and no analysis ran."
     )
 

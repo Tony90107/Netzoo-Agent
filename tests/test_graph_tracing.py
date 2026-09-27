@@ -1141,16 +1141,19 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
-    # One surviving advisory candidate has no deterministic clarification to
-    # render, so this is the explicitly response-model-owned ambiguity branch.
-    assert response_llm.calls == 1
+    # 2026-09-27 (Log 194): one surviving candidate with no routing question
+    # used to be the response-model-owned ambiguity branch. The registry now
+    # supplies the question (`single_candidate_question`), so the reply is
+    # deterministic and the response model is not called.
+    assert response_llm.calls == 0
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
-        "response",
     ]
-    assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+    assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
+        result["messages"][-1].content
+    )
     assert any(
         event.event_type == "routing.semantic_interpretation_accepted"
         for event in events

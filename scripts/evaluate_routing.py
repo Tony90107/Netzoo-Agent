@@ -34,6 +34,7 @@ from netzoo_agent_core.graph.response import respond
 from netzoo_agent_core.evaluation.guidance_surface import capture_progress, score_surface
 from netzoo_agent_core.interpretation.semantic_goal import publish_routing_progress
 from netzoo_agent_core.interpretation.request_integrity import granularity_left_open
+from netzoo_agent_core.interpretation.single_candidate import single_candidate_question
 from netzoo_agent_core.presentation import _trace
 from netzoo_agent_core.llm import build_llm, build_semantic_reviewer_messages, validate_router_model
 from netzoo_agent_core.policy import ProjectPolicyLoader
@@ -695,9 +696,11 @@ def _score_answer(case, result, context, progress=""):
     # scored below; the remainder genuinely needs the response model and stays
     # outside this evaluator -- but it now says so instead of being folded into
     # one undifferentiated `false`.
+    # A single surviving candidate is answered deterministically too since
+    # Log 194, which supplies its question from the registry.
     deterministic_ambiguity = (
         decision.capability_match_status == "ambiguous"
-        and bool(decision.clarification_question)
+        and bool(decision.clarification_question or single_candidate_question(decision))
     )
     if decision.action != "no_tool" or decision.should_execute or not (
         decision.capability_match_status in {"exact", "fallback"}
