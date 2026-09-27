@@ -1,0 +1,68 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+................................................................F....... [ 23%]
+..................................ssssssssssssssssssssssssssssssssss.... [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+.......................s................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+........................................                                 [100%]
+=================================== FAILURES ===================================
+_____ test_an_artifact_that_permits_several_entities_still_needs_evidence ______
+
+    def test_an_artifact_that_permits_several_entities_still_needs_evidence():
+        """Two legal entities make the value a choice, so it must be justified."""
+        assert len(ARTIFACT_SEMANTICS["pathway_mutation_matrix"].entities) > 1
+    
+        result = validate(
+            {**CLUSTER, "artifact_type": "pathway_mutation_matrix",
+             "entity_types": ["pathway"]},
+            evidence(("operation", "analyze"), ("input_artifact", "mutation_matrix"),
+                     ("artifact_type", "pathway_mutation_matrix")),
+        )
+    
+>       assert "hypothesis[0].missing_evidence:entity_type=pathway" in result.issues
+E       AssertionError: assert 'hypothesis[0].missing_evidence:entity_type=pathway' in ('hypothesis[0].terminal_goal_conflict:sample_cluster_assignment',)
+E        +  where ('hypothesis[0].terminal_goal_conflict:sample_cluster_assignment',) = OutcomeValidation(valid=False, issues=('hypothesis[0].terminal_goal_conflict:sample_cluster_assignment',), recoverable=False, evidence_shapes=()).issues
+
+tests/test_entailed_evidence.py:105: AssertionError
+=============================== warnings summary ===============================
+../../../../../../../Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+../../../../../../../Users/chenzhonghan/.local/lib/python3.12/site-packages/starlette/testclient.py:51
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/starlette/testclient.py:51: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[40]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[60]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[90]
+  /opt/anaconda3/lib/python3.12/pty.py:95: DeprecationWarning: This process (pid=61220) is multi-threaded, use of forkpty() may lead to deadlocks in the child.
+    pid, fd = os.forkpty()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_entailed_evidence.py::test_an_artifact_that_permits_several_entities_still_needs_evidence
+1 failed, 2092 passed, 35 skipped, 5 warnings in 60.20s (0:01:00)

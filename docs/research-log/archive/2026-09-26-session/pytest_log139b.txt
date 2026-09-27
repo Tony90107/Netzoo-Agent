@@ -1,0 +1,85 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+.......................F................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+.............F.......................................................... [ 23%]
+..................................ssssssssssssssssssssssssssssssssss.... [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+.......................s................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+........................................                                 [100%]
+=================================== FAILURES ===================================
+___________ test_scoring_the_ambiguous_answer_costs_no_provider_call ___________
+
+    def test_scoring_the_ambiguous_answer_costs_no_provider_call():
+        """It is produced deterministically; paying for it would be the reason to skip it."""
+        result, provider = row()
+    
+        assert result["provider_calls"] == len(provider.calls)
+        # Interpreter, one field-scoped review, bounded discriminator, intent.
+>       assert [schema.__name__ for schema, _ in provider.calls] == [
+            "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
+        ]
+E       AssertionError: assert ['SemanticInt...ditionClaims'] == ['SemanticInt...tentDecision']
+E         
+E         Left contains one more item: 'SelectionConditionClaims'
+E         Use -v to get more diff
+
+tests/test_ambiguous_guidance_is_scored.py:141: AssertionError
+__________________ test_contract_model_schemas_are_unchanged ___________________
+
+    def test_contract_model_schemas_are_unchanged():
+        for name, expected in SCHEMA_DIGESTS.items():
+            payload = json.dumps(
+                getattr(contracts, name).model_json_schema(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+>           assert hashlib.sha256(payload.encode()).hexdigest() == expected, name
+E           AssertionError: TaskDecision
+E           assert 'dcaf4f6a1629...1bfa181fc5ade' == '8a42af2fe950...faa1cb019240b'
+E             
+E             - 8a42af2fe950ea22247a087dad24b295ed84126d9b148ec03e2faa1cb019240b
+E             + dcaf4f6a1629a4f50528ac01db786427a8422633a08b2b1bee81bfa181fc5ade
+
+tests/test_contracts_package.py:239: AssertionError
+=============================== warnings summary ===============================
+../../../.local/lib/python3.12/site-packages/pytz/tzinfo.py:27
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+../../../.local/lib/python3.12/site-packages/starlette/testclient.py:51
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/starlette/testclient.py:51: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[40]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[60]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[90]
+  /opt/anaconda3/lib/python3.12/pty.py:95: DeprecationWarning: This process (pid=38322) is multi-threaded, use of forkpty() may lead to deadlocks in the child.
+    pid, fd = os.forkpty()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_ambiguous_guidance_is_scored.py::test_scoring_the_ambiguous_answer_costs_no_provider_call
+FAILED tests/test_contracts_package.py::test_contract_model_schemas_are_unchanged
+2 failed, 2091 passed, 35 skipped, 5 warnings in 57.36s

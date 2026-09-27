@@ -12267,3 +12267,29 @@ Log 139／141 加入的條件推薦呼叫（`selection_conditions`）在 intent 
 
 `--max-calls` 的事前估計仍以每個 trial 3 次計算（`len(cases) * repeat * 3`），實際 legacy 最多 5 次。
 這是花費上限的預檢；改成 5 會讓目前慣用的 `--max-calls 300`（27 題 ×3）被拒跑，所以本輪不改，留待使用者決定。
+
+## Log 206｜研究資料從 /tmp 搬進 repo
+
+日期／時區：2026-09-27，Asia/Taipei。不改任何路由或 agent 程式碼。
+
+### 為什麼
+
+Log 136 以來的實跑 trace、盲測語料、評分與重放腳本都存在各 session 的 `/private/tmp/…/scratchpad/`，重開機可能被清掉；
+清掉之後，research log 中大量「重放錄下的 N 次…」都無法再驗證，也無法與新的實跑比較。
+
+### 做了什麼
+
+- `docs/research-log/archive/`：三個 session 中 repo 裡還沒有的檔案共 199 個（另 8 個已在 repo，只記在索引），原始約 78 MB；
+  超過 200 kB 的 JSON 以 gzip 壓縮，合計 12.5 MB。**每個檔案解壓後都與原檔逐位元組相同**（199／199）。
+  `_index.json` 逐檔記錄來源與 metadata；README 說明對應的 Log。比對網格（約 840 MB）刻意不保存，任何 commit 都能重新產生。
+- `docs/research-log/blind/`：盲測語料（英、中）、`expectations.json`（依測試文件寫出每題可接受／禁止的工作流程與 Case 10 必須的回覆說明）、
+  `score_blind.py`。語料的 `expected` 仍是佔位值，因為 `RoutingExpectation` 只能寫一種狀態，而多題接受「exact 或平手後推薦」。
+  評分器重現了既有結論：Log 179 的 trace → 20／5／5；Log 203 的 trace → 28／1／1。
+- `docs/research-log/tools/`：`traces.py`（讀一般或壓縮的報告）、`fingerprint.py`、`grids.py`、`scan_fallbacks.py`、`replay_fallbacks.py`、`replay_replies.py`。
+- traced harness 原本寫死 `/Users/chenzhonghan/…` 的絕對路徑，改為相對於檔案位置。
+
+### 搬移時發現的問題（下一項處理）
+
+以 `replay_replies.py` 重放**全部** 563 個錄下的平手回覆（之前只重放 legacy 的紀錄）：**39 個以語言守衛的 `ValueError` 崩潰，全部來自 claims 契約的紀錄**。
+claims 契約下，模型對中文請求把 `assumptions`（51 個決策）與 `display_entities`（36 個）寫成中文，平手回覆把它們放進 `_ui_text` 檢查的模板。
+legacy＋mini 的紀錄中 0 次，所以 Log 192 的稽核把它列為「MODEL 類、未觀察到」。這會直接影響接下來的契約嚴格化（claims 是 strict 契約）。

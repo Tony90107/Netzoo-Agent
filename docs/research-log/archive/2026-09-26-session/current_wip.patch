@@ -1,0 +1,135 @@
+diff --git a/scripts/netzoo_agent_core/routing/capability_compatibility.py b/scripts/netzoo_agent_core/routing/capability_compatibility.py
+index 66f34c9..7332ae8 100644
+--- a/scripts/netzoo_agent_core/routing/capability_compatibility.py
++++ b/scripts/netzoo_agent_core/routing/capability_compatibility.py
+@@ -101,14 +101,27 @@ def _supported_artifacts(capability: OutputCapabilityDefinition) -> frozenset[st
+ def _supported_entities(
+     artifact_type: str,
+     capability: OutputCapabilityDefinition,
++    granularity: str = _UNKNOWN,
+ ) -> frozenset[str]:
+-    """Return entity support for the particular artifact being requested."""
++    """Return entity support for the particular artifact being requested.
++
++    In a sample-specific request, ``sample`` names the granularity axis -- one
++    result per sample -- not a node type of the result. A capability that
++    declares ``sample_specific`` already supports that axis, so it supports the
++    entity for that request (Log 136). The capability declaration itself is
++    unchanged, which keeps the ranking terms of Log 133/135 untouched.
++    """
+     if artifact_type == capability.artifact_type or artifact_type == _UNKNOWN:
+-        return capability.entity_types
+-    semantics = ARTIFACT_SEMANTICS.get(artifact_type)
+-    if artifact_type in _supported_artifacts(capability) and semantics is not None:
+-        return semantics.entities or capability.entity_types
+-    return capability.entity_types
++        supported = capability.entity_types
++    else:
++        semantics = ARTIFACT_SEMANTICS.get(artifact_type)
++        if artifact_type in _supported_artifacts(capability) and semantics is not None:
++            supported = semantics.entities or capability.entity_types
++        else:
++            supported = capability.entity_types
++    if granularity == "sample_specific" and "sample_specific" in capability.granularities:
++        return supported | {"sample"}
++    return supported
+ 
+ 
+ def _accepts_inputs(
+@@ -232,7 +245,9 @@ def _matches(
+         and outcome.artifact_type in _supported_artifacts(capability)
+         and outcome.granularity in capability.granularities
+         and requested_entities.issubset(
+-            _supported_entities(outcome.artifact_type, capability)
++            _supported_entities(
++                outcome.artifact_type, capability, outcome.granularity,
++            )
+         )
+         and set(outcome.regulator_types).issubset(capability.regulator_types)
+         and set(outcome.target_types).issubset(capability.target_types)
+@@ -266,7 +281,9 @@ def _partially_compatible(
+         )
+         and _known_set_matches(
+             outcome.entity_types,
+-            _supported_entities(outcome.artifact_type, capability),
++            _supported_entities(
++                outcome.artifact_type, capability, outcome.granularity,
++            ),
+         )
+         and _known_set_matches(outcome.regulator_types, capability.regulator_types)
+         and _known_set_matches(outcome.target_types, capability.target_types)
+diff --git a/scripts/netzoo_agent_core/routing/clarification_planner.py b/scripts/netzoo_agent_core/routing/clarification_planner.py
+index b250b71..8e29b9d 100644
+--- a/scripts/netzoo_agent_core/routing/clarification_planner.py
++++ b/scripts/netzoo_agent_core/routing/clarification_planner.py
+@@ -122,6 +122,37 @@ def _outcome_is_unresolved(
+     return False
+ 
+ 
++def _dimensions_settled_by(
++    outcomes: Sequence[RequestedOutcome],
++    capabilities: Mapping[RecommendedAction, OutputCapabilityDefinition],
++) -> set[str]:
++    """Dimensions the request already fixed to a value every candidate supports.
++
++    Candidates can still differ in what they *declare* there -- one may also
++    write a p-value matrix or also support aggregate output -- but asking the
++    user about a value they already stated separates nothing they care about
++    (Log 136).
++    """
++    from .capability_compatibility import _supported_artifacts
++
++    settled: set[str] = set()
++    if not outcomes:
++        return settled
++    artifacts = {item.artifact_type for item in outcomes}
++    if len(artifacts) == 1 and _UNKNOWN not in artifacts:
++        artifact = next(iter(artifacts))
++        if all(artifact in _supported_artifacts(capability)
++               for capability in capabilities.values()):
++            settled.add("artifact_type")
++    granularities = {item.granularity for item in outcomes}
++    if len(granularities) == 1 and granularities <= {"aggregate", "sample_specific"}:
++        granularity = next(iter(granularities))
++        if all(granularity in capability.granularities
++               for capability in capabilities.values()):
++            settled.add("granularity")
++    return settled
++
++
+ def _label_values(dimension: str, values: tuple[str, ...]) -> str:
+     if dimension == "artifact_type":
+         return " + ".join(value.replace("_", " ") for value in values)
+@@ -220,6 +251,8 @@ class ClarificationPlanner:
+             )
+             algorithm_values[action] = tuple(distinctive[:1])
+         value_sets["algorithm"] = algorithm_values
++        for dimension in _dimensions_settled_by(outcomes, capabilities):
++            value_sets.pop(dimension, None)
+ 
+         differences = []
+         # A small cost model keeps questions at the user's scientific altitude:
+diff --git a/scripts/netzoo_agent_core/routing/requested_outcome_matching.py b/scripts/netzoo_agent_core/routing/requested_outcome_matching.py
+index 377ca68..92b3bb8 100644
+--- a/scripts/netzoo_agent_core/routing/requested_outcome_matching.py
++++ b/scripts/netzoo_agent_core/routing/requested_outcome_matching.py
+@@ -91,7 +91,7 @@ def _alternative_actions(
+         ):
+             continue
+         entity_overlap = requested_entities & _supported_entities(
+-            outcome.artifact_type, capability
++            outcome.artifact_type, capability, outcome.granularity
+         )
+         if not entity_overlap:
+             continue
+@@ -131,7 +131,9 @@ def _mismatch_dimensions(
+         mismatches.append("granularity")
+     requested_entities = set(outcome.entity_types) - {_UNKNOWN}
+     if requested_entities and not any(
+-        requested_entities.issubset(_supported_entities(outcome.artifact_type, item))
++        requested_entities.issubset(
++            _supported_entities(outcome.artifact_type, item, outcome.granularity)
++        )
+         for item in values
+     ):
+         mismatches.append("entity_types")

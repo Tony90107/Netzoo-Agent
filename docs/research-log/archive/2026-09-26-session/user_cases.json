@@ -1,0 +1,44 @@
+[
+ {
+  "id": "user-case3-bonobo",
+  "language": "en",
+  "category": "positive",
+  "prompt": "I only have expression data from a handful of patients (data/bonobo-toy/expression.tsv) and no prior files. I want to see how each patient's own gene co-expression structure differs, and ideally know which connections are trustworthy in that particular patient.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_bonobo"
+   ],
+   "input_artifacts": [
+    "expression_matrix"
+   ],
+   "artifact_type": "coexpression_network",
+   "granularity": "sample_specific"
+  }
+ },
+ {
+  "id": "user-case4-lioness-panda",
+  "language": "en",
+  "category": "positive",
+  "prompt": "data/lioness-toy/ has expression, motif and PPI files. I believe each patient's regulatory wiring is different, and later I want to relate each person's per-TF regulatory strength over its targets to survival time.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_lioness_panda"
+   ],
+   "input_artifacts": [
+    "expression_matrix"
+   ],
+   "artifact_type": "regulatory_network",
+   "granularity": "sample_specific",
+   "required_discriminators": {
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ]
+   }
+  }
+ }
+]

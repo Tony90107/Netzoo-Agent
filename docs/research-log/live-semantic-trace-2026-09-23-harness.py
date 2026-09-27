@@ -5,7 +5,7 @@ parsed/parsing_error) and every recorder event payload. Never records credential
 """
 import json, os, sys
 from pathlib import Path
-ROOT = Path("/Users/chenzhonghan/Documents/LLM AGENT/netzoo_agent")
+ROOT = Path(__file__).resolve().parents[2]  # the repository root, wherever it is checked out
 sys.path.insert(0, str(ROOT / "scripts"))
 import evaluate_routing as er
 from netzoo_agent_core.llm import build_llm, validate_router_model

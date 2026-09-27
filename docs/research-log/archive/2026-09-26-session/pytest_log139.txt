@@ -1,0 +1,1212 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+....................F.F..FF..FFFF....................................... [ 10%]
+.......................F................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+.............F.......................................................... [ 23%]
+..................................ssssssssssssssssssssssssssssssssss.... [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+...............................................FF....................FF. [ 37%]
+...........F............................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+.................FFF.................................................... [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+.......................s................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+........................................                                 [100%]
+=================================== FAILURES ===================================
+_ LangGraphHarnessIntegrationTests.test_explicit_sample_specific_guidance_uses_terminal_workflow_directly _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_explicit_sample_specific_guidance_uses_terminal_workflow_directly>
+build_llm = <MagicMock name='build_llm' id='6093060816'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_explicit_sample_specific_guidance_uses_terminal_workflow_directly(
+        self, build_llm
+    ):
+        motivating_request = (
+            "if i want to get sample specific mi-RNA network data,what tools do i need?"
+        )
+        captured = []
+    
+        def hypothesis(granularity, confidence, assumption):
+            return agent.OutcomeHypothesis(
+                outcome=agent.RequestedOutcome(
+                    operation="infer",
+                    artifact_type="regulatory_network",
+                    entity_types=["tf", "mirna", "gene"],
+                    display_entities=["TF", "miRNA", "gene"],
+                    regulator_types=["mirna"],
+                    target_types=["gene"],
+                    granularity=granularity,
+                    unresolved_dimensions=[],
+                ),
+                confidence=confidence,
+                evidence=[
+                    agent.OutcomeEvidence(
+                        dimension="operation",
+                        value="infer",
+                        source="inferred",
+                        rationale="The user asks which tools produce the network.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="artifact_type",
+                        value="regulatory_network",
+                        source="inferred",
+                        rationale="The requested object is a miRNA network.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="entity_type",
+                        value="tf",
+                        source="inferred",
+                        rationale="The aggregate prior may include TF regulators.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="regulator_type",
+                        value="mirna",
+                        source="inferred",
+                        rationale="The requested regulator is miRNA.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="target_type",
+                        value="gene",
+                        source="inferred",
+                        rationale="The requested network targets genes.",
+                    ),
+                    agent.OutcomeEvidence(
+                        dimension="granularity",
+                        value=granularity,
+                        source="inferred",
+                        rationale="The Router supplied this granularity.",
+                    ),
+                ],
+                assumptions=[assumption],
+            )
+    
+        class AmbiguousSemanticInterpreter:
+            def invoke(self, _messages):
+                return agent.SemanticInterpretation(
+                    request_mode="guidance",
+                    semantic_goal="miRNA regulatory network with unresolved granularity",
+                    outcome_hypotheses=[
+                        hypothesis(
+                            "sample_specific",
+                            0.9,
+                            "The user has not supplied input files yet.",
+                        ),
+                        hypothesis(
+                            "aggregate",
+                            0.8,
+                            "Aggregate output may also be useful.",
+                        ),
+                    ],
+                )
+    
+        class AnswerIntentRouter:
+            def invoke(self, _messages):
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.9,
+                    reason="The user asks which tools are needed.",
+                )
+    
+        class RouterProvider:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return AmbiguousSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
+                if schema in _REVIEW_SCHEMAS:
+                    return _SemanticReviewAdapter(AmbiguousSemanticInterpreter())
+                if schema is agent.IntentDecision:
+                    return AnswerIntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+    
+        class GuidanceResponse:
+            def invoke(self, messages):
+                captured.extend(messages)
+                return agent.AIMessage(
+                    content=(
+                        "Use PUMA to build the aggregate regulatory network, then "
+                        "LIONESS-PUMA to estimate one network per sample.\n\n"
+                        "No files were inspected and no analysis ran."
+                    )
+                )
+    
+        build_llm.side_effect = [RouterProvider(), GuidanceResponse()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3797: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.test_explicit_sample_specific_guidance_uses_terminal_workflow_directly.<locals>.RouterProvider object at 0x16ae7d5b0>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return AmbiguousSemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(AmbiguousSemanticInterpreter())
+        if schema is agent.IntentDecision:
+            return AnswerIntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3781: AssertionError
+_ LangGraphHarnessIntegrationTests.test_graph_runs_plan_execute_evaluate_loop __
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_graph_runs_plan_execute_evaluate_loop>
+build_llm = <MagicMock name='build_llm' id='6090311344'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_graph_runs_plan_execute_evaluate_loop(self, build_llm):
+        build_llm.return_value = self.FakeLLM()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            episode_store = agent.EpisodeStore(root / "episodes")
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=episode_store,
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3835: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.FakeLLM object at 0x16b02f170>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(
+                LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+            )
+        if schema is agent.IntentDecision:
+            return LangGraphHarnessIntegrationTests.FakeIntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3214: AssertionError
+_ LangGraphHarnessIntegrationTests.test_guidance_response_does_not_duplicate_cli_follow_up_question _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_guidance_response_does_not_duplicate_cli_follow_up_question>
+build_llm = <MagicMock name='build_llm' id='6093049776'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_guidance_response_does_not_duplicate_cli_follow_up_question(
+        self, build_llm
+    ):
+        class GuidanceSemanticInterpreter:
+            def invoke(self, _messages):
+                return agent.SemanticInterpretation(
+                    request_mode="guidance",
+                    semantic_goal="sample-specific miRNA regulatory network",
+                    outcome_hypotheses=[
+                        agent.OutcomeHypothesis(
+                            outcome=agent.RequestedOutcome(
+                                operation="infer",
+                                artifact_type="regulatory_network",
+                                entity_types=["mirna", "gene"],
+                                regulator_types=["mirna"],
+                                target_types=["gene"],
+                                granularity="sample_specific",
+                                unresolved_dimensions=[],
+                            ),
+                            confidence=0.99,
+                            evidence=[
+                                agent.OutcomeEvidence(
+                                    dimension=dimension,
+                                    value=value,
+                                    source="inferred",
+                                    rationale="The request entails this scientific dimension.",
+                                )
+                                for dimension, value in (
+                                    ("operation", "infer"),
+                                    ("artifact_type", "regulatory_network"),
+                                    ("regulator_type", "mirna"),
+                                    ("target_type", "gene"),
+                                    ("granularity", "sample_specific"),
+                                )
+                            ],
+                        )
+                    ],
+                )
+    
+        class GuidanceIntentRouter:
+            def invoke(self, _messages):
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.99,
+                    reason="Guidance was requested.",
+                )
+    
+        class GuidanceLLM:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return GuidanceSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
+                if schema in _REVIEW_SCHEMAS:
+                    return _SemanticReviewAdapter(GuidanceSemanticInterpreter())
+                if schema is agent.IntentDecision:
+                    return GuidanceIntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+    
+            def invoke(self, _messages):
+                return agent.AIMessage(
+                    content=(
+                        "Use PUMA followed by LIONESS-PUMA.\n\n"
+                        "Required inputs: expression, prior, PPI, and miRNA list.\n\n"
+                        "Would you like to proceed with this workflow?"
+                    )
+                )
+    
+        build_llm.return_value = GuidanceLLM()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3656: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.test_guidance_response_does_not_duplicate_cli_follow_up_question.<locals>.GuidanceLLM object at 0x16af39b20>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return GuidanceSemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(GuidanceSemanticInterpreter())
+        if schema is agent.IntentDecision:
+            return GuidanceIntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3642: AssertionError
+_ LangGraphHarnessIntegrationTests.test_inconsistent_semantics_are_repaired_before_registry_matching _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_inconsistent_semantics_are_repaired_before_registry_matching>
+build_llm = <MagicMock name='build_llm' id='6088550272'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_inconsistent_semantics_are_repaired_before_registry_matching(
+        self, build_llm
+    ):
+        call_order = []
+    
+        class SemanticInterpreter:
+            def __init__(self):
+                self.calls = 0
+    
+            def invoke(self, messages):
+                self.calls += 1
+                call_order.append(f"semantic_interpreter_{self.calls}")
+                if self.calls == 1:
+                    return {
+                        "semantic_goal": "tools for a sample-specific miRNA network",
+                        "outcome_hypotheses": [
+                            {
+                                "outcome": {
+                                    "operation": "unknown",
+                                    "artifact_type": "unknown",
+                                    "entity_types": ["mirna"],
+                                    "display_entities": [],
+                                    "regulator_types": ["mirna"],
+                                    "target_types": ["unknown"],
+                                    "granularity": "not_applicable",
+                                    "unresolved_dimensions": [
+                                        "artifact_type",
+                                        "operation",
+                                    ],
+                                },
+                                "confidence": 0.8,
+                                "evidence": [
+                                    {
+                                        "dimension": "granularity",
+                                        "value": "not_applicable",
+                                        "source": "explicit",
+                                        "text_span": "sample specific",
+                                        "rationale": "The sample context is explicit.",
+                                    },
+                                    {
+                                        "dimension": "regulator_type",
+                                        "value": "mirna",
+                                        "source": "explicit",
+                                        "text_span": "mi-RNA regulator",
+                                        "rationale": "The regulator is explicit.",
+                                    },
+                                ],
+                                "assumptions": [],
+                            }
+                        ],
+                    }
+                rendered = "\n".join(str(message.content) for message in messages)
+                if "inconsistent_not_applicable_outcome" not in rendered:
+                    raise AssertionError("semantic retry did not receive validator evidence")
+                return {
+                    "semantic_goal": "sample-specific miRNA regulatory network",
+                    "outcome_hypotheses": [
+                        {
+                            "outcome": {
+                                "operation": "infer",
+                                "artifact_type": "regulatory_network",
+                                "entity_types": ["mirna"],
+                                "display_entities": ["miRNA"],
+                                "regulator_types": ["mirna"],
+                                "target_types": [],
+                                "granularity": "sample_specific",
+                                "unresolved_dimensions": [],
+                            },
+                            "confidence": 0.99,
+                            "evidence": [
+                                {
+                                    "dimension": dimension,
+                                    "value": value,
+                                    "source": "inferred",
+                                    "rationale": "The request entails this dimension.",
+                                }
+                                for dimension, value in (
+                                    ("operation", "infer"),
+                                    ("artifact_type", "regulatory_network"),
+                                    ("regulator_type", "mirna"),
+                                    ("granularity", "sample_specific"),
+                                )
+                            ],
+                            "assumptions": [],
+                        }
+                    ],
+                }
+    
+        class IntentRouter:
+            def invoke(self, messages):
+                call_order.append("intent_router")
+                rendered = "\n".join(str(message.content) for message in messages)
+                if '"matched_actions":["run_lioness_puma"]' not in rendered:
+                    raise AssertionError("registry did not receive repaired semantics")
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.99,
+                    reason="The user asks which tools are needed.",
+                )
+    
+        semantic = SemanticInterpreter()
+    
+        class RoutingProvider:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return semantic
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
+                if schema in _REVIEW_SCHEMAS:
+                    return _SemanticReviewAdapter(semantic)
+                if schema is agent.IntentDecision:
+                    return IntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+    
+        class ResponseLLM:
+            def invoke(self, _messages):
+                return agent.AIMessage(
+                    content="Use PUMA followed by LIONESS-PUMA for this result."
+                )
+    
+        build_llm.side_effect = [RoutingProvider(), ResponseLLM()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3550: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.test_inconsistent_semantics_are_repaired_before_registry_matching.<locals>.RoutingProvider object at 0x16ae7d580>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return semantic
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(semantic)
+        if schema is agent.IntentDecision:
+            return IntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3539: AssertionError
+_ LangGraphHarnessIntegrationTests.test_plan_evaluator_blocks_forged_plan_before_executor _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_plan_evaluator_blocks_forged_plan_before_executor>
+build_llm = <MagicMock name='build_llm' id='6089019600'>
+build_plan = <MagicMock name='build_workflow_plan' id='6092272944'>
+execute_tool = <MagicMock name='execute_selected_tool' id='6088543840'>
+
+    @patch("netzoo_agent.execute_selected_tool")
+    @patch("netzoo_agent.build_workflow_plan")
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_plan_evaluator_blocks_forged_plan_before_executor(
+        self,
+        build_llm,
+        build_plan,
+        execute_tool,
+    ):
+        build_llm.return_value = self.FakeLLM()
+        policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
+        decision = agent.TaskDecision(
+            action="run_lioness_panda",
+            in_scope=True,
+            should_execute=True,
+            intent_type="run_analysis",
+            confidence=0.99,
+            reason="deterministic integration fixture",
+            expression_file="data/lioness-toy/expression.tsv",
+            motif_file="data/lioness-toy/motif-panda.tsv",
+            ppi_file="data/lioness-toy/ppi.tsv",
+            output_file="outputs/demo/panda.tsv",
+            lioness_output="outputs/demo/lioness-panda.tsv",
+        )
+        build_plan.return_value = agent.WorkflowPlan(
+            workflow="LIONESS-PANDA",
+            objective="forged plan",
+            decision=decision.model_dump(),
+            evidence=[
+                agent.InputEvidence(
+                    field=field_name,
+                    status="provided",
+                    value=getattr(decision, field_name),
+                    reason="integration fixture",
+                )
+                for field_name in agent.REQUIRED_INPUTS[decision.action]
+            ],
+            steps=[
+                agent.WorkflowStep(
+                    action="run_condor",
+                    purpose="A forged cross-workflow step.",
+                )
+            ],
+            status="ready",
+            policy_hash=policy.policy_hash,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                project_policy=policy,
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3930: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.FakeLLM object at 0x16aef15b0>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(
+                LangGraphHarnessIntegrationTests.FakeSemanticInterpreter()
+            )
+        if schema is agent.IntentDecision:
+            return LangGraphHarnessIntegrationTests.FakeIntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3214: AssertionError
+_ LangGraphHarnessIntegrationTests.test_preference_requires_confirmation_before_profile_write _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_preference_requires_confirmation_before_profile_write>
+build_llm = <MagicMock name='build_llm' id='6087482192'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_preference_requires_confirmation_before_profile_write(self, build_llm):
+        class PreferenceSemanticInterpreter:
+            def invoke(self, _messages):
+                return agent.SemanticInterpretation(
+                    request_mode="guidance",
+                    semantic_goal="persistent preference request",
+                    outcome_hypotheses=[
+                        agent.OutcomeHypothesis(
+                            outcome=agent.RequestedOutcome(
+                                operation="unknown",
+                                artifact_type="unknown",
+                                entity_types=[],
+                                regulator_types=[],
+                                target_types=[],
+                                granularity="not_applicable",
+                                unresolved_dimensions=[],
+                            ),
+                            confidence=0.99,
+                            evidence=[],
+                            assumptions=[],
+                        )
+                    ],
+                )
+    
+        class PreferenceIntentRouter:
+            def invoke(self, _messages):
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.99,
+                    reason="Explicit persistent preference request",
+                )
+    
+        class PreferenceLLM:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return PreferenceSemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
+                if schema in _REVIEW_SCHEMAS:
+                    return _SemanticReviewAdapter(PreferenceSemanticInterpreter())
+                if schema is agent.IntentDecision:
+                    return PreferenceIntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+    
+            def invoke(self, _messages):
+                raise AssertionError("confirmation response must be deterministic")
+    
+        build_llm.return_value = PreferenceLLM()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile_store = agent.UserProfileStore(root / "profiles")
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_id="alice",
+                profile_store=profile_store,
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:4069: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.test_preference_requires_confirmation_before_profile_write.<locals>.PreferenceLLM object at 0x16ad7b740>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return PreferenceSemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(PreferenceSemanticInterpreter())
+        if schema is agent.IntentDecision:
+            return PreferenceIntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:4060: AssertionError
+_ LangGraphHarnessIntegrationTests.test_router_structured_output_does_not_create_parallel_raw_branch _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_router_structured_output_does_not_create_parallel_raw_branch>
+build_llm = <MagicMock name='build_llm' id='6090662608'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_router_structured_output_does_not_create_parallel_raw_branch(
+        self, build_llm
+    ):
+        calls = []
+    
+        class CapturingLLM:
+            def with_structured_output(self, schema, **kwargs):
+                calls.append({"schema": schema.__name__, **kwargs})
+                return types.SimpleNamespace()
+    
+        build_llm.return_value = CapturingLLM()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+    
+        # Only the semantic passes keep the raw response, and only so that
+        # invalid function arguments survive for exactly one reviewer call.
+        # No other role gains a parallel raw branch.
+        raw_branches = {
+            item["schema"]: item["include_raw"] for item in calls
+        }
+>       self.assertEqual(
+            raw_branches,
+            {
+                "SemanticInterpretation": True,
+                "SemanticReview": True,
+                # 2026-09-06: the patch binding is a third structured-output
+                # adapter and must include the raw reply for the same reason
+                # the other two do.
+                "SemanticPatch": True,
+                # The bounded tie-breaker also retains invalid function
+                # arguments so diagnostics can fail closed.
+                "SemanticDiscriminator": True,
+                "IntentDecision": False,
+            },
+        )
+E       AssertionError: {'Sem[101 chars]rue, 'SelectionConditionClaims': True, 'IntentDecision': False} != {'Sem[101 chars]rue, 'IntentDecision': False}
+E         {'IntentDecision': False,
+E       -  'SelectionConditionClaims': True,
+E          'SemanticDiscriminator': True,
+E          'SemanticInterpretation': True,
+E          'SemanticPatch': True,
+E          'SemanticReview': True}
+
+tests/test_agent_gate.py:3269: AssertionError
+_ LangGraphHarnessIntegrationTests.test_semantic_validation_registry_and_intent_run_in_authority_order _
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests testMethod=test_semantic_validation_registry_and_intent_run_in_authority_order>
+build_llm = <MagicMock name='build_llm' id='6088504288'>
+
+    @patch("netzoo_agent.build_llm")
+    @unittest.skipIf(
+        agent.StateGraph is None, "LangGraph runtime is available in Docker"
+    )
+    def test_semantic_validation_registry_and_intent_run_in_authority_order(
+        self, build_llm
+    ):
+        call_order = []
+    
+        class SemanticInterpreter:
+            def invoke(self, _messages):
+                call_order.append("semantic_interpreter")
+                return agent.SemanticInterpretation(
+                    request_mode="guidance",
+                    semantic_goal="sample-specific miRNA regulatory network",
+                    outcome_hypotheses=[
+                        agent.OutcomeHypothesis(
+                            outcome=agent.RequestedOutcome(
+                                operation="infer",
+                                artifact_type="regulatory_network",
+                                entity_types=["mirna"],
+                                regulator_types=["mirna"],
+                                target_types=[],
+                                granularity="sample_specific",
+                                unresolved_dimensions=[],
+                            ),
+                            confidence=0.99,
+                            evidence=[
+                                agent.OutcomeEvidence(
+                                    dimension="operation",
+                                    # The evidence value must name the filled
+                                    # operation; asking which tool produces a
+                                    # network is still an inference outcome.
+                                    value="infer",
+                                    source="inferred",
+                                    rationale="The user is asking which tools can produce the network.",
+                                ),
+                                agent.OutcomeEvidence(
+                                    dimension="artifact_type",
+                                    value="regulatory_network",
+                                    source="explicit",
+                                    text_span="regulatory network",
+                                    rationale="The requested artifact is explicit.",
+                                ),
+                                agent.OutcomeEvidence(
+                                    dimension="regulator_type",
+                                    value="mirna",
+                                    source="explicit",
+                                    text_span="miRNA",
+                                    rationale="The regulator type is explicit.",
+                                ),
+                                agent.OutcomeEvidence(
+                                    dimension="granularity",
+                                    value="sample_specific",
+                                    source="explicit",
+                                    text_span="sample-specific",
+                                    rationale="The granularity is explicit.",
+                                ),
+                            ],
+                        )
+                    ],
+                )
+    
+        class IntentRouter:
+            def invoke(self, messages):
+                call_order.append("intent_router")
+                payload = "\n".join(str(message.content) for message in messages)
+                self.assert_match(payload)
+                return agent.IntentDecision(
+                    mode="answer",
+                    confidence=0.99,
+                    reason="The user asks which tools are needed.",
+                )
+    
+            @staticmethod
+            def assert_match(payload):
+                if '"matched_actions":["run_lioness_puma"]' not in payload:
+                    raise AssertionError("intent did not receive the registry match")
+    
+        class RoutingProvider:
+            def with_structured_output(self, schema, **_kwargs):
+                if schema is agent.SemanticInterpretation:
+                    return SemanticInterpreter()
+                if schema is SemanticDiscriminator:
+                    return _SemanticDiscriminatorAdapter()
+                if schema in _REVIEW_SCHEMAS:
+                    return _SemanticReviewAdapter(SemanticInterpreter())
+                if schema is agent.IntentDecision:
+                    return IntentRouter()
+                raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+    
+        class ResponseLLM:
+            def invoke(self, _messages):
+                return agent.AIMessage(
+                    content="Use PUMA followed by LIONESS-PUMA for this result."
+                )
+    
+        build_llm.side_effect = [RoutingProvider(), ResponseLLM()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+>           app = agent.build_graph(
+                "fake",
+                0.0,
+                profile_store=agent.UserProfileStore(root / "profiles"),
+                episode_store=agent.EpisodeStore(root / "episodes"),
+                semantic_contract="legacy",
+                review_policy="always",
+            )
+
+tests/test_agent_gate.py:3388: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_agent_gate.LangGraphHarnessIntegrationTests.test_semantic_validation_registry_and_intent_run_in_authority_order.<locals>.RoutingProvider object at 0x16ae066f0>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is agent.SemanticInterpretation:
+            return SemanticInterpreter()
+        if schema is SemanticDiscriminator:
+            return _SemanticDiscriminatorAdapter()
+        if schema in _REVIEW_SCHEMAS:
+            return _SemanticReviewAdapter(SemanticInterpreter())
+        if schema is agent.IntentDecision:
+            return IntentRouter()
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_agent_gate.py:3377: AssertionError
+___________ test_scoring_the_ambiguous_answer_costs_no_provider_call ___________
+
+    def test_scoring_the_ambiguous_answer_costs_no_provider_call():
+        """It is produced deterministically; paying for it would be the reason to skip it."""
+        result, provider = row()
+    
+        assert result["provider_calls"] == len(provider.calls)
+        # Interpreter, one field-scoped review, bounded discriminator, intent.
+>       assert [schema.__name__ for schema, _ in provider.calls] == [
+            "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
+        ]
+E       AssertionError: assert ['SemanticInt...ditionClaims'] == ['SemanticInt...tentDecision']
+E         
+E         Left contains one more item: 'SelectionConditionClaims'
+E         Use -v to get more diff
+
+tests/test_ambiguous_guidance_is_scored.py:141: AssertionError
+__________________ test_contract_model_schemas_are_unchanged ___________________
+
+    def test_contract_model_schemas_are_unchanged():
+        for name, expected in SCHEMA_DIGESTS.items():
+            payload = json.dumps(
+                getattr(contracts, name).model_json_schema(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+>           assert hashlib.sha256(payload.encode()).hexdigest() == expected, name
+E           AssertionError: TaskDecision
+E           assert 'dcaf4f6a1629...1bfa181fc5ade' == '8a42af2fe950...faa1cb019240b'
+E             
+E             - 8a42af2fe950ea22247a087dad24b295ed84126d9b148ec03e2faa1cb019240b
+E             + dcaf4f6a1629a4f50528ac01db786427a8422633a08b2b1bee81bfa181fc5ade
+
+tests/test_contracts_package.py:239: AssertionError
+____ test_graph_binds_interpreter_and_reviewer_before_narrow_intent_router _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x16b4af350>
+
+    def test_graph_binds_interpreter_and_reviewer_before_narrow_intent_router(monkeypatch):
+        factory = importlib.import_module("netzoo_agent_core.graph.factory")
+        bound_schemas = []
+    
+        class RoutingProvider:
+            def with_structured_output(self, schema, **_kwargs):
+                bound_schemas.append(schema)
+                return SimpleNamespace()
+    
+        models = iter([RoutingProvider(), SimpleNamespace()])
+        monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+        monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+        monkeypatch.setattr(factory, "ensure_graph_dependencies", lambda: None)
+        monkeypatch.setattr(factory, "StateGraph", object())
+        monkeypatch.setattr(factory, "build_llm", lambda *_args, **_kwargs: next(models))
+        monkeypatch.setattr(factory, "compile_graph", lambda context, **_kwargs: context)
+    
+        factory.build_graph("fake", 0.0, router_model_name="fake")
+    
+        # 2026-09-06: the review pass gained a second binding. It is asked for a
+        # SemanticPatch when the first pass parsed and can be repaired field by
+        # field, and for a whole SemanticReview when there is nothing to patch onto.
+>       assert bound_schemas == [
+            legacy_agent.SemanticInterpretation,
+            SemanticReview,
+            SemanticPatch,
+            SemanticDiscriminator,
+            legacy_agent.IntentDecision,
+        ]
+E       AssertionError: assert [<class 'netz...entDecision'>] == [<class 'netz...entDecision'>]
+E         
+E         At index 4 diff: <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'> != <class 'netzoo_agent_core.contracts.decisions.IntentDecision'>
+E         Left contains one more item: <class 'netzoo_agent_core.contracts.decisions.IntentDecision'>
+E         Use -v to get more diff
+
+tests/test_graph_package.py:745: AssertionError
+_______ test_graph_can_assign_semantics_to_a_stronger_model_than_intent ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x171cf81d0>
+
+    def test_graph_can_assign_semantics_to_a_stronger_model_than_intent(monkeypatch):
+        factory = importlib.import_module("netzoo_agent_core.graph.factory")
+        bindings = []
+    
+        class Provider:
+            def __init__(self, role):
+                self.role = role
+    
+            def with_structured_output(self, schema, **_kwargs):
+                bindings.append((self.role, schema))
+                return SimpleNamespace()
+    
+        providers = iter([Provider("intent"), Provider("semantic"), SimpleNamespace()])
+        monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "cheap,strong")
+        monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+        monkeypatch.setattr(factory, "ensure_graph_dependencies", lambda: None)
+        monkeypatch.setattr(factory, "StateGraph", object())
+        monkeypatch.setattr(factory, "build_llm", lambda *_args, **_kwargs: next(providers))
+        monkeypatch.setattr(factory, "compile_graph", lambda context, **_kwargs: context)
+    
+        context = factory.build_graph(
+            "fake",
+            0.0,
+            router_model_name="cheap",
+            semantic_model_name="strong",
+        )
+    
+>       assert bindings == [
+            ("semantic", legacy_agent.SemanticInterpretation),
+            ("semantic", SemanticReview),
+            # 2026-09-06: the patch binding must stay on the semantic model, not the
+            # cheaper intent model. That is the point of this assertion.
+            ("semantic", SemanticPatch),
+            ("semantic", SemanticDiscriminator),
+            ("intent", legacy_agent.IntentDecision),
+        ]
+E       AssertionError: assert [('semantic',...ntDecision'>)] == [('semantic',...ntDecision'>)]
+E         
+E         At index 4 diff: ('semantic', <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>) != ('intent', <class 'netzoo_agent_core.contracts.decisions.IntentDecision'>)
+E         Left contains one more item: ('intent', <class 'netzoo_agent_core.contracts.decisions.IntentDecision'>)
+E         Use -v to get more diff
+
+tests/test_graph_package.py:781: AssertionError
+___________________ test_factory_is_dependency_assembly_only ___________________
+
+    def test_factory_is_dependency_assembly_only():
+        factory = importlib.import_module("netzoo_agent_core.graph.factory")
+        source = inspect.getsource(factory)
+>       assert len(source.splitlines()) <= 150
+E       assert 152 <= 150
+E        +  where 152 = len(['"""Public graph construction from validated runtime dependencies."""', '', 'from __future__ import annotations', '', 'from typing import Literal', '', ...])
+E        +    where ['"""Public graph construction from validated runtime dependencies."""', '', 'from __future__ import annotations', '', 'from typing import Literal', '', ...] = <built-in method splitlines of str object at 0x12cba3800>()
+E        +      where <built-in method splitlines of str object at 0x12cba3800> = '"""Public graph construction from validated runtime dependencies."""\n\nfrom __future__ import annotations\n\nfrom ty...return app.invoke(invocation)\n    except KeyboardInterrupt as error:\n        raise AgentTurnInterrupted from error\n'.splitlines
+
+tests/test_graph_package.py:1567: AssertionError
+_______________ test_graph_children_remain_responsibility_sized ________________
+
+    def test_graph_children_remain_responsibility_sized():
+        maximum_lines = {
+            "context": 140,
+            "execution": 230,
+            "factory": 150,
+            "policy_memory": 150,
+            "prompts": 125,
+            # The response node also owns the fail-closed router fallback renderer.
+            "response": 340,
+            "response_context": 140,
+            "routing_planning": 230,
+            "topology": 130,
+            "transitions": 70,
+        }
+        for module_name, maximum in maximum_lines.items():
+            module = importlib.import_module(f"netzoo_agent_core.graph.{module_name}")
+>           assert len(inspect.getsource(module).splitlines()) <= maximum, module_name
+E           AssertionError: factory
+E           assert 152 <= 150
+E            +  where 152 = len(['"""Public graph construction from validated runtime dependencies."""', '', 'from __future__ import annotations', '', 'from typing import Literal', '', ...])
+E            +    where ['"""Public graph construction from validated runtime dependencies."""', '', 'from __future__ import annotations', '', 'from typing import Literal', '', ...] = <built-in method splitlines of str object at 0x13cdac400>()
+E            +      where <built-in method splitlines of str object at 0x13cdac400> = '"""Public graph construction from validated runtime dependencies."""\n\nfrom __future__ import annotations\n\nfrom ty...return app.invoke(invocation)\n    except KeyboardInterrupt as error:\n        raise AgentTurnInterrupted from error\n'.splitlines
+E            +        where '"""Public graph construction from validated runtime dependencies."""\n\nfrom __future__ import annotations\n\nfrom ty...return app.invoke(invocation)\n    except KeyboardInterrupt as error:\n        raise AgentTurnInterrupted from error\n' = <function getsource at 0x103892fc0>(<module 'netzoo_agent_core.graph.factory' from '/Users/chenzhonghan/Documents/LLM AGENT/netzoo_agent/scripts/netzoo_agent_core/graph/factory.py'>)
+E            +          where <function getsource at 0x103892fc0> = inspect.getsource
+
+tests/test_graph_package.py:1591: AssertionError
+_____ test_graph_routes_semantics_before_intent_and_registry_owns_workflow _____
+
+tmp_path = PosixPath('/private/var/folders/77/mgcvrjws6z1fcfj7yrtzzcfc0000gn/T/pytest-of-chenzhonghan/pytest-374/test_graph_routes_semantics_be0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x16b4adc40>
+
+    @pytest.mark.skipif(
+        graph_module.StateGraph is None,
+        reason="LangGraph integration runs in the project container",
+    )
+    def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+        tmp_path: Path,
+        monkeypatch,
+    ):
+        monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+        monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+        pipeline_llm = StrictRoutingPipelineLLM()
+        response_llm = GuidanceResponseLLM()
+        models = iter([pipeline_llm, response_llm])
+        monkeypatch.setattr(
+            graph_module,
+            "build_llm",
+            lambda *_args, **_kwargs: next(models),
+        )
+        store = LocalTraceStore(tmp_path / "traces")
+        recorder = TraceRecorder(store)
+        run_id = recorder.start_run(session_id="pipeline-test", profile_id="default")
+>       app = build_graph(
+            "fake",
+            0.0,
+            router_model_name="fake",
+            profile_store=UserProfileStore(tmp_path / "profiles"),
+            episode_store=EpisodeStore(tmp_path / "episodes"),
+            trace_recorder=recorder,
+            semantic_contract="legacy",
+            review_policy="always",
+        )
+
+tests/test_graph_tracing.py:1043: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/netzoo_agent_core/graph/factory.py:104: in build_graph
+    selection_condition_adapter = semantic_llm.with_structured_output(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_graph_tracing.StrictRoutingPipelineLLM object at 0x16b4aeb70>
+schema = <class 'netzoo_agent_core.contracts.outcomes.SelectionConditionClaims'>
+_kwargs = {'include_raw': True, 'method': 'function_calling'}
+
+    def with_structured_output(self, schema, **_kwargs):
+        if schema is SemanticInterpretation:
+            return SimpleNamespace(invoke=self._interpret)
+        if schema in _REVIEW_SCHEMAS:
+            return SimpleNamespace(invoke=self._review)
+        if schema is SemanticDiscriminator:
+            return SimpleNamespace(invoke=lambda _messages: SemanticDiscriminator())
+        if schema is IntentDecision:
+            return SimpleNamespace(invoke=self._route_intent)
+>       raise AssertionError(f"unexpected routing schema: {schema.__name__}")
+E       AssertionError: unexpected routing schema: SelectionConditionClaims
+
+tests/test_graph_tracing.py:702: AssertionError
+_ test_planning_model_dump_is_characterized[respond_only-decision0-Explain PANDA.-f6921dd0f0e559066dd4a8a5a9384ae516bf722f9f4c821fd911139e8dafdb4d] _
+
+case_name = 'respond_only'
+decision = TaskDecision(action='no_tool', in_scope=True, should_execute=False, intent_type='unknown', confidence=0.99, reason='Ex...lambda1=None, lambda2=None, library_name=None, library_id=None, docs_query=None, web_query=None, preference_updates=[])
+task = 'Explain PANDA.'
+expected = 'f6921dd0f0e559066dd4a8a5a9384ae516bf722f9f4c821fd911139e8dafdb4d'
+
+    @pytest.mark.parametrize(("case_name", "decision", "task", "expected"), PLANNING_CASES)
+    def test_planning_model_dump_is_characterized(case_name, decision, task, expected):
+        before = decision.model_dump(mode="json")
+        plan = planning.build_workflow_plan(decision, task)
+    
+>       assert _plan_digest(plan) == expected, case_name
+E       AssertionError: respond_only
+E       assert 'f2d212b84f01...40f203788a55e' == 'f6921dd0f0e5...1139e8dafdb4d'
+E         
+E         - f6921dd0f0e559066dd4a8a5a9384ae516bf722f9f4c821fd911139e8dafdb4d
+E         + f2d212b84f016d5083d4f5e03c726663bd0c8b4513b11a883ac40f203788a55e
+
+tests/test_planning_package.py:143: AssertionError
+_ test_planning_model_dump_is_characterized[retrieval-decision1-Search the web for current PANDA references.-c566bd2c2a0d8e2da9e9b92e31497a04a8525b1a201c0b56bcc901d4a2387184] _
+
+case_name = 'retrieval'
+decision = TaskDecision(action='web_search', in_scope=True, should_execute=True, intent_type='unknown', confidence=0.99, reason='...None, library_name=None, library_id=None, docs_query=None, web_query='current PANDA references', preference_updates=[])
+task = 'Search the web for current PANDA references.'
+expected = 'c566bd2c2a0d8e2da9e9b92e31497a04a8525b1a201c0b56bcc901d4a2387184'
+
+    @pytest.mark.parametrize(("case_name", "decision", "task", "expected"), PLANNING_CASES)
+    def test_planning_model_dump_is_characterized(case_name, decision, task, expected):
+        before = decision.model_dump(mode="json")
+        plan = planning.build_workflow_plan(decision, task)
+    
+>       assert _plan_digest(plan) == expected, case_name
+E       AssertionError: retrieval
+E       assert '33115ae35d40...d9827f4085caf' == 'c566bd2c2a0d...901d4a2387184'
+E         
+E         - c566bd2c2a0d8e2da9e9b92e31497a04a8525b1a201c0b56bcc901d4a2387184
+E         + 33115ae35d4063023c7e092547eed0e2a61d1444852876aa3a2d9827f4085caf
+
+tests/test_planning_package.py:143: AssertionError
+_ test_planning_model_dump_is_characterized[explicit_panda-decision2-Run PANDA with expression_file=data/study/expression.tsv motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv output_file=outputs/study/panda.tsv-b45bf5194298bc5d07d5f7121128971d799c64e91eca0a0628986c6f83bde26d] _
+
+case_name = 'explicit_panda'
+decision = TaskDecision(action='run_panda', in_scope=True, should_execute=True, intent_type='unknown', confidence=0.99, reason='R...lambda1=None, lambda2=None, library_name=None, library_id=None, docs_query=None, web_query=None, preference_updates=[])
+task = 'Run PANDA with expression_file=data/study/expression.tsv motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv output_file=outputs/study/panda.tsv'
+expected = 'b45bf5194298bc5d07d5f7121128971d799c64e91eca0a0628986c6f83bde26d'
+
+    @pytest.mark.parametrize(("case_name", "decision", "task", "expected"), PLANNING_CASES)
+    def test_planning_model_dump_is_characterized(case_name, decision, task, expected):
+        before = decision.model_dump(mode="json")
+        plan = planning.build_workflow_plan(decision, task)
+    
+>       assert _plan_digest(plan) == expected, case_name
+E       AssertionError: explicit_panda
+E       assert '6bc6c04f8c3d...a8208d617a47f' == 'b45bf5194298...86c6f83bde26d'
+E         
+E         - b45bf5194298bc5d07d5f7121128971d799c64e91eca0a0628986c6f83bde26d
+E         + 6bc6c04f8c3d0348fffd1a9151bad62cc5f6a60eefdafd4626ea8208d617a47f
+
+tests/test_planning_package.py:143: AssertionError
+=============================== warnings summary ===============================
+../../../.local/lib/python3.12/site-packages/pytz/tzinfo.py:27
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/pytz/tzinfo.py:27: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    _epoch = datetime.utcfromtimestamp(0)
+
+../../../.local/lib/python3.12/site-packages/starlette/testclient.py:51
+  /Users/chenzhonghan/.local/lib/python3.12/site-packages/starlette/testclient.py:51: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[40]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[60]
+tests/test_terminal_pty.py::test_fallback_next_step_is_complete_on_narrow_terminal_and_after_resize[90]
+  /opt/anaconda3/lib/python3.12/pty.py:95: DeprecationWarning: This process (pid=36437) is multi-threaded, use of forkpty() may lead to deadlocks in the child.
+    pid, fd = os.forkpty()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_explicit_sample_specific_guidance_uses_terminal_workflow_directly
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_graph_runs_plan_execute_evaluate_loop
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_guidance_response_does_not_duplicate_cli_follow_up_question
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_inconsistent_semantics_are_repaired_before_registry_matching
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_plan_evaluator_blocks_forged_plan_before_executor
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_preference_requires_confirmation_before_profile_write
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_router_structured_output_does_not_create_parallel_raw_branch
+FAILED tests/test_agent_gate.py::LangGraphHarnessIntegrationTests::test_semantic_validation_registry_and_intent_run_in_authority_order
+FAILED tests/test_ambiguous_guidance_is_scored.py::test_scoring_the_ambiguous_answer_costs_no_provider_call
+FAILED tests/test_contracts_package.py::test_contract_model_schemas_are_unchanged
+FAILED tests/test_graph_package.py::test_graph_binds_interpreter_and_reviewer_before_narrow_intent_router
+FAILED tests/test_graph_package.py::test_graph_can_assign_semantics_to_a_stronger_model_than_intent
+FAILED tests/test_graph_package.py::test_factory_is_dependency_assembly_only
+FAILED tests/test_graph_package.py::test_graph_children_remain_responsibility_sized
+FAILED tests/test_graph_tracing.py::test_graph_routes_semantics_before_intent_and_registry_owns_workflow
+FAILED tests/test_planning_package.py::test_planning_model_dump_is_characterized[respond_only-decision0-Explain PANDA.-f6921dd0f0e559066dd4a8a5a9384ae516bf722f9f4c821fd911139e8dafdb4d]
+FAILED tests/test_planning_package.py::test_planning_model_dump_is_characterized[retrieval-decision1-Search the web for current PANDA references.-c566bd2c2a0d8e2da9e9b92e31497a04a8525b1a201c0b56bcc901d4a2387184]
+FAILED tests/test_planning_package.py::test_planning_model_dump_is_characterized[explicit_panda-decision2-Run PANDA with expression_file=data/study/expression.tsv motif_file=data/study/motif.tsv ppi_file=data/study/ppi.tsv output_file=outputs/study/panda.tsv-b45bf5194298bc5d07d5f7121128971d799c64e91eca0a0628986c6f83bde26d]
+18 failed, 2075 passed, 35 skipped, 5 warnings in 62.05s (0:01:02)
