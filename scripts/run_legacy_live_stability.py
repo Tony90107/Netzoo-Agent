@@ -49,7 +49,7 @@ def main() -> int:
         "--review-policy", "when_needed",
         "--model", "openai/gpt-4o-mini",
         "--repeat", "3",
-        "--max-calls", "60",
+        "--max-calls", str(evaluate_routing.worst_case_calls(len(CASE_IDS), 3)),
         "--timeout", "60",
         "--trace-out", str(TRACE_PATH),
         "--json",

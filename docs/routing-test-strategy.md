@@ -120,19 +120,25 @@ These commands make billable provider requests and send the selected prompts to
 the configured provider. The bundled prompts are public, synthetic scenarios;
 do not add patient data, secrets or private paths to the corpus.
 
-Start with the three original reproduction prompts (at most 9 logical calls):
+Start with the three original reproduction prompts (at most 15 logical calls):
 
 ```bash
-python scripts/evaluate_routing.py --live --case original-q1 --case original-q2 --case original-q3 --max-calls 9 --json
+python scripts/evaluate_routing.py --live --case original-q1 --case original-q2 --case original-q3 --max-calls 15 --json
 ```
 
-Run all 14 cases three times for a repeatability check (at most 126 logical calls):
+Run all 39 cases three times for a repeatability check (at most 585 logical calls):
 
 ```bash
-python scripts/evaluate_routing.py --live --repeat 3 --max-calls 126 --json
+python scripts/evaluate_routing.py --live --repeat 3 --max-calls 585 --json
 ```
 
-The default call cap is 12. Oversized runs are rejected before provider creation.
+`--max-calls` is checked against the worst case before provider creation:
+five calls per trial -- at most four routing calls (interpreter, reviewer or
+patch, discriminator, intent) and one experimental-condition call, the same
+bounds the scorer reports as `call_limit` failures -- or four in a repair
+replay, whose injected first pass is not a provider call. Typical legacy trials
+make fewer (2.84 on average over 369 recorded live trials; 35 made five). The
+default call cap is 12. Oversized runs are rejected before provider creation.
 `--timeout` is per call, defaults to 30 seconds, and is bounded to 60 seconds.
 Each trial starts with fresh routing usage/state and retains the production task
 token budget. The production provider has retries disabled. The cap is a call
@@ -141,7 +147,7 @@ bound, not a currency-spend guarantee.
 The evaluator invokes routing and, when a workflow is selected or rejected, the
 production final guidance node with a read-only `respond_only` plan. It never calls
 the Planner, executor, memory stores, content mapper or a response model. Thus the
-three-provider-call bound is unchanged. Even if a model incorrectly classifies a
+per-trial call bound above is unchanged. Even if a model incorrectly classifies a
 guidance prompt as execution, the evaluator reports a safety failure without
 performing the action. Reports contain structured routing results, final guidance and
 sanitized diagnostic categories, not raw provider error messages. It captures the
@@ -166,11 +172,11 @@ Validate replay selection without any provider call:
 python scripts/evaluate_routing.py --repair-replay --json
 ```
 
-Explicitly opt into at most six logical provider calls (three reviewers, plus
-up to three intent calls):
+Explicitly opt into at most twelve logical provider calls (per prompt: a
+reviewer or patch, a discriminator, intent and one condition call):
 
 ```bash
-python scripts/evaluate_routing.py --live --repair-replay --max-calls 6 --json
+python scripts/evaluate_routing.py --live --repair-replay --max-calls 12 --json
 ```
 
 `review_repair_validation_rate` measures accepted repairs; `review_repair_rate`
@@ -191,7 +197,7 @@ case. Preserve the old replay and select this batch explicitly:
 ```bash
 python scripts/evaluate_routing.py --repair-replay --repair-replay-suite missing-required --json
 # Paid model calls only with this explicit opt-in:
-python scripts/evaluate_routing.py --live --repair-replay --repair-replay-suite missing-required --max-calls 6 --json
+python scripts/evaluate_routing.py --live --repair-replay --repair-replay-suite missing-required --max-calls 12 --json
 ```
 
 Both suites remain reconstructions of error locations, not raw captured proposals.

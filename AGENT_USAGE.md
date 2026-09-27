@@ -705,7 +705,7 @@ evidence 修復資訊，仍須通過嚴格驗證。備援不會用工具預設�
 不能以候選工具直接略過路由進入 Planner。
 可加 `--repair-replay` 使用原始三題觀察到的錯誤類型重建第一輪失敗，測試 reviewer；
 這不是歷史模型原文，也不是 first-pass 自然語言準確率。需同時加 `--live` 才呼叫
-真實 reviewer（例如 `--live --repair-replay --max-calls 6`）。報告分開列出修復後
+真實 reviewer（例如 `--live --repair-replay --max-calls 12`）。報告分開列出修復後
 通過驗證的比例與符合預期科學目標的比例；離線 fixture 的比例不能當成模型修復率。
 測試層級、呼叫上限與 `--fail-on-skip` 驗收方式見
 [Routing test strategy](docs/routing-test-strategy.md)。

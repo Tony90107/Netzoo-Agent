@@ -40,7 +40,7 @@ required_for_registry_candidate_matching` 用的就是 explain，不會壞）。
 ## 量測協定
 
 `docker compose run --rm -T netzoo python scripts/evaluate_routing.py --live \
-  --repeat 3 --model openai/gpt-4o-mini --max-calls 300 --timeout 60 --json \
+  --repeat 3 --model openai/gpt-4o-mini --max-calls 585 --timeout 60 --json \
   > docs/research-log/live-full-corpus-roundN-<label>.json`
 
 已有 round16–20（16/17 舊碼、18/19 調和、20 +produced_by）可比。

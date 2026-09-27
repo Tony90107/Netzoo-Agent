@@ -757,7 +757,7 @@ def test_a_missing_dependency_names_the_module_without_echoing_payloads(monkeypa
     monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
     monkeypatch.setattr(evaluate_routing, "build_llm", missing)
 
-    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+    status = main(["--live", "--case", "original-q1", "--max-calls", "5", "--json"])
 
     error = capsys.readouterr().err
     assert status == 2
@@ -775,7 +775,7 @@ def test_other_failures_still_report_only_their_type(monkeypatch, capsys):
     monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
     monkeypatch.setattr(evaluate_routing, "build_llm", broken)
 
-    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+    status = main(["--live", "--case", "original-q1", "--max-calls", "5", "--json"])
 
     error = capsys.readouterr().err
     assert status == 2
@@ -985,7 +985,7 @@ def test_a_validation_error_reports_where_it_failed(monkeypatch, capsys):
     monkeypatch.setenv("OPENROUTER_API_KEY", "offline-placeholder")
     monkeypatch.setattr(evaluate_routing, "build_llm", broken)
 
-    status = main(["--live", "--case", "original-q1", "--max-calls", "3", "--json"])
+    status = main(["--live", "--case", "original-q1", "--max-calls", "5", "--json"])
 
     error = capsys.readouterr().err
     assert status == 2

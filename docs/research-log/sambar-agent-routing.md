@@ -12628,3 +12628,36 @@ Log 204／205 之後所說「discriminator 只有約兩成選出結果」本身�
 - S-d：第二次呼叫由整份 review（紀錄 6466 tokens）變成 patch（約 5690）；評分結果與紀錄相同（紀錄那一次也通過）。
   同一份輸入、temperature 0，3 次不是獨立樣本；紀錄中也只有這 1 次，所以這裡能說的只是路徑變了、結果沒有變差，不作比率主張。
 - 至此 903 份第一輪中 6 份 schema 失敗全部由 `validate_first_pass` 保留草稿（Log 213 的 5 份、本節 1 份）。
+
+## Log 217｜評估器：`--max-calls` 的事前估計改為與評分上限相同的最壞情況
+
+日期／時區：2026-09-27，Asia/Taipei。只改評估器與文件，不改路由、不改 prompt；離線驗證，不需要實跑（同 Log 205）。
+
+### 成因
+
+`--max-calls` 的說明是「最壞情況的呼叫數超過上限就拒跑」，但估計仍是 `933f4ea`（2026-09-04）時的每個 trial 3 次（repair replay 2 次）。
+之後加入的 discriminator（第 4 次）與條件推薦（第 5 次，Log 139／200）沒有反映到估計；評分器自己的上限（Log 205）是 routing 4 次＋條件推薦 1 次。
+所以這個預檢**不是**上限：一輪可能用到估計的 5／3 倍。
+
+量得的事實（錄下的 legacy live trial，369 列）：平均 2.84 次，最多 5 次，**35 列（9.5%）用了 5 次**，超過估計的每 trial 3 次。
+文件中的指令也早已與估計不符：`HANDOFF.md` 的量測協定對 39 題的預設語料用 `--max-calls 300`，照舊估計也需要 351，今天就會被拒跑。
+
+### 修正
+
+- `ROUTING_CALL_LIMIT = 4`、`ADVISORY_CALL_LIMIT = 1` 成為評分器 `_call_limit_errors` 與事前估計**共用**的常數；
+  `worst_case_calls(cases, repeat, repair_replay)` = cases × repeat × 5（repair replay 為 4：注入的第一輪不是 provider 呼叫）。
+  兩者不會再各自漂移。production provider 的 retries 為 0，所以邏輯呼叫數就是 HTTP 請求數。
+- 沒有加入執行中的計數中斷：每個 trial 的呼叫數在結構上有界（兩次語意嘗試、至多一次 discriminator、一次 intent、至多一次條件推薦），
+  超過時評分器會記 `call_limit` 安全錯誤。
+- `run_legacy_live_stability.py` 的 `--max-calls 60`（5 題 ×3，新估計需要 75，會被拒跑）改為由 `worst_case_calls` 計算。
+- 文件改成正確的數字：`docs/routing-test-strategy.md`（原始三題 15、39 題 ×3 為 585、repair replay 12，並說明每 trial 的上限與典型值）、
+  `AGENT_USAGE.md`（replay 12）、`HANDOFF.md`（585）。過去的交接與結果文件是當時紀錄，不改。
+
+### 已量得的事實（離線）
+
+- 新測試 `tests/test_call_limit.py` 5 項：上限等於 Log 205 釘住的五次呼叫序列長度、replay 為 4；剛好等於最壞情況的上限才會建立 provider，少 1 就在建立前拒跑（一般與 replay 各一組）。
+  換回舊公式時 3 項失敗。
+- **修改釘住的測試（宣告）**：`tests/test_routing_evaluation.py` 中 3 項測錯誤訊息遮蔽的測試以 `--case original-q1 --max-calls 3` 呼叫；
+  1 題 1 次的最壞情況是 5，它們會在走到要測的地方之前就被拒跑，所以只把參數改成 `5`，斷言不變。
+- 全套 2301 passed、0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；五個網格與 HEAD 逐位元組相同。
+- 代價：同樣的一輪現在要給較大的 `--max-calls`（例如 39 題 ×3 由 351 變 585）。這是上限，不是預估花費；實際花費仍約為每 trial 2.8 次。
