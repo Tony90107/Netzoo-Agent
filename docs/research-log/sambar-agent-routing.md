@@ -12454,3 +12454,37 @@ patch 只憑一句推論理由把粒度改成 `sample_specific`，平手變成 {
 - Q-a **通過**；Q-b **通過**：`should_execute` 為真 0；有 `overrides_held` 的 trial 0（所以其錯誤 0）；`t2-lioness` 得到 COBRA 0。
 - Q-c：`overrides_held` 9 次中 0 次出現——9 次的 review 都沒有改寫已驗證的粒度。這條路徑在紀錄中是 214 次 2 次，本輪未觸發屬於預期；
   機制由 Log 210 的離線重放（2 次都變對、0 次變錯）與測試涵蓋。依 Log 120／124 不作比率主張。
+
+## Log 212｜discriminator 稽核：現行程式碼下選出的 22 次全部正確，失敗無害；不做修改
+
+日期／時區：2026-09-27，Asia/Taipei。只做量測，沒有修改路由程式碼。工具：`docs/research-log/tools/audit_discriminator.py`。
+
+### 背景
+
+discriminator 在平手時多呼叫一次模型，要它選出有引文支持的 selection tag；成功時會把平手**直接變成 exact 比對**（有執行權限），
+另有一段規則式補救（`_recover_explicit_selection_tag`）。Log 206 之後的觀察「只有約兩成真的選出結果」讓它看起來像問題，本節檢查這個說法。
+
+### 量得的事實
+
+**全部 legacy 紀錄**：選出 59 次，其中有預期答案可對照的 38 次全部正確；**59 次全部來自模型的 tag，規則式補救 0 次**。
+但其中大半靠的是重述已知欄位的 tag（例如 `sample_specific`＋`tf_gene_regulation` → LIONESS-PANDA 25 次），
+這類 tag 在 Log 174 之後已不能消解平手；`t2-none`（使用者沒說任何事實）也曾因 `coexpression` 被選成 LIONESS-COEXPRESSION。所以舊數字不能代表現況。
+
+**只看 Log 176 以後的紀錄（現行規則，443 個 trial、115 次 discriminator 呼叫）**：
+
+| 結果 | 次數 | 說明 |
+| --- | --- | --- |
+| 選出（exact） | 22 | **22 次全部正確**：Case 6 → COBRA（`batch_correction`）10、Case 4 → LIONESS-PANDA（`tf_gene_regulation`，regulator 未定時不算重述）7、Case 5 → PUMA（`mirna_regulation`）2、Case 2 → OTTER（`relaxed_graph_matching`）3 |
+| 被拒 | 58 | 51 次模型沒有給任何 tag（請求沒有可區分的事實，屬正確行為）、6 次引文驗證失敗、1 次 tag 無法消解 |
+| 失敗 | 35 | 模型把 outcome 的證據照抄進來、沒有 tag 自己的證據；給的多半是重述 tag（`coexpression`、`sample_specific`、`aggregate_network`…） |
+
+- 每次呼叫平均 1336 tokens（平均每個 trial 約 350 tokens，現行 trial 平均約 8.8k）。
+- 被拒或失敗時平手保留，交給之後的條件推薦（Log 139／200）與資料夾檢查（Log 154／186），不會造成錯誤結果。
+- **離線修補實驗**：把 108 次歷史失敗的回覆去掉非 selection_tag 的條目後重跑現行流程，只多救回 1 次，而且是無事實的 `n1-no-facts`（不應被選）；其餘 99 次仍因 tag 沒有證據而無效。
+  所以把格式修好（例如改 strict）只會把「失敗」變成「被拒」，不會增加正確的選擇。
+
+### 結論
+
+不修改。discriminator 在現行規則下精確度 22／22、成本低、失敗無害；產出率低反映的是多數平手的請求本來就沒有可區分的事實。
+移除它會失去這些 exact 選擇（條件推薦與資料夾檢查能給同樣的答案，但只是建議），並需要修改釘住的呼叫序列測試，沒有量得的好處。
+Log 204／205 之後所說「discriminator 只有約兩成選出結果」本身正確，但把它列為待修問題是錯的框架，在此更正。
