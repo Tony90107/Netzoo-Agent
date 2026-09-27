@@ -12862,3 +12862,47 @@ case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DR
 - U-c（不影響路由）：判定合計與 Log 204／208 同一範圍（英文 OK ≥ 26／30、WRONG ≤ 2）；任何 LEAK → 撤回。本階段在 intent 之後、不改路由欄位，由單元測試保證。
 - U-d（離線）：全套 0 failed（只改上面宣告的 digest）；指紋不變（legacy `d2a9afddad86`、claims `480a66264c53`）；五個網格與 HEAD 相同；新測試 `tests/test_request_concerns.py` 15 項。
 - 成本：每個宣告顧慮的 exact／fallback guidance 多一次 mini 呼叫；報告其 token 數。
+
+## Log 224｜事前宣告：BONOBO 執行器的三個隱患——sparsify 下的 delta 範圍、delta 型別、`.hdf` 檔名
+
+日期／時區：2026-09-27，Asia/Taipei。只改 BONOBO 執行器（`execution_bonobo.py`、`data/bonobo.py`）與註冊表 `delta` 的說明；不改路由、不改 prompt、不改 schema。
+來源：為 Log 223 的註冊表 note 核對 netZooPy 0.11.0 原始碼時發現（Docker 映像 `/opt/netZooPy/netZooPy/bonobo/bonobo.py`）。
+
+### 已核對的事實
+
+1. **delta 與 sparsify**：`compute_bonobo` 的 sparsify 分支令 `d = g + 1/delta`，所以 `d - g - 3 = 1/delta - 3`。delta > 1/3 時 `a1`、`a2` 皆為負，
+   逐邊變異數為負，`sqrt` 得 NaN，p 值全為 NaN；`np.abs(NaN) > threshold` 為 False，所以 save_pvals 關閉時**所有非對角邊被歸零**，
+   執行器的 finite 檢查（`data/bonobo.py` 的 `np.isfinite`）照樣通過，回報成功——一個空網路。delta = 1/3 時分母為 0（Python float 除法），delta = 0 時 `1/delta` 丟 ZeroDivisionError。
+   不開 sparsify 時 delta ∈ [0, 1] 都有定義（δ=0 即留一共變異數，δ=1 即該樣本的外積）。自動估計值 `1/(3 + 2·mean(sd)/var(diag))` 恆小於 1/3。註冊表允許 0～1。
+2. **delta 型別**：上游 `assert type(delta) == float`。執行器把 `delta` 原樣放進 kwargs（`execution_bonobo.py` 的 `if delta is not None: kwargs["delta"] = delta`）。
+   經 LangChain tool 驗證時 `float | None` 會把 JSON 整數轉成 float，但直接呼叫（或 numpy 數值）不會，`1`、`np.float64(0.1)` 都會讓 assert 失敗。
+3. **`.hdf`**：上游只認 `.h5`、`.csv`、`.txt`，其他副檔名印出警告後寫成 `bonobo_<s>.h5`、`pvals_<s>.h5`；執行器卻在 `bonobo_<s>.hdf` 找檔，
+   所以 `bonobo_output_format=.hdf` 的真實執行必然回報檔案缺失。現有測試 `test_bonobo_execution_verifies_network_and_optional_pvalue_artifacts[.hdf]` 通過，
+   是因為它的假 BONOBO 照字面寫 `.hdf`，與上游不符。
+
+### 修改
+
+- delta：執行器入口檢查並正規化。拒絕 bool 與非數值、非有限值、[0, 1] 之外；**sparsify 開啟時要求 0 < delta < 1/3**，錯誤碼 `BONOBO_DELTA_INVALID`，在 dry-run 之前就回報，不呼叫 API。
+  通過後一律轉成 Python `float` 再傳給上游，preview 與 manifest 也用轉換後的值。註冊表的 range 維持 0～1（不開 sparsify 時整段有效），加上說明文字。
+- `.hdf`：保留為使用者可寫的格式（TaskDecision、請求參數擷取都不變），但它對應的是上游實際寫出的檔案：傳給上游的 `output_fmt` 為 `.h5`，
+  網路與 p 值的路徑也用 `.h5`；manifest 仍記錄請求的 `.hdf`，所以與計畫比對不變。回報說明「.hdf 以 .h5 寫出」。
+
+### 預期與撤回條件
+
+- V-a：新測試——sparsify 下 delta ∈ {0, 1/3, 0.5, 1} 被拒絕且沒有 API 呼叫；不開 sparsify 時 0 與 1 可用；整數 `0`、`np.float64(0.1)` 以 Python float 傳給上游；
+  delta 為 bool、NaN、1.5 被拒絕。以**照上游行為寫檔**的假 BONOBO（未知副檔名寫 `.h5`）跑 `.hdf`：驗證通過、檔案為 `.h5`。另以 netZooPy 原始碼的 `compute_bonobo` 在 Docker 內直接確認 δ=0.5 時 p 值全為 NaN、δ=0.2 時有限。
+- V-b：既有測試不修改；全套 0 failed；指紋不變（legacy `d2a9afddad86`、claims `480a66264c53`）；五個網格與修改前相同。
+- 任何一項不成立就撤回。
+
+## Log 225｜Log 224 結果：V-a、V-b 成立，修改**保留**；三個隱患都已在上游原始碼上重現
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+- 上游重現（Docker 內 netZooPy 0.11.0 的 `compute_bonobo`，30 基因 × 12 樣本隨機資料，sparsify）：估計 δ = 0.0605，保留 48 條非對角邊；
+  δ = 0.5、0.9、1.0 時 p 值 **900／900 為 NaN**、保留 0 條邊；δ = 0 與 δ = 1/3 丟 `ZeroDivisionError`；整數 `1` 丟 `AssertionError`。
+  不開 sparsify 時 δ = 0 與 δ = 1 的結果皆為有限值。（δ = 0.2 也保留 0 條邊，但 p 值有限，是這份隨機資料的正常稀疏化，不是隱患。）
+- V-a：新測試 `tests/test_bonobo_delta_and_format.py` 21 項全部通過；換回 HEAD 的執行器時 18 項失敗，其中 `.hdf` 的兩項失敗訊息正是
+  `BONOBO network for sample s2 is missing: .../bonobo_s2.hdf`（及 `pvals_s2.hdf`）。假 BONOBO 依上游寫檔（未知副檔名寫 `.h5`，並斷言 `type(delta) is float`）。
+- 另一個既有的不一致（未修改）：`TaskDecision.delta` 已要求 `gt=0.0`，而註冊表與 `workflows/bonobo.yaml` 的下限是 0；δ = 0 只能經由直接的 tool 呼叫到達執行器，測試照此呼叫。
+- 註冊表的 `delta` 說明需要同步寫進 `workflows/bonobo.yaml`（policy loader 會比對兩者，第一次只改註冊表時整個 policy 載入失敗；已補上）。說明文字不進任何 provider prompt。
+- V-b：沒有修改任何既有測試；全套 2538 passed、35 skipped、0 failed；指紋不變（legacy `d2a9afddad86`、claims `480a66264c53`）；五個網格與修改前相同。

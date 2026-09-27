@@ -80,6 +80,17 @@ def _normalise_sample_names(sample_names: Any) -> tuple[str, ...]:
     return tuple(values)
 
 
+# netZooPy 0.11.0 writes only .h5, .csv and .txt; any other suffix is saved as
+# .h5 (bonobo.py:359-365 and 383-389). `.hdf` therefore names that HDF5 file,
+# and the executor passes `.h5` so upstream never takes its fallback (Log 224).
+_UPSTREAM_SUFFIX = {".hdf": ".h5"}
+
+
+def bonobo_upstream_format(output_format: str) -> str:
+    """The suffix netZooPy writes for a requested output format."""
+    return _UPSTREAM_SUFFIX.get(output_format, output_format)
+
+
 def _sample_output_path(output_dir: str | Path, sample_id: str, output_format: str) -> Path:
     root = _resolve_user_path(str(output_dir))
     if output_format not in BONOBO_OUTPUT_FORMATS:
@@ -91,7 +102,7 @@ def _sample_output_path(output_dir: str | Path, sample_id: str, output_format: s
             f"sample ID {sample_id!r} cannot safely be used in a BONOBO filename; "
             "use a simple identifier without path separators"
         )
-    path = (root / f"bonobo_{sample_id}{output_format}").resolve()
+    path = (root / f"bonobo_{sample_id}{bonobo_upstream_format(output_format)}").resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("BONOBO output path escapes output_dir")
     return path
@@ -99,7 +110,7 @@ def _sample_output_path(output_dir: str | Path, sample_id: str, output_format: s
 
 def _pval_output_path(output_dir: str | Path, sample_id: str, output_format: str) -> Path:
     root = _resolve_user_path(str(output_dir))
-    path = (root / f"pvals_{sample_id}{output_format}").resolve()
+    path = (root / f"pvals_{sample_id}{bonobo_upstream_format(output_format)}").resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("BONOBO p-value output path escapes output_dir")
     return path

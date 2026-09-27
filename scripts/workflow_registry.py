@@ -1468,7 +1468,13 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
         ),
         _control("precision", "enum", "single", allowed_values=("single", "double")),
         _control("keep_in_memory", "boolean", False),
-        _control("delta", "number", None, minimum=0, maximum=1, nullable=True),
+        _control(
+            "delta", "number", None, minimum=0, maximum=1, nullable=True,
+            description=(
+                "Weight of the sample in its covariance; empty estimates it per sample. "
+                "With sparsify it must be above 0 and below 1/3 (Log 224)."
+            ),
+        ),
         _control("genes_axis", "enum", "auto", allowed_values=("auto", "rows", "columns")),
         _control("log_transformed", "boolean", None, nullable=True),
         _control("centered", "boolean", None, nullable=True),
