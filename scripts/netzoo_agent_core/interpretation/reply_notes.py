@@ -11,14 +11,17 @@ facts were missing, and they are added here without changing any candidate:
   that says nothing about what is connected ("build me a network") grounds,
   but does not state the kind either, so it counts as no quote here (Log 193);
 - which files in a folder routing read validated by content for an input role,
-  and that they were not used.
+  and that they were not used;
+- when the reply asks how many samples there are and the request already gave
+  a count, that count, quoted. No count is mapped to a category: the user
+  decided on 2026-09-26 that the agent asks instead (Log 195).
 """
 
 from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS
+from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..presentation import _ui_text_with_user_data, user_data_token
@@ -135,7 +138,30 @@ def _discovery_note(decision, user_data: list[str]) -> str | None:
     )
 
 
-def with_reply_notes(text: str | None, decision) -> str | None:
+_STATED_COUNT = re.compile(
+    r"(?:(?:about|around|approximately|roughly|nearly|almost|over|more than|fewer than|"
+    r"less than|only|~)\s*)?\d[\d,]*\s+(?:[A-Za-z-]+\s+){0,2}(?:samples?|patients?|"
+    r"individuals?|subjects?|donors?|participants?|people|tumou?rs?|cases?|cells?)\b"
+    r"|(?:大約|約|大概|將近|超過|只有)?\s*\d[\d,]*\s*(?:個|位|名|例)?\s*"
+    r"(?:樣本|病人|患者|個體|受試者|參與者|腫瘤|細胞)",
+    re.IGNORECASE,
+)
+
+
+def _stated_count_note(decision, task: str, user_data: list[str]) -> str | None:
+    question = decision.clarification_question or ""
+    stated = _STATED_COUNT.search(task or "")
+    if stated is None or SELECTION_AXES["cohort_size"]["question"] not in question:
+        return None
+    user_data.append(stated.group().strip())
+    return (
+        f'You mentioned "{user_data_token(len(user_data) - 1)}". Whether that counts as a '
+        "handful of samples or as dozens or more is your call for this study design; "
+        "I do not map a sample count to these categories myself."
+    )
+
+
+def with_reply_notes(text: str | None, decision, task: str = "") -> str | None:
     """Insert the notes above the reply's closing line, for an unrecommended tie."""
     if (
         text is None
@@ -145,7 +171,10 @@ def with_reply_notes(text: str | None, decision) -> str | None:
     ):
         return text
     user_data: list[str] = []
-    notes = [note for note in (_assumption_note(decision), _discovery_note(decision, user_data)) if note]
+    notes = [note for note in (
+        _assumption_note(decision), _stated_count_note(decision, task, user_data),
+        _discovery_note(decision, user_data),
+    ) if note]
     if not notes:
         return text
     block = _ui_text_with_user_data("\n\n".join(notes), user_data)

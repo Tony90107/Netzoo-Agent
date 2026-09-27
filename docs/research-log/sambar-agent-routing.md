@@ -11895,3 +11895,18 @@ Log 194 之後，單一候選平手的回覆由註冊表產生，所以改為：
 既有的 `test_an_ambiguity_with_nothing_to_ask_says_it_went_to_the_response_model` **未修改且仍通過**：它的 decision 是沒有 `hypothesis_actions` 的
 `SimpleNamespace`，所以現在只涵蓋「沒有任何候選」的分支；`single_candidate_question` 因此改用 `getattr` 讀候選。這個測試的說明文字（單一候選 DRAGON）已不再符合實際行為，記錄於此。
 
+## Log 195｜B 版引用使用者寫的樣本數（第 3 項；維持不設門檻）
+
+日期／時區：2026-09-27，Asia/Taipei。**使用者決定：維持 2026-09-26 的決定，不設數字門檻，改為詢問**；只讓 B 版引用使用者寫的數字。
+
+### 修正
+
+`reply_notes._stated_count_note`：當澄清問題含 `cohort_size` 的問題（「About how many samples do you have?」），
+而原句有數量描述（`about 400 tumour samples`、`大約 400 個樣本`）時，逐字引用它，並說明不會自行把數字對應到類別。
+引文以 Log 180 的佔位符放入回覆，**不寫進** `clarification_question`（否則中文數量描述會觸發語言守衛）。
+
+### 量得的事實
+
+- 重放：**恰好 3 個改變**，都是 `trace_log148_live` 的 f2-many（「about 400 tumour samples」）B 版回覆。
+- 新測試 `tests/test_stated_count_note.py` 3 項，2 項在舊碼上失敗。全套通過；網格與指紋不變。
+
