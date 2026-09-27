@@ -153,8 +153,12 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # artifact/action vocabulary, WorkflowPlan handoff/recovery fields, and the
 # registry-owned WorkflowPolicySpec input_validator. The direct contract tests
 # for those fields remain the source of meaning; these hashes detect later drift.
+# 2026-09-26: TaskDecision.discovered_inputs records files in a folder routing
+# read that validated by content for an input role, reported to the user but
+# never used (Log 188). Omitted from dumps while empty; the TaskDecision digest
+# is the only schema change.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "1cdd307d67238a69b0d8d43f7794c5756bbe7606a4ae125fa7b4d31edb7c8ffd",
+    "TaskDecision": "d4c44a7d65f9d0df9badd69d60f0cd34462ca7d453a6d2a008f2016ff35718e4",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

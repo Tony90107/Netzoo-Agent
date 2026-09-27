@@ -130,6 +130,12 @@ class TaskDecision(BaseModel):
     inspected_directories: list[str] = Field(
         default_factory=list, exclude_if=lambda value: not value,
     )
+    # Files in those folders that validated by content for an input role,
+    # as `role=path`, reported without being used (Log 188). Omitted from
+    # dumps while empty.
+    discovered_inputs: list[str] = Field(
+        default_factory=list, exclude_if=lambda value: not value,
+    )
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None

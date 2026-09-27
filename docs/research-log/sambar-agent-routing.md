@@ -11639,3 +11639,111 @@ GIRAFFE 讀法是 `tf_activity_matrix`、`entity_types=[sample, tf]`（完整集
 
 - 混合平手（PANDA 家族＋GIRAFFE）的內容比較：GIRAFFE 與 LIONESS-PANDA 的輸入相同，內容無法區分，需要的是實驗假設層級的條件
   （每個樣本的網路接線 vs TF 活性）——即 Log 139 條件推薦的軸，而非資料夾內容。
+
+## Log 188｜事前宣告：平手回覆補上「假設了什麼、還需要什麼、資料夾裡有什麼」，分歧讀法依讀法本身提問（Case 10、Case 4）
+
+日期／時區：2026-09-26，Asia/Taipei。**本節寫於套用到主 repo 之前，之後不得修改。**
+套在 `9744b21` 之上。候選 patch：`docs/research-log/log188_candidate.patch`（9 個檔案，逐字套用）。
+使用者決定：三項都做，並宣告修改 Log 154 釘住的測試。
+
+### 成因（重放確認）
+
+**Case 10**（"All I have is this expression matrix … Build me a network"）：
+- 三次都讀成 `regulatory_network`＋`regulator_types=[tf]`。artifact_type、granularity、regulator_type、tag **全部是 `inferred`，沒有任何引文**。
+- 回覆列出三個都需要 motif 與 PPI 先驗的工具，並寫「These all fit」。
+- 回覆寫「No files were inspected」，但指名檔案所在的資料夾其實有可用的先驗；使用者測試文件把「發現並**詢問**」列為隱藏考點。
+
+**Case 4 #2**（Log 187）：兩個讀法的 artifact 不同（每個樣本的 regulatory_network vs tf_activity_matrix），屬於 Log 150 的分歧讀法。
+問題只有「What artifact should NetZoo produce?」，沒有說出兩種讀法的差別，而差別正是測試文件要求的（每個人的網路接線 vs TF 活性）。
+
+### 修正（只改回覆與顧問性讀取，不改比對、不改執行權限）
+
+1. **分歧讀法的提問**（新模組 `routing/reading_question.py`，由 `_divergent_artifact_readings` 使用）：
+   - 每個讀法由本體對其 artifact 的描述、粒度（只在該 artifact 允許多種粒度時）、以及它導向的已註冊工作流程組成。
+   - 例如："Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA); or inferred transcription-factor-by-sample activity values (GIRAFFE)?"
+   - 超過 300 字元時退回原本的 planner 問題。
+2. **假設說明**（新模組 `interpretation/reply_notes.py`）：只在「多候選、無推薦」的平手回覆中，當**沒有任何讀法引用 artifact_type** 時加上三件事，都由註冊表推得：
+   - 網路要連什麼是假設的；
+   - 每個選項還共同需要哪些輸入；
+   - 哪些已註冊工作流程只需要使用者提到的輸入就能推論另一種結果。Case 10 為 BONOBO、LIONESS-COEXPRESSION（gene-to-gene associations）。
+3. **資料夾發現**：
+   - 平手含 PANDA 家族成員時，若 Log 154／186 都沒有推薦，就用該家族成員自己的驗證器檢查指名資料夾（含指名檔案所在的資料夾）；
+   - 把依內容驗證成功的檔案與角色記進新欄位 `TaskDecision.discovered_inputs`（空時不出現在 dump 中）；
+   - 回覆寫明「我沒有使用它們，請告訴我是否屬於這次分析」。**不推薦、不填入任何 `*_file` 欄位**；檔名以 Log 180 的佔位符放入。
+4. `named_directories`：句尾的路徑會帶到句號（`…/expression.tsv.`），不存在時去掉結尾的點再試。
+
+### 釘住測試（事前宣告的修改）
+
+- **修改 1**：`test_ties_outside_the_panda_family_are_not_read`（Log 154 的範圍界線）。
+  - 改名為 `test_ties_outside_the_panda_family_only_report_what_validated`。
+  - 改為斷言：{panda, otter} 讀取後**只**記錄發現、沒有推薦、執行權限不變。
+  - 另新增 `test_ties_without_a_panda_family_member_are_not_read`（{otter, giraffe} 仍回傳同一物件），保留「沒有家族驗證器就不讀」的界線。
+- **修改 2**：`test_contract_model_schemas_are_unchanged` 的 TaskDecision digest，因新欄位而更新，並加上日期註解。做法與 Log 154 新增 `inspected_directories` 時相同；其餘 schema 不變，指紋不變。
+
+### 已在 worktree 量得的事實
+
+- 新測試：`tests/test_reply_notes.py` 4 項、`test_input_inspection.py` 2 項。新行為的 4 項在舊程式碼上失敗。
+- 全套 **2178 passed、0 failed**。
+- 五個網格逐位元組相同；指紋不變（`1f68bfde4081`、`348a144cd9b4`）。
+- 重放 114 個錄下的 ambiguous 決策：
+  - 推薦**0 個改變**；
+  - Case 10 的 5 次（英 3、中 2）加上假設說明與資料夾發現；
+  - Case 4 的 2 次（case4-en、case4-anon）改用讀法提問，並加上資料夾發現；
+  - 另有 16 次（t1-* 與使用者原始 Case 4）加上資料夾發現。
+- **意外發現**：`data/blind-tests/case-1/` 的檔名與內容不符。依內容，`ppi.tsv` 是表現矩陣、`expression.tsv` 是 motif 先驗、`motif.tsv` 是 PPI。
+  發現說明依內容正確回報了角色，這正是使用者「檔名不對但內容對」的情境。
+
+### 判準
+
+| 判準 | 內容 |
+| --- | --- |
+| **J-a** | 逐字套用；0 failed；網格與指紋同上 |
+| **J-b** | 主 repo 重放與 worktree 逐項相同 |
+| **J-c（實跑，否決）** | 英文 Case 10 ×3、英文 Case 4 ×3、中文 Case 10 ×1：授權外洩 0；任何 `*_file` 欄位被發現的檔案填入 = 0；回覆崩潰 = 0 |
+| **J-d（實跑，描述）** | Case 10 回覆是否含假設說明與發現；Case 4 若出現分歧讀法，問題是否為讀法提問。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- J-a、J-b、J-c 任一失敗 → 撤回。
+
+### 已知風險
+
+1. 資料夾發現讓更多平手會讀檔（上限不變）。回覆變長；只在沒有推薦時出現。
+2. 假設說明只看「是否有 artifact_type 引文」。模型若引用了不恰當的句子作為 artifact 引文，說明就不會出現。
+
+## Log 189｜Log 188 結果：J-a～J-c 成立，三項修正**保留**；資料夾發現 4/4 出現，假設說明被「泛稱引文」擋下 3/4
+
+日期／時區：2026-09-26，Asia/Taipei。gpt-4o-mini，legacy，traced harness。依 Log 188 事前寫死的條件執行。
+
+### 判準
+
+| 判準 | 結果 |
+| --- | --- |
+| J-a 逐字套用、網格與指紋 | **通過**；worktree（HEAD＋patch）2178 passed、0 failed |
+| J-b 重放 | **通過**：主 repo 與 worktree 逐項相同 |
+| J-c 外洩 0、發現檔案填入 `*_file` 0、崩潰 0 | **通過**（見下方 zh 說明） |
+
+**主 repo 測試的附註**：主 repo 的工作目錄同時有另一個 session 未 commit 的修改（`cli/slash_commands.py`、`server/*`、`desktop/*`）。
+套用後主 repo 有 1 項失敗：`test_conversation_golden_transcript[mode_slash_commands]`，來自那份 `slash_commands.py` 修改。
+本 patch 沒有觸及該檔；在只含 HEAD＋本 patch 的 worktree 中全部通過。
+
+### 實跑
+
+| 試驗 | 結果 |
+| --- | --- |
+| case10-en ×3 | 3/3 沒有執行。平手 2 次含 PUMA（問 TF 或 miRNA）、1 次 {PANDA, OTTER, GIRAFFE}。**資料夾發現 3/3**；假設說明 1/3 |
+| case10-zh ×1 | 沒有執行；資料夾發現出現；假設說明沒有出現 |
+| case4-en ×3 | 2 次依內容推薦 LIONESS-PANDA、1 次 exact LIONESS-PANDA；本輪沒有出現分歧讀法，讀法提問未在實跑中觸發（由離線測試與重放涵蓋） |
+
+- **資料夾發現**：回覆依內容指出，在 `data/blind-tests/case-1/` 中 `ppi.tsv` 是表現矩陣、`expression.tsv` 是 TF-motif 先驗、`motif.tsv` 是 PPI，
+  並說明沒有使用它們、請使用者確認。使用者指名的 `expression.tsv` 其實不是表現矩陣，這一點因此被揭露。
+- **zh 的 `expression_file`**：值是使用者自己指名的路徑 `data/blind-tests/case-1/expression.tsv`，與 Log 179 相同，是既有的抽取行為；
+  不是發現的檔案（發現的表現矩陣是 `ppi.tsv`）。所以 J-c 的「發現檔案填入 = 0」成立。
+- **假設說明 1/4**：另外 3 次，模型把 `"build me a network"`／`"幫我建一個網路"` 當作 `artifact_type=regulatory_network` 的 explicit 引文。
+  引文能接地，但原文沒有說 regulatory。這是 Log 188 已知風險 2 的實例。
+
+### 下一步候選（未實作）
+
+「泛稱引文」：引文只含 "network"，卻用來支持特定的網路 artifact。要處理，需要決定 artifact 引文要不要包含能區分 artifact 的詞，
+這是驗證契約的變更（會影響 Log 136／148 的網格與許多實跑），應另開一項並先量測。
+
