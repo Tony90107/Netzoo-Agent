@@ -89,7 +89,12 @@ class FixtureProvider:
         self.calls = []
 
     def with_structured_output(self, schema, **kwargs):
-        assert kwargs == {"method": "function_calling", "include_raw": schema is not IntentDecision}
+        # 2026-09-27 (Log 208): the patch is bound strict, as in production;
+        # every other binding is unchanged.
+        assert kwargs == {
+            "method": "function_calling", "include_raw": schema is not IntentDecision,
+            **({"strict": True} if schema is SemanticPatch else {}),
+        }
         provider = self
 
         class Adapter:

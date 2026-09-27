@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 from workflow_registry import (
     ACTION_DEFINITIONS,
     ActionName,
@@ -17,6 +18,8 @@ from workflow_registry import (
     RecommendedAction,
     SELECTION_TAG_GLOSSARY,
 )
+
+from .strict_schema import strict_json_schema
 
 # Every registered runnable capability can tie at once: an outcome that resolved
 # nothing is partially compatible with all of them. A live full-corpus round hit
@@ -476,6 +479,11 @@ class SemanticPatch(BaseModel):
     evidence_removals: list[EvidenceRemoval] = Field(default_factory=list, max_length=12)
     evidence_additions: list[OutcomeEvidence] = Field(default_factory=list, max_length=12)
     assumptions: list[str] | None = Field(default=None, max_length=4)
+
+    @classmethod
+    def model_json_schema(cls, *args, **kwargs):
+        """The provider sees the strict-mode form; validation is unchanged (Log 208)."""
+        return strict_json_schema(super().model_json_schema(*args, **kwargs))
 
     @model_validator(mode="before")
     @classmethod

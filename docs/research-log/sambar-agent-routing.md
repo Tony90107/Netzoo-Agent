@@ -12314,3 +12314,88 @@ claims 契約下，模型對中文請求把 `assumptions` 與 `display_entities`
 
 - 重放全部 563 個平手回覆：**恰好 39 個改變，都是原本的崩潰**，現在都正常渲染；其餘 524 個回覆一字不變。
 - 新測試 `tests/test_model_text_language.py` 3 項；停用過濾時 3 項都失敗。全套 2269 passed；指紋不變。
+
+## Log 208｜事前宣告：patch（第二次呼叫）改用 strict 結構化輸出
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+**使用者決定（2026-09-27）：契約嚴格化只改第二次呼叫；得知 review 的代價後，決定這次只改 patch。**
+
+### 量測依據（離線）
+
+- claims 契約不轉正：9/23 round 6 families32 claims 59/96、legacy 75/96，之後七十多項修正又只做在 legacy。
+- legacy＋mini 全部紀錄（1817 trial）：148 次 fallback 中格式錯誤 19 次（第二次呼叫 13、第一輪 6），其餘 129 次是證據／本體驗證拒絕內容。
+  但只看**現行程式碼**（9/27 的 192 次 trial）：fallback 5 次，其中 **4 次是第二次呼叫的格式錯誤**
+  （explicit 證據缺引文、dimension 寫成 `input_artifacts`、`unresolved_dimensions` 不合法），第 5 次是 T2 型（Log 199 已處理）。
+- 現行紀錄中第二次呼叫共 79 次：patch 77、whole review 2。
+
+### 修正
+
+- 新模組 `contracts/strict_schema.py`：把 pydantic schema 改寫為 OpenAI strict 形式——每個物件列出全部屬性為必填、禁止多餘屬性、不帶 default；
+  default 為 None 的欄位變成「必填但可為 null」（null 與省略在驗證上等價），其他 default 變成必填；`OutcomeEvidence` 成為 explicit（必須有引文）／inferred（沒有引文）兩個完整分支。
+- `SemanticPatch.model_json_schema()` 回傳 strict 形式；**pydantic 的驗證完全不變**。production（`factory.py`）與評估器都以 `strict=True` 綁定 patch。
+- 第一輪 `SemanticInterpretation`、whole review `SemanticReview`、`SemanticDiscriminator` 的 schema 與綁定都不變（與 `4d11fef` 的 schema 摘要逐一相同）。
+
+### 為什麼 review 不改（事前記錄）
+
+- strict 不接受 `RequestedOutcome` 的「`properties` 與 artifact 分支 `anyOf` 同層」：探測時 provider 輸出 0 token、args 為空物件，沒有錯誤。
+- 改成「每個分支都是完整物件」可以用（探測成功），但 17 個分支都要重複全部欄位，schema 17 KB → 47 KB，review 的輸入估計從約 6.7k 漲到約 15.6k tokens，
+  並會讓 `test_a_reading_whose_quotes_are_absent_is_kept_but_held_below_an_exact_match`（任務預算 20k）的 review 被預算擋下。review 只佔第二次呼叫的 2/79。
+
+### 釘住測試（事前宣告的修改）
+
+- `tests/test_routing_evaluation.py` 的 `FixtureProvider`：綁定參數的斷言改為「`SemanticPatch` 多一個 `strict: True`，其餘不變」，加日期註解。
+- 其餘既有測試不修改。
+
+### 已量得的事實
+
+- 單次探測：OpenRouter／gpt-4o-mini 接受 strict patch schema 並正常輸出。
+- 新測試 `tests/test_strict_second_call.py` 7 項（每個物件都列出全部屬性、explicit 必須有引文、null 等同省略、第一輪／review／discriminator 的 schema 不變、production 只有 patch 是 strict）。
+- 全套 2275 passed；五個網格與 `4d11fef` 逐位元組相同；claims 指紋不變（`348a144cd9b4`）；**legacy 指紋 `1f68bfde4081` → `b9b01cd2db6f`**（只有 patch schema 改變）。
+
+### 判準
+
+交錯 A/B（gpt-4o-mini、legacy、traced harness）：基準組 = `4d11fef` 的 worktree（patch 非 strict），實驗組 = 本修改。
+順序：基準 families32 ×2 → 實驗 families32 ×2 → 基準 blind-en ×2 → 實驗 blind-en ×2。
+
+| 判準 | 內容 |
+| --- | --- |
+| **P-a（離線）** | 如上 |
+| **P-b（否決，結構）** | 實驗組：patch 呼叫的 schema 驗證失敗 = 0；patch 呼叫的 provider 例外 = 0；patch 回覆為空物件 = 0 |
+| **P-c（否決）** | 實驗組 `should_execute` 為真 = 0；實驗組 `wrong_exact_recommendations` ≤ 基準組 + 1 |
+| **P-d（否決，捏造引文）** | 實驗組中，patch 之後的最終 issue 含 `ungrounded_evidence` 的 trial 數 ≤ 基準組 + 2。此門檻沒有量過的噪音底線，事先寫死 |
+| **P-e（描述）** | 兩組的 fallback 數與成因、passed、patch 呼叫次數、patch 呼叫的輸入 tokens。依 Log 120／124 不作比率主張 |
+
+### 撤回條件（寫死）
+
+- P-a、P-b、P-c 或 P-d 任一失敗 → 撤回（strict schema 覆寫、兩處 `strict=True`、`strict_schema.py`、釘住測試的修改一併撤回）。
+
+## Log 209｜Log 208 結果：P-a～P-d 全部成立，strict patch **保留**；patch 解析錯誤 8/32 → 0/28
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness，依 Log 208 的順序交錯執行。
+紀錄：`live-semantic-trace-2026-09-27-log208-{base,strict}-{families32,blind-en}-legacy.json`。
+
+### 判準
+
+| 判準 | 基準（`4d11fef`） | 實驗（strict patch） | 結果 |
+| --- | --- | --- | --- |
+| P-a 離線 | — | — | **通過** |
+| P-b patch 呼叫的解析錯誤 | 8／32（families 7、blind 1） | **0／28** | **通過** |
+| P-b patch 例外／空物件 | 0／0 | 0／0 | 通過 |
+| P-c `should_execute` 為真 | 0 | 0 | 通過 |
+| P-c `wrong_exact_recommendations` | families 0、blind 13 | families 0、blind 12 | 通過（見下方附註） |
+| P-d patch 後的 `ungrounded_evidence` | 1 | 0 | 通過 |
+
+**P-c 的附註**：盲測語料的 `expected` 是佔位值（Log 206），所以盲測的 `wrong_exact_recommendations` 把每一個正確的 exact 都算成「錯誤」，對盲測沒有意義；
+事前寫判準時沒有注意到這一點。families32 上兩組都是 0。盲測的實際正確性以 `score_blind.py` 評分如下。
+
+### 描述（依 Log 120／124 不作比率主張）
+
+- families32 ×2：兩組都是 passed 64／64、fallback 0。基準組有 7 次 patch 解析錯誤，但都被既有的原始 args 路徑救回，沒有造成 fallback。
+- blind-en ×2（`score_blind.py`）：基準 正確 19、部分 1；實驗 正確 18、部分 2。兩組都沒有 `semantic_fallback`、沒有授權外洩。
+  實驗組多的 1 個「部分」是 Case 9 的單一候選平手（回覆由 Log 194 的確定性問題處理）；實驗組 Case 4 有一次 exact GIRAFFE（測試文件認可）。
+- patch 呼叫的輸入 tokens：基準平均 5366／5403，實驗平均 5306／5358——strict schema 沒有增加成本。
+
+### 結論
+
+strict patch 保留。它把 patch 呼叫的解析錯誤降為 0，而且沒有增加捏造引文或成本；本輪兩組都沒有 fallback，所以對最終結果的影響還無法量出（現行程式碼下這類 fallback 本來就只有約 2%）。
+review 仍是非 strict（Log 208 的理由）；第一輪的格式錯誤（歷史上 6 次）與 discriminator 的失敗不在本輪範圍。
