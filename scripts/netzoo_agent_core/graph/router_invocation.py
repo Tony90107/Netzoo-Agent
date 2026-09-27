@@ -273,8 +273,21 @@ def invoke_router(
         decision = decision.model_copy(update={
             "should_execute": False, "action": "no_tool",
         })
-    # Log 139: after intent, so neither the intent router's input nor the
-    # capability match changes; the stage only adds advice and a question.
+    # Advisory stages, in this order and only here (Log 218). They run after
+    # intent, so neither the intent router's input nor the capability match
+    # changes, and none alters action, execution authority or match status:
+    #   1. Condition recommender (Logs 139, 200): quoted study facts. It may
+    #      recommend the one candidate they select; a method tie they leave
+    #      unresolved gets the separating questions instead.
+    #   2. Folder inspection (Logs 154, 185, 186, 188): file contents, only if
+    #      step 1 recommended nothing, over the whole tied set. Stated facts
+    #      outrank contents, which are open-world: a file that validates
+    #      nowhere is not evidence the user lacks one.
+    #   3. Input preflight: an explicit request to check inputs.
+    # A recommendation comes from one stage, since the reply renders quoted
+    # facts and validated files differently. Facts narrowing a tie to two and
+    # the folder choosing between them are not combined: 0 occurrences in the
+    # record, because stating the fact usually resolves the tie upstream.
     decision, usage, budget_warnings = invoke_condition_recommender(
         context, state, user_task, decision, usage, budget_warnings,
     )
