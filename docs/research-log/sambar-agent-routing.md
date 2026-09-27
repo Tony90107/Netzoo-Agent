@@ -13124,3 +13124,12 @@ case 10 說「this expression matrix, data/blind-tests/case-1/expression.tsv」�
 - 限制：`score_blind.py` 以錄下的決策重新渲染，舊報告的 `discovered_inputs` 是修改前寫下的，所以舊回合仍顯示 `missing=['discovery']`；新錄音才會反映。
 - live 確認（gpt-4o-mini，case 10 ×3，`live-semantic-trace-2026-09-27-log238-case10-legacy.json`）：OK 3／3，`discovery` 3／3，
   `discovered_inputs` 3／3 只有 `motif_file=…/expression.tsv`。
+
+## Log 240｜case 5 的 exact：使用者決定維持「平手＋依內容推薦 PUMA」，不修改
+
+日期／時區：2026-09-27，Asia/Taipei。沒有程式碼修改。
+
+- 已量得：Log 234 的 17 次 case 5 中，exact 的 4 次都是第一輪寫出 `regulator_types=[tf, mirna]`（2 次 inferred、2 次引用「contains not only transcription factors but also predicted targets of some small RNAs」）；
+  其餘 13 次該維度為空，文字中沒有其他依據。證明「small RNAs 是 miRNA」的是檔案內容（`prior.tsv` 的 regulator 出現在 `mirna.txt`），不是請求文字。
+- 要變成 exact，只能推翻兩條既有規則之一：(1) 檔案內容只是建議、不淘汰候選（Logs 152／154），或 (2)「small RNAs 不自動等於 miRNAs」（使用者在 `b670faa` 的原意），而且會依賴檔名 `mirna.txt`（Log 136 的路徑名洩漏教訓）。
+- 使用者選擇維持現狀：回覆已先列 PUMA 並給出內容依據，再請使用者確認；盲測評分為 OK（Log 236：30／30）。之後不要再提這三種 exact 修法，除非使用者重新提起。
