@@ -11,7 +11,9 @@ facts were missing, and they are added here without changing any candidate:
   that says nothing about what is connected ("build me a network") grounds,
   but does not state the kind either, so it counts as no quote here (Log 193);
 - which files in a folder routing read validated by content for an input role,
-  and that they were not used;
+  and that they were not used; a file the request itself named for another
+  role is said to be that other role (Log 238), and then no workflow is said to
+  "need only the input you named";
 - when the reply asks how many samples there are and the request already gave
   a count, that count, quoted. No count is mapped to a category: the user
   decided on 2026-09-26 that the agent asks instead (Log 195).
@@ -20,12 +22,14 @@ facts were missing, and they are added here without changing any candidate:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..presentation import _ui_text_with_user_data, user_data_token
-from ..settings import INPUT_ROLE_FIELDS
+from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
+from .input_bindings import request_input_bindings
 from .inspected_answers import _NOT_INSPECTED, _ROLE_LABELS
 
 __all__ = ["with_reply_notes"]
@@ -73,7 +77,7 @@ def _result(artifact: str) -> str:
     return text.removeprefix("Inferred ")
 
 
-def _assumption_note(decision) -> str | None:
+def _assumption_note(decision, misnamed: bool = False) -> str | None:
     hypotheses = decision.outcome_hypotheses
     if not hypotheses or any(
         item.dimension == "artifact_type" and item.source == "explicit"
@@ -107,14 +111,36 @@ def _assumption_note(decision) -> str | None:
             "a " + _ROLE_LABELS.get(field, field.replace("_", " ")) for field in sorted(extra)
         )
         lines.append(f"Every option above also needs {labels}.")
-    if alternatives:
+    if alternatives and not misnamed:
         results = sorted({_result(OUTPUT_CAPABILITIES[action].artifact_type) for action in alternatives})
         names = " and ".join(f"**{ACTION_DEFINITIONS[action].workflow}**" for action in alternatives)
         lines.append(f"If you meant {' or '.join(results)}, {names} need only the input you named.")
     return " ".join(lines)
 
 
-def _discovery_note(decision, user_data: list[str]) -> str | None:
+def _named_for(task: str) -> dict[Path, str]:
+    """Each file the request names for a role, resolved, with that role."""
+    values = request_input_bindings(task).values
+    return {(PROJECT_ROOT / path).resolve(): field for field, path in values.items()}
+
+
+def _misnamed(decision, task: str) -> list[tuple[str, str, str]]:
+    """(named role, validated role, path) for a named file that validates as another role."""
+    named = _named_for(task) if decision.discovered_inputs else {}
+    found = []
+    for item in decision.discovered_inputs:
+        field, _, path = item.partition("=")
+        role = named.get((PROJECT_ROOT / path).resolve())
+        if role is not None and role != field:
+            found.append((role, field, path))
+    return found
+
+
+def _label(field: str) -> str:
+    return _ROLE_LABELS.get(field, field.replace("_", " "))
+
+
+def _discovery_note(decision, user_data: list[str], task: str = "") -> str | None:
     entries = [item.split("=", 1) for item in decision.discovered_inputs if "=" in item]
     if not entries:
         return None
@@ -123,6 +149,17 @@ def _discovery_note(decision, user_data: list[str]) -> str | None:
         user_data.append(value)
         return user_data_token(len(user_data) - 1)
 
+    misnamed = _misnamed(decision, task)
+    if misnamed:
+        found = "; ".join(
+            f"`{quoted(path)}`, which you named as the {_label(role)}, validates as the "
+            f"{_label(field)}, not as the {_label(role)}"
+            for role, field, path in misnamed
+        )
+        return (
+            f"By content, {found}. I have not used it; tell me which file holds your "
+            f"{' and '.join(sorted({_label(role) for role, _, _ in misnamed}))}."
+        )
     by_folder: dict[str, list[str]] = {}
     for field, path in entries:
         folder, _, name = path.rpartition("/")
@@ -171,9 +208,10 @@ def with_reply_notes(text: str | None, decision, task: str = "") -> str | None:
     ):
         return text
     user_data: list[str] = []
+    misnamed = bool(_misnamed(decision, task))
     notes = [note for note in (
-        _assumption_note(decision), _stated_count_note(decision, task, user_data),
-        _discovery_note(decision, user_data),
+        _assumption_note(decision, misnamed), _stated_count_note(decision, task, user_data),
+        _discovery_note(decision, user_data, task),
     ) if note]
     if not notes:
         return text
