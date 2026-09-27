@@ -12932,3 +12932,97 @@ case 4 若 exact GIRAFFE：`per_sample_values`。其餘 exact 案例（case 7 DR
 - **case 10（缺 `discovery`）**：同一批模型輸出，舊程式碼找到三個依內容驗證的檔案（`expression_file=…/ppi.tsv`、`motif_file=…/expression.tsv`、`ppi_file=…/motif.tsv`），
   HEAD 一個都沒有——Log 208 與 Log 223 兩批錄音都一樣。這是 `b670faa` 的程式碼（input bindings／input inspection）造成的決定性變化。
   它可能是有意的：該提交的新規則是「使用者選定的輸入不被同資料夾的其他檔案覆蓋」，而 case 10 的 `expression.tsv` 是刻意命名錯誤的檔案。是否符合預期由使用者判斷。
+
+## Log 228｜事前宣告：case 2 的 prompt 前後 A/B（`b670faa` 加入的兩段語意 prompt 文字）
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini（已預先授權）。只測 Log 227 留下的問題：case 2 由 exact OTTER（先前 7／7）變成平手（0／3），是否由 `b670faa` 的 prompt 文字造成。
+
+- 程式碼固定為目前工作樹（HEAD `b670faa` + 未提交的 Logs 221–226）。Log 227 已證明 case 2 的路由程式碼在 `b670faa` 前後對相同模型輸出給出相同結果，所以只剩 prompt 一個變因。
+- 兩臂只差語意 prompt：`pre` 以新工具 `docs/research-log/tools/prompt_arm.py` 在程序內移除 `b670faa` 加的兩段（逐字比對、各必須恰好出現一次），
+  指紋 legacy `b9b01cd2db6f`、claims `348a144cd9b4`，與 `b670faa` 之前錄下的值完全相同；`post` 不改，指紋 `d2a9afddad86`／`480a66264c53`。
+- 交錯執行四回合：pre ×5、post ×5、pre ×5、post ×5（每臂 10 trial），降低時間漂移。指標：exact OTTER 的 trial 數。
+- 判定（跑之前固定）：pre ≥ 7／10 且 post ≤ 3／10 → 歸因於 prompt 文字；兩臂差 ≤ 2 → prompt 不是原因（回到抽樣或模型端變化）；其餘 → 不確定，回報而不下結論。
+- 已知限制：同一 prompt 的連續 trial 不是獨立樣本（見 routing measurement power 的紀錄），所以這是方向性的證據，不是顯著性檢定。
+- Log 223 的顧慮階段在兩臂都會執行（exact OTTER 時多一次呼叫），它在路由之後，不影響指標。
+
+## Log 229｜Log 228 結果：case 2 的轉變歸因於 `b670faa` 的 prompt 文字（pre 10／10 exact OTTER，post 1／10）
+
+日期／時區：2026-09-27，Asia/Taipei。報告：`live-semantic-trace-2026-09-27-log228-case2-{pre,post}-r{1,2}-legacy.json`（每檔 5 trial，交錯執行；各檔的 `prompt_schema_sha256` 前 12 碼為 pre `b9b01cd2db6f`、post `d2a9afddad86`，與宣告相符）。
+
+| 臂 | 第 1 回合 | 第 2 回合 | 合計 exact OTTER |
+| --- | --- | --- | --- |
+| pre（移除兩段） | 5／5 | 5／5 | **10／10** |
+| post（現行 prompt） | 0／5（平手 PANDA／OTTER／GIRAFFE 2、加 PUMA 3） | 1／5（平手 4） | **1／10** |
+
+- 判定（Log 228 事前固定）：pre ≥ 7／10 且 post ≤ 3／10 → **歸因於 prompt 文字**。（harness 的 `passed` 欄以語料的佔位 `expected` 評分，對盲測無意義，不採用。）
+- 機制：兩臂第一輪的 artifact、角色、粒度相同；差別在 `selection_tags`。pre 10／10 帶 `relaxed_graph_matching`（來自「well-defined optimization objective rather than … iterative update rules」，
+  OTTER 的方法標籤），registry 以 `registry_features` 給出 exact OTTER；post 9／10 改寫成 `aggregate_network`、`tf_gene_regulation`——兩者只重述已固定的維度，
+  Log 174 起不參與區分——於是退回 `semantic` 平手。只有 1／10 仍寫出 `relaxed_graph_matching`，那一次就是唯一的 exact。
+- 這修正了 selection_tags 稽核「first-pass 標籤幾乎不產生、從不區分」的一般結論：在 case 2 上，方法標籤正是路由依據，而它對 prompt 措辭很敏感。
+- 沒有測試是哪一段造成的（兩段一起移除）。`b670faa` 是使用者的提交，本 Log 不修改它。
+
+## Log 230｜事前宣告：分段 A/B——`b670faa` 的哪一段讓 case 2 失去 `relaxed_graph_matching`
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini（已預先授權）。延續 Log 228／229，程式碼與 case 相同。
+
+- 段 1：「重建網路時保留使用者所選 prior 的 regulator／target 角色 … small RNAs … 不要憑空加一個只含 TF 的替代方案」（Dimension semantics 內，8 行）。
+- 段 2：「檔案的輸入角色不因檔名而變 … 同資料夾其他檔案不產生競爭目標」（evidence 說明之後，5 行）。
+- 兩個新臂（`prompt_arm.py`）：`no1` 只移除段 1（指紋 legacy `5e87915681aa`），`no2` 只移除段 2（legacy `d1f839bab43a`）。
+  交錯執行 no1 ×5、no2 ×5、no1 ×5、no2 ×5（每臂 10 trial）。對照沿用 Log 229：兩段都移除 10／10、都保留 1／10。
+- 指標：exact OTTER 的 trial 數，並記錄 `relaxed_graph_matching` 出現次數。
+- 判定（跑之前固定），以「移除該段後恢復」為準：
+  - no1 ≥ 7 且 no2 ≤ 3 → 段 1 是原因；no2 ≥ 7 且 no1 ≤ 3 → 段 2 是原因。
+  - 兩臂都 ≥ 7 → 需要兩段同時存在才會造成（交互作用）。
+  - 兩臂都 ≤ 3 → 任一段單獨就足以造成。
+  - 其他 → 不確定，回報數字而不下結論。
+- 限制同 Log 228：同一 prompt 的 trial 不獨立，這是方向性證據。
+
+## Log 231｜Log 230 結果：兩臂都 10／10——單獨任一段都不會造成，兩段同時存在才會（交互作用）
+
+日期／時區：2026-09-27，Asia/Taipei。報告：`live-semantic-trace-2026-09-27-log230-case2-{no1,no2}-r{1,2}-legacy.json`，各檔指紋與宣告相符（no1 `5e87915681aa`、no2 `d1f839bab43a`）。
+
+| 語意 prompt | 第 1 回合 | 第 2 回合 | exact OTTER | 帶 `relaxed_graph_matching` |
+| --- | --- | --- | --- | --- |
+| 兩段都移除（Log 229） | 5／5 | 5／5 | 10／10 | 10／10 |
+| 只移除段 1（`no1`） | 5／5 | 5／5 | **10／10** | 10／10 |
+| 只移除段 2（`no2`） | 5／5 | 5／5 | **10／10** | 10／10 |
+| 兩段都保留（現行，Log 229） | 0／5 | 1／5 | 1／10 | 1／10 |
+
+- 判定（Log 230 事前固定）：兩臂都 ≥ 7 → **需要兩段同時存在才會造成**；移除任一段即恢復。
+- 這排除了「某一段的內容本身把模型推離方法標籤」的單純解釋。兩段的主題（prior 的 regulator 角色、檔案輸入角色）都與 case 2 無關，
+  而兩段合計增加 13 行；可能是內容的交互作用，也可能只是長度或位置效應（標籤清單前後的文字變多）。這次實驗無法區分兩者：
+  要區分，需要一個把兩段換成等長中性文字的臂。沒有執行。
+- 實務含意：只刪其中一段就能讓 case 2 恢復，但依 Log 229 的機制，方法標籤對語意 prompt 的整體措辭敏感，任何之後的 prompt 增補都可能再次觸發，
+  而 case 5（段 1 的原始目標）是否仍被段 1 修好，這裡沒有量。
+
+## Log 232｜事前宣告：等長中性文字臂——case 2 的下降是長度／位置效應還是內容
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini（已預先授權）。延續 Logs 228–231，程式碼與 case 相同。
+
+- 新臂 `pad`（`prompt_arm.py`）：兩段在原位置換成中性文字（固定句子循環，不含任何與路由、標籤、輸入角色有關的詞），逐行保持縮排與長度。
+  段 1：640 → 651 字元、8 → 8 行、125 → 122 tokens（o200k_base）；段 2：388 → 389 字元、5 → 5 行、76 → 71 tokens。指紋 legacy `a80bea355911`。
+- 同時期對照：現行 prompt `post`（`d2a9afddad86`），與 `pad` 交錯：pad ×5、post ×5、pad ×5、post ×5，排除 Log 229 以來的時間漂移。
+- 指標：exact OTTER 的 trial 數與 `relaxed_graph_matching` 出現次數。
+- 判定（跑之前固定）：
+  - 對照 post 必須 ≤ 3／10（重現 Log 229），否則實驗無效，只回報數字。
+  - pad ≤ 3／10 → **長度／位置效應**（內容無關，多出的文字本身就足以造成）。
+  - pad ≥ 7／10 → **內容效應**（兩段的內容交互作用，不是長度）。
+  - 其他 → 不確定。
+- 限制同 Log 228：trial 不獨立，這是方向性證據；中性文字不可能完全沒有語意，這裡只控制長度、行數與位置。
+
+## Log 233｜Log 232 結果：等長中性文字同樣 0／10——是**長度／位置效應**，與兩段內容無關
+
+日期／時區：2026-09-27，Asia/Taipei。報告：`live-semantic-trace-2026-09-27-log232-case2-{pad,post}-r{1,2}-legacy.json`，指紋與宣告相符（pad `a80bea355911`、post `d2a9afddad86`）。
+
+| 語意 prompt（同一段時間交錯執行） | exact OTTER | 帶 `relaxed_graph_matching` |
+| --- | --- | --- |
+| 兩段換成等長中性文字（`pad`） | **0／10**（平手 PANDA／OTTER／GIRAFFE 10） | 0／10 |
+| 現行（`post`，對照） | 0／10（平手 9、加 PUMA 1） | 0／10 |
+
+- 對照 post 0／10 ≤ 3，重現 Log 229，實驗有效。
+- 判定（Log 232 事前固定）：pad ≤ 3／10 → **長度／位置效應**。在這兩個位置多出約 200 tokens 的任何文字，就足以讓模型不再寫出 `relaxed_graph_matching`；
+  兩段的內容不是原因。這與 Log 231 一致：移除任一段（少約 125 或 76 tokens）即恢復 10／10。
+- 合併 Logs 229–233（case 2，gpt-4o-mini，每格 10 trial）：少一段或兩段都少 → 10／10；兩段文字或等長中性文字 → 0～1／10。
+- 含意：case 2 的 OTTER 路由取決於模型是否在第一輪寫出一個方法標籤，而這個行為會被語意 prompt 的長度（或標籤說明前後的文字量）推翻。
+  任何只增加 prompt 文字的修法都可能讓它再次消失；這是 prompt-wording 修法之外，另一個不該依賴 prompt 的理由。
+- 沒有量：門檻落在哪個長度、是否只與位置（段 1 在 selection_tags 說明之前）有關、其他依方法標籤路由的案例（GIRAFFE `tfa`、BONOBO 等）是否同樣敏感。
