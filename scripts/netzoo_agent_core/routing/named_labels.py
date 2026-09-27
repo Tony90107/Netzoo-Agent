@@ -12,6 +12,7 @@ import re
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, RecommendedAction
 from ..interpretation.request_integrity import _scoped_clauses
+from .path_tokens import without_path_tokens
 
 
 def _workflow_name_pattern(action: str) -> str:
@@ -34,11 +35,12 @@ def _current_scope_text(task: str) -> str:
     "Previously I used PANDA" and which said it did not want inferred networks.
 
     The clause scoping is the same deterministic pass `input_mentions` uses, so
-    history is recognised here exactly as it is for input artifacts.
+    history is recognised here exactly as it is for input artifacts. Path tokens
+    are locations, not names, and are blanked out (Log 191).
     """
-    return " ".join(
+    return without_path_tokens(" ".join(
         clause for clause, scope in _scoped_clauses(task) if scope != "historical"
-    )
+    ))
 
 
 def named_workflow_action(task: str) -> RecommendedAction | None:
@@ -129,6 +131,8 @@ def named_registered_action(task: str):
         key=lambda item: len(item[1].workflow),
         reverse=True,
     )
+    # A folder called `bonobo-toy` does not name BONOBO (Log 191).
+    written = without_path_tokens(task).casefold()
     for action, definition in candidates:
         words = re.split(r"[-_\s]+", definition.workflow.casefold())
         pattern = (
@@ -136,7 +140,7 @@ def named_registered_action(task: str):
             + r"[\s_-]*".join(re.escape(word) for word in words)
             + r"(?![a-z0-9])"
         )
-        if re.search(pattern, task.casefold()):
+        if re.search(pattern, written):
             return action
     return None
 

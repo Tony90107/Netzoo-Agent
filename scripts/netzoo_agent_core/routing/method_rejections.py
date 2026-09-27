@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
 
 from ..contracts.outcomes import RejectedMethod
+from .path_tokens import without_path_tokens
 
 
 _GLASSO_MARKER = re.compile(
@@ -54,11 +55,13 @@ def rejected_methods_for(
     if not current:
         return []
     labels = names if names is not None else {action: spec.workflow for action, spec in ACTION_DEFINITIONS.items()}
+    # A path token is a location, not a mention of a method (Log 191).
+    written = without_path_tokens(task).casefold()
     rejected = []
     for action, capability in capabilities.items():
         label = labels[action]
         words = re.split(r"[-_\s]+", label.casefold())
-        mentioned = all(re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", task.casefold()) for word in words)
+        mentioned = all(re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", written) for word in words)
         if action not in actions and not mentioned:
             continue
         incompatible = current.intersection(capability.incompatible_input_artifacts)

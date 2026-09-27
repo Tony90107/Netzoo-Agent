@@ -11774,3 +11774,36 @@ GIRAFFE 讀法是 `tf_activity_matrix`、`entity_types=[sample, tf]`（完整集
 - 五個網格與 Log 188 錄下的結果逐位元組相同；指紋不變（legacy `1f68bfde4081`、claims `348a144cd9b4`）。
 - 行為不變，沒有實跑。
 
+## Log 191｜路徑 token 不計入點名（第 6 項）
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+### 成因
+
+Log 137：`named_registered_action(_current_scope_text(task))` 把 `data/bonobo-toy/` 讀成使用者點名 BONOBO，
+所以盲測必須先把資料複製到中性路徑。檢查後，同一類「原句是否寫了某個方法名稱」的判斷還有：
+`rejected_methods_for` 的 mentioned、`_needs_lioness_mode_choice`（`data/lioness-toy/` 會觸發「哪一種 LIONESS」）、
+handoff 的下游消費者、以及兩個概念回覆（`render_spec_backed_concept_answer`、sample-specific handoff 邊界）。
+
+### 修正（確定性，不改 prompt）
+
+新模組 `routing/path_tokens.py`：`without_path_tokens(text)` 把路徑 token 換成空白。
+一個 token 算路徑的條件：含分隔符號，且（以分隔符號結尾、以 `/`／`./`／`../`／`~` 開頭、最後一段有副檔名、或在專案根目錄下存在）；
+或不含分隔符號但以資料檔副檔名結尾（tsv、csv、txt、gmt、npy……）。
+`PANDA/PUMA`、`TF/gene`、`tumor/normal` 都不是路徑，照常當成文字。
+上列六個判斷改讀去掉路徑後的原句。**找檔案**的判斷（`input_availability`、`named_directories`）仍讀完整原句。
+
+### 量得的事實
+
+- 新測試 `tests/test_path_tokens.py` 21 項；把 `without_path_tokens` 換回恆等函式（等同舊行為）時 4 項失敗。
+- 重放 1639 筆（所有錄下的 trial 加上 `tests/routing_scenarios.json` 的 prompt），比較點名、唯一點名、LIONESS 模式判斷、
+  比對結果與 rejected methods：**恰好 3 筆改變**，都是 `trace_user_cases.json` 的 `user-case3-bonobo`（原始路徑 `data/bonobo-toy/`）：
+  exact BONOBO（`workflow_name`）→ ambiguous {LIONESS-COEXPRESSION, BONOBO}，與 Log 138 改用中性路徑後的結果相同，之後交給 Log 139 的條件推薦。
+  路由語料 0 筆改變。
+- 五個網格逐位元組相同；指紋不變；全套通過。
+
+### 已知限制
+
+- 只有一個斜線、沒有副檔名、而且不存在的 token（例如 `results/dragon`）不算路徑，這是為了保留 `PANDA/PUMA` 這類寫法。
+- 中文句子裡沒有空白、與中文字黏在一起的路徑（`我在data/x-toy/放了`）不處理；依 English-first 優先順序暫不處理。
+

@@ -17,6 +17,7 @@ from ..routing.outcome_matching import (
 )
 from ..routing.method_rejections import unsupported_algorithm_request
 from ..routing.named_labels import solely_named_run_action
+from ..routing.path_tokens import without_path_tokens
 from .registry_guidance import (
     handoff_input_fields,
     preferred_registry_composition_actions,
@@ -525,7 +526,7 @@ def render_sample_specific_coexpression_handoff_boundary(
     if not sample_specific_coexpression_handoff_requested(task):
         return None
 
-    normalized = task.casefold()
+    normalized = without_path_tokens(task).casefold()
     consumers = [
         spec
         for spec in policy.workflows.values()
@@ -774,7 +775,7 @@ def render_spec_backed_concept_answer(
         and _PURPOSE_PATTERN.search(task)
     ):
         return None
-    normalized = task.casefold()
+    normalized = without_path_tokens(task).casefold()
     for spec in policy.workflows.values():
         if spec.workflow.casefold() not in normalized:
             continue
