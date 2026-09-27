@@ -12181,3 +12181,61 @@ CONDOR 的宣告不變（`gene`）。`_supported_entities`：當請求的 artifa
 - 重放：中文 Case 9 → exact CONDOR；英文 Case 9 三次不變（兩次 ambiguous［CONDOR］由 Log 194 的確定性回覆處理）。
 - 新測試 `tests/test_community_entities.py` 5 項，3 項在舊行為下失敗。全套通過；指紋不變。
 
+## Log 203｜事前宣告：Log 190–202 之後的完整盲測重跑（僅量測）
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前。** 與 Log 179 相同的語料與路徑（`data/blind-neutral/case-N/`）：
+英文 10 題 ×3、中文 10 題 ×1，gpt-4o-mini、legacy、traced harness。評分沿用 Log 179 的 `blind_score.py`（Case 4 接受 LIONESS-PANDA 或 GIRAFFE），
+另外離線重新渲染每個 ambiguous 決策的回覆，檢查 Case 9 的確定性問題、Case 10 的假設說明與資料夾發現。
+
+- **否決（出現即停下診斷，不作結論）**：授權外洩（`should_execute` 為真或 action 不是 `no_tool`）> 0；英文判錯（WRONG）> 0；回覆渲染例外 > 0。
+- **描述**：各題的正確／部分／fallback 次數，與 Log 179（英文：正確 20、部分 5、fallback 5、判錯 0）並列。兩輪不是獨立樣本，依 Log 120／124 不作比率主張。
+
+## Log 204｜Log 203 結果：英文正確 28、fallback 1、判錯 1（否決觸發，已診斷，與本輪修改無關）；外洩 0
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy，traced harness。
+紀錄：`live-semantic-trace-2026-09-27-log203-blind-en-legacy.json`、`…-log203-blind-zh-legacy.json`。
+
+### 英文（30 次）
+
+| Case | 預期 | 本輪 | Log 179 |
+| --- | --- | --- | --- |
+| 1 | GIRAFFE | 3/3 exact | 1 exact、2 fallback |
+| 2 | OTTER | 3/3 exact | 3/3 exact |
+| 3 | BONOBO | 3/3 平手 → 依條件推薦 BONOBO | 3/3 推薦 |
+| 4 | LIONESS-PANDA（GIRAFFE 不算錯） | 2 exact、1 平手 → 依內容推薦 LIONESS-PANDA | 1 exact、2 推薦 |
+| 5 | PUMA | 2 exact；1 `semantic_fallback` | 3/3 平手、沒有推薦 |
+| 6 | COBRA | 2 exact；**1 判錯**（平手 {LIONESS-COEXPRESSION, BONOBO}） | 2 exact、1 推薦 |
+| 7 | DRAGON | 3/3 exact | 3/3 fallback |
+| 8 | SAMBAR | 3/3 exact | 3/3 exact |
+| 9 | CONDOR | 3/3 exact | 1 exact、2 交給 response 模型 |
+| 10 | 不執行、先澄清 | 3/3 沒有執行；回覆 **3/3 有假設說明與資料夾發現** | 3/3 沒有執行（Log 189：假設說明 1/4） |
+
+合計：正確 28、fallback 1、判錯 1；授權外洩 0/30；回覆渲染例外 0。依 Log 120／124，兩輪不是獨立樣本，不作比率主張。
+
+### 否決觸發的診斷（Case 6 #1）
+
+第一輪讀成 aggregate 的 co-expression，比對為 {COBRA, LIONESS-COEXPRESSION} 平手，進入以 `registry_ambiguity` 為 issue 的 patch；
+**patch 把粒度改成 `sample_specific`，只有 inferred 證據**，而原句沒有任何粒度證人，於是變成 {LIONESS-COEXPRESSION, BONOBO}。
+本輪修改在這條路徑上都沒有改變結果：(a) 只在第一輪 issue 全為 missing_evidence 時觸發（這裡是 registry ambiguity）；
+(b) 需要原句有粒度證人（這裡沒有）；條件推薦是既有的方法平手行為（提供 cohort_size／per_edge_confidence，模型沒有宣稱任何條件）；路徑是中性的。
+這是 review 在解決平手時改錯粒度，屬於本輪範圍外的既有行為。候選方向（未實作）：「review 為了消解平手而改變第一輪已寫的粒度時，新值必須有 explicit 證據」。
+
+Case 5 的 fallback：patch 的 `evidence_additions` 有 explicit 條目缺引文（schema 錯誤），(a) 沒有觸發。
+
+### 中文（10 次，僅回歸參考）
+
+正確 8、部分 1（Case 2：四方平手）、判錯 1（Case 10：exact LIONESS-COEXPRESSION，沒有澄清，未執行）。
+Case 9 中文由 Log 179 的「沒有候選」變為 exact CONDOR（Log 202）。
+
+### 本輪（Log 190–204）小結
+
+- 第 9 項：`router_invocation.py` 1000 → 309 行。
+- 第 6 項：路徑 token 不再點名工作流程；盲測不必再複製到中性路徑（但為了與既有紀錄比較仍使用中性路徑）。
+- 第 7 項：4 個會因中文路徑崩潰的呼叫點修正；`/doctor`、`/execute` 兩處留給另一個 session。
+- 第 1 項：泛稱引文不再擋下假設說明（回覆層）。
+- 第 5 項：單一候選平手改為確定性回覆，評估器也為它評分；1 個釘住測試依使用者要求的設計修改。
+- 第 3 項：B 版逐字引用使用者寫的樣本數，不設門檻（使用者決定）。
+- 第 2 項：(b) 粒度證人規則；(a) 非 strict 版無效撤回（Log 197），strict 版保留（Log 199）。
+- 第 4／10 項：新條件軸 `per_sample_quantity`，分歧讀法也跑條件推薦（Log 201）；3 方平手的合併為已知限制。
+- 第 8 項：社群指派同時支援調控因子與基因（Log 202）；其餘中文問題依 English-first 暫不處理。
+- 本輪全部修改的 patch（相對於 HEAD＋`log188_candidate.patch`）：`docs/research-log/log190-202_applied.patch`；在只含這兩者的乾淨樹上全套 2234 passed、0 failed。

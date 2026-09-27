@@ -1,0 +1,3335 @@
+diff --git a/scripts/evaluate_routing.py b/scripts/evaluate_routing.py
+index 02aaf40..626b875 100644
+--- a/scripts/evaluate_routing.py
++++ b/scripts/evaluate_routing.py
+@@ -34,6 +34,7 @@ from netzoo_agent_core.graph.response import respond
+ from netzoo_agent_core.evaluation.guidance_surface import capture_progress, score_surface
+ from netzoo_agent_core.interpretation.semantic_goal import publish_routing_progress
+ from netzoo_agent_core.interpretation.request_integrity import granularity_left_open
++from netzoo_agent_core.interpretation.single_candidate import single_candidate_question
+ from netzoo_agent_core.presentation import _trace
+ from netzoo_agent_core.llm import build_llm, build_semantic_reviewer_messages, validate_router_model
+ from netzoo_agent_core.policy import ProjectPolicyLoader
+@@ -695,9 +696,11 @@ def _score_answer(case, result, context, progress=""):
+     # scored below; the remainder genuinely needs the response model and stays
+     # outside this evaluator -- but it now says so instead of being folded into
+     # one undifferentiated `false`.
++    # A single surviving candidate is answered deterministically too since
++    # Log 194, which supplies its question from the registry.
+     deterministic_ambiguity = (
+         decision.capability_match_status == "ambiguous"
+-        and bool(decision.clarification_question)
++        and bool(decision.clarification_question or single_candidate_question(decision))
+     )
+     if decision.action != "no_tool" or decision.should_execute or not (
+         decision.capability_match_status in {"exact", "fallback"}
+diff --git a/scripts/netzoo_agent_core/cli/clarification.py b/scripts/netzoo_agent_core/cli/clarification.py
+index 14f888c..d65f8db 100644
+--- a/scripts/netzoo_agent_core/cli/clarification.py
++++ b/scripts/netzoo_agent_core/cli/clarification.py
+@@ -18,6 +18,7 @@ from ..contracts import (
+ )
+ from ..interpretation import INPUT_LABELS
+ from ..interpretation.request_parameters import extract_explicit_taxon
++from ..presentation import _ui_text_quoting
+ 
+ 
+ _FIELD_ASSIGNMENT = re.compile(
+@@ -52,6 +53,15 @@ def _candidate_selection(evidence: InputEvidence, value: str) -> str:
+         f"{evidence.field} has no candidate numbered {cleaned}."
+     )
+ 
++def _plan_user_data(plan: WorkflowPlan) -> list[str]:
++    """The paths, file names and folders a plan's question can quote."""
++    values = [option.directory for option in plan.input_bundle_options]
++    for item in plan.evidence:
++        if item.value:
++            values.extend((item.value, Path(item.value).name, str(Path(item.value).parent)))
++    return values
++
++
+ def _action_for_registered_choice(value: str) -> str | None:
+     normalized = value.casefold()
+     for action in registered_actions_for_family("lioness"):
+@@ -279,7 +289,9 @@ def _render_clarification_prompt(
+             ]
+         )
+     if not custom and not selected and plan.question:
+-        lines.extend([_ui_text(plan.question), ""])
++        # The question quotes the plan's own discovered folder and file names,
++        # which may be in any language (Log 192).
++        lines.extend([_ui_text_quoting(plan.question, _plan_user_data(plan)), ""])
+     lines.extend(
+         [
+             _ui_text(
+diff --git a/scripts/netzoo_agent_core/cli/follow_up.py b/scripts/netzoo_agent_core/cli/follow_up.py
+index 2ed9cd0..79d1e30 100644
+--- a/scripts/netzoo_agent_core/cli/follow_up.py
++++ b/scripts/netzoo_agent_core/cli/follow_up.py
+@@ -25,6 +25,7 @@ from ..contracts import (
+     _ui_text,
+ )
+ from ..contracts.interaction import WorkflowContinuation
++from ..presentation import _ui_text_with_user_data, user_data_token
+ from ..interpretation import INPUT_LABELS
+ from ..outcomes import effective_results, terminal_failed
+ from ..settings import ROUTER_CONTEXT_MAX_CHARS
+@@ -241,21 +242,19 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
+             for error in item.errors
+         ]
+         if validation_errors:
+-            detail = validation_errors[0]
+-            question = (
+-                f"Input validation did not pass: {detail} "
++            # The error quotes the user's paths and identifiers (Log 192).
++            question = _ui_text_with_user_data(
++                f"Input validation did not pass: {user_data_token(0)} "
+                 "Are these local files intended for this workflow? "
+-                "If not, provide the correct role=path assignments."
++                "If not, provide the correct role=path assignments.",
++                [validation_errors[0]],
+             )
+         else:
+-            question = (
++            question = _ui_text(
+                 f"The {plan.workflow} workflow stopped. Would you like to correct "
+                 "its inputs or try a different workflow?"
+             )
+-        return NextTurnPrompt(
+-            kind="failed",
+-            question=_ui_text(question),
+-        )
++        return NextTurnPrompt(kind="failed", question=question)
+ 
+     if any(item.status == "dry_run" for item in results):
+         return NextTurnPrompt(
+diff --git a/scripts/netzoo_agent_core/graph/condition_recommender.py b/scripts/netzoo_agent_core/graph/condition_recommender.py
+index 0715a15..37b5021 100644
+--- a/scripts/netzoo_agent_core/graph/condition_recommender.py
++++ b/scripts/netzoo_agent_core/graph/condition_recommender.py
+@@ -45,6 +45,7 @@ __all__ = [
+     "ConditionOption",
+     "condition_options",
+     "invoke_condition_recommender",
++    "is_divergent_reading_tie",
+     "is_method_tie",
+     "recommend_from_claims",
+     "separating_question",
+@@ -110,6 +111,23 @@ def is_method_tie(decision: TaskDecision) -> bool:
+     return plan is not None and plan.dimension == "algorithm"
+ 
+ 
++def is_divergent_reading_tie(decision: TaskDecision) -> bool:
++    """Readings that differ in what is produced (Log 150), each leading to a workflow.
++
++    Case 4 read "each patient's regulatory wiring ... per-TF regulatory strength"
++    both as one TF-gene network per sample (LIONESS-PANDA) and as TF activity per
++    sample (GIRAFFE). The inputs are the same, so the folder cannot separate
++    them; the study fact that does is which per-sample quantity the user needs
++    (Log 200). The readings' own question is kept when no fact is stated.
++    """
++    artifacts = {item.outcome.artifact_type for item in decision.outcome_hypotheses} - {"unknown"}
++    return (
++        decision.capability_match_status == "ambiguous"
++        and len(decision.hypothesis_actions) >= 2
++        and len(artifacts) >= 2
++    )
++
++
+ def _beginner_group_guidance_applies(task: str, decision: TaskDecision) -> bool:
+     """Leave the existing two-group comparison guidance untouched."""
+     outcome = decision.requested_outcome
+@@ -209,10 +227,12 @@ def invoke_condition_recommender(
+ ):
+     """Attach an advisory recommendation or a separating question to a method tie."""
+     llm = getattr(context, "selection_condition_llm", None)
++    method_tie = is_method_tie(decision)
++    divergent = not method_tie and is_divergent_reading_tie(decision)
+     if (
+         llm is None
+         or getattr(context, "semantic_claims", False)
+-        or not is_method_tie(decision)
++        or not (method_tie or divergent)
+         or _beginner_group_guidance_applies(user_task, decision)
+     ):
+         return decision, usage, budget_warnings
+@@ -233,7 +253,8 @@ def invoke_condition_recommender(
+     if budget.status == "blocked":
+         usage.budget_exhausted = True
+         return decision, usage, budget_warnings
+-    fallback = decision.model_copy(update={
++    # Divergent readings keep their own question (Log 188) when nothing is stated.
++    fallback = decision if divergent else decision.model_copy(update={
+         "clarification_question": separating_question(options, candidates),
+     })
+     started_ns = time.monotonic_ns()
+@@ -243,6 +264,7 @@ def invoke_condition_recommender(
+     call_status = "failed"
+     try:
+         record_event(context, state, "routing.selection_conditions_started", "classify", {
++            "tie": "divergent_readings" if divergent else "method",
+             "candidate_actions": candidates,
+             "offered_conditions": [option.condition for option in options],
+         })
+diff --git a/scripts/netzoo_agent_core/graph/context.py b/scripts/netzoo_agent_core/graph/context.py
+index d0824f9..8bbd6c5 100644
+--- a/scripts/netzoo_agent_core/graph/context.py
++++ b/scripts/netzoo_agent_core/graph/context.py
+@@ -46,6 +46,7 @@ class _GraphContext:
+     semantic_discriminator: Any = None
+     # Log 139: the semantic model, bound to SelectionConditionClaims lazily and
+     # only when a method tie occurs, so graph construction binds nothing new.
++    # Log 196 binds it the same way to a per-call evidence-supply schema.
+     selection_condition_llm: Any = None
+ 
+ 
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index c6ff536..9b15d5e 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -2,45 +2,19 @@
+ 
+ from __future__ import annotations
+ 
+-import time
+-
+ from ..contracts import AgentState, LLMUsage, _trace
+-from ..contracts.outcomes import (
+-    CapabilityMatch,
+-    SemanticInterpretation,
+-    SemanticPatch,
+-    SemanticReview,
+-)
+-from ..contracts.repair_scope import permitted_fields
++from ..contracts.outcomes import CapabilityMatch
+ from ..interpretation.assembly import assemble_task_decision
+ from ..interpretation.hydration import hydrate_router_decision
+-from ..interpretation.outcome_consistency import (
+-    complete_open_granularity_alternatives,
+-)
+-from ..interpretation.stated_field_restoration import restore_stated_fields
+-from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
++from ..interpretation.outcome_validation import validate_outcome_hypotheses
+ from ..interpretation.provider_fallback import (
+-    _is_fatal_exception,
+     deterministic_router_fallback,
+     recover_ambiguous_input,
+     recover_explicit_run,
+     recover_registry_guidance,
+ )
+-from ..interpretation.outcome_downgrade import interpretation_downgrades
+ from ..interpretation.semantic_goal import outcome_routing_state
+-from ..interpretation.semantic_patch import (
+-    apply_semantic_patch, patched_hypothesis_index,
+-)
+-from ..interpretation.semantic_repair import semantic_payload
+-from ..interpretation.unverified_evidence import (
+-    UNVERIFIED_BASIS, bounded_match, with_reduced_confidence,
+-)
+-from ..llm import (
+-    append_llm_usage,
+-    build_semantic_interpreter_messages,
+-    build_semantic_patch_messages,
+-    build_semantic_reviewer_messages,
+-)
++from ..interpretation.unverified_evidence import UNVERIFIED_BASIS, bounded_match
+ from ..routing.capability import (
+     apply_input_preflight_intent,
+     has_direct_retrieval_request,
+@@ -48,37 +22,24 @@ from ..routing.capability import (
+ )
+ from ..routing.named_labels import named_registered_action
+ from ..routing.outcome_matching import match_semantic_request
+-from .context import _GraphContext, preflight_budget, record_event
++from .context import _GraphContext, record_event
+ from .continuation_invocation import continue_workflow
+ from .intent_invocation import _invoke_intent_router
+ from .invocation_types import RouterInvocation as _RouterInvocation
+-from .semantic_review_validation import (
+-    _as_semantic_patch,
+-    _validated_review,
+-    normalize_advice_operation_evidence,
+-    normalize_role_entailed_artifact_evidence,
+-)
+-from .structured_calls import _serialized_structured_input, _validation_issue_types
+ from .condition_recommender import invoke_condition_recommender
+ from .input_inspection import invoke_input_inspection
+-from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
+-from .discriminator import (
+-    discriminator_context as _discriminator_context,
+-    invoke_semantic_discriminator as _invoke_semantic_discriminator,
+-    _fill_inferred_role_evidence,
+-)
++from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
++from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
++# Re-exported for callers and tests that imported them from here before the
++# attempt loop moved to `semantic_attempts` (Log 190).
++from .discriminator import discriminator_context as _discriminator_context  # noqa: F401
++from .semantic_attempts import MAX_SEMANTIC_ATTEMPTS  # noqa: F401
++from .semantic_review_validation import _as_semantic_patch  # noqa: F401
++from .structured_calls import _validation_issue_types  # noqa: F401
+ 
+ __all__: list[str] = []
+ 
+ 
+-# A third, progress-gated attempt was tried and reverted. It fired twice in nine
+-# live trials and made the outcome worse both times: the extra review dropped an
+-# input it had already recovered and added ungrounded evidence, while the error
+-# it was meant to fix survived. Overall passes were unchanged, so it bought an
+-# extra call and nothing else. See tests/test_semantic_attempt_bound.py.
+-MAX_SEMANTIC_ATTEMPTS = 2
+-
+-
+ def _current_usage(context: _GraphContext, state: AgentState) -> LLMUsage:
+     current = state.get("token_usage")
+     return (
+@@ -153,660 +114,6 @@ def _semantic_failure(
+     )
+ 
+ 
+-def _invoke_semantic_interpreter(
+-    context: _GraphContext,
+-    state: AgentState,
+-    user_task: str,
+-    usage: LLMUsage,
+-) -> tuple[
+-    SemanticInterpretation | None,
+-    LLMUsage,
+-    list[str],
+-    BaseException | None,
+-    frozenset[str],
+-]:
+-    if getattr(context, "semantic_claims", False):
+-        from .claim_invocation import invoke_claim_interpreter
+-        return invoke_claim_interpreter(context, state, user_task, usage,
+-            serialize=_serialized_structured_input, schema_errors=_validation_issue_types)
+-    validation_issues: tuple[str, ...] = ()
+-    budget_warnings = list(state.get("budget_warnings", []))
+-    last_error: BaseException | None = None
+-    proposal = None
+-    # The reviewer is a second opinion, not a precondition. An interpretation
+-    # that already satisfied every check is kept if the review that follows does
+-    # not, because discarding both leaves a registry guess naming no workflow.
+-    validated: SemanticInterpretation | None = None
+-    # Tags this function moved into the outcome, kept out of capability
+-    # selection: a harness repair must never be what picks a tool.
+-    restored_tags: frozenset[str] = frozenset()
+-    discriminator_context = ""
+-    # Measurement only, read at acceptance. The first pass's own grounding
+-    # result per (dimension, value), and the hypothesis a patch was merged onto,
+-    # are both gone by the time the accepted interpretation exists -- and
+-    # without them a dimension that ends up `unknown` cannot be told apart from
+-    # one that was never committed to. Neither influences any decision below.
+-    first_pass_shapes: tuple[dict, ...] = ()
+-    patched_index: int | None = None
+-    partial_first: SemanticInterpretation | None = None
+-    for attempt in range(MAX_SEMANTIC_ATTEMPTS):
+-        role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
+-        # A patch can only be merged onto a structurally valid proposal. When the
+-        # first pass did not parse, there is nothing to carry forward and the
+-        # review still owns the whole structure.
+-        patching = (
+-            attempt == 1
+-            and getattr(context, "semantic_patcher", None) is not None
+-            and isinstance(proposal, SemanticInterpretation)
+-            and not any(
+-                "inconsistent_not_applicable_outcome" in issue
+-                for issue in validation_issues
+-            )
+-        )
+-        adapter = (
+-            context.semantic_interpreter if attempt == 0
+-            else context.semantic_patcher if patching
+-            else context.semantic_reviewer
+-        )
+-        messages = (
+-            (build_semantic_patch_messages if patching else build_semantic_reviewer_messages)(
+-                context.semantic_prompt,
+-                user_task,
+-                proposal,
+-                validation_issues,
+-                discriminator_context,
+-            )
+-            if attempt == 1
+-            else build_semantic_interpreter_messages(
+-                context.semantic_prompt,
+-                user_task,
+-                validation_issues,
+-            )
+-        )
+-        schema_model = (
+-            SemanticInterpretation if attempt == 0
+-            else SemanticPatch if patching
+-            else SemanticReview
+-        )
+-        input_text = _serialized_structured_input(messages, schema_model)
+-        semantic_state = dict(state)
+-        semantic_state["token_usage"] = usage.model_dump()
+-        semantic_state["budget_warnings"] = budget_warnings
+-        budget, budget_warnings = preflight_budget(
+-            context,
+-            semantic_state,
+-            role=role,
+-            model=context.semantic_model_name,
+-            input_text=input_text,
+-            reserved_output_tokens=context.router_max_tokens,
+-            allow_reserve=False,
+-        )
+-        if budget.status == "blocked":
+-            usage.budget_exhausted = True
+-            return None, usage, budget_warnings, last_error, restored_tags
+-
+-        started_ns = time.monotonic_ns()
+-        raw = None
+-        payload = None
+-        output_text = ""
+-        try:
+-            _trace(
+-                "router",
+-                "Semantic interpretation started",
+-                {
+-                    "kind": "router_activity",
+-                    "operation": "semantic_interpreter",
+-                    "status": "started",
+-                    "attempt": attempt + 1,
+-                },
+-            )
+-            structured = adapter.invoke(messages)
+-            payload, raw = semantic_payload(structured)
+-            if attempt == 0:
+-                proposal = payload
+-            patch_evidence_normalizations = []
+-            if patching:
+-                payload, patch_evidence_normalizations = (
+-                    normalize_role_entailed_artifact_evidence(payload, user_task)
+-                )
+-                payload, advice_evidence_normalizations = (
+-                    normalize_advice_operation_evidence(
+-                        payload,
+-                        user_task,
+-                        proposal_request_mode=proposal.request_mode,
+-                    )
+-                )
+-                patch_evidence_normalizations.extend(advice_evidence_normalizations)
+-            # `patching` is only ever true on the second attempt, so this reads
+-            # the reply as a patch exactly when one was asked for.
+-            patch, ignored_instructions = (
+-                _as_semantic_patch(payload) if patching else (None, [])
+-            )
+-            if attempt == 0:
+-                interpretation = SemanticInterpretation.model_validate(payload)
+-                output_text = interpretation.model_dump_json()
+-            elif patch is not None:
+-                output_text = patch.model_dump_json()
+-                licensed = permitted_fields(validation_issues)
+-                interpretation, retired_evidence = apply_semantic_patch(
+-                    proposal, patch, permitted_fields=licensed, user_task=user_task,
+-                )
+-                patched_index = patched_hypothesis_index(proposal, patch)
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_patch_applied",
+-                    "classify",
+-                    {
+-                        "attempt": attempt + 1,
+-                        "hypothesis_index": patched_hypothesis_index(proposal, patch),
+-                        "changed_fields": sorted(
+-                            name for name, value in patch.outcome.model_dump().items()
+-                            if value is not None
+-                        ),
+-                        "evidence_removed": [
+-                            {"dimension": item.dimension, "value": item.value}
+-                            for item in patch.evidence_removals
+-                        ],
+-                        "evidence_added": len(patch.evidence_additions),
+-                        # Entries made stale, additions dropped, withdrawals ignored (Log 164).
+-                        "evidence_retired_as_stale": [i for i in retired_evidence if "reason" not in i],
+-                        "evidence_additions_dropped": [
+-                            i for i in retired_evidence
+-                            if i.get("reason") == "addition_does_not_match_merged_outcome"
+-                        ],
+-                        "evidence_withdrawals_ignored": [
+-                            i for i in retired_evidence
+-                            if i.get("reason") == "withdrawal_of_asserted_value"
+-                        ],
+-                        # What the rules that fired declared they examined.
+-                        # Overrides outside this set were not applied; an empty
+-                        # set is the citation-only case.
+-                        "permitted_fields": sorted(licensed),
+-                        "evidence_normalizations": patch_evidence_normalizations,
+-                        # Instructions that could not be carried out, set aside
+-                        # rather than costing the repair. Never silent.
+-                        "ignored_instructions": ignored_instructions,
+-                    },
+-                )
+-            else:
+-                review = _validated_review(payload, patching=patching)
+-                output_text = review.model_dump_json()
+-                # A whole review carries one hypothesis and no index, so it
+-                # cannot say which of several it replaces -- and rebuilding the
+-                # interpretation from it alone deletes the rest. A first pass
+-                # that offered two granularities was collapsed that way into a
+-                # confident single answer, losing an ambiguity the validator had
+-                # correctly identified. Where the proposal really was ambiguous,
+-                # this reply does not answer the contract that was asked for, so
+-                # the validated first pass is kept instead (the exception
+-                # authorized for a failed review) rather than inventing a merge.
+-                if (
+-                    isinstance(proposal, SemanticInterpretation)
+-                    and len(proposal.outcome_hypotheses) > 1
+-                    and validated is not None
+-                ):
+-                    # The call happened and is billed, so it is accounted for
+-                    # before returning. An early return that skipped this would
+-                    # hide a paid call from the token budget.
+-                    usage = append_llm_usage(
+-                        usage,
+-                        role=role,
+-                        model=context.semantic_model_name,
+-                        response=raw,
+-                        input_text=input_text,
+-                        output_text=output_text,
+-                        budget_tokens=context.task_token_budget,
+-                        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+-                        status="failed",
+-                        price_catalog=context.price_catalog,
+-                    )
+-                    record_event(
+-                        context,
+-                        state,
+-                        "routing.semantic_review_discarded",
+-                        "classify",
+-                        {
+-                            "attempt": attempt + 1,
+-                            "issues": [
+-                                "whole_review_cannot_represent_multiple_hypotheses:"
+-                                f"{len(proposal.outcome_hypotheses)}"
+-                            ],
+-                        },
+-                    )
+-                    return validated, usage, budget_warnings, None, restored_tags
+-                interpretation = SemanticInterpretation(
+-                    request_mode=review.request_mode,
+-                    semantic_goal=review.semantic_goal,
+-                    outcome_hypotheses=[review.outcome_hypothesis],
+-                )
+-            if attempt == 0:
+-                proposal = interpretation
+-        except BaseException as error:
+-            if _is_fatal_exception(error):
+-                raise
+-            duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+-            schema_issues = _validation_issue_types(error)
+-            usage = append_llm_usage(
+-                usage,
+-                role=role,
+-                model=context.semantic_model_name,
+-                response=raw,
+-                input_text=input_text,
+-                output_text=output_text,
+-                budget_tokens=context.task_token_budget,
+-                duration_ms=duration_ms,
+-                status="failed",
+-                price_catalog=context.price_catalog,
+-            )
+-            if attempt == 0 and schema_issues:
+-                validation_issues = tuple(
+-                    "schema_validation:"
+-                    + ".".join(issue["location"])
+-                    + ":"
+-                    + str(issue["type"])
+-                    for issue in schema_issues
+-                )
+-                last_error = error
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_interpretation_rejected",
+-                    "classify",
+-                    # Keep the located shapes beside the flattened issue strings:
+-                    # the first attempt is where a rejected value is otherwise lost.
+-                    {
+-                        "attempt": 1,
+-                        "issues": list(validation_issues),
+-                        "shapes": schema_issues,
+-                        "provider_payload": payload,
+-                    },
+-                )
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_interpretation_retried",
+-                    "classify",
+-                    {"issues": list(validation_issues)},
+-                )
+-                continue
+-            record_event(
+-                context,
+-                state,
+-                "routing.semantic_interpreter_failed",
+-                "classify",
+-                {
+-                    "attempt": attempt + 1,
+-                    "error_type": type(error).__name__,
+-                    "validation_issues": schema_issues,
+-                    "provider_payload": payload,
+-                },
+-            )
+-            # A review that does not parse is still only a second opinion. The
+-            # branch below already keeps a validated first pass when the review
+-            # parses and fails validation; a review that breaks the wire contract
+-            # is no better an argument for discarding it. Six of the losses in the
+-            # live record are this branch: a first pass that passed every check,
+-            # replaced by a registry guess naming no workflow. Nothing is filled
+-            # in -- what is returned is the first pass the validator accepted.
+-            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
+-            if validated is not None:
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_review_discarded",
+-                    "classify",
+-                    {
+-                        "attempt": attempt + 1,
+-                        "issues": [
+-                            "schema_validation:"
+-                            + ".".join(issue["location"])
+-                            + ":"
+-                            + str(issue["type"])
+-                            for issue in schema_issues
+-                        ],
+-                    },
+-                )
+-                return validated, usage, budget_warnings, None, restored_tags
+-            if recover_registry_guidance(
+-                user_task,
+-                context.project_policy.workflows,
+-                error,
+-            ) is None:
+-                _trace(
+-                    "router",
+-                    "Semantic interpretation failed",
+-                    {
+-                        "kind": "router_activity",
+-                        "operation": "semantic_interpreter",
+-                        "status": "failed",
+-                        "error_type": type(error).__name__,
+-                    },
+-                )
+-            return None, usage, budget_warnings, error, restored_tags
+-
+-        # The one authorized place the deterministic layer writes an outcome
+-        # field. It can move a value stated in the hypothesis's own evidence;
+-        # after a review patch it may also align an under-specified or impossible
+-        # scalar to the sole value entailed by the already selected artifact. It
+-        # never picks an artifact or workflow. Validation below is unchanged.
+-        interpretation, restorations = restore_stated_fields(
+-            user_task,
+-            interpretation,
+-            align_artifact_constraints=patch is not None,
+-            restore_explicit_scalar_evidence=True,
+-        )
+-        if patch is not None:
+-            interpretation = _fill_inferred_role_evidence(interpretation)
+-        restored_tags = frozenset(
+-            str(item["value"]) for item in restorations
+-            if item["field"] == "selection_tags"
+-        )
+-        artifact_alignments = [
+-            item for item in restorations if item["source"] == "artifact_ontology"
+-        ]
+-        stated_restorations = [
+-            item for item in restorations if item["source"] != "artifact_ontology"
+-        ]
+-        if artifact_alignments:
+-            record_event(
+-                context,
+-                state,
+-                "routing.outcome_artifact_constraints_applied",
+-                "classify",
+-                {"attempt": attempt + 1, "alignments": artifact_alignments},
+-            )
+-        if stated_restorations:
+-            record_event(
+-                context,
+-                state,
+-                "routing.outcome_input_restored",
+-                "classify",
+-                {"attempt": attempt + 1, "restored": stated_restorations},
+-            )
+-        before_alternatives = interpretation.outcome_hypotheses
+-        completed_hypotheses = complete_open_granularity_alternatives(
+-            user_task, before_alternatives
+-        )
+-        if completed_hypotheses != before_alternatives:
+-            completion_validation = validate_outcome_hypotheses(
+-                user_task, completed_hypotheses, interpretation.request_mode,
+-            )
+-            if completion_validation.valid:
+-                interpretation = interpretation.model_copy(
+-                    update={"outcome_hypotheses": completed_hypotheses}
+-                )
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.granularity_alternatives_completed",
+-                    "classify",
+-                    {
+-                        "alternatives": [
+-                            item.outcome.granularity
+-                            for item in completed_hypotheses
+-                        ],
+-                        "source": "explicit_undecided_request_witnesses",
+-                    },
+-                )
+-            else:
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.granularity_alternative_completion_rejected",
+-                    "classify",
+-                    {"issues": list(completion_validation.issues)},
+-                )
+-        validation = validate_outcome_hypotheses(
+-            user_task,
+-            interpretation.outcome_hypotheses,
+-            interpretation.request_mode,
+-        )
+-        if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
+-            interpretation, validation = keep_valid_hypotheses(
+-                context, state, user_task, interpretation, validation, attempt)
+-        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+-        if not validation.valid:
+-            usage = append_llm_usage(
+-                usage,
+-                role=role,
+-                model=context.semantic_model_name,
+-                response=raw,
+-                input_text=input_text,
+-                output_text=output_text,
+-                budget_tokens=context.task_token_budget,
+-                duration_ms=duration_ms,
+-                status="failed",
+-                price_catalog=context.price_catalog,
+-            )
+-            record_event(
+-                context,
+-                state,
+-                "routing.semantic_interpretation_rejected",
+-                "classify",
+-                {
+-                    "attempt": attempt + 1,
+-                    "issues": list(validation.issues),
+-                    # Why each rejected quote failed, in closed vocabulary. The
+-                    # issue strings the next attempt sees are unchanged.
+-                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+-                    "evidence_census": [
+-                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+-                    ],
+-                },
+-            )
+-            last_error = ValueError(
+-                "semantic interpretation failed evidence validation"
+-            )
+-            if attempt == 0:
+-                first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
+-                partial_first = valid_first_pass_subset(user_task, interpretation)
+-            if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
+-                validation_issues = validation.issues
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_interpretation_retried",
+-                    "classify",
+-                    {"issues": list(validation_issues)},
+-                )
+-                continue
+-            record_event(
+-                context,
+-                state,
+-                "routing.semantic_interpreter_failed",
+-                "classify",
+-                {
+-                    "attempt": attempt + 1,
+-                    "error_type": type(last_error).__name__,
+-                    "validation_issues": list(validation.issues),
+-                    "rejected_interpretation": interpretation.model_dump(mode="json"),
+-                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+-                    "evidence_census": [
+-                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+-                    ],
+-                },
+-            )
+-            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
+-            if validated is not None:
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_review_discarded",
+-                    "classify",
+-                    {
+-                        "attempt": attempt + 1,
+-                        "issues": list(validation.issues),
+-                        "rejected_interpretation": interpretation.model_dump(mode="json"),
+-                    },
+-                )
+-                return validated, usage, budget_warnings, None, restored_tags
+-            if validation.recoverable:
+-                # Every remaining issue is a quote the request does not contain,
+-                # and nothing else. Discarding the whole interpretation for that
+-                # is what cost 148 of 188 such entries their entire run, while
+-                # the reading itself was often right -- a misspelled request
+-                # makes a matching quote impossible, not the meaning unclear.
+-                # The reading is kept, its confidence reduced, and `invoke_router`
+-                # holds it below `exact` and away from execution. The issues are
+-                # still raised, still recorded, and still shown to the user; only
+-                # the disposition changes. `recoverable` was computed here since
+-                # the validator was written and read by nothing until now.
+-                record_event(
+-                    context,
+-                    state,
+-                    "routing.semantic_evidence_unverified",
+-                    "classify",
+-                    {
+-                        "attempt": attempt + 1,
+-                        "issues": list(validation.issues),
+-                        "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
+-                    },
+-                )
+-                return (
+-                    with_reduced_confidence(interpretation),
+-                    usage, budget_warnings, None, restored_tags,
+-                )
+-            return None, usage, budget_warnings, last_error, restored_tags
+-
+-        usage = append_llm_usage(
+-            usage,
+-            role=role,
+-            model=context.semantic_model_name,
+-            response=raw,
+-            input_text=input_text,
+-            output_text=output_text,
+-            budget_tokens=context.task_token_budget,
+-            duration_ms=duration_ms,
+-            price_catalog=context.price_catalog,
+-        )
+-        validated = interpretation
+-        if attempt == 0:
+-            preliminary_match = match_semantic_request(
+-                user_task,
+-                interpretation.outcome_hypotheses,
+-                request_mode=interpretation.request_mode,
+-                ignore_tags=restored_tags,
+-            )
+-            if (
+-                getattr(context, "review_policy", "always") == "when_needed"
+-                and preliminary_match.status in {"exact", "not_applicable"}
+-                and interpretation.request_mode != "unknown"
+-                and len(interpretation.outcome_hypotheses) == 1
+-                and not interpretation.outcome_hypotheses[0].outcome.unresolved_dimensions
+-                # An interpretation that does not know what was requested has
+-                # settled nothing, whatever the registry then says about it. This
+-                # guard used to sit inside the `exact` arm alone, so a reading
+-                # with every dimension unknown -- the shape that encodes "out of
+-                # scope", and equally the shape produced whenever the request
+-                # states something the outcome vocabulary has no dimension for --
+-                # ended routing on the first attempt with no review at all. The
+-                # review is the only step that can tell those two apart. The cost
+-                # is one extra call on a request that really is out of scope.
+-                and interpretation.outcome_hypotheses[0].outcome.operation != "unknown"
+-                and (
+-                    preliminary_match.status == "not_applicable"
+-                    or len(preliminary_match.matched_actions) == 1
+-                )
+-            ):
+-                record_event(context, state, "routing.semantic_interpretation_accepted", "classify", {
+-                    "attempt": 1, "hypothesis_count": 1,
+-                    "registry_match_status": preliminary_match.status,
+-                    "review_skipped": "validated_complete_match",
+-                    "evidence_census": list(evidence_census(interpretation.outcome_hypotheses)),
+-                })
+-                _trace("router", "Semantic interpretation completed", {
+-                    "kind": "router_activity", "operation": "semantic_interpreter",
+-                    "status": "completed", "duration_ms": duration_ms, "attempt": 1,
+-                })
+-                return interpretation, usage, budget_warnings, None, restored_tags
+-            if preliminary_match.status == "ambiguous":
+-                discriminator_context = _discriminator_context(
+-                    list(preliminary_match.hypothesis_actions)
+-                )
+-                validation_issues = (
+-                    "registry_ambiguity:the structured outcome does not uniquely "
+-                    "identify a capability; re-check the original request for explicit "
+-                    "biological entity, regulator, target, and granularity roles",
+-                )
+-            record_event(
+-                context,
+-                state,
+-                "routing.semantic_interpretation_proposed",
+-                "classify",
+-                {
+-                    "hypothesis_count": len(interpretation.outcome_hypotheses),
+-                    "evidence_dimensions": [
+-                        sorted({item.dimension for item in hypothesis.evidence})
+-                        for hypothesis in interpretation.outcome_hypotheses
+-                    ],
+-                    "evidence_census": [
+-                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+-                    ],
+-                    "registry_match_status": preliminary_match.status,
+-                },
+-            )
+-            continue
+-
+-        # Measurement only. An accepted outcome saying `unknown` is recorded as
+-        # one fact today, and two opposite situations reach it: the first pass
+-        # said nothing either, or it named a value that is now gone. Only the
+-        # second is meaning the system had and discarded, and `unknown` is
+-        # exactly the value that needs no evidence -- so dropping a value always
+-        # dissolves an `ungrounded_evidence` issue about it. Nothing here
+-        # changes the interpretation, and the accepted event is emitted either way.
+-        downgrade = interpretation_downgrades(
+-            proposal, interpretation, first_pass_shapes,
+-            hypothesis_index=patched_index,
+-        )
+-        record_event(
+-            context,
+-            state,
+-            "routing.outcome_downgraded",
+-            "classify",
+-            {
+-                "attempt": attempt + 1,
+-                # False means the two interpretations could not be put in
+-                # correspondence, and the empty list below says nothing at all.
+-                "comparable": downgrade.comparable,
+-                "reason": downgrade.reason,
+-                "hypothesis": downgrade.hypothesis_index,
+-                "downgrades": [dict(item) for item in downgrade.downgrades],
+-            },
+-        )
+-        record_event(
+-            context,
+-            state,
+-            "routing.semantic_interpretation_accepted",
+-            "classify",
+-            {
+-                "attempt": attempt + 1,
+-                "hypothesis_count": len(interpretation.outcome_hypotheses),
+-                "evidence_dimensions": [
+-                    sorted({item.dimension for item in hypothesis.evidence})
+-                    for hypothesis in interpretation.outcome_hypotheses
+-                ],
+-                "evidence_census": [
+-                    dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
+-                ],
+-            },
+-        )
+-        _trace(
+-            "router",
+-            "Semantic interpretation completed",
+-            {
+-                "kind": "router_activity",
+-                "operation": "semantic_interpreter",
+-                "status": "completed",
+-                "duration_ms": duration_ms,
+-                "attempt": attempt + 1,
+-            },
+-        )
+-        return interpretation, usage, budget_warnings, None, restored_tags
+-
+-    return None, usage, budget_warnings, last_error, restored_tags
+-
+-
+ def invoke_router(
+     context: _GraphContext,
+     state: AgentState,
+diff --git a/scripts/netzoo_agent_core/graph/semantic_attempts.py b/scripts/netzoo_agent_core/graph/semantic_attempts.py
+new file mode 100644
+index 0000000..1e2ef65
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/semantic_attempts.py
+@@ -0,0 +1,738 @@
++"""The bounded semantic interpretation attempts: first pass, then one review.
++
++Moved verbatim out of `router_invocation` (Log 190) when that module reached
++the 1000-line review limit; `router_invocation` re-exports every name it used
++to define here, so callers and tests are unchanged.
++"""
++
++from __future__ import annotations
++
++import time
++
++from ..contracts import AgentState, LLMUsage, _trace
++from ..contracts.outcomes import (
++    SemanticInterpretation,
++    SemanticPatch,
++    SemanticReview,
++)
++from ..contracts.repair_scope import permitted_fields
++from ..interpretation.outcome_consistency import (
++    complete_open_granularity_alternatives,
++)
++from ..interpretation.stated_field_restoration import restore_stated_fields
++from ..interpretation.outcome_validation import evidence_census, validate_outcome_hypotheses
++from ..interpretation.provider_fallback import (
++    _is_fatal_exception,
++    recover_registry_guidance,
++)
++from ..interpretation.outcome_downgrade import interpretation_downgrades
++from ..interpretation.semantic_patch import (
++    apply_semantic_patch, patched_hypothesis_index,
++)
++from ..interpretation.semantic_repair import semantic_payload
++from ..interpretation.unverified_evidence import with_reduced_confidence
++from ..llm import (
++    append_llm_usage,
++    build_semantic_interpreter_messages,
++    build_semantic_patch_messages,
++    build_semantic_reviewer_messages,
++)
++from ..routing.outcome_matching import match_semantic_request
++from .context import _GraphContext, preflight_budget, record_event
++from .semantic_review_validation import (
++    _as_semantic_patch,
++    _validated_review,
++    normalize_advice_operation_evidence,
++    normalize_role_entailed_artifact_evidence,
++)
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
++from .discriminator import (
++    discriminator_context as _discriminator_context,
++    _fill_inferred_role_evidence,
++)
++from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
++
++__all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
++
++
++# A third, progress-gated attempt was tried and reverted. It fired twice in nine
++# live trials and made the outcome worse both times: the extra review dropped an
++# input it had already recovered and added ungrounded evidence, while the error
++# it was meant to fix survived. Overall passes were unchanged, so it bought an
++# extra call and nothing else. See tests/test_semantic_attempt_bound.py.
++MAX_SEMANTIC_ATTEMPTS = 2
++
++
++def invoke_semantic_interpreter(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    usage: LLMUsage,
++) -> tuple[
++    SemanticInterpretation | None,
++    LLMUsage,
++    list[str],
++    BaseException | None,
++    frozenset[str],
++]:
++    if getattr(context, "semantic_claims", False):
++        from .claim_invocation import invoke_claim_interpreter
++        return invoke_claim_interpreter(context, state, user_task, usage,
++            serialize=_serialized_structured_input, schema_errors=_validation_issue_types)
++    validation_issues: tuple[str, ...] = ()
++    budget_warnings = list(state.get("budget_warnings", []))
++    last_error: BaseException | None = None
++    proposal = None
++    # The reviewer is a second opinion, not a precondition. An interpretation
++    # that already satisfied every check is kept if the review that follows does
++    # not, because discarding both leaves a registry guess naming no workflow.
++    validated: SemanticInterpretation | None = None
++    # Tags this function moved into the outcome, kept out of capability
++    # selection: a harness repair must never be what picks a tool.
++    restored_tags: frozenset[str] = frozenset()
++    discriminator_context = ""
++    # Measurement only, read at acceptance. The first pass's own grounding
++    # result per (dimension, value), and the hypothesis a patch was merged onto,
++    # are both gone by the time the accepted interpretation exists -- and
++    # without them a dimension that ends up `unknown` cannot be told apart from
++    # one that was never committed to. Neither influences any decision below.
++    first_pass_shapes: tuple[dict, ...] = ()
++    patched_index: int | None = None
++    partial_first: SemanticInterpretation | None = None
++    for attempt in range(MAX_SEMANTIC_ATTEMPTS):
++        role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
++        # A patch can only be merged onto a structurally valid proposal. When the
++        # first pass did not parse, there is nothing to carry forward and the
++        # review still owns the whole structure.
++        patching = (
++            attempt == 1
++            and getattr(context, "semantic_patcher", None) is not None
++            and isinstance(proposal, SemanticInterpretation)
++            and not any(
++                "inconsistent_not_applicable_outcome" in issue
++                for issue in validation_issues
++            )
++        )
++        # Log 198: when every first-pass issue is evidence the proposal did not
++        # give, the same patch messages are answered in a strict schema holding
++        # exactly those entries. The raw semantic provider binds it per call.
++        supply = (
++            supplied_pairs(validation_issues, proposal)
++            if patching and getattr(context, "selection_condition_llm", None) is not None
++            else None
++        )
++        supply_schema = evidence_supply_schema(supply) if supply else None
++        adapter = (
++            context.semantic_interpreter if attempt == 0
++            else context.selection_condition_llm.with_structured_output(
++                supply_schema, method="function_calling", include_raw=True, strict=True,
++            ) if supply
++            else context.semantic_patcher if patching
++            else context.semantic_reviewer
++        )
++        messages = (
++            (build_semantic_patch_messages if patching else build_semantic_reviewer_messages)(
++                context.semantic_prompt,
++                user_task,
++                proposal,
++                validation_issues,
++                discriminator_context,
++            )
++            if attempt == 1
++            else build_semantic_interpreter_messages(
++                context.semantic_prompt,
++                user_task,
++                validation_issues,
++            )
++        )
++        schema_model = (
++            SemanticInterpretation if attempt == 0
++            else supply_schema if supply
++            else SemanticPatch if patching
++            else SemanticReview
++        )
++        input_text = _serialized_structured_input(messages, schema_model)
++        semantic_state = dict(state)
++        semantic_state["token_usage"] = usage.model_dump()
++        semantic_state["budget_warnings"] = budget_warnings
++        budget, budget_warnings = preflight_budget(
++            context,
++            semantic_state,
++            role=role,
++            model=context.semantic_model_name,
++            input_text=input_text,
++            reserved_output_tokens=context.router_max_tokens,
++            allow_reserve=False,
++        )
++        if budget.status == "blocked":
++            usage.budget_exhausted = True
++            return None, usage, budget_warnings, last_error, restored_tags
++
++        started_ns = time.monotonic_ns()
++        raw = None
++        payload = None
++        output_text = ""
++        try:
++            _trace(
++                "router",
++                "Semantic interpretation started",
++                {
++                    "kind": "router_activity",
++                    "operation": "semantic_interpreter",
++                    "status": "started",
++                    "attempt": attempt + 1,
++                },
++            )
++            structured = adapter.invoke(messages)
++            payload, raw = semantic_payload(structured)
++            if attempt == 0:
++                proposal = payload
++            patch_evidence_normalizations = []
++            if supply:
++                payload = supply_as_patch(payload, supply)
++                record_event(context, state, "routing.semantic_evidence_supplied", "classify", {
++                    "attempt": attempt + 1,
++                    "requested": [f"hypothesis[{i}].{d}={v}" for i, d, v in supply],
++                    "sources": [item.get("source") for item in payload["evidence_additions"]],
++                })
++            if patching:
++                payload, patch_evidence_normalizations = (
++                    normalize_role_entailed_artifact_evidence(payload, user_task)
++                )
++                payload, advice_evidence_normalizations = (
++                    normalize_advice_operation_evidence(
++                        payload,
++                        user_task,
++                        proposal_request_mode=proposal.request_mode,
++                    )
++                )
++                patch_evidence_normalizations.extend(advice_evidence_normalizations)
++            # `patching` is only ever true on the second attempt, so this reads
++            # the reply as a patch exactly when one was asked for.
++            patch, ignored_instructions = (
++                _as_semantic_patch(payload) if patching else (None, [])
++            )
++            if attempt == 0:
++                interpretation = SemanticInterpretation.model_validate(payload)
++                output_text = interpretation.model_dump_json()
++            elif patch is not None:
++                output_text = patch.model_dump_json()
++                licensed = permitted_fields(validation_issues)
++                interpretation, retired_evidence = apply_semantic_patch(
++                    proposal, patch, permitted_fields=licensed, user_task=user_task,
++                )
++                patched_index = patched_hypothesis_index(proposal, patch)
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_patch_applied",
++                    "classify",
++                    {
++                        "attempt": attempt + 1,
++                        "hypothesis_index": patched_hypothesis_index(proposal, patch),
++                        "changed_fields": sorted(
++                            name for name, value in patch.outcome.model_dump().items()
++                            if value is not None
++                        ),
++                        "evidence_removed": [
++                            {"dimension": item.dimension, "value": item.value}
++                            for item in patch.evidence_removals
++                        ],
++                        "evidence_added": len(patch.evidence_additions),
++                        # Entries made stale, additions dropped, withdrawals ignored (Log 164).
++                        "evidence_retired_as_stale": [i for i in retired_evidence if "reason" not in i],
++                        "evidence_additions_dropped": [
++                            i for i in retired_evidence
++                            if i.get("reason") == "addition_does_not_match_merged_outcome"
++                        ],
++                        "evidence_withdrawals_ignored": [
++                            i for i in retired_evidence
++                            if i.get("reason") == "withdrawal_of_asserted_value"
++                        ],
++                        # What the rules that fired declared they examined.
++                        # Overrides outside this set were not applied; an empty
++                        # set is the citation-only case.
++                        "permitted_fields": sorted(licensed),
++                        "evidence_normalizations": patch_evidence_normalizations,
++                        # Instructions that could not be carried out, set aside
++                        # rather than costing the repair. Never silent.
++                        "ignored_instructions": ignored_instructions,
++                    },
++                )
++            else:
++                review = _validated_review(payload, patching=patching)
++                output_text = review.model_dump_json()
++                # A whole review carries one hypothesis and no index, so it
++                # cannot say which of several it replaces -- and rebuilding the
++                # interpretation from it alone deletes the rest. A first pass
++                # that offered two granularities was collapsed that way into a
++                # confident single answer, losing an ambiguity the validator had
++                # correctly identified. Where the proposal really was ambiguous,
++                # this reply does not answer the contract that was asked for, so
++                # the validated first pass is kept instead (the exception
++                # authorized for a failed review) rather than inventing a merge.
++                if (
++                    isinstance(proposal, SemanticInterpretation)
++                    and len(proposal.outcome_hypotheses) > 1
++                    and validated is not None
++                ):
++                    # The call happened and is billed, so it is accounted for
++                    # before returning. An early return that skipped this would
++                    # hide a paid call from the token budget.
++                    usage = append_llm_usage(
++                        usage,
++                        role=role,
++                        model=context.semantic_model_name,
++                        response=raw,
++                        input_text=input_text,
++                        output_text=output_text,
++                        budget_tokens=context.task_token_budget,
++                        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++                        status="failed",
++                        price_catalog=context.price_catalog,
++                    )
++                    record_event(
++                        context,
++                        state,
++                        "routing.semantic_review_discarded",
++                        "classify",
++                        {
++                            "attempt": attempt + 1,
++                            "issues": [
++                                "whole_review_cannot_represent_multiple_hypotheses:"
++                                f"{len(proposal.outcome_hypotheses)}"
++                            ],
++                        },
++                    )
++                    return validated, usage, budget_warnings, None, restored_tags
++                interpretation = SemanticInterpretation(
++                    request_mode=review.request_mode,
++                    semantic_goal=review.semantic_goal,
++                    outcome_hypotheses=[review.outcome_hypothesis],
++                )
++            if attempt == 0:
++                proposal = interpretation
++        except BaseException as error:
++            if _is_fatal_exception(error):
++                raise
++            duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
++            schema_issues = _validation_issue_types(error)
++            usage = append_llm_usage(
++                usage,
++                role=role,
++                model=context.semantic_model_name,
++                response=raw,
++                input_text=input_text,
++                output_text=output_text,
++                budget_tokens=context.task_token_budget,
++                duration_ms=duration_ms,
++                status="failed",
++                price_catalog=context.price_catalog,
++            )
++            if attempt == 0 and schema_issues:
++                validation_issues = tuple(
++                    "schema_validation:"
++                    + ".".join(issue["location"])
++                    + ":"
++                    + str(issue["type"])
++                    for issue in schema_issues
++                )
++                last_error = error
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_interpretation_rejected",
++                    "classify",
++                    # Keep the located shapes beside the flattened issue strings:
++                    # the first attempt is where a rejected value is otherwise lost.
++                    {
++                        "attempt": 1,
++                        "issues": list(validation_issues),
++                        "shapes": schema_issues,
++                        "provider_payload": payload,
++                    },
++                )
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_interpretation_retried",
++                    "classify",
++                    {"issues": list(validation_issues)},
++                )
++                continue
++            record_event(
++                context,
++                state,
++                "routing.semantic_interpreter_failed",
++                "classify",
++                {
++                    "attempt": attempt + 1,
++                    "error_type": type(error).__name__,
++                    "validation_issues": schema_issues,
++                    "provider_payload": payload,
++                },
++            )
++            # A review that does not parse is still only a second opinion. The
++            # branch below already keeps a validated first pass when the review
++            # parses and fails validation; a review that breaks the wire contract
++            # is no better an argument for discarding it. Six of the losses in the
++            # live record are this branch: a first pass that passed every check,
++            # replaced by a registry guess naming no workflow. Nothing is filled
++            # in -- what is returned is the first pass the validator accepted.
++            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
++            if validated is not None:
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_review_discarded",
++                    "classify",
++                    {
++                        "attempt": attempt + 1,
++                        "issues": [
++                            "schema_validation:"
++                            + ".".join(issue["location"])
++                            + ":"
++                            + str(issue["type"])
++                            for issue in schema_issues
++                        ],
++                    },
++                )
++                return validated, usage, budget_warnings, None, restored_tags
++            if recover_registry_guidance(
++                user_task,
++                context.project_policy.workflows,
++                error,
++            ) is None:
++                _trace(
++                    "router",
++                    "Semantic interpretation failed",
++                    {
++                        "kind": "router_activity",
++                        "operation": "semantic_interpreter",
++                        "status": "failed",
++                        "error_type": type(error).__name__,
++                    },
++                )
++            return None, usage, budget_warnings, error, restored_tags
++
++        # The one authorized place the deterministic layer writes an outcome
++        # field. It can move a value stated in the hypothesis's own evidence;
++        # after a review patch it may also align an under-specified or impossible
++        # scalar to the sole value entailed by the already selected artifact. It
++        # never picks an artifact or workflow. Validation below is unchanged.
++        interpretation, restorations = restore_stated_fields(
++            user_task,
++            interpretation,
++            align_artifact_constraints=patch is not None,
++            restore_explicit_scalar_evidence=True,
++        )
++        if patch is not None:
++            interpretation = _fill_inferred_role_evidence(interpretation)
++        restored_tags = frozenset(
++            str(item["value"]) for item in restorations
++            if item["field"] == "selection_tags"
++        )
++        artifact_alignments = [
++            item for item in restorations if item["source"] == "artifact_ontology"
++        ]
++        stated_restorations = [
++            item for item in restorations if item["source"] != "artifact_ontology"
++        ]
++        if artifact_alignments:
++            record_event(
++                context,
++                state,
++                "routing.outcome_artifact_constraints_applied",
++                "classify",
++                {"attempt": attempt + 1, "alignments": artifact_alignments},
++            )
++        if stated_restorations:
++            record_event(
++                context,
++                state,
++                "routing.outcome_input_restored",
++                "classify",
++                {"attempt": attempt + 1, "restored": stated_restorations},
++            )
++        before_alternatives = interpretation.outcome_hypotheses
++        completed_hypotheses = complete_open_granularity_alternatives(
++            user_task, before_alternatives
++        )
++        if completed_hypotheses != before_alternatives:
++            completion_validation = validate_outcome_hypotheses(
++                user_task, completed_hypotheses, interpretation.request_mode,
++            )
++            if completion_validation.valid:
++                interpretation = interpretation.model_copy(
++                    update={"outcome_hypotheses": completed_hypotheses}
++                )
++                record_event(
++                    context,
++                    state,
++                    "routing.granularity_alternatives_completed",
++                    "classify",
++                    {
++                        "alternatives": [
++                            item.outcome.granularity
++                            for item in completed_hypotheses
++                        ],
++                        "source": "explicit_undecided_request_witnesses",
++                    },
++                )
++            else:
++                record_event(
++                    context,
++                    state,
++                    "routing.granularity_alternative_completion_rejected",
++                    "classify",
++                    {"issues": list(completion_validation.issues)},
++                )
++        validation = validate_outcome_hypotheses(
++            user_task,
++            interpretation.outcome_hypotheses,
++            interpretation.request_mode,
++        )
++        if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
++            interpretation, validation = keep_valid_hypotheses(
++                context, state, user_task, interpretation, validation, attempt)
++        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
++        if not validation.valid:
++            usage = append_llm_usage(
++                usage,
++                role=role,
++                model=context.semantic_model_name,
++                response=raw,
++                input_text=input_text,
++                output_text=output_text,
++                budget_tokens=context.task_token_budget,
++                duration_ms=duration_ms,
++                status="failed",
++                price_catalog=context.price_catalog,
++            )
++            record_event(
++                context,
++                state,
++                "routing.semantic_interpretation_rejected",
++                "classify",
++                {
++                    "attempt": attempt + 1,
++                    "issues": list(validation.issues),
++                    # Why each rejected quote failed, in closed vocabulary. The
++                    # issue strings the next attempt sees are unchanged.
++                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
++                    "evidence_census": [
++                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
++                    ],
++                },
++            )
++            last_error = ValueError(
++                "semantic interpretation failed evidence validation"
++            )
++            if attempt == 0:
++                first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
++                partial_first = valid_first_pass_subset(user_task, interpretation)
++            if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
++                validation_issues = validation.issues
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_interpretation_retried",
++                    "classify",
++                    {"issues": list(validation_issues)},
++                )
++                continue
++            record_event(
++                context,
++                state,
++                "routing.semantic_interpreter_failed",
++                "classify",
++                {
++                    "attempt": attempt + 1,
++                    "error_type": type(last_error).__name__,
++                    "validation_issues": list(validation.issues),
++                    "rejected_interpretation": interpretation.model_dump(mode="json"),
++                    "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
++                    "evidence_census": [
++                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
++                    ],
++                },
++            )
++            validated = retain_valid_first_pass(context, state, validated, partial_first, attempt)
++            if validated is not None:
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_review_discarded",
++                    "classify",
++                    {
++                        "attempt": attempt + 1,
++                        "issues": list(validation.issues),
++                        "rejected_interpretation": interpretation.model_dump(mode="json"),
++                    },
++                )
++                return validated, usage, budget_warnings, None, restored_tags
++            if validation.recoverable:
++                # Every remaining issue is a quote the request does not contain,
++                # and nothing else. Discarding the whole interpretation for that
++                # is what cost 148 of 188 such entries their entire run, while
++                # the reading itself was often right -- a misspelled request
++                # makes a matching quote impossible, not the meaning unclear.
++                # The reading is kept, its confidence reduced, and `invoke_router`
++                # holds it below `exact` and away from execution. The issues are
++                # still raised, still recorded, and still shown to the user; only
++                # the disposition changes. `recoverable` was computed here since
++                # the validator was written and read by nothing until now.
++                record_event(
++                    context,
++                    state,
++                    "routing.semantic_evidence_unverified",
++                    "classify",
++                    {
++                        "attempt": attempt + 1,
++                        "issues": list(validation.issues),
++                        "evidence_shapes": [dict(item) for item in validation.evidence_shapes],
++                    },
++                )
++                return (
++                    with_reduced_confidence(interpretation),
++                    usage, budget_warnings, None, restored_tags,
++                )
++            return None, usage, budget_warnings, last_error, restored_tags
++
++        usage = append_llm_usage(
++            usage,
++            role=role,
++            model=context.semantic_model_name,
++            response=raw,
++            input_text=input_text,
++            output_text=output_text,
++            budget_tokens=context.task_token_budget,
++            duration_ms=duration_ms,
++            price_catalog=context.price_catalog,
++        )
++        validated = interpretation
++        if attempt == 0:
++            preliminary_match = match_semantic_request(
++                user_task,
++                interpretation.outcome_hypotheses,
++                request_mode=interpretation.request_mode,
++                ignore_tags=restored_tags,
++            )
++            if (
++                getattr(context, "review_policy", "always") == "when_needed"
++                and preliminary_match.status in {"exact", "not_applicable"}
++                and interpretation.request_mode != "unknown"
++                and len(interpretation.outcome_hypotheses) == 1
++                and not interpretation.outcome_hypotheses[0].outcome.unresolved_dimensions
++                # An interpretation that does not know what was requested has
++                # settled nothing, whatever the registry then says about it. This
++                # guard used to sit inside the `exact` arm alone, so a reading
++                # with every dimension unknown -- the shape that encodes "out of
++                # scope", and equally the shape produced whenever the request
++                # states something the outcome vocabulary has no dimension for --
++                # ended routing on the first attempt with no review at all. The
++                # review is the only step that can tell those two apart. The cost
++                # is one extra call on a request that really is out of scope.
++                and interpretation.outcome_hypotheses[0].outcome.operation != "unknown"
++                and (
++                    preliminary_match.status == "not_applicable"
++                    or len(preliminary_match.matched_actions) == 1
++                )
++            ):
++                record_event(context, state, "routing.semantic_interpretation_accepted", "classify", {
++                    "attempt": 1, "hypothesis_count": 1,
++                    "registry_match_status": preliminary_match.status,
++                    "review_skipped": "validated_complete_match",
++                    "evidence_census": list(evidence_census(interpretation.outcome_hypotheses)),
++                })
++                _trace("router", "Semantic interpretation completed", {
++                    "kind": "router_activity", "operation": "semantic_interpreter",
++                    "status": "completed", "duration_ms": duration_ms, "attempt": 1,
++                })
++                return interpretation, usage, budget_warnings, None, restored_tags
++            if preliminary_match.status == "ambiguous":
++                discriminator_context = _discriminator_context(
++                    list(preliminary_match.hypothesis_actions)
++                )
++                validation_issues = (
++                    "registry_ambiguity:the structured outcome does not uniquely "
++                    "identify a capability; re-check the original request for explicit "
++                    "biological entity, regulator, target, and granularity roles",
++                )
++            record_event(
++                context,
++                state,
++                "routing.semantic_interpretation_proposed",
++                "classify",
++                {
++                    "hypothesis_count": len(interpretation.outcome_hypotheses),
++                    "evidence_dimensions": [
++                        sorted({item.dimension for item in hypothesis.evidence})
++                        for hypothesis in interpretation.outcome_hypotheses
++                    ],
++                    "evidence_census": [
++                        dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
++                    ],
++                    "registry_match_status": preliminary_match.status,
++                },
++            )
++            continue
++
++        # Measurement only. An accepted outcome saying `unknown` is recorded as
++        # one fact today, and two opposite situations reach it: the first pass
++        # said nothing either, or it named a value that is now gone. Only the
++        # second is meaning the system had and discarded, and `unknown` is
++        # exactly the value that needs no evidence -- so dropping a value always
++        # dissolves an `ungrounded_evidence` issue about it. Nothing here
++        # changes the interpretation, and the accepted event is emitted either way.
++        downgrade = interpretation_downgrades(
++            proposal, interpretation, first_pass_shapes,
++            hypothesis_index=patched_index,
++        )
++        record_event(
++            context,
++            state,
++            "routing.outcome_downgraded",
++            "classify",
++            {
++                "attempt": attempt + 1,
++                # False means the two interpretations could not be put in
++                # correspondence, and the empty list below says nothing at all.
++                "comparable": downgrade.comparable,
++                "reason": downgrade.reason,
++                "hypothesis": downgrade.hypothesis_index,
++                "downgrades": [dict(item) for item in downgrade.downgrades],
++            },
++        )
++        record_event(
++            context,
++            state,
++            "routing.semantic_interpretation_accepted",
++            "classify",
++            {
++                "attempt": attempt + 1,
++                "hypothesis_count": len(interpretation.outcome_hypotheses),
++                "evidence_dimensions": [
++                    sorted({item.dimension for item in hypothesis.evidence})
++                    for hypothesis in interpretation.outcome_hypotheses
++                ],
++                "evidence_census": [
++                    dict(item) for item in evidence_census(interpretation.outcome_hypotheses)
++                ],
++            },
++        )
++        _trace(
++            "router",
++            "Semantic interpretation completed",
++            {
++                "kind": "router_activity",
++                "operation": "semantic_interpreter",
++                "status": "completed",
++                "duration_ms": duration_ms,
++                "attempt": attempt + 1,
++            },
++        )
++        return interpretation, usage, budget_warnings, None, restored_tags
++
++    return None, usage, budget_warnings, last_error, restored_tags
+diff --git a/scripts/netzoo_agent_core/graph/evidence_supply.py b/scripts/netzoo_agent_core/graph/evidence_supply.py
+new file mode 100644
+index 0000000..fa554bd
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/evidence_supply.py
+@@ -0,0 +1,88 @@
++"""Ask for the missing evidence itself, in a strict schema (Log 196, Log 198).
++
++The T2 failure (Log 183, Log 187): a first pass names an artifact type and a
++granularity with no evidence at all, validation reports
++``missing_evidence:artifact_type=multi_omic_network``, and the patch that
++follows -- asked in its repair feedback to supply evidence for exactly that
++pair -- adds evidence for other fields and never for the named one.
++
++Log 196 added required fields to the patch schema; Log 197 found them inert:
++in non-strict function calling the model left every required field out, in
++12 of 12 calls. So when every first-pass issue is missing evidence for one
++hypothesis, the second call keeps the same messages but is answered in a
++*strict* schema whose only fields are the named pairs, each one a `Support`
++(the strict-compatible quote-or-rationale shape the claims contract uses).
++
++The reply becomes a patch whose only content is those evidence additions, and
++takes the ordinary patch path. Nothing else could have been in that patch: a
++missing-evidence issue licenses no outcome field (`NO_OUTCOME_FIELDS`), so the
++entry justifies the value the first pass wrote and cannot change it.
++Validation afterwards is the same as for any interpretation: a quote the
++request does not contain still fails, and a granularity against the request's
++own witness is rejected however it is justified (Log 196 (b)).
++"""
++
++from __future__ import annotations
++
++import re
++from collections.abc import Mapping
++
++from pydantic import BaseModel, ConfigDict, Field, create_model
++
++from ..contracts.outcomes import SemanticInterpretation
++from ..contracts.repair_scope import FIELD_BY_DIMENSION
++from ..contracts.semantic_claims import Support
++
++__all__ = ["evidence_supply_schema", "supplied_pairs", "supply_as_patch"]
++
++_MISSING = re.compile(r"^hypothesis\[(\d+)\]\.missing_evidence:([a-z_]+)=(.+)$")
++_MAX_PAIRS = 8
++
++Pair = tuple[int, str, str]
++
++
++def _written(proposal: SemanticInterpretation, pair: Pair) -> bool:
++    index, dimension, value = pair
++    if index >= len(proposal.outcome_hypotheses) or dimension not in FIELD_BY_DIMENSION:
++        return False
++    current = getattr(proposal.outcome_hypotheses[index].outcome, FIELD_BY_DIMENSION[dimension])
++    return value in current if isinstance(current, list) else current == value
++
++
++def supplied_pairs(issues, proposal) -> list[Pair] | None:
++    """The pairs to ask for, when every issue is evidence the proposal's one hypothesis omitted."""
++    pairs: list[Pair] = []
++    for issue in issues:
++        found = _MISSING.match(str(issue))
++        if found is None:
++            return None
++        pairs.append((int(found.group(1)), found.group(2), found.group(3)))
++    pairs = list(dict.fromkeys(pairs))
++    if (
++        not 0 < len(pairs) <= _MAX_PAIRS
++        or len({index for index, _, _ in pairs}) != 1
++        or not isinstance(proposal, SemanticInterpretation)
++    ):
++        return None
++    return pairs if all(_written(proposal, pair) for pair in pairs) else None
++
++
++def evidence_supply_schema(pairs: list[Pair]) -> type[BaseModel]:
++    """One required `Support` per pair, named by position and described by the pair."""
++    fields = {
++        f"evidence_{number}": (Support, Field(description=f"hypothesis[{index}] {dimension}={value}"))
++        for number, (index, dimension, value) in enumerate(pairs)
++    }
++    return create_model("SemanticEvidenceSupply", __config__=ConfigDict(extra="forbid"), **fields)
++
++
++def supply_as_patch(payload, pairs: list[Pair]) -> dict:
++    """The patch this reply amounts to: the supplied entries as evidence additions."""
++    if hasattr(payload, "model_dump"):
++        payload = payload.model_dump(exclude_none=True)
++    additions = []
++    for number, (_, dimension, value) in enumerate(pairs):
++        entry = payload.get(f"evidence_{number}") if isinstance(payload, Mapping) else None
++        if isinstance(entry, Mapping):
++            additions.append({"dimension": dimension, "value": value, **entry})
++    return {"hypothesis_index": pairs[0][0], "evidence_additions": additions}
+diff --git a/scripts/netzoo_agent_core/handoff.py b/scripts/netzoo_agent_core/handoff.py
+index a3d786a..b67638a 100644
+--- a/scripts/netzoo_agent_core/handoff.py
++++ b/scripts/netzoo_agent_core/handoff.py
+@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, registered_handoff_consumers
+ 
+ from .contracts import TaskDecision
+ from .contracts.handoffs import WorkflowHandoff
++from .routing.path_tokens import without_path_tokens
+ 
+ 
+ _BONOBO_PATTERN = re.compile(r"\bbonobo\b", re.IGNORECASE)
+@@ -88,7 +89,7 @@ def sample_specific_coexpression_handoff_requested(task: str) -> bool:
+ 
+ 
+ def _named_consumer_action(task: str, registry: Mapping[str, object]) -> str | None:
+-    normalized = task.casefold()
++    normalized = without_path_tokens(task).casefold()
+     for action, definition in registry.items():
+         if not action.startswith("run_") or action == "run_bonobo":
+             continue
+diff --git a/scripts/netzoo_agent_core/interpretation/concept_answers.py b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+index 54d92ba..6933a5c 100644
+--- a/scripts/netzoo_agent_core/interpretation/concept_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/concept_answers.py
+@@ -11,12 +11,14 @@ from ..routing.clarification_planner import algorithmic_assumptions_for
+ from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
+ from .inspected_answers import render_inspected_recommendation, with_inspection_footer
+ from .reply_notes import with_reply_notes
++from .single_candidate import single_candidate_question
+ from ..routing.outcome_matching import (
+     guidance_actions_for,
+     has_granularity_only_ambiguity,
+ )
+ from ..routing.method_rejections import unsupported_algorithm_request
+ from ..routing.named_labels import solely_named_run_action
++from ..routing.path_tokens import without_path_tokens
+ from .registry_guidance import (
+     handoff_input_fields,
+     preferred_registry_composition_actions,
+@@ -244,7 +246,7 @@ def render_outcome_clarification(
+     return with_inspection_footer(
+         with_reply_notes(
+             _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
+-            decision,
++            decision, task,
+         ),
+         decision.inspected_directories,
+     )
+@@ -262,10 +264,9 @@ def _render_outcome_clarification(
+     )
+     if beginner_guidance is not None:
+         return beginner_guidance
+-    if (
+-        decision.capability_match_status != "ambiguous"
+-        or not decision.clarification_question
+-    ):
++    # A one-candidate tie with no question still gets one (Log 194).
++    question = decision.clarification_question or single_candidate_question(decision)
++    if decision.capability_match_status != "ambiguous" or not question:
+         return None
+     if len(decision.hypothesis_actions) == 1:
+         action = decision.hypothesis_actions[0]
+@@ -294,7 +295,7 @@ def _render_outcome_clarification(
+             if granularity_ambiguous:
+                 sections = [
+                     f"It sounds like you want {interpretation}.",
+-                    decision.clarification_question,
++                    question,
+                     "Compatible workflow method and input/output details:\n"
+                     f"{details}",
+                 ]
+@@ -311,7 +312,7 @@ def _render_outcome_clarification(
+                 sections.append(assumptions)
+             sections.extend(
+                 [
+-                    decision.clarification_question,
++                    question,
+                     "No files were inspected and no analysis ran.",
+                 ]
+             )
+@@ -358,7 +359,7 @@ def _render_outcome_clarification(
+             )
+     return _ui_text(
+         "I cannot select a workflow until the requested result is clear. "
+-        f"{decision.clarification_question}\n\n"
++        f"{question}\n\n"
+         "No files were inspected and no analysis ran."
+     )
+ 
+@@ -525,7 +526,7 @@ def render_sample_specific_coexpression_handoff_boundary(
+     if not sample_specific_coexpression_handoff_requested(task):
+         return None
+ 
+-    normalized = task.casefold()
++    normalized = without_path_tokens(task).casefold()
+     consumers = [
+         spec
+         for spec in policy.workflows.values()
+@@ -774,7 +775,7 @@ def render_spec_backed_concept_answer(
+         and _PURPOSE_PATTERN.search(task)
+     ):
+         return None
+-    normalized = task.casefold()
++    normalized = without_path_tokens(task).casefold()
+     for spec in policy.workflows.values():
+         if spec.workflow.casefold() not in normalized:
+             continue
+diff --git a/scripts/netzoo_agent_core/interpretation/extraction.py b/scripts/netzoo_agent_core/interpretation/extraction.py
+index f6d133b..986f7af 100644
+--- a/scripts/netzoo_agent_core/interpretation/extraction.py
++++ b/scripts/netzoo_agent_core/interpretation/extraction.py
+@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
+ from ..contracts import PROSE_PATH_TERMINATORS, PreferenceProposal, _ui_text
+ from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
+ from ..routing.discovery import _extract_explicit_role_path
++from ..routing.path_tokens import without_path_tokens
+ 
+ __all__: list[str] = []
+ 
+@@ -136,7 +137,7 @@ def _mentions_unspecified_data_directory(task: str) -> bool:
+ 
+ def _needs_lioness_mode_choice(task: str) -> bool:
+     """Return True when an execution request names only a workflow family."""
+-    normalized = task.casefold()
++    normalized = without_path_tokens(task).casefold()  # a folder is not a name (Log 191)
+     if "lioness" not in normalized:
+         return False
+     if is_workflow_information_request(task):
+diff --git a/scripts/netzoo_agent_core/interpretation/request_integrity.py b/scripts/netzoo_agent_core/interpretation/request_integrity.py
+index b5f1c36..89642f7 100644
+--- a/scripts/netzoo_agent_core/interpretation/request_integrity.py
++++ b/scripts/netzoo_agent_core/interpretation/request_integrity.py
+@@ -405,6 +405,15 @@ def request_integrity_issues(task: str, outcome) -> list[str]:
+         issues.append(Issue(
+             f"stated_roles_conflict:{outcome.artifact_type}", {"artifact_type"},
+         ))
++    stated = {mention.granularity for mention in granularity_mentions(task)}
++    if outcome.granularity in {"aggregate", "sample_specific"} and stated and outcome.granularity not in stated:
++        # Log 196: the request states the other granularity and never this one.
++        # "I want per-patient networks ..." read as aggregate had no granularity
++        # evidence, so it failed as missing evidence -- and any evidence at all,
++        # even the quote "per-patient networks", then passed it as exact PUMA.
++        issues.append(Issue(
++            f"granularity_contradicts_request:{outcome.granularity}", {"granularity"},
++        ))
+     if patient_clustering_goal(task) and outcome.artifact_type != "sample_cluster_assignment":
+         # Read `artifact_type` only. What the corrected artifact then constrains
+         # is opened by the ontology at merge time, not listed here.
+diff --git a/scripts/netzoo_agent_core/interpretation/reply_notes.py b/scripts/netzoo_agent_core/interpretation/reply_notes.py
+index 8bf1a13..19e2776 100644
+--- a/scripts/netzoo_agent_core/interpretation/reply_notes.py
++++ b/scripts/netzoo_agent_core/interpretation/reply_notes.py
+@@ -7,14 +7,21 @@ facts were missing, and they are added here without changing any candidate:
+ 
+ - when no reading quoted its artifact type, that the kind of result was
+   assumed, which inputs every option additionally needs, and which registered
+-  workflows infer a different result from the stated inputs alone;
++  workflows infer a different result from the stated inputs alone. A quote
++  that says nothing about what is connected ("build me a network") grounds,
++  but does not state the kind either, so it counts as no quote here (Log 193);
+ - which files in a folder routing read validated by content for an input role,
+-  and that they were not used.
++  and that they were not used;
++- when the reply asks how many samples there are and the request already gave
++  a count, that count, quoted. No count is mapped to a category: the user
++  decided on 2026-09-26 that the agent asks instead (Log 195).
+ """
+ 
+ from __future__ import annotations
+ 
+-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS
++import re
++
++from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
+ 
+ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
+ from ..presentation import _ui_text_with_user_data, user_data_token
+@@ -32,6 +39,30 @@ _ROLE_OF_ARTIFACT = {
+ }
+ 
+ 
++#: Words that ask for *a* result without saying what it connects: function
++#: words, request verbs, generic result nouns, and nouns naming the input.
++_GENERIC_WORDS = frozenset("""
++    a an the me my i we us you it its this that these those some one all only just
++    and or to of for with from on in at by so then please can could would will should
++    let s is am are be have has had do want like need see show look try get give
++    build make create construct generate compute infer run find
++    network networks graph graphs model models result results analysis map
++    expression matrix data dataset table file files
++""".split())
++_GENERIC_CJK = re.compile(
++    "幫我|帮我|給我|给我|請|请|建立|建構|建构|構建|构建|建|做|一個|一个|一張|一张|個|个"
++    "|網路|网络|網絡|看看|看|吧|我|想|要|出|來|来"
++)
++
++
++def _says_what_it_connects(quote: str | None) -> bool:
++    """Whether an artifact quote carries any word beyond a generic request."""
++    text = quote or ""
++    if any(word not in _GENERIC_WORDS for word in re.findall(r"[a-z]+", text.casefold())):
++        return True
++    return bool(re.search(r"[\u3400-\u9fff]", _GENERIC_CJK.sub("", text)))
++
++
+ def _roles(action: str) -> set[str]:
+     return {field for field in REQUIRED_INPUTS[action] if field in INPUT_ROLE_FIELDS}
+ 
+@@ -46,6 +77,7 @@ def _assumption_note(decision) -> str | None:
+     hypotheses = decision.outcome_hypotheses
+     if not hypotheses or any(
+         item.dimension == "artifact_type" and item.source == "explicit"
++        and _says_what_it_connects(item.text_span)
+         for hypothesis in hypotheses for item in hypothesis.evidence
+     ):
+         return None
+@@ -106,7 +138,30 @@ def _discovery_note(decision, user_data: list[str]) -> str | None:
+     )
+ 
+ 
+-def with_reply_notes(text: str | None, decision) -> str | None:
++_STATED_COUNT = re.compile(
++    r"(?:(?:about|around|approximately|roughly|nearly|almost|over|more than|fewer than|"
++    r"less than|only|~)\s*)?\d[\d,]*\s+(?:[A-Za-z-]+\s+){0,2}(?:samples?|patients?|"
++    r"individuals?|subjects?|donors?|participants?|people|tumou?rs?|cases?|cells?)\b"
++    r"|(?:大約|約|大概|將近|超過|只有)?\s*\d[\d,]*\s*(?:個|位|名|例)?\s*"
++    r"(?:樣本|病人|患者|個體|受試者|參與者|腫瘤|細胞)",
++    re.IGNORECASE,
++)
++
++
++def _stated_count_note(decision, task: str, user_data: list[str]) -> str | None:
++    question = decision.clarification_question or ""
++    stated = _STATED_COUNT.search(task or "")
++    if stated is None or SELECTION_AXES["cohort_size"]["question"] not in question:
++        return None
++    user_data.append(stated.group().strip())
++    return (
++        f'You mentioned "{user_data_token(len(user_data) - 1)}". Whether that counts as a '
++        "handful of samples or as dozens or more is your call for this study design; "
++        "I do not map a sample count to these categories myself."
++    )
++
++
++def with_reply_notes(text: str | None, decision, task: str = "") -> str | None:
+     """Insert the notes above the reply's closing line, for an unrecommended tie."""
+     if (
+         text is None
+@@ -116,7 +171,10 @@ def with_reply_notes(text: str | None, decision) -> str | None:
+     ):
+         return text
+     user_data: list[str] = []
+-    notes = [note for note in (_assumption_note(decision), _discovery_note(decision, user_data)) if note]
++    notes = [note for note in (
++        _assumption_note(decision), _stated_count_note(decision, task, user_data),
++        _discovery_note(decision, user_data),
++    ) if note]
+     if not notes:
+         return text
+     block = _ui_text_with_user_data("\n\n".join(notes), user_data)
+diff --git a/scripts/netzoo_agent_core/interpretation/single_candidate.py b/scripts/netzoo_agent_core/interpretation/single_candidate.py
+new file mode 100644
+index 0000000..33cb51a
+--- /dev/null
++++ b/scripts/netzoo_agent_core/interpretation/single_candidate.py
+@@ -0,0 +1,88 @@
++"""The question a one-candidate tie owes the user when routing asked none (Log 194).
++
++Case 9 ("groups of regulators that jointly control groups of genes") was read
++as inferring community assignments. CONDOR, the only compatible workflow, is
++registered as *analyzing* an existing network, so the guidance match stayed
++`ambiguous` with CONDOR as its sole candidate and no clarification question,
++and the reply fell through to the response model -- the one path this harness
++cannot check. The deterministic reply already exists for a one-candidate tie
++with a question; this supplies the question from the registry: which workflow
++is compatible, and what the request left unsettled or read differently.
++Nothing here selects, recommends or authorizes anything.
++"""
++
++from __future__ import annotations
++
++from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
++
++__all__ = ["single_candidate_question"]
++
++_REQUESTED = {
++    "infer": "infer a new result",
++    "analyze": "analyze an existing result",
++    "prepare": "prepare data",
++    "validate": "validate inputs",
++    "acquire": "retrieve data",
++    "explain": "explain a method",
++}
++_UNSETTLED = {
++    "artifact_type": "the kind of result",
++    "granularity": "whether one cohort-wide result or one result per sample is wanted",
++    "entity_types": "which entities the result should cover",
++    "regulator_types": "which regulator types to model",
++    "target_types": "which targets to model",
++    "input_artifacts": "which input the analysis starts from",
++    "operation": "whether a new result is inferred or an existing one analyzed",
++}
++
++
++def _label(artifact: str) -> str:
++    return artifact.replace("_", " ")
++
++
++def _does(capability) -> str:
++    inputs = " or ".join(sorted(_label(item) for item in capability.input_artifacts))
++    if capability.operation == "analyze" and inputs:
++        return f"analyzes an existing {inputs}"
++    if capability.operation == "infer":
++        return f"infers a {_label(capability.artifact_type)} from its inputs"
++    return f"is registered to {capability.operation} {_label(capability.artifact_type)}"
++
++
++def _unsettled(outcome) -> list[str]:
++    dimensions = list(outcome.unresolved_dimensions)
++    if outcome.artifact_type == "unknown":
++        dimensions.append("artifact_type")
++    if outcome.granularity == "unknown":
++        dimensions.append("granularity")
++    return [_UNSETTLED[item] for item in dict.fromkeys(dimensions) if item in _UNSETTLED]
++
++
++def single_candidate_question(decision) -> str | None:
++    """Ask whether the sole compatible workflow is wanted, saying what is open."""
++    actions = list(getattr(decision, "hypothesis_actions", None) or ())
++    if (
++        decision.capability_match_status != "ambiguous"
++        or decision.clarification_question
++        or len(actions) != 1
++        or actions[0] not in OUTPUT_CAPABILITIES
++    ):
++        return None
++    capability = OUTPUT_CAPABILITIES[actions[0]]
++    name = ACTION_DEFINITIONS[actions[0]].workflow
++    outcomes = [item.outcome for item in decision.outcome_hypotheses]
++    reasons = []
++    read_as = sorted({item.operation for item in outcomes} - {"unknown", capability.operation})
++    if read_as:
++        asks = " or ".join(_REQUESTED.get(item, item) for item in read_as)
++        reasons.append(f"it {_does(capability)}, while your request reads as asking to {asks}")
++    unsettled = list(dict.fromkeys(text for outcome in outcomes for text in _unsettled(outcome)))
++    if unsettled:
++        reasons.append("your request does not settle " + " or ".join(unsettled))
++    lead = f"The only registered workflow compatible with this request is **{name}**"
++    if reasons:
++        lead += ", but " + "; and ".join(reasons)
++    return (
++        f"{lead}. Is {name} the analysis you want? If so, say so and name its inputs; "
++        "otherwise describe the result you need."
++    )
+diff --git a/scripts/netzoo_agent_core/presentation.py b/scripts/netzoo_agent_core/presentation.py
+index fe11371..2b20e94 100644
+--- a/scripts/netzoo_agent_core/presentation.py
++++ b/scripts/netzoo_agent_core/presentation.py
+@@ -333,17 +333,21 @@ CLI_FOLLOW_UP_STARTERS = (
+ )
+ 
+ 
+-def _bounded_timeline_detail(detail: str | dict | None) -> str:
+-    """Keep timeline summaries readable and bounded."""
++def _bounded_text(detail: str | dict | None) -> str:
+     if not detail:
+-        return _ui_text("No additional details.")
++        return "No additional details."
+     text = detail.get("text", "") if isinstance(detail, dict) else detail
+     collapsed = re.sub(r"\s+", " ", text).strip()
+     if not collapsed:
+-        return _ui_text("No additional details.")
++        return "No additional details."
+     if len(collapsed) > 240:
+         collapsed = collapsed[:237].rstrip() + "..."
+-    return _ui_text(collapsed)
++    return collapsed
++
++
++def _bounded_timeline_detail(detail: str | dict | None) -> str:
++    """Keep timeline summaries readable and bounded."""
++    return _ui_text(_bounded_text(detail))
+ 
+ 
+ def _timeline_action_label(action: str) -> str:
+@@ -460,9 +464,12 @@ def _render_timeline_block(
+                 f"  Decision: {review.group(1)}"
+             )
+     elif stage == "input" and message == "The Planner requires additional input":
+-        return _ui_text(
++        # The plan's question quotes discovered folders, file names and
++        # preflight errors; it is shown as data here (Log 192).
++        return _ui_text_with_user_data(
+             "[Input required]\n"
+-            f"  Next step: {_bounded_timeline_detail(detail)}"
++            f"  Next step: {user_data_token(0)}",
++            [_bounded_text(detail)],
+         )
+     elif stage == "tool":
+         started = re.fullmatch(r"Executor \[\d+/\d+\]:\s*(\w+)", message)
+@@ -484,18 +491,23 @@ def _render_timeline_block(
+     elif stage == "evaluate":
+         evaluation = re.fullmatch(r"Evaluator:\s*(\w+)", message)
+         if evaluation:
+-            return _ui_text(
++            # The evaluation reason names missing output paths (Log 192).
++            return _ui_text_with_user_data(
+                 "[Evaluating result]\n"
+                 f"  Decision: {evaluation.group(1)}\n"
+-                f"  Reason: {_bounded_timeline_detail(detail)}"
++                f"  Reason: {user_data_token(0)}",
++                [_bounded_text(detail)],
+             )
+     elif stage == "recover" and message.startswith("Planner recovery plan"):
+         return _ui_text("[Recovery]\n  Status: Recovery plan selected.")
+     return None
+ 
++_NON_ENGLISH = re.compile(r"[\u3400-\u9fff]")
++
++
+ def _ui_text(text: str) -> str:
+     """Guard deterministic agent-authored UI text against language drift."""
+-    if re.search(r"[\u3400-\u9fff]", text):
++    if _NON_ENGLISH.search(text):
+         raise ValueError(
+             "Agent-authored user-visible UI text must be English. "
+             "Keep non-English only in user input parsing patterns or quoted user data."
+@@ -524,6 +536,28 @@ def _ui_text_with_user_data(text: str, user_data: list[str]) -> str:
+     return checked
+ 
+ 
++def _ui_text_quoting(text: str, values) -> str:
++    """Check assembled text as agent-authored, except where it quotes `values` (Log 192).
++
++    For text built elsewhere that embeds known user data -- a discovered folder
++    or file name -- where the call site can list that data but not rebuild the
++    template. Only values that the guard would reject are masked, so nothing
++    else in the text escapes the check.
++    """
++    quoted = sorted(
++        {value for value in values if value and _NON_ENGLISH.search(value)},
++        key=len, reverse=True,
++    )
++    if not quoted:
++        return _ui_text(text)
++    masked = re.sub(
++        "|".join(re.escape(value) for value in quoted),
++        lambda found: user_data_token(quoted.index(found.group())),
++        text,
++    )
++    return _ui_text_with_user_data(masked, quoted)
++
++
+ def output_language_policy() -> str:
+     return _ui_text(
+         f"Always reply in {USER_VISIBLE_OUTPUT_LANGUAGE}, regardless of the "
+diff --git a/scripts/netzoo_agent_core/routing/capability_compatibility.py b/scripts/netzoo_agent_core/routing/capability_compatibility.py
+index 7d91769..a006dcc 100644
+--- a/scripts/netzoo_agent_core/routing/capability_compatibility.py
++++ b/scripts/netzoo_agent_core/routing/capability_compatibility.py
+@@ -119,6 +119,13 @@ def _supported_entities(
+             supported = semantics.entities or capability.entity_types
+         else:
+             supported = capability.entity_types
++    if artifact_type == "community_assignment" and "regulatory_network" in capability.input_artifacts:
++        # Log 202: the communities partition the nodes of the network analyzed,
++        # and a regulator-gene network's nodes are its regulators and genes.
++        # A reading naming both sides ("groups of regulators that jointly
++        # control groups of genes") had no candidate at all. The declaration
++        # is unchanged, which keeps the ranking terms of Log 133/135 untouched.
++        supported = supported | {"tf", "mirna", "gene"}
+     if granularity == "sample_specific" and "sample_specific" in capability.granularities:
+         return supported | {"sample"}
+     # An artifact whose ontology lists `sample` and allows a per-sample form
+diff --git a/scripts/netzoo_agent_core/routing/method_rejections.py b/scripts/netzoo_agent_core/routing/method_rejections.py
+index 4395441..cf7ee5a 100644
+--- a/scripts/netzoo_agent_core/routing/method_rejections.py
++++ b/scripts/netzoo_agent_core/routing/method_rejections.py
+@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
+ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
+ 
+ from ..contracts.outcomes import RejectedMethod
++from .path_tokens import without_path_tokens
+ 
+ 
+ _GLASSO_MARKER = re.compile(
+@@ -54,11 +55,13 @@ def rejected_methods_for(
+     if not current:
+         return []
+     labels = names if names is not None else {action: spec.workflow for action, spec in ACTION_DEFINITIONS.items()}
++    # A path token is a location, not a mention of a method (Log 191).
++    written = without_path_tokens(task).casefold()
+     rejected = []
+     for action, capability in capabilities.items():
+         label = labels[action]
+         words = re.split(r"[-_\s]+", label.casefold())
+-        mentioned = all(re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", task.casefold()) for word in words)
++        mentioned = all(re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", written) for word in words)
+         if action not in actions and not mentioned:
+             continue
+         incompatible = current.intersection(capability.incompatible_input_artifacts)
+diff --git a/scripts/netzoo_agent_core/routing/named_labels.py b/scripts/netzoo_agent_core/routing/named_labels.py
+index edfd01e..789cdc7 100644
+--- a/scripts/netzoo_agent_core/routing/named_labels.py
++++ b/scripts/netzoo_agent_core/routing/named_labels.py
+@@ -12,6 +12,7 @@ import re
+ 
+ from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, RecommendedAction
+ from ..interpretation.request_integrity import _scoped_clauses
++from .path_tokens import without_path_tokens
+ 
+ 
+ def _workflow_name_pattern(action: str) -> str:
+@@ -34,11 +35,12 @@ def _current_scope_text(task: str) -> str:
+     "Previously I used PANDA" and which said it did not want inferred networks.
+ 
+     The clause scoping is the same deterministic pass `input_mentions` uses, so
+-    history is recognised here exactly as it is for input artifacts.
++    history is recognised here exactly as it is for input artifacts. Path tokens
++    are locations, not names, and are blanked out (Log 191).
+     """
+-    return " ".join(
++    return without_path_tokens(" ".join(
+         clause for clause, scope in _scoped_clauses(task) if scope != "historical"
+-    )
++    ))
+ 
+ 
+ def named_workflow_action(task: str) -> RecommendedAction | None:
+@@ -129,6 +131,8 @@ def named_registered_action(task: str):
+         key=lambda item: len(item[1].workflow),
+         reverse=True,
+     )
++    # A folder called `bonobo-toy` does not name BONOBO (Log 191).
++    written = without_path_tokens(task).casefold()
+     for action, definition in candidates:
+         words = re.split(r"[-_\s]+", definition.workflow.casefold())
+         pattern = (
+@@ -136,7 +140,7 @@ def named_registered_action(task: str):
+             + r"[\s_-]*".join(re.escape(word) for word in words)
+             + r"(?![a-z0-9])"
+         )
+-        if re.search(pattern, task.casefold()):
++        if re.search(pattern, written):
+             return action
+     return None
+ 
+diff --git a/scripts/netzoo_agent_core/routing/path_tokens.py b/scripts/netzoo_agent_core/routing/path_tokens.py
+new file mode 100644
+index 0000000..033fba6
+--- /dev/null
++++ b/scripts/netzoo_agent_core/routing/path_tokens.py
+@@ -0,0 +1,63 @@
++"""Path tokens in a request are locations, not workflow names (Log 191).
++
++`data/bonobo-toy/expression.tsv` names a folder somebody called bonobo-toy; it
++does not name BONOBO. Log 137 found blind prompts answered "correctly" only
++because the path said so, and every blind test since has had to copy its data
++to neutral folders first. Each check that asks "did the requester write this
++workflow's name" therefore reads the request with its path tokens blanked out.
++Readers that look *for* files (input availability, named folders) keep the
++full text.
++
++A token counts as a path when it contains a separator and ends with one, starts
++at a root (`/`, `./`, `../`, `~`), has a file extension on its last segment, or
++exists under the project root; or, without a separator, when it ends with a
++data-file extension. `PANDA/PUMA` or `TF/gene` is none of these and still reads
++as words.
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++from ..settings import PROJECT_ROOT
++
++__all__ = ["is_path_token", "without_path_tokens"]
++
++_CHUNK = re.compile(r"[^\s\"'`()\[\]{}<>，。；：、「」（）]+")
++_EXTENSION = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")
++_DATA_FILE = re.compile(
++    r"\.(?:tsv|csv|txt|gmt|npy|npz|h5|hdf5|h5ad|json|ya?ml|parquet|feather|xlsx?"
++    r"|rds|rda|pkl|pickle|dat|mtx|gz|bz2|zip|tar)$",
++    re.IGNORECASE,
++)
++
++
++def _exists(root: Path, token: str) -> bool:
++    try:
++        return (root / token).exists()
++    except (OSError, ValueError):
++        return False
++
++
++def is_path_token(token: str, root: Path = PROJECT_ROOT) -> bool:
++    token = token.rstrip(".,;:!?")
++    if not token:
++        return False
++    if "/" not in token and "\\" not in token:
++        return bool(_DATA_FILE.search(token))
++    last = re.split(r"[\\/]", token.rstrip("/\\"))[-1]
++    return (
++        token.endswith(("/", "\\"))
++        or token.startswith(("/", "./", "../", "~"))
++        or bool(_EXTENSION.search(last))
++        or _exists(root, token)
++    )
++
++
++def without_path_tokens(text: str, root: Path = PROJECT_ROOT) -> str:
++    """The text with every path token replaced by a space."""
++    return _CHUNK.sub(
++        lambda found: " " if is_path_token(found.group(), root) else found.group(),
++        text,
++    )
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index ff79f2d..4c89a55 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -230,6 +230,27 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
+             ),
+         },
+     },
++    # Log 200: divergent readings of one request, not a method tie. "Each
++    # patient's regulatory wiring ... per-TF regulatory strength" reads both
++    # as one TF-gene network per sample and as TF activity per sample; the
++    # inputs are the same, and the quantity the user will analyze separates them.
++    "per_sample_quantity": {
++        "question": (
++            "For each sample, do you need each regulator's wiring to its targets (edge "
++            "weights, summarised for example as targeting scores), or each regulator's "
++            "activity level?"
++        ),
++        "values": {
++            "wiring": (
++                "each sample's regulator-to-target wiring (edge weights or targeting "
++                "scores) is needed"
++            ),
++            "activity": (
++                "each sample's regulator activity level is needed, apart from the "
++                "regulator's own expression"
++            ),
++        },
++    },
+     "covariates": {
+         "question": (
+             "Do you need to separate or adjust co-expression for batch, site or other "
+@@ -677,7 +698,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "tf_gene_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
+-            prefer_when=("cohort_size:many",),
++            prefer_when=("cohort_size:many", "per_sample_quantity:wiring",),
+             handoff_contract=(
+                 "LIONESS-PANDA uses the original gene-by-sample expression matrix, "
+                 "motif and PPI priors to internally infer the aggregate PANDA "
+@@ -730,7 +751,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "sample_specific", "mirna_regulation", "message_passing",
+                 "leave_one_out_network_inference",
+             }),
+-            prefer_when=("cohort_size:many",),
++            prefer_when=("cohort_size:many", "per_sample_quantity:wiring",),
+             handoff_contract=(
+                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
+                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "
+@@ -1089,7 +1110,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
+                 "signed_partial_regulatory_effects",
+                 "tfa_covariate_regression",
+             }),
+-            prefer_when=("tf_activity_vs_expression:yes",),
++            prefer_when=("tf_activity_vs_expression:yes", "per_sample_quantity:activity",),
+             handoff_contract=(
+                 "GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, "
+                 "and a TF-by-TF PPI matrix after explicit labelled-file conversion. "
+diff --git a/workflows/giraffe.yaml b/workflows/giraffe.yaml
+index e5866bb..9aa9fd6 100644
+--- a/workflows/giraffe.yaml
++++ b/workflows/giraffe.yaml
+@@ -20,7 +20,7 @@ output_capability:
+   input_artifacts: [expression_matrix]
+   handoff_targets: []
+   selection_tags: [tf_gene_regulation, tfa, aggregate_network, biologically_informed_matrix_factorization, joint_grn_tfa_inference, linear_model_coefficients, signed_partial_regulatory_effects, tfa_covariate_regression]
+-  prefer_when: [tf_activity_vs_expression:yes]
++  prefer_when: [tf_activity_vs_expression:yes, per_sample_quantity:activity]
+   handoff_contract: >-
+     GIRAFFE consumes gene-by-sample expression, a TF-by-gene motif/prior, and a
+     TF-by-TF PPI matrix after explicit labelled-file conversion. Through biologically
+diff --git a/workflows/lioness-panda.yaml b/workflows/lioness-panda.yaml
+index e19ab38..7e48cc0 100644
+--- a/workflows/lioness-panda.yaml
++++ b/workflows/lioness-panda.yaml
+@@ -26,7 +26,7 @@ output_capability:
+     - tf_gene_regulation
+     - message_passing
+     - leave_one_out_network_inference
+-  prefer_when: [cohort_size:many]
++  prefer_when: [cohort_size:many, per_sample_quantity:wiring]
+   handoff_contract: >-
+     LIONESS-PANDA uses the original gene-by-sample expression matrix, motif and PPI
+     priors to internally infer the aggregate PANDA network and derive sample-specific
+diff --git a/workflows/lioness-puma.yaml b/workflows/lioness-puma.yaml
+index d9c6f91..d3cf1be 100644
+--- a/workflows/lioness-puma.yaml
++++ b/workflows/lioness-puma.yaml
+@@ -26,7 +26,7 @@ output_capability:
+     - mirna_regulation
+     - message_passing
+     - leave_one_out_network_inference
+-  prefer_when: [cohort_size:many]
++  prefer_when: [cohort_size:many, per_sample_quantity:wiring]
+   handoff_contract: >-
+     LIONESS-PUMA uses the original gene-by-sample expression matrix, motif, PPI,
+     and miRNA priors to internally infer the aggregate PUMA network and derive
+diff --git a/tests/test_graph_tracing.py b/tests/test_graph_tracing.py
+index f20d4b8..0e697bd 100644
+--- a/tests/test_graph_tracing.py
++++ b/tests/test_graph_tracing.py
+@@ -1141,16 +1141,19 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+-    # One surviving advisory candidate has no deterministic clarification to
+-    # render, so this is the explicitly response-model-owned ambiguity branch.
+-    assert response_llm.calls == 1
++    # 2026-09-27 (Log 194): one surviving candidate with no routing question
++    # used to be the response-model-owned ambiguity branch. The registry now
++    # supplies the question (`single_candidate_question`), so the reply is
++    # deterministic and the response model is not called.
++    assert response_llm.calls == 0
+     assert [call["role"] for call in result["token_usage"]["calls"]] == [
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
+-        "response",
+     ]
+-    assert "LIONESS-PUMA" in str(result["messages"][-1].content)
++    assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
++        result["messages"][-1].content
++    )
+     assert any(
+         event.event_type == "routing.semantic_interpretation_accepted"
+         for event in events
+diff --git a/tests/test_community_entities.py b/tests/test_community_entities.py
+new file mode 100644
+index 0000000..4ef3a63
+--- /dev/null
++++ b/tests/test_community_entities.py
+@@ -0,0 +1,41 @@
++"""Log 202: a community assignment of a regulator-gene network holds both sides.
++
++Chinese Case 9 ("一群調控因子是一起管一群基因的") was read as analyze
++community_assignment with entities [tf, gene]. CONDOR declares `gene` only, so
++the reading had no candidate at all. The communities partition the analyzed
++network's nodes -- its regulators and its genes -- so matching supports both;
++CONDOR's declaration is unchanged, which keeps the specificity ranking intact.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis, RequestedOutcome  # noqa: E402
++from netzoo_agent_core.routing.outcome_matching import match_outcome_hypotheses  # noqa: E402
++from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
++
++
++def _match(**fields):
++    outcome = RequestedOutcome(**{"operation": "analyze", "granularity": "aggregate", **fields})
++    return match_outcome_hypotheses([OutcomeHypothesis(outcome=outcome, confidence=0.9)])
++
++
++@pytest.mark.parametrize("entities", [["tf", "gene"], ["mirna", "gene"], ["tf"], ["gene"]])
++def test_regulator_and_gene_communities_select_condor(entities):
++    match = _match(artifact_type="community_assignment", entity_types=entities)
++
++    assert (match.status, match.matched_actions) == ("exact", ["run_condor"])
++
++
++def test_the_declaration_and_vague_readings_are_unchanged():
++    assert OUTPUT_CAPABILITIES["run_condor"].entity_types == frozenset({"gene"})
++    match = _match(artifact_type="unknown", entity_types=["gene"])
++
++    assert "run_condor" in match.hypothesis_actions
+diff --git a/tests/test_divergent_reading_recommender.py b/tests/test_divergent_reading_recommender.py
+new file mode 100644
+index 0000000..7889f10
+--- /dev/null
++++ b/tests/test_divergent_reading_recommender.py
+@@ -0,0 +1,124 @@
++"""Log 200: divergent readings get a study-fact recommendation, advisory only.
++
++Case 4 ("each patient's regulatory wiring is different ... each person's per-TF
++regulatory strength over its targets") was read both as one TF-gene network per
++sample (LIONESS-PANDA) and as TF activity per sample (GIRAFFE). Their inputs are
++the same, so no folder content separates them (Log 187). What does is the
++per-sample quantity the user needs: wiring to targets, or regulator activity.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts import LLMUsage, TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis, RequestedOutcome  # noqa: E402
++from netzoo_agent_core.graph.condition_recommender import (  # noqa: E402
++    condition_options,
++    invoke_condition_recommender,
++    is_divergent_reading_tie,
++    is_method_tie,
++)
++from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
++from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
++from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
++from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
++from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
++
++CASE_4 = (
++    "data/blind-neutral/case-4/ has expression, motif and PPI files. I believe each patient's "
++    "regulatory wiring is different, and later I want to relate each person's per-TF regulatory "
++    "strength over its targets to survival time."
++)
++READING_QUESTION = (
++    "Which result do you mean: inferred regulator-to-target associations, one result per sample "
++    "(LIONESS-PANDA); or inferred transcription-factor-by-sample activity values (GIRAFFE)?"
++)
++AUTHORITY = ("action", "should_execute", "capability_match_status", "matched_actions")
++
++
++def _divergent(actions=("run_lioness_panda", "run_giraffe")) -> TaskDecision:
++    network = RequestedOutcome(operation="infer", artifact_type="regulatory_network",
++                               granularity="sample_specific", regulator_types=["tf"],
++                               target_types=["gene"], input_artifacts=["expression_matrix"])
++    activity = RequestedOutcome(operation="infer", artifact_type="tf_activity_matrix",
++                                granularity="aggregate", input_artifacts=["expression_matrix"])
++    return TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
++        confidence=0.9, reason="guidance", requested_outcome=network,
++        outcome_hypotheses=[OutcomeHypothesis(outcome=network, confidence=0.9),
++                            OutcomeHypothesis(outcome=activity, confidence=0.8)],
++        hypothesis_actions=list(actions), capability_match_status="ambiguous",
++        clarification_question=READING_QUESTION,
++    )
++
++
++def _context(tmp_path, parsed):
++    recorder = TraceRecorder(LocalTraceStore(tmp_path / "traces"))
++    run_id = recorder.start_run(session_id="log200", profile_id="default")
++    calls = []
++
++    def bind(schema, **_):
++        calls.append(schema.__name__)
++        return SimpleNamespace(invoke=lambda _messages: {"parsed": parsed, "raw": object()})
++
++    context = SimpleNamespace(
++        selection_condition_llm=SimpleNamespace(with_structured_output=bind), semantic_claims=False,
++        semantic_model_name="fixture", router_max_tokens=200, task_token_budget=10_000,
++        recorder=recorder, price_catalog=PriceCatalog(),
++    )
++    return context, {"run_id": str(run_id)}, calls
++
++
++def test_the_quantity_axis_separates_wiring_from_activity():
++    offered = {option.condition: option.actions for option in condition_options(["run_lioness_panda", "run_giraffe"])}
++
++    assert offered["per_sample_quantity:wiring"] == ("run_lioness_panda",)
++    assert offered["per_sample_quantity:activity"] == ("run_giraffe",)
++    three = {option.condition: option.actions
++             for option in condition_options(["run_lioness_panda", "run_lioness_puma", "run_giraffe"])}
++    assert three["per_sample_quantity:wiring"] == ("run_lioness_panda", "run_lioness_puma")
++
++
++def test_existing_method_ties_are_offered_nothing_new():
++    for tie in (["run_panda", "run_otter", "run_giraffe"], ["run_lioness_panda", "run_lioness_puma"],
++                ["run_bonobo", "run_lioness_coexpression"]):
++        assert not any(option.axis == "per_sample_quantity" for option in condition_options(tie)), tie
++
++
++def test_divergent_readings_are_recognised_and_are_not_a_method_tie():
++    assert is_divergent_reading_tie(_divergent())
++    assert not is_method_tie(_divergent())
++
++
++def test_a_quoted_wiring_fact_recommends_lioness_panda_and_changes_no_authority(tmp_path):
++    parsed = {"claims": [{"condition": "per_sample_quantity:wiring",
++                          "text_span": "each patient's regulatory wiring is different"}]}
++    context, state, calls = _context(tmp_path, parsed)
++    decision = _divergent()
++
++    updated, _, _ = invoke_condition_recommender(context, state, CASE_4, decision, LLMUsage(), [])
++
++    assert calls == ["SelectionConditionClaims"]
++    assert updated.advisory_recommendation.action == "run_lioness_panda"
++    assert updated.clarification_question.startswith("Should I use LIONESS-PANDA")
++    for field in AUTHORITY:
++        assert getattr(updated, field) == getattr(decision, field), field
++    answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load(), task=CASE_4)
++    assert "each patient's regulatory wiring is different" in answer
++    assert "**GIRAFFE** — preferred when:" in answer
++
++
++def test_no_stated_fact_keeps_the_readings_own_question(tmp_path):
++    context, state, _ = _context(tmp_path, {"claims": []})
++    decision = _divergent()
++
++    updated, _, _ = invoke_condition_recommender(context, state, CASE_4, decision, LLMUsage(), [])
++
++    assert updated.advisory_recommendation is None
++    assert updated.clarification_question == READING_QUESTION
+diff --git a/tests/test_dynamic_ui_text_language_guard.py b/tests/test_dynamic_ui_text_language_guard.py
+new file mode 100644
+index 0000000..aeeae9f
+--- /dev/null
++++ b/tests/test_dynamic_ui_text_language_guard.py
+@@ -0,0 +1,84 @@
++"""Log 192: dynamic UI text quoting user paths may carry non-English names.
++
++Log 180 fixed the two advisory renderers. The same crash class remained where
++text assembled elsewhere, with a user's folder or file names in it, was handed
++to `_ui_text` whole: the clarification wizard's discovered-bundle question, the
++failed-validation follow-up, and the `--timeline` input and evaluation blocks.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from unittest.mock import patch
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++import netzoo_agent as agent  # noqa: E402
++from netzoo_agent_core.cli.follow_up import build_next_turn_prompt  # noqa: E402
++from netzoo_agent_core.contracts import TaskDecision, ToolExecutionResult, WorkflowPlan  # noqa: E402
++from netzoo_agent_core.presentation import _render_timeline_block, _ui_text_quoting  # noqa: E402
++
++
++def test_quoted_values_may_be_non_english_and_nothing_else_escapes():
++    assert _ui_text_quoting("Found `data/研究/` here.", ["data/研究/"]) == "Found `data/研究/` here."
++    with pytest.raises(ValueError, match="must be English"):
++        _ui_text_quoting("找到 `data/研究/`.", ["data/研究/"])
++    with pytest.raises(ValueError, match="must be English"):
++        _ui_text_quoting("Found 研究.", ["data/other/"])
++
++
++def test_the_discovered_bundle_question_quotes_a_non_english_folder(tmp_path):
++    study = tmp_path / "data" / "研究"
++    study.mkdir(parents=True)
++    (study / "expression.tsv").write_text("GeneA\t1\t2\t3\nGeneB\t3\t2\t1\n", encoding="utf-8")
++    (study / "prior-puma.tsv").write_text("TF1\tGeneA\t1\nTF2\tGeneB\t1\nmiR-1\tGeneA\t1\n", encoding="utf-8")
++    (study / "ppi.tsv").write_text("TF1\tTF2\t1\nTF2\tTF1\t1\n", encoding="utf-8")
++    decision = TaskDecision(
++        action="run_lioness_puma", in_scope=True, should_execute=True, intent_type="run_analysis",
++        confidence=1.0, reason="Use locally available inputs.",
++        recommended_actions=["run_puma", "run_lioness_puma"],
++    )
++    with patch.object(agent.settings, "TEST_DATA_MODE", True), patch(
++        "netzoo_agent_core.planning.evidence.PROJECT_ROOT", tmp_path,
++    ):
++        plan = agent.build_workflow_plan(decision, "Continue the trusted workflow using available local data.")
++
++    assert plan.status == "needs_input" and "研究" in plan.question
++    rendered = agent.clarification_prompt(plan)
++
++    assert "I found this partial input bundle" in rendered
++    assert "研究" in rendered
++
++
++def test_a_failed_validation_follow_up_quotes_the_error_verbatim():
++    decision = TaskDecision(
++        action="run_panda", in_scope=True, should_execute=True, intent_type="run_analysis",
++        confidence=1.0, reason="run",
++    )
++    plan = WorkflowPlan(workflow="PANDA", objective="run", decision=decision.model_dump(), status="ready")
++    failure = ToolExecutionResult(
++        action="inspect_panda_inputs", status="failed", summary="Input validation failed.",
++        errors=["expression_file file does not exist: data/研究/表現.tsv"],
++    )
++
++    prompt = build_next_turn_prompt({
++        "plan": plan.model_dump(), "tool_results": [failure.model_dump()],
++        "evaluation": {"status": "failed", "reason": "input validation failed"},
++    })
++
++    assert prompt.kind == "failed"
++    assert "data/研究/表現.tsv" in prompt.question
++
++
++def test_timeline_input_and_evaluation_blocks_quote_paths_as_data():
++    block = _render_timeline_block(
++        "input", "The Planner requires additional input", "I found this partial input bundle: data/研究/",
++    )
++    assert block.startswith("[Input required]") and "data/研究/" in block
++
++    block = _render_timeline_block("evaluate", "Evaluator: failed", "Missing output: outputs/輸出/S1.tsv")
++    assert block.startswith("[Evaluating result]") and "outputs/輸出/S1.tsv" in block
+diff --git a/tests/test_evidence_supply.py b/tests/test_evidence_supply.py
+new file mode 100644
+index 0000000..f540365
+--- /dev/null
++++ b/tests/test_evidence_supply.py
+@@ -0,0 +1,195 @@
++"""Logs 196/198: a first pass that gave no evidence is asked for exactly that evidence.
++
++Case 7 T2 (Log 183): the first pass named multi_omic_network and aggregate with
++no evidence; the patch then added evidence for other fields and never for the
++named pairs. The second call is now answered in a strict schema holding one
++`Support` per named pair (Log 198; required fields in a non-strict patch schema
++were ignored 12 of 12 times, Log 197), and the reply becomes a patch of those
++additions. Validation is unchanged, so an ungrounded quote still fails, and a
++granularity that contradicts the request's own granularity witness is rejected
++however it is justified.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
++from netzoo_agent_core.contracts import LLMUsage  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import SemanticInterpretation  # noqa: E402
++from netzoo_agent_core.graph.evidence_supply import supplied_pairs  # noqa: E402
++from netzoo_agent_core.graph.router_invocation import _invoke_semantic_interpreter  # noqa: E402
++from netzoo_agent_core.interpretation.outcome_validation import validate_outcome_hypotheses  # noqa: E402
++from netzoo_agent_core.llm import build_semantic_interpreter_prompt  # noqa: E402
++from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
++
++CASE_7 = (
++    "For the same individuals I have gene expression (data/blind-neutral/case-7/layer1.tsv) and "
++    "methylation (layer2.tsv). I want to know which methylation sites and genes are directly "
++    "associated, not linked indirectly through other variables."
++)
++FIRST = {
++    "request_mode": "guidance",
++    "semantic_goal": "Identify direct associations between methylation sites and genes.",
++    "outcome_hypotheses": [{
++        "outcome": {"operation": "infer", "artifact_type": "multi_omic_network",
++                    "target_types": [], "granularity": "aggregate"},
++        "confidence": 0.9,
++        "evidence": [{
++            "dimension": "operation", "value": "infer", "source": "explicit",
++            "text_span": "I want to know which methylation sites and genes are directly associated",
++            "rationale": "Direct associations are inferred from the data.",
++        }],
++    }],
++}
++
++
++class Adapter:
++    def __init__(self, reply):
++        self.reply = reply
++        self.calls = 0
++
++    def invoke(self, _messages):
++        self.calls += 1
++        return self.reply
++
++
++class Provider:
++    """The raw semantic model: records which schema each call was bound to."""
++
++    def __init__(self, reply):
++        self.reply = reply
++        self.schemas = []
++        self.options = []
++
++    def with_structured_output(self, schema, **options):
++        self.schemas.append(schema)
++        self.options.append(options)
++        return Adapter(self.reply)
++
++
++class Recorder:
++    def __init__(self):
++        self.events = []
++
++    def append(self, run_id, event, node, data):
++        self.events.append((event, data))
++
++
++def _context(first, supply_reply, patch_reply=None):
++    return SimpleNamespace(
++        semantic_claims=False,
++        semantic_interpreter=Adapter(first),
++        semantic_patcher=Adapter(patch_reply or {"hypothesis_index": 0}),
++        semantic_reviewer=Adapter({}),
++        semantic_discriminator=None,
++        selection_condition_llm=Provider(supply_reply),
++        semantic_prompt=build_semantic_interpreter_prompt(),
++        semantic_model_name="offline",
++        router_max_tokens=2000, task_token_budget=100000, price_catalog=None,
++        recorder=Recorder(),
++        project_policy=SimpleNamespace(workflows={
++            name: SimpleNamespace(output_capability=capability)
++            for name, capability in OUTPUT_CAPABILITIES.items()
++        }),
++    )
++
++
++def _run(context, task=CASE_7):
++    interpretation, _, _, error, _ = _invoke_semantic_interpreter(
++        context, {}, task, LLMUsage(budget_tokens=100000),
++    )
++    return interpretation, error
++
++
++def test_case_7_t2_is_answered_with_the_named_evidence():
++    supply = {
++        "evidence_0": {"source": "explicit", "text_span": "gene expression", "rationale": "Two omics layers."},
++        "evidence_1": {"source": "inferred", "rationale": "One set of associations for the whole cohort."},
++    }
++    context = _context(FIRST, supply)
++
++    interpretation, error = _run(context)
++
++    assert error is None and interpretation is not None
++    assert context.semantic_patcher.calls == 0
++    (schema,) = context.selection_condition_llm.schemas
++    assert context.selection_condition_llm.options[0]["strict"] is True
++    required = {name for name, field in schema.model_fields.items() if field.is_required()}
++    assert required == set(schema.model_fields) == {"evidence_0", "evidence_1"}
++    assert validate_outcome_hypotheses(CASE_7, interpretation.outcome_hypotheses, "guidance").valid
++    match = match_semantic_request(CASE_7, interpretation.outcome_hypotheses, request_mode="guidance")
++    assert (match.status, match.matched_actions) == ("exact", ["run_dragon"])
++    assert ("routing.semantic_evidence_supplied", {
++        "attempt": 2,
++        "requested": ["hypothesis[0].artifact_type=multi_omic_network", "hypothesis[0].granularity=aggregate"],
++        "sources": ["explicit", "inferred"],
++    }) in context.recorder.events
++
++
++def test_a_supplied_quote_the_request_does_not_contain_still_fails():
++    supply = {
++        "evidence_0": {"source": "explicit", "text_span": "a multi-omic network", "rationale": "r"},
++        "evidence_1": {"source": "inferred", "rationale": "r"},
++    }
++
++    interpretation, _ = _run(_context(FIRST, supply))
++
++    assert interpretation is None or not validate_outcome_hypotheses(
++        CASE_7, interpretation.outcome_hypotheses, "guidance",
++    ).valid
++
++
++def test_other_issues_keep_the_patch_path():
++    first = SemanticInterpretation.model_validate(FIRST)
++
++    assert supplied_pairs(("hypothesis[0].missing_evidence:granularity=aggregate",), first) == [
++        (0, "granularity", "aggregate"),
++    ]
++    assert supplied_pairs((
++        "hypothesis[0].missing_evidence:granularity=aggregate",
++        "hypothesis[0].ungrounded_evidence:operation=infer",
++    ), first) is None
++    # A pair the proposal did not write is not asked for.
++    assert supplied_pairs(("hypothesis[0].missing_evidence:granularity=sample_specific",), first) is None
++
++
++PER_PATIENT = "I want per-patient networks that capture both TF and miRNA regulation of genes. Which workflow? Advice only."
++
++
++@pytest.mark.parametrize("span", [None, "per-patient networks"])
++def test_a_granularity_against_the_requests_own_witness_is_rejected(span):
++    """role-both-ss-en: an aggregate reading passed as exact PUMA once any evidence was added."""
++    first = SemanticInterpretation.model_validate({
++        "request_mode": "guidance", "semantic_goal": "g",
++        "outcome_hypotheses": [{
++            "outcome": {"operation": "infer", "artifact_type": "regulatory_network",
++                        "regulator_types": ["tf", "mirna"], "target_types": ["gene"],
++                        "granularity": "aggregate"},
++            "confidence": 0.9,
++            "evidence": [
++                {"dimension": "artifact_type", "value": "regulatory_network", "source": "explicit",
++                 "text_span": "networks that capture both TF and miRNA regulation of genes", "rationale": "r"},
++                {"dimension": "regulator_type", "value": "tf", "source": "explicit",
++                 "text_span": "TF and miRNA regulation", "rationale": "r"},
++                {"dimension": "regulator_type", "value": "mirna", "source": "explicit",
++                 "text_span": "TF and miRNA regulation", "rationale": "r"},
++                {"dimension": "target_type", "value": "gene", "source": "explicit",
++                 "text_span": "regulation of genes", "rationale": "r"},
++                {"dimension": "granularity", "value": "aggregate",
++                 "source": "explicit" if span else "inferred", "text_span": span, "rationale": "r"},
++            ],
++        }],
++    })
++
++    validation = validate_outcome_hypotheses(PER_PATIENT, first.outcome_hypotheses, "guidance")
++
++    assert not validation.valid
++    assert "hypothesis[0].granularity_contradicts_request:aggregate" in validation.issues
+diff --git a/tests/test_generic_artifact_quote.py b/tests/test_generic_artifact_quote.py
+new file mode 100644
+index 0000000..abfa290
+--- /dev/null
++++ b/tests/test_generic_artifact_quote.py
+@@ -0,0 +1,49 @@
++"""Log 193: a quote that says nothing about what is connected states no network kind.
++
++Log 189 saw "build me a network" cited as explicit evidence for
++`regulatory_network` in 3 of 4 Case 10 replies. The quote grounds, so routing is
++unchanged, but it does not say the network is regulatory, and the reply's
++assumption note -- which keyed on "any artifact quote" -- was suppressed.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++sys.path.insert(0, str(ROOT / "tests"))
++
++from netzoo_agent_core.contracts.outcomes import OutcomeEvidence  # noqa: E402
++from test_reply_notes import _answer, _decision  # noqa: E402
++
++
++def _quoted(span: str):
++    decision = _decision(artifact_source="explicit")
++    hypothesis = decision.outcome_hypotheses[0]
++    evidence = [OutcomeEvidence(
++        dimension="artifact_type", value="regulatory_network", source="explicit",
++        text_span=span, rationale="t",
++    )]
++    return decision.model_copy(update={
++        "outcome_hypotheses": [hypothesis.model_copy(update={"evidence": evidence})],
++    })
++
++
++@pytest.mark.parametrize("span", ["build me a network", "Build me a network and let's see.", "幫我建一個網路"])
++def test_a_generic_network_quote_still_gets_the_assumption_note(span):
++    answer = _answer(_quoted(span))
++
++    assert "Your request does not say what the network should connect" in answer
++    assert "**BONOBO** and **LIONESS-COEXPRESSION** need only the input you named." in answer
++
++
++@pytest.mark.parametrize("span", [
++    "regulatory network", "which TFs regulate genes", "a network of genes",
++    "each patient's regulatory wiring is different", "我想知道調控因子",
++])
++def test_a_quote_naming_what_is_connected_adds_no_note(span):
++    assert "does not say what the network should connect" not in _answer(_quoted(span))
+diff --git a/tests/test_path_tokens.py b/tests/test_path_tokens.py
+new file mode 100644
+index 0000000..aa9a334
+--- /dev/null
++++ b/tests/test_path_tokens.py
+@@ -0,0 +1,87 @@
++"""Log 191: a folder called `bonobo-toy` does not name BONOBO."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeHypothesis,
++    RequestedOutcome,
++)
++from netzoo_agent_core.interpretation.extraction import _needs_lioness_mode_choice  # noqa: E402
++from netzoo_agent_core.routing.method_rejections import rejected_methods_for  # noqa: E402
++from netzoo_agent_core.routing.named_labels import (  # noqa: E402
++    named_registered_action,
++    named_workflow_action,
++    solely_named_run_action,
++)
++from netzoo_agent_core.routing.outcome_matching import match_semantic_request  # noqa: E402
++from netzoo_agent_core.routing.path_tokens import is_path_token, without_path_tokens  # noqa: E402
++
++
++@pytest.mark.parametrize("token", [
++    "data/bonobo-toy/", "data/bonobo-toy/expression.tsv", "./panda/", "../otter-run/x",
++    "/abs/giraffe", "~/cobra/", "prior-puma.tsv", "data/lioness-toy", "results/dragon.tsv.",
++])
++def test_paths_are_recognised(token):
++    assert is_path_token(token)
++
++
++@pytest.mark.parametrize("token", ["PANDA/PUMA", "TF/gene", "tumor/normal", "and/or", "LIONESS-PANDA", "BONOBO"])
++def test_words_joined_by_a_slash_are_not_paths(token):
++    assert not is_path_token(token)
++
++
++def test_path_tokens_are_blanked_and_words_kept():
++    text = "Run PANDA/PUMA on (data/bonobo-toy/expression.tsv) and `data/giraffe-toy/`."
++
++    assert without_path_tokens(text) == "Run PANDA/PUMA on ( ) and ` `."
++
++
++def test_a_path_alone_names_no_workflow():
++    task = "I only have expression data (data/bonobo-toy/expression.tsv) and no prior files."
++
++    assert named_registered_action(task) is None
++    assert named_workflow_action(task) is None
++    assert solely_named_run_action(task) is None
++
++
++def test_a_name_written_outside_the_path_still_counts():
++    task = "Run BONOBO on data/bonobo-toy/expression.tsv."
++
++    assert named_registered_action(task) == "run_bonobo"
++    assert solely_named_run_action(task) == "run_bonobo"
++
++
++def test_an_empty_reading_is_not_answered_by_a_folder_name():
++    unknown = RequestedOutcome(operation="unknown", artifact_type="unknown", granularity="unknown")
++    task = "Run it on data/bonobo-toy/expression.tsv"
++
++    match = match_semantic_request(
++        task, [OutcomeHypothesis(outcome=unknown, confidence=0.5)], request_mode="execute",
++    )
++
++    assert match.match_basis != "workflow_name"
++    assert "run_bonobo" not in match.matched_actions
++
++
++def test_a_folder_name_is_not_a_mention_of_a_rejected_method():
++    task = "Use the co-expression network in data/sambar-run/network.tsv."
++
++    assert rejected_methods_for(task, ["coexpression_network"]) == []
++    assert [item.action for item in rejected_methods_for(
++        "Can SAMBAR use data/x/network.tsv?", ["coexpression_network"],
++    )] == ["run_sambar"]
++
++
++def test_a_lioness_folder_does_not_ask_which_lioness_mode():
++    assert not _needs_lioness_mode_choice(
++        "Use data/lioness-toy/ to build a regulatory network for each sample, then run a t-test."
++    )
++    assert _needs_lioness_mode_choice("Run LIONESS on data/study/.")
+diff --git a/tests/test_single_candidate_is_scored.py b/tests/test_single_candidate_is_scored.py
+new file mode 100644
+index 0000000..6f8b9a9
+--- /dev/null
++++ b/tests/test_single_candidate_is_scored.py
+@@ -0,0 +1,42 @@
++"""Log 194: a one-candidate tie is answered deterministically, so the evaluator scores it.
++
++Before Log 194 such a row said `answer_scope: response_model`: the reply was the
++response model's, which this evaluator does not pay for. The registry now
++supplies the question, and the row is scored like any other deterministic reply.
++"""
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++sys.path.insert(0, str(Path(__file__).parent))
++
++from test_ambiguous_guidance_is_scored import row  # noqa: E402
++from test_routing_evaluation import hypothesis  # noqa: E402
++
++TASK = (
++    "I have a regulator-gene link table. I'd like to know whether groups of regulators "
++    "jointly control groups of genes, and who the most central members of each group are."
++)
++
++
++def test_the_case_9_shape_is_scored_as_a_deterministic_reply():
++    item = hypothesis()
++    item["outcome"] = {
++        "operation": "infer", "input_artifacts": [], "artifact_type": "community_assignment",
++        "entity_types": [], "regulator_types": [], "target_types": [], "granularity": "aggregate",
++    }
++    item["evidence"] = [
++        {"dimension": "artifact_type", "value": "community_assignment", "source": "inferred",
++         "rationale": "Groups of regulators and genes are communities."},
++        {"dimension": "granularity", "value": "aggregate", "source": "inferred",
++         "rationale": "One partition of one network."},
++    ]
++
++    result, _ = row(item, TASK)
++
++    assert result["status"] == "ambiguous"
++    assert result["hypothesis_actions"] == ["run_condor"]
++    assert result["answer_evaluated"] and result["answer_scope"] == "deterministic"
++    assert "The only registered workflow compatible with this request is **CONDOR**" in result["answer"]
+diff --git a/tests/test_single_candidate_question.py b/tests/test_single_candidate_question.py
+new file mode 100644
+index 0000000..4bc424d
+--- /dev/null
++++ b/tests/test_single_candidate_question.py
+@@ -0,0 +1,69 @@
++"""Log 194: a one-candidate tie with no routing question still gets a deterministic reply."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    OutcomeEvidence,
++    OutcomeHypothesis,
++    RequestedOutcome,
++)
++from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
++from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
++
++POLICY = ProjectPolicyLoader(ROOT).load()
++
++
++def _tie(actions, question=None, **outcome) -> TaskDecision:
++    fields = dict(operation="infer", artifact_type="community_assignment", granularity="aggregate")
++    fields.update(outcome)
++    requested = RequestedOutcome(**fields)
++    evidence = [OutcomeEvidence(
++        dimension="artifact_type", value=requested.artifact_type, source="inferred", rationale="t",
++    )]
++    return TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
++        confidence=0.9, reason="guidance", requested_outcome=requested,
++        outcome_hypotheses=[OutcomeHypothesis(outcome=requested, confidence=0.9, evidence=evidence)],
++        hypothesis_actions=list(actions), capability_match_status="ambiguous",
++        clarification_question=question,
++    )
++
++
++def test_case_9_shape_says_what_differs_and_asks_to_confirm():
++    answer = render_outcome_clarification(_tie(["run_condor"]), POLICY)
++
++    assert answer is not None
++    assert "**Community assignments — CONDOR**" in answer
++    assert (
++        "The only registered workflow compatible with this request is **CONDOR**, but it analyzes "
++        "an existing regulatory network, while your request reads as asking to infer a new result."
++    ) in answer
++    assert "Is CONDOR the analysis you want?" in answer
++    assert answer.endswith("No files were inspected and no analysis ran.")
++
++
++def test_an_unsettled_granularity_is_named():
++    decision = _tie(["run_lioness_panda"], operation="infer", artifact_type="regulatory_network",
++                    granularity="unknown", regulator_types=["tf"], target_types=["gene"])
++
++    answer = render_outcome_clarification(decision, POLICY)
++
++    assert "does not settle whether one cohort-wide result or one result per sample is wanted" in answer
++
++
++def test_a_routing_question_is_kept_as_it_was():
++    answer = render_outcome_clarification(_tie(["run_condor"], question="Which network should I use?"), POLICY)
++
++    assert "Which network should I use?" in answer
++    assert "The only registered workflow compatible" not in answer
++
++
++def test_a_tie_of_several_without_a_question_is_still_left_alone():
++    assert render_outcome_clarification(_tie(["run_panda", "run_otter"]), POLICY) is None
+diff --git a/tests/test_stated_count_note.py b/tests/test_stated_count_note.py
+new file mode 100644
+index 0000000..8fdb96d
+--- /dev/null
++++ b/tests/test_stated_count_note.py
+@@ -0,0 +1,62 @@
++"""Log 195: form B quotes a sample count the request gave, and maps it to nothing.
++
++The user decided on 2026-09-26 that a count ("about 400 tumour samples") is
++not converted to cohort_size:few/many; the agent asks. Form B then asked
++"About how many samples do you have?" of a user who had just said.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++
++from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis, RequestedOutcome  # noqa: E402
++from netzoo_agent_core.graph.condition_recommender import condition_options, separating_question  # noqa: E402
++from netzoo_agent_core.interpretation.concept_answers import render_outcome_clarification  # noqa: E402
++from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
++
++POLICY = ProjectPolicyLoader(ROOT).load()
++TIE = ["run_lioness_coexpression", "run_bonobo"]
++
++
++def _form_b(candidates=TIE) -> TaskDecision:
++    outcome = RequestedOutcome(operation="infer", artifact_type="coexpression_network",
++                               granularity="sample_specific", entity_types=["gene"],
++                               input_artifacts=["expression_matrix"])
++    return TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
++        confidence=0.9, reason="guidance", requested_outcome=outcome,
++        outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=0.9)],
++        hypothesis_actions=list(candidates), capability_match_status="ambiguous",
++        clarification_question=separating_question(condition_options(list(candidates)), list(candidates)),
++    )
++
++
++def test_a_stated_count_is_quoted_and_not_mapped():
++    task = "Our cohort has about 400 tumour samples with RNA-seq. I want each tumour's own co-expression network."
++
++    answer = render_outcome_clarification(_form_b(), POLICY, task=task)
++
++    assert 'You mentioned "about 400 tumour samples".' in answer
++    assert "I do not map a sample count to these categories myself." in answer
++    assert "About how many samples do you have?" in answer
++
++
++def test_a_non_english_count_is_quoted_verbatim():
++    answer = render_outcome_clarification(_form_b(), POLICY, task="我們有大約 400 個樣本的表現資料。")
++
++    assert 'You mentioned "大約 400 個樣本".' in answer
++
++
++def test_no_count_or_no_sample_question_adds_nothing():
++    assert "You mentioned" not in render_outcome_clarification(
++        _form_b(), POLICY, task="I want each tumour's own co-expression network.",
++    )
++    decision = _form_b().model_copy(update={"clarification_question": "Is memory a concern?"})
++    assert "You mentioned" not in render_outcome_clarification(
++        decision, POLICY, task="We have 400 samples.",
++    )
