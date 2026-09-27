@@ -11855,3 +11855,43 @@ Log 180 懷疑的 `cli/follow_up.py` 的 `_ui_text(interaction.next_step)` 是�
   （`trace188_en` case10-en #3、#5，`trace188_zh` case10-zh #0），都新增了假設說明；沒有渲染錯誤。
 - 新測試 `tests/test_generic_artifact_quote.py` 8 項，3 項在舊判斷上失敗。
 
+## Log 194｜單一候選、沒有澄清問題的平手改為確定性回覆（第 5 項）
+
+日期／時區：2026-09-27，Asia/Taipei。
+
+### 成因（重放確認）
+
+Log 179 的 Case 9 #1、#2 都讀成 `infer community_assignment`。CONDOR 註冊為 `analyze`（分析既有網路）。
+guidance 模式比對時 operation 被抹成 unknown（Log 170），但「唯一候選升級為 exact」的檢查 `_complete_guidance_match`
+看的是原始 operation，`infer ≠ analyze`，所以停在 ambiguous［run_condor］、沒有澄清問題，回覆落到 response 模型——本 harness 無法檢查的路徑。
+operation 仍是真的維度（`_complete_guidance_match` 的既有設計：只有 unknown 可以省略），所以**不改比對**。
+
+### 修正
+
+新模組 `interpretation/single_candidate.py`：依註冊表產生問題，說明唯一相容的工作流程、
+讀法與其註冊 operation 的差異（例如「CONDOR 分析既有的 regulatory network，而你的請求讀起來是要推論新結果」）、
+以及請求沒有決定的維度，最後請使用者確認。接到既有的單一候選確定性渲染；不選擇、不推薦、不改執行權限。
+
+### 釘住測試（修改 1 項）
+
+`tests/test_graph_tracing.py::test_graph_matches_one_valid_partial_semantic_interpretation` 原本斷言
+「一個候選、沒有確定性澄清 → response 模型負責」（response 呼叫 1 次）。這正是本項要改的設計，所以改為
+response 呼叫 0 次、呼叫角色序列不含 `response`、回覆含確定性問題，並加上日期註解。
+**這個釘住測試是在全套測試時才發現的，實作前沒有先 grep 到**；因為它記錄的正是使用者清單要求改變的設計，所以修改而不是撤回。
+
+### 量得的事實
+
+- 重放 120 個 ambiguous 決策：**恰好 2 個改變**（`trace_blind_en` case9-en #24、#25），由無確定性回覆變為上述問題；
+  其餘不變（有問題的單一候選沿用原問題）。
+- 新測試 `tests/test_single_candidate_question.py` 4 項，2 項在舊碼上失敗。全套通過。
+
+### Log 194 補記：評估器也為單一候選平手評分
+
+日期／時區：2026-09-27，Asia/Taipei。在 Log 196／198 實跑期間補上，與 Log 194 同一個設計變更。
+
+`scripts/evaluate_routing.py` 的 `_score_answer` 原本把「ambiguous 且沒有澄清問題」一律記為 `answer_scope: response_model`（不評分）。
+Log 194 之後，單一候選平手的回覆由註冊表產生，所以改為：`clarification_question` 存在**或** `single_candidate_question` 有問題時，都走確定性評分。
+新測試 `tests/test_single_candidate_is_scored.py`：Case 9 形狀的 fixture 現在 `answer_scope == "deterministic"`，回覆含確定性問題。
+既有的 `test_an_ambiguity_with_nothing_to_ask_says_it_went_to_the_response_model` **未修改且仍通過**：它的 decision 是沒有 `hypothesis_actions` 的
+`SimpleNamespace`，所以現在只涵蓋「沒有任何候選」的分支；`single_candidate_question` 因此改用 `getattr` 讀候選。這個測試的說明文字（單一候選 DRAGON）已不再符合實際行為，記錄於此。
+
