@@ -18,6 +18,7 @@ from ..contracts import (
 )
 from ..interpretation import INPUT_LABELS
 from ..interpretation.request_parameters import extract_explicit_taxon
+from ..presentation import _ui_text_quoting
 
 
 _FIELD_ASSIGNMENT = re.compile(
@@ -51,6 +52,15 @@ def _candidate_selection(evidence: InputEvidence, value: str) -> str:
     raise ClarificationInputError(
         f"{evidence.field} has no candidate numbered {cleaned}."
     )
+
+def _plan_user_data(plan: WorkflowPlan) -> list[str]:
+    """The paths, file names and folders a plan's question can quote."""
+    values = [option.directory for option in plan.input_bundle_options]
+    for item in plan.evidence:
+        if item.value:
+            values.extend((item.value, Path(item.value).name, str(Path(item.value).parent)))
+    return values
+
 
 def _action_for_registered_choice(value: str) -> str | None:
     normalized = value.casefold()
@@ -279,7 +289,9 @@ def _render_clarification_prompt(
             ]
         )
     if not custom and not selected and plan.question:
-        lines.extend([_ui_text(plan.question), ""])
+        # The question quotes the plan's own discovered folder and file names,
+        # which may be in any language (Log 192).
+        lines.extend([_ui_text_quoting(plan.question, _plan_user_data(plan)), ""])
     lines.extend(
         [
             _ui_text(
