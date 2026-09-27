@@ -9,6 +9,7 @@ from workflow_registry import REQUIRED_INPUTS
 from ..contracts import RouterDecision, TaskDecision
 from ..routing import _extract_named_path
 from ..settings import PARAMETER_FIELDS
+from .input_bindings import request_input_bindings
 from .extraction import (
     _task_path,
     documentation_library_for_task,
@@ -17,7 +18,6 @@ from .extraction import (
 from .outcome_consistency import select_primary_hypothesis
 from .request_parameters import (
     extract_explicit_request_parameters,
-    extract_recognized_input_files,
 )
 
 __all__: list[str] = []
@@ -51,33 +51,17 @@ def hydrate_router_decision(
             alternative_actions=[],
         )
 
+    for field_name, parsed in request_input_bindings(task).values.items():
+        setattr(decision, field_name, parsed)
+
     for field_name in (
-        "expression_file",
-        "motif_file",
-        "ppi_file",
-        "mirna_file",
-        "coexpression_file",
         "output_file",
         "lioness_output",
-        "network_file",
-        "mutation_file",
-        "exon_size_file",
-        "cancer_gene_file",
-        "pathway_file",
         "output_dir",
     ):
         parsed = _task_path(task, field_name)
         if parsed:
             setattr(decision, field_name, parsed)
-
-    # A failed semantic pass must not discard concrete request parameters.
-    # Filename hints only establish candidate roles; normal workflow preflight
-    # still validates each file's content before a plan can execute.
-    required_fields = REQUIRED_INPUTS.get(decision.action, ())
-    recognized_inputs = extract_recognized_input_files(task)
-    for field_name in required_fields:
-        if not getattr(decision, field_name, None) and field_name in recognized_inputs:
-            setattr(decision, field_name, recognized_inputs[field_name])
 
     explicit_parameters = extract_explicit_request_parameters(task)
     parameter_updates = {

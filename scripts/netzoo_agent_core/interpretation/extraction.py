@@ -9,6 +9,7 @@ from workflow_registry import ACTION_DEFINITIONS, registered_actions_for_family
 from ..contracts import PROSE_PATH_TERMINATORS, PreferenceProposal, _ui_text
 from ..routing import CONTEXT7_LIBRARY_ALIASES, _extract_named_path, is_workflow_information_request
 from ..routing.discovery import _extract_explicit_role_path
+from ..routing.role_paths import _alias_pattern, _parenthesized_role_path
 from ..routing.path_tokens import without_path_tokens
 
 __all__: list[str] = []
@@ -39,10 +40,6 @@ def _looks_like_path(value: str) -> bool:
         or any(token.endswith(suffix) for suffix in _PATHLIKE_SUFFIXES)
     )
 
-def _alias_pattern(aliases: tuple[str, ...]) -> str:
-    ordered = sorted(aliases, key=len, reverse=True)
-    return "|".join(re.escape(alias) for alias in ordered)
-
 def _has_explicit_file_binding(task: str, aliases: tuple[str, ...]) -> bool:
     names = _alias_pattern(aliases)
     return bool(
@@ -72,7 +69,7 @@ def _reverse_named_path(task: str, aliases: tuple[str, ...]) -> str | None:
 def _task_path(task: str, field_name: str) -> str | None:
     aliases_by_field = {
         "expression_file": ("expression_file", "expression", "表現矩陣", "表現資料"),
-        "design_file": ("design_file", "design", "covariates", "covariate matrix", "設計矩陣", "協變數"),
+        "design_file": ("design_file", "sample covariate design matrix", "design", "covariates", "covariate matrix", "設計矩陣", "協變數"),
         "motif_file": ("motif_file", "motif", "prior", "先驗", "調控先驗"),
         "ppi_file": ("ppi_file", "ppi", "PPI"),
         "mirna_file": ("mirna_file", "miRNA list", "mirna list", "miRNA", "mirna"),
@@ -109,6 +106,9 @@ def _task_path(task: str, field_name: str) -> str | None:
     if explicit := _extract_explicit_role_path(task, field_name):
         return explicit
     aliases = aliases_by_field.get(field_name, (field_name,))
+    parenthesized = _parenthesized_role_path(task, aliases)
+    if parenthesized and _looks_like_path(parenthesized):
+        return parenthesized
     reversed_path = _reverse_named_path(task, aliases)
     if reversed_path:
         return reversed_path

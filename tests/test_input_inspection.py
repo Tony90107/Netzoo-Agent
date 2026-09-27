@@ -227,14 +227,45 @@ def test_a_mirna_list_the_prior_never_uses_recommends_nothing(tmp_path):
     assert advised.inspected_directories == [written]
 
 
-def test_a_folder_that_also_holds_a_clean_tf_prior_recommends_nothing(tmp_path):
-    """Log 186: the toy folder holds both priors, so the mixed one decides nothing."""
+def test_a_named_prior_outranks_an_unselected_clean_tf_prior(tmp_path):
+    """An extra file does not undo the user's choice of this analysis's prior."""
     written = _folder(tmp_path, {**CASE_5, "motif.tsv": "motif-panda.tsv"})
     decision = _decision(hypothesis_actions=list(MIXED_TIE))
 
     advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
 
+    assert advised.advisory_recommendation.action == "run_puma"
+    assert "validated:motif_file=prior.tsv" in {
+        condition.value for condition in advised.advisory_recommendation.conditions
+    }
+
+
+def test_a_folder_without_a_selected_prior_keeps_both_readings(tmp_path):
+    written = _folder(tmp_path, {**CASE_5, "motif.tsv": "motif-panda.tsv"})
+    decision = _decision(hypothesis_actions=list(MIXED_TIE))
+
+    advised = advise_from_inspected_inputs(
+        f"My files are in {written}. I want one overall regulatory network.",
+        decision, root=tmp_path,
+    )
+
     assert advised.advisory_recommendation is None
+
+
+@pytest.mark.parametrize("source", [None, "ppi.tsv"])
+def test_an_explicit_missing_or_invalid_prior_is_never_replaced(tmp_path, source):
+    files = {**PANDA_SET, "mirna.txt": "mirna.txt"}
+    if source is not None:
+        files["chosen.tsv"] = source
+    written = _folder(tmp_path, files)
+    task = f"Use motif_file={written}chosen.tsv. The other inputs are in the same folder."
+
+    advised = advise_from_inspected_inputs(
+        task, _decision(hypothesis_actions=list(MIXED_TIE)), root=tmp_path,
+    )
+
+    assert advised.advisory_recommendation is None
+    assert not any("motif_file=" in value for value in advised.discovered_inputs)
 
 
 def test_a_path_that_ends_a_sentence_still_names_its_folder(tmp_path):
@@ -243,3 +274,19 @@ def test_a_path_that_ends_a_sentence_still_names_its_folder(tmp_path):
     assert named_directories(f"All I have is {written}expression.tsv. Build a network.", tmp_path) == [
         (written, (tmp_path / "data" / "study").resolve()),
     ]
+
+
+@pytest.mark.parametrize("actions", [MIXED_TIE, ["run_lioness_panda", "run_lioness_puma"]])
+def test_selected_mixed_prior_with_decoys_recommends_the_matching_granularity(tmp_path, actions):
+    written = _folder(tmp_path, {**CASE_5, "motif-panda.tsv": "motif-panda.tsv"})
+    task = (f"My prior regulatory table ({written}prior.tsv) contains not only transcription "
+            "factors but also predicted targets of some small RNAs; those small RNAs are "
+            "listed in mirna.txt. Use the expression and PPI files in the same folder.")
+    decision = _decision(hypothesis_actions=actions)
+
+    advised = advise_from_inspected_inputs(task, decision, root=tmp_path)
+
+    expected = "run_lioness_puma" if "run_lioness_puma" in actions else "run_puma"
+    assert advised.advisory_recommendation.action == expected
+    for field in AUTHORITY:
+        assert getattr(advised, field) == getattr(decision, field), field
