@@ -221,6 +221,7 @@ def invoke_semantic_interpreter(
                 licensed = permitted_fields(validation_issues)
                 interpretation, retired_evidence = apply_semantic_patch(
                     proposal, patch, permitted_fields=licensed, user_task=user_task,
+                    hold_validated=validated is not None,  # a tie review (Log 210)
                 )
                 patched_index = patched_hypothesis_index(proposal, patch)
                 record_event(
@@ -249,6 +250,10 @@ def invoke_semantic_interpreter(
                         "evidence_withdrawals_ignored": [
                             i for i in retired_evidence
                             if i.get("reason") == "withdrawal_of_asserted_value"
+                        ],
+                        "overrides_held": [
+                            i for i in retired_evidence
+                            if i.get("reason") == "override_of_validated_value_without_quote"
                         ],
                         # What the rules that fired declared they examined.
                         # Overrides outside this set were not applied; an empty
