@@ -12293,3 +12293,24 @@ Log 136 以來的實跑 trace、盲測語料、評分與重放腳本都存在各
 以 `replay_replies.py` 重放**全部** 563 個錄下的平手回覆（之前只重放 legacy 的紀錄）：**39 個以語言守衛的 `ValueError` 崩潰，全部來自 claims 契約的紀錄**。
 claims 契約下，模型對中文請求把 `assumptions`（51 個決策）與 `display_entities`（36 個）寫成中文，平手回覆把它們放進 `_ui_text` 檢查的模板。
 legacy＋mini 的紀錄中 0 次，所以 Log 192 的稽核把它列為「MODEL 類、未觀察到」。這會直接影響接下來的契約嚴格化（claims 是 strict 契約）。
+
+## Log 207｜模型寫的非英文自由文字不放進回覆（Log 206 發現的 claims 契約崩潰）
+
+日期／時區：2026-09-27，Asia/Taipei。只改回覆層；離線驗證。
+
+### 成因
+
+claims 契約下，模型對中文請求把 `assumptions` 與 `display_entities` 寫成中文。平手回覆把它們組進 `_ui_text` 檢查的模板，丟出
+「Agent-authored user-visible UI text must be English」：錄下的 563 個平手回覆中 39 個崩潰，全部來自 claims 紀錄。
+`verified_guidance` 也顯示模型的 assumptions，它沒有經過 `_ui_text`，所以不崩潰，但會把中文放進應為全英文的回覆。
+
+### 修正
+
+依 AGENTS.md「所有使用者可見 agent 輸出固定為英文」：模型寫的自由文字若含中日韓字元就不顯示。
+`concept_answers._decision_assumptions` 與 `verified_guidance` 略過這類 assumption；`_outcome_phrase` 略過這類 `display_entities`，
+退回既有的實體標籤。英文的 assumption 照常顯示。不改路由、不改 prompt。
+
+### 量得的事實
+
+- 重放全部 563 個平手回覆：**恰好 39 個改變，都是原本的崩潰**，現在都正常渲染；其餘 524 個回覆一字不變。
+- 新測試 `tests/test_model_text_language.py` 3 項；停用過濾時 3 項都失敗。全套 2269 passed；指紋不變。
