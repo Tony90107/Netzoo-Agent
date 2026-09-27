@@ -52,6 +52,7 @@ from .discriminator import (
     _fill_inferred_role_evidence,
 )
 from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
+from .first_pass_salvage import validate_first_pass
 
 __all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
 
@@ -214,7 +215,12 @@ def invoke_semantic_interpreter(
                 _as_semantic_patch(payload) if patching else (None, [])
             )
             if attempt == 0:
-                interpretation = SemanticInterpretation.model_validate(payload)
+                # Log 213: faulty evidence entries alone do not discard the draft.
+                interpretation, dropped_evidence = validate_first_pass(payload)
+                if dropped_evidence:
+                    record_event(context, state, "routing.semantic_first_pass_salvaged", "classify", {
+                        "attempt": 1, "dropped_evidence": dropped_evidence,
+                    })
                 output_text = interpretation.model_dump_json()
             elif patch is not None:
                 output_text = patch.model_dump_json()

@@ -10,6 +10,8 @@ Run from the repository root. Each script's docstring has its usage.
 | `scan_fallbacks.py` | Classify every recorded `semantic_fallback` by its final issue kinds. |
 | `replay_fallbacks.py` | Re-validate recorded fallbacks with the current code. |
 | `replay_replies.py` | Re-render every recorded tie reply, optionally against an older rule. |
+| `audit_discriminator.py` | Grade every recorded discriminator run against the known answers (Log 212). |
+| `replay_first_pass.py` | Route every recorded first pass that failed the schema under the current code (Log 213). |
 
 The traced capture harness stays at `../live-semantic-trace-2026-09-23-harness.py`
 (many research-log entries cite that path); the blind test is in `../blind/`.

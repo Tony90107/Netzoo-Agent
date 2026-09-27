@@ -12488,3 +12488,79 @@ discriminator 在平手時多呼叫一次模型，要它選出有引文支持的
 不修改。discriminator 在現行規則下精確度 22／22、成本低、失敗無害；產出率低反映的是多數平手的請求本來就沒有可區分的事實。
 移除它會失去這些 exact 選擇（條件推薦與資料夾檢查能給同樣的答案，但只是建議），並需要修改釘住的呼叫序列測試，沒有量得的好處。
 Log 204／205 之後所說「discriminator 只有約兩成選出結果」本身正確，但把它列為待修問題是錯的框架，在此更正。
+
+## Log 213｜事前宣告：第一輪只有個別證據條目格式錯誤時，保留草稿而不是整份丟棄
+
+日期／時區：2026-09-27，Asia/Taipei。**本節寫於實跑之前，之後不得修改。**
+
+### 成因（紀錄重放）
+
+第一輪（`SemanticInterpretation`，非 strict）只要有一個欄位不合 schema，整份 payload 就無法解析；沒有可修補的草稿，第二次呼叫只能是整份 review
+（`OutcomeEvidence` 的紀錄：整份 review 在 83 對中有 71 對引入新的問題），紀錄中這類 trial 幾乎都以 `semantic_fallback` 結束。
+工具 `docs/research-log/tools/replay_first_pass.py` 重放全部紀錄（依 payload 去重；archive 裡有些檔案與日期命名的報告重複，
+先前口頭說的「1994 次中 9 次」重複計算了這些檔案，在此更正）：
+
+| 題目 | 次數 | 錯誤 | 結束 |
+| --- | --- | --- | --- |
+| `role-tf-ss-en` | 3（postfix、round3、Log 198） | 3 條 explicit 證據沒有引文（`value_error`） | 3 次 `semantic_fallback` |
+| `case5-en` | 1（Log 196 blind） | 引文過長（`string_too_long`） | `semantic_fallback` |
+| `t2-none` | 1（Log 174） | 引文為空字串（`string_too_short`） | `semantic_fallback` |
+| `gran-mirna-unstated-control` | 1（Log 208） | 根層多了 `assumptions`（`extra_forbidden`） | 非 fallback |
+
+1083 個不重複的第一輪中 6 個不合 schema，5 個以 fallback 結束；這 5 個的錯誤**全部**是單一證據條目的內容規則。
+
+### 修正
+
+`graph/first_pass_salvage.py` 的 `validate_first_pass`：第一輪驗證失敗時，若**每一個**錯誤都位於 `outcome_hypotheses[i].evidence[j]` 之內，
+且類型是內容規則（explicit 需要引文的 `value_error`、引文長度的 `string_too_long`／`string_too_short`），就只丟掉那些條目，
+其餘（outcome 與其他證據）照常作為草稿；事件 `routing.semantic_first_pass_salvaged` 記錄丟掉的條目。
+其他錯誤（`dimension` 型別錯誤、詞彙以外的值、根層多餘欄位……）維持原本的定位 schema 失敗——這是 P0 malformed-payload 契約所釘住的，
+所以第一版把所有證據位置的錯誤都丟掉時，7 個 P0 測試失敗，改為只收內容規則後全數通過，**沒有修改任何既有測試**。
+
+不發明、不放寬：結果等同模型直接省略那些條目時會寫出的 payload，走同一套驗證——有原句 witness 的欄位照舊由 stated-field restoration 補回
+（既有機制，`role-tf-ss-en` 的粒度、regulator、target 就是這樣），其餘回報 `missing_evidence`，第二次呼叫只要求那些（Log 198）。
+不改 prompt、不改 schema、不改比對。
+
+### 已量得的事實（離線）
+
+- 重放：5 個 fallback 全部被保留草稿；第二次呼叫路徑變成 `role-tf-ss-en` ×3 → strict evidence supply（只要求 `artifact_type=regulatory_network`），
+  `case5-en`、`t2-none` → patch；`gran-mirna-unstated-control` 照舊整份 review。
+- 新測試 `tests/test_first_pass_salvage.py` 8 項（以 `role-tf-ss-en` Log 198 的原始 payload；含端到端：salvage → strict supply → exact LIONESS-PANDA）；
+  停用 salvage 時 4 項失敗，其餘 4 項是「不應 salvage」的否定案例。
+- 全套 2289 passed、0 failed；指紋不變（legacy `b9b01cd2db6f`、claims `348a144cd9b4`）；五個網格與 HEAD 逐位元組相同。
+- 第一輪通過驗證時 `validate_first_pass` 就是 `model_validate`，行為不變；所以不重跑 families32 回歸。
+
+### 判準
+
+實跑：把上表 5 個錄下的第一輪原樣注入（第一次呼叫不打 provider），第二次呼叫與 intent 由 gpt-4o-mini 即時回答，每個 ×3，共 15 個 trial，legacy。
+腳本 `docs/research-log/log213_recorded_first_pass_live.py`。
+
+| 判準 | 內容 |
+| --- | --- |
+| **R-a（離線）** | 如上 |
+| **R-b（否決）** | `should_execute` 為真 = 0；exact 或被推薦的工具與預期不符 = 0（`role-tf-ss-en` 預期 LIONESS-PANDA；`case5-en` 只接受 PUMA；`t2-none` 是 COBRA／LIONESS-COEXPRESSION 平手，使用者沒說任何事實，exact 任一方都算錯） |
+| **R-c（主要）** | `role-tf-ss-en` 9 次中 exact LIONESS-PANDA ≥ 6（紀錄中這 3 份草稿 3 次全部 fallback） |
+| **R-d（描述）** | 15 次中 `semantic_fallback` 的次數與原因（紀錄：5／5）；`case5-en`、`t2-none` 的結果；第二次呼叫的 token |
+
+### 撤回條件（寫死）
+
+- R-a、R-b 或 R-c 失敗 → 撤回。
+
+## Log 214｜Log 213 結果：R-a、R-b、R-c 成立，salvage **保留**；15 次 0 次 fallback（紀錄中同樣的草稿 5／5 fallback）
+
+日期／時區：2026-09-27，Asia/Taipei。gpt-4o-mini，legacy。第一次呼叫注入錄下的原始第一輪，其後即時回答。
+紀錄：`live-semantic-trace-2026-09-27-log213-recorded-first-pass-legacy.json`；腳本 `log213_recorded_first_pass_live.py`。
+
+| 草稿 | 第二次呼叫 | 結果 |
+| --- | --- | --- |
+| `role-tf-ss-en`（postfix、round3、Log 198）各 ×3 | strict evidence supply（只補 `artifact_type`），約 4.0k tokens | **9／9 exact LIONESS-PANDA** |
+| `case5-en` ×3 | patch，約 5.5k tokens | 3 次 {PANDA, PUMA, OTTER, GIRAFFE}，經資料夾檢查（Log 186／188）詢問「是否用 PUMA」 |
+| `t2-none` ×3 | patch，約 5.5k tokens | 3 次平手 {LIONESS-COEXPRESSION, COBRA}，詢問是否需要分離批次／共變量（條件推薦沒有事實可用，正確地不選） |
+
+- R-a **通過**（Log 213 所列）。R-b **通過**：`should_execute` 為真 0；錯誤的 exact 或推薦 0（`case5-en` 推薦 PUMA、`t2-none` 沒有選任一方）。
+- R-c **通過**：`role-tf-ss-en` 9／9 ≥ 6。
+- R-d：`semantic_fallback` 0／15（紀錄中這 5 份草稿 5／5）；15 次都有 `routing.semantic_first_pass_salvaged`，沒有一次走整份 review。
+- 注入的是同一份輸入、temperature 0，同一份草稿的 3 次不是獨立樣本；依 Log 120／124 不作比率主張。
+  第一輪格式錯誤本身很少見（1083 次中 6 次），所以這個修正影響的是那少數 trial 的結果，不是整體通過率。
+- 更正 Log 213 的分母：1083 是依「第一輪＋後續呼叫」去重的 trial 數；只依第一輪 payload 去重（`replay_first_pass.py` 的算法，temperature 0 下同一題常寫出同一份第一輪）是 **903** 份，不合 schema 的仍是 6 份、fallback 仍是 5 份。`replay_first_pass.py` 跳過本輪注入的第一輪（`finish_reason: injected_recorded_first_pass`），所以數字不會因本輪紀錄而重複。
+- 仍未處理：`gran-mirna-unstated-control` 那一種（根層多出 `assumptions`，非 fallback，照舊整份 review）。
