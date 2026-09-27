@@ -45,9 +45,12 @@ def test_observed_cross_field_errors_receive_actionable_repair(artifact, changes
     assert row["review_repair_correct"] and row["passed"]
 
 
+# Two hypotheses (Log 215): root-level assumptions of a one-hypothesis draft are
+# now nested into it before validation, the equivalent nesting the review
+# contract already accepts; with two it is unknown which one they belong to.
 def test_schema_invalid_proposal_is_retained_for_repair_without_relaxing_validation():
     first = {"request_mode": "guidance", "semantic_goal": "Grouping",
-             "outcome_hypotheses": [hypothesis()], "assumptions": ["Wrong nesting"]}
+             "outcome_hypotheses": [hypothesis(), hypothesis()], "assumptions": ["Wrong nesting"]}
     provider = FixtureProvider(first=first)
     row = run(provider)["results"][0]
     message = provider.calls[1][1][-1].content
@@ -226,7 +229,7 @@ def test_all_registered_fallback_candidates_share_non_executing_interaction():
 def test_raw_schema_failure_keeps_arguments_available_to_reviewer():
     from types import SimpleNamespace
     first = {"request_mode": "guidance", "semantic_goal": "Grouping",
-             "outcome_hypotheses": [hypothesis()], "assumptions": ["Wrong nesting"]}
+             "outcome_hypotheses": [hypothesis(), hypothesis()], "assumptions": ["Wrong nesting"]}
     provider = FixtureProvider(first={"parsed": None,
                                       "raw": SimpleNamespace(tool_calls=[{"args": first}]),
                                       "parsing_error": ValueError("private error")})

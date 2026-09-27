@@ -1,24 +1,33 @@
-"""Keep a first pass whose only schema faults are individual evidence entries (Log 213).
+"""Keep a first pass whose only schema faults leave its meaning intact (Logs 213, 215).
 
 A first pass that does not parse leaves nothing to patch, so the second call
 falls back to a whole review -- the worse path, as `OutcomeEvidence` records
 (a whole review introduced a fresh issue in 71 of 83 recorded pairs). Of 903
-distinct recorded first-pass payloads 6 failed the schema and 5 of those ended
-in `semantic_fallback`; every fault but one was an evidence entry: an explicit
-entry without a quote, or a quote longer or shorter than allowed.
+distinct recorded first-pass payloads 6 failed the schema: 5 on an evidence
+entry (an explicit entry without a quote, or a quote longer or shorter than
+allowed), all of which ended in `semantic_fallback`, and 1 on `assumptions`
+written beside its only hypothesis instead of inside it.
 
-When every validation error lies inside `outcome_hypotheses[i].evidence[j]`
-and is a content rule on a well-formed entry -- the explicit-needs-a-quote
-rule (`value_error`) or a quote's length -- those entries are dropped and the
-rest -- the outcome and all other evidence the model wrote -- is the proposal.
+Two repairs, and nothing else:
+
+- Evidence (Log 213). When every validation error lies inside
+  `outcome_hypotheses[i].evidence[j]` and is a content rule on a well-formed
+  entry -- the explicit-needs-a-quote rule (`value_error`) or a quote's length
+  -- those entries are dropped and the rest is the proposal. The result is a
+  payload the model could have written by leaving them out, and it meets the
+  same validation: a stated field is restored from its request witness as for
+  any omitted entry, any other value is reported `missing_evidence`, and the
+  second call asks for exactly that (Log 198).
+- Nesting (Log 215). Root-level `assumptions` of a draft with exactly one
+  hypothesis are moved into it -- the equivalent nesting `SemanticReview`
+  already accepts, under the same rule: never when the hypothesis carries
+  different assumptions of its own, and never with several hypotheses, where
+  it is unknown which one they belong to.
+
 A malformed entry (a dimension that is not a string, a value outside the
-vocabulary) stays a located schema failure, as the P0 malformed-payload
-contract requires. Nothing is invented and nothing relaxed: the result is a
-payload the model could have written by leaving those entries out, and it
-meets the same validation -- a stated field is restored from its request
-witness as for any omitted entry, any other value is reported
-`missing_evidence`, and the second call asks for exactly that (Log 198).
-Any other schema error keeps the original failure.
+vocabulary) and any other schema error keep the original located failure, as
+the P0 malformed-payload contract requires; `SemanticInterpretation` itself is
+not relaxed.
 """
 
 from __future__ import annotations
@@ -45,36 +54,65 @@ def _evidence_location(location: tuple) -> tuple[int, int] | None:
     return None
 
 
-def validate_first_pass(payload) -> tuple[SemanticInterpretation, list[dict]]:
-    """The first-pass interpretation, and the evidence entries dropped to parse it."""
+def _nested_assumptions(payload: Mapping) -> dict | None:
+    """The payload with root `assumptions` inside its only hypothesis, if that is unambiguous."""
+    hypotheses = payload.get("outcome_hypotheses")
+    if (
+        "assumptions" not in payload or not isinstance(hypotheses, list) or len(hypotheses) != 1
+        or not isinstance(hypotheses[0], Mapping)
+        or ("assumptions" in hypotheses[0] and hypotheses[0]["assumptions"] != payload["assumptions"])
+    ):
+        return None
+    nested = {key: value for key, value in payload.items() if key != "assumptions"}
+    nested["outcome_hypotheses"] = [{**hypotheses[0], "assumptions": payload["assumptions"]}]
+    return nested
+
+
+def _without_faulty_evidence(payload: Mapping, error: ValidationError) -> tuple[dict, list[dict]] | None:
+    faults = [(_evidence_location(tuple(item["loc"])), item) for item in error.errors()]
+    if not faults or any(place is None or item["type"] not in _CONTENT_ERRORS for place, item in faults):
+        return None
+    errors_at: dict[tuple[int, int], list[str]] = {}
+    for place, item in faults:
+        errors_at.setdefault(place, []).append(item["type"])
+    cleaned = deepcopy(dict(payload))
+    dropped = []
+    # Highest index first, so earlier indexes stay valid while popping.
+    for (hypothesis, entry), types in sorted(errors_at.items(), reverse=True):
+        evidence = cleaned["outcome_hypotheses"][hypothesis]["evidence"]
+        if entry < len(evidence):
+            removed = evidence.pop(entry)
+            dropped.append({
+                "hypothesis": hypothesis,
+                "dimension": removed.get("dimension") if isinstance(removed, Mapping) else None,
+                "value": removed.get("value") if isinstance(removed, Mapping) else None,
+                "errors": sorted(set(types)),
+            })
+    return cleaned, sorted(dropped, key=lambda item: (item["hypothesis"], str(item["dimension"])))
+
+
+def validate_first_pass(payload) -> tuple[SemanticInterpretation, dict]:
+    """The first-pass interpretation, and what was repaired to parse it (empty if nothing)."""
     try:
-        return SemanticInterpretation.model_validate(payload), []
+        return SemanticInterpretation.model_validate(payload), {}
     except ValidationError as error:
-        faults = [(_evidence_location(tuple(item["loc"])), item) for item in error.errors()]
-        if (
-            not isinstance(payload, Mapping) or not faults
-            or any(place is None or item["type"] not in _CONTENT_ERRORS for place, item in faults)
-        ):
+        if not isinstance(payload, Mapping):
             raise
-        errors_at: dict[tuple[int, int], list[str]] = {}
-        for place, item in faults:
-            errors_at.setdefault(place, []).append(item["type"])
-        cleaned = deepcopy(dict(payload))
-        dropped = []
-        # Highest index first, so earlier indexes stay valid while popping.
-        for (hypothesis, entry), types in sorted(errors_at.items(), reverse=True):
-            evidence = cleaned["outcome_hypotheses"][hypothesis]["evidence"]
-            if entry < len(evidence):
-                removed = evidence.pop(entry)
-                dropped.append({
-                    "hypothesis": hypothesis,
-                    "dimension": removed.get("dimension") if isinstance(removed, Mapping) else None,
-                    "value": removed.get("value") if isinstance(removed, Mapping) else None,
-                    "errors": sorted(set(types)),
-                })
+        salvage: dict = {}
+        candidate = _nested_assumptions(payload)
+        if candidate is None:
+            candidate, remaining = payload, error
+        else:
+            salvage["nested"] = ["assumptions"]
+            try:
+                return SemanticInterpretation.model_validate(candidate), salvage
+            except ValidationError as still:
+                remaining = still
+        repaired = _without_faulty_evidence(candidate, remaining)
+        if repaired is None:
+            raise error from None
+        cleaned, salvage["dropped_evidence"] = repaired
         try:
-            return SemanticInterpretation.model_validate(cleaned), sorted(
-                dropped, key=lambda item: (item["hypothesis"], str(item["dimension"])),
-            )
+            return SemanticInterpretation.model_validate(cleaned), salvage
         except ValidationError:
             raise error from None

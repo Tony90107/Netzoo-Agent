@@ -215,11 +215,12 @@ def invoke_semantic_interpreter(
                 _as_semantic_patch(payload) if patching else (None, [])
             )
             if attempt == 0:
-                # Log 213: faulty evidence entries alone do not discard the draft.
-                interpretation, dropped_evidence = validate_first_pass(payload)
-                if dropped_evidence:
+                # Logs 213, 215: faulty evidence entries or root-level
+                # assumptions alone do not discard the draft.
+                interpretation, salvage = validate_first_pass(payload)
+                if salvage:
                     record_event(context, state, "routing.semantic_first_pass_salvaged", "classify", {
-                        "attempt": 1, "dropped_evidence": dropped_evidence,
+                        "attempt": 1, **salvage,
                     })
                 output_text = interpretation.model_dump_json()
             elif patch is not None:
