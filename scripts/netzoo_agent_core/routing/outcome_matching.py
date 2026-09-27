@@ -25,6 +25,7 @@ from .candidate_ranking import (
     _hypothesis_evidence_score, _UNKNOWN,
 )
 from .clarification_planner import plan_clarification
+from .reading_question import reading_question
 from .capability_compatibility import (
     InputAvailabilityLike,
     _complete_guidance_match,
@@ -245,6 +246,7 @@ def _divergent_artifact_readings(
     if len(hypotheses) < 2 or len(artifacts) < 2:
         return None
     readings: list[list[RecommendedAction]] = []
+    described: list[tuple[RequestedOutcome, list[RecommendedAction]]] = []
     for item in sorted(hypotheses, key=lambda hyp: -hyp.confidence):
         strict = match_requested_outcome(
             item.outcome, capabilities, available_inputs=available_inputs,
@@ -259,6 +261,7 @@ def _divergent_artifact_readings(
             ]
         if actions:
             readings.append(actions)
+            described.append((item.outcome, actions))
     union = list(dict.fromkeys(action for actions in readings for action in actions))
     if len(readings) < 2 or len(union) < 2:
         return None
@@ -271,8 +274,9 @@ def _divergent_artifact_readings(
         status="ambiguous",
         hypothesis_actions=union,
         clarification_question=(
-            clarification.question if clarification is not None
-            else "Which compatible network result do you mean?"
+            reading_question(described)
+            or (clarification.question if clarification is not None else None)
+            or "Which compatible network result do you mean?"
         ),
     )
 

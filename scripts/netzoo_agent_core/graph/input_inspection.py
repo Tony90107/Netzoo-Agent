@@ -76,6 +76,10 @@ def named_directories(task: str, root: Path = PROJECT_ROOT) -> list[tuple[str, P
         if "/" not in written:
             continue
         candidate = (base / written).resolve()
+        if not candidate.exists() and written.endswith("."):
+            # A path that ends a sentence carries its full stop (Log 188).
+            written = written.rstrip(".")
+            candidate = (base / written).resolve()
         if candidate.is_file() and not candidate.is_symlink():
             written, candidate = written.rstrip("/").rsplit("/", 1)[0] + "/", candidate.parent
         if candidate == base or not candidate.is_relative_to(base):
@@ -206,9 +210,16 @@ def advise_from_inspected_inputs(
         and len({frozenset(value) for value in fields_by_action.values()}) >= 2
     )
     mirna_action = mirna_capable_candidate(candidates, _PANDA_FAMILY)
-    if not by_equipment and mirna_action is None:
+    # Any tie with a PANDA-family member may also report which files in the
+    # named folder validate by content, without recommending (Log 188).
+    family = sorted(
+        (action for action in candidates if action in _PANDA_FAMILY),
+        key=lambda action: (len(fields_by_action[action]), action),
+    )
+    if not by_equipment and mirna_action is None and not family:
         return decision
     inspected: list[str] = []
+    discovered: list[str] = []
     for written, directory in named_directories(task, root):
         inspected.append(written)
         if mirna_action is not None:
@@ -230,16 +241,15 @@ def advise_from_inspected_inputs(
                     ),
                     "inspected_directories": inspected,
                 })
-        if not by_equipment:
-            continue
-        equipped = equipped_candidates(directory, candidates)
-        if not equipped or len(equipped) != 1:
-            continue
-        action, values = next(iter(equipped.items()))
+        equipped = equipped_candidates(directory, candidates) if by_equipment else None
+        action, values = next(iter(equipped.items())) if equipped and len(equipped) == 1 else (None, {})
         missing = sorted(
             set().union(*fields_by_action.values()) - fields_by_action[action]
-        )
+        ) if action is not None else []
         if not missing:
+            if family:
+                probe = (equipped_candidates(directory, family[:1]) or {}).get(family[0], {})
+                discovered.extend(f"{field}={written}{path.name}" for field, path in probe.items())
             continue
         conditions = [
             AdvisoryCondition(axis=INSPECTED_AXIS, value=f"validated:{field}={path.name}", text_span=written)
@@ -258,7 +268,9 @@ def advise_from_inspected_inputs(
             "inspected_directories": inspected,
         })
     if inspected:
-        return decision.model_copy(update={"inspected_directories": inspected})
+        return decision.model_copy(update={
+            "inspected_directories": inspected, "discovered_inputs": discovered,
+        })
     return decision
 
 

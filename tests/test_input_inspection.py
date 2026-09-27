@@ -142,9 +142,23 @@ def test_folders_outside_the_root_or_missing_are_never_read(tmp_path, written):
     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
 
 
-def test_ties_outside_the_panda_family_are_not_read(tmp_path):
+def test_ties_outside_the_panda_family_only_report_what_validated(tmp_path):
+    """Log 188 (was: such ties are not read). Reading now reports, never recommends."""
     written = _folder(tmp_path, PANDA_SET)
     decision = _decision(hypothesis_actions=["run_panda", "run_otter"])
+
+    advised = advise_from_inspected_inputs(_task(written), decision, root=tmp_path)
+
+    assert advised.advisory_recommendation is None
+    assert advised.inspected_directories == [written]
+    assert f"motif_file={written}motif.tsv" in advised.discovered_inputs
+    for field in AUTHORITY:
+        assert getattr(advised, field) == getattr(decision, field), field
+
+
+def test_ties_without_a_panda_family_member_are_not_read(tmp_path):
+    written = _folder(tmp_path, PANDA_SET)
+    decision = _decision(hypothesis_actions=["run_otter", "run_giraffe"])
 
     assert advise_from_inspected_inputs(_task(written), decision, root=tmp_path) is decision
 
@@ -221,3 +235,11 @@ def test_a_folder_that_also_holds_a_clean_tf_prior_recommends_nothing(tmp_path):
     advised = advise_from_inspected_inputs(_case_5_task(written), decision, root=tmp_path)
 
     assert advised.advisory_recommendation is None
+
+
+def test_a_path_that_ends_a_sentence_still_names_its_folder(tmp_path):
+    written = _folder(tmp_path, PANDA_SET)
+
+    assert named_directories(f"All I have is {written}expression.tsv. Build a network.", tmp_path) == [
+        (written, (tmp_path / "data" / "study").resolve()),
+    ]

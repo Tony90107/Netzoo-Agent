@@ -10,6 +10,7 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation, with_inspection_footer
+from .reply_notes import with_reply_notes
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -241,7 +242,10 @@ def render_outcome_clarification(
 ) -> str | None:
     """Explain compatible hypotheses before asking one validated clarification."""
     return with_inspection_footer(
-        _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
+        with_reply_notes(
+            _render_outcome_clarification(decision, policy, task=task, semantic_goal=semantic_goal),
+            decision,
+        ),
         decision.inspected_directories,
     )
 
