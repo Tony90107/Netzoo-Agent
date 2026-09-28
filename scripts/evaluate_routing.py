@@ -742,6 +742,8 @@ def _score_answer(case, result, context, progress=""):
     # legacy decision has reached the remainder since (Log 220).
     deterministic_ambiguity = (
         decision.capability_match_status == "ambiguous"
+        and getattr(decision, "requested_outcome", None) is not None
+        and decision.requested_outcome.artifact_type != "unknown"
         and bool(decision.clarification_question or single_candidate_question(decision))
     )
     if decision.action != "no_tool" or decision.should_execute or not (
@@ -778,7 +780,7 @@ def _score_answer(case, result, context, progress=""):
     errors.extend(
         f"candidate_unnamed: {action}"
         for action in decision.hypothesis_actions
-        if decision.capability_match_status == "ambiguous"
+        if decision.capability_match_status == "ambiguous" and not decision.advisory_capability_gap
         and (spec := context.project_policy.workflows.get(action)) is not None
         and spec.workflow.casefold() not in answer.casefold()
     )
@@ -840,7 +842,7 @@ def evaluate(
         semantic_reviewer=semantic_reviewer,
         semantic_patcher=semantic_patcher,
         semantic_discriminator=semantic_discriminator,
-        selection_condition_llm=provider if semantic_contract == "legacy" else None,
+        selection_condition_llm=provider,
         intent_router=intent_router,
         input_content_mapper=None, response_llm=None,
         semantic_claims=semantic_contract == "claims",

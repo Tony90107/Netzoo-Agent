@@ -1,0 +1,460 @@
+{
+  "model": "openai/gpt-4o-mini",
+  "scope": "live_production_guidance_no_analysis_execution",
+  "results": [
+    {
+      "id": "original-noisy-prior",
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.9,
+        "reason": "The request is seeking guidance on methods to quantify uncertainty in model integration, which falls under the category of answer requests.",
+        "candidate_actions": [
+          "run_panda",
+          "run_puma",
+          "run_lioness_panda",
+          "run_lioness_puma",
+          "run_otter",
+          "no_tool"
+        ],
+        "recommended_actions": [],
+        "requested_outcome": {
+          "operation": "explain",
+          "input_artifacts": [],
+          "artifact_type": "regulatory_network",
+          "entity_types": [],
+          "display_entities": [],
+          "regulator_types": [],
+          "target_types": [],
+          "selection_tags": [],
+          "granularity": "unknown",
+          "unresolved_dimensions": []
+        },
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [
+          {
+            "outcome": {
+              "operation": "explain",
+              "input_artifacts": [],
+              "artifact_type": "regulatory_network",
+              "entity_types": [],
+              "display_entities": [],
+              "regulator_types": [],
+              "target_types": [],
+              "selection_tags": [],
+              "granularity": "unknown",
+              "unresolved_dimensions": []
+            },
+            "confidence": 0.9,
+            "evidence": [
+              {
+                "dimension": "operation",
+                "value": "explain",
+                "source": "explicit",
+                "text_span": "有沒有一種分析哲學，是可以在整合過程中，把這種『先驗不可靠的程度』透過機率的方式量化，讓數據自己去權衡？",
+                "rationale": "The user is seeking a philosophical approach to analyze the integration of uncertain priors."
+              },
+              {
+                "dimension": "artifact_type",
+                "value": "regulatory_network",
+                "source": "inferred",
+                "text_span": null,
+                "rationale": "The question discusses the integration of prior predictions from related species into a regulatory framework, highlighting the uncertainty and noise in these priors."
+              },
+              {
+                "dimension": "granularity",
+                "value": "unknown",
+                "source": "inferred",
+                "text_span": null,
+                "rationale": "The scale of the regulatory network being discussed is not specified, thus it is classified as unknown."
+              }
+            ],
+            "assumptions": []
+          }
+        ],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_panda",
+          "run_puma",
+          "run_lioness_panda",
+          "run_lioness_puma",
+          "run_otter",
+          "run_giraffe"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Would you accept a different modeling philosophy among these related methods, or do you need the unavailable method?",
+        "advisory_capability_gap": {
+          "selection_tags": [
+            "bayesian"
+          ],
+          "text_spans": [
+            "這代表我們的『先驗骨架』充滿了雜訊和不確定性。如果模型死板地信任這些先驗，結果一定會被帶偏。"
+          ],
+          "rationale": "No qualified registered workflow declares the requested mathematical philosophy for this scientific result."
+        },
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "answer": "Yes, in principle, data can weaken an unreliable TF-binding prior and quantify uncertainty about it, but only if the model explicitly represents that uncertainty. A hierarchical Bayesian model can treat binding-site predictions as noisy evidence about latent TF-gene edges, with a source-reliability parameter and an expression-data likelihood. Conflicting evidence can lower posterior edge support; learning the source's reliability itself also requires an identifiable model and informative data, potentially including independent binding evidence or multiple priors. A Bayesian label alone does not supply this model.\n\nNo qualified registered workflow fully matches the requested modeling philosophy.\n\nIf you relax that requirement, these registered approaches can infer the requested network through different assumptions:\n\nPANDA and OTTER tie only on the stated output and scope. This does not show that they are equally robust to a noisy motif prior; neither estimates its reliability as a posterior probability.\n\n1. **PANDA** — Iterative message passing reconciles the motif seed with TF-TF interactions and gene co-expression, repeatedly revising TF-gene edge support across those networks. The edge weights summarize integrated evidence, not a posterior probability that the motif prior is reliable.\n\n2. **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.\n\nFor the probabilistic reliability estimate you asked for, the hierarchical model above remains the recommendation. If stable network scores would suffice instead, perturb or replace the motif prior and compare inferred edges against independent evidence. Neither algorithm is known from the stated facts to be more robust for your study.\n\nNo files were inspected and no analysis ran.",
+      "usage": {
+        "input_tokens": 12189,
+        "output_tokens": 629,
+        "total_tokens": 12818,
+        "calls": [
+          {
+            "call_id": "a58c5bdb-f578-4e07-a31c-231b6d9204a1",
+            "role": "semantic_interpreter",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790566457-3GgPxn9vSlLGAyiFimtA",
+            "input_tokens": 5369,
+            "output_tokens": 234,
+            "cache_read_tokens": 5248,
+            "cache_write_tokens": 0,
+            "total_tokens": 5603,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 552,
+            "price_snapshot": null,
+            "duration_ms": 2905,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "c9e64d31-7280-4894-afe7-45392bafc021",
+            "role": "semantic_reviewer",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790566460-aEsnIcdHWdZTpzIXkfVY",
+            "input_tokens": 1134,
+            "output_tokens": 181,
+            "cache_read_tokens": 1024,
+            "cache_write_tokens": 0,
+            "total_tokens": 1315,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 202,
+            "price_snapshot": null,
+            "duration_ms": 1851,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "d7ae1545-de5f-4724-a3df-9e78c46ad1bd",
+            "role": "semantic_discriminator",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790566462-fkzvZIvDHPBYtPabgTxI",
+            "input_tokens": 1464,
+            "output_tokens": 9,
+            "cache_read_tokens": 1280,
+            "cache_write_tokens": 0,
+            "total_tokens": 1473,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 129,
+            "price_snapshot": null,
+            "duration_ms": 746,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "71445f32-2460-486d-93be-0e7346c6922b",
+            "role": "intent_router",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": null,
+            "input_tokens": 759,
+            "output_tokens": 47,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 806,
+            "usage_provenance": "estimated",
+            "cost_provenance": "unavailable",
+            "cost_micro_usd": null,
+            "price_snapshot": null,
+            "duration_ms": 962,
+            "status": "success",
+            "estimated": true
+          },
+          {
+            "call_id": "bfe643dd-c80b-4968-9940-ad3de077d0be",
+            "role": "selection_conditions",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790566463-fhJLyJtu9fWo6INzMlSi",
+            "input_tokens": 3463,
+            "output_tokens": 158,
+            "cache_read_tokens": 3328,
+            "cache_write_tokens": 0,
+            "total_tokens": 3621,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 365,
+            "price_snapshot": null,
+            "duration_ms": 1974,
+            "status": "success",
+            "estimated": false
+          }
+        ],
+        "budget_tokens": 20000,
+        "budget_exhausted": false
+      },
+      "events": [
+        {
+          "event_type": "routing.guidance_subject_review_requested",
+          "node": "classify",
+          "payload": {
+            "issues": [
+              "hypothesis[0].unresolved_guidance_subject:recheck the original question for its scientific subject, intended result, inputs, topology, granularity and mathematical assumptions; retain no-outcome only if none is identifiable",
+              "hypothesis[1].unresolved_guidance_subject:recheck the original question for its scientific subject, intended result, inputs, topology, granularity and mathematical assumptions; retain no-outcome only if none is identifiable"
+            ],
+            "attempt": 1
+          }
+        },
+        {
+          "event_type": "routing.guidance_subject_reviewed",
+          "node": "classify",
+          "payload": {
+            "artifact_type": "regulatory_network",
+            "granularity": "unknown",
+            "artifact_rationale": "The question discusses the integration of prior predictions from related species into a regulatory framework, highlighting the uncertainty and noise in these priors.",
+            "granularity_rationale": "The scale of the regulatory network being discussed is not specified, thus it is classified as unknown.",
+            "current_inputs": [
+              {
+                "artifact_type": "regulatory_network",
+                "text_span": "『先驗骨架』充滿了雜訊和不確定性",
+                "rationale": "The statement indicates the presence of noise and uncertainty in the prior framework used for regulatory predictions."
+              },
+              {
+                "artifact_type": "regulatory_network",
+                "text_span": "把這種『先驗不可靠的程度』透過機率的方式量化",
+                "rationale": "This suggests a desire to quantify the reliability of the priors in a probabilistic manner, which relates to regulatory network analysis."
+              }
+            ]
+          }
+        },
+        {
+          "event_type": "routing.outcome_input_restored",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "restored": [
+              {
+                "hypothesis": 0,
+                "field": "input_artifacts",
+                "value": "regulatory_network",
+                "source": "removed_without_current_input_witness",
+                "witnessed_span": null
+              }
+            ]
+          }
+        },
+        {
+          "event_type": "routing.outcome_downgraded",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "comparable": false,
+            "reason": "hypothesis_correspondence_unknown",
+            "hypothesis": null,
+            "downgrades": []
+          }
+        },
+        {
+          "event_type": "routing.semantic_interpretation_accepted",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "hypothesis_count": 1,
+            "evidence_dimensions": [
+              [
+                "artifact_type",
+                "granularity",
+                "operation"
+              ]
+            ],
+            "evidence_census": [
+              {
+                "hypothesis": 0,
+                "explicit_with_span": 1,
+                "explicit_without_span": 0,
+                "inferred": 2
+              }
+            ]
+          }
+        },
+        {
+          "event_type": "routing.semantic_discriminator_started",
+          "node": "classify",
+          "payload": {
+            "candidate_count": 6
+          }
+        },
+        {
+          "event_type": "routing.semantic_discriminator_rejected",
+          "node": "classify",
+          "payload": {
+            "reason": "empty_or_non_candidate_tags",
+            "selection_tags": [],
+            "candidate_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "candidate_tags": [
+              "aggregate_network",
+              "biologically_informed_matrix_factorization",
+              "joint_grn_tfa_inference",
+              "leave_one_out_network_inference",
+              "linear_model_coefficients",
+              "lioness_base_compatibility",
+              "message_passing",
+              "mirna_regulation",
+              "relaxed_graph_matching",
+              "sample_specific",
+              "signed_partial_regulatory_effects",
+              "tf_gene_regulation",
+              "tfa",
+              "tfa_covariate_regression"
+            ],
+            "provider_payload": "selection_tags=[] evidence=[]",
+            "normalized_provider_payload": "selection_tags=[] evidence=[]"
+          }
+        },
+        {
+          "event_type": "routing.registry_match_completed",
+          "node": "classify",
+          "payload": {
+            "status": "ambiguous",
+            "match_basis": "semantic",
+            "rejected_methods": [],
+            "matched_actions": [],
+            "hypothesis_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "mismatch_dimensions": []
+          }
+        },
+        {
+          "event_type": "routing.intent_classified",
+          "node": "classify",
+          "payload": {
+            "mode": "answer",
+            "confidence": 0.9
+          }
+        },
+        {
+          "event_type": "budget.warning",
+          "node": "selection_conditions",
+          "payload": {
+            "role": "selection_conditions",
+            "model": "openai/gpt-4o-mini",
+            "status": "warning_70",
+            "consumed_tokens": 9197,
+            "estimated_input_tokens": 4347,
+            "reserved_output_tokens": 1200,
+            "projected_tokens": 14744,
+            "hard_limit_tokens": 20000,
+            "reserve_tokens": 1500
+          }
+        },
+        {
+          "event_type": "routing.selection_conditions_started",
+          "node": "classify",
+          "payload": {
+            "tie": "method",
+            "candidate_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "offered_conditions": [
+              "compute_constraints:constrained",
+              "tf_activity_vs_expression:yes",
+              "established_method:yes"
+            ]
+          }
+        },
+        {
+          "event_type": "routing.method_capability_gap",
+          "node": "classify",
+          "payload": {
+            "selection_tags": [
+              "bayesian"
+            ],
+            "text_spans": [
+              "這代表我們的『先驗骨架』充滿了雜訊和不確定性。如果模型死板地信任這些先驗，結果一定會被帶偏。"
+            ],
+            "rationale": "No qualified registered workflow declares the requested mathematical philosophy for this scientific result."
+          }
+        }
+      ],
+      "errors": [],
+      "passed": true
+    }
+  ]
+}

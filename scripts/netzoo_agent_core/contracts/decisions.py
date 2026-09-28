@@ -11,6 +11,7 @@ from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
     AddressedConcern,
     AdvisoryRecommendation,
+    MethodCapabilityGap,
     CapabilityMatchStatus,
     MatchBasis,
     OutcomeHypothesis,
@@ -123,6 +124,9 @@ class TaskDecision(BaseModel):
     # Omitted from dumps while unset, so every existing serialized decision is
     # byte-identical to before this field existed.
     advisory_recommendation: AdvisoryRecommendation | None = Field(
+        default=None, exclude_if=lambda value: value is None,
+    )
+    advisory_capability_gap: MethodCapabilityGap | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
     # Practical concerns the request states, quoted and grounded, that the

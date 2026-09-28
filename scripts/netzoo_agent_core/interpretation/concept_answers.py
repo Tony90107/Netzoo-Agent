@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OUTPUT_CAPABILITIES, SELECTION_AXES
+from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
-from ..presentation import _NON_ENGLISH, _ui_text, _ui_text_with_user_data, user_data_token
-from .inspected_answers import render_inspected_recommendation, with_inspection_footer
+from ..presentation import _NON_ENGLISH, _ui_text
+from .inspected_answers import with_inspection_footer
+from .advisory_answers import render_advisory_recommendation, render_method_capability_gap
+from .method_philosophy import method_philosophies_for
 from .reply_notes import with_reply_notes
 from .single_candidate import single_candidate_question
 from ..routing.outcome_matching import (
@@ -206,10 +208,11 @@ def _input_summary(spec) -> str:
     )
 
 
-def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot) -> list[str]:
+def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot, *, recommended=False) -> list[str]:
     capability = spec.output_capability
     sequence = _workflow_sequence(action, policy) or spec.workflow
-    lines = [f"- **{_network_family_label(spec)} — {sequence}**"]
+    marker = " (recommend)" if recommended else ""
+    lines = [f"- **{_network_family_label(spec)} — {sequence}**{marker}"]
     lines.append("  - Registered purpose: " + spec.description)
     method_notes = list(algorithmic_assumptions_for(capability.selection_tags))
     if capability.guidance_notes:
@@ -218,6 +221,8 @@ def _candidate_details(action: str, spec, policy: ProjectPolicySnapshot) -> list
             method_notes.append(detail)
     if method_notes:
         lines.append("  - Method premise: " + "; ".join(method_notes[:2]))
+    for philosophy in method_philosophies_for(capability.selection_tags):
+        lines.append("  - Mathematical interpretation: " + philosophy)
     lines.append("  - Required inputs: " + _input_summary(spec) + ".")
     artifacts = sorted(capability.produced_artifacts or {capability.artifact_type})
     output_labels = [_artifact_label(artifact) for artifact in artifacts]
@@ -260,6 +265,12 @@ def _render_outcome_clarification(
     task: str = "",
     semantic_goal: dict | None = None,
 ) -> str | None:
+    if decision.requested_outcome and decision.requested_outcome.artifact_type == "unknown":
+        # An unknown result has not qualified every registry workflow. Use the
+        # catalog conditionally instead of asserting that unrelated modalities fit.
+        return None
+    if decision.advisory_capability_gap:
+        return render_method_capability_gap(decision, policy)
     beginner_guidance = _render_beginner_group_network_guidance(
         task, decision, semantic_goal,
     )
@@ -319,7 +330,10 @@ def _render_outcome_clarification(
             )
             return _ui_text("\n\n".join(sections))
     if len(decision.hypothesis_actions) > 1 and decision.advisory_recommendation:
-        recommended = _render_advisory_recommendation(decision, policy)
+        recommended = render_advisory_recommendation(
+            decision, policy, candidate_details=_candidate_details,
+            downstream_section=downstream_section,
+        )
         if recommended is not None:
             return recommended
     if len(decision.hypothesis_actions) > 1:
@@ -373,54 +387,6 @@ def downstream_section(action: str) -> str:
     return heading + "\n" + "".join(f"   - {note}\n" for note in notes)
 
 
-def _condition_label(condition: str) -> str:
-    axis, _, value = condition.partition(":")
-    return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
-
-
-def _render_advisory_recommendation(
-    decision: TaskDecision,
-    policy: ProjectPolicySnapshot,
-) -> str | None:
-    """Form A (Log 139): recommend from quoted study facts; list the others."""
-    recommendation = decision.advisory_recommendation
-    spec = policy.workflows.get(recommendation.action)
-    if spec is None:
-        return None
-    if all(item.axis == "inspected_inputs" for item in recommendation.conditions):
-        return render_inspected_recommendation(
-            decision, policy, spec, _candidate_details(recommendation.action, spec, policy),
-            downstream_section(recommendation.action),
-        )
-    spans = [item.text_span for item in recommendation.conditions]
-    quotes = "; ".join(f'"{user_data_token(index)}"' for index in range(len(spans)))
-    reasons = "; ".join(
-        _condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions
-    )
-    lines = [
-        f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}.",
-        "\n".join(_candidate_details(recommendation.action, spec, policy)),
-    ]
-    others = []
-    for action in decision.hypothesis_actions:
-        if action == recommendation.action or action not in policy.workflows:
-            continue
-        conditions = OUTPUT_CAPABILITIES[action].prefer_when if action in OUTPUT_CAPABILITIES else ()
-        preferred = "; ".join(_condition_label(item) for item in conditions)
-        others.append(
-            f"- **{policy.workflows[action].workflow}**"
-            + (f" — preferred when: {preferred}." if preferred else ".")
-        )
-    if others:
-        lines.append("Other compatible option(s):\n" + "\n".join(others))
-    if downstream := downstream_section(recommendation.action):
-        lines.append(downstream.rstrip("\n"))
-    if decision.clarification_question:
-        lines.append(decision.clarification_question)
-    lines.append("No files were inspected and no analysis ran.")
-    return _ui_text_with_user_data("\n\n".join(lines), spans)
-
-
 def _render_beginner_group_network_guidance(
     task: str,
     decision: TaskDecision,
@@ -432,6 +398,7 @@ def _render_beginner_group_network_guidance(
         (semantic_goal or {}).get("request_mode") == "guidance"
         and decision.action == "no_tool"
         and decision.intent_type == "answer_question"
+        and not decision.advisory_recommendation
         and decision.capability_match_status == "ambiguous"
         and decision.clarification_question
         and decision.clarification_question.casefold().startswith(

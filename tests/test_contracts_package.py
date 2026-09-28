@@ -158,7 +158,9 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # never used (Log 188). Omitted from dumps while empty; the TaskDecision digest
 # is the only schema change.
 SCHEMA_DIGESTS = {
-    "TaskDecision": "23c533de31a5b9235ed33e6e8ec5043f94c1d50661d6622275620bca49c339cc",  # Log 223: addressed_concerns
+    # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
+    # existing condition recommendations remain valid. Execution fields unchanged.
+    "TaskDecision": "74e07c4d8603d87f737319d14b3c615b0c732baae204dfc86f04e8dd2452e62f",
     "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

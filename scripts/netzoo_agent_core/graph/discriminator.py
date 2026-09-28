@@ -261,7 +261,9 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
                                   usage: LLMUsage, budget_warnings: list[str]):
     """Resolve only a registry-tag tie among already compatible capabilities."""
     adapter = getattr(context, "semantic_discriminator", None)
-    if adapter is None or getattr(context, "semantic_claims", False):
+    if (adapter is None or getattr(context, "semantic_claims", False)
+            or any(item.outcome.artifact_type == "unknown"
+                   for item in interpretation.outcome_hypotheses)):
         return interpretation, capability_match, usage, budget_warnings
     actions = list(capability_match.hypothesis_actions)
     context_text = discriminator_context(actions) if capability_match.status == "ambiguous" and len(actions) >= 2 else ""

@@ -1,0 +1,240 @@
+[
+  {
+    "id": "bonobo-en",
+    "language": "en",
+    "prompt": "Which method estimates each patient's gene-gene coexpression network with Bayesian shrinkage and optional edge p-values, using a cohort expression matrix? Explain its assumptions and recommend a method; do not run analysis.",
+    "expected_action": "run_bonobo",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "bonobo-zh",
+    "language": "zh",
+    "prompt": "我有一群病人的基因表現矩陣，想以貝氏收縮估計每位病人的基因共表現網路，並可取得連線的 p 值。請說明方法假設並推薦工具，不要執行。",
+    "expected_action": "run_bonobo",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "cobra-en",
+    "language": "en",
+    "prompt": "We have a cohort gene-expression matrix and a design matrix recording hospital and sequencing batch. Which method decomposes gene coexpression into covariate-associated components so we can assess these effects? Explain the mathematical approach; guidance only.",
+    "expected_action": "run_cobra",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "cobra-zh",
+    "language": "zh",
+    "prompt": "我們有群體基因表現矩陣，以及記錄醫院與定序批次的設計矩陣。想把基因共表現拆解為與共變項相關的成分，評估這些效應。適合什麼數學方法與工具？只需建議。",
+    "expected_action": "run_cobra",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "condor-en",
+    "language": "en",
+    "prompt": "We already have a weighted regulator-to-gene network with two distinct node sets. Which community method keeps these bipartite partitions and optimizes bipartite modularity, rather than projecting onto one node set? Recommend and explain; do not execute.",
+    "expected_action": "run_condor",
+    "expected_artifact": "community_assignment",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "condor-zh",
+    "language": "zh",
+    "prompt": "我們已有加權的調控者到基因網路，兩類節點必須保持分開。希望直接以雙部圖模組度找功能社群，不先投影成單類節點網路。請推薦並解釋假設，不執行。",
+    "expected_action": "run_condor",
+    "expected_artifact": "community_assignment",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "dragon-en",
+    "language": "en",
+    "prompt": "I have matched RNA and protein measurements for a cohort. Which method builds one two-layer multi-omic Gaussian graphical model with shrinkage and partial correlations, distinguishing within-layer and between-layer associations? Explain and recommend, without running it.",
+    "expected_action": "run_dragon",
+    "expected_artifact": "multi_omic_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "dragon-zh",
+    "language": "zh",
+    "prompt": "我有同一群樣本的 RNA 與蛋白質量測，想建立一個雙層多體學高斯圖模型，用收縮估計及偏相關區分層內與跨層關聯。請推薦方法並說明假設，不要執行。",
+    "expected_action": "run_dragon",
+    "expected_artifact": "multi_omic_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "giraffe-en",
+    "language": "en",
+    "prompt": "Given expression, TF motif and protein-interaction priors, which method jointly factors gene expression to estimate signed TF-to-gene regulatory effects and a TF-by-sample activity matrix? I want both outputs, including activation versus repression, not expression as activity. Guidance only.",
+    "expected_action": "run_giraffe",
+    "expected_artifact": "regulatory_network_and_tf_activity",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "giraffe-zh",
+    "language": "zh",
+    "prompt": "給定基因表現、轉錄因子 motif 與蛋白互作先驗，哪種方法能透過生物資訊引導的矩陣分解，同時估計帶正負號的 TF 到基因調控效應及 TF 乘以樣本的活性矩陣？兩種產物都要，活性不能直接等同表現量。只需建議。",
+    "expected_action": "run_giraffe",
+    "expected_artifact": "regulatory_network_and_tf_activity",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "lioness-coexpression-en",
+    "language": "en",
+    "prompt": "From a cohort expression matrix, I want each sample's gene-gene correlation network through linear interpolation of the all-sample and leave-one-out estimates. Which method supplies that sample contribution formula? Explain and recommend; no execution.",
+    "expected_action": "run_lioness_coexpression",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "lioness-coexpression-zh",
+    "language": "zh",
+    "prompt": "從群體表現矩陣出發，我想利用全體樣本與移除某位樣本後的估計，透過線性插值取得每位樣本的基因對基因相關網路。哪個方法提供這個樣本貢獻公式？請說明與推薦，不執行。",
+    "expected_action": "run_lioness_coexpression",
+    "expected_artifact": "coexpression_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "lioness-panda-en",
+    "language": "en",
+    "prompt": "Each patient has one blood expression profile, and I have a cohort plus TF motif and PPI priors. I need a TF-only regulatory edge-weight network per patient by applying the all-sample/leave-one-out contribution formula to an evidence-integrating base network. Which workflow fits? Guidance only.",
+    "expected_action": "run_lioness_panda",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "lioness-panda-zh",
+    "language": "zh",
+    "prompt": "每位病患只有一次血液表現量測，但我們有群體資料、TF motif 和 PPI 先驗。想以整合證據的基準網路，加上全體與留一樣本的貢獻公式，取得每位病患僅包含轉錄因子到基因的連線權重。請推薦工作流，不執行。",
+    "expected_action": "run_lioness_panda",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "lioness-puma-en",
+    "language": "en",
+    "prompt": "Using a cohort, expression, motif, PPI and an miRNA regulator list, I need a separate TF/miRNA-to-gene regulatory network for each patient. The base model should integrate predicted miRNA targets through message passing, then derive each patient contribution from all-sample and leave-one-out networks. Which method fits? Guidance only.",
+    "expected_action": "run_lioness_puma",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "lioness-puma-zh",
+    "language": "zh",
+    "prompt": "我們有群體表現資料、motif、PPI 及 miRNA 調控者清單，要估計每位病患同時包含 TF 與 miRNA 到基因的調控網路。基準模型需以訊息傳遞整合 miRNA 受質預測，再從全體及留一網路推導病患貢獻。請推薦，不執行。",
+    "expected_action": "run_lioness_puma",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "sample_specific"
+  },
+  {
+    "id": "otter-en",
+    "language": "en",
+    "prompt": "Which method infers one cohort-wide TF-to-gene network from motif, PPI and coexpression evidence using a continuous relaxation of graph matching with an explicit objective, gamma regularization and gradient descent? I prefer objective optimization to heuristic message updates; do not execute.",
+    "expected_action": "run_otter",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "otter-zh",
+    "language": "zh",
+    "prompt": "哪個方法可從 motif、PPI 與共表現證據，透過連續鬆弛的圖匹配、明確目標函數、gamma 正則化及梯度下降，估計一個群體 TF 到基因網路？我希望採用目標函數最佳化而非啟發式訊息更新；不要執行。",
+    "expected_action": "run_otter",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "panda-en",
+    "language": "en",
+    "prompt": "I need one cohort-wide TF-only regulatory network integrating expression, binding motifs and TF protein interactions by iterative message passing. I do not need patient-specific networks or TF activity. Which method matches that philosophy? Explain and recommend; guidance only.",
+    "expected_action": "run_panda",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "panda-zh",
+    "language": "zh",
+    "prompt": "我需要一個群體層次、僅含 TF 到基因的調控網路，用反覆訊息傳遞整合基因表現、結合 motif 與 TF 蛋白互作。這次不需要病患個別網路或 TF 活性。哪個方法符合？請說明與推薦。",
+    "expected_action": "run_panda",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "puma-en",
+    "language": "en",
+    "prompt": "I need one aggregate regulatory network containing both TF and miRNA regulators targeting genes. I have expression, TF motif, PPI and a list of miRNA regulators; the method should integrate predicted miRNA targets with coexpression through message passing. Which method fits? No individual networks; guidance only.",
+    "expected_action": "run_puma",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "puma-zh",
+    "language": "zh",
+    "prompt": "我需要一個群體調控網路，調控者同時包含 TF 及 miRNA、受質為基因。我有表現量、TF motif、PPI 與 miRNA 清單，希望透過訊息傳遞將 miRNA 受質預測與共表現整合。不需要個別病患網路，請推薦方法。",
+    "expected_action": "run_puma",
+    "expected_artifact": "regulatory_network",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "sambar-en",
+    "language": "en",
+    "prompt": "I have a sparse somatic mutation count matrix from cancer patients. Which workflow corrects gene length and patient mutation burden, aggregates gene mutations into pathway scores and then assigns patients to subtypes? I need patient cluster labels, not network communities. Explain and recommend; no execution.",
+    "expected_action": "run_sambar",
+    "expected_artifact": "sample_cluster_assignment",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "sambar-zh",
+    "language": "zh",
+    "prompt": "我有癌症病患稀疏的體細胞突變次數矩陣。哪個工作流會校正基因長度與病患突變負荷，將基因突變聚合成途徑分數，再給出病患亞型標籤？目標是病患分群，不是網路社群。請說明與推薦，不執行。",
+    "expected_action": "run_sambar",
+    "expected_artifact": "sample_cluster_assignment",
+    "expected_granularity": "aggregate"
+  },
+  {
+    "id": "original-noisy-prior",
+    "language": "zh",
+    "prompt": "延續基準地圖的建立，我們發現我們研究的物種沒有專屬的結合位點資料，只能借用近緣物種的預測結果。這代表我們的『先驗骨架』充滿了雜訊和不確定性。如果模型死板地信任這些先驗，結果一定會被帶偏。有沒有一種分析哲學，是可以在整合過程中，把這種『先驗不可靠的程度』透過機率的方式量化，讓數據自己去權衡？",
+    "expected_action": null,
+    "expect_gap": true
+  },
+  {
+    "id": "original-individual-wiring",
+    "language": "zh",
+    "prompt": "我們現在有了群體的基準地圖，但為了做精準醫療，我們需要知道『每一位病患』體內的調控連線強度，才能拿去跟他們連續的血壓變化值做迴歸分析。可是計算網路連線不是需要一群樣本來算共變異數嗎？我們每個病患都只抽了一次血，在數學上該怎麼打破單一靜態量測無法計算相關性的死結？",
+    "expected_action": "run_lioness_panda",
+    "expect_gap": false
+  },
+  {
+    "id": "original-bipartite-modules",
+    "language": "zh",
+    "prompt": "我們拿到了調控者與受質之間的連線權重矩陣。我們試著用傳統的社群發現演算法來把網路切成數個『功能小組』。結果慘不忍睹：少數幾個超級調控者把幾千個受質全吸進同一個巨型板塊中，完全沒有生物學意義。從圖論的結構假設來看，為什麼傳統演算法會在這裡徹底崩潰？我們需要基於什麼假設的工具？",
+    "expected_action": "run_condor",
+    "expect_gap": false
+  },
+  {
+    "id": "definition-negative",
+    "language": "en",
+    "prompt": "What does a probability distribution mean? Explain the definition; I am not asking for any network or analysis.",
+    "expected_action": null,
+    "expect_no_recommendation": true
+  },
+  {
+    "id": "prior-output-negative",
+    "language": "en",
+    "prompt": "Does a Bayesian gene-gene coexpression estimator quantify posterior reliability of cross-species TF binding-site priors for regulatory networks? I specifically need probabilities for the motif prior reliability, not gene-gene associations. Which registered method meets that requirement?",
+    "expected_action": null,
+    "expect_gap": true
+  },
+  {
+    "id": "choice-coexpression",
+    "language": "en",
+    "prompt": "I have a cohort expression matrix and need one gene-gene coexpression network per patient. Compare Bayesian shrinkage and linear all-sample/leave-one-out sample contributions. Recommend a starting method and let me choose between the assumptions. Do not run analysis.",
+    "expected_action": null,
+    "expected_choices": [
+      "run_bonobo",
+      "run_lioness_coexpression"
+    ],
+    "expect_recommendation": true
+  }
+]

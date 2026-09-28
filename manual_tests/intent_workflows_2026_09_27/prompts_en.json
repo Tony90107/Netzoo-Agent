@@ -1,0 +1,222 @@
+[
+  {
+    "case_id": "01",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "Some genes in this cohort keep changing together. I suspect shared controllers, but seeing them rise together does not seem enough to explain who influences whom."
+      },
+      {
+        "turn": 2,
+        "user": "For now, focus on the pattern shared across the cohort and only proteins that recognize DNA. I prefer repeatedly checking biological evidence against the other evidence and updating it; later I want the same inference extended to individual patients."
+      },
+      {
+        "turn": 3,
+        "user": "I now want to know which controllers have especially strong connections to groups of genes in each patient, to compare with treatment response. By strong I mean which targets they connect to and the weights of those connections, rather than how active the controller itself is."
+      },
+      {
+        "turn": 4,
+        "user": "Keep the shared result from the first stage. For individual patients, could we just copy that shared result once per person and then compare them?"
+      }
+    ]
+  },
+  {
+    "case_id": "02",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "I am trying to understand why a group of genes is suppressed, but focusing only on DNA-binding proteins feels like it misses another class of controllers."
+      },
+      {
+        "turn": 2,
+        "user": "I mean short RNAs that are not translated into proteins and recognize target transcripts. I want them and protein controllers in the same relationship map, initially for the cohort as a whole."
+      },
+      {
+        "turn": 3,
+        "user": "The lab only has evidence of which targets those short RNAs might recognize, without measuring their abundance in each patient. Is this still worth doing? Please do not impose protein interactions on them."
+      },
+      {
+        "turn": 4,
+        "user": "Next I need a version for each patient that retains both classes of controllers, to reveal differences hidden in the cohort result."
+      }
+    ]
+  },
+  {
+    "case_id": "03",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "I want a regulatory-strength value for every controller in every patient, and later to see whether it relates to prognosis."
+      },
+      {
+        "turn": 2,
+        "user": "I mean controllers whose own transcript levels are similar while their downstream genes look as if they received different strengths of instruction. That is the difference I want to capture."
+      },
+      {
+        "turn": 3,
+        "user": "I want to explain both the differences in target levels and whether a controller tends to push a target up or down. The cohort may share those relationships while the driving strength varies by person."
+      },
+      {
+        "turn": 4,
+        "user": "If a controller has a high value, just say it increases the patient’s risk of death and give a causal conclusion for each person."
+      }
+    ]
+  },
+  {
+    "case_id": "04",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "I want the shared control relationships in this cohort and to retain the biological evidence, but the last analysis kept iterating and the lab cannot wait."
+      },
+      {
+        "turn": 2,
+        "user": "I do not need the previous method. I prefer an explicit minimization objective, adjustable weights for the evidence, and a run that stops after a specified number of steps. Controllers are limited to DNA-recognizing proteins."
+      },
+      {
+        "turn": 3,
+        "user": "After obtaining the shared relationships, I want groups of controllers that connect to the same sets of targets, together with those target communities."
+      },
+      {
+        "turn": 4,
+        "user": "I also want significance for every relationship and as few relationships as possible. Since there is a penalty, treat it as a switch guaranteeing sparsity, and also label a version for each patient."
+      }
+    ]
+  },
+  {
+    "case_id": "05",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "Samples from two hospitals look like two diseases, but I cannot tell whether the difference is biological or caused by collection and sequencing practices."
+      },
+      {
+        "turn": 2,
+        "user": "Both hospitals have both diseases, and we recorded age and collection batch. I care about factors affecting which genes vary together, beyond differences in each gene’s average level."
+      },
+      {
+        "turn": 3,
+        "user": "After separating those factors, I want the shared control relationships using biological evidence checked against the other evidence. Disease and age signals must not all be discarded as noise."
+      },
+      {
+        "turn": 4,
+        "user": "The records were wrong: hospital A actually has only disease one and hospital B only disease two. Please still remove the hospital effect completely and guarantee that disease is what remains, and use that same result to obtain each person’s control relationships."
+      }
+    ]
+  },
+  {
+    "case_id": "06",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "I have hundreds of participants and want to know whether the relationship between the same two genes differs across people. For now I am not asking who controls whom."
+      },
+      {
+        "turn": 2,
+        "user": "Each person was measured once. A colleague says that makes a relationship between two genes impossible to estimate for one person. I want to use the others as background while retaining individual differences."
+      },
+      {
+        "turn": 3,
+        "user": "I am more interested in how much this person changes the overall relationship, with the full cohort as a shared reference. I do not currently need significance for each relationship."
+      },
+      {
+        "turn": 4,
+        "user": "Once we have each person’s result, can we read it as gene A activating gene B, then divide these genes into controllers and targets to find modules?"
+      }
+    ]
+  },
+  {
+    "case_id": "07",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "There are only six participants. I want their individual gene relationships, but I am most worried about turning unstable connections into a story."
+      },
+      {
+        "turn": 2,
+        "user": "The other five people’s shared pattern could serve as background, updated by this person’s observation. I want support for each relationship in each person, so I can decide later what to keep."
+      },
+      {
+        "turn": 3,
+        "user": "The values have been log-transformed and centered, and all six people have names. Please retain every relationship estimate and its corresponding support; I do not want weaker parts discarded yet."
+      },
+      {
+        "turn": 4,
+        "user": "To save memory, store results one person at a time, but still say the weak connections have already been removed. Then use one person’s result directly as the whole cohort’s shared background to infer which proteins control which genes."
+      }
+    ]
+  },
+  {
+    "case_id": "08",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "Transcripts and proteins were measured in the same people. Some cross-layer pairs look compelling, but they may just share influences from other molecules."
+      },
+      {
+        "turn": 2,
+        "user": "I want to see which pairs remain related while accounting for the other molecules in both layers. The layers have different scales and noise, so they should not be treated as identical. Start with the structure shared by the cohort."
+      },
+      {
+        "turn": 3,
+        "user": "The people appear in different orders in the two measurements, but they are the same people. I do not know how much stabilization is appropriate; let the data guide it and do not silently fill missing values."
+      },
+      {
+        "turn": 4,
+        "user": "The next batch also has metabolites. Put everything in at once, independently control three penalties for within-transcript, within-protein and cross-layer relationships, and label arrows showing who causes whom."
+      }
+    ]
+  },
+  {
+    "case_id": "09",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "It is hard to find commonality across these tumors one gene at a time: different patients have problems in different places, but perhaps similar biological functions are affected."
+      },
+      {
+        "turn": 2,
+        "user": "By problems I mean somatic DNA alterations, not transcript levels. Long genes have more opportunities for events, and some patients accumulate many events overall. I do not want either effect to drive the classification."
+      },
+      {
+        "turn": 3,
+        "user": "First preserve similarities at the functional level without labeling patients with subtypes yet. Some genes appear in several functions and should not count as especially important just because they appear repeatedly."
+      },
+      {
+        "turn": 4,
+        "user": "Now consider whether two to four groups make sense. Since we already have functional scores, also use that same result to say which proteins control which genes."
+      }
+    ]
+  },
+  {
+    "case_id": "10",
+    "language": "en",
+    "turns": [
+      {
+        "turn": 1,
+        "user": "I want to put related things in this collection into groups and see which groups are worth following up experimentally."
+      },
+      {
+        "turn": 2,
+        "user": "Not groups of patients. Relationships have already been estimated, with one class of controllers on the left and their targets on the right. I want communities formed jointly by both sides, without estimating the relationships again."
+      },
+      {
+        "turn": 3,
+        "user": "Some controllers also happen to be somebody else’s targets, so the same name appears on both sides. Do not treat both roles as one kind of object or arbitrarily divide genes just to manufacture two sides."
+      },
+      {
+        "turn": 4,
+        "user": "Wait: on inspection, each row is actually a patient followed by molecular measurements, with none of the relationships I described. The label sounds like relationship results, though, so continue with the earlier interpretation."
+      }
+    ]
+  }
+]

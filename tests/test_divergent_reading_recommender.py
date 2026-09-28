@@ -104,7 +104,7 @@ def test_a_quoted_wiring_fact_recommends_lioness_panda_and_changes_no_authority(
 
     updated, _, _ = invoke_condition_recommender(context, state, CASE_4, decision, LLMUsage(), [])
 
-    assert calls == ["SelectionConditionClaims"]
+    assert calls == ["MethodComparisonReview"]
     assert updated.advisory_recommendation.action == "run_lioness_panda"
     assert updated.clarification_question.startswith("Should I use LIONESS-PANDA")
     for field in AUTHORITY:

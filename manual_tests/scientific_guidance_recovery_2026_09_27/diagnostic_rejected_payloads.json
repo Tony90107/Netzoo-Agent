@@ -1,0 +1,730 @@
+{
+  "scope": "Observed failures during repair; retained for reproducibility",
+  "results": [
+    {
+      "id": "noisy_prior",
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.9,
+        "reason": "The request is seeking guidance on methods to quantify uncertainty in models with unreliable priors, which falls under the category of an answer request.",
+        "candidate_actions": [
+          "run_panda",
+          "run_puma",
+          "run_lioness_panda",
+          "run_lioness_puma",
+          "run_otter",
+          "no_tool"
+        ],
+        "recommended_actions": [],
+        "requested_outcome": {
+          "operation": "explain",
+          "input_artifacts": [],
+          "artifact_type": "regulatory_network",
+          "entity_types": [],
+          "display_entities": [],
+          "regulator_types": [],
+          "target_types": [],
+          "selection_tags": [],
+          "granularity": "unknown",
+          "unresolved_dimensions": []
+        },
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [
+          {
+            "outcome": {
+              "operation": "explain",
+              "input_artifacts": [],
+              "artifact_type": "regulatory_network",
+              "entity_types": [],
+              "display_entities": [],
+              "regulator_types": [],
+              "target_types": [],
+              "selection_tags": [],
+              "granularity": "unknown",
+              "unresolved_dimensions": []
+            },
+            "confidence": 0.9,
+            "evidence": [
+              {
+                "dimension": "operation",
+                "value": "explain",
+                "source": "explicit",
+                "text_span": "有沒有一種分析哲學，是可以在整合過程中，把這種『先驗不可靠的程度』透過機率的方式量化，讓數據自己去權衡？",
+                "rationale": "The user is seeking a philosophical approach to analyze the integration of uncertain priors."
+              },
+              {
+                "dimension": "artifact_type",
+                "value": "regulatory_network",
+                "source": "inferred",
+                "text_span": null,
+                "rationale": "The question discusses the integration of prior binding site predictions from related species into a regulatory network, highlighting the uncertainty and noise in these priors."
+              },
+              {
+                "dimension": "granularity",
+                "value": "unknown",
+                "source": "inferred",
+                "text_span": null,
+                "rationale": "The scale of the regulatory network being discussed is not specified, thus it is classified as unknown."
+              }
+            ],
+            "assumptions": []
+          }
+        ],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_panda",
+          "run_puma",
+          "run_lioness_panda",
+          "run_lioness_puma",
+          "run_otter",
+          "run_giraffe"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Should I use OTTER, or does another listed option fit your study better?",
+        "advisory_recommendation": {
+          "action": "run_otter",
+          "conditions": [
+            {
+              "axis": "compute_constraints",
+              "value": "constrained",
+              "text_span": "我們的『先驗骨架』充滿了雜訊和不確定性"
+            }
+          ],
+          "rationale": "",
+          "supporting_spans": [],
+          "assumptions": []
+        },
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "answer": "Based on what you said — \"我們的『先驗骨架』充滿了雜訊和不確定性\" — **OTTER** fits better: the network is large and memory or runtime is a concern.\n\n- **TF-only regulatory network — OTTER** (recommend)\n  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.\n  - Method premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing\n  - Mathematical interpretation: Continuous graph matching optimizes agreement between networks with explicit regularization. Balancing a prior through an objective is distinct from probabilistically estimating that prior's uncertainty.\n  - Required inputs: all of: motif/prior, PPI network; and one of: expression matrix or adjusted co-expression matrix.\n  - Declared output: regulatory networks (cohort-level aggregate).\n\nOther compatible option(s):\n- **PANDA** — preferred when: results must be comparable with the widely published approach, or serve as a base network for later per-sample analysis.\n  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with PANDA.\n  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Mathematical interpretation: Message passing reconciles biological evidence networks iteratively. An input prior can be revised by other evidence, but the inferred weights are not calibrated posterior probabilities of motif reliability.\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n  - Declared output: regulatory networks (cohort-level aggregate).\n- **PUMA**.\n  - Registered purpose: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.\n  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow; PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.\n  - Mathematical interpretation: Message passing reconciles biological evidence networks iteratively. An input prior can be revised by other evidence, but the inferred weights are not calibrated posterior probabilities of motif reliability.\n  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.\n  - Declared output: regulatory networks (cohort-level aggregate).\n- **LIONESS-PANDA** — preferred when: dozens of samples or more; each sample's regulator-to-target wiring (edge weights or targeting scores) is needed.\n  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\n  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality.\n  - Mathematical interpretation: Message passing reconciles biological evidence networks iteratively. An input prior can be revised by other evidence, but the inferred weights are not calibrated posterior probabilities of motif reliability.\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).\n- **LIONESS-PUMA** — preferred when: dozens of samples or more; each sample's regulator-to-target wiring (edge weights or targeting scores) is needed.\n  - Registered purpose: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks.\n  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality.\n  - Mathematical interpretation: Message passing reconciles biological evidence networks iteratively. An input prior can be revised by other evidence, but the inferred weights are not calibrated posterior probabilities of motif reliability.\n  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.\n  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).\n- **GIRAFFE** — preferred when: a regulator's activity may differ from its own expression, or activating versus repressing effects are needed; each sample's regulator activity level is needed, apart from the regulator's own expression.\n  - Registered purpose: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.\n  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n  - Declared output: regulatory networks, TF activity matrices (cohort-level aggregate).\n\nDownstream use of the aggregate network:\n   - Targeting scores: a regulator's outdegree or a gene's indegree summarizes the network per regulator or per gene; comparing them between networks built separately for each condition shows regulators whose targeting changes.\n   - Comparing conditions needs one run per condition on matched inputs (the same genes and the same motif and PPI priors); edge weights are comparable only within that shared setup.\n   - OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.\n\nShould I use OTTER, or does another listed option fit your study better?\n\nNo files were inspected and no analysis ran.",
+      "usage": {
+        "input_tokens": 11539,
+        "output_tokens": 558,
+        "total_tokens": 12097,
+        "calls": [
+          {
+            "call_id": "1dfd788e-d412-4489-8fe6-2b99af40436a",
+            "role": "semantic_interpreter",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790524775-neISabKUEPTI8LNM7k3m",
+            "input_tokens": 5369,
+            "output_tokens": 142,
+            "cache_read_tokens": 5248,
+            "cache_write_tokens": 0,
+            "total_tokens": 5511,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 497,
+            "price_snapshot": null,
+            "duration_ms": 2199,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "9df42eb2-faab-44f5-a033-69916c2cdd81",
+            "role": "semantic_reviewer",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790524777-hIn5fk4YXeGFkN3wMEzd",
+            "input_tokens": 905,
+            "output_tokens": 70,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 975,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 178,
+            "price_snapshot": null,
+            "duration_ms": 1137,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "ee128ef4-e40c-4329-a53a-feb922706a79",
+            "role": "semantic_discriminator",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790524778-I1HDvvPLGsiT3HqCObiF",
+            "input_tokens": 1464,
+            "output_tokens": 9,
+            "cache_read_tokens": 1280,
+            "cache_write_tokens": 0,
+            "total_tokens": 1473,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 129,
+            "price_snapshot": null,
+            "duration_ms": 804,
+            "status": "success",
+            "estimated": false
+          },
+          {
+            "call_id": "f002c95d-ef76-4ad7-bf10-4589ee91d67d",
+            "role": "intent_router",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": null,
+            "input_tokens": 754,
+            "output_tokens": 50,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 804,
+            "usage_provenance": "estimated",
+            "cost_provenance": "unavailable",
+            "cost_micro_usd": null,
+            "price_snapshot": null,
+            "duration_ms": 1106,
+            "status": "success",
+            "estimated": true
+          },
+          {
+            "call_id": "22498961-ed2f-4564-aa12-2957f2f2db4f",
+            "role": "selection_conditions",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790524780-DMO1SkrgDiCT9ZSqDqLJ",
+            "input_tokens": 3047,
+            "output_tokens": 287,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 3334,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 629,
+            "price_snapshot": null,
+            "duration_ms": 2870,
+            "status": "success",
+            "estimated": false
+          }
+        ],
+        "budget_tokens": 20000,
+        "budget_exhausted": false
+      },
+      "events": [
+        {
+          "event_type": "routing.guidance_subject_review_requested",
+          "node": "classify",
+          "payload": {
+            "issues": [
+              "hypothesis[0].unresolved_guidance_subject:recheck the original question for its scientific subject, intended result, inputs, topology, granularity and mathematical assumptions; retain no-outcome only if none is identifiable"
+            ],
+            "attempt": 1
+          }
+        },
+        {
+          "event_type": "routing.guidance_subject_reviewed",
+          "node": "classify",
+          "payload": {
+            "artifact_type": "regulatory_network",
+            "granularity": "unknown",
+            "artifact_rationale": "The question discusses the integration of prior binding site predictions from related species into a regulatory network, highlighting the uncertainty and noise in these priors.",
+            "granularity_rationale": "The scale of the regulatory network being discussed is not specified, thus it is classified as unknown."
+          }
+        },
+        {
+          "event_type": "routing.outcome_downgraded",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "comparable": true,
+            "reason": null,
+            "hypothesis": 0,
+            "downgrades": []
+          }
+        },
+        {
+          "event_type": "routing.semantic_interpretation_accepted",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "hypothesis_count": 1,
+            "evidence_dimensions": [
+              [
+                "artifact_type",
+                "granularity",
+                "operation"
+              ]
+            ],
+            "evidence_census": [
+              {
+                "hypothesis": 0,
+                "explicit_with_span": 1,
+                "explicit_without_span": 0,
+                "inferred": 2
+              }
+            ]
+          }
+        },
+        {
+          "event_type": "routing.semantic_discriminator_started",
+          "node": "classify",
+          "payload": {
+            "candidate_count": 6
+          }
+        },
+        {
+          "event_type": "routing.semantic_discriminator_rejected",
+          "node": "classify",
+          "payload": {
+            "reason": "empty_or_non_candidate_tags",
+            "selection_tags": [],
+            "candidate_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "candidate_tags": [
+              "aggregate_network",
+              "biologically_informed_matrix_factorization",
+              "joint_grn_tfa_inference",
+              "leave_one_out_network_inference",
+              "linear_model_coefficients",
+              "lioness_base_compatibility",
+              "message_passing",
+              "mirna_regulation",
+              "relaxed_graph_matching",
+              "sample_specific",
+              "signed_partial_regulatory_effects",
+              "tf_gene_regulation",
+              "tfa",
+              "tfa_covariate_regression"
+            ],
+            "provider_payload": "selection_tags=[] evidence=[]",
+            "normalized_provider_payload": "selection_tags=[] evidence=[]"
+          }
+        },
+        {
+          "event_type": "routing.registry_match_completed",
+          "node": "classify",
+          "payload": {
+            "status": "ambiguous",
+            "match_basis": "semantic",
+            "rejected_methods": [],
+            "matched_actions": [],
+            "hypothesis_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "mismatch_dimensions": []
+          }
+        },
+        {
+          "event_type": "routing.intent_classified",
+          "node": "classify",
+          "payload": {
+            "mode": "answer",
+            "confidence": 0.9
+          }
+        },
+        {
+          "event_type": "routing.selection_conditions_started",
+          "node": "classify",
+          "payload": {
+            "tie": "method",
+            "candidate_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ],
+            "offered_conditions": [
+              "compute_constraints:constrained",
+              "tf_activity_vs_expression:yes",
+              "established_method:yes"
+            ]
+          }
+        },
+        {
+          "event_type": "routing.selection_conditions_recommended",
+          "node": "classify",
+          "payload": {
+            "recommended_action": "run_otter",
+            "conditions": [
+              {
+                "axis": "compute_constraints",
+                "value": "constrained",
+                "text_span": "我們的『先驗骨架』充滿了雜訊和不確定性"
+              }
+            ],
+            "rationale": "",
+            "assumptions": [],
+            "rejected": [
+              {
+                "condition": "established_method:yes",
+                "reason": "quote_not_in_request"
+              }
+            ],
+            "candidate_actions": [
+              "run_panda",
+              "run_puma",
+              "run_lioness_panda",
+              "run_lioness_puma",
+              "run_otter",
+              "run_giraffe"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "individual_wiring",
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "unknown",
+        "confidence": 0.0,
+        "reason": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": null,
+        "match_basis": "semantic_validation_recovery",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": null,
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "answer": "Semantic routing output failed validation, so no workflow was selected. (ValidationError)\n\nThe system could not validate its interpretation. This is not evidence that your question is unclear.\n\nRetry this request when semantic routing is available, or ask a follow-up question. No workflow is ready to start.\n\nNo files were inspected and no analysis ran.",
+      "usage": {
+        "input_tokens": 12223,
+        "output_tokens": 434,
+        "total_tokens": 12657,
+        "calls": [
+          {
+            "call_id": "bf8c7916-eb9e-4b81-823e-9790f62cc5c0",
+            "role": "semantic_interpreter",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790525392-Meb8dv2jinoED8JvUAwJ",
+            "input_tokens": 5366,
+            "output_tokens": 279,
+            "cache_read_tokens": 5248,
+            "cache_write_tokens": 0,
+            "total_tokens": 5645,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 579,
+            "price_snapshot": null,
+            "duration_ms": 3236,
+            "status": "failed",
+            "estimated": false
+          },
+          {
+            "call_id": "7ac5018e-d8d8-4b53-8563-8d7b1c09e6e5",
+            "role": "semantic_reviewer",
+            "model": "openai/gpt-4o-mini",
+            "provider_request_id": "gen-1790525394-e8Fej96CHuV2yw79TI00",
+            "input_tokens": 6857,
+            "output_tokens": 155,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 7012,
+            "usage_provenance": "actual",
+            "cost_provenance": "actual",
+            "cost_micro_usd": 1122,
+            "price_snapshot": null,
+            "duration_ms": 2363,
+            "status": "failed",
+            "estimated": false
+          }
+        ],
+        "budget_tokens": 20000,
+        "budget_exhausted": false
+      },
+      "events": [
+        {
+          "event_type": "routing.semantic_interpretation_rejected",
+          "node": "classify",
+          "payload": {
+            "attempt": 1,
+            "issues": [
+              "schema_validation:outcome_hypotheses.0.unresolved_dimensions:extra_forbidden",
+              "schema_validation:outcome_hypotheses.1.unresolved_dimensions:extra_forbidden"
+            ],
+            "shapes": [
+              {
+                "location": [
+                  "outcome_hypotheses",
+                  "0",
+                  "unresolved_dimensions"
+                ],
+                "type": "extra_forbidden",
+                "input_type": "list"
+              },
+              {
+                "location": [
+                  "outcome_hypotheses",
+                  "1",
+                  "unresolved_dimensions"
+                ],
+                "type": "extra_forbidden",
+                "input_type": "list"
+              }
+            ],
+            "provider_payload": {
+              "request_mode": "guidance",
+              "semantic_goal": "Explore methods to estimate regulatory network connectivity for individual patients using single static measurements.",
+              "outcome_hypotheses": [
+                {
+                  "outcome": {
+                    "operation": "infer",
+                    "artifact_type": "regulatory_network",
+                    "granularity": "sample_specific",
+                    "regulator_types": [
+                      "tf"
+                    ],
+                    "target_types": [
+                      "gene"
+                    ]
+                  },
+                  "confidence": 0.9,
+                  "evidence": [
+                    {
+                      "dimension": "operation",
+                      "value": "infer",
+                      "source": "explicit",
+                      "rationale": "The user is seeking to estimate regulatory networks for individual patients.",
+                      "text_span": "我們需要知道『每一位病患』體內的調控連線強度"
+                    }
+                  ],
+                  "assumptions": [
+                    "The user is interested in individual patient regulatory networks rather than a population-wide network."
+                  ],
+                  "unresolved_dimensions": [
+                    "input_artifact"
+                  ]
+                },
+                {
+                  "outcome": {
+                    "operation": "analyze",
+                    "artifact_type": "regulatory_network",
+                    "granularity": "sample_specific",
+                    "regulator_types": [
+                      "tf"
+                    ],
+                    "target_types": [
+                      "gene"
+                    ]
+                  },
+                  "confidence": 0.8,
+                  "evidence": [
+                    {
+                      "dimension": "operation",
+                      "value": "analyze",
+                      "source": "explicit",
+                      "rationale": "The user is considering regression analysis with blood pressure changes.",
+                      "text_span": "跟他們連續的血壓變化值做迴歸分析"
+                    }
+                  ],
+                  "assumptions": [
+                    "The user has access to blood pressure change data for each patient."
+                  ],
+                  "unresolved_dimensions": [
+                    "input_artifact"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "event_type": "routing.semantic_interpretation_retried",
+          "node": "classify",
+          "payload": {
+            "issues": [
+              "schema_validation:outcome_hypotheses.0.unresolved_dimensions:extra_forbidden",
+              "schema_validation:outcome_hypotheses.1.unresolved_dimensions:extra_forbidden"
+            ]
+          }
+        },
+        {
+          "event_type": "budget.warning",
+          "node": "semantic_reviewer",
+          "payload": {
+            "role": "semantic_reviewer",
+            "model": "openai/gpt-4o-mini",
+            "status": "warning_70",
+            "consumed_tokens": 5645,
+            "estimated_input_tokens": 9950,
+            "reserved_output_tokens": 1200,
+            "projected_tokens": 16795,
+            "hard_limit_tokens": 20000,
+            "reserve_tokens": 1500
+          }
+        },
+        {
+          "event_type": "routing.semantic_interpreter_failed",
+          "node": "classify",
+          "payload": {
+            "attempt": 2,
+            "error_type": "ValidationError",
+            "validation_issues": [
+              {
+                "location": [
+                  "outcome_hypothesis",
+                  "unresolved_dimensions"
+                ],
+                "type": "extra_forbidden",
+                "input_type": "list"
+              }
+            ],
+            "provider_payload": {
+              "request_mode": "guidance",
+              "semantic_goal": "Explore methods to estimate regulatory network connectivity for individual patients using single static measurements.",
+              "outcome_hypothesis": {
+                "outcome": {
+                  "operation": "infer",
+                  "artifact_type": "regulatory_network",
+                  "granularity": "sample_specific",
+                  "regulator_types": [
+                    "tf"
+                  ],
+                  "target_types": [
+                    "gene"
+                  ]
+                },
+                "confidence": 0.9,
+                "evidence": [
+                  {
+                    "dimension": "operation",
+                    "value": "infer",
+                    "source": "explicit",
+                    "rationale": "The user is seeking to estimate regulatory networks for individual patients.",
+                    "text_span": "我們需要知道『每一位病患』體內的調控連線強度"
+                  }
+                ],
+                "assumptions": [
+                  "The user is interested in individual patient regulatory networks rather than a population-wide network."
+                ],
+                "unresolved_dimensions": [
+                  "input_artifact"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

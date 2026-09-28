@@ -10,7 +10,11 @@ from ..contracts import TaskDecision
 
 def should_expand_guidance_catalog(decision: TaskDecision, task: str) -> bool:
     """Expose capability facts for unsupported goals, independent of phrasing."""
-    return decision.capability_match_status == "unsupported" and not decision.matched_actions
+    return (
+        decision.capability_match_status in {"unsupported", "not_applicable"}
+        and decision.action == "no_tool"
+        and not decision.matched_actions
+    )
 
 
 def _capability(item: dict) -> dict:

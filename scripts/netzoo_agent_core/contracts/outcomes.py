@@ -557,12 +557,41 @@ class ConditionClaim(BaseModel):
     )
 
 
+class MethodPreference(BaseModel):
+    """A model's advisory comparison of already-qualified algorithm philosophies."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: RecommendedAction
+    selection_tags: list[str] = Field(min_length=1, max_length=8)
+    text_spans: list[str] = Field(default_factory=list, max_length=4)
+    rationale: str = Field(min_length=1, max_length=600)
+    assumptions: list[str] = Field(default_factory=list, max_length=4)
+
+    @model_validator(mode="after")
+    def _supported_or_conditional(self):
+        if not self.text_spans and not self.assumptions:
+            raise ValueError("A preference needs request quotes or explicit assumptions")
+        return self
+
+
+class MethodCapabilityGap(BaseModel):
+    """A requested registered philosophy absent from the qualified candidates."""
+
+    model_config = ConfigDict(extra="forbid")
+    selection_tags: list[str] = Field(min_length=1, max_length=8)
+    text_spans: list[str] = Field(min_length=1, max_length=4)
+    rationale: str = Field(min_length=1, max_length=600)
+
+
 class SelectionConditionClaims(BaseModel):
     """Experimental conditions stated in the request (Log 139); may be empty."""
 
     model_config = ConfigDict(extra="forbid")
 
     claims: list[ConditionClaim] = Field(default_factory=list, max_length=6)
+    preference: MethodPreference | None = None
+    capability_gap: MethodCapabilityGap | None = None
 
 
 class AdvisoryCondition(BaseModel):
@@ -581,7 +610,16 @@ class AdvisoryRecommendation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     action: RecommendedAction
-    conditions: list[AdvisoryCondition] = Field(min_length=1, max_length=6)
+    conditions: list[AdvisoryCondition] = Field(default_factory=list, max_length=6)
+    rationale: str = Field(default="", max_length=600)
+    supporting_spans: list[str] = Field(default_factory=list, max_length=4)
+    assumptions: list[str] = Field(default_factory=list, max_length=4)
+
+    @model_validator(mode="after")
+    def _recommendation_has_basis(self):
+        if not self.conditions and not self.rationale:
+            raise ValueError("An advisory recommendation requires a stated basis")
+        return self
 
 
 class ConcernClaim(BaseModel):
