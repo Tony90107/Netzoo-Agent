@@ -109,6 +109,8 @@ def test_final_answer_rejects_wrong_method_and_separates_artifacts():
     assert answer.startswith("Do not use")
     assert "PANDA" in answer and "LIONESS" in answer
     assert "SAMBAR" in answer
+    assert "Your question asks for cohort-level sample cluster assignment" in answer
+    assert "SAMBAR reduces sparse mutation data" in answer
     assert "valid approach" not in answer
     assert "`pathway_mutation_matrix`: Pathway-by-sample mutation scores" in answer
     assert "`sample_cluster_assignment`: Sample-to-cluster labels" in answer

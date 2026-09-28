@@ -49,7 +49,8 @@ def test_a_stated_count_is_quoted_and_not_mapped():
 def test_a_non_english_count_is_quoted_verbatim():
     answer = render_outcome_clarification(_form_b(), POLICY, task="我們有大約 400 個樣本的表現資料。")
 
-    assert 'You mentioned "大約 400 個樣本".' in answer
+    assert "You mentioned a sample count." in answer
+    assert "大約 400 個樣本" not in answer
 
 
 def test_no_count_or_no_sample_question_adds_nothing():

@@ -7,6 +7,7 @@ from workflow_registry import get_controls
 
 from ..contracts import OUTPUT_ROLE_FIELDS, ProjectPolicySnapshot, TaskDecision
 from ..interpretation.verified_guidance import guidance_contract
+from ..interpretation.guidance_catalog import compact_guidance_catalog
 from ..interpretation import INPUT_LABELS
 from ..interpretation.registry_guidance import (
     build_registry_selection_constraints,
@@ -127,7 +128,7 @@ def validated_workflow_context(
         )
     guidance_decision = decision_with_registry_signals(decision, task, policy.workflows)
     selection_constraints = build_registry_selection_constraints(guidance_decision, workflows)
-    return {
+    context = {
         **guidance_contract(decision, policy, task),
         "compositions": selection_constraints["preferred_compositions"] or compositions,
         "handoffs": handoffs,
@@ -135,3 +136,4 @@ def validated_workflow_context(
         "selection_constraints": selection_constraints,
         "sample_references": _sample_references(task),
     }
+    return compact_guidance_catalog(context) if decision.requested_outcome and decision.requested_outcome.artifact_type == "unknown" else context

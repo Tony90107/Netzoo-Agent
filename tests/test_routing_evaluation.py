@@ -89,18 +89,26 @@ class FixtureProvider:
         self.calls = []
 
     def with_structured_output(self, schema, **kwargs):
+        from netzoo_agent_core.interpretation.guidance_subject import GuidanceSubjectReview
         # 2026-09-27 (Log 208): the patch is bound strict, as in production;
         # every other binding is unchanged.
         assert kwargs == {
             "method": "function_calling", "include_raw": schema is not IntentDecision,
-            **({"strict": True} if schema is SemanticPatch else {}),
+            **({"strict": True} if schema in {SemanticPatch, GuidanceSubjectReview} else {}),
         }
         provider = self
 
         class Adapter:
             def invoke(self, messages):
                 provider.calls.append((schema, messages))
-                result = provider.responses[schema]
+                if schema is GuidanceSubjectReview:
+                    item = provider.responses[SemanticReview]["outcome_hypothesis"]
+                    result = {"artifact_type": item["outcome"]["artifact_type"],
+                              "granularity": item["outcome"]["granularity"],
+                              "artifact_rationale": "The scripted review identifies the scientific subject.",
+                              "granularity_rationale": "The scripted review identifies the result scale."}
+                else:
+                    result = provider.responses[schema]
                 if isinstance(result, BaseException):
                     raise result
                 return result

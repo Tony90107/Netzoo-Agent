@@ -11,12 +11,14 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _NON_ENGLISH
 from ..routing.capability_compatibility import input_availability
 from ..routing.method_rejections import rejected_methods_for
+from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..runtime_constraints import runtime_control_constraints
 from ..settings import INPUT_ROLE_FIELDS
 from workflow_registry import DOWNSTREAM_ANALYSES, REQUEST_CONCERNS, get_controls
 from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
+from .method_philosophy import method_philosophies_for, question_fit_for
 from .request_parameters import extract_explicit_request_parameters, render_request_parameters
 
 
@@ -148,6 +150,15 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             lines.append(f"Fallback recommendation: **{names}**. {interaction.explanation}")
         else:
             lines.append(f"Selected path: **{names}**.")
+        if len(selected) == 1:
+            action = selected[0]
+            fit = question_fit_for(
+                decision.requested_outcome, workflows[action]["workflow"],
+                workflows[action]["output_capability"],
+                qualified=decision.capability_match_status == "exact",
+            )
+            if fit:
+                lines.append(fit)
         requested_parameters = facts.get("requested_parameters") or {}
         if requested_parameters:
             lines.append(render_request_parameters(requested_parameters))
@@ -169,6 +180,10 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             modalities = capability["accepted_input_modalities"] or capability["input_artifacts"]
             lines.append(f"**{item['workflow']}**: {item['description']}\n\n"
                          f"Routing-level input modality: {', '.join(value.replace('_', ' ') for value in modalities)}.")
+            premises = algorithmic_assumptions_for(capability["selection_tags"])
+            if premises:
+                lines.append("Method premise: " + "; ".join(premises) + ".")
+            lines.extend(method_philosophies_for(capability["selection_tags"]))
             guidance_notes = capability.get("guidance_notes", [])
             if guidance_notes:
                 lines.append(

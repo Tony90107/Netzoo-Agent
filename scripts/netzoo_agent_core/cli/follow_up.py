@@ -101,6 +101,13 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
         return NextTurnPrompt(kind="clarify_outcome" if interaction.question else "completed",
                               question=_ui_text(interaction.next_step), allow_workflow_continuation=False)
 
+    if decision.advisory_capability_gap and decision.action == "no_tool":
+        # The guidance may already answer the modeling question without posing
+        # another one. Never direct the user to a nonexistent question above.
+        return NextTurnPrompt(kind="completed",
+                              question="Ask a follow-up about the modeling approach or describe another NetZoo goal.",
+                              allow_workflow_continuation=False)
+
     if (
         decision.capability_match_status == "unsupported"
         and decision.alternative_actions

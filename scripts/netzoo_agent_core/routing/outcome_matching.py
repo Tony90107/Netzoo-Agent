@@ -193,6 +193,8 @@ def _tag_discriminated_action(
     semantic discriminator; an ungrounded catalogue value remains advisory.
     """
     declared = set()
+    if any(item.outcome.artifact_type == "unknown" for item in hypotheses):
+        return None
     for item in hypotheses:
         outcome_tags = set(item.outcome.selection_tags) - ignore_tags - restated_tags(item.outcome)
         declared.update(
@@ -425,7 +427,9 @@ def match_outcome_hypotheses(
             ignore_tags,
             user_task=user_task,
         )
-        if discriminated is not None:
+        if discriminated is not None and all(
+            item.outcome.artifact_type != "unknown" for item in hypotheses
+        ):
             return CapabilityMatch(
                 status="exact",
                 match_basis="registry_features",
@@ -741,6 +745,28 @@ def _match_semantic_request(
     )
     if repaired_named_match is not None:
         return repaired_named_match
+    if (
+        request_mode == "guidance"
+        and match.status == "ambiguous"
+        and len(match.hypothesis_actions) == 1
+        and len(matching_hypotheses) == 1
+        and not matching_hypotheses[0].assumptions
+        and not matching_hypotheses[0].outcome.unresolved_dimensions
+        and (
+            matching_hypotheses[0].outcome.entity_types
+            or hypotheses[0].outcome.operation == "explain"
+            or not OUTPUT_CAPABILITIES[match.hypothesis_actions[0]].entity_types
+        )
+        and _complete_guidance_match(
+            matching_hypotheses[0].outcome,
+            OUTPUT_CAPABILITIES[match.hypothesis_actions[0]],
+        )
+    ):
+        # Explanatory operation was withheld above. A single compatible, fully
+        # specified subject is resolved guidance, not an algorithm choice.
+        match = match.model_copy(update={
+            "status": "exact", "matched_actions": list(match.hypothesis_actions),
+        })
     if match.status == "fallback" and match.match_basis == "partial_evidence":
         capability = OUTPUT_CAPABILITIES[match.matched_actions[0]]
         if request_mode == "guidance" and all(

@@ -7,8 +7,9 @@ per-edge confidence, compute limits -- and asks the model which of them the
 request states, with a quote. The deterministic part decides:
 
 - every claim must be an offered condition with a quote grounded in the request;
-- the grounded claims must point to exactly one candidate, or nothing is
-  recommended and the user is asked the separating questions instead.
+- grounded study conditions take priority; otherwise the model may rank the
+  offered philosophies using request quotes or stated conditional assumptions.
+- conflicting study conditions are clarified rather than overridden by advice.
 
 A recommendation is advice. It never changes ``action``, ``should_execute``,
 ``capability_match_status`` or ``matched_actions``; executing still requires
@@ -19,6 +20,8 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Literal
+from pydantic import ConfigDict, Field, create_model
 
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
 
@@ -26,18 +29,23 @@ from ..contracts import AgentState, LLMUsage, TaskDecision
 from ..contracts.outcomes import (
     AdvisoryCondition,
     AdvisoryRecommendation,
+    ConditionClaim,
+    MethodCapabilityGap,
+    MethodPreference,
     SelectionConditionClaims,
 )
-from ..interpretation.concept_answers import _TWO_GROUP_COMPARISON_PATTERN
 from ..interpretation.outcome_validation import (
     _grounded_span,
     _hard_wrap_normalized,
     _normalized,
 )
 from ..interpretation.provider_fallback import _is_fatal_exception
+from ..interpretation.method_philosophy import method_philosophies_for
+from ..presentation import _NON_ENGLISH
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_selection_condition_messages
 from ..routing.clarification_planner import plan_clarification
+from ..routing.clarification_planner import algorithmic_assumptions_for
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
@@ -128,14 +136,24 @@ def is_divergent_reading_tie(decision: TaskDecision) -> bool:
     )
 
 
-def _beginner_group_guidance_applies(task: str, decision: TaskDecision) -> bool:
-    """Leave the existing two-group comparison guidance untouched."""
+def _same_subject_choice(decision: TaskDecision) -> bool:
+    """Offer conditional advice on method/role choices, never unknown results."""
     outcome = decision.requested_outcome
     return bool(
         outcome is not None
-        and outcome.artifact_type == "regulatory_network"
-        and "run_panda" in decision.hypothesis_actions
-        and _TWO_GROUP_COMPARISON_PATTERN.search(task)
+        and outcome.artifact_type != "unknown"
+        and outcome.granularity in {"aggregate", "sample_specific"}
+        and decision.capability_match_status == "ambiguous"
+        and len(decision.hypothesis_actions) >= 2
+        and all(
+            outcome.granularity in OUTPUT_CAPABILITIES[action].granularities
+            and outcome.artifact_type in (
+                OUTPUT_CAPABILITIES[action].produced_artifacts
+                | {OUTPUT_CAPABILITIES[action].artifact_type}
+            )
+            for action in decision.hypothesis_actions
+            if action in OUTPUT_CAPABILITIES
+        )
     )
 
 
@@ -217,6 +235,108 @@ def recommendation_question(recommendation: AdvisoryRecommendation) -> str:
     )
 
 
+def _candidate_facts(candidates, context) -> list[dict]:
+    """Compare the registry's philosophy and boundary, never inferred capabilities."""
+    workflows = getattr(getattr(context, "project_policy", None), "workflows", {})
+    facts = []
+    for action in candidates:
+        spec = workflows.get(action)
+        definition = ACTION_DEFINITIONS.get(action)
+        capability = (spec.output_capability if spec else OUTPUT_CAPABILITIES.get(action))
+        if capability is None or definition is None:
+            continue
+        facts.append({
+            "action": action, "workflow": _workflow_name(action),
+            "description": getattr(spec, "description", ""),
+            "artifact_type": capability.artifact_type,
+            "granularities": sorted(capability.granularities),
+            "selection_tags": sorted(capability.selection_tags),
+            "regulator_types": sorted(capability.regulator_types),
+            "method_premises": list(algorithmic_assumptions_for(capability.selection_tags)),
+            "mathematical_interpretation": list(method_philosophies_for(capability.selection_tags)),
+            "required_inputs": list(getattr(spec, "required_inputs", definition.required_inputs)),
+            "guidance_notes": list(capability.guidance_notes),
+            "boundary": capability.handoff_contract,
+        })
+    return facts
+
+
+def _recommend_from_preference(task, preference, candidate_facts, requested_outcome=None):
+    """Advisory only: reject added actions, invented method signals and false quotes."""
+    if preference is None:
+        return None
+    facts = {item["action"]: item for item in candidate_facts}
+    selected = facts.get(preference.action)
+    if selected is None or not set(preference.selection_tags) <= set(selected["selection_tags"]):
+        return None
+    if any(not _quote_grounded(task, span) for span in preference.text_spans):
+        return None
+    # Model prose may copy Chinese evidence into English explanations. Preserve
+    # original quotes only in supporting_spans; never crash deterministic UI.
+    rationale = preference.rationale
+    assumptions = list(preference.assumptions)
+    if _NON_ENGLISH.search(rationale):
+        rationale = "A conditional starting method based on its registered premises, inputs and output."
+    if any(_NON_ENGLISH.search(item) for item in assumptions):
+        assumptions = [
+            item for item in assumptions if not _NON_ENGLISH.search(item)
+        ] + ["Confirm that the biological scope and required inputs listed below match your study."]
+    roles = selected.get("regulator_types", [])
+    if roles and requested_outcome and not (set(requested_outcome.regulator_types) - {"unknown"}):
+        labels = {"tf": "transcription factors", "mirna": "miRNA regulators"}
+        assumptions.insert(0, "This starting choice assumes a regulator scope of "
+                           + ", ".join(labels.get(role, role) for role in roles)
+                           + "; confirm this scope before analysis.")
+    return AdvisoryRecommendation(
+        action=preference.action, rationale=rationale,
+        supporting_spans=preference.text_spans, assumptions=assumptions[:4],
+    )
+
+
+def _validated_capability_gap(task, gap, candidate_facts):
+    if gap is None or not candidate_facts:
+        return None
+    registered = set().union(*(item.selection_tags for item in OUTPUT_CAPABILITIES.values()))
+    required = set(gap.selection_tags)
+    if not required <= registered or any(
+        required <= set(item["selection_tags"]) for item in candidate_facts
+    ) or any(not _quote_grounded(task, span) for span in gap.text_spans):
+        return None
+    if _NON_ENGLISH.search(gap.rationale):
+        gap = gap.model_copy(update={"rationale":
+            "No qualified registered workflow declares the requested combination of method signals."})
+    return gap
+
+
+def _condition_schema(options):
+    """Constrain extraction to offered study facts, including an empty offer."""
+    offered_claim = create_model(
+        "OfferedConditionClaim", __base__=ConditionClaim,
+        condition=(Literal[tuple(option.condition for option in options)], ...),
+    ) if options else ConditionClaim
+    return create_model(
+        "MethodComparisonReview", __config__=ConfigDict(extra="forbid"),
+        requested_philosophy=(list[str], Field(default_factory=list, max_length=8, description=(
+            "Registered method signals the user REQUIRES, before picking candidates. "
+            "Probabilistic quantification of uncertainty is bayesian, even for motif priors. "
+            "Do not restrict requirements to tags present in candidate methods. "
+            "Use [] when no mathematical philosophy is required."
+        ))),
+        requirement_quote=(str | None, Field(default=None, max_length=300, description=(
+            "Exact user quote requiring that philosophy; null if none is required."
+        ))),
+        capability_gap=(MethodCapabilityGap | None, Field(default=None, description=(
+            "Missing required mathematical philosophy. Regulatory message passing/optimization "
+            "cannot quantify Bayesian motif-prior reliability; report that gap if requested."
+        ))),
+        preference=(MethodPreference | None, Field(default=None, description=(
+            "One best qualified starting method with English rationale and conditional assumptions. "
+            "Null when the required philosophy is unavailable."
+        ))),
+        claims=(list[offered_claim], Field(default_factory=list, max_length=6 if options else 0)),
+    )
+
+
 def invoke_condition_recommender(
     context: _GraphContext,
     state: AgentState,
@@ -229,21 +349,23 @@ def invoke_condition_recommender(
     llm = getattr(context, "selection_condition_llm", None)
     method_tie = is_method_tie(decision)
     divergent = not method_tie and is_divergent_reading_tie(decision)
+    same_subject = _same_subject_choice(decision)
     if (
         llm is None
-        or getattr(context, "semantic_claims", False)
-        or not (method_tie or divergent)
-        or _beginner_group_guidance_applies(user_task, decision)
+        or not (method_tie or divergent or same_subject)
     ):
         return decision, usage, budget_warnings
     candidates = list(decision.hypothesis_actions)
     options = condition_options(candidates)
-    if not options:
+    candidate_facts = _candidate_facts(candidates, context)
+    if not options and not candidate_facts:
         return decision, usage, budget_warnings
     messages = build_selection_condition_messages(
         user_task, [(option.condition, option.label) for option in options],
+        candidate_facts,
     )
-    input_text = _serialized_structured_input(messages, SelectionConditionClaims)
+    schema = _condition_schema(options)
+    input_text = _serialized_structured_input(messages, schema)
     semantic_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
         context, semantic_state, role="selection_conditions",
@@ -254,7 +376,7 @@ def invoke_condition_recommender(
         usage.budget_exhausted = True
         return decision, usage, budget_warnings
     # Divergent readings keep their own question (Log 188) when nothing is stated.
-    fallback = decision if divergent else decision.model_copy(update={
+    fallback = decision if not method_tie or not options else decision.model_copy(update={
         "clarification_question": separating_question(options, candidates),
     })
     started_ns = time.monotonic_ns()
@@ -269,15 +391,57 @@ def invoke_condition_recommender(
             "offered_conditions": [option.condition for option in options],
         })
         adapter = llm.with_structured_output(
-            SelectionConditionClaims, method="function_calling", include_raw=True,
+            schema, method="function_calling", include_raw=True,
         )
         payload, raw = semantic_payload(adapter.invoke(messages))
-        claims = SelectionConditionClaims.model_validate(payload)
+        if isinstance(payload, dict):
+            # Some providers echo an unused empty top-level field from a nested
+            # schema. It adds no claim. Keep nonempty unknown fields forbidden.
+            payload = {
+                key: value for key, value in payload.items()
+                if key in schema.model_fields or value not in (None, "", [], {})
+            }
+        review = schema.model_validate(payload)
+        claims = SelectionConditionClaims.model_validate(review.model_dump(exclude={
+            "requested_philosophy", "requirement_quote",
+        }))
         output_text = claims.model_dump_json()
         call_status = "success"
+        required_gap = None
+        if review.requested_philosophy and review.requirement_quote:
+            required_gap = MethodCapabilityGap(
+                selection_tags=review.requested_philosophy,
+                text_spans=[review.requirement_quote],
+                rationale="No qualified registered workflow declares the requested mathematical philosophy for this scientific result.",
+            )
+        gap = (_validated_capability_gap(user_task, required_gap, candidate_facts)
+               or _validated_capability_gap(user_task, claims.capability_gap, candidate_facts))
+        if gap is not None:
+            record_event(context, state, "routing.method_capability_gap", "classify", gap.model_dump())
+            return decision.model_copy(update={
+                "advisory_capability_gap": gap,
+                "clarification_question": "Would you accept a different modeling philosophy among these related methods, or do you need the unavailable method?",
+            }), usage, budget_warnings
         recommendation, rejected = recommend_from_claims(
             user_task, claims, options, candidates,
         )
+        if recommendation is not None and claims.preference is not None:
+            explained = _recommend_from_preference(
+                user_task, claims.preference, candidate_facts, decision.requested_outcome,
+            )
+            if explained is not None and explained.action == recommendation.action:
+                # The quoted condition chooses the method. A separately grounded
+                # model explanation may explain *why* it addresses this question,
+                # but cannot change that choice or authorize execution.
+                recommendation = recommendation.model_copy(update={
+                    "rationale": explained.rationale,
+                    "assumptions": explained.assumptions,
+                    "supporting_spans": explained.supporting_spans,
+                })
+        if recommendation is None and not rejected:
+            recommendation = _recommend_from_preference(
+                user_task, claims.preference, candidate_facts, decision.requested_outcome,
+            )
         if recommendation is None:
             record_event(context, state, "routing.selection_conditions_unresolved", "classify", {
                 "claims": [item.model_dump() for item in claims.claims],
@@ -288,6 +452,8 @@ def invoke_condition_recommender(
         record_event(context, state, "routing.selection_conditions_recommended", "classify", {
             "recommended_action": recommendation.action,
             "conditions": [item.model_dump() for item in recommendation.conditions],
+            "rationale": recommendation.rationale,
+            "assumptions": recommendation.assumptions,
             "rejected": rejected,
             "candidate_actions": candidates,
         })

@@ -190,9 +190,14 @@ def _stated_count_note(decision, task: str, user_data: list[str]) -> str | None:
     stated = _STATED_COUNT.search(task or "")
     if stated is None or SELECTION_AXES["cohort_size"]["question"] not in question:
         return None
-    user_data.append(stated.group().strip())
+    excerpt = stated.group().strip()
+    if excerpt.isascii():
+        user_data.append(excerpt)
+        lead = f'You mentioned "{user_data_token(len(user_data) - 1)}".'
+    else:
+        lead = "You mentioned a sample count."
     return (
-        f'You mentioned "{user_data_token(len(user_data) - 1)}". Whether that counts as a '
+        lead + " Whether that counts as a "
         "handful of samples or as dozens or more is your call for this study design; "
         "I do not map a sample count to these categories myself."
     )

@@ -16,6 +16,7 @@ from .request_integrity import (
     input_mentions,
     regulatory_role_mentions,
 )
+from .guidance_subject import SCIENTIFIC_GUIDANCE_INSTRUCTIONS
 
 #: Issue codes whose repair needs a target value, not only a better quote. A
 #: quote-only rejection (`ungrounded_evidence`, `missing_evidence`) validated
@@ -159,46 +160,38 @@ def claim_messages(
         f"- {name}: {rule.description}"
         for name, rule in sorted(ARTIFACT_SEMANTICS.items())
     )
-    prompt = f"""Classify the scientific result by meaning, including negation, history,
-hypotheticals, synonyms, and paraphrases. Never choose by tool keyword or alter the
-result to fit a tool. The harness matches workflows and controls execution.
+    prompt = f"""Classify by meaning, respecting negation, history and hypotheticals.
+Never fit results to tools. The harness controls execution.
 
-Return exactly SemanticClaims. Each outcome_hypotheses item is
-{{outcome, confidence, assumptions}}. Keep all scientific fields inside outcome; never
-put operation/artifact_type/granularity beside it. Keep incompatible meanings as 1-3
-hypotheses.
+Return SemanticClaims with 1-3 incompatible hypotheses, each
+{{outcome, confidence, assumptions}}; scientific fields inside outcome.
 
-request_mode: guidance for method/explanation/plan/hypothetical questions; execute only
-for analysis requested now; otherwise unknown. A tool question still needs its intended
-scientific outcome.
+request_mode: guidance for questions/plans; execute only for requested analysis; otherwise unknown.
 
-Every claim requires support and is {{value, support}}; lists contain one claim per value.
-Support never contains another value/dimension.
-- explicit: source=explicit; text_span is an exact request quote; rationale explains it.
+{SCIENTIFIC_GUIDANCE_INSTRUCTIONS}
+
+Every claim requires support: {{value, support}}; lists contain one claim per value.
+- explicit: source=explicit; text_span is an exact request quote.
 - inferred: source=inferred; rationale explains entailment; omit text_span or set it to null; never use an empty string.
-Unknown/not_applicable also need inferred support. Never invent/translate quotes or
-guess. unresolved_dimensions contains only material unknowns.
+Unknown/not_applicable need inferred support; never invent/translate quotes.
+unresolved_dimensions: material unknowns.
 
 Dimensions:
-- operation: acquire retrieves, prepare changes representation, validate checks, infer
-  constructs latent structure, analyze derives properties, explain gives concepts.
-- artifact_type is the terminal deliverable, not an intermediate.
-- input_artifacts are current inputs only; exclude historical/hypothetical/future
-  intermediates. Empty means unassessed.
-- sample_specific is a separately inferred result per sample; aggregate is one cohort
-  result. Cohort distances/clusters stay aggregate despite per-patient rows.
-- entity_types are result objects, not all upstream entities; a sample index is not a
-  node. regulator_types/target_types apply only to regulatory_network. Leave unstated
-  roles empty unless entailed.
+- operation: acquire retrieves, prepare transforms, validate checks, infer constructs
+  latent structure, analyze derives properties, explain gives concepts.
+- artifact_type: terminal deliverable, not an intermediate.
+- input_artifacts: current inputs only, not history or future intermediates; empty=unassessed.
+- sample_specific: separately inferred per sample; cohort distances/clusters are aggregate.
+- entity_types: output objects; sample indexing is not a node. Regulatory roles apply
+  only to regulatory outputs; leave unstated roles empty unless entailed.
 Artifact literals:
 {ontology}
 
-Optional selection_tags are scientific constraints, never tool names. Allowed:
+selection_tags are scientific constraints, not tools. Allowed:
 {", ".join(sorted(selection_tags)) or "(none)"}.
 
-For no scientific result, use inferred-support claims for operation=unknown,
-artifact_type=unknown, granularity=not_applicable, plus empty optional lists. Never add
-workflow choice/execution authority. Use English except exact text_span quotes.
+For no scientific subject: inferred-support operation=unknown, artifact_type=unknown,
+granularity=not_applicable and empty lists. Use English except text_span quotes.
 """
     if proposal is not None:
         prompt += (

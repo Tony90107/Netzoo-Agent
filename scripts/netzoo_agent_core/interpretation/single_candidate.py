@@ -72,7 +72,7 @@ def single_candidate_question(decision) -> str | None:
     name = ACTION_DEFINITIONS[actions[0]].workflow
     outcomes = [item.outcome for item in decision.outcome_hypotheses]
     reasons = []
-    read_as = sorted({item.operation for item in outcomes} - {"unknown", capability.operation})
+    read_as = sorted({item.operation for item in outcomes} - {"unknown", "explain", capability.operation})
     if read_as:
         asks = " or ".join(_REQUESTED.get(item, item) for item in read_as)
         reasons.append(f"it {_does(capability)}, while your request reads as asking to {asks}")

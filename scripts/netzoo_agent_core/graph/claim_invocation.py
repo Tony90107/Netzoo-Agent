@@ -3,7 +3,7 @@
 import re
 import time
 from workflow_registry import OUTPUT_CAPABILITIES
-from ..contracts import _trace
+from ..contracts import _trace, SystemMessage, HumanMessage
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
 from ..contracts.repair_scope import FIELD_BY_DIMENSION, permitted_fields
 from ..interpretation.claim_prompt import claim_messages
@@ -18,6 +18,10 @@ from ..interpretation.outcome_validation import (
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.request_integrity import patient_clustering_goal
 from ..interpretation.semantic_repair import semantic_payload
+from ..interpretation.guidance_subject import (
+    GuidanceSubjectReview, guidance_subject_review_issues,
+    restore_guidance_subject, subject_review_prompt,
+)
 from ..interpretation.stated_field_restoration import restore_stated_fields
 from ..llm import append_llm_usage
 from ..routing.capability import reconcile_request_mode
@@ -26,6 +30,7 @@ from ..routing.outcome_matching import match_semantic_request
 from .context import preflight_budget, record_event
 from .discriminator import _recover_explicit_selection_tag
 from .semantic_review_validation import normalize_advice_operation_evidence
+from .semantic_shape import nest_unresolved_dimensions
 
 
 class _NoOpClaimRepair(ValueError):
@@ -86,7 +91,13 @@ def invoke_claim_interpreter(
         for tag in spec.output_capability.selection_tags
     }
     for attempt in range(2):
-        patching = attempt == 1 and isinstance(proposal, SemanticClaims)
+        compact_subject = (
+            attempt == 1 and valid is not None
+            and all(item.outcome.artifact_type == "unknown" for item in valid.outcome_hypotheses)
+            and any("unresolved_guidance_subject:" in issue for issue in issues)
+            and getattr(context, "selection_condition_llm", None) is not None
+        )
+        patching = attempt == 1 and isinstance(proposal, SemanticClaims) and not compact_subject
         schema = SemanticClaimRepair if patching else SemanticClaims
         adapter = (
             context.semantic_patcher
@@ -101,6 +112,13 @@ def invoke_claim_interpreter(
         messages = claim_messages(
             user_task, proposal, issues, patching=patching, selection_tags=tags
         )
+        if compact_subject:
+            schema = GuidanceSubjectReview
+            adapter = context.selection_condition_llm.with_structured_output(
+                schema, method="function_calling", include_raw=True, strict=True,
+            )
+            messages = [SystemMessage(content=subject_review_prompt(schema.__name__)),
+                        HumanMessage(content=user_task)]
         input_text = serialize(messages, schema)
         budget, warnings = preflight_budget(
             context,
@@ -129,6 +147,9 @@ def invoke_claim_interpreter(
         )
         try:
             payload, raw = semantic_payload(adapter.invoke(messages))
+            payload, nesting = nest_unresolved_dimensions(payload)
+            if nesting:
+                record_event(context, state, "routing.semantic_shape_normalized", "classify", {"attempt": attempt + 1, "moved": nesting})
             payload, advice_normalizations = normalize_advice_operation_evidence(
                 payload,
                 user_task,
@@ -213,9 +234,15 @@ def invoke_claim_interpreter(
                 claims = decoded
             if attempt == 0:
                 proposal = claims
-            interpretation = claims.to_internal()
+            interpretation = (
+                restore_guidance_subject(valid, decoded)
+                if compact_subject else claims.to_internal()
+            )
+            if compact_subject:
+                record_event(context, state, "routing.guidance_subject_reviewed", "classify", decoded.model_dump())
             interpretation, restorations = restore_stated_fields(
                 user_task, interpretation,
+                align_artifact_constraints=compact_subject,
                 align_artifact_constraints_for=artifact_alignment_targets,
                 restore_explicit_scalar_evidence=True,
             )
@@ -426,6 +453,13 @@ def invoke_claim_interpreter(
                     },
                 )
         valid = interpretation
+        subject_issues = guidance_subject_review_issues(interpretation)
+        if attempt == 0 and subject_issues:
+            issues = subject_issues
+            record_event(context, state, "routing.guidance_subject_review_requested", "classify", {
+                "issues": list(subject_issues), "attempt": 1, "contract": "claims",
+            })
+            continue
         hypotheses = interpretation.outcome_hypotheses
         guided_complete = False
         if (

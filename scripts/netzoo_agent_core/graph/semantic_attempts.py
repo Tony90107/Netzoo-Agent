@@ -31,6 +31,10 @@ from ..interpretation.semantic_patch import (
 )
 from ..interpretation.semantic_repair import semantic_payload
 from ..interpretation.unverified_evidence import with_reduced_confidence
+from ..interpretation.guidance_subject import (
+    GuidanceSubjectReview, guidance_subject_review_issues,
+    restore_guidance_subject, subject_review_prompt,
+)
 from ..llm import (
     append_llm_usage,
     build_semantic_interpreter_messages,
@@ -53,6 +57,7 @@ from .discriminator import (
 )
 from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
 from .first_pass_salvage import validate_first_pass
+from .semantic_shape import nest_unresolved_dimensions
 
 __all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
 
@@ -103,11 +108,17 @@ def invoke_semantic_interpreter(
     partial_first: SemanticInterpretation | None = None
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
+        subject_recovery = (
+            attempt == 1 and validated is not None and isinstance(proposal, SemanticInterpretation)
+            and all(item.outcome.artifact_type == "unknown" for item in proposal.outcome_hypotheses)
+            and any("unresolved_guidance_subject:" in issue for issue in validation_issues)
+        )
         # A patch can only be merged onto a structurally valid proposal. When the
         # first pass did not parse, there is nothing to carry forward and the
         # review still owns the whole structure.
         patching = (
             attempt == 1
+            and not subject_recovery
             and getattr(context, "semantic_patcher", None) is not None
             and isinstance(proposal, SemanticInterpretation)
             and not any(
@@ -153,6 +164,18 @@ def invoke_semantic_interpreter(
             else SemanticPatch if patching
             else SemanticReview
         )
+        compact_subject = subject_recovery and getattr(context, "selection_condition_llm", None) is not None
+        if compact_subject:
+            schema_model = GuidanceSubjectReview
+            adapter = context.selection_condition_llm.with_structured_output(
+                GuidanceSubjectReview, method="function_calling", include_raw=True, strict=True,
+            )
+        if subject_recovery:
+            messages[0] = messages[0].model_copy(update={"content": subject_review_prompt(schema_model.__name__)})
+            if subject_recovery:
+                # There is no grounded scientific subject to carry forward. An
+                # independent reading avoids anchoring on an empty draft.
+                messages = messages[:2]
         input_text = _serialized_structured_input(messages, schema_model)
         semantic_state = dict(state)
         semantic_state["token_usage"] = usage.model_dump()
@@ -187,6 +210,9 @@ def invoke_semantic_interpreter(
             )
             structured = adapter.invoke(messages)
             payload, raw = semantic_payload(structured)
+            payload, nesting = nest_unresolved_dimensions(payload)
+            if nesting:
+                record_event(context, state, "routing.semantic_shape_normalized", "classify", {"attempt": attempt + 1, "moved": nesting})
             if attempt == 0:
                 proposal = payload
             patch_evidence_normalizations = []
@@ -214,7 +240,12 @@ def invoke_semantic_interpreter(
             patch, ignored_instructions = (
                 _as_semantic_patch(payload) if patching else (None, [])
             )
-            if attempt == 0:
+            if compact_subject:
+                review = GuidanceSubjectReview.model_validate(payload)
+                output_text = review.model_dump_json()
+                interpretation = restore_guidance_subject(proposal, review)
+                record_event(context, state, "routing.guidance_subject_reviewed", "classify", review.model_dump())
+            elif attempt == 0:
                 # Logs 213, 215: faulty evidence entries or root-level
                 # assumptions alone do not discard the draft.
                 interpretation, salvage = validate_first_pass(payload)
@@ -228,7 +259,8 @@ def invoke_semantic_interpreter(
                 licensed = permitted_fields(validation_issues)
                 interpretation, retired_evidence = apply_semantic_patch(
                     proposal, patch, permitted_fields=licensed, user_task=user_task,
-                    hold_validated=validated is not None,  # a tie review (Log 210)
+                    hold_validated=(validated is not None
+                                    and not guidance_subject_review_issues(validated)),
                 )
                 patched_index = patched_hypothesis_index(proposal, patch)
                 record_event(
@@ -288,6 +320,7 @@ def invoke_semantic_interpreter(
                     isinstance(proposal, SemanticInterpretation)
                     and len(proposal.outcome_hypotheses) > 1
                     and validated is not None
+                    and not subject_recovery
                 ):
                     # The call happened and is billed, so it is accounted for
                     # before returning. An early return that skipped this would
@@ -436,7 +469,7 @@ def invoke_semantic_interpreter(
         interpretation, restorations = restore_stated_fields(
             user_task,
             interpretation,
-            align_artifact_constraints=patch is not None,
+            align_artifact_constraints=patch is not None or compact_subject,
             restore_explicit_scalar_evidence=True,
         )
         if patch is not None:
@@ -545,7 +578,7 @@ def invoke_semantic_interpreter(
                 first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
                 partial_first = valid_first_pass_subset(user_task, interpretation)
             if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
-                validation_issues = validation.issues
+                validation_issues = (*validation.issues, *guidance_subject_review_issues(interpretation))
                 record_event(
                     context,
                     state,
@@ -625,6 +658,13 @@ def invoke_semantic_interpreter(
         )
         validated = interpretation
         if attempt == 0:
+            subject_issues = guidance_subject_review_issues(interpretation)
+            if subject_issues:
+                validation_issues = subject_issues
+                record_event(context, state, "routing.guidance_subject_review_requested", "classify", {
+                    "issues": list(subject_issues), "attempt": 1,
+                })
+                continue
             preliminary_match = match_semantic_request(
                 user_task,
                 interpretation.outcome_hypotheses,
