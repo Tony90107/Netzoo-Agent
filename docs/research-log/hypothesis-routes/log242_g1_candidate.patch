@@ -1,0 +1,408 @@
+diff --git a/scripts/evaluate_routing.py b/scripts/evaluate_routing.py
+index 685ec4c..a709586 100644
+--- a/scripts/evaluate_routing.py
++++ b/scripts/evaluate_routing.py
+@@ -685,18 +685,25 @@ _ADVISORY_CALL_ROLES = {"selection_conditions", "request_concerns"}
+ # sum, so the two cannot drift apart again (Log 217).
+ ROUTING_CALL_LIMIT = 4
+ ADVISORY_CALL_LIMIT = 1
++#: Log 242: one repair per competing reading the patch left invalid, bounded on
++#: its own like the advisory call so the routing bound keeps its meaning.
++_SIBLING_REPAIR_ROLE = "semantic_sibling_repair"
++SIBLING_REPAIR_CALL_LIMIT = 2
+ 
+ 
+ def worst_case_calls(case_count: int, repeat: int, *, repair_replay: bool = False) -> int:
+     """The most provider calls a run can make without a trial breaking the scored bounds.
+ 
+     Up to four routing calls (interpreter, reviewer or patch, discriminator,
+-    intent) and one advisory call (experimental conditions or request
+-    concerns) per trial. A repair replay's
++    intent), two sibling repairs (Log 242) and one advisory call (experimental
++    conditions or request concerns) per trial. A repair replay's
+     injected first pass is not a provider call. Retries are disabled in the
+     production provider, so logical calls are HTTP requests.
+     """
+-    per_trial = ROUTING_CALL_LIMIT + ADVISORY_CALL_LIMIT - (1 if repair_replay else 0)
++    per_trial = (
++        ROUTING_CALL_LIMIT + SIBLING_REPAIR_CALL_LIMIT + ADVISORY_CALL_LIMIT
++        - (1 if repair_replay else 0)
++    )
+     return case_count * repeat * per_trial
+ 
+ 
+@@ -712,8 +719,11 @@ def _call_limit_errors(roles: list[str]) -> list[str]:
+     safety failure -- 99 of 99 flagged recorded rows, all with that exact shape.
+     """
+     errors = []
+-    if len([role for role in roles if role not in _ADVISORY_CALL_ROLES]) > ROUTING_CALL_LIMIT:
++    bounded_apart = _ADVISORY_CALL_ROLES | {_SIBLING_REPAIR_ROLE}
++    if len([role for role in roles if role not in bounded_apart]) > ROUTING_CALL_LIMIT:
+         errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
++    if roles.count(_SIBLING_REPAIR_ROLE) > SIBLING_REPAIR_CALL_LIMIT:
++        errors.append("call_limit: more than two sibling repairs")
+     if roles.count("selection_conditions") > ADVISORY_CALL_LIMIT:
+         errors.append("call_limit: more than one experimental-condition call")
+     elif len([role for role in roles if role in _ADVISORY_CALL_ROLES]) > ADVISORY_CALL_LIMIT:
+diff --git a/scripts/netzoo_agent_core/graph/partial_validity.py b/scripts/netzoo_agent_core/graph/partial_validity.py
+index 7175837..2a1269c 100644
+--- a/scripts/netzoo_agent_core/graph/partial_validity.py
++++ b/scripts/netzoo_agent_core/graph/partial_validity.py
+@@ -22,13 +22,23 @@ from .context import record_event
+ __all__ = ["keep_valid_hypotheses", "retain_valid_first_pass", "valid_first_pass_subset"]
+ 
+ 
+-def _valid_subset(user_task: str, interpretation: SemanticInterpretation):
+-    """The hypotheses that pass on their own, and those that do not."""
++def _valid_subset(user_task: str, interpretation: SemanticInterpretation, *, with_siblings: bool = False):
++    """The hypotheses that pass on their own, and those that do not.
++
++    `with_siblings` judges each against the other readings' inputs (Log 242);
++    the caller revalidates the kept set, where only kept readings count.
++    """
+     kept, dropped = [], []
+-    for index, hypothesis in enumerate(interpretation.outcome_hypotheses):
++    hypotheses = interpretation.outcome_hypotheses
++    for index, hypothesis in enumerate(hypotheses):
++        siblings = frozenset().union(*(
++            other.outcome.input_artifacts for position, other in enumerate(hypotheses)
++            if position != index
++        )) if with_siblings else frozenset()
+         # The validator completes outcomes in place; judge a copy.
+         alone = validate_outcome_hypotheses(
+             user_task, [hypothesis.model_copy(deep=True)], interpretation.request_mode,
++            sibling_inputs=siblings,
+         )
+         if alone.valid:
+             kept.append(hypothesis)
+@@ -52,16 +62,17 @@ def valid_first_pass_subset(
+     """
+     if len(interpretation.outcome_hypotheses) < 2:
+         return None
+-    kept, dropped = _valid_subset(user_task, interpretation)
+-    if not kept or not dropped:
+-        return None
+-    reduced = interpretation.model_copy(update={"outcome_hypotheses": kept}, deep=True)
+-    if not validate_outcome_hypotheses(
+-        user_task, [h.model_copy(deep=True) for h in reduced.outcome_hypotheses],
+-        reduced.request_mode,
+-    ).valid:
+-        return None
+-    return reduced
++    for with_siblings in (True, False):
++        kept, dropped = _valid_subset(user_task, interpretation, with_siblings=with_siblings)
++        if not kept or not dropped:
++            continue
++        reduced = interpretation.model_copy(update={"outcome_hypotheses": kept}, deep=True)
++        if validate_outcome_hypotheses(
++            user_task, [h.model_copy(deep=True) for h in reduced.outcome_hypotheses],
++            reduced.request_mode,
++        ).valid:
++            return reduced
++    return None
+ 
+ 
+ def retain_valid_first_pass(context, state, validated, partial_first, attempt: int):
+@@ -85,16 +96,20 @@ def keep_valid_hypotheses(
+     hypotheses = interpretation.outcome_hypotheses
+     if validation.valid or len(hypotheses) < 2:
+         return interpretation, validation
+-    kept, dropped = _valid_subset(user_task, interpretation)
+-    if not kept or not dropped:
+-        return interpretation, validation
+-    reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
+-    revalidated = validate_outcome_hypotheses(
+-        user_task, reduced.outcome_hypotheses, reduced.request_mode,
+-    )
+-    if not revalidated.valid:
+-        return interpretation, validation
+-    record_event(context, state, "routing.invalid_hypotheses_dropped", "classify", {
+-        "attempt": attempt + 1, "kept": len(kept), "dropped": dropped,
+-    })
+-    return reduced, revalidated
++    # Judged against the other readings' inputs first (Log 242); if what that
++    # keeps does not stand on its own, the reading-by-reading judgement decides.
++    for with_siblings in (True, False):
++        kept, dropped = _valid_subset(user_task, interpretation, with_siblings=with_siblings)
++        if not kept or not dropped:
++            continue
++        reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
++        revalidated = validate_outcome_hypotheses(
++            user_task, reduced.outcome_hypotheses, reduced.request_mode,
++        )
++        if not revalidated.valid:
++            continue
++        record_event(context, state, "routing.invalid_hypotheses_dropped", "classify", {
++            "attempt": attempt + 1, "kept": len(kept), "dropped": dropped,
++        })
++        return reduced, revalidated
++    return interpretation, validation
+diff --git a/scripts/netzoo_agent_core/graph/semantic_attempts.py b/scripts/netzoo_agent_core/graph/semantic_attempts.py
+index 4fafcd9..9379cca 100644
+--- a/scripts/netzoo_agent_core/graph/semantic_attempts.py
++++ b/scripts/netzoo_agent_core/graph/semantic_attempts.py
+@@ -51,6 +51,7 @@ from .semantic_review_validation import (
+ )
+ from .structured_calls import _serialized_structured_input, _validation_issue_types
+ from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
++from .sibling_repair import repair_sibling_hypotheses
+ from .discriminator import (
+     discriminator_context as _discriminator_context,
+     _fill_inferred_role_evidence,
+@@ -538,6 +539,12 @@ def invoke_semantic_interpreter(
+             interpretation.outcome_hypotheses,
+             interpretation.request_mode,
+         )
++        if patch is not None:
++            interpretation, validation, usage, budget_warnings = repair_sibling_hypotheses(
++                context, state, user_task, interpretation, validation,
++                patched_index=patched_index, usage=usage, budget_warnings=budget_warnings,
++                discriminator_context=discriminator_context,
++            )
+         if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
+             interpretation, validation = keep_valid_hypotheses(
+                 context, state, user_task, interpretation, validation, attempt)
+diff --git a/scripts/netzoo_agent_core/interpretation/outcome_validation.py b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+index a7ae218..bf5407c 100644
+--- a/scripts/netzoo_agent_core/interpretation/outcome_validation.py
++++ b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+@@ -362,8 +362,14 @@ def validate_outcome_hypotheses(
+     user_task: str,
+     hypotheses: Sequence[OutcomeHypothesis],
+     request_mode: str = "unknown",
++    *,
++    sibling_inputs: frozenset[str] = frozenset(),
+ ) -> OutcomeValidation:
+-    """Validate evidence without selecting or naming a workflow."""
++    """Validate evidence without selecting or naming a workflow.
++
++    `sibling_inputs` are the inputs of competing hypotheses judged elsewhere,
++    for a caller that validates one hypothesis of several on its own.
++    """
+     if not hypotheses:
+         return OutcomeValidation(False, ("missing_hypotheses",))
+ 
+@@ -376,11 +382,24 @@ def validate_outcome_hypotheses(
+         # from its own grounded evidence has to reach them too.
+         reconcile_outcome_with_grounded_evidence(user_task, hypothesis)
+     for index, hypothesis in enumerate(hypotheses):
++        # Log 242: competing readings may each use part of the stated data
++        # ("subtype from the mutations, or from the expression"). A current
++        # input is required of the interpretation, not of every reading, so it
++        # is missing only when no competing reading carries it either. Nothing
++        # is filled in: an input every reading omits is still reported on each.
++        covered = sibling_inputs.union(*(
++            other.outcome.input_artifacts
++            for position, other in enumerate(hypotheses) if position != index
++        ))
+         # `prefixed` rather than an f-string: plain formatting would return a
+         # bare `str` and drop the field scope each rule declared.
+         issues.extend(
+             issue.prefixed(f"hypothesis[{index}].")
+             for issue in request_integrity_issues(user_task, hypothesis.outcome)
++            if not (
++                issue.startswith("missing_current_input:")
++                and issue.split(":", 1)[1] in covered
++            )
+         )
+         issues.extend(
+             issue.prefixed(f"hypothesis[{index}].")
+diff --git a/scripts/netzoo_agent_core/graph/sibling_repair.py b/scripts/netzoo_agent_core/graph/sibling_repair.py
+new file mode 100644
+index 0000000..8d10f6a
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/sibling_repair.py
+@@ -0,0 +1,193 @@
++"""Repair each competing reading the patch left invalid (Log 242).
++
++The patch repairs the one hypothesis it adjudicates as primary and keeps the
++others as the first pass wrote them. A request that states two scientific
++hypotheses therefore lost the second one in 8 of 18 traced trials (Log 241):
++it still carried first-pass issues nothing had asked about, and
++`keep_valid_hypotheses` dropped it without a word in the reply.
++
++Each such reading gets one repair of its own, in the patch's strict schema with
++`hypothesis_index` fixed to that reading. The merge, restoration and
++validation are the patch's own; nothing is relaxed or filled in.
++"""
++
++from __future__ import annotations
++
++import time
++from typing import ClassVar, Literal
++
++from pydantic import Field, create_model
++
++from ..contracts.outcomes import SemanticInterpretation, SemanticPatch
++from ..contracts.repair_scope import permitted_fields
++from ..interpretation.outcome_validation import OutcomeValidation, validate_outcome_hypotheses
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_patch import apply_semantic_patch
++from ..interpretation.semantic_repair import semantic_payload
++from ..interpretation.stated_field_restoration import restore_stated_fields
++from ..llm import append_llm_usage, build_semantic_patch_messages
++from .context import preflight_budget, record_event
++from .discriminator import _fill_inferred_role_evidence
++from .partial_validity import _valid_subset
++from .semantic_review_validation import (
++    _as_semantic_patch,
++    normalize_advice_operation_evidence,
++    normalize_role_entailed_artifact_evidence,
++)
++from .structured_calls import _serialized_structured_input
++
++__all__ = ["SIBLING_REPAIR_LIMIT", "SIBLING_REPAIR_ROLE", "repair_sibling_hypotheses", "sibling_patch_schema"]
++
++SIBLING_REPAIR_ROLE = "semantic_sibling_repair"
++# At most three hypotheses, one of which the patch already repaired.
++SIBLING_REPAIR_LIMIT = 2
++
++# The patch prompt's one sentence about choosing the index, and the sentence
++# describing the fixed index that replaces it. Nothing else in the prompt moves.
++_CHOOSE_INDEX = (
++    "Use hypothesis_index to pick the one first-pass hypothesis that states the "
++    "primary scientific outcome."
++)
++
++
++class _SiblingPatch(SemanticPatch):
++    target: ClassVar[int] = 0
++
++    @classmethod
++    def model_json_schema(cls, *args, **kwargs):
++        schema = super().model_json_schema(*args, **kwargs)
++        schema["properties"]["hypothesis_index"] = {
++            "type": "integer", "enum": [cls.target],
++            "description": "The first-pass hypothesis this repair is for; fixed.",
++        }
++        return schema
++
++
++def sibling_patch_schema(index: int) -> type[SemanticPatch]:
++    """`SemanticPatch` with `hypothesis_index` fixed to one reading."""
++    schema = create_model(
++        "SiblingSemanticPatch", __base__=_SiblingPatch,
++        hypothesis_index=(Literal[index], Field(default=index)),
++    )
++    schema.target = index
++    return schema
++
++
++def _messages(context, user_task, interpretation, index, issues, discriminator_context):
++    messages = build_semantic_patch_messages(
++        context.semantic_prompt, user_task, interpretation, issues, discriminator_context,
++    )
++    fixed = (
++        f"hypothesis_index is fixed to {index}: repair only that first-pass hypothesis; "
++        "the others are not part of this patch."
++    )
++    messages[0] = messages[0].model_copy(update={
++        "content": messages[0].content.replace(_CHOOSE_INDEX, fixed),
++    })
++    return messages
++
++
++def repair_sibling_hypotheses(
++    context,
++    state,
++    user_task: str,
++    interpretation: SemanticInterpretation,
++    validation: OutcomeValidation,
++    *,
++    patched_index: int | None,
++    usage,
++    budget_warnings: list[str],
++    discriminator_context: str = "",
++):
++    """Return the interpretation, its validation, usage and warnings after the repairs."""
++    llm = getattr(context, "selection_condition_llm", None)
++    hypotheses = interpretation.outcome_hypotheses
++    if validation.valid or patched_index is None or len(hypotheses) < 2 or llm is None:
++        return interpretation, validation, usage, budget_warnings
++    _, dropped = _valid_subset(user_task, interpretation, with_siblings=True)
++    targets = [item["hypothesis"] for item in dropped if item["hypothesis"] != patched_index]
++    for index in targets[:SIBLING_REPAIR_LIMIT]:
++        prefix = f"hypothesis[{index}]."
++        issues = tuple(issue for issue in validation.issues if issue.startswith(prefix))
++        if not issues:
++            continue
++        schema = sibling_patch_schema(index)
++        messages = _messages(context, user_task, interpretation, index, issues, discriminator_context)
++        input_text = _serialized_structured_input(messages, schema)
++        semantic_state = dict(state)
++        semantic_state["token_usage"] = usage.model_dump()
++        semantic_state["budget_warnings"] = budget_warnings
++        budget, budget_warnings = preflight_budget(
++            context, semantic_state, role=SIBLING_REPAIR_ROLE, model=context.semantic_model_name,
++            input_text=input_text, reserved_output_tokens=context.router_max_tokens,
++            allow_reserve=False,
++        )
++        if budget.status == "blocked":
++            break
++        started_ns = time.monotonic_ns()
++        raw, output_text, status = None, "", "failed"
++        try:
++            adapter = llm.with_structured_output(
++                schema, method="function_calling", include_raw=True, strict=True,
++            )
++            payload, raw = semantic_payload(adapter.invoke(messages))
++            payload, _ = normalize_role_entailed_artifact_evidence(payload, user_task)
++            payload, _ = normalize_advice_operation_evidence(
++                payload, user_task, proposal_request_mode=interpretation.request_mode,
++            )
++            patch, ignored = _as_semantic_patch(payload)
++            if patch is None or patch.hypothesis_index != index:
++                raise ValueError("sibling repair did not return a patch for its reading")
++            # Interpretation-level fields belong to the primary patch.
++            patch = patch.model_copy(update={"request_mode": None, "semantic_goal": None})
++            output_text = patch.model_dump_json()
++            merged, retired = apply_semantic_patch(
++                interpretation, patch, permitted_fields=permitted_fields(issues),
++                user_task=user_task,
++            )
++            merged, restorations = restore_stated_fields(
++                user_task, merged, align_artifact_constraints=True,
++                restore_explicit_scalar_evidence=True,
++            )
++            merged = _fill_inferred_role_evidence(merged)
++        except BaseException as error:
++            if _is_fatal_exception(error):
++                raise
++            record_event(context, state, "routing.sibling_hypothesis_repair_failed", "classify", {
++                "hypothesis": index, "error_type": type(error).__name__,
++            })
++        else:
++            status = "success"
++            interpretation = merged
++            alone = validate_outcome_hypotheses(
++                user_task, [merged.outcome_hypotheses[index].model_copy(deep=True)],
++                merged.request_mode,
++                sibling_inputs=frozenset().union(*(
++                    other.outcome.input_artifacts
++                    for position, other in enumerate(merged.outcome_hypotheses) if position != index
++                )),
++            )
++            record_event(context, state, "routing.sibling_hypothesis_repaired", "classify", {
++                "hypothesis": index,
++                "issues": list(issues),
++                "changed_fields": sorted(
++                    name for name, value in patch.outcome.model_dump().items() if value is not None
++                ),
++                "evidence_added": len(patch.evidence_additions),
++                "evidence_retired": retired,
++                "ignored_instructions": ignored,
++                "restored": restorations,
++                "valid_alone": alone.valid,
++                "remaining_issues": list(alone.issues),
++            })
++        usage = append_llm_usage(
++            usage, role=SIBLING_REPAIR_ROLE, model=context.semantic_model_name, response=raw,
++            input_text=input_text, output_text=output_text,
++            budget_tokens=context.task_token_budget,
++            duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++            status=status, price_catalog=context.price_catalog,
++        )
++    validation = validate_outcome_hypotheses(
++        user_task, interpretation.outcome_hypotheses, interpretation.request_mode,
++    )
++    return interpretation, validation, usage, budget_warnings

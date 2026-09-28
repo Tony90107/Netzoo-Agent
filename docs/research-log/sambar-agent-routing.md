@@ -13153,3 +13153,63 @@ case 10 說「this expression matrix, data/blind-tests/case-1/expression.tsv」�
 - 結論（三個獨立缺口）：(G1) 第二輪修補只涵蓋一個假設，且現行輸入檢查是逐一而非整體；(G2) 被丟掉或無對應工具的假設在回覆中消失，沒有任何說明；(G3) registry 沒有由表現量／個體網路分群病人的 guidance 組合。
   G1、G2 與套件無關；G3 只與分型題有關。修正方向等使用者決定。
 
+## Log 242｜事前宣告：G1——競爭假設的現行輸入改為整體檢查，並逐一補修其他假設
+
+日期／時區：2026-09-28，Asia/Taipei。使用者選擇 G1＋G2，G1(b) 選「逐一補修呼叫」。本 Log 只涵蓋 G1；G2 另行宣告。
+基線：`pytest` 2647 passed／35 skipped；legacy fingerprint `b9b01cd2db6f`、claims `348a144cd9b4`。
+
+**G1(a) 整體輸入檢查。** `validate_outcome_hypotheses` 對 ≥2 個假設時，假設 i 的 `missing_current_input:X` 若有另一個假設的 `input_artifacts` 含 X 就不報。
+所有假設都漏掉 X 時照舊報在每個假設上，所以單一假設的 `test_repeated_omission_of_explicit_current_input_cannot_pass` 不受影響，也不填任何值（不同於 Log 62／63 的 witness-only fill）。
+`_valid_subset` 單獨驗證時帶入其他假設的輸入；若縮減後的集合重驗失敗，退回原本的逐一判定。
+
+**G1(b) 逐一補修。** 最後一次嘗試是 patch、合併後仍無效、且有 ≥2 個假設時，對每個 `hypothesis_index` 以外、單獨驗證仍無效的假設 k，各做一次補修呼叫（最多 2 次）。
+- schema 是 `SemanticPatch` 的動態子類別 `SiblingSemanticPatch`，`hypothesis_index` 限定為 `Literal[k]`，strict=True；主 patch 的 schema 與 digest 不變。
+- 訊息沿用 `build_semantic_patch_messages`，只帶假設 k 的 issues；system prompt 只把「用 hypothesis_index 挑主要假設」那一句換成描述新形狀的「hypothesis_index 固定為 k」。主 patch 與第一輪的 prompt 不變。
+- 合併、restore、驗證全部沿用主 patch 的路徑，不放寬任何規則。
+- 新呼叫角色 `semantic_sibling_repair` 另設上限 2，不算進 `ROUTING_CALL_LIMIT`；`worst_case_calls` 每次試驗由 5 變 7。
+
+**預期的釘住測試修改（事先列出）：** `tests/test_call_limit.py` 中與 `worst_case_calls` 常數有關的斷言（5→7、585→819）。其他任何既有測試失敗，都視為 W-a 觸發。
+
+**撤回條件：**
+- W-a：除上列之外有既有測試失敗 → 停止並記錄，不改那些測試。
+- W-b（結構計數，`hypothesis-routes` 語料 ×3）：`routing.invalid_hypotheses_dropped` 由 8／18 降到 ≤3／18，否則撤回 G1(b)。
+- W-c：`semantic_interpreter_failed` 不得超過基線（1／18）＋1。
+- W-d：blind-en ×3 以 `score_blind.py` 評分，0 wrong、0 authority leak、OK ≥27／30（Log 237 為 30／30；3 以內是雜訊）。
+- W-e：legacy／claims fingerprint 不變。
+
+## Log 243｜Log 242 的 W-a 觸發：另有 3 個測試釘住每次試驗的呼叫上限
+
+日期／時區：2026-09-29，Asia/Taipei。
+G1(a)（整體輸入檢查）單獨套用時 2647 passed，沒有任何測試改變。
+加上 G1(b)（`graph/sibling_repair.py`、`evaluate_routing` 的 `semantic_sibling_repair` 上限 2）後 6 failed：
+- 已事先列出：`test_call_limit.py` 的 `test_the_pre_run_cap_is_the_scored_bound`、`test_a_run_is_admitted_only_under_its_worst_case[args1-5-True]`、`[args3-12-True]`。
+- **未列出**：`test_routing_evaluation.py` 的 `test_a_missing_dependency_names_the_module_without_echoing_payloads`、`test_other_failures_still_report_only_their_type`、`test_a_validation_error_reports_where_it_failed`。
+  三者都以 `--max-calls 5` 呼叫 CLI，也就是同一個每次試驗上限常數（5→7），測的是錯誤訊息而非呼叫上限本身。
+依宣告這算 W-a 觸發，停止，未修改任何測試。候選 patch 存於 `hypothesis-routes/log242_g1_candidate.patch`，工作樹保留未提交，等使用者決定是否以補列這三個測試的宣告重做。
+
+## Log 244｜重新宣告 G1：補列 3 個以 `--max-calls 5` 呼叫 CLI 的測試
+
+日期／時區：2026-09-29，Asia/Taipei。使用者選擇補列後重做。候選 patch 原樣沿用（`hypothesis-routes/log242_g1_candidate.patch`）。
+允許修改的釘住測試（完整清單）：
+- `test_call_limit.py`：`worst_case_calls` 的常數（每次試驗 5→7、`(39,3)` 585→819），以及 `test_a_run_is_admitted_only_under_its_worst_case` 的上限參數。
+- `test_routing_evaluation.py`：`test_a_missing_dependency_names_the_module_without_echoing_payloads`、`test_other_failures_still_report_only_their_type`、`test_a_validation_error_reports_where_it_failed` 的 `--max-calls 5` 改為 7。
+另新增 G1(a)／G1(b) 的單元測試。W-b～W-e 與 Log 242 相同；W-a 改為「除上列之外有既有測試失敗」。
+
+## Log 245｜Log 244 結果：W-a～W-e 全部成立，G1 **保留**；存留的假設在比對時又被合併成單一工具
+
+日期／時區：2026-09-29，Asia/Taipei。gpt-4o-mini，legacy。
+trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-log244-g1-blind-en-x3.json`（112 calls）。
+
+- W-a：2653 passed／35 skipped（含新增 `tests/test_sibling_repair.py` 6 個；只改了 Log 244 列出的測試）。
+- W-b：`invalid_hypotheses_dropped` 8／18 → **3／18**。其餘 3 次都是 zh 題，原因是 `ungrounded_evidence:artifact_type=multi_omic_network`（引文不在原文中，屬既有設計）。
+  sibling repair 共 10 次，7 次修後單獨有效；存留 ≥2 個假設的試驗 9 → 13／18。
+- W-c：`semantic_interpreter_failed` 2／18（上限 2）。兩次都是 SAMBAR en：一次主假設缺 artifact 證據，一次第一輪三個假設都沒被修好。
+- W-d：blind-en OK 28／30、0 wrong、0 leak。case 4 兩次 PARTIAL，第二個讀法是 `expression_matrix` 當輸出，這兩個假設在舊規則下也有效，與 G1 無關。sibling repair 在 blind 語料只觸發 2 次（case 4、case 9 各 1）。
+- W-e：fingerprint 與 HEAD 相同，legacy `b9bfa69b8022`、claims `5161651ada5e`。
+  **更正 Log 242**：宣告中的 `b9b01cd2db6f`／`348a144cd9b4` 已過時；commit `3a1dc6b`（另一個 session 的 "routing"）早已改變 fingerprint，research log 沒有記錄。
+
+**G1 之後剩下的問題（交給 G2）：** 存留的假設在比對階段仍會收斂成一個工具。
+- TF-miRNA 3／3：兩個假設都存留（TF 讀法有 `expression_matrix`，miRNA 讀法沒有輸入），但 LIONESS-PUMA 對兩者都 exact，`unique_exact` 回傳單一工具，回覆只有 LIONESS-PUMA。
+- SAMBAR en：表現量讀法被 `terminal_goal_conflict` 修成 `sample_cluster_assignment` 且沒有輸入。「transcript expression」不在現行輸入的 witness 詞彙內，request_facts 因此不允許補上 `expression_matrix`；三個讀法都比對到 SAMBAR，得到 exact。
+所以 G2 不能只看比對結果，要在回覆層逐一列出每個讀法。witness 詞彙缺口另列為待決事項。
+

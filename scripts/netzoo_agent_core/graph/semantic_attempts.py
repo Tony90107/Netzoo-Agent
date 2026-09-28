@@ -51,6 +51,7 @@ from .semantic_review_validation import (
 )
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
+from .sibling_repair import repair_sibling_hypotheses
 from .discriminator import (
     discriminator_context as _discriminator_context,
     _fill_inferred_role_evidence,
@@ -538,6 +539,12 @@ def invoke_semantic_interpreter(
             interpretation.outcome_hypotheses,
             interpretation.request_mode,
         )
+        if patch is not None:
+            interpretation, validation, usage, budget_warnings = repair_sibling_hypotheses(
+                context, state, user_task, interpretation, validation,
+                patched_index=patched_index, usage=usage, budget_warnings=budget_warnings,
+                discriminator_context=discriminator_context,
+            )
         if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
             interpretation, validation = keep_valid_hypotheses(
                 context, state, user_task, interpretation, validation, attempt)

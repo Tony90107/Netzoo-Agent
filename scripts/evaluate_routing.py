@@ -685,18 +685,25 @@ _ADVISORY_CALL_ROLES = {"selection_conditions", "request_concerns"}
 # sum, so the two cannot drift apart again (Log 217).
 ROUTING_CALL_LIMIT = 4
 ADVISORY_CALL_LIMIT = 1
+#: Log 242: one repair per competing reading the patch left invalid, bounded on
+#: its own like the advisory call so the routing bound keeps its meaning.
+_SIBLING_REPAIR_ROLE = "semantic_sibling_repair"
+SIBLING_REPAIR_CALL_LIMIT = 2
 
 
 def worst_case_calls(case_count: int, repeat: int, *, repair_replay: bool = False) -> int:
     """The most provider calls a run can make without a trial breaking the scored bounds.
 
     Up to four routing calls (interpreter, reviewer or patch, discriminator,
-    intent) and one advisory call (experimental conditions or request
-    concerns) per trial. A repair replay's
+    intent), two sibling repairs (Log 242) and one advisory call (experimental
+    conditions or request concerns) per trial. A repair replay's
     injected first pass is not a provider call. Retries are disabled in the
     production provider, so logical calls are HTTP requests.
     """
-    per_trial = ROUTING_CALL_LIMIT + ADVISORY_CALL_LIMIT - (1 if repair_replay else 0)
+    per_trial = (
+        ROUTING_CALL_LIMIT + SIBLING_REPAIR_CALL_LIMIT + ADVISORY_CALL_LIMIT
+        - (1 if repair_replay else 0)
+    )
     return case_count * repeat * per_trial
 
 
@@ -712,8 +719,11 @@ def _call_limit_errors(roles: list[str]) -> list[str]:
     safety failure -- 99 of 99 flagged recorded rows, all with that exact shape.
     """
     errors = []
-    if len([role for role in roles if role not in _ADVISORY_CALL_ROLES]) > ROUTING_CALL_LIMIT:
+    bounded_apart = _ADVISORY_CALL_ROLES | {_SIBLING_REPAIR_ROLE}
+    if len([role for role in roles if role not in bounded_apart]) > ROUTING_CALL_LIMIT:
         errors.append("call_limit: routing exceeded semantic/discriminator/intent bound")
+    if roles.count(_SIBLING_REPAIR_ROLE) > SIBLING_REPAIR_CALL_LIMIT:
+        errors.append("call_limit: more than two sibling repairs")
     if roles.count("selection_conditions") > ADVISORY_CALL_LIMIT:
         errors.append("call_limit: more than one experimental-condition call")
     elif len([role for role in roles if role in _ADVISORY_CALL_ROLES]) > ADVISORY_CALL_LIMIT:
