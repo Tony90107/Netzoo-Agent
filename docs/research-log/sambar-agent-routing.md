@@ -13213,3 +13213,23 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
 - SAMBAR en：表現量讀法被 `terminal_goal_conflict` 修成 `sample_cluster_assignment` 且沒有輸入。「transcript expression」不在現行輸入的 witness 詞彙內，request_facts 因此不允許補上 `expression_matrix`；三個讀法都比對到 SAMBAR，得到 exact。
 所以 G2 不能只看比對結果，要在回覆層逐一列出每個讀法。witness 詞彙缺口另列為待決事項。
 
+## Log 246｜事前宣告：現行輸入 witness 詞彙補上轉錄體與外顯子突變的說法
+
+日期／時區：2026-09-29，Asia/Taipei。使用者選擇「擴充，另列一個 Log」。
+缺口（Log 245）：「transcript expression」「轉錄表現量」「全外顯子DNA突變分佈」都不被 `INPUT_PATTERNS` 認出，所以 request_facts 不列它們，補修也不能加入對應輸入。
+改動只加資料名詞，時態（current／historical／uncertain／negated）仍由既有子句規則決定：
+- `expression_matrix`：`transcript(ome|omic)? (expression|abundance|profiles|data)`、`expression profile(s)`、`轉錄(體)?表現量`、`轉錄(組|體)(資料|數據)`。
+- `mutation_matrix`：`全外顯子…突變`（6 字內）、`DNA突變(分佈|分布|譜)`。
+
+撤回條件：
+- V-a：`input_mentions` 在全部 repo 語料（142 個不重複 prompt，快照見 scratchpad `witness_before.json`）上的變化，只能出現在含上述新詞的 prompt；任何其他 prompt 改變即撤回。
+- V-b：既有測試（特別是 `test_corpus_input_and_spelling_axes`、`test_history_vocabulary_does_not_reach_further`、`test_input_completeness`）全部通過，不修改任何既有測試。
+- V-c：新增測試涵蓋三種說法，且各有一個歷史句（「we previously had transcript expression …」）必須讀成 historical。
+
+## Log 247｜Log 246 結果：V-a～V-c 成立，詞彙擴充**保留**
+
+日期／時區：2026-09-29，Asia/Taipei。
+- V-a：142 個 prompt 中只有 3 個改變，都含新詞：`hyp-sambar-lioness-zh`（[] → expression＋mutation current）、`hyp-sambar-lioness-en`（加上 expression current）、`manual_tests/all_workflow_routing_2026_09_28` 的 `lioness-panda-en`（"blood expression profile" → expression current，正確）。
+- V-b：2663 passed，沒有修改既有測試。
+- V-c：`tests/test_input_witness_vocabulary.py` 10 個測試（新說法為 current、歷史句不為 current、單獨的 "transcript" 不算）。
+

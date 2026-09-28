@@ -22,9 +22,14 @@ INPUT_PATTERNS = {
     "mutation_matrix": r"\bsomatic mutations?\b|\bmutation (?:matrix|counts)\b|"
                        r"\bWES\s*(?:資料|矩陣)|全外顯子[^,，。]{0,6}(?:資料|矩陣)|"
                        r"\bwhole[- ]exome\b[^.]{0,20}\b(?:mutation|variant)s?\b|"
-                       r"DNA\s*突變(?:資料|矩陣)|體細胞突變|突變矩陣",
+                       r"DNA\s*突變(?:資料|矩陣)|體細胞突變|突變矩陣|"
+                       # Log 246: 「全外顯子DNA突變分佈」 named the data and was unseen.
+                       r"全外顯子[^,，。]{0,6}突變|DNA\s*突變(?:分佈|分布|譜)",
     "expression_matrix": r"\bRNA[- ]?Seq\b|\b(?:gene )?expression (?:matrix|data|dataset)\b|"
-                         r"(?:基因)?表現量?(?:矩陣|資料)",
+                         r"(?:基因)?表現量?(?:矩陣|資料)|"
+                         # Log 246: "transcript expression" and 「轉錄表現量」 were unseen.
+                         r"\btranscript(?:ome|omic)?s?\s+(?:expression|abundance|profiles?|data)\b|"
+                         r"\bexpression profiles?\b|轉錄(?:體)?表現量|轉錄(?:組|體)(?:資料|數據)",
 }
 _INPUT_EVIDENCE_PATTERNS = {
     **INPUT_PATTERNS,
