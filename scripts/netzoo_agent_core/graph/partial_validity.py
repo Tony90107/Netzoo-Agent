@@ -22,13 +22,23 @@ from .context import record_event
 __all__ = ["keep_valid_hypotheses", "retain_valid_first_pass", "valid_first_pass_subset"]
 
 
-def _valid_subset(user_task: str, interpretation: SemanticInterpretation):
-    """The hypotheses that pass on their own, and those that do not."""
+def _valid_subset(user_task: str, interpretation: SemanticInterpretation, *, with_siblings: bool = False):
+    """The hypotheses that pass on their own, and those that do not.
+
+    `with_siblings` judges each against the other readings' inputs (Log 242);
+    the caller revalidates the kept set, where only kept readings count.
+    """
     kept, dropped = [], []
-    for index, hypothesis in enumerate(interpretation.outcome_hypotheses):
+    hypotheses = interpretation.outcome_hypotheses
+    for index, hypothesis in enumerate(hypotheses):
+        siblings = frozenset().union(*(
+            other.outcome.input_artifacts for position, other in enumerate(hypotheses)
+            if position != index
+        )) if with_siblings else frozenset()
         # The validator completes outcomes in place; judge a copy.
         alone = validate_outcome_hypotheses(
             user_task, [hypothesis.model_copy(deep=True)], interpretation.request_mode,
+            sibling_inputs=siblings,
         )
         if alone.valid:
             kept.append(hypothesis)
@@ -52,16 +62,17 @@ def valid_first_pass_subset(
     """
     if len(interpretation.outcome_hypotheses) < 2:
         return None
-    kept, dropped = _valid_subset(user_task, interpretation)
-    if not kept or not dropped:
-        return None
-    reduced = interpretation.model_copy(update={"outcome_hypotheses": kept}, deep=True)
-    if not validate_outcome_hypotheses(
-        user_task, [h.model_copy(deep=True) for h in reduced.outcome_hypotheses],
-        reduced.request_mode,
-    ).valid:
-        return None
-    return reduced
+    for with_siblings in (True, False):
+        kept, dropped = _valid_subset(user_task, interpretation, with_siblings=with_siblings)
+        if not kept or not dropped:
+            continue
+        reduced = interpretation.model_copy(update={"outcome_hypotheses": kept}, deep=True)
+        if validate_outcome_hypotheses(
+            user_task, [h.model_copy(deep=True) for h in reduced.outcome_hypotheses],
+            reduced.request_mode,
+        ).valid:
+            return reduced
+    return None
 
 
 def retain_valid_first_pass(context, state, validated, partial_first, attempt: int):
@@ -85,16 +96,20 @@ def keep_valid_hypotheses(
     hypotheses = interpretation.outcome_hypotheses
     if validation.valid or len(hypotheses) < 2:
         return interpretation, validation
-    kept, dropped = _valid_subset(user_task, interpretation)
-    if not kept or not dropped:
-        return interpretation, validation
-    reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
-    revalidated = validate_outcome_hypotheses(
-        user_task, reduced.outcome_hypotheses, reduced.request_mode,
-    )
-    if not revalidated.valid:
-        return interpretation, validation
-    record_event(context, state, "routing.invalid_hypotheses_dropped", "classify", {
-        "attempt": attempt + 1, "kept": len(kept), "dropped": dropped,
-    })
-    return reduced, revalidated
+    # Judged against the other readings' inputs first (Log 242); if what that
+    # keeps does not stand on its own, the reading-by-reading judgement decides.
+    for with_siblings in (True, False):
+        kept, dropped = _valid_subset(user_task, interpretation, with_siblings=with_siblings)
+        if not kept or not dropped:
+            continue
+        reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
+        revalidated = validate_outcome_hypotheses(
+            user_task, reduced.outcome_hypotheses, reduced.request_mode,
+        )
+        if not revalidated.valid:
+            continue
+        record_event(context, state, "routing.invalid_hypotheses_dropped", "classify", {
+            "attempt": attempt + 1, "kept": len(kept), "dropped": dropped,
+        })
+        return reduced, revalidated
+    return interpretation, validation

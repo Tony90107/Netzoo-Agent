@@ -48,16 +48,19 @@ def test_the_pre_run_cap_is_the_scored_bound():
 
     result, _ = row()
 
-    assert worst_case_calls(1, 1) == len(result["call_roles"]) == 5
-    assert worst_case_calls(1, 1, repair_replay=True) == 4
-    assert worst_case_calls(39, 3) == 585
+    # Log 244: two sibling repairs (Log 242) are bounded apart from routing;
+    # this method tie makes none, so it reaches the bound without them.
+    assert len(result["call_roles"]) == 5
+    assert worst_case_calls(1, 1) == 5 + 2
+    assert worst_case_calls(1, 1, repair_replay=True) == 6
+    assert worst_case_calls(39, 3) == 819
 
 
 @pytest.mark.parametrize("args, cap, reaches_provider", [
-    (["--case", "original-q1"], 4, False),
-    (["--case", "original-q1"], 5, True),
-    (["--repair-replay"], 11, False),
-    (["--repair-replay"], 12, True),
+    (["--case", "original-q1"], 6, False),
+    (["--case", "original-q1"], 7, True),
+    (["--repair-replay"], 17, False),
+    (["--repair-replay"], 18, True),
 ])
 def test_a_run_is_admitted_only_under_its_worst_case(monkeypatch, capsys, args, cap, reaches_provider):
     import evaluate_routing

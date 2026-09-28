@@ -362,8 +362,14 @@ def validate_outcome_hypotheses(
     user_task: str,
     hypotheses: Sequence[OutcomeHypothesis],
     request_mode: str = "unknown",
+    *,
+    sibling_inputs: frozenset[str] = frozenset(),
 ) -> OutcomeValidation:
-    """Validate evidence without selecting or naming a workflow."""
+    """Validate evidence without selecting or naming a workflow.
+
+    `sibling_inputs` are the inputs of competing hypotheses judged elsewhere,
+    for a caller that validates one hypothesis of several on its own.
+    """
     if not hypotheses:
         return OutcomeValidation(False, ("missing_hypotheses",))
 
@@ -376,11 +382,24 @@ def validate_outcome_hypotheses(
         # from its own grounded evidence has to reach them too.
         reconcile_outcome_with_grounded_evidence(user_task, hypothesis)
     for index, hypothesis in enumerate(hypotheses):
+        # Log 242: competing readings may each use part of the stated data
+        # ("subtype from the mutations, or from the expression"). A current
+        # input is required of the interpretation, not of every reading, so it
+        # is missing only when no competing reading carries it either. Nothing
+        # is filled in: an input every reading omits is still reported on each.
+        covered = sibling_inputs.union(*(
+            other.outcome.input_artifacts
+            for position, other in enumerate(hypotheses) if position != index
+        ))
         # `prefixed` rather than an f-string: plain formatting would return a
         # bare `str` and drop the field scope each rule declared.
         issues.extend(
             issue.prefixed(f"hypothesis[{index}].")
             for issue in request_integrity_issues(user_task, hypothesis.outcome)
+            if not (
+                issue.startswith("missing_current_input:")
+                and issue.split(":", 1)[1] in covered
+            )
         )
         issues.extend(
             issue.prefixed(f"hypothesis[{index}].")
