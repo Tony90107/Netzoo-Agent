@@ -13133,3 +13133,23 @@ case 10 說「this expression matrix, data/blind-tests/case-1/expression.tsv」�
   其餘 13 次該維度為空，文字中沒有其他依據。證明「small RNAs 是 miRNA」的是檔案內容（`prior.tsv` 的 regulator 出現在 `mirna.txt`），不是請求文字。
 - 要變成 exact，只能推翻兩條既有規則之一：(1) 檔案內容只是建議、不淘汰候選（Logs 152／154），或 (2)「small RNAs 不自動等於 miRNAs」（使用者在 `b670faa` 的原意），而且會依賴檔名 `mirna.txt`（Log 136 的路徑名洩漏教訓）。
 - 使用者選擇維持現狀：回覆已先列 PUMA 並給出內容依據，再請使用者確認；盲測評分為 OK（Log 236：30／30）。之後不要再提這三種 exact 修法，除非使用者重新提起。
+
+## Log 241｜診斷：「兩個生物學假設」請求在哪一層收斂成單一工具
+
+日期／時區：2026-09-28，Asia/Taipei。沒有程式碼修改。使用者要求：提出 ≥2 個生物學假設或目標不明確時，不得只推薦單一工具；要逐項列出各工具的演算法假設與輸入需求，最後反問。適用所有套件，不只 SAMBAR。
+使用者提議的 system prompt 規則屬禁用修法（見 Log 130／`d17f64f`），所以先量測失敗發生在哪一層。
+
+- 語料：`docs/research-log/hypothesis-routes/corpus.json`，6 題（使用者原題 zh＋en 翻譯、TF vs miRNA、activity vs wiring、covariate vs individual、multi-omic vs expression-only）。
+  trace：`hypothesis-routes/trace-log241-legacy-x3.json`（gpt-4o-mini，legacy，×3，75 calls）。
+- **第一輪模型 18／18 都寫出 2–3 個 hypotheses**，不是模型問題。
+- **逐次核對 `routing.invalid_hypotheses_dropped` 事件**：第二個假設在 8／18 次被丟掉——SAMBAR zh 3／3、SAMBAR en 2／3（另 1 次整體 `semantic_interpreter_failed`）、TF-miRNA 3／3。
+  TF-miRNA 有 2／3 次仍出現 LIONESS-PANDA／LIONESS-PUMA 兩個候選，但那是**單一**存留假設的方法平手，不是兩個假設並列。
+  兩個假設都存留的只有 activity-wiring、covariate、multi-omic（9／9）；這些回覆（`concept_answers.py` 多候選分支）已逐一列出 premise、數學解讀和 required inputs，並以問題收尾。被丟掉的假設在回覆中完全沒有被提到。
+- 機制（離線用第一輪原始輸出，`validate_outcome_hypotheses` 單獨重驗每個 hypothesis）：
+  - 第二輪 `SemanticPatch` 只修 `hypothesis_index` 指定的**一個**假設（18／18 都是 index 0）；其他假設保持第一輪的樣子，只要還有非決定性 issue 就在 `keep_valid_hypotheses` 被丟掉。這是 8 次的主因。
+  - 交叉判死只出現在 SAMBAR en：偵測到的現行輸入只有 `mutation_matrix`（「transcript expression」沒被認出），表現量假設因此帶 `missing_current_input:mutation_matrix`；另帶 `terminal_goal_conflict:sample_cluster_assignment`（registry 沒有由表現量分群病人的組合）。
+  - TF-miRNA 兩個假設都漏寫 `expression_matrix`（模型沒寫輸入），不是交叉判死。SAMBAR zh 沒有偵測到任何現行輸入。
+  - 所以「現行輸入改成整體檢查」單獨救回 0／8；必須讓第二輪修補涵蓋每一個假設。
+- 結論（三個獨立缺口）：(G1) 第二輪修補只涵蓋一個假設，且現行輸入檢查是逐一而非整體；(G2) 被丟掉或無對應工具的假設在回覆中消失，沒有任何說明；(G3) registry 沒有由表現量／個體網路分群病人的 guidance 組合。
+  G1、G2 與套件無關；G3 只與分型題有關。修正方向等使用者決定。
+
