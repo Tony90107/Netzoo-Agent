@@ -12,6 +12,8 @@ already covers every reading is left exactly as it was.
 
 from __future__ import annotations
 
+from workflow_registry import GUIDANCE_COMPOSITIONS
+
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..routing.method_rejections import rejected_methods_for
@@ -169,11 +171,41 @@ def _splits(task: str, reading) -> list[tuple[str, list[str]]]:
     return splits if any(actions for _, actions in splits) else []
 
 
+def _composition(outcome):
+    """The Log 252 composition for a one-input result no workflow produces, if any."""
+    inputs = [value for value in outcome.input_artifacts if value != "unknown"]
+    if len(inputs) != 1:
+        return None
+    return GUIDANCE_COMPOSITIONS.get((outcome.artifact_type, inputs[0]))
+
+
+def _composition_lines(composition, policy) -> tuple[list[str], str]:
+    lines = [composition.lead]
+    names = []
+    for action, gives in composition.sources:
+        spec = policy.workflows.get(action)
+        if spec is None:
+            continue
+        names.append(spec.workflow)
+        lines.append(f"- **{spec.workflow}** gives {gives}.")
+        # The premise and inputs of each source, as every other candidate shows them.
+        lines.extend(
+            line for line in _candidate_details(action, spec, policy)
+            if line.startswith(("  - Method premise:", "  - Required inputs:"))
+        )
+    lines.append(composition.outside_step)
+    lines.extend(composition.notes)
+    return lines, "a profile from " + " / ".join(names) + ", then clustering outside NetZoo"
+
+
 def _option_lines(outcome, actions, policy, *, single_input: bool) -> tuple[list[str], str]:
     specs = [(action, policy.workflows[action]) for action in actions if action in policy.workflows]
     if specs:
         lines = [line for action, spec in specs for line in _candidate_details(action, spec, policy)]
         return lines, " or ".join(spec.workflow for _, spec in specs)
+    composition = _composition(outcome)
+    if composition is not None:
+        return _composition_lines(composition, policy)
     lines = ["No registered workflow produces this result from "
              + ("this input." if single_input else "these inputs.")]
     accepting = _accepting_workflows(outcome, policy)
@@ -209,7 +241,9 @@ def render_hypothesis_routes(
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
     splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
     several = len(readings) >= 2 and not _covered(decision, routes)
-    if not several and not any(splits):
+    # Log 252: one reading with no workflow of its own but a registered composition.
+    composed = any(not actions and _composition(reading.outcome) for reading, actions in routes)
+    if not several and not any(splits) and not composed:
         return None
     user_data: list[str] = []
     sections = [
@@ -219,6 +253,9 @@ def render_hypothesis_routes(
         "No single registered workflow produces this result from all the stated inputs "
         "together. Each stated input is listed on its own, with the registered workflows "
         "that fit it, their algorithmic premises and inputs:"
+        if any(splits) else
+        "Here is how registered workflows can reach this result, with their algorithmic "
+        "premises and inputs:"
     ]
     choices = []
     for number, ((reading, actions), split) in enumerate(zip(routes, splits), start=1):
@@ -238,11 +275,18 @@ def render_hypothesis_routes(
             lines.extend(option)
             choices.append(f"{number} ({names})")
         sections.append("\n".join(lines))
-    sections.append(
-        ("Which reading should we start with: " if len(readings) >= 2 else "Which should we start with: ")
-        + ", ".join(choices) + "? "
-        + ("If a reading should use different data, say which." if len(readings) >= 2
-           else "If you meant a different result for one of the inputs, say which.")
-    )
+    if len(readings) >= 2:
+        question = ("Which reading should we start with: " + ", ".join(choices)
+                    + "? If a reading should use different data, say which.")
+    elif any(splits):
+        question = ("Which should we start with: " + ", ".join(choices)
+                    + "? If you meant a different result for one of the inputs, say which.")
+    else:
+        sources = [policy.workflows[action].workflow
+                   for action, _ in _composition(readings[0].outcome).sources
+                   if action in policy.workflows]
+        question = ("Which per-sample profile should we start with: "
+                    + ", ".join(sources[:-1]) + " or " + sources[-1] + "?")
+    sections.append(question)
     sections.append(_NOT_INSPECTED)
     return _ui_text_with_user_data("\n\n".join(sections), user_data)
