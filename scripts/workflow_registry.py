@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any, Literal, Mapping, get_args
+from typing import Any, Literal, Mapping, NamedTuple, get_args
 
 
 ActionName = Literal[
@@ -374,6 +374,57 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
         "subtypes, for example; that needs a clinical table keyed by the same sample IDs.",
         "The pathway mutation scores show which pathways separate the subtypes.",
     )),
+}
+
+
+class GuidanceComposition(NamedTuple):
+    """Registered workflows plus one step outside NetZoo that reach a result together."""
+
+    lead: str
+    # (registered action, the per-sample matrix it gives for the outside step)
+    sources: tuple[tuple[str, str], ...]
+    outside_step: str
+    notes: tuple[str, ...]
+
+
+# Log 252: a result no registered workflow produces from an input, reached by a
+# registered workflow's per-sample output and one step NetZoo does not run.
+# Python-only, like DOWNSTREAM_ANALYSES: not part of the policy snapshot, so
+# neither the policy hash nor any provider prompt changes, and nothing here is a
+# capability -- routing never selects it and it is never executed. Keyed by
+# (terminal artifact, input artifact).
+GUIDANCE_COMPOSITIONS: Mapping[tuple[str, str], GuidanceComposition] = {
+    ("sample_cluster_assignment", "expression_matrix"): GuidanceComposition(
+        lead=(
+            "No registered workflow assigns samples to clusters from expression. A "
+            "registered workflow can give each sample a feature profile to cluster on:"
+        ),
+        sources=(
+            ("run_lioness_panda",
+             "a TF-by-sample out-degree matrix -- each TF's summed edge weights to its "
+             "targets in each sample's network (how strongly the TF is wired)"),
+            ("run_lioness_puma",
+             "the same out-degree matrix with miRNAs among the regulators (needs a miRNA list)"),
+            ("run_giraffe",
+             "its TF-by-sample activity matrix -- how active each TF is apart from its own "
+             "mRNA level, a different reading from wiring"),
+            ("run_bonobo",
+             "one gene co-expression network per sample; with about genes-squared edges "
+             "each, summarize them first (for example per-gene degree)"),
+            ("run_lioness_coexpression",
+             "one gene co-expression network per sample, summarized the same way"),
+        ),
+        outside_step=(
+            "Clustering the samples on that matrix (for example hierarchical clustering or "
+            "k-means) is not a NetZoo workflow; run it separately."
+        ),
+        notes=(
+            "Per-sample networks from LIONESS are derived from the same cohort, so they are "
+            "not statistically independent; account for this in any test across samples.",
+            "Clusters are unsupervised: whether they predict an outcome such as treatment "
+            "response has to be tested against that outcome, keyed by the same sample IDs.",
+        ),
+    ),
 }
 
 

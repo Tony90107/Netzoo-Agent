@@ -77,8 +77,26 @@ def test_a_reading_without_a_workflow_is_named_with_what_its_inputs_can_give():
                                     POLICY, task=task)
     first, second = text.split("**Reading 2")
     assert "SAMBAR" in first
+    # Log 252: expression-based subtyping has a registered composition.
+    assert "No registered workflow assigns samples to clusters from expression." in second
+    assert "- **LIONESS-PANDA** gives a TF-by-sample out-degree matrix" in second
+    assert "is not a NetZoo workflow; run it separately." in second
+    assert "2 (a profile from LIONESS-PANDA / LIONESS-PUMA / GIRAFFE / BONOBO / " \
+           "LIONESS-COEXPRESSION, then clustering outside NetZoo)" in text
+
+
+def test_a_reading_without_a_workflow_or_composition_names_what_its_inputs_give():
+    task = ("We have somatic mutation data and a measurement dataset. Subtype from "
+            "'accumulated DNA damage' or from 'the measured features'?")
+    mutation = reading("sample_cluster_assignment", ["mutation_matrix"], granularity="aggregate",
+                       quote="accumulated DNA damage", entities=["sample"])
+    measured = reading("sample_cluster_assignment", ["measurement_dataset"], granularity="aggregate",
+                       quote="the measured features", entities=["sample"])
+    text = render_hypothesis_routes(decision([mutation, measured], matched=["run_sambar"]),
+                                    POLICY, task=task)
+    second = text.split("**Reading 2")[1]
     assert "No registered workflow produces this result from these inputs." in second
-    assert "**LIONESS-PANDA**" in second  # accepts an expression matrix
+    assert "**DRAGON**" in second  # accepts a measurement dataset
     assert "2 (no registered workflow)" in text
 
 
@@ -131,9 +149,38 @@ def test_inputs_no_workflow_takes_together_are_listed_one_by_one():
     assert text.startswith("No single registered workflow produces this result from all the stated inputs")
     mutation, expression = text.split("- From the expression matrix:")
     assert "- From the mutation matrix:" in mutation and "SAMBAR" in mutation
-    assert "No registered workflow produces this result from this input." in expression
-    assert "**LIONESS-PANDA** (regulatory networks)" in expression
-    assert "the mutation matrix (SAMBAR), the expression matrix (no registered workflow)" in text
+    assert "No registered workflow assigns samples to clusters from expression." in expression
+    assert "- **GIRAFFE** gives its TF-by-sample activity matrix" in expression
+    assert "the mutation matrix (SAMBAR), the expression matrix (a profile from LIONESS-PANDA" in text
+
+
+def test_one_reading_that_only_a_composition_reaches_is_answered_with_it():
+    only = subtype_reading(["expression_matrix"])
+    text = render_hypothesis_routes(decision([only], status="ambiguous"), POLICY, task=SUBTYPE_TASK)
+    assert text.startswith("Here is how registered workflows can reach this result")
+    for workflow in ("LIONESS-PANDA", "LIONESS-PUMA", "GIRAFFE", "BONOBO", "LIONESS-COEXPRESSION"):
+        assert f"- **{workflow}** gives " in text
+    assert text.count("  - Required inputs:") == 5
+    assert "not statistically independent" in text
+    assert "has to be tested against that outcome" in text
+    assert ("Which per-sample profile should we start with: LIONESS-PANDA, LIONESS-PUMA, "
+            "GIRAFFE, BONOBO or LIONESS-COEXPRESSION?") in text
+
+
+def test_compositions_name_only_registered_workflows_and_are_never_capabilities():
+    from workflow_registry import GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES
+    from netzoo_agent_core.contracts.artifact_semantics import ARTIFACT_SEMANTICS
+    for (artifact, source), composition in GUIDANCE_COMPOSITIONS.items():
+        assert artifact in ARTIFACT_SEMANTICS and source in ARTIFACT_SEMANTICS
+        # A composition exists only where no registered workflow reaches the result.
+        assert not any(
+            artifact in {*c.produced_artifacts, c.artifact_type} and source in c.input_artifacts
+            and source not in c.incompatible_input_artifacts
+            for c in OUTPUT_CAPABILITIES.values()
+        )
+        for action, _ in composition.sources:
+            assert action in OUTPUT_CAPABILITIES
+            assert source in OUTPUT_CAPABILITIES[action].input_artifacts
 
 
 def test_a_reading_one_workflow_serves_is_not_split():

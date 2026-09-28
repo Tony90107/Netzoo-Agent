@@ -13305,3 +13305,44 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
 
 **本輪（Logs 241–251）總結：** G1（整體輸入檢查＋逐一補修）、詞彙擴充、G2（收斂時依讀法分段）、G2b（依輸入拆解）都保留，全部未提交。
 仍待決：G3（由表現量／個體網路分群病人的 guidance 組合）；zh 題的第二讀法仍因 `ungrounded_evidence` 被丟（屬既有設計，中文優先度低）。
+
+## Log 252｜事前宣告：G3——Python-only 組合表，讓「由表現量分型病人」有一條說得清楚的路
+
+日期／時區：2026-09-29，Asia/Taipei。
+**更正先前對 G3 的描述。** 探查結果：registry 沒有「guidance-only、不可執行」的能力類別；只有 `run=True` 的 action 會進 `OUTPUT_CAPABILITIES`，而 `run=True` 必須有 YAML、validator、executor，並放寬多個 Literal。
+要讓組合成為可比對的候選，必須新增一整類 action，並改動多個 schema digest、fingerprint、grid 與 10 個以上的測試檔。
+使用者選擇 Python-only 組合表（`DOWNSTREAM_ANALYSES`／`REQUEST_CONCERNS` 的模式：不在 policy snapshot 中，所以 policy hash 與 provider prompt 都不變），特徵來源四種全列。
+
+**設計：**
+- `workflow_registry.GUIDANCE_COMPOSITIONS`，以（終點 artifact、輸入 artifact）為鍵；目前只有 `(sample_cluster_assignment, expression_matrix)`。
+- 四種每位病人特徵矩陣的來源，都是既有的 registered workflow：
+  - LIONESS-PANDA outdegree（TF×sample，wiring）；
+  - LIONESS-PUMA outdegree（含 miRNA，需要 miRNA list）；
+  - GIRAFFE TF activity（TF×sample，與 TF 自身 mRNA 分開，是另一種讀法）；
+  - BONOBO／LIONESS-coexpression 的每樣本共表現網路（邊數約為基因數平方，須先降維）。
+- 分群本身寫明不是 NetZoo workflow，要另外做；附不獨立性提醒，並說明分群是非監督的，要以抗藥性等臨床標籤檢驗。
+- 渲染：`hypothesis_routes` 中「沒有候選」的讀法或單一輸入，若該（artifact、輸入）有組合，就改列組合。
+  新增觸發：**只剩一個讀法**、沒有候選、而且有組合時也改寫。目前 "subtype patients from an expression matrix" 得到的是「Which scientific result do you want NetZoo to produce?」。
+
+**預期的釘住測試修改（完整清單）：** `tests/test_hypothesis_routes.py` 中斷言表現量 → 「No registered workflow produces this result」的兩個測試
+（`test_a_reading_without_a_workflow_is_named_with_what_its_inputs_can_give`、`test_inputs_no_workflow_takes_together_are_listed_one_by_one`），改為斷言組合。
+
+**撤回條件：**
+- Z-a：除上列之外有既有測試失敗 → 停止。
+- Z-b：`policy_hash`（`6774f6cc…b149`）、fingerprint（`b9bfa69b8022`／`5161651ada5e`）與 `OUTPUT_CAPABILITIES` 都不變。
+- Z-c（離線重播 Logs 241–251 全部 trace）：回覆改變只能出現在含（sample_cluster_assignment、expression_matrix）且沒有候選的讀法或輸入。
+- Z-d（live，結構計數）：hypothesis 語料 ×3 中，SAMBAR zh／en 每一次的表現量段落都列出組合；blind-en ×3 組合出現 0 次，0 wrong、0 leak。
+
+## Log 253｜Log 252 結果：Z-a～Z-d 全部成立，G3 組合表**保留**
+
+日期／時區：2026-09-29，Asia/Taipei。trace：`hypothesis-routes/trace-log253-g3-hyp-x3.json`（82 calls）、`trace-log253-g3-blind-en-x3.json`（113 calls）。
+- Z-a：2676 passed；只改了宣告的兩個測試。另新增：
+  - 無組合時仍顯示「No registered workflow」＋接受該輸入的 workflow（改用 measurement_dataset 讀法覆蓋）；
+  - 只剩一個讀法時以組合回答；
+  - 組合只能引用接受該輸入的 registered workflow，且只能出現在沒有任何 capability 能直接達成的（artifact、輸入）上。
+- Z-b：與 HEAD 比對，`OUTPUT_CAPABILITIES`（正規化 JSON 雜湊 `3973e9c6e526`）、`policy_hash` `6774f6cc3ab2…` 與 fingerprint `b9bfa69b8022`／`5161651ada5e` 都相同。
+  （直接比較 `repr` 雜湊會因 frozenset 順序而在不同行程間變動，不能用。）
+- Z-c：離線重播 7 份 trace，組合只出現在 SAMBAR zh／en 的讀法（`sample_cluster_assignment ← expression＋mutation`）：Log 249、251 各 6／18；blind 0。
+- Z-d：live SAMBAR zh 3／3、en 3／3：突變資料 → SAMBAR；表現量 → LIONESS-PANDA／LIONESS-PUMA／GIRAFFE／BONOBO／LIONESS-COEXPRESSION 的每樣本特徵矩陣＋NetZoo 外的分群、不獨立與需以結局檢驗的提醒。
+  blind-en 組合出現 0／30，0 wrong、0 leak（OK 26／30，非門檻；非 OK 為 case 4／6／10 的路由層結果）。
+- 單一讀法請求「subtype the patients from an RNA-seq expression matrix」原本回覆「Which scientific result do you want NetZoo to produce?」，現在回覆組合（腳本化 transport 確認，不是 live）。
