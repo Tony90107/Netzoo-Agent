@@ -13274,3 +13274,34 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
   比對時 SAMBAR 因 expression 被拒 → `unsupported`，回覆是「no compatible registered workflow matches the input availability… Which compatible input bundle can you provide?」。
   根本原因有兩個：(1) 資料要分配給哪個讀法由模型決定，主 patch 把全部現行輸入都給了主讀法；(2) 沒有「由表現量分群病人」的 workflow（G3），終點目標規則使表現量讀法無處可去。
 
+## Log 250｜使用者決定保留 G2；事前宣告 G2b：輸入無法被同一個 workflow 一起接受時，依輸入拆解
+
+日期／時區：2026-09-29，Asia/Taipei。
+- **G2 保留**（使用者依 Log 249 的決定性歸因選擇保留）。X-d 記錄為字面觸發、無雜訊底線的計分門檻；之後的回歸門檻改用結構計數。
+
+**G2b 設計（只改回覆層，對所有套件適用）：** 某個讀法本身沒有候選、且有 ≥2 個輸入時，以該讀法的 outcome 只保留單一輸入，逐一做決定性比對。
+若至少一個輸入單獨有候選，就在該讀法下依輸入分段：每個輸入列出它的候選（沿用 `_candidate_details`），沒有候選則列出接受該輸入的 workflow 與其實際產出。
+不替模型分配資料，也不路由；每段都是 registry 對「只用這個輸入」的比對結果，並寫明「每個輸入單獨來看」。
+觸發：G2 原條件，或任何讀法（包括只剩一個讀法時）有上述資訊性拆解。
+
+**撤回條件（改用結構計數）：**
+- Y-a：既有測試全部通過、不修改既有測試；有失敗即停止並列出。
+- Y-b（離線重播）：Log 241／244／249 全部 trace 決策中，因 G2b 改變的回覆逐一列出，每一個都必須是「讀法有 ≥2 個輸入、沒有 workflow 一起接受、且至少一個輸入單獨有候選」。
+- Y-c（live，hypothesis 語料 ×3）：SAMBAR en／zh 中，決策含此類讀法的每一次，回覆都必須有突變資料 → SAMBAR 與表現量 → 「No registered workflow」兩段（結構計數，全部成立）。
+- Y-d（live，blind-en ×3）：G2／G2b 觸發 0 次（結構計數）；0 wrong、0 leak。
+- Y-e：fingerprint 與 HEAD 相同。
+
+## Log 251｜Log 250 結果：Y-a～Y-e 全部成立，G2b **保留**；使用者原題 6／6 依輸入分段回覆
+
+日期／時區：2026-09-29，Asia/Taipei。trace：`hypothesis-routes/trace-log251-g2b-hyp-x3.json`（79 calls）、`trace-log251-g2b-blind-en-x3.json`（116 calls）。
+- 實作中的兩個修正（宣告前的離線重播發現，未進 live）：
+  (1) 單一輸入的子讀法要一併移除其他輸入的 `input_artifact` 證據，否則比對報 `input_artifact` 不一致；
+  (2) 拆解改用 `match_requested_outcome`（純 registry 能力比對）再扣除 `rejected_methods_for(task, [該輸入])`，因為 `match_semantic_request` 會用請求中**所有**現行輸入檢查，只要提到表現量就拒絕 SAMBAR。
+- Y-a：2673 passed（`test_hypothesis_routes.py` 新增 3 個，共 10 個），沒有修改既有測試。Y-e：fingerprint 不變。
+- Y-b：離線重播 5 份 trace 共 114 個決策，G2b 只在 Log 249 的 SAMBAR zh ×3、en ×3 觸發，全部是「一個讀法 ← expression＋mutation、沒有候選、mutation 單獨有 SAMBAR」；blind 0。
+- Y-c：live SAMBAR zh 3／3、en 3／3 都有「From the mutation matrix → SAMBAR」與「From the expression matrix → No registered workflow…＋接受表現量的 workflow 及其產出」，最後反問先從哪個輸入開始。
+- Y-d：blind-en G2／G2b 觸發 0／30；OK 28／30、0 wrong、0 leak（非 OK 的 2 次都是 case 4 PARTIAL）。
+- 其他 hypothesis 題：TF-miRNA 2／3、covariate 3／3 依讀法分段；activity-wiring、multi-omic 由原平手回覆涵蓋。
+
+**本輪（Logs 241–251）總結：** G1（整體輸入檢查＋逐一補修）、詞彙擴充、G2（收斂時依讀法分段）、G2b（依輸入拆解）都保留，全部未提交。
+仍待決：G3（由表現量／個體網路分群病人的 guidance 組合）；zh 題的第二讀法仍因 `ungrounded_evidence` 被丟（屬既有設計，中文優先度低）。

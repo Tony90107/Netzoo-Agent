@@ -109,3 +109,42 @@ def test_an_execution_turn_is_never_rewritten():
         decision([TF, MIRNA], matched=["run_lioness_puma"], action="run_lioness_puma"),
         POLICY, task=TASK,
     ) is None
+
+
+# Log 250: one reading whose inputs no workflow takes together is split by input.
+SUBTYPE_TASK = ("This time we have whole-exome somatic mutation profiles and transcript expression. "
+                "How should we subtype tumours?")
+
+
+def subtype_reading(inputs):
+    item = reading("sample_cluster_assignment", inputs, granularity="aggregate", entities=["sample"])
+    item["outcome"]["operation"] = "analyze"
+    item["evidence"] = [evidence("input_artifact", "mutation_matrix", "whole-exome somatic mutation"),
+                        evidence("input_artifact", "expression_matrix", "transcript expression")]
+    item["evidence"] = [e for e in item["evidence"] if e["value"] in inputs]
+    return item
+
+
+def test_inputs_no_workflow_takes_together_are_listed_one_by_one():
+    both = subtype_reading(["expression_matrix", "mutation_matrix"])
+    text = render_hypothesis_routes(decision([both], status="unsupported"), POLICY, task=SUBTYPE_TASK)
+    assert text.startswith("No single registered workflow produces this result from all the stated inputs")
+    mutation, expression = text.split("- From the expression matrix:")
+    assert "- From the mutation matrix:" in mutation and "SAMBAR" in mutation
+    assert "No registered workflow produces this result from this input." in expression
+    assert "**LIONESS-PANDA** (regulatory networks)" in expression
+    assert "the mutation matrix (SAMBAR), the expression matrix (no registered workflow)" in text
+
+
+def test_a_reading_one_workflow_serves_is_not_split():
+    only = subtype_reading(["mutation_matrix"])
+    assert render_hypothesis_routes(decision([only], matched=["run_sambar"]), POLICY,
+                                    task=SUBTYPE_TASK) is None
+
+
+def test_a_split_that_finds_no_workflow_for_any_input_says_nothing_new():
+    task = "We have an expression matrix and a measurement dataset. Cluster the patients."
+    item = reading("sample_cluster_assignment", ["expression_matrix", "measurement_dataset"],
+                   granularity="aggregate", entities=["sample"])
+    item["outcome"]["operation"] = "analyze"
+    assert render_hypothesis_routes(decision([item], status="unsupported"), POLICY, task=task) is None
