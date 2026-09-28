@@ -13233,3 +13233,44 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
 - V-b：2663 passed，沒有修改既有測試。
 - V-c：`tests/test_input_witness_vocabulary.py` 10 個測試（新說法為 current、歷史句不為 current、單獨的 "transcript" 不算）。
 
+## Log 248｜事前宣告：G2——多個讀法在回覆中收斂時，改為依讀法分段
+
+日期／時區：2026-09-29，Asia/Taipei。使用者選擇「只在收斂時改寫」。只改回覆層，不改路由、驗證、prompt 或 schema。
+
+**讀法**：`decision.outcome_hypotheses` 中通過驗證的假設，去掉 (1) artifact 為 `unknown` 或只作為輸入的類型（依 registry 計算：`expression_matrix`、`measurement_dataset`、`mutation_matrix`）；
+(2) 與另一讀法 artifact／regulator／granularity 相同、且輸入是其真子集的讀法（輸入缺漏造成的重複）。
+
+**每個讀法的候選**：以 `match_semantic_request(task, [該讀法])` 決定性比對，不呼叫模型。
+
+**觸發**：讀法 ≥2，且現有回覆沒有涵蓋每個讀法。「涵蓋」＝`ambiguous`、`hypothesis_actions` ≥2、每個讀法都有候選且都在 `hypothesis_actions` 內。
+所以已列出所有讀法工具的平手回覆與 form A 推薦不變；exact／fallback／unsupported／單一候選，或有讀法沒有候選時才改寫。
+
+**回覆**（英文；使用者原文經 `user_data_token` 插入）：
+- 每個讀法一段，標題引用該讀法自己的 explicit 引文（必須逐字出現在請求中），沒有則用 artifact 描述；說明結果、輸入、粒度。
+- 列出候選工具，沿用 `_candidate_details`（演算法前提、數學解讀、必要輸入、輸出）。
+- 沒有候選時明說「沒有註冊的 workflow 由這些輸入產生此結果」，並列出接受這些輸入的 workflow 及其實際輸出。
+- 最後反問先走哪個讀法；結尾為既有的 "No files were inspected and no analysis ran."
+
+位置：`respond()` 的 plan gate 之後、capability-gap 之前，只在 `action == "no_tool"` 且沒有 tool 結果時。新模組 `interpretation/hypothesis_routes.py`，因為 `concept_answers.py` 已 964／1000 行。
+
+**撤回條件：**
+- X-a：既有測試全部通過，不修改任何既有測試（設計上不碰現有平手回覆）。有任何失敗即停止。
+- X-b（離線重播，決定性）：用現有程式碼重新 render Log 241／244 的 hypothesis 語料與 blind-en trace 的所有決策。觸發只能出現在符合上述定義的決策；blind-en 中觸發的每一次都要列出並逐一檢查。
+- X-c（live，hypothesis 語料 ×3）：英文題中，每次「讀法 ≥2 且觸發」的回覆，每個讀法都要有自己的一段（結構計數，必須全部成立）。
+- X-d：blind-en ×3，OK ≥27／30、0 wrong、0 leak。
+- X-e：fingerprint 與 HEAD 相同（`b9bfa69b8022`／`5161651ada5e`）。
+
+## Log 249｜Log 248 結果：X-a、X-b、X-c、X-e 成立；X-d 依字面觸發（25／30），但 G2 在 blind-en 觸發 0 次
+
+日期／時區：2026-09-29，Asia/Taipei。trace：`hypothesis-routes/trace-log249-g2-hyp-x3.json`、`trace-log249-g2-blind-en-x3.json`（含 G1＋詞彙＋G2）。
+- X-a：2670 passed，沒有修改既有測試（新增 `tests/test_hypothesis_routes.py` 7 個）。X-e：fingerprint 不變。
+- X-b：離線重新 render Log 241／244 的決策：hypothesis 語料觸發 3／18、6／18，都是 TF-miRNA（exact 單一 LIONESS-PUMA）與 covariate（彙總讀法的 COBRA 不在原回覆中）；blind-en 0／30。
+- X-c：live 中「讀法 ≥2 且觸發」共 4 次（TF-miRNA 2、covariate 2），4／4 每個讀法都有自己的一段。activity-wiring、multi-omic 已由原平手回覆涵蓋，未觸發（符合設計）。
+- **X-d：OK 25／30 < 27，依字面觸發。** 歸因（決定性）：G2 是決策的純函數，對 30 個 blind 決策都回傳 None，所以有無 G2 的 blind 回覆逐字相同。
+  非 OK 的 5 次都在路由層，而且沒有走到新程式碼：case 10 FALLBACK ×2（第一輪 schema 失敗 → SemanticReview，沒有 patch、沒有 sibling）、case 6 PARTIAL ×1、case 4 PARTIAL ×2（Log 244 也有 2 次）。這 3 題的 witness 不受 Log 246 影響，也沒有 sibling 事件。
+  X-d 是沒有雜訊底線的計分門檻（違反 [measurement-power] 的教訓：門檻只能建在結構計數上），這裡照實記錄為觸發，不事後改寫解讀；去留交給使用者。
+- **使用者原題（SAMBAR en）仍未解決，而且回覆變差。** 詞彙擴充後兩種資料都是 current，主 patch 把兩者都放進 h0（`sample_cluster_assignment ← expression＋mutation`）。
+  sibling 修補依 `terminal_goal_conflict` 把另兩個讀法改成 `sample_cluster_assignment`；因 h0 已涵蓋輸入，這兩個讀法沒有輸入，G2 把它們當成缺輸入的重複讀法去掉，只剩 1 個讀法。
+  比對時 SAMBAR 因 expression 被拒 → `unsupported`，回覆是「no compatible registered workflow matches the input availability… Which compatible input bundle can you provide?」。
+  根本原因有兩個：(1) 資料要分配給哪個讀法由模型決定，主 patch 把全部現行輸入都給了主讀法；(2) 沒有「由表現量分群病人」的 workflow（G3），終點目標規則使表現量讀法無處可去。
+
