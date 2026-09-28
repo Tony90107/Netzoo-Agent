@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text_with_user_data, user_data_token
-from ..routing.outcome_matching import match_semantic_request
+from ..routing.method_rejections import rejected_methods_for
+from ..routing.outcome_matching import match_requested_outcome, match_semantic_request
 from .concept_answers import _GRANULARITY_LABELS, _artifact_label, _candidate_details
 
 __all__ = ["render_hypothesis_routes"]
@@ -90,8 +91,12 @@ def _quote(reading, others, task: str) -> str | None:
     return next((span for span in _spans(reading, task) if span not in shared), None)
 
 
+def _input_label(value: str) -> str:
+    return value.replace("_", " ")
+
+
 def _result_line(outcome) -> str:
-    inputs = [_artifact_label(value) for value in outcome.input_artifacts if value != "unknown"]
+    inputs = [_input_label(value) for value in outcome.input_artifacts if value != "unknown"]
     granularity = _GRANULARITY_LABELS.get(outcome.granularity, "")
     line = "Result: " + _artifact_label(outcome.artifact_type)
     if granularity:
@@ -108,7 +113,8 @@ def _accepting_workflows(outcome, policy: ProjectPolicySnapshot) -> list[str]:
     for spec in policy.workflows.values():
         capability = spec.output_capability
         if inputs <= set(capability.input_artifacts):
-            outputs = ", ".join(sorted(_artifact_label(a) for a in capability.produced_artifacts))
+            produced = capability.produced_artifacts or {capability.artifact_type}
+            outputs = ", ".join(sorted(_artifact_label(a) for a in produced))
             found.append(f"**{spec.workflow}** ({outputs})")
     return sorted(set(found))
 
@@ -122,57 +128,121 @@ def _covered(decision: TaskDecision, routes: list[tuple]) -> bool:
     )
 
 
+def _alone_candidates(task: str, reading, value: str) -> list[str]:
+    """The registry's match for one input, minus methods rejected for that input.
+
+    `match_semantic_request` checks every current input the request states, so
+    SAMBAR is rejected for "mutations or expression" as a whole; what one input
+    supports on its own is the capability match alone.
+    """
+    match = match_requested_outcome(reading.outcome)
+    actions = (
+        list(match.matched_actions) if match.status in {"exact", "fallback"}
+        else list(match.hypothesis_actions or match.matched_actions) if match.status == "ambiguous"
+        else []
+    )
+    rejected = {item.action for item in rejected_methods_for(task, [value], actions=actions)}
+    return [action for action in actions if action not in rejected]
+
+
+def _splits(task: str, reading) -> list[tuple[str, list[str]]]:
+    """Log 250: each stated input on its own, when no workflow takes them together.
+
+    Only a reading with no candidate and two or more inputs is split, and only
+    when some input alone has a candidate -- otherwise the split says nothing
+    the reading does not. The inputs are the reading's own; none is added.
+    """
+    inputs = [value for value in reading.outcome.input_artifacts if value != "unknown"]
+    if len(inputs) < 2:
+        return []
+    def alone(value):
+        # The other inputs' evidence goes with them, or the match reads it as
+        # an input the outcome dropped.
+        return reading.model_copy(update={
+            "outcome": reading.outcome.model_copy(update={"input_artifacts": [value]}),
+            "evidence": [item for item in reading.evidence
+                         if item.dimension != "input_artifact" or item.value == value],
+        }, deep=True)
+    splits = [(value, _alone_candidates(task, alone(value), value)) for value in inputs]
+    # An input that has a workflow first; otherwise the reading's own order.
+    splits.sort(key=lambda item: not item[1])
+    return splits if any(actions for _, actions in splits) else []
+
+
+def _option_lines(outcome, actions, policy, *, single_input: bool) -> tuple[list[str], str]:
+    specs = [(action, policy.workflows[action]) for action in actions if action in policy.workflows]
+    if specs:
+        lines = [line for action, spec in specs for line in _candidate_details(action, spec, policy)]
+        return lines, " or ".join(spec.workflow for _, spec in specs)
+    lines = ["No registered workflow produces this result from "
+             + ("this input." if single_input else "these inputs.")]
+    accepting = _accepting_workflows(outcome, policy)
+    if accepting:
+        lines.append(
+            "Registered workflows that accept " + ("it" if single_input else "these inputs")
+            + ", and what they produce instead: " + "; ".join(accepting) + "."
+        )
+    return lines, "no registered workflow"
+
+
+def _title(number, reading, readings, task, user_data) -> str:
+    quote = _quote(reading, [other for other in readings if other is not reading], task)
+    if quote is not None:
+        user_data.append(quote)
+        return f'Reading {number} -- "{user_data_token(len(user_data) - 1)}"'
+    granularity = _GRANULARITY_LABELS.get(reading.outcome.granularity, "")
+    return f"Reading {number} -- " + " ".join(
+        part for part in (granularity, _artifact_label(reading.outcome.artifact_type)) if part
+    )
+
+
 def render_hypothesis_routes(
     decision: TaskDecision, policy: ProjectPolicySnapshot, *, task: str,
 ) -> str | None:
-    """The per-reading reply, or None when there is one reading or the reply covers all."""
+    """The per-reading reply, or None when the existing reply already covers every reading."""
     if decision.action != "no_tool":
         return None
     readings = _readings(decision, policy)
-    if len(readings) < 2:
+    if not readings:
         return None
     # Only a no-tool reply reaches here, so every reading is matched as guidance.
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
-    if _covered(decision, routes):
+    splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
+    several = len(readings) >= 2 and not _covered(decision, routes)
+    if not several and not any(splits):
         return None
     user_data: list[str] = []
     sections = [
         "Your request describes more than one scientific reading. Each is listed with "
         "the registered workflows that fit it, their algorithmic premises and inputs:"
+        if len(readings) >= 2 else
+        "No single registered workflow produces this result from all the stated inputs "
+        "together. Each stated input is listed on its own, with the registered workflows "
+        "that fit it, their algorithmic premises and inputs:"
     ]
     choices = []
-    for number, (reading, actions) in enumerate(routes, start=1):
-        quote = _quote(reading, [other for other in readings if other is not reading], task)
-        if quote is not None:
-            user_data.append(quote)
-            title = f'Reading {number} -- "{user_data_token(len(user_data) - 1)}"'
+    for number, ((reading, actions), split) in enumerate(zip(routes, splits), start=1):
+        lines = [f"**{_title(number, reading, readings, task, user_data)}**"] if len(readings) >= 2 else []
+        lines.append(_result_line(reading.outcome))
+        prefix = f"{number}: " if len(readings) >= 2 else ""
+        if split:
+            lines.append("Each stated input on its own:")
+            for value, input_actions in split:
+                single = reading.outcome.model_copy(update={"input_artifacts": [value]})
+                option, names = _option_lines(single, input_actions, policy, single_input=True)
+                lines.append(f"- From the {_input_label(value)}:")
+                lines.extend("  " + line for line in option)
+                choices.append(f"{prefix}the {_input_label(value)} ({names})")
         else:
-            granularity = _GRANULARITY_LABELS.get(reading.outcome.granularity, "")
-            title = f"Reading {number} -- " + " ".join(
-                part for part in (granularity, _artifact_label(reading.outcome.artifact_type)) if part
-            )
-        lines = [f"**{title}**", _result_line(reading.outcome)]
-        specs = [(action, policy.workflows[action]) for action in actions if action in policy.workflows]
-        if specs:
-            for action, spec in specs:
-                lines.extend(_candidate_details(action, spec, policy))
-            names = " or ".join(spec.workflow for _, spec in specs)
-        else:
-            lines.append(
-                "No registered workflow produces this result from these inputs."
-            )
-            accepting = _accepting_workflows(reading.outcome, policy)
-            if accepting:
-                lines.append(
-                    "Registered workflows that accept these inputs, and what they produce "
-                    "instead: " + "; ".join(accepting) + "."
-                )
-            names = "no registered workflow"
+            option, names = _option_lines(reading.outcome, actions, policy, single_input=False)
+            lines.extend(option)
+            choices.append(f"{number} ({names})")
         sections.append("\n".join(lines))
-        choices.append(f"{number} ({names})")
     sections.append(
-        "Which reading should we start with: " + ", ".join(choices) + "? "
-        "If a reading should use different data, say which."
+        ("Which reading should we start with: " if len(readings) >= 2 else "Which should we start with: ")
+        + ", ".join(choices) + "? "
+        + ("If a reading should use different data, say which." if len(readings) >= 2
+           else "If you meant a different result for one of the inputs, say which.")
     )
     sections.append(_NOT_INSPECTED)
     return _ui_text_with_user_data("\n\n".join(sections), user_data)
