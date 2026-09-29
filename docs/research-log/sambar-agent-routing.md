@@ -13966,3 +13966,45 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
   「Do you have a tool specifically for this class of molecules?」，`claims` 仍然為空。
 - **結論：** 引文弱是模型自己選擇把哪一句當成「要求」，不是 schema 形狀造成的。能影響它的只剩 prompt 措辭（禁止的做法）。
   因此撤回 V，保留 Log 271 的修復與 Log 269 的確認假設作為把關。
+
+## Log 279｜事前宣告：W——sibling repair 修好的讀法不能成為唯一的讀法（D：case 6 exact SAMBAR）
+
+日期／時區：2026-09-29，Asia/Taipei。取代先前分出去的 task chip。
+
+**機制（`prior-dependence-2026-09-29/live-n-blind-r3` 的 case 6；離線重播可重現）：**
+- 第一輪有兩個讀法：(0) co-expression network（正確，COBRA）；(1) sample_distance_matrix（多出來的）。
+- patch 針對讀法 0 改粒度，只附 inferred evidence，被丟棄，讀法 0 仍然無效。
+- sibling repair 給讀法 1 一段逐字、但與該 artifact 無關的引文（「which parts of the co-expression structure are driven by the batch」），
+  讀法 1 因此有效。
+- `keep_valid_hypotheses` 丟掉讀法 0，留下讀法 1，於是 exact 配到 SAMBAR（需要突變矩陣，請求從未提到）。
+- Log 242 的 sibling repair 是為了**保住與主讀法並存**的替代讀法，不是為了取代主讀法。
+
+**設計（決定性規則）：**
+- 在最後一次嘗試，若 patch 針對的主讀法被丟棄，而且每個被保留的讀法在 sibling repair **之前**都是無效的，
+  就拒絕這次縮減，改由既有的失敗路徑處理。記錄 `routing.sibling_only_reduction_refused`。
+- 主讀法仍有效，或保留的讀法本來就有效（Log 156 的情況）時，行為不變。
+
+**預期的釘住測試修改：** 無已知。
+
+**撤回條件：**
+- W-a：既有測試失敗 → 停止並列出。
+- W-b：fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- W-c（離線重播，閘門）：52 個已記錄、有 sibling repair 的試驗（去重）重播：只有 case 6 的結果可以改變，
+  而且不能再是 exact SAMBAR；其餘 51 個必須與基準完全相同。
+- W-d（live，blind-en ×3）：0 call-limit error、0 leak、沒有 WRONG。
+
+## Log 280｜Log 279 結果：W **保留**（W-d 的字面條件被一個未涉及的 case 7 觸發，照實記錄）
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`sibling-only-2026-09-29/live-w-r{1,2,3}-blind.json*`；
+回歸測試 `tests/test_sibling_only_reduction.py`，以記錄的 case 6 provider 回覆離線重播（fixture `tests/log279_case6_calls.json`）。
+
+- **W-a：** 2,845 passed，沒有修改既有測試。拿掉修正時，重播測試會失敗。**W-b：** fingerprint 不變。
+- **W-c（決定性，閘門）：** 52 個有 sibling repair 的已記錄試驗重播，只有 case 6 改變（exact SAMBAR → semantic_fallback，沒有工具），
+  其餘 51 個與基準相同。
+- **W-d（live ×3）：** 0 連線錯誤、0 call-limit error、0 leak；推薦出現在回覆中 5／5。blind-en OK 26／30。
+  - 規則在這 30 次試驗中**一次都沒有執行**：0 次 sibling repair、0 次拒絕縮減。
+  - 事前宣告寫「沒有 WRONG」，r3 的 case 7 出現 WRONG：模型把請求讀成 per-sample 的 multi-omic network，
+    DRAGON 只有 cohort-level，所以沒有候選。該試驗沒有 sibling repair，也沒有縮減步驟，W 不可能影響它。
+    同樣的 case 7 WRONG 在 Log 260 已出現過。
+  - **這個條件沒有 noise floor，應該寫成「沒有可歸因於 W 的新 WRONG」**（如同 Q-c）。這裡照實記錄字面條件被觸發，
+    並依決定性閘門 W-c 保留 W；若使用者要求嚴格依字面條件，就撤回。

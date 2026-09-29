@@ -50,7 +50,7 @@ from .semantic_review_validation import (
     normalize_role_entailed_artifact_evidence,
 )
 from .structured_calls import _serialized_structured_input, _validation_issue_types
-from .partial_validity import keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
+from .partial_validity import issue_indices, keep_valid_hypotheses, retain_valid_first_pass, valid_first_pass_subset
 from .sibling_repair import repair_sibling_hypotheses
 from .discriminator import (
     discriminator_context as _discriminator_context,
@@ -539,6 +539,7 @@ def invoke_semantic_interpreter(
             interpretation.outcome_hypotheses,
             interpretation.request_mode,
         )
+        invalid_before_sibling_repair = frozenset(issue_indices(validation.issues))
         if patch is not None:
             interpretation, validation, usage, budget_warnings = repair_sibling_hypotheses(
                 context, state, user_task, interpretation, validation,
@@ -547,7 +548,9 @@ def invoke_semantic_interpreter(
             )
         if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
             interpretation, validation = keep_valid_hypotheses(
-                context, state, user_task, interpretation, validation, attempt)
+                context, state, user_task, interpretation, validation, attempt,
+                primary=patched_index if patch is not None else None,
+                invalid_before_sibling_repair=(invalid_before_sibling_repair if patch is not None else frozenset()))
         duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         if not validation.valid:
             usage = append_llm_usage(
