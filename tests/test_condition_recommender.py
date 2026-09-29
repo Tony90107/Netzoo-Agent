@@ -295,7 +295,8 @@ def test_form_a_renders_the_quote_and_the_alternative():
     answer = render_outcome_clarification(decision, policy)
 
     assert answer.startswith('Based on what you said — "a handful of patients" — **BONOBO** fits better')
-    assert "Your question asks for per-sample coexpression network" in answer
+    # Log 275 (user decision): singular result noun with its article.
+    assert "Your question asks for a per-sample co-expression network." in answer
     assert "BONOBO applies Bayesian estimation and shrinkage" in answer
     assert "**LIONESS-COEXPRESSION** — preferred when: dozens of samples or more" in answer
     assert "No files were inspected and no analysis ran." in answer

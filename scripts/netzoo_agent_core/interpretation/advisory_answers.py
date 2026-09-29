@@ -82,10 +82,9 @@ def render_advisory_recommendation(
         if recommendation.conditions else
         f"My recommended starting method is **{spec.workflow}**: {recommendation.rationale}"
     )
+    # The lead states the conditions and the block below the mechanism (Log 275).
     fit = question_fit_for(
-        decision.requested_outcome, spec.workflow, spec.output_capability,
-        stated_conditions=[_condition_label(f"{item.axis}:{item.value}")
-                           for item in recommendation.conditions],
+        decision.requested_outcome, spec.workflow, spec.output_capability, mechanism=False,
     )
     lines = [lead]
     if recommendation.conditions and recommendation.rationale:

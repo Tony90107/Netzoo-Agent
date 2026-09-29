@@ -14,7 +14,7 @@ from .advisory_answers import render_advisory_recommendation, render_method_capa
 from .method_philosophy import method_philosophies_for
 from .reply_notes import with_reply_notes
 from .single_candidate import single_candidate_question
-from .tie_guidance import render_tie_guidance
+from .tie_guidance import concern_section_for_workflow, render_tie_guidance
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -778,7 +778,9 @@ def render_registered_workflow_contract_answer(
             f"`{name}={value}`" for name, value in conditional.when.items()
         )
         lines.append(f"When {conditions}: {conditional.semantics}.")
-    return _ui_text("\n".join(lines) + "\n\nNo files were inspected and no analysis ran.")
+    concerns = concern_section_for_workflow(decision, policy, action)
+    return _ui_text("\n".join(lines) + (f"\n\n{concerns}" if concerns else "")
+                    + "\n\nNo files were inspected and no analysis ran.")
 
 
 def render_ambiguous_workflow_guidance(

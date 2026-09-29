@@ -59,6 +59,21 @@ def concern_section(decision, policy, actions) -> str:
                         for c, lines in by_concern.items())
 
 
+def concern_section_for_workflow(decision, policy, action) -> str:
+    """Stated concerns one named workflow answers, matched by concern id (Log 275).
+
+    Concerns are recorded for the tie's candidates; a card for the workflow the
+    user named answers the same concern ids from that workflow's own notes.
+    """
+    declared = {c.concern: c for c in REQUEST_CONCERNS.get(action, ())}
+    workflow = policy.workflows[action].workflow
+    return "\n\n".join(
+        f"About your concern that {declared[concern].label}:\n- **{workflow}** — {declared[concern].note}"
+        for concern in dict.fromkeys(item.concern for item in decision.addressed_concerns)
+        if concern in declared
+    )
+
+
 def render_tie_guidance(decision, policy, *, family_label, assumptions: str = "") -> str | None:
     actions = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
     if len(actions) < 2:

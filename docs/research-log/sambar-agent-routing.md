@@ -13892,3 +13892,35 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
 - **S-d（live ×3）：** 推薦實際出現在回覆中 7／7（case 3 BONOBO 3／3、miRNA PUMA 3／3、case 4 1），此前是 0／8。
   blind-en OK 29／30（9／10／10），0 連線錯誤、0 call-limit error、0 leak。
 - **小問題（未改）：** `question_fit_for` 的句子文法不佳（"asks for regulatory network"），而且與推薦段落第一句重複。
+
+## Log 275｜事前宣告：U——fit 句的文法與重複（A）；具名 workflow 規格卡回答陳述的疑慮（B）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求把剩下的小問題一起修掉。
+
+- **U1（A）：** `question_fit_for` 的結果名詞改用單數標籤並加冠詞，例如「asks for a regulatory network」、
+  「a per-sample co-expression network」、「a cohort-level sample cluster assignment」。
+  - form A 已經在開頭說明條件、在推薦段落說明機制，所以它呼叫 fit 句時不再重述條件與機制，只保留「Your question asks for …」。
+  - 其他呼叫者（verified guidance）照舊附上機制句。
+- **U2（B）：** `render_registered_workflow_contract_answer`（使用者點名 workflow 時的規格卡）：
+  若 decision 的 addressed concern 的 concern id 也由被點名的 workflow 宣告，就附上該 workflow 的 registry note。
+  concern 當初是對平手候選記錄的，所以這裡依 concern id 對應，而不是依 action。
+- **預期的釘住測試修改（使用者要求修文法）：**
+  - `tests/test_condition_recommender.py:298` 的 `"Your question asks for per-sample coexpression network"`；
+  - `tests/test_guidance_consistency.py:112` 的 `"Your question asks for cohort-level sample cluster assignment"`。
+  其餘 → 停止並列出。
+- **撤回條件：**
+  - U-a：其他既有測試失敗；
+  - U-b：fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 改變；
+  - U-c（離線）：77 個推薦 decision 經 `respond()` 重新產生後，0 個回覆出現「asks for regulatory network」這類缺冠詞的句子，
+    推薦段落第一句 0 次重複出現在 fit 句中，而且仍然 77／77 顯示推薦。只影響回覆層，不做 live。
+
+## Log 276｜Log 275 結果：U1、U2 **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+- **U-a：** 2,843 passed；只修改了宣告的兩個子字串（冠詞＋單數名詞）。新增 `test_a_named_workflow_card_answers_the_concern_by_id`。
+- **U-b：** fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- **U-c：** 已記錄的推薦 decision 82 個（含 Log 274 新增的）經 `respond()`：
+  - 82／82 顯示推薦；
+  - 0 個缺冠詞的「asks for …」；
+  - 推薦段落第一句 0 次重複出現在 fit 句。
