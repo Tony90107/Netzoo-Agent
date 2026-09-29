@@ -15,6 +15,8 @@ alone so a repair can still turn an invalid reading into a valid one.
 
 from __future__ import annotations
 
+import re
+
 from ..contracts.outcomes import SemanticInterpretation
 from ..interpretation.outcome_validation import OutcomeValidation, validate_outcome_hypotheses
 from .context import record_event
@@ -85,6 +87,11 @@ def retain_valid_first_pass(context, state, validated, partial_first, attempt: i
     return partial_first
 
 
+def issue_indices(issues) -> set[int]:
+    """Hypothesis positions named by validation issues ("hypothesis[1].missing…")."""
+    return {int(match) for issue in issues for match in re.findall(r"hypothesis\[(\d+)\]", issue)}
+
+
 def keep_valid_hypotheses(
     context,
     state,
@@ -92,6 +99,9 @@ def keep_valid_hypotheses(
     interpretation: SemanticInterpretation,
     validation: OutcomeValidation,
     attempt: int,
+    *,
+    primary: int | None = None,
+    invalid_before_sibling_repair: frozenset[int] = frozenset(),
 ) -> tuple[SemanticInterpretation, OutcomeValidation]:
     hypotheses = interpretation.outcome_hypotheses
     if validation.valid or len(hypotheses) < 2:
@@ -102,6 +112,15 @@ def keep_valid_hypotheses(
         kept, dropped = _valid_subset(user_task, interpretation, with_siblings=with_siblings)
         if not kept or not dropped:
             continue
+        dropped_at = {item["hypothesis"] for item in dropped if "hypothesis" in item}
+        kept_at = set(range(len(hypotheses))) - dropped_at
+        if primary in dropped_at and kept_at and kept_at <= invalid_before_sibling_repair:
+            # A sibling repair keeps alternatives beside the primary reading; it
+            # must not replace it (Log 279: case 6 became exact SAMBAR this way).
+            record_event(context, state, "routing.sibling_only_reduction_refused", "classify", {
+                "attempt": attempt + 1, "primary": primary, "kept": sorted(kept_at),
+            })
+            return interpretation, validation
         reduced = interpretation.model_copy(update={"outcome_hypotheses": kept})
         revalidated = validate_outcome_hypotheses(
             user_task, reduced.outcome_hypotheses, reduced.request_mode,
