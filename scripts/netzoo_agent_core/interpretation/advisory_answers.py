@@ -92,9 +92,12 @@ def render_advisory_recommendation(
     if spec is None:
         return None
     if recommendation.conditions and all(item.axis == "inspected_inputs" for item in recommendation.conditions):
+        # The other per-sample reading is named on every path (Logs 283, 285).
+        notes = (OTHER_READING_NOTES.get(recommendation.action), concern_section_for_workflow(
+            decision, policy, recommendation.action))
         return render_inspected_recommendation(
             decision, policy, spec, candidate_details(recommendation.action, spec, policy, recommended=True),
-            concern_section_for_workflow(decision, policy, recommendation.action),
+            "\n\n".join(note for note in notes if note),
         )
     # Quotes remain in the validated decision for audit. Echoing a Chinese
     # excerpt in the answer breaks the project's fixed English output policy.

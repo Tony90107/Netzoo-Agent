@@ -1,0 +1,595 @@
+{
+ "prompt": "data/blind-neutral/case-4/ has expression, motif and PPI files. I believe each patient's regulatory wiring is different, and later I want to relate each person's per-TF regulatory strength over its targets to survival time.",
+ "input_only": {
+  "source": "docs/research-log/unstated-scale-2026-09-29/live-x2-r2-blind.json.gz",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Assess individual regulatory networks and their relationship to survival time.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "regulatory_network",
+        "granularity": "sample_specific",
+        "regulator_types": [
+         "tf"
+        ],
+        "target_types": [
+         "gene"
+        ]
+       },
+       "confidence": 0.9,
+       "evidence": [
+        {
+         "dimension": "operation",
+         "value": "infer",
+         "source": "explicit",
+         "rationale": "The user wants to assess individual regulatory networks for each patient.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "artifact_type",
+         "value": "regulatory_network",
+         "source": "explicit",
+         "rationale": "The user is interested in regulatory wiring, which corresponds to regulatory networks.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "granularity",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The user implies that the analysis should be specific to each patient.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "regulator_type",
+         "value": "tf",
+         "source": "explicit",
+         "rationale": "The user mentions relating TF regulatory strength to targets, indicating TFs as regulators.",
+         "text_span": "relate each person's per-TF regulatory strength over its targets"
+        }
+       ],
+       "assumptions": [
+        "The user has access to the necessary data files for analysis."
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "analyze",
+        "artifact_type": "expression_matrix",
+        "granularity": "sample_specific",
+        "entity_types": [
+         "gene",
+         "sample"
+        ]
+       },
+       "confidence": 0.8,
+       "evidence": [
+        {
+         "dimension": "operation",
+         "value": "analyze",
+         "source": "explicit",
+         "rationale": "The user is interested in relating regulatory strength to survival time, which requires analyzing expression data.",
+         "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+        },
+        {
+         "dimension": "artifact_type",
+         "value": "expression_matrix",
+         "source": "explicit",
+         "rationale": "Expression data is necessary to assess regulatory strength.",
+         "text_span": "expression, motif and PPI files"
+        },
+        {
+         "dimension": "granularity",
+         "value": "sample_specific",
+         "source": "explicit",
+         "rationale": "The analysis should be specific to each patient.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "entity_type",
+         "value": "sample",
+         "source": "explicit",
+         "rationale": "The user refers to individual patients, indicating that samples are the unit of analysis.",
+         "text_span": "each patient's regulatory wiring is different"
+        }
+       ],
+       "assumptions": [
+        "The user intends to analyze the relationship between regulatory strength and survival time."
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticEvidenceSupply",
+    "args": {
+     "evidence_0": {
+      "source": "explicit",
+      "rationale": "The user is interested in regulatory wiring, which corresponds to regulatory networks.",
+      "text_span": "each patient's regulatory wiring is different"
+     }
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": null
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": []
+    }
+   }
+  ]
+ },
+ "gap_quote": {
+  "source": "docs/research-log/strict-conditions-2026-09-29/live-v-r2-blind.json.gz",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Understand how to analyze individual regulatory networks and their relationship to survival time.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "regulatory_network",
+        "granularity": "sample_specific",
+        "regulator_types": [
+         "tf"
+        ],
+        "target_types": [
+         "gene"
+        ]
+       },
+       "confidence": 0.9,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "regulatory_network",
+         "source": "explicit",
+         "rationale": "The user wants to analyze each patient's regulatory wiring, which is represented as a regulatory network.",
+         "text_span": "each patient's regulatory wiring is different"
+        }
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "analyze",
+        "artifact_type": "tf_activity_matrix",
+        "granularity": "sample_specific",
+        "entity_types": [
+         "tf",
+         "sample"
+        ],
+        "regulator_types": [
+         "tf"
+        ],
+        "target_types": [
+         "gene"
+        ]
+       },
+       "confidence": 0.8,
+       "evidence": [
+        {
+         "dimension": "artifact_type",
+         "value": "tf_activity_matrix",
+         "source": "explicit",
+         "rationale": "The user intends to relate each person's regulatory strength to survival time, which requires analyzing TF activity.",
+         "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 0,
+     "request_mode": "guidance",
+     "semantic_goal": "Understand how to analyze individual regulatory networks and their relationship to survival time.",
+     "confidence": 0.9,
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "granularity",
+       "value": "unknown"
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "unknown"
+      },
+      {
+       "dimension": "target_type",
+       "value": "unknown"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "rationale": "The user states that each patient's regulatory wiring is different, implying a sample-specific analysis.",
+       "source": "explicit",
+       "text_span": "each patient's regulatory wiring is different"
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "rationale": "The user is interested in relating regulatory strength to targets, which involves transcription factors (TFs).",
+       "source": "explicit",
+       "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "rationale": "The analysis of regulatory strength over targets typically involves genes as the targets of regulation by TFs.",
+       "source": "explicit",
+       "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+      }
+     ],
+     "assumptions": []
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific",
+      "tf_gene_regulation"
+     ],
+     "evidence": [
+      {
+       "dimension": "selection_tag",
+       "value": "sample_specific",
+       "source": "explicit",
+       "rationale": "The user states that each patient's regulatory wiring is different, implying a sample-specific analysis.",
+       "text_span": "each patient's regulatory wiring is different"
+      },
+      {
+       "dimension": "selection_tag",
+       "value": "tf_gene_regulation",
+       "source": "explicit",
+       "rationale": "The user is interested in relating regulatory strength to targets, which involves transcription factors (TFs).",
+       "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": null
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": [
+      {
+       "concern": "per_sample_values",
+       "text_span": "a value is needed for each sample"
+      }
+     ]
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "sample_specific",
+      "mirna_regulation",
+      "tf_gene_regulation"
+     ],
+     "requirement_quote": "I believe each patient's regulatory wiring is different, and later I want to relate each person's per-TF regulatory strength over its targets to survival time.",
+     "capability_gap": null,
+     "preference": {
+      "action": "run_lioness_puma",
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I believe each patient's regulatory wiring is different",
+       "each person's per-TF regulatory strength over its targets"
+      ],
+      "rationale": "LIONESS-PUMA is designed to infer sample-specific regulatory networks, which aligns with the user's need to account for individual variations in regulatory wiring. It incorporates miRNA regulation, which is essential given the user's focus on regulatory strength over targets. This method allows for the integration of both TF and miRNA regulators, providing a comprehensive view of the regulatory landscape for each patient. Additionally, the message passing approach helps refine the regulatory interactions based on biological evidence, making it suitable for the user's analysis of survival time.",
+      "assumptions": [
+       "The user has access to the necessary input files (expression, motif, PPI, and miRNA).",
+       "The user is interested in both TF and miRNA regulatory effects."
+      ]
+     },
+     "claims": [
+      {
+       "condition": "regulator_class:mirna",
+       "text_span": "I believe each patient's regulatory wiring is different"
+      },
+      {
+       "condition": "per_sample_quantity:wiring",
+       "text_span": "I believe each patient's regulatory wiring is different"
+      },
+      {
+       "condition": "per_sample_quantity:activity",
+       "text_span": "each person's per-TF regulatory strength over its targets"
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "inspected": {
+  "source": "docs/research-log/recommendation-reply-2026-09-29/live-s-r3-blind.json.gz",
+  "calls": [
+   {
+    "schema": "SemanticInterpretation",
+    "args": {
+     "request_mode": "guidance",
+     "semantic_goal": "Understand how to analyze individual regulatory networks and their relationship to survival time.",
+     "outcome_hypotheses": [
+      {
+       "outcome": {
+        "operation": "infer",
+        "artifact_type": "regulatory_network",
+        "granularity": "sample_specific",
+        "regulator_types": [
+         "tf"
+        ],
+        "target_types": [
+         "gene"
+        ]
+       },
+       "confidence": 0.9,
+       "evidence": [
+        {
+         "dimension": "operation",
+         "value": "infer",
+         "source": "explicit",
+         "rationale": "The user wants to analyze individual regulatory networks for each patient.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "artifact_type",
+         "value": "regulatory_network",
+         "source": "explicit",
+         "rationale": "The user is interested in the regulatory wiring of each patient.",
+         "text_span": "each patient's regulatory wiring is different"
+        },
+        {
+         "dimension": "granularity",
+         "value": "sample_specific",
+         "source": "inferred",
+         "rationale": "The analysis is focused on individual patients, indicating a sample-specific approach."
+        },
+        {
+         "dimension": "regulator_type",
+         "value": "tf",
+         "source": "inferred",
+         "rationale": "The user mentions relating TF regulatory strength to targets."
+        },
+        {
+         "dimension": "target_type",
+         "value": "gene",
+         "source": "inferred",
+         "rationale": "The targets of the regulatory networks are genes."
+        }
+       ],
+       "assumptions": [
+        "The user has access to the necessary data files for analysis."
+       ]
+      },
+      {
+       "outcome": {
+        "operation": "analyze",
+        "artifact_type": "expression_matrix",
+        "granularity": "sample_specific",
+        "entity_types": [
+         "gene",
+         "sample"
+        ]
+       },
+       "confidence": 0.8,
+       "evidence": [
+        {
+         "dimension": "operation",
+         "value": "analyze",
+         "source": "explicit",
+         "rationale": "The user wants to relate regulatory strength to survival time, which requires analyzing expression data.",
+         "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+        },
+        {
+         "dimension": "artifact_type",
+         "value": "expression_matrix",
+         "source": "explicit",
+         "rationale": "Expression data is necessary to assess regulatory strength.",
+         "text_span": "expression files"
+        },
+        {
+         "dimension": "granularity",
+         "value": "sample_specific",
+         "source": "inferred",
+         "rationale": "The analysis is focused on individual patients."
+        },
+        {
+         "dimension": "entity_type",
+         "value": "gene",
+         "source": "inferred",
+         "rationale": "The analysis involves gene expression."
+        },
+        {
+         "dimension": "entity_type",
+         "value": "sample",
+         "source": "inferred",
+         "rationale": "The analysis is conducted on a per-patient basis."
+        }
+       ],
+       "assumptions": [
+        "The user intends to correlate regulatory strength with survival time."
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "schema": "SemanticPatch",
+    "args": {
+     "hypothesis_index": 1,
+     "request_mode": "guidance",
+     "semantic_goal": "Understand how to analyze individual regulatory networks and their relationship to survival time.",
+     "confidence": 0.8,
+     "outcome": {
+      "operation": "analyze",
+      "input_artifacts": [
+       "expression_matrix"
+      ],
+      "artifact_type": "expression_matrix",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [
+       "gene",
+       "sample"
+      ],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "evidence_removals": [
+      {
+       "dimension": "operation",
+       "value": "analyze"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "expression_matrix"
+      }
+     ],
+     "evidence_additions": [
+      {
+       "dimension": "operation",
+       "value": "analyze",
+       "rationale": "The user wants to relate regulatory strength to survival time, which requires analyzing expression data.",
+       "source": "explicit",
+       "text_span": "relate each person's per-TF regulatory strength over its targets to survival time"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "expression_matrix",
+       "rationale": "Expression data is necessary to assess regulatory strength.",
+       "source": "explicit",
+       "text_span": "expression files"
+      }
+     ],
+     "assumptions": null
+    }
+   },
+   {
+    "schema": "SemanticDiscriminator",
+    "args": {
+     "selection_tags": [
+      "sample_specific",
+      "tf_gene_regulation"
+     ],
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "rationale": "The user wants to analyze individual regulatory networks for each patient.",
+       "text_span": "each patient's regulatory wiring is different"
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "rationale": "The user is interested in the regulatory wiring of each patient.",
+       "text_span": "each patient's regulatory wiring is different"
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "inferred",
+       "rationale": "The analysis is focused on individual patients, indicating a sample-specific approach.",
+       "text_span": ""
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "rationale": "The user mentions relating TF regulatory strength to targets.",
+       "text_span": ""
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "rationale": "The targets of the regulatory networks are genes.",
+       "text_span": ""
+      }
+     ]
+    }
+   },
+   {
+    "schema": "IntentDecision",
+    "args": null
+   },
+   {
+    "schema": "ResearchFraming",
+    "args": {
+     "question_mode": "single_goal",
+     "hypotheses": [],
+     "concerns": []
+    }
+   },
+   {
+    "schema": "MethodComparisonReview",
+    "args": {
+     "requested_philosophy": [
+      "bayesian"
+     ],
+     "requirement_quote": "I believe each patient's regulatory wiring is different, and later I want to relate each person's per-TF regulatory strength over its targets to survival time.",
+     "capability_gap": {
+      "selection_tags": [
+       "leave_one_out_network_inference",
+       "message_passing",
+       "mirna_regulation",
+       "sample_specific"
+      ],
+      "text_spans": [
+       "I believe each patient's regulatory wiring is different, and later I want to relate each person's per-TF regulatory strength over its targets to survival time."
+      ],
+      "rationale": "The requested Bayesian philosophy is absent from the qualified candidates, which focus on message passing and network inference without providing probabilistic quantification of uncertainty."
+     },
+     "preference": null,
+     "claims": []
+    }
+   }
+  ]
+ }
+}

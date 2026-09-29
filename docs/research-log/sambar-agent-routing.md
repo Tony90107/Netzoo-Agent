@@ -14144,3 +14144,119 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
   - miRNA 題：PUMA 3／3；回覆 3,645 → 2,210 字；替代清單 5 → 3 行；沒有 downstream 段落。
   - case 4 的請求確實寫了「relate … to survival time」：`downstream_use` 3／3 被接受，所以 downstream notes 出現在使用者問到的地方。
   - blind-en OK 26／30，沒有 WRONG；case 4 PARTIAL 與先前各輪相同的形狀。
+
+## Log 285｜事前宣告：AA——case 4 的 PARTIAL：多出來的「輸入當結果」讀法（B），以及被誤觸的 Bayesian 缺口（G）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求修掉 case 4 的 PARTIAL。
+
+**觀察（09-29 各資料夾中已記錄的 case 4 試驗）：**
+- B（12 次「單一候選但 ambiguous」）：除了正確讀法（per-sample TF network → LIONESS-PANDA），模型把「relate … to survival time」
+  另外讀成結果為 `expression_matrix` 的讀法。沒有任何 workflow 產生這個 artifact，它只是輸入。只看第一個讀法就是 exact LIONESS-PANDA。
+- G（14 次三向平手）：條件呼叫把「**I believe** each patient's regulatory wiring is different…」讀成 Bayesian 需求，
+  `requested_philosophy=[bayesian]` 且引文就是這一句，10／10 沒有任何 claim。
+  - 缺口驗證通過（沒有候選持有 bayesian），case 4 因此拿到「Yes, in principle, data can weaken an unreliable TF-binding prior…」，
+    共 12 個不同 decision，case 10 也有 3 個。
+  - 誘因是條件 schema 描述裡為 noisy-prior 題寫的句子（「Probabilistic quantification of uncertainty is bayesian, even for motif priors」）。
+    改那句屬於禁止的措辭修正，所以用結構規則處理。
+
+**設計（決定性規則，不改 prompt、schema、registry）：**
+- G：必要數學哲學的引文若就是用來支撐所要**結果**的文字（讀法中 operation 以外任一 evidence span 的包含或被包含），
+  缺口就不成立。哲學需求必須和結果分開陳述。
+  - 在已記錄的缺口 decision 上：case 4 14／14 拒絕；noisy-prior en 16／16、zh 10／10 保留；
+    case 10 3 個中拒絕 1 個；prior-concern 探測 5 個中拒絕 3 個。
+- B：讀法的結果 artifact 若只當輸入（`expression_matrix`、`measurement_dataset`、`mutation_matrix`，沒有 workflow 產生），
+  而且其他讀法有可產生的結果、剩下的讀法自己也能通過驗證，就從配對與 decision 中移除它，並記錄事件。
+  - 在已記錄、有多個讀法的 147 個 decision 中：17 個 case 4 由 ambiguous[LIONESS-PANDA] 變成 exact LIONESS-PANDA，
+    3 個 case 4 系列不變，其他 0 個改變。
+
+**預期的釘住測試修改：** 無已知。
+
+**撤回條件：**
+- AA-a：既有測試失敗 → 停止並列出。
+- AA-b：fingerprint、`policy_hash` 不變。
+- AA-c（離線，決定性）：上述兩個計數必須成立。
+- AA-d（live，blind-en ×3 ＋ case 4 ×6 ＋ noisy-prior ×3）：
+  - noisy-prior 缺口 ≥5／6；
+  - case 4 的 Bayesian 缺口回覆 0 次；
+  - 0 call-limit error、0 leak；沒有可歸因於 AA 的新 WRONG。
+  - 報告 case 4 的 OK／PARTIAL 分布（計分）。
+
+**Log 285 補充（live 回合之前寫，離線結果）：**
+- 設計補一條 H：資料夾推薦（form A 的 inspected 分支）原本沒有列出另一個讀法（`OTHER_READING_NOTES`），
+  而 Log 283 規定每條路徑都要列出。
+  - 已記錄的 case 4 中，`OK(recommended)` 的 16 個 decision 全部缺少 both_readings。
+  - 改法：這個分支和 form A 其他分支一樣，傳入 `OTHER_READING_NOTES`。
+- D 在離線就撤回，沒有進 live：
+  - 設想：跨讀法的平手時，重述型標籤（`sample_specific`、`tf_gene_regulation`）可以用來選讀法。
+  - 全語料重播（2531 個不重複 trial）：case 4 的 38 個 PARTIAL 變成 OK，
+    但 case 1 有 3 個由 OK(exact) GIRAFFE 變成 WRONG LIONESS-PANDA。
+  - 原因：模型在 case 1（答案 GIRAFFE）和 case 4（答案 LIONESS-PANDA）回傳**同一組**標籤，
+    這組標籤對「wiring 還是 activity」不含資訊。這和 Log 174 的判斷一致。
+    舊版 case 1 答對，只是因為 GIRAFFE 的讀法剛好排在第一。
+- 「各讀法各自解析」（divergent 平手中每個讀法依單一讀法的規則解析）量過，改變 0 個 decision，不做。
+- 撤回 D 之後，B＋G 的全語料重播（2531 個）：
+  - 2500 個不變。
+  - case 4：OK 40→56，PARTIAL 38→22（78 個不重複 trial）。16 個由 B 造成，其餘是缺口移除，verdict 不變。
+  - G 另外移除了 case 10 的 1 個缺口、prior-concern 探測的 3 個缺口，verdict 不變。
+  - 其他案例的 verdict 全部不變，0 個新錯誤。
+- 剩下的 PARTIAL 是讀法之間的平手（每個讀法各有一個方法：per-sample network 與 TF activity），
+  也就是 Logs 150／200 刻意保留、要反問使用者的問題。
+  G 之後這些回覆已經列出兩個讀法，不再給 Bayesian 答案。
+- 釘住測試：仍無修改（全套件 2855 passed，含新增的 6 個）。
+- 撤回條件不變；AA-d 另加一條：live 的 case 4 回覆必須全部含有 both_readings。
+
+## Log 286｜結果：AA——B、G、H 保留；D 離線撤回；case 4 的讀法平手照設計保留
+
+日期／時區：2026-09-30，Asia/Taipei。
+- 證據：`docs/research-log/case4-readings-2026-09-30/`
+  - `live-aa-r{1,2,3}-blind.json`（blind-en ×3）
+  - `live-aa-case4-{a,b}-x3.json`（case 4 ×6；harness 每次最多重複 5 次，所以拆成兩個 ×3）
+  - `live-aa-noisy-x3.json`
+- 模型 gpt-4o-mini，0 次連線錯誤。
+
+**實作（程式，不改 prompt、schema、registry 資料）：**
+- B：`routing/reading_selection.py` `drop_input_only_readings`。
+  - 輸入專用 artifact 由 registry 推導（所有 `input_artifacts` 減去任何 workflow 可產生的 artifact）。
+  - 在 `router_invocation` 的 `match_semantic_request` 之前套用，事件為 `routing.input_only_readings_dropped`。
+- G：`condition_recommender._quotes_the_result`，在 `_validated_capability_gap` 中檢查。
+  - 只看結果維度（artifact_type、entity_type、regulator_type、target_type、granularity）。
+  - 事件 `routing.capability_gap_quotes_result` 只在「原本會成立、因 G 而拒絕」時才記錄。
+    第一版在一個早已因未註冊標籤被拒的 case 6 缺口上也會記錄，已修正。
+- H：`advisory_answers.render_advisory_recommendation` 的 inspected 分支加上 `OTHER_READING_NOTES`。
+- 測試：`tests/test_reading_selection.py`（6 個）＋ fixture `tests/log285_case4_calls.json`。
+  - 三個重播 fixture 在 810b872 上分別出現：tie 未關、Bayesian 回覆、缺少另一讀法。
+
+**撤回條件：**
+- AA-a ✓：2858 passed，0 個釘住測試修改。
+- AA-b ✓：`prompt_schema_sha256` `b9bfa69b8022`、`policy_hash` `6d99c45b…` 不變；claims 的 prompt 與 schema 也沒有改。
+- AA-c ✓：Log 285 補充中的全語料重播（2531 個）。
+  - case 4：OK 40→56、PARTIAL 38→22。
+  - 其他案例 verdict 變化 0。
+  - noisy-prior 缺口 41／41 保留。
+- AA-d ✓：
+  - noisy-prior 缺口 6／6。
+  - case 4 的 Bayesian 回覆 0／9。
+  - case 4 回覆含 both_readings 9／9。
+  - 0 call-limit、0 leak。
+  - 沒有新的 WRONG。
+
+**case 4（live 9 次：blind 3 次＋單獨 6 次）：**
+- 新程式：OK 6（exact 4、recommended 2），PARTIAL 3。
+- 同一批 trial 重播到 810b872：OK 3（1 exact、2 個 recommended 但帶 Bayesian 缺口），PARTIAL 6；
+  both_readings 缺 8／9；Bayesian 缺口 5／9。
+- G 起決定作用 5／9，B 3／9；noisy-prior 上 G 起決定作用 0／6。
+- 剩下的 3 個 PARTIAL 都是兩讀法平手：LIONESS-PANDA／LIONESS-PUMA（per-sample network）對 GIRAFFE（activity）。
+  回覆列出兩個讀法並問使用者要哪一個量，這是 Log 150／200 的設計。
+  - 這 3 次的條件呼叫都只輸出 Bayesian 需求（被 G 擋下），沒有 claim，所以沒有依據可以推薦。
+  - 誘因是 schema 描述中為 noisy-prior 題加的 Bayesian 句子。依禁令，我不改它。
+
+**blind-en ×3：** 每輪 9／10 OK。
+- r1 case 6 PARTIAL：claim 引用的是軸的描述文字而不是請求，屬既有行為。重播到 810b872 結果完全相同。
+- r2 case 7 FALLBACK：semantic interpreter 在 B 之前就失敗，和 AA 無關。
+- r3 case 4 PARTIAL：讀法平手。
+- case 1 的 `missed=per_sample_values` 是既有現象，不變。
+
+**結論：**
+- case 4 的三種 PARTIAL 中，兩種是結構缺陷，已修（B、G）；另一種是刻意保留的問題（讀法平手）。
+  另外修了一個回覆缺漏（H）。
+- D 的教訓：重述型標籤不能拿來選讀法。同一組標籤在 case 1 和 case 4 對應相反的正確答案（Log 174 的延伸）。

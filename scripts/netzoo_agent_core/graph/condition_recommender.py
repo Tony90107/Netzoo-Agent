@@ -351,14 +351,29 @@ def _misplaced_condition_claims(task, review, options, claims) -> list[Condition
             if item in offered and item not in claimed][:max(0, 6 - len(claims.claims))]
 
 
-def _validated_capability_gap(task, gap, candidate_facts):
+_RESULT_DIMENSIONS = frozenset({"artifact_type", "entity_type", "regulator_type", "target_type", "granularity"})
+
+
+def _quotes_the_result(gap, readings) -> bool:
+    """A required philosophy is stated apart from the result it qualifies (Log 285).
+
+    The words that ask for a per-patient network are not a request for Bayesian
+    inference, so a gap whose only quote grounds the typed result is unsupported.
+    """
+    spans = {_normalized(item.text_span) for reading in readings for item in reading.evidence
+             if item.text_span and item.dimension in _RESULT_DIMENSIONS}
+    quotes = {_normalized(span) for span in gap.text_spans}
+    return any(q and s and (q in s or s in q) for q in quotes for s in spans)
+
+
+def _validated_capability_gap(task, gap, candidate_facts, readings=()):
     if gap is None or not candidate_facts:
         return None
     registered = set().union(*(item.selection_tags for item in OUTPUT_CAPABILITIES.values()))
     required = set(gap.selection_tags)
     if not required <= registered or any(
         required <= set(item["selection_tags"]) for item in candidate_facts
-    ) or any(not _quote_grounded(task, span) for span in gap.text_spans):
+    ) or any(not _quote_grounded(task, span) for span in gap.text_spans) or _quotes_the_result(gap, readings):
         return None
     if _NON_ENGLISH.search(gap.rationale):
         gap = gap.model_copy(update={"rationale":
@@ -477,8 +492,14 @@ def invoke_condition_recommender(
                 text_spans=[review.requirement_quote],
                 rationale="No qualified registered workflow declares the requested mathematical philosophy for this scientific result.",
             )
-        gap = (_validated_capability_gap(user_task, required_gap, candidate_facts)
-               or _validated_capability_gap(user_task, claims.capability_gap, candidate_facts))
+        readings = decision.outcome_hypotheses
+        gap = (_validated_capability_gap(user_task, required_gap, candidate_facts, readings)
+               or _validated_capability_gap(user_task, claims.capability_gap, candidate_facts, readings))
+        # Recorded only where the result quote is what rejects an otherwise valid gap.
+        if quoted := [item.model_dump() for item in (required_gap, claims.capability_gap)
+                      if _validated_capability_gap(user_task, item, candidate_facts) is not None
+                      and _quotes_the_result(item, readings)]:
+            record_event(context, state, "routing.capability_gap_quotes_result", "classify", {"gaps": quoted})
         if gap is not None:
             record_event(context, state, "routing.method_capability_gap", "classify", gap.model_dump())
             return decision.model_copy(update={

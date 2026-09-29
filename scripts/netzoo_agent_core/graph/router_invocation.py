@@ -34,6 +34,7 @@ from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
 from .input_inspection import invoke_input_inspection
+from ..routing.reading_selection import drop_input_only_readings
 from ..routing.scale_relaxation import note_unstated_scale, relax_unstated_scale
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -223,6 +224,9 @@ def _route_request(
         "Checking registered workflow capabilities",
         {"kind": "registry_activity", "status": "started"},
     )
+    interpretation, dropped = drop_input_only_readings(user_task, interpretation)
+    if dropped:
+        record_event(context, state, "routing.input_only_readings_dropped", "classify", {"artifact_types": dropped})
     capability_match = match_semantic_request(
         user_task,
         interpretation.outcome_hypotheses,
