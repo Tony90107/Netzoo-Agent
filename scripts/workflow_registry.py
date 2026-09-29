@@ -187,6 +187,29 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
 # user-facing English and deliberately qualitative: there is no accepted
 # numeric cut-off for "few" samples.
 SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
+    # Log 269 (user decision): a functional description of the regulators
+    # (short non-coding RNAs degrading transcripts) may point to miRNA methods,
+    # as a quoted condition the user confirms. Asked first: a biological fact
+    # comes before algorithm choices. Offered only when the tie mixes TF-only
+    # and TF/miRNA methods, so it never overrides a stated regulator scope.
+    "regulator_class": {
+        "question": (
+            "Do the regulators include miRNAs, short non-coding RNAs that repress or degrade "
+            "their target transcripts after transcription?"
+        ),
+        "values": {
+            "mirna": (
+                "the regulators include miRNAs or similar short non-coding RNAs that repress "
+                "or degrade target transcripts after transcription"
+            ),
+        },
+        "confirm": {
+            "mirna": (
+                "This reads the molecules you describe as miRNAs. Confirm that, and that you have "
+                "a miRNA-target prior and a list of the miRNAs, before analysis."
+            ),
+        },
+    },
     "cohort_size": {
         "question": "About how many samples do you have?",
         "values": {
@@ -935,6 +958,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             selection_tags=frozenset({
                 "mirna_regulation", "aggregate_network", "message_passing",
             }),
+            prefer_when=("regulator_class:mirna",),
             guidance_notes=(
                 "PUMA uses message passing to integrate miRNA-target predictions "
                 "with target-gene co-expression alongside TF motif and PPI evidence.",
@@ -1045,7 +1069,7 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
                 "sample_specific", "mirna_regulation", "message_passing",
                 "leave_one_out_network_inference",
             }),
-            prefer_when=("cohort_size:many", "per_sample_quantity:wiring",),
+            prefer_when=("cohort_size:many", "per_sample_quantity:wiring", "regulator_class:mirna",),
             handoff_contract=(
                 "LIONESS-PUMA uses the original gene-by-sample expression matrix, "
                 "motif, PPI, and miRNA priors to internally infer the aggregate PUMA "

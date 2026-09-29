@@ -13747,3 +13747,56 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
 - **P-c：** 已記錄的缺口 decision 去重後 20 個，全部是 `bayesian` × regulatory_network，20／20 都列出兩條參考，
   參考段落 0 次 `(recommend)`。沒有其他 tag 的已記錄缺口；由單元測試確認 partial_correlation 與 bayesian × co-expression 不會列出。
 - 只影響回覆層，不做 live（事前宣告）。
+
+## Log 269｜事前宣告：Q——以功能描述推論 miRNA，只作為附引文、由使用者確認的建議（使用者同意）
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+**背景：** Log 261 的 trace：使用者描述「短鏈非編碼分子在轉錄後降解產物」但沒有寫 miRNA，於是 `regulator_types` 一直沒被填入，
+六候選平手，反問問的是記憶體與 GIRAFFE。使用者 2026-09-29 同意：可以從功能描述推論 miRNA，但只作為附原文引述的建議，
+由使用者確認，不直接成為 typed 事實。這放寬 Log 240 記錄的立場（b670faa：small RNAs 不自動等於 miRNA），
+只放寬在 advisory 層：`regulator_types` 與 exact 路由不變。
+
+**設計（registry＋條件推薦器形狀，不改 prompt 措辭）：**
+- Q1：`SELECTION_AXES` 新增 `regulator_class`（單值 `mirna`：調控因子包括 miRNA 等在轉錄後抑制或降解目標轉錄本的短鏈非編碼 RNA），
+  放在第一條軸，讓分隔問題先問生物學事實，再問演算法。PUMA 與 LIONESS-PUMA 的 `prefer_when` 加入 `regulator_class:mirna`
+  （YAML 與 registry 同步）。
+- Q2：`recommend_from_claims`：被接受的條件留下的候選，若是一個 base 加上它的 `guidance_predecessors` 延伸，就推薦 base；
+  延伸仍列在替代選項中。
+- Q3：軸可以宣告 `confirm` 文字。以該軸條件產生的推薦，會帶上一條「請確認」的假設
+  （這裡：把描述的分子讀成 miRNA，並需要 miRNA-target 先驗與 miRNA 清單）。
+- 只有在 regulator scope 未解決、而且平手同時含 TF-only 與 TF/miRNA 方法時才會提供這條軸，
+  因為條件選項要求只有部分候選偏好它。
+
+**預期的變化（宣告）：**
+- `policy_hash` 改變（puma.yaml、lioness-puma.yaml）；`OUTPUT_CAPABILITIES` 正規化 JSON 改變（兩個 `prefer_when`）；
+  semantic／claims fingerprint 不應改變（`prefer_when` 不進 model context dump，已有釘住測試）。
+- 條件呼叫的輸入：含 PUMA 家族與 TF-only 方法的平手，多一個提供的條件；分隔問題的第一題變成 miRNA 問題。
+- case 5（先驗混有 small RNA）的推薦來源可能由資料夾內容變成引文條件（依 Log 218，事實 ＞ 資料夾）；狀態仍是平手，符合 Log 240 的「平手＋推薦」。
+
+**預期的釘住測試修改：** 無已知。任何既有測試失敗 → 停止並列出。
+
+**撤回條件：**
+- Q-a：既有測試失敗 → 停止並列出。
+- Q-b：semantic／claims fingerprint 改變 → 撤回。
+- Q-c（live，閘門）：blind-en ×3 中，已記錄為 OK 的 case 1、2、3、6、7、8、9 不得因本變更出現新的 WRONG
+  （以該試驗是否提供了 `regulator_class` 條件來歸因）。0 call-limit error、0 leak。
+- Q-d（live，計分，非閘門）：miRNA 題 ×3 的 PUMA 推薦次數，以及每次推薦都附確認假設；
+  case 5 ×3 的推薦與來源；noisy-prior ×3 不受影響（缺口 3／3）。
+
+## Log 270｜Log 269 結果：Q **保留**；miRNA 題仍未得到 PUMA 推薦（模型把條件寫進錯誤欄位）
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`mirna-condition-2026-09-29/live-q-r{1,2,3}-{blind,noisy,mirna}.json*`。
+
+- **Q-a：** 2,840 passed、35 skipped，另加 `tests/test_mirna_condition.py` 5 例，沒有修改既有測試。
+  另外修正一處：模型說明與條件推薦一致時，原本會用模型的假設**取代**推薦的假設，會丟掉確認文字；改為合併。
+- **Q-b：** fingerprint 不變。`policy_hash` a6d472a1… → 6d99c45b…（宣告的 YAML 變更）。
+- **Q-c：** 0 call-limit error、0 leak；case 1、2、3、6–9 沒有新的 WRONG。
+  r3 的 case 2 PARTIAL 是第一輪平手（沒有 relaxed-matching tag），條件呼叫 0 個 claim；只有 1 個樣本，不能歸因於 Q。
+- **Q-d（計分）：**
+  - miRNA 題：3／3 都有提供 `regulator_class:mirna`，而且分隔問題的第一題 3／3 變成 miRNA 問題。但 PUMA 推薦 0／3。
+    原始 I/O 顯示模型理解了（rationale 寫「short non-coding molecules, which are typically miRNAs」），
+    卻把 `regulator_class:mirna` 寫進自由文字欄位 `requested_philosophy`，`claims` 為空，3／3 都一樣。
+  - case 5：exact PUMA 3／3，不變；noisy-prior 缺口 6／6。
+- **欄位誤用是系統性的：** 已記錄、去重後 56 次條件呼叫中，18 次有 claim，9 次把 `axis:value` 條件 id 寫進 `requested_philosophy`。
+  下一個 Log 處理。
