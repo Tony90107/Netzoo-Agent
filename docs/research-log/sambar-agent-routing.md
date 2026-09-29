@@ -13346,3 +13346,93 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
 - Z-d：live SAMBAR zh 3／3、en 3／3：突變資料 → SAMBAR；表現量 → LIONESS-PANDA／LIONESS-PUMA／GIRAFFE／BONOBO／LIONESS-COEXPRESSION 的每樣本特徵矩陣＋NetZoo 外的分群、不獨立與需以結局檢驗的提醒。
   blind-en 組合出現 0／30，0 wrong、0 leak（OK 26／30，非門檻；非 OK 為 case 4／6／10 的路由層結果）。
 - 單一讀法請求「subtype the patients from an RNA-seq expression matrix」原本回覆「Which scientific result do you want NetZoo to produce?」，現在回覆組合（腳本化 transport 確認，不是 live）。
+
+## Log 254｜事前宣告：H——把使用者陳述的假設本身變成回覆的單位（假設依據軸＋strict 引文呼叫）
+
+日期／時區：2026-09-29，Asia/Taipei。
+使用者看了 Log 253 之後的實際回覆，認為沒有變好。我同意：回覆依資料分段，使用者自己的兩個假設沒有出現，反問也只問「先用哪種資料」。
+使用者重申要求：提出 ≥2 個生物學假設或目標不明確時，不得只推薦單一工具；要依各工具的演算法假設與輸入需求分項列出，最後反問。輸出維持英文。
+
+**原因：** 到回覆層時，「兩個假設」已經被合併成一個讀法（`sample_cluster_assignment ← expression＋mutation`），回覆層無從得知使用者的假設。
+
+**設計（合約形狀，不改措辭）：**
+- `workflow_registry.HYPOTHESIS_AXES`（Python-only，不在 policy snapshot）：每條軸宣告適用的結果 artifact、一個由 registry 撰寫的科學性反問，以及各「依據」。
+  每個依據有：給模型的標籤、回覆標題、分析的輸入、首選 workflow、為何貼合的一句說明、較不直接的替代方案及其理由。
+  第一條軸是 `subtyping_basis`：`accumulated_genomic_damage`（mutation → SAMBAR）與 `current_regulatory_state`（expression → LIONESS-PANDA，再用 `GUIDANCE_COMPOSITIONS` 的 NetZoo 外分群步驟；替代：LIONESS-PUMA、GIRAFFE、BONOBO、LIONESS-COEXPRESSION）。
+- 新 advisory 階段 `graph/hypothesis_bases.py`，仿 `request_concerns`：
+  - 一次 strict 呼叫，依據 id 限定為提供的 `Literal`，每個 claim 附原文引文。
+  - 決定性檢查：必須是提供的依據、引文逐字在請求中、同一引文不能同時給兩個依據。
+  - 結果存入新欄位 `TaskDecision.stated_hypotheses`（為空時不進 dump）。
+- **閘門（決定性）：** `action == no_tool`、非執行、legacy contract、之前沒有 advisory 呼叫；讀法或 requested outcome 的 artifact 屬於某條軸；而且請求的現行輸入涵蓋該軸 ≥2 個依據的輸入。
+  只提供這些可檢驗的依據。所以只有突變資料的 SAMBAR 請求（blind case 8、`original-*`）不會多出呼叫。
+  新角色 `hypothesis_bases` 算進 `_ADVISORY_CALL_ROLES`，與既有 advisory 呼叫互斥，每次試驗上限不變（7）。
+- **回覆：** `stated_hypotheses` 有 ≥2 個不同依據時，`hypothesis_routes` 優先輸出假設形式：
+  - 每個假設一段，標題是使用者原文引文，下接依據標題與貼合理由；
+  - 首選 workflow 附完整的演算法前提、數學解讀、必要輸入與輸出；首選不直接產生該結果時，附組合表的 NetZoo 外步驟；
+  - 替代方案各一行並附理由；組合的提醒只列一次；
+  - 最後是 registry 的科學性反問，加上「Which hypothesis should we start with: 1 (…) or 2 (…)?」。
+
+**預期的釘住測試修改（完整清單）：** `tests/test_contracts_package.py` 的 `SCHEMA_DIGESTS["TaskDecision"]`（若 `RouterDecision` 內嵌同一欄位，則也包括它）。
+
+**撤回條件：**
+- H-a：除上列之外有既有測試失敗 → 停止並列出。
+- H-b：fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES`（正規化 JSON）與 HEAD 相同。
+- H-c（離線，決定性）：閘門套用在 Logs 241–253 全部 trace 上，只能對 SAMBAR zh／en 的請求成立；blind 0。
+- H-d（live，hypothesis 語料 ×3）：
+  - 結構計數：SAMBAR zh／en 的階段執行 6／6；
+  - 一致性：每次都是「接受 ≥2 個不同依據 ⇔ 回覆為假設形式」；
+  - 所有試驗 0 個 call-limit safety error；
+  - 假設形式 0／6 即撤回，並照實報告實際次數。
+- H-e（live，blind-en ×3）：階段執行 0／30；0 wrong、0 leak。
+
+## Log 255｜跨所有 workflow 的假設比較與目標澄清（完成）
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+依使用者明確補充「不是只針對這個問題以及這兩個套件」，本次實作取代 Log 254
+所提的 SAMBAR 專用依據軸與限定輸入閘門；保留先前紀錄，沒有照單實作該窄化方案。
+
+- `ResearchFraming` 先辨識每個原文假設、欲估計的科學量、尺度、調控對象及估計方法前提，
+  不讓模型直接指定 workflow。Python 根據現有 registry 配對，適用全部 12 個科學 workflow。
+- 明確提出假設比較時，這個階段先於單一 endpoint 分類；其餘目標未明的讀法在 advisory
+  排序前再檢查。相同終點不合併假設，同一假設可保留多個相容演算法。
+- 額外 downstream endpoint 必須附原文證據。引文失敗、provider 不可用或沒有預算時，
+  不得退回單工具推薦；不相容的假設明列缺口，也不能只保留第三個假設以外的兩個。
+- 每個假設分項交代演算法前提、必要輸入、產出與限制，最後反問選擇，允許平行比較。
+  不傾倒預設參數、不從建議取得執行權限。原 policy YAML、registry 科學能力及必要輸入未改。
+- `hypothesis_bases` 與條件排序／實務 concern 共用最多一次 advisory 呼叫額度。
+  evaluator 現在另外記錄 `research_choices_validated`，不偽裝成舊 semantic review 成功。
+- 更新既有測試中的 advisory 呼叫順序、strict schema fixture、TaskDecision schema digest；
+  sibling repair 的 fixture 明確回傳 single_goal，保留原本 repair 測試的目的。
+- 科學修正：SAMBAR 不是 NMF；LIONESS 的個體網路是線性插值公式而不是單獨的
+  leave-one-out 網路；PANDA 權重不是實測結合強度，橫斷面資料不證明時間動態。
+
+驗證：完整 suite 2,726 passed、35 skipped；新 regression module 50 tests。
+最後一輪 live 8/8（中英原題、TF/miRNA、活性/連線、covariate/個體、跨體學/單體學、
+社群/covariate，以及三個未定目標），逐假設驗證工具與 target artifact；最終程式離線重播亦 8/8。
+早期 live 錯誤揭露了引文重寫、把背景拆成假設、及自行新增分群終點；這些錯誤不計為成功證據。
+單輪測試不代表模型在任意新問題都能完全正確。詳見
+[可重跑證據與回答範例](../../manual_tests/research_choices_2026_09_29/README.md)。
+
+## Log 256｜單候選不拆假設、相同方法只說明一次、概念回答改為科學對話
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+使用者新的 CONDOR 原題揭露 Log 255 過度觸發：兩段不同引文不等於兩個有效分析方向。
+模型把失敗現象和原因提問都配到 CONDOR，renderer 卻依引文重複列出工具，router 又強制加上選擇題。
+
+本次依最新需求收斂規則：至少兩個**不同、相容的候選**才比較與反問；同方法說明去重，
+單候選不製造假設選擇題。保留原文問題與方法的關係；不支援的方向明列缺口，不湊第二個工具。
+新的 `scientific_guidance.py` 在概念諮詢時用原因、模型假設、資料與可解讀結果組織說明，
+保留明確要求 API／參數時的規格回答。CONDOR 直接回答二分圖虛無模型的問題，但不把 hubs
+當成既定診斷；CLI 的後續行為也與候選數一致。
+
+實作使用 existing router／response 介面的回歸測試。新增 19 例（包括全部 12 個工具的單候選
+反向案例），更新原有測試的文字呈現斷言，保留方法、輸入、輸出、證據及執行邊界驗證。
+修正 live 揭露的兩個邊界：fallback 同樣提供有來源限制的概念說明；downstream 證據可容忍
+標點差異，但不可添加字詞。科學配對規則、workflow 必要輸入與執行授權沒有放寬。
+
+驗證：2,745 passed、35 skipped；最後 live 4/4 完整 evaluator 通過（中英 CONDOR 都為單候選，
+原 DNA／轉錄與 TF／miRNA 維持多候選）；前版 8 例離線重播 8/8。首次失敗 live 留存，
+另將 UX 行為通過與 strict-routing 通過分欄，沒有把 fallback 算作 exact 成功。
+詳見 [原因、修正與可重跑證據](../../manual_tests/research_choices_followup_2026_09_29/README.md)。

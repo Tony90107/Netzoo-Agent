@@ -1,0 +1,2303 @@
+{
+  "metadata": {
+    "capture": "raw_structured_provider_io_and_routing_events_v1",
+    "credentials_recorded": false
+  },
+  "results": [
+    {
+      "id": "hyp-sambar-lioness-zh",
+      "trial": 1,
+      "prompt": "我們收集了另一批病患的資料來做腫瘤分型，以預測化療抗藥性。這次我們同時擁有『全外顯子DNA突變分佈』與『轉錄表現量』。在決定分型依據時，團隊不知道該從『不可逆的DNA損傷累積』切入，還是從『細胞當下系統連線的動態重組』切入。針對這兩種截然不同的生化假設，工作流該如何設計？它們分別對應什麼工具？",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "我們收集了另一批病患的資料來做腫瘤分型，以預測化療抗藥性。這次我們同時擁有『全外顯子DNA突變分佈』與『轉錄表現量』。在決定分型依據時，團隊不知道該從『不可逆的DNA損傷累積』切入，還是從『細胞當下系統連線的動態重組』切入。針對這兩種截然不同的生化假設，工作流該如何設計？它們分別對應什麼工具？"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "不可逆的DNA損傷累積",
+                    "profile": "pathway_mutation_matrix",
+                    "target_artifact": "sample_cluster_assignment",
+                    "granularity": "aggregate",
+                    "target_span": "腫瘤分型，以預測化療抗藥性",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "細胞當下系統連線的動態重組",
+                    "profile": "regulatory_network",
+                    "target_artifact": "sample_cluster_assignment",
+                    "granularity": "aggregate",
+                    "target_span": "腫瘤分型，以預測化療抗藥性",
+                    "regulators": [],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1631,
+            "output_tokens": 144,
+            "total_tokens": 1775,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 0,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "不可逆的DNA損傷累積",
+                "profile": "pathway_mutation_matrix",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "腫瘤分型，以預測化療抗藥性",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "細胞當下系統連線的動態重組",
+                "profile": "regulatory_network",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "腫瘤分型，以預測化療抗藥性",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "不可逆的DNA損傷累積",
+                "profile": "pathway_mutation_matrix",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "腫瘤分型，以預測化療抗藥性",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "細胞當下系統連線的動態重組",
+                "profile": "regulatory_network",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "腫瘤分型，以預測化療抗藥性",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_sambar",
+                "text_span": "不可逆的DNA損傷累積",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "細胞當下系統連線的動態重組",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_sambar",
+                "text_span": "不可逆的DNA損傷累積",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "細胞當下系統連線的動態重組",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              }
+            ],
+            "actions": [
+              "run_sambar",
+              "run_lioness_panda"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_sambar",
+          "run_lioness_panda"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_sambar",
+            "text_span": "不可逆的DNA損傷累積",
+            "target_artifact": "sample_cluster_assignment",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_panda",
+            "text_span": "細胞當下系統連線的動態重組",
+            "target_artifact": "sample_cluster_assignment",
+            "target_granularity": "unknown"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-sambar-lioness-en",
+      "trial": 1,
+      "prompt": "We collected another patient cohort to subtype tumours and predict chemotherapy resistance. This time we have both whole-exome somatic mutation profiles and transcript expression. The team cannot decide whether to subtype from the accumulation of irreversible DNA damage, or from the dynamic rewiring of the cell's current regulatory connections. For these two very different biochemical hypotheses, how should the workflow be designed, and which tools correspond to each?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "We collected another patient cohort to subtype tumours and predict chemotherapy resistance. This time we have both whole-exome somatic mutation profiles and transcript expression. The team cannot decide whether to subtype from the accumulation of irreversible DNA damage, or from the dynamic rewiring of the cell's current regulatory connections. For these two very different biochemical hypotheses, how should the workflow be designed, and which tools correspond to each?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "accumulation of irreversible DNA damage",
+                    "profile": "pathway_mutation_matrix",
+                    "target_artifact": "sample_cluster_assignment",
+                    "granularity": "aggregate",
+                    "target_span": "subtype tumours and predict chemotherapy resistance",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "dynamic rewiring of the cell's current regulatory connections",
+                    "profile": "regulatory_network",
+                    "target_artifact": "sample_cluster_assignment",
+                    "granularity": "aggregate",
+                    "target_span": "subtype tumours and predict chemotherapy resistance",
+                    "regulators": [],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1571,
+            "output_tokens": 125,
+            "total_tokens": 1696,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 0,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "accumulation of irreversible DNA damage",
+                "profile": "pathway_mutation_matrix",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "subtype tumours and predict chemotherapy resistance",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "dynamic rewiring of the cell's current regulatory connections",
+                "profile": "regulatory_network",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "subtype tumours and predict chemotherapy resistance",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "accumulation of irreversible DNA damage",
+                "profile": "pathway_mutation_matrix",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "subtype tumours and predict chemotherapy resistance",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "dynamic rewiring of the cell's current regulatory connections",
+                "profile": "regulatory_network",
+                "target_artifact": "sample_cluster_assignment",
+                "granularity": "aggregate",
+                "target_span": "subtype tumours and predict chemotherapy resistance",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_sambar",
+                "text_span": "accumulation of irreversible DNA damage",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "dynamic rewiring of the cell's current regulatory connections",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_sambar",
+                "text_span": "accumulation of irreversible DNA damage",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "dynamic rewiring of the cell's current regulatory connections",
+                "target_artifact": "sample_cluster_assignment",
+                "target_granularity": "unknown"
+              }
+            ],
+            "actions": [
+              "run_sambar",
+              "run_lioness_panda"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_sambar",
+          "run_lioness_panda"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_sambar",
+            "text_span": "accumulation of irreversible DNA damage",
+            "target_artifact": "sample_cluster_assignment",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_panda",
+            "text_span": "dynamic rewiring of the cell's current regulatory connections",
+            "target_artifact": "sample_cluster_assignment",
+            "target_granularity": "unknown"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-tf-mirna-en",
+      "trial": 1,
+      "prompt": "We have expression data from drug-resistant and sensitive cell lines. One hypothesis is that transcription factors rewire their target genes; the other is that microRNAs silence the genes. For each hypothesis, what workflow should we build and which tools fit?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "We have expression data from drug-resistant and sensitive cell lines. One hypothesis is that transcription factors rewire their target genes; the other is that microRNAs silence the genes. For each hypothesis, what workflow should we build and which tools fit?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "transcription factors rewire their target genes",
+                    "profile": "regulatory_network",
+                    "target_artifact": "unknown",
+                    "granularity": "unknown",
+                    "target_span": "",
+                    "regulators": [
+                      "tf"
+                    ],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "microRNAs silence the genes",
+                    "profile": "regulatory_network",
+                    "target_artifact": "unknown",
+                    "granularity": "unknown",
+                    "target_span": "",
+                    "regulators": [
+                      "mirna"
+                    ],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1538,
+            "output_tokens": 102,
+            "total_tokens": 1640,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "transcription factors rewire their target genes",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              },
+              {
+                "text_span": "microRNAs silence the genes",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "mirna"
+                ],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "transcription factors rewire their target genes",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              },
+              {
+                "text_span": "microRNAs silence the genes",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "mirna"
+                ],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_panda",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_otter",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_puma",
+                "text_span": "microRNAs silence the genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_puma",
+                "text_span": "microRNAs silence the genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_panda",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_otter",
+                "text_span": "transcription factors rewire their target genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_puma",
+                "text_span": "microRNAs silence the genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_puma",
+                "text_span": "microRNAs silence the genes",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "unknown"
+              }
+            ],
+            "actions": [
+              "run_panda",
+              "run_lioness_panda",
+              "run_otter",
+              "run_puma",
+              "run_lioness_puma"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_panda",
+          "run_lioness_panda",
+          "run_otter",
+          "run_puma",
+          "run_lioness_puma"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_panda",
+            "text_span": "transcription factors rewire their target genes",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_panda",
+            "text_span": "transcription factors rewire their target genes",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_otter",
+            "text_span": "transcription factors rewire their target genes",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_puma",
+            "text_span": "microRNAs silence the genes",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "unknown"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_puma",
+            "text_span": "microRNAs silence the genes",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "unknown"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-activity-wiring-en",
+      "trial": 1,
+      "prompt": "Responders and non-responders differ, and we have two competing explanations: some TFs are simply more active in responders, or the same TFs are wired to different targets in each patient. How would you set up an analysis for each explanation, and with which tools?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "Responders and non-responders differ, and we have two competing explanations: some TFs are simply more active in responders, or the same TFs are wired to different targets in each patient. How would you set up an analysis for each explanation, and with which tools?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "some TFs are simply more active in responders",
+                    "profile": "tf_activity_matrix",
+                    "target_artifact": "unknown",
+                    "granularity": "sample_specific",
+                    "target_span": "",
+                    "regulators": [
+                      "tf"
+                    ],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "the same TFs are wired to different targets in each patient",
+                    "profile": "regulatory_network",
+                    "target_artifact": "unknown",
+                    "granularity": "sample_specific",
+                    "target_span": "",
+                    "regulators": [
+                      "tf"
+                    ],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1546,
+            "output_tokens": 113,
+            "total_tokens": 1659,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "some TFs are simply more active in responders",
+                "profile": "tf_activity_matrix",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              },
+              {
+                "text_span": "the same TFs are wired to different targets in each patient",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "some TFs are simply more active in responders",
+                "profile": "tf_activity_matrix",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              },
+              {
+                "text_span": "the same TFs are wired to different targets in each patient",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_giraffe",
+                "text_span": "some TFs are simply more active in responders",
+                "target_artifact": "tf_activity_matrix",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "the same TFs are wired to different targets in each patient",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "sample_specific"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_giraffe",
+                "text_span": "some TFs are simply more active in responders",
+                "target_artifact": "tf_activity_matrix",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_panda",
+                "text_span": "the same TFs are wired to different targets in each patient",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "sample_specific"
+              }
+            ],
+            "actions": [
+              "run_giraffe",
+              "run_lioness_panda"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_giraffe",
+          "run_lioness_panda"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_giraffe",
+            "text_span": "some TFs are simply more active in responders",
+            "target_artifact": "tf_activity_matrix",
+            "target_granularity": "sample_specific"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_panda",
+            "text_span": "the same TFs are wired to different targets in each patient",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "sample_specific"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-covariate-individual-en",
+      "trial": 1,
+      "prompt": "Gene co-expression seems to change across our 300 tumours. Either the change is driven by a clinical covariate such as age or stage across the whole cohort, or it is idiosyncratic to individual patients. Which workflow tests each hypothesis?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "Gene co-expression seems to change across our 300 tumours. Either the change is driven by a clinical covariate such as age or stage across the whole cohort, or it is idiosyncratic to individual patients. Which workflow tests each hypothesis?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "change is driven by a clinical covariate such as age or stage",
+                    "profile": "coexpression_network",
+                    "target_artifact": "unknown",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": [
+                      "covariate_association"
+                    ]
+                  },
+                  {
+                    "text_span": "idiosyncratic to individual patients",
+                    "profile": "coexpression_network",
+                    "target_artifact": "unknown",
+                    "granularity": "sample_specific",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1542,
+            "output_tokens": 113,
+            "total_tokens": 1655,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "change is driven by a clinical covariate such as age or stage",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": [
+                  "covariate_association"
+                ]
+              },
+              {
+                "text_span": "idiosyncratic to individual patients",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "change is driven by a clinical covariate such as age or stage",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": [
+                  "covariate_association"
+                ]
+              },
+              {
+                "text_span": "idiosyncratic to individual patients",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_cobra",
+                "text_span": "change is driven by a clinical covariate such as age or stage",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_coexpression",
+                "text_span": "idiosyncratic to individual patients",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_bonobo",
+                "text_span": "idiosyncratic to individual patients",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "sample_specific"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_cobra",
+                "text_span": "change is driven by a clinical covariate such as age or stage",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_coexpression",
+                "text_span": "idiosyncratic to individual patients",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_bonobo",
+                "text_span": "idiosyncratic to individual patients",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "sample_specific"
+              }
+            ],
+            "actions": [
+              "run_cobra",
+              "run_lioness_coexpression",
+              "run_bonobo"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_cobra",
+          "run_lioness_coexpression",
+          "run_bonobo"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_cobra",
+            "text_span": "change is driven by a clinical covariate such as age or stage",
+            "target_artifact": "coexpression_network",
+            "target_granularity": "aggregate"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_coexpression",
+            "text_span": "idiosyncratic to individual patients",
+            "target_artifact": "coexpression_network",
+            "target_granularity": "sample_specific"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_bonobo",
+            "text_span": "idiosyncratic to individual patients",
+            "target_artifact": "coexpression_network",
+            "target_granularity": "sample_specific"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-multiomic-expr-en",
+      "trial": 1,
+      "prompt": "We have DNA methylation and expression for the same samples. Hypothesis one: methylation directly shapes expression, so we need associations across the two omics. Hypothesis two: expression alone explains it through gene-gene co-expression. How should each workflow be designed and what tools map to them?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "We have DNA methylation and expression for the same samples. Hypothesis one: methylation directly shapes expression, so we need associations across the two omics. Hypothesis two: expression alone explains it through gene-gene co-expression. How should each workflow be designed and what tools map to them?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "methylation directly shapes expression",
+                    "profile": "multi_omic_network",
+                    "target_artifact": "unknown",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "expression alone explains it through gene-gene co-expression",
+                    "profile": "coexpression_network",
+                    "target_artifact": "unknown",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1550,
+            "output_tokens": 101,
+            "total_tokens": 1651,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "methylation directly shapes expression",
+                "profile": "multi_omic_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "expression alone explains it through gene-gene co-expression",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "methylation directly shapes expression",
+                "profile": "multi_omic_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "expression alone explains it through gene-gene co-expression",
+                "profile": "coexpression_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_dragon",
+                "text_span": "methylation directly shapes expression",
+                "target_artifact": "multi_omic_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_coexpression",
+                "text_span": "expression alone explains it through gene-gene co-expression",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_dragon",
+                "text_span": "methylation directly shapes expression",
+                "target_artifact": "multi_omic_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_lioness_coexpression",
+                "text_span": "expression alone explains it through gene-gene co-expression",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              }
+            ],
+            "actions": [
+              "run_dragon",
+              "run_lioness_coexpression"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_dragon",
+          "run_lioness_coexpression"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_dragon",
+            "text_span": "methylation directly shapes expression",
+            "target_artifact": "multi_omic_network",
+            "target_granularity": "aggregate"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_lioness_coexpression",
+            "text_span": "expression alone explains it through gene-gene co-expression",
+            "target_artifact": "coexpression_network",
+            "target_granularity": "aggregate"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "hyp-community-covariate-en",
+      "trial": 1,
+      "prompt": "We have two hypotheses: genes form dense bipartite regulator-target communities in our existing regulatory edge network, or age explains changes in gene coexpression across our expression cohort. Compare a workflow for each and the required inputs.",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "We have two hypotheses: genes form dense bipartite regulator-target communities in our existing regulatory edge network, or age explains changes in gene coexpression across our expression cohort. Compare a workflow for each and the required inputs."
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "multiple_hypotheses",
+                "hypotheses": [
+                  {
+                    "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+                    "profile": "community_assignment",
+                    "target_artifact": "community_assignment",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "age explains changes in gene coexpression across our expression cohort",
+                    "profile": "coexpression_network",
+                    "target_artifact": "coexpression_network",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": [
+                      "covariate_association"
+                    ]
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1534,
+            "output_tokens": 118,
+            "total_tokens": 1652,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "multiple_hypotheses",
+            "hypotheses": [
+              {
+                "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+                "profile": "community_assignment",
+                "target_artifact": "community_assignment",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "age explains changes in gene coexpression across our expression cohort",
+                "profile": "coexpression_network",
+                "target_artifact": "coexpression_network",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": [
+                  "covariate_association"
+                ]
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "multiple_hypotheses",
+            "scientific_hypotheses": [
+              {
+                "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+                "profile": "community_assignment",
+                "target_artifact": "community_assignment",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "age explains changes in gene coexpression across our expression cohort",
+                "profile": "coexpression_network",
+                "target_artifact": "coexpression_network",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": [
+                  "covariate_association"
+                ]
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_condor",
+                "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+                "target_artifact": "community_assignment",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_cobra",
+                "text_span": "age explains changes in gene coexpression across our expression cohort",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_condor",
+                "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+                "target_artifact": "community_assignment",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "multiple_hypotheses",
+                "basis": "run_cobra",
+                "text_span": "age explains changes in gene coexpression across our expression cohort",
+                "target_artifact": "coexpression_network",
+                "target_granularity": "aggregate"
+              }
+            ],
+            "actions": [
+              "run_condor",
+              "run_cobra"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_condor",
+          "run_cobra"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_condor",
+            "text_span": "genes form dense bipartite regulator-target communities in our existing regulatory edge network",
+            "target_artifact": "community_assignment",
+            "target_granularity": "aggregate"
+          },
+          {
+            "axis": "multiple_hypotheses",
+            "basis": "run_cobra",
+            "text_span": "age explains changes in gene coexpression across our expression cohort",
+            "target_artifact": "coexpression_network",
+            "target_granularity": "aggregate"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    },
+    {
+      "id": "unclear-method-en",
+      "trial": 1,
+      "prompt": "We have expression and motif data, but have not decided whether the scientific goal is a tissue-level regulatory network, a network for every patient, or TF activity. What choices do we have and what assumptions and inputs separate them?",
+      "calls": [
+        {
+          "schema": "ResearchFraming",
+          "schema_sha256": "82937300a1630e380b4d28b9ccc2b2e62c3bb213f930f35457e9105e3916a755",
+          "messages": [
+            {
+              "type": "SystemMessage",
+              "content_sha256": "0dafde9def5ebae9e35e558f33fee1af304b31f5f90a95641a2dd6365c36ab9c"
+            },
+            {
+              "type": "HumanMessage",
+              "content": "We have expression and motif data, but have not decided whether the scientific goal is a tissue-level regulatory network, a network for every patient, or TF activity. What choices do we have and what assumptions and inputs separate them?"
+            }
+          ],
+          "raw_tool_calls": [
+            {
+              "name": "ResearchFraming",
+              "args": {
+                "question_mode": "unclear_goal",
+                "hypotheses": [
+                  {
+                    "text_span": "tissue-level regulatory network",
+                    "profile": "regulatory_network",
+                    "target_artifact": "unknown",
+                    "granularity": "aggregate",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "network for every patient",
+                    "profile": "regulatory_network",
+                    "target_artifact": "unknown",
+                    "granularity": "sample_specific",
+                    "target_span": "",
+                    "regulators": [],
+                    "method_tags": []
+                  },
+                  {
+                    "text_span": "TF activity",
+                    "profile": "tf_activity_matrix",
+                    "target_artifact": "unknown",
+                    "granularity": "unknown",
+                    "target_span": "",
+                    "regulators": [
+                      "tf"
+                    ],
+                    "method_tags": []
+                  }
+                ],
+                "concerns": []
+              }
+            }
+          ],
+          "raw_content": "",
+          "finish_reason": "tool_calls",
+          "usage": {
+            "input_tokens": 1535,
+            "output_tokens": 131,
+            "total_tokens": 1666,
+            "input_token_details": {
+              "audio": 0,
+              "cache_read": 1408,
+              "cache_creation": 0
+            },
+            "output_token_details": {
+              "audio": 0,
+              "reasoning": 0
+            }
+          },
+          "invalid_tool_calls": [],
+          "parsed": {
+            "question_mode": "unclear_goal",
+            "hypotheses": [
+              {
+                "text_span": "tissue-level regulatory network",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "network for every patient",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "TF activity",
+                "profile": "tf_activity_matrix",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              }
+            ],
+            "concerns": []
+          },
+          "parsing_error": null
+        }
+      ],
+      "events": [
+        {
+          "type": "routing.hypothesis_bases_started",
+          "payload": {}
+        },
+        {
+          "type": "routing.hypothesis_bases_matched",
+          "payload": {
+            "question_mode": "unclear_goal",
+            "scientific_hypotheses": [
+              {
+                "text_span": "tissue-level regulatory network",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "aggregate",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "network for every patient",
+                "profile": "regulatory_network",
+                "target_artifact": "unknown",
+                "granularity": "sample_specific",
+                "target_span": "",
+                "regulators": [],
+                "method_tags": []
+              },
+              {
+                "text_span": "TF activity",
+                "profile": "tf_activity_matrix",
+                "target_artifact": "unknown",
+                "granularity": "unknown",
+                "target_span": "",
+                "regulators": [
+                  "tf"
+                ],
+                "method_tags": []
+              }
+            ],
+            "accepted": [
+              {
+                "axis": "unclear_goal",
+                "basis": "run_panda",
+                "text_span": "tissue-level regulatory network",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_otter",
+                "text_span": "tissue-level regulatory network",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_lioness_panda",
+                "text_span": "network for every patient",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_giraffe",
+                "text_span": "TF activity",
+                "target_artifact": "tf_activity_matrix",
+                "target_granularity": "unknown"
+              }
+            ],
+            "rejected": [],
+            "concern_rejections": []
+          }
+        },
+        {
+          "type": "routing.research_choices_accepted",
+          "payload": {
+            "hypotheses": [
+              {
+                "axis": "unclear_goal",
+                "basis": "run_panda",
+                "text_span": "tissue-level regulatory network",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_otter",
+                "text_span": "tissue-level regulatory network",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "aggregate"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_lioness_panda",
+                "text_span": "network for every patient",
+                "target_artifact": "regulatory_network",
+                "target_granularity": "sample_specific"
+              },
+              {
+                "axis": "unclear_goal",
+                "basis": "run_giraffe",
+                "text_span": "TF activity",
+                "target_artifact": "tf_activity_matrix",
+                "target_granularity": "unknown"
+              }
+            ],
+            "actions": [
+              "run_panda",
+              "run_otter",
+              "run_lioness_panda",
+              "run_giraffe"
+            ]
+          }
+        }
+      ],
+      "decision": {
+        "action": "no_tool",
+        "in_scope": true,
+        "should_execute": false,
+        "intent_type": "answer_question",
+        "confidence": 0.0,
+        "reason": "Compare the stated research hypotheses before choosing a workflow.",
+        "candidate_actions": [],
+        "recommended_actions": [],
+        "requested_outcome": null,
+        "guidance_input_artifacts": [],
+        "outcome_hypotheses": [],
+        "capability_match_status": "ambiguous",
+        "match_basis": "semantic",
+        "rejected_methods": [],
+        "matched_actions": [],
+        "hypothesis_actions": [
+          "run_panda",
+          "run_otter",
+          "run_lioness_panda",
+          "run_giraffe"
+        ],
+        "alternative_actions": [],
+        "mismatch_dimensions": [],
+        "clarification_question": "Which scientific hypothesis or result should we start with?",
+        "stated_hypotheses": [
+          {
+            "axis": "unclear_goal",
+            "basis": "run_panda",
+            "text_span": "tissue-level regulatory network",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "aggregate"
+          },
+          {
+            "axis": "unclear_goal",
+            "basis": "run_otter",
+            "text_span": "tissue-level regulatory network",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "aggregate"
+          },
+          {
+            "axis": "unclear_goal",
+            "basis": "run_lioness_panda",
+            "text_span": "network for every patient",
+            "target_artifact": "regulatory_network",
+            "target_granularity": "sample_specific"
+          },
+          {
+            "axis": "unclear_goal",
+            "basis": "run_giraffe",
+            "text_span": "TF activity",
+            "target_artifact": "tf_activity_matrix",
+            "target_granularity": "unknown"
+          }
+        ],
+        "missing_inputs": [],
+        "expression_file": null,
+        "design_file": null,
+        "motif_file": null,
+        "ppi_file": null,
+        "mirna_file": null,
+        "coexpression_file": null,
+        "taxon": null,
+        "output_file": null,
+        "lioness_output": null,
+        "network_file": null,
+        "mutation_file": null,
+        "exon_size_file": null,
+        "cancer_gene_file": null,
+        "pathway_file": null,
+        "omics_layer_1": null,
+        "omics_layer_2": null,
+        "output_dir": null,
+        "prefix": null,
+        "norm_patient": true,
+        "kmin": 2,
+        "kmax": 4,
+        "gmt_msigdb": true,
+        "subset_cancer_genes": true,
+        "distance": "binomial",
+        "linkage": "complete",
+        "cluster": true,
+        "with_header": false,
+        "bonobo_output_format": ".h5",
+        "sample_names": [],
+        "sparsify": false,
+        "bonobo_confidence": 0.05,
+        "save_pvals": false,
+        "keep_in_memory": false,
+        "delta": null,
+        "log_transformed": null,
+        "centered": null,
+        "genes_axis": "auto",
+        "output_format": "matrix",
+        "computing": "cpu",
+        "precision": "double",
+        "lam": 0.035,
+        "gamma": 0.335,
+        "iterations": 60,
+        "eta": 1e-05,
+        "bexp": 1.0,
+        "lambda1": null,
+        "lambda2": null,
+        "library_name": null,
+        "library_id": null,
+        "docs_query": null,
+        "web_query": null,
+        "preference_updates": []
+      },
+      "reason_code": "research_choices"
+    }
+  ]
+}

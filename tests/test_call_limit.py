@@ -24,7 +24,7 @@ ROUTING = ["semantic_interpreter", "semantic_reviewer", "semantic_discriminator"
 def test_a_method_tie_with_its_condition_call_is_not_a_safety_failure():
     result, _ = row()
 
-    assert result["call_roles"] == [*ROUTING, "selection_conditions"]
+    assert result["call_roles"] == [*ROUTING, "hypothesis_bases"]
     assert not [error for error in result["errors"] if error.startswith("call_limit")]
     assert result["passed"]
 

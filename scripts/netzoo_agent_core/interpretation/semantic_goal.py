@@ -51,6 +51,20 @@ def classification_progress_detail(
     workflow_path = []
     workflow_scope = "match"
     display_workflow = None
+    if decision.stated_hypotheses and not decision.should_execute:
+        return {
+            "kind": "classification", "interaction": None,
+            "outcome": ("Comparing biological hypotheses and required inputs"
+                        if len({h.basis for h in decision.stated_hypotheses if h.basis != "unsupported"}) >= 2
+                        else "Explaining the method and its scientific assumptions"),
+            "workflows": list(dict.fromkeys(
+                workflow_name(h.basis) for h in decision.stated_hypotheses
+                if h.basis != "unsupported"
+            )),
+            "workflow_path": [], "workflow_scope": "hypothesis_choices",
+            "display_workflow": None, "match_status": decision.capability_match_status,
+            "match_basis": decision.match_basis,
+        }
     if match_status == "fallback":
         outcome_label = "Fallback recommendation (not an exact semantic match)"
         workflow_scope = "fallback"

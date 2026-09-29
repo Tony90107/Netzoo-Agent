@@ -117,6 +117,7 @@ def invoke_concern_matcher(
         or decision.action != "no_tool"
         or decision.should_execute
         or decision.capability_match_status not in {"exact", "fallback"}
+        or any(call.role == "hypothesis_bases" for call in usage.calls)
     ):
         return decision, usage, budget_warnings
     actions = selected_guidance_actions(decision)

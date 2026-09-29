@@ -1,0 +1,298 @@
+[
+  {
+    "id": "hyp-sambar-lioness-zh",
+    "language": "zh",
+    "category": "positive",
+    "prompt": "我們收集了另一批病患的資料來做腫瘤分型，以預測化療抗藥性。這次我們同時擁有『全外顯子DNA突變分佈』與『轉錄表現量』。在決定分型依據時，團隊不知道該從『不可逆的DNA損傷累積』切入，還是從『細胞當下系統連線的動態重組』切入。針對這兩種截然不同的生化假設，工作流該如何設計？它們分別對應什麼工具？",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_sambar"
+        ],
+        "allowed": [
+          "run_sambar"
+        ],
+        "target": "sample_cluster_assignment"
+      },
+      {
+        "required": [
+          "run_lioness_panda"
+        ],
+        "allowed": [
+          "run_lioness_panda"
+        ],
+        "target": "sample_cluster_assignment"
+      }
+    ]
+  },
+  {
+    "id": "hyp-sambar-lioness-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We collected another patient cohort to subtype tumours and predict chemotherapy resistance. This time we have both whole-exome somatic mutation profiles and transcript expression. The team cannot decide whether to subtype from the accumulation of irreversible DNA damage, or from the dynamic rewiring of the cell's current regulatory connections. For these two very different biochemical hypotheses, how should the workflow be designed, and which tools correspond to each?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_sambar"
+        ],
+        "allowed": [
+          "run_sambar"
+        ],
+        "target": "sample_cluster_assignment"
+      },
+      {
+        "required": [
+          "run_lioness_panda"
+        ],
+        "allowed": [
+          "run_lioness_panda"
+        ],
+        "target": "sample_cluster_assignment"
+      }
+    ]
+  },
+  {
+    "id": "hyp-tf-mirna-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We have expression data from drug-resistant and sensitive cell lines. One hypothesis is that transcription factors rewire their target genes; the other is that microRNAs silence the genes. For each hypothesis, what workflow should we build and which tools fit?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_panda"
+        ],
+        "allowed": [
+          "run_panda",
+          "run_lioness_panda",
+          "run_otter"
+        ],
+        "target": "regulatory_network"
+      },
+      {
+        "required": [
+          "run_puma"
+        ],
+        "allowed": [
+          "run_puma",
+          "run_lioness_puma"
+        ],
+        "target": "regulatory_network"
+      }
+    ]
+  },
+  {
+    "id": "hyp-activity-wiring-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Responders and non-responders differ, and we have two competing explanations: some TFs are simply more active in responders, or the same TFs are wired to different targets in each patient. How would you set up an analysis for each explanation, and with which tools?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_giraffe"
+        ],
+        "allowed": [
+          "run_giraffe"
+        ],
+        "target": "tf_activity_matrix"
+      },
+      {
+        "required": [
+          "run_lioness_panda"
+        ],
+        "allowed": [
+          "run_lioness_panda"
+        ],
+        "target": "regulatory_network"
+      }
+    ]
+  },
+  {
+    "id": "hyp-covariate-individual-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "Gene co-expression seems to change across our 300 tumours. Either the change is driven by a clinical covariate such as age or stage across the whole cohort, or it is idiosyncratic to individual patients. Which workflow tests each hypothesis?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_cobra"
+        ],
+        "allowed": [
+          "run_cobra"
+        ],
+        "target": "coexpression_network"
+      },
+      {
+        "required": [
+          "run_lioness_coexpression",
+          "run_bonobo"
+        ],
+        "allowed": [
+          "run_lioness_coexpression",
+          "run_bonobo"
+        ],
+        "target": "coexpression_network"
+      }
+    ]
+  },
+  {
+    "id": "hyp-multiomic-expr-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We have DNA methylation and expression for the same samples. Hypothesis one: methylation directly shapes expression, so we need associations across the two omics. Hypothesis two: expression alone explains it through gene-gene co-expression. How should each workflow be designed and what tools map to them?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_dragon"
+        ],
+        "allowed": [
+          "run_dragon"
+        ],
+        "target": "multi_omic_network"
+      },
+      {
+        "required": [
+          "run_lioness_coexpression"
+        ],
+        "allowed": [
+          "run_lioness_coexpression"
+        ],
+        "target": "coexpression_network"
+      }
+    ]
+  },
+  {
+    "id": "hyp-community-covariate-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We have two hypotheses: genes form dense bipartite regulator-target communities in our existing regulatory edge network, or age explains changes in gene coexpression across our expression cohort. Compare a workflow for each and the required inputs.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_condor"
+        ],
+        "allowed": [
+          "run_condor"
+        ],
+        "target": "community_assignment"
+      },
+      {
+        "required": [
+          "run_cobra"
+        ],
+        "allowed": [
+          "run_cobra"
+        ],
+        "target": "coexpression_network"
+      }
+    ]
+  },
+  {
+    "id": "unclear-method-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We have expression and motif data, but have not decided whether the scientific goal is a tissue-level regulatory network, a network for every patient, or TF activity. What choices do we have and what assumptions and inputs separate them?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": [],
+      "answer_forbidden": [
+        "Selected path:",
+        "(recommend)"
+      ],
+      "require_clarification": true
+    },
+    "scientific_groups": [
+      {
+        "required": [
+          "run_panda",
+          "run_otter"
+        ],
+        "allowed": [
+          "run_panda",
+          "run_otter"
+        ],
+        "target": "regulatory_network"
+      },
+      {
+        "required": [
+          "run_lioness_panda"
+        ],
+        "allowed": [
+          "run_lioness_panda"
+        ],
+        "target": "regulatory_network"
+      },
+      {
+        "required": [
+          "run_giraffe"
+        ],
+        "allowed": [
+          "run_giraffe"
+        ],
+        "target": "tf_activity_matrix"
+      }
+    ]
+  }
+]

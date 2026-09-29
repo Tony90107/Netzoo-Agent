@@ -1081,7 +1081,8 @@ def test_no_tool_response_context_follows_validated_actions_without_name_rules()
     answer = result["messages"][0].content
     assert "BONOBO" in answer
     assert "PUMA" not in answer
-    assert "coexpression_network" in answer
+    assert "gene-gene co-expression" in answer
+    assert "coexpression_network" not in answer  # Conceptual prose, not an API field.
 
 
 def test_response_context_derives_handoff_producers_from_registry_capabilities():

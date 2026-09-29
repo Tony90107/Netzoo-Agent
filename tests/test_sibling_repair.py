@@ -119,6 +119,10 @@ class SiblingProvider:
         class Adapter:
             def invoke(self, messages):
                 provider.calls.append((schema.__name__, kwargs, messages))
+                if schema.__name__ == "ResearchFraming":
+                    # Exercise the legacy repair path when the early comparison
+                    # pass declines to frame the question; repair remains valid.
+                    return {"question_mode": "single_goal", "hypotheses": [], "concerns": []}
                 if schema is IntentDecision:
                     return {"mode": "answer", "confidence": 0.95, "reason": "Guidance only."}
                 if schema is SemanticInterpretation:

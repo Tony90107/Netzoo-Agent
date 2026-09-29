@@ -19,6 +19,9 @@ from ..presentation import _ui_text_with_user_data, user_data_token
 from ..routing.method_rejections import rejected_methods_for
 from ..routing.outcome_matching import match_requested_outcome, match_semantic_request
 from .concept_answers import _GRANULARITY_LABELS, _artifact_label, _candidate_details
+from .research_choices import render_research_choices
+from .scientific_guidance import method_paragraphs
+from .inspected_answers import with_inspection_footer
 
 __all__ = ["render_hypothesis_routes"]
 
@@ -234,6 +237,10 @@ def render_hypothesis_routes(
     """The per-reading reply, or None when the existing reply already covers every reading."""
     if decision.action != "no_tool":
         return None
+    # Explicit biological hypotheses survive even a single-endpoint classifier.
+    if decision.stated_hypotheses:
+        if choices := render_research_choices(decision, policy, task=task):
+            return choices
     readings = _readings(decision, policy)
     if not readings:
         return None
@@ -245,6 +252,14 @@ def render_hypothesis_routes(
     composed = any(not actions and _composition(reading.outcome) for reading, actions in routes)
     if not several and not any(splits) and not composed:
         return None
+    unique_actions = {action for _, actions in routes for action in actions}
+    if (len(unique_actions) == 1 and all(actions for _, actions in routes)
+            and not any(splits) and not composed):
+        # Different requested artifacts may be outputs of the same method.
+        # That is one workflow explanation, not a workflow-selection question.
+        action = next(iter(unique_actions))
+        text = "\n\n".join([*method_paragraphs(action, policy, task=task), _NOT_INSPECTED])
+        return with_inspection_footer(text, decision.inspected_directories)
     user_data: list[str] = []
     sections = [
         "Your request describes more than one scientific reading. Each is listed with "

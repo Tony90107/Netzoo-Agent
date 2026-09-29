@@ -35,6 +35,8 @@ from ..interpretation.concept_answers import (
     render_unsupported_algorithm_boundary,
 )
 from ..interpretation.hypothesis_routes import render_hypothesis_routes
+from ..interpretation.research_choices import render_research_choices
+from ..interpretation.scientific_guidance import render_scientific_guidance
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..presentation import strip_cli_owned_guidance_tail
@@ -66,12 +68,13 @@ def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     task = latest_user_task(state["messages"])
-    cobra_boundary = render_cobra_expression_boundary(task)
-    if cobra_boundary is not None:
-        return {"messages": [AIMessage(content=cobra_boundary)]}
-    algorithm_boundary = render_unsupported_algorithm_boundary(task)
-    if algorithm_boundary is not None:
-        return {"messages": [AIMessage(content=algorithm_boundary)]}
+    if not decision.stated_hypotheses:
+        cobra_boundary = render_cobra_expression_boundary(task)
+        if cobra_boundary is not None:
+            return {"messages": [AIMessage(content=cobra_boundary)]}
+        algorithm_boundary = render_unsupported_algorithm_boundary(task)
+        if algorithm_boundary is not None:
+            return {"messages": [AIMessage(content=algorithm_boundary)]}
     workflow_context = validated_workflow_context(
         decision, context.project_policy,
         include_all=should_expand_guidance_catalog(decision, task), task=task,
@@ -87,11 +90,6 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         ToolExecutionResult.model_validate(item)
         for item in state.get("tool_results", [])
     ]
-    sample_handoff_boundary = render_sample_specific_coexpression_handoff_boundary(
-        task, context.project_policy,
-    )
-    if sample_handoff_boundary is not None and not structured_results:
-        return {"messages": [AIMessage(content=sample_handoff_boundary)]}
     evaluation = (
         EvaluationResult.model_validate(state["evaluation"])
         if state.get("evaluation")
@@ -126,6 +124,24 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     )
     if hypothesis_routes is not None:
         return {"messages": [AIMessage(content=hypothesis_routes)]}
+    scientific_explanation = (render_scientific_guidance(decision, context.project_policy, task=task)
+                              if not structured_results else None)
+    if scientific_explanation is not None:
+        return {"messages": [AIMessage(content=scientific_explanation)]}
+    # The established clarification renderer already lists all methods for a
+    # known goal. Override only its single-preference branch or an unknown goal.
+    needs_choices = bool(decision.advisory_recommendation or
+                         decision.requested_outcome is not None
+                         and decision.requested_outcome.artifact_type == "unknown")
+    choices = (render_research_choices(decision, context.project_policy, task=task)
+               if not structured_results and needs_choices else None)
+    if choices is not None:
+        return {"messages": [AIMessage(content=choices)]}
+    sample_handoff_boundary = render_sample_specific_coexpression_handoff_boundary(
+        task, context.project_policy,
+    )
+    if sample_handoff_boundary is not None and not structured_results:
+        return {"messages": [AIMessage(content=sample_handoff_boundary)]}
     if decision.requested_outcome is not None:
         capability_gap = render_capability_gap(decision, context.project_policy)
         if capability_gap is not None:

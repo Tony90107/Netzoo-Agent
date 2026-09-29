@@ -36,7 +36,8 @@ FACT = AdvisoryRecommendation(
 
 def test_the_stages_run_in_the_documented_order(monkeypatch):
     calls = []
-    for name, label in (("invoke_condition_recommender", "conditions"),
+    for name, label in (("invoke_hypothesis_matcher", "hypotheses"),
+                        ("invoke_condition_recommender", "conditions"),
                         ("invoke_input_inspection", "folder"),
                         ("apply_input_preflight_intent", "preflight")):
         original = getattr(router_invocation, name)
@@ -49,8 +50,8 @@ def test_the_stages_run_in_the_documented_order(monkeypatch):
 
     result, _ = row()
 
-    assert result["call_roles"][-1] == "selection_conditions"
-    assert calls == ["conditions", "folder", "preflight"]
+    assert result["call_roles"][-1] == "hypothesis_bases"
+    assert calls == ["hypotheses", "folder", "preflight"]
 
 
 def test_a_stated_fact_recommendation_is_not_replaced_by_the_folder(tmp_path):

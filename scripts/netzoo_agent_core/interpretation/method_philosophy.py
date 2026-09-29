@@ -35,6 +35,9 @@ _PHILOSOPHIES = {
         "and, when configured, patient mutation-burden normalization. Patient distances "
         "and subtype labels depend on the downstream clustering settings; they are "
         "distinct from gene communities in a regulatory network."
+        " This is pathway aggregation followed by distance-based clustering, not "
+        "non-negative matrix factorization; a mutation score does not establish "
+        "permanent functional loss or equivalence of every mutation in a pathway."
     ),
     "leave_one_out_network_inference": (
         "LIONESS represents the cohort network through sample contributions: "
@@ -42,6 +45,8 @@ _PHILOSOPHIES = {
         "same base estimator is fitted with and without sample q. The leave-one-out "
         "network alone is not the patient's network. This borrows cohort information; "
         "it does not estimate a correlation from one isolated observation or prove causality."
+        " With PANDA, edge weights are inferred regulatory support, not measured "
+        "binding strength. Cross-sectional networks do not establish temporal rewiring."
     ),
     "bipartite_community_detection": (
         "CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain "

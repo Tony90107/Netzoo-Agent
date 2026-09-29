@@ -10,6 +10,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
     AddressedConcern,
+    StatedHypothesis,
     AdvisoryRecommendation,
     MethodCapabilityGap,
     CapabilityMatchStatus,
@@ -134,6 +135,12 @@ class TaskDecision(BaseModel):
     # recommendation above; omitted from dumps while empty.
     addressed_concerns: list[AddressedConcern] = Field(
         default_factory=list, max_length=6, exclude_if=lambda value: not value,
+    )
+    # The hypotheses a request states, each quoted and matched to a registry
+    # basis (Log 254), so the reply answers one hypothesis at a time. Advisory;
+    # omitted from dumps while empty.
+    stated_hypotheses: list[StatedHypothesis] = Field(
+        default_factory=list, max_length=24, exclude_if=lambda value: not value,
     )
     # Folders whose file contents routing read to advise among tied
     # workflows (Log 154); lets every reply say so truthfully. Omitted from
