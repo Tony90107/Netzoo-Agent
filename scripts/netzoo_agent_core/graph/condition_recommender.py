@@ -334,6 +334,23 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
     )
 
 
+def _misplaced_condition_claims(task, review, options, claims) -> list[ConditionClaim]:
+    """Offered condition ids the model wrote as a philosophy, with their quote (Log 271).
+
+    The model's own claim and quote, moved to the field that is checked: it
+    still passes every check of `recommend_from_claims`. Nothing is added that
+    the model did not write.
+    """
+    offered = {option.condition for option in options}
+    claimed = {claim.condition for claim in claims.claims}
+    quote = review.requirement_quote or ""
+    if not quote or not _quote_grounded(task, quote):
+        return []
+    return [ConditionClaim(condition=item, text_span=quote)
+            for item in dict.fromkeys(review.requested_philosophy)
+            if item in offered and item not in claimed][:max(0, 6 - len(claims.claims))]
+
+
 def _validated_capability_gap(task, gap, candidate_facts):
     if gap is None or not candidate_facts:
         return None
@@ -448,6 +465,11 @@ def invoke_condition_recommender(
         }))
         output_text = claims.model_dump_json()
         call_status = "success"
+        if misplaced := _misplaced_condition_claims(user_task, review, options, claims):
+            claims = claims.model_copy(update={"claims": [*claims.claims, *misplaced]})
+            record_event(context, state, "routing.selection_conditions_salvaged", "classify", {
+                "claims": [item.model_dump() for item in misplaced],
+            })
         required_gap = None
         if review.requested_philosophy and review.requirement_quote:
             required_gap = MethodCapabilityGap(

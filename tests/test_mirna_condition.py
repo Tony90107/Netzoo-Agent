@@ -86,3 +86,37 @@ def test_the_reply_names_puma_keeps_the_per_sample_option_and_asks_to_confirm(tm
     assert "Conditional assumptions to confirm" in answer and "miRNA-target prior" in answer
     assert "**LIONESS-PUMA**" in answer
     assert "keeps each miRNA's cooperativity" in answer
+
+
+# -- Log 271: an offered condition id written as a philosophy --------------
+
+def _tie_decision():
+    outcome = RequestedOutcome(operation="explain", artifact_type="regulatory_network", granularity="unknown")
+    return TaskDecision(
+        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question", confidence=0.9,
+        reason="tie", capability_match_status="ambiguous", hypothesis_actions=list(TIE), requested_outcome=outcome,
+        outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=0.9)],
+    )
+
+
+def _misplaced(quote, philosophy=("regulator_class:mirna",)):
+    # The recorded Log 270 shape: the condition id in requested_philosophy, claims empty.
+    return {"requested_philosophy": list(philosophy), "requirement_quote": quote,
+            "capability_gap": None, "preference": None, "claims": []}
+
+
+def test_a_condition_written_as_a_philosophy_is_checked_as_the_claim_it_is(tmp_path):
+    ctx, state, store, run_id = _context(tmp_path, _misplaced(QUOTE))
+    updated, _, _ = invoke_condition_recommender(ctx, state, TASK, _tie_decision(), LLMUsage(), [])
+
+    assert updated.advisory_recommendation.action == "run_puma"
+    assert updated.advisory_recommendation.conditions[0].text_span == QUOTE
+    assert "routing.selection_conditions_salvaged" in [e.event_type for e in store.read_events(run_id)]
+
+
+def test_a_misplaced_condition_with_an_invented_quote_or_id_recommends_nothing(tmp_path):
+    for parsed in (_misplaced("microRNAs degrade the transcripts"),
+                   _misplaced(QUOTE, philosophy=("regulator_class:sirna",))):
+        ctx, state, _, _ = _context(tmp_path, parsed)
+        updated, _, _ = invoke_condition_recommender(ctx, state, TASK, _tie_decision(), LLMUsage(), [])
+        assert updated.advisory_recommendation is None
