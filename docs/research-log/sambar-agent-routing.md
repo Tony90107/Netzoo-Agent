@@ -13800,3 +13800,46 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
   - case 5：exact PUMA 3／3，不變；noisy-prior 缺口 6／6。
 - **欄位誤用是系統性的：** 已記錄、去重後 56 次條件呼叫中，18 次有 claim，9 次把 `axis:value` 條件 id 寫進 `requested_philosophy`。
   下一個 Log 處理。
+
+## Log 271｜事前宣告：R——寫在 `requested_philosophy` 的「已提供條件 id」視為 claim
+
+日期／時區：2026-09-29，Asia/Taipei。屬於使用者同意的 item 3，不推翻任何記錄的決定
+（研究紀錄中沒有關於 `requested_philosophy` 的先前決定）。
+
+**觀察：** Log 270。條件呼叫的 schema 有一個自由文字欄位 `requested_philosophy`（原意是必要的數學哲學 tag）。
+模型把已提供的條件 id（例如 `regulator_class:mirna`）寫在那裡，並附上 `requirement_quote`，但 `claims` 為空：
+miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
+
+**設計（決定性的欄位修復，不改 prompt、schema、registry）：** `requested_philosophy` 中若有一項**逐字等於本次提供的條件 id**，
+而且 `requirement_quote` 逐字出現在請求中，就加入一個 claim（condition=該 id，text_span=該引文）；已經有同一條件的 claim 時不重複加入。
+- 之後照常經過 `recommend_from_claims` 的所有檢查；
+- 缺口檢查不變（條件 id 不是 registry tag，本來就不會成為缺口）；
+- 記錄 `routing.selection_conditions_salvaged` 事件。
+這是把模型自己寫出、而且有引文的主張放回正確欄位，不是替模型補值。
+
+**預期的釘住測試修改：** 無已知。
+
+**撤回條件：**
+- R-a：既有測試失敗 → 停止並列出。
+- R-b：fingerprint 不變。
+- R-c（離線，決定性，閘門）：以已記錄的 9 次誤放呼叫重播修復：列出每次會產生的推薦。
+  任何 blind case 的推薦若落在 `expectations.json` 的 forbid，或是該 case 不接受的 workflow → 撤回。
+- R-d（live，miRNA 題 ×3 ＋ blind-en ×3）：0 call-limit error、0 leak、沒有新的 WRONG；報告 miRNA 題的 PUMA 推薦次數（計分）。
+
+## Log 272｜Log 271 結果：R **保留**；miRNA 題 PUMA 推薦 3／3
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`mirna-condition-2026-09-29/live-r-r{1,2,3}-*.json*`。
+
+- **R-a：** 2,842 passed，另加 2 例（`tests/test_mirna_condition.py` 共 7 例），沒有修改既有測試。**R-b：** fingerprint 不變。
+- **R-c（離線重播 9 次誤放呼叫）：** 只有 2 個不同的 miRNA payload 產生推薦（PUMA）。其餘都不推薦：
+  捏造的引文照樣被拒，case 4 wiring＋activity 互相衝突也照樣被拒。沒有 forbid 或不接受的 workflow。
+- **R-d（live ×3）：**
+  - 第一次執行時，r2 從第 4 個試驗起、r3 全部，都遇到 `OpenAIConnectionError: Connection error`（每試驗 1 次呼叫），
+    是 provider／網路中斷，不是程式問題。這兩輪作廢，保留為 `void-connection-error-*`，並依使用者要求重跑。
+  - 重跑後 0 次連線錯誤、0 call-limit error、0 leak。blind-en OK 28／30（9／9／10），沒有 WRONG。noisy-prior 缺口 6／6。
+  - miRNA 題：PUMA 推薦 **3／3**，都經由修復，而且都帶確認假設。
+- **仍開放：**
+  1. 推薦回覆（form A）仍是規格表：推薦的方法列兩條 "Mathematical interpretation"，替代清單重複 LIONESS 公式，共 4,644 字。
+     item 4 只處理了沒有推薦的平手。
+  2. 修復使用的是模型自己寫的 `requirement_quote`，這裡是較弱的「Do you have a tool specifically for this class of molecules?」，
+     而不是描述降解的那句；由確認假設把關。
