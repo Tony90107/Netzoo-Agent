@@ -13710,3 +13710,40 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
     回覆走具名 workflow 的 `registry_guidance` 規格卡，那個渲染器不呈現 concern。
 - **待辦（未處理）：** 具名 workflow 規格卡與 form A 推薦回覆都不呈現 addressed concerns；
   sibling repair 可能把讀法改寫成只有另一個 workflow 能產生的 artifact。
+
+## Log 267｜事前宣告：P——registry 的「參考用、不能執行」外部方法（item 1，使用者同意）
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+**設計：**
+- `workflow_registry.EXTERNAL_REFERENCES`（Python-only，不在 policy snapshot）：`ExternalReference(name, selection_tags, artifact_types,
+  summary, availability, source)`。
+- 缺口回覆在「No qualified registered workflow…」之後列出符合的條目：與缺口 tag 有交集，且產出包含請求的 artifact（或 artifact 未知）；
+  標示為參考用、本 agent 不能執行。不進任何 prompt，也不影響路由或候選。
+- 初始只收今天查證過的兩條（`bayesian` × regulatory_network）：
+  - TIGER（netZooR v1.4+，R）：Chen & Padi, npj Syst Biol Appl 2024, doi:10.1038/s41540-024-00386-w；netzoo.github.io/zooanimals/tiger/。
+    貝氏矩陣分解，同時估計 TF 活性與情境專屬網路；稀疏 edge 先驗讓資料把不被支持的先驗邊縮向 0。
+    它逐邊重新加權，**不**估計整個先驗來源的可靠度。
+  - Werhli & Husmeier 2007（Stat Appl Genet Mol Biol，PMID 17542777）：貝氏網路；每個先驗知識來源有一個權重超參數，
+    以 MCMC 從後驗取樣，量測該先驗相對於資料的影響。沒有 NetZoo 實作。
+
+**預期的釘住測試修改：** `test_all_workflow_guidance.py::test_missing_philosophy_answers_the_question_before_listing_short_related_methods`
+的 `len(answer) < 2900` → `< 3400`（使用者同意加入外部參考，回覆必然變長）。其餘斷言不變。
+
+**撤回條件：**
+- P-a：其他既有測試失敗 → 停止並列出。
+- P-b：fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- P-c（離線，決定性）：以最終程式重新渲染已記錄的 noisy-prior 缺口 decision：每則都列出兩條參考，而且都不帶 `(recommend)`。
+  已記錄的非 bayesian 缺口（若有）不列任何參考。本變更只影響回覆層，不做 live。
+
+## Log 268｜Log 267 結果：P **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+- **P-a：** 2,832 passed、35 skipped，另加 `tests/test_external_references.py` 3 例。唯一修改的既有測試就是宣告的長度上限（2900 → 3400）。
+  第一版條目讓回覆變成 3,653 字，超過宣告的上限；沒有再放寬上限，而是縮短條目，改為 3,123 字。
+  TIGER（逐邊重新加權）與 Werhli & Husmeier（每個先驗來源一個權重）的區別保留。
+- **P-b：** legacy `b9bfa69b8022`、claims `5161651ada5e` 不變；`policy_hash`、`OUTPUT_CAPABILITIES` 不變（Python-only 表）。
+- **P-c：** 已記錄的缺口 decision 去重後 20 個，全部是 `bayesian` × regulatory_network，20／20 都列出兩條參考，
+  參考段落 0 次 `(recommend)`。沒有其他 tag 的已記錄缺口；由單元測試確認 partial_correlation 與 bayesian × co-expression 不會列出。
+- 只影響回覆層，不做 live（事前宣告）。

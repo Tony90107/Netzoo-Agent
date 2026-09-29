@@ -207,7 +207,8 @@ def test_missing_philosophy_answers_the_question_before_listing_short_related_me
     assert "which better fits your study" not in answer
     assert "Use this if the intended result" not in answer
     assert "讓數據自己去權衡" not in answer
-    assert len(answer) < 2900
+    # Log 267 (user decision): external references make the answer longer.
+    assert len(answer) < 3400
     assert decision.action == "no_tool" and not decision.should_execute
 
 
