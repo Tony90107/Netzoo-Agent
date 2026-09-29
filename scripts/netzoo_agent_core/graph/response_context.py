@@ -112,6 +112,7 @@ def validated_workflow_context(
                     if item in OUTPUT_ROLE_FIELDS
                 ],
                 "optional_inputs": spec.optional_inputs,
+                "required_input_groups": [list(g) for g in spec.required_input_groups],  # Log 283
                 "controls": [
                     item.model_dump(mode="json")
                     for item in get_controls(action, registry=policy.workflows)
@@ -121,7 +122,7 @@ def validated_workflow_context(
                 "conventions": spec.conventions,
                 "role_labels": {
                     item: INPUT_LABELS.get(item, item)
-                    for item in [*spec.required_inputs, *spec.optional_inputs]
+                    for item in [*spec.required_inputs, *spec.optional_inputs, *(f for g in spec.required_input_groups for f in g)]
                 },
                 "output_capability": spec.output_capability.model_dump(exclude={"prefer_when"}),
             }

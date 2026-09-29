@@ -297,7 +297,8 @@ def test_production_routing_boundary_receives_only_prompt_not_answer_key():
     assert result["semantic_passed"]
     assert result["route_passed"]
     assert result["path"] == "semantic_registry_intent"
-    assert result["call_roles"] == ["semantic_interpreter", "semantic_reviewer", "intent_router"]
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert result["call_roles"] == ["semantic_interpreter", "semantic_reviewer", "intent_router", "request_concerns"]
     assert report["summary"]["unsafe_execution_count"] == 0
     assert report["summary"]["semantic_pass_rate"] == 1
     assert report["metadata"]["source"] == "fixture"
@@ -636,7 +637,10 @@ def test_repeated_trials_use_fresh_usage_and_report_denominator():
 
     assert report["summary"]["cases"] == 1
     assert report["summary"]["trials"] == report["summary"]["passed"] == 3
-    assert report["summary"]["provider_calls"] == 9
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert report["summary"]["provider_calls"] == 12
+    # The fixture's binding check refuses the strict concern schema before it
+    # records the call, so usage counts the concern attempt and the fixture does not.
     assert len(provider.calls) == 9
     assert report["summary"]["unstable_cases"] == []
     assert report["summary"]["by_language"]["en"] == {"trials": 3, "passed": 3, "pass_rate": 1}

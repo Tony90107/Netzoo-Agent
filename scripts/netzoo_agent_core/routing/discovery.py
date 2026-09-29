@@ -35,7 +35,9 @@ def _extract_named_path(task: str, names: tuple[str, ...]) -> str | None:
     sorted_names = sorted(names, key=len, reverse=True)
     name_pattern = "|".join(re.escape(name) for name in sorted_names)
     pattern = re.compile(
-        rf"(?<![A-Za-z0-9_])(?:{name_pattern})(?![A-Za-z0-9_])"
+        # A name inside a path or file name ("case-7/layer1.tsv", "(layer2.tsv)")
+        # is not a role keyword; taking what follows it read ".tsv)" as a path (Log 283).
+        rf"(?<![A-Za-z0-9_/\\.-])(?:{name_pattern})(?![A-Za-z0-9_])(?![.\-/\\][A-Za-z0-9])"
         r"\s*(?:是|為|=|:|：|at|as|is|to)?\s*"
         rf"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)"
         rf"|(?P<plain>[^{PROSE_PATH_TERMINATORS}]+))",

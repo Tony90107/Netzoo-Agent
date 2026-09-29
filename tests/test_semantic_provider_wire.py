@@ -156,7 +156,8 @@ def test_latest_failures_through_real_sdk_and_production_routing(case_id, repair
         llm = ChatOpenAI(model="openai/gpt-4o-mini", api_key="offline-test",
                          base_url="https://provider.invalid/v1", http_client=client, max_retries=0)
         report = evaluate([case], provider=llm, model_name="fixture")
-    assert len(captured) == (3 if repair_succeeds else 2)
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert len(captured) == (4 if repair_succeeds else 2)
     review_text = json.dumps(captured[1]["messages"])
     if defect == "missing-required":
         assert "add_required_field" in review_text

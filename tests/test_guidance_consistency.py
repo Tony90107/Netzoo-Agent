@@ -230,7 +230,8 @@ def test_dragon_guidance_states_modality_and_cross_layer_penalty_limit():
 
     assert answer is not None
     assert "Selected path: **DRAGON**" in answer
-    assert "Routing-level input modality: multi omic continuous." in answer
+    # Log 283 (user decision): the compact card drops the internal modality line.
+    assert "Routing-level input modality" not in answer
     assert "two layer-specific shrinkage parameters" in answer
     assert "precision-derived partial correlations estimate within-layer and" in answer
     assert "conditional associations" in answer

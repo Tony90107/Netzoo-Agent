@@ -14,12 +14,18 @@ from ..routing.method_rejections import rejected_methods_for
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..runtime_constraints import runtime_control_constraints
 from ..settings import INPUT_ROLE_FIELDS
-from workflow_registry import DOWNSTREAM_ANALYSES, REQUEST_CONCERNS, get_controls
+from workflow_registry import OTHER_READING_NOTES, REQUEST_CONCERNS, get_controls
 from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
 from .method_philosophy import method_philosophies_for, question_fit_for
 from .request_parameters import extract_explicit_request_parameters, render_request_parameters
+
+
+from .scientific_guidance import _TECHNICAL
+import re as _re
+
+_OPERATIONAL = _re.compile(_TECHNICAL.pattern + r"|\b(?:controls?|settings?)\b", _re.I)
 
 
 def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str) -> dict:
@@ -52,6 +58,8 @@ def guidance_contract(decision: TaskDecision, policy: ProjectPolicySnapshot, tas
         "rejected_methods": [item.model_dump() for item in rejections],
         "artifact_definitions": {artifact: rule.description for artifact, rule in ARTIFACT_SEMANTICS.items()},
         "requested_parameters": extract_explicit_request_parameters(task),
+        # An explicit request for controls, parameters or defaults (Log 256's pattern).
+        "operational_request": bool(_OPERATIONAL.search(task)),
         "addressed_concerns": addressed_concern_facts(decision),
         "workflows": [dict(action=action, workflow=policy.workflows[action].workflow,
                            description=policy.workflows[action].description,
@@ -143,7 +151,19 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
         )
     workflows = {item["action"]: item for item in facts["workflows"]}
     selected = [action for action in selected if action in workflows]
-    if selected:
+    concerns = [item for item in facts.get("addressed_concerns", []) if item["action"] in selected]
+    # AGENTS.md: a conceptual answer is prose; controls, defaults and parameter
+    # lists expand only when the request is operational (Log 283).
+    concern_controls_all = {name for concern in concerns for name in concern["controls"]}
+    detailed = bool(
+        rejected or facts.get("requested_parameters") or facts.get("operational_request") or concern_controls_all
+        or decision.intent_type == "run_analysis"
+        or any(set(control.get("selection_tags", [])) & requested_tags
+               for action in selected for control in workflows[action].get("controls", []))
+    )
+    if selected and not detailed:
+        _render_compact(lines, decision, selected, workflows, facts, concerns)
+    elif selected:
         names = " → ".join(workflows[action]["workflow"] for action in selected)
         if decision.capability_match_status == "fallback":
             interaction = guidance_interaction(decision)
@@ -261,14 +281,70 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                 f"- `{artifact}`: {facts['artifact_definitions'][artifact]}."
                 for artifact in sorted(artifacts)
             ))
-            if action in DOWNSTREAM_ANALYSES:
-                heading, notes = DOWNSTREAM_ANALYSES[action]
-                lines.append(heading + "\n\n" + "\n".join(f"- {note}" for note in notes))
+            if action in OTHER_READING_NOTES:  # Log 219's other reading, always named (Log 283)
+                lines.append(OTHER_READING_NOTES[action])
     elif rejected:
         lines.append("No compatible workflow has been selected for execution.")
     lines.append("This is workflow guidance only; no execution was authorized. "
                  "No files were inspected and no analysis ran.")
     return "\n\n".join(lines)
+
+
+def _render_compact(lines, decision, selected, workflows, facts, concerns) -> None:
+    """The workflow in prose: why it fits, how it works, what it needs and gives."""
+    names = " → ".join(workflows[action]["workflow"] for action in selected)
+    if decision.capability_match_status == "fallback":
+        lines.append(f"Fallback recommendation: **{names}**. {guidance_interaction(decision).explanation}")
+    else:
+        lines.append(f"Selected path: **{names}**.")
+    if len(selected) == 1:
+        action = selected[0]
+        fit = question_fit_for(
+            decision.requested_outcome, workflows[action]["workflow"], workflows[action]["output_capability"],
+            qualified=decision.capability_match_status == "exact", mechanism=False,
+        )
+        if fit:
+            lines.append(fit)
+    if explanations := facts.get("explanations", []):
+        lines.append("Why this recommendation:\n\n" + "\n\n".join(explanations))
+    if concerns:
+        named = len(selected) > 1
+        lines.append("What you asked about:\n\n" + "\n".join(
+            "- " + (f"**{workflows[item['action']]['workflow']}** · " if named else "")
+            + f"\"{' '.join(item['text_span'].split())}\" — {item['note']}"
+            for item in concerns
+        ))
+    for action in selected:
+        item = workflows[action]
+        capability = item["output_capability"]
+        mechanism = " ".join(method_philosophies_for(capability["selection_tags"]))
+        lines.append(f"**{item['workflow']}** — {item['description']}" + (f" {mechanism}" if mechanism else ""))
+        # The registry's input roles and outputs stay listed: they are short and
+        # they are what the user needs to act on the answer.
+        labels = item.get("role_labels", {})
+        if item.get("required_inputs"):
+            lines.append("Required workflow inputs:\n\n" + "\n".join(
+                f"- `{f}`: {labels.get(f, f.replace('_', ' '))}" for f in item["required_inputs"]))
+        for group in item.get("required_input_groups", []):
+            if group:
+                lines.append("Required alternative (provide one):\n\n" + "\n".join(
+                    f"- `{f}`: {labels.get(f, f.replace('_', ' '))}" for f in group))
+        artifacts = capability["produced_artifacts"] or [capability["artifact_type"]]
+        lines.append("Outputs:\n\n" + "\n".join(
+            f"- `{a}`: {facts['artifact_definitions'][a]}." for a in sorted(artifacts)))
+        if guidance_notes := capability.get("guidance_notes", []):
+            lines.append("Workflow-specific scientific notes:\n\n" + "\n".join(f"- {note}" for note in guidance_notes))
+        if action in OTHER_READING_NOTES:
+            lines.append(OTHER_READING_NOTES[action])
+        for conditional in capability.get("conditional_outputs", []):
+            if conditional.get("valid", True):
+                conditions = " and ".join(f"`{n}={v}`" for n, v in conditional["when"].items())
+                lines.append(f"When {conditions}: {conditional['semantics']}.")
+        # A limit of this runtime prevents a failed run; it stays in the short form.
+        limits = [limit for control in item.get("controls", []) if (limit := _runtime_limit(action, control))]
+        if limits:
+            lines.append("Runtime limits:\n\n" + "\n".join(limits))
+    lines.append("Ask for the workflow's controls and defaults if you want to set them.")
 
 
 def _render_control(action: str, control: dict) -> str:

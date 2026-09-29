@@ -34,11 +34,10 @@ def test_untagged_controls_are_not_presented_as_matched_to_the_request():
     assert answer is not None
     assert "for this request:" not in answer
     assert "Controls matching this request" not in answer
-    other = re.search(r"Other declared controls \(not matched to this request[^\n]*", answer)
-    assert other is not None
-    for name in ("output_format", "computing", "precision", "lam", "gamma", "iterations", "eta", "bexp"):
-        assert f"`{name}`" in other.group(0)
-    assert "`precision`=double" in other.group(0)
+    # Log 283 (user decision): a conceptual answer lists no controls at all, so
+    # none is presented as matched; it says they can be asked for.
+    assert "Other declared controls" not in answer and "`precision`=double" not in answer
+    assert "Ask for the workflow's controls and defaults if you want to set them." in answer
     assert "Runtime limits:" in answer
     assert "current runtime unavailable: gpu" in answer
 

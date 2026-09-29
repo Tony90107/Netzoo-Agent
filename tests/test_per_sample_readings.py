@@ -51,7 +51,8 @@ def test_a_lioness_reply_names_tf_activity_as_the_other_reading(final, aggregate
 
     assert "Out-degree measures how strongly a TF is wired to its targets" in answer
     assert "GIRAFFE's TF-by-sample activity matrix is the other reading" in answer
-    assert answer.index("outdegree") < answer.index("GIRAFFE") < answer.index("clinical table")
+    # Log 283 (user decision): downstream notes need a stated concern; the other reading does not.
+    assert "clinical table" not in answer
 
 
 def test_a_giraffe_reply_names_lioness_wiring_as_the_other_reading():
@@ -65,4 +66,5 @@ def test_a_giraffe_reply_names_lioness_wiring_as_the_other_reading():
 
     assert "TF activity is how active a TF is in each sample" in answer
     assert "out-degree in LIONESS-PANDA's per-sample networks is the other reading" in answer
-    assert answer.index("activity matrix (TFA)") < answer.index("LIONESS-PANDA")
+    # Log 283 (user decision): downstream notes need a stated concern.
+    assert "activity matrix (TFA) can serve as predictors" not in answer

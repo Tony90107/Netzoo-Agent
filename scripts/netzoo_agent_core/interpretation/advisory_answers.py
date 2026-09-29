@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections import Counter
 
-from workflow_registry import EXTERNAL_REFERENCES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY
+from workflow_registry import (
+    EXTERNAL_REFERENCES, OTHER_READING_NOTES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY,
+)
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation
 from .method_philosophy import method_philosophies_for, question_fit_for, requested_framework_for
-from .tie_guidance import _inputs, concern_section
+from .tie_guidance import _inputs, concern_section, concern_section_for_workflow
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..routing.capability_compatibility import _supported_artifacts
@@ -53,10 +55,36 @@ def _alternative_line(action, policy, shared: Counter) -> str:
     return f"- **{policy.workflows[action].workflow}**" + (" — " + "; ".join(parts) + "." if parts else ".")
 
 
+def _alternative_lines(recommended, listed, policy, shared, family_label) -> list[str]:
+    """One line per alternative; another family's several methods share one (Log 283).
+
+    A PUMA recommendation for miRNA-degraded genes listed three TF-only methods
+    line by line. A family other than the recommended one with two or more
+    methods is named once, with its members.
+    """
+    others = [a for a in listed if a != recommended]
+    if family_label is None:
+        return [_alternative_line(a, policy, shared) for a in others]
+    home = family_label(policy.workflows[recommended])
+    families: dict[str, list[str]] = {}
+    for action in others:
+        families.setdefault(family_label(policy.workflows[action]), []).append(action)
+    lines = []
+    for label, members in families.items():
+        if label != home and len(members) > 1:
+            names = ", ".join(f"**{policy.workflows[a].workflow}**" for a in members)
+            # Lower-case the article's noun, but keep an acronym such as "TF-only".
+            noun = label if label[1:2].isupper() else label[0].lower() + label[1:]
+            lines.append(f"- If you need a {noun} instead: {names}.")
+        else:
+            lines.extend(_alternative_line(a, policy, shared) for a in members)
+    return lines
+
+
 def render_advisory_recommendation(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
-    *, candidate_details, downstream_section,
+    *, candidate_details, downstream_section, family_label=None,
 ) -> str | None:
     """Form A (Log 139): recommend from quoted study facts; list the others."""
     recommendation = decision.advisory_recommendation
@@ -66,7 +94,7 @@ def render_advisory_recommendation(
     if recommendation.conditions and all(item.axis == "inspected_inputs" for item in recommendation.conditions):
         return render_inspected_recommendation(
             decision, policy, spec, candidate_details(recommendation.action, spec, policy, recommended=True),
-            downstream_section(recommendation.action),
+            concern_section_for_workflow(decision, policy, recommendation.action),
         )
     # Quotes remain in the validated decision for audit. Echoing a Chinese
     # excerpt in the answer breaks the project's fixed English output policy.
@@ -100,11 +128,14 @@ def render_advisory_recommendation(
         lines.append("Conditional assumptions to confirm:\n" + "\n".join(
             f"- {item}" for item in recommendation.assumptions
         ))
-    others = [_alternative_line(action, policy, shared) for action in listed if action != recommendation.action]
+    others = _alternative_lines(recommendation.action, listed, policy, shared, family_label)
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
-    if downstream := downstream_section(recommendation.action):
-        lines.append(downstream.rstrip("\n"))
+    if other_reading := OTHER_READING_NOTES.get(recommendation.action):
+        lines.append(other_reading)
+    # Downstream use and other notes appear only for a concern the request states (Log 283).
+    if concerns := concern_section_for_workflow(decision, policy, recommendation.action):
+        lines.append(concerns)
     if decision.clarification_question:
         lines.append(decision.clarification_question)
     lines.append("No files were inspected and no analysis ran.")

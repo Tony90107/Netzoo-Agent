@@ -14071,3 +14071,76 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
 - **已見但未處理（既有問題）：**
   - case 7 fallback 回覆的「Captured request parameters」把「(layer2.tsv)」解析成 `omics_layer_1: .tsv)`；
   - 單一 workflow 的 fallback 卡片仍是規格表樣式。
+
+## Log 283｜事前宣告：Z——其餘項目：替代清單收合、downstream 只在陳述時出現、路徑解析錯誤、單一 workflow 卡片精簡（使用者同意）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求把 Log 282 列出的剩餘問題一起修掉。
+
+**設計：**
+- Z1（路徑解析）：`routing/discovery._extract_named_path` 的角色別名若位於路徑或檔名中（前面是 `/` `\` `.` `-`，或後面接 `.ext`），就不算角色關鍵字。
+  原本「(layer2.tsv)」把 `.tsv)` 當成路徑。在 165 個已記錄 prompt 中，綁定改變 6 個，全部由錯誤值變成正確路徑或不綁定：
+  case 7、case 3（expression_file）、case 9（network_file），中英各一。
+- Z2（替代清單）：form A 中，與推薦方法不同 family、而且有 ≥2 個方法的替代，合併成一行
+  「If you need a <family> instead: A, B, C.」；family label 由 `concept_answers` 注入。
+- Z3（downstream）：
+  - `DOWNSTREAM_ANALYSES` 的 notes 成為每個 workflow 的 registered concern `downstream_use`，只在請求陳述時出現。
+  - form A、資料夾推薦、composition 回覆、單一 workflow 卡片都不再無條件附上。
+  - Log 219 的「另一種 per-sample 讀法」不是 downstream，另立 `OTHER_READING_NOTES`，在 LIONESS／GIRAFFE 回覆中照舊一律出現。
+  - 代價（與選項 A 相同的取捨）：COBRA／SAMBAR／CONDOR／LIONESS-COEXPRESSION 以前沒有任何 concern，
+    現在它們的單一 workflow guidance 多一次 concern 呼叫。
+- Z4（單一 workflow 卡片，依 AGENTS.md：概念諮詢用 prose，只有使用者要求時才展開 API 欄位、預設值、參數清單）：
+  - 精簡版預設保留：假設、輸入評估、fallback 說明、fit 句、機制 prose、必要輸入與輸出清單（registry 格式）、
+    workflow 科學註記、另一讀法、條件輸出、runtime 限制，外加「需要時可要求 controls 與預設值」。
+  - 移除：routing-level modality、Method premise 標籤、其他 controls 與預設值、declared transformations。
+  - 下列情況仍用完整版：有 rejected method、擷取到的參數、指向 controls 的 concern、run_analysis intent、
+    與請求 tag 相符的 control，或明確的操作請求（沿用 Log 256 的 `_TECHNICAL` pattern，加上 controls／settings）。
+
+**預期的釘住測試修改（dry run 後的完整清單）：**
+- Z3（downstream 只在陳述時出現，使用者決定）：
+  - `test_downstream_guidance.py` 的 3 個函式（共 15 個參數化案例）改為：未陳述時不出現、陳述時出現；
+  - `test_per_sample_readings.py` 3 個：保留「另一讀法」斷言，拿掉與 downstream notes 的順序比較。
+- Z4（精簡卡片）：
+  - `test_guidance_consistency.py::test_dragon_guidance_states_modality_and_cross_layer_penalty_limit` 拿掉 modality 斷言；
+  - `test_guidance_controls.py::test_untagged_controls_are_not_presented_as_matched_to_the_request` 改為斷言精簡版沒有列出、
+    也沒有宣稱相符的 control。
+- Z3 的 concern 呼叫（每個都只多一次 `request_concerns`／`StatedConcernClaims`，已逐一確認）：
+  - `test_malformed_payload_contract.py`（20 個參數化案例，第 151、241 行）；
+  - `test_semantic_provider_wire.py:159`（6 個）；
+  - `test_routing_evaluation.py:300`、`:639`；`test_semantic_attempt_bound.py:125`；
+  - `test_semantic_patch_repair.py:95`、`:401`；`test_semantic_repair_interaction.py:96`。
+- 其他任何失敗 → 停止並列出。
+
+**撤回條件：**
+- Z-a：上列以外的測試失敗 → 停止並列出。
+- Z-b：semantic／claims fingerprint、`policy_hash` 不變（`REQUEST_CONCERNS` 與 `OTHER_READING_NOTES` 都是 Python-only）。
+- Z-c（離線）：重新產生已記錄的推薦（`respond()`）與單一 workflow 卡片：
+  - 推薦 82／82 仍顯示；0 個未陳述的 downstream 段落；
+  - LIONESS／GIRAFFE 回覆 100% 帶另一讀法；
+  - 精簡卡片沒有「Routing-level input modality」。
+- Z-d（live，miRNA ×3＋blind-en ×3）：0 call-limit error、0 leak、沒有可歸因於 Z 的新 WRONG；
+  報告 miRNA 回覆的長度與替代清單行數（計分）。
+
+**Log 283 補充（live 之前，實作中發現）：** production 的 `validated_workflow_context` 合併了 `guidance_contract`，
+卻用自己的 workflows 清單覆蓋，丟掉了 `required_input_groups`。因此 OTTER 卡片從來沒有在 production 告訴使用者
+「expression 或 co-expression 二選一」（舊版與新版都一樣）。已補上該欄位與它的 role label；`response_context.py` 維持 ≤140 行。
+新模組 `tests/test_reply_polish.py` 5 例。完整 suite 2,852 passed。
+
+## Log 284｜Log 283 結果：Z1–Z4 **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`reply-polish-2026-09-29/`；新增 `tests/test_reply_polish.py`（5 例）。
+
+- **Z-a：** 2,852 passed；只修改了 Log 283 列出的測試（downstream、精簡卡片、concern 呼叫三組，都已逐一確認原因）。
+  實作中另外補了兩處：
+  - production 卡片的 `required_input_groups`（見補充）；
+  - detailed 卡片的「另一讀法」（原本隨 downstream 段落出現）。
+- **Z-b：** legacy `b9bfa69b8022`、claims `5161651ada5e`、`policy_hash` 6d99c45b… 不變。
+- **Z-c（離線）：**
+  - 推薦 92／92 顯示，0 個未陳述的 downstream；
+  - 單一 workflow 卡片 1,404 個：0 個未陳述的 downstream，0 個 `.tsv)`；
+    modality 行 327 個，全部是完整版（精簡版 0）；
+  - LIONESS／GIRAFFE 卡片 777／778 帶另一讀法。唯一沒有的是 hypothesis-routes 回覆，與 HEAD 逐字相同（hash 82fa84405228），
+    本來就沒有，而且它自己就列出各個讀法。
+- **Z-d（live ×3）：** 0 連線錯誤、0 call-limit error、0 leak、0 個 `.tsv)`。
+  - miRNA 題：PUMA 3／3；回覆 3,645 → 2,210 字；替代清單 5 → 3 行；沒有 downstream 段落。
+  - case 4 的請求確實寫了「relate … to survival time」：`downstream_use` 3／3 被接受，所以 downstream notes 出現在使用者問到的地方。
+  - blind-en OK 26／30，沒有 WRONG；case 4 PARTIAL 與先前各輪相同的形狀。

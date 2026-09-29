@@ -92,7 +92,8 @@ def test_the_second_semantic_call_asks_for_a_patch_when_the_first_pass_parsed():
 
     row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
 
-    assert provider.schemas == ["SemanticInterpretation", "SemanticPatch", "IntentDecision"]
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert provider.schemas == ["SemanticInterpretation", "SemanticPatch", "IntentDecision", "StatedConcernClaims"]
     assert row["status"] == "exact"
     assert row["outcome"]["input_artifacts"] == ["mutation_matrix"]
 
@@ -398,7 +399,8 @@ def test_a_first_pass_that_did_not_parse_still_gets_the_whole_review():
 
     row = evaluate([q1()], provider=provider, model_name="fixture")["results"][0]
 
-    assert provider.schemas == ["SemanticInterpretation", "SemanticReview", "IntentDecision"]
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert provider.schemas == ["SemanticInterpretation", "SemanticReview", "IntentDecision", "StatedConcernClaims"]
     assert row["status"] == "exact"
 
 

@@ -122,7 +122,8 @@ def test_a_first_pass_that_validates_still_costs_one_review():
 
     row = run_q3(provider)
 
-    assert len(provider.semantic_calls) == 2
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert len(provider.semantic_calls) == 3
     assert row["status"] == "exact"
 
 
