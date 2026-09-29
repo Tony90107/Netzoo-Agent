@@ -93,7 +93,8 @@ def test_three_original_questions_have_distinct_complete_surfaces_and_repair_met
     assert report["metadata"]["first_pass_source"] == "observed_error_reconstruction_not_raw_capture"
     assert report["summary"]["review_repair_attempts"] == 3
     assert report["summary"]["review_repair_rate"] == 1
-    assert report["summary"]["provider_calls"] == 6
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert report["summary"]["provider_calls"] == 9
     assert report["summary"]["passed"] == 3
     q1, q2, q3 = report["results"]
     assert "longer genes" in q1["answer"] and "overall mutation burden" in q1["answer"]

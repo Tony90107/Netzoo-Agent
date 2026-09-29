@@ -148,7 +148,8 @@ def test_malformed_first_pass_still_reaches_the_reviewer(case_id):
 
     row = run(provider)["results"][0]
 
-    assert row["call_roles"] == ["semantic_interpreter", "semantic_reviewer", "intent_router"]
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert row["call_roles"] == ["semantic_interpreter", "semantic_reviewer", "intent_router", "request_concerns"]
     assert row["diagnostics"] == ["schema_validation"]
     assert row["review_repair_attempted"] and row["review_repair_validated"]
     assert row["status"] == "exact"
@@ -238,7 +239,8 @@ def test_real_sdk_arguments_reach_strict_validation_and_the_reviewer(case_id):
                          base_url="https://provider.invalid/v1", http_client=client, max_retries=0)
         row = evaluate([case], provider=llm, model_name="fixture")["results"][0]
 
-    assert len(captured) == 3
+    # Log 283: every workflow now declares a concern, so guidance makes one concern call.
+    assert len(captured) == 4
     assert row["diagnostics"] == ["schema_validation"]
     assert row["review_repair_attempted"] and row["review_repair_validated"]
     assert row["outcome"]["input_artifacts"] == ["mutation_matrix"]

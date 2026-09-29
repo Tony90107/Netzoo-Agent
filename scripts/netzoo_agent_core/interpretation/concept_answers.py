@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES
+from workflow_registry import ACTION_DEFINITIONS, DOWNSTREAM_ANALYSES, OTHER_READING_NOTES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.clarification_planner import algorithmic_assumptions_for
@@ -333,7 +333,7 @@ def _render_outcome_clarification(
     if len(decision.hypothesis_actions) > 1 and decision.advisory_recommendation:
         recommended = render_advisory_recommendation(
             decision, policy, candidate_details=_candidate_details,
-            downstream_section=downstream_section,
+            downstream_section=downstream_section, family_label=_network_family_label,
         )
         if recommended is not None:
             return recommended
@@ -864,8 +864,13 @@ def render_workflow_composition_guidance(
         for field_name in biological_inputs
     )
     aggregate, final = registered[0], registered[-1]
-    downstream = downstream_section(final.action)
-    downstream = f"{downstream}\n" if downstream else ""
+    # Only a stated downstream concern brings its notes; the other per-sample
+    # reading (Log 219) is always named (Log 283).
+    downstream = "\n\n".join(part for part in (
+        OTHER_READING_NOTES.get(final.action, ""),
+        concern_section_for_workflow(decision, policy, final.action),
+    ) if part)
+    downstream = f"{downstream}\n\n" if downstream else ""
     requested = decision.requested_outcome
     final_granularities = final.output_capability.granularities
     if (

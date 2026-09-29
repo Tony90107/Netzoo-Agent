@@ -1701,6 +1701,35 @@ OUTPUT_CAPABILITIES = {
     for action, definition in ACTION_DEFINITIONS.items()
     if definition.run and definition.output_capability is not None
 }
+# Log 283 (user decision): downstream-use notes answer a stated concern, like any
+# other registry note, instead of being appended to every reply. The notes are
+# DOWNSTREAM_ANALYSES's own; only when they are shown changes.
+# Log 219's "other per-sample reading" is disambiguation, not downstream use:
+# every LIONESS/GIRAFFE reply keeps it (Log 283).
+OTHER_READING_NOTES: Mapping[str, str] = {
+    "run_lioness_panda": _ACTIVITY_READING_NOTE,
+    "run_lioness_puma": _ACTIVITY_READING_NOTE,
+    "run_giraffe": _WIRING_READING_NOTE,
+}
+_DOWNSTREAM_USE = (
+    "what to do with the result afterwards, for example comparing conditions or relating it to "
+    "clinical variables"
+)
+REQUEST_CONCERNS = {
+    **REQUEST_CONCERNS,
+    **{
+        action: (
+            *REQUEST_CONCERNS.get(action, ()),
+            RequestConcern(
+                concern="downstream_use", label=_DOWNSTREAM_USE,
+                note=" ".join(note for note in DOWNSTREAM_ANALYSES[action][1]
+                              if note != OTHER_READING_NOTES.get(action)),
+                artifacts=(OUTPUT_CAPABILITIES[action].artifact_type,),
+            ),
+        )
+        for action in OUTPUT_CAPABILITIES if action in DOWNSTREAM_ANALYSES
+    },
+}
 
 
 def _registry_definition(workflow_id: str, registry=None):
