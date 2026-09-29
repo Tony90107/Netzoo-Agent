@@ -13843,3 +13843,52 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
      item 4 只處理了沒有推薦的平手。
   2. 修復使用的是模型自己寫的 `requirement_quote`，這裡是較弱的「Do you have a tool specifically for this class of molecules?」，
      而不是描述降解的那句；由確認假設把關。
+
+## Log 273｜事前宣告：S——推薦回覆真正顯示給使用者，而且不再是規格表
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求改推薦回覆，並附上新的 miRNA 題問答。
+
+**觀察（使用者的 CLI trace `.netzoo/traces/b188756a-…`）：** 路由其實是對的：salvage 觸發、條件推薦器推薦 PUMA 並附確認。
+但使用者看到的是 research-choices 清單（「There are different analyses…」，六個方法各印完整說明，最後問「Which scientific question…」），
+沒有 PUMA 推薦。原因是 a827108 在 `respond()` 加了 `needs_choices = bool(decision.advisory_recommendation or …)`：
+**只要有推薦，回覆就被換成不看推薦的 research-choices 清單。**
+- 已記錄的 live 答案：8／8 個推薦沒有出現在回覆中（case 3 BONOBO ×5、miRNA PUMA ×3）。
+- blind 評分看的是 decision 而不是實際顯示的文字，所以一直沒有發現。
+- 這也比 a827108 自己在 AGENTS.md 寫的規則更寬：那條規則只針對 ≥2 個假設或目標不明確的請求，而 miRNA 題被判為 `single_goal`。
+
+**設計：**
+- S1：`needs_choices` 只保留「目標未知」（artifact unknown）這個子句，拿掉 `advisory_recommendation`。
+  single-goal 平手上由引文研究條件產生的推薦，由它自己的 form A 渲染。先行試跑：完整 suite 0 個失敗（沒有測試釘住這個覆蓋）。
+- S2：form A 不再用規格表：
+  - 保留開頭、「Why it addresses this question」、fit 句、假設、downstream、結尾問題。
+  - 推薦的方法：`**X** (recommend) — ` 後接它在候選中**最少共有** tag 的完整說明（同數量的全列），再接必要輸入與產出。
+    不再有 Registered purpose／Method premise／Mathematical interpretation／Declared output 標籤。
+  - 其他選項：`- **Y** — preferred when: …` 後接它最少共有 tag 的 glossary 短句，不重複數學說明。
+- 兩者都由 registry 推導，適用所有 workflow。
+
+**預期的釘住測試修改：** `tests/test_condition_recommender.py::test_algorithm_philosophy_recommends_one_candidate_and_keeps_user_choice`
+的 `"Method premise:" in answer`（使用者要求去掉規格表）。其餘 → 停止並列出。
+
+**撤回條件：**
+- S-a：其他既有測試失敗 → 停止並列出。
+- S-b：fingerprint、`policy_hash`（6d99c45b…）、`OUTPUT_CAPABILITIES` 不變。
+- S-c（離線，決定性）：以 `respond()` 重新產生已記錄、帶推薦的 decision：
+  - 回覆必須包含推薦的 workflow 名稱與恰好 1 個 `(recommend)`；
+  - 0 個 "Mathematical interpretation"；
+  - 比舊的 form A（`render_outcome_clarification`）短。
+- S-d（live，miRNA ×3＋blind-en ×3）：實際回覆中出現 PUMA 推薦的次數，以及 case 3 BONOBO 推薦出現在回覆中的次數；0 call-limit、0 leak。
+
+## Log 274｜Log 273 結果：S1、S2 **保留**；推薦重新出現在使用者看到的回覆中
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`recommendation-reply-2026-09-29/live-s-r{1,2,3}-{blind,mirna}.json*`。
+
+- **S-a：** 2,842 passed，唯一修改的是宣告的 `"Method premise:"` 斷言，改為斷言推薦方法以 prose 描述，而且沒有規格表標籤。
+  S1 單獨時 0 個測試失敗：沒有任何測試釘住那個覆蓋，所以隱藏推薦一直沒被發現。
+- **S-b：** fingerprint 不變；`policy_hash` 維持 6d99c45b…。
+- **S-c（離線，決定性）：** 已記錄、帶推薦的 decision 去重後 77 個，全部經過 `respond()`：
+  - 77／77 都顯示推薦的 workflow，而且恰好 1 個 `(recommend)`；
+  - 0 個被 research-choices 取代，0 個 "Mathematical interpretation"；
+  - 77／77 比舊 form A 短（中位數 2,413 → 1,985 字）。
+- **S-d（live ×3）：** 推薦實際出現在回覆中 7／7（case 3 BONOBO 3／3、miRNA PUMA 3／3、case 4 1），此前是 0／8。
+  blind-en OK 29／30（9／10／10），0 連線錯誤、0 call-limit error、0 leak。
+- **小問題（未改）：** `question_fit_for` 的句子文法不佳（"asks for regulatory network"），而且與推薦段落第一句重複。

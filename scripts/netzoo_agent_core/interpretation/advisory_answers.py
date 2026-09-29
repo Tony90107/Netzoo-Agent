@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from workflow_registry import EXTERNAL_REFERENCES, OUTPUT_CAPABILITIES, SELECTION_AXES
+from collections import Counter
+
+from workflow_registry import EXTERNAL_REFERENCES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation
 from .method_philosophy import method_philosophies_for, question_fit_for, requested_framework_for
-from .tie_guidance import concern_section
+from .tie_guidance import _inputs, concern_section
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..routing.capability_compatibility import _supported_artifacts
 
@@ -16,6 +19,38 @@ from ..routing.capability_compatibility import _supported_artifacts
 def _condition_label(condition: str) -> str:
     axis, _, value = condition.partition(":")
     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
+
+
+def _least_shared_tags(capability, shared: Counter) -> list[str]:
+    tags = [tag for tag in capability.selection_tags if method_philosophies_for([tag])]
+    if not tags:
+        return []
+    fewest = min(shared[tag] for tag in tags)
+    return sorted(tag for tag in tags if shared[tag] == fewest)
+
+
+def _recommended_block(action, policy, shared: Counter) -> str:
+    """The recommended method in prose: what sets it apart, needs, produces (Log 273)."""
+    spec = policy.workflows[action]
+    capability = spec.output_capability
+    notes = (method_philosophies_for(_least_shared_tags(capability, shared))
+             or method_philosophies_for(capability.selection_tags) or (spec.description,))
+    artifacts = sorted(capability.produced_artifacts or {capability.artifact_type})
+    results = [ARTIFACT_SEMANTICS[a].description for a in artifacts if a in ARTIFACT_SEMANTICS]
+    scale = {frozenset({"aggregate"}): " (one cohort-level result)",
+             frozenset({"sample_specific"}): " (one result per sample)"}.get(frozenset(capability.granularities), "")
+    produces = ("Produces " + "; ".join(r[0].lower() + r[1:] for r in results) + scale + ".") if results else ""
+    return f"**{spec.workflow}** (recommend) — " + " ".join(
+        part for part in (" ".join(notes), _inputs(spec), produces) if part)
+
+
+def _alternative_line(action, policy, shared: Counter) -> str:
+    capability = policy.workflows[action].output_capability
+    preferred = "; ".join(_condition_label(item) for item in capability.prefer_when)
+    approach = next((SELECTION_TAG_GLOSSARY[t] for t in _least_shared_tags(capability, shared)
+                     if t in SELECTION_TAG_GLOSSARY), "")
+    parts = ([f"preferred when: {preferred}"] if preferred else []) + ([f"approach: {approach}"] if approach else [])
+    return f"- **{policy.workflows[action].workflow}**" + (" — " + "; ".join(parts) + "." if parts else ".")
 
 
 def render_advisory_recommendation(
@@ -57,27 +92,16 @@ def render_advisory_recommendation(
         lines.append("Why it addresses this question: " + recommendation.rationale)
     if fit:
         lines.append(fit)
-    lines.append("\n".join(candidate_details(recommendation.action, spec, policy, recommended=True)))
+    listed = [a for a in dict.fromkeys([recommendation.action, *decision.hypothesis_actions]) if a in policy.workflows]
+    shared = Counter(tag for a in listed for tag in policy.workflows[a].output_capability.selection_tags)
+    lines.append(_recommended_block(recommendation.action, policy, shared))
     if not recommendation.conditions and spans:
         lines.append(f"Request evidence: {quotes}.")
     if recommendation.assumptions:
         lines.append("Conditional assumptions to confirm:\n" + "\n".join(
             f"- {item}" for item in recommendation.assumptions
         ))
-    others = []
-    for action in decision.hypothesis_actions:
-        if action == recommendation.action or action not in policy.workflows:
-            continue
-        capability = policy.workflows[action].output_capability
-        conditions = capability.prefer_when
-        preferred = "; ".join(_condition_label(item) for item in conditions)
-        note = method_philosophies_for(capability.selection_tags)
-        mechanism = note[0].split(". ", 1)[0].rstrip(".") + "." if note else ""
-        others.append(
-            f"- **{policy.workflows[action].workflow}**"
-            + (f" — preferred when: {preferred}." if preferred else ".")
-            + (f" {mechanism}" if mechanism else "")
-        )
+    others = [_alternative_line(action, policy, shared) for action in listed if action != recommendation.action]
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
     if downstream := downstream_section(recommendation.action):

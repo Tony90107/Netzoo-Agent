@@ -129,9 +129,10 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     if scientific_explanation is not None:
         return {"messages": [AIMessage(content=scientific_explanation)]}
     # The established clarification renderer already lists all methods for a
-    # known goal. Override only its single-preference branch or an unknown goal.
-    needs_choices = bool(decision.advisory_recommendation or
-                         decision.requested_outcome is not None
+    # known goal. Override it only for an unknown goal: a recommendation from
+    # quoted study facts on a single-goal tie is that renderer's answer, and
+    # replacing it hid every one of them (Log 273).
+    needs_choices = bool(decision.requested_outcome is not None
                          and decision.requested_outcome.artifact_type == "unknown")
     choices = (render_research_choices(decision, context.project_policy, task=task)
                if not structured_results and needs_choices else None)
