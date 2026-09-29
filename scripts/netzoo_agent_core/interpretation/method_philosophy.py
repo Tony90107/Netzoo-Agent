@@ -199,7 +199,14 @@ def question_fit_for(outcome, workflow: str, capability, *, stated_conditions=()
         )
     else:
         relation = "fits" if qualified else "is related to"
-        lead = f"Your question asks for {result}. **{workflow}** {relation} that result and scale."
+        # "and scale" only when the reading has one (Log 281).
+        target = "that result and scale" if outcome.granularity in {"aggregate", "sample_specific"} else "that result"
+        lead = f"Your question asks for {result}. **{workflow}** {relation} {target}."
+        scales = set(capability["granularities"] if isinstance(capability, dict) else capability.granularities)
+        if outcome.granularity in {"aggregate", "sample_specific"} and scales and outcome.granularity not in scales:
+            # Say the scale the workflow produces instead of implying a match (Log 281).
+            produced = "one result per sample" if scales == {"sample_specific"} else "one result for the whole cohort"
+            lead = f"Your question asks for {result}. **{workflow}** produces {produced} instead."
     tags = capability["selection_tags"] if isinstance(capability, dict) else capability.selection_tags
     notes = method_philosophies_for(tags)
     if not notes or not mechanism:

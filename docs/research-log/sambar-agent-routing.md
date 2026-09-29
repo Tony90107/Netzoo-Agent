@@ -14008,3 +14008,66 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
     同樣的 case 7 WRONG 在 Log 260 已出現過。
   - **這個條件沒有 noise floor，應該寫成「沒有可歸因於 W 的新 WRONG」**（如同 Q-c）。這裡照實記錄字面條件被觸發，
     並依決定性閘門 W-c 保留 W；若使用者要求嚴格依字面條件，就撤回。
+
+## Log 281｜事前宣告：X——請求沒有說明尺度時，假定的尺度不能排除一個已註冊產出的所有 workflow（case 7）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求修掉 case 7 的尺度誤讀。
+
+**觀察（去重後 57 次已記錄的 case 7）：**
+- 模型把「For the same individuals」（配對樣本）讀成 per-sample 共 26 次，其中 24 次附 inferred evidence。
+  驗證不通過後，既有的 fallback 以 artifact 配到 DRAGON，但回覆寫「Your question asks for per-sample multi omic network.
+  **DRAGON** is related to that result and scale」，而 DRAGON 只有 cohort-level。
+- 另外 2 次附了 explicit 引文，引文本身沒提到尺度（「I want to know which methylation sites and genes are directly associated…」），
+  驗證通過，但沒有 per-sample 的 multi-omic workflow，於是 `unsupported` → WRONG。
+- `granularity_mentions` 對全部 10 題 blind prompt 都回傳空，詞彙很窄；擴充它就是逐字修補。
+
+**設計（registry 推導，不改 prompt、schema、詞彙）：**
+- X1（新模組 `routing/scale_relaxation.py`，在 `router_invocation` 的 `match_semantic_request` 之後）：
+  單一讀法的配對 `unsupported`，**沒有**任何 mismatch 維度（排除 Log 250 那種輸入拒絕），讀法的 granularity 是 aggregate／sample_specific，
+  請求沒有任何 granularity 見證，而且把 granularity 設成 unknown 後有已註冊候選——
+  - 此時回傳既有的 `fallback`／`assumed_outcome`（從不 exact）；
+  - 讀法的 granularity 改成 unknown，撤下它的 granularity evidence；
+  - 加一條由 registry 產生的假設：請求沒說每個樣本一個結果還是整個 cohort 一個結果，而這個 workflow 產生什麼。
+  請求**有**說明尺度時保持 `unsupported`。
+- X2（`question_fit_for`）：workflow 不產生讀法所要的尺度時，直接說它產生什麼尺度，取代「is related to that result and scale」。
+- 已記錄的 2,061 個不同 decision 中，X1 只改變 2 個：兩次 case 7 WRONG → DRAGON。
+
+**預期的釘住測試修改：** 無已知。
+
+**撤回條件：**
+- X-a：既有測試失敗 → 停止並列出。
+- X-b：fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- X-c（離線，決定性）：對 2,061 個 decision 套用 X1，只能改變上述 2 個；
+  52 個 sibling-repair 重播與 Log 280 相同。
+- X-d（live，blind-en ×3 ＋ case 7 ×3 額外試驗）：0 call-limit error、0 leak；
+  沒有**可歸因於 X** 的新 WRONG（以該試驗是否經過 X1 判定）；報告 case 7 的結果與回覆中的尺度句。
+
+**Log 281 補充事前宣告（第一輪 live 之後、第二輪之前）：**
+- 第一輪 X-d：case 7 為 6／6 per-sample、6／6 經既有的 unverified-evidence fallback 到 DRAGON（OK）；X1 **0 次**觸發。
+  但回覆 6／6 仍寫「Your question asks for a per-sample multi-omic network」。
+  （離線重播時另外發現：scale 假設超過 assumption 的 160 字上限，會讓回覆驗證失敗；已縮短並加上重播測試。）
+- X3：`invoke_router` 包一層 `note_unstated_scale`，套用到所有路由路徑：請求沒有尺度見證，而且沒有任何被選中的 workflow 產生讀法的尺度時，
+  `requested_outcome` 的 granularity 改為 unknown，撤下 granularity evidence，並加上 X1 的同一句 registry 假設；`routing_state` 同步。
+  已記錄的 2,323 個不同 decision 中改變 36 個，全部是 case 7 per-sample → DRAGON。
+- X2b：granularity 未知時，fit 句不再說「that result and scale」，只說「that result」。
+- 撤回條件不變：X-a／X-b 重跑；X-d 以第二輪 live 判定，加上「case 7 回覆 0 次寫 per-sample」。
+
+## Log 282｜Log 281 結果：X1、X2、X3 **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`unstated-scale-2026-09-29/`（第一輪在 `round1/`）；
+重播測試 `tests/test_scale_relaxation.py`（fixture `tests/log281_case7_calls.json`）。
+
+- **X-a：** 2,848 passed（新增 3 例），沒有修改既有測試。拿掉 router hook 時重播測試會失敗。
+- **X-b：** fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- **X-c：**
+  - X1：已記錄的 2,061 個 decision，在 guidance、execute、unknown 三種 request mode 下都只改變 2 個 case 7。
+    第一版條件只看 `unsupported`，但 guidance 模式回傳的是空的 `ambiguous`，所以放寬為「完全沒有候選」。
+  - X3：2,323 個 decision 中改變 36 個，全部是 case 7。
+  - sibling 重播與 Log 280 相同。
+- **X-d（第二輪 live ×3 ＋ case 7 ×3）：** 0 連線錯誤、0 call-limit error、0 leak。
+  - case 7：6／6 DRAGON（fallback，OK）；回覆 6／6 帶「No scale was stated; DRAGON gives one result for the whole cohort.」，
+    0／6 寫 per-sample。X 只在 case 7 的試驗上觸發（X1 1 次、X3 5 次）。
+  - blind-en OK 26／30，沒有 WRONG；PARTIAL 是 case 4／6 既有的形狀，X 沒有觸發。
+- **已見但未處理（既有問題）：**
+  - case 7 fallback 回覆的「Captured request parameters」把「(layer2.tsv)」解析成 `omics_layer_1: .tsv)`；
+  - 單一 workflow 的 fallback 卡片仍是規格表樣式。
