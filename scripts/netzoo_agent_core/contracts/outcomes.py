@@ -656,6 +656,46 @@ class AddressedConcern(BaseModel):
     text_span: str
 
 
+class HypothesisBasisClaim(BaseModel):
+    """One offered hypothesis basis the request states, with its quote (Log 254)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    basis: str = Field(
+        max_length=80,
+        description="One basis id exactly as offered in the option list.",
+    )
+    text_span: str = Field(
+        min_length=1,
+        max_length=300,
+        description="Exact original-language quote from the request that states this hypothesis.",
+    )
+    target_artifact: ArtifactType = "unknown"
+    target_granularity: Granularity = "unknown"
+
+
+class StatedHypothesisClaims(BaseModel):
+    """Hypothesis bases stated in the request (Log 254); may be empty."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question_mode: Literal["single_goal", "multiple_hypotheses", "unclear_goal"] = "single_goal"
+    claims: list[HypothesisBasisClaim] = Field(default_factory=list, max_length=24)
+    concerns: list[ConcernClaim] = Field(default_factory=list, max_length=6)
+
+
+class StatedHypothesis(BaseModel):
+    """A quoted, offered hypothesis basis that the reply presents as its own route."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    axis: str
+    basis: str
+    text_span: str
+    target_artifact: ArtifactType = "unknown"
+    target_granularity: Granularity = "unknown"
+
+
 class SemanticReview(BaseModel):
     """One adjudicated scientific outcome returned by the review pass."""
 

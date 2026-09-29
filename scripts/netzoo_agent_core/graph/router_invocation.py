@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..contracts import AgentState, LLMUsage, _trace
+from ..contracts import AgentState, LLMUsage, TaskDecision, _trace
 from ..contracts.outcomes import CapabilityMatch
 from ..interpretation.assembly import assemble_task_decision
 from ..interpretation.hydration import hydrate_router_decision
@@ -28,6 +28,7 @@ from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
 from .request_concerns import invoke_concern_matcher
+from .hypothesis_bases import invoke_hypothesis_matcher, explicit_research_choice, ADVISORY_ROLES
 from .input_inspection import invoke_input_inspection
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -124,6 +125,43 @@ def invoke_router(
     usage = _current_usage(context, state)
     if state.get("workflow_continuation") is not None:
         return continue_workflow(context, state, user_task, usage)
+    # A question explicitly contrasting biological hypotheses is a comparison
+    # first. Do not spend the outcome-repair budget collapsing it to one result.
+    if explicit_research_choice(user_task):
+        draft = TaskDecision(
+            action="no_tool", in_scope=True, should_execute=False,
+            intent_type="answer_question", confidence=0.0,
+            reason="Compare the stated research hypotheses before choosing a workflow.",
+        )
+        draft, usage, warnings = invoke_hypothesis_matcher(
+            context, state, user_task, draft, usage, [],
+        )
+        if draft.stated_hypotheses:
+            actions = list(dict.fromkeys(h.basis for h in draft.stated_hypotheses
+                                         if h.basis != "unsupported"))
+            comparison = len(actions) >= 2
+            record_event(context, state, ("routing.research_choices_accepted" if comparison
+                                          else "routing.research_guidance_accepted"), "classify", {
+                "hypotheses": [h.model_dump() for h in draft.stated_hypotheses],
+                "actions": actions,
+            })
+            return _RouterInvocation(
+                decision=draft, routing_state=outcome_routing_state(draft, request_mode="guidance"),
+                usage=usage, budget_warnings=warnings, reason_code=("research_choices" if comparison else "research_guidance"),
+            )
+        if (not any(c.role == "hypothesis_bases" for c in usage.calls)
+                or usage.budget_exhausted or draft.match_basis == "unverified_evidence"
+                or any(c.role == "hypothesis_bases" and c.status == "failed" for c in usage.calls)):
+            # Failed interpretation must not silently revert to selecting one
+            # tool for a question that explicitly asks to compare hypotheses.
+            draft = draft.model_copy(update={
+                "match_basis": "provider_unavailable",
+                "reason": "The research comparison could not be validated; no workflow was selected.",
+            })
+            return _RouterInvocation(
+                decision=draft, routing_state=outcome_routing_state(draft, request_mode="guidance"),
+                usage=usage, budget_warnings=warnings, reason_code="research_choices_unavailable",
+            )
     interpretation, usage, budget_warnings, semantic_error, restored_tags = (
         _invoke_semantic_interpreter(context, state, user_task, usage)
     )
@@ -274,29 +312,19 @@ def invoke_router(
         decision = decision.model_copy(update={
             "should_execute": False, "action": "no_tool",
         })
-    # Advisory stages, in this order and only here (Log 218). They run after
-    # intent, so neither the intent router's input nor the capability match
-    # changes, and none alters action, execution authority or match status:
-    #   1. Condition recommender (Logs 139, 200): quoted study facts. It may
-    #      recommend the one candidate they select; a method tie they leave
-    #      unresolved gets the separating questions instead.
-    #   2. Folder inspection (Logs 154, 185, 186, 188): file contents, only if
-    #      step 1 recommended nothing, over the whole tied set. Stated facts
-    #      outrank contents, which are open-world: a file that validates
-    #      nowhere is not evidence the user lacks one.
-    #   3. Input preflight: an explicit request to check inputs.
-    #   4. Concern matcher (Log 223): quoted practical concerns (memory,
-    #      stopping, per-sample activity) that the selected workflow's registry
-    #      notes answer. Exact or fallback guidance only, so it never runs in
-    #      the same trial as step 1, and only after step 3 has fixed the action.
-    # A recommendation comes from one stage, since the reply renders quoted
-    # facts and validated files differently. Facts narrowing a tie to two and
-    # the folder choosing between them are not combined: 0 occurrences in the
-    # record, because stating the fact usually resolves the tie upstream.
-    decision, usage, budget_warnings = invoke_condition_recommender(
+    # Preserve research alternatives before ranking methods by study facts.
+    # Hypothesis review, condition ranking, and practical-concern extraction
+    # share one advisory-call allowance. A comparison suppresses file-driven
+    # selection; clear-goal input inspection and execution gates remain intact.
+    decision, usage, budget_warnings = invoke_hypothesis_matcher(
         context, state, user_task, decision, usage, budget_warnings,
     )
-    decision = invoke_input_inspection(context, state, user_task, decision)
+    if not any(call.role in ADVISORY_ROLES for call in usage.calls):
+        decision, usage, budget_warnings = invoke_condition_recommender(
+            context, state, user_task, decision, usage, budget_warnings,
+        )
+    if not decision.stated_hypotheses:
+        decision = invoke_input_inspection(context, state, user_task, decision)
     preflight_decision = apply_input_preflight_intent(decision, user_task)
     if preflight_decision is not decision:
         record_event(

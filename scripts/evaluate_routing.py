@@ -505,6 +505,16 @@ def _score(case, result, events):
     decision, expected = result.decision, case.expected
     event_types = {event["type"] for event in events}
     accepted = "routing.semantic_interpretation_accepted" in event_types
+    research_choices = (
+        "routing.research_choices_accepted" in event_types
+        and bool(decision.stated_hypotheses)
+        and decision.action == "no_tool" and not decision.should_execute
+    )
+    research_guidance = research_choices or (
+        "routing.research_guidance_accepted" in event_types
+        and bool(decision.stated_hypotheses)
+        and decision.action == "no_tool" and not decision.should_execute
+    )
     recovered = "routing.semantic_guidance_recovered" in event_types
     route_errors = []
     if decision.capability_match_status != expected.status:
@@ -520,7 +530,7 @@ def _score(case, result, events):
         route_errors.append("clarification: unnecessary question for a complete scientific goal")
 
     semantic_errors = []
-    if not accepted:
+    if not accepted and not research_guidance:
         semantic_errors.append("semantic_acceptance: no validated review; fallback is not semantic success")
     actual_outcome = decision.requested_outcome.model_dump() if decision.requested_outcome else {}
     for dimension in ("input_artifacts", "artifact_type", "granularity", "entity_types"):
@@ -578,7 +588,8 @@ def _score(case, result, events):
         )
     roles = [call.role for call in result.usage.calls]
     safety_errors.extend(_call_limit_errors(roles))
-    pipeline_errors = [] if result.reason_code == "semantic_registry_intent" else [
+    pipeline_errors = [] if (result.reason_code == "semantic_registry_intent" or
+                             result.reason_code in {"research_choices", "research_guidance"} and research_guidance) else [
         f"pipeline: {result.reason_code}",
     ]
     errors = route_errors + semantic_errors + safety_errors + pipeline_errors
@@ -600,6 +611,9 @@ def _score(case, result, events):
         else None
     )
     return {
+        "research_choices_validated": research_choices,
+        "research_guidance_validated": research_guidance,
+        "stated_hypotheses": [h.model_dump() for h in decision.stated_hypotheses],
         "review_repair_attempted": repair_attempted,
         "review_repair_validated": repair_attempted and accepted,
         "review_repair_correct": repair_attempted and not semantic_errors and not route_errors,
@@ -679,7 +693,7 @@ def _score(case, result, events):
 #: its own and does not count against the routing bound. The condition call
 #: runs only on ties and the concern call (Log 223) only on exact or fallback
 #: guidance, so a trial makes at most one of them.
-_ADVISORY_CALL_ROLES = {"selection_conditions", "request_concerns"}
+_ADVISORY_CALL_ROLES = {"selection_conditions", "request_concerns", "hypothesis_bases"}
 # Per-trial provider-call bounds. `_call_limit_errors` scores a trial above
 # either as a safety failure, and the pre-run `--max-calls` check uses their
 # sum, so the two cannot drift apart again (Log 217).
@@ -760,7 +774,7 @@ def _score_answer(case, result, context, progress=""):
         decision.capability_match_status in {"exact", "fallback"}
         and any(action in context.project_policy.workflows for action in decision.matched_actions)
         or decision.rejected_methods or decision.match_basis in {"semantic_validation_recovery", "provider_unavailable"}
-        or deterministic_ambiguity
+        or deterministic_ambiguity or getattr(decision, "stated_hypotheses", [])
     ):
         return {"answer_evaluated": False, "answer_passed": None, "answer": "",
                 "answer_scope": (
