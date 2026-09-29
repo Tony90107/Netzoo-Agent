@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from ..contracts import AgentState, LLMUsage, TaskDecision, _trace
 from ..contracts.outcomes import CapabilityMatch
 from ..interpretation.assembly import assemble_task_decision
@@ -32,6 +34,7 @@ from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
 from .input_inspection import invoke_input_inspection
+from ..routing.scale_relaxation import note_unstated_scale, relax_unstated_scale
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
 # Re-exported for callers and tests that imported them from here before the
@@ -123,6 +126,27 @@ def invoke_router(
     state: AgentState,
     user_task: str,
 ) -> _RouterInvocation:
+    """Route, then keep an unstated scale out of the reply on every path (Log 281)."""
+    result = _route_request(context, state, user_task)
+    decision = note_unstated_scale(user_task, result.decision)
+    if decision is result.decision:
+        return result
+    record_event(context, state, "routing.unstated_scale_noted", "classify", {
+        "granularity": result.decision.requested_outcome.granularity,
+        "candidate_actions": list(decision.matched_actions or decision.hypothesis_actions),
+    })
+    return replace(result, decision=decision, routing_state={
+        **result.routing_state,
+        "requested_outcome": decision.requested_outcome.model_dump(),
+        "outcome_hypotheses": [item.model_dump() for item in decision.outcome_hypotheses],
+    })
+
+
+def _route_request(
+    context: _GraphContext,
+    state: AgentState,
+    user_task: str,
+) -> _RouterInvocation:
     """Run the ordered semantic, validation, registry, and intent pipeline."""
     usage = _current_usage(context, state)
     if state.get("workflow_continuation") is not None:
@@ -205,6 +229,13 @@ def invoke_router(
         request_mode=interpretation.request_mode,
         ignore_tags=restored_tags,
     )
+    relaxed, capability_match = relax_unstated_scale(user_task, interpretation, capability_match)
+    if relaxed is not interpretation:
+        record_event(context, state, "routing.unstated_scale_relaxed", "classify", {
+            "granularity": interpretation.outcome_hypotheses[0].outcome.granularity,
+            "candidate_actions": list(capability_match.hypothesis_actions),
+        })
+        interpretation = relaxed
     (
         interpretation,
         capability_match,
