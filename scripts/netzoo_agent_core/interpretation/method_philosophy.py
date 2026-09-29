@@ -160,19 +160,36 @@ def method_philosophies_for(selection_tags) -> tuple[str, ...]:
     return tuple(text for tag, text in _PHILOSOPHIES.items() if tag in selection_tags)
 
 
-def question_fit_for(outcome, workflow: str, capability, *, stated_conditions=(), qualified=True) -> str:
+# Singular nouns for a result, so the fit sentence reads "a ... network" (Log 275).
+_RESULT_NOUNS = {
+    "coexpression_network": "co-expression network",
+    "multi_omic_network": "multi-omic network",
+    "pvalue_matrix": "p-value matrix",
+    "signed_regulatory_effect_network": "signed regulatory-effect network",
+    "regulatory_network_and_tf_activity": "regulatory network with TF activities",
+}
+
+
+def _result_phrase(outcome) -> str:
+    noun = _RESULT_NOUNS.get(
+        outcome.artifact_type, outcome.artifact_type.replace("_", " ").replace("tf ", "TF "))
+    scale = {"aggregate": "cohort-level ", "sample_specific": "per-sample "}.get(outcome.granularity, "")
+    phrase = scale + noun
+    return ("an " if phrase[:1].lower() in "aeiou" else "a ") + phrase
+
+
+def question_fit_for(outcome, workflow: str, capability, *, stated_conditions=(), qualified=True,
+                     mechanism: bool = True) -> str:
     """Connect a qualified method to the user's typed result and stated study facts.
 
     This is explanatory only: routing already qualified the method. It cannot
     promote an unrelated artifact, an unobserved condition, or a method tag.
+    A reply that already states the conditions and the mechanism passes
+    neither (Log 275), so the sentence adds only the requested result.
     """
     if outcome is None or outcome.artifact_type == "unknown":
         return ""
-    artifact = outcome.artifact_type.replace("_", " ").replace("tf ", "TF ")
-    scale = {"aggregate": "cohort-level ", "sample_specific": "per-sample "}.get(
-        outcome.granularity, ""
-    )
-    result = scale + artifact
+    result = _result_phrase(outcome)
     conditions = "; ".join(stated_conditions)
     if conditions:
         lead = (
@@ -185,10 +202,9 @@ def question_fit_for(outcome, workflow: str, capability, *, stated_conditions=()
         lead = f"Your question asks for {result}. **{workflow}** {relation} that result and scale."
     tags = capability["selection_tags"] if isinstance(capability, dict) else capability.selection_tags
     notes = method_philosophies_for(tags)
-    if not notes:
+    if not notes or not mechanism:
         return lead
-    mechanism = notes[0].split(". ", 1)[0].rstrip(".") + "."
-    return lead + " " + mechanism
+    return lead + " " + notes[0].split(". ", 1)[0].rstrip(".") + "."
 
 
 def requested_framework_for(selection_tags, *, artifact_type: str = "unknown") -> str:

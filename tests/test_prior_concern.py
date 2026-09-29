@@ -96,3 +96,16 @@ def test_the_goal_review_offers_the_tie_candidates_concerns(monkeypatch):
     system = seen["system"]
     offered, _ = json.JSONDecoder().raw_decode(system[system.index('{"estimator_constraints"'):])
     assert "unreliable_prior" in dict(offered["offered_concerns"])
+
+
+def test_a_named_workflow_card_answers_the_concern_by_id():
+    from netzoo_agent_core.interpretation.concept_answers import render_registered_workflow_contract_answer
+    task = ("I want to build one PANDA network for my tissue from expression, motif and PPI files, but the "
+            "motif prior is borrowed from mouse and probably noisy. Does PANDA trust that prior rigidly?")
+    decision = _decision(hypothesis_actions=["run_lioness_panda", "run_lioness_puma"], addressed_concerns=[
+        AddressedConcern(action="run_lioness_panda", concern="unreliable_prior", text_span="the motif prior is borrowed from mouse")])
+    card = render_registered_workflow_contract_answer(task, decision, POLICY)
+
+    assert card.startswith("PANDA:")
+    assert "About your concern that the prior network is noisy" in card
+    assert "- **PANDA** — The motif prior is only the starting network" in card
