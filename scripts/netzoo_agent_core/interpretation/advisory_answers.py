@@ -8,6 +8,7 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
 from .inspected_answers import render_inspected_recommendation
 from .method_philosophy import method_philosophies_for, question_fit_for, requested_framework_for
+from .tie_guidance import concern_section
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..routing.capability_compatibility import _supported_artifacts
 
@@ -268,6 +269,8 @@ def render_method_capability_gap(decision, policy, *, artifact_label):
             )
         else:
             lines.append("These alternatives do not fulfill the requested modeling requirement.")
+        if concerns := concern_section(decision, policy, [action for action, _ in ranked]):
+            lines.append(concerns)
     if tied_first:
         if not probabilistic_regulatory_gap:
             choices = [

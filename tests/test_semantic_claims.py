@@ -710,9 +710,11 @@ def test_paid_evaluation_contract_is_not_exercised_by_offline_fixture():
         [case], provider=Provider(), model_name="offline", review_policy="when_needed"
     )
     assert report["results"][0]["status"] == "exact"
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
     assert report["results"][0]["call_roles"] == [
         "semantic_interpreter",
         "intent_router",
+        "request_concerns",
     ]
     assert report["metadata"]["review_policy"] == "when_needed"
     assert report["metadata"]["semantic_contract"] == "legacy"
@@ -758,7 +760,8 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
         episode_store=EpisodeStore(tmp_path / "episodes"),
     )
     result = app.invoke({"messages": [HumanMessage(content=TASK)]})
-    assert called == ["SemanticInterpretation", "IntentDecision"]
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims"]
     assert result["decision"]["should_execute"] is False
     assert result["decision"]["action"] == "no_tool"
     assert result["plan"]["status"] == "respond_only"

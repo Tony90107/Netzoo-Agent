@@ -218,7 +218,8 @@ def invoke_hypothesis_matcher(context, state, task, decision, usage, budget_warn
         or any(c.role in ADVISORY_ROLES for c in usage.calls)
     ):
         return decision, usage, budget_warnings
-    actions = selected_guidance_actions(decision)
+    # A tie selects no workflow; offer its candidates' concerns (Log 263).
+    actions = selected_guidance_actions(decision) or list(decision.hypothesis_actions)
     schema = framing_schema()
     messages = framing_messages(task, concern_options(actions))
     input_text = _serialized_structured_input(messages, schema)

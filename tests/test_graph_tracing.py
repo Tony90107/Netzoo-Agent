@@ -1079,10 +1079,12 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
     ]
     # Verified capability guidance is code-owned: the response model is never
     # asked to rewrite a validated recommendation.
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
+        "request_concerns",
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     event_types = [event.event_type for event in store.read_events(run_id)]
@@ -1207,7 +1209,8 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     )
     events = store.read_events(run_id)
 
-    assert router.calls == 3
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+    assert router.calls == 4
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
@@ -1224,6 +1227,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
+        "request_concerns",
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
@@ -1277,7 +1281,8 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
         }
     )
 
-    assert router.calls == 3
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+    assert router.calls == 4
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
@@ -1336,7 +1341,8 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
         }
     )
 
-    assert router.calls == 3
+    # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+    assert router.calls == 4
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
     proposed = next(

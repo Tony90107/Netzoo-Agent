@@ -13676,3 +13676,37 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
   - (A) 接受這次呼叫，並修改這 6 個測試；
   - (B) 只在平手與缺口回覆提供 `unreliable_prior`，不進單一 workflow 的 concern 呼叫。
 - 已查證的原始碼事實（見 Log 263）仍然成立，可直接用於 A 或 B。
+
+## Log 265｜事前宣告：N 重啟（使用者選 A）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者選 A：接受 PANDA 家族單一 workflow guidance 多一次 concern 呼叫，並修改 Log 264 列出的釘住測試。
+
+- 套用 `log263_halted.patch`（N1–N3，內容不變）。
+- 修改的釘住測試（使用者決定）：`test_graph_tracing.py` 的 4 個測試（3 個 `router.calls` 3 → 4；
+  `…routes_semantics_before_intent…` 與 `…recovers_explicit_typed_outcome…` 的 call-role 清單加上 `request_concerns`，
+  後者的第二個斷言原本因第一個斷言先失敗而沒被執行到）；`test_semantic_claims.py` 的 2 個（call roles／schema 序列加上 concern 呼叫）。
+  離線：2,828 passed，fingerprint 不變。新模組 `tests/test_prior_concern.py` 4 例。
+- 撤回條件沿用 Log 263：
+  - N-c（閘門）：research-choices 8 題 ×2（traced harness，輸出到 `prior-dependence-2026-09-29/`，不覆寫 manual_tests 的證據檔），
+    每題至少 1／2 次通過該資料夾 `run_live.check_science(prose=True)`，否則撤回 N2。
+  - N-d：noisy-prior en ＋ blind-en ×3，0 call-limit error、0 leak；報告 `unreliable_prior` 被回答的次數（計分）。
+
+## Log 266｜Log 265 結果：N1–N3 **保留**（使用者選 A）
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`prior-dependence-2026-09-29/live-n-*.json*`。
+
+- **N-a：** 2,828 passed，另加 `tests/test_prior_concern.py` 4 例；只修改了 Log 265 列出的釘住測試。
+- **N-b：** fingerprint 不變。
+- **N-c：** research-choices 8 題 ×2，`check_science` 16／16 PASS。
+  - 限制：這 8 題都走早期路徑（在任何候選出現之前），所以不會提供 concern；這個閘門幾乎沒有測到 N2 的輸入變化。
+  - N2 真正的曝露在後期路徑的平手：blind＋noisy 的 16 次框架呼叫中有 10 次收到 concern 選項，其中 9 次之後條件階段照常執行。
+- **N-d：** 0 call-limit error、0 leak。blind-en OK 26／30（9／10／7）。r3 的非 OK 都不是本變更造成：
+  - case 3 FALLBACK 與 case 4 PARTIAL 是上游路由；
+  - **case 6 WRONG（exact SAMBAR）**：sibling repair（Log 242）把第二個讀法改寫成 `sample_distance_matrix`（只有 SAMBAR 產生），
+    registry 因此 exact 配到 SAMBAR。該試驗沒有框架呼叫、也沒有 concern 呼叫。**這是既有的上游缺陷**，另行回報。
+- **計分（非閘門）：**
+  - noisy-prior en：框架呼叫有提供 `unreliable_prior`，但模型 0／3 次宣告它，所以該題回覆**沒有**出現先驗依賴說明。
+  - 探測（`probe_corpus.json` ×3）：concern 被接受 3／6，回覆呈現 2／6。未呈現的一次，使用者直接寫了 "PANDA"，
+    回覆走具名 workflow 的 `registry_guidance` 規格卡，那個渲染器不呈現 concern。
+- **待辦（未處理）：** 具名 workflow 規格卡與 form A 推薦回覆都不呈現 addressed concerns；
+  sibling repair 可能把讀法改寫成只有另一個 workflow 能產生的 artifact。
