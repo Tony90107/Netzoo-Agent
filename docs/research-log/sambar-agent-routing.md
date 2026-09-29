@@ -13565,3 +13565,67 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
 - **L-e（計分，非閘門）：** blind-en OK 26／30（8／10／8）；case 3 BONOBO 3／3。
   唯一的 WRONG 是 r3 case 7：registry 沒有候選，而且沒有任何 advisory 呼叫，屬於上游路由（Log 179 記錄的 case 7 形狀），
   L1／L2 都沒有執行到。case 4 的 PARTIAL 也是單候選路由結果，沒有 advisory 呼叫。
+
+## Log 261｜事前宣告：M——guidance 回覆依「候選之間的差別」組織，機制說明只在區分候選時出現（item 4）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求：先做 item 4（缺口說明由 registry 產生、口吻像專家），並指出回覆「太模板」：
+每個候選都列 Registered purpose／Method premise／Mathematical interpretation×2／Required inputs／Declared output。
+
+**觀察（traced live ×3，`templated-replies-2026-09-29/repro-mirna-x3.json`，使用者的 miRNA 降解題）：**
+- 3／3 都是六候選平手，走 `_render_outcome_clarification` 的多候選分支：每個候選都印完整規格表，LIONESS 公式印兩次。
+- Log 256 的 `scientific_guidance.py` 只處理單一候選，而且用字面 regex（`why|explain|mechanism…`）選擇渲染器。
+  多候選平手一律落到規格表，這就是「模板感」的來源。
+- `_PHILOSOPHIES` 沒有 `mirna_regulation`：PUMA 只拿到通用的 message-passing 說明，PUMA 與 PANDA 的差別沒有被說出來。
+- 路由面（不在本 Log 修改，另行回報）：第一輪沒填 `regulator_types`；guidance subject review 的 schema 沒有 regulator 維度；
+  clarification planner 依資訊增益計分，六向的「演算法」切分勝過二向的「TF 或 miRNA」，即使後者才是請求未解決的生物學事實。
+- 科學（netZooPy `puma/calculations.py`）：PUMA 在每次合作網路更新後，把 miRNA 的列與欄重設為初始值
+  （`ppi_matrix[s1] = TFCoopInit[s1]`）；共表現是目標基因之間的 Pearson 相關，以連續 Tanimoto 相似度比較，沒有正負號專屬權重，
+  也不使用 miRNA 本身的表現量。docstring 指出 miRNA 先驗可來自 TargetScan／miRanda。
+
+**設計（回覆層＋registry 內容，不改路由、prompt 措辭、schema）：**
+- M1：多候選、無推薦、無缺口的 guidance 平手，改由新的組合器渲染（registry 推導，適用全部 workflow）：
+  - 依請求**未解決**且確實切分候選的 typed 維度分組：regulator scope，其次產出類型。
+  - 延伸鏈收合：`guidance_predecessors` 在組內的候選，併為其 base 的一行「per-sample extension」。
+  - 每個方法一句**區分性**機制（取該方法在候選中最少共有的 tag 的說明首句）加一行必要輸入。
+  - 完整數學說明不在平手清單出現，留給單一候選、推薦（form A）與使用者追問。
+  - 結尾仍用 decision 的 `clarification_question`（路由擁有，不改）。
+- M2：`_PHILOSOPHIES` 新增 `mirna_regulation`（依上列原始碼）。`requested_framework_for` 為每個 estimator tag 提供原理說明，
+  取代「Requested modeling principle: …」一行；bayesian 文字不變。
+- **已知的副作用（宣告，不當作修正）：** `_candidate_facts` 把 `method_philosophies_for` 送進條件呼叫，
+  所以 PUMA／LIONESS-PUMA 候選的條件呼叫輸入會多一段 miRNA 說明。semantic／claims prompt 不變。
+
+**預期的釘住測試修改：** 無已知。任何既有測試失敗 → 停止並列出（M-a）。
+
+**撤回條件：**
+- M-a：既有測試失敗 → 停止並列出。
+- M-b：legacy `b9bfa69b8022`、claims `5161651ada5e`、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- M-c（離線，決定性，閘門）：重新渲染所有已記錄、走多候選平手分支的 decision（去重）：
+  - `candidate_unnamed` 必須為 0；
+  - 平手清單中 "Mathematical interpretation" 出現 0 次；
+  - 每則回覆都比舊版短；報告中位數。
+- M-d（live，miRNA 題 ×3 ＋ noisy ×3 ＋ blind-en ×3）：0 call-limit error、0 leak。
+  報告平手含 PUMA 的條件呼叫結果與 Log 260 的差異（副作用的量測，不是閘門）；blind-en score 照實報告。
+
+## Log 262｜Log 261 結果：M1、M2 **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`templated-replies-2026-09-29/`（`repro-mirna-x3.json`、`live-m-r{1,2,3}-{blind,noisy,mirna}.json*`），
+新模組 `tests/test_tie_guidance.py`（66 例，含 registry 內所有同產出組合）。
+
+- **M-a：** 第一版組合器讓 `test_concept_answers.py` 兩個釘住測試失敗（`test_tied_network_hypotheses_are_presented_without_priority`、
+  `test_granularity_clarification_does_not_assume_a_sample_specific_result`），依 M-a 沒有修改它們。它們揭露兩個真缺陷：
+  - 產出不同時，標題寫成「no regulator roles」，丟掉 registry 的 family label；
+  - PUMA／LIONESS-PUMA 只差尺度，卻寫成「modeling assumptions」。
+  改為以 `_network_family_label` 分組，開頭句依實際的切分決定：
+  - 不同 family 或只差尺度：沿用原句；
+  - 純方法平手：「they differ in their modeling assumptions」。
+  另外，所有候選共有的機制只說一次，不再作為各自的區分說明。之後 2,828 passed、35 skipped，**沒有修改任何既有測試**。
+- **M-b：** legacy `b9bfa69b8022`、claims `5161651ada5e` 不變；`policy_hash`、`OUTPUT_CAPABILITIES` 不變（沒有改 registry 資料）。
+- **M-c（最終程式）：** 已記錄的平手 decision 去重後 288 個。走規格表分支的 286 個全部改變，另 2 個走其他分支、不變。
+  `candidate_unnamed` 0，"Mathematical interpretation" 0 次，沒有任何一則變長；中位數 3,328 → 1,308 字，最大比例 0.56。
+- **M-d（live ×3）：** 0 call-limit error、0 leak。blind-en OK 28／30（10／9／9；兩個 PARTIAL 都是 case 4 單候選路由，
+  沒有 advisory 呼叫）。noisy-prior 缺口 6／6，BONOBO 只以「不同結果」出現 6／6。case 10 讓位 3／3。
+  - 組合器在 live 進行中修改過；回覆文字與路由無關，所以回覆以最終程式從記錄的 decision 離線重新渲染。
+  - 宣告的副作用：miRNA 題的條件呼叫 3／3 都沒有推薦；捏造引文的 GIRAFFE preference 由 3／3（Log 257 之後）變成 1／3，
+    仍被驗證擋下；PUMA 0／3。**路由仍然沒有辨識出 miRNA**，這不是本 Log 的修正對象。
+- miRNA 題的回覆：7,076 → 2,163 字。PUMA 是 TF/miRNA family 的唯一方法，所以列出完整、依原始碼的設計差異；
+  TF 方法各一句。結尾的反問仍是 planner 的演算法問題（記憶體／GIRAFFE），與 TF/miRNA 分組不一致，屬路由層，另行回報。

@@ -14,6 +14,7 @@ from .advisory_answers import render_advisory_recommendation, render_method_capa
 from .method_philosophy import method_philosophies_for
 from .reply_notes import with_reply_notes
 from .single_candidate import single_candidate_question
+from .tie_guidance import render_tie_guidance
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -337,41 +338,13 @@ def _render_outcome_clarification(
         if recommended is not None:
             return recommended
     if len(decision.hypothesis_actions) > 1:
-        options = []
-        for action in decision.hypothesis_actions:
-            spec = policy.workflows.get(action)
-            if spec is None:
-                continue
-            options.append((
-                _network_family_label(spec),
-                action,
-                _candidate_details(action, spec, policy),
-            ))
-        if options:
-            lines = "\n".join(
-                line
-                for _, _, details in sorted(options, key=lambda item: (item[0], item[1]))
-                for line in details
-            )
-            assumptions = _assumptions_block(
-                decision,
-                "Unconfirmed assumptions in these interpretations (please correct me if needed):",
-            )
-            sections = [
-                "I can map this to more than one compatible network result:",
-                lines,
-            ]
-            if assumptions:
-                sections.append(assumptions)
-            sections.extend(
-                [
-                    decision.clarification_question,
-                    "No files were inspected and no analysis ran.",
-                ]
-            )
-            return _ui_text(
-                "\n\n".join(sections)
-            )
+        # Organized by what separates the candidates, not a spec sheet (Log 261).
+        tie = render_tie_guidance(decision, policy, family_label=_network_family_label, assumptions=_assumptions_block(
+            decision,
+            "Unconfirmed assumptions in these interpretations (please correct me if needed):",
+        ))
+        if tie is not None:
+            return _ui_text(tie)
     return _ui_text(
         "I cannot select a workflow until the requested result is clear. "
         f"{question}\n\n"
