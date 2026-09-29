@@ -13924,3 +13924,45 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
   - 82／82 顯示推薦；
   - 0 個缺冠詞的「asks for …」；
   - 推薦段落第一句 0 次重複出現在 fit 句。
+
+## Log 277｜事前宣告：V——條件呼叫用 strict schema，`requested_philosophy` 限定為 registry tag（C：較弱的引文）
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+**觀察：** Log 272。修復用的是模型寫在 `requested_philosophy` 旁的 `requirement_quote`
+（「Do you have a tool specifically for this class of molecules?」），而不是描述降解的那句。
+引文弱，是因為模型把條件寫進了自由文字欄位。
+
+**設計（合約形狀，不改任何描述文字）：**
+- V1：`_condition_schema` 的 `requested_philosophy` 型別由 `list[str]` 改為 `list[Literal[registry 內所有 selection tag]]`，
+  描述文字不變。條件 id 不能再放進這個欄位，只能放在 `claims`（本來就是 `Literal[本次提供的條件]`，每個 claim 附自己的引文）。
+- V2：條件呼叫用 `strict_json_schema` 並以 `strict=True` 綁定（仿 Log 208 的 patch）。
+- Log 271 的修復保留作為安全網；在 enum 下它不應再觸發。
+
+**預期的釘住測試修改：** `tests/test_routing_evaluation.py` 的 `FixtureProvider` kwargs 規則（條件 schema 加入 strict 集合）。其餘 → 停止並列出。
+
+**撤回條件：**
+- V-a：其他既有測試失敗 → 停止並列出。
+- V-b：semantic／claims fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變。
+- V-c（live ×3：miRNA＋noisy-prior＋blind-en，閘門）：
+  - `selection_conditions_failed` 次數不得多於 Log 274 同語料的基準（實測：17 次條件呼叫中 0 次失敗）加 1；
+  - noisy-prior 缺口 ≥5／6；
+  - case 3 BONOBO 推薦出現在回覆中 ≥2／3；
+  - 0 call-limit error、0 leak、沒有新的 WRONG。
+  任一不成立就撤回 V1＋V2。
+- V-d（計分）：miRNA 題的推薦次數，以及 claim 引文是否為描述降解的那句。
+
+## Log 278｜Log 277 結果：V **撤回**——閘門通過，但目的落空
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`strict-conditions-2026-09-29/`；patch 為 `log277_withdrawn.patch`，程式已還原到 83493f1。
+
+- 與宣告不同的實作：enum 只放在給 provider 的 schema，驗證仍接受任何字串。
+  宣告版本（型別本身改成 enum）會讓驗證直接拒絕 Log 270 的誤放形狀，Log 271 的修復就無從執行，這是一個未宣告的測試失敗。
+- 閘門：2,843 passed（只改了宣告的 FixtureProvider 規則）；fingerprint 不變。live ×3：
+  - 條件呼叫 16 次、失敗 0 次；noisy-prior 缺口 6／6；case 3 BONOBO 出現在回覆 2／3；
+  - 0 call-limit error、0 leak；blind-en OK 28／30，沒有 WRONG。
+- **目的落空：** miRNA 題 PUMA 推薦 1／3（Log 272 是 3／3），唯一一次來自模型的自由 preference，沒有條件引文。
+  原始 I/O 3／3：模型在 enum 下把 `mirna_regulation`（registry tag）寫進 `requested_philosophy`，引文**仍然**是
+  「Do you have a tool specifically for this class of molecules?」，`claims` 仍然為空。
+- **結論：** 引文弱是模型自己選擇把哪一句當成「要求」，不是 schema 形狀造成的。能影響它的只剩 prompt 措辭（禁止的做法）。
+  因此撤回 V，保留 Log 271 的修復與 Log 269 的確認假設作為把關。

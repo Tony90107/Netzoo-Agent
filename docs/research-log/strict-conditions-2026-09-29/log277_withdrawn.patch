@@ -1,0 +1,81 @@
+diff --git a/scripts/netzoo_agent_core/graph/condition_recommender.py b/scripts/netzoo_agent_core/graph/condition_recommender.py
+index 43b2de2..17f9139 100644
+--- a/scripts/netzoo_agent_core/graph/condition_recommender.py
++++ b/scripts/netzoo_agent_core/graph/condition_recommender.py
+@@ -21,11 +21,12 @@ from __future__ import annotations
+ import time
+ from dataclasses import dataclass
+ from typing import Literal
+-from pydantic import ConfigDict, Field, create_model
++from pydantic import BaseModel, ConfigDict, Field, create_model
+ 
+ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
+ 
+ from ..contracts import AgentState, LLMUsage, TaskDecision
++from ..contracts.strict_schema import strict_json_schema
+ from ..contracts.outcomes import (
+     AdvisoryCondition,
+     AdvisoryRecommendation,
+@@ -366,6 +367,29 @@ def _validated_capability_gap(task, gap, candidate_facts):
+     return gap
+ 
+ 
++_REGISTERED_TAGS = tuple(sorted(set().union(*(c.selection_tags for c in OUTPUT_CAPABILITIES.values()))))
++
++
++class _StrictConditionReview(BaseModel):
++    """The provider sees the strict-mode form (Log 277); validation is unchanged.
++
++    The provider may write only registry tags as a philosophy, so an offered
++    condition id cannot be misfiled there and must be claimed with its own
++    quote. Validation still accepts any string, so the Log 271 repair keeps
++    working for a provider that ignores the schema.
++    """
++
++    model_config = ConfigDict(extra="forbid")
++
++    @classmethod
++    def model_json_schema(cls, *args, **kwargs):
++        schema = super().model_json_schema(*args, **kwargs)
++        philosophy = schema.get("properties", {}).get("requested_philosophy")
++        if philosophy is not None:
++            philosophy["items"] = {"enum": list(_REGISTERED_TAGS), "type": "string"}
++        return strict_json_schema(schema)
++
++
+ def _condition_schema(options):
+     """Constrain extraction to offered study facts, including an empty offer."""
+     offered_claim = create_model(
+@@ -373,7 +397,7 @@ def _condition_schema(options):
+         condition=(Literal[tuple(option.condition for option in options)], ...),
+     ) if options else ConditionClaim
+     return create_model(
+-        "MethodComparisonReview", __config__=ConfigDict(extra="forbid"),
++        "MethodComparisonReview", __base__=_StrictConditionReview,
+         requested_philosophy=(list[str], Field(default_factory=list, max_length=8, description=(
+             "Registered method signals the user REQUIRES, before picking candidates. "
+             "Probabilistic quantification of uncertainty is bayesian, even for motif priors. "
+@@ -449,7 +473,7 @@ def invoke_condition_recommender(
+             "offered_conditions": [option.condition for option in options],
+         })
+         adapter = llm.with_structured_output(
+-            schema, method="function_calling", include_raw=True,
++            schema, method="function_calling", include_raw=True, strict=True,
+         )
+         payload, raw = semantic_payload(adapter.invoke(messages))
+         if isinstance(payload, dict):
+diff --git a/tests/test_routing_evaluation.py b/tests/test_routing_evaluation.py
+index 44ac97d..e9ce6b8 100644
+--- a/tests/test_routing_evaluation.py
++++ b/tests/test_routing_evaluation.py
+@@ -96,7 +96,9 @@ class FixtureProvider:
+         # every other binding is unchanged.
+         assert kwargs == {
+             "method": "function_calling", "include_raw": schema is not IntentDecision,
+-            **({"strict": True} if schema in {SemanticPatch, GuidanceSubjectReview} or is_research else {}),
++            # Log 277: the condition review is bound strict as well.
++            **({"strict": True} if schema in {SemanticPatch, GuidanceSubjectReview} or is_research
++               or schema.__name__ == "MethodComparisonReview" else {}),
+         }
+         provider = self
+ 
