@@ -190,15 +190,25 @@ def recommend_from_claims(
     remaining = set(candidates)
     for option, _ in accepted:
         remaining &= set(option.actions)
+    # A base and its per-sample extensions are one method at two scales
+    # (Log 269): start from the base; the extension stays a listed option.
+    bases = [a for a in remaining
+             if not set(OUTPUT_CAPABILITIES[a].guidance_predecessors) & remaining] if remaining else []
+    if len(remaining) > 1 and len(bases) == 1 and all(
+        bases[0] in OUTPUT_CAPABILITIES[a].guidance_predecessors for a in remaining - set(bases)
+    ):
+        remaining = set(bases)
     if len(remaining) != 1:
         return None, [*rejected, {"condition": None, "reason": "claims_do_not_select_one"}]
     action = next(iter(remaining))
+    confirm = [SELECTION_AXES[option.axis].get("confirm", {}).get(option.value) for option, _ in accepted]
     return AdvisoryRecommendation(
         action=action,
         conditions=[
             AdvisoryCondition(axis=option.axis, value=option.value, text_span=span)
             for option, span in accepted
         ],
+        assumptions=[text for text in dict.fromkeys(confirm) if text],
     ), rejected
 
 
@@ -466,7 +476,9 @@ def invoke_condition_recommender(
                 # but cannot change that choice or authorize execution.
                 recommendation = recommendation.model_copy(update={
                     "rationale": explained.rationale,
-                    "assumptions": explained.assumptions,
+                    # An axis's confirmation (Log 269) is never replaced by model prose.
+                    "assumptions": list(dict.fromkeys(
+                        [*recommendation.assumptions, *explained.assumptions]))[:4],
                     "supporting_spans": explained.supporting_spans,
                 })
         if recommendation is None and not rejected:
