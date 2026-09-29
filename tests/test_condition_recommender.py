@@ -418,7 +418,13 @@ def test_unavailable_prior_uncertainty_is_a_gap_not_a_false_recommendation(tmp_p
         assert getattr(updated, field) == getattr(decision, field)
     answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
     assert "PANDA" in answer and "OTTER" in answer
-    assert "BONOBO" not in answer and "(recommend)" not in answer
+    assert "(recommend)" not in answer
+    # Log 259 (user decision): the Bayesian workflow is named only as a method
+    # with the same philosophy and a different result, never as an alternative.
+    different, _, alternatives = answer.partition("If you relax that requirement")
+    assert "A registered method with that philosophy estimates a different result:\n- **BONOBO**" in different
+    assert "does not model uncertain TF-binding/motif priors" in different
+    assert "BONOBO" not in alternatives
     assert "PANDA and OTTER tie only on the stated output and scope" in answer
     assert "PUMA" not in answer
     assert "these registered approaches can infer the requested network through different assumptions" in answer
