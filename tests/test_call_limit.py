@@ -24,7 +24,8 @@ ROUTING = ["semantic_interpreter", "semantic_reviewer", "semantic_discriminator"
 def test_a_method_tie_with_its_condition_call_is_not_a_safety_failure():
     result, _ = row()
 
-    assert result["call_roles"] == [*ROUTING, "hypothesis_bases"]
+    # Log 257: the goal review found one goal, so the method stage still runs.
+    assert result["call_roles"] == [*ROUTING, "hypothesis_bases", "selection_conditions"]
     assert not [error for error in result["errors"] if error.startswith("call_limit")]
     assert result["passed"]
 
@@ -50,17 +51,18 @@ def test_the_pre_run_cap_is_the_scored_bound():
 
     # Log 244: two sibling repairs (Log 242) are bounded apart from routing;
     # this method tie makes none, so it reaches the bound without them.
-    assert len(result["call_roles"]) == 5
-    assert worst_case_calls(1, 1) == 5 + 2
-    assert worst_case_calls(1, 1, repair_replay=True) == 6
-    assert worst_case_calls(39, 3) == 819
+    # Log 257: the goal review and the condition call are both advisory.
+    assert len(result["call_roles"]) == 6
+    assert worst_case_calls(1, 1) == 6 + 2
+    assert worst_case_calls(1, 1, repair_replay=True) == 7
+    assert worst_case_calls(39, 3) == 936
 
 
 @pytest.mark.parametrize("args, cap, reaches_provider", [
-    (["--case", "original-q1"], 6, False),
-    (["--case", "original-q1"], 7, True),
-    (["--repair-replay"], 17, False),
-    (["--repair-replay"], 18, True),
+    (["--case", "original-q1"], 7, False),
+    (["--case", "original-q1"], 8, True),
+    (["--repair-replay"], 20, False),
+    (["--repair-replay"], 21, True),
 ])
 def test_a_run_is_admitted_only_under_its_worst_case(monkeypatch, capsys, args, cap, reaches_provider):
     import evaluate_routing

@@ -50,8 +50,9 @@ def test_the_stages_run_in_the_documented_order(monkeypatch):
 
     result, _ = row()
 
-    assert result["call_roles"][-1] == "hypothesis_bases"
-    assert calls == ["hypotheses", "folder", "preflight"]
+    # Log 257: a goal review that finds one goal yields to the method stage.
+    assert result["call_roles"][-1] == "selection_conditions"
+    assert calls == ["hypotheses", "conditions", "folder", "preflight"]
 
 
 def test_a_stated_fact_recommendation_is_not_replaced_by_the_folder(tmp_path):

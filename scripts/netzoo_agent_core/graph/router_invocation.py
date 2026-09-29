@@ -28,7 +28,9 @@ from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
 from .request_concerns import invoke_concern_matcher
-from .hypothesis_bases import invoke_hypothesis_matcher, explicit_research_choice, ADVISORY_ROLES
+from .hypothesis_bases import (
+    ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
+)
 from .input_inspection import invoke_input_inspection
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -313,13 +315,17 @@ def invoke_router(
             "should_execute": False, "action": "no_tool",
         })
     # Preserve research alternatives before ranking methods by study facts.
-    # Hypothesis review, condition ranking, and practical-concern extraction
-    # share one advisory-call allowance. A comparison suppresses file-driven
-    # selection; clear-goal input inspection and execution gates remain intact.
+    # The goal review (hypotheses) and the method stage (conditions) resolve
+    # different ambiguities: a review that validated no comparison yields to
+    # the conditions call (Log 257). Practical-concern extraction shares the
+    # review's call. A comparison suppresses file-driven selection; clear-goal
+    # input inspection and execution gates remain intact.
     decision, usage, budget_warnings = invoke_hypothesis_matcher(
         context, state, user_task, decision, usage, budget_warnings,
     )
-    if not any(call.role in ADVISORY_ROLES for call in usage.calls):
+    if framing_yielded(decision, usage) and not any(
+        call.role in ADVISORY_ROLES - {"hypothesis_bases"} for call in usage.calls
+    ):
         decision, usage, budget_warnings = invoke_condition_recommender(
             context, state, user_task, decision, usage, budget_warnings,
         )
