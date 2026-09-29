@@ -3,8 +3,8 @@
 One bounded advisory call examines the original question, independently of the
 classifier's chosen endpoint. Its route labels are conditional guidance, never
 execution authority. All method descriptions and input requirements come from
-the registry. Practical concerns share this call so a turn still uses at most
-one advisory provider call.
+the registry. Practical concerns share this call. When it finds one goal, the
+method stage may still make its own call (Log 257, `framing_yielded`).
 """
 
 from __future__ import annotations
@@ -58,6 +58,24 @@ def needs_hypothesis_review(decision, task):
         or decision.requested_outcome is not None
         and decision.requested_outcome.artifact_type == "unknown"
         or _OPEN_QUESTION.search(task)
+    )
+
+
+def framing_yielded(decision, usage) -> bool:
+    """A goal review that validated no comparison leaves the method choice open (Log 257).
+
+    This stage asks which research question the request poses; the condition
+    recommender asks which method answers one question. A successful review
+    that found one goal changed nothing, so it must not use up the method
+    stage's call: that is how the prior-reliability gap and every method-tie
+    recommendation were lost after Log 255. A failed review still blocks it,
+    so an explicit comparison never falls back to one recommended tool.
+    """
+    reviews = [call for call in usage.calls if call.role == "hypothesis_bases"]
+    return not reviews or (
+        all(call.status == "success" for call in reviews)
+        and not decision.stated_hypotheses
+        and decision.match_basis != "unverified_evidence"
     )
 
 

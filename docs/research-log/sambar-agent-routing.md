@@ -13436,3 +13436,83 @@ trace：`hypothesis-routes/trace-log244-g1-hyp-x3.json`（79 calls）、`trace-l
 原 DNA／轉錄與 TF／miRNA 維持多候選）；前版 8 例離線重播 8/8。首次失敗 live 留存，
 另將 UX 行為通過與 strict-routing 通過分欄，沒有把 fallback 算作 exact 成功。
 詳見 [原因、修正與可重跑證據](../../manual_tests/research_choices_followup_2026_09_29/README.md)。
+
+## Log 257｜事前宣告：K——advisory 階段依「解決哪種歧義」組合；假設框架沒有找到比較時，方法選擇階段仍要執行
+
+日期／時區：2026-09-29，Asia/Taipei。
+
+使用者回報「借用近緣物種結合位點、先驗不可靠、能否以機率量化」一題的回覆變差：列出 PANDA／PUMA／LIONESS／OTTER／GIRAFFE
+六個候選，最後問「aggregate or sample-specific?」。2026-09-28 同一題的回覆是正確的（貝氏階層模型的說明＋registry 缺口＋PANDA／OTTER
+條件替代，無 PUMA；`manual_tests/all_workflow_routing_2026_09_28/latest_noisy_prior_validation.json`）。
+
+**原因（traced live，HEAD a827108，gpt-4o-mini，每題 1 次；`noisy-prior-2026-09-29/repro-head.json`）：**
+- 每回合只能有一次 advisory 呼叫。a827108 起 `invoke_hypothesis_matcher` 先跑，只要 `needs_hypothesis_review` 成立就呼叫
+  `ResearchFraming`：任何 >1 候選的 tie（第一個子句），或字面線索（中文原題的「不確定」來自名詞「不確定性」，走早期路徑）。
+- 框架呼叫回 `single_goal` 時什麼都沒改，但 `router_invocation.py` 仍因「已有 advisory 呼叫」跳過 `invoke_condition_recommender`。
+  而條件推薦器是唯一會 (a) 依引文的研究條件在 method／divergent tie 中推薦、(b) 回報「要求的數學哲學沒有 workflow 實作」的階段。
+- 結果：noisy-prior zh／en 都是 `single_goal` → 沒有缺口 → 六候選清單＋粒度反問；blind case 3（少數病人＋可信連線）也是
+  `single_goal` → 沒有 BONOBO 推薦（Logs 141-177 累計 5／5）。
+- 離線確認：兩題 noisy-prior 的 decision 都是 `is_method_tie`（plan=algorithm），case 3 是 `is_divergent_reading_tie`，都在條件推薦器的範圍內。
+- a827108 同時把保護這條路的兩個釘住測試改成接受新行為：`test_the_stages_run_in_the_documented_order` 與
+  `test_a_method_tie_with_its_condition_call_is_not_a_safety_failure`（名稱仍說 condition call，斷言卻變成 `hypothesis_bases`）。
+- 評分器沒有攔到：兩題 noisy-prior 的 `passed` 都是 True，因為沒有任何結構計數檢查「tie 上條件階段有沒有跑」。
+
+**科學前提（netZooPy 原始碼）：** `bonobo.compute_bonobo(expression_matrix, expression_mean, sample_idx, delta, …)` 只吃表現量；
+它的「先驗」是其餘樣本的共變異數（以 δ 加權的經驗貝氏收縮），輸出每個樣本的基因–基因共表現與 p 值。沒有 motif 先驗輸入，也沒有
+TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」。本 Log 不把 BONOBO 當成此題的推薦。
+
+**設計（階段組合＋回覆層，不改任何 prompt 措辭、schema、registry）：**
+- K1：advisory 階段依所解決的歧義分型。`hypothesis_bases` 判斷「是哪個研究問題」（目標歧義），`selection_conditions` 判斷
+  「同一個問題用哪個方法」（方法歧義）。目標階段成功回應、但沒有驗證出任何比較（`stated_hypotheses` 為空，且沒有被改成
+  `unverified_evidence`）時，它**讓位**：條件推薦器照常依自己的閘門執行。新判斷式 `framing_yielded(decision, usage)`。
+  框架呼叫失敗時維持現行（不跑條件），明確的假設比較不會退回單一工具。
+- K1 的上限：每個 advisory 角色每回合 ≤1 次；advisory 合計 ≤2 次，且第二次只能是 `hypothesis_bases` 之後的 `selection_conditions`。
+  `ADVISORY_CALL_LIMIT` 1→2，每試驗最壞情況 7→8 次呼叫。`request_concerns` 仍不與 `hypothesis_bases` 並存（框架已抽取 concern）。
+- K2（回覆層，registry 推導，適用所有 tag）：方法哲學缺口的回覆，另列「宣告了所要求哲學、但產出不同科學結果」的 registry workflow，
+  附其宣告產出與該 tag 的數學說明（例：`bayesian` × regulatory_network → BONOBO，說明它是共表現的貝氏收縮，不處理 motif 先驗）。
+  已在 `hypothesis_actions` 或相關替代裡的 workflow 不重複列。
+
+**預期的釘住測試修改（完整清單）：**
+- `tests/test_advisory_order.py::test_the_stages_run_in_the_documented_order`：`calls == ["hypotheses", "conditions", "folder", "preflight"]`，
+  `call_roles[-1] == "selection_conditions"`。
+- `tests/test_call_limit.py`：canonical tie 的 `call_roles == [*ROUTING, "hypothesis_bases", "selection_conditions"]`；
+  `worst_case_calls(1, 1) == 8`、`(1, 1, repair_replay=True) == 7`、`(39, 3) == 936`。
+- scripted provider 沒有條件 schema 回應而多出一次失敗 advisory 呼叫、因此 call-role／call-count 斷言改變的測試：逐一列在結果 Log，
+  除此之外的失敗即觸發 K-a。
+
+**撤回條件：**
+- K-a：上列之外有既有測試失敗 → 停止並列出。
+- K-b：legacy `b9bfa69b8022`、claims `5161651ada5e`、`policy_hash` `a6d472a1…`、`OUTPUT_CAPABILITIES` 正規化 JSON `3973e9c6e526`
+  任何一個改變 → 撤回（本變更不應碰 prompt、schema 或 registry）。
+- K-c（live 結構計數，閘門）：語料 = noisy-prior zh／en ＋ blind-en case 3／4，×3。每個「框架呼叫成功且回 `single_goal`、且 decision
+  是條件推薦器範圍內的 tie」的試驗，都必須有 `selection_conditions` 呼叫：計數必須等於此類試驗數。少一次即撤回。0 個 call-limit error。
+- K-d（離線，閘門）：Log 255／256 的 research-choices 重播（`manual_tests/research_choices_2026_09_29/run_live.py --replay`）
+  與 followup 重播結果和 HEAD 相同；接受比較的試驗 0 次 `selection_conditions`。
+- K-e（live，計分，**不是閘門**）：noisy-prior 缺口回覆次數、BONOBO 以「同哲學、不同結果」出現的次數、case 3 BONOBO 推薦次數、
+  blind-en ×3 的 score_blind 結果，照實報告。依 Log 98／119-120 的量測力，差距 ≤3 不宣稱改善。
+
+## Log 258｜Log 257 結果：K1 **保留**；K2 依 K-a 撤回，待使用者決定
+
+日期／時區：2026-09-29，Asia/Taipei。證據在 `docs/research-log/noisy-prior-2026-09-29/`。
+
+- **K2 撤回（K-a）：** `tests/test_condition_recommender.py::test_unavailable_prior_uncertainty_is_a_gap_not_a_false_recommendation`
+  釘住 `"BONOBO" not in answer`（2026-09-27 的「不以 BONOBO 取代」設計），不在事前清單上。K2 只把 BONOBO 列為「同哲學、不同結果」，
+  仍然推翻這條釘住斷言，所以停止並撤回；patch 在 `k2_withdrawn.patch`（缺口回覆 2,133 → 2,582 字，低於 2,900 上限）。
+  K2 的 lazy import 也讓 `test_internal_module_dependency_graph_is_acyclic` 失敗；若重做，改用注入 label 函式（`candidate_details` 的做法）。
+- **K-a（K1）：** 2,754 passed、35 skipped（HEAD 2,745＋新模組 `tests/test_advisory_stage_composition.py` 9 例）。
+  修改的釘住測試：宣告的 `test_advisory_order`、`test_call_limit`（含 `test_a_run_is_admitted_only_under_its_worst_case` 的 4 組 cap：
+  7／8、20／21）；屬於宣告類別（scripted provider 多一次失敗的條件呼叫）的 `test_scoring_the_ambiguous_answer_costs_no_provider_call`
+  （恢復 a827108 刪掉的 `MethodComparisonReview`）；以及傳入舊上限 `--max-calls 7` 的三個 `test_routing_evaluation` CLI 測試（→ 8）。
+  新模組的兩個缺口測試在 HEAD 的 `router_invocation.py` 上失敗、修正後通過；其餘 7 例是邊界守衛（通過的比較、失敗的框架呼叫都不跑條件）。
+- **K-b：** legacy `b9bfa69b8022`、claims `5161651ada5e`、`policy_hash` `a6d472a1…`、`OUTPUT_CAPABILITIES` `3973e9c6e526` 全部不變。
+- **K-d：** research-choices 重播 8／8、followup 4／4，輸出與 HEAD 逐欄相同（重播 provider 遇到未錄製的呼叫會失敗）。
+  followup 資料夾追蹤中的 `replay-*.json` 對 HEAD 本身就已過期（condor-zh 記錄為 fallback，HEAD 重播為 exact）；已還原，未改動。
+- **K-c（live，三輪與 HEAD 交錯，gpt-4o-mini）：** 框架回 `single_goal` 且屬條件推薦器範圍的 tie：fix **12／12** 有條件呼叫，
+  HEAD 0／13。兩臂 call-limit error 皆 0。
+- **K-e（計分，非閘門）：**
+  - noisy-prior zh／en：缺口回覆 fix 6／6、HEAD 0／6；粒度反問 fix 0／6、HEAD 6／6；PUMA 出現 fix 0／6、HEAD 6／6。
+  - blind case 3 BONOBO 推薦：fix 2／3（第三次是上游 `semantic_fallback`），HEAD 0／3；Log 253（dafc6ca）為 3／3。
+  - blind-en OK：fix 25／30、HEAD 23／30，差 2，不宣稱改善。0 leak。
+- **仍開放（非本變更造成）：** case 10 的 `rec=run_panda` 來自條件推薦器的 `preference` 路徑：只以泛用引文「Build me a network and
+  let's see.」支持，理由寫「它需要的表現量你已經有」，但 PANDA 還需要 motif 與 PPI。Log 253 在 a827108 之前就已 2／3 出現同樣情形；
+  K1 只是恢復那條路。可能的形狀修正：preference 推薦須通過 registry 必要輸入與請求陳述輸入的一致性檢查。未實作，待使用者決定。

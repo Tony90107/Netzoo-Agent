@@ -1,0 +1,52 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/advisory_answers.py b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+index 4ee7571..8eb151a 100644
+--- a/scripts/netzoo_agent_core/interpretation/advisory_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+@@ -194,6 +194,38 @@ def _tie_explanation(ranked, policy, gap, outcome) -> str:
+     )
+ 
+ 
++def _same_philosophy_other_result(decision, policy, gap, ranked) -> str:
++    """Registered methods that declare the required philosophy for another result (Log 257).
++
++    Someone asking for a Bayesian treatment of a motif prior will ask about the
++    Bayesian workflow next, so say what it estimates instead of omitting it.
++    Derived from registry tags and outputs only; it never adds a candidate.
++    """
++    from .concept_answers import _artifact_label  # concept_answers imports this module
++
++    shown = set(decision.hypothesis_actions) | {action for action, _ in ranked}
++    required = set(gap.selection_tags)
++    lines = []
++    for action, capability in OUTPUT_CAPABILITIES.items():
++        shared = required & set(capability.selection_tags)
++        if action in shown or action not in policy.workflows or not shared:
++            continue
++        outputs = " and ".join(
++            _artifact_label(item)
++            for item in sorted(capability.produced_artifacts or {capability.artifact_type})
++        )
++        scale = " (one per sample)" if set(capability.granularities) == {"sample_specific"} else ""
++        notes = method_philosophies_for(shared) or algorithmic_assumptions_for(shared)
++        lines.append(f"- **{policy.workflows[action].workflow}** — declared output: {outputs}{scale}."
++                     + (" " + " ".join(notes) if notes else ""))
++    if not lines:
++        return ""
++    lead = ("A registered method with that philosophy estimates a different result:"
++            if len(lines) == 1 else
++            "Registered methods with that philosophy estimate different results:")
++    return lead + "\n" + "\n".join(lines)
++
++
+ def render_method_capability_gap(decision, policy):
+     gap = decision.advisory_capability_gap
+     lines = [
+@@ -205,6 +237,8 @@ def render_method_capability_gap(decision, policy):
+         + (" " + gap.rationale if not gap.rationale.startswith("No qualified") else ""),
+     ]
+     ranked = _related_gap_actions(decision, policy)
++    if near_miss := _same_philosophy_other_result(decision, policy, gap, ranked):
++        lines.append(near_miss)
+     tied_first = bool(ranked and len([score for _, score in ranked if score == ranked[0][1]]) > 1)
+     probabilistic_regulatory_gap = bool(
+         "bayesian" in gap.selection_tags and decision.requested_outcome

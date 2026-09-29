@@ -144,7 +144,7 @@ def test_scoring_the_ambiguous_answer_costs_no_provider_call():
     # algorithm-dimension tie such as this one. Scoring the answer adds nothing.
     assert [schema.__name__ for schema, _ in provider.calls] == [
         "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
-        "ResearchFraming",
+        "ResearchFraming", "MethodComparisonReview",
     ]
 
 
