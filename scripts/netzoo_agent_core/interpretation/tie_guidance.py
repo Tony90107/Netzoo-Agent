@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
+from workflow_registry import OUTPUT_CAPABILITIES, REQUEST_CONCERNS, SELECTION_TAG_GLOSSARY
 
 from ..settings import INPUT_ROLE_FIELDS
 from .extraction import INPUT_LABELS
@@ -39,6 +39,24 @@ def _distinguishing_note(capability, shared: Counter, *, full: bool, said=frozen
     tag = min(tags, key=lambda item: (shared[item], _REGISTRY_TAGS[item], item))
     note = method_philosophies_for([tag])[0]
     return note if full else note.split(". ", 1)[0].rstrip(".") + "."
+
+
+def concern_section(decision, policy, actions) -> str:
+    """The registry's answer to each concern the request stated, per listed method (Log 263)."""
+    by_concern: dict[str, list[str]] = {}
+    labels: dict[str, str] = {}
+    for item in decision.addressed_concerns:
+        if item.action not in actions or item.action not in policy.workflows:
+            continue
+        declared = next((c for c in REQUEST_CONCERNS.get(item.action, ()) if c.concern == item.concern), None)
+        if declared is None:
+            continue
+        labels[item.concern] = declared.label
+        line = f"- **{policy.workflows[item.action].workflow}** — {declared.note}"
+        if line not in by_concern.setdefault(item.concern, []):
+            by_concern[item.concern].append(line)
+    return "\n\n".join(f"About your concern that {labels[c]}:\n" + "\n".join(lines)
+                        for c, lines in by_concern.items())
 
 
 def render_tie_guidance(decision, policy, *, family_label, assumptions: str = "") -> str | None:
@@ -79,6 +97,8 @@ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = ""
             extra = " ".join(f"Per-sample version: **{policy.workflows[e].workflow}**." for e in extensions[action])
             lines.append(f"- **{spec.workflow}** — " + " ".join(p for p in (note, extra, _inputs(spec)) if p))
         sections.append("\n".join(lines))
+    if concerns := concern_section(decision, policy, actions):
+        sections.append(concerns)
     if assumptions:
         sections.append(assumptions)
     if decision.clarification_question:

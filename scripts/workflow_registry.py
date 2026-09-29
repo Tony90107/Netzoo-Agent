@@ -449,7 +449,48 @@ class RequestConcern:
 # neither the policy hash nor any provider prompt changes. Every note must be
 # verifiable in the netZooPy source or the executor that wraps it.
 _MEMORY_LIMIT = "memory is a limiting factor (for example, an earlier run ran out of memory)"
+# Log 263: how each prior-using method treats its prior. netZooPy
+# panda/calculations.py:86-110 and puma/calculations.py:50-76 (the motif is the
+# starting W, moved by alpha until the mean change is below 0.001), otter/otter.py
+# (objective without a motif term), giraffe/giraffe.py:195-268 (R starts from the
+# motif; no motif term in the loss).
+_UNRELIABLE_PRIOR = "the prior network is noisy, borrowed from a related species, or not trusted"
+_PRIOR_AS_START = (
+    "The motif prior is only the starting network. Each iteration moves the network a "
+    "fraction `alpha` (0.1) toward the agreement of the motif, PPI and co-expression "
+    "evidence, which are updated too, and stops when the change falls below 0.001 on "
+    "average. No term pulls the result back to the prior, but the starting point still "
+    "shapes it, and this agent sets no weight for the prior. To see which edges depend on "
+    "it, compare runs with a perturbed or alternative prior."
+)
+_LIONESS_PRIOR = (
+    "Each sample's network comes from two runs of the base method, with and without that "
+    "sample, so it inherits the base method's treatment of the prior: a starting network, "
+    "not a fixed constraint. LIONESS adds no weighting of its own, and edges present in "
+    "every sample's network can simply reflect the shared prior; compare runs with a "
+    "perturbed or alternative prior."
+)
 REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
+    "run_panda": (
+        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+                       note=_PRIOR_AS_START, artifacts=("regulatory_network",)),
+    ),
+    "run_puma": (
+        RequestConcern(
+            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+            note=_PRIOR_AS_START + " miRNA edges follow the same rule; their cooperativity "
+            "with other regulators stays at its initial value.",
+            artifacts=("regulatory_network",),
+        ),
+    ),
+    "run_lioness_panda": (
+        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+                       note=_LIONESS_PRIOR, artifacts=("regulatory_network",)),
+    ),
+    "run_lioness_puma": (
+        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+                       note=_LIONESS_PRIOR, artifacts=("regulatory_network",)),
+    ),
     # netZooPy 0.11.0 otter/otter.py:44-69; loader data/otter.py:210, 246-250.
     "run_otter": (
         RequestConcern(
@@ -471,6 +512,17 @@ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
                 "there is no convergence test to wait for. `eta` is the step size of those steps."
             ),
             controls=("iterations", "eta"),
+        ),
+        RequestConcern(
+            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+            note=(
+                "OTTER's objective has no motif term: the seed matrix only sets where the "
+                "gradient steps start. How far the result can move from the seed depends on "
+                "`iterations` (default 60) and the step size `eta` (default 1e-5); `lam` "
+                "balances the PPI and co-expression fits, and `gamma` shrinks the network "
+                "toward zero, not toward the seed."
+            ),
+            controls=("iterations", "eta", "lam", "gamma"),
         ),
     ),
     # giraffe/giraffe.py:161, 195-268 (fit), :225 (get_tfa returns |TFA|);
@@ -497,6 +549,18 @@ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
                 "zero or positive."
             ),
             artifacts=("tf_activity_matrix",),
+        ),
+        RequestConcern(
+            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
+            note=(
+                "GIRAFFE starts its regulatory matrix from the motif prior, then fits expression "
+                "together with agreement to the PPI and co-expression; no loss term keeps the "
+                "matrix close to the motif. How far it moves is set by the optimizer's learning "
+                "rate, its iteration limits and the loss weights, none of which this agent sets, "
+                "so compare runs with a perturbed or alternative prior to see which effects "
+                "depend on it."
+            ),
+            artifacts=("regulatory_network",),
         ),
     ),
     # bonobo/bonobo.py:59-65, 94-121, 237-245, 350-389; executor execution_bonobo.py:207-218.
