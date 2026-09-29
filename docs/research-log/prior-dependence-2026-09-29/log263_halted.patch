@@ -1,0 +1,172 @@
+diff --git a/scripts/netzoo_agent_core/graph/hypothesis_bases.py b/scripts/netzoo_agent_core/graph/hypothesis_bases.py
+index d52ad1f..6d93b40 100644
+--- a/scripts/netzoo_agent_core/graph/hypothesis_bases.py
++++ b/scripts/netzoo_agent_core/graph/hypothesis_bases.py
+@@ -218,7 +218,8 @@ def invoke_hypothesis_matcher(context, state, task, decision, usage, budget_warn
+         or any(c.role in ADVISORY_ROLES for c in usage.calls)
+     ):
+         return decision, usage, budget_warnings
+-    actions = selected_guidance_actions(decision)
++    # A tie selects no workflow; offer its candidates' concerns (Log 263).
++    actions = selected_guidance_actions(decision) or list(decision.hypothesis_actions)
+     schema = framing_schema()
+     messages = framing_messages(task, concern_options(actions))
+     input_text = _serialized_structured_input(messages, schema)
+diff --git a/scripts/netzoo_agent_core/interpretation/advisory_answers.py b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+index 0e8eccc..ea264ef 100644
+--- a/scripts/netzoo_agent_core/interpretation/advisory_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+@@ -8,6 +8,7 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
+ from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
+ from .inspected_answers import render_inspected_recommendation
+ from .method_philosophy import method_philosophies_for, question_fit_for, requested_framework_for
++from .tie_guidance import concern_section
+ from ..routing.clarification_planner import algorithmic_assumptions_for
+ from ..routing.capability_compatibility import _supported_artifacts
+ 
+@@ -268,6 +269,8 @@ def render_method_capability_gap(decision, policy, *, artifact_label):
+             )
+         else:
+             lines.append("These alternatives do not fulfill the requested modeling requirement.")
++        if concerns := concern_section(decision, policy, [action for action, _ in ranked]):
++            lines.append(concerns)
+     if tied_first:
+         if not probabilistic_regulatory_gap:
+             choices = [
+diff --git a/scripts/netzoo_agent_core/interpretation/tie_guidance.py b/scripts/netzoo_agent_core/interpretation/tie_guidance.py
+index 081b883..756f618 100644
+--- a/scripts/netzoo_agent_core/interpretation/tie_guidance.py
++++ b/scripts/netzoo_agent_core/interpretation/tie_guidance.py
+@@ -11,7 +11,7 @@ from __future__ import annotations
+ 
+ from collections import Counter
+ 
+-from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
++from workflow_registry import OUTPUT_CAPABILITIES, REQUEST_CONCERNS, SELECTION_TAG_GLOSSARY
+ 
+ from ..settings import INPUT_ROLE_FIELDS
+ from .extraction import INPUT_LABELS
+@@ -41,6 +41,24 @@ def _distinguishing_note(capability, shared: Counter, *, full: bool, said=frozen
+     return note if full else note.split(". ", 1)[0].rstrip(".") + "."
+ 
+ 
++def concern_section(decision, policy, actions) -> str:
++    """The registry's answer to each concern the request stated, per listed method (Log 263)."""
++    by_concern: dict[str, list[str]] = {}
++    labels: dict[str, str] = {}
++    for item in decision.addressed_concerns:
++        if item.action not in actions or item.action not in policy.workflows:
++            continue
++        declared = next((c for c in REQUEST_CONCERNS.get(item.action, ()) if c.concern == item.concern), None)
++        if declared is None:
++            continue
++        labels[item.concern] = declared.label
++        line = f"- **{policy.workflows[item.action].workflow}** — {declared.note}"
++        if line not in by_concern.setdefault(item.concern, []):
++            by_concern[item.concern].append(line)
++    return "\n\n".join(f"About your concern that {labels[c]}:\n" + "\n".join(lines)
++                        for c, lines in by_concern.items())
++
++
+ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = "") -> str | None:
+     actions = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
+     if len(actions) < 2:
+@@ -79,6 +97,8 @@ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = ""
+             extra = " ".join(f"Per-sample version: **{policy.workflows[e].workflow}**." for e in extensions[action])
+             lines.append(f"- **{spec.workflow}** — " + " ".join(p for p in (note, extra, _inputs(spec)) if p))
+         sections.append("\n".join(lines))
++    if concerns := concern_section(decision, policy, actions):
++        sections.append(concerns)
+     if assumptions:
+         sections.append(assumptions)
+     if decision.clarification_question:
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index 0a0abd1..3c1092d 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -449,7 +449,48 @@ class RequestConcern:
+ # neither the policy hash nor any provider prompt changes. Every note must be
+ # verifiable in the netZooPy source or the executor that wraps it.
+ _MEMORY_LIMIT = "memory is a limiting factor (for example, an earlier run ran out of memory)"
++# Log 263: how each prior-using method treats its prior. netZooPy
++# panda/calculations.py:86-110 and puma/calculations.py:50-76 (the motif is the
++# starting W, moved by alpha until the mean change is below 0.001), otter/otter.py
++# (objective without a motif term), giraffe/giraffe.py:195-268 (R starts from the
++# motif; no motif term in the loss).
++_UNRELIABLE_PRIOR = "the prior network is noisy, borrowed from a related species, or not trusted"
++_PRIOR_AS_START = (
++    "The motif prior is only the starting network. Each iteration moves the network a "
++    "fraction `alpha` (0.1) toward the agreement of the motif, PPI and co-expression "
++    "evidence, which are updated too, and stops when the change falls below 0.001 on "
++    "average. No term pulls the result back to the prior, but the starting point still "
++    "shapes it, and this agent sets no weight for the prior. To see which edges depend on "
++    "it, compare runs with a perturbed or alternative prior."
++)
++_LIONESS_PRIOR = (
++    "Each sample's network comes from two runs of the base method, with and without that "
++    "sample, so it inherits the base method's treatment of the prior: a starting network, "
++    "not a fixed constraint. LIONESS adds no weighting of its own, and edges present in "
++    "every sample's network can simply reflect the shared prior; compare runs with a "
++    "perturbed or alternative prior."
++)
+ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
++    "run_panda": (
++        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++                       note=_PRIOR_AS_START, artifacts=("regulatory_network",)),
++    ),
++    "run_puma": (
++        RequestConcern(
++            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++            note=_PRIOR_AS_START + " miRNA edges follow the same rule; their cooperativity "
++            "with other regulators stays at its initial value.",
++            artifacts=("regulatory_network",),
++        ),
++    ),
++    "run_lioness_panda": (
++        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++                       note=_LIONESS_PRIOR, artifacts=("regulatory_network",)),
++    ),
++    "run_lioness_puma": (
++        RequestConcern(concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++                       note=_LIONESS_PRIOR, artifacts=("regulatory_network",)),
++    ),
+     # netZooPy 0.11.0 otter/otter.py:44-69; loader data/otter.py:210, 246-250.
+     "run_otter": (
+         RequestConcern(
+@@ -472,6 +513,17 @@ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
+             ),
+             controls=("iterations", "eta"),
+         ),
++        RequestConcern(
++            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++            note=(
++                "OTTER's objective has no motif term: the seed matrix only sets where the "
++                "gradient steps start. How far the result can move from the seed depends on "
++                "`iterations` (default 60) and the step size `eta` (default 1e-5); `lam` "
++                "balances the PPI and co-expression fits, and `gamma` shrinks the network "
++                "toward zero, not toward the seed."
++            ),
++            controls=("iterations", "eta", "lam", "gamma"),
++        ),
+     ),
+     # giraffe/giraffe.py:161, 195-268 (fit), :225 (get_tfa returns |TFA|);
+     # executor execution.py:913 and data/giraffe.py:298-302 (the .tfa file).
+@@ -498,6 +550,18 @@ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
+             ),
+             artifacts=("tf_activity_matrix",),
+         ),
++        RequestConcern(
++            concern="unreliable_prior", label=_UNRELIABLE_PRIOR,
++            note=(
++                "GIRAFFE starts its regulatory matrix from the motif prior, then fits expression "
++                "together with agreement to the PPI and co-expression; no loss term keeps the "
++                "matrix close to the motif. How far it moves is set by the optimizer's learning "
++                "rate, its iteration limits and the loss weights, none of which this agent sets, "
++                "so compare runs with a perturbed or alternative prior to see which effects "
++                "depend on it."
++            ),
++            artifacts=("regulatory_network",),
++        ),
+     ),
+     # bonobo/bonobo.py:59-65, 94-121, 237-245, 350-389; executor execution_bonobo.py:207-218.
+     "run_bonobo": (

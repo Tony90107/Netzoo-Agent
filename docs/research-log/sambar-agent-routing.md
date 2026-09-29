@@ -13629,3 +13629,50 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
     仍被驗證擋下；PUMA 0／3。**路由仍然沒有辨識出 miRNA**，這不是本 Log 的修正對象。
 - miRNA 題的回覆：7,076 → 2,163 字。PUMA 是 TF/miRNA family 的唯一方法，所以列出完整、依原始碼的設計差異；
   TF 方法各一句。結尾的反問仍是 planner 的演算法問題（記憶體／GIRAFFE），與 TF/miRNA 分組不一致，屬路由層，另行回報。
+
+## Log 263｜事前宣告：N——registry 記錄每個方法對先驗的依賴（item 2），在平手與缺口回覆中回答使用者陳述的先驗疑慮
+
+日期／時區：2026-09-29，Asia/Taipei。使用者要求照順序做 item 2：為每個方法記錄它對先驗的依賴程度與可調參數，每條都要查原始碼。
+
+**原始碼事實（netZooPy）：**
+- PANDA／PUMA（`panda/calculations.py`、`puma/calculations.py`）：motif 先驗只是起點 W；每步 `W ← (1-α)W + α·½(T(PPI,W)+T(W,C))`，
+  PPI 與共表現也向網路更新，直到平均變化 < 0.001；沒有任何項把 W 拉回先驗。`alpha`（0.1）與門檻不由本 agent 暴露。
+- OTTER（`otter/otter.py`）：`f(W) = (1-λ)/4‖WWᵀ−P‖² + λ/4‖WᵀW−C‖² + γ/2‖W‖²`，seed 只是正規化後的起點（Adam，`eta` 1e-5，`Iter` 60）。
+  離 seed 多遠由 `iterations`／`eta` 決定；`gamma` 把 W 收縮向 0，不是向 seed。本 agent 暴露 `lam`、`gamma`、`iterations`、`eta`。
+- GIRAFFE（`giraffe/giraffe.py`）：R 從正規化 motif 開始；loss = 表現量擬合＋RᵀR≈PPI＋RRᵀ≈C＋TFA·TFAᵀ≈PPI＋‖R‖²，沒有 motif 項；
+  由 `lr`、`min_iter`／`max_iter` 與 `lam` 權重決定。本 agent 未暴露任何控制項。
+- LIONESS-PANDA／LIONESS-PUMA：每個樣本網路由兩次 base 方法計算，繼承 base 對先驗的依賴。
+
+**設計（registry＋回覆層）：**
+- N1：`REQUEST_CONCERNS` 新增 `unreliable_prior`（label：先驗網路有雜訊、借自近緣物種或不可信），宣告於上述六個 workflow。
+  - OTTER 指向它的控制項；其他 workflow 沒有暴露控制項，指向 `regulatory_network` 產出（符合 registry 的「指向宣告內容」不變量）。
+  - note 只陳述上列原始碼事實；不叫使用者去調本 agent 無法設定的參數。
+- N2：`invoke_hypothesis_matcher` 在 decision 沒有被選定的 workflow 時，改提供平手候選的 concern。
+  `selected_guidance_actions` 的語意不變。這會改變平手時框架呼叫的模型輸入（`offered_concerns` 由空變成非空）。
+- N3：平手回覆（`tie_guidance`）與缺口回覆（`render_method_capability_gap`）在有 addressed concern 時，為列出的方法附上 registry note。
+  非 ASCII 引文不回顯（英文輸出政策）。
+
+**預期的釘住測試修改：** 無已知。任何既有測試失敗 → 停止並列出。
+
+**撤回條件：**
+- N-a：既有測試失敗 → 停止並列出。
+- N-b：legacy／claims fingerprint、`policy_hash`、`OUTPUT_CAPABILITIES` 不變（`REQUEST_CONCERNS` 是 Python-only）。
+- N-c（live，閘門，因為 N2 改變框架呼叫輸入）：research-choices 語料（Log 255 的 8 題）×2。
+  接受比較的試驗數不得少於 Log 255 live 的比例：8 題中每題至少 1／2 次被接受為比較，否則撤回 N2。
+- N-d（live，noisy-prior en ＋ blind-en ×3）：0 call-limit error、0 leak。
+  報告 noisy-prior en 回覆中 `unreliable_prior` 被回答的次數（計分，非閘門；zh 走早期路徑，沒有候選可提供，預期 0）。
+
+## Log 264｜Log 263 在 N-a 停止：item 2 等待使用者決定
+
+日期／時區：2026-09-29，Asia/Taipei。完整 patch：`prior-dependence-2026-09-29/log263_halted.patch`（N1–N3），工作區已還原。
+
+- N-a 觸發：6 個既有測試失敗，都是釘住的呼叫次數或呼叫序列：
+  - `test_graph_tracing.py` 的 4 個（`…routes_semantics_before_intent…`、`…recovers_explicit_typed_outcome…`、
+    `…retries_a_schema_valid_but_inconsistent…`、`…reviews_registry_ambiguous_biological_roles`：`router.calls` 3 → 4）；
+  - `test_semantic_claims.py` 的 2 個（呼叫序列多出 `StatedConcernClaims`）。
+- 原因（已隔離）：只還原 registry（保留 N2、N3）時，這兩個檔案 62／62 通過。在 PANDA／PUMA／LIONESS 宣告 concern，
+  代表它們的每個單一 workflow guidance 請求都會多一次 concern 抽取呼叫，即使請求沒提到先驗。OTTER／GIRAFFE／BONOBO／DRAGON 已經是這樣。
+- 事前宣告沒有預見這一點（寫的是「無已知」），所以依規則停止。待決選項：
+  - (A) 接受這次呼叫，並修改這 6 個測試；
+  - (B) 只在平手與缺口回覆提供 `unreliable_prior`，不進單一 workflow 的 concern 呼叫。
+- 已查證的原始碼事實（見 Log 263）仍然成立，可直接用於 A 或 B。
