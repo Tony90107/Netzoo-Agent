@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_AXES
+from workflow_registry import EXTERNAL_REFERENCES, OUTPUT_CAPABILITIES, SELECTION_AXES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text, _ui_text_with_user_data, user_data_token
@@ -225,6 +225,19 @@ def _same_philosophy_other_result(decision, policy, gap, ranked, artifact_label)
     return lead + "\n" + "\n".join(lines)
 
 
+def _external_references(decision, gap) -> str:
+    """Published methods for the missing principle that this agent cannot run (Log 267)."""
+    artifact = decision.requested_outcome.artifact_type if decision.requested_outcome else "unknown"
+    matches = [ref for ref in EXTERNAL_REFERENCES
+               if ref.selection_tags & set(gap.selection_tags)
+               and (artifact == "unknown" or artifact in ref.artifact_types)]
+    if not matches:
+        return ""
+    return ("Outside this agent (reference only; it cannot run these):\n"
+            + "\n".join(f"- **{ref.name}** ({ref.availability}) — {ref.summary} {ref.source}."
+                         for ref in matches))
+
+
 def render_method_capability_gap(decision, policy, *, artifact_label):
     gap = decision.advisory_capability_gap
     lines = [
@@ -236,6 +249,8 @@ def render_method_capability_gap(decision, policy, *, artifact_label):
         + (" " + gap.rationale if not gap.rationale.startswith("No qualified") else ""),
     ]
     ranked = _related_gap_actions(decision, policy)
+    if external := _external_references(decision, gap):
+        lines.append(external)
     if near_miss := _same_philosophy_other_result(decision, policy, gap, ranked, artifact_label):
         lines.append(near_miss)
     tied_first = bool(ranked and len([score for _, score in ranked if score == ranked[0][1]]) > 1)

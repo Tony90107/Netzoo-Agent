@@ -445,6 +445,52 @@ class RequestConcern:
     artifacts: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class ExternalReference:
+    """A published method this agent cannot run, named when no workflow fits (Log 267).
+
+    Reference only: it never becomes a candidate, a recommendation or a prompt
+    input. ``selection_tags`` is the principle it implements and
+    ``artifact_types`` the result it produces, in this registry's vocabulary.
+    Each entry must cite a source that was checked when it was added.
+    """
+
+    name: str
+    selection_tags: frozenset[str]
+    artifact_types: frozenset[ArtifactType]
+    summary: str
+    availability: str
+    source: str
+
+
+# Verified 2026-09-29 against the cited pages.
+EXTERNAL_REFERENCES: tuple[ExternalReference, ...] = (
+    ExternalReference(
+        name="TIGER",
+        selection_tags=frozenset({"bayesian"}),
+        artifact_types=frozenset({"regulatory_network", "tf_activity_matrix"}),
+        summary=(
+            "Bayesian matrix factorization of expression with a prior TF-gene network and TF "
+            "activities; sparse edge priors let the data shrink unsupported prior edges, one "
+            "edge at a time."
+        ),
+        availability="netZooR, R",
+        source="Chen & Padi 2024, doi:10.1038/s41540-024-00386-w",
+    ),
+    ExternalReference(
+        name="Werhli & Husmeier (2007)",
+        selection_tags=frozenset({"bayesian"}),
+        artifact_types=frozenset({"regulatory_network"}),
+        summary=(
+            "Bayesian networks that give each prior-knowledge source its own weight, sampled by "
+            "MCMC, so the data decide how much each prior counts."
+        ),
+        availability="published method, no NetZoo implementation",
+        source="PMID 17542777",
+    ),
+)
+
+
 # Python-only, like DOWNSTREAM_ANALYSES: not part of the policy snapshot, so
 # neither the policy hash nor any provider prompt changes. Every note must be
 # verifiable in the netZooPy source or the executor that wraps it.
