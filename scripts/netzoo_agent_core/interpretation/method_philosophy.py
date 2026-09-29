@@ -7,7 +7,7 @@ https://netzoo.github.io/zooanimals/cobra/
 https://netzoo.github.io/zooanimals/dragon/
 https://netzoo.github.io/zooanimals/sambar/
 https://netzoo.github.io/zooanimals/panda/panda/
-https://netzoo.github.io/zooanimals/panda/puma/
+https://netzoo.github.io/zooanimals/panda/puma/ and netZooPy puma/calculations.py
 https://netzoo.github.io/netZooR/articles/TutorialOTTER.html
 """
 
@@ -62,6 +62,21 @@ _PHILOSOPHIES = {
         "TF-to-gene regulatory edges. A shared probabilistic philosophy does not make "
         "these scientific outputs interchangeable."
     ),
+    # netZooPy puma/calculations.py: miRNA rows/columns of the cooperativity
+    # matrix are reset to their initial values after every update
+    # (ppi_matrix[s1] = TFCoopInit[s1]); co-expression is Pearson correlation
+    # of target genes compared by continuous Tanimoto similarity (Log 261).
+    "mirna_regulation": (
+        "PUMA extends PANDA's message passing to miRNA regulators. Their prior "
+        "edges usually come from sequence-based target prediction such as "
+        "TargetScan or miRanda, and can sit in the same prior as TF motif edges. "
+        "Because miRNAs do not form the protein complexes that the cooperativity "
+        "network represents, PUMA keeps each miRNA's cooperativity with other "
+        "regulators at its initial value instead of updating it. Evidence for a "
+        "miRNA-gene edge therefore comes from agreement between the predicted "
+        "targets and target-gene co-expression; the miRNA's own expression is not "
+        "used, and anti-correlation receives no special weight for repression."
+    ),
     "message_passing": (
         "Message passing iteratively reconciles a regulator-target prior with other "
         "biological evidence networks. Other evidence can revise the initial edge "
@@ -76,6 +91,67 @@ _PHILOSOPHIES = {
         "term to that loss. "
         "Neither parameter estimates motif-prior reliability, and "
         "optimized edge scores are not posterior probabilities."
+    ),
+}
+
+
+# What each required principle means, independent of any workflow (Log 261).
+# A capability-gap reply opens with these instead of a glossary fragment.
+_PRINCIPLES = {
+    "partial_correlation": (
+        "Partial correlation asks whether two features stay associated after "
+        "conditioning on every other measured feature. Under a Gaussian graphical "
+        "model this separates direct links from associations mediated by other "
+        "variables; with more features than samples it needs shrinkage or another "
+        "regularized estimate, and it still does not give causal direction."
+    ),
+    "relaxed_graph_matching": (
+        "Relaxed graph matching fits a network whose projections reproduce observed "
+        "interaction structures, written as an explicit loss that is minimized "
+        "numerically. Regularization controls how far the solution may move, and "
+        "convergence can be checked against that objective."
+    ),
+    "message_passing": (
+        "Message passing repeatedly exchanges information between evidence networks, "
+        "for example a regulator-target prior, regulator cooperativity and target "
+        "co-expression, until they agree. The result is a consensus score for each "
+        "edge, not a probability."
+    ),
+    "biologically_informed_matrix_factorization": (
+        "Biologically informed matrix factorization explains a data matrix as a "
+        "product of factors whose structure is constrained by prior knowledge, such "
+        "as which regulators may target which genes, so each factor keeps a "
+        "biological meaning."
+    ),
+    "leave_one_out_network_inference": (
+        "Leave-one-out network inference estimates each sample's contribution by "
+        "comparing a network fitted to the whole cohort with one fitted without that "
+        "sample. It needs a cohort and inherits the assumptions of the base estimator."
+    ),
+    "covariate_association": (
+        "Covariate modeling lets the co-expression structure itself depend on sample "
+        "covariates, so structure explained by a variable such as age, stage or batch "
+        "can be separated from the rest."
+    ),
+    "high_order_correlation": (
+        "Modeling higher-order structure means estimating how the correlation pattern "
+        "itself varies with sample-level variables, rather than one fixed correlation "
+        "per feature pair."
+    ),
+    "linear_model_coefficients": (
+        "Linear-model coefficients quantify each predictor's contribution to a response "
+        "while holding the other predictors fixed; their signs give the direction of "
+        "the fitted effect, not proof of causation."
+    ),
+    "sparse_pvalue_coexpression": (
+        "Test-based sparse co-expression keeps an edge only when its statistic passes a "
+        "significance threshold, so each retained edge carries an explicit error level "
+        "instead of a dense weight."
+    ),
+    "bipartite_community_detection": (
+        "Bipartite community detection groups two node types, such as regulators and "
+        "targets, with a modularity whose null model keeps the two partitions and each "
+        "node's degree."
     ),
 }
 
@@ -137,6 +213,8 @@ def requested_framework_for(selection_tags, *, artifact_type: str = "unknown") -
             "learning it requires an identifiable model and enough relevant data. "
             "A Bayesian label alone does not supply that capability."
         )
+    if explained := [_PRINCIPLES[tag] for tag in selection_tags if tag in _PRINCIPLES]:
+        return " ".join(explained)
     from workflow_registry import SELECTION_TAG_GLOSSARY
     principles = [SELECTION_TAG_GLOSSARY[tag] for tag in selection_tags if tag in SELECTION_TAG_GLOSSARY]
     return "Requested modeling principle: " + "; ".join(principles) + "."
