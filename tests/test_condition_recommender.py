@@ -375,7 +375,9 @@ def test_algorithm_philosophy_recommends_one_candidate_and_keeps_user_choice(tmp
     answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
     assert answer.count("(recommend)") == 1
     assert "BONOBO" in answer and "LIONESS-COEXPRESSION" in answer
-    assert "Bayesian" in answer and "Method premise:" in answer
+    # Log 273 (user decision): the recommended method is described in prose, not a spec sheet.
+    assert "Bayesian" in answer and "**BONOBO** (recommend) — BONOBO applies Bayesian estimation" in answer
+    assert "Method premise:" not in answer and "Mathematical interpretation" not in answer
     assert "Should I use BONOBO" in answer
 
 
