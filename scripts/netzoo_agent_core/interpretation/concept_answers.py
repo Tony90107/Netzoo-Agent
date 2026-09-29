@@ -270,7 +270,7 @@ def _render_outcome_clarification(
         # catalog conditionally instead of asserting that unrelated modalities fit.
         return None
     if decision.advisory_capability_gap:
-        return render_method_capability_gap(decision, policy)
+        return render_method_capability_gap(decision, policy, artifact_label=_artifact_label)
     beginner_guidance = _render_beginner_group_network_guidance(
         task, decision, semantic_goal,
     )

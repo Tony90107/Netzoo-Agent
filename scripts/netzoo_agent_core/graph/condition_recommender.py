@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Literal
 from pydantic import ConfigDict, Field, create_model
 
-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
+from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
 
 from ..contracts import AgentState, LLMUsage, TaskDecision
 from ..contracts.outcomes import (
@@ -46,7 +46,9 @@ from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_selection_condition_messages
 from ..routing.clarification_planner import plan_clarification
 from ..routing.clarification_planner import algorithmic_assumptions_for
+from ..interpretation.input_bindings import request_input_bindings
 from .context import _GraphContext, preflight_budget, record_event
+from .input_inspection import _ROLE_LABELS, named_directories
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = [
@@ -261,6 +263,29 @@ def _candidate_facts(candidates, context) -> list[dict]:
     return facts
 
 
+def unestablished_inputs(task, action, requested_outcome=None) -> list[str]:
+    """Input roles the workflow requires that the request does not establish (Log 259).
+
+    Established means a file the request binds to that role, or the typed
+    current input `expression_matrix`. Priors are executor prerequisites, not
+    ontology values, so only a bound file establishes them.
+    """
+    bound = set(request_input_bindings(task).values)
+    if requested_outcome is not None and "expression_matrix" in requested_outcome.input_artifacts:
+        bound.add("expression_file")
+    return [role for role in REQUIRED_INPUTS.get(action, ()) if role in _ROLE_LABELS and role not in bound]
+
+
+def _defers_to_named_inputs(task, recommendation, requested_outcome) -> bool:
+    """Quoted facts > folder contents > a bare model preference (Log 259).
+
+    A preference whose workflow needs inputs the request has not established
+    must not pre-empt the content check of a file or folder the request names.
+    """
+    return bool(unestablished_inputs(task, recommendation.action, requested_outcome)
+                and named_directories(task))
+
+
 def _recommend_from_preference(task, preference, candidate_facts, requested_outcome=None):
     """Advisory only: reject added actions, invented method signals and false quotes."""
     if preference is None:
@@ -287,6 +312,12 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
         assumptions.insert(0, "This starting choice assumes a regulator scope of "
                            + ", ".join(labels.get(role, role) for role in roles)
                            + "; confirm this scope before analysis.")
+    if missing := unestablished_inputs(task, preference.action, requested_outcome):
+        # Never let model prose imply the inputs are in hand (Log 259).
+        needed = " and ".join(_ROLE_LABELS[role] for role in missing)
+        article = "an" if needed[0] in "aeiou" else "a"
+        assumptions.insert(1 if roles and assumptions and assumptions[0].startswith("This starting choice")
+                           else 0, f"It also needs {article} {needed}, which the request does not mention.")
     return AdvisoryRecommendation(
         action=preference.action, rationale=rationale,
         supporting_spans=preference.text_spans, assumptions=assumptions[:4],
@@ -442,6 +473,17 @@ def invoke_condition_recommender(
             recommendation = _recommend_from_preference(
                 user_task, claims.preference, candidate_facts, decision.requested_outcome,
             )
+            if recommendation is not None and _defers_to_named_inputs(
+                user_task, recommendation, decision.requested_outcome,
+            ):
+                record_event(context, state, "routing.preference_deferred_to_inputs", "classify", {
+                    "preferred_action": recommendation.action,
+                    "unestablished_inputs": unestablished_inputs(
+                        user_task, recommendation.action, decision.requested_outcome,
+                    ),
+                    "candidate_actions": candidates,
+                })
+                return fallback, usage, budget_warnings
         if recommendation is None:
             record_event(context, state, "routing.selection_conditions_unresolved", "classify", {
                 "claims": [item.model_dump() for item in claims.claims],

@@ -13516,3 +13516,52 @@ TF→gene 輸出，所以 BONOBO 不能回答「motif 先驗有多不可靠」�
 - **仍開放（非本變更造成）：** case 10 的 `rec=run_panda` 來自條件推薦器的 `preference` 路徑：只以泛用引文「Build me a network and
   let's see.」支持，理由寫「它需要的表現量你已經有」，但 PANDA 還需要 motif 與 PPI。Log 253 在 a827108 之前就已 2／3 出現同樣情形；
   K1 只是恢復那條路。可能的形狀修正：preference 推薦須通過 registry 必要輸入與請求陳述輸入的一致性檢查。未實作，待使用者決定。
+
+## Log 259｜事前宣告：L1（K2 重做，使用者同意）＋L2（只憑模型偏好的推薦須與請求建立的輸入一致）
+
+日期／時區：2026-09-29，Asia/Taipei。使用者 2026-09-29 同意 Log 258 的兩個待決事項。
+
+**L1——K2 重做：** 方法哲學缺口回覆列出「宣告了所要求的哲學、但產出不同結果」的 registry workflow（`k2_withdrawn.patch` 的內容），
+改由 `concept_answers` 注入 `_artifact_label`（仿 `candidate_details`），不再 lazy import。
+- 使用者的決定推翻 2026-09-27 釘住的 `"BONOBO" not in answer`；新斷言：BONOBO 只出現在「different result」段落，
+  不在編號的替代清單、不帶 `(recommend)`，而且說明它不處理 motif 先驗。
+
+**L2——證據層級：** 引文的研究條件 ＞ 資料夾內容 ＞ 模型自由偏好。
+- 只有 `preference`（沒有被接受的研究條件）支撐的推薦，若其 workflow 的必要輸入角色（`REQUIRED_INPUTS` ∩ expression／motif／ppi／mirna）
+  有請求沒建立的，就是**暫定的**。「建立」= `request_input_bindings` 綁定到該角色的檔案，或 typed 現行輸入 `expression_matrix`（→ expression_file）。
+- 暫定偏好在請求指名檔案或資料夾（`named_directories` 非空）時**讓位給資料夾檢查**：不附推薦，回到 `fallback` decision，記錄
+  `routing.preference_deferred_to_inputs`。沒有指名時保留推薦，但加上一條 registry 推導的假設，寫出缺少的輸入，
+  不讓回覆暗示輸入已齊備。
+- 已記錄資料（去重後 130 個推薦）：preference-only 17 個；規則只改變 case 10 → PANDA 的 11 個（都是已知的錯誤行為），
+  其餘 6 個（BONOBO／LIONESS-COEXPRESSION，只需表現量）不變。
+
+**預期的釘住測試修改（完整清單）：** `tests/test_condition_recommender.py::test_unavailable_prior_uncertainty_is_a_gap_not_a_false_recommendation`
+的 BONOBO 斷言（L1）。L2 不應改任何既有測試。
+
+**撤回條件：**
+- L-a：上列之外有既有測試失敗 → 停止並列出。
+- L-b：fingerprint／`policy_hash`／`OUTPUT_CAPABILITIES` 同 Log 257。
+- L-c（離線，決定性，閘門）：把 L2 套到已記錄的 17 個 preference-only decision 上，改變數必須正好是 11，而且全部是 case 10。
+- L-d（live，blind-en case 10 ＋ noisy-prior zh／en，×3，閘門）：case 10 的暫定 PANDA 偏好 0 次成為推薦；每次讓位都有
+  `inspected_directories`。noisy-prior 的缺口回覆中，BONOBO 帶 `(recommend)` 或出現在編號替代清單中的次數為 0。
+- L-e（計分，非閘門）：case 10 的 assumption／discovery 備註、blind-en ×3 的 score_blind 結果，照實報告。
+
+## Log 260｜Log 259 結果：L1、L2 **保留**
+
+日期／時區：2026-09-29，Asia/Taipei。證據：`noisy-prior-2026-09-29/live-l-r{1,2,3}-{blind,noisy}.json*`、`count_stages.py`、`tests/test_evidence_order.py`。
+
+- **L-a：** 2,762 passed、35 skipped。唯一修改的既有測試就是宣告的 BONOBO 斷言（改成：只在「different result」段落出現、
+  不在替代清單、不帶 `(recommend)`，並說明不處理 motif 先驗）。新模組 `tests/test_evidence_order.py` 8 例；在 HEAD 程式上無法匯入
+  `unestablished_inputs`（collection 失敗）。label 改為注入後，acyclic 模組測試通過。
+- **L-b：** legacy `b9bfa69b8022`、claims `5161651ada5e`、`policy_hash` `a6d472a1…`、`OUTPUT_CAPABILITIES` `3973e9c6e526` 不變。
+- **L-c：** 已記錄的 17 個 preference-only decision，讓位正好 11 個，全部是 case 10 → PANDA。另 6 個（hyp-covariate-individual，
+  BONOBO／LIONESS-COEXPRESSION）保留，但會加上「It also needs an expression matrix, which the request does not mention.」
+  （那句 prompt 確實沒說有表現量；措辭從 "does not provide" 改為可逐字檢驗的 "does not mention"，並修正 a／an）。
+- **L-d（live ×3，gpt-4o-mini）：**
+  - case 10：preference-only 推薦 0／3；讓位 2／3（第三次模型沒有給 preference），每次讓位都有 `inspected_directories`。
+    assumption／discovery 備註 3／3 都在（K1 單獨時缺 2／3，Log 253 同樣缺 2／3）。
+  - noisy-prior zh／en：缺口 6／6；BONOBO 以「同哲學、不同結果」出現 6／6，被列為替代或推薦 0／6；粒度反問 0／6，PUMA 0／6。
+  - 0 個 call-limit error、0 leak。
+- **L-e（計分，非閘門）：** blind-en OK 26／30（8／10／8）；case 3 BONOBO 3／3。
+  唯一的 WRONG 是 r3 case 7：registry 沒有候選，而且沒有任何 advisory 呼叫，屬於上游路由（Log 179 記錄的 case 7 形狀），
+  L1／L2 都沒有執行到。case 4 的 PARTIAL 也是單候選路由結果，沒有 advisory 呼叫。

@@ -56,6 +56,20 @@ def main(paths):
                 counts["noisy_gap"] += decision.advisory_capability_gap is not None
                 counts["noisy_granularity_question"] += "aggregate or sample-specific" in row.get("answer", "")
                 counts["noisy_puma_named"] += "PUMA" in row.get("answer", "")
+            events = {event["type"] for event in trace.get("events", [])}
+            if row["id"].startswith("noisy-prior"):
+                # Log 259 L-d: BONOBO only as "same philosophy, different result".
+                answer = row.get("answer", "")
+                different, _, alternatives = answer.partition("If you relax that requirement")
+                counts["noisy_bonobo_as_different_result"] += "different result:\n- **BONOBO**" in different
+                counts["noisy_bonobo_offered"] += "BONOBO** (recommend)" in answer or "BONOBO" in alternatives
+            if row["id"].startswith("case10"):
+                rec = decision.advisory_recommendation
+                deferred = "routing.preference_deferred_to_inputs" in events
+                counts["case10_trials"] += 1
+                counts["case10_preference_recommendation"] += bool(rec and not rec.conditions)
+                counts["case10_deferred"] += deferred
+                counts["case10_deferred_with_inspection"] += deferred and bool(decision.inspected_directories)
             if row["id"].startswith("case3"):
                 counts["case3_trials"] += 1
                 rec = decision.advisory_recommendation
