@@ -1,5 +1,6 @@
 /**
- * The outputs browser.
+ * The outputs browser: by session (one entry per session, the newest first),
+ * or as the folders on disk.
  *
  * A result is only useful if it can be looked at, and these files are too
  * large to open casually: the PANDA toy network is 3.1MB and a real one is
@@ -20,6 +21,7 @@ import {
   previewFile,
 } from "../../transport/files";
 import { TagChips } from "../sessions/TagEditor";
+import { OutputsBySession } from "./OutputsBySession";
 
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
@@ -109,8 +111,15 @@ function Provenance({ config, path, onOpenSession }: { config: DaemonConfig; pat
   );
 }
 
-export function FilesPane({ config, initialPath, onOpenSession }: { config: DaemonConfig; initialPath?: string; onOpenSession?: (sessionId: string) => void }) {
+export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: {
+  config: DaemonConfig; initialPath?: string; onOpenSession?: (sessionId: string) => void;
+  /** Changes when a turn ends, so new results appear without a manual refresh. */
+  refreshToken?: boolean;
+}) {
   const { zone } = useTimeZone();
+  const [mode, setMode] = useState<"sessions" | "folders">("sessions");
+  const [revision, setRevision] = useState(0);
+  const [sessionCount, setSessionCount] = useState<number | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -137,11 +146,14 @@ export function FilesPane({ config, initialPath, onOpenSession }: { config: Daem
 
   useEffect(() => {
     setListing(null);
-    let active = true;
-    const directory = initialPath ? initialPath.split("/").slice(0, -1).join("/") : "";
-    void browse(directory).then(() => { if (active && initialPath) void open(initialPath); });
-    return () => { active = false; requestId.current += 1; };
+    if (initialPath) void open(initialPath);
+    return () => { requestId.current += 1; };
   }, [browse, initialPath]);
+
+  // The folder view is read when it is shown, from where it was left.
+  useEffect(() => {
+    if (mode === "folders") void browse(listing?.path ?? "");
+  }, [mode, browse]);
 
   const open = async (path: string, offset = 0, version = "", page = 0) => {
     const request = ++requestId.current;
@@ -171,8 +183,17 @@ export function FilesPane({ config, initialPath, onOpenSession }: { config: Daem
     <section className="pane">
       <header className="pane__header fv__header">
         <span>Outputs</span>
+        <div className="fv__modes" role="group" aria-label="Show outputs">
+          <button type="button" aria-pressed={mode === "sessions"} onClick={() => { setPreview(null); setMode("sessions"); }}
+            title="One entry per session, the most recently written first">By session</button>
+          <button type="button" aria-pressed={mode === "folders"} onClick={() => { setPreview(null); setMode("folders"); }}
+            title="The folders on disk, including files no saved session wrote">Folders</button>
+        </div>
         <div className="fv__header-actions">
-          {listing ? (
+          {mode === "sessions" && sessionCount !== null && !preview ? (
+            <span className="pane__count">{sessionCount === 1 ? "1 session" : `${sessionCount.toLocaleString()} sessions`}</span>
+          ) : null}
+          {mode === "folders" && listing ? (
             <span className="pane__count">
               {listing.total === 0 ? "0 files" : `${listing.offset + 1}–${listing.offset + listing.entries.length} of ${listing.total.toLocaleString()}`}
             </span>
@@ -181,8 +202,8 @@ export function FilesPane({ config, initialPath, onOpenSession }: { config: Daem
             className="pane__action"
             type="button"
             disabled={busy}
-            onClick={() => preview ? void open(preview.path) : void browse(listing?.path ?? "")}
-            title={preview ? "Restart this file preview" : "Refresh this directory"}
+            onClick={() => preview ? void open(preview.path) : mode === "sessions" ? setRevision((value) => value + 1) : void browse(listing?.path ?? "")}
+            title={preview ? "Restart this file preview" : mode === "sessions" ? "Refresh the list" : "Refresh this directory"}
           >
             Refresh
           </button>
@@ -192,7 +213,7 @@ export function FilesPane({ config, initialPath, onOpenSession }: { config: Daem
       {/* Only shown once you are somewhere: at the root it would just repeat
           the pane's own title. Segments are relative to outputs/ and each one
           is a way back. */}
-      {crumbs.length > 0 ? (
+      {mode === "folders" && crumbs.length > 0 ? (
         <nav className="fl__where" title={listing?.host_path ?? ""}>
           <button type="button" onClick={() => void browse("")}>
             outputs
@@ -238,6 +259,16 @@ export function FilesPane({ config, initialPath, onOpenSession }: { config: Daem
             <Provenance config={config} path={preview.path} onOpenSession={onOpenSession} />
             <PreviewBody preview={preview} />
           </div>
+        ) : mode === "sessions" ? (
+          <OutputsBySession
+            config={config}
+            refreshToken={refreshToken}
+            revision={revision}
+            onOpenFile={(path) => void open(path)}
+            onOpenSession={onOpenSession}
+            onBrowseFolders={() => setMode("folders")}
+            onCount={setSessionCount}
+          />
         ) : listing ? (
           <>
             <ul className="fl">

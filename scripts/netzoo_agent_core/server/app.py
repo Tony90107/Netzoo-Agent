@@ -345,6 +345,10 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             raise HTTPException(status_code=404, detail="no such session") from error
         return {"session_id": session_id, **saved}
 
+    @app.get("/v1/outputs/sessions")
+    def outputs_by_session(_scope: None = Depends(require_token)) -> dict:
+        return history.outputs_by_session()
+
     @app.get("/v1/outputs/provenance")
     def provenance(
         path: str = Query(max_length=1024),

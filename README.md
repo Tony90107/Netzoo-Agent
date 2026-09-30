@@ -79,7 +79,10 @@ open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
 - **下一步**：Execute this plan（仍需兩段式核准）、Plan X with my data、Compare with …、Open the outputs、Start a new task。
 - **Session 即實驗**：New session 時取名稱、選模型（限 allowlist）並加 tag；session 記錄並沿用它的模型；
   名稱與筆記可隨時在標題列或 session 檢視修改；tag 可以是標籤（`pilot`）或欄位（`dataset:batch-2`，每個 session 一個值）；
-  沒指定輸出路徑時寫到 `outputs/sessions/<session id>/`；輸出預覽可跳回產生它的 session；
+  沒指定輸出路徑時寫到 `outputs/sessions/<session id>/`；Outputs 分頁預設「By session」：一個 session 一筆、最新的在最上面
+  （只有一個結果就直接是那個檔案，manifest 與執行紀錄收在「+N run files」；多個結果才是只放該 session 檔案的資料夾），
+  「Folders」仍可瀏覽磁碟上的資料夾；
+  輸出預覽可跳回產生它的 session；
   Resume 沿用原本的 session id（與終端版 `--resume` 相同）；
   session 列表可依名稱、筆記、tag 搜尋與篩選，並可勾選 2–4 個 session 並排比較（每個欄位一列）。
 
@@ -363,8 +366,8 @@ COBRA 會在指定資料夾直接產生 `manifest.json`（inputs、checksum、sa
 指定 artifact 時，它會取代 PANDA/PUMA 內部的 Pearson co-expression 建構；expression file
 仍保留作為 gene/prior 對齊來源。互動模式
 啟用 `/execute` 後，同一資料夾還會有一份 `cobra-execution-*.md` execution log；input
-inspection 不會另寫公開 log。未指定 output directory 時，所有工作流都使用既有的
-`outputs/demo/`，避免新增 workflow 專屬子資料夾。
+inspection 不會另寫公開 log。未指定 output directory 時，session 內的工作流寫到
+`outputs/sessions/<session id>/`（在 session 外規劃時仍是 `outputs/demo/`），不另建 workflow 專屬子資料夾。
 
 COBRA 不只可和 PANDA 配合：PUMA 也有相同的 gene-gene co-expression 依賴，現在可用同一
 個 artifact。LIONESS-PANDA/PUMA 則需要每個 leave-one-out 子集重新形成的 co-expression，

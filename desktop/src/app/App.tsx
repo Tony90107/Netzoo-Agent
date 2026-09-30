@@ -355,7 +355,7 @@ export function App() {
             {historyOutputPath ? <FilesPane key={`history-${historyOutputPath}`} config={phase.config} initialPath={historyOutputPath} onOpenSession={openSession} /> : null}
             </>
           ) : centerTab === "outputs" ? (
-            <FilesPane key={session.sessionId} config={phase.config} initialPath={outputPath} onOpenSession={openSession} />
+            <FilesPane key={session.sessionId} config={phase.config} initialPath={outputPath} onOpenSession={openSession} refreshToken={session.busy} />
           ) : centerTab === "environment" ? (
             <EnvironmentPane config={phase.config} />
           ) : centerTab === "guide" ? (

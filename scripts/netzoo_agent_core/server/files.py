@@ -28,7 +28,10 @@ __all__ = [
     "FileChanged",
     "PreviewInvalid",
     "OutsideRoot",
+    "file_entry",
+    "files_under",
     "list_directory",
+    "subdirectories",
     "preview",
 ]
 
@@ -164,6 +167,61 @@ def list_directory(
         limit=limit,
         has_more=offset + len(entries) < total,
     )
+
+
+def _entry(path: Path) -> Entry:
+    stat = path.stat()
+    return Entry(name=path.name, path=_relative(path), kind="file", size_bytes=stat.st_size, modified_at=stat.st_mtime)
+
+
+def file_entry(relative: str) -> Entry | None:
+    """One existing file under the root; None when it is missing, a directory or outside."""
+    try:
+        path = _resolve(relative)
+    except OutsideRoot:
+        return None
+    return _entry(path) if path.is_file() else None
+
+
+def subdirectories(relative: str) -> list[str]:
+    """Names of the visible directories directly below a directory of the root."""
+    try:
+        top = _resolve(relative)
+    except OutsideRoot:
+        return []
+    if not top.is_dir():
+        return []
+    root = _root()
+    return sorted(child.name for child in top.iterdir()
+                  if not child.name.startswith(".") and child.is_dir() and child.resolve().is_relative_to(root))
+
+
+def files_under(relative: str, *, limit: int = 200, skip: tuple[str, ...] = ()) -> list[Entry]:
+    """The visible files below a directory of the root, bounded, in path order.
+
+    `skip` names top-level entries of that directory to leave out. Hidden
+    files and anything resolving outside the root are never listed.
+    """
+    try:
+        top = _resolve(relative)
+    except OutsideRoot:
+        return []
+    if not top.is_dir():
+        return []
+    root, found, pending = _root(), [], [top]
+    while pending and len(found) < limit:
+        directory = pending.pop()
+        children = sorted(directory.iterdir(), key=lambda item: item.name, reverse=True)
+        for child in children:
+            if child.name.startswith(".") or (directory == top and child.name in skip):
+                continue
+            if not child.resolve().is_relative_to(root):
+                continue
+            if child.is_dir():
+                pending.append(child)
+            elif child.is_file() and len(found) < limit:
+                found.append(_entry(child))
+    return sorted(found, key=lambda entry: entry.path)
 
 
 def _realigned_header(header: list[str], body: list[list[str]]) -> list[str]:

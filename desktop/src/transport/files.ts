@@ -160,6 +160,23 @@ export function listTags(config: DaemonConfig, signal?: AbortSignal): Promise<{ 
   return get(config, "/v1/tags", signal);
 }
 
+export type SessionOutputFile = { name: string; path: string; size_bytes: number; modified_at: number; result: boolean };
+/** One session's files: its folder under outputs/sessions/ and what its runs recorded. */
+export type SessionOutputs = {
+  session_id: string; name: string; title: string; workflow: string; status: string;
+  /** False when the session's checkpoint has expired but its folder remains. */
+  saved: boolean;
+  /** When its newest file was written, epoch seconds; entries arrive newest first. */
+  added_at: number;
+  folder: string;
+  /** Results first, then each run's manifest and execution record. */
+  files: SessionOutputFile[];
+};
+export type OutputsIndex = { sessions: SessionOutputs[]; other_files: number };
+export function listSessionOutputs(config: DaemonConfig, signal?: AbortSignal): Promise<OutputsIndex> {
+  return get(config, "/v1/outputs/sessions", signal);
+}
+
 export type OutputOwner = {
   session_id: string; title: string; name?: string; workflow: string; status: string; updated_at: number; tags: string[];
   owns_folder: boolean;
