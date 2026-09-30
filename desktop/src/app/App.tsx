@@ -7,6 +7,7 @@ import { NetZooPyGuide } from "../features/help/NetZooPyGuide";
 import { PlanPane } from "../features/plan/PlanPane";
 import { CompareView } from "../features/sessions/CompareView";
 import { NewSessionDialog } from "../features/sessions/NewSessionDialog";
+import { NotesButton, SessionName } from "../features/sessions/SessionDetails";
 import { SessionsPane } from "../features/sessions/SessionsPane";
 import { SettingsView } from "../features/sessions/SettingsView";
 import { TagEditor } from "../features/sessions/TagEditor";
@@ -19,6 +20,7 @@ import {
   startDaemon,
   stopDaemon,
 } from "../transport/daemon";
+import { readDetails } from "../transport/files";
 import {
   NewSessionOptions,
   SessionSocket,
@@ -110,6 +112,11 @@ export function App() {
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [sessionTags, setSessionTags] = useState<string[]>([]);
   const [sessionModel, setSessionModel] = useState<string>("");
+  const [sessionName, setSessionName] = useState("");
+  const [sessionNotes, setSessionNotes] = useState("");
+  // Bumped when a name, notes or tags are saved, so the session list re-reads them.
+  const [metaRevision, setMetaRevision] = useState(0);
+  const metaChanged = useCallback(() => setMetaRevision((value) => value + 1), []);
 
   // Pane sizes, remembered per divider. Minimums keep any pane from being
   // dragged out of existence.
@@ -124,6 +131,7 @@ export function App() {
   const connect = useCallback(async (resume?: string, options: NewSessionOptions = {}) => {
     setHistoryOutputPath(null); setOutputReturn(null); setViewingSessionId(null); setShowSettings(false);
     setCompareIds(null); setSessionTags(options.tags ?? []); setSessionModel(options.model ?? "");
+    setSessionName(options.name ?? ""); setSessionNotes("");
     const generation = ++connectionGeneration.current;
     socket.current?.close();
     socket.current = null;
@@ -148,6 +156,14 @@ export function App() {
         return;
       }
       setSession(emptySession(sessionId));
+      // A resumed session keeps its name, notes, tags and model: read them
+      // back rather than starting the header empty (and letting a new tag
+      // replace the ones it already had).
+      void readDetails(config, sessionId).then((details) => {
+        if (generation !== connectionGeneration.current) return;
+        setSessionTags(details.tags); setSessionName(details.name); setSessionNotes(details.notes);
+        if (details.models?.response) setSessionModel(details.models.response);
+      }).catch(() => undefined);
       socket.current = new SessionSocket(config, sessionId, (apply) =>
         setSession((current) => (current?.sessionId === sessionId ? apply(current) : current)),
       );
@@ -209,6 +225,7 @@ export function App() {
           currentId={session.sessionId}
           selectedId={viewingSessionId}
           refreshToken={session.busy}
+          changeToken={metaRevision}
           onOpen={(sessionId) => {
             setShowSettings(false); setCompareIds(null);
             setCenterTab("conversation");
@@ -239,7 +256,7 @@ export function App() {
           </button>
           <button
             type="button"
-            title="Start a new experiment: choose its model and tags"
+            title="Start a new experiment: give it a name, a model and tags"
             onClick={() => setNewSessionOpen(true)}
           >
             New session
@@ -255,10 +272,16 @@ export function App() {
 
       <main className="workspace">
         <header className="workspace__context">
-          <div><span>{viewingSessionId ? "Saved session" : "Current session"}</span><code>{viewingSessionId ?? session.sessionId}</code>{viewingSessionId ? <span className="workspace__readonly">Read only</span> : null}
+          <div><span>{viewingSessionId ? "Saved session" : "Current session"}</span>
+            {!viewingSessionId ? <SessionName config={phase.config} sessionId={session.sessionId} name={sessionName}
+              onSaved={(name) => { setSessionName(name); metaChanged(); }} /> : null}
+            <code>{viewingSessionId ?? session.sessionId}</code>{viewingSessionId ? <span className="workspace__readonly">Read only</span> : null}
             {!viewingSessionId ? <>
               {sessionModel ? <span className="workspace__model" title="The model this session runs under">{sessionModel.split("/").pop()}</span> : null}
-              <TagEditor config={phase.config} sessionId={session.sessionId} tags={sessionTags} onSaved={setSessionTags} />
+              <TagEditor config={phase.config} sessionId={session.sessionId} tags={sessionTags}
+                onSaved={(tags) => { setSessionTags(tags); metaChanged(); }} />
+              <NotesButton config={phase.config} sessionId={session.sessionId} notes={sessionNotes}
+                onSaved={(notes) => { setSessionNotes(notes); metaChanged(); }} />
             </> : null}
           </div>
           <label>Layout<select aria-label="Workspace layout" value={layout} onChange={(event) => {
@@ -319,6 +342,7 @@ export function App() {
               config={phase.config}
               sessionId={viewingSessionId}
               onOpenOutput={setHistoryOutputPath}
+              onChanged={metaChanged}
               onClose={() => { setViewingSessionId(null); setHistoryOutputPath(null); }}
               onResume={(sessionId) => {
                 setViewingSessionId(null);

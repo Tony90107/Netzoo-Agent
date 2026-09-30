@@ -634,7 +634,9 @@ body {
 }
 .sl__item.is-current { background: var(--panel-2); }
 .sl__title { font-size: 12px; line-height: 1.45; }
-.sl__meta { display: flex; gap: 8px; color: var(--muted); font-size: 11px; }
+.sl__meta { display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 1px; color: var(--muted); font-size: 11px; }
+/* A narrow sidebar wraps whole items, never "gpt-4o-mini" or "NO-TOOL" mid-word. */
+.sl__meta > span { white-space: nowrap; }
 .sl__status { color: var(--muted); font-size: 11px; }
 
 .sidebar__links button:not(:disabled) { color: var(--text); cursor: pointer; }
@@ -1219,6 +1221,24 @@ body {
 .cp__option.is-active { background: #231c19; }
 .cp__option--blocked { cursor: default; opacity: 0.72; background: transparent; border-style: dashed; }
 .cp__option--blocked:hover { border-color: var(--line); }
+.cp__option--own .cp__body { flex: 1; }
+.cp__option--own.is-active { cursor: text; }
+.cp__own {
+  width: 100%;
+  resize: vertical;
+  min-height: 44px;
+  margin-top: 4px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cp__own:focus { outline: none; border-color: var(--accent); }
+.cp__send { align-self: flex-end; }
 .cp__num {
   flex: 0 0 auto;
   width: 20px;
@@ -1293,6 +1313,8 @@ body {
   white-space: nowrap;
 }
 .tag--link { cursor: pointer; font: inherit; font-size: 11px; }
+/* A field tag (dataset:batch-2): the key reads as a label for its value. */
+.tag__key { color: var(--muted); margin-right: 2px; }
 .tag__remove {
   border: 0;
   background: transparent;
@@ -1312,7 +1334,7 @@ body {
   font: inherit;
   font-size: 11px;
   padding: 1px 8px;
-  width: 11em;
+  width: 16em;
 }
 .tagedit__input:focus { outline: none; border-color: var(--info); border-style: solid; }
 .tagedit__error { color: var(--danger); font-size: 11px; }
@@ -1347,6 +1369,8 @@ body {
 .sd__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .sd__label { width: 64px; flex: 0 0 auto; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
 .sd__muted { color: var(--muted); }
+.sd__row--top { align-items: flex-start; }
+.sd__row--top .notes { flex: 1; max-width: 72ch; }
 .sd__files { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .fv__origin {
@@ -1427,3 +1451,78 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* A session's name, edited in place, and its notes. */
+.sname { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.sname__text {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  cursor: text;
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sname__text:hover { border-color: var(--line); }
+.sname__text.is-empty { color: var(--muted); font-weight: 500; border: 1px dashed var(--line); }
+.sname__input {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 1px 6px;
+  width: 22em;
+  max-width: 100%;
+}
+.sname__input:focus { outline: none; }
+.sname__notes {
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+.sname__notes.has-notes { border-style: solid; color: var(--text); }
+.notes { display: grid; gap: 6px; width: 100%; min-width: 0; }
+.notes__text {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.notes__text:focus { outline: none; border-color: var(--accent); }
+.notes__actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.notes__status { margin-right: auto; color: var(--muted); font-size: 11px; }
+.notes__status.is-error { color: var(--danger); }
+.sl__request {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sl__notes { font-style: italic; }
+.cmp__request { display: block; color: var(--muted); font-size: 11px; font-weight: 400; margin: 2px 0; }
+.cmp__notes { white-space: pre-wrap; max-width: 36ch; }
+

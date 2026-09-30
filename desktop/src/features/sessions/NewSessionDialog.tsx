@@ -1,5 +1,5 @@
 /**
- * Start a session as an experiment: pick its model once and give it tags.
+ * Start a session as an experiment: name it, pick its model once, and tag it.
  *
  * The model list is the daemon's own allowlist, so nothing here widens it; a
  * session keeps its model for its whole life, including when it is resumed.
@@ -26,6 +26,7 @@ export function NewSessionDialog({
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState("");
   const [tags, setTags] = useState("");
+  const [name, setName] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function NewSessionDialog({
     onStart({
       model: model || undefined,
       tags: tags.split(",").map((item) => item.trim()).filter(Boolean),
+      name: name.trim() || undefined,
     });
   };
 
@@ -59,6 +61,10 @@ export function NewSessionDialog({
       <form onSubmit={submit}>
         <h2 className="nsd__title">New session</h2>
         <p className="nsd__note">One session is one experiment: its model is fixed for its whole life, and its outputs go to their own folder.</p>
+        <label className="nsd__field">Name (optional)
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Batch 2: DNA damage vs rewiring" maxLength={80} />
+          <span className="nsd__hint">Shown instead of your first request in the session list and in Compare.</span>
+        </label>
         <label className="nsd__field">Model
           <select value={model} onChange={(event) => setModel(event.target.value)} disabled={models.length <= 1}>
             {models.length === 0 ? <option value="">Daemon default</option> : null}
@@ -67,8 +73,8 @@ export function NewSessionDialog({
           {models.length === 1 ? <span className="nsd__hint">The only model the allowlist permits.</span> : null}
         </label>
         <label className="nsd__field">Tags
-          <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="e.g. pilot, brca, panda-vs-otter" maxLength={200} />
-          <span className="nsd__hint">Comma-separated; used to find and compare experiments later.</span>
+          <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="e.g. pilot, dataset:batch-2, hypothesis:dna-damage" maxLength={400} />
+          <span className="nsd__hint">Comma-separated labels, or fields as key:value; Compare lines fields up side by side.</span>
         </label>
         <div className="nsd__actions">
           <button className="btn" type="button" onClick={onCancel}>Cancel</button>

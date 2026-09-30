@@ -3,12 +3,14 @@
  *
  * Modelled on the question prompts of terminal coding agents: a short header,
  * the question, numbered options with one line on what each gives you, the
- * best-supported first. Keys work the way they do there: arrows move, Enter
- * or a digit picks, and any other key starts typing your own answer.
+ * best-supported first, and a last row for an answer in your own words. Keys
+ * work the way they do there: arrows move, Enter or a digit picks, and any
+ * other key starts that typed answer.
  *
  * Every option sends plain text the agent's prompt already accepts (the same
  * text the terminal accepts), so this panel adds no path around the agent's
- * own rules: "Execute this plan" still stops at the explicit approval.
+ * own rules: "Execute this plan" still stops at the explicit approval, and a
+ * typed answer is read like any other reply to the question.
  */
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 
@@ -18,9 +20,9 @@ type Props = {
   card: ReplyCard;
   onAnswer: (text: string) => void;
   onOpenOutputs?: (paths: string[]) => void;
-  /** Focus the free-text box; called when a key starts a typed answer. */
-  onType?: () => void;
 };
+
+const OWN_ANSWER = "Type your own answer";
 
 function Badge({ option }: { option: ReplyOption }) {
   if (!option.badge) return null;
@@ -30,36 +32,77 @@ function Badge({ option }: { option: ReplyOption }) {
   return <span className={`cp__badge cp__badge--${option.badge === "Recommended" ? "rec" : "best"}`} title={title}>{option.badge}</span>;
 }
 
-function Options({ card, onAnswer, onType }: Props) {
+function Options({ card, onAnswer }: Props) {
   const options = (card.choices?.options ?? []).filter((option) => option.available);
   const blocked = card.unavailable;
+  // The row after the options takes an answer in the user's own words, like
+  // the "Other" row of those prompts. Its index is -1 when the card allows none.
+  const own = card.choices?.allow_other === false ? -1 : options.length;
+  const count = options.length + (own >= 0 ? 1 : 0);
   const [active, setActive] = useState(0);
+  const [draft, setDraft] = useState("");
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const ownRef = useRef<HTMLTextAreaElement>(null);
   const signature = options.map((option) => option.key).join("|");
+  const typing = active === own;
 
   useEffect(() => {
     setActive(0);
+    setDraft("");
     refs.current[0]?.focus({ preventScroll: true });
   }, [signature]);
 
+  useEffect(() => {
+    const field = ownRef.current;
+    if (!typing || !field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, [typing]);
+
   const move = (index: number) => {
-    const next = (index + options.length) % options.length;
+    const next = (index + count) % count;
     setActive(next);
-    refs.current[next]?.focus();
+    if (next !== own) refs.current[next]?.focus();
+  };
+
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    onAnswer(text);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target === ownRef.current) return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === "ArrowDown") { event.preventDefault(); move(active + 1); return; }
     if (event.key === "ArrowUp") { event.preventDefault(); move(active - 1); return; }
     if (event.key === "Home") { event.preventDefault(); move(0); return; }
-    if (event.key === "End") { event.preventDefault(); move(options.length - 1); return; }
+    if (event.key === "End") { event.preventDefault(); move(count - 1); return; }
     if (/^[1-9]$/.test(event.key)) {
-      const picked = options[Number(event.key) - 1];
+      const index = Number(event.key) - 1;
+      if (index === own) { event.preventDefault(); move(own); return; }
+      const picked = options[index];
       if (picked) { event.preventDefault(); onAnswer(picked.answer); }
       return;
     }
-    if (event.key === "Escape" || (event.key.length === 1 && event.key !== " ")) onType?.();
+    if (own >= 0 && event.key.length === 1 && event.key !== " ") {
+      // Any other key starts the typed answer, with that key as its first letter.
+      event.preventDefault();
+      setDraft((text) => text + event.key);
+      move(own);
+    }
+  };
+
+  const onOwnKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    // Enter sends and Shift-Enter is a newline, as in the message box below.
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); return; }
+    if (event.key === "Escape") { event.preventDefault(); move(own - 1); return; }
+    if (!draft && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      move(active + (event.key === "ArrowDown" ? 1 : -1));
+    }
   };
 
   if (!card.choices || options.length === 0) return null;
@@ -88,6 +131,37 @@ function Options({ card, onAnswer, onType }: Props) {
             </span>
           </button>
         ))}
+        {own >= 0 && typing ? (
+          <div className="cp__option cp__option--own is-active">
+            <span className="cp__num" aria-hidden="true">{own + 1}</span>
+            <span className="cp__body">
+              <span className="cp__label">{OWN_ANSWER}</span>
+              <textarea
+                ref={ownRef}
+                className="cp__own"
+                rows={2}
+                value={draft}
+                placeholder="Say what you want, then press Enter"
+                aria-label={OWN_ANSWER}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={onOwnKeyDown}
+              />
+            </span>
+            <button type="button" className="btn btn--primary btn--small cp__send" disabled={!draft.trim()} onClick={send}>
+              Send
+            </button>
+          </div>
+        ) : own >= 0 ? (
+          <button type="button" className="cp__option cp__option--own" tabIndex={-1} onClick={() => move(own)}>
+            <span className="cp__num" aria-hidden="true">{own + 1}</span>
+            <span className="cp__body">
+              <span className="cp__label">{OWN_ANSWER}</span>
+              <span className="cp__desc">
+                {draft ? `Draft: ${draft}` : "Not listed? Describe what you want; it is read together with your request above."}
+              </span>
+            </span>
+          </button>
+        ) : null}
         {blocked.map((option) => (
           <div key={option.key} className="cp__option cp__option--blocked" aria-disabled="true">
             <span className="cp__num" aria-hidden="true">✕</span>
@@ -99,7 +173,8 @@ function Options({ card, onAnswer, onType }: Props) {
         ))}
       </div>
       <div className="cp__hint">
-        <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> or <kbd>1</kbd>–<kbd>{Math.min(options.length, 9)}</kbd> choose · start typing to answer in your own words
+        <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> or <kbd>1</kbd>–<kbd>{Math.min(count, 9)}</kbd> choose
+        {own >= 0 ? " · or just start typing your own answer" : null}
       </div>
     </div>
   );

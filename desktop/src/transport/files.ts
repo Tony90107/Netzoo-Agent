@@ -92,6 +92,10 @@ export type SessionSummary = {
   status: string;
   resumable: boolean;
   title: string;
+  /** What the person named the session; `title` stays their first request. */
+  name?: string;
+  /** The first line of the session's notes, if it has any. */
+  notes_preview?: string;
   total_tokens: number;
   /** Absent from a daemon older than session tags. */
   tags?: string[];
@@ -139,13 +143,25 @@ export function saveTags(config: DaemonConfig, sessionId: string, tags: string[]
   return post(config, `/v1/history/${encodeURIComponent(sessionId)}/tags`, { tags });
 }
 
+export type SessionDetails = {
+  session_id: string; name: string; notes: string; tags: string[]; models: Record<string, string>;
+};
+/** What the person attached to a session: works before its first checkpoint too. */
+export function readDetails(config: DaemonConfig, sessionId: string, signal?: AbortSignal): Promise<SessionDetails> {
+  return get(config, `/v1/history/${encodeURIComponent(sessionId)}/details`, signal);
+}
+/** Rename or annotate a session; a field left out is kept, "" clears it. */
+export function saveDetails(config: DaemonConfig, sessionId: string, details: { name?: string; notes?: string }): Promise<{ name: string; notes: string }> {
+  return post(config, `/v1/history/${encodeURIComponent(sessionId)}/details`, details);
+}
+
 export type TagCount = { tag: string; count: number };
 export function listTags(config: DaemonConfig, signal?: AbortSignal): Promise<{ tags: TagCount[] }> {
   return get(config, "/v1/tags", signal);
 }
 
 export type OutputOwner = {
-  session_id: string; title: string; workflow: string; status: string; updated_at: number; tags: string[];
+  session_id: string; title: string; name?: string; workflow: string; status: string; updated_at: number; tags: string[];
   owns_folder: boolean;
 };
 export function outputProvenance(config: DaemonConfig, path: string, signal?: AbortSignal): Promise<{ sessions: OutputOwner[] }> {
@@ -153,8 +169,9 @@ export function outputProvenance(config: DaemonConfig, path: string, signal?: Ab
 }
 
 export type ComparedSession = {
-  session_id: string; title: string; status: string; workflow: string; updated_at: number; total_tokens: number;
-  tags: string[]; models: Record<string, string>; inputs: Record<string, string>; outputs: string[]; output_dir: string;
+  session_id: string; title: string; name?: string; notes?: string; status: string; workflow: string; updated_at: number;
+  total_tokens: number; tags: string[]; models: Record<string, string>; inputs: Record<string, string>; outputs: string[];
+  output_dir: string;
 };
 export function compareSessions(config: DaemonConfig, ids: string[], signal?: AbortSignal): Promise<{ sessions: ComparedSession[] }> {
   return get(config, `/v1/compare?${new URLSearchParams({ ids: ids.join(",") })}`, signal);
@@ -172,6 +189,8 @@ export type Transcript = {
   messages: { role: string; content: string; card?: import("./protocol").ReplyCard }[];
   truncated: boolean;
   title?: string;
+  name?: string;
+  notes?: string;
   tags?: string[];
   models?: Record<string, string>;
   outputs?: string[];

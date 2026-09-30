@@ -136,7 +136,7 @@ export function entryTimestamp(entry: Entry): string | undefined {
   return entry.at;
 }
 
-export type NewSessionOptions = { model?: string; tags?: string[] };
+export type NewSessionOptions = { model?: string; tags?: string[]; name?: string };
 
 export async function createSession(
   config: DaemonConfig,
@@ -148,6 +148,7 @@ export async function createSession(
   // the daemon still refuses any model its allowlist does not name.
   if (!resume && options.model) body.model = options.model;
   if (!resume && options.tags?.length) body.tags = options.tags;
+  if (!resume && options.name?.trim()) body.name = options.name.trim();
   const response = await fetch(`${config.baseUrl}/v1/sessions`, {
     method: "POST",
     headers: {

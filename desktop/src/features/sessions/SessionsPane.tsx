@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
 import { SessionSummary, TagCount, listSessions, listTags, type SessionFilter } from "../../transport/files";
-import { TagChips } from "./TagEditor";
+import { TagChips, tagField } from "./TagEditor";
 
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
@@ -28,6 +28,29 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed", dry_run: "Preview only", ready: "Plan ready", respond_only: "Conversation", unknown: "Unknown",
 };
 
+/** Labels first, then one group per field, so `dataset:` values sit together. */
+function TagOptions({ tags }: { tags: TagCount[] }) {
+  const labels = tags.filter((item) => !tagField(item.tag));
+  const fields = new Map<string, TagCount[]>();
+  for (const item of tags) {
+    const field = tagField(item.tag);
+    if (field) fields.set(field.key, [...(fields.get(field.key) ?? []), item]);
+  }
+  if (fields.size === 0) return <>{labels.map((item) => <option key={item.tag} value={item.tag}>{item.tag} ({item.count})</option>)}</>;
+  return (
+    <>
+      {labels.length ? <optgroup label="Labels">
+        {labels.map((item) => <option key={item.tag} value={item.tag}>{item.tag} ({item.count})</option>)}
+      </optgroup> : null}
+      {[...fields].map(([key, items]) => (
+        <optgroup key={key} label={key}>
+          {items.map((item) => <option key={item.tag} value={item.tag}>{key}: {tagField(item.tag)!.value} ({item.count})</option>)}
+        </optgroup>
+      ))}
+    </>
+  );
+}
+
 function shortModel(models?: Record<string, string>): string {
   const name = models?.response || models?.router || "";
   return name.split("/").pop() ?? "";
@@ -41,6 +64,7 @@ export function SessionsPane({
   onOpen,
   onCompare,
   refreshToken,
+  changeToken = 0,
 }: {
   config: DaemonConfig;
   currentId: string | null;
@@ -49,6 +73,8 @@ export function SessionsPane({
   onOpen: (sessionId: string) => void;
   onCompare?: (sessionIds: string[]) => void;
   refreshToken?: boolean;
+  /** Changes when a session's name, notes or tags were edited elsewhere in the window. */
+  changeToken?: number;
 }) {
   const { zone } = useTimeZone();
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
@@ -72,7 +98,7 @@ export function SessionsPane({
       .then((body) => { if (body?.tags && !controller.signal.aborted) setKnownTags(body.tags); })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [config, currentId, refreshToken, revision]);
+  }, [config, currentId, refreshToken, revision, changeToken]);
 
   // A fresh checkpoint can move to the top or change its saved state. Refresh
   // from the first page instead of appending an outdated later page.
@@ -91,7 +117,7 @@ export function SessionsPane({
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     }, query.trim() ? 200 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [config, currentId, query, status, offset, revision, refreshToken, tag]);
+  }, [config, currentId, query, status, offset, revision, refreshToken, tag, changeToken]);
 
   const togglePick = (sessionId: string) => setPicked((current) =>
     current.includes(sessionId) ? current.filter((id) => id !== sessionId) : [...current, sessionId].slice(-4));
@@ -112,7 +138,7 @@ export function SessionsPane({
         </button>
       </header>
       <div className="sl__controls">
-        <label>Search sessions<input type="search" maxLength={200} placeholder="Request, workflow or ID" value={query} onChange={(event) => { setQuery(event.target.value); setOffset(0); }} /></label>
+        <label>Search sessions<input type="search" maxLength={200} placeholder="Name, request, tag or notes" value={query} onChange={(event) => { setQuery(event.target.value); setOffset(0); }} /></label>
         <label>Latest saved state<select value={status} onChange={(event) => { setStatus(event.target.value as SessionFilter); setOffset(0); }}>
           <option value="all">All states</option><option value="needs_input">Needs input</option><option value="needs_confirmation">Needs approval</option>
           <option value="failed">Failed</option><option value="completed">Completed</option><option value="dry_run">Preview only</option>
@@ -121,7 +147,7 @@ export function SessionsPane({
           <label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}>
             <option value="">All tags</option>
             {tag && !knownTags.some((item) => item.tag === tag) ? <option value={tag}>{tag}</option> : null}
-            {knownTags.map((item) => <option key={item.tag} value={item.tag}>{item.tag} ({item.count})</option>)}
+            <TagOptions tags={knownTags} />
           </select></label>
         ) : null}
       </div>
@@ -148,7 +174,7 @@ export function SessionsPane({
                 }${session.session_id === selectedId ? " is-selected" : ""}`}
               >
                 {comparing ? (
-                  <input type="checkbox" className="sl__pick" aria-label={`Compare ${session.title || session.session_id}`}
+                  <input type="checkbox" className="sl__pick" aria-label={`Compare ${session.name || session.title || session.session_id}`}
                     checked={picked.includes(session.session_id)} onChange={() => togglePick(session.session_id)} />
                 ) : null}
                 <button
@@ -159,8 +185,9 @@ export function SessionsPane({
                   onClick={() => (comparing ? togglePick(session.session_id) : onOpen(session.session_id))}
                 >
                   <span className="sl__title">
-                    {session.title || "(no request recorded)"}
+                    {session.name || session.title || "(no request recorded)"}
                   </span>
+                  {session.name && session.title ? <span className="sl__request" title={session.title}>{session.title}</span> : null}
                   <span className="sl__meta">
                     <span>{session.workflow || "—"}</span>
                     <span title={fullTime(new Date(session.updated_at * 1000).toISOString(), zone)}>{when(session.updated_at)}</span>
@@ -169,6 +196,7 @@ export function SessionsPane({
                     ) : null}
                     {session.output_count ? <span title={(session.outputs ?? []).join("\n")}>{session.output_count} out</span> : null}
                     {shortModel(session.models) ? <span title={Object.entries(session.models ?? {}).map(([role, name]) => `${role}: ${name}`).join("\n")}>{shortModel(session.models)}</span> : null}
+                    {session.notes_preview ? <span className="sl__notes" title={session.notes_preview}>notes</span> : null}
                   </span>
                   <TagChips tags={session.tags ?? []} />
                 </button>

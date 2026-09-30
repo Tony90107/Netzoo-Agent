@@ -69,3 +69,20 @@ it("filters by tag and picks sessions to compare", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Compare" }));
   expect(onCompare).toHaveBeenCalledWith(["a", "b"]);
 });
+
+it("shows a session's name over its request and groups field tags by key", async () => {
+  const { listTags } = await import("../../transport/files");
+  vi.mocked(listTags).mockResolvedValue({ tags: [
+    { tag: "pilot", count: 1 }, { tag: "dataset:batch-2", count: 2 }, { tag: "dataset:batch-1", count: 1 }] });
+  vi.mocked(listSessions).mockResolvedValue({ ...page(["n1"]), sessions: [
+    { ...row("n1"), title: "We collected another batch of patient data", name: "Batch 2: DNA damage",
+      notes_preview: "Mutations first.", tags: ["dataset:batch-2"] }] });
+  render(<SessionsPane {...props} />);
+  await screen.findByText("Batch 2: DNA damage");
+  expect(screen.getByText("We collected another batch of patient data").className).toBe("sl__request");
+  expect(screen.getByText("notes").getAttribute("title")).toBe("Mutations first.");
+  const filter = await screen.findByLabelText("Tag");
+  const groups = Array.from(filter.querySelectorAll("optgroup")).map((group) => group.label);
+  expect(groups).toEqual(["Labels", "dataset"]);
+  expect(filter.querySelector('option[value="dataset:batch-1"]')?.textContent).toBe("dataset: batch-1 (1)");
+});

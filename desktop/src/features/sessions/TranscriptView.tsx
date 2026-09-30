@@ -15,24 +15,36 @@ import { ReplyCardView } from "../conversation/ReplyCardView";
 import { DaemonConfig } from "../../transport/daemon";
 import { Transcript, readTranscript } from "../../transport/files";
 import { HistoricalActivity } from "./HistoricalActivity";
+import { NotesEditor, SessionName } from "./SessionDetails";
 import { TagEditor } from "./TagEditor";
 import { userTurn } from "./userTurn";
 
-/** What this experiment was: its model, its tags, and what it wrote. */
-export function SessionFacts({ config, transcript, onOpenOutput }: {
+/** What this experiment was: its name, model, tags and notes, and what it wrote. */
+export function SessionFacts({ config, transcript, onOpenOutput, onChanged }: {
   config: DaemonConfig; transcript: Transcript; onOpenOutput?: (path: string) => void;
+  /** Called after the name, notes or tags were saved, so lists can refresh. */
+  onChanged?: () => void;
 }) {
   const models = Object.entries(transcript.models ?? {});
   const outputs = transcript.outputs ?? [];
   return (
     <div className="sd">
       <div className="sd__row">
+        <span className="sd__label">Name</span>
+        <SessionName config={config} sessionId={transcript.session_id} name={transcript.name ?? ""} onSaved={() => onChanged?.()} />
+        {transcript.name && transcript.title ? <span className="sd__muted" title={transcript.title}>asked: {transcript.title}</span> : null}
+      </div>
+      <div className="sd__row">
         <span className="sd__label">Model</span>
         <span>{models.length ? models.map(([role, name]) => `${role}: ${name.split("/").pop()}`).join(" · ") : "not recorded (session predates model tracking)"}</span>
       </div>
       <div className="sd__row">
         <span className="sd__label">Tags</span>
-        <TagEditor config={config} sessionId={transcript.session_id} tags={transcript.tags ?? []} />
+        <TagEditor config={config} sessionId={transcript.session_id} tags={transcript.tags ?? []} onSaved={() => onChanged?.()} />
+      </div>
+      <div className="sd__row sd__row--top">
+        <span className="sd__label">Notes</span>
+        <NotesEditor config={config} sessionId={transcript.session_id} notes={transcript.notes ?? ""} onSaved={() => onChanged?.()} />
       </div>
       <div className="sd__row">
         <span className="sd__label">Outputs</span>
@@ -56,12 +68,14 @@ export function TranscriptView({
   onClose,
   onResume,
   onOpenOutput,
+  onChanged,
 }: {
   config: DaemonConfig;
   sessionId: string;
   onClose: () => void;
   onResume: (sessionId: string) => void;
   onOpenOutput?: (path: string) => void;
+  onChanged?: () => void;
 }) {
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +101,7 @@ export function TranscriptView({
         </button>
       </header>
 
-      {transcript ? <SessionFacts config={config} transcript={transcript} onOpenOutput={onOpenOutput} /> : null}
+      {transcript ? <SessionFacts config={config} transcript={transcript} onOpenOutput={onOpenOutput} onChanged={onChanged} /> : null}
       <nav className="workspace__tabs" role="group" aria-label="Saved session views">
         <button type="button" aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button>
         <button type="button" aria-pressed={tab === "activity"} onClick={() => setTab("activity")}>Activity</button>

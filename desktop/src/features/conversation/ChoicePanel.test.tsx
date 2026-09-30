@@ -3,7 +3,8 @@
  *
  * Every option carries its own `answer`; the panel's job is to send exactly
  * that, whichever way it is chosen — click, Enter, or its number — and to keep
- * things the agent cannot run visible but unselectable.
+ * things the agent cannot run visible but unselectable. The last row sends the
+ * user's own words instead, exactly as typed.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -33,10 +34,11 @@ const CARD = makeCard({
 function harness(card = CARD) {
   const onAnswer = vi.fn();
   const onOpenOutputs = vi.fn();
-  const onType = vi.fn();
-  render(<ChoicePanel card={card} onAnswer={onAnswer} onOpenOutputs={onOpenOutputs} onType={onType} />);
-  return { onAnswer, onOpenOutputs, onType };
+  render(<ChoicePanel card={card} onAnswer={onAnswer} onOpenOutputs={onOpenOutputs} />);
+  return { onAnswer, onOpenOutputs };
 }
+
+const group = () => screen.getByRole("group", { name: "Which method fits your study?" });
 
 describe("the choice panel", () => {
   it("shows the question, the ordering and the recommendation badge", () => {
@@ -54,17 +56,56 @@ describe("the choice panel", () => {
 
   it("picks by number and moves with the arrow keys", () => {
     const { onAnswer } = harness();
-    const group = screen.getByRole("group", { name: "Which method fits your study?" });
-    fireEvent.keyDown(group, { key: "2" });
+    fireEvent.keyDown(group(), { key: "2" });
     expect(onAnswer).toHaveBeenLastCalledWith("Use LIONESS-COEXPRESSION");
-    fireEvent.keyDown(group, { key: "ArrowDown" });
+    fireEvent.keyDown(group(), { key: "ArrowDown" });
     expect(document.activeElement?.textContent).toContain("LIONESS-COEXPRESSION");
   });
 
-  it("hands any other key to the free-text box", () => {
-    const { onType, onAnswer } = harness();
-    fireEvent.keyDown(screen.getByRole("group", { name: "Which method fits your study?" }), { key: "h" });
-    expect(onType).toHaveBeenCalled();
+  it("ends with a row for an answer in your own words", () => {
+    harness();
+    const own = screen.getByText("Type your own answer").closest(".cp__option")!;
+    expect(own.querySelector(".cp__num")?.textContent).toBe("3");
+    // It follows the options; what cannot run here stays below as information.
+    expect(own.compareDocumentPosition(screen.getByText("TIGER")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("starts that answer with any other key and sends it as typed", () => {
+    const { onAnswer } = harness();
+    fireEvent.keyDown(group(), { key: "b" });
+    const box = screen.getByLabelText("Type your own answer") as HTMLTextAreaElement;
+    expect(document.activeElement).toBe(box);
+    expect(box.value).toBe("b");
+    fireEvent.change(box, { target: { value: "both, starting with BONOBO" } });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(onAnswer).toHaveBeenCalledTimes(1);
+    expect(onAnswer).toHaveBeenCalledWith("both, starting with BONOBO");
+  });
+
+  it("opens the answer row by its number, never sending it empty", () => {
+    const { onAnswer } = harness();
+    fireEvent.keyDown(group(), { key: "3" });
+    const box = screen.getByLabelText("Type your own answer") as HTMLTextAreaElement;
+    expect(box.value).toBe("");
+    fireEvent.keyDown(box, { key: "Enter" });
+    fireEvent.click(screen.getByText("Send"));
+    expect(onAnswer).not.toHaveBeenCalled();
+  });
+
+  it("keeps a draft when Escape returns to the options", () => {
+    harness();
+    fireEvent.click(screen.getByText("Type your own answer"));
+    const box = screen.getByLabelText("Type your own answer");
+    fireEvent.change(box, { target: { value: "only 12 samples" } });
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(document.activeElement?.textContent).toContain("LIONESS-COEXPRESSION");
+    expect(screen.getByText("Draft: only 12 samples")).toBeTruthy();
+  });
+
+  it("offers no answer row when the card allows none", () => {
+    const { onAnswer } = harness(makeCard({ ...CARD, choices: { ...CARD.choices!, allow_other: false } }));
+    expect(screen.queryByText("Type your own answer")).toBeNull();
+    fireEvent.keyDown(group(), { key: "h" });
     expect(onAnswer).not.toHaveBeenCalled();
   });
 

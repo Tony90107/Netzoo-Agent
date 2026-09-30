@@ -124,9 +124,10 @@ def cleanup_runtime_storage(
                     "needs_confirmation",
                 }:
                     continue
-                if _is_tagged(path.stem):
-                    # A tagged session is an experiment someone meant to keep:
-                    # it is retained like a named one, up to the hard expiry.
+                if _is_kept(path.stem):
+                    # A session someone tagged, named or annotated is an
+                    # experiment they meant to keep: it is retained like a
+                    # named one, up to the hard expiry.
                     continue
                 path.unlink()
                 _forget_meta(path.stem)
@@ -199,11 +200,11 @@ def cleanup_trace_storage(
     return removed
 
 
-def _is_tagged(session_id: str) -> bool:
-    from .session_meta import load_meta
+def _is_kept(session_id: str) -> bool:
+    from .session_meta import is_kept, load_meta
 
     try:
-        return bool(load_meta(session_id, sessions_root=SESSION_ROOT).get("tags"))
+        return is_kept(load_meta(session_id, sessions_root=SESSION_ROOT))
     except (OSError, ValueError):
         return False
 

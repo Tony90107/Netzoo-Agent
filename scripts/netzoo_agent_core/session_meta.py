@@ -1,9 +1,10 @@
 """What a person attaches to a session, beside what the agent checkpoints.
 
 The checkpoint (`session.py`) is the agent's resumable state and is rewritten
-every turn. Tags, the models a session runs under and the brief forms of its
-replies belong to the person and the window instead, so they live in a small
-sidecar that the checkpoint never touches: `.netzoo/session_meta/<id>.json`.
+every turn. A session's name, notes and tags, the models it runs under and the
+brief forms of its replies belong to the person and the window instead, so they
+live in a small sidecar that the checkpoint never touches:
+`.netzoo/session_meta/<id>.json`. None of it is ever shown to the agent.
 It sits beside, not inside, the sessions directory, because everything in
 that directory is read as a checkpoint.
 
@@ -18,26 +19,36 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
 from pathlib import Path
 
 from .memory import _write_json_atomic
 from .settings import SESSION_ROOT
 
 __all__ = [
+    "MAX_NAME_CHARS",
+    "MAX_NOTES_CHARS",
     "MAX_TAGS",
     "card_for",
     "delete_meta",
+    "is_kept",
     "load_meta",
     "meta_root",
+    "normalize_name",
+    "normalize_notes",
     "normalize_tags",
     "remember_turn",
+    "set_details",
     "set_tags",
+    "tag_field",
 ]
 
 MAX_TAGS = 12
-MAX_TAG_CHARS = 32
+MAX_TAG_CHARS = 48
+MAX_NAME_CHARS = 80
+MAX_NOTES_CHARS = 4000
 MAX_CARDS = 40
-_TAG = re.compile(r"^[\w][\w .+/-]*$")
+_WORDS = re.compile(r"^[\w][\w .+/-]*$")
 
 
 def meta_root(sessions_root: Path | None = None) -> Path:
@@ -67,6 +78,8 @@ def load_meta(session_id: str, *, sessions_root: Path | None = None) -> dict:
         payload = {}
     payload.setdefault("version", 1)
     payload.setdefault("session_id", session_id)
+    payload["name"] = normalize_name(payload.get("name"))
+    payload["notes"] = normalize_notes(payload.get("notes"))
     payload["tags"] = normalize_tags(payload.get("tags") or [])
     payload.setdefault("models", {})
     payload.setdefault("cards", {})
@@ -84,18 +97,49 @@ def _save(session_id: str, payload: dict, sessions_root: Path | None = None) -> 
     _write_json_atomic(path, payload)
 
 
+def _tag(raw) -> str:
+    """One tag in its stored form, or "" when it is not a valid tag.
+
+    A plain tag is a label (`pilot`). A field tag is `key:value`
+    (`dataset:batch-2`): its key is stored in lower case so the same field
+    lines up across sessions, and its value keeps the case it was typed in.
+    """
+    text = " ".join(str(raw).split())
+    if ":" not in text:
+        tag = text[:MAX_TAG_CHARS].strip()
+        return tag if _WORDS.match(tag) else ""
+    key, _, value = (part.strip() for part in text.partition(":"))
+    key = key.lower()
+    value = value[:max(0, MAX_TAG_CHARS - len(key) - 1)].strip()
+    return f"{key}:{value}" if _WORDS.match(key) and _WORDS.match(value) else ""
+
+
+def tag_field(tag: str) -> tuple[str, str] | None:
+    """`(key, value)` of a field tag; None for a plain one."""
+    key, colon, value = tag.partition(":")
+    return (key, value) if colon else None
+
+
 def normalize_tags(tags) -> list[str]:
-    """Trimmed, de-duplicated (case-insensitively), bounded tags; invalid ones dropped."""
-    seen: set[str] = set()
+    """Trimmed, de-duplicated (case-insensitively), bounded tags; invalid ones dropped.
+
+    A field holds one value per session: a later `dataset:batch-3` replaces
+    an earlier `dataset:batch-2` where it stood.
+    """
     kept: list[str] = []
     for raw in tags if isinstance(tags, (list, tuple)) else []:
-        tag = " ".join(str(raw).split())[:MAX_TAG_CHARS].strip()
-        if not tag or not _TAG.match(tag) or tag.casefold() in seen:
+        tag = _tag(raw)
+        if not tag or tag.casefold() in {item.casefold() for item in kept}:
             continue
-        seen.add(tag.casefold())
-        kept.append(tag)
+        field = tag_field(tag)
+        same = next((index for index, item in enumerate(kept)
+                     if field and (tag_field(item) or ("", ""))[0] == field[0]), None)
+        if same is not None:
+            kept[same] = tag
+            continue
         if len(kept) == MAX_TAGS:
-            break
+            continue
+        kept.append(tag)
     return kept
 
 
@@ -104,6 +148,35 @@ def set_tags(session_id: str, tags, *, sessions_root: Path | None = None) -> lis
     payload["tags"] = normalize_tags(tags)
     _save(session_id, payload, sessions_root)
     return payload["tags"]
+
+
+def normalize_name(value) -> str:
+    """One line, as a person names an experiment; "" clears it."""
+    return " ".join(str(value or "").split())[:MAX_NAME_CHARS].strip()
+
+
+def normalize_notes(value) -> str:
+    """Free text with its line breaks; control characters and trailing blanks removed."""
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    text = "".join(c for c in text if c in "\n\t" or not unicodedata.category(c).startswith("C"))
+    return "\n".join(line.rstrip() for line in text.split("\n")).strip()[:MAX_NOTES_CHARS].rstrip()
+
+
+def set_details(session_id: str, *, name=None, notes=None,
+                sessions_root: Path | None = None) -> dict:
+    """Replace the name, the notes, or both; a field left as None is kept."""
+    payload = load_meta(session_id, sessions_root=sessions_root)
+    if name is not None:
+        payload["name"] = normalize_name(name)
+    if notes is not None:
+        payload["notes"] = normalize_notes(notes)
+    _save(session_id, payload, sessions_root)
+    return {"name": payload["name"], "notes": payload["notes"]}
+
+
+def is_kept(meta: dict) -> bool:
+    """A session someone named, annotated or tagged is an experiment meant to be kept."""
+    return bool(meta.get("tags") or meta.get("name") or meta.get("notes"))
 
 
 def _content_key(content: str) -> str:
