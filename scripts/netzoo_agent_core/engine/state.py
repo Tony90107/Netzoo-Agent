@@ -47,6 +47,8 @@ class ConversationState:
     input_confirmation_correction: bool = False
     execution_confirmation_task: str | None = None
     run_paused: bool = False
+    # The last reply's card (display only); its options answer the main prompt.
+    reply_card: dict | None = None
 
     # Set once an input phase has produced a task; consumed by the turn phase.
     pending_task: str | None = None

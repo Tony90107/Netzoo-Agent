@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..acquisition_intent import explicit_acquisition_request
+
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -322,6 +324,7 @@ def reconcile_request_mode(task: str, request_mode: str) -> str:
     if request_mode != "execute" and (
         has_explicit_execution_request(task)
         or has_direct_retrieval_request(task)
+        or (explicit_acquisition_request(task) and not is_workflow_information_request(task))
     ):
         return "execute"
     if request_mode == "unknown" and (

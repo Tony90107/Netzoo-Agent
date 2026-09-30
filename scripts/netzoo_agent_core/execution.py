@@ -44,6 +44,7 @@ from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
 from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
+from .string_download import download_string
 
 from .data.tables import (
     _drop_common_header,
@@ -960,6 +961,7 @@ def run_giraffe(
 
 
 LOCAL_TOOL_EXECUTORS = {
+    "download_string": download_string,
     "inspect_inputs": inspect_netzoo_inputs,
     "inspect_condor_inputs": inspect_condor_inputs,
     "format_expression": format_expression_for_netzoo,

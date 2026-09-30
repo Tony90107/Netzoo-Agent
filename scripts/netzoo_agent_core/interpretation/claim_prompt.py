@@ -179,6 +179,7 @@ unresolved_dimensions: material unknowns.
 Dimensions:
 - operation: acquire retrieves, prepare transforms, validate checks, infer constructs
   latent structure, analyze derives properties, explain gives concepts.
+- Download existing results: acquire.
 - artifact_type: terminal deliverable, not an intermediate.
 - input_artifacts: current inputs only, not history or future intermediates; empty=unassessed.
 - sample_specific: separately inferred per sample; cohort distances/clusters are aggregate.

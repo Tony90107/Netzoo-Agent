@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from ..contracts import ReplyIntentDecision
@@ -24,7 +24,7 @@ from ..session import (
     load_session_payload,
     resolve_resume_id,
 )
-from ..settings import PROJECT_ROOT, TRACE_ROOT
+from ..settings import DEFAULT_ROUTER_MODEL, PROJECT_ROOT, TRACE_ROOT
 from ..trace_store import LocalTraceStore
 from ..trace_sync import TraceSyncWorker
 from ..tracing import TraceRecorder
@@ -57,6 +57,39 @@ class CliRuntime:
     input_func: Callable[[str], str]
     invoke_graph_turn_func: Callable[[object, dict], dict]
     reply_resolver: ContextualReplyResolver
+    # The models this session runs under, recorded in its sidecar (session_meta).
+    session_models: dict = field(default_factory=dict)
+
+
+def _keep_session_models(args, resume_id: str) -> None:
+    """A resumed session keeps the models it started with (one session, one model).
+
+    Only defaults are replaced -- a model named on this command line wins --
+    and only by models every allowlist still permits; otherwise the session
+    runs under today's defaults and its sidecar records that it did.
+    """
+    from .. import session as session_store
+    from ..session_meta import load_meta
+
+    recorded = load_meta(resume_id, sessions_root=session_store.SESSION_ROOT).get("models") or {}
+    defaults = {
+        "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+        "router_model": os.environ.get("OPENROUTER_ROUTER_MODEL", DEFAULT_ROUTER_MODEL),
+        "semantic_model": os.environ.get("OPENROUTER_SEMANTIC_MODEL"),
+    }
+    wanted = {"model": recorded.get("response"), "router_model": recorded.get("router"),
+              "semantic_model": recorded.get("semantic")}
+    try:
+        if wanted["model"]:
+            validate_response_model(wanted["model"])
+        for name in ("router_model", "semantic_model"):
+            if wanted[name]:
+                validate_router_model(wanted[name])
+    except ValueError:
+        return
+    for name, value in wanted.items():
+        if value and getattr(args, name, None) == defaults[name]:
+            setattr(args, name, value)
 
 
 def bootstrap_memory(args) -> MemoryRuntime:
@@ -128,6 +161,8 @@ def bootstrap_runtime(
         )
 
     resume_id = resolve_resume_id(args.resume, memory_runtime.profile_id)
+    if resume_id:
+        _keep_session_models(args, resume_id)
     if min(args.router_max_tokens, args.response_max_tokens, args.max_task_tokens) <= 0:
         raise SystemExit("Token limits must be positive integers.")
     if args.llm_timeout <= 0:
@@ -238,6 +273,11 @@ def bootstrap_runtime(
         max_output_tokens=min(args.router_max_tokens, 256),
     )
     return CliRuntime(
+        session_models={
+            "response": args.model,
+            "router": args.router_model,
+            "semantic": args.semantic_model or args.router_model,
+        },
         memory=memory_runtime,
         project_policy=policy,
         session_id=session_id,

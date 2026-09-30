@@ -206,6 +206,20 @@ def match_requested_outcome(
         return CapabilityMatch(status="unsupported", mismatch_dimensions=list(issues))
     if _is_not_applicable(outcome):
         return CapabilityMatch(status="not_applicable")
+    # A known unsupported operation cannot become a granularity or entity
+    # question. Missing details matter only after an action can perform the
+    # requested operation at all.
+    if outcome.operation not in {_UNKNOWN, "explain"} and not any(
+        capability.operation == outcome.operation
+        for capability in capabilities.values()
+    ):
+        return CapabilityMatch(
+            status="unsupported",
+            alternative_actions=_alternative_actions(outcome, capabilities),
+            mismatch_dimensions=_mismatch_dimensions(
+                outcome, capabilities, available_inputs,
+            ),
+        )
     candidates = [
         (action, capability)
         for action, capability in capabilities.items()

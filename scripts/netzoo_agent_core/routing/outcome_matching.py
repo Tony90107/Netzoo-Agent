@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 import re
 
+from ..acquisition_intent import explicit_acquisition_request
+
 from workflow_registry import (
     OUTPUT_CAPABILITIES,
     OutputCapabilityDefinition,
@@ -638,12 +640,28 @@ def _match_semantic_request(
     ignore_tags: frozenset[str] = frozenset(),
 ) -> CapabilityMatch:
     """Match typed meaning, using explicit registry identifiers only as a fallback."""
+    if request_mode == "execute" and explicit_acquisition_request(task):
+        # A clear request to obtain existing data cannot authorize an inference
+        # workflow just because the semantic model confused the operations.
+        return CapabilityMatch(status="unsupported", mismatch_dimensions=["operation"])
     unsupported_method = unsupported_algorithm_request(task)
     if unsupported_method is not None:
         return CapabilityMatch(
             status="unsupported",
             mismatch_dimensions=["unsupported_algorithm", unsupported_method],
         )
+    # A request for an operation absent from the capability registry is a
+    # capability gap even when the output's granularity remains open. Check
+    # before the guidance branch withholds explanatory operation evidence.
+    if hypotheses and all(
+        item.outcome.operation not in {_UNKNOWN, "explain"}
+        and not any(
+            capability.operation == item.outcome.operation
+            for capability in OUTPUT_CAPABILITIES.values()
+        )
+        for item in hypotheses
+    ):
+        return match_requested_outcome(hypotheses[0].outcome)
     marker = re.search(
         r"(?:CONFIRMED_OUTCOME_ACTION|PREVIOUS_ACTION)=(run_[a-z_]+)",
         task,
@@ -682,6 +700,8 @@ def _match_semantic_request(
                     ],
                 }
             )
+            if hypothesis.outcome.operation in {"unknown", "explain", "infer", "analyze"}
+            else hypothesis
             for hypothesis in hypotheses
         ]
     match = match_outcome_hypotheses(

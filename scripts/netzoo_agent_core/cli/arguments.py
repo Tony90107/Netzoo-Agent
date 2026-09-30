@@ -231,6 +231,14 @@ def parse_args() -> argparse.Namespace:
         help="Approximate episode storage ceiling per profile in MiB.",
     )
     parser.add_argument(
+        "--full-replies",
+        action="store_true",
+        help=(
+            "Print every reply in full. By default an interactive terminal shows a "
+            "reply's key points and options first; /details prints the full text."
+        ),
+    )
+    parser.add_argument(
         "--transient-trace",
         action="store_true",
         help=(

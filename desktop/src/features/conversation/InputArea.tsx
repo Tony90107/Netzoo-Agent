@@ -11,9 +11,10 @@
  * approving it stay two separate acts, and the approval names the plan it
  * approves so the daemon can refuse a stale one.
  */
-import { useEffect, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 
 import { ViewPayload } from "../../transport/protocol";
+import { ChoicePanel } from "./ChoicePanel";
 import { Markdown } from "./Markdown";
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
   onAnswer: (text: string) => void;
   onApprove: (planHash: string) => void;
   onDecline: () => void;
+  onOpenOutputs?: (paths: string[]) => void;
 };
 
 function FreeText({
@@ -29,14 +31,17 @@ function FreeText({
   submitLabel,
   onSubmit,
   autoFocus = true,
+  inputRef,
 }: {
   placeholder: string;
   submitLabel: string;
   onSubmit: (text: string) => void;
   autoFocus?: boolean;
+  inputRef?: RefObject<HTMLTextAreaElement>;
 }) {
   const [text, setText] = useState("");
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ownRef = useRef<HTMLTextAreaElement>(null);
+  const ref = inputRef ?? ownRef;
 
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
@@ -125,7 +130,42 @@ function AgentQuestion({ view }: { view: ViewPayload }) {
   return <Markdown className="agent-question">{text}</Markdown>;
 }
 
-export function InputArea({ view, busy, onAnswer, onApprove, onDecline }: Props) {
+function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAnswer" | "onOpenOutputs">) {
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const card = view.card;
+  const asking = Boolean(card?.choices?.options.some((option) => option.available));
+  const offersExecute = Boolean(card?.next_steps.some((step) => step.key === "execute"));
+  const readyToExecute = view.next_prompt?.kind === "dry_run";
+  return (
+    <div className="main-input">
+      {card ? (
+        <ChoicePanel
+          card={card}
+          onAnswer={onAnswer}
+          onOpenOutputs={onOpenOutputs}
+          onType={() => textRef.current?.focus()}
+        />
+      ) : null}
+      {view.next_prompt?.question && !asking ? (
+        <Markdown className="main-input__question">{view.next_prompt.question}</Markdown>
+      ) : null}
+      {readyToExecute && !offersExecute ? (
+        <button className="btn btn--primary" type="button" onClick={() => onAnswer("/execute")}>
+          Review and execute this plan
+        </button>
+      ) : null}
+      <FreeText
+        inputRef={textRef}
+        autoFocus={!asking}
+        placeholder={asking ? "Or answer in your own words" : "What would you like to accomplish with NetZoo?"}
+        submitLabel="Send"
+        onSubmit={onAnswer}
+      />
+    </div>
+  );
+}
+
+export function InputArea({ view, busy, onAnswer, onApprove, onDecline, onOpenOutputs }: Props) {
   if (busy) {
     return <div className="composer composer--busy">Working…</div>;
   }
@@ -258,25 +298,7 @@ export function InputArea({ view, busy, onAnswer, onApprove, onDecline }: Props)
     }
 
     case "main":
-    default: {
-      const readyToExecute = view.next_prompt?.kind === "dry_run";
-      return (
-        <div className="main-input">
-          {view.next_prompt?.question ? (
-            <p className="main-input__question">{view.next_prompt.question}</p>
-          ) : null}
-          {readyToExecute ? (
-            <button className="btn btn--primary" type="button" onClick={() => onAnswer("/execute")}>
-              Review and execute this plan
-            </button>
-          ) : null}
-          <FreeText
-            placeholder="What would you like to accomplish with NetZoo?"
-            submitLabel="Send"
-            onSubmit={onAnswer}
-          />
-        </div>
-      );
-    }
+    default:
+      return <MainInput view={view} onAnswer={onAnswer} onOpenOutputs={onOpenOutputs} />;
   }
 }

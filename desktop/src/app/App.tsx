@@ -5,8 +5,11 @@ import { FilesPane } from "../features/files/FilesPane";
 import { EnvironmentPane } from "../features/help/EnvironmentPane";
 import { NetZooPyGuide } from "../features/help/NetZooPyGuide";
 import { PlanPane } from "../features/plan/PlanPane";
+import { CompareView } from "../features/sessions/CompareView";
+import { NewSessionDialog } from "../features/sessions/NewSessionDialog";
 import { SessionsPane } from "../features/sessions/SessionsPane";
 import { SettingsView } from "../features/sessions/SettingsView";
+import { TagEditor } from "../features/sessions/TagEditor";
 import { TranscriptView } from "../features/sessions/TranscriptView";
 import { Timeline } from "../features/timeline/Timeline";
 import {
@@ -17,6 +20,7 @@ import {
   stopDaemon,
 } from "../transport/daemon";
 import {
+  NewSessionOptions,
   SessionSocket,
   SessionState,
   createSession,
@@ -102,6 +106,10 @@ export function App() {
   const [centerTab, setCenterTab] = useState<"conversation" | "outputs" | "guide" | "environment" | "activity">("conversation");
   // An earlier session being read. Reading one never touches the live session.
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<string[] | null>(null);
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [sessionTags, setSessionTags] = useState<string[]>([]);
+  const [sessionModel, setSessionModel] = useState<string>("");
 
   // Pane sizes, remembered per divider. Minimums keep any pane from being
   // dragged out of existence.
@@ -113,8 +121,9 @@ export function App() {
   const connectionGeneration = useRef(0);
   const startedAt = useRef(0);
 
-  const connect = useCallback(async (resume?: string) => {
+  const connect = useCallback(async (resume?: string, options: NewSessionOptions = {}) => {
     setHistoryOutputPath(null); setOutputReturn(null); setViewingSessionId(null); setShowSettings(false);
+    setCompareIds(null); setSessionTags(options.tags ?? []); setSessionModel(options.model ?? "");
     const generation = ++connectionGeneration.current;
     socket.current?.close();
     socket.current = null;
@@ -129,7 +138,7 @@ export function App() {
         }),
       );
       if (generation !== connectionGeneration.current) return;
-      const sessionId = await createSession(config, resume);
+      const sessionId = await createSession(config, resume, options);
       if (generation !== connectionGeneration.current) {
         // This launch created the unused session. Retire it without touching
         // the current one or the daemon shared by the desktop shell.
@@ -175,7 +184,12 @@ export function App() {
   }
 
   const plan = session.view?.plan ?? null;
-  const inspectorVisible = layout === "inspector" || (layout === "auto" && !showSettings && !viewingSessionId && centerTab === "conversation");
+  const inspectorVisible = layout === "inspector" || (layout === "auto" && !showSettings && !viewingSessionId && !compareIds && centerTab === "conversation");
+  const openSession = (sessionId: string) => {
+    setShowSettings(false); setCompareIds(null); setHistoryOutputPath(null); setOutputReturn(null);
+    if (sessionId === session.sessionId) { setViewingSessionId(null); setCenterTab("conversation"); return; }
+    setCenterTab("conversation"); setViewingSessionId(sessionId);
+  };
   const openLiveOutput = (path: string, from: "conversation" | "activity") => {
     setViewingSessionId(null); setShowSettings(false); setHistoryOutputPath(null);
     setOutputPath(path); setOutputReturn(from); setCenterTab("outputs");
@@ -196,10 +210,14 @@ export function App() {
           selectedId={viewingSessionId}
           refreshToken={session.busy}
           onOpen={(sessionId) => {
-            setShowSettings(false);
+            setShowSettings(false); setCompareIds(null);
             setCenterTab("conversation");
             setViewingSessionId(sessionId);
             setHistoryOutputPath(null); setOutputReturn(null);
+          }}
+          onCompare={(sessionIds) => {
+            setShowSettings(false); setViewingSessionId(null); setHistoryOutputPath(null); setOutputReturn(null);
+            setCompareIds(sessionIds);
           }}
           onResume={(sessionId) => {
             setViewingSessionId(null);
@@ -221,13 +239,8 @@ export function App() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setViewingSessionId(null);
-              setShowSettings(false);
-              setCenterTab("conversation");
-              socket.current?.close();
-              void connect();
-            }}
+            title="Start a new experiment: choose its model and tags"
+            onClick={() => setNewSessionOpen(true)}
           >
             New session
           </button>
@@ -242,7 +255,12 @@ export function App() {
 
       <main className="workspace">
         <header className="workspace__context">
-          <div><span>{viewingSessionId ? "Saved session" : "Current session"}</span><code>{viewingSessionId ?? session.sessionId}</code>{viewingSessionId ? <span className="workspace__readonly">Read only</span> : null}</div>
+          <div><span>{viewingSessionId ? "Saved session" : "Current session"}</span><code>{viewingSessionId ?? session.sessionId}</code>{viewingSessionId ? <span className="workspace__readonly">Read only</span> : null}
+            {!viewingSessionId ? <>
+              {sessionModel ? <span className="workspace__model" title="The model this session runs under">{sessionModel.split("/").pop()}</span> : null}
+              <TagEditor config={phase.config} sessionId={session.sessionId} tags={sessionTags} onSaved={setSessionTags} />
+            </> : null}
+          </div>
           <label>Layout<select aria-label="Workspace layout" value={layout} onChange={(event) => {
             const value = event.target.value as LayoutChoice; setLayout(value);
             try { localStorage.setItem("netzoo.layout.view", value); } catch { /* Keep the choice for this window. */ }
@@ -255,7 +273,7 @@ export function App() {
           }}>{historyOutputPath ? "← Back to saved Activity" : outputReturn === "activity" ? "← Back to Activity" : "← Back to conversation"}</button>
           <span>Output preview · {historyOutputPath ?? outputPath}</span>
         </div> : null}
-        {!showSettings && !viewingSessionId ? (
+        {!showSettings && !viewingSessionId && !compareIds ? (
           <nav className="workspace__tabs" role="group" aria-label="Workspace views">
             <button
               type="button"
@@ -285,6 +303,14 @@ export function App() {
         <div className="workspace__content">
           {showSettings ? (
             <SettingsView config={phase.config} onClose={() => setShowSettings(false)} />
+          ) : compareIds ? (
+            <CompareView
+              config={phase.config}
+              sessionIds={compareIds}
+              onClose={() => setCompareIds(null)}
+              onOpenSession={openSession}
+              onOpenOutput={(path) => { setCompareIds(null); openLiveOutput(path, "conversation"); }}
+            />
           ) : viewingSessionId ? (
             <>
             <div className="workspace__page" hidden={historyOutputPath !== null}>
@@ -302,19 +328,19 @@ export function App() {
               }}
             />
             </div>
-            {historyOutputPath ? <FilesPane key={`history-${historyOutputPath}`} config={phase.config} initialPath={historyOutputPath} /> : null}
+            {historyOutputPath ? <FilesPane key={`history-${historyOutputPath}`} config={phase.config} initialPath={historyOutputPath} onOpenSession={openSession} /> : null}
             </>
           ) : centerTab === "outputs" ? (
-            <FilesPane key={session.sessionId} config={phase.config} initialPath={outputPath} />
+            <FilesPane key={session.sessionId} config={phase.config} initialPath={outputPath} onOpenSession={openSession} />
           ) : centerTab === "environment" ? (
             <EnvironmentPane config={phase.config} />
           ) : centerTab === "guide" ? (
             <NetZooPyGuide />
           ) : null}
-          <div className="workspace__page" hidden={showSettings || !!viewingSessionId || centerTab !== "activity"}>
+          <div className="workspace__page" hidden={showSettings || !!viewingSessionId || !!compareIds || centerTab !== "activity"}>
             <Timeline key={`activity-${session.sessionId}`} trace={session.trace} entries={session.entries} sessionId={session.sessionId} busy={session.busy} incomplete={session.missedEvents} onOpenOutput={(path) => openLiveOutput(path, "activity")} />
           </div>
-          <div className="workspace__page" hidden={showSettings || !!viewingSessionId || centerTab !== "conversation"}>
+          <div className="workspace__page" hidden={showSettings || !!viewingSessionId || !!compareIds || centerTab !== "conversation"}>
             <Conversation
               key={session.sessionId}
               session={session}
@@ -323,6 +349,7 @@ export function App() {
               onApprove={(hash) => socket.current?.approveExecution(hash)}
               onDecline={() => socket.current?.declineExecution()}
               onCancel={() => socket.current?.cancel()}
+              onOpenOutputs={(paths) => { if (paths[0]) openLiveOutput(paths[0], "conversation"); }}
             />
           </div>
         </div>
@@ -348,6 +375,21 @@ export function App() {
           <Timeline key={session.sessionId} trace={session.trace} entries={session.entries} sessionId={session.sessionId} busy={session.busy} incomplete={session.missedEvents} onExpand={() => { setViewingSessionId(null); setShowSettings(false); setHistoryOutputPath(null); setOutputReturn(null); setCenterTab("activity"); }} onOpenOutput={(path) => openLiveOutput(path, "conversation")} />
         </div>
       </aside>
+
+      {newSessionOpen ? (
+        <NewSessionDialog
+          config={phase.config}
+          onCancel={() => setNewSessionOpen(false)}
+          onStart={(options) => {
+            setNewSessionOpen(false);
+            setViewingSessionId(null);
+            setShowSettings(false);
+            setCenterTab("conversation");
+            socket.current?.close();
+            void connect(undefined, options);
+          }}
+        />
+      ) : null}
 
       <StatusBar
         session={session}

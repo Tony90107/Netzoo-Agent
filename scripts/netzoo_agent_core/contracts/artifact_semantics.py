@@ -53,6 +53,31 @@ def is_outcome_not_applicable(outcome: OutcomeFields) -> bool:
     )
 
 
+def is_acquisition_without_result_granularity(outcome: OutcomeFields) -> bool:
+    """True when an acquisition asks for an existing artifact, not a result.
+
+    Granularity in this ontology describes the scientific result an operation
+    produces (for example, an aggregate or per-sample inferred network). A
+    request to download an existing artifact has no *produced result*
+    granularity. This is distinct from a no-result question: acquisition still
+    requires a grounded operation and must proceed through its own capability.
+    """
+    return (
+        outcome.operation == "acquire"
+        and outcome.granularity == "not_applicable"
+        and (
+            outcome.artifact_type != "unknown"
+            or (
+                not outcome.input_artifacts
+                and not outcome.entity_types
+                and not outcome.regulator_types
+                and not outcome.target_types
+                and not outcome.unresolved_dimensions
+            )
+        )
+    )
+
+
 @dataclass(frozen=True)
 class ArtifactSemantics:
     """What an artifact is, and what a request may say about it.
@@ -200,6 +225,7 @@ def outcome_consistency_issues(outcome: OutcomeFields) -> tuple[str, ...]:
             {"entity_types", "artifact_type"},
         ))
     if (rule.granularities is not None and outcome.granularity != "unknown"
+            and not is_acquisition_without_result_granularity(outcome)
             and outcome.granularity not in rule.granularities):
         issues.append(Issue(
             f"artifact_granularity:{outcome.artifact_type}",

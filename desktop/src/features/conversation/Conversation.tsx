@@ -7,6 +7,7 @@ import { Entry, SessionState } from "../../transport/session";
 import { Markdown } from "./Markdown";
 import { InputArea } from "./InputArea";
 import { ModeSwitch } from "./ModeSwitch";
+import { ReplyCardView } from "./ReplyCardView";
 
 function Bubble({ entry }: { entry: Entry }) {
   if (entry.kind === "error") {
@@ -18,9 +19,13 @@ function Bubble({ entry }: { entry: Entry }) {
     );
   }
   return (
-    <div className={`bubble bubble--${entry.kind}`}>
-      <div className="bubble__body">
-        {entry.kind === "user" ? entry.text : <Markdown>{entry.text}</Markdown>}
+    <div className={`bubble bubble--${entry.kind}${entry.kind === "agent" && entry.card?.headline ? " bubble--card" : ""}`}>
+      <div className={`bubble__body${entry.kind === "user" ? " bubble__body--plain" : ""}`}>
+        {entry.kind === "user"
+          ? entry.text
+          : entry.kind === "agent" && entry.card
+            ? <ReplyCardView card={entry.card} text={entry.text} />
+            : <Markdown>{entry.text}</Markdown>}
       </div>
     </div>
   );
@@ -33,6 +38,7 @@ type Props = {
   onApprove: (planHash: string) => void;
   onDecline: () => void;
   onCancel: () => void;
+  onOpenOutputs?: (paths: string[]) => void;
 };
 
 export function Conversation({
@@ -42,6 +48,7 @@ export function Conversation({
   onApprove,
   onDecline,
   onCancel,
+  onOpenOutputs,
 }: Props) {
   const tail = useRef<HTMLDivElement>(null);
 
@@ -103,6 +110,7 @@ export function Conversation({
             onAnswer={onAnswer}
             onApprove={onApprove}
             onDecline={onDecline}
+            onOpenOutputs={onOpenOutputs}
           />
         ) : (
           <div className="composer composer--busy">Connecting…</div>

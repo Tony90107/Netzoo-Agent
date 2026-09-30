@@ -157,16 +157,18 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # read that validated by content for an input role, reported to the user but
 # never used (Log 188). Omitted from dumps while empty; the TaskDecision digest
 # is the only schema change.
+# 2026-09-30: STRING acquisition adds a direct action to ActionName and a typed
+# network kind to TaskDecision. RouterDecision and CapabilityMatch embed ActionName.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
     # 2026-09-29: optional quoted research hypotheses; no execution authority.
-    "TaskDecision": "67d014a582120053e1b6ebb49c5301cd735e54ac008254f5c0e3c25cccee3d36",
-    "RouterDecision": "23cee82e509784236e0717ae61fd3ae90dfa8e4c6cd62bb866eea35f381e29c2",
+    "TaskDecision": "f97423eda590a26e2a15a3018b139aadb08c07c8075a7d1fe6242be0295a1680",
+    "RouterDecision": "343f8db34dcd7291044b072a3be61ccbd99bd5809bb1852962b20f8ab0c4dc3e",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
-    "CapabilityMatch": "d63685082e4942999c608089fecaf81aaf8691c2c1b0d54bece9a779e9036acc",
+    "CapabilityMatch": "5a083a9e098d323b43b87ae867ecd8a2a7ee3b14e91dff892db44a059b7ebcad",
     "WorkflowPlan": "7c58377e5072e5190b4db662664106ead18cd09e25a75e07b9401d1afb6a0c3d",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",

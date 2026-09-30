@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import NextTurnPrompt
+from ..reply_cards.contracts import ReplyCard
 from ..trace_contracts import canonical_json
 
 __all__ = [
@@ -128,3 +129,7 @@ class ViewPayload(BaseModel):
     choosing_bundle: bool = False
     preflight_correction: bool = False
     """True when the plan failed validation; this mode accepts field=path."""
+    card: ReplyCard | None = None
+    """The last reply's options for this prompt: a question with ordered
+    answers, related things that cannot run here, and next steps. Each option's
+    ``answer`` is plain text this prompt already accepts."""

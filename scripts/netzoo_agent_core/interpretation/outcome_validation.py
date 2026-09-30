@@ -11,6 +11,7 @@ from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.outcomes import OutcomeEvidence
 from ..contracts.artifact_semantics import (
     ARTIFACT_SEMANTICS,
+    is_acquisition_without_result_granularity,
     is_outcome_not_applicable as _is_not_applicable,
     outcome_consistency_issues,
 )
@@ -413,6 +414,7 @@ def validate_outcome_hypotheses(
             hypothesis.outcome.granularity == "not_applicable"
             and hypothesis.outcome.artifact_type == "unknown"
             and not _is_not_applicable(hypothesis.outcome)
+            and not is_acquisition_without_result_granularity(hypothesis.outcome)
         ):
             # This rule reads the outcome as a whole, so the whole outcome is
             # open to correction.

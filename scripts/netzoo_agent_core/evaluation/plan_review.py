@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import (
     ACTION_DEFINITIONS,
     CODE_VALIDATION_STEPS,
@@ -24,6 +26,7 @@ from ..contracts import (
 from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..policy import ProjectPolicyLoader
 from ..data.paths import _resolve_user_path
+from ..string_download import requested_network_kind, requested_species
 from .plan_rules import (
     _bundle_provenance_failures,
     _derived_evidence_contract_failures,
@@ -78,6 +81,38 @@ def evaluate_workflow_plan(
         )
 
     action = decision.action
+    if action == "download_string":
+        valid = (
+            plan.workflow == "STRING-DOWNLOAD"
+            and len(plan.steps) == 1
+            and plan.steps[0].action == "download_string"
+            and not plan.steps[0].arguments
+            and decision.should_execute
+            and not plan.missing_inputs
+            and not decision.missing_inputs
+            and bool(decision.taxon)
+            and decision.taxon == requested_species(user_task)
+            and decision.string_network_type in {"functional", "physical", "regulatory"}
+            and decision.string_network_type == requested_network_kind(user_task)
+            and decision.requested_outcome is not None
+            and decision.requested_outcome.operation == "acquire"
+            and bool(re.search(r"(?<![A-Za-z0-9])STRING(?:-DB)?(?![A-Za-z0-9])|string-db\.org", user_task, re.I))
+            and all(
+                any(item.field == field and item.value == getattr(decision, field) and item.status != "missing"
+                    for item in plan.evidence)
+                for field in ("taxon", "string_network_type")
+            )
+        )
+        return PlanEvaluationResult(
+            status="approved" if valid else "rejected",
+            score=100 if valid else 0,
+            summary="STRING acquisition plan is valid." if valid else "STRING acquisition plan is incomplete or inconsistent.",
+            rubric=[PlanRubricItem(
+                criterion="string_acquisition_contract",
+                result="pass" if valid else "fail",
+                detail="Species, network type, acquisition intent, and one official download step are required.",
+            )],
+        )
     handoff = plan.workflow_handoff or getattr(decision, "workflow_handoff", None)
     recognized_action = action in REQUIRED_INPUTS and action != "no_tool"
     expected_workflow = _workflow_name(action)

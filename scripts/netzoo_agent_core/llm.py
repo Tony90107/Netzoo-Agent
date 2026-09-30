@@ -171,6 +171,8 @@ keyword or a fixed phrase:
 
 Allowed ontology values:
 - operation: {', '.join(get_args(Operation))}
+- Downloading an existing resource is acquire, even if a workflow could infer a
+  similarly named result. A named source is not a NetZoo method.
 - entity_type: {', '.join(get_args(EntityType))}
 - regulator_type: {', '.join(regulator_types)}
 - target_type: {', '.join(target_types)}

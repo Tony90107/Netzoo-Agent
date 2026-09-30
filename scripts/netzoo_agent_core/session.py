@@ -112,6 +112,7 @@ def cleanup_runtime_storage(
             modified_at = metadata.st_mtime
             if modified_at < hard_cutoff:
                 path.unlink()
+                _forget_meta(path.stem)
                 removed["sessions"] += 1
                 continue
             if modified_at >= cutoff or not _is_auto_session_id(path.stem):
@@ -123,7 +124,12 @@ def cleanup_runtime_storage(
                     "needs_confirmation",
                 }:
                     continue
+                if _is_tagged(path.stem):
+                    # A tagged session is an experiment someone meant to keep:
+                    # it is retained like a named one, up to the hard expiry.
+                    continue
                 path.unlink()
+                _forget_meta(path.stem)
                 removed["sessions"] += 1
             except (OSError, ValueError, TypeError):
                 continue
@@ -193,11 +199,30 @@ def cleanup_trace_storage(
     return removed
 
 
+def _is_tagged(session_id: str) -> bool:
+    from .session_meta import load_meta
+
+    try:
+        return bool(load_meta(session_id, sessions_root=SESSION_ROOT).get("tags"))
+    except (OSError, ValueError):
+        return False
+
+
+def _forget_meta(session_id: str) -> None:
+    from .session_meta import delete_meta
+
+    try:
+        delete_meta(session_id, sessions_root=SESSION_ROOT)
+    except (OSError, ValueError):
+        return
+
+
 def delete_session(session_id: str) -> bool:
     path = _session_path(session_id)
     if not path.exists():
         return False
     path.unlink()
+    _forget_meta(session_id)
     return True
 
 

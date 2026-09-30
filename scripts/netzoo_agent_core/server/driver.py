@@ -92,7 +92,10 @@ class WorkerDriver:
 
     def _emit_events(self, events: list[Event]) -> None:
         for event in events:
-            self._send(_EVENT_TYPES[event.kind], {"text": event.text})
+            payload = {"text": event.text}
+            if event.kind == "message" and event.card:
+                payload["card"] = event.card
+            self._send(_EVENT_TYPES[event.kind], payload)
 
     def _current_plan(self, prompt):
         if prompt.plan is not None:
@@ -113,6 +116,7 @@ class WorkerDriver:
             plan=plan,
             plan_hash=plan_hash(plan),
             next_prompt=prompt.next_prompt,
+            card=prompt.card,
         )
         self._send("view", view.model_dump(mode="json"))
 

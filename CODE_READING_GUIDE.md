@@ -107,6 +107,10 @@ CONDOR 等 adapter 呼叫。裝飾過的 LangChain tool 集中在
 它把 plan、tool result、evaluation 與 memory context 組成使用者最後看到的回答。若只是顯示
 文字或語言不正確，再往 `presentation.py` 與 `evaluation/rendering.py` 查。
 
+每個 deterministic 回覆另帶 `reply_kind`；`scripts/netzoo_agent_core/reply_cards/` 由同一個 decision
+推出「卡片」（結論、重點、選項、無法執行的相關項目、下一步），只影響顯示。選項被選到時由
+`engine/choices.py` 轉成 machine 本來就接受的文字；終端版的呈現在 `cli/terminal_cards.py`。
+
 ### 9. 第二輪才讀 memory 與 data（2 分鐘）
 
 - `scripts/netzoo_agent_core/memory/episodes.py`：episode search、retention、寫入。
@@ -168,6 +172,8 @@ Run PANDA using data/expression.tsv, data/motif.tsv, and data/ppi.tsv; write out
 | 偏好沒有保存 | `memory/profiles.py` | `memory/storage.py`、`graph/policy_memory.py` |
 | episode 搜尋或清理錯誤 | `memory/episodes.py` | `memory/normalization.py`、`memory/storage.py` |
 | 最後文字或語言錯誤 | `graph/response.py` | `presentation.py`、`evaluation/rendering.py` |
+| 選項、重點卡片或下一步不對 | `reply_cards/builder.py` | `reply_cards/choices.py`、`engine/choices.py` |
+| session tag、模型、輸出資料夾 | `session_meta.py`、`session_outputs.py` | `server/history.py` |
 
 ## 常見修改方式
 

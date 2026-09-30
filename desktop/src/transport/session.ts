@@ -12,6 +12,7 @@ import {
   ClientMessage,
   Envelope,
   PROTOCOL_VERSION,
+  ReplyCard,
   TraceEvent,
   LLMUsage,
   ViewPayload,
@@ -20,7 +21,7 @@ import {
 
 export type Entry = (
   | { kind: "user"; id: number; text: string }
-  | { kind: "agent"; id: number; text: string }
+  | { kind: "agent"; id: number; text: string; card?: ReplyCard | null }
   | { kind: "notice"; id: number; text: string }
   | { kind: "error"; id: number; errorType: string; text: string }
 ) & { at?: string; timeSource?: "server" | "local" | "received"; action?: "message" | "command" | "confirmation" };
@@ -135,10 +136,18 @@ export function entryTimestamp(entry: Entry): string | undefined {
   return entry.at;
 }
 
+export type NewSessionOptions = { model?: string; tags?: string[] };
+
 export async function createSession(
   config: DaemonConfig,
   resume?: string,
+  options: NewSessionOptions = {},
 ): Promise<string> {
+  const body: Record<string, unknown> = resume ? { resume } : {};
+  // A model is chosen once, when a session starts (one session, one model);
+  // the daemon still refuses any model its allowlist does not name.
+  if (!resume && options.model) body.model = options.model;
+  if (!resume && options.tags?.length) body.tags = options.tags;
   const response = await fetch(`${config.baseUrl}/v1/sessions`, {
     method: "POST",
     headers: {
@@ -147,7 +156,7 @@ export async function createSession(
     },
     // Resuming hands the checkpoint id to the worker, which is the same path
     // `--resume` takes in the terminal.
-    body: JSON.stringify(resume ? { resume } : {}),
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     throw new Error(`could not start a session (${response.status})`);
@@ -326,6 +335,7 @@ export function reduce(
         ...state,
         entries: [...state.entries, timestamped({
           kind: "agent", id: entryId(), text: String(body.text),
+          card: (body.card as ReplyCard | undefined) ?? null,
         }, body)],
       };
     case "notice":
