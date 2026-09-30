@@ -70,6 +70,7 @@ def test_the_live_interpretation_of_a_concept_question_is_accepted():
                 [_explain_evidence()],
             )
         ],
+        request_mode="guidance",
     )
 
     assert validation.valid, list(validation.issues)
@@ -88,12 +89,13 @@ def test_an_unknown_operation_is_still_accepted():
                 )
             )
         ],
+        request_mode="guidance",
     )
 
     assert validation.valid, list(validation.issues)
 
 
-@pytest.mark.parametrize("operation", ["acquire", "prepare", "validate", "infer", "analyze"])
+@pytest.mark.parametrize("operation", ["prepare", "validate", "infer", "analyze"])
 def test_an_operation_that_produces_something_still_contradicts_not_applicable(operation):
     """Claiming to infer, and that nothing applies, remains a contradiction."""
     validation = validate_outcome_hypotheses(
@@ -110,6 +112,32 @@ def test_an_operation_that_produces_something_still_contradicts_not_applicable(o
     )
 
     assert ISSUE in validation.issues
+
+
+def test_acquiring_an_existing_artifact_can_have_no_produced_result_granularity():
+    validation = validate_outcome_hypotheses(
+        "我要下載 STRING 網路",
+        [
+            _hypothesis(
+                RequestedOutcome(
+                    operation="acquire",
+                    artifact_type="unknown",
+                    granularity="not_applicable",
+                ),
+                [
+                    OutcomeEvidence(
+                        dimension="operation",
+                        source="explicit",
+                        value="acquire",
+                        text_span="我要下載 STRING 網路",
+                        rationale="The user requests an existing network download.",
+                    )
+                ],
+            )
+        ],
+    )
+
+    assert validation.valid, list(validation.issues)
 
 
 def test_explaining_does_not_license_claiming_scientific_content():

@@ -195,3 +195,43 @@ def test_a_split_that_finds_no_workflow_for_any_input_says_nothing_new():
                    granularity="aggregate", entities=["sample"])
     item["outcome"]["operation"] = "analyze"
     assert render_hypothesis_routes(decision([item], status="unsupported"), POLICY, task=task) is None
+
+
+MODULE_TASK = (
+    "We have transcriptomic data, TF motifs and protein interactions. One camp wants the most "
+    "accurate TF-gene regulatory network; the other wants to split the network into functional "
+    "modules of TFs that co-regulate drug-resistance genes. Which tools fit each?"
+)
+
+
+def test_a_result_one_registered_handoff_away_names_the_handoff():
+    network = reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="aggregate",
+                      quote="the most accurate TF-gene regulatory network")
+    modules = reading("community_assignment", [], [], granularity="aggregate",
+                      quote="split the network into functional modules", entities=["tf", "gene"])
+    text = render_hypothesis_routes(decision([network, modules], status="ambiguous",
+                                             tied=["run_panda", "run_otter", "run_giraffe", "run_condor"]),
+                                    POLICY, task=MODULE_TASK)
+    second = text.split("**Reading 2")[1]
+    assert "a registered handoff does, in two steps" in second
+    assert "- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix" in second
+    assert "**OTTER → CONDOR**" in second
+    assert "PUMA → CONDOR" not in second  # no miRNA in the request
+    assert "2 (PANDA → CONDOR or OTTER → CONDOR)" in text
+
+
+def test_a_missing_prior_is_not_bridged_by_a_handoff():
+    task = "I have an expression matrix and a TF motif prior but no PPI data. I want one TF-gene network."
+    network = reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="aggregate",
+                      quote="one TF-gene network")
+    text = render_hypothesis_routes(decision([network], status="unsupported"), POLICY, task=task) or ""
+    assert "handoff" not in text and "COBRA →" not in text
+
+
+def test_mirna_modules_may_start_from_puma():
+    task = "From my expression data, find modules of TFs and miRNAs that co-regulate genes."
+    modules = reading("community_assignment", ["expression_matrix"], [], granularity="aggregate",
+                      quote="find modules of TFs and miRNAs", entities=["tf", "mirna", "gene"])
+    text = render_hypothesis_routes(decision([modules], status="unsupported"), POLICY, task=task)
+    assert "**PUMA → CONDOR**" in text and "**PANDA → CONDOR**" in text
+    assert text.rsplit("\n\n", 2)[-2].startswith("Should we start with PANDA → CONDOR or PUMA → CONDOR or OTTER → CONDOR?")

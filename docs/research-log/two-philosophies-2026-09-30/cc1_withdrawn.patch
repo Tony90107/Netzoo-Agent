@@ -1,0 +1,105 @@
+diff -ruN a/scripts/netzoo_agent_core/graph/hypothesis_bases.py b/scripts/netzoo_agent_core/graph/hypothesis_bases.py
+--- a/scripts/netzoo_agent_core/graph/hypothesis_bases.py	2026-09-30 20:34:40
++++ b/scripts/netzoo_agent_core/graph/hypothesis_bases.py	2026-09-30 20:34:40
+@@ -57,6 +57,11 @@
+         or len(decision.outcome_hypotheses) > 1
+         or decision.requested_outcome is not None
+         and decision.requested_outcome.artifact_type == "unknown"
++        # Log 288: a method tag narrowed a tie to one workflow. The tie was
++        # real, so a request that sets two approaches against each other still
++        # gets its goal review ("the PI prefers iterative updates, while the
++        # biostatistician insists on convergence" was answered with OTTER alone).
++        or decision.match_basis == "registry_features"
+         or _OPEN_QUESTION.search(task)
+     )
+ 
+diff -ruN a/tests/test_narrowed_tie_review.py b/tests/test_narrowed_tie_review.py
+--- a/tests/test_narrowed_tie_review.py	1970-01-01 08:00:00
++++ b/tests/test_narrowed_tie_review.py	2026-09-30 20:34:40
+@@ -0,0 +1,72 @@
++"""Log 288: a tie a method tag narrowed still gets its goal review.
++
++Before CC1 a request that set two approaches against each other ("the PI
++prefers iterative updates, while the biostatistician insists on convergence")
++was answered with one method: the tag made the match exact, and the review
++only ran for a tie, several readings or a discourse cue.
++"""
++
++from pathlib import Path
++import sys
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.contracts import LLMUsage, TaskDecision  # noqa: E402
++from netzoo_agent_core.graph.hypothesis_bases import invoke_hypothesis_matcher, needs_hypothesis_review  # noqa: E402
++from test_hypothesis_bases import _context  # noqa: E402
++
++TASK = (
++    "We have expression, TF motif and PPI data. The PI prefers iterative updates that simulate TF "
++    "cooperativity, while our biostatistician insists on a strict objective function with guaranteed "
++    "convergence. Which method should we use? Advice only."
++)
++PI = "iterative updates that simulate TF cooperativity"
++STAT = "a strict objective function with guaranteed convergence"
++
++
++def narrowed(**update) -> TaskDecision:
++    values = dict(
++        action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="Guidance.",
++        capability_match_status="exact", match_basis="registry_features",
++        matched_actions=["run_otter"], recommended_actions=["run_otter"], hypothesis_actions=["run_otter"],
++        outcome_hypotheses=[{
++            "outcome": {"operation": "infer", "input_artifacts": ["expression_matrix"],
++                        "artifact_type": "regulatory_network", "entity_types": ["tf", "gene"],
++                        "regulator_types": ["tf"], "target_types": ["gene"],
++                        "selection_tags": ["relaxed_graph_matching"], "granularity": "aggregate"},
++            "confidence": 0.9, "evidence": [],
++        }],
++    )
++    values.update(update)
++    return TaskDecision.model_validate(values)
++
++
++def test_a_tag_narrowed_tie_is_reviewed_and_a_plain_exact_match_is_not():
++    assert needs_hypothesis_review(narrowed(), TASK)
++    assert not needs_hypothesis_review(narrowed(match_basis="semantic"), TASK)
++
++
++def test_two_stated_approaches_become_a_comparison_again():
++    ctx = _context({"question_mode": "multiple_hypotheses",
++                    "claims": [{"basis": "run_panda", "text_span": PI}, {"basis": "run_otter", "text_span": STAT}]})
++    after, usage, _ = invoke_hypothesis_matcher(ctx, {}, TASK, narrowed(), LLMUsage(), [])
++    assert [call.role for call in usage.calls] == ["hypothesis_bases"]
++    assert after.capability_match_status == "ambiguous"
++    assert set(after.hypothesis_actions) == {"run_panda", "run_otter"} and not after.matched_actions
++    assert {item.text_span for item in after.stated_hypotheses} == {PI, STAT}
++    assert after.action == "no_tool" and not after.should_execute
++
++
++def test_one_stated_preference_keeps_the_narrowed_workflow():
++    ctx = _context({"question_mode": "single_goal", "claims": [{"basis": "run_otter", "text_span": STAT}]})
++    before = narrowed()
++    after, usage, _ = invoke_hypothesis_matcher(ctx, {}, TASK, before, LLMUsage(), [])
++    assert after == before and [call.role for call in usage.calls] == ["hypothesis_bases"]
++
++
++def test_an_execution_request_is_still_never_reviewed():
++    ctx = _context({"question_mode": "multiple_hypotheses",
++                    "claims": [{"basis": "run_panda", "text_span": PI}, {"basis": "run_otter", "text_span": STAT}]})
++    before = narrowed(action="run_otter", should_execute=True)
++    after, usage, _ = invoke_hypothesis_matcher(ctx, {}, TASK, before, LLMUsage(), [])
++    assert after == before and not usage.calls
+diff -ruN a/tests/test_routing_evaluation.py b/tests/test_routing_evaluation.py
+--- a/tests/test_routing_evaluation.py	2026-09-30 20:34:40
++++ b/tests/test_routing_evaluation.py	2026-09-30 20:34:40
+@@ -385,8 +385,10 @@
+     assert result["route_passed"], result
+     assert result["semantic_passed"]
+     assert result["matched_actions"] == ["run_otter"]
++    # Log 288: a tie a tag narrowed still gets the goal review (ResearchFraming).
+     assert [schema.__name__ for schema, _ in provider.calls] == [
+         "SemanticInterpretation", "SemanticPatch", "SemanticDiscriminator", "IntentDecision",
++        "ResearchFraming",
+     ]
+ 
+ 

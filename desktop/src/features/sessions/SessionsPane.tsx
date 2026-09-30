@@ -9,7 +9,8 @@
 import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
-import { SessionSummary, listSessions, type SessionFilter } from "../../transport/files";
+import { SessionSummary, TagCount, listSessions, listTags, type SessionFilter } from "../../transport/files";
+import { TagChips } from "./TagEditor";
 
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
@@ -27,12 +28,18 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed", dry_run: "Preview only", ready: "Plan ready", respond_only: "Conversation", unknown: "Unknown",
 };
 
+function shortModel(models?: Record<string, string>): string {
+  const name = models?.response || models?.router || "";
+  return name.split("/").pop() ?? "";
+}
+
 export function SessionsPane({
   config,
   currentId,
   selectedId,
   onResume,
   onOpen,
+  onCompare,
   refreshToken,
 }: {
   config: DaemonConfig;
@@ -40,6 +47,7 @@ export function SessionsPane({
   selectedId: string | null;
   onResume: (sessionId: string) => void;
   onOpen: (sessionId: string) => void;
+  onCompare?: (sessionIds: string[]) => void;
   refreshToken?: boolean;
 }) {
   const { zone } = useTimeZone();
@@ -51,16 +59,30 @@ export function SessionsPane({
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [tag, setTag] = useState("");
+  const [knownTags, setKnownTags] = useState<TagCount[]>([]);
+  const [comparing, setComparing] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Tags are an aid to finding sessions; a daemon without them lists as before.
+    void Promise.resolve()
+      .then(() => listTags(config, controller.signal))
+      .then((body) => { if (body?.tags && !controller.signal.aborted) setKnownTags(body.tags); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [config, currentId, refreshToken, revision]);
 
   // A fresh checkpoint can move to the top or change its saved state. Refresh
   // from the first page instead of appending an outdated later page.
-  useEffect(() => { setOffset(0); }, [config, currentId, refreshToken]);
+  useEffect(() => { setOffset(0); }, [config, currentId, refreshToken, tag]);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(null);
     const timer = window.setTimeout(() => {
-      void listSessions(config, { query, status, offset }, controller.signal).then((page) => {
+      void listSessions(config, tag ? { query, status, offset, tag } : { query, status, offset }, controller.signal).then((page) => {
         if (controller.signal.aborted) return;
         setSessions((old) => offset ? [...(old ?? []).filter((item) => !page.sessions.some((next) => next.session_id === item.session_id)), ...page.sessions] : page.sessions);
         setNextOffset(page.next_offset);
@@ -69,12 +91,22 @@ export function SessionsPane({
       }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     }, query.trim() ? 200 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [config, currentId, query, status, offset, revision, refreshToken]);
+  }, [config, currentId, query, status, offset, revision, refreshToken, tag]);
+
+  const togglePick = (sessionId: string) => setPicked((current) =>
+    current.includes(sessionId) ? current.filter((id) => id !== sessionId) : [...current, sessionId].slice(-4));
 
   return (
     <section className="pane">
       <header className="pane__header">
         Sessions
+        {onCompare ? (
+          <button className="pane__action" type="button" aria-pressed={comparing}
+            title="Pick two to four sessions to compare their workflows, inputs, models and outputs"
+            onClick={() => { setComparing((value) => !value); setPicked([]); }}>
+            {comparing ? "done" : "compare"}
+          </button>
+        ) : null}
         <button className="pane__action" type="button" disabled={loading} onClick={() => { setOffset(0); setRevision((value) => value + 1); }}>
           refresh
         </button>
@@ -85,7 +117,21 @@ export function SessionsPane({
           <option value="all">All states</option><option value="needs_input">Needs input</option><option value="needs_confirmation">Needs approval</option>
           <option value="failed">Failed</option><option value="completed">Completed</option><option value="dry_run">Preview only</option>
         </select></label>
+        {knownTags.length > 0 || tag ? (
+          <label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}>
+            <option value="">All tags</option>
+            {tag && !knownTags.some((item) => item.tag === tag) ? <option value={tag}>{tag}</option> : null}
+            {knownTags.map((item) => <option key={item.tag} value={item.tag}>{item.tag} ({item.count})</option>)}
+          </select></label>
+        ) : null}
       </div>
+      {comparing ? (
+        <div className="sl__compare">
+          <span>{picked.length ? `${picked.length} selected` : "Pick sessions to compare"}</span>
+          <button className="btn btn--primary btn--small" type="button" disabled={picked.length < 2}
+            onClick={() => { onCompare?.(picked); setComparing(false); setPicked([]); }}>Compare</button>
+        </div>
+      ) : null}
       <div className="pane__scroll">
         {error ? <div className="fv__error" role="alert">{error}</div> : null}
         {(loading && offset === 0) || sessions === null ? (
@@ -101,12 +147,16 @@ export function SessionsPane({
                   session.session_id === currentId ? " is-current" : ""
                 }${session.session_id === selectedId ? " is-selected" : ""}`}
               >
+                {comparing ? (
+                  <input type="checkbox" className="sl__pick" aria-label={`Compare ${session.title || session.session_id}`}
+                    checked={picked.includes(session.session_id)} onChange={() => togglePick(session.session_id)} />
+                ) : null}
                 <button
                   className="sl__open"
                   type="button"
                   title="Read this session"
                   aria-current={session.session_id === selectedId ? "page" : undefined}
-                  onClick={() => onOpen(session.session_id)}
+                  onClick={() => (comparing ? togglePick(session.session_id) : onOpen(session.session_id))}
                 >
                   <span className="sl__title">
                     {session.title || "(no request recorded)"}
@@ -117,7 +167,10 @@ export function SessionsPane({
                     {session.total_tokens > 0 ? (
                       <span>{session.total_tokens.toLocaleString()}t</span>
                     ) : null}
+                    {session.output_count ? <span title={(session.outputs ?? []).join("\n")}>{session.output_count} out</span> : null}
+                    {shortModel(session.models) ? <span title={Object.entries(session.models ?? {}).map(([role, name]) => `${role}: ${name}`).join("\n")}>{shortModel(session.models)}</span> : null}
                   </span>
+                  <TagChips tags={session.tags ?? []} />
                 </button>
                 {session.resumable && session.session_id !== currentId ? (
                   <button

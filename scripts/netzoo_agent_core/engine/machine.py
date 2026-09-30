@@ -46,6 +46,7 @@ from ..session import (
     delete_session,
     save_session,
 )
+from ..session_outputs import session_output_scope
 from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, ROUTER_CONTEXT_MAX_CHARS
 from ..cli.clarification import (
     bundle_clarification_continuation,
@@ -69,6 +70,13 @@ from ..cli.follow_up import (
     resolve_next_turn_input,
 )
 from ..cli.slash_commands import handle_slash_command, render_mode_prompt
+from .choices import (
+    accepted,
+    chosen_option,
+    confirmed_outcome_task,
+    follow_up_task,
+    trusted_actions,
+)
 from .state import ConversationState, PreviewState
 from .view import Event, Prompt, Stop, Turn
 
@@ -220,6 +228,7 @@ class ConversationMachine:
             # prompts remain plain input to avoid slash/path ambiguity.
             menu_enabled=next_prompt.expected_field not in _PATH_ANSWER_FIELDS,
             next_prompt=next_prompt,
+            card=self.state.reply_card if next_prompt.kind != "initial" else None,
         )
 
     # -- answer handling ---------------------------------------------------
@@ -442,6 +451,44 @@ class ConversationMachine:
         return self._accept_task(task)
 
     def _submit_main(self, answer: str) -> list[Event]:
+        # An answer that picks one of the last reply's options resolves
+        # without the reply classifier; anything else is handled as before.
+        if (option := chosen_option(self.state.reply_card, answer)) is not None:
+            return self._submit_option(option)
+        return self._submit_main_text(answer)
+
+    def _submit_option(self, option: dict) -> list[Event]:
+        state = self.state
+        resolution = option.get("resolution")
+        if resolution == "command":
+            return self._submit_main_text(option["answer"])
+        if resolution == "open_outputs":
+            paths = option.get("paths") or []
+            return [Event("notice", _ui_text("Outputs from this run:") + "\n"
+                          + "\n".join(f"  {path}" for path in paths))]
+        action = option.get("action")
+        if resolution in {"confirm_workflow", "plan_workflow"}:
+            if action not in trusted_actions(state.reply_card, state.next_prompt, state.follow_up_context):
+                return [_notice("That option no longer matches this conversation. Describe what you want instead.")]
+        if resolution == "confirm_workflow":
+            task = confirmed_outcome_task(action, option.get("granularity"))
+            state.reply_card = None
+            return self._accept_task(task)
+        if resolution == "plan_workflow":
+            decision = accepted(action)
+            task = resolve_next_turn_input(state.next_prompt, decision, option["answer"])
+            if not task:
+                return [_notice("That option no longer matches this conversation. Describe what you want instead.")]
+            state.pending_continuation = build_workflow_continuation(
+                state.next_prompt, state.follow_up_context, decision, task
+            )
+            state.reply_card = None
+            return self._accept_task(task)
+        task = follow_up_task(state.follow_up_context, option["answer"])
+        state.reply_card = None
+        return self._accept_task(task)
+
+    def _submit_main_text(self, answer: str) -> list[Event]:
         state = self.state
         next_prompt = state.next_prompt
         if (
@@ -467,6 +514,7 @@ class ConversationMachine:
         if follow_up_returns_to_main(next_prompt, answer):
             state.next_prompt = self._initial_prompt_factory()
             state.follow_up_context = None
+            state.reply_card = None
             return []
         if not answer:
             return []
@@ -515,6 +563,7 @@ class ConversationMachine:
             self._finish_interaction_run("navigation")
             state.next_prompt = self._initial_prompt_factory()
             state.follow_up_context = None
+            state.reply_card = None
             return []
         task = resolve_next_turn_input(state.next_prompt, resolution, answer)
         if not task:
@@ -604,7 +653,9 @@ class ConversationMachine:
             }
             if state.active_usage is not None:
                 invocation["token_usage"] = state.active_usage
-            result = self.runtime.invoke_graph_turn_func(self.runtime.app, invocation)
+            # Outputs without an explicit path go to this session's own folder.
+            with session_output_scope(state.session_id):
+                result = self.runtime.invoke_graph_turn_func(self.runtime.app, invocation)
         except AgentTurnInterrupted:
             return self._turn_interrupted(task)
         except Exception as error:
@@ -652,6 +703,7 @@ class ConversationMachine:
             ),
             Event("notice", _ui_text("Error type: ") + type(error).__name__),
         ]
+        state.reply_card = None
         if state.one_shot:
             self.stop(1)
             return events
@@ -694,12 +746,14 @@ class ConversationMachine:
                 "estimated calls are marked in the saved token_usage records",
             )
         _clear_transient_trace()
+        state.reply_card = None
         if state.pending_plan is None:
-            events.append(Event("message", result["messages"][-1].content))
             state.next_prompt = build_next_turn_prompt(result)
             state.follow_up_context = build_follow_up_context(
                 result, state.next_prompt, task
             )
+            state.reply_card = self._reply_card(result, task)
+            events.append(Event("message", result["messages"][-1].content, card=state.reply_card))
             if state.next_prompt.kind == "dry_run":
                 state.preview = PreviewState(
                     task=task,
@@ -709,6 +763,7 @@ class ConversationMachine:
                 )
             elif state.next_prompt.kind == "completed":
                 state.clear_preview()
+        self._remember_turn(result)
         if state.pending_plan is not None:
             self.runtime.recorder.pause_run(
                 state.run_id,
@@ -745,6 +800,68 @@ class ConversationMachine:
                 _trace("done", "Removed the successful ephemeral session checkpoint")
             self.stop(0)
         return events
+
+    def _remember_turn(self, result: dict) -> None:
+        """Record the session's models, output folder and brief reply beside its checkpoint.
+
+        Only a runtime built by ``bootstrap_runtime`` knows its models; one
+        assembled by hand (a test, a harness) keeps no sidecar.
+        """
+        if not getattr(self.runtime, "session_models", None):
+            return
+        try:
+            from .. import session as session_store
+            from ..session_meta import remember_turn
+            from ..session_outputs import session_output_path
+
+            messages = result.get("messages") or []
+            finished = self.state.pending_plan is None
+            remember_turn(
+                self.state.session_id,
+                models=getattr(self.runtime, "session_models", None),
+                content=str(messages[-1].content) if messages and self.state.reply_card else None,
+                card=self.state.reply_card,
+                output_dir=session_output_path(self.state.session_id),
+                # A paused run carries its usage into the turn that finishes it,
+                # so a run is counted once, when it finishes.
+                tokens=int(((result.get("token_usage") or {}).get("total_tokens") or 0)) if finished else 0,
+                sessions_root=session_store.SESSION_ROOT,
+            )
+        except Exception:  # noqa: BLE001 - bookkeeping must not break a turn
+            return
+
+    def _card_task(self, result: dict, task: str) -> str:
+        """The request a card should read: a picked option's marker carries no data.
+
+        After an option is picked the turn's task is a machine marker such as
+        ``CONFIRMED_OUTCOME_ACTION=run_condor``; what the user said about their
+        data is in the last request they wrote, which the card reads as well.
+        """
+        if not task.startswith(("CONFIRMED_OUTCOME_ACTION=", "PREVIOUS_ACTION=")):
+            return task
+        for message in reversed(result.get("messages") or []):
+            content = str(getattr(message, "content", ""))
+            if getattr(message, "type", "") == "human" and content and not content.startswith(
+                ("CONFIRMED_OUTCOME_ACTION=", "PREVIOUS_ACTION=")
+            ):
+                return content + "\n" + task
+        return task
+
+    def _reply_card(self, result: dict, task: str) -> dict | None:
+        """The brief form of this turn's reply, or None; never fails the turn."""
+        try:
+            from ..reply_cards import build_reply_card
+
+            card = build_reply_card(
+                result,
+                self.state.next_prompt,
+                getattr(self.runtime, "project_policy", None),
+                task=self._card_task(result, task),
+            )
+        except Exception as error:  # noqa: BLE001 - presentation must not break a turn
+            _trace("done", "The reply card was skipped", type(error).__name__)
+            return None
+        return card.model_dump(mode="json") if card is not None else None
 
     def _write_planning_audit_if_needed(
         self,

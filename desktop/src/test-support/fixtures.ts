@@ -7,6 +7,8 @@
  */
 import type {
   NextTurnPrompt,
+  ReplyCard,
+  ReplyOption,
   ViewPayload,
   WorkflowPlan,
 } from "../transport/protocol";
@@ -63,6 +65,38 @@ export function makeView(overrides: Partial<ViewPayload> = {}): ViewPayload {
     target_field: null,
     choosing_bundle: false,
     preflight_correction: false,
+    card: null,
+    ...overrides,
+  };
+}
+
+export function makeOption(overrides: Partial<ReplyOption> = {}): ReplyOption {
+  return {
+    key: "run_panda",
+    label: "PANDA",
+    description: "",
+    answer: "Use PANDA",
+    recommended: false,
+    badge: "",
+    available: true,
+    reason: "",
+    action: "run_panda",
+    granularity: null,
+    resolution: "confirm_workflow",
+    paths: [],
+    ...overrides,
+  };
+}
+
+export function makeCard(overrides: Partial<ReplyCard> = {}): ReplyCard {
+  return {
+    kind: "method_choice",
+    headline: "",
+    points: [],
+    choices: null,
+    unavailable: [],
+    next_steps: [],
+    ran_nothing: true,
     ...overrides,
   };
 }

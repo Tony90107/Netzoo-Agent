@@ -12,11 +12,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DaemonConfig } from "../../transport/daemon";
 import {
   Listing,
+  OutputOwner,
   Preview,
   formatBytes,
   listDirectory,
+  outputProvenance,
   previewFile,
 } from "../../transport/files";
+import { TagChips } from "../sessions/TagEditor";
 
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
@@ -76,7 +79,37 @@ function PreviewBody({ preview }: { preview: Preview }) {
   }
 }
 
-export function FilesPane({ config, initialPath }: { config: DaemonConfig; initialPath?: string }) {
+/** Which saved session wrote this file, so a result leads back to its experiment. */
+function Provenance({ config, path, onOpenSession }: { config: DaemonConfig; path: string; onOpenSession?: (id: string) => void }) {
+  const [owners, setOwners] = useState<OutputOwner[] | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setOwners(null);
+    outputProvenance(config, path, controller.signal).then((body) => setOwners(body.sessions)).catch(() => setOwners([]));
+    return () => controller.abort();
+  }, [config, path]);
+  if (!owners || owners.length === 0) return null;
+  const [latest, ...earlier] = owners;
+  return (
+    <div className="fv__origin">
+      <span>From session</span>
+      <button type="button" className="fv__origin-link" disabled={!onOpenSession}
+        title={`Open session ${latest.session_id}`} onClick={() => onOpenSession?.(latest.session_id)}>
+        {latest.title || latest.session_id}
+      </button>
+      <code>{latest.session_id}</code>
+      {latest.workflow ? <span className="fv__origin-meta">{latest.workflow}</span> : null}
+      <TagChips tags={latest.tags} />
+      {earlier.length ? (
+        <span className="fv__origin-warn" title={earlier.map((item) => `${item.session_id} ${item.title}`).join("\n")}>
+          {earlier.length} earlier session{earlier.length === 1 ? "" : "s"} wrote the same path; this file is the latest version.
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function FilesPane({ config, initialPath, onOpenSession }: { config: DaemonConfig; initialPath?: string; onOpenSession?: (sessionId: string) => void }) {
   const { zone } = useTimeZone();
   const [listing, setListing] = useState<Listing | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -202,6 +235,7 @@ export function FilesPane({ config, initialPath }: { config: DaemonConfig; initi
               {preview.truncated ? ` · showing ${preview.note}` : ""}
             </div>
             <div className="fv__path" title={preview.host_path}>{preview.host_path}</div>
+            <Provenance config={config} path={preview.path} onOpenSession={onOpenSession} />
             <PreviewBody preview={preview} />
           </div>
         ) : listing ? (

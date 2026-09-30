@@ -104,6 +104,18 @@ def clarification_continuation(
     assignments: dict[str, str],
 ) -> str:
     decision = TaskDecision.model_validate(plan.decision)
+    if decision.action == "download_string":
+        species = assignments.get("taxon") or decision.taxon
+        kind = assignments.get("string_network_type") or decision.string_network_type
+        if not species or not kind:
+            raise ClarificationInputError("Provide both a species and a STRING network type.")
+        if kind not in {"functional", "physical", "regulatory"}:
+            raise ClarificationInputError("Choose functional, physical, or regulatory.")
+        return (
+            "PREVIOUS_ACTION=download_string. Download the existing STRING network; "
+            f"taxon={species}; string_network_type={kind}; "
+            f"output_dir={decision.output_dir or 'data/string'}."
+        )
     carried = [
         item
         for item in plan.evidence
@@ -292,6 +304,12 @@ def _render_clarification_prompt(
         # The question quotes the plan's own discovered folder and file names,
         # which may be in any language (Log 192).
         lines.extend([_ui_text_quoting(plan.question, _plan_user_data(plan)), ""])
+    if TaskDecision.model_validate(plan.decision).action == "download_string":
+        lines.append("Species name or NCBI taxonomy ID > " if current.field == "taxon"
+                     else "Choose functional, physical, or regulatory (or 1–3) > ")
+        if current.candidates:
+            lines.extend(f"{index}. {candidate}" for index, candidate in enumerate(current.candidates, 1))
+        return "\n".join(lines)
     lines.extend(
         [
             _ui_text(

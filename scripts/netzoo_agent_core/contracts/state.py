@@ -33,6 +33,8 @@ class AgentState(TypedDict):
     outcome_hypotheses: NotRequired[list[dict]]
     capability_match: NotRequired[dict]
     workflow_continuation: NotRequired[dict | None]
+    # Which deterministic renderer wrote the reply; display metadata only.
+    reply_kind: NotRequired[str]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

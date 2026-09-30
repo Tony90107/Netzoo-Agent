@@ -22,6 +22,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from . import activity, files, history
 from ..environment import environment_report
+from ..session_meta import set_tags
 from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
@@ -58,6 +59,13 @@ class SessionRequest(BaseModel):
     profile: str = Field(default="", max_length=64)
     model: str = Field(default="", max_length=200)
     resume: str = Field(default="", max_length=64)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+
+
+class TagsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tags: list[str] = Field(default_factory=list, max_length=24)
 
 
 def resolve_token() -> tuple[str, bool]:
@@ -151,10 +159,11 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             {
                 key: value
                 for key, value in request.model_dump().items()
-                if value and key != "session_id"
+                if value and key not in {"session_id", "tags"}
             },
         )
-        return {"session_id": session_id}
+        tags = set_tags(session_id, request.tags, sessions_root=history.SESSION_ROOT) if request.tags else []
+        return {"session_id": session_id, "tags": tags}
 
     @app.delete("/v1/sessions/{session_id}", status_code=204)
     async def delete_session(
@@ -234,9 +243,10 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         offset: int = Query(default=0, ge=0),
         query: str = Query(default="", max_length=200),
         status: Literal["all", "needs_input", "needs_confirmation", "completed", "failed", "dry_run"] = "all",
+        tag: str = Query(default="", max_length=40),
         _scope: None = Depends(require_token),
     ) -> dict:
-        page = history.list_sessions(limit=limit + 1, offset=offset, query=query, status=status)
+        page = history.list_sessions(limit=limit + 1, offset=offset, query=query, status=status, tag=tag)
         items = page[:limit]
         return {
             "offset": offset,
@@ -253,10 +263,53 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
                     "resumable": item.resumable,
                     "title": item.title,
                     "total_tokens": item.total_tokens,
+                    "tags": list(item.tags),
+                    "models": item.models or {},
+                    "outputs": list(item.outputs)[:20],
+                    "output_count": len(item.outputs),
+                    "output_dir": item.output_dir,
                 }
                 for item in items
             ]
         }
+
+    @app.get("/v1/tags")
+    def all_tags(_scope: None = Depends(require_token)) -> dict:
+        return {"tags": history.tag_counts()}
+
+    @app.post("/v1/history/{session_id}/tags")
+    def replace_tags(
+        session_id: str,
+        request: TagsRequest,
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        live = any(item["session_id"] == session_id for item in supervisor.list_sessions())
+        try:
+            tags = (set_tags(session_id, request.tags, sessions_root=history.SESSION_ROOT) if live
+                    else history.update_tags(session_id, request.tags))
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=404, detail="no such session") from error
+        return {"session_id": session_id, "tags": tags}
+
+    @app.get("/v1/outputs/provenance")
+    def provenance(
+        path: str = Query(max_length=1024),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        return {"path": path, "sessions": history.output_provenance(path)}
+
+    @app.get("/v1/compare")
+    def compare(
+        ids: str = Query(max_length=600),
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        try:
+            wanted = [item for item in ids.split(",") if item]
+            return {"sessions": history.compare_sessions(wanted)}
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
     @app.get("/v1/history/{session_id}")
     def session_transcript(
@@ -276,6 +329,11 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             "resumable": transcript.resumable,
             "messages": transcript.messages,
             "truncated": transcript.truncated,
+            "title": transcript.title,
+            "tags": list(transcript.tags),
+            "models": transcript.models or {},
+            "outputs": list(transcript.outputs),
+            "output_dir": transcript.output_dir,
         }
 
     @app.get("/v1/history/{session_id}/activity")

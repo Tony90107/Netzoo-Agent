@@ -14260,3 +14260,192 @@ miRNA 題 3／3；已記錄的 56 次去重條件呼叫中有 9 次。
 - case 4 的三種 PARTIAL 中，兩種是結構缺陷，已修（B、G）；另一種是刻意保留的問題（讀法平手）。
   另外修了一個回覆缺漏（H）。
 - D 的教訓：重述型標籤不能拿來選讀法。同一組標籤在 case 1 和 case 4 對應相反的正確答案（Log 174 的延伸）。
+
+## Log 287｜記錄：BB——回覆卡片（只影響顯示）、讀法的註冊交接路線、被單一字詞收斂的平手
+
+日期／時區：2026-09-30，Asia/Taipei。
+- 使用者要求：多選項時跳出選單並附「對你的任務有什麼好處」、依有效程度排序；輸出精簡；
+  另外檢查「只看關鍵字選套件、沒理解演算法邏輯」的情況。
+- 依禁令，沒有改任何 prompt 措辭、schema、policy 或 registry 資料。
+  `prompt_schema_sha256` 與 `policy_hash` 不受影響（下面三項都不進 provider prompt）。
+- 這次沒有 live round：三項都是回覆層或顯示層，改動量以離線重播計數。
+
+**BB1：回覆卡片（`scripts/netzoo_agent_core/reply_cards/`，只影響顯示）**
+- `respond()` 每個 deterministic 分支多回傳 `reply_kind`（`AgentState` 新增一個 NotRequired 鍵），文字完全不變。
+- 卡片由同一個 typed decision 推出：標題、2–5 條重點、選項（依序：有依據的推薦 → typed 維度吻合 → 不缺輸入 → registry 順序）、
+  不可在此執行的相關項目、下一步。
+- `Recommended` 只給 condition recommender 有引文依據的推薦；`Best match` 只給「唯一一個輸出吻合請求所有 typed 維度」的選項。
+- 選項送出的都是 machine 既有可接受的文字：`CONFIRMED_OUTCOME_ACTION`、既有 workflow continuation、
+  「Previous NetZoo goal … User follow-up …」、`/execute`、`new`。沒有新的執行授權路徑；`/execute` 仍停在兩段式確認。
+- 重播：1777 個錄下的最終決策，0 個錯誤；每個選項指名的 workflow 都出現在原回覆文字中（0 例外）。
+
+**BB2：讀法的註冊交接路線（`interpretation/hypothesis_routes._handoff_routes`）**
+- 缺陷（使用者 session `3b8a7d7a`）：「把網路拆成功能調節模組（Modules）」這個讀法被回覆成「No registered workflow produces this」。
+  但 registry 本身宣告 PANDA／PUMA／OTTER 的 `handoff_targets` 是 CONDOR；CONDOR 需要網路而不是 expression，所以單一 workflow 找不到。
+- 修正：某個讀法沒有候選時，只用 registry 的 `handoff_targets` 找「producer（接受已陳述的量測輸入）→ consumer（產出該讀法的結果）」。
+  - 只補「種類」缺口：若有任何 workflow 能直接從已陳述輸入產出該結果，就不給交接路線（缺的是先驗等別的東西）。
+  - 讀法沒有提到 miRNA 時，不列會新增 miRNA 調控者的 producer（PUMA）。
+- 第一版的離線重播改到 5 個回覆，其中 3 個是錯的：「有 expression 與 motif、沒有 PPI」被回成 COBRA → PANDA。
+  加上「只補種類缺口」後再重播：2176 個決策（錄下的 traces＋本機 sessions）只改到 2 個，都是 `3b8a7d7a`／`3e80d90d` 的模組讀法，
+  改成 PANDA → CONDOR 或 OTTER → CONDOR。
+- 測試：`tests/test_hypothesis_routes.py` 新增 3 個（模組讀法、缺先驗不補、miRNA 模組才含 PUMA）。
+
+**BB3：被一個字收斂的平手，在卡片上說清楚（只影響顯示）**
+- 使用者 session `51e02259`：「PI 偏好模擬 TF 合作性的迭代更新，biostatistician 堅持有收斂保證的目標函數」，
+  兩種哲學並陳，回覆卻只有 OTTER。原因：discriminator 以引文 `convergence` 把 PANDA／OTTER／GIRAFFE 的平手收斂成 exact OTTER
+  （`match_basis=registry_features`），假設審查因沒有平手、也沒有對話線索而沒有執行。
+- 顯示層處理：卡片以同一個 matcher 去掉該標籤重算平手，寫出「因為你寫了 “convergence” 才從 3 個方法中選了 OTTER；PANDA、GIRAFFE 也符合」，
+  並提供下一步「Compare with PANDA and GIRAFFE」（follow-up，含 `compare` 線索，會進入既有的假設審查）。
+- 規模：1777 個錄下決策中 135 個由方法標籤收斂，引文多為 >3 字的明確方法敘述；單字引文 6 個。
+- 未做（需要事前宣告與 live round）：讓 `needs_hypothesis_review` 在 `match_basis=registry_features` 時也執行。
+  這會多一次 advisory 呼叫（約 7.6% 的決策），並動到釘住的呼叫順序與呼叫數測試。
+
+**BB4：同一問題的 live 重現，以及一個被離線否決的結構守則（未實作）**
+- 桌面實測（隔離 daemon、gpt-4o-mini）把同一個英文「模組」問題問兩次：第一次走假設路線（PANDA／OTTER／LIONESS-PANDA 對 CONDOR），
+  第二次 discriminator 以 `biologically_informed_matrix_factorization` 收斂成 exact GIRAFFE，
+  引文卻是描述「另一個讀法」（功能模組）的那句話，而且 discriminator 只保留 `outcome_hypotheses[0]`，模組讀法因此整個消失。
+  卡片的 BB3 註記在這次如實顯示「因為你寫了 “split the network into functional…” 才選 GIRAFFE；PANDA、OTTER 也符合」。
+- 考慮過的守則：方法標籤的引文若就是另一個讀法的結果維度引文，就不接受收斂。
+- 離線檢查（135 個收斂決策中，第一輪有 ≥2 讀法的 17 個）：12 個符合此形狀，幾乎全是 case 4，
+  而 case 4 的 LIONESS-PANDA 收斂是正確答案（wiring 對 activity 的分辨句本來就同時落在兩個讀法上）。
+  所以這個守則會把正確的 case 4 變回平手，不實作。
+- 教訓：與 Log 277／286 一致——引文是否真的支持某個方法標籤是模型的語意判斷，結構規則分不開 case 4 與模組題。
+  目前只在顯示層揭露並提供比較；若要在 routing 修，得先事前宣告，並以 live round 量 case 4 與模組題。
+
+**其他（非 routing）：**
+- 輸出預設寫到 `outputs/sessions/<session id>/`（`session_outputs.py`，由 conversation machine 以 context variable 限定在一個 turn 內）。
+  原因：4 個錄下的 LIONESS-PUMA session 都寫到同一個 `outputs/demo/puma-aggregate.tsv`，後者覆蓋前者。
+  session 外的規劃（所有測試與 harness）仍是 `outputs/demo`；明確路徑與使用者確認的偏好仍優先。
+- 測試：後端 2875 → 2924 passed（新增 reply cards、選項解析、session 管理、交接路線、終端 PTY 驗收；0 個既有測試修改）；
+  前端 78 → 94 passed。
+
+**結論：**
+- 使用者感受到的「只看關鍵字」有兩個可重現的具體來源：
+  (1) 需要兩步交接才能達成的讀法被說成不支援（已修，BB2）；
+  (2) 一個字（或另一個讀法的句子）就把兩種哲學的比較收斂成單一方法（已在顯示層揭露並提供比較，BB3／BB4；
+      routing 修正留待事前宣告，候選做法見 BB3 末段，BB4 的結構守則已離線否決）。
+- discriminator 的正則補救（`_recover_explicit_selection_tag`）在 413 個有跑 discriminator 的錄下 trial 中觸發 0 次，不是實際來源。
+
+## Log 288｜事前宣告：CC——方法標籤把平手收斂成單一方法時，仍要做一次目標審查（兩種哲學並陳的問題）
+
+日期／時區：2026-09-30，Asia/Taipei。使用者同意（「幫我修第 2 點的路由，先事前宣告再跑 live round」）。
+本條目寫於任何程式修改與 live 呼叫之前；分析腳本 `docs/research-log/two-philosophies-2026-09-30/analyze.py`
+與標靶語料 `targeted_en.json` 同時寫定，之後不改門檻。
+
+**問題（Log 287 BB3／BB4）：**
+- 「PI 偏好迭代更新、biostatistician 堅持收斂保證」這類兩派並陳的請求，平手（PANDA／OTTER／GIRAFFE）被一個方法標籤收斂成 exact
+  （`match_basis=registry_features`：`_tag_discriminated_action` 或 semantic discriminator）。
+- 之後 `needs_hypothesis_review` 不成立（已非平手、只剩一個讀法、請求沒有對話線索），目標審查（`hypothesis_bases`）不執行，
+  回覆只有一個方法。live 已見兩種：只憑 “convergence” 選 OTTER；以模組句子選 GIRAFFE、模組讀法消失。
+
+**變更 CC1（只改一個條件，不改 prompt、schema、registry、policy）：**
+- `graph/hypothesis_bases.needs_hypothesis_review` 另外在 `decision.match_basis == "registry_features"` 時成立。
+- 審查本身不變：引文必須在請求中、`multiple_hypotheses` 需要 ≥2 個有依據的假設、`framing_yielded`、呼叫上限與順序都不變。
+- 執行請求不受影響（`hypothesis_options` 對 `should_execute` 回傳空）。最壞呼叫數不變（此路徑之後的 condition 呼叫只在平手時發生）。
+
+**預期（寫在量測前）：**
+- 被收斂的 guidance trial 多 1 次 `hypothesis_bases` 呼叫（錄下決策中約 135／1777 ≈ 7.6% 被收斂）。
+- 兩派並陳的標靶題會轉成逐一假設的比較回覆；只陳述一個偏好的題（blind case 2、`ctl-objective-preference`）維持單一 OTTER。
+- 風險：審查回 `multiple_hypotheses`／`unclear_goal` 卻驗證失敗時，決策會降為 `unverified_evidence`（「could not validate every research alternative」），
+  這會把原本正確的 exact 變成追問。
+
+**預先宣告的釘住測試修改（恰好一個）：**
+- `tests/test_routing_evaluation.py::test_discriminator_contract_can_select_otter_from_a_validated_panda_tie`
+  的 provider 呼叫序列從 `[SemanticInterpretation, SemanticPatch, SemanticDiscriminator, IntentDecision]`
+  變成最後多一個 `ResearchFraming`；路由結果（exact OTTER）的斷言不變。試跑確認：全套件只有這一個失敗。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝目前工作樹＋CC1；baseline＝同一工作樹的副本，只有 `hypothesis_bases.py` 為原版。兩臂在同一時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（4 題）×1。合計每臂 blind 30、標靶 12 個 trial。
+- 中文模組題（使用者 session `3b8a7d7a`）只列入報告，不列入門檻（English-first）。
+
+**撤回條件（任一成立即撤回 CC1）：**
+- CC-a（離線，live 之前）：除上述一個宣告修改外，全套件通過；`prompt_schema_sha256` 維持 legacy `3f394e4d5d3f`／claims `9a60163744d9`
+  （目前工作樹，含另一個 session 未 commit 的 STRING 改動），`policy_hash` 維持 `6d99c45b…`。不成立則不跑 live。
+- CC-b（有效性，結構計數，不成立則此輪作廢）：candidate 每個 `cc1_only` trial 都有 `ResearchFraming` 呼叫；baseline 的 `cc1_only` trial 0 次。
+- CC-c1：candidate 的 blind-en 30 trial 中，由 CC1 造成的降級（`cc1_only` 且審查後 `unverified_evidence`）≥1 → 撤回。
+- CC-c2：只陳述一個偏好的 6 個 trial（case2-en ×3、ctl-objective-preference ×3）中，由 CC1 造成的比較 ≥2 → 撤回。
+- CC-c3：candidate 出現 CC1 造成的新 WRONG（以最終決策判讀，且 baseline 同題沒有）≥1 → 撤回。
+- CC-d（效益）：3 題兩派標靶 ×3 = 9 個 candidate trial 中，符合各題目標的比較（`analyze.py` 的 TARGETS）< 3 → 撤回（多一次呼叫卻沒有效益）。
+  baseline 的同一計數一起報告，作為雜訊參考；依 Log 98，差距 ≤3 不宣稱改善。
+
+## Log 289｜結果：CC——CC1 未觸發任何宣告的撤回條件，但事後撤回（收斂後的審查產生錯誤的「沒有註冊 workflow」）
+
+日期／時區：2026-09-30，Asia/Taipei。依 Log 288 執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/two-philosophies-2026-09-30/`（報告 `live-cc-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、
+撤回的變更 `cc1_withdrawn.patch`、回覆重繪 `render_replies.py`）。
+
+**執行：**
+- 3 個時段（20:16、20:20、20:22），每時段兩臂四個容器平行。每時段前後各檢查一次：兩臂 `scripts/` 只差 `hypothesis_bases.py`、harness 相同（6／6 成立）。
+- 冒煙測試：正式量測前，candidate 單跑一次 `ctl-objective-preference`（5 次呼叫，`smoke-candidate.json.gz`），不計入。
+- 中文模組題（session `3b8a7d7a`）未跑：Log 288 只列入報告；撤回後已無意義。
+- 分析：`analyze.py`（量測前寫定）。CC-c3 在 Log 288 有宣告但 `analyze.py` 沒實作，由 `final_verdicts.py` 計算。
+  - 此檔在時段 1 跑完後、時段 2 之前寫定。
+  - 判定沿用 `score_blind.verdict` 不改，分別套在 registry 事件（審查前）與最終決策上。
+  - 三題兩派標靶沒有答案鍵，只由 CC-d 判讀。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| CC-a（離線） | 2928 passed／35 skipped；指紋 legacy `3f394e4d5d3f`／claims `9a60163744d9`；policy `6d99c45b`；只改宣告的一個測試 | 成立 |
+| CC-b（有效性） | candidate `cc1_only` 14 個，14 個都有 `ResearchFraming`；baseline `cc1_only` 16 個，0 個 | 有效 |
+| CC-c1 | CC1 造成的降級（`unverified_evidence`）0 | 不撤回 |
+| CC-c2 | 6 個只陳述一個偏好的 trial（case2-en ×3、ctl ×3）：CC1 造成的比較 0，6／6 維持 exact OTTER | 不撤回 |
+| CC-c3 | CC1 審查的 14 個 trial：最終 WRONG 0（寬鬆計數也是 0） | 不撤回 |
+| CC-d | 兩派標靶 9 個 trial 中符合目標的比較：candidate 4，baseline 2；差 2 ≤ 3，不宣稱改善 | 不撤回 |
+
+**逐題（兩派標靶，各 3 個 trial）：**
+- `tp-two-philosophies`：
+  - candidate 3／3 為比較：2 個由 CC1 造成（s1、s3），1 個來自平手本身觸發的審查（s2）。
+  - baseline 1／3（s3，平手審查），另 2 個是 exact OTTER。這是 CC1 唯一的收益。
+- `tp-pi-vs-biostat`：兩臂都是 0／3。
+  - candidate s2、s3 收斂成 OTTER，CC1 審查兩次都回 `single_goal`，決策不變。
+  - candidate s1 未收斂：10 個方法的寬平手，同樣是 `single_goal`。
+  - 只改觸發條件修不了這題：審查模型不認為這是兩個假設。
+- `tp-network-vs-modules`：
+  - 兩臂 s1 都未收斂，平手審查後得到網路／模組比較，符合目標。
+  - s2、s3 兩臂都被 discriminator 收斂成 GIRAFFE：`tf_gene_regulation` 引網路句，`biologically_informed_matrix_factorization` 引**模組句**。
+  - baseline 回覆 GIRAFFE（不完整，但沒有錯誤陳述）；candidate 經 CC1 審查後最終為 `unsupported`（見下）。
+- blind-en：CC1 審查了 5 個 blind trial（case2 ×3、case6 ×2），全部 `single_goal`、決策不變。
+  - 其餘差異（case4 PARTIAL candidate 2、baseline 1；case6 s3 candidate 為平手＋推薦 COBRA）都不是收斂 trial，屬同碼雜訊。
+- 呼叫數：兩臂同為 197。收斂 trial 的審查同時抽取 concern，取代了原本單獨的 `StatedConcernClaims` 呼叫
+  （`ResearchFraming` 29／13、`StatedConcernClaims` 13／29）。
+
+**門檻沒有涵蓋的傷害：錯誤的能力缺口（candidate 2／3，baseline 0／3）**
+
+candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀法得到 CONDOR）：
+
+> For “most accurate TF-gene regulatory network”, no registered workflow meets the stated requirement. […]
+> For “split the network into functional modules”, no registered workflow meets the stated requirement. […]
+
+- 兩句都是錯的：網路讀法有 PANDA／OTTER 等，模組讀法有 CONDOR。
+- 機制：`actions_for_hypothesis` 要求審查給的每個 method tag 都在 workflow 的 `selection_tags` 裡（`set(h.method_tags) <= set(cap.selection_tags)`）。
+  - 審查替網路讀法填了 `["bayesian", "biologically_informed_matrix_factorization"]`，沒有 workflow 同時帶這兩個。
+  - s2 的模組讀法填了 `["message_passing"]`，CONDOR 沒有這個標籤。
+  - 於是兩者都成為 `unsupported`。請求本身沒有指定任何 estimator。
+- 只出現在收斂後的審查，但不是每次收斂後的審查都會出現：
+  - 這題的 2 次平手審查（兩臂 s1，共 4 個讀法）method tag 都是 `[]`。
+  - 收斂後的審查拿到的是收斂方法（GIRAFFE）的 concern 選項（`activity_apart_from_expression`、`per_sample_values`…），平手審查拿到的是平手候選的 concern。
+  - `tp-two-philosophies` 收斂成 OTTER 後的 2 次 CC1 審查，給的是可滿足的 `message_passing`／`relaxed_graph_matching`，與平手審查相同。
+  - 推測：收斂方法的 concern 會引導 estimator 標籤。n＝2，未驗證。
+- 門檻漏掉它的原因：CC-c3 需要答案鍵（三題標靶沒有），CC-c1 只計 `unverified_evidence` 降級。
+
+**決定：事後撤回 CC1（不是宣告的撤回條件；方向保守，不做任何宣稱）。**
+- 理由：
+  - 收益在雜訊內（4 對 2），而且只在一題上。
+  - 傷害是使用者看得到的錯誤陳述，說 NetZoo 做不到其實做得到的事。
+  - 桌面版 daemon 直接跑這個工作樹，保留 CC1 就等於讓使用者看到這種回覆。
+- 已還原：`graph/hypothesis_bases.py`、`tests/test_routing_evaluation.py` 與 HEAD 相同，刪除 `tests/test_narrowed_tie_review.py`。
+  完整變更保存在 `cc1_withdrawn.patch`，可 `git apply`。
+- 還原後：2924 passed／35 skipped（少的 4 個即刪除的測試檔）；指紋 `3f394e4d5d3f`／`9a60163744d9`、policy `6d99c45b` 不變。
+- Log 287 的顯示層緩解仍在：卡片寫出「Picked … because you wrote …」並提供 Compare 步驟。
+
+**下一步可選（未宣告，待使用者決定）：**
+- CC2＝CC1＋收斂後的審查改用**收斂前平手候選**的 concern 選項。
+  - 目前的決策只留 `candidate_actions=[收斂方法, no_tool]`，平手候選須從 match 階段帶下來。
+  - 需要新的、未用來設計的兩派題作效益門檻，並加一個「錯誤能力缺口」門檻（事先標註每個讀法是否有註冊 workflow）。
+- 或：審查的 estimator 標籤只在請求有引文時才限制讀法。
+  - 這是 `ResearchFraming` 的 contract 形狀修改，schema 指紋會變，釘住的 schema digest 修改須宣告。
+  - 這也會處理任何觸發條件下的同一種錯誤缺口。
+- 兩者都救不了 `tp-pi-vs-biostat`：審查模型在這題回 `single_goal`（3／3）。

@@ -431,6 +431,12 @@ def render_capability_gap(
         f"The registered NetZoo workflows do not {operation} "
         f"{_requested_outcome_phrase(decision)}."
     ]
+    if decision.requested_outcome and decision.requested_outcome.operation == "acquire":
+        lines.append(
+            "Direct download currently supports only STRING functional, physical, "
+            "and regulatory protein networks. Specify STRING, a species, and a "
+            "network type to use that tool."
+        )
     alternative = (
         decision.alternative_actions[0] if decision.alternative_actions else None
     )
@@ -440,7 +446,7 @@ def render_capability_gap(
             f"{spec.workflow} can instead {spec.output_capability.operation} "
             f"{_capability_phrase(spec, decision)}. Did you mean that supported result?"
         )
-    else:
+    elif not (decision.requested_outcome and decision.requested_outcome.operation == "acquire"):
         supported = sorted(
             {
                 _artifact_label(item.output_capability.artifact_type)

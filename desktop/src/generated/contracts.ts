@@ -17,6 +17,7 @@ export type ViewPayload = {
   target_field: string | null;
   choosing_bundle: boolean;
   preflight_correction: boolean;
+  card: ReplyCard | null;
 };
 
 export type WorkflowPlan = {
@@ -110,6 +111,17 @@ export type TraceEvent = {
   event_hash: string;
 };
 
+/** Key points of one reply, plus its choices and next steps. */
+export type ReplyCard = {
+  kind: "method_choice" | "clarification" | "reading_choice" | "hypothesis_choice" | "capability_gap" | "workflow_guidance" | "composition" | "plan_ready" | "run_completed" | "run_failed" | "unresolved" | "general";
+  headline: string;
+  points: string[];
+  choices: ReplyChoices | null;
+  unavailable: ReplyOption[];
+  next_steps: ReplyOption[];
+  ran_nothing: boolean;
+};
+
 /** A registry-validated producer-to-consumer workflow boundary. */
 export type WorkflowHandoff = {
   producer_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_otter" | "run_giraffe" | "run_bonobo";
@@ -146,6 +158,31 @@ export type LLMCallUsage = {
   price_snapshot: PriceSnapshot | null;
   duration_ms: number;
   status: "success" | "failed" | "blocked";
+};
+
+/** A question with ordered answers, the best-supported first. */
+export type ReplyChoices = {
+  header: string;
+  question: string;
+  options: ReplyOption[];
+  allow_other: boolean;
+  ordering: string;
+};
+
+/** One thing the user can pick, or a related thing this agent cannot do. */
+export type ReplyOption = {
+  key: string;
+  label: string;
+  description: string;
+  answer: string;
+  recommended: boolean;
+  badge: "" | "Recommended" | "Best match";
+  available: boolean;
+  reason: string;
+  action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | null;
+  granularity: "aggregate" | "sample_specific" | null;
+  resolution: "confirm_workflow" | "plan_workflow" | "follow_up" | "command" | "open_outputs" | "none";
+  paths: string[];
 };
 
 /** Immutable model rates used for one historical cost estimate. */

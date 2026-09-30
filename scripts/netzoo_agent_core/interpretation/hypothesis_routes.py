@@ -12,7 +12,7 @@ already covers every reading is left exactly as it was.
 
 from __future__ import annotations
 
-from workflow_registry import GUIDANCE_COMPOSITIONS
+from workflow_registry import GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text_with_user_data, user_data_token
@@ -174,6 +174,91 @@ def _splits(task: str, reading) -> list[tuple[str, list[str]]]:
     return splits if any(actions for _, actions in splits) else []
 
 
+_MEASURED_INPUTS = frozenset({
+    "expression_matrix", "coexpression_network", "mutation_matrix", "measurement_dataset",
+})
+
+
+def _stated_inputs(readings, task: str) -> frozenset[str]:
+    """Measured inputs the request states, whichever reading the model gave them to.
+
+    The primary patch assigns every current input to the primary reading
+    (Log 245), so a second reading often carries none of its own.
+    """
+    from ..routing.capability_compatibility import input_availability
+
+    stated = {value for reading in readings for value in reading.outcome.input_artifacts}
+    stated |= set(input_availability(task).present)
+    return frozenset(stated & _MEASURED_INPUTS)
+
+
+def _handoff_routes(reading, stated: frozenset[str], policy: ProjectPolicySnapshot) -> list[tuple[str, str]]:
+    """Registered producer -> consumer handoffs that reach a reading's result from the stated inputs.
+
+    A result no single workflow produces from those inputs can still be one
+    registered handoff away: CONDOR finds modules in a network, and PANDA,
+    PUMA and OTTER declare CONDOR as their handoff target. Only registry
+    `handoff_targets` count, never a guessed chain, and a producer that adds a
+    regulator class the reading does not ask for (miRNA) is left out.
+    """
+    target = reading.outcome.artifact_type
+
+    def produced(spec) -> set[str]:
+        return set(spec.output_capability.produced_artifacts) | {spec.output_capability.artifact_type}
+
+    # Only a gap in *kind* is bridged: when some workflow produces this result
+    # straight from a stated input, the reading lacks a candidate for another
+    # reason (a missing prior, say) that a handoff would not fix.
+    if any(target in produced(spec) and stated & set(spec.output_capability.input_artifacts)
+           for spec in policy.workflows.values()):
+        return []
+    requested = (set(reading.outcome.regulator_types) | set(reading.outcome.entity_types)) & {"tf", "mirna"}
+    routes = []
+    # Registry order, so the established base method is named first.
+    for producer in [action for action in OUTPUT_CAPABILITIES if action in policy.workflows]:
+        spec = policy.workflows[producer]
+        capability = spec.output_capability
+        if not stated & set(capability.input_artifacts):
+            continue
+        if "mirna" in capability.regulator_types and "mirna" not in requested:
+            continue
+        for consumer in capability.handoff_targets:
+            consumer_spec = policy.workflows.get(consumer)
+            if consumer_spec is not None and target in produced(consumer_spec):
+                routes.append((producer, consumer))
+    return routes
+
+
+_SINGULAR = {
+    "regulatory_network": "a regulatory network",
+    "community_assignment": "its communities (modules)",
+    "coexpression_network": "a co-expression network",
+}
+
+
+def _handoff_lines(routes, outcome, policy, stated=frozenset()) -> tuple[list[str], str]:
+    lines = ["No single registered workflow produces this from the stated inputs; a registered "
+             "handoff does, in two steps:"]
+    for producer, consumer in routes:
+        first, second = policy.workflows[producer], policy.workflows[consumer]
+        used = sorted(stated & set(first.output_capability.input_artifacts))
+        source = " and ".join(value.replace("_", " ") for value in used) or "stated inputs"
+        lines.append(
+            f"- **{first.workflow} → {second.workflow}** — {first.workflow} infers "
+            f"{_SINGULAR.get(first.output_capability.artifact_type, _artifact_label(first.output_capability.artifact_type))} "
+            f"from the {source}; {second.workflow} then takes that network and returns "
+            f"{_SINGULAR.get(outcome.artifact_type, _artifact_label(outcome.artifact_type))}."
+        )
+    consumers = list(dict.fromkeys(consumer for _, consumer in routes))
+    for consumer in consumers:
+        lines.extend(
+            line for line in _candidate_details(consumer, policy.workflows[consumer], policy)
+            if line.startswith("  - Method premise:")
+        )
+    names = " or ".join(f"{policy.workflows[p].workflow} → {policy.workflows[c].workflow}" for p, c in routes)
+    return lines, names
+
+
 def _composition(outcome):
     """The Log 252 composition for a one-input result no workflow produces, if any."""
     inputs = [value for value in outcome.input_artifacts if value != "unknown"]
@@ -201,7 +286,8 @@ def _composition_lines(composition, policy) -> tuple[list[str], str]:
     return lines, "a profile from " + " / ".join(names) + ", then clustering outside NetZoo"
 
 
-def _option_lines(outcome, actions, policy, *, single_input: bool) -> tuple[list[str], str]:
+def _option_lines(outcome, actions, policy, *, single_input: bool, routes=(),
+                  stated=frozenset()) -> tuple[list[str], str]:
     specs = [(action, policy.workflows[action]) for action in actions if action in policy.workflows]
     if specs:
         lines = [line for action, spec in specs for line in _candidate_details(action, spec, policy)]
@@ -209,6 +295,8 @@ def _option_lines(outcome, actions, policy, *, single_input: bool) -> tuple[list
     composition = _composition(outcome)
     if composition is not None:
         return _composition_lines(composition, policy)
+    if routes:
+        return _handoff_lines(routes, outcome, policy, stated)
     lines = ["No registered workflow produces this result from "
              + ("this input." if single_input else "these inputs.")]
     accepting = _accepting_workflows(outcome, policy)
@@ -247,14 +335,17 @@ def render_hypothesis_routes(
     # Only a no-tool reply reaches here, so every reading is matched as guidance.
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
     splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
+    stated = _stated_inputs(readings, task)
+    handoffs = [_handoff_routes(reading, stated, policy) if not actions and not split else []
+                for (reading, actions), split in zip(routes, splits)]
     several = len(readings) >= 2 and not _covered(decision, routes)
     # Log 252: one reading with no workflow of its own but a registered composition.
     composed = any(not actions and _composition(reading.outcome) for reading, actions in routes)
-    if not several and not any(splits) and not composed:
+    if not several and not any(splits) and not composed and not any(handoffs):
         return None
     unique_actions = {action for _, actions in routes for action in actions}
     if (len(unique_actions) == 1 and all(actions for _, actions in routes)
-            and not any(splits) and not composed):
+            and not any(splits) and not composed and not any(handoffs)):
         # Different requested artifacts may be outputs of the same method.
         # That is one workflow explanation, not a workflow-selection question.
         action = next(iter(unique_actions))
@@ -273,7 +364,7 @@ def render_hypothesis_routes(
         "premises and inputs:"
     ]
     choices = []
-    for number, ((reading, actions), split) in enumerate(zip(routes, splits), start=1):
+    for number, ((reading, actions), split, handoff) in enumerate(zip(routes, splits, handoffs), start=1):
         lines = [f"**{_title(number, reading, readings, task, user_data)}**"] if len(readings) >= 2 else []
         lines.append(_result_line(reading.outcome))
         prefix = f"{number}: " if len(readings) >= 2 else ""
@@ -286,7 +377,8 @@ def render_hypothesis_routes(
                 lines.extend("  " + line for line in option)
                 choices.append(f"{prefix}the {_input_label(value)} ({names})")
         else:
-            option, names = _option_lines(reading.outcome, actions, policy, single_input=False)
+            option, names = _option_lines(reading.outcome, actions, policy, single_input=False,
+                                          routes=handoff, stated=stated)
             lines.extend(option)
             choices.append(f"{number} ({names})")
         sections.append("\n".join(lines))
@@ -296,6 +388,9 @@ def render_hypothesis_routes(
     elif any(splits):
         question = ("Which should we start with: " + ", ".join(choices)
                     + "? If you meant a different result for one of the inputs, say which.")
+    elif any(handoffs) and not composed:
+        question = ("Should we start with " + choices[0].split(" (", 1)[1].rstrip(")")
+                    + "? Each step is planned and approved on its own.")
     else:
         sources = [policy.workflows[action].workflow
                    for action, _ in _composition(readings[0].outcome).sources

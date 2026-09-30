@@ -56,6 +56,12 @@ class Prompt:
     This mode accepts ``field=path`` assignments, which the per-field wizard
     rejects, so a driver must not offer the same form for both.
     """
+    card: dict | None = None
+    """The last reply's card (``reply_cards.ReplyCard``), whose options answer this prompt.
+
+    Only the main prompt carries one. Every option submits text this prompt
+    already accepts, so a driver that ignores cards loses nothing but brevity.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,3 +85,5 @@ class Event:
 
     kind: Literal["notice", "message", "blank"]
     text: str = ""
+    card: dict | None = None
+    """For a message: its brief form and options; ``text`` stays the full reply."""

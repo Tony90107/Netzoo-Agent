@@ -236,3 +236,37 @@ describe("preflight correction", () => {
     expect(screen.getByText("Which expression file should I use?")).toBeTruthy();
   });
 });
+
+describe("the main prompt with a reply card", () => {
+  it("puts the card's question first and still accepts a typed answer", async () => {
+    const { makeCard, makeOption } = await import("../../test-support/fixtures");
+    const card = makeCard({
+      choices: { header: "Method", question: "Which method fits your study?", ordering: "", allow_other: true,
+        options: [makeOption({ key: "run_panda", label: "PANDA", answer: "Use PANDA" }),
+          makeOption({ key: "run_otter", label: "OTTER", answer: "Use OTTER", action: "run_otter" })] },
+      next_steps: [makeOption({ key: "new-task", label: "Start a new task", answer: "new", resolution: "command", action: null })],
+    });
+    const { onAnswer } = harness(view({
+      prompt_kind: "main", card,
+      next_prompt: makeNextTurnPrompt({ kind: "clarify_outcome", question: "Which modeling assumption best matches?" }),
+    }));
+    expect(screen.getByText("Which method fits your study?")).toBeTruthy();
+    // The card asks the question; the prompt's own copy of it is not repeated.
+    expect(screen.queryByText("Which modeling assumption best matches?")).toBeNull();
+    fireEvent.click(screen.getByText("OTTER"));
+    expect(onAnswer).toHaveBeenLastCalledWith("Use OTTER");
+    fireEvent.change(screen.getByLabelText("Or answer in your own words"), { target: { value: "neither, compare them" } });
+    fireEvent.click(screen.getByText("Send"));
+    expect(onAnswer).toHaveBeenLastCalledWith("neither, compare them");
+  });
+
+  it("offers execution once, from the card, at a ready plan", async () => {
+    const { makeCard, makeOption } = await import("../../test-support/fixtures");
+    const card = makeCard({ kind: "plan_ready", next_steps: [
+      makeOption({ key: "execute", label: "Execute this plan", answer: "/execute", resolution: "command", action: null })] });
+    const { onAnswer } = harness(view({ prompt_kind: "main", card, next_prompt: makeNextTurnPrompt({ kind: "dry_run", question: "Ready." }) }));
+    expect(screen.queryByText("Review and execute this plan")).toBeNull();
+    fireEvent.click(screen.getByText("Execute this plan"));
+    expect(onAnswer).toHaveBeenCalledWith("/execute");
+  });
+});

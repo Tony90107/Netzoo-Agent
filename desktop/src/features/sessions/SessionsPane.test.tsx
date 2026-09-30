@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { SessionsPane } from "./SessionsPane";
 import { listSessions, type SessionSummary } from "../../transport/files";
 
-vi.mock("../../transport/files", () => ({ listSessions: vi.fn() }));
+vi.mock("../../transport/files", () => ({ listSessions: vi.fn(), listTags: vi.fn() }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 const config = { token: "t", port: 8765, baseUrl: "http://127.0.0.1:8765", socketUrl: "ws://127.0.0.1:8765" };
 const props = { config, currentId: "live", selectedId: null, onOpen: vi.fn(), onResume: vi.fn(), refreshToken: false };
@@ -48,4 +48,24 @@ it("refreshes the latest page after execution and recovers from a failed history
   fireEvent.click(screen.getByRole("button", { name: "refresh" }));
   await screen.findByText("updated");
   expect(screen.queryByText("older")).toBeNull();
+});
+
+it("filters by tag and picks sessions to compare", async () => {
+  const { listTags } = await import("../../transport/files");
+  vi.mocked(listTags).mockResolvedValue({ tags: [{ tag: "pilot", count: 2 }] });
+  vi.mocked(listSessions).mockResolvedValue({ ...page(["a", "b"]), sessions: [
+    { ...row("a"), tags: ["pilot"], output_count: 2, models: { response: "openai/gpt-4o-mini" } }, row("b")] });
+  const onCompare = vi.fn();
+  render(<SessionsPane {...props} onCompare={onCompare} />);
+  await screen.findByText("a");
+  expect(screen.getByText("pilot")).toBeTruthy();
+  expect(screen.getByText("2 out")).toBeTruthy();
+  expect(screen.getByText("gpt-4o-mini")).toBeTruthy();
+  fireEvent.change(await screen.findByLabelText("Tag"), { target: { value: "pilot" } });
+  await waitFor(() => expect(vi.mocked(listSessions).mock.calls.at(-1)?.[1]).toEqual({ query: "", status: "all", offset: 0, tag: "pilot" }));
+  fireEvent.click(screen.getByRole("button", { name: "compare" }));
+  fireEvent.click(screen.getByLabelText("Compare a"));
+  fireEvent.click(screen.getByLabelText("Compare b"));
+  fireEvent.click(screen.getByRole("button", { name: "Compare" }));
+  expect(onCompare).toHaveBeenCalledWith(["a", "b"]);
 });

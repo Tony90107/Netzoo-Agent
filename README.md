@@ -15,6 +15,7 @@
 10. 以 OTTER 的 relaxed graph matching 推論 aggregate TF-to-gene regulatory network，嚴格驗證 TF-TF PPI、gene-gene co-expression 與 seed/prior 的方向、shape、identifier 與 NA 行為。
 11. 以 Docker 內固定版本的 netZooPy GIRAFFE 推論 aggregate TF-gene regulation 與 TF-by-sample TFA，並嚴格驗證輸入 identifier、PPI 對稱性與雙輸出。
 12. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
+13. 依照使用者的下載意圖，取得 STRING 指定物種的蛋白質網路資料；支援一般關聯、物理互作與方向性調控三種網路。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
 `apply project policy -> memory retrieval -> classify -> plan -> execute -> evaluate ->
@@ -68,6 +69,20 @@ open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
 ./netzoo-chat
 ```
 
+### 選項選單、精簡回覆與 session 管理
+
+- **選項選單**：一個問題有多個合適答案時（方法平手、多種讀法、多個假設、澄清），回覆下方會出現選項面板。
+  每個選項附一行重點（好處、是否吻合你要的結果、何時選、還缺什麼），有依據的推薦排第一並標 `Recommended`。
+  ↑↓ 移動、Enter 或數字鍵選擇，或直接打字用自己的話回答。
+- **精簡回覆**：先顯示結論與 2–5 條重點，以及「此 agent 無法執行的相關項目」；完整說明可展開（終端版用 `/details`，
+  `--full-replies` 恢復全文）。
+- **下一步**：Execute this plan（仍需兩段式核准）、Plan X with my data、Compare with …、Open the outputs、Start a new task。
+- **Session 即實驗**：New session 時選模型（限 allowlist）並加 tag；session 記錄並沿用它的模型；
+  沒指定輸出路徑時寫到 `outputs/sessions/<session id>/`；輸出預覽可跳回產生它的 session；
+  session 列表可依 tag 篩選，並可勾選 2–4 個 session 並排比較。
+
+詳見 [docs/ui-choices-sessions-2026-09-30.md](docs/ui-choices-sessions-2026-09-30.md)。
+
 ### 為什麼不提供編譯好的 .app
 
 macOS 的 `com.apple.quarantine` 屬性是**下載器**（瀏覽器、AirDrop、郵件）貼上去的。
@@ -92,6 +107,7 @@ app 請留在 repo 目錄內：它是從自己的路徑往上走去找 `docker-c
 | [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
 | [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR、COBRA、DRAGON、OTTER 的 versioned YAML 規格 |
 | [docs/DESKTOP_UI_ARCHITECTURE.md](docs/DESKTOP_UI_ARCHITECTURE.md) | 桌面版的分層、程序模型、協定與里程碑設計 |
+| [docs/ui-choices-sessions-2026-09-30.md](docs/ui-choices-sessions-2026-09-30.md) | 選項選單、精簡回覆卡片、下一步操作與以 session 管理實驗 |
 | [docs/DESKTOP_UI_REPORT.md](docs/DESKTOP_UI_REPORT.md) | 桌面版整合結論、routing 對照實驗與可量測結果 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
@@ -138,6 +154,24 @@ run-puma \
 ```
 
 ## Agent 快速開始
+
+### 下載 STRING 網路資料
+
+在 `./netzoo-chat` 或桌面版輸入，例如「下載 STRING 的人類調控網路」或
+「Download the STRING physical network for mouse」。如果沒有說明物種，agent 會問物種名稱
+或 NCBI taxonomy ID；如果沒有說明網路類型，會問 `functional`（一般蛋白質關聯）、
+`physical`（物理互作）或 `regulatory`（方向性調控）。
+
+agent 先顯示下載計畫；輸入 `/execute` 並確認後，才用 `curl` 從 STRING 官方檔案主機下載。
+預設放在 `data/string/`，也可在請求中指定 `output_dir=...`。它會先檢查本機
+`data/`、`outputs/` 與指定資料夾；若相同物種、網路類型及 STRING 版本的檔案已存在，
+會指出原檔位置，不會重複下載或覆蓋。下載採暫存檔，確認 gzip 與資料欄位後才存成正式檔案。
+
+目前使用 STRING **v12.5** 的標準 `protein.links`、`protein.physical.links` 與
+`protein.regulatory.links` 壓縮檔。調控檔是**方向性蛋白質連結**，不能直接當成
+PANDA／PUMA 的 TF→gene motif prior 或推論出的 gene regulatory network。
+Websearch 可用來查詢 STRING 文件；實際下載使用已知的[官方下載頁](https://string-db.org/cgi/download)
+及其 `stringdb-downloads.org` 檔案連結，不依賴搜尋結果中的任意網址。
 
 先設定 OpenRouter：
 

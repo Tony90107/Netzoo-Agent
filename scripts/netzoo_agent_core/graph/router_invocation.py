@@ -36,6 +36,7 @@ from .hypothesis_bases import (
 from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings
 from ..routing.scale_relaxation import note_unstated_scale, relax_unstated_scale
+from ..string_download import continued_string_download_decision, string_download_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
 # Re-exported for callers and tests that imported them from here before the
@@ -152,6 +153,11 @@ def _route_request(
     usage = _current_usage(context, state)
     if state.get("workflow_continuation") is not None:
         return continue_workflow(context, state, user_task, usage)
+    if continued := continued_string_download_decision(user_task):
+        return _RouterInvocation(
+            decision=continued, routing_state=outcome_routing_state(continued),
+            usage=usage, budget_warnings=[], reason_code="string_download_continuation",
+        )
     # A question explicitly contrasting biological hypotheses is a comparison
     # first. Do not spend the outcome-repair budget collapsing it to one result.
     if explicit_research_choice(user_task):
@@ -217,6 +223,18 @@ def _route_request(
             "routing.explicit_execution_reconciled",
             "classify",
             {"request_mode": reconciled_request_mode},
+        )
+
+    if string_decision := string_download_decision(user_task, interpretation):
+        record_event(context, state, "routing.string_acquisition_selected", "classify", {
+            "species": string_decision.taxon,
+            "network_type": string_decision.string_network_type,
+        })
+        return _RouterInvocation(
+            decision=string_decision,
+            routing_state=outcome_routing_state(string_decision, interpretation.semantic_goal, interpretation.request_mode),
+            usage=usage, budget_warnings=budget_warnings,
+            reason_code="string_acquisition",
         )
 
     _trace(

@@ -16,15 +16,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import settings as runtime_settings
+from ..session_meta import card_for, load_meta, normalize_tags, set_tags
 from ..settings import SESSION_ROOT
 
 __all__ = [
     "SessionSummary",
     "measure_storage",
     "SessionTranscript",
+    "compare_sessions",
     "describe_settings",
     "list_sessions",
+    "output_provenance",
     "read_transcript",
+    "tag_counts",
+    "update_tags",
 ]
 
 #: Summaries are cheap but there are hundreds of checkpoints; show the recent.
@@ -45,6 +50,11 @@ class SessionSummary:
     resumable: bool
     title: str
     total_tokens: int
+    tags: tuple[str, ...] = ()
+    models: dict | None = None
+    outputs: tuple[str, ...] = ()
+    """Files the session's successful runs wrote, project-relative."""
+    output_dir: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,9 +64,15 @@ class SessionTranscript:
     workflow: str
     resumable: bool
     messages: list[dict]
-    """`{role, content}`, the compacted form `save_session` already writes."""
+    """`{role, content}`, the compacted form `save_session` already writes,
+    plus `card` on an assistant message whose brief form was recorded."""
     truncated: bool
     """True when the checkpoint itself is a compacted view of a longer run."""
+    tags: tuple[str, ...] = ()
+    models: dict | None = None
+    outputs: tuple[str, ...] = ()
+    output_dir: str = ""
+    title: str = ""
 
 
 def _first_request(payload: dict) -> str:
@@ -90,6 +106,22 @@ def _saved_status(payload: dict) -> str:
     return status
 
 
+def _outputs(payload: dict) -> tuple[str, ...]:
+    """Files successful runs recorded, as project-relative paths, in run order."""
+    found: list[str] = []
+    for item in payload.get("tool_results") or []:
+        if not isinstance(item, dict) or item.get("superseded") or item.get("status") != "success":
+            continue
+        if not str(item.get("action") or "").startswith("run_"):
+            continue
+        for artifact in item.get("artifacts") or []:
+            text = str(artifact)
+            relative = text.split("/work/", 1)[1] if text.startswith("/work/") else text
+            if relative not in found:
+                found.append(relative)
+    return tuple(found[:200])
+
+
 def _summarise(path: Path) -> SessionSummary | None:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -111,8 +143,13 @@ def _summarise(path: Path) -> SessionSummary | None:
     except (OSError, TypeError, ValueError, OverflowError):
         return None
     status = _saved_status(payload)
+    session_id = str(payload.get("session_id") or path.stem)
+    try:
+        meta = load_meta(session_id, sessions_root=SESSION_ROOT)
+    except ValueError:
+        meta = {"tags": [], "models": {}}
     return SessionSummary(
-        session_id=str(payload.get("session_id") or path.stem),
+        session_id=session_id,
         profile_id=str(payload.get("profile_id") or "default"),
         updated_at=updated,
         auto_generated=bool(payload.get("auto_generated")),
@@ -120,12 +157,16 @@ def _summarise(path: Path) -> SessionSummary | None:
         status=status,
         resumable=status in RESUMABLE,
         title=_first_request(payload),
-        total_tokens=tokens,
+        total_tokens=int(meta.get("tokens_total") or 0) or tokens,
+        tags=tuple(meta.get("tags") or ()),
+        models=dict(meta.get("models") or {}) or None,
+        outputs=_outputs(payload),
+        output_dir=str(meta.get("output_dir") or ""),
     )
 
 
 def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "", *, offset: int = 0,
-                  query: str = "", status: str = "all") -> list[SessionSummary]:
+                  query: str = "", status: str = "all", tag: str = "") -> list[SessionSummary]:
     """Newest first. Resumable sessions are the ones worth coming back to."""
     if not SESSION_ROOT.exists():
         return []
@@ -147,7 +188,10 @@ def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "", *, offset: i
             continue
         if status != "all" and summary.status != status:
             continue
-        if needle and needle not in "\n".join([summary.title, summary.workflow, summary.session_id]).casefold():
+        if tag and tag.casefold() not in {item.casefold() for item in summary.tags}:
+            continue
+        haystack = "\n".join([summary.title, summary.workflow, summary.session_id, *summary.tags])
+        if needle and needle not in haystack.casefold():
             continue
         matched += 1
         if matched <= offset:
@@ -175,19 +219,105 @@ def read_transcript(session_id: str) -> SessionTranscript | None:
         return None
     plan = payload.get("plan") or {}
     status = str(plan.get("status") or "unknown")
-    messages = [
-        {"role": str(item.get("role") or "user"), "content": str(item.get("content") or "")}
-        for item in (payload.get("messages") or [])
-        if isinstance(item, dict)
-    ]
+    session_id = str(payload.get("session_id") or path.stem)
+    meta = load_meta(session_id, sessions_root=SESSION_ROOT)
+    messages = []
+    for item in payload.get("messages") or []:
+        if not isinstance(item, dict):
+            continue
+        message = {"role": str(item.get("role") or "user"), "content": str(item.get("content") or "")}
+        if message["role"] == "assistant" and (card := card_for(meta, message["content"])):
+            message["card"] = card
+        messages.append(message)
     return SessionTranscript(
-        session_id=str(payload.get("session_id") or path.stem),
+        session_id=session_id,
         status=status,
         workflow=str(plan.get("workflow") or ""),
         resumable=status in RESUMABLE,
         messages=messages,
         truncated=bool(payload.get("compacted") or payload.get("truncated")),
+        tags=tuple(meta.get("tags") or ()),
+        models=dict(meta.get("models") or {}) or None,
+        outputs=_outputs(payload),
+        output_dir=str(meta.get("output_dir") or ""),
+        title=_first_request(payload),
     )
+
+
+def update_tags(session_id: str, tags) -> list[str]:
+    """Replace a saved session's tags; the checkpoint itself is not touched."""
+    if not (SESSION_ROOT / f"{_safe(session_id)}.json").is_file():
+        raise FileNotFoundError(session_id)
+    return set_tags(session_id, normalize_tags(tags), sessions_root=SESSION_ROOT)
+
+
+def tag_counts(limit: int = 500) -> list[dict]:
+    """Every tag in use, most used first, so a filter can offer them."""
+    counts: dict[str, list] = {}
+    for summary in list_sessions(limit=limit):
+        for tag in summary.tags:
+            entry = counts.setdefault(tag.casefold(), [tag, 0])
+            entry[1] += 1
+    return [{"tag": tag, "count": count}
+            for tag, count in sorted(counts.values(), key=lambda item: (-item[1], item[0].casefold()))]
+
+
+def output_provenance(relative: str, limit: int = 500) -> list[dict]:
+    """The sessions that wrote an output, newest first.
+
+    A file under `outputs/sessions/<id>/` belongs to that session by
+    construction. Anything else is matched against what each session's
+    successful runs recorded -- so an older shared `outputs/demo` file can list
+    several sessions, the newest being the one whose version is on disk.
+    """
+    relative = relative.strip().lstrip("/")
+    owners = []
+    for summary in list_sessions(limit=limit):
+        folder = f"outputs/sessions/{summary.session_id}/"
+        if relative.startswith(folder) or relative in summary.outputs:
+            owners.append({
+                "session_id": summary.session_id,
+                "title": summary.title,
+                "workflow": summary.workflow,
+                "status": summary.status,
+                "updated_at": summary.updated_at,
+                "tags": list(summary.tags),
+                "owns_folder": relative.startswith(folder),
+            })
+    return owners
+
+
+_INPUT_FIELDS = (
+    "expression_file", "motif_file", "ppi_file", "mirna_file", "coexpression_file", "design_file",
+    "network_file", "mutation_file", "exon_size_file", "cancer_gene_file", "pathway_file",
+    "omics_layer_1", "omics_layer_2",
+)
+
+
+def compare_sessions(session_ids: list[str]) -> list[dict]:
+    """Side-by-side facts of several saved sessions: what each ran, on what, with what."""
+    rows = []
+    for session_id in session_ids[:6]:
+        path = SESSION_ROOT / f"{_safe(session_id)}.json"
+        summary = _summarise(path) if path.is_file() else None
+        if summary is None:
+            continue
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        decision = ((payload.get("plan") or {}).get("decision") or {})
+        rows.append({
+            "session_id": summary.session_id,
+            "title": summary.title,
+            "status": summary.status,
+            "workflow": summary.workflow,
+            "updated_at": summary.updated_at,
+            "total_tokens": summary.total_tokens,
+            "tags": list(summary.tags),
+            "models": summary.models or {},
+            "inputs": {field: str(decision[field]) for field in _INPUT_FIELDS if decision.get(field)},
+            "outputs": list(summary.outputs),
+            "output_dir": summary.output_dir,
+        })
+    return rows
 
 
 def _safe(session_id: str) -> str:

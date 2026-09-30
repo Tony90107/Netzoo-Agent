@@ -1,0 +1,152 @@
+"""What a person attaches to a session, beside what the agent checkpoints.
+
+The checkpoint (`session.py`) is the agent's resumable state and is rewritten
+every turn. Tags, the models a session runs under and the brief forms of its
+replies belong to the person and the window instead, so they live in a small
+sidecar that the checkpoint never touches: `.netzoo/session_meta/<id>.json`.
+It sits beside, not inside, the sessions directory, because everything in
+that directory is read as a checkpoint.
+
+One session is one experiment: it records the models it started with and
+keeps them when resumed (while they are still allow-listed), and its default
+outputs go to its own folder (`session_outputs`).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import time
+from pathlib import Path
+
+from .memory import _write_json_atomic
+from .settings import SESSION_ROOT
+
+__all__ = [
+    "MAX_TAGS",
+    "card_for",
+    "delete_meta",
+    "load_meta",
+    "meta_root",
+    "normalize_tags",
+    "remember_turn",
+    "set_tags",
+]
+
+MAX_TAGS = 12
+MAX_TAG_CHARS = 32
+MAX_CARDS = 40
+_TAG = re.compile(r"^[\w][\w .+/-]*$")
+
+
+def meta_root(sessions_root: Path | None = None) -> Path:
+    """Beside the given sessions directory; callers pass the store they write to."""
+    return Path(sessions_root or SESSION_ROOT).parent / "session_meta"
+
+
+def _safe_id(session_id: str) -> str:
+    # The same rule as session._safe_session_id, kept here so this module does
+    # not import the checkpoint store that imports it.
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", session_id).strip(".-")
+    if not cleaned:
+        raise ValueError("session id must contain a letter or number")
+    return cleaned[:80]
+
+
+def _path(session_id: str, sessions_root: Path | None = None) -> Path:
+    return meta_root(sessions_root) / f"{_safe_id(session_id)}.json"
+
+
+def load_meta(session_id: str, *, sessions_root: Path | None = None) -> dict:
+    try:
+        payload = json.loads(_path(session_id, sessions_root).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    payload.setdefault("version", 1)
+    payload.setdefault("session_id", session_id)
+    payload["tags"] = normalize_tags(payload.get("tags") or [])
+    payload.setdefault("models", {})
+    payload.setdefault("cards", {})
+    return payload
+
+
+def _save(session_id: str, payload: dict, sessions_root: Path | None = None) -> None:
+    path = _path(session_id, sessions_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.parent.chmod(0o700)
+    except OSError:
+        pass
+    payload["updated_at"] = time.time()
+    _write_json_atomic(path, payload)
+
+
+def normalize_tags(tags) -> list[str]:
+    """Trimmed, de-duplicated (case-insensitively), bounded tags; invalid ones dropped."""
+    seen: set[str] = set()
+    kept: list[str] = []
+    for raw in tags if isinstance(tags, (list, tuple)) else []:
+        tag = " ".join(str(raw).split())[:MAX_TAG_CHARS].strip()
+        if not tag or not _TAG.match(tag) or tag.casefold() in seen:
+            continue
+        seen.add(tag.casefold())
+        kept.append(tag)
+        if len(kept) == MAX_TAGS:
+            break
+    return kept
+
+
+def set_tags(session_id: str, tags, *, sessions_root: Path | None = None) -> list[str]:
+    payload = load_meta(session_id, sessions_root=sessions_root)
+    payload["tags"] = normalize_tags(tags)
+    _save(session_id, payload, sessions_root)
+    return payload["tags"]
+
+
+def _content_key(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:24]
+
+
+def remember_turn(session_id: str, *, models: dict | None = None, content: str | None = None,
+                  card: dict | None = None, output_dir: str | None = None, tokens: int = 0,
+                  sessions_root: Path | None = None) -> None:
+    """Record what a finished turn adds; nothing is written when it adds nothing.
+
+    Models are recorded once, when the session first runs, so a later resume
+    under a different default cannot silently rewrite which model produced it.
+    """
+    models = {key: value for key, value in (models or {}).items() if value}
+    if not models and not card and not output_dir and not tokens:
+        return
+    payload = load_meta(session_id, sessions_root=sessions_root)
+    if tokens > 0:
+        # A session's whole cost; the checkpoint only keeps its latest run's.
+        payload["tokens_total"] = int(payload.get("tokens_total") or 0) + int(tokens)
+    if models and not payload["models"]:
+        payload["models"] = models
+        payload.setdefault("created_at", time.time())
+    elif models and payload["models"] != models:
+        payload["resumed_with_models"] = models
+    if output_dir:
+        payload["output_dir"] = output_dir
+    if card and content:
+        cards = dict(payload["cards"])
+        cards[_content_key(content)] = card
+        payload["cards"] = dict(list(cards.items())[-MAX_CARDS:])
+    _save(session_id, payload, sessions_root)
+
+
+def card_for(meta: dict, content: str) -> dict | None:
+    """The brief form recorded for one assistant message, if any."""
+    return (meta.get("cards") or {}).get(_content_key(content))
+
+
+def delete_meta(session_id: str, *, sessions_root: Path | None = None) -> bool:
+    try:
+        _path(session_id, sessions_root).unlink()
+        return True
+    except OSError:
+        return False

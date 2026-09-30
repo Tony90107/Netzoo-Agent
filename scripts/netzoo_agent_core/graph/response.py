@@ -65,16 +65,26 @@ def _is_unresolved_router_fallback(decision: TaskDecision) -> bool:
     )
 
 
+def _reply(content: str, kind: str) -> dict:
+    """One deterministic reply, tagged with the renderer that wrote it.
+
+    The tag is what a reply card is built from (``reply_cards``); the text is
+    exactly the renderer's, so the conversation, the next turn's context and
+    every pinned reply are unchanged.
+    """
+    return {"messages": [AIMessage(content=content)], "reply_kind": kind}
+
+
 def respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     task = latest_user_task(state["messages"])
     if not decision.stated_hypotheses:
         cobra_boundary = render_cobra_expression_boundary(task)
         if cobra_boundary is not None:
-            return {"messages": [AIMessage(content=cobra_boundary)]}
+            return _reply(cobra_boundary, "cobra_boundary")
         algorithm_boundary = render_unsupported_algorithm_boundary(task)
         if algorithm_boundary is not None:
-            return {"messages": [AIMessage(content=algorithm_boundary)]}
+            return _reply(algorithm_boundary, "algorithm_boundary")
     workflow_context = validated_workflow_context(
         decision, context.project_policy,
         include_all=should_expand_guidance_catalog(decision, task), task=task,
@@ -96,26 +106,16 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         else None
     )
     if plan.status == "needs_input":
-        return {"messages": [AIMessage(content=render_needs_input_response(plan))]}
+        return _reply(render_needs_input_response(plan), "needs_input")
     if plan.status == "needs_confirmation":
         if not plan.preference_proposals:
-            return {
-                "messages": [
-                    AIMessage(content=render_input_confirmation_response(plan))
-                ]
-            }
-        return {
-            "messages": [
-                AIMessage(content=render_preference_confirmation_response(plan))
-            ]
-        }
+            return _reply(render_input_confirmation_response(plan), "input_confirmation")
+        return _reply(render_preference_confirmation_response(plan), "preference_confirmation")
     if plan_evaluation and plan_evaluation.status == "rejected":
         _trace("done", "The Plan Evaluator blocked execution")
-        return {
-            "messages": [
-                AIMessage(content=render_plan_rejection_response(plan_evaluation))
-            ]
-        }
+        return _reply(render_plan_rejection_response(plan_evaluation), "plan_rejected")
+    if decision.action == "download_string" and structured_results:
+        return {"messages": [AIMessage(content=structured_results[-1].raw_output)]}
     # Log 248: readings that would collapse into one workflow, or leave one
     # reading without any, are answered one reading at a time.
     hypothesis_routes = (
@@ -123,11 +123,11 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         else render_hypothesis_routes(decision, context.project_policy, task=task)
     )
     if hypothesis_routes is not None:
-        return {"messages": [AIMessage(content=hypothesis_routes)]}
+        return _reply(hypothesis_routes, "hypothesis_routes")
     scientific_explanation = (render_scientific_guidance(decision, context.project_policy, task=task)
                               if not structured_results else None)
     if scientific_explanation is not None:
-        return {"messages": [AIMessage(content=scientific_explanation)]}
+        return _reply(scientific_explanation, "scientific_guidance")
     # The established clarification renderer already lists all methods for a
     # known goal. Override it only for an unknown goal: a recommendation from
     # quoted study facts on a single-goal tie is that renderer's answer, and
@@ -137,78 +137,64 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     choices = (render_research_choices(decision, context.project_policy, task=task)
                if not structured_results and needs_choices else None)
     if choices is not None:
-        return {"messages": [AIMessage(content=choices)]}
+        return _reply(choices, "research_choices")
     sample_handoff_boundary = render_sample_specific_coexpression_handoff_boundary(
         task, context.project_policy,
     )
     if sample_handoff_boundary is not None and not structured_results:
-        return {"messages": [AIMessage(content=sample_handoff_boundary)]}
+        return _reply(sample_handoff_boundary, "handoff_boundary")
     if decision.requested_outcome is not None:
         capability_gap = render_capability_gap(decision, context.project_policy)
         if capability_gap is not None:
-            return {"messages": [AIMessage(content=capability_gap)]}
+            return _reply(capability_gap, "capability_gap")
     if _is_unresolved_router_fallback(decision):
         _trace(
             "done",
             "The response model was skipped because router validation failed",
         )
-        return {
-            "messages": [
-                AIMessage(content=_render_unresolved_router_fallback(decision, task))
-            ]
-        }
+        return _reply(_render_unresolved_router_fallback(decision, task), "unresolved")
     # Plan gates have priority. Rejections/fallback provenance must then precede
     # conceptual or script renderers, without retaining contradictory free prose.
     if (workflow_context["rejected_methods"] or decision.capability_match_status == "fallback") and verified_guidance is not None and not structured_results:
-        return {"messages": [AIMessage(content=verified_guidance)]}
+        return _reply(verified_guidance, "verified_guidance")
     handoff_script = render_registered_handoff_script_guidance(task, decision, context.project_policy)
     if handoff_script is not None:
-        return {"messages": [AIMessage(content=handoff_script)]}
+        return _reply(handoff_script, "handoff_script")
     workflow_contract_answer = render_registered_workflow_contract_answer(
         task, decision, context.project_policy,
     )
     if workflow_contract_answer is not None:
-        return {"messages": [AIMessage(content=workflow_contract_answer)]}
+        return _reply(workflow_contract_answer, "workflow_contract")
     outcome_clarification = render_outcome_clarification(
         decision, context.project_policy, task=task,
         semantic_goal=state.get("semantic_goal"),
     )
     if outcome_clarification is not None:
-        return {"messages": [AIMessage(content=outcome_clarification)]}
+        return _reply(outcome_clarification, "outcome_clarification")
     composition_guidance = render_workflow_composition_guidance(
         decision,
         context.project_policy,
         state.get("semantic_goal"),
     )
     if composition_guidance is not None:
-        return {"messages": [AIMessage(content=composition_guidance)]}
+        return _reply(composition_guidance, "composition")
     if verified_guidance is not None and not structured_results:
-        return {"messages": [AIMessage(content=verified_guidance)]}
+        return _reply(verified_guidance, "verified_guidance")
     retrieval_failure = render_retrieval_failure_response(
         decision, structured_results
     )
     if retrieval_failure is not None:
         _trace("done", "A retrieval failure was rendered without response-model guessing")
-        return {"messages": [AIMessage(content=retrieval_failure)]}
+        return _reply(retrieval_failure, "retrieval_failure")
     authority_report = None
     if decision.action == "web_search":
         authority_report = render_authority_search_response(task, decision, structured_results)
     if authority_report is not None:
         _trace("done", "An authority search report was rendered deterministically")
-        return {"messages": [AIMessage(content=authority_report)]}
+        return _reply(authority_report, "authority_report")
     if decision.action in LOCAL_EXECUTION_ACTIONS and structured_results:
         _trace("done", "This workflow turn has finished")
-        return {
-            "messages": [
-                AIMessage(
-                    content=render_execution_response(
-                        plan,
-                        structured_results,
-                        evaluation,
-                    )
-                )
-            ]
-        }
+        return _reply(render_execution_response(plan, structured_results, evaluation), "execution")
     combined_results = (
         "\n\n".join(
             f"[{item.action}] status={item.status}\n{item.raw_output}"
@@ -335,4 +321,5 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
         "messages": [response],
         "token_usage": usage.model_dump(),
         "budget_warnings": budget_warnings,
+        "reply_kind": "response_model",
     }

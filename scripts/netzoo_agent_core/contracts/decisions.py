@@ -170,6 +170,9 @@ class TaskDecision(BaseModel):
             "Homo sapiens or Mus musculus; leave unset when the user did not specify one."
         ),
     )
+    string_network_type: Literal["functional", "physical", "regulatory"] | None = Field(
+        default=None, exclude_if=lambda value: value is None,
+    )
     output_file: str | None = None
     lioness_output: str | None = None
     network_file: str | None = None

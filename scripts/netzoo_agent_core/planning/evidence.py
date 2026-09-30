@@ -30,6 +30,7 @@ from ..routing import (
 )
 from ..data.paths import _resolve_user_path
 from ..interpretation.input_bindings import request_input_bindings
+from ..session_outputs import session_output_dir
 
 __all__: list[str] = []
 
@@ -439,8 +440,12 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                     autonomous_sources[field_name] = "discovered"
                     autonomous_bundle_ids[field_name] = partial.bundle_id
 
+    # A confirmed preference wins; otherwise a session owns its own folder
+    # (session_outputs), and planning outside a session keeps outputs/demo.
     default_output_dir = str(
-        profile_model.preferences.get("default_output_dir", "outputs/demo")
+        profile_model.preferences.get("default_output_dir")
+        or session_output_dir()
+        or "outputs/demo"
     )
     evidence: list[InputEvidence] = []
     evidence_input_fields = [

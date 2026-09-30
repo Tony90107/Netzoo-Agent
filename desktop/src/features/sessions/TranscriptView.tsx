@@ -11,9 +11,44 @@
 import { useEffect, useState } from "react";
 
 import { Markdown } from "../conversation/Markdown";
+import { ReplyCardView } from "../conversation/ReplyCardView";
 import { DaemonConfig } from "../../transport/daemon";
 import { Transcript, readTranscript } from "../../transport/files";
 import { HistoricalActivity } from "./HistoricalActivity";
+import { TagEditor } from "./TagEditor";
+import { userTurn } from "./userTurn";
+
+/** What this experiment was: its model, its tags, and what it wrote. */
+export function SessionFacts({ config, transcript, onOpenOutput }: {
+  config: DaemonConfig; transcript: Transcript; onOpenOutput?: (path: string) => void;
+}) {
+  const models = Object.entries(transcript.models ?? {});
+  const outputs = transcript.outputs ?? [];
+  return (
+    <div className="sd">
+      <div className="sd__row">
+        <span className="sd__label">Model</span>
+        <span>{models.length ? models.map(([role, name]) => `${role}: ${name.split("/").pop()}`).join(" · ") : "not recorded (session predates model tracking)"}</span>
+      </div>
+      <div className="sd__row">
+        <span className="sd__label">Tags</span>
+        <TagEditor config={config} sessionId={transcript.session_id} tags={transcript.tags ?? []} />
+      </div>
+      <div className="sd__row">
+        <span className="sd__label">Outputs</span>
+        {outputs.length === 0 ? <span className="sd__muted">No files written{transcript.output_dir ? ` · folder ${transcript.output_dir}/` : ""}</span> : (
+          <span className="sd__files">
+            {outputs.slice(0, 8).map((path) => onOpenOutput ? (
+              <button key={path} type="button" className="btn btn--quiet btn--small" title={path}
+                onClick={() => onOpenOutput(path)}>{path.split("/").pop()}</button>
+            ) : <code key={path}>{path}</code>)}
+            {outputs.length > 8 ? <span className="sd__muted">+{outputs.length - 8} more</span> : null}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TranscriptView({
   config,
@@ -52,6 +87,7 @@ export function TranscriptView({
         </button>
       </header>
 
+      {transcript ? <SessionFacts config={config} transcript={transcript} onOpenOutput={onOpenOutput} /> : null}
       <nav className="workspace__tabs" role="group" aria-label="Saved session views">
         <button type="button" aria-pressed={tab === "conversation"} onClick={() => setTab("conversation")}>Conversation</button>
         <button type="button" aria-pressed={tab === "activity"} onClick={() => setTab("activity")}>Activity</button>
@@ -75,7 +111,17 @@ export function TranscriptView({
             key={index}
             className={`bubble bubble--${message.role === "user" ? "user" : "agent"}`}
           >
-            <div className="bubble__body">{message.role === "user" ? message.content : <Markdown>{message.content}</Markdown>}</div>
+            {message.role === "user" ? (() => {
+              const turn = userTurn(message.content);
+              return (
+                <div className="bubble__body bubble__body--plain" title={turn.kind === "said" ? undefined : message.content}>
+                  {turn.kind === "chose" ? <span className="bubble__tag">Option</span> : turn.kind === "follow_up" ? <span className="bubble__tag">Follow-up</span> : null}
+                  {turn.text}
+                </div>
+              );
+            })() : <div className="bubble__body">{message.card
+              ? <ReplyCardView card={message.card} text={message.content} />
+              : <Markdown>{message.content}</Markdown>}</div>}
           </div>
         ))}
       </div>}

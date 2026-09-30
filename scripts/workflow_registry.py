@@ -38,6 +38,7 @@ ActionName = Literal[
     "run_bonobo",
     "query_context7",
     "web_search",
+    "download_string",
 ]
 
 RecommendedAction = Literal[
@@ -1564,6 +1565,13 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
         "WEB-SEARCH",
         required_inputs=("web_query",),
         executor_fields=("web_query",),
+    ),
+    "download_string": ActionDefinition(
+        "download_string",
+        "STRING-DOWNLOAD",
+        required_inputs=("taxon", "string_network_type"),
+        executor_fields=("taxon", "string_network_type", "output_dir"),
+        local=True,
     ),
 }
 

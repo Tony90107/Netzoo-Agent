@@ -11,3 +11,10 @@ it("renders headings, GFM tables and safe links while leaving executable markup 
   expect(document.querySelector("script")).toBeNull();
   expect(screen.queryByRole("link", { name: "Unsafe" })).toBeNull();
 });
+
+it("keeps a written line break without printing blank lines between blocks", () => {
+  const { container } = render(<Markdown>{"Result: a network.\nEach input on its own:\n- From expression\n- From mutations"}</Markdown>);
+  expect(container.querySelectorAll("br").length).toBe(1);
+  expect(container.querySelectorAll("li").length).toBe(2);
+  expect(getComputedStyle(container.firstElementChild as Element).whiteSpace).not.toBe("pre-wrap");
+});
