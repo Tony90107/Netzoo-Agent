@@ -173,7 +173,7 @@ Run PANDA using data/expression.tsv, data/motif.tsv, and data/ppi.tsv; write out
 | episode 搜尋或清理錯誤 | `memory/episodes.py` | `memory/normalization.py`、`memory/storage.py` |
 | 最後文字或語言錯誤 | `graph/response.py` | `presentation.py`、`evaluation/rendering.py` |
 | 選項、重點卡片或下一步不對 | `reply_cards/builder.py` | `reply_cards/choices.py`、`engine/choices.py` |
-| session tag、模型、輸出資料夾 | `session_meta.py`、`session_outputs.py` | `server/history.py` |
+| session 名稱、筆記、tag、模型、輸出資料夾 | `session_meta.py`、`session_outputs.py` | `server/history.py`、`server/app.py` |
 
 ## 常見修改方式
 

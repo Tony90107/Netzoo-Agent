@@ -143,7 +143,6 @@ function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAn
           card={card}
           onAnswer={onAnswer}
           onOpenOutputs={onOpenOutputs}
-          onType={() => textRef.current?.focus()}
         />
       ) : null}
       {view.next_prompt?.question && !asking ? (

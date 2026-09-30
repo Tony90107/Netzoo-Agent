@@ -3,8 +3,9 @@
  * which model, and what it wrote.
  *
  * One session is one experiment, so comparing experiments is comparing
- * sessions. Everything shown is read from the saved checkpoints and their
- * sidecars; nothing is re-run and nothing is inferred.
+ * sessions. Field tags (`dataset:batch-2`) become rows of their own, so the
+ * same field lines up across sessions. Everything shown is read from the
+ * saved checkpoints and their sidecars; nothing is re-run and nothing is inferred.
  */
 import { useEffect, useState } from "react";
 
@@ -12,7 +13,7 @@ import { DaemonConfig } from "../../transport/daemon";
 import { ComparedSession, compareSessions } from "../../transport/files";
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
-import { TagChips } from "./TagEditor";
+import { TagChips, tagField } from "./TagEditor";
 
 const STATUS: Record<string, string> = {
   completed: "Completed", failed: "Failed", dry_run: "Preview only", needs_input: "Needs input",
@@ -21,6 +22,10 @@ const STATUS: Record<string, string> = {
 
 function base(path: string): string {
   return path.split("/").pop() ?? path;
+}
+
+function fieldValue(row: ComparedSession, key: string): string {
+  return row.tags.map(tagField).find((field) => field?.key === key)?.value ?? "";
 }
 
 export function CompareView({
@@ -50,6 +55,7 @@ export function CompareView({
   }, [config, sessionIds.join(",")]);
 
   const inputFields = Array.from(new Set((rows ?? []).flatMap((row) => Object.keys(row.inputs))));
+  const tagFields = Array.from(new Set((rows ?? []).flatMap((row) => row.tags.map(tagField).flatMap((field) => field ? [field.key] : []))));
   const differs = (values: string[]) => new Set(values).size > 1;
 
   return (
@@ -70,7 +76,8 @@ export function CompareView({
                 {rows.map((row) => (
                   <th scope="col" key={row.session_id}>
                     <button type="button" className="cmp__open" onClick={() => onOpenSession(row.session_id)}
-                      title="Open this session">{row.title || row.session_id}</button>
+                      title={row.title ? `Open this session · asked: ${row.title}` : "Open this session"}>{row.name || row.title || row.session_id}</button>
+                    {row.name && row.title ? <span className="cmp__request">{row.title}</span> : null}
                     <code>{row.session_id}</code>
                   </th>
                 ))}
@@ -93,6 +100,12 @@ export function CompareView({
                   ))}{Object.keys(row.models).length ? null : "not recorded"}</td>
                 ))}
               </tr>
+              {tagFields.map((key) => (
+                <tr key={`field-${key}`} className={differs(rows.map((r) => fieldValue(r, key))) ? "is-diff" : ""}>
+                  <th scope="row" title="A field tag">{key}</th>
+                  {rows.map((row) => <td key={row.session_id}>{fieldValue(row, key) || "—"}</td>)}
+                </tr>
+              ))}
               {inputFields.map((field) => (
                 <tr key={field} className={differs(rows.map((r) => r.inputs[field] ?? "")) ? "is-diff" : ""}>
                   <th scope="row">{field.replace(/_file$/, "").replace(/_/g, " ")}</th>
@@ -112,8 +125,15 @@ export function CompareView({
                 ))}
               </tr>
               <tr>
+                <th scope="row">Notes</th>
+                {rows.map((row) => <td key={row.session_id} className="cmp__notes">{row.notes || "—"}</td>)}
+              </tr>
+              <tr>
                 <th scope="row">Tags</th>
-                {rows.map((row) => <td key={row.session_id}><TagChips tags={row.tags} />{row.tags.length ? null : "—"}</td>)}
+                {rows.map((row) => {
+                  const labels = row.tags.filter((tag) => !tagField(tag));
+                  return <td key={row.session_id}><TagChips tags={labels} />{labels.length ? null : "—"}</td>;
+                })}
               </tr>
               <tr>
                 <th scope="row">Tokens</th>

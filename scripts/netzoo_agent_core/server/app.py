@@ -22,7 +22,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from . import activity, files, history
 from ..environment import environment_report
-from ..session_meta import set_tags
+from ..session_meta import set_details, set_tags
 from .path_mapper import PathMapper, PathOutsideProject
 from .protocol import PROTOCOL_VERSION, ClientMessage, Envelope
 from .supervisor import SessionSupervisor, SupervisorError, UnknownSession
@@ -60,12 +60,22 @@ class SessionRequest(BaseModel):
     model: str = Field(default="", max_length=200)
     resume: str = Field(default="", max_length=64)
     tags: list[str] = Field(default_factory=list, max_length=12)
+    name: str = Field(default="", max_length=200)
 
 
 class TagsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     tags: list[str] = Field(default_factory=list, max_length=24)
+
+
+class DetailsRequest(BaseModel):
+    """A session's name and notes; a field left out is kept, "" clears it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=8000)
 
 
 def resolve_token() -> tuple[str, bool]:
@@ -153,17 +163,30 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         request: SessionRequest,
         _scope: None = Depends(require_token),
     ) -> dict:
-        session_id = request.session_id or uuid.uuid4().hex[:8]
+        # Resuming continues a saved session under its own id, as `--resume`
+        # does in the terminal, so its name, notes, tags and output folder stay
+        # one experiment. A worker still running it is attached to instead,
+        # the way a reconnect is; one that has stopped is replaced.
+        resumed = request.resume if not request.session_id and history.has_checkpoint(request.resume) else ""
+        if resumed:
+            live = next((item for item in supervisor.list_sessions() if item["session_id"] == resumed), None)
+            if live and live["alive"] and not live["stopped"]:
+                return {"session_id": resumed, "tags": history.session_details(resumed)["tags"], "attached": True}
+            if live:
+                await supervisor.close(resumed)
+        session_id = request.session_id or resumed or uuid.uuid4().hex[:8]
         await supervisor.create(
             session_id,
             {
                 key: value
                 for key, value in request.model_dump().items()
-                if value and key not in {"session_id", "tags"}
+                if value and key not in {"session_id", "tags", "name"}
             },
         )
         tags = set_tags(session_id, request.tags, sessions_root=history.SESSION_ROOT) if request.tags else []
-        return {"session_id": session_id, "tags": tags}
+        name = (set_details(session_id, name=request.name, sessions_root=history.SESSION_ROOT)["name"]
+                if request.name.strip() else "")
+        return {"session_id": session_id, "tags": tags, "name": name}
 
     @app.delete("/v1/sessions/{session_id}", status_code=204)
     async def delete_session(
@@ -262,6 +285,8 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
                     "status": item.status,
                     "resumable": item.resumable,
                     "title": item.title,
+                    "name": item.name,
+                    "notes_preview": item.notes.split("\n", 1)[0][:120],
                     "total_tokens": item.total_tokens,
                     "tags": list(item.tags),
                     "models": item.models or {},
@@ -292,6 +317,33 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
         except FileNotFoundError as error:
             raise HTTPException(status_code=404, detail="no such session") from error
         return {"session_id": session_id, "tags": tags}
+
+    @app.get("/v1/history/{session_id}/details")
+    def details(
+        session_id: str,
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        try:
+            return history.session_details(session_id)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.post("/v1/history/{session_id}/details")
+    def replace_details(
+        session_id: str,
+        request: DetailsRequest,
+        _scope: None = Depends(require_token),
+    ) -> dict:
+        live = any(item["session_id"] == session_id for item in supervisor.list_sessions())
+        try:
+            saved = (set_details(session_id, name=request.name, notes=request.notes,
+                                 sessions_root=history.SESSION_ROOT) if live
+                     else history.update_details(session_id, name=request.name, notes=request.notes))
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=404, detail="no such session") from error
+        return {"session_id": session_id, **saved}
 
     @app.get("/v1/outputs/provenance")
     def provenance(
@@ -330,6 +382,8 @@ def create_app(*, token: str, supervisor: SessionSupervisor | None = None) -> Fa
             "messages": transcript.messages,
             "truncated": transcript.truncated,
             "title": transcript.title,
+            "name": transcript.name,
+            "notes": transcript.notes,
             "tags": list(transcript.tags),
             "models": transcript.models or {},
             "outputs": list(transcript.outputs),

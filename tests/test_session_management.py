@@ -1,4 +1,4 @@
-"""Sessions as experiments: tags, the models they ran under, and where outputs came from."""
+"""Sessions as experiments: names, notes, tags, the models they ran under, and where outputs came from."""
 import json
 import os
 import sys
@@ -14,6 +14,7 @@ from netzoo_agent_core.session_meta import (  # noqa: E402
     load_meta,
     normalize_tags,
     remember_turn,
+    set_details,
     set_tags,
 )
 
@@ -41,9 +42,54 @@ def store(tmp_path, monkeypatch):
 
 
 def test_tags_are_trimmed_deduplicated_bounded_and_may_be_any_language():
-    assert normalize_tags([" brca ", "BRCA", "乳癌 pilot", "", "bad<tag>", "x" * 50]) == [
-        "brca", "乳癌 pilot", "x" * 32]
+    assert normalize_tags([" brca ", "BRCA", "乳癌 pilot", "", "bad<tag>", "x" * 60]) == [
+        "brca", "乳癌 pilot", "x" * 48]
     assert len(normalize_tags([f"t{i}" for i in range(30)])) == 12
+
+
+def test_a_field_tag_holds_one_value_under_a_lower_case_key():
+    assert normalize_tags(["Dataset : batch-2", "hypothesis:DNA damage", "pilot", "dataset:batch-3",
+                           "time:10:30", ":orphan", "empty:", "細胞株:MCF7"]) == [
+        "dataset:batch-3", "hypothesis:DNA damage", "pilot", "細胞株:MCF7"]
+    # A new value replaces the old one even when the list is full.
+    full = [f"t{i}" for i in range(11)] + ["dataset:a"]
+    assert normalize_tags([*full, "dataset:b"])[-1] == "dataset:b"
+
+
+def test_a_name_and_notes_round_trip_are_searched_and_compared(store):
+    client, write, sessions = store
+    write("n1", title="We collected another batch of patient data", at=1)
+    write("n2", title="We collected another batch of patient data", at=2)
+    body = client.post("/v1/history/n1/details", json={"name": "  Batch 2:  DNA damage ",
+                                                        "notes": "Mutations first.\r\nThen rewiring.\x07"},
+                       headers=AUTH).json()
+    assert body == {"session_id": "n1", "name": "Batch 2: DNA damage", "notes": "Mutations first.\nThen rewiring."}
+    # Leaving a field out keeps it; "" clears it.
+    assert client.post("/v1/history/n1/details", json={"notes": "Mutations first."}, headers=AUTH).json()["name"] == "Batch 2: DNA damage"
+    rows = client.get("/v1/history", headers=AUTH).json()["sessions"]
+    assert [(row["session_id"], row["name"], row["notes_preview"]) for row in rows] == [
+        ("n2", "", ""), ("n1", "Batch 2: DNA damage", "Mutations first.")]
+    assert rows[1]["title"] == "We collected another batch of patient data"  # the request stays the title
+    for needle in ("dna damage", "mutations first"):
+        found = client.get("/v1/history", params={"query": needle}, headers=AUTH).json()["sessions"]
+        assert [row["session_id"] for row in found] == ["n1"]
+    transcript = client.get("/v1/history/n1", headers=AUTH).json()
+    assert transcript["name"] == "Batch 2: DNA damage" and transcript["notes"] == "Mutations first."
+    compared = client.get("/v1/compare", params={"ids": "n1,n2"}, headers=AUTH).json()["sessions"]
+    assert [(row["name"], row["notes"]) for row in compared] == [("Batch 2: DNA damage", "Mutations first."), ("", "")]
+    details = client.get("/v1/history/n1/details", headers=AUTH).json()
+    assert details == {"session_id": "n1", "name": "Batch 2: DNA damage", "notes": "Mutations first.",
+                       "tags": [], "models": {}}
+    assert client.post("/v1/history/n1/details", json={"name": ""}, headers=AUTH).json()["name"] == ""
+    # Names and notes live beside the checkpoint, never in it.
+    assert "notes" not in json.loads((sessions / "n1.json").read_text())
+
+
+def test_details_of_an_unknown_session_are_refused(store):
+    client, _, _ = store
+    assert client.post("/v1/history/nosuch/details", json={"name": "x"}, headers=AUTH).status_code == 404
+    assert client.post("/v1/history/n1/details", json={"name": "x"}).status_code == 401
+    assert client.post("/v1/history/n1/details", json={"title": "x"}, headers=AUTH).status_code == 422
 
 
 def test_tags_round_trip_filter_the_history_and_are_counted(store):
@@ -150,3 +196,91 @@ def test_a_tagged_session_outlives_routine_retention_and_its_sidecar_goes_with_i
     assert not (tmp_path / "session_meta" / "bbbb2222.json").exists()
     assert session_module.delete_session("aaaa1111")
     assert not (tmp_path / "session_meta" / "aaaa1111.json").exists()
+
+
+def test_a_named_or_annotated_session_is_kept_like_a_tagged_one(tmp_path, monkeypatch):
+    import time as _time
+
+    from netzoo_agent_core import session as session_module
+
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    monkeypatch.setattr(session_module, "SESSION_ROOT", sessions)
+    monkeypatch.setattr(session_module, "TOOL_LOG_ROOT", tmp_path / "logs")
+    old = _time.time() - 40 * 86_400
+    for name in ("cccc3333", "dddd4444", "eeee5555"):
+        path = sessions / f"{name}.json"
+        path.write_text(json.dumps({"session_id": name, "plan": {"status": "respond_only"}, "messages": []}))
+        os.utime(path, (old, old))
+    set_details("cccc3333", name="Batch 2", sessions_root=sessions)
+    set_details("dddd4444", notes="Keep: the PANDA baseline", sessions_root=sessions)
+    removed = session_module.cleanup_runtime_storage(retention_days=30, hard_retention_days=180)
+    assert removed["sessions"] == 1
+    assert [p.stem for p in sorted(sessions.glob("*.json"))] == ["cccc3333", "dddd4444"]
+
+
+class _FakeSupervisor:
+    """Only what session creation touches: which workers are live, create, close."""
+
+    def __init__(self, live=()):
+        self.live = {item["session_id"]: item for item in live}
+        self.created, self.closed = [], []
+
+    async def start(self):
+        return None
+
+    async def shutdown(self):
+        return None
+
+    def list_sessions(self):
+        return list(self.live.values())
+
+    async def create(self, session_id, request):
+        self.created.append((session_id, request))
+
+    async def close(self, session_id):
+        self.closed.append(session_id)
+        self.live.pop(session_id, None)
+
+
+def _client_with(supervisor, tmp_path, monkeypatch):
+    sessions = tmp_path / "sessions"
+    sessions.mkdir(exist_ok=True)
+    monkeypatch.setattr(history, "SESSION_ROOT", sessions)
+    (sessions / "s1.json").write_text(json.dumps({"session_id": "s1", "plan": {"status": "needs_input"}, "messages": []}))
+    set_tags("s1", ["dataset:batch-2"], sessions_root=sessions)
+    return TestClient(create_app(token="sessions-token", supervisor=supervisor)), sessions
+
+
+def test_resuming_continues_the_saved_session_under_its_own_id(tmp_path, monkeypatch):
+    supervisor = _FakeSupervisor()
+    client, _ = _client_with(supervisor, tmp_path, monkeypatch)
+    with client:
+        body = client.post("/v1/sessions", json={"resume": "s1"}, headers=AUTH).json()
+        assert body["session_id"] == "s1"
+        assert supervisor.created == [("s1", {"resume": "s1"})]
+        # "latest" is resolved by the worker, so it still gets a fresh id.
+        fresh = client.post("/v1/sessions", json={"resume": "latest"}, headers=AUTH).json()["session_id"]
+        assert fresh != "latest" and len(fresh) == 8
+
+
+def test_resuming_a_live_session_attaches_to_it_and_a_stopped_one_is_replaced(tmp_path, monkeypatch):
+    supervisor = _FakeSupervisor([{"session_id": "s1", "alive": True, "stopped": False}])
+    client, _ = _client_with(supervisor, tmp_path, monkeypatch)
+    with client:
+        body = client.post("/v1/sessions", json={"resume": "s1"}, headers=AUTH).json()
+        assert body == {"session_id": "s1", "tags": ["dataset:batch-2"], "attached": True}
+        assert supervisor.created == [] and supervisor.closed == []
+        supervisor.live["s1"]["stopped"] = True
+        assert client.post("/v1/sessions", json={"resume": "s1"}, headers=AUTH).json()["session_id"] == "s1"
+        assert supervisor.closed == ["s1"] and [item[0] for item in supervisor.created] == ["s1"]
+
+
+def test_a_new_session_can_be_named_when_it_starts(tmp_path, monkeypatch):
+    supervisor = _FakeSupervisor()
+    client, sessions = _client_with(supervisor, tmp_path, monkeypatch)
+    with client:
+        body = client.post("/v1/sessions", json={"name": " Batch 2 ", "tags": ["pilot"]}, headers=AUTH).json()
+        assert body["name"] == "Batch 2" and body["tags"] == ["pilot"]
+        assert "name" not in supervisor.created[0][1]  # the worker never sees it
+        assert load_meta(body["session_id"], sessions_root=sessions)["name"] == "Batch 2"

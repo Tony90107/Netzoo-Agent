@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import settings as runtime_settings
-from ..session_meta import card_for, load_meta, normalize_tags, set_tags
+from ..session_meta import card_for, load_meta, normalize_tags, set_details, set_tags
 from ..settings import SESSION_ROOT
 
 __all__ = [
@@ -27,8 +27,11 @@ __all__ = [
     "describe_settings",
     "list_sessions",
     "output_provenance",
+    "has_checkpoint",
     "read_transcript",
+    "session_details",
     "tag_counts",
+    "update_details",
     "update_tags",
 ]
 
@@ -55,6 +58,9 @@ class SessionSummary:
     outputs: tuple[str, ...] = ()
     """Files the session's successful runs wrote, project-relative."""
     output_dir: str = ""
+    name: str = ""
+    """What the person named the session; `title` stays their first request."""
+    notes: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +79,8 @@ class SessionTranscript:
     outputs: tuple[str, ...] = ()
     output_dir: str = ""
     title: str = ""
+    name: str = ""
+    notes: str = ""
 
 
 def _first_request(payload: dict) -> str:
@@ -147,7 +155,7 @@ def _summarise(path: Path) -> SessionSummary | None:
     try:
         meta = load_meta(session_id, sessions_root=SESSION_ROOT)
     except ValueError:
-        meta = {"tags": [], "models": {}}
+        meta = {"tags": [], "models": {}, "name": "", "notes": ""}
     return SessionSummary(
         session_id=session_id,
         profile_id=str(payload.get("profile_id") or "default"),
@@ -162,6 +170,8 @@ def _summarise(path: Path) -> SessionSummary | None:
         models=dict(meta.get("models") or {}) or None,
         outputs=_outputs(payload),
         output_dir=str(meta.get("output_dir") or ""),
+        name=str(meta.get("name") or ""),
+        notes=str(meta.get("notes") or ""),
     )
 
 
@@ -190,7 +200,8 @@ def list_sessions(limit: int = DEFAULT_LIMIT, profile_id: str = "", *, offset: i
             continue
         if tag and tag.casefold() not in {item.casefold() for item in summary.tags}:
             continue
-        haystack = "\n".join([summary.title, summary.workflow, summary.session_id, *summary.tags])
+        haystack = "\n".join([summary.name, summary.title, summary.workflow, summary.session_id,
+                              *summary.tags, summary.notes])
         if needle and needle not in haystack.casefold():
             continue
         matched += 1
@@ -241,6 +252,8 @@ def read_transcript(session_id: str) -> SessionTranscript | None:
         outputs=_outputs(payload),
         output_dir=str(meta.get("output_dir") or ""),
         title=_first_request(payload),
+        name=str(meta.get("name") or ""),
+        notes=str(meta.get("notes") or ""),
     )
 
 
@@ -249,6 +262,28 @@ def update_tags(session_id: str, tags) -> list[str]:
     if not (SESSION_ROOT / f"{_safe(session_id)}.json").is_file():
         raise FileNotFoundError(session_id)
     return set_tags(session_id, normalize_tags(tags), sessions_root=SESSION_ROOT)
+
+
+def update_details(session_id: str, *, name=None, notes=None) -> dict:
+    """Rename or annotate a saved session; the checkpoint itself is not touched."""
+    if not (SESSION_ROOT / f"{_safe(session_id)}.json").is_file():
+        raise FileNotFoundError(session_id)
+    return set_details(session_id, name=name, notes=notes, sessions_root=SESSION_ROOT)
+
+
+def has_checkpoint(session_id: str) -> bool:
+    """Whether a bare id names a saved session."""
+    try:
+        return (SESSION_ROOT / f"{_safe(session_id)}.json").is_file()
+    except ValueError:
+        return False
+
+
+def session_details(session_id: str) -> dict:
+    """What the person attached to a session, whether or not it has a checkpoint yet."""
+    meta = load_meta(_safe(session_id), sessions_root=SESSION_ROOT)
+    return {"session_id": session_id, "name": meta["name"], "notes": meta["notes"],
+            "tags": list(meta["tags"]), "models": dict(meta.get("models") or {})}
 
 
 def tag_counts(limit: int = 500) -> list[dict]:
@@ -278,6 +313,7 @@ def output_provenance(relative: str, limit: int = 500) -> list[dict]:
             owners.append({
                 "session_id": summary.session_id,
                 "title": summary.title,
+                "name": summary.name,
                 "workflow": summary.workflow,
                 "status": summary.status,
                 "updated_at": summary.updated_at,
@@ -307,6 +343,8 @@ def compare_sessions(session_ids: list[str]) -> list[dict]:
         rows.append({
             "session_id": summary.session_id,
             "title": summary.title,
+            "name": summary.name,
+            "notes": summary.notes,
             "status": summary.status,
             "workflow": summary.workflow,
             "updated_at": summary.updated_at,

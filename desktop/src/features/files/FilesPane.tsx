@@ -95,13 +95,13 @@ function Provenance({ config, path, onOpenSession }: { config: DaemonConfig; pat
       <span>From session</span>
       <button type="button" className="fv__origin-link" disabled={!onOpenSession}
         title={`Open session ${latest.session_id}`} onClick={() => onOpenSession?.(latest.session_id)}>
-        {latest.title || latest.session_id}
+        {latest.name || latest.title || latest.session_id}
       </button>
       <code>{latest.session_id}</code>
       {latest.workflow ? <span className="fv__origin-meta">{latest.workflow}</span> : null}
       <TagChips tags={latest.tags} />
       {earlier.length ? (
-        <span className="fv__origin-warn" title={earlier.map((item) => `${item.session_id} ${item.title}`).join("\n")}>
+        <span className="fv__origin-warn" title={earlier.map((item) => `${item.session_id} ${item.name || item.title}`).join("\n")}>
           {earlier.length} earlier session{earlier.length === 1 ? "" : "s"} wrote the same path; this file is the latest version.
         </span>
       ) : null}

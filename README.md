@@ -73,13 +73,15 @@ open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
 
 - **選項選單**：一個問題有多個合適答案時（方法平手、多種讀法、多個假設、澄清），回覆下方會出現選項面板。
   每個選項附一行重點（好處、是否吻合你要的結果、何時選、還缺什麼），有依據的推薦排第一並標 `Recommended`。
-  ↑↓ 移動、Enter 或數字鍵選擇，或直接打字用自己的話回答。
+  ↑↓ 移動、Enter 或數字鍵選擇；最後一列「Type your own answer」可就地用自己的話回答。
 - **精簡回覆**：先顯示結論與 2–5 條重點，以及「此 agent 無法執行的相關項目」；完整說明可展開（終端版用 `/details`，
   `--full-replies` 恢復全文）。
 - **下一步**：Execute this plan（仍需兩段式核准）、Plan X with my data、Compare with …、Open the outputs、Start a new task。
-- **Session 即實驗**：New session 時選模型（限 allowlist）並加 tag；session 記錄並沿用它的模型；
+- **Session 即實驗**：New session 時取名稱、選模型（限 allowlist）並加 tag；session 記錄並沿用它的模型；
+  名稱與筆記可隨時在標題列或 session 檢視修改；tag 可以是標籤（`pilot`）或欄位（`dataset:batch-2`，每個 session 一個值）；
   沒指定輸出路徑時寫到 `outputs/sessions/<session id>/`；輸出預覽可跳回產生它的 session；
-  session 列表可依 tag 篩選，並可勾選 2–4 個 session 並排比較。
+  Resume 沿用原本的 session id（與終端版 `--resume` 相同）；
+  session 列表可依名稱、筆記、tag 搜尋與篩選，並可勾選 2–4 個 session 並排比較（每個欄位一列）。
 
 詳見 [docs/ui-choices-sessions-2026-09-30.md](docs/ui-choices-sessions-2026-09-30.md)。
 

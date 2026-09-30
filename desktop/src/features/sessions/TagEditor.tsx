@@ -1,6 +1,8 @@
 /**
  * Tags on a session: short labels a person uses to find and group experiments.
  *
+ * A tag is a label (`pilot`) or a field (`dataset:batch-2`). A field holds one
+ * value per session, so Compare can line the same field up across sessions.
  * Saved beside the checkpoint by the daemon, which trims, de-duplicates and
  * bounds them; the editor shows what the daemon kept, not what was typed.
  */
@@ -9,14 +11,26 @@ import { KeyboardEvent, useEffect, useState } from "react";
 import { DaemonConfig } from "../../transport/daemon";
 import { saveTags } from "../../transport/files";
 
+/** `{key, value}` of a field tag (`dataset:batch-2`); null for a plain label. */
+export function tagField(tag: string): { key: string; value: string } | null {
+  const at = tag.indexOf(":");
+  return at > 0 ? { key: tag.slice(0, at), value: tag.slice(at + 1) } : null;
+}
+
+/** A tag as shown: a field's key is set apart from its value. */
+export function TagLabel({ tag }: { tag: string }) {
+  const field = tagField(tag);
+  return field ? <><span className="tag__key">{field.key}:</span>{field.value}</> : <>{tag}</>;
+}
+
 export function TagChips({ tags, onPick }: { tags: string[]; onPick?: (tag: string) => void }) {
   if (!tags.length) return null;
   return (
     <span className="tags">
       {tags.map((tag) => onPick ? (
         <button key={tag} type="button" className="tag tag--link" title={`Show sessions tagged “${tag}”`}
-          onClick={(event) => { event.stopPropagation(); onPick(tag); }}>{tag}</button>
-      ) : <span key={tag} className="tag">{tag}</span>)}
+          onClick={(event) => { event.stopPropagation(); onPick(tag); }}><TagLabel tag={tag} /></button>
+      ) : <span key={tag} className="tag"><TagLabel tag={tag} /></span>)}
     </span>
   );
 }
@@ -72,7 +86,7 @@ export function TagEditor({
     <div className="tagedit" aria-busy={saving}>
       {current.map((tag) => (
         <span key={tag} className="tag">
-          {tag}
+          <TagLabel tag={tag} />
           <button type="button" className="tag__remove" aria-label={`Remove tag ${tag}`}
             onClick={() => void save(current.filter((item) => item !== tag))}>×</button>
         </span>
@@ -80,9 +94,13 @@ export function TagEditor({
       <input
         className="tagedit__input"
         value={draft}
-        maxLength={32}
-        placeholder={current.length ? "Add tag" : "Add a tag, e.g. pilot"}
+        maxLength={48}
+        placeholder={current.length ? "Add tag" : "Add a tag, e.g. pilot or dataset:batch-2"}
         aria-label="Add a tag to this session"
+        title={"Your own labels for finding and comparing sessions: a label such as pilot, or a field such as "
+          + "dataset:batch-2 or hypothesis:dna-damage. A field holds one value per session, and Compare lines "
+          + "fields up side by side. Filter by tags in Sessions; tagged sessions are kept from routine cleanup. "
+          + "The agent never reads them."}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={onKeyDown}
         onBlur={add}
