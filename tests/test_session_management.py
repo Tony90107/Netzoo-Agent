@@ -284,3 +284,57 @@ def test_a_new_session_can_be_named_when_it_starts(tmp_path, monkeypatch):
         assert body["name"] == "Batch 2" and body["tags"] == ["pilot"]
         assert "name" not in supervisor.created[0][1]  # the worker never sees it
         assert load_meta(body["session_id"], sessions_root=sessions)["name"] == "Batch 2"
+
+
+def test_outputs_are_one_entry_per_session_newest_first(tmp_path, monkeypatch):
+    from netzoo_agent_core.server import files
+
+    project, sessions = tmp_path / "project", tmp_path / "sessions"
+    sessions.mkdir()
+    monkeypatch.setattr(files, "PROJECT_ROOT", project)
+    monkeypatch.setattr(history, "SESSION_ROOT", sessions)
+
+    def put(relative, at):
+        path = project / "outputs" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x")
+        os.utime(path, (at, at))
+
+    def save(name, workflow, artifact, at):
+        path = sessions / f"{name}.json"
+        artifacts = artifact if isinstance(artifact, list) else [artifact]
+        path.write_text(json.dumps({
+            "session_id": name, "messages": [{"role": "user", "content": f"run {workflow}"}],
+            "plan": {"workflow": workflow, "status": "ready"}, "evaluation": {"status": "completed"},
+            "tool_results": [{"action": f"run_{workflow.lower()}", "status": "success",
+                              "artifacts": [f"/work/{item}" for item in artifacts]}],
+        }))
+        os.utime(path, (at, at))
+
+    put("sessions/s1/panda.tsv", 10)
+    save("s1", "PANDA", "outputs/sessions/s1/panda.tsv", 10)
+    for name, at in (("otter.tsv", 30), ("manifest.json", 30), ("otter-execution-x_TW.md", 31)):
+        put(f"sessions/s2/{name}", at)
+    # A recorded manifest is the run's record, not a result.
+    save("s2", "OTTER", ["outputs/sessions/s2/otter.tsv", "outputs/sessions/s2/manifest.json"], 31)
+    set_details("s2", name="Batch 2: OTTER", sessions_root=sessions)
+    # Two old sessions wrote the same shared file; the one on disk is the newer one's.
+    put("demo/puma.tsv", 20)
+    save("old1", "PUMA", "outputs/demo/puma.tsv", 15)
+    save("old2", "PUMA", "outputs/demo/puma.tsv", 20)
+    put("sessions/expired/cobra.tsv", 5)  # its checkpoint is gone
+    put("stray.txt", 1)
+
+    body = history.outputs_by_session()
+    assert [entry["session_id"] for entry in body["sessions"]] == ["s2", "old2", "s1", "expired"]
+    newest = body["sessions"][0]
+    assert newest["name"] == "Batch 2: OTTER" and newest["folder"] == "outputs/sessions/s2"
+    assert [(item["name"], item["result"]) for item in newest["files"]] == [
+        ("otter.tsv", True), ("manifest.json", False), ("otter-execution-x_TW.md", False)]
+    assert newest["added_at"] == 31
+    assert [item["path"] for item in body["sessions"][2]["files"]] == ["outputs/sessions/s1/panda.tsv"]
+    assert body["sessions"][3]["saved"] is False and body["sessions"][3]["title"] == ""
+    assert body["other_files"] == 1  # stray.txt
+    with TestClient(create_app(token="sessions-token", supervisor=_FakeSupervisor())) as client:
+        assert client.get("/v1/outputs/sessions", headers=AUTH).json() == body
+        assert client.get("/v1/outputs/sessions").status_code == 401

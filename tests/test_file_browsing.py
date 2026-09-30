@@ -247,3 +247,21 @@ class TestBufferedPreviews:
         shutil.rmtree(tree / "outputs")
         result = files.list_directory()
         assert result.path == "outputs" and result.total == 0
+
+
+class TestOutputIndexHelpers:
+    def test_only_visible_files_inside_outputs_are_listed(self, tree):
+        demo = tree / "outputs" / "demo"
+        (demo / ".hidden").write_text("x")
+        (demo / "sub").mkdir()
+        (demo / "sub" / "deep.tsv").write_text("a\n")
+        (tree / "outputs" / "escape").symlink_to(tree / "scripts")
+        assert [entry.path for entry in files.files_under("outputs")] == [
+            "outputs/demo/blob.bin", "outputs/demo/net.tsv", "outputs/demo/report.md", "outputs/demo/sub/deep.tsv"]
+        assert files.files_under("outputs", skip=("demo",)) == []
+        assert files.files_under("outputs", limit=2) and len(files.files_under("outputs", limit=2)) == 2
+        assert files.file_entry("outputs/demo/net.tsv").size_bytes > 0
+        for outside in (".env", "outputs/escape/agent.py", "outputs/demo", "outputs/../scripts/agent.py"):
+            assert files.file_entry(outside) is None
+        assert files.subdirectories("outputs") == ["demo"]
+

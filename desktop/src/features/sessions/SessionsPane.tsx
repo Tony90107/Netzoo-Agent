@@ -13,15 +13,7 @@ import { SessionSummary, TagCount, listSessions, listTags, type SessionFilter } 
 import { TagChips, tagField } from "./TagEditor";
 
 import { useTimeZone } from "../timeline/timeZone";
-import { fullTime } from "../timeline/time";
-
-function when(seconds: number): string {
-  const elapsed = Date.now() / 1000 - seconds;
-  if (elapsed < 60) return "just now";
-  if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m ago`;
-  if (elapsed < 86400) return `${Math.floor(elapsed / 3600)}h ago`;
-  return `${Math.floor(elapsed / 86400)}d ago`;
-}
+import { fullTime, relativeTime as when } from "../timeline/time";
 
 const STATUS_LABELS: Record<string, string> = {
   needs_input: "Needs input", needs_confirmation: "Needs approval", completed: "Completed",

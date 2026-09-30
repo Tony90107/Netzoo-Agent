@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from .. import settings as runtime_settings
 from ..session_meta import card_for, load_meta, normalize_tags, set_details, set_tags
+from ..session_outputs import SESSION_OUTPUT_ROOT
 from ..settings import SESSION_ROOT
+from . import files as output_files
 
 __all__ = [
     "SessionSummary",
@@ -27,6 +30,7 @@ __all__ = [
     "describe_settings",
     "list_sessions",
     "output_provenance",
+    "outputs_by_session",
     "has_checkpoint",
     "read_transcript",
     "session_details",
@@ -321,6 +325,70 @@ def output_provenance(relative: str, limit: int = 500) -> list[dict]:
                 "owns_folder": relative.startswith(folder),
             })
     return owners
+
+
+#: What every run writes beside its results: never a result itself.
+_RUN_RECORD = re.compile(r"^manifest\.json$|-execution-.+_TW(?:-\d+)?\.md$")
+
+
+def outputs_by_session(limit: int = 500) -> dict:
+    """One entry per session with files in outputs/, the most recently written first.
+
+    A session's files are everything in its own folder (`outputs/sessions/<id>/`:
+    each result, its manifest and the run's execution record) plus what its runs
+    recorded elsewhere, so a run that wrote several files is one entry holding
+    only that session's files. A file several sessions wrote to the same place
+    (the old shared `outputs/demo`) is the newest writer's, whose version is on
+    disk. A folder whose checkpoint has expired is still listed. A file is a
+    `result` when a run recorded it and it is not the run's manifest or
+    execution record. `other_files` counts what no session wrote, for the
+    folder browser.
+    """
+    summaries = {summary.session_id: summary for summary in list_sessions(limit=limit)}
+    folders = output_files.subdirectories(SESSION_OUTPUT_ROOT)
+    owned: dict[str, dict] = {}
+    for session_id in folders:
+        for item in output_files.files_under(f"{SESSION_OUTPUT_ROOT}/{session_id}"):
+            owned.setdefault(session_id, {})[item.path] = item
+    taken = {path for items in owned.values() for path in items}
+    results: dict[str, set[str]] = {}
+    for session_id, summary in summaries.items():  # newest first
+        for path in summary.outputs:
+            if not path.startswith(f"{output_files.FILE_ROOT}/"):
+                continue
+            entry = output_files.file_entry(path)
+            # A recorded artifact can be a folder of files (per-sample networks).
+            for item in [entry] if entry else output_files.files_under(path):
+                if item.path in owned.get(session_id, {}):
+                    results.setdefault(session_id, set()).add(item.path)
+                elif item.path not in taken:
+                    owned.setdefault(session_id, {})[item.path] = item
+                    results.setdefault(session_id, set()).add(item.path)
+                    taken.add(item.path)
+    entries = []
+    for session_id, items in owned.items():
+        summary = summaries.get(session_id)
+        meta = {} if summary else load_meta(session_id, sessions_root=SESSION_ROOT)
+        marked = {path for path in results.get(session_id, set()) if not _RUN_RECORD.search(path.rsplit("/", 1)[-1])}
+        entries.append({
+            "session_id": session_id,
+            "name": summary.name if summary else str(meta.get("name") or ""),
+            "title": summary.title if summary else "",
+            "workflow": summary.workflow if summary else "",
+            "status": summary.status if summary else "",
+            "saved": summary is not None,
+            "added_at": max(item.modified_at for item in items.values()),
+            "folder": f"{SESSION_OUTPUT_ROOT}/{session_id}" if session_id in folders else "",
+            "files": [
+                {"name": item.name, "path": item.path, "size_bytes": item.size_bytes,
+                 "modified_at": item.modified_at, "result": item.path in marked}
+                for item in sorted(items.values(), key=lambda item: (item.path not in marked, item.path))
+            ],
+        })
+    entries.sort(key=lambda entry: (entry["added_at"], entry["session_id"]), reverse=True)
+    others = [item for item in output_files.files_under(output_files.FILE_ROOT, limit=2000, skip=("sessions",))
+              if item.path not in taken]
+    return {"sessions": entries, "other_files": len(others)}
 
 
 _INPUT_FIELDS = (
