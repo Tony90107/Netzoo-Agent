@@ -385,6 +385,28 @@ def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
     return tuple(mentions)
 
 
+def stated_scale_gap(task: str, outcome) -> str | None:
+    """The ontology issue a reading carries only because it keeps a stated scale (Log 294).
+
+    "Gene communities separately for each patient, with individual-specific
+    networks" states a per-sample scale for a result the ontology gives only
+    one scale (`community_assignment`: aggregate). The faithful reading broke
+    the ontology, its repair to aggregate contradicted the request, and both
+    attempts ended in "Semantic routing output failed validation". No reading
+    can satisfy both, so the reading that follows the request is kept and
+    matched as a capability gap. Only the one scale the request states counts.
+    """
+    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
+    if (
+        rule is None or rule.granularities is None
+        or outcome.granularity not in {"aggregate", "sample_specific"}
+        or outcome.granularity in rule.granularities
+        or {mention.granularity for mention in granularity_mentions(task)} != {outcome.granularity}
+    ):
+        return None
+    return f"artifact_granularity:{outcome.artifact_type}"
+
+
 def confirmed_current_inputs(task: str) -> set[str]:
     """Return the artifacts these witnesses locate in the request as current."""
     return {item.artifact for item in input_mentions(task) if item.status == "current"}

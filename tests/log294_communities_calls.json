@@ -1,0 +1,82 @@
+{
+ "source": "docs/research-log/scale-witness-2026-10-01/live-ee-cand-s1-targeted.json.gz (first pass and its repair, replayed as the review) + live-ee-base-s1-targeted.json.gz (intent, concerns); Log 294",
+ "prompt": "Which tool finds gene communities separately for each patient, with individual-specific networks split into modules per patient? Advice only.",
+ "calls": [
+  {
+   "schema": "SemanticInterpretation",
+   "args": {
+    "request_mode": "guidance",
+    "semantic_goal": "Identify a tool for finding gene communities in individual-specific networks.",
+    "outcome_hypotheses": [
+     {
+      "outcome": {
+       "operation": "infer",
+       "artifact_type": "community_assignment",
+       "granularity": "sample_specific"
+      },
+      "confidence": 0.9,
+      "evidence": [
+       {
+        "dimension": "artifact_type",
+        "value": "community_assignment",
+        "source": "explicit",
+        "rationale": "The user is looking for a tool that identifies gene communities, which aligns with community assignment.",
+        "text_span": "finds gene communities separately for each patient"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "schema": "SemanticPatch",
+   "args": {
+    "hypothesis_index": 0,
+    "request_mode": "guidance",
+    "semantic_goal": "Identify a tool for finding gene communities in individual-specific networks.",
+    "confidence": 0.9,
+    "outcome": {
+     "operation": "infer",
+     "input_artifacts": [],
+     "artifact_type": "community_assignment",
+     "entity_types": [],
+     "display_entities": [],
+     "regulator_types": [],
+     "target_types": [],
+     "selection_tags": [],
+     "granularity": "not_applicable",
+     "unresolved_dimensions": []
+    },
+    "evidence_removals": [
+     {
+      "dimension": "granularity",
+      "value": "sample_specific"
+     }
+    ],
+    "evidence_additions": [
+     {
+      "dimension": "granularity",
+      "value": "not_applicable",
+      "rationale": "The artifact type 'community_assignment' does not support sample-specific granularity, as it typically represents a single network structure rather than individual-specific outputs.",
+      "source": "inferred"
+     }
+    ],
+    "assumptions": null
+   }
+  },
+  {
+   "schema": "IntentDecision",
+   "args": {
+    "mode": "answer",
+    "confidence": 1.0,
+    "reason": "The user is seeking advice on a tool for finding gene communities in individual-specific networks, which qualifies as an answer request."
+   }
+  },
+  {
+   "schema": "StatedConcernClaims",
+   "args": {
+    "claims": []
+   }
+  }
+ ]
+}

@@ -202,6 +202,16 @@ def match_requested_outcome(
 ) -> CapabilityMatch:
     """Return a fail-closed match derived only from typed outcome dimensions."""
     issues = outcome_consistency_issues(outcome)
+    if list(issues) == [f"artifact_granularity:{outcome.artifact_type}"]:
+        # Log 294: a result at a scale the ontology does not give it. Name the
+        # workflows that give the result at its registered scale.
+        return CapabilityMatch(
+            status="unsupported", mismatch_dimensions=["granularity"],
+            alternative_actions=[
+                action for action, capability in capabilities.items()
+                if capability.artifact_type == outcome.artifact_type
+            ],
+        )
     if issues:
         return CapabilityMatch(status="unsupported", mismatch_dimensions=list(issues))
     if _is_not_applicable(outcome):

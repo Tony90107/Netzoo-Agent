@@ -300,6 +300,8 @@ def match_outcome_hypotheses(
     issues = list(dict.fromkeys(
         issue for item in hypotheses for issue in outcome_consistency_issues(item.outcome)
     ))
+    if len(hypotheses) == 1 and issues == [f"artifact_granularity:{hypotheses[0].outcome.artifact_type}"]:
+        return match_requested_outcome(hypotheses[0].outcome, capabilities)  # Log 294 scale gap
     if issues:
         return CapabilityMatch(status="unsupported", mismatch_dimensions=issues[:5])
     if hypotheses and all(_is_not_applicable(item.outcome) for item in hypotheses):
