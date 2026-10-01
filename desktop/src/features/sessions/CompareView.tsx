@@ -86,7 +86,7 @@ export function CompareView({
             <tbody>
               <tr className={differs(rows.map((r) => r.workflow)) ? "is-diff" : ""}>
                 <th scope="row">Workflow</th>
-                {rows.map((row) => <td key={row.session_id}>{row.workflow || "—"}</td>)}
+                {rows.map((row) => <td key={row.session_id}>{row.workflow && row.workflow !== "NO-TOOL" ? row.workflow : "None (conversation only)"}</td>)}
               </tr>
               <tr className={differs(rows.map((r) => r.status)) ? "is-diff" : ""}>
                 <th scope="row">Result</th>

@@ -215,10 +215,9 @@ class WorkerDriver:
             return 0
 
     def _loop(self) -> int:
-        opening = self.machine.opening_notice()
+        # The machine's opening banner is the terminal's ("… exit or quit to
+        # stop"); the window shows its own empty state and mode switch.
         self._send("ready", {"session_id": self.session_id})
-        if opening is not None:
-            self._emit_events([opening])
         while True:
             action = self.machine.next_action()
             if isinstance(action, Stop):

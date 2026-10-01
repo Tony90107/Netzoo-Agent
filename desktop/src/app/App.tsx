@@ -51,6 +51,13 @@ function connectionText(session: SessionState | null, port: number): string {
   }
 }
 
+/** Stop a daemon session's worker; its checkpoint stays resumable. */
+function retireSession(config: DaemonConfig, sessionId: string) {
+  void fetch(`${config.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE", headers: { Authorization: `Bearer ${config.token}` },
+  }).catch(() => undefined);
+}
+
 function StatusBar({
   session,
   port,
@@ -89,8 +96,8 @@ function StatusBar({
       ) : null}
       <span className="statusbar__spacer" />
       {usage ? (
-        <span>
-          {usage.total_tokens.toLocaleString()} / {usage.budget_tokens.toLocaleString()} tokens
+        <span title="Tokens the current request has used, out of its budget. The session list shows each session's total.">
+          This request: {usage.total_tokens.toLocaleString()} / {usage.budget_tokens.toLocaleString()} tokens
         </span>
       ) : null}
     </footer>
@@ -125,10 +132,17 @@ export function App() {
   const [planHeight, setPlanHeight] = usePaneSize("plan", 330, 120, 1000);
   const [session, setSession] = useState<SessionState | null>(null);
   const socket = useRef<SessionSocket | null>(null);
+  const live = useRef<{ id: string; busy: boolean } | null>(null);
+  useEffect(() => { live.current = session ? { id: session.sessionId, busy: session.busy } : null; }, [session]);
   const connectionGeneration = useRef(0);
   const startedAt = useRef(0);
 
   const connect = useCallback(async (resume?: string, options: NewSessionOptions = {}) => {
+    // The session being left: its worker is retired once the next one starts,
+    // unless it is mid-turn. Its checkpoint is saved after every turn, so it
+    // resumes under the same id; leaving it alive only held a process open
+    // until the 30-minute idle reaper.
+    const leaving = live.current;
     setHistoryOutputPath(null); setOutputReturn(null); setViewingSessionId(null); setShowSettings(false);
     setCompareIds(null); setSessionTags(options.tags ?? []); setSessionModel(options.model ?? "");
     setSessionName(options.name ?? ""); setSessionNotes("");
@@ -147,12 +161,11 @@ export function App() {
       );
       if (generation !== connectionGeneration.current) return;
       const sessionId = await createSession(config, resume, options);
+      if (leaving && !leaving.busy && leaving.id !== sessionId) retireSession(config, leaving.id);
       if (generation !== connectionGeneration.current) {
         // This launch created the unused session. Retire it without touching
         // the current one or the daemon shared by the desktop shell.
-        void fetch(`${config.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}`, {
-          method: "DELETE", headers: { Authorization: `Bearer ${config.token}` },
-        }).catch(() => undefined);
+        retireSession(config, sessionId);
         return;
       }
       setSession(emptySession(sessionId));
@@ -161,7 +174,8 @@ export function App() {
       // replace the ones it already had).
       void readDetails(config, sessionId).then((details) => {
         if (generation !== connectionGeneration.current) return;
-        setSessionTags(details.tags); setSessionName(details.name); setSessionNotes(details.notes);
+        // A daemon from before a field existed leaves it out; never pass undefined on.
+        setSessionTags(details.tags ?? []); setSessionName(details.name ?? ""); setSessionNotes(details.notes ?? "");
         if (details.models?.response) setSessionModel(details.models.response);
       }).catch(() => undefined);
       socket.current = new SessionSocket(config, sessionId, (apply) =>
@@ -386,15 +400,15 @@ export function App() {
       /> : null}
 
       <aside className="inspector" aria-label="Current session inspector" hidden={!inspectorVisible} style={{ width: inspectorWidth }}>
-        <div className="inspector__context">Current session · <code>{session.sessionId}</code></div>
-        <div className="inspector__slot" style={{ height: planHeight }}>
+        {/* Without a plan the pane is one line, so the timeline gets the room. */}
+        <div className={`inspector__slot${plan ? "" : " inspector__slot--empty"}`} style={plan ? { height: planHeight } : undefined}>
           <PlanPane plan={plan} hash={session.view?.plan_hash ?? null} />
         </div>
-        <Splitter
+        {plan ? <Splitter
           orientation="horizontal"
           label="Resize the plan"
           onDelta={(delta) => setPlanHeight(planHeight + delta)}
-        />
+        /> : null}
         <div className="inspector__slot inspector__slot--rest">
           <Timeline key={session.sessionId} trace={session.trace} entries={session.entries} sessionId={session.sessionId} busy={session.busy} incomplete={session.missedEvents} onExpand={() => { setViewingSessionId(null); setShowSettings(false); setHistoryOutputPath(null); setOutputReturn(null); setCenterTab("activity"); }} onOpenOutput={(path) => openLiveOutput(path, "conversation")} />
         </div>

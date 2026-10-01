@@ -32,7 +32,6 @@ from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outc
 
 __all__ = ["build_reply_card"]
 
-_NOTHING_RAN = "Nothing has run yet."
 _SINGLE_WORKFLOW_KINDS = {
     "verified_guidance", "scientific_guidance", "workflow_contract", "handoff_script",
     "handoff_boundary", "cobra_boundary", "algorithm_boundary",
@@ -138,7 +137,6 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance") 
         f"Method: {highlight(action)}." if highlight(action) else "",
         f"Needs: {needs_line(action)}." if needs_line(action) else "",
         f"Produces: {_produces(action)}." if _produces(action) else "",
-        _NOTHING_RAN,
     ]
     card = ReplyCard(kind=kind, headline=clip(headline, 300), points=[clip(p, 300) for p in points if p])
     if first:
@@ -209,7 +207,7 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
 def _clarification_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
     count = len([a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows])
     headline = f"{count} registered workflows fit; one detail about your study decides between them."
-    points = [_understood(decision, task), _NOTHING_RAN]
+    points = [_understood(decision, task)]
     return ReplyCard(kind="clarification", headline=clip(headline, 300),
                      points=[clip(p, 300) for p in points if p], choices=choices)
 
@@ -247,7 +245,7 @@ def _composition_card(decision, policy, task) -> ReplyCard | None:
         kind="composition",
         headline=(f"{workflow_name(policy, final)} gives one network per sample and also the cohort network; "
                   f"{workflow_name(policy, base)} alone gives only the cohort network."),
-        points=[f"Needs: {needs_line(final)}.", _NOTHING_RAN],
+        points=[f"Needs: {needs_line(final)}."],
         choices=choices,
     )
 
@@ -261,7 +259,6 @@ def _gap_card(decision, policy, task) -> ReplyCard:
         supported = sorted({result_phrase(_Outcome(spec.output_capability), article=False)
                             for spec in policy.workflows.values()})
         points.append(clip("Registered results: " + ", ".join(supported) + ".", 300))
-    points.append(_NOTHING_RAN)
     choices = (ReplyChoices(header="Instead", question="Did you mean a supported result?",
                             options=alternatives, ordering="The closest supported result first.")
                if alternatives else None)
@@ -301,7 +298,7 @@ def _method_gap_card(decision, policy, task) -> ReplyCard:
                             options=options, ordering="Closest to the result you asked for first.")
                if len(options) >= 1 else None)
     points = [_understood(decision, task),
-              "The registered alternatives do not fulfil the requested modeling requirement.", _NOTHING_RAN]
+              "The registered alternatives do not fulfil the requested modeling requirement."]
     return ReplyCard(kind="capability_gap", headline=clip(headline, 300),
                      points=[clip(p, 300) for p in points if p], choices=choices,
                      unavailable=external_references(decision))
@@ -351,7 +348,7 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
                         f"You described {approaches} approaches; each is tested with a different registered workflow.")
             return ReplyCard(
                 kind="hypothesis_choice", headline=headline,
-                points=[_NOTHING_RAN], choices=choices, unavailable=unavailable,
+                points=[], choices=choices, unavailable=unavailable,
             )
         if len(stated) == 1:
             return _workflow_card(decision, policy, task, stated[0]).model_copy(update={"unavailable": unavailable})
@@ -365,7 +362,7 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
                             "No single registered workflow gives this from your inputs; a registered two-step handoff does."
                             if chained else
                             "No single registered workflow takes every stated input together.")
-                return ReplyCard(kind="reading_choice", headline=headline, points=[_NOTHING_RAN],
+                return ReplyCard(kind="reading_choice", headline=headline, points=[],
                                  choices=choices, unavailable=unavailable)
         if kind == "research_choices":
             if (method := method_choices(decision, policy, task=task)) is not None and len(method.options) <= 6:
@@ -390,13 +387,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
     if kind == "outcome_clarification" and decision.clarification_question:
         return ReplyCard(kind="clarification",
                          headline="I need one more detail before choosing a workflow.",
-                         points=[clip(decision.clarification_question, 300), _NOTHING_RAN])
+                         points=[clip(decision.clarification_question, 300)])
     if kind == "unresolved":
         return ReplyCard(
             kind="unresolved",
             headline="I could not validate an interpretation of this request, so nothing was selected.",
-            points=["This does not mean your question is unclear; restating the result you want usually helps.",
-                    _NOTHING_RAN],
+            points=["This does not mean your question is unclear; restating the result you want usually helps."],
         )
     return None
 

@@ -181,7 +181,7 @@ export function SessionsPane({
                   </span>
                   {session.name && session.title ? <span className="sl__request" title={session.title}>{session.title}</span> : null}
                   <span className="sl__meta">
-                    <span>{session.workflow || "—"}</span>
+                    {session.workflow && session.workflow !== "NO-TOOL" ? <span>{session.workflow}</span> : null}
                     <span title={fullTime(new Date(session.updated_at * 1000).toISOString(), zone)}>{when(session.updated_at)}</span>
                     {session.total_tokens > 0 ? (
                       <span>{session.total_tokens.toLocaleString()}t</span>

@@ -1,5 +1,5 @@
 import { StrictMode, useState } from "react";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { startDaemon } from "../transport/daemon";
@@ -84,3 +84,20 @@ it("remembers focus view and makes the live inspector an explicit choice", async
   fireEvent.change(screen.getByLabelText("Workspace layout"), { target: { value: "inspector" } });
   expect(screen.getByRole("complementary", { name: "Current session inspector" })).toBeTruthy();
 });
+
+it("retires the session it leaves, which stays resumable from its checkpoint", async () => {
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+  vi.stubGlobal("fetch", fetchMock);
+  vi.mocked(createSession).mockResolvedValueOnce("current-session").mockResolvedValueOnce("next-session");
+  try {
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "New session" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start session", hidden: true }));
+    await waitFor(() => expect(screen.getByTestId("live-conversation").textContent).toBe("next-session"));
+    const deletes = fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE").map(([url]) => String(url));
+    expect(deletes).toEqual(["http://127.0.0.1:8765/v1/sessions/current-session"]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+

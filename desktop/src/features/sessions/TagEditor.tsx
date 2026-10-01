@@ -46,12 +46,12 @@ export function TagEditor({
   tags: string[];
   onSaved?: (tags: string[]) => void;
 }) {
-  const [current, setCurrent] = useState(tags);
+  const [current, setCurrent] = useState(tags ?? []);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setCurrent(tags); }, [sessionId, tags.join("\u0000")]);
+  useEffect(() => { setCurrent(tags ?? []); }, [sessionId, (tags ?? []).join("\u0000")]);
 
   const save = async (next: string[]) => {
     setSaving(true); setError(null);

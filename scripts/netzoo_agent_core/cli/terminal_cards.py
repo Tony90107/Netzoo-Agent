@@ -82,6 +82,9 @@ def render_card(card: dict, *, color: bool | None = None) -> str:
     lines = [_style(line, _BOLD, color) for line in _wrap(card.get("headline", ""), "")]
     for point in card.get("points") or []:
         lines.extend(_wrap(point, "  • "))
+    # The window shows this as a "Nothing ran" chip; a terminal says it in words.
+    if card.get("ran_nothing", True) and card.get("kind") not in {"run_completed", "run_failed"}:
+        lines.extend(_wrap("Nothing has run yet.", "  • "))
     unavailable = card.get("unavailable") or []
     if unavailable:
         lines.append(_style("  Related, but not available in this agent:", _YELLOW, color))
@@ -112,8 +115,6 @@ def render_options(card: dict, *, active: int | None = None, color: bool | None 
             lines.append(_style(label, _ACCENT if active == number - 1 else _BOLD, color))
             if option.get("description"):
                 lines.extend(_style(line, _DIM, color) for line in _wrap(option["description"], "      "))
-        for item in card.get("unavailable") or []:
-            lines.append(_style(f"  ✕  {item['label']} — not available here", _DIM, color))
     steps = [s for s in card.get("next_steps") or [] if s.get("available", True) and s.get("resolution") != "none"]
     if steps:
         entries = []
