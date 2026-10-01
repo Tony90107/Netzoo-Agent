@@ -59,7 +59,9 @@ _OPERATION_VERBS = {
     "validate": "validate",
     "infer": "infer",
     "analyze": "analyze",
-    "explain": "explain",
+    # Log 296: only a result reaches the gap reply, so "Which workflow finds
+    # X?" read as `explain` said "do not explain X".
+    "explain": "produce",
     "unknown": "produce",
 }
 _ARTIFACT_LABELS = {

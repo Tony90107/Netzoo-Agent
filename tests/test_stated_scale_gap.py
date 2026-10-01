@@ -76,6 +76,18 @@ def test_matching_names_the_workflow_that_gives_the_result_at_its_scale():
         "unsupported", ["granularity"], ["run_condor"])
 
 
+def test_a_gap_is_about_producing_the_result():
+    # Log 296 (GG3): "Which workflow finds X?" read as `explain` said "do not explain X".
+    from netzoo_agent_core.contracts import TaskDecision
+    outcome = PER_SAMPLE.model_copy(update={"operation": "explain"})
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question",
+                            confidence=0.9, reason="gap", capability_match_status="unsupported",
+                            requested_outcome=outcome, mismatch_dimensions=["granularity"],
+                            alternative_actions=["run_condor"])
+    reply = render_capability_gap(decision, ProjectPolicyLoader(HERE.parent).load())
+    assert "do not produce sample-specific community assignments" in reply and "do not explain" not in reply
+
+
 def test_the_recorded_request_gets_the_gap_instead_of_a_validation_failure(monkeypatch):
     decisions = []
     original = evaluate_routing.invoke_router
