@@ -763,7 +763,7 @@ class ConversationMachine:
                 )
             elif state.next_prompt.kind == "completed":
                 state.clear_preview()
-        self._remember_turn(result)
+        self._remember_turn(result, task)
         if state.pending_plan is not None:
             self.runtime.recorder.pause_run(
                 state.run_id,
@@ -801,7 +801,7 @@ class ConversationMachine:
             self.stop(0)
         return events
 
-    def _remember_turn(self, result: dict) -> None:
+    def _remember_turn(self, result: dict, task: str = "") -> None:
         """Record the session's models, output folder and brief reply beside its checkpoint.
 
         Only a runtime built by ``bootstrap_runtime`` knows its models; one
@@ -825,6 +825,7 @@ class ConversationMachine:
                 # A paused run carries its usage into the turn that finishes it,
                 # so a run is counted once, when it finishes.
                 tokens=int(((result.get("token_usage") or {}).get("total_tokens") or 0)) if finished else 0,
+                request=task,
                 sessions_root=session_store.SESSION_ROOT,
             )
         except Exception:  # noqa: BLE001 - bookkeeping must not break a turn

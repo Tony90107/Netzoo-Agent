@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import settings as runtime_settings
-from ..session_meta import card_for, load_meta, normalize_tags, set_details, set_tags
+from ..session_meta import card_for, load_meta, normalize_tags, readable_request, set_details, set_tags
 from ..session_outputs import SESSION_OUTPUT_ROOT
 from ..settings import SESSION_ROOT
 from . import files as output_files
@@ -87,18 +87,24 @@ class SessionTranscript:
     notes: str = ""
 
 
-def _first_request(payload: dict) -> str:
-    """The user's own words, which is how a person recognises a session."""
+def _first_request(payload: dict, meta: dict | None = None) -> str:
+    """The user's own words, which is how a person recognises a session.
+
+    The sidecar keeps the first request once it is known; the checkpoint keeps
+    only the newest turns and stores replies in the machine's own form, so a
+    stored marker (`PREVIOUS_ACTION=…`) is never shown as a title.
+    """
+    if meta and meta.get("first_request"):
+        return str(meta["first_request"])[:160]
     for message in payload.get("messages") or []:
         if not isinstance(message, dict):
             continue
-        if message.get("type") in {"human", "HumanMessage"} or message.get(
-            "role"
-        ) == "user":
-            content = str(message.get("content") or "").strip()
-            if content:
-                return content.splitlines()[0][:160]
-    return ""
+        if message.get("type") in {"human", "HumanMessage"} or message.get("role") == "user":
+            request = readable_request(str(message.get("content") or ""))
+            if request:
+                return request
+    workflow = str((payload.get("plan") or {}).get("workflow") or "")
+    return f"Continue {workflow}" if workflow and workflow != "NO-TOOL" else ""
 
 
 def _saved_status(payload: dict) -> str:
@@ -168,7 +174,7 @@ def _summarise(path: Path) -> SessionSummary | None:
         workflow=str(plan.get("workflow") or ""),
         status=status,
         resumable=status in RESUMABLE,
-        title=_first_request(payload),
+        title=_first_request(payload, meta),
         total_tokens=int(meta.get("tokens_total") or 0) or tokens,
         tags=tuple(meta.get("tags") or ()),
         models=dict(meta.get("models") or {}) or None,
@@ -255,7 +261,7 @@ def read_transcript(session_id: str) -> SessionTranscript | None:
         models=dict(meta.get("models") or {}) or None,
         outputs=_outputs(payload),
         output_dir=str(meta.get("output_dir") or ""),
-        title=_first_request(payload),
+        title=_first_request(payload, meta),
         name=str(meta.get("name") or ""),
         notes=str(meta.get("notes") or ""),
     )
@@ -328,7 +334,16 @@ def output_provenance(relative: str, limit: int = 500) -> list[dict]:
 
 
 #: What every run writes beside its results: never a result itself.
+_RUN_REPORT = re.compile(r"-execution-.+_TW(?:-\d+)?\.md$")
 _RUN_RECORD = re.compile(r"^manifest\.json$|-execution-.+_TW(?:-\d+)?\.md$")
+
+
+def _role(name: str, result: bool) -> str:
+    if _RUN_REPORT.search(name):
+        return "report"
+    if name == "manifest.json":
+        return "manifest"
+    return "result" if result else "file"
 
 
 def outputs_by_session(limit: int = 500) -> dict:
@@ -381,7 +396,8 @@ def outputs_by_session(limit: int = 500) -> dict:
             "folder": f"{SESSION_OUTPUT_ROOT}/{session_id}" if session_id in folders else "",
             "files": [
                 {"name": item.name, "path": item.path, "size_bytes": item.size_bytes,
-                 "modified_at": item.modified_at, "result": item.path in marked}
+                 "modified_at": item.modified_at, "result": item.path in marked,
+                 "role": _role(item.name, item.path in marked)}
                 for item in sorted(items.values(), key=lambda item: (item.path not in marked, item.path))
             ],
         })

@@ -11,12 +11,16 @@
 import { useEffect, useState } from "react";
 
 import { DaemonConfig } from "../../transport/daemon";
-import { OutputsIndex, SessionOutputs, formatBytes, listSessionOutputs } from "../../transport/files";
-import { fullTime, relativeTime } from "../timeline/time";
+import { OutputsIndex, SessionOutputFile, SessionOutputs, formatBytes, listSessionOutputs } from "../../transport/files";
+import { clockLabel, fullTime, relativeTime } from "../timeline/time";
 import { useTimeZone } from "../timeline/timeZone";
 
 function label(entry: SessionOutputs): string {
   return entry.name || entry.title || `Session ${entry.session_id}`;
+}
+
+function isReport(file: SessionOutputFile): boolean {
+  return file.role ? file.role === "report" : /-execution-.+_TW(?:-\d+)?\.md$/.test(file.name);
 }
 
 /** The one file an entry stands for, if it has one, and the files beside it. */
@@ -31,6 +35,7 @@ export function OutputsBySession({
   refreshToken,
   revision = 0,
   onOpenFile,
+  onOpenReport,
   onOpenSession,
   onBrowseFolders,
   onCount,
@@ -41,6 +46,8 @@ export function OutputsBySession({
   /** Bumped by the pane's Refresh button. */
   revision?: number;
   onOpenFile: (path: string) => void;
+  /** Opens a run report, readable, in a window of its own. */
+  onOpenReport?: (path: string) => void;
   onOpenSession?: (sessionId: string) => void;
   onBrowseFolders: () => void;
   onCount?: (count: number) => void;
@@ -87,6 +94,11 @@ export function OutputsBySession({
           const when = relativeTime(entry.added_at);
           const at = fullTime(new Date(entry.added_at * 1000).toISOString(), zone);
           const size = entry.files.reduce((total, file) => total + file.size_bytes, 0);
+          const report = entry.files.filter(isReport).sort((a, b) => b.modified_at - a.modified_at)[0];
+          const name = (file: SessionOutputFile) => isReport(file)
+            ? `Run report · ${clockLabel(new Date(file.modified_at * 1000).toISOString(), zone).slice(0, 5)}`
+            : file.name;
+          const openFile = (file: SessionOutputFile) => (isReport(file) && onOpenReport ? onOpenReport(file.path) : onOpenFile(file.path));
           return (
             <li key={entry.session_id} className="ob__item">
               <div className="ob__line">
@@ -105,6 +117,12 @@ export function OutputsBySession({
                 <span className="ob__meta">{[entry.workflow, when].filter(Boolean).join(" · ")}</span>
                 <span className="fl__size">{formatBytes(single ? single.size_bytes : size)}</span>
               </button>
+              {report && onOpenReport ? (
+                <button type="button" className="ob__report" onClick={() => onOpenReport(report.path)}
+                  title={`Read the run report (${report.name})`}>
+                  Report
+                </button>
+              ) : null}
               {single && beside.length ? (
                 <button type="button" className="ob__more" aria-expanded={open} onClick={() => toggle(entry.session_id)}
                   title="The run's manifest and execution record, written beside the result">
@@ -116,9 +134,9 @@ export function OutputsBySession({
                 <ul className="ob__files">
                   {beside.map((file) => (
                     <li key={file.path}>
-                      <button type="button" className="fl__row ob__file" title={file.path} onClick={() => onOpenFile(file.path)}>
+                      <button type="button" className="fl__row ob__file" title={file.path} onClick={() => openFile(file)}>
                         <span className="fl__icon">·</span>
-                        <span className="fl__name">{file.name}</span>
+                        <span className="fl__name">{name(file)}</span>
                         {file.result ? <span className="ob__badge">result</span> : null}
                         <span className="fl__size">{formatBytes(file.size_bytes)}</span>
                       </button>

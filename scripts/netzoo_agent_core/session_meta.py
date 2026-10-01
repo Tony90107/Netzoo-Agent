@@ -37,6 +37,7 @@ __all__ = [
     "normalize_name",
     "normalize_notes",
     "normalize_tags",
+    "readable_request",
     "remember_turn",
     "set_details",
     "set_tags",
@@ -179,22 +180,49 @@ def is_kept(meta: dict) -> bool:
     return bool(meta.get("tags") or meta.get("name") or meta.get("notes"))
 
 
+_COMMAND_WORDS = {"new", "back", "exit", "quit", "yes", "no", "ok", "okay", "custom", "continue"}
+
+
+def readable_request(task: str) -> str:
+    """The person's own request in a stored task, or "" when the task is not one.
+
+    A checkpoint stores what the agent ran, and for a reply to a question that
+    is the machine's own form: a confirmed-outcome marker, a workflow
+    continuation, or the previous goal restated beside the follow-up. Only the
+    restated goal is the person's request; commands, option numbers and the
+    markers are not.
+    """
+    text = str(task or "").strip()
+    goal = re.match(r"^Previous NetZoo goal:\s*(.*?)\nUser follow-up:", text, re.DOTALL)
+    if goal:
+        return readable_request(goal.group(1))
+    if (not text or text.startswith("/") or re.match(r"^(?:CONFIRMED_OUTCOME_ACTION|PREVIOUS_ACTION)=", text)
+            or text.casefold() in _COMMAND_WORDS or re.fullmatch(r"[\d\s,]+", text)):
+        return ""
+    return text.splitlines()[0].strip()[:160]
+
+
 def _content_key(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()[:24]
 
 
 def remember_turn(session_id: str, *, models: dict | None = None, content: str | None = None,
                   card: dict | None = None, output_dir: str | None = None, tokens: int = 0,
-                  sessions_root: Path | None = None) -> None:
+                  request: str | None = None, sessions_root: Path | None = None) -> None:
     """Record what a finished turn adds; nothing is written when it adds nothing.
 
     Models are recorded once, when the session first runs, so a later resume
     under a different default cannot silently rewrite which model produced it.
+    The first request is recorded once too: the checkpoint keeps only the
+    newest turns, so a long session would otherwise lose what it was for.
     """
     models = {key: value for key, value in (models or {}).items() if value}
-    if not models and not card and not output_dir and not tokens:
+    request = readable_request(request or "")
+    if not models and not card and not output_dir and not tokens and not request:
         return
     payload = load_meta(session_id, sessions_root=sessions_root)
+    if request and not payload.get("first_request"):
+        payload["first_request"] = request
     if tokens > 0:
         # A session's whole cost; the checkpoint only keeps its latest run's.
         payload["tokens_total"] = int(payload.get("tokens_total") or 0) + int(tokens)

@@ -22,6 +22,8 @@ import {
 } from "../../transport/files";
 import { TagChips } from "../sessions/TagEditor";
 import { OutputsBySession } from "./OutputsBySession";
+import { ReportDialog } from "./ReportDialog";
+import { ReportView } from "./ReportView";
 
 import { useTimeZone } from "../timeline/timeZone";
 import { fullTime } from "../timeline/time";
@@ -49,12 +51,18 @@ function TablePreview({ preview }: { preview: Preview }) {
   );
 }
 
-function PreviewBody({ preview }: { preview: Preview }) {
+function isMarkdown(path: string): boolean {
+  return /\.md$/i.test(path);
+}
+
+function PreviewBody({ preview, readable, onOpenFile }: { preview: Preview; readable: boolean; onOpenFile?: (path: string) => void }) {
   switch (preview.kind) {
     case "table":
       return <TablePreview preview={preview} />;
     case "text":
-      return <pre className="fv__text">{preview.text}</pre>;
+      return readable && isMarkdown(preview.path)
+        ? <ReportView text={preview.text} onOpenFile={onOpenFile} />
+        : <pre className="fv__text">{preview.text}</pre>;
     case "arrays":
       return (
         <table className="fv__table">
@@ -120,6 +128,9 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
   const [mode, setMode] = useState<"sessions" | "folders">("sessions");
   const [revision, setRevision] = useState(0);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
+  // A Markdown output (a run report) opens readable, in a window of its own.
+  const [reportPath, setReportPath] = useState<string | null>(null);
+  const [readable, setReadable] = useState(true);
   const [listing, setListing] = useState<Listing | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +181,8 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
       if (request === requestId.current) setBusy(false);
     }
   };
+
+  const openFile = (path: string) => (isMarkdown(path) ? setReportPath(path) : void open(path));
 
   // `listing.path` is project-relative and always starts at `outputs`; the
   // crumbs are what lies beyond it.
@@ -250,6 +263,12 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
                 ← back
               </button>
               <span className="fv__name">{preview.path.split("/").pop()}</span>
+              {preview.kind === "text" && isMarkdown(preview.path) ? (
+                <div className="fv__modes" role="group" aria-label="Show the file as">
+                  <button type="button" aria-pressed={readable} onClick={() => setReadable(true)}>Readable</button>
+                  <button type="button" aria-pressed={!readable} onClick={() => setReadable(false)}>Markdown source</button>
+                </div>
+              ) : null}
             </div>
             <div className="fv__meta">
               {formatBytes(preview.size_bytes)}
@@ -257,14 +276,15 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
             </div>
             <div className="fv__path" title={preview.host_path}>{preview.host_path}</div>
             <Provenance config={config} path={preview.path} onOpenSession={onOpenSession} />
-            <PreviewBody preview={preview} />
+            <PreviewBody preview={preview} readable={readable} onOpenFile={(path) => void open(path)} />
           </div>
         ) : mode === "sessions" ? (
           <OutputsBySession
             config={config}
             refreshToken={refreshToken}
             revision={revision}
-            onOpenFile={(path) => void open(path)}
+            onOpenFile={openFile}
+            onOpenReport={setReportPath}
             onOpenSession={onOpenSession}
             onBrowseFolders={() => setMode("folders")}
             onCount={setSessionCount}
@@ -284,7 +304,7 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
                     title={`${entry.path}${entry.kind === "file" ? ` · Modified ${fullTime(new Date(entry.modified_at * 1000).toISOString(), zone)}` : ""}`}
                     type="button"
                     onClick={() =>
-                      entry.kind === "directory" ? void browse(entry.path) : void open(entry.path)
+                      entry.kind === "directory" ? void browse(entry.path) : openFile(entry.path)
                     }
                   >
                     <span className="fl__icon">{entry.kind === "directory" ? "▸" : "·"}</span>
@@ -310,6 +330,10 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
           <div className="pane__empty">Reading outputs…</div>
         )}
       </div>
+      {reportPath ? (
+        <ReportDialog config={config} path={reportPath} onClose={() => setReportPath(null)}
+          onOpenFile={(path) => void open(path)} />
+      ) : null}
     </section>
   );
 }
