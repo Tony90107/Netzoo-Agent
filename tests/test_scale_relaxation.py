@@ -59,6 +59,18 @@ def test_a_stated_scale_or_a_recorded_mismatch_is_left_alone():
     assert relax_unstated_scale("Expression and methylation.", stated, rejected)[0] is stated
 
 
+def test_a_stated_individual_specific_scale_keeps_the_per_sample_workflow():
+    # Log 292: Log 291's missed positive states its scale, so the per-sample
+    # reading that matched LIONESS-DRAGON is no longer relaxed to DRAGON.
+    stated = _reading("sample_specific")
+    exact = CapabilityMatch(status="exact", matched_actions=["run_lioness_dragon"])
+    task = ("We need individual-specific networks connecting metabolite and gene-expression "
+            "features for every subject in our cohort; both tables have the same subjects.")
+    assert relax_unstated_scale(task, stated, exact) == (stated, exact)
+    unstated = relax_unstated_scale("Both tables have the same subjects.", stated, exact)[1]
+    assert (unstated.status, unstated.matched_actions) == ("fallback", ["run_dragon"])
+
+
 def _fallback_decision(granularity="sample_specific", actions=("run_dragon",)):
     from netzoo_agent_core.contracts import TaskDecision
     outcome = RequestedOutcome(operation="infer", artifact_type="multi_omic_network", granularity=granularity)

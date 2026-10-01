@@ -14649,3 +14649,143 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 說出的尺度不在該 workflow 的能力內時，應說明這一點，並列出 netZooPy 有、此 agent 未登記的 LIONESS-OTTER。
   - 只動回覆層，但這條路徑用得很廣，要對全部語料離線重繪。
 - DD2 在 live 中從未出現，因為模型不會把「relaxed graph matching」寫成方法標籤（與 selection tags 很少被填的既有觀察一致）。
+
+## Log 292｜事前宣告：EE——尺度偵測認得 individual／person-specific（Log 291 後續 1）
+
+日期／時區：2026-10-01，Asia/Taipei。使用者決定：「先做第一項」。
+本條目寫於任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/scale-witness-2026-10-01/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+
+**已查證的背景（離線、無 LLM）：**
+- Log 291：`ld-individual-networks`（「individual-specific networks … for every subject」）兩臂都是 3／3 fallback DRAGON。`granularity_mentions` 沒有回傳任何尺度，所以 DD3／Log 281 的放寬把它當成沒說尺度。
+- `granularity_mentions` 的使用者：
+  - `routing/scale_relaxation.py`：DD3、Log 281 的放寬與 `note_unstated_scale`。
+  - `request_integrity` 的「讀法與請求的尺度矛盾」檢查。
+  - `stated_field_restoration`：只有一個尺度證據時，把 `unknown` 的尺度補上。
+  - `outcome_consistency`：過濾只重述尺度的假設、展開「還沒決定」的兩種讀法。
+  - `claim_prompt`：只用於 claims contract。app 預設是 legacy，本輪不量測 claims。
+- `_SAMPLE_ALTERNATIVE`（`granularity_left_open` 用來辨認「還沒決定」裡的每個樣本選項）的「-specific」寫法只接受 sample-specific。
+  - 例：「I have not decided whether I need one cohort network or individual-specific networks」目前只偵測到整體尺度。
+  - 若模型讀成每個樣本，會被判為與請求矛盾，等於替還沒決定的使用者做了決定。
+
+**變更 EE1（`interpretation/request_integrity.py` 的確定性詞彙，不改 prompt 文字）：**
+- EE1a：`_GRANULARITY_PATTERNS["sample_specific"]` 的「(sample|patient|subject)-specific … networks」加入 individual、person。
+- EE1b：`_SAMPLE_ALTERNATIVE` 的「sample-specific」改為「(sample|patient|subject|individual|person)-specific」。
+- 不採用：
+  - 「networks … for every subject」中間隔字的寫法：在既有語料上沒有多抓到任何請求，又可能把「用每個受試者的資料建一個網路」這種整體請求誤判。
+  - 把 “donor” 加為單位：已發現 blind-neutral case-3「For each donor I want their own … network」偵測不到，但這是另一個缺口，另案處理。
+
+**離線證據（實作前，以 monkeypatch 套用 EE1）：**
+- 掃描 `tests`、`manual_tests` 與 `docs/research-log`（含全部 trace）的 184 個不同請求：
+  - 偵測結果改變的只有 `ld-individual-networks`（無 → `sample_specific`）。
+  - `granularity_left_open` 的結果沒有任何請求改變。
+- 用 `scripts/saved_trace_replay.py` 嚴格重播 Log 291 candidate 的 51 個 trial：
+  - blind 30／30 的呼叫序列逐字相同，包括 case 7 ×3。
+  - 標靶 18／21 相同。分岔的 3 個都是 `ld-individual-networks`：第二個呼叫（`SemanticEvidenceSupply`）不再列出 `missing_evidence:granularity=sample_specific`，因為尺度已有確定性證據；另外兩項（entity_type metabolite、gene）照舊。
+
+**預期（寫在量測前）：**
+- `ld-individual-networks` 與新的 person-specific 正例改為 exact LIONESS-DRAGON。
+- 說「還沒決定」的多體學請求：改為 ambiguous，列出 DRAGON 與 LIONESS-DRAGON 並反問。baseline 只偵測到整體尺度，預期多半是 exact DRAGON。
+- 對照題不變。
+- 釘住項目：指紋、`policy_hash`、`SCHEMA_DIGESTS` 都預期不變（沒有改 prompt、YAML 或 schema）。若有任何測試需要修改，在 Log 293 逐一列出原因。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝EE1；baseline＝目前工作樹（Log 291 的狀態，含尚未 commit 的 DD 與量測後的卡片修正）的副本。
+- 兩臂同時段平行執行，交錯 3 個時段。每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（8 題）×1，合計每臂 blind 30、標靶 24 個 trial。
+- 標靶 8 題：
+  - 正例 2 題：`ld-individual-networks`（與 Log 290 同一字句）、`pe-person-specific-multiomic`。
+  - 「還沒決定」1 題：`pe-undecided-scale`。
+  - 對照 3 題：`ctl-individual-genes-aggregate`（「individual genes」不是尺度）、`ctl-dragon-aggregate`、`ctl-individual-tf`（individual-specific TF-gene → LIONESS-PANDA）。
+  - 陷阱 1 題：`trap-individual-coexpression`（單層 co-expression，不得出現 LIONESS-DRAGON）。
+  - 報告題 1 題：`rep-individual-communities`。
+- provider 錯誤沿用 Log 290 補充 4 的規則：有錯誤 trial 的配對整組作廢重跑，最多再 2 次。
+- 兩臂的語料都先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（EE-a 至 EE-f 任一不成立即撤回 EE1；EE-d2 只決定 EE1b 的去留）：**
+- EE-a（離線，live 之前）：
+  - 全套件通過；核心模組 ≤ 1000 行。
+  - 以實際程式重做掃描與重播，結果與上面的離線證據相同。
+  - 不成立則不跑 live。
+- EE-b（有效性）：baseline 正例 6 個 trial 中 exact LIONESS-DRAGON＝0，否則此輪作廢。
+- EE-c（效益）：candidate 正例 6 個 trial 中 exact LIONESS-DRAGON ≥ 4。
+- EE-d（不誤搶）：正例與「還沒決定」題以外的 45 個 trial（blind 30＋5 題 ×3）中，candidate 選中（exact 或推薦）`run_lioness_dragon` 的次數＝0。
+- EE-d2（「還沒決定」）：candidate 3 個 trial 中，最終為 ambiguous 且候選同時含 DRAGON 與 LIONESS-DRAGON 的 ≥ 2。不成立只撤回 EE1b。
+- EE-e（對照）：
+  - 兩題整體對照的 exact DRAGON 次數 ≥ baseline − 1。
+  - `ctl-individual-tf` 的 exact LIONESS-PANDA 次數 ≥ baseline − 1。
+- EE-f（blind 不退步）：candidate blind-en 最終 WRONG ≤ baseline＋3（Log 98 雜訊帶）。
+- 只報告：`rep-individual-communities` 的狀態；`pe-undecided-scale` 的推薦。
+
+**Log 292 補充（實作後、live 前寫；門檻不變）：EE-a 的實際程式重做。**
+- 掃描（實際程式，兩個工作樹各算一次）：
+  - 既有 184 個請求中改判的只有 `ld-individual-networks`，與 monkeypatch 的結果相同。
+  - 另外 5 個改判的都是本輪新寫、刻意含新寫法的標靶題。
+- 重播（實際程式）：51 個 trial 中 48 個逐字相同，與 monkeypatch 的結果一致。宣告中對分岔的描述要更正為：
+  - s1：第二個呼叫 `SemanticEvidenceSupply`，少了尺度那一項。
+  - s2、s3：第二個呼叫 `IntentDecision`。錄下的第一次輸出套上 EE1 後，送進 intent 呼叫的 `validated_routing_facts` 由 fallback `run_dragon` 變成 exact `run_lioness_dragon`；intent 呼叫不改比對結果。
+- 新增測試：
+  - `test_granularity_history_role_regressions`：5 個偵測例句，以及 4 個「還沒決定」的例句。
+  - `test_scale_relaxation::test_a_stated_individual_specific_scale_keeps_the_per_sample_workflow`。
+
+## Log 293｜結果：EE——EE1a 全部門檻成立並保留（正例 0／6 → 6／6）；EE1b 依 EE-d2 撤回（「還沒決定」題在兩臂都沒走到被改的程式）
+
+日期／時區：2026-10-01，Asia/Taipei。依 Log 292（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/scale-witness-2026-10-01/`（報告 `live-ee-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`render_replies.py`）。
+
+**執行：**
+- 3 個時段（14:40、14:42、14:44），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後各檢查一次：兩臂 `scripts/` 只差 `request_integrity.py`，harness 與 blind 語料相同（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0，沒有作廢重跑。
+- 呼叫數：candidate 206，baseline 219。指紋兩臂都是 legacy `3f394e4d5d3f`，`policy_hash` 兩臂都是 `b0570ff2`。
+- 54 組配對 trial 的第一個模型呼叫兩臂逐字相同。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| EE-a（離線） | 2983 passed／35 skipped（含 EE1b）；指紋、`policy_hash`、`SCHEMA_DIGESTS` 都不變，沒有修改任何既有測試；`request_integrity.py` 498 行；實際程式的掃描與重播同補充 | 成立 |
+| EE-b（有效性） | baseline 正例 6 個 trial 中 exact LIONESS-DRAGON 0（6／6 都是 fallback DRAGON） | 有效 |
+| EE-c（效益） | candidate 正例 6／6 exact LIONESS-DRAGON（`ld-individual-networks` 3／3、`pe-person-specific-multiomic` 3／3） | 成立 |
+| EE-d（不誤搶） | 正例與「還沒決定」題以外 45 個 trial：選中 0 | 成立 |
+| EE-d2（「還沒決定」） | candidate 0／3（baseline 0／3）：兩臂 6 個 trial 都是沒有候選的 ambiguous | 不成立 → 撤回 EE1b |
+| EE-e（對照） | 兩題整體對照 exact DRAGON：candidate 6、baseline 6；`ctl-individual-tf` exact LIONESS-PANDA：candidate 3、baseline 2 | 成立 |
+| EE-f（blind） | 最終 WRONG：candidate 0，baseline 0 | 成立 |
+
+**逐題（標靶，各 3 個 trial）：**
+- 正例 `ld-individual-networks`、`pe-person-specific-multiomic`：
+  - candidate 6／6 exact LIONESS-DRAGON，回覆是 Log 291 修過的直接卡片「For the sample-specific output you described, use **LIONESS-DRAGON**.」（重繪 6／6）。
+  - baseline 6／6 fallback DRAGON，並寫「No scale was stated」。
+- `ctl-individual-tf`：candidate 3／3 exact LIONESS-PANDA。baseline s3 為 fallback（`unverified_evidence`：模型給的尺度證據沒有確定性證據可驗證），candidate 由新寫法作證，所以是 exact。
+- `ctl-individual-genes-aggregate`、`ctl-dragon-aggregate`：兩臂都是 6／6 exact DRAGON。「individual genes」沒有被當成尺度。
+- `trap-individual-coexpression`：兩臂都是 3／3 BONOBO／LIONESS-COEXPRESSION 平手，LIONESS-DRAGON 從未出現。
+- `pe-undecided-scale`：兩臂相同。
+  - 只有一個 `ResearchFraming` 呼叫，`match_basis=provider_unavailable`，reason `research_choices_unavailable`，請求在語意判讀之前就被研究方向選擇攔下。
+  - EE1b 改的 `granularity_left_open` 從未被執行到，所以 EE-d2 不成立；依宣告撤回 EE1b。
+  - 回覆（兩臂相同）：「I cannot select a workflow until the requested result is clear. I could not validate every research alternative. Please state each hypothesis and the result you want from it before selecting a workflow.」
+  - 這是既有問題：使用者只是沒決定尺度，回覆卻要求列出各個假設，也沒列出 DRAGON／LIONESS-DRAGON。
+- `rep-individual-communities`（只報告）：
+  - candidate 3／3 語意驗證失敗。回覆是「Semantic routing output failed validation, so no workflow was selected. … Retry this request when semantic routing is available …」。
+  - baseline 3／3 exact CONDOR，回覆寫「Your question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.」，這與請求（每個病人各自的 community）不符。
+  - 機制：
+    - 模型讀成每個病人的 `community_assignment`，因 `artifact_granularity:community_assignment` 被退回（community 結果只能是整體）。
+    - 修補把尺度改成 `not_applicable`，被當成整體。
+    - 新寫法偵測到 individual-specific，`granularity_contradicts_request:aggregate` 使驗證失敗。
+  - 不是 EE1a 才有的機制：用兩個工作樹離線檢查同一句話，「patient-specific networks」與「per-patient networks」在 baseline 也觸發同一個矛盾，只有「individual-specific」原本不會。EE1a 讓 individual-specific 與 patient-specific 一致。
+  - 兩臂的回覆都不正確：正確答案是沒有登記的 workflow 會直接產生每個病人的 community。這題為只報告，沒有門檻；記為後續。
+
+**blind-en（各 30 個 trial）：**
+- candidate：OK 27、PARTIAL 2、FALLBACK 1。baseline：OK 26、PARTIAL 2、FALLBACK 2。
+- 3 個 FALLBACK 都是模型第一次輸出少給證據：baseline case6 s2、s3 缺整體尺度的證據；candidate case8 s3 缺 `sample_cluster_assignment` 的證據。blind 的請求偵測都沒有改變，且第一個呼叫兩臂逐字相同，屬抽樣差異。
+- case7-en：兩臂都是 3／3 fallback DRAGON，維持 Log 281／DD3 的結果。
+
+**撤回 EE1b 的實作：**
+- `_SAMPLE_ALTERNATIVE` 回到原本只接受 sample-specific。
+- 移除 `test_an_undecided_scale_accepts_the_same_per_sample_units`（4 個參數例）。
+- 撤回後兩臂只差 EE1a 的一行寫法與註解；全套件 2979 passed／35 skipped。
+
+**判定：** 保留 EE1a；撤回 EE1b。
+
+**後續（尚未做）：**
+- 「還沒決定尺度」的請求被研究方向選擇攔下（兩臂都一樣），回覆要求列出假設，而不是列出兩種尺度的 workflow 並反問。
+- 「說出的每個樣本尺度」遇上只有整體結果的 artifact（每個病人的 community）時，結果是驗證失敗的系統訊息，而不是誠實的能力缺口回覆。patient-specific／per-patient 原本就有這個問題。
+- 「For each donor … their own network」仍偵測不到：donor 不是單位詞（blind-neutral case-3）。
