@@ -23,6 +23,7 @@ from .request_integrity import (
     confirmed_current_inputs,
     granularity_left_open,
     request_integrity_issues,
+    stated_scale_gap,
 )
 from .span_alignment import aligned_span
 
@@ -508,6 +509,12 @@ def validate_outcome_hypotheses(
             for index in range(len(hypotheses))
         )
     unique_issues = tuple(dict.fromkeys(issues))
+    # Log 294: a lone reading whose only fault is keeping the scale the request
+    # states, for a result the ontology gives another scale, is a capability gap
+    # for matching to report. Any repair breaks the request or the ontology.
+    kept_scale = stated_scale_gap(user_task, hypotheses[0].outcome) if len(hypotheses) == 1 else None
+    if kept_scale is not None and unique_issues == (f"hypothesis[0].{kept_scale}",):
+        unique_issues = ()
     recoverable = bool(unique_issues) and all(
         ".ungrounded_evidence:" in issue for issue in unique_issues
     )

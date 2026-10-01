@@ -14789,3 +14789,127 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 「還沒決定尺度」的請求被研究方向選擇攔下（兩臂都一樣），回覆要求列出假設，而不是列出兩種尺度的 workflow 並反問。
 - 「說出的每個樣本尺度」遇上只有整體結果的 artifact（每個病人的 community）時，結果是驗證失敗的系統訊息，而不是誠實的能力缺口回覆。patient-specific／per-patient 原本就有這個問題。
 - 「For each donor … their own network」仍偵測不到：donor 不是單位詞（blind-neutral case-3）。
+
+## Log 294｜事前宣告：FF——說出的尺度遇上本體沒有的結果時，回報能力缺口，而不是驗證失敗（Log 293 後續 2）
+
+日期／時區：2026-10-01，Asia/Taipei。使用者決定：「先 commit 然後修第 2 點」。commit 為 `db9a1e3`（Log 290–291）與 `af62fbb`（Log 292–293）。
+本條目寫於任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/scale-gap-2026-10-01/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+
+**已查證的背景（離線、無 LLM）：**
+- Log 293 的 `rep-individual-communities`（「gene communities separately for each patient, with individual-specific networks …」）：
+  - candidate 3／3 的回覆是「Semantic routing output failed validation … Retry this request when semantic routing is available」。
+  - baseline 3／3 回 exact CONDOR，並錯說「Your question asks for a cohort-level community assignment」。
+- 機制是一個必定失敗的修補：
+  - 本體（`contracts/artifact_semantics.py`）規定 `community_assignment` 只有 aggregate（1330374 為了讓 CONDOR 可被選到而加）。
+  - 第一次讀法（每個病人的 community）因 `artifact_granularity:community_assignment` 被退回。
+  - 修補改成 aggregate 後，又與請求說出的尺度矛盾（`granularity_contradicts_request:aggregate`）。
+  - 兩個條件不可能同時滿足，兩次嘗試後只能回驗證失敗。
+- 不是 EE1a 才有：用 baseline 程式檢查同一句話，「patient-specific networks」與「per-patient networks」也會觸發同一個矛盾。
+- 考慮過但不採用的修法：在本體中允許 community 的 sample_specific。
+  - 理由一：本體會進到模型可見的 schema（`artifact_field_constraints` 產生每種 artifact 的尺度列舉），會改變指紋。
+  - 理由二：`research_framing.actions_for_hypothesis` 不再把 community 讀法固定為 aggregate；研究方向模型若把模組讀法標成每個樣本，CONDOR 會被排除，產生 Log 289 那種假的「沒有登記的 workflow」。
+- 現成的回覆：`render_capability_gap` 對 unsupported、帶替代方案的決策，會回「The registered NetZoo workflows do not … CONDOR can instead … Did you mean that supported result?」。
+
+**變更 FF（確定性，模型不可見，不改 prompt、schema 或本體）：**
+- FF1（`interpretation/request_integrity.py` 的 `stated_scale_gap` ＋ `interpretation/outcome_validation.py`）：
+  - 條件：只有一個讀法；讀法的尺度（aggregate 或 sample_specific）是請求唯一說出的尺度；本體不給該 artifact 這個尺度；且這是該讀法唯一的 issue。
+  - 處理：不把它當驗證錯誤送去修補。
+  - 只限「唯一的 issue」，是因為 TF＋miRNA 每個病人的請求（`role-both-ss-en`）常被讀成 `regulatory_network_and_tf_activity`＋每個病人：這種讀法也有尺度缺口，但同時有 `stated_roles_conflict` 等 issue，修補會改 artifact、得到 LIONESS-PUMA。限定後，這類讀法的 issue 清單與修補 prompt 都不變。
+- FF2（`routing/requested_outcome_matching.py`、`routing/outcome_matching.py`）：
+  - 讀法唯一的一致性問題是 `artifact_granularity` 時，比對結果為 `unsupported`、`mismatch_dimensions=["granularity"]`、`alternative_actions`＝產生同一種 artifact 的 workflow（community → CONDOR）。
+  - 原本是 `mismatch_dimensions=["artifact_granularity:…"]`、沒有替代方案。只有 `render_capability_gap` 讀 `mismatch_dimensions`，而且只檢查 `input_artifacts`。
+
+**離線證據（實作前，在工作樹副本上做原型）：**
+- 1706 個不同的歷史第一次輸出（`docs/research-log` 全部 trace，依 router 順序先回填再驗證），驗證結果改變的只有 4 個，都是 `rep-individual-communities`（無效 → 有效）。
+- 嚴格重播：
+  - Log 293 candidate 54 個 trial：51 個不變，分岔的 3 個都是 `rep-individual-communities`。第二個呼叫由修補變成 `when_needed` 審查。
+  - Log 291 candidate 51 個 trial：只有 EE1a 已知的 3 個分岔。
+  - CC（Log 288–289）84 個 trial：與目前程式的重播結果逐一相同。
+- 模擬：以錄下的第一次輸出加上 baseline 錄下的後續呼叫跑完整流程，結果為 unsupported、替代方案 `run_condor`、`mismatch_dimensions=["granularity"]`。回覆是：「The registered NetZoo workflows do not infer sample-specific community assignments. CONDOR can instead analyze aggregate community assignments. Did you mean that supported result?」
+- 審查（attempt 2）若把尺度改回 aggregate，會與說出的尺度矛盾而無效，`retain_valid_first_pass` 保留第一次的讀法，所以結果仍是缺口回覆。
+- 指紋（legacy `3f394e4d5d3f`、claims `9a60163744d9`）不變。
+
+**預期（寫在量測前）：**
+- 3 題正例（individual-specific／patient-specific／per-patient 的每個病人 community）改為上述缺口回覆。baseline 多半是驗證失敗或 exact CONDOR。
+- CONDOR 整體對照、TF＋miRNA 每個病人（LIONESS-PUMA）、每個樣本 TF-gene（LIONESS-PANDA）不變。
+- 釘住項目不變：指紋、`policy_hash`、`SCHEMA_DIGESTS`。若有任何既有測試需要修改，在 Log 295 逐一列出原因。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝FF；baseline＝`af62fbb` 的副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（7 題）×1，合計每臂 blind 30、標靶 21 個 trial。
+- 標靶 7 題：
+  - 正例 3 題：`rep-individual-communities`（與 Log 292 同一字句）、`pf-patient-specific-modules`、`pf-per-patient-communities`。
+  - 對照 3 題：`ctl-condor-aggregate`、`role-both-ss-en`（與 `tests/routing_semantic_families.json` 同一字句）、`ctl-per-sample-tf`（與 Log 290 同一字句）。
+  - 報告題 1 題：`rep-communities-each-patient-unstated`（沒有說出尺度，FF 不適用）。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立即撤回 FF）：**
+- FF-a（離線，live 之前）：
+  - 全套件通過；核心模組 ≤ 1000 行；指紋不變。
+  - 以實際程式重做掃描與重播，結果與上面相同。
+  - 不成立則不跑 live。
+- FF-b（有效性）：baseline 正例 9 個 trial 中為缺口回覆形狀（unsupported、`["granularity"]`、含 CONDOR）的＝0，否則此輪作廢。
+- FF-c（效益）：candidate 正例 9 個 trial 中為缺口回覆形狀的 ≥ 6。
+- FF-d（不擴散）：正例以外的 42 個 trial（blind 30＋4 題 ×3）中，candidate 出現 `mismatch_dimensions=["granularity"]` 且沒有選中任何 workflow 的次數＝0。
+- FF-e（對照）：exact CONDOR、exact LIONESS-PUMA（`role-both-ss-en`）、exact LIONESS-PANDA，各自 ≥ baseline − 1。
+- FF-f（blind 不退步）：candidate blind-en 最終 WRONG ≤ baseline＋3。
+- 只報告：`rep-communities-each-patient-unstated` 的結果；兩臂正例的語意驗證失敗次數。
+
+**Log 294 補充（實作後、live 前寫；門檻不變）：FF-a 成立。**
+- repo 的程式與原型逐字相同。以實際程式重做：
+  - 掃描：1706 個輸出中驗證改變的 4 個都是 `rep-individual-communities`。
+  - 重播：Log 293 candidate 54 個 trial 中 51 個不變，只有 `rep-individual-communities` ×3 分岔。
+- 全套件 2983 passed／35 skipped，沒有修改任何既有測試；指紋不變；`outcome_matching.py` 998 行。
+- 新增 `tests/test_stated_scale_gap.py`（4 個測試），用 `tests/log294_communities_calls.json` 端對端重播：
+  - 第一次輸出與當時改回 `not_applicable` 的修補（當作審查回應）錄自 Log 293 candidate s1；intent 與 concern 回應錄自 baseline s1。
+  - 結果為 unsupported、替代方案 `run_condor`，回覆不含「failed validation」。
+
+## Log 295｜結果：FF——全部門檻成立，保留；每個病人的 community 由驗證失敗改為能力缺口回覆（FF-c 剛好 6／9）
+
+日期／時區：2026-10-01，Asia/Taipei。依 Log 294（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/scale-gap-2026-10-01/`（報告 `live-ff-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`render_replies.py`）。
+
+**執行：**
+- 3 個時段（15:24、15:26、15:28），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後各檢查一次：兩臂 `scripts/` 只差 FF 的 4 個檔案，harness 與 blind 語料相同（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。
+- 呼叫數：candidate 201，baseline 200。指紋兩臂都是 legacy `3f394e4d5d3f`。
+- 51 組配對 trial 的第一個模型呼叫兩臂逐字相同。FF 不是模型可見的改動。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| FF-a（離線） | 2983 passed／35 skipped，沒有修改任何既有測試；指紋不變；掃描與重播同補充 | 成立 |
+| FF-b（有效性） | baseline 正例 9 個 trial 中為缺口回覆形狀的 0 | 有效 |
+| FF-c（效益） | candidate 正例 6／9 為缺口回覆形狀：`rep-individual-communities` 3／3、`pf-per-patient-communities` 3／3、`pf-patient-specific-modules` 0／3 | 成立（剛好門檻） |
+| FF-d（不擴散） | 正例以外的 42 個 trial 中 `["granularity"]` 缺口 0 | 成立 |
+| FF-e（對照） | exact CONDOR 3（baseline 3）；`role-both-ss-en` exact LIONESS-PUMA 3（3）；`ctl-per-sample-tf` exact LIONESS-PANDA 3（3） | 成立 |
+| FF-f（blind） | 最終 WRONG：candidate 0，baseline 0 | 成立 |
+
+**逐題（標靶，各 3 個 trial）：**
+- `rep-individual-communities`、`pf-per-patient-communities`：
+  - candidate 6／6 為缺口回覆：「The registered NetZoo workflows do not infer（或 explain）sample-specific community assignments. CONDOR can instead analyze aggregate community assignments. Did you mean that supported result?」
+  - baseline 6／6 是語意驗證失敗（「Semantic routing output failed validation … Retry this request when semantic routing is available」）。
+  - 動詞跟著模型讀出的 operation 走：`pf-per-patient-communities` 的 operation 被讀成 `explain`，所以寫成「do not explain」，讀起來彆扭。這是 `render_capability_gap` 既有的寫法。
+- `pf-patient-specific-modules`（「patient-specific networks … then the gene modules inside each patient's network」）：
+  - 兩臂的第一次輸出都不合 schema：artifact_type 被填成 `sample_specific`。
+  - 接著的整體審查（`SemanticReview`）多半把「每個病人網路裡的基因模組」讀成 `sample_cluster_assignment`＋每個病人，這是錯誤的讀法。
+  - candidate 中，2 次的唯一 issue 是尺度缺口，FF 把它回報為缺口：「The registered NetZoo workflows do not infer sample-specific sample cluster assignment. Registered outputs are: co-expression networks, community assignments, …」。另 1 次還有實體 issue，結果是驗證失敗。
+  - 沒有 workflow 產生 `sample_cluster_assignment` 這種主 artifact，所以沒有替代方案，不符合缺口回覆的形狀。
+  - baseline：1 次語意驗證失敗（同一誤讀）、1 次 exact LIONESS-PANDA（讀成每個病人的調控網路，模組被忽略）、1 次平手。
+  - 判讀：候選臂的回覆沒有不實陳述，但把使用者要的「基因模組」講成 sample clusters，原因在上游審查的誤讀。這不同於 Log 289 撤回 CC1 時那種「明明有 workflow 卻說沒有」，不構成事後撤回的理由；記為後續。
+- 對照 `ctl-condor-aggregate`、`role-both-ss-en`、`ctl-per-sample-tf`：兩臂都是 3／3 exact，FF 沒有改變。
+- `rep-communities-each-patient-unstated`（只報告）：兩臂都是 3／3 exact CONDOR。
+  - 回覆的假設寫「The user is looking for a method to analyze gene communities on a per-patient basis」，結論卻寫「Your question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.」，前後矛盾。
+  - 「communities for each patient」不含網路名詞，不是確定性的尺度證據，所以 FF 不適用。這是既有問題。
+
+**blind-en（各 30 個 trial）：** candidate OK 27、PARTIAL 3；baseline OK 28、PARTIAL 2。差異來自 case3／case4／case6 在 exact 與平手之間互換。第一個呼叫兩臂逐字相同，blind 請求也都沒有確定性尺度證據，FF 不可能介入，屬抽樣差異。
+
+**判定：** 依 Log 294，保留 FF1、FF2。
+
+**後續（尚未做）：**
+- 「每個病人網路裡的基因模組」被整體審查讀成 sample clusters（`pf-patient-specific-modules`）。
+- 「communities for each patient」沒有網路名詞，尺度不被當成說出；回覆的假設與結論矛盾。
+- 缺口回覆的動詞直接沿用模型讀出的 operation（如 explain）。
