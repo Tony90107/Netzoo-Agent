@@ -173,6 +173,15 @@ def test_aggregate_tf_request_stays_a_real_method_choice():
     ("I want one cohort network showing how individual genes link across both layers.", ["aggregate"]),
     ("The model has individual-specific random effects.", []),
     ("For the same individuals I have gene expression and methylation tables.", []),
+    # Log 298: the communities of each unit's network, still bound to that
+    # noun; a partition of one network states no scale. "Modules" is left out
+    # (Log 299).
+    ("Which tool finds gene communities for each patient? Advice only.", ["sample_specific"]),
+    ("I want patient-specific gene communities.", ["sample_specific"]),
+    ("Which tool gives per-patient gene communities?", ["sample_specific"]),
+    ("Which workflow finds gene modules within each patient? Advice only.", []),
+    ("I have a regulator-gene bipartite network and want to find its communities.", []),
+    ("Which tool finds gene communities in my cohort's regulatory network?", []),
 ])
 def test_granularity_witness_reports_only_stated_network_granularity(prompt, expected):
     assert sorted({m.granularity for m in granularity_mentions(prompt)}) == expected

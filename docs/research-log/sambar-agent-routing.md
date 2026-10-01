@@ -15044,3 +15044,117 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - GG1 在它的目標題上 3／3 有效。若要保留，應另行事前宣告、只量測 GG1，並用沒看過的新寫法當正例。
 - 「基因模組」那題的失敗主要來自整體審查的變異：輸出形狀錯誤、讀成調控網路，有時讀成病人分群。GG2 只處理最後一種，這一輪沒有出現。
 - 「gene modules within each patient」被讀成 artifact `unknown`，確定性規則碰不到。
+
+## Log 298｜事前宣告：HH——單獨重測 GG1（community／module 的每個樣本寫法），正例全用新寫法
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「先 commit 然後單獨重測第 2 項」。GG3 與 Log 296–297 已 commit 為 `8665de3`。
+本條目寫於任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/community-witness-2026-10-02/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+
+**為什麼重測：**
+- Log 297 把 GG1 與 GG2 綁在同一個效益門檻下。GG1 在它的目標題上 3／3 有效，但另兩題因模型讀法（審查變異、讀成 artifact `unknown`）失敗，GG1 依規則一起撤回。
+- 這次只量測 GG1。為了避免拿看過的題目過關，正例全部是新寫法，Log 296 的目標題只列為報告題。
+- 新正例都用「communities」：Log 297 中「modules」的讀法不穩（被讀成 `unknown`），而含「gene communities」的請求都被讀成 `community_assignment`。
+
+**變更 HH1：** 與 `gg1_gg2_withdrawn.patch` 中 `request_integrity.py` 的部分完全相同（只改註解中的 Log 編號）。不含 GG2。
+
+**離線證據（實作前，在工作樹副本上做原型）：**
+- 偵測：3 題新正例在目前程式下都偵測不到，在 HH1 下都是 `sample_specific`；2 題 CONDOR 對照兩邊都偵測不到。
+- 重播 FF、GG、EE 三輪的 222 個可重播 trial，與目前程式相比，不同的只有兩題：
+  - `rep-communities-each-patient-unstated` ×12；
+  - `gg-modules-within-each-patient` ×6：HH1 偵測到尺度，但模型把 artifact 讀成 `unknown`，最後結果無法離線預知。
+- 驗證掃描（1870 個第一次輸出與審查輸出）：改變的 6 個都是 `rep-communities-each-patient-unstated` 的第一次輸出（無效 → 有效）。
+- 指紋不變（GG 原型已驗證；HH1 是其子集）。
+
+**預期（寫在量測前）：**
+- 3 題新正例改為「The registered NetZoo workflows do not produce（或 infer）sample-specific community assignments. CONDOR can instead …」。baseline 多半是 exact CONDOR，結論為 cohort-level。
+- CONDOR 整體對照（2 題）、每個樣本 TF-gene（LIONESS-PANDA）、blind case 9（CONDOR）不變。
+- 釘住項目不變；若有任何既有測試需要修改，在 Log 299 逐一列出原因。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝HH1；baseline＝`8665de3` 的副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（8 題）×1。標靶 8 題：
+  - 正例 3 題：`hh-communities-in-each-patient`、`hh-patient-specific-communities`、`hh-per-patient-communities`。
+  - 對照 3 題：`ctl-condor-aggregate`、`hh-ctl-cohort-communities`（「communities in my cohort's regulatory network」，沒有每個樣本的寫法）、`ctl-per-sample-tf`。
+  - 報告題 2 題：`rep-communities-each-patient-unstated`、`gg-modules-within-each-patient`。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立即撤回 HH1）：**
+- HH-a（離線，live 之前）：
+  - 全套件通過；核心模組 ≤ 1000 行；指紋不變。
+  - 以實際程式重做重播與掃描，結果與上面相同。
+  - 不成立則不跑 live。
+- HH-b（有效性）：baseline 正例 9 個 trial 中為缺口回覆形狀的＝0（沒有 HH1 就沒有說出尺度的證據，FF 不會作用），否則此輪作廢。
+- HH-c（效益）：candidate 正例中為缺口回覆形狀的 ≥ 6／9，且 ≥ baseline＋3。
+- HH-d（不擴散）：正例與報告題以外的 39 個 trial（blind 30＋3 題 ×3）中，candidate 的 `["granularity"]` 缺口＝0。
+- HH-e（對照）：各對照的 exact、blind case9-en 的 exact CONDOR，各自 ≥ baseline − 1。
+- HH-f（blind 不退步）：candidate blind-en 最終 WRONG ≤ baseline＋3。
+
+**Log 298 補充（實作後、live 前寫；門檻不變）：HH-a 成立。**
+- repo 的程式與原型逐字相同，重播與掃描的結果直接適用。
+- 全套件 2990 passed／35 skipped；指紋不變；`request_integrity.py` 524 行。
+- 新增測試：
+  - `tests/test_community_witness.py`（端對端重播，fixture 是 `tests/log298_communities_each_patient_calls.json`，錄自 Log 295 candidate s1）。
+  - `test_granularity_history_role_regressions` 加入 5 個偵測例句。
+- 修改 1 個既有測試：`test_stated_scale_gap::test_only_a_stated_scale_the_result_cannot_have_is_a_gap`，原因同 Log 296 補充（「communities for each patient」由沒說尺度變為說出尺度）。
+
+## Log 299｜結果：HH——全部門檻成立（新正例 9／9）；事後把 HH1 縮小為只含 communities（modules 題變差）
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 298（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/community-witness-2026-10-02/`（報告 `live-hh-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`render_replies.py`）。
+
+**執行：**
+- 3 個時段（00:07、00:10、00:12），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後各檢查一次：兩臂 `scripts/` 只差 `request_integrity.py`，harness 與 blind 語料相同（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。
+- 呼叫數：candidate 209，baseline 222。54 組配對的第一個模型呼叫兩臂逐字相同。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| HH-a（離線） | 2990 passed／35 skipped；指紋不變；重播、掃描同 Log 298 | 成立 |
+| HH-b（有效性） | baseline 正例中為缺口回覆形狀的 0（9／9 都是 exact CONDOR） | 有效 |
+| HH-c（效益） | candidate 9／9（baseline 0） | 成立 |
+| HH-d（不擴散） | 39 個 trial 中 `["granularity"]` 缺口 0 | 成立 |
+| HH-e（對照） | exact CONDOR 3＋3（3＋3）、exact LIONESS-PANDA 3（3）、case9 exact CONDOR 3（3） | 成立 |
+| HH-f（blind） | 最終 WRONG：candidate 1，baseline 0 | 成立 |
+
+**逐題：**
+- 3 題新正例：
+  - candidate 9／9 是「The registered NetZoo workflows do not produce（或 infer）sample-specific community assignments. CONDOR can instead analyze aggregate community assignments.」
+  - baseline 9／9 是 exact CONDOR，結論寫「Your question asks for a cohort-level community assignment」。
+- 報告題 `rep-communities-each-patient-unstated`：candidate 3／3 為缺口回覆，baseline 3／3 exact CONDOR。
+- 報告題 `gg-modules-within-each-patient`（「Which workflow finds gene modules within each patient?」）：
+  - candidate 3／3 是每個樣本網路方法的平手：
+    - s1 推薦 LIONESS-PUMA，理由是「the regulators include miRNAs」，但使用者沒提到 miRNA，還寫 LIONESS-PUMA「suitable for identifying gene modules within each patient」；
+    - s2、s3 是五個 workflow 的平手且沒有推薦，沒有確定性回覆。
+  - baseline 3／3 exact CONDOR，結論錯說 cohort-level。
+  - 跨兩輪：沒有 modules 偵測時 6 次中 2 次走到平手（Log 297 baseline 2 次，推薦 LIONESS-PUMA），有偵測時 6／6 走到平手。
+  - 推薦模型編出 miRNA 前提是既有問題，但 modules 偵測讓這題更常走到那條路，而且兩輪中 modules 題一次也沒得到缺口回覆。
+- 對照都不變。
+
+**blind-en（各 30 個 trial）：**
+- candidate：OK 26、PARTIAL 2、FALLBACK 1、WRONG 1；baseline：OK 27、PARTIAL 2、FALLBACK 1。
+- 唯一的 WRONG 是 candidate s3 的 case7-en，結果為 fallback LIONESS-DRAGON（`unverified_evidence`、`registry_guidance_fallback`）。
+  - 原因：模型這次的第一次輸出有兩個每個樣本的 multi-omic 讀法，修補失敗後走證據未驗證的 registry fallback。
+  - 把這次的錄音放到 baseline 程式下嚴格重播，10／10 逐字相同，case 7 同樣得到 fallback LIONESS-DRAGON：與 HH1 無關。
+  - 這暴露一個既有漏洞：DD3（沒說出的尺度不能選 LIONESS-DRAGON）只在 exact 路徑生效，證據未驗證的 fallback 路徑沒有涵蓋。
+
+**判定：** 依 Log 298 保留 HH1。另外**事後**（不是事前宣告的）把 HH1 縮小為只含「communities」，拿掉「modules」。
+- 理由：
+  - 兩輪中 modules 題一次也沒得到缺口回覆；
+  - modules 偵測讓「gene modules within each patient」由 CONDOR 變成平手與錯誤推薦；
+  - 含 communities 的題目不受影響。
+- 驗證（嚴格重播本輪錄音）：
+  - candidate 的錄音在縮小後的規則下，18 題中 17 題逐字相同，只有 modules 題分岔。
+  - baseline 的錄音在縮小後的規則下，14 題逐字相同（包括 modules 題），分岔的只有 4 題 community 題。
+  - 所以縮小後每一題的行為都等於某一臂的實測結果：community 題＝candidate（12／12 缺口回覆），modules 題＝baseline。
+- 測試：
+  - `test_granularity_history_role_regressions` 的偵測例句改為 communities 版本，並加入「gene modules within each patient」→ 無尺度。
+  - 全套件 2991 passed／35 skipped；指紋不變；`request_integrity.py` 526 行。
+
+**後續（尚未做）：**
+- 「gene modules … each patient」的讀法是 artifact `unknown`。若要回到缺口回覆，需要讓說出的 modules 推得 `community_assignment`。這會改變路由，需要另一輪。
+- DD3 未涵蓋證據未驗證的 fallback 路徑（case 7 s3）。
+- 平手推薦會編造使用者沒說的前提（miRNA）。
