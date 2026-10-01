@@ -18,7 +18,7 @@ from netzoo_agent_core.cli.terminal_input import TerminalInputReader, _read_opti
 CARD = {
     "kind": "method_choice",
     "headline": "2 registered methods can build a per-sample co-expression network.",
-    "points": ["Recommended: BONOBO, from what you said.", "Nothing has run yet."],
+    "points": ["Recommended: BONOBO, from what you said."],
     "choices": {
         "header": "Method", "question": "Which method fits your study?", "ordering": "Recommended first.",
         "allow_other": True,
@@ -53,6 +53,8 @@ def test_a_card_shows_the_brief_form_and_where_the_full_reply_is():
     assert text.splitlines()[0] == CARD["headline"]
     assert "  • Recommended: BONOBO, from what you said." in text
     assert "✕ TIGER — netZooR only" in text
+    # Said once, from the card's ran_nothing flag.
+    assert text.count("Nothing has run yet.") == 1
     assert text.endswith("Full explanation: /details")
 
 
@@ -61,7 +63,8 @@ def test_options_are_numbered_as_the_machine_numbers_them():
     assert "  1) BONOBO  (Recommended)" in lines
     assert "  2) LIONESS-COEXPRESSION" in lines
     assert lines[-1] == "  Next: 3) Start a new task"
-    assert any("TIGER — not available here" in line for line in lines)
+    # What cannot run here is listed once, in the card above the menu.
+    assert not any("TIGER" in line for line in lines)
 
 
 def _pick(keys: str) -> str:

@@ -242,7 +242,8 @@ export function FilesPane({ config, initialPath, onOpenSession, refreshToken }: 
         </nav>
       ) : null}
 
-      {preview && (preview.kind === "table" || preview.kind === "text") ? (
+      {/* Paging only when there is more than one page to move between. */}
+      {preview && (preview.kind === "table" || preview.kind === "text") && (previewPage > 0 || preview.next_offset != null) ? (
         <div className="fv__paging">
           <button className="btn btn--quiet btn--small" type="button" disabled={busy || previewPage === 0}
             onClick={() => void open(preview.path, previewOffsets[previewPage - 1], preview.version, previewPage - 1)}>Previous page</button>

@@ -135,6 +135,8 @@ body {
 
 .inspector__slot { display: flex; flex-direction: column; min-height: 0; }
 .inspector__slot--rest { flex: 1 1 0; }
+.inspector__slot--empty { flex: none; }
+.inspector__slot--empty .pane__empty { padding: 12px 14px; text-align: left; }
 
 /* Separators are explicit borders rather than a parent background showing
    through 1px flex gaps. Both render identically; the border states the
@@ -506,7 +508,7 @@ body {
 .tl__stage.is-failed .tl__label { color: var(--danger); }
 
 .tl__label { flex: 1; min-width: 0; }
-.tl__tokens, .tl__duration, .tl__count { color: var(--muted); font-size: 11px; flex: none; }
+.tl__duration, .tl__count { color: var(--muted); font-size: 11px; flex: none; }
 .tl__count { width: 26px; text-align: right; }
 
 .tl__rows { list-style: none; margin: 0 0 6px; padding: 0 14px 0 32px; }
@@ -708,8 +710,7 @@ body {
 
 .workspace__tabs button:focus-visible,
 .tl__tabs button:focus-visible,
-.guide a:focus-visible,
-.fl__more button:focus-visible {
+.guide a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -800,7 +801,6 @@ body {
 .tl__tabs { display: flex; gap: 2px; }
 .tl__tabs button { padding: 3px 7px; font-size: 10px; border-radius: 5px; }
 .tl__tabs button[aria-pressed="true"] { border-bottom-color: var(--line); }
-.tl__tab-count { color: var(--muted); font-size: 9px; margin-left: 3px; }
 .tl__user {
   position: relative;
   margin: 4px 10px 8px;
@@ -821,7 +821,6 @@ body {
 .tl__user time, .tl__log-row time { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .tl__user-text { grid-column: 1 / -1; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
 .tl__log { padding: 0; }
-.tl__log-note { padding: 8px 12px; color: var(--muted); font-size: 10px; }
 .tl__log-list { list-style: none; margin: 0; padding: 4px 8px 12px; }
 .tl__log-row {
   display: grid;
@@ -843,8 +842,6 @@ body {
 
 /* ---------- buffered output listing ---------- */
 
-.fl__more { display: flex; justify-content: center; padding: 10px; }
-.fl__more button:disabled { opacity: 0.65; cursor: wait; }
 .set__key { color: var(--muted); white-space: nowrap; width: 1%; }
 .set__value { font-family: ui-monospace, monospace; word-break: break-all; }
 
@@ -1054,7 +1051,6 @@ body {
 .workspace__context select { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; max-width: 160px; }
 .workspace__return { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 9px 14px; border-bottom: 1px solid var(--line); }
 .workspace__return span { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
-.inspector__context { padding: 9px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 
 /* Sidebar controls always use the app's type and a vertical reading order. */
 .sl__controls { display: flex; flex-direction: column; gap: 12px; padding: 12px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
@@ -1219,8 +1215,6 @@ body {
 .cp__option:hover, .cp__option.is-active { border-color: var(--accent); }
 .cp__option:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cp__option.is-active { background: #231c19; }
-.cp__option--blocked { cursor: default; opacity: 0.72; background: transparent; border-style: dashed; }
-.cp__option--blocked:hover { border-color: var(--line); }
 .cp__option--own .cp__body { flex: 1; }
 .cp__option--own.is-active { cursor: text; }
 .cp__own {

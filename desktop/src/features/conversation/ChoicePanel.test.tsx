@@ -2,9 +2,9 @@
  * The choice panel sends the text the agent's prompt already accepts.
  *
  * Every option carries its own `answer`; the panel's job is to send exactly
- * that, whichever way it is chosen — click, Enter, or its number — and to keep
- * things the agent cannot run visible but unselectable. The last row sends the
- * user's own words instead, exactly as typed.
+ * that, whichever way it is chosen — click, Enter, or its number. What the
+ * agent cannot run is listed once, in the card above, not again here. The last
+ * row sends the user's own words instead, exactly as typed.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -66,8 +66,6 @@ describe("the choice panel", () => {
     harness();
     const own = screen.getByText("Type your own answer").closest(".cp__option")!;
     expect(own.querySelector(".cp__num")?.textContent).toBe("3");
-    // It follows the options; what cannot run here stays below as information.
-    expect(own.compareDocumentPosition(screen.getByText("TIGER")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("starts that answer with any other key and sends it as typed", () => {
@@ -109,13 +107,10 @@ describe("the choice panel", () => {
     expect(onAnswer).not.toHaveBeenCalled();
   });
 
-  it("lists what cannot run here without making it selectable", () => {
-    const { onAnswer } = harness();
-    const blocked = screen.getByText("TIGER").closest(".cp__option")!;
-    expect(blocked.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText("Not runnable here (netZooR, R)")).toBeTruthy();
-    fireEvent.click(blocked);
-    expect(onAnswer).not.toHaveBeenCalled();
+  it("leaves what cannot run here to the card above instead of listing it twice", () => {
+    harness();
+    expect(screen.queryByText("TIGER")).toBeNull();
+    expect(screen.queryByText("Not runnable here (netZooR, R)")).toBeNull();
   });
 
   it("opens outputs in the window instead of sending text", () => {

@@ -60,8 +60,6 @@ export function Conversation({
     <section className="pane pane--wide">
       <header className="pane__header">
         Conversation
-        <button className="btn btn--quiet btn--small" type="button" disabled={session.busy || session.stopped || !session.view}
-          title="Check the running agent environment without executing a workflow" onClick={() => onSlash("/doctor")}>/doctor</button>
         <ModeSwitch
           mode={session.view?.mode}
           disabled={session.busy || session.stopped || !session.view}

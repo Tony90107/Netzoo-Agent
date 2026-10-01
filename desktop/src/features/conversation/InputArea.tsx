@@ -156,7 +156,7 @@ function MainInput({ view, onAnswer, onOpenOutputs }: Pick<Props, "view" | "onAn
       <FreeText
         inputRef={textRef}
         autoFocus={!asking}
-        placeholder={asking ? "Or answer in your own words" : "What would you like to accomplish with NetZoo?"}
+        placeholder={asking ? "Or ask something else" : "What would you like to accomplish with NetZoo?"}
         submitLabel="Send"
         onSubmit={onAnswer}
       />

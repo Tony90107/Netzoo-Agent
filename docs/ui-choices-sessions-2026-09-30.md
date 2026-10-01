@@ -49,3 +49,27 @@ routing、prompt、schema、policy 皆未改（見研究紀錄 Log 287）。
   New session 對話框（模型＋tag）、Synthetic test 模式下實跑 PANDA toy（輸出寫到 `outputs/sessions/<id>/`）、
   從輸出預覽跳回 session、兩個 session 並排比較。
 - 終端版以 PTY 驗收：精簡卡片 → 方向鍵選 OTTER → 下一輪說明 → `/details` 顯示全文。
+
+## UI 與架構審查（2026-10-01）
+
+**刪掉的重複元素：**
+- 桌面版不再顯示終端版開場白（「… or exit or quit to stop」）。它被當成一則訊息，所以原本的空白提示「Describe a NetZoo goal…」從來不會出現；現在會出現。終端版照舊顯示。
+- 對話區的「/doctor」按鈕：與 Environment 分頁是同一份環境檢查，Environment 分頁內容較完整。輸入 `/doctor` 仍可用。
+- 右側面板頂端的「Current session · id」：標題列已經有。
+- 卡片上的「Nothing has run yet.」：已有「Nothing ran」標籤，改為只用 `ran_nothing` 一個欄位表示，終端版改由該欄位印出這一行。
+- 選項面板（與終端選單）裡重複列出的 ✕ 不可執行項目：上方卡片的「Related, but not available in this agent」已列出，含原因。
+- 有問題待回答時，下方輸入框的提示原本和「Type your own answer」重複，改為「Or ask something else」。
+- 檔案只有一頁時的翻頁列；session 列表與 Compare 中的內部用語「NO-TOOL」；沒有計畫時佔半個右側面板的空白 Plan 區（改為一行）；4 個沒用到的 CSS 規則。
+
+**修正的問題：**
+- 狀態列的「0 / 20,000 tokens」容易被誤讀成整個 session 的用量，改為「This request: … tokens」並附說明。
+- 切換 session 或 Resume 時，前一個閒置的 worker 程序要等 30 分鐘閒置回收才會結束；現在會立即停止。它的 checkpoint 每個 turn 都有保存，之後可用同一個 id 恢復。正在執行中的 session 不受影響。
+- 視窗最外層加上錯誤邊界：任何畫面在渲染時出錯，會顯示錯誤與「Reload the window」，而不是整個空白。session 資料的欄位缺漏時一律給預設值（新測試抓到 `tags` 缺漏會讓整個視窗當掉）。
+
+**記下但這次未改：**
+- 五個核心模組距 1000 行上限不到 50 行：`routing/outcome_matching.py` 996、`execution.py` 987、`data/gene_validation.py` 980、`data/tables.py` 970、`interpretation/concept_answers.py` 950。下次要改這幾個檔之前需要先拆分。
+- 清單類 API 每次都讀全部 checkpoint；目前 391 個、4 MB，各在 120 ms 內，規模大約再大十倍時再加摘要快取。
+- 「Show inspector」版面下，時間軸同時出現在右側面板與 Activity 分頁（後者是「Expand」後的全寬版），屬設計上的重疊。
+- 前端仍自帶少量後端知識（`userTurn.ts` 的 workflow 顯示名稱、執行紀錄檔名的備援規則），日後可改由 daemon 提供。
+- 安全邊界維持：bearer token、限定來源的 CORS、檔案只能讀 `outputs/`（含 symlink 檢查）。
+

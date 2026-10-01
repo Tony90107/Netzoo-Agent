@@ -255,7 +255,7 @@ describe("the main prompt with a reply card", () => {
     expect(screen.queryByText("Which modeling assumption best matches?")).toBeNull();
     fireEvent.click(screen.getByText("OTTER"));
     expect(onAnswer).toHaveBeenLastCalledWith("Use OTTER");
-    fireEvent.change(screen.getByLabelText("Or answer in your own words"), { target: { value: "neither, compare them" } });
+    fireEvent.change(screen.getByLabelText("Or ask something else"), { target: { value: "neither, compare them" } });
     fireEvent.click(screen.getByText("Send"));
     expect(onAnswer).toHaveBeenLastCalledWith("neither, compare them");
   });

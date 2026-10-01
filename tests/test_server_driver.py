@@ -95,13 +95,11 @@ def _planning_mode():
     configure_runtime(**previous)
 
 
-def test_first_view_is_the_main_prompt_with_the_planning_banner():
+def test_first_view_is_the_main_prompt_without_the_terminal_banner():
     runtime = _fake_cli_runtime(invoke_error=AssertionError("graph must not run"))
     with _Harness(runtime) as harness:
         assert harness.next("ready").payload["session_id"] == "test-session"
-        banner = harness.next("notice")
-        assert "started in Planning mode" in banner.payload["text"]
-        assert banner.payload["occurred_at"].endswith("+00:00")
+        # The terminal's "exit or quit to stop" banner is not the window's.
         view = harness.next("view")
         assert view.payload["prompt_kind"] == "main"
         assert view.payload["mode"] == "Planning"

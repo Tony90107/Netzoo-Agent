@@ -33,8 +33,8 @@ function Badge({ option }: { option: ReplyOption }) {
 }
 
 function Options({ card, onAnswer }: Props) {
+  // What cannot run here is listed once, with its reason, in the card above.
   const options = (card.choices?.options ?? []).filter((option) => option.available);
-  const blocked = card.unavailable;
   // The row after the options takes an answer in the user's own words, like
   // the "Other" row of those prompts. Its index is -1 when the card allows none.
   const own = card.choices?.allow_other === false ? -1 : options.length;
@@ -162,15 +162,6 @@ function Options({ card, onAnswer }: Props) {
             </span>
           </button>
         ) : null}
-        {blocked.map((option) => (
-          <div key={option.key} className="cp__option cp__option--blocked" aria-disabled="true">
-            <span className="cp__num" aria-hidden="true">✕</span>
-            <span className="cp__body">
-              <span className="cp__label">{option.label}<span className="cp__badge cp__badge--off">Not available here</span></span>
-              <span className="cp__desc">{option.reason || option.description}</span>
-            </span>
-          </div>
-        ))}
       </div>
       <div className="cp__hint">
         <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> or <kbd>1</kbd>–<kbd>{Math.min(count, 9)}</kbd> choose
