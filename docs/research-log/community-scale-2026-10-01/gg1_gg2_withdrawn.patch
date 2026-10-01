@@ -1,0 +1,90 @@
+--- a/scripts/netzoo_agent_core/interpretation/request_integrity.py	2026-10-01 15:21:08
++++ b/scripts/netzoo_agent_core/interpretation/request_integrity.py	2026-10-01 15:43:57
+@@ -148,6 +148,12 @@
+         # request for one network per patient. Log 292: “individual-specific
+         # networks … for every subject” named its scale yet read as unstated.
+         r"\b(?:sample|patient|subject|individual|person)[- ]specific\s+(?:[\w-]+\s+){0,5}networks?\b|"
++        # Log 296: communities or modules of each unit's network are a
++        # per-sample result too ("gene communities for each patient").
++        r"\b(?:sample|patient|subject|individual|person)[- ]specific\s+(?:[\w-]+\s+){0,3}(?:communit(?:y|ies)|modules?)\b|"
++        r"\bper[- ](?:sample|patient|subject|person|individual)\s+(?:[\w-]+\s+){0,3}(?:communit(?:y|ies)|modules?)\b|"
++        r"\b(?:communit(?:y|ies)|modules?)\b(?:\s+[\w-]+){0,3}?\s+(?:separately\s+)?(?:for|in|within|inside)\s+"
++        r"(?:each|every)\s+(?:individual\s+)?(?:sample|patient|subject|person|individual)s?\b|"
+         r"\bper[- ](?:sample|patient|subject|person|individual)\s+"
+         r"(?:[\w<>/→-]+\s+){0,4}networks?\b|"
+         r"\b(?:separate|independently\s+estimated)\s+(?:[\w-]+\s+){0,3}networks?\s+"
+--- a/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py	2026-09-26 13:47:37
++++ b/scripts/netzoo_agent_core/interpretation/stated_field_restoration.py	2026-10-01 15:43:57
+@@ -69,6 +69,7 @@
+ from .request_integrity import (
+     granularity_mentions,
+     input_mentions,
++    patient_clustering_goal,
+     regulatory_role_mentions,
+ )
+ 
+@@ -90,6 +91,46 @@
+     ("target_type", "target_types"),
+     ("selection_tag", "selection_tags"),
+ )
++
++
++#: Words for a partition of a network's nodes (Log 296).
++_PARTITION_QUOTE = re.compile(r"\b(?:modules?|communit(?:y|ies))\b", re.I)
++
++
++def _quoted_partition_correction(user_task, outcome, evidence):
++    """A network partition the reading took for sample clusters (Log 296).
++
++    "The gene modules inside each patient's network" was read as
++    `sample_cluster_assignment`, whose only entity is the sample. The quote
++    names a partition of a network's nodes, which the ontology calls
++    `community_assignment` ("not patient subtype labels"). Only that quote,
++    in that reading's own evidence, moves the artifact; a request that groups
++    patients keeps its reading.
++    """
++    if outcome.artifact_type != "sample_cluster_assignment" or patient_clustering_goal(user_task):
++        return None
++    quotes = [
++        item for item in evidence
++        if item.dimension == "artifact_type" and item.value == "sample_cluster_assignment"
++        and item.source == "explicit" and item.text_span
++        and _PARTITION_QUOTE.search(item.text_span)
++        and explicit_evidence_grounded(user_task, item)
++    ]
++    if not quotes:
++        return None
++    candidate = _without_roles(outcome.model_copy(update={"artifact_type": "community_assignment"}))
++    if candidate is None or set(outcome_consistency_issues(candidate)) - {
++        "artifact_granularity:community_assignment"
++    }:
++        return None
++    moved = [
++        item.model_copy(update={
++            "value": "community_assignment",
++            "rationale": "The quote names a partition of a network, the ontology's community assignment.",
++        })
++        for item in quotes
++    ]
++    return candidate, [item for item in evidence if item not in quotes] + moved, quotes[0].text_span
+ 
+ 
+ def _witnessed_current(user_task: str) -> dict[str, str]:
+@@ -326,6 +367,17 @@
+                     "witnessed_span": None,
+                 })
+             outcome = candidate
++        partition = _quoted_partition_correction(user_task, outcome, evidence)
++        if partition is not None:
++            restored.append({
++                "hypothesis": index,
++                "field": "artifact_type",
++                "value": "community_assignment",
++                "previous_value": outcome.artifact_type,
++                "source": "quoted_partition_ontology_correction",
++                "witnessed_span": partition[2],
++            })
++            outcome, evidence = partition[0], partition[1]
+         baseline = set(outcome_consistency_issues(outcome))
+         granularity_witnesses = (
+             {
