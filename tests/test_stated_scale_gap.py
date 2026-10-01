@@ -47,7 +47,9 @@ def _reading(outcome=PER_SAMPLE):
 def test_only_a_stated_scale_the_result_cannot_have_is_a_gap():
     assert stated_scale_gap(TASK, PER_SAMPLE) == "artifact_granularity:community_assignment"
     # Unstated, or both scales stated: the reading's scale is still the model's.
-    assert stated_scale_gap("Which tool finds gene communities for each patient?", PER_SAMPLE) is None
+    # (Log 298: "communities for each patient" now states it, so it is a gap.)
+    assert stated_scale_gap("Which tool finds gene communities in my patients?", PER_SAMPLE) is None
+    assert stated_scale_gap("Which tool finds gene communities for each patient?", PER_SAMPLE) is not None
     both = "I want one cohort network and individual-specific networks split into modules."
     assert stated_scale_gap(both, PER_SAMPLE) is None
     # A scale the ontology gives the result is no gap.

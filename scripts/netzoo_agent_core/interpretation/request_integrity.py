@@ -148,6 +148,14 @@ _GRANULARITY_PATTERNS = {
         # request for one network per patient. Log 292: “individual-specific
         # networks … for every subject” named its scale yet read as unstated.
         r"\b(?:sample|patient|subject|individual|person)[- ]specific\s+(?:[\w-]+\s+){0,5}networks?\b|"
+        # Log 298: the communities of each unit's network are a per-sample
+        # result too ("gene communities for each patient"). Not "modules": that
+        # word was read as an unknown result and tied the per-sample networks
+        # instead (Log 299).
+        r"\b(?:sample|patient|subject|individual|person)[- ]specific\s+(?:[\w-]+\s+){0,3}communit(?:y|ies)\b|"
+        r"\bper[- ](?:sample|patient|subject|person|individual)\s+(?:[\w-]+\s+){0,3}communit(?:y|ies)\b|"
+        r"\bcommunit(?:y|ies)\b(?:\s+[\w-]+){0,3}?\s+(?:separately\s+)?(?:for|in|within|inside)\s+"
+        r"(?:each|every)\s+(?:individual\s+)?(?:sample|patient|subject|person|individual)s?\b|"
         r"\bper[- ](?:sample|patient|subject|person|individual)\s+"
         r"(?:[\w<>/→-]+\s+){0,4}networks?\b|"
         r"\b(?:separate|independently\s+estimated)\s+(?:[\w-]+\s+){0,3}networks?\s+"

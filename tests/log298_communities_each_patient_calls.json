@@ -1,0 +1,92 @@
+{
+ "source": "docs/research-log/scale-gap-2026-10-01/live-ff-cand-s1-targeted.json.gz (rep-communities-each-patient-unstated; its repair replayed as the review); Log 298",
+ "prompt": "Which tool finds gene communities for each patient? Advice only.",
+ "calls": [
+  {
+   "schema": "SemanticInterpretation",
+   "args": {
+    "request_mode": "guidance",
+    "semantic_goal": "Identify tools for finding gene communities in patient data.",
+    "outcome_hypotheses": [
+     {
+      "outcome": {
+       "operation": "explain",
+       "artifact_type": "community_assignment",
+       "granularity": "sample_specific"
+      },
+      "confidence": 0.9,
+      "evidence": [
+       {
+        "dimension": "operation",
+        "value": "explain",
+        "source": "explicit",
+        "rationale": "The user is seeking advice on tools for a specific analysis.",
+        "text_span": "Which tool finds gene communities for each patient?"
+       },
+       {
+        "dimension": "artifact_type",
+        "value": "community_assignment",
+        "source": "explicit",
+        "rationale": "The user is interested in identifying gene communities, which relates to community assignment.",
+        "text_span": "finds gene communities"
+       }
+      ],
+      "assumptions": [
+       "The user is looking for a method to analyze gene communities on a per-patient basis."
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "schema": "SemanticPatch",
+   "args": {
+    "hypothesis_index": 0,
+    "request_mode": "guidance",
+    "semantic_goal": "Identify tools for finding gene communities in patient data.",
+    "confidence": 0.9,
+    "outcome": {
+     "operation": "explain",
+     "input_artifacts": [],
+     "artifact_type": "community_assignment",
+     "entity_types": [],
+     "display_entities": [],
+     "regulator_types": [],
+     "target_types": [],
+     "selection_tags": [],
+     "granularity": "unknown",
+     "unresolved_dimensions": []
+    },
+    "evidence_removals": [
+     {
+      "dimension": "granularity",
+      "value": "sample_specific"
+     }
+    ],
+    "evidence_additions": [
+     {
+      "dimension": "granularity",
+      "value": "aggregate",
+      "rationale": "The artifact type 'community_assignment' does not support sample-specific granularity, thus it must be set to aggregate.",
+      "source": "inferred"
+     }
+    ],
+    "assumptions": null
+   }
+  },
+  {
+   "schema": "IntentDecision",
+   "args": {
+    "mode": "answer",
+    "confidence": 1.0,
+    "reason": "The user is seeking advice on tools for finding gene communities in patient data, which qualifies as an answer request."
+   }
+  },
+  {
+   "schema": "StatedConcernClaims",
+   "args": {
+    "claims": []
+   }
+  }
+ ]
+}
