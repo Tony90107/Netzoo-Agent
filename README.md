@@ -82,6 +82,7 @@ open "desktop/src-tauri/target/release/bundle/macos/NetZoo Agent.app"
   沒指定輸出路徑時寫到 `outputs/sessions/<session id>/`；Outputs 分頁預設「By session」：一個 session 一筆、最新的在最上面
   （只有一個結果就直接是那個檔案，manifest 與執行紀錄收在「+N run files」；多個結果才是只放該 session 檔案的資料夾），
   「Folders」仍可瀏覽磁碟上的資料夾；
+  每次執行的報告（`*-execution-*.md`）在彈窗中以可閱讀的版面呈現（重點卡＋可收合章節，可切回原文）；
   輸出預覽可跳回產生它的 session；
   Resume 沿用原本的 session id（與終端版 `--resume` 相同）；
   session 列表可依名稱、筆記、tag 搜尋與篩選，並可勾選 2–4 個 session 並排比較（每個欄位一列）。

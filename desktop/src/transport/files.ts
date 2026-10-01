@@ -160,7 +160,11 @@ export function listTags(config: DaemonConfig, signal?: AbortSignal): Promise<{ 
   return get(config, "/v1/tags", signal);
 }
 
-export type SessionOutputFile = { name: string; path: string; size_bytes: number; modified_at: number; result: boolean };
+export type SessionOutputFile = {
+  name: string; path: string; size_bytes: number; modified_at: number; result: boolean;
+  /** "report" is a run's execution record, "manifest" its manifest; absent from an older daemon. */
+  role?: "result" | "report" | "manifest" | "file";
+};
 /** One session's files: its folder under outputs/sessions/ and what its runs recorded. */
 export type SessionOutputs = {
   session_id: string; name: string; title: string; workflow: string; status: string;

@@ -329,8 +329,8 @@ def test_outputs_are_one_entry_per_session_newest_first(tmp_path, monkeypatch):
     assert [entry["session_id"] for entry in body["sessions"]] == ["s2", "old2", "s1", "expired"]
     newest = body["sessions"][0]
     assert newest["name"] == "Batch 2: OTTER" and newest["folder"] == "outputs/sessions/s2"
-    assert [(item["name"], item["result"]) for item in newest["files"]] == [
-        ("otter.tsv", True), ("manifest.json", False), ("otter-execution-x_TW.md", False)]
+    assert [(item["name"], item["result"], item["role"]) for item in newest["files"]] == [
+        ("otter.tsv", True, "result"), ("manifest.json", False, "manifest"), ("otter-execution-x_TW.md", False, "report")]
     assert newest["added_at"] == 31
     assert [item["path"] for item in body["sessions"][2]["files"]] == ["outputs/sessions/s1/panda.tsv"]
     assert body["sessions"][3]["saved"] is False and body["sessions"][3]["title"] == ""
@@ -338,3 +338,32 @@ def test_outputs_are_one_entry_per_session_newest_first(tmp_path, monkeypatch):
     with TestClient(create_app(token="sessions-token", supervisor=_FakeSupervisor())) as client:
         assert client.get("/v1/outputs/sessions", headers=AUTH).json() == body
         assert client.get("/v1/outputs/sessions").status_code == 401
+
+
+def test_a_title_is_the_first_request_never_a_stored_marker(store):
+    from netzoo_agent_core.session_meta import readable_request
+
+    assert readable_request("if i want sample-specific miRNA networks, what do I need?") == (
+        "if i want sample-specific miRNA networks, what do I need?")
+    assert readable_request("Previous NetZoo goal: Build a PANDA network\nUser follow-up: use OTTER") == "Build a PANDA network"
+    for marker in ("PREVIOUS_ACTION=run_lioness_puma. Continue the recommended LIONESS-PUMA workflow.",
+                   "CONFIRMED_OUTCOME_ACTION=run_otter. The user chose OTTER.", "/doctor", "new", "2", "1, 3", ""):
+        assert readable_request(marker) == ""
+    client, write, sessions = store
+    # A long session whose checkpoint kept only the newest turns.
+    write("t1", workflow="LIONESS-PUMA", messages=[
+        {"role": "user", "content": "PREVIOUS_ACTION=run_lioness_puma. Continue the recommended LIONESS-PUMA workflow."},
+        {"role": "assistant", "content": "Choose one complete input bundle."},
+        {"role": "user", "content": "which tools give sample-specific miRNA networks?"}])
+    write("t2", workflow="LIONESS-PUMA", messages=[
+        {"role": "user", "content": "PREVIOUS_ACTION=run_lioness_puma. Continue with the selected inputs."}])
+    titles = {row["session_id"]: row["title"] for row in client.get("/v1/history", headers=AUTH).json()["sessions"]}
+    assert titles["t1"] == "which tools give sample-specific miRNA networks?"
+    assert titles["t2"] == "Continue LIONESS-PUMA"
+    # Once recorded, the first request outlives the checkpoint's compaction.
+    remember_turn("t2", request="/doctor", sessions_root=sessions)
+    remember_turn("t2", request="build per-sample miRNA networks for my cohort", sessions_root=sessions)
+    remember_turn("t2", request="a later question", sessions_root=sessions)
+    assert load_meta("t2", sessions_root=sessions)["first_request"] == "build per-sample miRNA networks for my cohort"
+    assert client.get("/v1/history/t2", headers=AUTH).json()["title"] == "build per-sample miRNA networks for my cohort"
+

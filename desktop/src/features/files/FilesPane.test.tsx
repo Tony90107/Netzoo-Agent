@@ -82,7 +82,7 @@ describe("outputs by session", () => {
     expect(screen.getByText("1 other file was not written by a saved session.", { exact: false })).toBeTruthy();
     expect(listDirectory).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "+2 run files" }));
-    expect(screen.getByText("panda-execution-x_TW.md")).toBeTruthy();
+    expect(screen.getByText(/^Run report · /).closest("button")?.title).toBe("outputs/sessions/old/panda-execution-x_TW.md");
     fireEvent.click(screen.getByText("request old"));
     await screen.findByText("/project/outputs/sessions/old/panda.tsv");
     expect(previewFile).toHaveBeenCalledWith(config, "outputs/sessions/old/panda.tsv", 0, "");
@@ -98,6 +98,42 @@ describe("outputs by session", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browse folders" }));
     await screen.findByText("a.tsv");
     expect(listDirectory).toHaveBeenCalledWith(config, "", 0, 100);
+  });
+});
+
+describe("Markdown outputs", () => {
+  const report = "# NetZoo execution summary\n\n## Summary\n\n- Workflow: `PANDA`\n- Status: `success`\n\n## Conclusion\n\nDone.\n";
+
+  it("opens a run report readable in a window of its own, its source one click away", async () => {
+    vi.mocked(listSessionOutputs).mockResolvedValue({ other_files: 0, sessions: [{
+      session_id: "s1", name: "", title: "request s1", workflow: "PANDA", status: "completed", saved: true, added_at: 100,
+      folder: "outputs/sessions/s1", files: [
+        { name: "panda.tsv", path: "outputs/sessions/s1/panda.tsv", size_bytes: 10, modified_at: 100, result: true, role: "result" },
+        { name: "panda-execution-x_TW.md", path: "outputs/sessions/s1/panda-execution-x_TW.md", size_bytes: 10, modified_at: 100, result: false, role: "report" },
+      ] }] });
+    vi.mocked(previewFile).mockResolvedValue(preview("sessions/s1/panda-execution-x_TW.md", { kind: "text", text: report }));
+    render(<FilesPane config={config} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Report" }));
+    await screen.findByText("PANDA run");
+    expect(screen.getAllByText("Done.")[0].closest(".report__glance")).toBeTruthy();
+    expect(previewFile).toHaveBeenCalledWith(config, "outputs/sessions/s1/panda-execution-x_TW.md");
+    fireEvent.click(screen.getByRole("button", { name: "Markdown source", hidden: true }));
+    expect(screen.getByText(/## Conclusion/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
+    expect(screen.queryByText(/## Conclusion/)).toBeNull();
+    // Its row among the run files reads as a report too.
+    fireEvent.click(screen.getByRole("button", { name: "+1 run file" }));
+    expect(screen.getByText(/^Run report · /)).toBeTruthy();
+  });
+
+  it("opens any .md under Folders the same way", async () => {
+    vi.mocked(listDirectory).mockResolvedValue({ path: "outputs", host_path: "/project/outputs", total: 1, offset: 0, limit: 100, has_more: false,
+      entries: [{ name: "notes.md", path: "outputs/notes.md", kind: "file", size_bytes: 20, modified_at: 0 }] });
+    vi.mocked(previewFile).mockResolvedValue(preview("notes.md", { kind: "text", text: "# Notes\n\n- one" }));
+    render(<FilesPane config={config} />);
+    fireEvent.click(screen.getByRole("button", { name: "Folders" }));
+    fireEvent.click(await screen.findByText("notes.md"));
+    expect((await screen.findByText("Notes")).tagName).toBe("H1");
   });
 });
 
