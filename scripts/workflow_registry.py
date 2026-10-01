@@ -33,6 +33,7 @@ ActionName = Literal[
     "run_cobra",
     "run_sambar",
     "run_dragon",
+    "run_lioness_dragon",
     "run_otter",
     "run_giraffe",
     "run_bonobo",
@@ -55,6 +56,7 @@ RecommendedAction = Literal[
     "run_cobra",
     "run_sambar",
     "run_dragon",
+    "run_lioness_dragon",
     "run_otter",
     "run_giraffe",
     "run_bonobo",
@@ -387,6 +389,12 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
         "Partial correlations are conditional on every other feature in both layers, so "
         "adding or removing features changes them.",
     )),
+    "run_lioness_dragon": ("Downstream use of the sample-specific partial-correlation networks:", (
+        "Each sample column holds that sample's edge weights; comparing the columns between "
+        "groups of samples shows which within- and cross-layer associations differ.",
+        "A sample's edges are estimated from how removing it changes the cohort network, so "
+        "they are relative to the cohort the network was built from, not absolute values.",
+    )),
     "run_condor": ("Downstream use of the communities:", (
         "Core scores rank each node's contribution to its community's modularity; the "
         "top-scoring regulators and genes are candidates for the community's function.",
@@ -511,6 +519,17 @@ EXTERNAL_REFERENCES: tuple[ExternalReference, ...] = (
         ),
         availability="published method, no NetZoo implementation",
         source="PMID 17542777",
+    ),
+    ExternalReference(
+        name="LIONESS-OTTER",
+        selection_tags=frozenset({"relaxed_graph_matching"}),
+        artifact_types=frozenset({"regulatory_network"}),
+        summary=(
+            "OTTER's relaxed graph matching run once per sample with LIONESS, giving one TF-gene "
+            "network per sample; for per-sample TF-gene networks this agent runs LIONESS-PANDA."
+        ),
+        availability="netZooPy, not registered in this agent",
+        source="netZooPy lioness/lioness_for_otter.py and the otterlioness command, netZooPy PR #342",
     ),
 )
 
@@ -668,6 +687,28 @@ REQUEST_CONCERNS: Mapping[str, tuple[RequestConcern, ...]] = {
                 "To set them yourself, set both."
             ),
             controls=("lambda1", "lambda2"),
+        ),
+    ),
+    # netZooPy lioness/lioness_for_dragon.py; executor execution_lioness_dragon.py.
+    "run_lioness_dragon": (
+        RequestConcern(
+            concern="penalty_choice",
+            label="it is unclear how strongly to regularize or which penalty values to use",
+            note=(
+                "Leave `lambda1` and `lambda2` empty and DRAGON's two shrinkage values are "
+                "estimated once from all samples and reused for every sample's network, as "
+                "netZooPy's LIONESS-DRAGON does. To set them yourself, set both."
+            ),
+            controls=("lambda1", "lambda2"),
+        ),
+        RequestConcern(
+            concern="memory_limit", label=_MEMORY_LIMIT,
+            note=(
+                "The per-sample table holds one value per feature pair per sample. Above 20 "
+                "million values the run is refused before it starts; reduce the features (for "
+                "example the most variable ones) or run DRAGON for one aggregate network."
+            ),
+            artifacts=("multi_omic_network",),
         ),
     ),
 }
@@ -1336,6 +1377,54 @@ ACTION_DEFINITIONS: dict[ActionName, ActionDefinition] = {
             ),
         ),
     ),
+    "run_lioness_dragon": ActionDefinition(
+        "run_lioness_dragon",
+        "LIONESS-DRAGON",
+        required_inputs=("omics_layer_1", "omics_layer_2", "output_file", "lioness_output"),
+        optional_inputs=("lambda1", "lambda2"),
+        executor_fields=(
+            "omics_layer_1", "omics_layer_2", "output_file", "lioness_output",
+            "lambda1", "lambda2",
+        ),
+        validation_steps=("inspect_dragon_inputs",),
+        input_validator="run_lioness_dragon",
+        local=True,
+        run=True,
+        memory_metadata={"method_family": "lioness", "base_method": "dragon", "api": "netZooPy.dragon"},
+        output_capability=OutputCapabilityDefinition(
+            operation="infer",
+            artifact_type="multi_omic_network",
+            entity_types=frozenset({
+                "omics_layer_1_feature", "omics_layer_2_feature",
+                "gene", "mirna", "protein", "metabolite",
+            }),
+            # Sample-specific only: an aggregate request stays DRAGON's, with no
+            # new tie, although the run also writes the all-sample network.
+            granularities=frozenset({"sample_specific"}),
+            accepted_input_modalities=frozenset({"multi_omic_continuous"}),
+            input_artifacts=frozenset({"measurement_dataset", "expression_matrix"}),
+            guidance_predecessors=("run_dragon",),
+            selection_tags=frozenset({
+                "multi_omic_network", "partial_correlation", "sample_specific",
+                "leave_one_out_network_inference",
+            }),
+            guidance_notes=(
+                "LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, "
+                "then derives each sample's network from the all-sample network and the network "
+                "refitted without that sample.",
+                "Each sample's network is an undirected partial-correlation graph across both "
+                "layers; like DRAGON's, it is an association graph, not a causal one.",
+            ),
+            handoff_contract=(
+                "LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics "
+                "tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one "
+                "partial-correlation network per sample, written as an edge-by-sample table "
+                "(source, target, one column per sample) with layer-qualified node IDs. DRAGON "
+                "is a guidance prerequisite, not a file handoff; there is no direct handoff to "
+                "PANDA, PUMA, CONDOR, BONOBO or OTTER."
+            ),
+        ),
+    ),
     "run_otter": ActionDefinition(
         "run_otter",
         "OTTER",
@@ -1624,6 +1713,10 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
     ),
     "run_dragon": (
         _control("output_format", "enum", "matrix", allowed_values=("matrix", "edge_list")),
+        _control("lambda1", "number", None, minimum=0, maximum=1, nullable=True),
+        _control("lambda2", "number", None, minimum=0, maximum=1, nullable=True),
+    ),
+    "run_lioness_dragon": (
         _control("lambda1", "number", None, minimum=0, maximum=1, nullable=True),
         _control("lambda2", "number", None, minimum=0, maximum=1, nullable=True),
     ),

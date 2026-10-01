@@ -139,7 +139,9 @@ def test_a_method_with_the_required_philosophy_but_another_result_is_named_not_o
     answer = _gap_answer(["partial_correlation"], ["run_panda", "run_otter"])
 
     different, _, alternatives = answer.partition("Conditional alternatives")
-    assert "A registered method with that philosophy estimates a different result:\n- **DRAGON**" in different
+    # Log 290: LIONESS-DRAGON shares DRAGON's philosophy and result type.
+    assert "Registered methods with that philosophy estimate different results:\n- **DRAGON**" in different
+    assert "- **LIONESS-DRAGON** — declared output: multi omic network (one per sample)" in different
     assert "declared output: multi omic network" in different
     assert "DRAGON" not in alternatives and "(recommend)" not in different
 

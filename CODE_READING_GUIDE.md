@@ -99,6 +99,8 @@ assembly 與 rendering 分別在同資料夾，不需要一開始全部展開。
 再讀 `scripts/netzoo_agent_core/execution.py`。這裡把已核准 step 轉成 PANDA、PUMA、LIONESS、
 CONDOR 等 adapter 呼叫。裝飾過的 LangChain tool 集中在
 `scripts/netzoo_agent_core/tool_adapters.py`；純資料驗證不放在此層。
+`execution.py` 接近 1000 行上限，所以 BONOBO 與 LIONESS-DRAGON 的執行程式各自放在
+`execution_bonobo.py`、`execution_lioness_dragon.py`，再由 `execution.py` 匯入登記。
 
 ### 8. 回覆（1 分鐘）
 

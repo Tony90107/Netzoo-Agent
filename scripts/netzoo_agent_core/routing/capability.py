@@ -408,6 +408,15 @@ def validate_task_text(
             flags=re.IGNORECASE,
         ):
             return "The user must explicitly request DRAGON execution or analysis."
+    if action == "run_lioness_dragon":
+        if not semantic_execution and not ("dragon" in normalized and "lioness" in normalized):
+            return "The task objective must specifically match LIONESS-DRAGON before it can run."
+        if not semantic_execution and not re.search(
+            r"(run|execute|trial|test|試跑|執行|跑|分析|network|partial correlation|multi.?omic|多組學|多體學|sample|樣本)",
+            normalized,
+            flags=re.IGNORECASE,
+        ):
+            return "The user must explicitly request LIONESS-DRAGON execution or analysis."
     if action == "run_otter":
         if "otter" not in normalized and not semantic_execution:
             return "The task objective must specifically match OTTER before it can run."

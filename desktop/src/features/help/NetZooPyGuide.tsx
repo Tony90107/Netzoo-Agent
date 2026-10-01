@@ -61,6 +61,14 @@ const METHODS = [
     outputs: "An undirected multi-omics partial-correlation network.",
   },
   {
+    name: "LIONESS-DRAGON",
+    family: "Sample-specific multi-omics conditional association networks",
+    principle:
+      "Estimates DRAGON's shrinkage once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample (LIONESS).",
+    inputs: "The same two continuous sample-by-feature omics tables as DRAGON, with at least three shared samples.",
+    outputs: "The all-sample DRAGON matrix and one partial-correlation network per sample, as an edge-by-sample table.",
+  },
+  {
     name: "OTTER",
     family: "Graph-matching regulatory network inference",
     principle:

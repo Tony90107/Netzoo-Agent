@@ -169,13 +169,14 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     action = context.action
     required = context.required
     _apply_bonobo_parameter_bindings(context)
-    if action == "run_dragon" and re.search(
+    if action in {"run_dragon", "run_lioness_dragon"} and re.search(
         r"(?:omics[_ -]?layer[_ -]?3|layer\s*3|three\s+omics|3\s+omics|三種|三層|三個.*omics)",
         task,
         flags=re.IGNORECASE,
     ):
+        name = "LIONESS-DRAGON" if action == "run_lioness_dragon" else "DRAGON"
         context.preflight_errors.append(
-            "DRAGON accepts exactly two omics layers; choose the two layers for this run. "
+            f"{name} accepts exactly two omics layers; choose the two layers for this run. "
             "A pairwise/chained workflow is not enabled without an explicit conversion contract."
         )
     input_fields = [
@@ -500,29 +501,15 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
 
         if field_name in {"output_file", "lioness_output"}:
             seed = decision.expression_file or "expression.tsv"
+            # Name the file after the method that writes it: a DRAGON or GIRAFFE
+            # result used to default to `panda.tsv`.
+            mode = next((name for name in ("puma", "panda", "dragon", "otter", "giraffe")
+                         if name in action), "coexpression" if "lioness" in action else "panda")
             if "lioness" in action:
-                aggregate, sample_specific = _default_lioness_outputs(
-                    (
-                        "puma"
-                        if "puma" in action
-                        else "panda"
-                        if "panda" in action
-                        else "coexpression"
-                    ),
-                    seed,
-                    default_output_dir,
-                )
+                aggregate, sample_specific = _default_lioness_outputs(mode, seed, default_output_dir)
                 value = aggregate if field_name == "output_file" else sample_specific
             else:
-                value = _default_network_output(
-                    "puma"
-                    if "puma" in action
-                    else "otter"
-                    if action == "run_otter"
-                    else "panda",
-                    seed,
-                    default_output_dir,
-                )
+                value = _default_network_output(mode, seed, default_output_dir)
             setattr(decision, field_name, value)
             evidence.append(
                 InputEvidence(
@@ -593,7 +580,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 )
             )
 
-    if action == "run_dragon":
+    if action in {"run_dragon", "run_lioness_dragon"}:
         layer_items = [
             item for item in evidence
             if item.field in {"omics_layer_1", "omics_layer_2"}
@@ -607,8 +594,9 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                     item.status = "missing"
                     item.value = None
                     item.reason = (
-                        "DRAGON requires both omics layers; this candidate was not "
-                        "selected without a complete two-layer pair."
+                        f"{'LIONESS-DRAGON' if action == 'run_lioness_dragon' else 'DRAGON'} requires "
+                        "both omics layers; this candidate was not selected without a complete "
+                        "two-layer pair."
                     )
                     setattr(decision, item.field, None)
 

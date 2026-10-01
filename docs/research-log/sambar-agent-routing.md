@@ -14449,3 +14449,203 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 這是 `ResearchFraming` 的 contract 形狀修改，schema 指紋會變，釘住的 schema digest 修改須宣告。
   - 這也會處理任何觸發條件下的同一種錯誤缺口。
 - 兩者都救不了 `tp-pi-vs-biostat`：審查模型在這題回 `single_goal`（3／3）。
+
+## Log 290｜事前宣告：DD——加入 LIONESS-DRAGON（兩層 omics 的樣本特異偏相關網路）；LIONESS-OTTER 只標示為未登記
+
+日期／時區：2026-10-01，Asia/Taipei。使用者決定（選項：「先加 LIONESS-DRAGON」）：加入 LIONESS-DRAGON；LIONESS-OTTER 只在回覆中標示為 netZooPy 有、此 agent 未登記。
+本條目寫於任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/lioness-dragon-2026-10-01/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+
+**已查證的背景：**
+- netZooPy master 與 agent 映像內容相同：
+  - `lioness/lioness_for_dragon.py`（LionessDragon）：只有 Python API，2023-10 補了例外處理與單元測試。
+  - `lioness/lioness_for_otter.py`（LionessOtter，2024-06）：有 CLI `otterlioness`，但 Python 介面的預設值會出錯：`mode_process` 預設會直接 exit、`save_single=False` 時單樣本網路被丟棄、存檔路徑少一個 `/`。
+- 目前登記表：DRAGON 只有 aggregate（其 YAML 明寫「not sample-specific」），沒有任何 `sample_specific` 的 `multi_omic_network` 能力，所以「每個樣本的多體學網路」目前沒有 workflow。
+- 數值可行性（離線、無 LLM）：用 netZooPy DRAGON 函式做留一（leave-one-out）加 LIONESS 公式，與 netZooPy `LionessDragon` 在 `data/dragon-toy`（4 樣本、2+2 特徵）上最大差 5.6e-17。
+
+**變更 DD1（登記表與 contract 形狀，不改 prompt 文字）：新 action `run_lioness_dragon`，workflow `LIONESS-DRAGON`。**
+- 輸入：`omics_layer_1`、`omics_layer_2`、`output_file`（整體 DRAGON 網路）、`lioness_output`（每個樣本的網路）；選填 `lambda1`、`lambda2`（語意同 DRAGON）。
+- 輸出能力：`infer`；`multi_omic_network`；granularity 只有 `sample_specific`；entity types、輸入 modality 與 input artifacts 同 DRAGON；`guidance_predecessors=[run_dragon]`；selection tags `{multi_omic_network, partial_correlation, sample_specific, leave_one_out_network_inference}`。
+- 計算：與 `run_dragon` 相同的 netZooPy DRAGON 函式；λ 在全部樣本上估計一次（同 LionessDragon 預設）；N_k = n(N_all − N_without_k) + N_without_k。
+- 輸出格式：`output_file` 是帶標籤的整體矩陣（DRAGON 格式）；`lioness_output` 是邊 × 樣本表（source、target、每個樣本一欄，上三角，node ID 帶 layer 前綴）。
+- 保護：至少 3 個樣本；邊數 × 樣本數 ≤ 20,000,000，否則拒絕並說明（減少特徵，或改用整體 DRAGON）。
+- 驗證：重用 `inspect_dragon_inputs`；輸出檢查整體矩陣（`validate_dragon_output`）與每個樣本表的形狀、有限值。
+- 執行程式另開模組（`execution.py` 已 987/1000 行）。
+
+**變更 DD2：LIONESS-OTTER 加入 `EXTERNAL_REFERENCES`（只供參考，不是候選、不進 prompt）。**
+- selection tags `{relaxed_graph_matching}`、artifact `regulatory_network`，來源為 netZooPy `lioness_for_otter.py`／PR #342。
+- 只在出現 `relaxed_graph_matching` 的方法缺口時列出（例如要求「每個樣本、用 OTTER 的方式」）。
+
+**預期（寫在量測前）：**
+- 3 題「每個樣本的兩層 omics 網路」標靶題改為 exact LIONESS-DRAGON。
+- 整體 DRAGON 請求維持 exact DRAGON，不新增平手：LIONESS-DRAGON 只宣告 `sample_specific`。
+- 每個樣本的 TF-gene 網路（LIONESS-PANDA）與單層每個樣本 co-expression（BONOBO／LIONESS-COEXPRESSION）不受影響，因為 artifact 不同。
+
+**預先宣告會變的釘住項目（只有這些類別；其他測試失敗都要先查原因，不得直接改測試）：**
+- 指紋：`prompt_schema_sha256`（legacy／claims）會變，因為 action 列舉加入 `run_lioness_dragon`。
+- `policy_hash` 會變（新 workflow YAML）。
+- `tests/test_contracts_package.py::SCHEMA_DIGESTS` 中含 action／validation／execution 列舉的 schema 雜湊。
+- 列出全部 workflow／action 的登記表與套件測試。
+- 實際清單在 Log 291 列出。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝DD1＋DD2；baseline＝目前 HEAD（8284881）的副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（7 題）×1。合計每臂 blind 30、標靶 21 個 trial。
+
+**條件（任一不成立即撤回 DD1；DD2 只報告）：**
+- DD-a（離線，live 之前）：
+  - 全套件通過，只有上述宣告的類別需要更新。
+  - 核心模組 ≤ 1000 行、模組相依無循環。
+  - 在 Docker Synthetic 模式下對 `data/dragon-toy` 實跑 `run_lioness_dragon`：輸出通過驗證，且與 netZooPy `LionessDragon` 的差 ≤ 1e-12。
+  - 不成立則不跑 live。
+- DD-b（有效性）：baseline 任何 trial 都不出現 `run_lioness_dragon`，否則此輪作廢。
+- DD-c（效益）：candidate 的 9 個正例 trial 中，最終為 exact `run_lioness_dragon` 的 ≥ 6。
+- DD-d（不誤搶）：
+  - candidate 在正例以外的 trial（blind 30 加 4 題對照／陷阱／報告題 ×3）中，選中（exact 或推薦）`run_lioness_dragon` 的次數 = 0。
+  - 整體 DRAGON 對照題的 exact DRAGON 次數 ≥ baseline − 1。
+- DD-e（blind 不退步）：candidate blind-en 依最終決策判讀的 WRONG ≤ baseline + 3（Log 98 雜訊帶）。
+- DD2 報告：`ld-otter-per-sample` 中出現 `relaxed_graph_matching` 方法缺口（因而列出 LIONESS-OTTER）的次數；不設門檻。
+
+**Log 290 補充（量測前寫，仍無任何 live 呼叫；門檻不變）：離線發現 case 7 會被 DD1 誤搶，加入 DD3、DD4。**
+- 發現：
+  - 加入 DD1 後，`tests/test_scale_relaxation.py`（Log 281 錄下的 blind case 7 重播）從 fallback DRAGON 變成 exact `run_lioness_dragon`。
+  - 原文是「For the same individuals I have gene expression … and methylation …」，請求沒有說尺度；模型卻把「same individuals」讀成 `sample_specific`。
+  - 以前沒有 workflow 能產出樣本特異的多體學網路，Log 281 的尺度放寬會退回 DRAGON；現在 LIONESS-DRAGON 剛好符合，放寬就不會發生。
+  - Log 289 的 trace 中，case7-en 在兩臂各 3 次都是 `fallback`，也就是都走這條放寬路徑，表示這種誤讀幾乎每次都發生。照原設計，DD-d 幾乎一定不過。
+- DD3（`routing/scale_relaxation.py`，結構規則，不改 prompt）：
+  - 觸發條件：
+    - 請求沒有說尺度（`granularity_mentions` 為空）；
+    - 讀法的 `sample_specific` 選中一個「只產出樣本特異結果」的 workflow（exact、單一）；
+    - 去掉尺度後的比對恰好多出一個「只產出整體結果」的 workflow，沒有其他候選。
+  - 處理：此時尺度只是詮釋，不得用來選 workflow。改為 fallback 選整體 workflow，並在假設說明中列出兩者（「No scale was stated; DRAGON gives one result for the whole cohort; LIONESS-DRAGON gives one result per sample.」）。
+  - 這是 Log 281「沒說出口的尺度不能排除或宣稱一個結果」的延伸。
+  - 依目前登記表逐一 artifact 計算，只有 `multi_omic_network`（DRAGON／LIONESS-DRAGON）會觸發；co-expression 的樣本特異讀法本來就是 BONOBO／LIONESS-COEXPRESSION 平手，不受影響。
+- DD4（`interpretation/request_integrity.py`）：
+  - `granularity_mentions` 的樣本特異證據加入一種寫法：「for each/every sample|patient|subject|person|individual」後面在同一句接建構動詞（build／infer／construct／estimate／compute／create／make／derive／obtain／get）與 network。
+  - 原有詞彙只接受「網路＋per sample」語序，標靶正例「For each sample, build a … network」因此偵測不到；要求動詞與 network，是為了排除「for each patient, I have an expression matrix」這類描述輸入的句子。
+  - 掃描既有語料（138 個不同請求）與全部歷史 trace（338 檔、95 個不同請求）：新規則改判的請求只有該標靶正例，其他 0。
+- 預期：`test_scale_relaxation` 維持原斷言（fallback DRAGON），不需修改。標靶語料、分析腳本與 DD-a 至 DD-e 門檻都不變。
+
+**Log 290 補充 2（量測前寫，仍無任何正式 live trial；prompt、分析腳本與門檻都不變）：標靶語料改成 harness 接受的格式。**
+- 一題 smoke（`ld-per-patient-methylation`，candidate 臂，1 次，結果不計入）時發現 harness 的 `RoutingScenario` 拒絕語料：
+  - `category` 只接受 positive／negative／history／paraphrase／misspelling／terse，不接受 control／trap／report，也不接受額外欄位。
+  - `status: ambiguous` 的期望不得列 actions。
+- 修正：7 題的 `category` 都寫 `positive`；`trap-single-layer` 與 `ld-otter-per-sample` 的期望改為 `ambiguous`、actions 空、`forbidden_actions=[run_lioness_dragon]`。
+- 7 題的 id 與 prompt 一字未改。`analyze.py` 依 id 分組、只讀最終決策，不讀 `category` 或 `expected`，所以 DD-c 至 DD-e 的計算不受影響。
+
+**Log 290 補充 3（時段 1 進行中寫，尚未讀任何 trial 結果；prompt、分析與門檻不變）：baseline 讀不進標靶語料。**
+- 時段 1 的 baseline 標靶 run 在載入語料時就失敗（0 次 provider 呼叫）：baseline 的 `RoutingExpectation.actions` 列舉沒有 `run_lioness_dragon`，所以期望寫 exact `run_lioness_dragon` 的正例無法驗證。
+- harness 的 `expected` 只用於評分，不影響 agent 的執行。因此 baseline 改用 `targeted_en.baseline.json`：id 與 prompt 與 `targeted_en.json` 完全相同，只有期望改成 baseline 列舉內的寫法（正例 `unsupported`，並拿掉 `forbidden_actions` 裡的 `run_lioness_dragon`）。
+- 配對規則（在讀任何結果前決定）：
+  - 時段 1 的兩個 blind run 照常配對、計入。
+  - candidate 時段 1 的標靶 run 失去同時段的 baseline 配對，改名為 `live-dd-cand-s1-targeted.unpaired.json`，保留但不分析。
+  - 時段 1 的標靶兩臂一起重跑一次，作為時段 1 的標靶配對。
+
+**Log 290 補充 4（時段跑完、尚未執行 `analyze.py` 前寫；門檻不變）：provider 連線錯誤的 trial 作廢重跑。**
+- 原始宣告沒有處理 provider 失敗。依 trace 中帶 `exception` 的呼叫計數（與結果無關）：
+  - 時段 1 blind、時段 1 標靶（重跑的配對）、時段 2 標靶：兩臂都是 0 個錯誤 trial。
+  - 時段 2 blind：candidate 5 個（case4／7／8／9／10）、baseline 2 個（case7／10），都是 `OpenAIConnectionError` 或 `OpenAITimeoutError`，之後走 `semantic_fallback`。
+  - 時段 3：兩臂 34 個 trial 全部 `OpenAIConnectionError`（4 個 run 共 5 秒結束）。
+  - 事後 `curl https://openrouter.ai/api/v1/models` 回 HTTP 200，判斷是本機網路短暫中斷，與兩臂的程式無關。
+- 規則（在讀任何門檻結果前決定）：
+  - 有任一錯誤 trial 的配對，兩臂整組作廢；檔名改為 `*.provider-error.json`，保留、不分析。
+  - 作廢的配對用同一個 runner 兩臂一起重跑：時段 2 blind，以及時段 3 的 blind 與標靶。
+  - 重跑後仍有錯誤 trial，該配對最多再重跑 2 次；仍失敗就報告本輪不完整、不做保留／撤回判定。
+
+## Log 291｜結果：DD——LIONESS-DRAGON 全部門檻成立，保留 DD1–DD4；DD-c 剛好 6／9（`ld-individual-networks` 3／3 退回 DRAGON：尺度偵測不認得 “individual-specific”）
+
+日期／時區：2026-10-01，Asia/Taipei。依 Log 290（含補充 1–4）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/lioness-dragon-2026-10-01/`：
+- 報告 `live-dd-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`。
+- 依補充 3、4 保留但不分析的 `*.unpaired.json.gz`、`*.provider-error.json.gz`。
+- `analyze.py`（量測前寫定）、回覆重繪 `render_replies.py`。
+
+**執行：**
+- 冒煙測試：candidate 單跑 `ld-per-patient-methylation` 一次，不計入；由此發現語料格式問題（補充 2）。
+- 配對時段：
+  - s1 blind 13:42；s1 標靶 13:45（重跑的配對，補充 3）；s2 標靶 13:46。
+  - s2 blind 14:13、s3 14:15：都是重跑，原本的兩組因連線錯誤作廢（補充 4）。
+  - 重跑後 12 份報告的錯誤 trial 都是 0。
+- 每個時段前後各檢查一次：兩臂 `scripts/` 只差 DD 的 15 個檔案，harness 與 blind 語料相同。
+- 執行面的小事故：時段 1 進行中修改了 runner，結尾多印一行無害的 `command not found`。已查容器清單與 log，沒有多跑任何 trial；之後的時段改用凍結的副本。
+- 呼叫數：candidate 206，baseline 214。
+- 51 組配對 trial 的第一個模型呼叫（`SemanticInterpretation`）兩臂訊息逐字相同，prompt 指紋兩臂都是 legacy `3f394e4d5d3f`。兩臂的差異只來自確定性比對與回覆層。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| DD-a（離線） | 量測前 2972 passed／35 skipped；Docker 對 `data/dragon-toy` 實跑，與 netZooPy `LionessDragon` 最大差 1.44e-13（≤ 1e-12）；核心模組最大 996 行（`outcome_matching.py`，未改） | 成立 |
+| DD-b（有效性） | baseline 51 個 trial 中 `run_lioness_dragon`：選中 0、平手 0、exact 0 | 有效 |
+| DD-c（效益） | 9 個正例 trial 中 exact LIONESS-DRAGON 6 個：per-patient 3／3、sample-specific-multiomic 3／3、individual-networks 0／3 | 成立（剛好門檻） |
+| DD-d（不誤搶） | 正例以外 42 個 trial：選中 0、平手 0；整體 DRAGON 對照題 exact DRAGON 3／3（baseline 3／3） | 成立 |
+| DD-e（blind） | 最終 WRONG：candidate 1，baseline 0（≤ baseline＋3） | 成立 |
+| DD2（只報告） | `ld-otter-per-sample` 的 `relaxed_graph_matching` 方法缺口：兩臂都是 0／3 | — |
+
+**逐題（標靶，各 3 個 trial）：**
+- `ld-per-patient-methylation`：
+  - candidate 3／3 exact LIONESS-DRAGON。
+  - baseline 3／3 是沒有候選的 ambiguous，回覆只問「I cannot select a workflow until the requested result is clear. Which scientific result do you want NetZoo to produce?」。
+- `ld-sample-specific-multiomic`：
+  - candidate 3／3 exact，DD4 認出「For each sample, build …」。
+  - baseline 3／3 fallback DRAGON，回覆寫「No scale was stated; DRAGON gives one result for the whole cohort.」。這是錯的：使用者已說了尺度。
+- `ld-individual-networks`：兩臂都是 3／3 fallback DRAGON。
+  - 模型讀出 `sample_specific`，但 `granularity_mentions` 對「individual-specific networks … for every subject」沒有回傳任何尺度：
+    - 詞彙只接受 sample／patient／subject-specific，不接受 individual／person-specific；
+    - 「networks … for every subject」中間隔了字，也不在既有寫法內。
+  - 於是 candidate 的 DD3 與 baseline 的 Log 281 放寬都把它當成沒說尺度。
+  - candidate 的假設說明會列出 LIONESS-DRAGON 是每個樣本的選項，但兩臂都錯說「No scale was stated」。
+  - 量測前漏做的檢查：補充 1 只驗證 DD4 不改判其他請求，沒有驗證 3 題正例都能被偵測。
+- `ctl-dragon-aggregate`：兩臂都是 3／3 exact DRAGON。
+- `ctl-per-sample-tf`：兩臂都是 3／3 exact LIONESS-PANDA。
+- `trap-single-layer`：兩臂都是 3／3 BONOBO／LIONESS-COEXPRESSION 平手（推薦 BONOBO），LIONESS-DRAGON 從未出現。
+- `ld-otter-per-sample`：兩臂都是 3／3 exact LIONESS-PANDA。
+  - 模型從未給出 `relaxed_graph_matching`，所以沒有方法缺口，LIONESS-OTTER 的參考從未顯示（DD2＝0）。
+  - 回覆另有既有問題（兩臂相同，與 DD 無關）：請求只點名 OTTER，於是由 `render_registered_workflow_contract_answer` 回覆 OTTER 的整體規格（「OTTER: Infer an aggregate TF-to-gene regulatory network …」）。回覆沒說 OTTER 沒有每個樣本的結果，也沒提路由選中的 LIONESS-PANDA。
+
+**blind-en（各 30 個 trial）：**
+- candidate：OK 27、PARTIAL 1、FALLBACK 1、WRONG 1。baseline：OK 27、PARTIAL 2、FALLBACK 1。
+- 唯一的 WRONG 是 candidate s3 的 case10-en：exact LIONESS-COEXPRESSION。
+  - 第一個呼叫的訊息與 baseline 逐字相同，是模型自己回了 `coexpression_network`（baseline 3／3 都是 `regulatory_network`）。
+  - 屬於 provider 抽樣差異，不是 DD 造成的。
+- case4-en s1：candidate exact LIONESS-PANDA（OK），baseline 單一候選 ambiguous（PARTIAL），同樣來自模型讀法不同。
+- case7-en：兩臂都是 3／3 fallback DRAGON。補充 1 的離線發現在 live 中成立：DD3 讓 case 7 維持 Log 281 的結果，且 candidate 的說明同時列出兩個 workflow。
+
+**與 Log 290 預期不符之處：**
+- 指紋：宣告會變，實際沒變（legacy `3f394e4d5d3f`、claims `9a60163744d9`）。
+  - legacy：action 列舉不在任何模型可見的 schema 中；指紋涵蓋的是 semantic contract 的 schema、`SemanticDiscriminator` 與 `IntentDecision`。
+  - claims：prompt 用的是全部 selection tags 的聯集；LIONESS-DRAGON 的 4 個標籤原本就存在（DRAGON、BONOBO、LIONESS-COEXPRESSION）。
+- `policy_hash` 依宣告改變：`6d99c45b` → `b0570ff2`。
+- 補充 1 說 `test_scale_relaxation` 不用改：路由斷言（fallback DRAGON）確實不變，但說明文字改為同時列出兩個 workflow，因此改了該斷言。
+- 測試修改的完整清單：
+  - 宣告的類別：
+    - `test_contracts_package` 的 5 個 schema 雜湊（TaskDecision、RouterDecision、CapabilityMatch、WorkflowPlan、ProjectPolicySnapshot）。
+    - 登記表清單：`test_agent_gate` workflow 數 12→13；`test_workflow_registry` 的 gene 軸排除；`test_outcome_matching`／`test_outcome_routing` 的泛用每個樣本集合；`test_all_workflow_guidance` 的 METHODS 與機制。
+  - 宣告外，但都是新 workflow 的直接結果，已逐一查明：
+    - `test_hypothesis_bases`：沒說尺度的 multi-omic 讀法改為 {DRAGON, LIONESS-DRAGON}。
+    - `test_evidence_order`：「同一方法哲學、不同結果」改為複數並列出 LIONESS-DRAGON。
+    - `test_ambiguous_guidance_is_scored`：multi-omic 不再是唯一候選，單一候選的例子由 DRAGON 換成 CONDOR。
+    - `test_scale_relaxation`：說明文字，見上。
+- 量測前的其他離線修正（只在 candidate 臂）：
+  - `planning/evidence.py` 的預設輸出檔名：DRAGON 與 GIRAFFE 原本都預設 `panda.tsv`（既有錯誤），現依方法命名；LIONESS-DRAGON 預設 `dragon-aggregate.tsv`、`lioness-dragon.tsv`。
+  - `graph/response_payload.py` 改用緊湊 JSON：LIONESS-DRAGON 的 unsupported-guidance context 估計 19,908 tokens，加上 800 的保留量超過 20,000 的預算，response model 會被擋下；改後為 16,415（baseline 18,551）。harness 不呼叫 response model，所以不影響本輪量測。
+
+**量測後的修改（只動回覆層，路由不變）：**
+- `interpretation/concept_answers.py` 的組合卡片：
+  - 問題：正例的 LIONESS-DRAGON 回覆用的是泛用的兩個 workflow 卡片，輸入只顯示欄位名（「`omics_layer_1`: omics_layer_1」）。直接卡片原本要求最後的 workflow 同時宣告兩種尺度，而 LIONESS-DRAGON 依設計只宣告 `sample_specific`。
+  - 修改：最後的 workflow 有 `sample_specific`，且它或它的前置 workflow 有 `aggregate`，就用直接卡片；同時補上 omics layer 的標籤。
+  - 有前置 workflow 的只有 LIONESS-PANDA、LIONESS-PUMA、LIONESS-DRAGON，前兩者條件不變，所以只影響 LIONESS-DRAGON。
+- 驗證：
+  - 重繪 6 個 exact 正例 trial，6／6 都是「For the sample-specific output you described, use **LIONESS-DRAGON**.」。
+  - 新增測試 `test_a_per_sample_request_is_answered_with_lioness_dragon_directly`；全套件 2973 passed／35 skipped。
+
+**判定：** 依 Log 290，DD1（LIONESS-DRAGON）、DD2（LIONESS-OTTER 參考）、DD3、DD4 全部保留。
+
+**後續（尚未做，各自需要事前宣告）：**
+- 尺度偵測的召回：補上「individual／person-specific networks」與「networks … for every subject」中間隔字的寫法。
+  - 這會改變路由（DD3 與 Log 281 的放寬都依賴它），需要自己的 live 輪。
+  - 預期 `ld-individual-networks` 變成 exact LIONESS-DRAGON，且 case 7 不變。
+- 只點名一個 workflow 的規格回覆不看使用者說的尺度（`ld-otter-per-sample`）：
+  - 說出的尺度不在該 workflow 的能力內時，應說明這一點，並列出 netZooPy 有、此 agent 未登記的 LIONESS-OTTER。
+  - 只動回覆層，但這條路徑用得很廣，要對全部語料離線重繪。
+- DD2 在 live 中從未出現，因為模型不會把「relaxed graph matching」寫成方法標籤（與 selection tags 很少被填的既有觀察一致）。

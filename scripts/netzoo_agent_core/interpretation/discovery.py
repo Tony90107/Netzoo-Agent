@@ -96,15 +96,16 @@ def _choose_unambiguous_candidate(
 def discover_demo_bundle(action: str) -> tuple[dict[str, str], str] | None:
     """Find a coherent toy dataset as a bundle, then validate cross-file compatibility."""
     data_root = PROJECT_ROOT / "data"
-    if action == "run_dragon":
+    if action in {"run_dragon", "run_lioness_dragon"}:
         layer1 = data_root / "dragon-toy" / "layer1.tsv"
         layer2 = data_root / "dragon-toy" / "layer2.tsv"
         _, ok = inspect_dragon_inputs_impl(str(layer1), str(layer2))
         if not ok:
             return None
+        workflow = "LIONESS-DRAGON" if action == "run_lioness_dragon" else "DRAGON"
         return (
             {"omics_layer_1": _display_path(layer1), "omics_layer_2": _display_path(layer2)},
-            "Demo intent: selected the DRAGON two-layer toy bundle with exact sample-ID alignment.",
+            f"Demo intent: selected the {workflow} two-layer toy bundle with exact sample-ID alignment.",
         )
     if action == "run_cobra":
         expression = data_root / "cobra-toy" / "expression.tsv"

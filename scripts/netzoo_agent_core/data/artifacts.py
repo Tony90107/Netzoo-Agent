@@ -16,6 +16,7 @@ from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
 from .dragon import validate_dragon_output
+from .lioness_dragon import validate_lioness_dragon_output
 from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
 from .bonobo import load_bonobo_inputs, validate_bonobo_output
 from .otter import load_otter_inputs, validate_otter_output
@@ -39,6 +40,7 @@ ARTIFACT_WRITE_ACTIONS = frozenset(
         "run_cobra",
         "run_sambar",
         "run_dragon",
+        "run_lioness_dragon",
         "run_otter",
         "run_giraffe",
         "run_bonobo",
@@ -401,6 +403,21 @@ def validate_output_artifacts(
             if not ok:
                 errors.extend(dragon_errors)
             metrics.update(dragon_metrics)
+    elif action == "run_lioness_dragon":
+        for field, label in (("output_file", "aggregate network"), ("lioness_output", "per-sample networks")):
+            if not getattr(decision, field, None):
+                errors.append(f"LIONESS-DRAGON {field} ({label}) is missing")
+        if decision.output_file and decision.lioness_output:
+            artifacts.extend(str(_resolve_user_path(value)) for value in (decision.output_file, decision.lioness_output))
+            ok, aggregate_errors, aggregate_metrics = validate_dragon_output(decision.output_file, "matrix")
+            errors.extend(f"aggregate network: {error}" for error in aggregate_errors)
+            ok, sample_errors, sample_metrics = validate_lioness_dragon_output(decision.lioness_output)
+            errors.extend(sample_errors)
+            metrics.update({**aggregate_metrics, **sample_metrics})
+            if aggregate_metrics.get("nodes") and sample_metrics.get("edges") is not None:
+                nodes = int(aggregate_metrics["nodes"])
+                if int(sample_metrics["edges"]) != nodes * (nodes - 1) // 2:
+                    errors.append("LIONESS-DRAGON per-sample table and aggregate matrix disagree on the features.")
     elif action == "run_otter":
         if not decision.output_file:
             errors.append("OTTER output_file is missing")

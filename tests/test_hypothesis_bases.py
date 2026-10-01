@@ -382,7 +382,8 @@ def test_route_must_produce_the_requested_result_and_scale(
             {"run_giraffe"},
         ),
         (dict(profile="community_assignment", regulators=["tf"]), {"run_condor"}),
-        (dict(profile="multi_omic_network"), {"run_dragon"}),
+        # Log 290: with no scale either multi-omic workflow fits equally.
+        (dict(profile="multi_omic_network"), {"run_dragon", "run_lioness_dragon"}),
         (
             dict(
                 profile="coexpression_network",

@@ -44,6 +44,7 @@ from .data.coexpression import read_coexpression_matrix
 from .data.otter import inspect_otter_inputs_impl, load_otter_inputs, write_otter_output
 from .data.panda_preflight import inspect_panda_inputs_with_provenance
 from .execution_bonobo import inspect_bonobo_inputs, run_bonobo
+from .execution_lioness_dragon import run_lioness_dragon
 from .string_download import download_string
 
 from .data.tables import (
@@ -79,6 +80,7 @@ __all__ = [
     "inspect_sambar_inputs",
     "run_sambar",
     "run_dragon",
+    "run_lioness_dragon",
     "inspect_giraffe_inputs",
     "run_giraffe",
     "inspect_bonobo_inputs",
@@ -978,6 +980,7 @@ LOCAL_TOOL_EXECUTORS = {
     "run_sambar": run_sambar,
     "inspect_dragon_inputs": inspect_dragon_inputs,
     "run_dragon": run_dragon,
+    "run_lioness_dragon": run_lioness_dragon,
     "inspect_giraffe_inputs": inspect_giraffe_inputs,
     "run_giraffe": run_giraffe,
     "inspect_bonobo_inputs": inspect_bonobo_inputs,

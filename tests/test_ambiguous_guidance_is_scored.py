@@ -172,20 +172,22 @@ def test_an_ambiguity_with_nothing_to_ask_is_labelled_response_model_not_left_un
     from netzoo_agent_core.interpretation.single_candidate import single_candidate_question
     from netzoo_agent_core.routing.outcome_matching import match_semantic_request
 
-    dragon = [OutcomeHypothesis.model_validate({
+    # Log 290: a multi-omic network is no longer a lone candidate (LIONESS-DRAGON
+    # gives the per-sample one), so CONDOR's communities stand in for DRAGON.
+    condor = [OutcomeHypothesis.model_validate({
         "outcome": {
-            "operation": "explain", "artifact_type": "multi_omic_network",
+            "operation": "explain", "artifact_type": "community_assignment",
             "granularity": "unknown",
         },
         "confidence": 0.9, "evidence": [],
     })]
-    match = match_semantic_request("", dragon, request_mode="guidance")
+    match = match_semantic_request("", condor, request_mode="guidance")
     assert (match.status, match.hypothesis_actions, match.clarification_question) == (
-        "ambiguous", ["run_dragon"], None,
+        "ambiguous", ["run_condor"], None,
     )
-    assert "**DRAGON**" in single_candidate_question(SimpleNamespace(
+    assert "**CONDOR**" in single_candidate_question(SimpleNamespace(
         capability_match_status=match.status, clarification_question=None,
-        hypothesis_actions=match.hypothesis_actions, outcome_hypotheses=dragon,
+        hypothesis_actions=match.hypothesis_actions, outcome_hypotheses=condor,
     ))
 
     nothing_to_ask = SimpleNamespace(

@@ -56,7 +56,8 @@ class WorkflowRegistryTests(unittest.TestCase):
     def test_gene_axes_are_declared_for_gene_bearing_workflows_only(self):
         self.assertEqual(
             set(WORKFLOW_GENE_EXTRACTORS),
-            set(RUN_ACTIONS) - {"run_condor", "run_dragon"},
+            # DRAGON's layers hold any omics features, not necessarily genes.
+            set(RUN_ACTIONS) - {"run_condor", "run_dragon", "run_lioness_dragon"},
         )
 
     def test_controls_are_typed_and_non_bonobo_workflows_do_not_leak_bonobo_controls(self):

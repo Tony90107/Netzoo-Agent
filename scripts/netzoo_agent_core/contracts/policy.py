@@ -125,6 +125,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_cobra",
         "run_sambar",
         "run_dragon",
+        "run_lioness_dragon",
         "run_otter",
         "run_giraffe",
         "run_bonobo",
@@ -144,7 +145,7 @@ class WorkflowPolicySpec(BaseModel):
     input_validator: Literal[
         "run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma",
         "run_lioness_coexpression", "run_condor", "run_cobra", "run_sambar",
-        "run_dragon", "run_otter", "run_giraffe", "run_bonobo",
+        "run_dragon", "run_lioness_dragon", "run_otter", "run_giraffe", "run_bonobo",
     ]
     controls: list[WorkflowControlSpec] = Field(default_factory=list, max_length=32)
     execution_step: Literal[
@@ -157,6 +158,7 @@ class WorkflowPolicySpec(BaseModel):
         "run_cobra",
         "run_sambar",
         "run_dragon",
+        "run_lioness_dragon",
         "run_otter",
         "run_giraffe", "run_bonobo",
     ]

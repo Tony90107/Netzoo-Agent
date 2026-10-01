@@ -1583,6 +1583,7 @@ def test_generic_sample_network_keeps_compatible_families_unranked():
         "run_lioness_puma",
         "run_lioness_coexpression",
         "run_bonobo",
+        "run_lioness_dragon",  # Log 290: a per-sample network family too
     }
     assert decision.matched_actions == []
     assert decision.action == "no_tool"

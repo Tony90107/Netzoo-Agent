@@ -163,16 +163,16 @@ SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
     # 2026-09-29: optional quoted research hypotheses; no execution authority.
-    "TaskDecision": "f97423eda590a26e2a15a3018b139aadb08c07c8075a7d1fe6242be0295a1680",
-    "RouterDecision": "343f8db34dcd7291044b072a3be61ccbd99bd5809bb1852962b20f8ab0c4dc3e",
+    "TaskDecision": "1ad444c3d76ddb14fb8c1136e0b1342da7e11f64010e686e2796571e362eabe5",
+    "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
-    "CapabilityMatch": "5a083a9e098d323b43b87ae867ecd8a2a7ee3b14e91dff892db44a059b7ebcad",
-    "WorkflowPlan": "7c58377e5072e5190b4db662664106ead18cd09e25a75e07b9401d1afb6a0c3d",
+    "CapabilityMatch": "15d1c70f2929d7e220b694d8080934185877dcf21c1ec735c1653029a530638e",
+    "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "5994735f6f14aa7855b282737c55a9f22d18f4d9fb4279b05b28b88c94a05862",
+    "ProjectPolicySnapshot": "a9c603b3bad0ef133c74160c7c81a9b9bca96fc35f661fdaac31c13dfc460cd0",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.

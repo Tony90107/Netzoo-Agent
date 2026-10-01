@@ -319,7 +319,7 @@ def _validate_workflow_inputs_impl(action: str, decision: Any) -> list[str]:
             decision,
         )
         errors.extend(_report_errors("SAMBAR inputs", report, ok))
-    elif action in {"inspect_dragon_inputs", "run_dragon"}:
+    elif action in {"inspect_dragon_inputs", "run_dragon", "run_lioness_dragon"}:
         report, ok = inspect_dragon_inputs_impl(
             _value(decision, "omics_layer_1"),
             _value(decision, "omics_layer_2"),
@@ -434,6 +434,7 @@ WORKFLOW_INPUT_VALIDATORS: dict[str, Callable[[Any], list[str]]] = {
     "run_cobra": _bound_validator("run_cobra"),
     "run_sambar": _bound_validator("run_sambar"),
     "run_dragon": _bound_validator("run_dragon"),
+    "run_lioness_dragon": _bound_validator("run_lioness_dragon"),
     "run_otter": _bound_validator("run_otter"),
     "run_giraffe": _bound_validator("run_giraffe"),
     "run_bonobo": _bound_validator("run_bonobo"),

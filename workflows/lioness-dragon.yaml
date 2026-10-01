@@ -1,0 +1,54 @@
+policy_version: 2
+workflow: LIONESS-DRAGON
+action: run_lioness_dragon
+input_validator: run_lioness_dragon
+description: Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON.
+required_inputs: [omics_layer_1, omics_layer_2, output_file, lioness_output]
+optional_inputs: [lambda1, lambda2]
+validation_steps: [inspect_dragon_inputs]
+controls:
+  - name: lambda1
+    type: number
+    default: null
+    minimum: 0
+    maximum: 1
+    nullable: true
+    executor_argument: lambda1
+  - name: lambda2
+    type: number
+    default: null
+    minimum: 0
+    maximum: 1
+    nullable: true
+    executor_argument: lambda2
+execution_step: run_lioness_dragon
+output_capability:
+  operation: infer
+  artifact_type: multi_omic_network
+  entity_types: [omics_layer_1_feature, omics_layer_2_feature, gene, mirna, protein, metabolite]
+  granularities: [sample_specific]
+  regulator_types: []
+  target_types: []
+  accepted_input_modalities: [multi_omic_continuous]
+  guidance_predecessors: [run_dragon]
+  input_artifacts: [measurement_dataset, expression_matrix]
+  handoff_targets: []
+  selection_tags: [multi_omic_network, partial_correlation, sample_specific, leave_one_out_network_inference]
+  guidance_notes:
+    - LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.
+    - Each sample's network is an undirected partial-correlation graph across both layers; like DRAGON's, it is an association graph, not a causal one.
+  handoff_contract: >-
+    LIONESS-DRAGON consumes exactly two paired sample-by-feature continuous omics
+    tables, DRAGON's inputs, and produces the aggregate DRAGON matrix plus one
+    partial-correlation network per sample, written as an edge-by-sample table
+    (source, target, one column per sample) with layer-qualified node IDs. DRAGON
+    is a guidance prerequisite, not a file handoff; there is no direct handoff to
+    PANDA, PUMA, CONDOR, BONOBO or OTTER.
+conventions:
+  - Inputs are DRAGON's - two CSV or TSV tables with a header, the first column a unique sample ID and every other column a unique feature ID; rows are samples and columns are features in both layers.
+  - Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven. Values must be finite continuous numeric measurements; missing values, duplicate IDs and zero-variance features are rejected.
+  - Require at least three samples. The shrinkage values lambda1 and lambda2 are estimated once on all samples by estimate_penalty_parameters_dragon unless both are supplied in [0, 1].
+  - 'For sample k, LIONESS uses the all-sample DRAGON network and the network recomputed after removing k: N_k = n * (N_all - N_without_k) + N_without_k, as in netZooPy lioness/lioness_for_dragon.py.'
+  - output_file is the labeled symmetric all-sample partial-correlation matrix; lioness_output is an edge-by-sample table with source, target and one column per sample, the upper triangle of each sample's matrix in DRAGON edge-list order.
+  - The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.
+  - Sample-specific networks are relative to the cohort they were built from; partial correlations are conditional associations, not causal relationships.
