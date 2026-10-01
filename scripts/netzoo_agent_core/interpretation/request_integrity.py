@@ -172,6 +172,14 @@ _GRANULARITY_PATTERNS = {
         r"\bnetworks?\s+(?:(?:estimated|inferred|constructed|built)\s+)?"
         r"for\s+(?:each|every)\s+(?:individual\s+)?"
         r"(?:sample|patient|subject|person|individual)s?\b|"
+        # Log 290: the unit first, then a construction verb and the network in
+        # the same sentence ("For each sample, build a ... network"). The verb
+        # keeps "for each patient, I have an expression matrix" an input.
+        r"\bfor\s+(?:each|every)\s+(?:individual\s+)?"
+        r"(?:sample|patient|subject|person|individual)s?\b\s*,?\s*"
+        r"(?:(?:i|we)\s+(?:want|need|would\s+like)\s+to\s+|please\s+)?"
+        r"(?:build|infer|construct|estimate|compute|create|make|derive|obtain|get)\w*\b"
+        r"[^.;!?]{0,80}\bnetworks?\b|"
         # "The wiring differs from one patient to the next" states separate
         # network results even when the user calls the output a picture rather
         # than repeating the noun "network".
@@ -319,6 +327,32 @@ def _normalize_regulator(regulator_text: str) -> str:
     ) else "mirna"
 
 
+_UNIT_LEAD = re.compile(
+    r"^\s*for\s+(?:each|every)\s+(?:individual\s+)?(?:sample|patient|subject|person|individual)s?\s*$",
+    re.I,
+)
+
+
+def _unit_led_clauses(clauses):
+    """Rejoin "For each sample," with the clause it leads (Log 290).
+
+    The comma split keeps temporal scope per clause; a bare per-unit lead has
+    no scope of its own, and only together with the next clause does it say
+    what is built for each sample.
+    """
+    pending = None
+    for clause, scope in clauses:
+        if pending is not None:
+            clause, scope = f"{pending[0]}, {clause.lstrip()}", scope
+            pending = None
+        if _UNIT_LEAD.match(clause):
+            pending = (clause, scope)
+            continue
+        yield clause, scope
+    if pending is not None:
+        yield pending
+
+
 def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
     """Return explicit, current output-granularity phrases.
 
@@ -327,7 +361,7 @@ def granularity_mentions(task: str) -> tuple[GranularityMention, ...]:
     shape, or conversational candidate.
     """
     mentions = []
-    for clause, scope in _scoped_clauses(task):
+    for clause, scope in _unit_led_clauses(_scoped_clauses(task)):
         if scope != "current":
             continue
         for granularity, pattern in _GRANULARITY_PATTERNS.items():

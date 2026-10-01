@@ -38,6 +38,7 @@ _HIGHLIGHTS: dict[str, str] = {
     "run_bonobo": "Per-sample co-expression with Bayesian shrinkage and a p-value per edge",
     "run_cobra": "Separates how covariates (batch, site, condition) reshape co-expression",
     "run_dragon": "Partial-correlation network across two omics layers of the same samples",
+    "run_lioness_dragon": "One two-layer partial-correlation network per sample, derived leave-one-out",
     "run_condor": "Finds TF-gene communities (modules) in a two-mode network",
     "run_sambar": "Pathway-level mutation scores, then patient subtypes by clustering",
 }

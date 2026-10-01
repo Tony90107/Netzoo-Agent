@@ -864,6 +864,8 @@ def render_workflow_composition_guidance(
         "ppi_file": "PPI network",
         "mirna_file": "miRNA list",
         "coexpression_file": "Adjusted co-expression matrix",
+        "omics_layer_1": "Omics layer 1 (samples x features)",
+        "omics_layer_2": "Omics layer 2 (the same samples)",
     }
     inputs = "\n".join(
         f"   - `{field_name}`: {input_labels.get(field_name, field_name)}"
@@ -883,7 +885,10 @@ def render_workflow_composition_guidance(
         requested is not None
         and requested.granularity == "sample_specific"
         and requested.artifact_type == final.output_capability.artifact_type
-        and {"aggregate", "sample_specific"}.issubset(final_granularities)
+        # LIONESS-DRAGON declares only `sample_specific` (an aggregate request
+        # stays DRAGON's, Log 290), yet its `output_file` is that aggregate.
+        and "sample_specific" in final_granularities
+        and "aggregate" in {*final_granularities, *aggregate.output_capability.granularities}
         and "output_file" in final.required_inputs
         and "lioness_output" in final.required_inputs
     ):

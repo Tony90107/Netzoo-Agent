@@ -8,6 +8,12 @@ result for the cohort. When the request states no scale, the reading's scale is
 an interpretation: it is dropped, the registered scale is said as an
 assumption, and the match is guidance only (fallback, never exact). A scale
 the request does state keeps the reading unsupported.
+
+Log 290: the same unstated scale must not *choose* a workflow either. Once
+LIONESS-DRAGON produced a per-sample multi-omic network, the misread "same
+individuals" selected it outright over DRAGON. When the scale is unstated and
+it alone picked a sample-specific-only workflow over exactly one cohort
+workflow, the cohort workflow is the guidance and both are named.
 """
 
 from __future__ import annotations
@@ -58,8 +64,44 @@ def note_unstated_scale(task, decision):
     return decision.model_copy(update={"requested_outcome": relaxed, "outcome_hypotheses": hypotheses})
 
 
+def _scale_only_choice(match, outcome):
+    """The one cohort workflow an unstated per-sample scale displaced, with every alternative."""
+    if match.status != "exact" or len(match.matched_actions) != 1 or outcome.granularity != "sample_specific":
+        return None
+    chosen = match.matched_actions[0]
+    if OUTPUT_CAPABILITIES[chosen].granularities != frozenset({"sample_specific"}):
+        return None
+    relaxed = outcome.model_copy(update={"granularity": "unknown"})
+    strict = match_requested_outcome(relaxed)
+    alternatives = list(dict.fromkeys(strict.matched_actions or strict.hypothesis_actions))
+    others = [action for action in alternatives if action != chosen]
+    if chosen not in alternatives or len(others) != 1:
+        return None
+    if OUTPUT_CAPABILITIES[others[0]].granularities != frozenset({"aggregate"}):
+        return None
+    return relaxed, others[0], alternatives
+
+
 def relax_unstated_scale(task, interpretation, match):
     hypotheses = interpretation.outcome_hypotheses
+    if len(hypotheses) == 1 and not granularity_mentions(task):
+        found = _scale_only_choice(match, hypotheses[0].outcome)
+        if found is not None:
+            relaxed, cohort, alternatives = found
+            hypothesis = hypotheses[0]
+            kept = hypothesis.model_copy(update={
+                "outcome": relaxed,
+                "evidence": [item for item in hypothesis.evidence if item.dimension != "granularity"],
+                "assumptions": [*hypothesis.assumptions, _scale_note(alternatives)],
+            })
+            return (
+                interpretation.model_copy(update={"outcome_hypotheses": [kept]}),
+                CapabilityMatch(
+                    status="fallback", match_basis="assumed_outcome",
+                    matched_actions=[cohort], hypothesis_actions=[cohort],
+                    rejected_methods=match.rejected_methods,
+                ),
+            )
     # No candidate at all: `unsupported`, or (guidance mode) `ambiguous` with an
     # empty list. A recorded mismatch (an input rejection, Log 250) is left alone.
     if (match.status not in {"unsupported", "ambiguous"} or match.matched_actions

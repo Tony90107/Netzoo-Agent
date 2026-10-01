@@ -38,7 +38,10 @@ def test_an_unstated_per_sample_reading_still_reaches_the_cohort_workflow_as_gui
 
     assert result["status"] == "fallback" and result["matched_actions"] == ["run_dragon"]
     assert result["action"] == "no_tool" and not result["should_execute"]
-    assert "No scale was stated; DRAGON gives one result for the whole cohort." in result["answer"]
+    # Log 290: LIONESS-DRAGON now gives the per-sample result; the unstated scale
+    # still picks no workflow, and the note names both.
+    assert ("No scale was stated; DRAGON gives one result for the whole cohort; "
+            "LIONESS-DRAGON gives one result per sample.") in result["answer"]
     assert "per-sample" not in result["answer"].split("No scale was stated", 1)[0]
 
 

@@ -30,9 +30,9 @@ def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
         return ("cancer", "gene", "cangenes")
     if field_name == "pathway_file":
         return ("pathway", "gmt", "signature")
-    if action == "run_dragon" and field_name == "omics_layer_1":
+    if action in {"run_dragon", "run_lioness_dragon"} and field_name == "omics_layer_1":
         return ("layer1", "omics1", "transcript", "expression")
-    if action == "run_dragon" and field_name == "omics_layer_2":
+    if action in {"run_dragon", "run_lioness_dragon"} and field_name == "omics_layer_2":
         return ("layer2", "omics2", "methyl", "chromatin")
     if action == "run_otter" and field_name == "coexpression_file":
         return ("coexpression", "co-expression", "correlation", "adjusted")

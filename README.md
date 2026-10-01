@@ -12,16 +12,17 @@
 8. 試跑 CONDOR toy bipartite network。
 9. 以 COBRA 分析 sample covariates 對 gene co-expression 的影響，並輸出可重現的 covariance decomposition。
 10. 以 SAMBAR 將 somatic mutation matrix 聚合為 pathway mutation scores，並進行可選的 sample clustering。
-10. 以 OTTER 的 relaxed graph matching 推論 aggregate TF-to-gene regulatory network，嚴格驗證 TF-TF PPI、gene-gene co-expression 與 seed/prior 的方向、shape、identifier 與 NA 行為。
-11. 以 Docker 內固定版本的 netZooPy GIRAFFE 推論 aggregate TF-gene regulation 與 TF-by-sample TFA，並嚴格驗證輸入 identifier、PPI 對稱性與雙輸出。
-12. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
-13. 依照使用者的下載意圖，取得 STRING 指定物種的蛋白質網路資料；支援一般關聯、物理互作與方向性調控三種網路。
+11. 以 OTTER 的 relaxed graph matching 推論 aggregate TF-to-gene regulatory network，嚴格驗證 TF-TF PPI、gene-gene co-expression 與 seed/prior 的方向、shape、identifier 與 NA 行為。
+12. 以 Docker 內固定版本的 netZooPy GIRAFFE 推論 aggregate TF-gene regulation 與 TF-by-sample TFA，並嚴格驗證輸入 identifier、PPI 對稱性與雙輸出。
+13. 以 LIONESS-DRAGON 為同一批樣本的兩層 omics 建立每個樣本的 partial-correlation 網路，並同時輸出整體 DRAGON 網路。
+14. 使用受確認的 UserProfile 與 compact Episode memory，在不同 session 間保留偏好與經驗。
+15. 依照使用者的下載意圖，取得 STRING 指定物種的蛋白質網路資料；支援一般關聯、物理互作與方向性調控三種網路。
 
 Agent 啟動時先驗證 `AGENTS.md` 與 `workflows/*.yaml`，再進入主要 graph：
 `apply project policy -> memory retrieval -> classify -> plan -> execute -> evaluate ->
 memory consolidation`。Evaluator 通過後可
 回到 Executor 執行下一步，可修復錯誤則走 bounded replan；缺少資料時 CLI 會留在
-同一個 resumable session 等待使用者補充。PANDA、PUMA、三種 LIONESS 與 CONDOR
+同一個 resumable session 等待使用者補充。PANDA、PUMA、四種 LIONESS 與 CONDOR
 都走同一套 graph，不再由 LIONESS 專用的前置選單攔截。
 
 ## 快速開始
@@ -111,16 +112,12 @@ app 請留在 repo 目錄內：它是從自己的路徑往上走去找 `docker-c
 | [PANDA_PUMA_Docker_入門.md](PANDA_PUMA_Docker_入門.md) | PANDA/PUMA input-output 與 Docker 入門 |
 | [AGENT_USAGE.md](AGENT_USAGE.md) | LangChain/LangGraph agent 使用方式 |
 | [AGENTS.md](AGENTS.md) | Runtime 會驗證的人類可讀專案政策入口 |
-| [workflows/](workflows/) | PANDA、PUMA、LIONESS、CONDOR、COBRA、DRAGON、OTTER 的 versioned YAML 規格 |
+| [workflows/](workflows/) | PANDA、PUMA、LIONESS（PANDA／PUMA／co-expression／DRAGON）、BONOBO、CONDOR、COBRA、DRAGON、OTTER、GIRAFFE、SAMBAR 的 versioned YAML 規格 |
 | [docs/DESKTOP_UI_ARCHITECTURE.md](docs/DESKTOP_UI_ARCHITECTURE.md) | 桌面版的分層、程序模型、協定與里程碑設計 |
 | [docs/ui-choices-sessions-2026-09-30.md](docs/ui-choices-sessions-2026-09-30.md) | 選項選單、精簡回覆卡片、下一步操作與以 session 管理實驗 |
-| [docs/DESKTOP_UI_REPORT.md](docs/DESKTOP_UI_REPORT.md) | 桌面版整合結論、routing 對照實驗與可量測結果 |
 | [NetworkZoo_工具導覽.md](NetworkZoo_工具導覽.md) | Network Zoo 整體工具導覽 |
 | [LIONESS_TRIAL.md](LIONESS_TRIAL.md) | 三種 LIONESS toy 實跑、結果與相容修補 |
 | [CONDOR_TRIAL.md](CONDOR_TRIAL.md) | CONDOR bipartite toy trial |
-| [docs/OTTER_INTEGRATION.md](docs/OTTER_INTEGRATION.md) | OTTER API、CLI、輸入／輸出契約與 handoff 規範 |
-| [docs/GIRAFFE_INTEGRATION.md](docs/GIRAFFE_INTEGRATION.md) | GIRAFFE API、Docker runtime、輸入／輸出契約與 workflow 規範 |
-| [NEW_TASK_COMPLETE_DEMO_GUIDE.md](NEW_TASK_COMPLETE_DEMO_GUIDE.md) | 四個新任務的完整說明、Demo 與結果驗證 |
 | [docs/WEBSEARCH_GENE_TEST_PROMPTS.md](docs/WEBSEARCH_GENE_TEST_PROMPTS.md) | Websearch 與 gene authority 的手動測試 prompts |
 | [docs/archive/](docs/archive/) | 歷史進度、舊 demo 與 PR 草稿（不作為現行規格） |
 
@@ -203,9 +200,9 @@ export NETZOO_GENE_ONLINE_LOOKUP="auto"
 不會單獨把 ID 判成有效或無效。沒有網路時仍可使用未過期 cache；未查證的 ID 會標成
 `unverified`，格式與跨檔案 ID 相容性檢查仍會繼續。
 
-所有 12 個 run workflow 都在 planning 後與 `/execute` 前共用同一個 fail-closed
+所有 13 個 run workflow 都在 planning 後與 `/execute` 前共用同一個 fail-closed
 preflight gate。檔名只提供弱提示；內容 schema、gene-like label、樣本軸，以及多檔案
-集合/順序相容性才是是否可執行的依據。CONDOR node 與 DRAGON feature 允許非基因標籤，
+集合/順序相容性才是是否可執行的依據。CONDOR node 與 DRAGON／LIONESS-DRAGON feature 允許非基因標籤，
 因此不強制查 gene authority，但仍執行各自的二分圖與雙層資料契約檢查。
 
 讓 agent 判斷任務，但先不真的執行：
@@ -337,6 +334,14 @@ run-lioness coexpression \
 
 PUMA 的 `-m` 是 TF/miRNA-to-gene 合併 prior；`-i` 是無 header、每行恰好
 一個 miRNA ID 的清單。每個 ID 都必須出現在 prior 第一欄。
+
+第四種 LIONESS-DRAGON 不經 `run-lioness`：agent 直接呼叫 netZooPy 的 DRAGON 函式
+（`scripts/netzoo_agent_core/execution_lioness_dragon.py`）。輸入與 DRAGON 相同（兩個
+sample × feature 表格、sample ID 集合一致），λ 在全部樣本上估計一次，每個樣本的網路為
+N_k = n(N_all − N_without_k) + N_without_k（同 netZooPy `lioness_for_dragon.py`）。
+`output_file` 是整體矩陣，`lioness_output` 是 edge × sample 表（source、target、每個樣本一欄）；
+至少 3 個樣本，edge 數 × 樣本數超過 20,000,000 會在執行前拒絕。LIONESS-OTTER 在 netZooPy
+有實作，但此 agent 未登記，只在回覆中列為參考。
 
 ## CONDOR toy trial
 
