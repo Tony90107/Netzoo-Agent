@@ -145,8 +145,9 @@ _GRANULARITY_PATTERNS = {
     "sample_specific": re.compile(
         # Keep per-unit language attached to the output network. A phrase such
         # as “per-patient expression matrices” is an input description, not a
-        # request for one network per patient.
-        r"\b(?:sample|patient|subject)[- ]specific\s+(?:[\w-]+\s+){0,5}networks?\b|"
+        # request for one network per patient. Log 292: “individual-specific
+        # networks … for every subject” named its scale yet read as unstated.
+        r"\b(?:sample|patient|subject|individual|person)[- ]specific\s+(?:[\w-]+\s+){0,5}networks?\b|"
         r"\bper[- ](?:sample|patient|subject|person|individual)\s+"
         r"(?:[\w<>/→-]+\s+){0,4}networks?\b|"
         r"\b(?:separate|independently\s+estimated)\s+(?:[\w-]+\s+){0,3}networks?\s+"

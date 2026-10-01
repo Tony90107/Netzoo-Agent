@@ -165,6 +165,14 @@ def test_aggregate_tf_request_stays_a_real_method_choice():
     ("Gene expression differs from one patient to the next.", []),
     ("LIONESS 在數學上是怎麼定義「單一樣本網路」的？", []),
     ("另一個是能反映每個樣本狀態的 (TF x n) 轉錄因子活性矩陣。", []),
+    # Log 292: the individual/person forms of "-specific networks" (Log 291's
+    # missed positive), still bound to a network noun.
+    ("We need individual-specific networks connecting metabolite and gene-expression features "
+     "for every subject in our cohort.", ["sample_specific"]),
+    ("I want person-specific partial-correlation networks linking both layers.", ["sample_specific"]),
+    ("I want one cohort network showing how individual genes link across both layers.", ["aggregate"]),
+    ("The model has individual-specific random effects.", []),
+    ("For the same individuals I have gene expression and methylation tables.", []),
 ])
 def test_granularity_witness_reports_only_stated_network_granularity(prompt, expected):
     assert sorted({m.granularity for m in granularity_mentions(prompt)}) == expected
