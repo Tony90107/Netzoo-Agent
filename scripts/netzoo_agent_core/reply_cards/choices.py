@@ -109,7 +109,7 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
     recommended = advice.action if advice is not None and advice.action in candidates else None
     conditions = _separating_conditions(candidates)
     fits = {action: fit_notes(action, outcome) for action in candidates}
-    missing = _differential_missing(candidates, present)
+    missing = _differential_missing(candidates, present, task)
     order = sorted(candidates, key=lambda action: (
         action != recommended, len(fits[action][1]), bool(missing[action]), candidates.index(action),
     ))
@@ -166,19 +166,30 @@ def option_scale(action: str | None, requested: str | None = None) -> str | None
     return "sample_specific" if capability.guidance_predecessors else None
 
 
-def _differential_missing(candidates: list[str], present) -> dict[str, list[str]]:
+def _differential_missing(candidates: list[str], present, task: str = "") -> dict[str, list[str]]:
     """Inputs one option needs that the others do not, and the request never mentions.
 
     Wording only detects inputs imperfectly, so an input every candidate needs is
     never reported: it cannot separate them, and a missed mention would read as
     a false "you lack this". What remains is the choice-relevant difference,
-    such as the miRNA list PUMA needs and PANDA does not.
+    such as the miRNA list PUMA needs and PANDA does not. An input every
+    candidate accepts, alone or as one alternative ("expression matrix or
+    adjusted co-expression matrix"), separates nothing either (Test 1,
+    2026-10-02: four options each said "Also needs expression matrix").
     """
-    missing = {action: missing_input_labels(action, present) for action in candidates}
-    shared = set.intersection(*(set(labels) | set(_needed(action)) for action, labels in missing.items())) \
-        if missing else set()
-    common = {label for label in shared if all(label in _needed(action) for action in candidates)}
-    return {action: [label for label in labels if label not in common] for action, labels in missing.items()}
+    missing = {action: missing_input_labels(action, present, task) for action in candidates}
+    common = set.intersection(*(_accepted(action) for action in candidates)) if candidates else set()
+    return {action: [label for label in labels if not set(_alternatives(label)) & common]
+            for action, labels in missing.items()}
+
+
+def _alternatives(label: str) -> list[str]:
+    return [part.strip() for part in label.split(" or ") if part.strip()]
+
+
+def _accepted(action: str) -> set[str]:
+    """Every input label the workflow takes, each alternative of a one-of group included."""
+    return {item for label in _needed(action) for item in _alternatives(label)}
 
 
 def _needed(action: str) -> list[str]:
@@ -233,7 +244,7 @@ def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot,
     if plan is None or plan.dimension == "algorithm" or plan.question != question:
         return None
     outcome = primary_outcome(decision)
-    missing = _differential_missing(candidates, present_inputs(task, decision))
+    missing = _differential_missing(candidates, present_inputs(task, decision), task)
     ranked = []
     for index, option in enumerate(plan.options, start=1):
         actions = [a for a in option.candidate_actions if a in policy.workflows]

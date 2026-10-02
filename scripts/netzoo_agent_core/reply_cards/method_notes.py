@@ -161,31 +161,12 @@ def needs_line(action: str) -> str:
     return ", ".join(labels)
 
 
-def missing_input_labels(action: str, present: frozenset[str] | set[str]) -> list[str]:
-    """Required inputs the request never mentions, when it mentions any at all.
-
-    Only roles whose presence wording can establish are judged; a request that
-    names no input says nothing about which ones it lacks.
-    """
-    if not present:
-        return []
-    required, groups = input_fields(action)
-    missing = [
-        SHORT_INPUT_LABELS[field] for field in required
-        if field in INPUT_ARTIFACTS and INPUT_ARTIFACTS[field] not in present
-    ]
-    for group in groups:
-        judged = [field for field in group if field in INPUT_ARTIFACTS]
-        if judged and not any(INPUT_ARTIFACTS[field] in present for field in judged):
-            missing.append(" or ".join(SHORT_INPUT_LABELS[field] for field in group))
-    return missing
-
-
 # Any word that could describe the input at all. The routing witnesses miss
-# "transcription factor motif binding data" and "RNA-seq" (Test 1, 2026-10-02),
-# so a note built on them alone would tell that user they never mentioned the
-# motif prior or the expression data. Display only, and deliberately loose:
-# the note stays silent whenever the request might have described the input.
+# "transcription factor motif binding data", and read "We just finished
+# RNA-seq" as a past input (Test 1, 2026-10-02), so labels built on them alone
+# told that user they never mentioned the motif prior or the expression data.
+# Display only, and deliberately loose: a role any word might describe is
+# never reported missing.
 _LOOSE_MENTIONS: dict[str, re.Pattern[str]] = {
     "expression_matrix": re.compile(
         r"express|RNA[- ]?seq|microarray|transcriptom|表現|表達|表现|表达|定序|測序|测序|轉錄組|转录组", re.I),
@@ -199,27 +180,40 @@ _LOOSE_MENTIONS: dict[str, re.Pattern[str]] = {
 }
 
 
+def missing_input_labels(action: str, present: frozenset[str] | set[str], task: str = "") -> list[str]:
+    """Required inputs the request never mentions, when it mentions any at all.
+
+    Only roles whose presence wording can establish are judged; a request that
+    names no input says nothing about which ones it lacks. Given the request,
+    a role it describes in any words (`_LOOSE_MENTIONS`) is not missing either.
+    """
+    if not present:
+        return []
+
+    def missing(field: str) -> bool:
+        artifact = INPUT_ARTIFACTS.get(field)
+        if artifact is None or artifact in present:
+            return False
+        pattern = _LOOSE_MENTIONS.get(artifact)
+        return not (task and pattern is not None and pattern.search(task))
+
+    required, groups = input_fields(action)
+    labels = [SHORT_INPUT_LABELS[field] for field in required if missing(field)]
+    for group in groups:
+        judged = [field for field in group if field in INPUT_ARTIFACTS]
+        if judged and all(missing(field) for field in judged):
+            labels.append(" or ".join(SHORT_INPUT_LABELS[field] for field in group))
+    return labels
+
+
 def unmentioned_input_labels(action: str, task: str, present: frozenset[str] | set[str]) -> list[str]:
     """Required inputs the request does not name, not even loosely, when its wording names any input.
 
-    Unlike ``missing_input_labels`` this is said outright ("Not mentioned in
-    your request: ..."), so it rests on the wording alone: a request that
-    describes no data ("I want one cohort-wide TF network") gets no note, and
-    a role is reported only when no word in the request could describe it.
-    ``present`` (wording and readings) can only silence a role.
+    Unlike the option notes this is said outright ("Not mentioned in your
+    request: ..."), so it rests on the wording alone: a request that describes
+    no data ("I want one cohort-wide TF network") gets no note. ``present``
+    (wording and readings) can only silence a role.
     """
     if not input_availability(task).present:
         return []
-
-    def unnamed(field: str) -> bool:
-        artifact = INPUT_ARTIFACTS.get(field)
-        pattern = _LOOSE_MENTIONS.get(artifact or "")
-        return pattern is not None and artifact not in present and not pattern.search(task)
-
-    required, groups = input_fields(action)
-    labels = [SHORT_INPUT_LABELS[field] for field in required if unnamed(field)]
-    for group in groups:
-        judged = [field for field in group if field in INPUT_ARTIFACTS]
-        if judged and all(unnamed(field) for field in judged):
-            labels.append(" or ".join(SHORT_INPUT_LABELS[field] for field in group))
-    return labels
+    return missing_input_labels(action, present, task)

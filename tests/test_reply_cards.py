@@ -237,6 +237,28 @@ def test_an_input_described_in_the_users_own_words_is_not_called_unmentioned():
     assert "Not mentioned in your request: motif prior and PPI network." in other.points
 
 
+def _lung_tie():
+    return decision([reading("regulatory_network", [], ["tf"], granularity="unknown")],
+                    capability_match_status="ambiguous",
+                    hypothesis_actions=["run_panda", "run_lioness_panda", "run_otter", "run_giraffe"])
+
+
+def test_an_input_named_in_past_tense_or_own_words_is_not_also_needed():
+    # Log 310: "We just finished RNA-seq" is a past input to the witnesses and
+    # "motif binding data" is not a prior to them, so all four options said
+    # "Also needs expression matrix".
+    choices = method_choices(_lung_tie(), POLICY, task=LUNG)
+    assert not any("Also needs" in option.description for option in choices.options)
+
+
+def test_an_input_every_option_accepts_in_some_form_separates_nothing():
+    # OTTER takes expression or a co-expression matrix; the others need
+    # expression. None of them is singled out for it.
+    task = "Which tool infers a TF-gene network from our motif and PPI priors? Advice only."
+    choices = method_choices(_lung_tie(), POLICY, task=task)
+    assert not any("Also needs" in option.description for option in choices.options)
+
+
 def test_a_question_the_planner_did_not_write_is_not_turned_into_options():
     made = decision([reading("regulatory_network", ["expression_matrix"])],
                     capability_match_status="ambiguous", hypothesis_actions=["run_panda", "run_puma"],
