@@ -183,6 +183,41 @@ SELECTION_TAG_GLOSSARY: Mapping[str, str] = {
     ),
 }
 
+# Log 302: words a quote must contain before the discriminator may let a tag
+# break a tie. A verbatim quote proves the words occurred, not that they state
+# the method: "regulatory communication between TFs and target genes" was
+# taken as matrix factorization and picked GIRAFFE over PANDA and OTTER. Only
+# the tags that separate PANDA, OTTER and GIRAFFE are listed; read per key and
+# never shown to the model.
+_TF_ACTIVITY_WITNESS = r"\bactiv(?:e|ity|ities)\b|活性|活躍|活跃"
+SELECTION_TAG_WITNESSES: Mapping[str, str] = {
+    "message_passing": (
+        r"message[- ]?passing|pass(?:es|ing)?\s+messages|iterat|"
+        r"訊息傳遞|消息傳遞|消息传递|信息傳遞|信息传递|迭代"
+    ),
+    "relaxed_graph_matching": (
+        r"graph[- ]?matching|objective|loss|optimi[sz]|gradient|converge|convex|heuristic|"
+        r"圖匹配|图匹配|目標|目标|損失|损失|最佳化|最優化|优化|梯度|收斂|收敛|凸|啟發式|启发式"
+    ),
+    "biologically_informed_matrix_factorization": (
+        r"factori[sz]|decompos|矩陣分解|矩阵分解|因子分解|分解"
+    ),
+    "linear_model_coefficients": (
+        r"linear|regression|coefficient|線性|线性|迴歸|回归|係數|系数"
+    ),
+    "signed_partial_regulatory_effects": (
+        r"\bsign(?:ed)?\b|activat|repress|inhibit|positive|negative|"
+        r"正負|正负|活化|抑制|促進|促进"
+    ),
+    "tfa": _TF_ACTIVITY_WITNESS,
+    "joint_grn_tfa_inference": _TF_ACTIVITY_WITNESS,
+    "tfa_covariate_regression": _TF_ACTIVITY_WITNESS,
+    "lioness_base_compatibility": (
+        r"\bLIONESS\b|base(?:line)?\s+network|per[- ]sample|sample[- ]specific|"
+        r"each\s+(?:sample|patient|individual)|基礎網路|基础网络|每個樣本|每个样本|個體|个体"
+    ),
+}
+
 # Experimental-condition axes (Log 139). When compatible workflows produce the
 # same result and differ only in method, these are the facts a user can state
 # about their study that separate them. Each workflow declares the values it is

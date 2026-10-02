@@ -25,7 +25,7 @@ from ..routing.capability import (
 from ..routing.named_labels import named_registered_action
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
-from .continuation_invocation import continue_workflow
+from .continuation_invocation import compare_workflows, continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
@@ -151,6 +151,10 @@ def _route_request(
 ) -> _RouterInvocation:
     """Run the ordered semantic, validation, registry, and intent pipeline."""
     usage = _current_usage(context, state)
+    if state.get("method_comparison") is not None and (
+        compared := compare_workflows(context, state, user_task, usage)
+    ) is not None:
+        return compared
     if state.get("workflow_continuation") is not None:
         return continue_workflow(context, state, user_task, usage)
     if continued := continued_string_download_decision(user_task):

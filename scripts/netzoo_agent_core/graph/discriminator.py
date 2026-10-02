@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import time
 
-from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY
+from workflow_registry import OUTPUT_CAPABILITIES, SELECTION_TAG_GLOSSARY, SELECTION_TAG_WITNESSES
 
 from ..contracts import AgentState, LLMUsage
 from ..contracts.outcomes import OutcomeEvidence, SemanticDiscriminator, SemanticInterpretation
@@ -93,6 +93,23 @@ def _selection_evidence_grounds_tags(
 ) -> bool:
     """Require each tie-breaking tag to have its own grounded explicit quote."""
     return selected.issubset(grounded_selection_tags(user_task, evidence))
+
+
+def _unstated_tags(selected: set[str], evidence: list[OutcomeEvidence]) -> set[str]:
+    """Witnessed tags no selection_tag quote states (Log 302).
+
+    The model may quote any words of the request for any tag; only a quote
+    that names the method can let that method's tag break a tie.
+    """
+    return {
+        tag for tag in selected
+        if (witness := SELECTION_TAG_WITNESSES.get(tag)) is not None
+        and not any(
+            item.dimension == "selection_tag" and item.value == tag and item.text_span
+            and re.search(witness, item.text_span, re.IGNORECASE)
+            for item in evidence
+        )
+    }
 
 
 def _recover_explicit_selection_tag(
@@ -317,6 +334,13 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
         restated = restated_tags(interpretation.outcome_hypotheses[0].outcome)
         selected = set(result.selection_tags) - restated
         result_evidence = [item for item in result.evidence if item.value not in restated]
+        if unstated := _unstated_tags(selected, result_evidence):
+            selected -= unstated
+            result_evidence = [item for item in result_evidence if item.value not in unstated]
+            record_event(context, state, "routing.semantic_discriminator_unstated_tags", "classify", {
+                "selection_tags": sorted(unstated), "candidate_actions": actions,
+                "quotes": [item.text_span for item in result.evidence if item.value in unstated],
+            })
         recovered_evidence = None
         # Broad shared tags can leave LIONESS-COEXPRESSION and BONOBO tied even
         # when the request explicitly asks for Bonobo's p-value artifacts.
