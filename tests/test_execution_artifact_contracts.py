@@ -58,18 +58,19 @@ def test_pathway_scores_really_are_pathway_by_sample():
     assert columns and all(name.startswith("TCGA-") for name in columns)
 
 
-def test_the_declared_orientation_of_gene_scores_disagrees_with_the_run():
-    """`gene_mutation_scores` says "Gene-by-sample"; the run emits sample-by-gene.
-
-    Recorded rather than corrected. The description is prose, so this may be a
-    documentation defect and not a behavioural one -- but nothing in the system
-    could tell the difference, which is the point of having this check at all.
-    """
-    assert "Gene-by-sample" in ARTIFACT_SEMANTICS["gene_mutation_scores"].description
+def test_the_declared_orientation_of_gene_scores_matches_the_run():
+    """The ontology describes the sample rows and gene columns in the run."""
+    assert "Sample-by-gene" in ARTIFACT_SEMANTICS["gene_mutation_scores"].description
     axes = json.loads((FIXTURES / "sambar.gene_mutation_scores.axes.json").read_text())
 
     assert all(name.startswith("TCGA-") for name in axes["rows"])
     assert not any(name.startswith("TCGA-") for name in axes["columns"])
+
+
+def test_gene_scores_description_matches_recorded_sample_by_gene_axes():
+    axes = json.loads((FIXTURES / "sambar.gene_mutation_scores.axes.json").read_text())
+    assert all(name.startswith("TCGA-") for name in axes["rows"])
+    assert "Sample-by-gene" in ARTIFACT_SEMANTICS["gene_mutation_scores"].description
 
 
 def test_sambar_drops_one_sample_between_its_own_two_artifacts():

@@ -136,7 +136,7 @@ ARTIFACT_SEMANTICS = {
         frozenset({"infer"}),
     ),
     "multi_omic_network": ArtifactSemantics("Inferred associations between omics features", granularities=frozenset({"aggregate", "sample_specific"})),
-    "gene_mutation_scores": ArtifactSemantics("Gene-by-sample mutation scores, not pathway scores", frozenset({"gene", "sample"}), frozenset({"aggregate"})),
+    "gene_mutation_scores": ArtifactSemantics("Sample-by-gene mutation scores, not pathway scores", frozenset({"gene", "sample"}), frozenset({"aggregate"})),
     "pathway_mutation_matrix": ArtifactSemantics("Pathway-by-sample mutation scores, not cluster labels", frozenset({"pathway", "sample"}), frozenset({"aggregate"})),
     "sample_distance_matrix": ArtifactSemantics("Pairwise sample distances, not cluster labels", frozenset({"sample"}), frozenset({"aggregate"})),
     "sample_cluster_assignment": ArtifactSemantics(
