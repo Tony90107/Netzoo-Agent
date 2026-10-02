@@ -20,7 +20,7 @@ from ..contracts import (
 )
 from ..contracts.artifact_semantics import outcome_consistency_issues
 from ..interpretation.request_integrity import granularity_left_open
-from ..interpretation.outcome_validation import grounded_selection_tags
+from ..interpretation.outcome_validation import stated_selection_tags
 from .candidate_ranking import (
     _advisory_specificity_penalty, _explicit_evidence_specificity_penalty,
     _hypothesis_evidence_score, _UNKNOWN,
@@ -192,6 +192,7 @@ def _tag_discriminated_action(
     A tag has routing authority only when explicit evidence quotes it from the
     current user request.  This is the same authority rule used by the optional
     semantic discriminator; an ungrounded catalogue value remains advisory.
+    A method tag's quote must also state the method (Log 306).
     """
     declared = set()
     if any(item.outcome.artifact_type == "unknown" for item in hypotheses):
@@ -199,7 +200,7 @@ def _tag_discriminated_action(
     for item in hypotheses:
         outcome_tags = set(item.outcome.selection_tags) - ignore_tags - restated_tags(item.outcome)
         declared.update(
-            outcome_tags & grounded_selection_tags(user_task, item.evidence)
+            outcome_tags & stated_selection_tags(user_task, item.evidence)
         )
     if not declared or len(candidates) < 2:
         return None

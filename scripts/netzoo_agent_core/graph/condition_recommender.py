@@ -311,6 +311,11 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
         return None
     if any(not _quote_grounded(task, span) for span in preference.text_spans):
         return None
+    # Log 306: a miRNA workflow needs the request to describe such regulators,
+    # by regulator_class's evidence words anywhere in it (II-B, Log 269).
+    if "mirna" in selected.get("regulator_types", []) and not re.search(
+            SELECTION_AXES["regulator_class"]["witness"], task, re.I):
+        return None
     # Model prose may copy Chinese evidence into English explanations. Preserve
     # original quotes only in supporting_spans; never crash deterministic UI.
     rationale = preference.rationale
