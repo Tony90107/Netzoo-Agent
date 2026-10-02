@@ -666,6 +666,140 @@ EXTERNAL_REFERENCES: tuple[ExternalReference, ...] = (
 )
 
 
+# Python-only (Log 320): what a user should do or expect before running a
+# workflow, said with its inputs. `{base}` is the per-sample extension's base
+# method; `{runs}` is filled with the request's own sample count when it gives
+# one. Sources: the LIONESS definition in method_philosophy (one base run with
+# all samples and one without each), netZooR pandaToCondorObject (threshold
+# default) and condorQscore (core scores), checked 2026-10-03.
+_LIONESS_COST = (
+    "Cost: LIONESS runs {base} once on all samples and once more without each sample, so N samples "
+    "take N+1 {base} runs and give N network files{runs}. Plan the runtime and disk space, and filter "
+    "edges before downstream statistics."
+)
+WORKFLOW_PRACTICAL_NOTES: Mapping[str, tuple[str, ...]] = {
+    "run_condor": (
+        "Before CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's "
+        "pandaToCondorObject keeps only edges above a threshold (by default midway between the median "
+        "weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or "
+        "otherwise make the weights non-negative, before running it here. CONDOR puts each node in one "
+        "community and gives each node a core score, its share of its community's modularity, which "
+        "picks out each module's core regulators.",
+    ),
+    "run_lioness_panda": (_LIONESS_COST.replace("{base}", "PANDA"),),
+    "run_lioness_puma": (_LIONESS_COST.replace("{base}", "PUMA"),),
+    "run_lioness_dragon": (_LIONESS_COST.replace("{base}", "DRAGON"),),
+}
+# The same notes, short enough for a reply card's point.
+WORKFLOW_PRACTICAL_POINTS: Mapping[str, str] = {
+    "run_condor": (
+        "Before running: threshold a PANDA or LIONESS network so its edge weights are non-negative; "
+        "CONDOR then gives each node one community and a core score."
+    ),
+    **{action: f"Cost: N samples take N+1 {base} runs{{runs}}."
+       for action, base in (("run_lioness_panda", "PANDA"), ("run_lioness_puma", "PUMA"),
+                            ("run_lioness_dragon", "DRAGON"))},
+}
+
+
+@dataclass(frozen=True, slots=True)
+class OutsideStep:
+    """A step the request needs that no registered workflow performs (Log 320).
+
+    Reference only, like ExternalReference: it never selects, ranks or
+    recommends a workflow. It is said when the request's own words name the
+    situation (every pattern in ``witnesses`` matches) and, if ``workflows``
+    is set, the reply lists one of them. ``note`` is the paragraph the reply
+    adds (the manual route and the published method); ``name`` and ``reason``
+    are the card's "not available here" row. Sources were checked when added.
+    """
+
+    key: str
+    name: str
+    witnesses: tuple[str, ...]
+    note: str
+    reason: str
+    source: str
+    workflows: frozenset[str] = frozenset()
+
+
+# Verified 2026-10-03 against the cited pages (TEST_PROMPTS Tests 4, 7, 8, 9).
+OUTSIDE_STEPS: tuple[OutsideStep, ...] = (
+    OutsideStep(
+        key="single_cell",
+        name="SCORPION (single-cell networks)",
+        witnesses=(r"\bsingle[- ]cell|\bscRNA|\bsnRNA|\bsingle[- ]nucle(?:us|i)\b|單細胞|單核",),
+        note=(
+            "**Single-cell data.** The registered workflows are built for bulk samples. Co-expression "
+            "between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are "
+            "not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, "
+            "then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; "
+            "this needs several donors per state to estimate co-expression. To look within a state, "
+            "SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar "
+            "cells into metacells and then runs PANDA on them, giving comparable networks per sample or "
+            "state."
+        ),
+        reason="Not registered here; SCORPION is an R package (CRAN). Pseudo-bulk per state with PANDA is the registered route.",
+        source="Osorio, Capasso & Kuijjer 2024, Nat Comput Sci, doi:10.1038/s43588-024-00597-5; CRAN SCORPION",
+    ),
+    OutsideStep(
+        key="chromatin_prior",
+        name="SPIDER (chromatin-filtered prior)",
+        witnesses=(r"\bATAC|\bDNase|chromatin|染色質", r"motif|prior|binding|基序|先驗|結合"),
+        note=(
+            "**Building the prior from chromatin accessibility.** Keeping only motif sites in open chromatin "
+            "is a step before network inference, and no registered workflow performs it. SPIDER "
+            "(Sonawane et al. 2021; netZooR and netZooM, not registered here) does this and then runs "
+            "PANDA's message passing. A manual route: scan TF motifs (for example FIMO or HOMER), keep the "
+            "sites inside your ATAC-seq peaks (for example bedtools intersect), assign the kept sites to "
+            "genes with a stated promoter window (for example TSS -750/+250 bp or +/-1 kb), and write the "
+            "TF-gene pairs as a binary motif prior. Then run PANDA or OTTER (registered) with that prior and "
+            "the expression matrix from the same tissues. A promoter window misses distal enhancers unless "
+            "enhancer-gene links are added."
+        ),
+        reason="Not registered here; SPIDER is in netZooR and netZooM. The filtered prior can then be used with PANDA or OTTER.",
+        source="Sonawane et al. 2021, npj Syst Biol Appl, doi:10.1038/s41540-021-00208-3; netzoo.github.io/zooanimals/panda/spider",
+    ),
+    OutsideStep(
+        key="differential_modules",
+        name="ALPACA (differential modularity)",
+        witnesses=(
+            r"\b(?:two|both|pair\s+of)\s+(?:[\w'-]+\s+){0,3}networks?\b|兩張|兩個網路",
+            r"modul|communit|partition|模組|社群",
+            r"differ|compar|reorgani[sz]|split|merg|rewir|alter|between|差異|比較|重組|拆|併",
+        ),
+        note=(
+            "**Comparing module structure between two networks.** CONDOR partitions one network at a time. "
+            "Running it on each network gives two unaligned sets of communities, so a split or a merge can "
+            "only be judged by matching them afterwards, for example by gene overlap. ALPACA (Padi & "
+            "Quackenbush 2018; netZooR `pandaToAlpaca`, not registered here) compares the two directly: it "
+            "uses the control network as the null model for the disease network's modularity "
+            "(differential modularity) and returns each node's module and its contribution score."
+        ),
+        reason="Not registered here; ALPACA is in netZooR. CONDOR run on each network is only an approximation.",
+        source="Padi & Quackenbush 2018, npj Syst Biol Appl, doi:10.1038/s41540-018-0052-5; netZooR pandaToAlpaca",
+        workflows=frozenset({"run_condor"}),
+    ),
+    OutsideStep(
+        key="convex_guarantee",
+        name="A convex, globally optimal method",
+        witnesses=(r"\bconvex|global(?:ly)?[- ]optim|global\s+(?:minimum|optimum|solution)|凸|全域最",),
+        note=(
+            "**On a convex, globally optimal guarantee.** None of the registered methods offers one. OTTER "
+            "is posed as a non-convex optimization (Weighill et al. 2021): the network W is fitted so that "
+            "W times its transpose matches the PPI and its transpose times W matches co-expression. The "
+            "paper derives a spectral solution with recovery guarantees under its assumptions, but the "
+            "netZooPy OTTER registered here takes a fixed number of gradient steps from a motif-based start, "
+            "which reaches a local solution. PANDA's iterative updates do not minimize a stated objective. "
+            "OTTER does give the explicit objective you asked for."
+        ),
+        reason="No registered workflow guarantees a convex, global optimum; OTTER's objective is non-convex.",
+        source="Weighill et al. 2021, AAAI, 'Gene regulatory network inference as relaxed graph matching'; netZooPy otter/otter.py",
+        workflows=frozenset({"run_otter", "run_panda"}),
+    ),
+)
+
+
 # Python-only, like DOWNSTREAM_ANALYSES: not part of the policy snapshot, so
 # neither the policy hash nor any provider prompt changes. Every note must be
 # verifiable in the netZooPy source or the executor that wraps it.

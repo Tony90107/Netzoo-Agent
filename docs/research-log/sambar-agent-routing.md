@@ -16317,3 +16317,61 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 
 **觀察到、未處理：**
 - 「50 patients」這類只有數字的請求，現在問樣本數；使用者回答後才推薦（Log 315 的使用者決定）。
+
+## Log 320｜TEST_PROMPTS 10 題英文本機實測；先修顯示與說明（不經過模型）
+
+日期／時區：2026-10-03，Asia/Taipei。使用者授權「直接用我電腦跑」`TEST_PROMPTS_10組情境_修正版.md` 的 10 個英文 prompt，看結果後修正。
+證據：`docs/research-log/test10-2026-10-03/`。
+- `run_local.py`：本機 CLI `--task`，每題一個新 session，r1–r3 三輪。
+- `collect.py`：把決策、卡片、全文整理成 `out/r*-report.md`。
+- `live-t10-s1.json`：traced harness，每題 3 次，含模型原始輸出。
+- 一輪約 US$0.017（gpt-4o-mini）。
+
+**三輪結果（本機與 traced 一致）：**
+
+| 題 | 預期 | 實得 | 判定 |
+| --- | --- | --- | --- |
+| 1 肺癌 | PANDA／OTTER 平手並問 | PANDA／LIONESS-PANDA／OTTER／GIRAFFE 平手，卡片已說出尺度差異與 TF 複合體 | 接近 |
+| 2 心衰竭每人網路 | 先問有沒有 motif／PPI | Inputs 問題 3／3 | 符合；全文缺 LIONESS 計算成本 |
+| 3 二分網路模組 | CONDOR；提醒負權重、core score | CONDOR 3／3；只寫「Verify the edge-weight conventions」 | 缺說明 |
+| 4 單細胞 | pseudo-bulk＋PANDA、SCORPION（未登錄）、不建議直接 LIONESS | 一般平手；Inputs 卡片反而給 LIONESS-COEXPRESSION／BONOBO | 錯 |
+| 5 突變→路徑分型 | SAMBAR | SAMBAR 8／9；1 次語意驗證失敗（terminal_goal_conflict） | 符合 |
+| 6 miRNA | PUMA | GIRAFFE exact 6／6 | 錯 |
+| 7 ATAC 過濾先驗 | SPIDER（未登錄）＋手動路徑＋PANDA／OTTER | unsupported 3／6，文字說「do not prepare TF/gene regulatory networks」，卡片說「cannot produce a TF-gene regulatory network」；其餘平手 | 錯（誤導） |
+| 8 差異模組 | ALPACA（未登錄）；CONDOR×2 只是近似 | CONDOR exact 6／6，回答「quantify differential modular structure」時像是 CONDOR 能做 | 錯（過度宣稱） |
+| 9 明確目標函數＋凸性 | OTTER，並更正凸性前提 | 6 個方法平手；traced 1／3 推薦 OTTER（PW 的 tag 依據）；沒有更正凸性；模型 rationale 寫「guarantees a globally optimal solution」 | 部分 |
+| 10 肝癌每人網路＋存活 | LIONESS-PANDA＋下游統計、成本 | LIONESS-PANDA 6／6；缺成本 | 接近 |
+
+**本 log 的修正（只改回覆與卡片，指紋不變）：**
+- `OUTSIDE_STEPS`（registry，Python-only、只供參考，來源於 2026-10-03 查證）＋`interpretation/outside_steps.py`，在 `respond()` 最後一步、結尾句之前加段落，卡片加「not available here」列。
+  - 只在請求自己的字詞說出該情境時加；有 `workflows` 的條目，回覆還要列出其中一個。
+  - single_cell：單細胞字詞。內容：不建議逐細胞 LIONESS／BONOBO、pseudo-bulk 每個狀態跑 PANDA（需多位供體）、SCORPION（Kuijjer lab 的 R 套件，Osorio et al. 2024）。
+  - chromatin_prior：ATAC／DNase／chromatin，加上 motif／prior／binding。內容：SPIDER（Sonawane et al. 2021；netZooR、netZooM；netZooPy PR #397 仍 open）與手動路徑（FIMO／HOMER → bedtools intersect → 啟動子區間 → 二元先驗 → PANDA／OTTER）。
+  - differential_modules：兩張網路、模組、比較三類字詞，且回覆列出 CONDOR。內容：CONDOR 分兩次沒有對齊；ALPACA（Padi & Quackenbush 2018；netZooR `pandaToAlpaca`）以對照網路為虛無模型。
+  - convex_guarantee：convex／global optimum，且回覆列出 OTTER 或 PANDA。內容：OTTER 是非凸問題（Weighill et al. 2021），netZooPy 版以固定步數梯度下降得到區域解；PANDA 沒有目標函數。
+  - 對全部錄製請求掃描：只有本次的 Test 4、7、8、9 命中。另有一題「strict mathematical objective function that guarantees convergence to a global optimum」命中 convex_guarantee，也正確。
+- `WORKFLOW_PRACTICAL_NOTES`／`_POINTS`＋`interpretation/practical_notes.py`：
+  - CONDOR：先把 PANDA／LIONESS 網路依 netZooR `pandaToCondorObject` 的作法篩門檻，使權重非負；core score 是節點占其社群模組度的比例（`condorQscore`）。
+  - LIONESS-PANDA／PUMA／DRAGON：N 個樣本要跑 N+1 次 base method。請求寫了人數時直接算出，例如「for your 90 patients, 91 PANDA runs」。
+  - 顯示在 verified guidance 的輸入之後、組合回覆、workflow 卡片（每張最多 6 點）。
+- Test 7：`operation=prepare` 的缺口改寫為「No registered NetZoo workflow prepares … as an input step …; the workflows infer networks from inputs you supply」，卡片標題與不可用列同步改寫。
+- Test 2：平手全文的共同機制句，不再把 glossary 用分號硬串（「…; the participating layers depend on the registered workflow.」）。
+- Test 9：form A 的「Why it addresses this question」濾掉宣稱凸性或全域最優的句子；registry 已確認沒有任何已登錄方法有此保證。
+
+**觀察到、未處理：**
+- 鑑別器在所有錄製中 150／427 次因「evidence must use selection_tag」失敗（Test 9 為 3／3）。不處理：Log 212 記錄鑑別器的平手判斷正確率低，讓它更常成功可能造成更多錯誤收窄。
+- Test 9 的 6 個候選含 PUMA／LIONESS-PUMA，因為 regulator 沒有判讀；這是設計中的 regulator_class 問題。
+- Test 10 的 downstream_use concern 沒有被模型提出，所以沒有下游統計說明（模型依賴）。
+
+**重播（`test12-2026-10-02/replay_cards.py`，3168 種 prompt＋decision，HEAD `6694068` 對新程式）：**
+- 標題 1、要點 1082、全文 1060 處變化；選項順序與說明 0 變化；錯誤 2，兩邊相同。
+- 全文新增的段落：
+  - LIONESS 成本：PUMA 559、PANDA 277、DRAGON 29。
+  - CONDOR 權重：167。
+  - 共同機制句改寫：14（同時移除舊句 14）。
+  - convex：8。single-cell、chromatin prior、differential modules：各 3。
+  - prepare 缺口改寫：1。rationale 過濾：1。
+- 第一版把附註插在「This is workflow guidance only; …」那一段中間；改為插在含結尾句的段落之前。
+- 要點的變化是 workflow 卡片多了成本或 CONDOR 一行。每張卡片仍不超過 6 點。
+
+**測試：** 全套件通過（見 commit）。新增 `tests/test_outside_steps.py` 10 個測試。Test 7 用實測錄下的決策（`test10-2026-10-03/r1-decisions.json`）。

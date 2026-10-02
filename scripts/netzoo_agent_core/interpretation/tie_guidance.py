@@ -101,7 +101,11 @@ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = ""
                     if count == len(actions) and method_philosophies_for([tag]) and tag in SELECTION_TAG_GLOSSARY)
     said = frozenset(common) if common and len(bases) > 1 else frozenset()
     if said:
-        sections.append("All of them " + "; ".join(SELECTION_TAG_GLOSSARY[tag] for tag in common) + ".")
+        # Each gloss is a verb phrase; a clause after ";" qualifies the tag for
+        # the model, not for this sentence (Test 2, 2026-10-03).
+        phrases = [SELECTION_TAG_GLOSSARY[tag].split(";", 1)[0].strip() for tag in common]
+        joined = phrases[0] if len(phrases) == 1 else ", ".join(phrases[:-1]) + ", and " + phrases[-1]
+        sections.append(f"All of them {joined}.")
     for label, members in sorted(families.items()):
         lines = [f"**{label}**"] if several_families else []
         for action in members:

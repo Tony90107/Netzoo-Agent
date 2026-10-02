@@ -15,6 +15,7 @@ from .method_philosophy import method_philosophies_for
 from .reply_notes import with_reply_notes
 from .single_candidate import single_candidate_question
 from .tie_guidance import concern_section_for_workflow, render_tie_guidance
+from .practical_notes import practical_notes
 from ..routing.outcome_matching import (
     guidance_actions_for,
     has_granularity_only_ambiguity,
@@ -433,6 +434,14 @@ def render_capability_gap(
         f"The registered NetZoo workflows do not {operation} "
         f"{_requested_outcome_phrase(decision)}."
     ]
+    if decision.requested_outcome and decision.requested_outcome.operation == "prepare":
+        # Test 7 (2026-10-03): "do not prepare TF/gene regulatory networks" read
+        # as if no workflow builds one; a prepared prior is an upstream step.
+        lines = [
+            f"No registered NetZoo workflow prepares {_requested_outcome_phrase(decision)} as an "
+            "input step, such as a prior built from other data; the workflows infer networks "
+            "from inputs you supply."
+        ]
     if decision.requested_outcome and decision.requested_outcome.operation == "acquire":
         lines.append(
             "Direct download currently supports only STRING functional, physical, "
@@ -837,6 +846,7 @@ def render_workflow_composition_guidance(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
     semantic_goal: dict | None = None,
+    *, task: str = "",
 ) -> str | None:
     """Explain an ordered, registry-defined workflow composition."""
     if not (
@@ -877,6 +887,7 @@ def render_workflow_composition_guidance(
     # Only a stated downstream concern brings its notes; the other per-sample
     # reading (Log 219) is always named (Log 283).
     downstream = "\n\n".join(part for part in (
+        *practical_notes(final.action, task),
         OTHER_READING_NOTES.get(final.action, ""),
         concern_section_for_workflow(decision, policy, final.action),
     ) if part)

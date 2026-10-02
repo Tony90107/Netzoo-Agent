@@ -470,10 +470,13 @@ def capability_gap_parts(decision: TaskDecision, policy: ProjectPolicySnapshot):
     outcome = primary_outcome(decision)
     wanted = result_phrase(outcome)
     acquire = outcome is not None and outcome.operation == "acquire"
+    prepare = outcome is not None and outcome.operation == "prepare"
     unavailable = [ReplyOption(
         key="requested", label=clip(wanted[:1].upper() + wanted[1:], 80), available=False, resolution="none",
         reason=("Direct download supports only STRING protein networks (functional, physical, regulatory)."
-                if acquire else "No registered workflow produces this."),
+                if acquire else
+                "No registered workflow prepares this as an input; the workflows infer networks from your inputs."
+                if prepare else "No registered workflow produces this."),
     )]
     alternatives = []
     for action in [a for a in decision.alternative_actions if a in policy.workflows][:2]:
@@ -484,6 +487,7 @@ def capability_gap_parts(decision: TaskDecision, policy: ProjectPolicySnapshot):
             answer=f"Use {name} instead", action=action, resolution="confirm_workflow",
         ))
     headline = (f"This agent cannot download {wanted}." if acquire
+                else f"No registered workflow prepares {wanted} as an input step." if prepare
                 else f"The registered workflows cannot produce {wanted}.")
     return headline, alternatives, unavailable
 

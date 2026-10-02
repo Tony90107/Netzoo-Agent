@@ -28,6 +28,7 @@ from .choices import (
 from .contracts import ReplyCard, ReplyChoices, ReplyOption
 from .method_notes import highlight, needs_line, unmentioned_input_labels
 from .next_steps import next_steps, plan_step
+from ..interpretation.practical_notes import practical_notes
 from .option_reasons import per_sample_use, scale_split, shared_points
 from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outcome, quote, result_phrase, workflow_name
 
@@ -168,11 +169,12 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance", 
         f"{first}." if first else "",
         f"Method: {highlight(action)}." if highlight(action) else "",
         f"Needs: {needs_line(action)}." if needs_line(action) else "",
+        *practical_notes(action, task, short=True),
         _unmentioned([action], task, decision),
         f"Produces: {_produces(action)}." if _produces(action) else "",
         _base_not_first(policy, action) if base_note else "",
     ]
-    card = ReplyCard(kind=kind, headline=clip(headline, 300), points=[clip(p, 300) for p in points if p])
+    card = ReplyCard(kind=kind, headline=clip(headline, 300), points=[clip(p, 300) for p in points if p][:6])
     if first:
         producers = first.split("build it with ", 1)[1]
         card = card.model_copy(update={"next_steps": [ReplyOption(
@@ -485,6 +487,18 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> Rep
     })
 
 
+def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
+    """A step no registered workflow performs, as a "not available here" row (Log 320)."""
+    from ..interpretation.outside_steps import outside_steps
+
+    rows = [ReplyOption(key=f"outside-{step.key}", label=clip(step.name, 80), available=False,
+                        resolution="none", reason=clip(step.reason, 260))
+            for step in outside_steps(decision, task)]
+    if not rows:
+        return card
+    return card.model_copy(update={"unavailable": [*card.unavailable, *rows][:8]})
+
+
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
     """The card for a finished turn, or None when the turn is a wizard or not a policy run."""
     if not isinstance(policy, ProjectPolicySnapshot):
@@ -500,6 +514,8 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _core_card(kind, decision, policy, task)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
         card = _with_input_alternative(card, decision, policy, task)
+    if card is not None and kind != "execution":
+        card = _with_outside_steps(card, decision, task)
     outputs = [
         path.removeprefix("/work/")
         for item in results if item.action.startswith("run_") and item.status == "success"
