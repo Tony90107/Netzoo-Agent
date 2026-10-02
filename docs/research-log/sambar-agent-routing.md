@@ -15898,3 +15898,26 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 原因：輸入見證把「We just finished RNA-seq」判為 historical，所以表現矩陣不算已提到。
   - 另一個原因：`_differential_missing` 把 OTTER／PANDA 的「expression matrix or adjusted co-expression matrix」群組標籤當成不同的輸入。
 - Log 308 的第 3 項（Test 2 的輸入軸）仍未處理。
+
+## Log 311｜顯示修正：選項不再誤報「Also needs expression matrix」
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「先修誤報缺表現量」，另外「不用處理中文版」——中文題只給使用者自己看，實際使用只有英文。所以 Log 310 的 t1-zh GIRAFFE 不處理。
+只改回覆卡片，不改路由、不改 prompt。
+
+**問題（Log 310）：** Test 1 的方法卡片在選項上寫「Also needs expression matrix」，但請求有寫 RNA-seq。重播後發現四個選項都帶這句，只是有些被 170 字元的說明長度截掉。兩個原因：
+- 輸入見證把「We just finished RNA-seq」判為 historical；「motif binding data」也不符合 prior 的寫法。所以這兩項不算已提到。
+- `_differential_missing` 只把「每個候選都需要的同一個標籤」當成共同輸入。OTTER 的「expression matrix or adjusted co-expression matrix」與其他方法的「expression matrix」字串不同，所以「expression matrix」被當成區分選項的差異。
+
+**修正（`reply_cards/method_notes.py`、`reply_cards/choices.py`）：**
+- `missing_input_labels` 可接收請求文字：請求用任何字詞可能描述到的輸入（Log 308 的寬鬆字表 `_LOOSE_MENTIONS`），不算缺少。`unmentioned_input_labels` 改為重用它，行為不變。
+- `_differential_missing` 的共同輸入改為「每個候選都接受的輸入，包括一組二選一中的任一項」。
+- 路由用的輸入見證不動；把「just finished」改判為現有輸入屬於路由變更，需要另行宣告。
+
+**重播（`test12-2026-10-02/replay_cards.py`，2954 種不同的 prompt＋decision）：**
+- 全文、標題、要點、選項順序：0 變化。
+- 選項說明 34 處，全部是移除「Also needs …」，沒有新增：GIRAFFE 33、LIONESS-PANDA 3、PUMA 3。
+- 涉及的請求都寫了該輸入：Test 1（RNA-seq、motif binding data）；blind case5-en（expression、mirna.txt）；「One aggregate TF-gene network from expression, motif and PPI priors」。
+- 仍保留真正的差異，例如 PANDA 對 PUMA 時 PUMA 的「Also needs miRNA list」。
+- 唯一不同的錯誤是既有的 ReplyChoices 超過 8 個選項，兩邊相同，只是錯誤訊息裡回顯的內容不同。
+
+**測試：** 全套件 3095 passed／35 skipped；指紋不變。新增兩個測試，在舊程式上都失敗：Test 1 的四個選項都不帶「Also needs」；請求沒提表現量時，也不會單獨標出某個選項。
