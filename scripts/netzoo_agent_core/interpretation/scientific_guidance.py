@@ -24,15 +24,20 @@ _FAILURE = re.compile(
 )
 
 
-def method_name(action, policy):
+def base_not_first(action, policy):
+    """A per-sample extension writes its base's cohort network too, so the base is not a separate run.
+
+    The heading used to read "**PUMA → LIONESS-PUMA**", which suggests running
+    PUMA first, while the composition reply for the same pair says the
+    opposite (Test 2, 2026-10-02).
+    """
     cap = policy.workflows[action].output_capability
-    return " → ".join(
-        [
-            policy.workflows[a].workflow
-            for a in cap.guidance_predecessors
-            if a in policy.workflows
-        ]
-        + [policy.workflows[action].workflow]
+    bases = [policy.workflows[a].workflow for a in cap.guidance_predecessors if a in policy.workflows]
+    if not bases or not {"aggregate", "sample_specific"} <= set(cap.granularities):
+        return ""
+    return (
+        f"{policy.workflows[action].workflow} also writes the cohort network, "
+        f"so {' and '.join(bases)} need not run first."
     )
 
 
@@ -67,7 +72,7 @@ def method_paragraphs(action, policy, *, task=""):
         ]
     paragraphs = [
         "**"
-        + method_name(action, policy)
+        + spec.workflow
         + "**. "
         + " ".join(method_philosophies_for(cap.selection_tags) or (spec.description,))
     ]
@@ -93,6 +98,7 @@ def method_paragraphs(action, policy, *, task=""):
             + "The analysis would provide "
             + "; ".join(r[0].lower() + r[1:] for r in results)
             + "."
+            + (f" {base}" if (base := base_not_first(action, policy)) else "")
         )
     return paragraphs
 

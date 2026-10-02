@@ -180,6 +180,63 @@ def test_a_regulator_question_becomes_its_answers_with_the_workflows_they_lead_t
     assert labels["Transcription factors only"].answer == "Transcription factors only"
 
 
+HEART_FAILURE = ("We have microarray expression profiles from 40 heart failure patients with highly heterogeneous "
+                 "clinical presentations. A single population-level network would average away individual "
+                 "differences, but each patient contributed only one tissue biopsy, so a per-patient correlation "
+                 "cannot be computed. How can we reconstruct a separate regulatory network for each patient from "
+                 "this cohort?")
+LUNG = ("We just finished RNA-seq on a batch of lung cancer tissues, and we also have standard transcription factor "
+        "motif binding data and known protein-protein interaction data. We want to estimate how strongly each "
+        "transcription factor regulates its target genes across these tissues, while also accounting for TFs that "
+        "cooperate in complexes. What method should we use to build this network?")
+
+
+def _heart_failure_tie():
+    made = decision([reading("regulatory_network", ["expression_matrix"], granularity="sample_specific")],
+                    capability_match_status="ambiguous",
+                    hypothesis_actions=["run_lioness_panda", "run_lioness_puma"])
+    plan = plan_clarification(made.hypothesis_actions, outcomes=[h.outcome for h in made.outcome_hypotheses])
+    return made.model_copy(update={"clarification_question": plan.question})
+
+
+def test_an_answer_needing_an_unmentioned_input_is_not_the_default():
+    # Test 2, 2026-10-02: expression data only, yet "Both TFs and miRNAs" came
+    # first, so Enter chose LIONESS-PUMA and its miRNA list.
+    made = _heart_failure_tie()
+    choices = clarification_choices(made, POLICY, task=HEART_FAILURE)
+    assert [option.label for option in choices.options] == ["Transcription factors only", "Both TFs and miRNAs"]
+    assert "Also needs miRNA list" in choices.options[1].description
+    assert "Also needs" not in choices.options[0].description
+
+
+def test_inputs_every_option_needs_but_the_request_never_names_are_said_once():
+    text, kind, card = respond_and_card(HEART_FAILURE, _heart_failure_tie())
+    assert card.kind == "clarification"
+    assert "Every option also needs motif prior and PPI network, which your request does not mention." in card.points
+
+
+def test_a_per_sample_extension_is_not_named_as_two_runs():
+    task = "Explain LIONESS-PUMA for one TF + miRNA network per patient. Advice only."
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf", "mirna"], granularity="sample_specific")],
+                    capability_match_status="exact", matched_actions=["run_lioness_puma"],
+                    recommended_actions=["run_lioness_puma"])
+    text, kind, card = respond_and_card(task, made)
+    assert "→" not in card.headline and card.headline.startswith("LIONESS-PUMA fits your goal")
+    assert "It also writes the cohort network, so PUMA need not run first." in card.points
+
+
+def test_an_input_described_in_the_users_own_words_is_not_called_unmentioned():
+    # Test 1's motif prior ("motif binding data") and expression ("RNA-seq")
+    # escape the routing witnesses; the note must stay silent about them.
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="sample_specific")],
+                    capability_match_status="exact", matched_actions=["run_lioness_panda"],
+                    recommended_actions=["run_lioness_panda"])
+    text, kind, card = respond_and_card(LUNG, made)
+    assert not any("Not mentioned" in point for point in card.points)
+    _, _, other = respond_and_card(HEART_FAILURE, made)
+    assert "Not mentioned in your request: motif prior and PPI network." in other.points
+
+
 def test_a_question_the_planner_did_not_write_is_not_turned_into_options():
     made = decision([reading("regulatory_network", ["expression_matrix"])],
                     capability_match_status="ambiguous", hypothesis_actions=["run_panda", "run_puma"],

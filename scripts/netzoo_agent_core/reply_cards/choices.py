@@ -25,7 +25,7 @@ from ..routing.capability_compatibility import input_availability
 from ..routing.clarification_planner import plan_clarification
 from .contracts import ReplyChoices, ReplyOption
 from .method_notes import condition_phrase, fit_notes, highlight, missing_input_labels, needs_line
-from .phrases import clip, join_names, primary_outcome, quote, result_phrase, sequence_name, workflow_name
+from .phrases import clip, join_names, primary_outcome, quote, result_phrase, workflow_name
 
 __all__ = [
     "option_scale",
@@ -212,13 +212,18 @@ def _dimension_label(dimension: str, option) -> str:
     return option.label[:1].upper() + option.label[1:]
 
 
-def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot) -> ReplyChoices | None:
+def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *,
+                          task: str = "") -> ReplyChoices | None:
     """The planner's question about the result itself, when that is what the reply asks.
 
     The planner is a pure function of the candidates and readings, so running
     it again yields the options behind the question the reply printed. It is
     used only when the questions are identical, and never for the algorithm
-    dimension, whose options are the methods themselves.
+    dimension, whose options are the methods themselves. Answers are ordered
+    as the method options are (rules 2-4 above). The planner lists its values
+    alphabetically, so "Both TFs and miRNAs" ("mirna|tf") used to come first
+    and was the default even for a request that named only expression data
+    (Test 2, 2026-10-02); registry order now breaks the tie.
     """
     question = decision.clarification_question
     candidates = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
@@ -228,6 +233,7 @@ def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot)
     if plan is None or plan.dimension == "algorithm" or plan.question != question:
         return None
     outcome = primary_outcome(decision)
+    missing = _differential_missing(candidates, present_inputs(task, decision))
     ranked = []
     for index, option in enumerate(plan.options, start=1):
         actions = [a for a in option.candidate_actions if a in policy.workflows]
@@ -239,17 +245,22 @@ def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot)
         scale = (("sample_specific" if "sample_specific" in values else "aggregate")
                  if plan.dimension == "granularity" else outcome.granularity if outcome else None)
         mismatches = fit_notes(single, outcome)[1] if single else []
-        ranked.append((len(mismatches), index, ReplyOption(
+        # Only what every workflow behind this answer needs counts against it.
+        lacking = [need for need in missing.get(actions[0], [])
+                   if all(need in missing.get(action, []) for action in actions[1:])]
+        first = min(candidates.index(action) for action in actions)
+        ranked.append((len(mismatches), bool(lacking), first, index, ReplyOption(
             key=f"{plan.dimension}-{index}",
             label=clip(label, 80),
             description=describe([f"Leads to {join_names([workflow_name(policy, a) for a in actions])}",
-                                  highlight(single) if single else "", *mismatches]),
+                                  highlight(single) if single else "", *mismatches,
+                                  *(["Also needs " + ", ".join(lacking)] if lacking else [])]),
             answer=clip(label, 200),
             action=single,
             granularity=option_scale(single, scale) if single else None,
             resolution="confirm_workflow" if single else "follow_up",
         )))
-    options = [option for _, _, option in sorted(ranked, key=lambda item: item[:2])]
+    options = [option for *_, option in sorted(ranked, key=lambda item: item[:4])]
     if len(options) < 2:
         return None
     header = {"artifact_type": "Result", "granularity": "Scale", "regulator_type": "Regulators",
@@ -365,7 +376,7 @@ def hypothesis_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, t
         targets = {item.target_artifact for item in items if item.basis == action}
         options.append(ReplyOption(
             key=action,
-            label=clip(sequence_name(policy, action), 80),
+            label=clip(workflow_name(policy, action), 80),
             description=describe([
                 ("For " + " and ".join(quote(span, 60) for span in spans)) if spans else "",
                 _producer_first(action, stated, policy),

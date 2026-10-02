@@ -12,9 +12,11 @@ forms stay what the condition recommender offers the model.
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import OUTPUT_CAPABILITIES, REQUIRED_INPUT_GROUPS, REQUIRED_INPUTS
 
-from ..routing.capability_compatibility import _supported_artifacts
+from ..routing.capability_compatibility import _supported_artifacts, input_availability
 
 __all__ = [
     "INPUT_ARTIFACTS",
@@ -25,6 +27,7 @@ __all__ = [
     "input_fields",
     "missing_input_labels",
     "needs_line",
+    "unmentioned_input_labels",
 ]
 
 _HIGHLIGHTS: dict[str, str] = {
@@ -176,3 +179,47 @@ def missing_input_labels(action: str, present: frozenset[str] | set[str]) -> lis
         if judged and not any(INPUT_ARTIFACTS[field] in present for field in judged):
             missing.append(" or ".join(SHORT_INPUT_LABELS[field] for field in group))
     return missing
+
+
+# Any word that could describe the input at all. The routing witnesses miss
+# "transcription factor motif binding data" and "RNA-seq" (Test 1, 2026-10-02),
+# so a note built on them alone would tell that user they never mentioned the
+# motif prior or the expression data. Display only, and deliberately loose:
+# the note stays silent whenever the request might have described the input.
+_LOOSE_MENTIONS: dict[str, re.Pattern[str]] = {
+    "expression_matrix": re.compile(
+        r"express|RNA[- ]?seq|microarray|transcriptom|表現|表達|表现|表达|定序|測序|测序|轉錄組|转录组", re.I),
+    "coexpression_network": re.compile(r"co-?express|correlat|共表現|共表達|共表现|共表达|相關|相关", re.I),
+    "motif_prior": re.compile(r"motif|binding|prior|PWM|JASPAR|CIS-?BP|ChIP|基序|結合|结合|先驗|先验", re.I),
+    # "a protein interaction map" is a PPI too (replay, 2026-10-02).
+    "ppi_prior": re.compile(r"\bPPI|protein|interact|\bSTRING\b|蛋白|互作|交互", re.I),
+    "mirna_prior": re.compile(r"mi(?:cro)?[- ]?RNA|small[- ]RNA|小RNA", re.I),
+    "regulatory_network": re.compile(r"network|edge|網路|網絡|网络|邊|边", re.I),
+    "mutation_matrix": re.compile(r"mutat|variant|突變|突变|變異|变异", re.I),
+}
+
+
+def unmentioned_input_labels(action: str, task: str, present: frozenset[str] | set[str]) -> list[str]:
+    """Required inputs the request does not name, not even loosely, when its wording names any input.
+
+    Unlike ``missing_input_labels`` this is said outright ("Not mentioned in
+    your request: ..."), so it rests on the wording alone: a request that
+    describes no data ("I want one cohort-wide TF network") gets no note, and
+    a role is reported only when no word in the request could describe it.
+    ``present`` (wording and readings) can only silence a role.
+    """
+    if not input_availability(task).present:
+        return []
+
+    def unnamed(field: str) -> bool:
+        artifact = INPUT_ARTIFACTS.get(field)
+        pattern = _LOOSE_MENTIONS.get(artifact or "")
+        return pattern is not None and artifact not in present and not pattern.search(task)
+
+    required, groups = input_fields(action)
+    labels = [SHORT_INPUT_LABELS[field] for field in required if unnamed(field)]
+    for group in groups:
+        judged = [field for field in group if field in INPUT_ARTIFACTS]
+        if judged and all(unnamed(field) for field in judged):
+            labels.append(" or ".join(SHORT_INPUT_LABELS[field] for field in group))
+    return labels

@@ -15706,3 +15706,49 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - preference 推薦 miRNA workflow（WT2）。
 
 **尚未處理（記錄中未出現）：** P／O／G 的 preference 只以目標句當引用。
+
+## Log 308｜Test 1／2 實測：兩題都未達預期；先修四個顯示問題（不經過模型）
+
+日期／時區：2026-10-02，Asia/Taipei。使用者以 `TEST_PROMPTS_10組情境_修正版.md` 的 Test 1、Test 2 實測（sessions 3afd8da8、df6e9f5a、ba9e35a1），再以 gpt-4o-mini（預先授權）、claims contract、traced harness 補一輪追蹤。
+證據：`docs/research-log/test12-2026-10-02/`：
+- `corpus.json`（兩題中英）、`live-test12-s1.json.gz`（每題 3 次，provider 錯誤 0）、`replay_cards.py`。
+
+**實測與預期：**
+- Test 1 預期整體網路、PANDA／OTTER 平手。實際 2／2 exact LIONESS-PANDA，卡片寫「the per-sample result you asked for」，OTTER 未出現。
+- Test 2 預期先問有沒有 motif／PPI，候選為 LIONESS-coexpression／BONOBO 與 LIONESS-PANDA。實際是 LIONESS-PANDA／LIONESS-PUMA 平手，問 TF 或 TF+miRNA。第一個（預設）答案是「Both TFs and miRNAs」，按 Enter 即得 LIONESS-PUMA；請求只說有微陣列表現量。
+
+**追蹤輪：**
+
+| 題 | 結果 |
+| --- | --- |
+| t1-en | 3／3 exact LIONESS-PANDA；granularity=sample_specific 引用「across these tissues」 |
+| t1-zh | 3／3 exact LIONESS-PANDA；引用「同時考慮轉錄因子之間形成複合體的協同作用」，而題目寫「整體調控強度」 |
+| t2-en | 2／3 驗證失敗（多出無根據的 operation=prepare／analyze 與 validation_report 假設）；1／3 exact LIONESS-PANDA |
+| t2-zh | 3／3 LIONESS-PANDA／PUMA／DRAGON 平手；MethodComparisonReview 捏造 requested_philosophy=bayesian |
+
+- Test 1 中英的 `granularity_mentions` 都是空的。驗證只檢查引用在原文中，不檢查引用說出了尺度（與 Logs 302–307 同類）。DD3 只在恰好一個 cohort 替代時生效，此題有 PANDA 與 OTTER 兩個。
+- 離線把尺度改為 unknown 會得到 6 方平手（PANDA、PUMA、LIONESS-PANDA、LIONESS-PUMA、OTTER、GIRAFFE）。路由修正需同時把 LIONESS-* 併入基礎方法，並在沒有 miRNA 字詞時排除 PUMA 系列。未做，待事前宣告。
+- Test 2 英文的「A single population-level network would average away…」被 `granularity_mentions` 當成 aggregate 證據，其實是使用者否定的選項。
+
+**本次修正（顯示層與回覆標題，不改路由、不改 prompt；使用者選的第 1 項）：**
+1. 終端卡片換行：`_wrap` 的 `subsequent_indent` 改為空白，接續行不再多一個「•」。
+2. 答案順序：`clarification_choices` 改照模組文件的規則 2–4（不符的維度數 → 需要請求未提的輸入 → registry 順序）。原本用 planner 的字母序，"mirna|tf" 排在 "tf" 前，所以「Both TFs and miRNAs」一直是預設。需要未提輸入的答案加上「Also needs …」。
+3. 名稱：卡片標題、hypothesis 選項與 `method_paragraphs` 的標題不再寫「PUMA → LIONESS-PUMA」（移除 `sequence_name`）。registry 給兩種尺度的 LIONESS-* 加一句「… also writes the cohort network, so PUMA need not run first.」，與 composition 回覆一致。
+4. 未提的輸入：請求字面說出至少一項輸入時，卡片列出各選項都需要、但請求沒有任何字詞可能指涉的輸入。路由的字面偵測漏掉「motif binding data」與「RNA-seq」（Test 1），所以另設寬鬆的顯示用字表，只用來保持沉默。
+
+**重播（`replay_cards.py`，2889 個不同的 prompt＋decision；兩臂都只有 2 個相同的既有錯誤）：**
+
+| 變化 | 數量 | 內容 |
+| --- | --- | --- |
+| 全文 | 26 | 只有標題去箭頭，加上「need not run first」句 |
+| 卡片標題 | 107 | 只有去箭頭 |
+| 答案順序 | 106 | 95 為 Regulators 問題改成 TF 優先（3 個不同 prompt，都沒有 miRNA 字詞）；11 為標籤去箭頭 |
+| 答案說明 | 95 | 只有「Both TFs and miRNAs」加上「Also needs miRNA list」 |
+| 要點 | 256 張卡片 | 新增 292 條：「need not run first」105；未提輸入 187（5 個不同 prompt，都只說出表現量） |
+
+- 第一版的未提輸入規則在 10 個 prompt 觸發。「a protein interaction map」被說成沒提 PPI；另有 4 個請求根本沒說資料，輸入只來自模型的 reading。改成只看字面，並放寬 PPI／motif 字表後剩 5 個，全部屬實。
+- 既有錯誤（兩臂相同，未處理）：一個 decision 的 ReplyChoices 有 10 個選項（上限 8），卡片被丟棄；另一個是重播 runtime 缺 `response_prompt`。
+
+**測試：** 3084 passed／35 skipped。新增：換行只有一個項目符號；需要未提輸入的答案不當預設；各選項共同未提的輸入；LIONESS-PUMA 不寫成兩次執行；Test 1 用自己話描述的輸入不被說成未提。
+
+**尚未處理：** Test 1 的尺度證據（第 2 項）、Test 2 的輸入軸（第 3 項）。
