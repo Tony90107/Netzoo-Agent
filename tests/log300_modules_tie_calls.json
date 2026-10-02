@@ -1,0 +1,103 @@
+{
+ "source": "docs/research-log/community-witness-2026-10-02/live-hh-cand-s1-targeted.json.gz (gg-modules-within-each-patient); Log 300 II-B",
+ "prompt": "Which workflow finds gene modules within each patient? Advice only.",
+ "calls": [
+  {
+   "schema": "SemanticInterpretation",
+   "args": {
+    "request_mode": "guidance",
+    "semantic_goal": "Advice on workflows for finding gene modules within each patient.",
+    "outcome_hypotheses": [
+     {
+      "outcome": {
+       "operation": "explain",
+       "artifact_type": "unknown",
+       "granularity": "sample_specific"
+      },
+      "confidence": 0.9,
+      "evidence": [
+       {
+        "dimension": "operation",
+        "value": "explain",
+        "source": "explicit",
+        "rationale": "The user is seeking advice on workflows, indicating a need for conceptual guidance rather than execution.",
+        "text_span": "Which workflow finds gene modules within each patient?"
+       },
+       {
+        "dimension": "granularity",
+        "value": "sample_specific",
+        "source": "inferred",
+        "rationale": "The request specifies finding gene modules within each patient, implying a need for sample-specific analysis."
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "schema": "GuidanceSubjectReview",
+   "args": {
+    "artifact_type": "regulatory_network",
+    "granularity": "sample_specific",
+    "artifact_rationale": "The workflow for finding gene modules within each patient involves analyzing their specific regulatory networks.",
+    "granularity_rationale": "Each patient's gene modules are unique to their regulatory network, making the granularity sample_specific.",
+    "current_inputs": [
+     {
+      "artifact_type": "regulatory_network",
+      "text_span": "finds gene modules within each patient",
+      "rationale": "This refers to the identification of gene modules that are specific to individual patients."
+     }
+    ]
+   }
+  },
+  {
+   "schema": "SemanticDiscriminator",
+   "args": {
+    "selection_tags": [],
+    "evidence": []
+   }
+  },
+  {
+   "schema": "IntentDecision",
+   "args": {
+    "mode": "answer",
+    "confidence": 0.9,
+    "reason": "The user is seeking advice on workflows for finding gene modules within each patient, which qualifies as an answer request."
+   }
+  },
+  {
+   "schema": "ResearchFraming",
+   "args": {
+    "question_mode": "single_goal",
+    "hypotheses": [],
+    "concerns": []
+   }
+  },
+  {
+   "schema": "MethodComparisonReview",
+   "args": {
+    "requested_philosophy": [
+     "regulator_class:mirna"
+    ],
+    "requirement_quote": "Which workflow finds gene modules within each patient?",
+    "capability_gap": null,
+    "preference": {
+     "action": "run_lioness_puma",
+     "selection_tags": [
+      "leave_one_out_network_inference",
+      "message_passing",
+      "mirna_regulation",
+      "sample_specific"
+     ],
+     "text_spans": [
+      "Which workflow finds gene modules within each patient?"
+     ],
+     "rationale": "LIONESS-PUMA is designed to infer sample-specific networks that include miRNA regulators, making it suitable for identifying gene modules within each patient. It utilizes both miRNA and TF regulatory information, allowing for a comprehensive analysis of gene regulation at the individual patient level. This method's focus on sample-specific networks aligns with the need to find gene modules tailored to each patient's unique expression profile.",
+     "assumptions": [
+      "The user is interested in workflows that can handle miRNA regulation in addition to other regulatory factors."
+     ]
+    }
+   }
+  }
+ ]
+}
