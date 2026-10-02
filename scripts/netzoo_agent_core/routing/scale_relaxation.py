@@ -14,6 +14,12 @@ LIONESS-DRAGON produced a per-sample multi-omic network, the misread "same
 individuals" selected it outright over DRAGON. When the scale is unstated and
 it alone picked a sample-specific-only workflow over exactly one cohort
 workflow, the cohort workflow is the guidance and both are named.
+
+Log 309: a request that names no unit at all ("across these tissues")
+cannot carry a per-sample reading. Test 1 read that way chose LIONESS-PANDA
+outright, and DD3 missed it because PANDA and OTTER both remained. The scale
+and the per-sample tags are dropped before matching; a tie that is then one
+cohort workflow and only its per-sample extensions ends as DD3 does.
 """
 
 from __future__ import annotations
@@ -21,10 +27,52 @@ from __future__ import annotations
 from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
 
 from ..contracts.outcomes import CapabilityMatch
-from ..interpretation.request_integrity import granularity_mentions
+from ..interpretation.request_integrity import granularity_mentions, per_unit_mention
 from .requested_outcome_matching import match_requested_outcome
 
 _SCALE_PHRASES = {"aggregate": "one result for the whole cohort", "sample_specific": "one result per sample"}
+# Selection tags that restate a per-sample result rather than a method.
+_PER_SAMPLE_TAGS = frozenset({"sample_specific", "leave_one_out_network_inference"})
+
+
+def _without_per_sample_claim(hypothesis):
+    outcome = hypothesis.outcome
+    tags = [tag for tag in outcome.selection_tags if tag not in _PER_SAMPLE_TAGS]
+    if outcome.granularity != "sample_specific" and tags == list(outcome.selection_tags):
+        return hypothesis
+    return hypothesis.model_copy(update={
+        "outcome": outcome.model_copy(update={
+            "granularity": "unknown" if outcome.granularity == "sample_specific" else outcome.granularity,
+            "selection_tags": tags,
+        }),
+        "evidence": [
+            item for item in hypothesis.evidence
+            if not (item.dimension == "granularity" and item.value == "sample_specific")
+            and not (item.dimension == "selection_tag" and item.value in _PER_SAMPLE_TAGS)
+        ],
+    })
+
+
+def drop_unnamed_scale(task, interpretation):
+    """(interpretation, dropped) -- no per-sample claim survives a request naming no unit.
+
+    `dropped` lists, per changed reading, the granularity it had and the
+    per-sample tags removed; it is empty when nothing changed.
+    """
+    if per_unit_mention(task) is not None:
+        return interpretation, []
+    hypotheses, dropped = [], []
+    for item in interpretation.outcome_hypotheses:
+        kept = _without_per_sample_claim(item)
+        if kept is not item:
+            dropped.append({
+                "granularity": item.outcome.granularity,
+                "selection_tags": sorted(set(item.outcome.selection_tags) & _PER_SAMPLE_TAGS),
+            })
+        hypotheses.append(kept)
+    if not dropped:
+        return interpretation, []
+    return interpretation.model_copy(update={"outcome_hypotheses": hypotheses}), dropped
 
 
 def _scale_note(actions) -> str:
@@ -82,8 +130,38 @@ def _scale_only_choice(match, outcome):
     return relaxed, others[0], alternatives
 
 
-def relax_unstated_scale(task, interpretation, match):
+def _cohort_with_extensions(match):
+    """The one cohort workflow of a tie whose other candidates are only its per-sample extensions."""
+    actions = list(dict.fromkeys(match.hypothesis_actions))
+    if match.status != "ambiguous" or match.matched_actions or len(actions) < 2:
+        return None
+    bases = [action for action in actions if not OUTPUT_CAPABILITIES[action].guidance_predecessors]
+    if len(bases) != 1 or not all(
+        OUTPUT_CAPABILITIES[action].guidance_predecessors == (bases[0],)
+        for action in actions if action != bases[0]
+    ):
+        return None
+    return bases[0], actions
+
+
+def relax_unstated_scale(task, interpretation, match, *, scale_dropped=False):
     hypotheses = interpretation.outcome_hypotheses
+    if scale_dropped and (found := _cohort_with_extensions(match)) is not None:
+        # Log 309: the dropped scale left DRAGON and LIONESS-DRAGON (or PANDA and
+        # LIONESS-PANDA) tied; as in DD3, the cohort workflow is the guidance.
+        # Two identical readings (recorded for case 7) fold the same way.
+        cohort, alternatives = found
+        note = _scale_note(alternatives)
+        kept = [item.model_copy(update={"assumptions": list(dict.fromkeys([*item.assumptions, note]))})
+                for item in hypotheses]
+        return (
+            interpretation.model_copy(update={"outcome_hypotheses": kept}),
+            CapabilityMatch(
+                status="fallback", match_basis="assumed_outcome",
+                matched_actions=[cohort], hypothesis_actions=[cohort],
+                rejected_methods=match.rejected_methods,
+            ),
+        )
     if len(hypotheses) == 1 and not granularity_mentions(task):
         found = _scale_only_choice(match, hypotheses[0].outcome)
         if found is not None:

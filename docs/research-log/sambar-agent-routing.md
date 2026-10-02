@@ -15752,3 +15752,149 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **測試：** 3084 passed／35 skipped。新增：換行只有一個項目符號；需要未提輸入的答案不當預設；各選項共同未提的輸入；LIONESS-PUMA 不寫成兩次執行；Test 1 用自己話描述的輸入不被說成未提。
 
 **尚未處理：** Test 1 的尺度證據（第 2 項）、Test 2 的輸入軸（第 3 項）。
+
+## Log 309｜事前宣告：SW——請求沒有任何「單位」字詞時，不保留每個樣本的尺度判讀
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「好，繼續做第 2 項」（Log 308 的尚未處理第 1 項：Test 1 的尺度證據）。
+本條目寫於 SW 的任何程式修改與正式 live 呼叫之前。標靶語料 `docs/research-log/scale-unit-2026-10-02/targeted.json` 與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+基準為 `99b3f05`：工作目錄乾淨，指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+
+**問題（Log 308）：**
+- Test 1（肺癌，整體 TF 網路）6／6 exact LIONESS-PANDA，卡片寫「the per-sample result you asked for」。
+- 第一次判讀把 granularity 讀成 sample_specific，英文引用「across these tissues」，中文引用 TF 複合體那一句；中文題目還寫了「整體調控強度」。
+- 驗證只檢查引用在原文中，不檢查引用說出了尺度。DD3 只在「恰好一個 cohort 替代」時生效，此題有 PANDA 與 OTTER 兩個，所以沒有觸發。
+- Log 308 的診斷輪誤用了 claims contract；app 預設是 legacy（`graph/factory.py`）。本輪的正式量測用 legacy。
+
+**SW1（新的 `per_unit_mention`，放在 `interpretation/request_integrity.py`；在 `graph/router_invocation.py` 的比對之前呼叫）：**
+- 規則：請求沒有任何「一次指一個單位」的字詞時，每個讀法的 granularity=sample_specific 改為 unknown；sample_specific、leave_one_out_network_inference 兩個標籤連同它們的證據一起拿掉。之後才做 `match_semantic_request`。另記事件 `routing.unnamed_scale_dropped`。
+- 單位字詞（原型在 `scan_unit.py` 的 `PER_UNIT`），涵蓋：
+  - each／every（可有 of the／our／數字）＋單位；per-＋單位；individual／single／separate＋單位；
+  - 單位-specific／-level／-wise；individualized、personalized、single-sample、leave-one-out；
+  - from one … to the next；their／its own … network；
+  - 中文：每(一)(個／位／名…)＋樣本／病患／病人／患者／個體…；各(個／位)＋同上；個別、各自、單一樣本、個體、樣本特異、病患特異、個人化、逐一、留一。
+  - 單位：sample、patient、subject、person、individual、donor、participant、case、specimen、biopsy、mouse、animal、cell line、tumor。
+- 這張表刻意寬鬆，與 `granularity_mentions` 不同。它只判斷「請求完全沒有指到單位」，寬鬆只會讓規則少觸發。`granularity_mentions` 的詞彙不擴充（Log 282）。
+- 這張表涵蓋 `granularity_mentions` 的每一種樣本特異寫法，所以「有說出尺度」的請求不受影響。
+- 合併（DD3 的延伸，`routing/scale_relaxation.relax_unstated_scale`）：若 SW1 拿掉了尺度，而比對結果是平手，且候選只有一個 cohort workflow 加上它自己的每樣本延伸，就改為 fallback 選 cohort workflow，並在假設說明列出兩者。這與 DD3 現行的「fallback DRAGON＋說明」一致，所以 case 7 不變。
+
+**SW2（`graph/discriminator.py`）：**
+- 請求沒有單位字詞時，discriminator 選的 sample_specific／leave_one_out_network_inference 一律視為未說出（併入 MS1 的 `_unstated_tags` 處理與事件）。
+- 原因：SW1 讓 Test 1 變成平手後，discriminator 可能再用同一句引用選回 sample_specific。
+
+**離線證據（原型；`scan_unit.py`、`replay_sw.py`）：**
+- 所有記錄中有每樣本讀法的請求共 61 個（1371 次）。其中請求沒有單位字詞的 7 個（51 次），全部是誤讀：
+  - case7-en 34 次（「For the same individuals」）、ii-trap-held-modules 6、prior-concern-named-en 3（「one PANDA network」）、t1-en 3、t1-zh 3、case6-en 1（批次 COBRA）、tp-network-vs-modules 1。
+- 其餘 54 個請求有單位字詞，SW 完全不會觸發。
+- 以 `match_semantic_request` 重跑這 49 種讀法（含合併）：
+  - case7-en：exact／fallback LIONESS-DRAGON → fallback DRAGON（與現行 DD3 的最終結果相同）。
+  - t1-en、t1-zh、ii-trap-held-modules：exact LIONESS-PANDA → 平手 PANDA／LIONESS-PANDA／OTTER／GIRAFFE（問「aggregate or sample-specific?」）。
+  - prior-concern-named-en、tp-network-vs-modules：平手擴大，加入 PANDA（及 OTTER／GIRAFFE／PUMA）。
+  - case6-en：平手加入 COBRA（blind 預期 COBRA）。
+- 記錄中 discriminator 在無單位請求上選了每樣本標籤：0 次（SW2 是預防，沒有記錄可重播）。
+- 兩項都不是模型可見的改動；指紋應不變。
+
+**標靶語料（10 題，`targeted.json`）：**
+- 正例（無單位字詞）：t1-en、t1-zh（使用者的 Test 1）、ii-trap-held-modules（記錄 6／6 exact LIONESS-PANDA）；新寫法 `sw-tumor-paraphrase`、`sw-tf-network-plain`（只描述，不計門檻）。
+- 整體對照（無單位字詞）：ms-ctl-message-passing（exact PANDA）。
+- 單位字詞對照（SW 依構造不觸發）：t2-en（Test 2）、ctl-per-sample-tf、ctl-individual-tf、`sw-ctl-next-patient`（「from one patient to the next」）。
+- DD3 對照：blind case7-en。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝SW1＋SW2；baseline＝`99b3f05` 的副本。同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted.json`（10 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立就撤回 SW；`analyze.py`）：**
+- 離線（live 之前）：
+  - 全套件通過、指紋不變。
+  - 以實際程式重做重播，結果與原型相同（7 個請求、49 種讀法，含 case7 → fallback DRAGON）。
+  - 單元測試涵蓋 t1-en 的錄音讀法、case7 的合併，以及有單位字詞時不觸發。
+- 有效性：兩臂 provider 錯誤皆為 0。
+- 健全：candidate 中，無單位字詞的請求（blind 與標靶）的最終決策仍有每樣本讀法、選中（exact／fallback，非 workflow 名稱）或推薦每樣本 workflow，或 discriminator 接受每樣本標籤 ＝ 0。
+- 效果：baseline 在 t1-en／t1-zh／ii-trap-held-modules 的每樣本選擇 ≥ 3／9。不到 3 表示誤讀本輪沒有出現，改以重播判定，不算撤回。
+- 單位字詞對照（四題各自）：candidate 顯示每樣本 workflow 的次數 ≥ baseline − 1。
+- 整體對照：ms-ctl-message-passing exact PANDA ≥ baseline − 1。
+- DD3 對照：blind case7-en OK ≥ baseline − 1。
+- blind：candidate blind-en 最終 WRONG ≤ baseline＋3。
+
+**Log 309 補充（實作後、live 前寫；門檻不變）：離線條件成立；合併規則對齊宣告文字。**
+- 實作：
+  - `interpretation/request_integrity.per_unit_mention`：樣式與原型 `scan_unit.PER_UNIT` 逐字相同（已比對 pattern 與 flags）。
+  - `routing/scale_relaxation`：新增 `drop_unnamed_scale`，`relax_unstated_scale` 加上 `scale_dropped` 參數與合併。
+  - `graph/router_invocation`：在比對前呼叫，事件 `routing.unnamed_scale_dropped`。
+  - `graph/discriminator._unstated_tags`：加上 SW2。
+- 第一次以實際程式重播（`replay_sw.py --tree`）與原型差 1 種讀法：case7-en 有一筆記錄是兩個相同的每樣本讀法，實作時把合併寫成只限單一讀法（照抄 DD3），結果停在 DRAGON／LIONESS-DRAGON 平手。
+  - 宣告文字與原型都沒有「單一讀法」條件，所以改實作去掉這個條件，說明附加在每個讀法上。
+  - 修正後重播與原型完全相同：49 種讀法、51 次、7 個請求；case7-en 32 次全部 → fallback DRAGON。
+- 全套件 3090 passed／35 skipped（新增 `tests/test_unnamed_unit_scale.py` 6 個）；Log 281 的 case 7 錄音重播測試不需修改仍通過。指紋不變（`e920bf3b5d57`／`743b2dd0d73a`）。
+- 新測試包含：「每一種 `granularity_mentions` 的樣本特異寫法都含單位字詞」，以所有測試語料與研究語料檢查（>20 題，0 例外）。
+- 兩臂語料 smoke 載入：candidate 與 baseline（`99b3f05` 副本）都讀進 targeted 10 題、blind 10 題。
+
+**Log 309 補充 2（時段跑完、未執行 `analyze.py`、未讀任何門檻結果前寫）：本輪全部作廢——OpenRouter 額度用完。**
+- 3 個時段（16:42、16:44、16:44）。依 trace 中帶 `exception` 的呼叫計數，每個配對都有錯誤 trial：
+  - 時段 1：candidate blind 2、targeted 2；baseline blind 3、targeted 1。
+  - 時段 2、3：四個 run 全部 10／10 錯誤，各在 5 秒內結束。
+- 錯誤都是 `APIStatusError 402`：「This request would exceed your available credits given your current in-flight requests」，reason `in_flight_budget_exhausted`。
+- 事後查 `/api/v1/credits`：total_credits 15、total_usage 15.117，餘額已為負，與兩臂的程式無關。
+- 依 Log 290 補充 4 的規則：12 份報告全部改名為 `*.provider-error.json.gz`，保留、不分析，不做保留／撤回判定。
+- 重跑需要使用者先加值。
+  - 依時段 1 的用量估計，一整輪（3 時段 × 4 run）約 0.23 美元。
+  - 額度低時，在途請求上限也會降低。重跑時仍照宣告平行執行；若再遇 402，照同一規則作廢。
+- SW 的程式（Log 309 補充）留在工作目錄，未 commit，直到 live 判定。
+- 掃描與重播腳本（`scan_unit.py`、`replay_sw.py`、test12 的 `replay_cards.py`）改為略過 `*.provider-error*`／`*.unpaired*`。先前輪次的作廢報告原本也被讀入，所以有每樣本讀法的次數由 1371 變為 1362。無單位字詞的 7 個請求、51 次，以及 `--tree` 重播與原型相同，都不變。
+
+**Log 309 補充 3（重跑前寫，仍未讀任何作廢報告的結果；語料、分析與門檻不變）：使用者已加值，重跑三個時段；baseline 改為 `a641ba2` 的副本。**
+- 使用者加值後，`/api/v1/credits` 為 total_credits 25、total_usage 15.119。
+- 在作廢輪與重跑之間 commit 了 `a641ba2`（session 模型套用到所有角色、免費模型放寬上限）。它只改 `cli/bootstrap.py`、`server/history.py`、`server/session_worker.py`、desktop 與測試，traced harness 不經過這些檔案。
+- 為了讓兩臂只差 SW，baseline 改用 `a641ba2` 的副本：
+  - 比對結果只有 SW 的 4 個檔案不同；harness 與 blind 語料逐位元相同；指紋不變。
+  - baseline 臂 smoke 載入 targeted 10 題、blind 10 題。
+- `.env` 的白名單多了一個免費模型。harness 固定驗證並使用 `openai/gpt-4o-mini`，所以不受影響。
+- 重跑沿用同一個凍結的 runner（兩臂、兩語料平行，3 個時段）。若再出現 provider 錯誤，照 Log 290 補充 4 作廢並重跑，最多 2 次。
+
+## Log 310｜結果：SW——全部門檻成立，保留；Test 1 英文不再被讀成每樣本
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 309（含補充 1–3）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/scale-unit-2026-10-02/`：
+- 報告 `live-sw-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`；作廢輪 `*.provider-error.json.gz`（Log 309 補充 2，保留、不分析）。
+- `analyze.py`、`scan_unit.py`、`replay_sw.py`、`render_cards.py`。
+
+**執行：**
+- 3 個時段（17:23、17:25、17:27），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後兩臂 `scripts/` 只差 SW 的 4 個檔案；baseline 是 `a641ba2` 的副本（補充 3）。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 60 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3090 passed／35 skipped；指紋不變；`--tree` 重播與原型相同（補充 1） | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0 | 有效 |
+| 健全 | candidate 無單位字詞請求上仍有每樣本讀法／選擇／標籤：0（baseline 10） | 成立 |
+| 效果 | baseline 在 t1-en／t1-zh／ii-trap 的每樣本選擇 6／9（≥ 3）；candidate 0 | 成立 |
+| 單位字詞對照 | t2-en、ctl-per-sample-tf、ctl-individual-tf、sw-ctl-next-patient：兩臂皆 3／3 | 成立 |
+| 整體對照 | ms-ctl-message-passing exact PANDA：candidate 3、baseline 3 | 成立 |
+| DD3 對照 | blind case7-en OK：candidate 3、baseline 3 | 成立 |
+| blind | WRONG：candidate 0、baseline 0 | 成立 |
+
+**逐題：**
+- t1-en（使用者的 Test 1）：baseline 3／3 exact LIONESS-PANDA；candidate 3／3 平手 PANDA／LIONESS-PANDA／OTTER／GIRAFFE。
+  - 以 `render_cards.py` 重新渲染：candidate 的卡片是「4 registered methods can build a TF-gene regulatory network」，PANDA 排第一，全文寫 PANDA 的「Per-sample version: LIONESS-PANDA」並列出 OTTER。
+  - 「the per-sample result you asked for」不再出現。
+- ii-trap-held-modules：baseline 3／3 exact LIONESS-PANDA → candidate 3／3 四方平手。
+- `sw-tumor-paraphrase`：baseline 3／3 是 LIONESS-PANDA／LIONESS-PUMA 平手（每樣本讀法）→ candidate 3／3 六方平手，推薦 PANDA。
+- `sw-tf-network-plain`：baseline 1／3 exact LIONESS-PANDA → candidate 3／3 平手。candidate 本輪沒有出現每樣本讀法，SW 沒有觸發，屬抽樣差異。
+- SW 只在 4 題觸發（共 12 次）：case7-en（→ fallback DRAGON，與 baseline 的最終結果相同）、t1-en、ii-trap、paraphrase。
+- blind 兩處差異都與 SW 無關：
+  - candidate case4-en s1 平手：請求有單位字詞，SW 不會觸發；第一次判讀有驗證問題。
+  - candidate case6-en s2 FALLBACK：在 SW 之前就驗證失敗。
+- t1-zh：兩臂都是 3／3 exact GIRAFFE。讀法是 `regulatory_network_and_tf_activity`，artifact 沒有引用，「整體調控強度」被讀成 TF 活性。這不是尺度問題，SW 不處理。
+
+**判定：** 保留 SW（SW1＋合併＋SW2）。
+
+**觀察到、未處理：**
+- t1-zh 的 GIRAFFE（上一段）。
+- Test 1 的方法卡片在 LIONESS-PANDA 與 GIRAFFE 上寫「Also needs expression matrix」。
+  - 原因：輸入見證把「We just finished RNA-seq」判為 historical，所以表現矩陣不算已提到。
+  - 另一個原因：`_differential_missing` 把 OTTER／PANDA 的「expression matrix or adjusted co-expression matrix」群組標籤當成不同的輸入。
+- Log 308 的第 3 項（Test 2 的輸入軸）仍未處理。

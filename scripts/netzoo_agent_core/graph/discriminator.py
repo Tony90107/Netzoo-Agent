@@ -14,6 +14,7 @@ from ..interpretation.outcome_validation import (
     validate_outcome_hypotheses,
 )
 from ..interpretation.provider_fallback import _is_fatal_exception
+from ..interpretation.request_integrity import per_unit_mention
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_semantic_discriminator_messages
 from ..routing.outcome_matching import match_semantic_request, restated_tags
@@ -95,20 +96,28 @@ def _selection_evidence_grounds_tags(
     return selected.issubset(grounded_selection_tags(user_task, evidence))
 
 
-def _unstated_tags(selected: set[str], evidence: list[OutcomeEvidence]) -> set[str]:
+_PER_SAMPLE_TAGS = frozenset({"sample_specific", "leave_one_out_network_inference"})
+
+
+def _unstated_tags(selected: set[str], evidence: list[OutcomeEvidence], user_task: str = "") -> set[str]:
     """Witnessed tags no selection_tag quote states (Log 302).
 
     The model may quote any words of the request for any tag; only a quote
-    that names the method can let that method's tag break a tie.
+    that names the method can let that method's tag break a tie. A per-sample
+    tag in a request that names no unit at all is never stated (Log 309): the
+    first pass's per-sample reading was dropped for that reason, and the tie
+    it left must not be broken by the same claim.
     """
+    unnamed = per_unit_mention(user_task) is None if user_task else False
     return {
         tag for tag in selected
-        if (witness := SELECTION_TAG_WITNESSES.get(tag)) is not None
-        and not any(
-            item.dimension == "selection_tag" and item.value == tag and item.text_span
-            and re.search(witness, item.text_span, re.IGNORECASE)
-            for item in evidence
-        )
+        if (unnamed and tag in _PER_SAMPLE_TAGS)
+        or ((witness := SELECTION_TAG_WITNESSES.get(tag)) is not None
+            and not any(
+                item.dimension == "selection_tag" and item.value == tag and item.text_span
+                and re.search(witness, item.text_span, re.IGNORECASE)
+                for item in evidence
+            ))
     }
 
 
@@ -334,7 +343,7 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
         restated = restated_tags(interpretation.outcome_hypotheses[0].outcome)
         selected = set(result.selection_tags) - restated
         result_evidence = [item for item in result.evidence if item.value not in restated]
-        if unstated := _unstated_tags(selected, result_evidence):
+        if unstated := _unstated_tags(selected, result_evidence, user_task):
             selected -= unstated
             result_evidence = [item for item in result_evidence if item.value not in unstated]
             record_event(context, state, "routing.semantic_discriminator_unstated_tags", "classify", {

@@ -25,6 +25,8 @@ RESEARCH = ROOT / "docs" / "research-log"
 def rows():
     paths = sorted({*RESEARCH.glob("**/live-*.json"), *RESEARCH.glob("**/live-*.json.gz")})
     for path in paths:
+        if ".provider-error" in path.name or ".unpaired" in path.name:  # void by rule, never analyzed
+            continue
         opener = gzip.open if path.suffix == ".gz" else open
         try:
             with opener(path, "rt", encoding="utf-8") as handle:

@@ -35,7 +35,7 @@ from .hypothesis_bases import (
 )
 from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings
-from ..routing.scale_relaxation import note_unstated_scale, relax_unstated_scale
+from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -249,13 +249,18 @@ def _route_request(
     interpretation, dropped = drop_input_only_readings(user_task, interpretation)
     if dropped:
         record_event(context, state, "routing.input_only_readings_dropped", "classify", {"artifact_types": dropped})
+    interpretation, unnamed = drop_unnamed_scale(user_task, interpretation)
+    if unnamed:
+        record_event(context, state, "routing.unnamed_scale_dropped", "classify", {"readings": unnamed})
     capability_match = match_semantic_request(
         user_task,
         interpretation.outcome_hypotheses,
         request_mode=interpretation.request_mode,
         ignore_tags=restored_tags,
     )
-    relaxed, capability_match = relax_unstated_scale(user_task, interpretation, capability_match)
+    relaxed, capability_match = relax_unstated_scale(
+        user_task, interpretation, capability_match, scale_dropped=bool(unnamed),
+    )
     if relaxed is not interpretation:
         record_event(context, state, "routing.unstated_scale_relaxed", "classify", {
             "granularity": interpretation.outcome_hypotheses[0].outcome.granularity,
