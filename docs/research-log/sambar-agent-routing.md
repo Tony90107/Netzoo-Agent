@@ -15588,3 +15588,121 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 五個 routing grid 與 commit 逐字相同（`tools/grids.py`）。
   - 全套件通過。
   - 另外 commit。
+
+## Log 306｜事前宣告：WT——第一次判讀的方法標籤也要由引用說出（WT1）；preference 推薦 miRNA workflow 要有 miRNA 字詞（WT2）
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「接著修這兩處」（Log 305 的後續 1、2）。
+本條目寫於 WT1、WT2 的任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/tag-witness-2026-10-02/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+基準為 `b420fdd`：工作目錄乾淨，指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+
+**WT1（`routing/outcome_matching._tag_discriminated_action`）：**
+- 規則：registry tag 比對原本只要求 selection_tag 證據逐字存在。現在對 `SELECTION_TAG_WITNESSES` 中的標籤，還要求它自己的引用含有證據字詞（與 MS1 同一張表），否則該標籤不能決定平手。
+- 這是第一次判讀（含 SemanticPatch、repair 加上的標籤）唯一有路由權力的地方；其他讀取 selection_tags 的地方只用於說明文字。
+- 離線證據（以原型取代 `grounded_selection_tags`，對所有記錄的最終讀法重跑 `match_semantic_request`，2225 種不同讀法）：改變 9 個。
+  - t1-otter 3 個：exact PANDA → 平手。目標，lioness_base_compatibility 的引用是「memory and runtime are a concern」。
+  - `ms-lung-generic` 2、`ms-generic-communication` 2、`ms-generic-strengths` 1：exact GIRAFFE → 平手。
+    - 這些是 MS 輪 baseline 的錄音，GIRAFFE 標籤由 discriminator 加入，MS1 在 live 已經擋下；WT1 只是結論一致。
+  - `gran-tf-agg-relaxed-en` 1：exact OTTER → 平手。rgm 的引用是「one cohort-wide TF-to-gene regulatory network」，碰巧正確。
+    - live 時 discriminator 會接著執行，請求中有「solved as a relaxed graph matching problem」可引用。
+    - 這是宣告中唯一可能的正確 → 平手，以對照門檻檢查。
+
+**WT2（`graph/condition_recommender._recommend_from_preference`）：**
+- 規則：preference 選的 workflow 若 regulator 含 miRNA（PUMA、LIONESS-PUMA），請求中必須有 `regulator_class` 的證據字詞。
+  - 與 II-B 相同：看整個請求，Log 269 允許的功能性描述照樣成立。
+  - 否則不推薦。
+- 範圍比 Log 305 寫的窄，原因是離線資料：
+  - 原型「preference 的每個方法標籤都要由其引用說出」會擋掉正當的推薦。模型會把 workflow 的整組標籤抄進 preference。
+  - 例：t1-panda 的 PANDA preference 列了 message_passing、lioness_base_compatibility，引用是「results must be comparable with the widely published approach」。
+  - blind case5-en 的 PUMA（請求有 small RNAs）也因 message_passing 沒被說出而被擋。
+  - 記錄中所有無根據的 preference 都是「請求沒提 miRNA 卻推薦 miRNA workflow」。
+- 離線證據（記錄中 136 次、111 種 preference，以目前程式重播；現行程式會接受的 133 次）：
+  - 擋下 52 次，全部無根據：
+    - blind case10-en（只有表現矩陣，「Build me a network and let's see」，預期 no_tool）PUMA 37 次。
+    - `ms-generic-communication` 6、`ms-lung-generic` 1。
+    - `gg-modules-within-each-patient` 6、case4-en 2（LIONESS-PUMA；條件那一側已被 II-B 拒絕）。
+  - 保留 81 次，全部正當：case5-en PUMA 3、case3／trap 的 BONOBO、case6 的 COBRA、case2 的 OTTER、t1-panda、t1-giraffe。
+- 不改的部分：P／O／G 的 preference 用目標句當引用，記錄中沒有出現，不在此輪處理。
+- 兩項都不是模型可見的改動；指紋應不變。
+
+**標靶語料（10 題）：**
+- WT1 正例 3 題：t1-otter（Log 168 字句）、`wt-compute-laptop`（laptop、limited memory）、`wt-compute-runtime`（runtime matters）。
+- WT2 正例 3 題：`ms-generic-communication`、`ms-lung-generic`、`gg-modules-within-each-patient`。blind case10-en 也算。
+- 對照 4 題：`gran-tf-agg-relaxed-en`（OTTER）、`ms-ctl-message-passing`（PANDA）、`ms-ctl-factorization`（GIRAFFE）、`mirna-degradation-en`（PUMA）。blind case5-en（PUMA）也算。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝WT1＋WT2；baseline＝`b420fdd` 的副本。同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（10 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（各自撤回；blind 退步則兩項都撤回）：**
+- 離線（live 之前）：
+  - 全套件通過、指紋不變、條件推薦 prompt 不變。
+  - 以實際程式重做兩項重播，結果與原型相同。
+  - 單元測試涵蓋 t1-otter 的錄音讀法與 PUMA preference。
+- 有效性：兩臂 provider 錯誤皆為 0。
+- WT1：
+  - 健全：candidate 中「非 discriminator 的 exact registry_features，且決定的表內標籤沒有引用說出」＝ 0。
+  - 運算資源三題的 exact PANDA：candidate ≤ baseline。
+  - 對照：gran-tf-agg-relaxed-en exact OTTER、ms-ctl-message-passing exact PANDA、ms-ctl-factorization exact GIRAFFE，各自 ≥ baseline − 1。
+- WT2：
+  - 健全：candidate 中請求沒有 miRNA 字詞卻推薦 PUMA／LIONESS-PUMA ＝ 0（含 blind）。
+  - 對照：mirna-degradation-en 推薦 PUMA ≥ baseline − 1；blind case5-en OK ≥ baseline − 1。
+- blind：candidate blind-en 最終 WRONG ≤ baseline＋3。
+
+**Log 306 補充（實作後、live 前寫；門檻不變）：離線條件成立；證據字詞表補上一個動詞形式。**
+- 實作後全套件有 1 個既有測試失敗：`test_tf_activity_is_selected_by_its_registry_tag` 的「factor gene expression using motif and TF-protein interaction priors」（glossary 本身的寫法）應選 GIRAFFE。
+  - 原因：表中 `biologically_informed_matrix_factorization` 只有 factorize／factorization，沒有動詞「factor … expression」。這個缺口 MS1 也有。
+- 修正：加入 `(?<!transcription\s)\bfactor(?:s|ed|ing)?\s+(?:the\s+)?(?:gene\s+)?expression`。
+  - 「transcription factor expression」與使用者原句的「standard transcription factor motif binding sites」都不算。
+  - `analyze.py` 的表同步更新，只是定義同步，門檻不變。
+- 修正後：
+  - WT 重播（`tag-witness-2026-10-02/replay_wt.py`，兩臂各跑一次再比較）與修正前 0 差異。
+  - 2226 種讀法改變 9 種、111 種 preference 改變 43 種（52 次），與原型完全相同。
+  - MS1 的 80 次重播仍只改變宣告的 1 次。
+- 全套件 3079 passed／35 skipped；指紋不變（`e920bf3b5d57`／`743b2dd0d73a`）；條件推薦 prompt 不變（`dd5f012d0be4`）。
+- 新增 `tests/test_tag_witness_routing.py`（8 個）。
+  - 在 baseline 程式上，兩個目標測試失敗（t1-otter 的錄音讀法 exact PANDA；TF-only 請求的 PUMA preference），其餘 6 個通過。
+
+## Log 307｜結果：WT——WT1、WT2 全部門檻成立，都保留
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 306（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/tag-witness-2026-10-02/`：
+- 報告 `live-wt-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`replay_wt.py`。
+
+**執行：**
+- 3 個時段（15:21、15:23、15:25），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後兩臂 `scripts/` 只差 WT 的 4 個檔案（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 60 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3079 passed／35 skipped；指紋與條件推薦 prompt 不變；重播與原型相同（見補充） | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0 | 有效 |
+| WT1 健全 | candidate 中由未說出的表內標籤決定的 exact：0（baseline 1） | 成立 |
+| WT1 運算資源三題 | exact PANDA：candidate 0，baseline 0 | 成立 |
+| WT1 對照 | relaxed graph matching→OTTER 3（3）；message passing→PANDA 3（3）；factorize→GIRAFFE 3（3） | 成立 |
+| WT2 健全 | 請求沒有 miRNA 字詞卻推薦 PUMA／LIONESS-PUMA：candidate 0，baseline 0 | 成立 |
+| WT2 對照 | mirna-degradation-en→PUMA 3（3）；blind case5-en OK 3（3） | 成立 |
+| blind | 最終 WRONG：candidate 0，baseline 0 | 成立 |
+
+**逐題：**
+- baseline 在 live 出現一次 WT1 的目標錯誤：`wt-compute-runtime` s3 是 exact GIRAFFE。
+  - SemanticPatch 加上 `biologically_informed_matrix_factorization`，引用「One aggregate TF-gene network from expression, motif and PPI priors.」，與使用者原本的錯誤同類，只是走第一次判讀的路徑。
+  - candidate 3／3 是 PANDA／OTTER／GIRAFFE 平手，並以 compute_constraints（「runtime matters」）推薦 OTTER。
+- t1-otter 兩臂本輪都是平手（Log 305 的 3／3 exact PANDA 這次沒有重現，屬抽樣）；效益以錄音重播為準（3 次 → 平手）。
+- WT2 本輪兩臂都沒有無根據的 miRNA 推薦；效益以重播為準（52 次 → 不推薦）。
+- `gran-tf-agg-relaxed-en`：宣告中唯一可能由正確變成平手的題，candidate 3／3 照常 exact OTTER。
+- `ms-lung-generic` candidate 3／3 是三者平手、不附推薦。
+
+**判定：** 保留 WT1、WT2。
+
+**累計（Logs 302–307）：**「要由請求說出」的規則現在套用於：
+- discriminator（MS1）；
+- 第一次判讀的標籤（WT1）；
+- 條件推薦的四條軸（II-B、CR1）；
+- preference 推薦 miRNA workflow（WT2）。
+
+**尚未處理（記錄中未出現）：** P／O／G 的 preference 只以目標句當引用。

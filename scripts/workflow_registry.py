@@ -200,7 +200,10 @@ SELECTION_TAG_WITNESSES: Mapping[str, str] = {
         r"圖匹配|图匹配|目標|目标|損失|损失|最佳化|最優化|优化|梯度|收斂|收敛|凸|啟發式|启发式"
     ),
     "biologically_informed_matrix_factorization": (
-        r"factori[sz]|decompos|矩陣分解|矩阵分解|因子分解|分解"
+        # Log 306: the verb form ("factor gene expression"), but not
+        # "transcription factor expression".
+        r"factori[sz]|(?<!transcription\s)\bfactor(?:s|ed|ing)?\s+(?:the\s+)?(?:gene\s+)?expression|"
+        r"decompos|矩陣分解|矩阵分解|因子分解|分解"
     ),
     "linear_model_coefficients": (
         r"linear|regression|coefficient|線性|线性|迴歸|回归|係數|系数"

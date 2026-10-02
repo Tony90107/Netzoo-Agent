@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import re
 import unicodedata
 
+from workflow_registry import SELECTION_TAG_WITNESSES
+
 from ..contracts import OutcomeHypothesis, RequestedOutcome
 from ..contracts.outcomes import OutcomeEvidence
 from ..contracts.artifact_semantics import (
@@ -120,6 +122,26 @@ def grounded_selection_tags(
         for item in evidence
         if item.dimension == "selection_tag"
         and explicit_evidence_grounded(user_task, item)
+    )
+
+
+def stated_selection_tags(
+    user_task: str,
+    evidence: Sequence[OutcomeEvidence],
+) -> frozenset[str]:
+    """Grounded tags whose own quote also states the method (Log 306).
+
+    A tag in `SELECTION_TAG_WITNESSES` needs its words in the quote, the rule
+    MS1 applies to the discriminator: "memory and runtime are a concern" was
+    quoted for lioness_base_compatibility and picked PANDA over OTTER.
+    """
+    return frozenset(
+        item.value
+        for item in evidence
+        if item.dimension == "selection_tag"
+        and explicit_evidence_grounded(user_task, item)
+        and ((witness := SELECTION_TAG_WITNESSES.get(item.value)) is None
+             or re.search(witness, item.text_span or "", re.IGNORECASE))
     )
 
 
