@@ -433,6 +433,46 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
     return None
 
 
+_INPUT_ALTERNATIVE_CARDS = frozenset({"clarification", "method_choice", "workflow_guidance", "composition"})
+_UNMENTIONED_POINTS = ("Not mentioned in your request:", "Every option also needs ")
+
+
+def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> ReplyCard:
+    """Ask first whether the inputs exist when no option runs on the data the request names (Log 312)."""
+    from ..interpretation.input_alternatives import alternative_phrases, input_alternative
+
+    found = input_alternative(decision, task)
+    if found is None:
+        return card
+    words = alternative_phrases(found, policy)
+    result = words["result"][:1].upper() + words["result"][1:]
+    options = [
+        ReplyOption(
+            key="inputs-named", label=clip(f"Only {words['stated']}", 80),
+            description=describe([f"Leads to {words['alternatives']}", result]),
+            answer=clip(f"I only have {words['stated']}. {result} is fine.", 600),
+            resolution="follow_up",
+        ),
+        ReplyOption(
+            key="inputs-more", label=clip(f"I also have {words['asked']}", 80),
+            description=describe([f"Leads to {words['keeps']}" if words["keeps"]
+                                  else "Continues with the workflows this reply names"]),
+            answer=clip(f"I also have {words['asked']}.", 600),
+            resolution="follow_up",
+        ),
+    ]
+    # A method or clarification card's other points describe the options this replaces.
+    kept = card.points[:1] if card.kind in {"method_choice", "clarification"} else card.points
+    points = [point for point in kept if not point.startswith(_UNMENTIONED_POINTS)]
+    points.append(clip(f"Your request names only {words['stated']}; the matched workflows need more inputs, "
+                       f"while {words['alternatives']} works from it alone.", 300))
+    return card.model_copy(update={
+        "points": points,
+        "choices": ReplyChoices(header="Inputs", question=clip(f"Do you also have {words['asked']}?", 400),
+                                options=options, ordering="The option that uses only the data you named comes first."),
+    })
+
+
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
     """The card for a finished turn, or None when the turn is a wizard or not a policy run."""
     if not isinstance(policy, ProjectPolicySnapshot):
@@ -446,6 +486,8 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
     card = _run_card(plan, results, result.get("evaluation")) if kind == "execution" else None
     if card is None:
         card = _core_card(kind, decision, policy, task)
+    if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
+        card = _with_input_alternative(card, decision, policy, task)
     outputs = [
         path.removeprefix("/work/")
         for item in results if item.action.startswith("run_") and item.status == "success"

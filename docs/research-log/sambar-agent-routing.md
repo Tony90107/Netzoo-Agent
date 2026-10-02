@@ -15921,3 +15921,48 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 唯一不同的錯誤是既有的 ReplyChoices 超過 8 個選項，兩邊相同，只是錯誤訊息裡回顯的內容不同。
 
 **測試：** 全套件 3095 passed／35 skipped；指紋不變。新增兩個測試，在舊程式上都失敗：Test 1 的四個選項都不帶「Also needs」；請求沒提表現量時，也不會單獨標出某個選項。
+
+## Log 312｜回覆層：沒有選項能用請求所說的資料執行時，說明這些資料能做什麼，並先問缺的輸入
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「繼續做第 3 項」（Log 308：Test 2 的輸入軸）。
+只改回覆與卡片，路由、驗證與 prompt 都不變（指紋不變）。這沿用 Logs 190–204 的決定：籠統的「build me a network」在回覆層處理，不改驗證。
+
+**問題（Log 310 輪的 t2-en，兩臂各 3 次）：**
+- 請求只說有微陣列表現量，要每位病患一張「regulatory network」。
+- 讀法都是 regulatory_network／sample_specific，regulator 角色為空。6 次中 4 次另有一個 artifact 只有推論、沒有引用的 multi_omic_network 讀法，帶進 LIONESS-DRAGON。
+- 結果都是 LIONESS-PANDA／PUMA（／DRAGON）平手，問 regulator 或 artifact。只需要表現量的 LIONESS-COEXPRESSION、BONOBO 從未出現。
+
+**規則（新模組 `interpretation/input_alternatives.py`；`respond()` 最後一步；卡片在 `reply_cards/builder.py`）：**
+- 適用的回覆種類：outcome_clarification、research_choices、verified／scientific guidance、workflow_contract、composition。
+- 條件全部來自 registry 與請求字面：
+  - 請求字面說出了輸入資料。
+  - 主讀法的結果是網路類 artifact。
+  - 決策裡沒有任何 workflow 能只用請求提到的輸入執行。「提到」用 Log 311 的寬鬆字表；字面無法判斷的輸入（例如 omics layer）一律不算提到。
+  - 有別的網路 workflow 能只用這些輸入、在讀法要求的尺度執行。
+  - 若請求明說了 regulator 角色（`regulatory_role_mentions`，例如「TF-to-gene」），替代方案也必須有這些角色。
+- 成立時：
+  - 全文在結尾一行之前加一段「What your data allows」：列出各 workflow 還需要什麼、只用現有資料能做什麼，並問「Do you also have …?」。
+  - 卡片的問題換成 Inputs：「Only <資料>」排第一（沿用「只用提到的資料的選項先列」），第二個是「I also have …」，兩個都以 follow-up 文字續問。
+  - Log 308 的「Not mentioned in your request」改由這段取代。
+
+**重播（`test12-2026-10-02/replay_cards.py`，2954 種 prompt＋decision，HEAD `61843c0` 對新程式）：**
+- 第一版在 5 個請求觸發。其中 3 個明說「TF-to-gene」或「miRNA-to-gene」，給它們「gene–gene co-expression network instead」並不是它們要的結果，因此加上 regulator 角色條件。
+- 最終只在 2 個請求觸發，共 110 則回覆：
+  - Test 2（6 則）。
+  - blind case10-en「All I have is this expression matrix … Build me a network」（104 則）。
+- 這 110 則的全文變化只有插入的那一段（逐則比對），所以 case 10 要求的 reply notes 都還在；標題 0 變化。
+- 明說 regulator 角色、只有表現量的請求，維持 Log 308 的「Not mentioned in your request: motif prior and PPI network」。
+
+**follow-up 的 live 檢查（gpt-4o-mini、legacy；`input-alternative-2026-10-02/`，6 次、provider 錯誤 0；描述用，不是門檻）：**
+- 「Only expression data」：3／3 為 LIONESS-COEXPRESSION／BONOBO 平手，推薦 LIONESS-COEXPRESSION（40 位病患，dozens of samples）。
+- 「I also have a motif prior and a PPI network」：3／3 回到 LIONESS-PANDA／PUMA，但仍帶著 LIONESS-DRAGON（同一個沒有引用的 multi_omic 讀法）。
+
+**測試：** 全套件 3098 passed／35 skipped。`graph/response.py` 維持在 340 行上限內，邏輯放在新模組。更新 Log 308 的兩個卡片測試（Test 2 現在是 Inputs 問題），並新增 4 個：
+- 卡片先問輸入、全文段落與位置。
+- 非網路結果保留舊註記。
+- 已有能用的選項時不加。
+- 明說 regulator 角色時不提 co-expression。
+
+**觀察到、未處理：**
+- artifact 只有推論、沒有引用的第二個讀法（multi_omic_network）會帶進 LIONESS-DRAGON，也讓問題變成「regulator-to-target 還是 multi-omic」。這在 Test 2 出現 4／6，在 follow-up 出現 3／3。
+- 推薦說明引用了 follow-up 那一句當「dozens of samples」的根據，實際根據在前一輪的「40 heart failure patients」。

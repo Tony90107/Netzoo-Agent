@@ -37,6 +37,7 @@ from ..interpretation.concept_answers import (
 from ..interpretation.hypothesis_routes import render_hypothesis_routes
 from ..interpretation.research_choices import render_research_choices
 from ..interpretation.scientific_guidance import render_scientific_guidance
+from ..interpretation.input_alternatives import with_input_alternative_reply
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..presentation import strip_cli_owned_guidance_tail
@@ -76,6 +77,11 @@ def _reply(content: str, kind: str) -> dict:
 
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
+    result = _respond(context, state)
+    return with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
+
+
+def _respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     task = latest_user_task(state["messages"])
     if not decision.stated_hypotheses:
