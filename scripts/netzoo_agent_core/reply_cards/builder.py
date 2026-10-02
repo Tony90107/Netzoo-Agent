@@ -157,7 +157,8 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance") 
             description="Explains how their assumptions differ and which fits your study; runs nothing.",
             answer=clip(f"Compare {workflow_name(policy, action)} with {names} for this goal. "
                         "How do their assumptions differ, and which fits my study?", 600),
-            resolution="follow_up",
+            resolution="compare_workflows",
+            compare_actions=[action, *others],
         )
         card = card.model_copy(update={"next_steps": [*card.next_steps, compare]})
     return card

@@ -15295,3 +15295,151 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 「per-patient gene modules」2／3 被讀成病人分群：Log 296 撤回的 GG2（引用含 modules 的病人分群讀法改回 community）這次會觸發，可以單獨重新宣告。
 - 未說尺度的 TF-gene 請求被讀成每個樣本，回覆卻寫「For the sample-specific output you described」（`ii-trap-held-modules`，兩臂都有）。
 
+## Log 302｜事前宣告：MS——打破平手的方法標籤要由引用說出（MS1）；「Compare」選項改為型別化比較（MS2）
+
+日期／時區：2026-10-02，Asia/Taipei。本條目寫於 MS1、MS2 的任何程式修改與 live 呼叫之前；標靶語料
+`docs/research-log/method-signal-2026-10-02/targeted_en.json` 與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+
+**背景：使用者 11:19 的測試（session `60bf4978`；trace `85f42722`、`cd0d3015`）。**
+- 第一輪（肺癌轉錄體＋motif＋PPI，「regulatory communication between TFs and target genes as well as cooperative complexes among TFs」）：
+  - 第一次判讀正確：PANDA／OTTER／GIRAFFE 平手。
+  - discriminator 回傳 `biologically_informed_matrix_factorization`，引用「regulatory communication between TFs…」。
+  - 原有檢查只要求引用逐字存在，於是 exact GIRAFFE。卡片寫「Picked from 3 fitting methods because you wrote “regulatory communication between TFs…”」。
+- 第二輪（按下卡片的「Compare with PANDA and OTTER」）：
+  - 這個選項是 `follow_up`，答案文字又經過完整的自由文字路由。
+  - 第一次判讀變成每個樣本的 LIONESS-PANDA／LIONESS-PUMA 平手。
+  - `hypothesis_bases` 把 GIRAFFE、PANDA、OTTER 三個名字都當成「假設」，profile 都是 `regulatory_network_and_tf_activity`，basis 都是 `run_giraffe`。
+  - 回覆只描述 GIRAFFE，沒有比較。
+- 使用者決定：
+  - 丟棄工作目錄中 11:29–11:35 出現、尚未 commit 的另一份修正（不是本系列的 session 寫的）。差異存於 `method-signal-2026-10-02/codex_method_witness_discarded_{files,partial}.patch`；II-B 的部分保留。
+  - 依本條目的建議修正。
+- 不沿用該修正的理由（離線查證）：
+  - 它的 `relaxed_graph_matching` 證據字詞要求「objective function／term」，但 blind case 2 的「well-defined optimization objective」（中文「明確的最佳化目標」）是 Log 229 記錄的 10／10 exact OTTER，會被擋。
+  - 它還改了模型可見的 glossary、OTTER 的 `prefer_when` 與卡片文字，範圍超過這個錯誤。
+
+**MS1（`workflow_registry.SELECTION_TAG_WITNESSES`＋`graph/discriminator.invoke_semantic_discriminator`）：**
+- 規則：discriminator 選出的標籤若在表中宣告了證據字詞，必須有一條 `selection_tag` 證據的引用含有該字詞，否則把標籤連同證據一起移除。
+  - 移除後若無法唯一縮小，就維持平手，以 `method_not_stated` 拒絕並記錄被移除的標籤。
+- 只用在 discriminator，也就是失敗發生的地方，第一次判讀不變。
+  - 記錄中第一次判讀用方法標籤決定平手的只有 `gran-tf-agg-relaxed-en`（5 次），引用都是「relaxed graph matching」，表內字詞都接受。
+- 表只列 PANDA／OTTER／GIRAFFE 之間彼此不共有的標籤：
+  - `message_passing`：message passing、passing messages、iterat…、訊息傳遞／消息傳遞、迭代。
+  - `relaxed_graph_matching`：graph matching、objective、loss、optimi[sz]…、gradient、converge…、convex、heuristic，以及對應的中文。涵蓋 HEAD 的 `_RELAXED_GRAPH_MARKERS`，OTTER 的語意不變。
+  - `biologically_informed_matrix_factorization`：factori[sz]…、decompos…、矩陣分解／因子分解／分解。
+  - `linear_model_coefficients`：linear、regression、coefficient、線性、迴歸、係數。
+  - `signed_partial_regulatory_effects`：signed、activat…、repress…、inhibit…、positive、negative、正負、活化、抑制、促進。
+  - `tfa`、`joint_grn_tfa_inference`、`tfa_covariate_regression`：active／activity、活性、活躍。
+  - `lioness_base_compatibility`：LIONESS、base network、per-sample、sample-specific、each sample/patient/individual、基礎網路、每個樣本、個體。
+  - 其他標籤（COBRA、BONOBO、PUMA、LIONESS 家族）不受影響。
+- 不是模型可見的改動：表只被逐鍵讀取，不會序列化進 prompt；指紋應不變。
+- 離線證據（實作前用原型函式算出）：
+  - 記錄中所有 discriminator 被接受的 trial：80 次，32 種不同 payload。
+  - 只有 1 次會被改變：`live-…log230-case2-no1-r1`，OTTER 標籤的證據是 `source: inferred`、`text_span: null`，是模型自己的推論，與本次錯誤同類。
+  - 其餘 79 次的引用都符合表內字詞，結果不變。
+  - 11:19 的錯誤 payload（引用中沒有 factorization 字詞）會被移除，維持平手。
+- 效益以離線為準：live 測不到機率不明的事件，只檢查不擴散。
+
+**MS2（型別化比較，`reply_cards`＋`engine`＋`graph/router_invocation`）：**
+- 一個 tag 縮小平手時，卡片上的「Compare with …」改為新的 resolution `compare_workflows`，帶上 `compare_actions`（被選的 workflow 加上被放在一旁的）。
+- 選取後，engine 照舊送出同一段文字（transcript 與 history 不變），另外把 `MethodComparison(actions, task)` 當成型別化狀態傳進 graph。做法同 `WorkflowContinuation`：綁定 task，不放在訊息文字裡。
+- `_route_request` 看到它時不再呼叫 semantic interpreter、discriminator、hypothesis bases，直接組成這些 workflow 的平手 decision：
+  - 共同的 artifact、尺度與 regulator 取自 registry 的交集。
+  - 之後照常經過 condition recommender，原問題說出的條件仍可形成有根據的推薦。
+  - 回覆是現有的 method_choice 卡（每個方法的 highlight 與「Best if …」）。
+- 只有 card 上真的出現的 workflow 能被比較；非註冊 workflow、少於 2 個或狀態與 task 不符時，回到一般的 follow-up。
+- 不是模型可見的改動；desktop 只需要更新 generated 型別。
+
+**標靶語料（6 題）：**
+- 正例 3 題（只說方法共有的目標，沒有方法信號）：`ms-lung-generic`（使用者原句）、`ms-generic-communication`、`ms-generic-strengths`。
+- 對照 3 題：
+  - `gran-tf-agg-relaxed-en`（relaxed graph matching → OTTER）。
+  - `ms-ctl-message-passing`（message passing → PANDA）。
+  - `ms-ctl-factorization`（factorize expression into TF activities → GIRAFFE）。
+- blind_en 中的 case2-en（optimization objective → OTTER）也是對照。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝MS1＋MS2；baseline＝丟棄後、MS 之前的工作目錄副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（6 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件：**
+- 離線（live 之前）：
+  - 全套件通過、核心模組 ≤ 1000 行、指紋不變。
+  - 以實際程式重做上述 80 次的檢查，結果與原型相同。
+  - 錄下的 11:19 payload 以單元測試重現並維持平手。
+  - MS2 的端對端測試：選 Compare 之後得到同樣這幾個 workflow 的 method_choice，第一次判讀、discriminator、hypothesis bases 都不呼叫。
+  - 不成立則不跑 live。
+- MS1（任一不成立即撤回 MS1）：
+  - 有效性：兩臂 provider 錯誤皆為 0（否則作廢重跑）。
+  - 健全：candidate 中 discriminator 接受了「表內標籤卻沒有引用說出」＝ 0。
+  - 正例：candidate 在 PANDA／OTTER／GIRAFFE 中只挑一個的次數 ≤ baseline。
+  - 對照：`gran-tf-agg-relaxed-en`、`ms-ctl-message-passing`、`ms-ctl-factorization`、case2-en 的 exact 各自 ≥ baseline − 1。
+  - blind：candidate blind-en 最終 WRONG ≤ baseline＋3。
+- MS2：離線條件以外沒有 live 條件（harness 不會按選項）；離線不成立則撤回 MS2。
+
+**Log 302 補充（實作後、live 前寫；門檻不變）：離線條件成立。**
+- 全套件 3050 passed／35 skipped；指紋不變（legacy `e920bf3b5d57`、claims `743b2dd0d73a`，與實作前相同）。
+- 改到的核心模組都 ≤ 1000 行（`engine/machine.py` 917 行最大）。
+- 80 次重播：以實際的 `_unstated_tags` 重做（`method-signal-2026-10-02/replay_acceptances.py`），32 種 payload 中只改變宣告的那 1 次（log230 case 2，inferred、沒有引用），與原型相同。
+- 新增 `tests/test_method_signal_witness.py`（17 個）：
+  - 錄下的 11:19 引用配上表內 9 個標籤，每一個都維持 PANDA／OTTER／GIRAFFE 平手，並記錄 `routing.semantic_discriminator_unstated_tags`。
+  - 6 個說出方法的引用照常縮小，包括 case 2 的「well-defined optimization objective」與中文「明確的最佳化目標…」。
+  - 同一檔案在 baseline 程式上執行：10 個平手測試失敗（照舊單選），6 個正例通過，所以測試確實區分了兩臂。
+- 新增 `tests/test_method_comparison.py`（7 個，真實 graph）：
+  - 縮小平手的卡片上，Compare 是 `compare_workflows`，帶 GIRAFFE、PANDA、OTTER。
+  - 選取後得到這三個的平手（aggregate TF-gene `regulatory_network`），回覆列出三者、卡片為 method_choice。
+  - 整段對話 semantic interpreter 與 discriminator 各只呼叫 1 次。
+  - 不合法的清單照舊走 follow-up；與 task 不符的比較狀態照常路由。
+- 修改 1 個既有測試：`test_reply_cards` 中縮小平手的 Compare 由 `follow_up` 改為 `compare_workflows`，是 MS2 宣告中的結果。
+- desktop：`scripts/generate_ui_types.py` 重新產生 `contracts.ts`，只多了 resolution 值與 `compare_actions` 欄位兩行。
+
+## Log 303｜結果：MS——MS1 全部門檻成立，保留；MS2 離線成立，保留；下一層的條件推薦有同類漏洞
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 302（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/method-signal-2026-10-02/`：
+- 報告 `live-ms-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`replay_acceptances.py`、`render_replies.py`。
+- 丟棄的另一份修正 `codex_method_witness_discarded_{files,partial}.patch`。
+
+**執行：**
+- 3 個時段（12:12、12:13、12:15），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後各檢查一次：兩臂 `scripts/` 只差 MS 的 11 個檔案（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 48 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3050 passed／35 skipped；指紋不變；80 次重播只改變宣告的 1 次 | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0 | 有效 |
+| 健全 | candidate 接受「沒有引用說出」的表內標籤：0（baseline 5） | 成立 |
+| 正例 | 在三者中只挑一個：candidate 2，baseline 5 | 成立 |
+| 對照 | relaxed graph matching→OTTER 3（3）；message passing→PANDA 3（3）；factorize→GIRAFFE 3（3）；case2-en→OTTER 3（3） | 成立 |
+| blind | 最終 WRONG：candidate 0，baseline 0 | 成立 |
+
+**逐題：**
+- baseline 在 live 重現了使用者的錯誤：
+  - 9 個正例 trial 中 5 個由 discriminator 以沒有說出方法的引用選成 exact GIRAFFE。
+  - 使用者原句 `ms-lung-generic` 3 次中 2 次都是如此。
+- candidate 的 9 個正例全部維持平手：
+  - 6 個是 PANDA／OTTER／GIRAFFE 三者（或加上 PUMA）。
+  - `ms-lung-generic` 有 2 次另外帶出 PUMA 與 DRAGON：第一次判讀沒有限定 regulator、讀成跨 omics，與 MS 無關。
+  - MS1 在 candidate 中實際移除的例子：s2 的 `biologically_informed_matrix_factorization`，引用是「cooperative complexes among TFs」。
+- `ms-lung-generic` candidate s3 的回覆（`render_replies.py` 重新產生）：
+  - 列出 PANDA（message passing）、OTTER（W Wᵀ 對 PPI、Wᵀ W 對共表現的目標）、GIRAFFE（因子分解出 TF 活性與正負效應）。
+  - 接著是「(1) memory or runtime a concern? (yes → OTTER) (2) activity differs from expression, or activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.」
+- case4-en：candidate s1 一次平手（LIONESS-PANDA／LIONESS-PUMA／GIRAFFE），baseline 3／3 exact LIONESS-PANDA。
+  - 該 trial 沒有 `unstated_tags` 事件：discriminator 只回傳重述的 `sample_specific`、`tf_gene_regulation`。
+  - 這是既有的 divergent-readings 變異，不是 MS1 造成的。
+- blind：baseline 有 3 次 FALLBACK（case6 1、case7 2），candidate 0，屬抽樣雜訊。
+
+**MS2：**
+- harness 不會按選項，只以離線條件判定，已在 Log 302 補充中成立。保留。
+
+**判定：** 保留 MS1、MS2。
+
+**新發現（尚未處理，需另外宣告）：同類的漏洞出現在下一層的條件推薦。**
+- candidate `ms-lung-generic` s1、s2：條件推薦（salvaged）引用整句目標「We want to estimate genome-wide regulatory strengths, capturing both …」，主張 `established_method:yes`，於是回覆「Based on what you said — "…" — PANDA fits better: results must be comparable with the widely published approach …」。
+- 這句話沒有說要與已發表方法比較，也沒有說要給 LIONESS 當 base。
+- baseline 看不到這個問題：同一題 2／3 已被 discriminator 錯選成 GIRAFFE，條件推薦沒有執行。
+- II-B 只替 `regulator_class` 宣告了證據字詞；`established_method`、`compute_constraints`、`tf_activity_vs_expression` 仍只要求引用逐字存在。
+- 若要修，做法與 II-B 相同（軸的證據字詞），應以記錄中被接受的條件推薦重播為效益與不擴散的門檻，另行宣告。

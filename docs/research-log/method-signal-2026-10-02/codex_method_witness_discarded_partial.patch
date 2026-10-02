@@ -1,0 +1,91 @@
+--- scripts/workflow_registry.py	2026-10-02 11:45:56
++++ (codex)	2026-10-02 11:45:30
+@@ -167,8 +167,8 @@
+     "partial_correlation": "infer conditional associations using partial correlation",
+     "pathway_scores": "produce pathway-level mutation scores",
+     "relaxed_graph_matching": (
+-        "continuous relaxed graph-matching; explicit objective/loss, gradient descent, "
+-        "convergence; not heuristic message passing"
++        "non-convex relaxed graph matching with an explicit projection-matching "
++        "objective; the registered implementation uses fixed gradient steps"
+     ),
+     "sample_specific": "infer a separate network for each sample",
+     "signed_partial_regulatory_effects": (
+@@ -239,6 +239,10 @@
+         "values": {
+             "constrained": "the network is large and memory or runtime is a concern",
+         },
++        "witness": (
++            r"\b(?:memory|runtime|compute|computational|ram|gpu|cpu|resources?|"
++            r"time limit|memory limit)\b|記憶體|内存|運算資源|计算资源|執行時間|运行时间"
++        ),
+     },
+     "tf_activity_vs_expression": {
+         "question": (
+@@ -251,6 +255,11 @@
+                 "versus repressing effects are needed"
+             ),
+         },
++        "witness": (
++            r"\b(?:tf|transcription factor)[- ]?activit(?:y|ies)\b|"
++            r"\bactivat(?:ing|ion).{0,30}repress(?:ing|ion)\b|"
++            r"轉錄因子.{0,8}活性|转录因子.{0,8}活性|活化.{0,12}抑制"
++        ),
+     },
+     "established_method": {
+         "question": (
+@@ -263,6 +272,12 @@
+                 "a base network for later per-sample analysis"
+             ),
+         },
++        "witness": (
++            r"\b(?:published|established|benchmark|baseline|comparable|"
++            r"standard\s+(?:published\s+)?(?:method|approach|workflow)|"
++            r"base\s+network\s+for\s+lioness)\b|文獻基準|发表方法|已發表方法|"
++            r"標準方法|标准方法|基準方法|基准方法"
++        ),
+     },
+     # Log 200: divergent readings of one request, not a method tie. "Each
+     # patient's regulatory wiring ... per-TF regulatory strength" reads both
+@@ -1464,7 +1479,6 @@
+             required_input_artifacts=frozenset({"motif_prior", "ppi_prior"}),
+             handoff_targets=("run_condor",),
+             selection_tags=frozenset({"tf_gene_regulation", "aggregate_network", "relaxed_graph_matching"}),
+-            prefer_when=("compute_constraints:constrained",),
+             handoff_contract=(
+                 "OTTER consumes an OTTER seed/prior TF-by-gene edge list W, a TF-TF PPI "
+                 "projection P, and either a gene-by-sample expression matrix (from which "
+--- scripts/netzoo_agent_core/graph/condition_recommender.py	2026-10-02 11:45:56
++++ (codex)	2026-10-02 11:45:30
+@@ -39,6 +39,7 @@
+     _grounded_span,
+     _hard_wrap_normalized,
+     _normalized,
++    selection_tag_evidence_supported,
+ )
+ from ..interpretation.provider_fallback import _is_fatal_exception
+ from ..interpretation.method_philosophy import method_philosophies_for
+@@ -47,6 +48,7 @@
+ from ..llm import append_llm_usage, build_selection_condition_messages
+ from ..routing.clarification_planner import plan_clarification
+ from ..routing.clarification_planner import algorithmic_assumptions_for
++from ..routing.outcome_matching import restated_tags
+ from ..interpretation.input_bindings import request_input_bindings
+ from .context import _GraphContext, preflight_budget, record_event
+ from .input_inspection import _ROLE_LABELS, named_directories
+@@ -311,6 +313,15 @@
+         return None
+     if any(not _quote_grounded(task, span) for span in preference.text_spans):
+         return None
++    material_tags = set(preference.selection_tags) - (
++        restated_tags(requested_outcome) if requested_outcome is not None else set()
++    )
++    if not material_tags or not preference.text_spans or any(
++        not any(selection_tag_evidence_supported(task, tag, span)
++                for span in preference.text_spans)
++        for tag in material_tags
++    ):
++        return None
+     # Model prose may copy Chinese evidence into English explanations. Preserve
+     # original quotes only in supporting_spans; never crash deterministic UI.
+     rationale = preference.rationale

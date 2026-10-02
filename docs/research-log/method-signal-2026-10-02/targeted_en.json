@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ms-lung-generic",
+    "language": "en",
+    "category": "positive",
+    "prompt": "We just finished sequencing lung cancer tissue transcriptomes and have standard transcription factor motif binding sites alongside known protein-protein interaction maps. We want to estimate genome-wide regulatory strengths, capturing both the regulatory communication between TFs and target genes as well as cooperative complexes among TFs. What framework should we use to build this network?",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-generic-communication",
+    "language": "en",
+    "category": "paraphrase",
+    "prompt": "Our tumor RNA-seq comes with TF motif priors and a protein interaction map. We want to capture how TFs communicate with their target genes and how TFs cooperate in complexes. Which framework builds this network? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "ms-generic-strengths",
+    "language": "en",
+    "category": "positive",
+    "prompt": "From our cohort's expression data plus motif and PPI priors, we want genome-wide TF-to-gene regulatory strengths in one network. What framework should we use? Advice only.",
+    "expected": {
+      "status": "ambiguous",
+      "actions": []
+    }
+  },
+  {
+    "id": "gran-tf-agg-relaxed-en",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I need one cohort-wide TF-to-gene regulatory network solved as a relaxed graph matching problem, not per-sample networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": ["run_otter"]
+    }
+  },
+  {
+    "id": "ms-ctl-message-passing",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have expression, motif and PPI priors. I want one cohort TF-to-gene network estimated by message passing between the motif, PPI and co-expression networks. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": ["run_panda"]
+    }
+  },
+  {
+    "id": "ms-ctl-factorization",
+    "language": "en",
+    "category": "positive",
+    "prompt": "I have expression, motif and PPI priors. I want to factorize gene expression into TF activities and a regulatory matrix, one network for the cohort. Which workflow? Advice only.",
+    "expected": {
+      "status": "exact",
+      "actions": ["run_giraffe"]
+    }
+  }
+]

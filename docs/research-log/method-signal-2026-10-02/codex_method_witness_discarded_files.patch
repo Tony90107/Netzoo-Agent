@@ -1,0 +1,461 @@
+diff --git a/scripts/netzoo_agent_core/graph/discriminator.py b/scripts/netzoo_agent_core/graph/discriminator.py
+index d1f7325..09a0d75 100644
+--- a/scripts/netzoo_agent_core/graph/discriminator.py
++++ b/scripts/netzoo_agent_core/graph/discriminator.py
+@@ -26,8 +26,7 @@ __all__ = ["invoke_semantic_discriminator"]
+ _RELAXED_GRAPH_MARKERS = (
+     re.compile(r"(?:連續|连续)?\s*(?:鬆弛|松弛)(?:化)?(?:圖|图)?匹配|(?:continuous\s+)?relaxed\s+graph[- ]matching", re.IGNORECASE),
+     re.compile(r"(?:目標|目标)\s*函數|objective\s+function|(?:損失|损失)(?:函數|函数)?|loss(?:\s+function)?", re.IGNORECASE),
+-    re.compile(r"(?:連續|连续).{0,4}(?:凸).{0,8}(?:最佳化|优化)|continuous.{0,24}convex.{0,24}(?:optimization|optimisation)|convex.{0,24}(?:optimization|optimisation)", re.IGNORECASE),
+-    re.compile(r"(?:理論)?(?:收斂|收敛)(?:保證|保证)?|convergence(?:\s+(?:guarantee|guarantees|proof))?|converges?", re.IGNORECASE),
++    re.compile(r"(?:梯度下降|梯度遞降|梯度下降法)|gradient\s+descent", re.IGNORECASE),
+     re.compile(r"(?:不|非).{0,8}(?:啟發式|启发式).{0,8}(?:迭代|更新)|not.{0,24}heuristic", re.IGNORECASE),
+ )
+ _LIONESS_BASE_MARKERS = (
+@@ -46,11 +45,7 @@ _DISCRIMINATOR_TAG_ALIASES = {
+     "explicit objective/loss": "relaxed_graph_matching",
+     "explicit_objective/loss": "relaxed_graph_matching",
+     "objective/loss": "relaxed_graph_matching",
+-    "continuous convex optimization": "relaxed_graph_matching",
+     "gradient descent": "relaxed_graph_matching",
+-    "convergence": "relaxed_graph_matching",
+-    "convergence guarantee": "relaxed_graph_matching",
+-    "convergence guarantees": "relaxed_graph_matching",
+     "relaxed graph matching": "relaxed_graph_matching",
+     "aggregate network": "aggregate_network",
+     "aggregate base network": "lioness_base_compatibility",
+@@ -124,7 +119,7 @@ def _recover_explicit_selection_tag(
+         # contrast such as "not heuristic". The second signal still gates the
+         # recovery, but the quote should explain why the method is selected.
+         evidence_match = next(
+-            match for preferred in (2, 0, 3, 1, 4)
++            match for preferred in (0, 1, 2, 3)
+             for index, match in present
+             if index == preferred
+         )
+@@ -167,8 +162,8 @@ def discriminator_context(actions: list[str]) -> str:
+         "Compare the original request with their scientific signals. If it explicitly states "
+         "one signal, set that canonical selection_tags value and add matching selection_tag evidence "
+         "quoted from the original request. If no signal is stated, leave selection_tags unchanged. "
+-        "Canonical examples: an explicit objective or loss, continuous/convex optimization, "
+-        "convergence guarantees, or relaxed graph matching support relaxed_graph_matching; "
++        "Canonical examples: a projection-matching objective, gradient descent, "
++        "or relaxed graph matching support relaxed_graph_matching; "
+         "message-passing iteration supports message_passing; an aggregate first-stage base "
+         "network intended for downstream LIONESS supports lioness_base_compatibility.\n"
+         + "\n".join(profiles)
+@@ -401,7 +396,9 @@ def invoke_semantic_discriminator(context: _GraphContext, state: AgentState, use
+         narrowed = match_semantic_request(user_task, updated.outcome_hypotheses, request_mode=updated.request_mode)
+         if narrowed.status != "exact":
+             tag_actions = [action for action in actions if selected.issubset(OUTPUT_CAPABILITIES[action].selection_tags)]
+-            if len(tag_actions) == 1:
++            if len(tag_actions) == 1 and _selection_evidence_grounds_tags(
++                user_task, selected, result_evidence + ([recovered_evidence] if recovered_evidence else []),
++            ):
+                 narrowed = capability_match.model_copy(update={"status": "exact", "match_basis": "registry_features",
+                     "matched_actions": tag_actions, "hypothesis_actions": tag_actions, "alternative_actions": [], "clarification_question": None})
+         if narrowed.status != "exact" or len(narrowed.matched_actions) != 1:
+diff --git a/scripts/netzoo_agent_core/interpretation/outcome_validation.py b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+index 7773a85..5f13ba5 100644
+--- a/scripts/netzoo_agent_core/interpretation/outcome_validation.py
++++ b/scripts/netzoo_agent_core/interpretation/outcome_validation.py
+@@ -110,6 +110,64 @@ def explicit_evidence_grounded(user_task: str, evidence: OutcomeEvidence) -> boo
+     )
+ 
+ 
++# A quotation proves that words appeared, not that they request a particular
++# algorithm. These are the method-specific tags that can distinguish otherwise
++# identical aggregate TF-gene network outputs. Unstated method preferences must
++# remain a choice rather than turning an LLM gloss on the goal into authority.
++_METHOD_SIGNAL_WITNESSES = {
++    "message_passing": re.compile(
++        r"message[- ]?passing|iterative(?:ly)?\s+(?:message|information)\s+exchang"
++        r"|訊息傳遞|消息传递", re.I,
++    ),
++    "relaxed_graph_matching": re.compile(
++        r"graph[- ]?matching|projection[- ]?matching|(?:explicit\s+)?"
++        r"(?:objective|loss)\s+(?:function|term)|gradient\s+descent"
++        r"|圖匹配|图匹配|目標函數|目标函数|損失函數|损失函数", re.I,
++    ),
++    "tfa": re.compile(
++        r"(?:tf|transcription\s+factor)[- ]?activit(?:y|ies)|"
++        r"(?:tf|transcription\s+factor)\s+activity|轉錄因子活性|转录因子活性",
++        re.I,
++    ),
++    "biologically_informed_matrix_factorization": re.compile(
++        r"matrix\s+factori[sz]ation|factor(?:ize|ise)?\s+(?:gene\s+)?expression"
++        r"|矩陣分解|矩阵分解|因子分解", re.I,
++    ),
++    "linear_model_coefficients": re.compile(
++        r"linear\s+(?:expression\s+)?model|(?:linear|regression)\s+coefficients?"
++        r"|線性模型|线性模型|迴歸係數|回归系数", re.I,
++    ),
++    "signed_partial_regulatory_effects": re.compile(
++        r"signed\s+(?:partial\s+)?(?:regulatory\s+)?effects?|"
++        r"activat(?:ing|ion).{0,24}repress(?:ing|ion)|"
++        r"positive.{0,24}negative|正負調控|正负调控|活化.{0,12}抑制", re.I,
++    ),
++}
++
++
++def selection_tag_evidence_supported(
++    user_task: str, tag: str, text_span: str,
++) -> bool:
++    """Require a method-specific witness before a tag can break a workflow tie."""
++    if tag == "lioness_base_compatibility":
++        return bool(
++            re.search(r"\bLIONESS\b", user_task, re.I)
++            and re.search(r"\b(?:aggregate|cohort|base|first[- ]?stage)\b|整體|群體|基础|基礎", text_span, re.I)
++        )
++    if tag == "joint_grn_tfa_inference":
++        return bool(
++            _METHOD_SIGNAL_WITNESSES["tfa"].search(text_span)
++            and re.search(r"regulat|network|grn|調控|调控|網路|网络", text_span, re.I)
++        )
++    if tag == "tfa_covariate_regression":
++        return bool(
++            _METHOD_SIGNAL_WITNESSES["tfa"].search(text_span)
++            and re.search(r"covariate|regress|predictor|共變量|协变量|迴歸|回归", text_span, re.I)
++        )
++    witness = _METHOD_SIGNAL_WITNESSES.get(tag)
++    return witness is None or bool(witness.search(text_span))
++
++
+ def grounded_selection_tags(
+     user_task: str,
+     evidence: Sequence[OutcomeEvidence],
+@@ -120,6 +178,7 @@ def grounded_selection_tags(
+         for item in evidence
+         if item.dimension == "selection_tag"
+         and explicit_evidence_grounded(user_task, item)
++        and selection_tag_evidence_supported(user_task, item.value, item.text_span or "")
+     )
+ 
+ 
+diff --git a/scripts/netzoo_agent_core/reply_cards/method_notes.py b/scripts/netzoo_agent_core/reply_cards/method_notes.py
+index 79bfd98..1f9dcf1 100644
+--- a/scripts/netzoo_agent_core/reply_cards/method_notes.py
++++ b/scripts/netzoo_agent_core/reply_cards/method_notes.py
+@@ -30,7 +30,7 @@ __all__ = [
+ _HIGHLIGHTS: dict[str, str] = {
+     "run_panda": "Widely used baseline: message passing over motif, PPI and co-expression evidence",
+     "run_puma": "PANDA's message passing with miRNA regulators added",
+-    "run_otter": "Explicit objective (graph matching) with a convergence check; lighter on memory",
++    "run_otter": "Non-convex graph matching with an explicit objective and fixed gradient steps",
+     "run_giraffe": "Also estimates per-sample TF activity and signed activating/repressing effects",
+     "run_lioness_panda": "One TF-gene network per sample, derived leave-one-out from the cohort",
+     "run_lioness_puma": "One TF + miRNA network per sample, derived leave-one-out from the cohort",
+diff --git a/tests/test_condition_recommender.py b/tests/test_condition_recommender.py
+index 3006656..81b563e 100644
+--- a/tests/test_condition_recommender.py
++++ b/tests/test_condition_recommender.py
+@@ -14,11 +14,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
+ 
+ from netzoo_agent_core.contracts import LLMUsage, TaskDecision  # noqa: E402
+ from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
++    MethodPreference,
+     OutcomeHypothesis,
+     RequestedOutcome,
+     SelectionConditionClaims,
+ )
+ from netzoo_agent_core.graph.condition_recommender import (  # noqa: E402
++    _recommend_from_preference,
+     condition_options,
+     invoke_condition_recommender,
+     is_method_tie,
+@@ -398,6 +400,53 @@ def test_preference_cannot_add_a_candidate_or_invent_its_philosophy(tmp_path, ov
+     assert updated.action == "no_tool" and not updated.should_execute
+ 
+ 
++def test_generic_tf_gene_goal_cannot_ground_giraffe_method_preference():
++    task = (
++        "Use expression, motif and PPI to estimate regulatory communication "
++        "between TFs and target genes. What framework should we use?"
++    )
++    preference = MethodPreference(
++        action="run_giraffe",
++        selection_tags=["biologically_informed_matrix_factorization"],
++        text_spans=["regulatory communication between TFs and target genes"],
++        rationale="GIRAFFE is preferred for the quoted request.",
++    )
++    facts = [{
++        "action": action,
++        "selection_tags": sorted(OUTPUT_CAPABILITIES[action].selection_tags),
++        "regulator_types": ["tf"],
++    } for action in ("run_panda", "run_otter", "run_giraffe")]
++    outcome = RequestedOutcome(
++        operation="infer", artifact_type="regulatory_network", regulator_types=["tf"],
++        target_types=["gene"], granularity="aggregate",
++    )
++
++    assert _recommend_from_preference(task, preference, facts, outcome) is None
++
++
++@pytest.mark.parametrize("condition,quoted", [
++    ("tf_activity_vs_expression:yes", "regulatory strengths"),
++    ("compute_constraints:constrained", "genome-wide"),
++    ("established_method:yes", "standard transcription factor motif binding sites"),
++])
++def test_generic_network_words_do_not_claim_a_method_separating_condition(condition, quoted):
++    task = (
++        "We have standard transcription factor motif binding sites, expression and PPI. "
++        "Estimate genome-wide regulatory strengths between TFs and genes."
++    )
++    claims = SelectionConditionClaims.model_validate({
++        "claims": [{"condition": condition, "text_span": quoted}],
++    })
++    options = condition_options(["run_panda", "run_otter", "run_giraffe"])
++
++    recommendation, rejected = recommend_from_claims(
++        task, claims, options, ["run_panda", "run_otter", "run_giraffe"],
++    )
++
++    assert recommendation is None
++    assert rejected[0]["reason"] == "condition_not_in_request"
++
++
+ def _regulatory_decision(granularity="aggregate"):
+     outcome = RequestedOutcome(operation="explain", artifact_type="regulatory_network",
+                                granularity=granularity)
+diff --git a/tests/test_guidance_routing_fixes.py b/tests/test_guidance_routing_fixes.py
+index 179723a..56c94d8 100644
+--- a/tests/test_guidance_routing_fixes.py
++++ b/tests/test_guidance_routing_fixes.py
+@@ -30,8 +30,8 @@ from workflow_registry import OUTPUT_CAPABILITIES  # noqa: E402
+ 
+ Q1 = (
+     "I have an expression matrix, motif and PPI priors. I need an explicit "
+-    "objective function, continuous convex optimization and convergence "
+-    "guarantees, not heuristic updates."
++    "projection-matching objective and relaxed graph matching by gradient "
++    "descent, not PANDA message passing."
+ )
+ Q2 = (
+     "I have an expression matrix, motif and PPI priors for 100 patients. "
+@@ -40,8 +40,8 @@ Q2 = (
+ )
+ Q1_ZH = (
+     "我手邊有完整的 Expression、Motif 和 PPI 矩陣。在推論基因調控網路時，"
+-    "我需要演算法具備嚴謹的數學目標函數（Objective Function），能明確量化並平衡先驗資訊與共表現約束之間的損失，"
+-    "同時保有連續凸最佳化的理論收斂保證，而不是仰賴啟發式的迭代更新。"
++    "我需要明確的投影匹配目標函數，以非凸鬆弛圖匹配與梯度下降求解，"
++    "而不是使用 PANDA 的訊息傳遞更新。"
+ )
+ Q2_ZH = (
+     "我擁有 100 個病患的 Expression 矩陣、Motif 和 PPI 先驗資料。我的最終目標是先建立一個整體的群體調控網路，"
+@@ -124,12 +124,12 @@ def bonobo_coexpression() -> OutcomeHypothesis:
+     )
+ 
+ 
+-def test_q1_objective_and_continuous_optimization_selects_otter():
++def test_q1_objective_and_graph_matching_selects_otter():
+     result = match_semantic_request(
+         Q1,
+         [tf_aggregate(
+             tags=["relaxed_graph_matching"],
+-            tag_span="continuous convex optimization",
++            tag_span="relaxed graph matching",
+         )],
+         request_mode="guidance",
+     )
+@@ -201,20 +201,20 @@ def test_empty_provider_tags_recover_chinese_q1_to_otter(tmp_path):
+         if event.event_type == "routing.semantic_discriminator_recovered"
+     )
+     assert recovery.payload["selection_tags"] == ["relaxed_graph_matching"]
+-    assert recovery.payload["evidence"]["text_span"] == "連續凸最佳化"
++    assert recovery.payload["evidence"]["text_span"] == "鬆弛圖匹配"
+ 
+ 
+ def test_provider_algorithm_aliases_converge_on_otter(tmp_path):
+     task = (
+         "Infer one aggregate TF-to-gene regulatory network. Continuous relaxed "
+-        "graph matching with an explicit objective and convergence."
++        "graph matching with an explicit objective and gradient descent."
+     )
+     provider_payload = {
+         "selection_tags": [
+             "aggregate_network",
+             "relaxed_graph_matching",
+             "explicit_objective/loss",
+-            "convergence",
++            "gradient descent",
+         ],
+         "evidence": [
+             {
+@@ -240,10 +240,10 @@ def test_provider_algorithm_aliases_converge_on_otter(tmp_path):
+             },
+             {
+                 "dimension": "selection_tag",
+-                "value": "convergence",
++                "value": "gradient descent",
+                 "source": "explicit",
+-                "text_span": "convergence",
+-                "rationale": "The request requires convergence.",
++                "text_span": "gradient descent",
++                "rationale": "The request asks for gradient descent.",
+             },
+         ],
+     }
+@@ -623,7 +623,7 @@ def test_discriminator_normalizes_glossary_aliases_to_otter(tmp_path):
+             "parsed": {
+                 "selection_tags": [
+                     "explicit objective/loss",
+-                    "convergence guarantees",
++                    "gradient descent",
+                     "aggregate_network",
+                 ],
+                 "evidence": [
+@@ -636,10 +636,10 @@ def test_discriminator_normalizes_glossary_aliases_to_otter(tmp_path):
+                     },
+                     {
+                         "dimension": "selection_tag",
+-                        "value": "convergence guarantees",
++                        "value": "gradient descent",
+                         "source": "explicit",
+-                        "text_span": "連續凸最佳化的理論收斂保證",
+-                        "rationale": "The request states convergence guarantees.",
++                        "text_span": "梯度下降",
++                        "rationale": "The request states gradient descent.",
+                     },
+                     {
+                         "dimension": "selection_tag",
+diff --git a/tests/test_outcome_matching.py b/tests/test_outcome_matching.py
+index f8d05f0..84850bc 100644
+--- a/tests/test_outcome_matching.py
++++ b/tests/test_outcome_matching.py
+@@ -2,6 +2,8 @@ from __future__ import annotations
+ 
+ import sys
+ from pathlib import Path
++from types import SimpleNamespace
++from unittest.mock import Mock
+ 
+ import pytest
+ 
+@@ -839,6 +841,93 @@ def test_tf_activity_is_selected_by_its_registry_tag():
+     assert match(selection_tags=["aggregate_network"]).status == "ambiguous"
+ 
+ 
++@pytest.mark.parametrize("tag", [
++    "biologically_informed_matrix_factorization",
++    "joint_grn_tfa_inference",
++    "linear_model_coefficients",
++    "signed_partial_regulatory_effects",
++    "tfa",
++    "message_passing",
++    "relaxed_graph_matching",
++])
++def test_generic_motif_expression_ppi_goal_does_not_prove_a_method_tag(tag):
++    task = (
++        "We just finished sequencing lung cancer tissue transcriptomes and have "
++        "standard transcription factor motif binding sites alongside known "
++        "protein-protein interaction maps. We want to estimate genome-wide "
++        "regulatory strengths, capturing both the regulatory communication between "
++        "TFs and target genes as well as cooperative complexes among TFs. "
++        "What framework should we use to build this network?"
++    )
++    request = RequestedOutcome(
++        operation="infer", input_artifacts=["expression_matrix"],
++        artifact_type="regulatory_network", entity_types=["tf", "gene"],
++        regulator_types=["tf"], target_types=["gene"], granularity="aggregate",
++        selection_tags=[tag],
++    )
++    hypothesis = OutcomeHypothesis(
++        outcome=request, confidence=0.95,
++        evidence=[OutcomeEvidence(
++            dimension="selection_tag", value=tag, source="explicit",
++            text_span="regulatory communication between TFs and target genes",
++            rationale="The provider mistook a general network goal for a method requirement.",
++        )],
++    )
++
++    match = match_semantic_request(task, [hypothesis], request_mode="guidance")
++
++    assert match.status == "ambiguous"
++    assert set(match.hypothesis_actions) == {"run_panda", "run_otter", "run_giraffe"}
++
++
++def test_discriminator_cannot_force_giraffe_from_a_generic_goal_quote(monkeypatch):
++    from netzoo_agent_core.contracts import LLMUsage
++    from netzoo_agent_core.contracts.outcomes import CapabilityMatch, SemanticInterpretation
++    from netzoo_agent_core.graph.discriminator import invoke_semantic_discriminator
++    from netzoo_agent_core.pricing import PriceCatalog
++
++    task = "Estimate regulatory communication between TFs and target genes using expression, motif and PPI."
++    interpretation = SemanticInterpretation(
++        request_mode="guidance", semantic_goal="Build an aggregate TF-gene network.",
++        outcome_hypotheses=[OutcomeHypothesis(
++            outcome=RequestedOutcome(
++                operation="infer", input_artifacts=["expression_matrix"],
++                artifact_type="regulatory_network", entity_types=["tf", "gene"],
++                regulator_types=["tf"], target_types=["gene"], granularity="aggregate",
++            ),
++            confidence=0.95,
++        )],
++    )
++    candidates = ["run_panda", "run_otter", "run_giraffe"]
++    match = CapabilityMatch(status="ambiguous", hypothesis_actions=candidates)
++    adapter = Mock()
++    adapter.invoke.return_value = {
++        "selection_tags": ["biologically_informed_matrix_factorization"],
++        "evidence": [OutcomeEvidence(
++            dimension="selection_tag", value="biologically_informed_matrix_factorization",
++            source="explicit", text_span="regulatory communication between TFs and target genes",
++            rationale="Incorrectly attributed method-specific meaning.",
++        ).model_dump()],
++    }
++    context = SimpleNamespace(
++        semantic_discriminator=adapter, semantic_claims=False,
++        semantic_model_name="test-model", router_max_tokens=512,
++        task_token_budget=20000, price_catalog=PriceCatalog.from_environment(),
++        recorder=Mock(),
++    )
++    monkeypatch.setattr(
++        "netzoo_agent_core.graph.discriminator.validate_outcome_hypotheses",
++        lambda *args, **kwargs: SimpleNamespace(valid=True),
++    )
++
++    _, narrowed, _, _ = invoke_semantic_discriminator(
++        context, {"run_id": "test"}, task, interpretation, match, LLMUsage(), [],
++    )
++
++    assert narrowed.status == "ambiguous"
++    assert narrowed.hypothesis_actions == candidates
++
++
+ def test_tf_activity_matrix_is_a_typed_giraffe_output():
+     """TFA must be routable as an artifact, not only as an optional tag."""
+     requested = RequestedOutcome(
+diff --git a/tests/test_reply_cards.py b/tests/test_reply_cards.py
+index 31a9813..23dda63 100644
+--- a/tests/test_reply_cards.py
++++ b/tests/test_reply_cards.py
+@@ -120,7 +120,7 @@ def test_a_tie_without_stated_facts_marks_nothing_recommended():
+     assert all(option.resolution == "confirm_workflow" for option in choices.options)
+     assert all(len(option.description) <= 170 for option in choices.options)
+     assert choices.options[1].answer == "Use OTTER"
+-    assert "Best if memory or runtime is a concern" in choices.options[1].description
++    assert "fixed gradient steps" in choices.options[1].description
+ 
+ 
+ def test_a_grounded_recommendation_comes_first_and_says_why_in_registry_words():
+@@ -289,16 +289,16 @@ def test_a_completed_run_offers_its_outputs():
+ 
+ def test_a_tie_narrowed_by_one_word_says_so_and_offers_the_comparison():
+     task = ("We have expression, motif and PPI data. The PI prefers iterative updates that simulate TF "
+-            "cooperativity, while our biostatistician insists on guaranteed convergence. Which method?")
++            "cooperativity, while our biostatistician asks for relaxed graph matching. Which method?")
+     hypothesis = reading("regulatory_network", ["expression_matrix"], granularity="aggregate")
+     hypothesis["outcome"]["selection_tags"] = ["relaxed_graph_matching"]
+-    hypothesis["evidence"].append(evidence("selection_tag", "relaxed_graph_matching", "convergence"))
++    hypothesis["evidence"].append(evidence("selection_tag", "relaxed_graph_matching", "relaxed graph matching"))
+     made = decision([hypothesis], capability_match_status="exact", match_basis="registry_features",
+                     matched_actions=["run_otter"], recommended_actions=["run_otter"],
+                     hypothesis_actions=["run_otter"])
+     _, _, card = respond_and_card(task, made)
+     assert card.kind == "workflow_guidance"
+-    assert "Picked from 3 fitting methods because you wrote “convergence”; PANDA and GIRAFFE also fit." in card.points
++    assert "Picked from 3 fitting methods because you wrote “relaxed graph matching”; PANDA and GIRAFFE also fit." in card.points
+     compare = card.next_steps[0]
+     assert compare.key == "compare-others" and compare.resolution == "follow_up"
+     assert compare.answer.startswith("Compare OTTER with PANDA and GIRAFFE for this goal.")

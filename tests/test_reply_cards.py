@@ -300,7 +300,8 @@ def test_a_tie_narrowed_by_one_word_says_so_and_offers_the_comparison():
     assert card.kind == "workflow_guidance"
     assert "Picked from 3 fitting methods because you wrote “convergence”; PANDA and GIRAFFE also fit." in card.points
     compare = card.next_steps[0]
-    assert compare.key == "compare-others" and compare.resolution == "follow_up"
+    assert compare.key == "compare-others" and compare.resolution == "compare_workflows"
+    assert compare.compare_actions == ["run_otter", "run_panda", "run_giraffe"]
     assert compare.answer.startswith("Compare OTTER with PANDA and GIRAFFE for this goal.")
 
 

@@ -56,6 +56,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     return {
         "decision": decision.model_dump(),
         "workflow_continuation": None,
+        "method_comparison": None,
         "token_usage": usage.model_dump(),
         "budget_warnings": invocation.budget_warnings,
         **routing_state,

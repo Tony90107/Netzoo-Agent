@@ -181,8 +181,9 @@ export type ReplyOption = {
   reason: string;
   action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | null;
   granularity: "aggregate" | "sample_specific" | null;
-  resolution: "confirm_workflow" | "plan_workflow" | "follow_up" | "command" | "open_outputs" | "none";
+  resolution: "confirm_workflow" | "plan_workflow" | "follow_up" | "compare_workflows" | "command" | "open_outputs" | "none";
   paths: string[];
+  compare_actions: ("inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo")[];
 };
 
 /** Immutable model rates used for one historical cost estimate. */

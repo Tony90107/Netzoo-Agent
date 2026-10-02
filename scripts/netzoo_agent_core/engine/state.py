@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..contracts import FollowUpContext
-from ..contracts.interaction import WorkflowContinuation
+from ..contracts.interaction import MethodComparison, WorkflowContinuation
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import NextTurnPrompt
 
@@ -54,11 +54,13 @@ class ConversationState:
     pending_task: str | None = None
     pending_execute_once: bool = False
     pending_continuation: WorkflowContinuation | None = None
+    pending_comparison: MethodComparison | None = None
 
     def clear_pending_turn(self) -> None:
         self.pending_task = None
         self.pending_execute_once = False
         self.pending_continuation = None
+        self.pending_comparison = None
 
     def clear_preview(self) -> None:
         self.preview = None

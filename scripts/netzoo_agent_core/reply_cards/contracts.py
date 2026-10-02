@@ -44,6 +44,9 @@ OptionResolution = Literal[
     "plan_workflow",
     # Send the answer back through routing together with the previous goal.
     "follow_up",
+    # Compare exactly `compare_actions` for the previous goal; runs nothing
+    # (Log 302: the answer text alone was re-routed and lost the candidates).
+    "compare_workflows",
     # Submit the answer verbatim, as if typed: `/execute`, `new`, `/test`.
     "command",
     # Handled by the window alone, e.g. open the Outputs view.
@@ -77,6 +80,8 @@ class ReplyOption(BaseModel):
     resolution: OptionResolution = "follow_up"
     paths: list[str] = Field(default_factory=list, max_length=20)
     """Output paths an `open_outputs` option refers to."""
+    compare_actions: list[RecommendedAction] = Field(default_factory=list, max_length=6)
+    """The workflows a `compare_workflows` option compares, in card order."""
 
 
 class ReplyChoices(BaseModel):

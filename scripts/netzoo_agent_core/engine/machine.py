@@ -29,7 +29,7 @@ from __future__ import annotations
 from workflow_registry import RUN_ACTIONS
 
 from .. import settings
-from ..contracts.interaction import WorkflowContinuation
+from ..contracts.interaction import MethodComparison, WorkflowContinuation
 from ..contracts.planning import WorkflowPlan
 from ..contracts.state import (
     AgentTurnInterrupted,
@@ -485,6 +485,17 @@ class ConversationMachine:
             state.reply_card = None
             return self._accept_task(task)
         task = follow_up_task(state.follow_up_context, option["answer"])
+        if resolution == "compare_workflows":
+            # The answer text is what the transcript shows; which workflows are
+            # compared travels as typed state (Log 302). An invalid list is an
+            # ordinary follow-up, as before.
+            try:
+                state.pending_comparison = MethodComparison(
+                    actions=list(option.get("compare_actions") or []),
+                    task=task[-ROUTER_CONTEXT_MAX_CHARS:],
+                )
+            except ValueError:
+                state.pending_comparison = None
         state.reply_card = None
         return self._accept_task(task)
 
@@ -616,6 +627,7 @@ class ConversationMachine:
         task = state.pending_task
         execute_once = state.pending_execute_once
         workflow_continuation = state.pending_continuation
+        method_comparison = state.pending_comparison
         state.clear_pending_turn()
 
         if state.run_id is None:
@@ -649,6 +661,9 @@ class ConversationMachine:
                     workflow_continuation.model_dump()
                     if workflow_continuation
                     else None
+                ),
+                "method_comparison": (
+                    method_comparison.model_dump() if method_comparison else None
                 ),
             }
             if state.active_usage is not None:

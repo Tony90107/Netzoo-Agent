@@ -82,9 +82,31 @@ class WorkflowContinuation(BaseModel):
         return action
 
 
+class MethodComparison(BaseModel):
+    """Workflows a picked Compare option asks to compare for one turn (Log 302).
+
+    Like a continuation it is passed outside message text and bound to the
+    current task, so neither the option's wording nor a quoted marker can
+    change which workflows are compared. It selects nothing and runs nothing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    actions: list[RecommendedAction] = Field(min_length=2, max_length=6)
+    task: str = Field(min_length=1, max_length=ROUTER_CONTEXT_MAX_CHARS)
+
+    @field_validator("actions")
+    @classmethod
+    def distinct_registered_workflows(cls, actions: list[str]) -> list[str]:
+        if len(set(actions)) != len(actions) or set(actions) - set(RUN_ACTIONS):
+            raise ValueError("Only distinct registered workflows can be compared.")
+        return actions
+
+
 __all__ = [
     "ContextualReplyResolution",
     "FollowUpContext",
+    "MethodComparison",
     "ReplyIntent",
     "ReplyIntentDecision",
     "WorkflowConversationFact",
