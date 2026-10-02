@@ -34,7 +34,7 @@ from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
 from .input_inspection import invoke_input_inspection
-from ..routing.reading_selection import drop_input_only_readings
+from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
@@ -249,6 +249,9 @@ def _route_request(
     interpretation, dropped = drop_input_only_readings(user_task, interpretation)
     if dropped:
         record_event(context, state, "routing.input_only_readings_dropped", "classify", {"artifact_types": dropped})
+    interpretation, unwitnessed = drop_unwitnessed_readings(user_task, interpretation)
+    if unwitnessed:
+        record_event(context, state, "routing.unwitnessed_readings_dropped", "classify", {"artifact_types": unwitnessed})
     interpretation, unnamed = drop_unnamed_scale(user_task, interpretation)
     if unnamed:
         record_event(context, state, "routing.unnamed_scale_dropped", "classify", {"readings": unnamed})

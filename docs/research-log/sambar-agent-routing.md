@@ -15966,3 +15966,116 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **觀察到、未處理：**
 - artifact 只有推論、沒有引用的第二個讀法（multi_omic_network）會帶進 LIONESS-DRAGON，也讓問題變成「regulator-to-target 還是 multi-omic」。這在 Test 2 出現 4／6，在 follow-up 出現 3／3。
 - 推薦說明引用了 follow-up 那一句當「dozens of samples」的根據，實際根據在前一輪的「40 heart failure patients」。
+
+## Log 313｜事前宣告：MW——多體學讀法要有請求說出的第二層資料
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「繼續處理 LIONESS-DRAGON 那個問題」（Log 312 觀察到、未處理的第一項）。
+本條目寫於 MW 的任何程式修改與正式 live 呼叫之前。標靶語料 `docs/research-log/unquoted-sibling-2026-10-02/targeted.json` 與 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+基準為 `6637c52`：工作目錄乾淨，指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+
+**問題（Logs 310、312）：** Test 2 只說有微陣列表現量，6 次中 4 次另有一個 multi_omic_network 讀法，artifact 只有推論、沒有引用，帶進 LIONESS-DRAGON。問題因此變成「regulator-to-target 還是 multi-omic」。選了「I also have a motif prior and a PPI network」之後是 3／3。
+
+**先排除的通用做法（`scan_siblings.py`）：** 「丟掉 artifact 沒有引用的第二個讀法」會造成實際損害。記錄中引用與無引用並存的有 26 種決策、10 個請求：
+- case1-en、case4-en、case4-activity：會丟掉 TF 活性讀法，失去 blind 預期的 GIRAFFE，或讓 case 4 失去兩種讀法。
+- ms-generic-communication：會丟掉主讀法，只剩 unsupported。
+- 結論：模型對正當讀法也常不引用 artifact，「有沒有引用」不能當依據。
+
+**MW（`routing/reading_selection.py`，在 `graph/router_invocation.py` 比對前呼叫，緊接 Log 285 的規則 B）：**
+- 規則：請求完全沒有說出第二層資料時，與其他讀法並存的 multi_omic_network 讀法丟掉。多體學網路依定義需要兩層資料；只說表現量的請求不支持這個讀法。
+  - 前提與規則 B 相同：至少留下一個讀法，且留下的讀法單獨能通過驗證。
+  - 只有一個讀法時不動。
+  - 事件 `routing.unwitnessed_readings_dropped`。
+- 以 artifact → 見證字表的形式實作，目前只有 multi_omic_network 一項（原型 `scan_multiomic.LAYER`）。字表涵蓋：
+  - omic、methylation、proteomics、protein abundance／level／expression、metabolomics／metabolite、lipid、phospho；
+  - ATAC、chromatin、accessibility、histone、ChIP、copy number／CNV、genotype／SNP、microbiome；
+  - small RNA、miRNA expression／levels／profiles／data、layer(s)、two data／measurement／assay；
+  - 中文：多體學、多組學、甲基化、蛋白質體、代謝、染色質、層。
+  - 「protein interaction」不算（那是 PPI 先驗）。
+- 字表刻意寬鬆：它只判斷「完全沒有第二層」，寬鬆只會讓規則少觸發。
+
+**離線證據（原型；`scan_multiomic.py`、`replay_mw.py`）：**
+- 記錄中有 multi_omic_network 讀法的請求 16 個、202 次。
+  - 說出第二層的 8 個、176 次全部保留：case7-en 127、ld-individual-networks 12、ctl-dragon-aggregate 12、ld-per-patient-methylation 6、ld-sample-specific-multiomic 6、pe-person-specific-multiomic 6、ctl-individual-genes-aggregate 6、case7-zh 1。
+  - 沒說出第二層、而且只有單一讀法的 3 個（gran-mirna-agg-terse、role-both-agg-en、gran-mirna-ss-terse）都是 2026-09-23 的舊記錄，在 `stated_roles_conflict` 修正之前；MW 不動單一讀法。
+- 加上驗證前提重播所有多讀法決策：改變 16 種決策、17 次、5 個請求，全部是誤讀。
+  - t2-en 3、t2-follow-has-priors 3、t2-zh 3：LIONESS-PANDA／PUMA／DRAGON → 去掉 LIONESS-DRAGON。
+  - ms-lung-generic 3、ms-generic-communication 4：PANDA／PUMA／OTTER／GIRAFFE／DRAGON → PANDA／OTTER／GIRAFFE。
+  - 驗證前提從未擋下。
+- 不是模型可見的改動；指紋應不變。
+
+**標靶語料（10 題，`targeted.json`）：**
+- 正例（沒有第二層）：t2-en、t2-follow-has-priors、ms-lung-generic、ms-generic-communication。
+- 第二層對照：ctl-dragon-aggregate（DRAGON）、ld-per-patient-methylation、pe-person-specific-multiomic、ld-sample-specific-multiomic（LIONESS-DRAGON）。
+- 其他對照：t2-follow-expression-only（LIONESS-COEXPRESSION／BONOBO）、ms-ctl-message-passing（exact PANDA）。
+- blind case7-en（DRAGON）。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝MW；baseline＝`6637c52` 的副本。同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted.json`（10 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立就撤回 MW；`analyze.py`）：**
+- 離線（live 之前）：
+  - 全套件通過、指紋不變。
+  - `replay_mw.py --tree` 與原型相同。
+  - 單元測試涵蓋 t2-en 的錄音讀法、說出第二層時不動、單一讀法不動。
+- 有效性：兩臂 provider 錯誤皆為 0。
+- 健全：candidate 中，沒說出第二層的請求（blind 與標靶），最終決策裡 multi_omic_network 讀法與其他讀法並存 ＝ 0。
+- 效果：正例中顯示 DRAGON／LIONESS-DRAGON 的次數，baseline ≥ 3／12 且 candidate ≤ 1。baseline 不到 3 表示本輪沒有出現誤讀，改以重播判定。
+- 第二層對照（四題各自）：candidate 顯示 DRAGON 家族的次數 ≥ baseline − 1。
+- 其他對照：t2-follow-expression-only 顯示 LIONESS-COEXPRESSION／BONOBO ≥ baseline − 1；ms-ctl-message-passing exact PANDA ≥ baseline − 1。
+- blind case7-en OK ≥ baseline − 1；blind WRONG ≤ baseline＋3。
+
+**Log 313 補充（實作後、live 前寫；門檻不變）：離線條件成立。**
+- 實作：
+  - `routing/reading_selection.py`：新增 `READING_WITNESSES`（樣式與原型 `scan_multiomic.LAYER` 逐字相同）與 `drop_unwitnessed_readings`。
+  - `graph/router_invocation.py`：在規則 B 之後、SW 之前呼叫，事件 `routing.unwitnessed_readings_dropped`。
+- `replay_mw.py --tree` 與原型輸出完全相同：16 種決策、17 次、5 個請求。
+- 全套件 3103 passed／35 skipped；新增 `tests/test_unwitnessed_readings.py` 5 個測試，fixture 是 t2-en 的錄音讀法：
+  - 去掉 LIONESS-DRAGON；說出第二層時不動；單一讀法不動；
+  - 「protein interaction」不算第二層；留下的讀法無法單獨驗證時不動。
+- 指紋不變（`e920bf3b5d57`／`743b2dd0d73a`）。
+- 兩臂（baseline 為 `6637c52` 的副本）只差 MW 的 2 個檔案。兩臂都 smoke 載入 targeted 10 題、blind 10 題。
+
+## Log 314｜結果：MW——效果門檻的 baseline 只有 2／12（未達 3），依宣告改以重播判定；重播與 live 觸發都成立，保留
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 313（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/unquoted-sibling-2026-10-02/`：
+- 報告 `live-mw-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`。
+- `analyze.py`、`scan_siblings.py`、`scan_multiomic.py`、`replay_mw.py`。
+
+**執行：**
+- 3 個時段（18:13、18:16、18:18），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後兩臂 `scripts/` 只差 MW 的 2 個檔案。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 60 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3103 passed／35 skipped；指紋不變；`--tree` 重播與原型相同（補充） | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0 | 有效 |
+| 健全 | candidate 中沒說出第二層的請求，多體學讀法與其他讀法並存：0（baseline 2） | 成立 |
+| 效果 | 正例顯示 DRAGON 家族：baseline 2／12（未達 ≥ 3）、candidate 0 | 依宣告改以重播判定 |
+| 第二層對照 | 四題兩臂皆 3／3 顯示 DRAGON 家族（ctl-dragon-aggregate exact DRAGON；其餘 exact LIONESS-DRAGON） | 成立 |
+| 其他對照 | t2-follow-expression-only 兩臂 3／3 LIONESS-COEXPRESSION／BONOBO；ms-ctl-message-passing 兩臂 3／3 exact PANDA | 成立 |
+| case7-en | OK：candidate 3、baseline 3 | 成立 |
+| blind | WRONG：candidate 0、baseline 0 | 成立 |
+
+**效果的判定（依 Log 313「baseline 不到 3 改以重播判定」）：**
+- live 觸發：candidate 臂中模型產生多體學旁讀法 6 次，`routing.unwitnessed_readings_dropped` 每次都觸發、每次都去掉它，正例上 DRAGON 家族出現 0 次。
+  - t2-en s2、s3；t2-follow-has-priors s1、s3；ms-lung-generic s2；ms-generic-communication s2。
+- 重播：baseline 的 2 次誤讀（t2-en s1、t2-follow-has-priors s1）以 candidate 程式重跑。
+  - t2-en：LIONESS-PANDA／PUMA／DRAGON → LIONESS-PANDA／PUMA 平手。
+  - t2-follow-has-priors：→ exact LIONESS-PANDA。
+- baseline 只有 2 次是抽樣：誤讀在兩臂合計出現 8／24 次，baseline 碰巧較少。
+
+**判定：** 保留 MW。
+
+**逐題補充：**
+- 以 `render_cards.py` 重新渲染：
+  - t2-en（candidate s2，MW 有觸發）：卡片問「Do you also have a motif prior and a PPI network?」，不再出現 multi-omic 的選項。
+  - t2-follow-has-priors（candidate s1）：exact LIONESS-PANDA。Test 2 確實要求每位病患一張，所以「per-sample result you asked for」在這裡正確。
+- blind 差異與 MW 無關：candidate case6-en s2 是 LIONESS-COEXPRESSION／COBRA／SAMBAR 平手（多了 sample_distance_matrix 讀法），MW 沒有觸發。
+
+**仍未處理：** 推薦說明的引用句（Log 312）。

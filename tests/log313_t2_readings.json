@@ -1,0 +1,85 @@
+{
+ "source": "docs/research-log/scale-unit-2026-10-02/live-sw-cand-s1-targeted.json.gz (t2-en, final readings)",
+ "prompt": "We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations. A single population-level network would average away individual differences, but each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed. How can we reconstruct a separate regulatory network for each patient from this cohort?",
+ "readings": [
+  {
+   "outcome": {
+    "operation": "infer",
+    "input_artifacts": [
+     "expression_matrix"
+    ],
+    "artifact_type": "regulatory_network",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "confidence": 0.9,
+   "evidence": [
+    {
+     "dimension": "artifact_type",
+     "value": "regulatory_network",
+     "source": "explicit",
+     "text_span": "reconstruct a separate regulatory network for each patient",
+     "rationale": "The user is interested in reconstructing regulatory networks for each patient."
+    },
+    {
+     "dimension": "input_artifact",
+     "value": "expression_matrix",
+     "source": "explicit",
+     "text_span": "expression profiles",
+     "rationale": "The user provided microarray expression profiles as current input for analysis."
+    },
+    {
+     "dimension": "granularity",
+     "value": "sample_specific",
+     "source": "inferred",
+     "text_span": null,
+     "rationale": "The request indicates the need for separate regulatory networks for each patient, implying sample-specific granularity."
+    }
+   ],
+   "assumptions": [
+    "The microarray expression profiles provide sufficient data for network reconstruction.",
+    "Methods exist to infer regulatory networks from single samples."
+   ]
+  },
+  {
+   "outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "multi_omic_network",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "confidence": 0.9,
+   "evidence": [
+    {
+     "dimension": "artifact_type",
+     "value": "multi_omic_network",
+     "source": "inferred",
+     "text_span": null,
+     "rationale": "The request implies the need for integrating multiple data types or layers to infer networks for individual patients."
+    },
+    {
+     "dimension": "granularity",
+     "value": "sample_specific",
+     "source": "explicit",
+     "text_span": "reconstruct a separate regulatory network for each patient",
+     "rationale": "The request indicates the need for separate regulatory networks for each patient, implying sample-specific granularity."
+    }
+   ],
+   "assumptions": [
+    "The microarray expression profiles provide sufficient data for network reconstruction.",
+    "Methods exist to infer regulatory networks from single samples."
+   ]
+  }
+ ]
+}
