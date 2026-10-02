@@ -207,6 +207,37 @@ _GRANULARITY_PATTERNS = {
 }
 
 
+_UNIT = (r"(?:samples?|patients?|subjects?|persons?|people|individuals?|donors?|participants?|cases?|"
+         r"specimens?|biops(?:y|ies)|mice|mouse|animals?|cell[- ]lines?|tumou?rs?)")
+# Any wording that points at one unit at a time (Log 309). Unlike
+# `_GRANULARITY_PATTERNS` this does not establish a per-sample request; it is
+# deliberately loose because it only decides that a request names no unit at
+# all, and covers every sample-specific pattern above.
+_PER_UNIT = re.compile(
+    r"\b(?:each|every)\b(?:\s+(?:one\s+)?of)?(?:\s+(?:the|our|these|those|its|their|all|\d+))*"
+    r"(?:\s+[\w-]+)?\s+" + _UNIT + r"\b|"
+    r"\bper[- ](?:[\w-]+[- ])?" + _UNIT + r"\b|"
+    r"\b(?:individual|single|separate)\s+(?:[\w-]+\s+)?" + _UNIT + r"\b|"
+    r"\b(?:sample|patient|subject|person|individual|donor|participant|tumou?r|case)[- ](?:specific|level|wise)\b|"
+    r"\b(?:individuali[sz]ed|personali[sz]ed)\b|\bsingle[- ]sample\b|\bleave[- ]one[- ]out\b|"
+    r"\bfrom one \w+ to (?:the )?(?:next|another)\b|\b(?:their|its|his|her)\s+own\s+(?:[\w-]+\s+){0,4}networks?\b|"
+    r"每(?:一)?(?:個|位|名|例|隻)?(?:樣本|病患|病人|患者|個體|受試者|捐贈者|腫瘤|小鼠|人)|"
+    r"各(?:個|位)?(?:樣本|病患|病人|患者|個體)|個別|各自|單一樣本|個體|樣本特異|病患特異|個人化|逐一|留一",
+    re.I,
+)
+
+
+def per_unit_mention(task: str) -> str | None:
+    """The first wording that points at one sample, patient or other unit, if any.
+
+    None means the request names no unit at all, so a per-sample reading of it
+    is the model's interpretation alone (Test 1, 2026-10-02: "across these
+    tissues" read as one network per sample).
+    """
+    match = _PER_UNIT.search(task)
+    return match.group(0) if match else None
+
+
 # A request that names both granularities while saying it has not chosen one.
 # Each part is required in the same sentence, so "not sure which tool" alone,
 # or a sentence naming one granularity, never qualifies.
