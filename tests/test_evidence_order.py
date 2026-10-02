@@ -71,9 +71,17 @@ def test_a_bare_preference_yields_to_the_folder_the_request_names(tmp_path):
     assert updated.action == "no_tool" and not updated.should_execute
 
 
-def test_without_a_named_folder_the_preference_states_what_is_missing(tmp_path):
+def test_a_generic_request_gets_no_preference_at_all(tmp_path):
+    # Log 318: "Build me a network" states nothing that separates PANDA.
     ctx, state, _, _ = _context(tmp_path, _panda_preference("Build me a network."))
     updated, _, _ = invoke_condition_recommender(ctx, state, UNNAMED, _network_decision(), LLMUsage(), [])
+    assert updated.advisory_recommendation is None
+
+
+def test_without_a_named_folder_the_preference_states_what_is_missing(tmp_path):
+    task = UNNAMED + " I would like iterative message passing."
+    ctx, state, _, _ = _context(tmp_path, _panda_preference("iterative message passing"))
+    updated, _, _ = invoke_condition_recommender(ctx, state, task, _network_decision(), LLMUsage(), [])
 
     recommendation = updated.advisory_recommendation
     assert recommendation.action == "run_panda"
@@ -98,11 +106,11 @@ def test_a_preference_whose_inputs_are_bound_is_kept(tmp_path):
 
 
 def test_an_unmentioned_expression_matrix_is_named_as_missing(tmp_path):
-    task = "Gene co-expression seems to change across our tumours. Which workflow fits?"
+    task = "Gene co-expression seems to change across our tumours; we want probabilistic uncertainty. Which workflow fits?"
     outcome = RequestedOutcome(operation="explain", artifact_type="coexpression_network",
                                granularity="sample_specific")
     ctx, state, _, _ = _context(tmp_path, {"claims": [], "preference": {
-        "action": "run_bonobo", "selection_tags": ["bayesian"], "text_spans": ["Gene co-expression"],
+        "action": "run_bonobo", "selection_tags": ["bayesian"], "text_spans": ["probabilistic uncertainty"],
         "rationale": "Bayesian shrinkage of per-sample co-expression.", "assumptions": [],
     }})
     decision = _decision(requested_outcome=outcome,

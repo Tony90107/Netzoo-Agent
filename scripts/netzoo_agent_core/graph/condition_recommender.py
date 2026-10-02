@@ -25,7 +25,9 @@ from dataclasses import dataclass
 from typing import Literal
 from pydantic import ConfigDict, Field, create_model
 
-from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES
+from workflow_registry import (
+    ACTION_DEFINITIONS, OUTPUT_CAPABILITIES, PREFERENCE_TAG_WITNESSES, REQUIRED_INPUTS, SELECTION_AXES,
+)
 
 from ..contracts import AgentState, LLMUsage, TaskDecision
 from ..contracts.outcomes import (
@@ -351,6 +353,68 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
     )
 
 
+_SENTENCE_END = re.compile(r"[.!?;。！？；\n]")
+
+
+def _sentence_at(task: str, start: int, end: int) -> str:
+    """The request's sentence around a match, as the quote a condition shows."""
+    left = max((m.end() for m in _SENTENCE_END.finditer(task, 0, start)), default=0)
+    right = next((m.start() + 1 for m in _SENTENCE_END.finditer(task, end)), len(task))
+    sentence = task[left:right].strip()
+    return sentence if len(sentence) <= 300 else task[start:end]
+
+
+def stated_preference_basis(task, recommendation, options, preference, candidate_facts):
+    """A bare model preference stands only on what the request states (Log 318).
+
+    The quote a preference carries is often the goal sentence, true of every
+    candidate, or absent; the model's rationale then described the method
+    ("BONOBO is designed to infer ..."), and a request naming only "50
+    patients" got BONOBO. The preference stands on either:
+
+    - a separating study condition under which the preferred workflow is
+      preferred, stated in the request's own words (the axis witness, as in
+      `recommend_from_claims`); or
+    - a tag of the preferred workflow that another candidate lacks, whose
+      words (`PREFERENCE_TAG_WITNESSES`) one of the preference's quotes
+      contains: "probabilistic uncertainty" for BONOBO's Bayesian estimation.
+
+    A stated condition that prefers only other candidates is a conflict, and
+    conflicts are asked about, never decided by advice. The basis becomes the
+    recommendation's conditions; the model's rationale only explains it.
+    """
+    if recommendation is None or preference is None:
+        return None
+    stated = []
+    for option in options:
+        witness = _witness(option)
+        match = re.search(witness, task, re.I) if witness else None
+        if match:
+            stated.append((option, match))
+    if any(recommendation.action not in option.actions for option, _ in stated):
+        return None
+    conditions = [AdvisoryCondition(axis=option.axis, value=option.value,
+                                    text_span=_sentence_at(task, match.start(), match.end()))
+                  for option, match in stated]
+    tags = {item["action"]: set(item["selection_tags"]) for item in candidate_facts}
+    own = tags.get(recommendation.action, set())
+    separating = [tag for tag in dict.fromkeys(preference.selection_tags)
+                  if tag in own and tag in PREFERENCE_TAG_WITNESSES
+                  and any(tag not in other for action, other in tags.items() if action != recommendation.action)]
+    quotes = [span for span in preference.text_spans if _quote_grounded(task, span)]
+    for tag in separating:
+        quote = next((span for span in quotes if re.search(PREFERENCE_TAG_WITNESSES[tag], span, re.I)), None)
+        if quote is not None:
+            conditions.append(AdvisoryCondition(axis="selection_tag", value=tag, text_span=quote))
+    if not conditions:
+        return None
+    confirm = [SELECTION_AXES[option.axis].get("confirm", {}).get(option.value) for option, _ in stated]
+    return recommendation.model_copy(update={
+        "conditions": conditions[:6],
+        "assumptions": list(dict.fromkeys([*(text for text in confirm if text), *recommendation.assumptions]))[:4],
+    })
+
+
 def _misplaced_condition_claims(task, review, options, claims) -> list[ConditionClaim]:
     """Offered condition ids the model wrote as a philosophy, with their quote (Log 271).
 
@@ -556,6 +620,14 @@ def invoke_condition_recommender(
                     "candidate_actions": candidates,
                 })
                 return fallback, usage, budget_warnings
+            if recommendation is not None:
+                preferred = recommendation.action
+                recommendation = stated_preference_basis(
+                    user_task, recommendation, options, claims.preference, candidate_facts)
+                if recommendation is None:
+                    record_event(context, state, "routing.preference_unstated", "classify", {
+                        "preferred_action": preferred, "candidate_actions": candidates,
+                    })
         if recommendation is None:
             record_event(context, state, "routing.selection_conditions_unresolved", "classify", {
                 "claims": [item.model_dump() for item in claims.claims],

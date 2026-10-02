@@ -490,7 +490,9 @@ def _asking(made):
 def test_lung_card_says_once_what_separates_and_what_all_options_share():
     text, kind, card = respond_and_card(LUNG, _asking(_lung_tie()))
     assert card.kind == "method_choice"
-    assert ("Scale differs too: only LIONESS-PANDA gives one network per sample; PANDA, OTTER and GIRAFFE give "
+    assert card.headline == ("4 registered methods can build a TF-gene regulatory network; they differ in scale "
+                             "(one network for all samples or one per sample) and in their modeling assumptions.")
+    assert ("Only LIONESS-PANDA gives one network per sample; PANDA, OTTER and GIRAFFE give "
             "one across all samples.") in card.points
     assert "As for TFs that cooperate in complexes, all four model this through the PPI network." in card.points
     assert len(card.points) <= 6
@@ -515,7 +517,8 @@ def test_a_cohort_request_is_not_sold_per_sample_networks():
                    for option in choices.options)
     _, _, card = respond_and_card("Which parts of the co-expression are driven by the batch?", _asking(made))
     assert card.kind == "method_choice"
-    assert not any(point.startswith("Scale differs") for point in card.points)
+    assert not any("one network per sample;" in point for point in card.points)
+    assert "scale" not in card.headline
 
 
 def test_when_to_pick_it_outlasts_a_shared_note_and_a_cost_never_shows_alone():
@@ -546,3 +549,26 @@ def test_a_scale_answer_says_what_that_scale_is_for():
                                       "such as survival · Slower: it reruns PUMA once per sample")
     cohort = next(option for option in choices.options if option.action == "run_puma")
     assert cohort.description == "Leads to PUMA"
+
+
+def test_advice_without_a_stated_reason_is_not_marked_recommended():
+    # Log 318: the model's rationale describes the method, not what the user said.
+    made = decision([reading("coexpression_network", ["expression_matrix"], granularity="sample_specific",
+                             entities=["gene"])],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_lioness_coexpression", "run_bonobo"],
+                    advisory_recommendation={"action": "run_bonobo",
+                                             "rationale": "BONOBO is designed to infer sample-specific networks."})
+    choices = method_choices(made, POLICY, task="We have 50 patients and want one co-expression network each.")
+    assert not any(option.recommended or option.badge == "Recommended" for option in choices.options)
+    assert not any("designed to infer" in option.description for option in choices.options)
+
+
+def test_a_stated_method_signal_reads_as_what_the_user_asked_for():
+    made = decision([reading("coexpression_network", ["expression_matrix"], granularity="sample_specific",
+                             entities=["gene"])],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_lioness_coexpression", "run_bonobo"],
+                    advisory_recommendation={"action": "run_bonobo", "conditions": [
+                        {"axis": "selection_tag", "value": "bayesian", "text_span": "probabilistic uncertainty"}]})
+    choices = method_choices(made, POLICY, task="Each patient's co-expression with probabilistic uncertainty.")
+    assert choices.options[0].description.startswith(
+        "Fits what you said: you asked for probabilistic (Bayesian) uncertainty · One gene co-expression network")

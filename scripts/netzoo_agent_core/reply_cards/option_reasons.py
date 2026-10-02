@@ -22,7 +22,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, REQUIRED_INPUTS
 from .method_notes import gives
 from .phrases import join_names, workflow_name
 
-__all__ = ["option_parts", "per_sample_use", "shared_points"]
+__all__ = ["option_parts", "per_sample_use", "scale_split", "shared_points"]
 
 # The use of a per-sample network that the registry's downstream notes name
 # (DOWNSTREAM_ANALYSES, LIONESS targeting scores related to survival).
@@ -90,20 +90,27 @@ def option_parts(action: str, candidates: list[str], outcome, policy, *, before:
     return got, (per_sample_use(action, policy) if _splits_by_sample(action, candidates, outcome) else [])
 
 
-def shared_points(candidates: list[str], outcome, task: str, policy) -> list[str]:
-    """What the card says once about every option: the scale the request left open, and a shared mechanism."""
+def scale_split(candidates: list[str], outcome) -> bool:
+    """Some options give one result per sample and others only a cohort result, for a request of untyped scale."""
     known = [a for a in candidates if a in OUTPUT_CAPABILITIES]
-    points = []
     granularity = outcome.granularity if outcome is not None else "unknown"
     per_sample = [a for a in known if _per_sample(a)]
-    if granularity not in {"aggregate", "sample_specific"} and per_sample and len(per_sample) < len(known):
+    return granularity not in {"aggregate", "sample_specific"} and 0 < len(per_sample) < len(known)
+
+
+def shared_points(candidates: list[str], outcome, task: str, policy) -> list[str]:
+    """What the card says once about every option: which give one result per sample, and a shared mechanism."""
+    known = [a for a in candidates if a in OUTPUT_CAPABILITIES]
+    points = []
+    if scale_split(known, outcome):
         # Said of the options only: an untyped scale is not proof the request
         # never stated one ("For each individual ... their own network").
+        per_sample = [a for a in known if _per_sample(a)]
         noun = "network" if all(OUTPUT_CAPABILITIES[a].artifact_type in _NETWORKS for a in known) else "result"
         cohort = [a for a in known if a not in per_sample]
         sample_names = join_names([workflow_name(policy, a) for a in per_sample], "and")
         cohort_names = join_names([workflow_name(policy, a) for a in cohort], "and")
-        points.append(f"Scale differs too: {'only ' + sample_names + ' gives' if len(per_sample) == 1 else sample_names + ' give'} "
+        points.append(f"{'Only ' + sample_names + ' gives' if len(per_sample) == 1 else sample_names + ' give'} "
                       f"one {noun} per sample; {cohort_names} {'gives' if len(cohort) == 1 else 'give'} "
                       "one across all samples.")
     if len(known) > 1 and all("ppi_file" in REQUIRED_INPUTS.get(a, ()) for a in known) and _COOPERATION.search(task):

@@ -6,6 +6,7 @@ from collections import Counter
 
 from workflow_registry import (
     EXTERNAL_REFERENCES, OTHER_READING_NOTES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY,
+    STATED_TAG_PHRASES,
 )
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
@@ -20,6 +21,8 @@ from ..routing.capability_compatibility import _supported_artifacts
 
 def _condition_label(condition: str) -> str:
     axis, _, value = condition.partition(":")
+    if axis == "selection_tag":  # a stated method signal (Log 318)
+        return STATED_TAG_PHRASES.get(value, value.replace("_", " "))
     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
 
 
