@@ -1,8 +1,10 @@
 /**
  * Start a session as an experiment: name it, pick its model once, and tag it.
  *
- * The model list is the daemon's own allowlist, so nothing here widens it; a
- * session keeps its model for its whole life, including when it is resumed.
+ * The model runs every role of the session (reply, routing, interpretation),
+ * so the list holds only models both daemon allowlists permit; nothing here
+ * widens them. A session keeps its model for its whole life, including when
+ * it is resumed. OpenRouter's free models (ids ending in ":free") are labelled.
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 
@@ -12,6 +14,16 @@ import { NewSessionOptions } from "../../transport/session";
 
 function allowlisted(value: string | undefined): string[] {
   return (value ?? "").split(",").map((item) => item.trim()).filter((item) => item && item !== "(unset)");
+}
+
+/** Models a whole session can run on: allowed for replies and for routing alike. */
+export function sessionModels(allowlists: Record<string, string> | undefined): string[] {
+  const router = new Set(allowlisted(allowlists?.router));
+  return allowlisted(allowlists?.response).filter((name) => router.has(name));
+}
+
+export function modelLabel(name: string): string {
+  return name.endsWith(":free") ? `${name.slice(0, -":free".length)} (free)` : name;
 }
 
 export function NewSessionDialog({
@@ -33,7 +45,7 @@ export function NewSessionDialog({
     let current = true;
     readSettings(config).then((settings) => {
       if (!current) return;
-      const allowed = allowlisted(settings.allowlists?.response);
+      const allowed = sessionModels(settings.allowlists);
       const fallback = settings.models?.response && settings.models.response !== "(unset)" ? [settings.models.response] : [];
       const options = allowed.length ? allowed : fallback;
       setModels(options);
@@ -68,9 +80,12 @@ export function NewSessionDialog({
         <label className="nsd__field">Model
           <select value={model} onChange={(event) => setModel(event.target.value)} disabled={models.length <= 1}>
             {models.length === 0 ? <option value="">Daemon default</option> : null}
-            {models.map((name) => <option key={name} value={name}>{name}</option>)}
+            {models.map((name) => <option key={name} value={name}>{modelLabel(name)}</option>)}
           </select>
           {models.length === 1 ? <span className="nsd__hint">The only model the allowlist permits.</span> : null}
+          {model.endsWith(":free") ? (
+            <span className="nsd__hint">Free on OpenRouter: at most 20 requests a minute and 1000 a day, often slower; its routing has not been measured like the default model's.</span>
+          ) : null}
         </label>
         <label className="nsd__field">Tags
           <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="e.g. pilot, dataset:batch-2, hypothesis:dna-damage" maxLength={400} />

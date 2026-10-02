@@ -92,6 +92,26 @@ def _keep_session_models(args, resume_id: str) -> None:
             setattr(args, name, value)
 
 
+# OpenRouter's free models (ids ending in ":free") are reasoning models whose
+# thinking counts as output: nemotron-3-super spent the whole 1,200-token cap
+# thinking and returned no tool call, and its calls take 30-60 s (2026-10-02).
+# They are not billed, so the caps that guard spending are raised for them only.
+_FREE_MODEL_FLOORS = {
+    "router_max_tokens": 6_000,
+    "response_max_tokens": 6_000,
+    "max_task_tokens": 150_000,
+    "llm_timeout": 180.0,
+}
+
+
+def _widen_limits_for_free_models(args) -> None:
+    models = (getattr(args, name, None) for name in ("model", "router_model", "semantic_model"))
+    if not any(str(model or "").endswith(":free") for model in models):
+        return
+    for name, floor in _FREE_MODEL_FLOORS.items():
+        setattr(args, name, max(getattr(args, name), floor))
+
+
 def bootstrap_memory(args) -> MemoryRuntime:
     profile_id = _safe_memory_id(args.profile)
     profile_store = UserProfileStore()
@@ -163,6 +183,7 @@ def bootstrap_runtime(
     resume_id = resolve_resume_id(args.resume, memory_runtime.profile_id)
     if resume_id:
         _keep_session_models(args, resume_id)
+    _widen_limits_for_free_models(args)
     if min(args.router_max_tokens, args.response_max_tokens, args.max_task_tokens) <= 0:
         raise SystemExit("Token limits must be positive integers.")
     if args.llm_timeout <= 0:

@@ -50,6 +50,27 @@ def worker_main(request: dict, inbox, outbox) -> int:
         return 1
 
 
+def apply_session_request(args, request: dict):
+    """The command-line settings a session request overrides.
+
+    One session, one model: the model chosen when the session starts runs every
+    role -- reply, routing and semantic interpretation. Setting only the reply
+    model (as before 2026-10-02) left routing, which makes most of the calls,
+    on the default model, so choosing a free model saved almost nothing.
+    Each role is still checked against its own allowlist at bootstrap.
+    """
+    args.task = None
+    if request.get("session_id"):
+        args.session = request["session_id"]
+    if request.get("resume"):
+        args.resume = request["resume"]
+    if request.get("profile"):
+        args.profile = request["profile"]
+    if request.get("model"):
+        args.model = args.router_model = args.semantic_model = request["model"]
+    return args
+
+
 def _run(request: dict, channel: QueueChannel) -> int:
     # Imported here so an import failure is reported over the channel as a
     # session error rather than killing the process before it can speak.
@@ -63,16 +84,7 @@ def _run(request: dict, channel: QueueChannel) -> int:
     # A worker takes its settings from the session request, not from the
     # daemon's command line, which it would otherwise inherit.
     sys.argv = sys.argv[:1]
-    args = parse_args()
-    args.task = None
-    if request.get("session_id"):
-        args.session = request["session_id"]
-    if request.get("resume"):
-        args.resume = request["resume"]
-    if request.get("profile"):
-        args.profile = request["profile"]
-    if request.get("model"):
-        args.model = request["model"]
+    args = apply_session_request(parse_args(), request)
 
     configure_runtime(
         EXECUTE_TOOLS=False,

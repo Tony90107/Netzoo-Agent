@@ -512,9 +512,11 @@ def describe_settings() -> dict:
             "router": _model("OPENROUTER_ROUTER_MODEL"),
             "semantic": _model("OPENROUTER_SEMANTIC_MODEL"),
         },
+        # What `validate_*_model` enforces, defaults included: the desktop
+        # offers a session model only when both roles accept it.
         "allowlists": {
-            "response": _model("NETZOO_RESPONSE_MODEL_ALLOWLIST"),
-            "router": _model("NETZOO_ROUTER_MODEL_ALLOWLIST"),
+            "response": _model("NETZOO_RESPONSE_MODEL_ALLOWLIST", runtime_settings.DEFAULT_ROUTER_MODEL),
+            "router": _model("NETZOO_ROUTER_MODEL_ALLOWLIST", runtime_settings.DEFAULT_ROUTER_MODEL),
         },
         "limits": {
             "task_token_budget": int(
