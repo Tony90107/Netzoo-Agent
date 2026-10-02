@@ -207,8 +207,9 @@ def test_non_english_model_prose_does_not_crash_advisory_rendering(tmp_path):
 
 def test_chinese_evidence_is_kept_for_grounding_but_not_echoed_in_english_advice(tmp_path):
     task = "我需要每位病患各自的共表現網路，並希望量化連線可信度。"
+    # Log 318: the quote states what separates BONOBO (a confidence per connection).
     parsed = {"claims": [], "preference": {
-        "action": "run_bonobo", "selection_tags": ["bayesian"],
+        "action": "run_bonobo", "selection_tags": ["bayesian", "sparse_pvalue_coexpression"],
         "text_spans": ["量化連線可信度"],
         "rationale": "Conditional Bayesian co-expression starting method.",
         "assumptions": [],
@@ -222,13 +223,35 @@ def test_chinese_evidence_is_kept_for_grounding_but_not_echoed_in_english_advice
     assert all(not ("\u3400" <= ch <= "\u9fff") for ch in answer)
 
 
-def test_same_network_subject_can_receive_conditional_regulator_advice(tmp_path):
+def test_an_assumed_regulator_scope_is_not_a_recommendation(tmp_path):
+    # Log 318: the request never says which regulators; a TF-only start rested
+    # on the model's assumption alone. The Regulators question asks instead.
     task = "Each patient has one blood expression measurement. We need individual regulatory wiring."
     parsed = {"claims": [], "preference": {
         "action": "run_lioness_panda", "selection_tags": ["leave_one_out_network_inference"],
         "text_spans": ["individual regulatory wiring"],
         "rationale": "LIONESS estimates individual wiring from cohort and leave-one-out networks.",
         "assumptions": ["The requested regulators are transcription factors; use LIONESS-PUMA if miRNAs must be included."],
+    }}
+    context, state, store, run_id = _context(tmp_path, parsed)
+    outcome = RequestedOutcome(operation="explain", artifact_type="regulatory_network",
+                               granularity="sample_specific")
+    decision = _decision(requested_outcome=outcome,
+                         outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=.9)],
+                         hypothesis_actions=["run_lioness_panda", "run_lioness_puma"])
+    updated, _, _ = invoke_condition_recommender(context, state, task, decision, LLMUsage(), [])
+    assert updated.advisory_recommendation is None
+    assert "routing.preference_unstated" in [event.event_type for event in store.read_events(run_id)]
+    for field in AUTHORITY_FIELDS:
+        assert getattr(updated, field) == getattr(decision, field)
+
+
+def test_a_stated_regulator_scope_recommends_the_per_sample_method_for_it(tmp_path):
+    task = "Each patient has one blood expression measurement. We need individual wiring, including the microRNAs."
+    parsed = {"claims": [], "preference": {
+        "action": "run_lioness_puma", "selection_tags": ["mirna_regulation"],
+        "text_spans": ["individual wiring"],
+        "rationale": "LIONESS-PUMA estimates individual TF and miRNA wiring.", "assumptions": [],
     }}
     context, state, _, _ = _context(tmp_path, parsed)
     outcome = RequestedOutcome(operation="explain", artifact_type="regulatory_network",
@@ -237,12 +260,15 @@ def test_same_network_subject_can_receive_conditional_regulator_advice(tmp_path)
                          outcome_hypotheses=[OutcomeHypothesis(outcome=outcome, confidence=.9)],
                          hypothesis_actions=["run_lioness_panda", "run_lioness_puma"])
     updated, _, _ = invoke_condition_recommender(context, state, task, decision, LLMUsage(), [])
-    assert updated.advisory_recommendation.action == "run_lioness_panda"
+    recommendation = updated.advisory_recommendation
+    assert recommendation.action == "run_lioness_puma"
+    assert [(c.axis, c.value) for c in recommendation.conditions] == [("regulator_class", "mirna")]
+    assert recommendation.conditions[0].text_span == "We need individual wiring, including the microRNAs."
     assert updated.matched_actions == [] and not updated.should_execute
     answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
     assert answer.count("(recommend)") == 1
-    assert "W_q = N*W_all - (N-1)*W_without_q" in answer
-    assert "LIONESS-PUMA" in answer and "Conditional assumptions" in answer
+    assert "fits better: the regulators include miRNAs" in answer and "LIONESS-PANDA" in answer
+    assert "LIONESS-PUMA estimates individual TF and miRNA wiring." in answer  # explains, never decides
 
 
 @pytest.mark.parametrize("parsed, expect_recommendation", [
@@ -461,7 +487,8 @@ def test_gap_requires_registered_missing_philosophy_and_grounded_quote(tmp_path,
     assert updated.action == "no_tool" and not updated.should_execute
 
 
-def test_same_subject_role_choice_marks_conditional_start_and_keeps_alternative(tmp_path):
+def test_a_preference_quoting_only_the_goal_recommends_nothing(tmp_path):
+    # Log 318: "each patient's regulatory wiring" is true of both candidates.
     task = "Estimate each patient's regulatory wiring."
     ctx, state, _, _ = _context(tmp_path, _philosophy_preference(
         action="run_lioness_panda", selection_tags=["leave_one_out_network_inference"],
@@ -470,11 +497,28 @@ def test_same_subject_role_choice_marks_conditional_start_and_keeps_alternative(
     ))
     decision = _regulatory_decision("sample_specific")
     updated, _, _ = invoke_condition_recommender(ctx, state, task, decision, LLMUsage(), [])
-    assert updated.advisory_recommendation.action == "run_lioness_panda"
-    answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
-    assert answer.count("(recommend)") == 1 and "LIONESS-PUMA" in answer
-    assert "assumes a regulator scope" in answer and "W_q = N*W_all" in answer
+    assert updated.advisory_recommendation is None
     assert updated.action == "no_tool" and not updated.should_execute
+
+
+def test_a_stated_method_signal_is_the_reason_not_the_model_rationale(tmp_path):
+    task = "Which method estimates each patient's gene coexpression with probabilistic uncertainty?"
+    context, state, _, _ = _context(tmp_path, _philosophy_preference())
+    updated, _, _ = invoke_condition_recommender(context, state, task, _decision(), LLMUsage(), [])
+    condition = updated.advisory_recommendation.conditions[0]
+    assert (condition.axis, condition.value, condition.text_span) == (
+        "selection_tag", "bayesian", "probabilistic uncertainty")
+    answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
+    assert "**BONOBO** fits better: you asked for probabilistic (Bayesian) uncertainty." in answer
+    assert "My recommended starting method is" not in answer
+
+
+def test_a_stated_condition_for_another_candidate_blocks_the_preference(tmp_path):
+    task = ("We have hundreds of patients and want each patient's gene coexpression with "
+            "probabilistic uncertainty.")
+    context, state, _, _ = _context(tmp_path, _philosophy_preference())
+    updated, _, _ = invoke_condition_recommender(context, state, task, _decision(), LLMUsage(), [])
+    assert updated.advisory_recommendation is None
 
 
 def test_unoffered_algorithm_tag_cannot_become_a_study_condition(tmp_path):

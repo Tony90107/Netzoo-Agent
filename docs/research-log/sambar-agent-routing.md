@@ -16229,3 +16229,91 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **觀察到、未處理：**
 - preference 路徑的推薦理由會直接顯示模型寫的 rationale，例如「Fits what you said: BONOBO is designed to infer sample-specific gene-gene co-expression networks…」。這同樣是在描述方法、不是使用者說了什麼，是 Log 307／316 記下的「preference 路徑缺少見證」。
 - 方法卡片的標題仍寫「they differ in their modeling assumptions」：planner 判斷差異維度時，LIONESS-PANDA 也算有整群結果，所以不是 scale。尺度差異現在由上面的要點說明。
+
+## Log 318｜事前宣告：PW——沒有條件的模型偏好，要有請求自己說出的區分條件才算推薦；卡片標題說出尺度差異
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定：處理 Log 317 列出的兩項——推薦理由與標題。
+寫於任何程式變更之前。
+
+**問題：**
+- 條件推薦這一步，當模型沒有提出任何條件、只給 `preference` 時，`_recommend_from_preference` 只檢查引用逐字存在、tag 屬於該 workflow、miRNA 見證（Log 306）。
+  - 引用常是對所有候選都成立的目標句，或根本沒有引用（只有 assumptions）。
+  - 卡片顯示「Fits what you said: BONOBO is designed to infer…」，全文寫「My recommended starting method is BONOBO: <模型的 rationale>」。兩處都是在描述方法，不是使用者說了什麼。
+- 原型重播（`preference-witness-2026-10-03/replay_pw.py`）：所有錄製 trace 中，目前會由 bare preference 產生推薦的 86 次。
+  - 43 次請求自己說出了偏好該 workflow 的區分條件（axis witness）：case 3「handful」、case 2「memory」、「hundreds」、「dozens」、「only a few patients」、miRNA 題的「non-coding」。
+  - 43 次沒有：只有數字的 50／60／200 位病患（Log 316 的未處理項）、blind case 10「Build me a network」→ PANDA、乳癌題 → PANDA（無引用）、Test 2 follow-up → BONOBO。
+  - 0 次是「請求說出的條件指向別的候選」。
+  - tag 見證（Log 302 的表）在 86 次中從未單獨成為依據，所以 PW 不用 tag。
+
+**規則 PW（`graph/condition_recommender.py`）：**
+- 只作用於沒有條件主張被採用、也沒有被拒絕的主張時的 preference 路徑。條件路徑（`recommend_from_claims`）不變。
+- 在本次的區分條件（`condition_options(candidates)`）中，找出請求以自己字詞說出的條件：該 axis 有 witness，而且 witness 出現在請求中，與 `recommend_from_claims` 的 witness 規則相同。
+- 推薦成立的條件：
+  - 至少一個說出的條件偏好模型選的 workflow。
+  - 沒有任何說出的條件只偏好其他候選（衝突時改為反問，依本模組原則）。
+- 成立時，說出的條件寫進推薦的 `conditions`。`text_span` 是請求中含該 witness 的句子；axis 的 confirm 文字加入 assumptions。模型的 rationale 只作為「Why it addresses this question」。
+- 不成立時沒有推薦，回到 fallback：方法平手時問區分條件（form B），與沒有說出任何條件的平手相同。
+- witness 不進入模型可見的訊息：條件推薦 prompt 應不變（`c820364a1123`）。
+
+**顯示（只改回覆卡片）：**
+- 推薦理由只用 registry 的條件說法，或資料夾檔案；不再把模型的 rationale 當成「Fits what you said」。沒有可說的理由時，不標示 Recommended。
+- 方法卡片標題：當選項一部分是每樣本、一部分只有整群結果，而且請求的尺度沒有判讀出來時，標題寫出也有尺度差異。Log 317 的「Scale differs too」要點改為只列名單，不重複標題。
+
+**判定（PW 只在模型輸出之後檢查，不改任何 prompt，所以以重播判定，如 Log 314）：**
+- 重播一致：以實作後的程式重跑所有錄製的 MethodComparisonReview 輸出，保留／移除的推薦與原型完全相同（43／43）。
+- 字詞對照全部保留：case 3 → BONOBO、case 2 → OTTER、hundreds／dozens → LIONESS-COEXPRESSION、only a few → BONOBO、miRNA 題 → PUMA。
+- 無根據的全部移除：50／60／200 位病患 → BONOBO、case 10 → PANDA、乳癌題 → PANDA、Test 2 follow-up → BONOBO。
+- blind：以重播後的決策重算 blind 判定，沒有新增 WRONG；case 3 的 OK 次數不減少。
+- 離線：全套件通過；條件推薦 prompt hash 不變。
+- 任一不成立 → 撤回 PW。之後依使用者要求跑 TEST_PROMPTS 10 題英文，只作描述，不作門檻。
+
+**Log 318 補充（實作前、看過離線測試後；重播結果尚未以 tag 規則重跑）：**
+- 第一版實作後全套件有 11 個失敗。其中 `test_algorithm_philosophy_recommends_one_candidate_and_keeps_user_choice` 釘住的是設計用途：請求明說方法哲學（「probabilistic uncertainty」）時，由 preference 推薦有該哲學的 BONOBO。只看研究條件會把它移除。
+- 因此 PW 另接受第二種依據：模型選的 workflow 有一個 tag，這個 tag 至少有一個其他候選沒有；preference 的某個逐字引用含有該 tag 的 witness。
+  - witness 用 Log 302 的 `SELECTION_TAG_WITNESSES`，另加只供 preference 使用的 bayesian、sparse_pvalue_coexpression、leave_one_out_network_inference、mirna_regulation（regulator_class 的 witness）與共變量相關 tag。
+  - `lioness_base_compatibility` 不算依據：它的 witness 含「each patient」，會讓 PANDA 以每樣本的字詞勝過 LIONESS-PANDA。
+- 衝突規則同上：請求說出的條件若只偏好其他候選，就不推薦。
+- tag 依據寫成 `AdvisoryCondition(axis="selection_tag", value=<tag>, text_span=<引用>)`，兩個 renderer 以 registry 的短語顯示（例如「you asked for probabilistic (Bayesian) uncertainty」）。
+- 預期：最早的原型已含 tag witness，重播結果與只用條件時相同（43 保留，全部有條件依據；0 次只靠 tag）。門檻不變；若以實作重跑結果不同，依原門檻判定。
+- 另外兩類測試行為依宣告改變，測試隨之更新、不另設門檻：
+  - 只有假設、沒有說出依據的 TF／miRNA 條件式起點不再推薦，改由 Regulators 澄清題處理（TF only 排第一，Log 308）。
+  - Log 259 的「Build me a network」→ PANDA 不再推薦。缺少輸入的說明，改用有說出依據的請求來測。
+- 偏好讓位給資料夾（Log 259）的檢查放在 PW 之前，所以 `routing.preference_deferred_to_inputs` 事件照舊記錄。
+
+## Log 319｜結果：PW——全部門檻成立，保留；推薦理由只用使用者說出的條件或方法特徵，標題說出尺度差異
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 318（含補充）判定。證據：`docs/research-log/preference-witness-2026-10-03/`。
+- `replay_pw.py`、`replay_pw.txt`：重播與輸出。
+- `render_pw.py`：把錄製的模型輸出送回新的條件推薦，渲染全文與卡片。
+
+**判定：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 重播一致 | 86 次 bare preference：與原型的研究條件 0 不一致；只靠 tag 成立的 0 次；tag 與條件並列的有 sparse_pvalue_coexpression 22 次、relaxed_graph_matching 7 次 | 成立 |
+| 字詞對照保留 | case 3 → BONOBO 22、case 2 → OTTER 7、hundreds 6、dozens 6、only a few 1、miRNA 題 → PUMA 1，全部保留 | 成立 |
+| 無根據移除 | 50 位病患 11＋6、60 位 6、200 位 6、case 10 → PANDA 9、乳癌題 → PANDA 3、Test 2 follow-up 2，全部移除 | 成立 |
+| blind | 重算後 case 3 OK 22→22、case 10 OK 2→2；無新增 WRONG | 成立 |
+| 離線 | 全套件 3120 passed／35 skipped；條件推薦 prompt hash 不變（`c820364a1123`） | 成立 |
+
+**判定：** 保留 PW。
+
+**實作重點：**
+- `graph/condition_recommender.stated_preference_basis`：依據寫進 `conditions`。
+  - 研究條件的 `text_span` 是請求中含 witness 的那一句。
+  - 方法特徵寫成 `axis="selection_tag"`，`text_span` 是模型的逐字引用。
+- 被移除時記錄 `routing.preference_unstated` 事件。
+- 讓位給資料夾的檢查（Log 259）仍在 PW 之前，事件照舊。
+- registry 新增 `PREFERENCE_TAG_WITNESSES`、`STATED_TAG_PHRASES`。miRNA 的 witness 抽成 `_REGULATOR_CLASS_WITNESS`，值不變。
+
+**顯示（render_pw.py）：**
+- case 3：卡片「BONOBO (Recommended) · Fits what you said: you have only a handful of samples」。全文開頭「Based on what you said — "I only have expression data from a handful of patients" — **BONOBO** fits better: only a handful of samples.」，模型的 rationale 退到「Why it addresses this question」。
+- 「50 patients」：不再推薦。卡片寫「Nothing you said favours one method yet」，全文改問區分條件（樣本數或每條連線的信心值）。
+- 「hundreds」：LIONESS-COEXPRESSION (Recommended)，理由「you have dozens of samples or more」，引用的是使用者那一句。
+- 卡片重播（3139 筆舊決策）：全文 0 變化。
+  - 標題 40 處加上尺度差異。
+  - 70 張卡片的 Recommended 標記消失，全部是舊決策中沒有條件的 bare preference，順序因此回到一般排序。
+  - 這些舊決策的全文仍寫「My recommended starting method is …」；上線後同類請求會由 PW 決定，不會再產生這種決策。
+
+**觀察到、未處理：**
+- 「50 patients」這類只有數字的請求，現在問樣本數；使用者回答後才推薦（Log 315 的使用者決定）。

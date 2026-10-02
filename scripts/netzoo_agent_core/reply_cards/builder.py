@@ -28,7 +28,7 @@ from .choices import (
 from .contracts import ReplyCard, ReplyChoices, ReplyOption
 from .method_notes import highlight, needs_line, unmentioned_input_labels
 from .next_steps import next_steps, plan_step
-from .option_reasons import per_sample_use, shared_points
+from .option_reasons import per_sample_use, scale_split, shared_points
 from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outcome, quote, result_phrase, workflow_name
 
 __all__ = ["build_reply_card"]
@@ -218,12 +218,17 @@ def _difference(actions, decision) -> str:
 def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
     count = len(choices.options)
     outcome = primary_outcome(decision)
-    difference = _difference([option.action for option in choices.options if option.action], decision)
-    if outcome is not None and outcome.artifact_type != "unknown" and difference == "their modeling assumptions":
+    actions = [option.action for option in choices.options if option.action]
+    difference = _difference(actions, decision)
+    if scale_split(actions, outcome) and difference != _DIFFERENCES["granularity"]:
+        # A per-sample extension also writes the cohort network, so the planner
+        # does not count scale as a difference; to the reader it is the first one.
+        difference = "scale (one network for all samples or one per sample) and " + (
+            "in their modeling assumptions" if difference == _DIFFERENCES["algorithm"] else difference)
+    if outcome is not None and outcome.artifact_type != "unknown" and difference.endswith(_DIFFERENCES["algorithm"]):
         headline = f"{count} registered methods can build {result_phrase(outcome)}; they differ in {difference}."
     else:
         headline = f"{count} registered workflows fit your request; they differ in {difference}."
-    actions = [option.action for option in choices.options if option.action]
     points = [_understood(decision, task), _unmentioned(actions, task, decision),
               *shared_points(actions, outcome, task, policy)]
     recommended = next((option for option in choices.options if option.badge == "Recommended"), None)

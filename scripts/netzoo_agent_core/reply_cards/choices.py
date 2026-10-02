@@ -18,7 +18,9 @@ with the reason, never mixed into the options.
 
 from __future__ import annotations
 
-from workflow_registry import EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES
+from workflow_registry import (
+    EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES, STATED_TAG_PHRASES,
+)
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.capability_compatibility import input_availability
@@ -74,23 +76,25 @@ def describe(parts, ranks=None) -> str:
 
 
 def _stated_reasons(advice) -> list[str]:
-    """Why the recommendation holds, in the registry's words, never the model's quote.
+    """Why the recommendation holds, in the registry's words, never the model's.
 
     A quote shows where the request said it; the reason is the condition it
     established. Folder-based advice (Log 154) says the named folder's files
-    fit; a bare preference falls back to its English rationale.
+    fit. The model's rationale describes the method ("BONOBO is designed to
+    infer ..."), not what the user said, so it is never a reason here
+    (Log 318); advice without a stated reason is not marked recommended.
     """
     reasons, folders = [], []
     for item in advice.conditions:
         condition = f"{item.axis}:{item.value}"
         if item.axis in SELECTION_AXES:
             reasons.append(condition_phrase(condition) or SELECTION_AXES[item.axis]["values"].get(item.value, condition))
+        elif item.axis == "selection_tag" and item.value in STATED_TAG_PHRASES:
+            reasons.append(STATED_TAG_PHRASES[item.value])
         elif item.axis == "inspected_inputs" and item.text_span:
             folders.append(item.text_span)
     if folders:
         reasons.append("the files in " + join_names(list(dict.fromkeys(folders)), "and") + " fit its inputs")
-    if not reasons and advice.rationale:
-        reasons.append(clip(advice.rationale.rstrip("."), 120))
     return list(dict.fromkeys(reasons))
 
 
@@ -114,7 +118,8 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
     outcome = primary_outcome(decision)
     present = present_inputs(task, decision)
     advice = decision.advisory_recommendation
-    recommended = advice.action if advice is not None and advice.action in candidates else None
+    recommended = (advice.action if advice is not None and advice.action in candidates and _stated_reasons(advice)
+                   else None)
     conditions = _separating_conditions(candidates)
     fits = {action: fit_notes(action, outcome) for action in candidates}
     missing = _differential_missing(candidates, present, task)

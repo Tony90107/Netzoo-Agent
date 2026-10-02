@@ -221,6 +221,53 @@ SELECTION_TAG_WITNESSES: Mapping[str, str] = {
     ),
 }
 
+# Log 318: a bare model preference stands on a method signal only when one of
+# its quotes contains that tag's words. The discriminator's table plus tags
+# that separate the co-expression and per-sample workflows; read per key and
+# never shown to the model. lioness_base_compatibility is left out: its words
+# ("each patient") would let PANDA win a per-sample request over LIONESS-PANDA.
+_REGULATOR_CLASS_WITNESS = (
+    r"\bmi(?:cro)?[- ]?rnas?\b|\bmir[- ]?\d|non[- ]?coding|\bnc[- ]?rnas?\b|"
+    r"\bsmall\s+(?:[\w-]+\s+)?rnas?\b|post[- ]?transcription|"
+    r"微小核糖核酸|微型\s*RNA|小\s*RNA|非編碼|轉錄後"
+)
+_COVARIATE_WITNESS = (
+    r"\bbatch\w*|covariat\w*|confound\w*|\bsites?\b|hospital\w*|\bcent(?:er|re)s?\b|sequencing\s+runs?|"
+    r"批次|共變|混雜|醫院|中心"
+)
+PREFERENCE_TAG_WITNESSES: Mapping[str, str] = {
+    **{tag: words for tag, words in SELECTION_TAG_WITNESSES.items() if tag != "lioness_base_compatibility"},
+    "bayesian": r"\bbayes\w*|posterior|probabilist\w*|shrink\w*|uncertaint\w*|貝氏|貝葉斯|機率|不確定",
+    "sparse_pvalue_coexpression": (
+        r"p[- ]?values?|significan\w*|confiden\w*|trustworth\w*|reliab\w*|\bspars\w*|顯著|信心|可信|可靠"
+    ),
+    "leave_one_out_network_inference": r"leave[- ]one[- ]out|\bLIONESS\b|留一",
+    "mirna_regulation": _REGULATOR_CLASS_WITNESS,
+    "batch_correction": _COVARIATE_WITNESS,
+    "covariate_association": _COVARIATE_WITNESS,
+    "hospital_effect_assessment": _COVARIATE_WITNESS,
+    "sequencing_batch_effect_assessment": _COVARIATE_WITNESS,
+}
+# What a stated method signal means to the user, for the recommendation's reason.
+STATED_TAG_PHRASES: Mapping[str, str] = {
+    "message_passing": "you asked for iterative message passing",
+    "relaxed_graph_matching": "you asked for an explicit objective that is optimized",
+    "biologically_informed_matrix_factorization": "you asked for a factorization of the expression data",
+    "linear_model_coefficients": "you asked for linear-model coefficients",
+    "signed_partial_regulatory_effects": "you asked for signed (activating or repressing) effects",
+    "tfa": "you asked for TF activity",
+    "joint_grn_tfa_inference": "you asked for TF activity",
+    "tfa_covariate_regression": "you asked for TF activity",
+    "bayesian": "you asked for probabilistic (Bayesian) uncertainty",
+    "sparse_pvalue_coexpression": "you asked for a p-value or confidence for each connection",
+    "leave_one_out_network_inference": "you asked for leave-one-out (LIONESS) sample networks",
+    "mirna_regulation": "your regulators include miRNAs",
+    "batch_correction": "you asked to separate batch or covariate effects",
+    "covariate_association": "you asked to separate batch or covariate effects",
+    "hospital_effect_assessment": "you asked to separate batch or covariate effects",
+    "sequencing_batch_effect_assessment": "you asked to separate batch or covariate effects",
+}
+
 # Experimental-condition axes (Log 139). When compatible workflows produce the
 # same result and differ only in method, these are the facts a user can state
 # about their study that separate them. Each workflow declares the values it is
@@ -257,11 +304,7 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
         # Log 300: the request must describe such molecules somewhere. A quote
         # of "Which workflow finds gene modules within each patient?" was taken
         # as stating that the regulators include miRNAs.
-        "witness": (
-            r"\bmi(?:cro)?[- ]?rnas?\b|\bmir[- ]?\d|non[- ]?coding|\bnc[- ]?rnas?\b|"
-            r"\bsmall\s+(?:[\w-]+\s+)?rnas?\b|post[- ]?transcription|"
-            r"微小核糖核酸|微型\s*RNA|小\s*RNA|非編碼|轉錄後"
-        ),
+        "witness": _REGULATOR_CLASS_WITNESS,
     },
     "cohort_size": {
         "question": "About how many samples do you have?",
