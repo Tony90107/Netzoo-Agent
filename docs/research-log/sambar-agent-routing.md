@@ -16079,3 +16079,104 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - blind 差異與 MW 無關：candidate case6-en s2 是 LIONESS-COEXPRESSION／COBRA／SAMBAR 平手（多了 sample_distance_matrix 讀法），MW 沒有觸發。
 
 **仍未處理：** 推薦說明的引用句（Log 312）。
+
+## Log 315｜事前宣告：CS——「少數樣本／數十個以上」要由使用者自己的字詞說出
+
+日期／時區：2026-10-02，Asia/Taipei。
+- 使用者決定：「順便修推薦說明的引用句」。
+- 進一步選擇「Keep asking」：維持 2026-09-27 決定 #3，agent 不自行把樣本數對應到 few／many，只引用使用者寫的數字。
+- 本條目寫於 CS 的任何程式修改與正式 live 呼叫之前。標靶語料 `docs/research-log/cohort-witness-2026-10-02/targeted.json` 與 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+- 基準為 `a022528`：工作目錄乾淨；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt `c820364a1123`（`condition_prompt_hash.py`，三組候選）。
+
+**問題（Log 312）：** Test 2 選「Only expression data」之後推薦 LIONESS-COEXPRESSION，理由是 cohort_size:many（dozens of samples or more），但引用的是 follow-up 那一句，其中沒有任何數量。
+- 記錄中所有 cohort_size:many 的推薦（8 次）不是引用沒有數量的句子（6 次），就是由模型把數字自行對應成「dozens」（「40 heart failure patients」、「50 patients」各 1 次）。後者正是決定 #3 不允許的。
+- cohort_size:few 的推薦（case3-en 99 次、case3-zh 1 次）都引用使用者自己的字詞（「a handful of patients」、「少數幾個病人」）。
+- 原因：`SELECTION_AXES["cohort_size"]` 沒有 witness，任何出現在請求裡的引用都會被接受。
+
+**CS（`workflow_registry.SELECTION_AXES["cohort_size"]` 的 witness；`graph/condition_recommender.recommend_from_claims`）：**
+- 規則：cohort_size 的主張要由請求中描述「該值」的字詞支持，數字不算。檢查整個請求（II-B，Log 269）。
+- 這是第一個分值的 witness，原有 witness 是整條軸一個；因此 `recommend_from_claims` 支援以值為鍵的 witness。原型 `replay_cs.COHORT_WITNESS`：
+  - few：handful；(a／very／only a) few＋單位；small number of 單位／small cohort／small sample size／small study；limited (number of) 單位；only a couple；少數、少量樣本、幾個病人、幾位、小樣本、樣本很少。
+  - many：dozens、hundreds、thousands；large number of 單位／large cohort／large sample size／large study；many＋單位；large-scale cohort；數十、數百、上百、上千、大量樣本、大型世代、樣本很多。
+- 被拒絕時，既有流程不走 preference（`not rejected` 才走），決策回到條件問題「About how many samples do you have?」。既有的 `_stated_count_note` 會引用使用者寫的數字，並說明「whether that counts as a handful … is your call」。
+- witness 不進入模型可見的訊息：指紋與條件推薦 prompt 應不變。
+
+**離線證據（`replay_cs.py`，記錄中 25 種推薦、185 次）：**
+- 原型與目前程式（`--tree`）相比，CS 只多改變 8 次：
+  - t2-follow-expression-only 7：LIONESS-COEXPRESSION → 不推薦。
+  - trap-individual-coexpression 1：「50 patients」→ 不推薦。
+- 其餘 14 次在目前程式就已被既有 witness 拒絕（II-B、CR1 之前的舊記錄），兩者相同。
+- case3-en 的 99 次 few 推薦全部保留。
+
+**標靶語料（8 題，`targeted.json`）：**
+- 只有數字（正例）：t2-follow-expression-only、trap-individual-coexpression、`cs-count-tumours`（60 tumours）、`cs-count-cohort`（200 patients）。
+- 以字詞說出（對照）：`cs-ctl-few`（only a few patients → BONOBO）、`cs-ctl-hundreds`（hundreds of tumour samples → LIONESS-COEXPRESSION）、`cs-ctl-dozens`（dozens of patients → LIONESS-COEXPRESSION）。
+- 其他軸對照：mirna-degradation-en（regulator_class → PUMA）。
+- blind case3-en（a handful → BONOBO）。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝CS；baseline＝`a022528` 的副本。同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted.json`（8 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立就撤回 CS；`analyze.py`）：**
+- 離線（live 之前）：
+  - 全套件通過；指紋與條件推薦 prompt 不變。
+  - `replay_cs.py --tree` 與原型相同。
+  - 單元測試涵蓋錄下的 t2-follow 主張被拒、「a handful」保留、數字不算。
+- 有效性：兩臂 provider 錯誤皆為 0。
+- 健全：candidate 中推薦依據的 cohort_size 值，在請求中沒有以字詞說出 ＝ 0（blind 與標靶）。
+- 效果：只有數字的四題，以 cohort_size 為依據的推薦 baseline ≥ 3／12 且 candidate ＝ 0。baseline 不到 3 時改以重播判定。
+- 字詞對照：cs-ctl-few 推薦 BONOBO；cs-ctl-hundreds、cs-ctl-dozens 推薦 LIONESS-COEXPRESSION；blind case3-en OK；mirna-degradation-en 推薦 PUMA。各自 ≥ baseline − 1。
+- blind：candidate WRONG ≤ baseline＋3。
+
+**Log 315 補充（實作後、live 前寫；門檻不變）：離線條件成立。**
+- 實作：
+  - `workflow_registry.SELECTION_AXES["cohort_size"]["witness"]`：few、many 兩個樣式，與原型逐字相同（已比對）。
+  - `graph/condition_recommender._witness`：axis 的 witness 可以是單一樣式，也可以以值為鍵；原有的 4 條軸不變。
+- `replay_cs.py --tree` 與原型輸出完全相同（185 次中改變 22 次，CS 本身新增的是宣告的 8 次）。
+- 全套件 3107 passed／35 skipped；新增 `tests/test_cohort_witness.py` 4 個測試：
+  - 錄下的 t2-follow 主張被拒；
+  - 數字對兩個值都不算；
+  - 使用者的字詞照樣推薦；
+  - 一個值的字詞不支持另一個值。
+- 指紋不變（`e920bf3b5d57`／`743b2dd0d73a`）；條件推薦 prompt 不變（`c820364a1123`）。
+- 兩臂（baseline 為 `a022528` 的副本）只差 CS 的 2 個檔案。兩臂都 smoke 載入 targeted 8 題、blind 10 題。
+
+## Log 316｜結果：CS——全部門檻成立，保留；Test 2 follow-up 不再以錯誤引用推薦，改問樣本數並引用使用者寫的數字
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 315（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/cohort-witness-2026-10-02/`：
+- 報告 `live-cs-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`。
+- `analyze.py`、`replay_cs.py`、`condition_prompt_hash.py`。
+
+**執行：**
+- 3 個時段（18:31、18:33、18:35），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後兩臂 `scripts/` 只差 CS 的 2 個檔案。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 54 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3107 passed／35 skipped；指紋與條件推薦 prompt 不變；`--tree` 重播與原型相同（補充） | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0 | 有效 |
+| 健全 | candidate 中推薦依據的 cohort_size 沒有以字詞說出：0（baseline 3） | 成立 |
+| 效果 | 只有數字的四題，以 cohort_size 為依據的推薦：baseline 3／12、candidate 0 | 成立 |
+| 字詞對照 | cs-ctl-few BONOBO 2（baseline 3）；cs-ctl-hundreds 3（3）；cs-ctl-dozens 3（3）；mirna-degradation-en PUMA 3（3） | 成立 |
+| case3-en | OK：candidate 3、baseline 3 | 成立 |
+| blind | WRONG：candidate 0、baseline 0 | 成立 |
+
+**逐題：**
+- t2-follow-expression-only：baseline 3／3 推薦 LIONESS-COEXPRESSION，依據是無數量引用的 cohort_size:many；candidate 3／3 不推薦，改問樣本數。CS 拒絕主張 2 次，另 1 次模型沒有提出主張。
+  - 重新渲染 candidate s1 的全文，結尾為：「About how many samples do you have? (only a handful of samples → BONOBO; dozens of samples or more → LIONESS-COEXPRESSION)」，後接「You mentioned "40 heart failure patients". Whether that counts as a handful of samples or as dozens or more is your call…」。
+  - 錯誤的引用句不再出現。
+- cs-ctl-few candidate s1 沒有推薦：該 trial 沒有執行條件推薦（無 selection_conditions 事件），與 CS 無關。
+- candidate 中 CS 的拒絕只有 t2-follow-expression-only 的 cohort_size:many 2 次。另有 case6-en 的 covariates 1 次 `quote_not_in_request`，是既有規則。
+
+**判定：** 保留 CS。
+
+**觀察到、未處理（兩臂相同，非 CS 造成）：**
+- 只有數字的 trap-individual-coexpression（50）、cs-count-tumours（60）、cs-count-cohort（200）三題，兩臂都 3／3 推薦 BONOBO。
+- 這些推薦來自 preference 路徑，conditions 為空。理由是「BONOBO is designed to infer sample-specific gene-gene co-expression networks」，對 LIONESS-COEXPRESSION 同樣成立；請求沒有說出 Bayesian、p-value 或樣本很少。
+- 這是 Log 307 記下的「preference 路徑缺少見證」，這次以 BONOBO 的形式出現。

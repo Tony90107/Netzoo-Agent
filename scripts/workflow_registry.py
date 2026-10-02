@@ -227,6 +227,10 @@ SELECTION_TAG_WITNESSES: Mapping[str, str] = {
 # preferred under as ``prefer_when: ["axis:value", ...]``. Labels are
 # user-facing English and deliberately qualitative: there is no accepted
 # numeric cut-off for "few" samples.
+_COHORT_UNITS = (
+    r"(?:samples?|patients?|individuals?|subjects?|donors?|participants?|people|mice|animals?|replicates?|"
+    r"tumou?rs?|cases?|biops(?:y|ies))"
+)
 SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
     # Log 269 (user decision): a functional description of the regulators
     # (short non-coding RNAs degrading transcripts) may point to miRNA methods,
@@ -264,6 +268,24 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
         "values": {
             "few": "only a handful of samples",
             "many": "dozens of samples or more",
+        },
+        # Log 315 (user decision 2026-09-27 #3, reconfirmed 2026-10-02): the
+        # agent never maps a sample count to these values; only the user's own
+        # words do, so a number is no witness. One witness per value: "a
+        # handful" states few and never many.
+        "witness": {
+            "few": (
+                r"\bhandful\b|\b(?:a\s+|very\s+|only\s+(?:a\s+)?)?few\s+(?:[\w-]+\s+){0,2}" + _COHORT_UNITS + r"\b|"
+                r"\bsmall\s+(?:number\s+of\s+" + _COHORT_UNITS + r"|cohort|sample\s+size|study)\b|"
+                r"\blimited\s+(?:number\s+of\s+)?" + _COHORT_UNITS + r"\b|\bonly\s+a\s+couple\b|"
+                r"少數|少量(?:的)?(?:樣本|病人|患者)|幾個(?:病人|患者|樣本)|幾位|小樣本|樣本(?:數|量)?(?:很|太)?少"
+            ),
+            "many": (
+                r"\b(?:dozens|hundreds|thousands)\b|\blarge\s+(?:number\s+of\s+" + _COHORT_UNITS
+                + r"|cohort|sample\s+size|study)\b|"
+                r"\bmany\s+(?:[\w-]+\s+){0,2}" + _COHORT_UNITS + r"\b|\blarge[- ]scale\s+cohort\b|"
+                r"數十|數百|上百|上千|大量(?:的)?(?:樣本|病人|患者)|大型(?:世代|隊列|族群)|樣本(?:數|量)?(?:很)?多"
+            ),
         },
     },
     "per_edge_confidence": {

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 from pydantic import ConfigDict, Field, create_model
@@ -168,6 +169,12 @@ def _quote_grounded(task: str, span: str) -> bool:
     return any(_grounded_span(normalized, variant) for variant in variants)
 
 
+def _witness(option: ConditionOption) -> str | None:
+    """The evidence words a condition needs: one pattern per axis, or per value (Log 315)."""
+    witness = SELECTION_AXES[option.axis].get("witness")
+    return witness.get(option.value) if isinstance(witness, Mapping) else witness
+
+
 def recommend_from_claims(
     user_task: str,
     claims: SelectionConditionClaims,
@@ -184,7 +191,7 @@ def recommend_from_claims(
             rejected.append({"condition": claim.condition, "reason": "not_offered"})
         elif not _quote_grounded(user_task, claim.text_span):
             rejected.append({"condition": claim.condition, "reason": "quote_not_in_request"})
-        elif (witness := SELECTION_AXES[option.axis].get("witness")) and not re.search(witness, user_task, re.I):
+        elif (witness := _witness(option)) and not re.search(witness, user_task, re.I):
             # Log 300: a verbatim quote proves the words occurred, not that they
             # state this condition; an axis with a witness needs it in the request.
             rejected.append({"condition": claim.condition, "reason": "condition_not_in_request"})
