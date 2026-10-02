@@ -209,10 +209,49 @@ def test_an_answer_needing_an_unmentioned_input_is_not_the_default():
     assert "Also needs" not in choices.options[0].description
 
 
-def test_inputs_every_option_needs_but_the_request_never_names_are_said_once():
+def test_when_no_option_runs_on_the_named_data_the_card_asks_for_the_inputs_first():
+    # Log 312: Test 2 names only expression data; LIONESS-PANDA and LIONESS-PUMA
+    # need priors it never mentions, while LIONESS-COEXPRESSION and BONOBO build
+    # a per-sample network from expression alone.
     text, kind, card = respond_and_card(HEART_FAILURE, _heart_failure_tie())
-    assert card.kind == "clarification"
-    assert "Every option also needs motif prior and PPI network, which your request does not mention." in card.points
+    assert card.kind == "clarification" and card.choices.header == "Inputs"
+    assert card.choices.question == "Do you also have a motif prior and a PPI network?"
+    assert [option.label for option in card.choices.options] == [
+        "Only expression data", "I also have a motif prior and a PPI network"]
+    first, second = card.choices.options
+    assert first.description.startswith("Leads to LIONESS-COEXPRESSION or BONOBO")
+    assert first.resolution == second.resolution == "follow_up"
+    assert second.description == "Leads to LIONESS-PANDA"
+    assert not any(point.startswith(("Every option also needs", "Not mentioned")) for point in card.points)
+    assert ("Your request names only expression data; the matched workflows need more inputs, "
+            "while LIONESS-COEXPRESSION or BONOBO works from it alone.") in card.points
+    assert ("**What your data allows.** Your request names only expression data. LIONESS-PANDA also needs "
+            "a motif prior and a PPI network; LIONESS-PUMA also needs a motif prior, a PPI network and a miRNA "
+            "list. With expression data alone, LIONESS-COEXPRESSION or BONOBO builds one gene-gene co-expression "
+            "network per sample (genes only, no regulator roles) instead. Do you also have a motif prior and a "
+            "PPI network?") in text
+    assert text.index("**What your data allows.**") < text.index("No files were inspected")
+
+
+def test_a_result_no_network_alternative_gives_keeps_the_unmentioned_input_note():
+    # A TF-activity result: a co-expression network would not be what was asked for.
+    task = "We have expression data from 50 tumours and want each TF's activity in every tumour. Which tool? Advice only."
+    made = decision([reading("tf_activity_matrix", ["expression_matrix"], ["tf"], granularity="sample_specific")],
+                    capability_match_status="exact", matched_actions=["run_giraffe"], recommended_actions=["run_giraffe"])
+    text, kind, card = respond_and_card(task, made)
+    assert "Not mentioned in your request: motif prior and PPI network." in card.points
+    assert card.choices is None and "What your data allows" not in text
+
+
+def test_an_option_that_runs_on_the_named_data_adds_nothing():
+    # Blind case 3: expression from a handful of patients; BONOBO is already offered.
+    made = decision([reading("coexpression_network", ["expression_matrix"], granularity="sample_specific")],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_lioness_coexpression", "run_bonobo"])
+    plan = plan_clarification(made.hypothesis_actions, outcomes=[h.outcome for h in made.outcome_hypotheses])
+    made = made.model_copy(update={"clarification_question": plan.question if plan else None})
+    text, kind, card = respond_and_card("I only have expression data from 12 patients; I want one co-expression "
+                                        "network per patient. Which tool? Advice only.", made)
+    assert "What your data allows" not in text and (card.choices is None or card.choices.header != "Inputs")
 
 
 def test_a_per_sample_extension_is_not_named_as_two_runs():
@@ -233,8 +272,10 @@ def test_an_input_described_in_the_users_own_words_is_not_called_unmentioned():
                     recommended_actions=["run_lioness_panda"])
     text, kind, card = respond_and_card(LUNG, made)
     assert not any("Not mentioned" in point for point in card.points)
-    _, _, other = respond_and_card(HEART_FAILURE, made)
-    assert "Not mentioned in your request: motif prior and PPI network." in other.points
+    # Test 2 names expression only: Log 312's question replaces the bare note.
+    other_text, _, other = respond_and_card(HEART_FAILURE, made)
+    assert other.choices.header == "Inputs" and "What your data allows" in other_text
+    assert not any(point.startswith("Not mentioned") for point in other.points)
 
 
 def _lung_tie():
@@ -401,3 +442,16 @@ def test_a_hypothesis_workflow_that_cannot_take_the_stated_data_names_its_produc
     assert "Needs a regulatory network first: build it with PANDA or OTTER" in condor.description
     panda = next(option for option in choices.options if option.action == "run_panda")
     assert "Needs a" not in panda.description
+
+
+def test_a_stated_regulator_role_is_not_offered_a_network_without_regulators():
+    # Replay 2026-10-02: "a separate TF-to-gene regulatory network for each sample"
+    # from an expression matrix; a co-expression network is not that result.
+    task = ("Right now I have an expression matrix and want a separate TF-to-gene regulatory network for each "
+            "sample. Which workflow? Advice only.")
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="sample_specific")],
+                    capability_match_status="exact", matched_actions=["run_lioness_panda"],
+                    recommended_actions=["run_lioness_panda"])
+    text, kind, card = respond_and_card(task, made)
+    assert "What your data allows" not in text and not (card.choices and card.choices.header == "Inputs")
+    assert "Not mentioned in your request: motif prior and PPI network." in card.points
