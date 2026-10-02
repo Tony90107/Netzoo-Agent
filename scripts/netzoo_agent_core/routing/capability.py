@@ -343,8 +343,10 @@ def validate_task_text(
 ) -> str | None:
     """Return a rejection reason when user text cannot authorize the action."""
     normalized = task.casefold()
+    from .request_scope import has_current_positive_mention
+
     for pattern in UNSUPPORTED_DELIVERABLE_PATTERNS:
-        if re.search(pattern, normalized, flags=re.IGNORECASE):
+        if has_current_positive_mention(task, pattern):
             return "The requested deliverable is not supported by the NetZoo agent."
 
     if action in LOCAL_WORKFLOW_ACTIONS and is_workflow_information_request(task):

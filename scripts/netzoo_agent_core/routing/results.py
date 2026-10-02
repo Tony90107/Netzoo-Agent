@@ -80,7 +80,11 @@ def structure_tool_result(
     lowered = raw_output.casefold()
     error_lines = _diagnostic_messages(raw_output, "error")
     warning_lines = _diagnostic_messages(raw_output, "warning")
-    exit_match = re.search(r"Exit code:\s*(\d+)", raw_output, flags=re.IGNORECASE)
+    exit_match = re.search(
+        r"^Exit code:[ \t]*([+-]?\d+)[ \t]*$",
+        raw_output,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
     exit_code = int(exit_match.group(1)) if exit_match else None
     hard_failure_markers = (
         "validation failed",

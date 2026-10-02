@@ -160,6 +160,12 @@ def _run_command(
             if stderr:
                 result.append("\nSTDERR before timeout:\n" + stderr)
             return "\n".join(result)
+        except BaseException:
+            # A cancelled graph turn interrupts the worker while it waits here.
+            # The child has its own process group, so it must be stopped before
+            # the interruption is propagated to the session driver.
+            _terminate_process_tree(process)
+            raise
         stdout = _read_bounded_process_output(stdout_handle, "STDOUT")
         stderr = _read_bounded_process_output(stderr_handle, "STDERR")
 

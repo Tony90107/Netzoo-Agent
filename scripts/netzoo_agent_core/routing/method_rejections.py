@@ -7,6 +7,7 @@ from workflow_registry import ACTION_DEFINITIONS, OUTPUT_CAPABILITIES
 
 from ..contracts.outcomes import RejectedMethod
 from .path_tokens import without_path_tokens
+from .request_scope import has_current_positive_mention
 
 
 _GLASSO_MARKER = re.compile(
@@ -28,14 +29,14 @@ _ACTIVE_LEARNING_GP_MARKER = re.compile(
 
 def unsupported_algorithm_request(task: str) -> str | None:
     """Return a stable boundary key for known unsupported method combinations."""
-    if _GLASSO_MARKER.search(task) and _BAYESIAN_OPTIMIZATION_MARKER.search(task):
+    if (has_current_positive_mention(task, _GLASSO_MARKER)
+            and has_current_positive_mention(task, _BAYESIAN_OPTIMIZATION_MARKER)):
         return "glasso_bayesian_optimization"
     if (
-        _ACTIVE_LEARNING_GP_MARKER.search(task)
-        and re.search(
-            r"\b(?:motif|prior|regulatory|network)\b|先驗|調控|網路",
+        has_current_positive_mention(task, _ACTIVE_LEARNING_GP_MARKER)
+        and has_current_positive_mention(
             task,
-            re.IGNORECASE,
+            r"\b(?:motif|prior|regulatory|network)\b|先驗|調控|網路",
         )
     ):
         return "active_learning_gaussian_process"

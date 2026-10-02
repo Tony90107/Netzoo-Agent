@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from workflow_registry import Granularity, RUN_ACTIONS, RecommendedAction
 
-from ..settings import ROUTER_CONTEXT_MAX_CHARS
+from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, PARAMETER_FIELDS, ROUTER_CONTEXT_MAX_CHARS
+from .decisions import TaskDecision
 
 ReplyIntent = Literal[
     "follow_up",
@@ -73,6 +74,7 @@ class WorkflowContinuation(BaseModel):
 
     action: RecommendedAction
     task: str = Field(min_length=1, max_length=ROUTER_CONTEXT_MAX_CHARS)
+    parameters: dict[str, object] = Field(default_factory=dict, max_length=40)
 
     @field_validator("action")
     @classmethod
@@ -80,6 +82,18 @@ class WorkflowContinuation(BaseModel):
         if action not in RUN_ACTIONS:
             raise ValueError("Only registered local workflows can be continued.")
         return action
+
+    @model_validator(mode="after")
+    def validated_prior_parameters(self):
+        allowed = INPUT_ROLE_FIELDS | OUTPUT_ROLE_FIELDS | PARAMETER_FIELDS
+        if set(self.parameters) - allowed:
+            raise ValueError("Continuation contains unsupported request fields.")
+        TaskDecision.model_validate({
+            "action": self.action, "in_scope": True, "should_execute": True,
+            "confidence": 1.0, "reason": "Validated continuation snapshot.",
+            **self.parameters,
+        })
+        return self
 
 
 class MethodComparison(BaseModel):

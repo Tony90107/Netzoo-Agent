@@ -72,6 +72,7 @@ def continue_workflow(
                         ["granularity"] if granularity == "unknown" else []
                     ),
                 ),
+                **continuation.parameters,
             ),
             task,
         )

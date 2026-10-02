@@ -27,6 +27,11 @@ from ..contracts import (
 from ..contracts.interaction import WorkflowContinuation
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..interpretation import INPUT_LABELS
+from ..interpretation.input_bindings import request_input_bindings
+from ..interpretation.request_parameters import (
+    extract_explicit_request_parameters,
+    extract_explicit_workflow_controls,
+)
 from ..outcomes import effective_results, terminal_failed
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 
@@ -470,4 +475,14 @@ def build_workflow_continuation(
     # downstream candidate must not bypass the separately validated stages.
     if prompt.required_fields and prompt.continuation_action:
         action = prompt.continuation_action
-    return WorkflowContinuation(action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:])
+    prior = context.prior_user_goal
+    bindings = request_input_bindings(prior)
+    parameters = {
+        field: bindings.values[field]
+        for field in bindings.explicit_fields
+    }
+    parameters.update(extract_explicit_request_parameters(prior))
+    parameters.update(extract_explicit_workflow_controls(prior, action))
+    return WorkflowContinuation(
+        action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:], parameters=parameters,
+    )

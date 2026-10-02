@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
+import math
+
+from workflow_registry import get_controls
 
 from ..contracts import PROSE_PATH_TERMINATORS
-from ..settings import INPUT_ROLE_FIELDS
+from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, PARAMETER_FIELDS
 from .extraction import _task_path
 from .input_bindings import request_input_bindings
 
@@ -30,9 +33,10 @@ _BOOLEAN_FIELDS = (
     "centered",
 )
 
-_TAXON_NEXT_FIELD = (
-    r"expression_file|motif_file|ppi_file|output_file|output_dir|taxon|species|organism"
-)
+_TAXON_NEXT_FIELD = "|".join(sorted(
+    INPUT_ROLE_FIELDS | OUTPUT_ROLE_FIELDS | PARAMETER_FIELDS | {"species", "organism"},
+    key=len, reverse=True,
+))
 
 
 def extract_explicit_taxon(task: str) -> str | None:
@@ -180,6 +184,70 @@ def extract_explicit_request_parameters(task: str) -> dict[str, object]:
         )
         if match:
             parameters[field_name] = match.group(1)
+    return parameters
+
+
+def extract_explicit_workflow_controls(task: str, action: str) -> dict[str, object]:
+    """Bind stated executor controls against the selected workflow's registry schema.
+
+    An invalid assignment is an error, never permission to use the default.
+    TaskDecision performs the final field-level validation after hydration.
+    """
+    parameters: dict[str, object] = {}
+    for control in get_controls(action):
+        if control.name == "sample_names":
+            # Comma-separated sample IDs have their own non-scalar parser.
+            continue
+        prefix = re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(control.name)}\s*=",
+            task,
+            flags=re.IGNORECASE,
+        )
+        if prefix is None:
+            continue
+        assignment = re.match(
+            r"\s*"
+            r"(?:\"(?P<double>[^\"]*)\"|'(?P<single>[^']*)'|(?P<bare>[^\s,;，；。!?！？]+))",
+            task[prefix.end():],
+        )
+        if assignment is None:
+            raise ValueError(f"Invalid {control.name}: assignment has no value.")
+        raw = next(value for value in assignment.groupdict().values() if value is not None)
+        if assignment.group("bare") is not None:
+            raw = raw.rstrip(".")
+        lowered = raw.casefold()
+        if control.nullable and lowered in {"none", "null"}:
+            value: object = None
+        elif control.control_type == "boolean":
+            if lowered not in {"true", "false"}:
+                raise ValueError(f"Invalid {control.name}: expected true or false.")
+            value = lowered == "true"
+        elif control.control_type == "integer":
+            if re.fullmatch(r"[+-]?\d+", raw) is None:
+                raise ValueError(f"Invalid {control.name}: expected an integer.")
+            value = int(raw)
+        elif control.control_type == "number":
+            try:
+                value = float(raw)
+            except ValueError as error:
+                raise ValueError(f"Invalid {control.name}: expected a number.") from error
+            if not math.isfinite(value):
+                raise ValueError(f"Invalid {control.name}: expected a finite number.")
+        elif control.control_type == "enum":
+            value = lowered
+            if control.name == "bonobo_output_format" and not value.startswith("."):
+                value = "." + value
+            if value not in control.allowed_values:
+                raise ValueError(
+                    f"Invalid {control.name}: expected one of {control.allowed_values}."
+                )
+        elif control.control_type == "string":
+            if not raw:
+                raise ValueError(f"Invalid {control.name}: expected a value.")
+            value = raw
+        else:
+            raise ValueError(f"Unsupported control type for {control.name}.")
+        parameters[control.name] = value
     return parameters
 
 

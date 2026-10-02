@@ -15,9 +15,11 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     AIMessage,
     ContextualReplyResolution,
     HumanMessage,
+    FollowUpContext,
     InputBundleOption,
     InputEvidence,
     LLMUsage,
+    NextTurnPrompt,
     PlanEvaluationResult,
     PreferenceProposal,
     TaskDecision,
@@ -25,6 +27,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     WorkflowStep,
 )
 from netzoo_agent_core.cli.reply_resolution import ReplyResolutionResult  # noqa: E402
+from netzoo_agent_core.engine.machine import ConversationMachine  # noqa: E402
 from netzoo_agent_core.runtime import configure_runtime  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
 from netzoo_agent_core.pricing import PriceCatalog  # noqa: E402
@@ -60,6 +63,30 @@ def _fake_cli_runtime(*, invoke_error, interactive_answers=(), reply_resolver=No
         invoke_graph_turn_func=invoke_graph_turn_func,
         reply_resolver=reply_resolver or Mock(),
     )
+
+
+def test_invalid_prior_workflow_control_keeps_cli_at_current_prompt():
+    runtime = _fake_cli_runtime(invoke_error=AssertionError("unexpected graph turn"))
+    machine = ConversationMachine(SimpleNamespace(task=None), runtime)
+    prompt = NextTurnPrompt(
+        kind="recommended_workflow", question="Continue?", continuation_action="run_otter",
+    )
+    machine.state.next_prompt = prompt
+    machine.state.follow_up_context = FollowUpContext(
+        prior_user_goal="Use OTTER with precision=invalid",
+        prompt_kind=prompt.kind, prompt_question=prompt.question,
+        candidate_actions=["run_otter"], continuation_action="run_otter",
+    )
+
+    events = machine._submit_option({
+        "resolution": "plan_workflow", "action": "run_otter", "answer": "Use OTTER",
+    })
+
+    assert len(events) == 1 and events[0].kind == "notice"
+    assert "parameter is invalid" in events[0].text
+    assert machine.state.pending_continuation is None
+    assert machine.state.pending_task is None
+    assert machine.state.next_prompt is prompt
 
 
 def _guidance_result(goal: str) -> dict:
@@ -294,6 +321,19 @@ def test_one_shot_ordinary_failure_returns_one():
     )
 
     assert result == 1
+
+
+def test_one_shot_failed_tool_result_returns_one():
+    conversation = importlib.import_module("netzoo_agent_core.cli.conversation")
+    task = "run the selected LIONESS-PUMA bundle"
+    failed = _workflow_result(task, status="failed")
+    failed["evaluation"] = {"status": "failed", "reason": "Tool failed."}
+    runtime = _fake_cli_runtime(invoke_error=[failed])
+
+    assert conversation.run_conversation(
+        SimpleNamespace(task=task, keep_session=False), runtime,
+    ) == 1
+    assert runtime.recorder.finish_run.call_args.args[1] == "failed"
 
 
 def test_interactive_ordinary_failure_can_continue():

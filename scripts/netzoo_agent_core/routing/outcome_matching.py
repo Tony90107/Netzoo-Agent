@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-import re
 
 from ..acquisition_intent import explicit_acquisition_request
 
@@ -664,16 +663,9 @@ def _match_semantic_request(
         for item in hypotheses
     ):
         return match_requested_outcome(hypotheses[0].outcome)
-    marker = re.search(
-        r"(?:CONFIRMED_OUTCOME_ACTION|PREVIOUS_ACTION)=(run_[a-z_]+)",
-        task,
-        flags=re.IGNORECASE,
-    )
-    if marker:
-        action = marker.group(1).casefold()
-        if action in OUTPUT_CAPABILITIES:
-            return CapabilityMatch(status="exact", match_basis="confirmed_context", matched_actions=[action])
-
+    # Continuations are authorized by the validated WorkflowContinuation state
+    # before this matcher runs. A marker inside task text (including a quoted
+    # log or conversation history) is not evidence of the requested outcome.
     declared_inputs = {
         artifact for hypothesis in hypotheses
         for artifact in hypothesis.outcome.input_artifacts

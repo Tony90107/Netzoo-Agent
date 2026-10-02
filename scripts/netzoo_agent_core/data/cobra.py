@@ -2,11 +2,41 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from .paths import _resolve_user_path
 
-__all__ = ["inspect_cobra_inputs_impl", "load_cobra_inputs"]
+__all__ = [
+    "cobra_artifact_paths",
+    "cobra_input_output_collisions",
+    "inspect_cobra_inputs_impl",
+    "load_cobra_inputs",
+]
+
+
+_COBRA_ARTIFACT_NAMES = (
+    "manifest.json",
+    "components.npz",
+    "summary.tsv",
+    "adjusted_coexpression.tsv",
+    "adjusted_coexpression.npz",
+)
+
+
+def cobra_artifact_paths(output_dir: str | Path) -> tuple[Path, ...]:
+    """Resolve every fixed output produced by the COBRA wrapper."""
+    root = _resolve_user_path(str(output_dir))
+    return tuple((root / name).resolve() for name in _COBRA_ARTIFACT_NAMES)
+
+
+def cobra_input_output_collisions(
+    expression_file: str, design_file: str, output_dir: str | Path,
+) -> tuple[Path, ...]:
+    """Find declared inputs that COBRA would overwrite with a fixed artifact."""
+    inputs = {_resolve_user_path(expression_file), _resolve_user_path(design_file)}
+    return tuple(path for path in cobra_artifact_paths(output_dir) if path in inputs)
 
 
 def _read_labeled_table(path: str, label: str) -> tuple[pd.DataFrame | None, list[str]]:

@@ -15,6 +15,7 @@ from ..llm import latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
 from .router_invocation import invoke_router
+from .planning_mapper import PlanningMapper
 
 __all__: list[str] = []
 
@@ -66,13 +67,17 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
 def plan_task(context: _GraphContext, state: AgentState) -> dict:
     user_task = str(state["messages"][-1].content)
     decision = TaskDecision.model_validate(state["decision"])
+    mapper = (
+        PlanningMapper(context.input_content_mapper, context, state)
+        if context.input_content_mapper is not None else None
+    )
     plan = build_workflow_plan(
         decision,
         user_task,
         profile=state.get("profile"),
         retrieved_episodes=state.get("retrieved_episodes", []),
         project_policy=state.get("project_policy"),
-        content_mapper=context.input_content_mapper,
+        content_mapper=mapper,
     )
     profile = UserProfile.model_validate(state.get("profile"))
     pending_preferences = context.profile_store.pending(
@@ -108,6 +113,8 @@ def plan_task(context: _GraphContext, state: AgentState) -> dict:
     return {
         "plan": plan.model_dump(),
         "decision": plan.decision,
+        "token_usage": mapper.usage.model_dump() if mapper is not None else state.get("token_usage", {}),
+        "budget_warnings": mapper.budget_warnings if mapper is not None else state.get("budget_warnings", []),
         "current_step": 0,
         "tool_results": [],
         "replan_count": 0,

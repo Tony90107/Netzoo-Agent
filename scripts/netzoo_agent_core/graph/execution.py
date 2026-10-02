@@ -9,7 +9,6 @@ from ..contracts import (
     EXECUTE_TOOLS,
     EvaluationResult,
     MAX_RECOVERY_ATTEMPTS,
-    TaskDecision,
     WorkflowPlan,
     _trace,
 )
@@ -21,6 +20,7 @@ from ..evaluation import (
 )
 from ..outcomes import supersede_triggering_failure
 from ..planning import render_plan
+from ..planning.step_decision import effective_step_decision
 from ..routing import execute_selected_tool, structure_tool_result
 from .context import _GraphContext, record_event
 
@@ -58,13 +58,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     plan = WorkflowPlan.model_validate(state["plan"])
     step_index = state.get("current_step", 0)
     step = plan.steps[step_index]
-    decision = TaskDecision.model_validate(plan.decision)
-    decision.action = step.action
-    decision.should_execute = True
-    decision.missing_inputs = []
-    for field_name, value in step.arguments.items():
-        if hasattr(decision, field_name):
-            setattr(decision, field_name, value)
+    decision = effective_step_decision(plan, step_index)
     _trace(
         "tool",
         f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",

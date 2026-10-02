@@ -24,7 +24,9 @@ from ..contracts import (
     WorkflowPlan,
 )
 from ..data.paths import condor_artifact_paths, resolved_output_collisions
+from ..data.cobra import cobra_input_output_collisions
 from ..policy import ProjectPolicyLoader
+from ..planning.step_decision import effective_step_decision
 from ..data.paths import _resolve_user_path
 from ..string_download import requested_network_kind, requested_species
 from .plan_rules import (
@@ -355,6 +357,21 @@ def evaluate_workflow_plan(
         )
     )
 
+    step_argument_errors = []
+    for index in range(len(plan.steps)):
+        try:
+            effective_step_decision(plan, index)
+        except (ValueError, TypeError) as error:
+            step_argument_errors.append(str(error))
+    rubric.append(PlanRubricItem(
+        criterion="step_argument_alignment",
+        result="fail" if step_argument_errors else "pass",
+        detail=(
+            "; ".join(step_argument_errors) if step_argument_errors
+            else "Every step uses the typed arguments reviewed in the plan."
+        ),
+    ))
+
     inputs = [
         getattr(decision, field_name, None)
         for field_name in INPUT_ROLE_FIELDS
@@ -419,6 +436,35 @@ def evaluate_workflow_plan(
                 else "All CONDOR artifacts stay beneath output_dir."
                 if condor_path_error is None
                 else condor_path_error
+            ),
+        )
+    )
+
+    cobra_collisions = (
+        cobra_input_output_collisions(
+            decision.expression_file, decision.design_file, decision.output_dir,
+        )
+        if action == "run_cobra"
+        and decision.expression_file
+        and decision.design_file
+        and decision.output_dir
+        else ()
+    )
+    rubric.append(
+        PlanRubricItem(
+            criterion="cobra_derived_output_safety",
+            required=action == "run_cobra",
+            result=(
+                "not_applicable" if action != "run_cobra"
+                else "fail" if cobra_collisions else "pass"
+            ),
+            detail=(
+                "This workflow does not derive COBRA output paths."
+                if action != "run_cobra"
+                else "COBRA output would overwrite an input: "
+                + ", ".join(map(str, cobra_collisions))
+                if cobra_collisions
+                else "All COBRA derived outputs are distinct from its inputs."
             ),
         )
     )
