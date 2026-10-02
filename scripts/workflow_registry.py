@@ -274,6 +274,12 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
         "values": {
             "constrained": "the network is large and memory or runtime is a concern",
         },
+        # Log 304: "genome-wide" or "genome-scale" alone states no compute limit.
+        "witness": (
+            r"\b(?:memory|RAM|runtime|run[- ]time|computational(?:ly)?|compute|CPU|GPU|HPC|"
+            r"time[- ]limit|laptop|faster|slow|speed)\b|(?:computational|compute|computing|limited)\s+resources?|"
+            r"記憶體|内存|運算資源|计算资源|運算量|计算量|執行時間|运行时间|速度|太慢"
+        ),
     },
     "tf_activity_vs_expression": {
         "question": (
@@ -286,6 +292,11 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
                 "versus repressing effects are needed"
             ),
         },
+        # Log 304: "regulatory strengths" states neither activity nor a sign.
+        "witness": (
+            r"\bactiv(?:e|ity|ities|ated|ation|ating)\b|\brepress|\binhibit|\bsigned\b|"
+            r"positive\s+(?:or|and|vs\.?|versus)\s+negative|活性|活躍|活跃|活化|抑制|正負|正负"
+        ),
     },
     "established_method": {
         "question": (
@@ -298,6 +309,16 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
                 "a base network for later per-sample analysis"
             ),
         },
+        # Log 304: the goal sentence of the 2026-10-02 lung request was quoted as
+        # stating this. "Standard" alone is not a method: "standard transcription
+        # factor motif binding sites".
+        "witness": (
+            r"\b(?:published|publications?|literature|established|benchmark(?:s|ed|ing)?|baseline|"
+            r"comparab(?:le|ility)|widely[- ]used|well[- ]known|reproduc(?:e|ible|ibility)|"
+            r"standard\s+(?:published\s+)?(?:method|approach|workflow|pipeline|tool)s?|"
+            r"previous\s+(?:studies|work|papers)|LIONESS|base\s+network)\b|"
+            r"文獻|已發表|發表過|基準|標準方法|标准方法|常用方法|廣泛使用|广泛使用|可比較|可比较|重現|重现"
+        ),
     },
     # Log 200: divergent readings of one request, not a method tie. "Each
     # patient's regulatory wiring ... per-TF regulatory strength" reads both

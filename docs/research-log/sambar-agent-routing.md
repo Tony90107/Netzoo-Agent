@@ -15455,3 +15455,123 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 修正：改回 `user_task`，並新增 `test_the_evidence_words_may_sit_outside_the_quote`（錄下的引用＋功能性描述的請求）。
   - 這個測試在被改窄的那一行上失敗，改回後通過。
 - 其餘 II 檔案逐一與原型比對，除了已撤回的 II-A，沒有其他差異。
+
+## Log 304｜事前宣告：CR——三條推薦條件也要在請求中找得到證據字詞（CR1）
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「修條件推薦那個問題」。
+本條目寫於 CR1 的任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/condition-witness-2026-10-02/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+兩臂都含 `e8e08f8`：II-B 已改回看整個請求（Log 303 補充）。
+
+**背景（Log 303 的新發現）：**
+- MS1 擋下 discriminator 的錯選後，`ms-lung-generic` 2／3 次輪到條件推薦執行。
+- 它以整句目標「We want to estimate genome-wide regulatory strengths, capturing both …」主張 `established_method:yes`，回覆「PANDA fits better: results must be comparable with the widely published approach …」。
+- 請求從未說要與已發表方法比較，也沒有說要當 LIONESS 的 base。
+- 原有檢查只要求引用逐字存在；只有 II-B 的 `regulator_class` 宣告了證據字詞。
+
+**CR1（只改 `workflow_registry.SELECTION_AXES` 的資料）：**
+- 為區分 PANDA／OTTER／GIRAFFE 的三條軸宣告 `witness`，沿用 II-B 的既有程式：證據字詞在整個請求中找。
+  - `established_method`（→ PANDA）：published、literature、established、benchmark、baseline、comparable、widely used、well-known、reproduce…、standard method/approach/workflow/pipeline/tool、previous studies、LIONESS、base network，以及中文的文獻、已發表、基準、標準方法、常用方法、廣泛使用、可比較、重現。
+    - 單獨的「standard」不算：使用者原句是「standard transcription factor motif binding sites」。
+  - `compute_constraints`（→ OTTER）：memory、RAM、runtime、computational、compute、CPU、GPU、HPC、time limit、laptop、faster、slow、speed、computational/limited resources，以及中文的記憶體、運算資源、運算量、執行時間、速度、太慢。
+    - 單獨的 genome-wide／genome-scale／large 不算。
+  - `tf_activity_vs_expression`（→ GIRAFFE）：active／activity／activation…、repress…、inhibit…、signed、positive or negative，以及中文的活性、活躍、活化、抑制、正負。
+- 其餘軸（cohort_size、per_edge_confidence、covariates、per_sample_quantity）沒有觀察到錯誤，不改。
+- 不是模型可見的改動：條件推薦的訊息只用 condition 與 label，witness 不會進入 prompt；指紋應不變。
+
+**離線證據（實作前以原型算出）：**
+- 記錄中所有被接受的條件推薦：115 次，19 種不同 payload。在目前程式上重播，CR1 只改變 `ms-lung-generic` 的 2 次（established_method → 無推薦）。
+  - 另有 3 種（gg-modules-within-each-patient 7 次、case4-en 2 次）在目前程式上已經不同，都是 II-B 有意拒絕的 miRNA 主張，與 CR1 無關。
+- t1-panda、t1-otter、t1-giraffe 都含各自的證據字詞，推薦不變；`mirna-degradation-en` 在改回後的 II-B 下照舊推薦。
+- 4 個正例請求都不含三條軸的任何證據字詞。blind_en 中只有 case1-en（active）與 case2-en（ran out of memory）命中，都是正當的條件。
+
+**標靶語料（8 題）：**
+- 正例 4 題，都沒有說出條件：
+  - `ms-lung-generic`、`ms-generic-communication`、`ms-generic-strengths`。
+  - `cr-generic-standard`：「standard motif and PPI priors」「genome-scale」兩個陷阱字。
+- 對照 4 題：t1-panda、t1-otter、t1-giraffe（Log 168 的字句），以及 `mirna-degradation-en`（與原語料同一字句）。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝CR1；baseline＝CR1 之前的工作目錄副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（8 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件（任一不成立即撤回 CR1）：**
+- 離線（live 之前）：
+  - 全套件通過、指紋不變。
+  - 以實際程式重做 115 次重播，結果與原型相同。
+  - 單元測試涵蓋三個正例字句與三條對照。
+- 有效性：兩臂 provider 錯誤皆為 0。baseline 正例中帶 CR 條件推薦的次數只用於說明 live 是否看得到效益；若為 0，效益以離線為準。
+- 效益：candidate 12 個正例 trial 中帶三條軸任一條件的推薦＝0。
+- 對照：t1-panda→PANDA（established_method）、t1-otter→OTTER（compute_constraints）、t1-giraffe→GIRAFFE（tf_activity_vs_expression）、mirna-degradation-en→PUMA（regulator_class），各自 ≥ baseline − 1。
+- blind：candidate blind-en 最終 WRONG ≤ baseline＋3。
+
+**Log 304 補充（實作後、live 前寫；門檻不變）：離線條件成立。**
+- 全套件 3071 passed／35 skipped；指紋不變（legacy `e920bf3b5d57`、claims `743b2dd0d73a`）。
+- 條件推薦的訊息與 schema 在兩臂逐字相同（三組候選合計 sha256 前 12 碼 `dd5f012d0be4`）：witness 不進入 prompt。
+- 三條 witness 與原型逐字相同。115 次重播（`condition-witness-2026-10-02/replay_recommendations.py`）只改變宣告的 `ms-lung-generic` 2 次，另外 3 種是 II-B 既有的拒絕，與原型相同。
+- 新增 `tests/test_condition_witnesses.py`（20 個）：
+  - 錄下的 lung 主張被拒絕。
+  - 4 個正例字句 × 3 條軸都被拒絕。
+  - 7 個說出條件的字句（t1 三題、case 2 的「ran out of memory」、三句中文）照常推薦。
+  - 同一檔案在 baseline 程式上：13 個拒絕測試失敗、7 個推薦測試通過。
+
+## Log 305｜結果：CR——CR1 全部門檻成立，保留；同類漏洞還在第一次判讀的標籤與推薦的 preference 路徑
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 304（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/condition-witness-2026-10-02/`：
+- 報告 `live-cr-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`replay_recommendations.py`、`render_replies.py`。
+
+**執行：**
+- 3 個時段（14:39、14:41、14:43），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後兩臂 `scripts/` 只差 `workflow_registry.py`（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。每臂 54 個 trial。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3071 passed／35 skipped；指紋與條件推薦 prompt 不變；115 次重播只改變宣告的 2 次 | 成立 |
+| 有效性 | 兩臂 provider 錯誤 0；baseline 正例帶 CR 條件推薦 2 次，live 看得到效益 | 有效 |
+| 效益 | candidate 12 個正例 trial 中帶 CR 條件的推薦：0 | 成立 |
+| 對照 t1-panda | PANDA（established_method）：candidate 3，baseline 2 | 成立 |
+| 對照 t1-otter | OTTER（compute_constraints）：candidate 0，baseline 0 | 成立（門檻是 ≥ baseline − 1；見下） |
+| 對照 t1-giraffe | GIRAFFE（tf_activity_vs_expression）：candidate 3，baseline 1 | 成立 |
+| 對照 mirna-degradation-en | PUMA（regulator_class）：candidate 3，baseline 3 | 成立 |
+| blind | 最終 WRONG：candidate 0，baseline 0 | 成立 |
+
+**逐題：**
+- baseline 的 2 次無根據推薦：
+  - `ms-lung-generic` s2：established_method → PANDA。
+  - `ms-generic-communication` s3：tf_activity_vs_expression → GIRAFFE。
+  - candidate 兩者都沒有。
+- `ms-lung-generic` candidate 3 次都是平手，不附推薦。s1 的回覆（`render_replies.py`）列出 PANDA／OTTER／GIRAFFE 的方法前提，接著「(1) memory or runtime a concern? (yes → OTTER) (2) activity differs from expression, or activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.」
+- `mirna-degradation-en` 兩臂 3／3 都以引用「Do you have a tool specifically for this class of molecules?」推薦 PUMA：改回整個請求的 II-B（`e8e08f8`）在 live 照常運作。
+
+**t1-otter：CR1 以外的既有漏洞（沒有任何一臂推薦 OTTER）。**
+- candidate 3／3 是 exact PANDA，baseline 3／3 是無推薦的平手。
+- 不是 CR1 造成的：
+  - CR1 只會拒絕條件主張，不會產生 exact。
+  - 兩臂第一次呼叫的訊息逐字相同（sha256 前 10 碼 `59e6fb1eae`）。
+- candidate 三次都是第一次判讀的 `SemanticPatch` 加上 `lioness_base_compatibility`，引用「The real network will be very large, so memory and runtime are a concern.」，registry 的 tag 比對直接選 PANDA；discriminator 沒有執行。
+- MS1 的證據字詞表只用在 discriminator，所以沒有擋。
+- 更正 Log 302 的說法：
+  - 當時「第一次判讀用方法標籤決定平手的只有 gran-tf-agg-relaxed-en」是從 `SemanticInterpretation` 一個呼叫算的，漏了 patch 與 repair 加上的標籤。
+  - 以最終 decision 的 evidence 重算記錄中所有非 discriminator 的 exact `registry_features`：
+    - 130 次中 129 次的引用符合字詞表。
+    - 1 次不符（gran-tf-agg-relaxed-en，引用「one cohort-wide TF-to-gene regulatory network」，碰巧正確）。
+    - 加上本輪的 3 次 t1-otter。
+- baseline 的 t1-otter 也沒有推薦 OTTER：一次條件主張的引用「the network is large and memory or runtime are a concern」不在請求中（quote_not_in_request），其餘沒有主張。
+
+**`ms-generic-communication` candidate s1：推薦的 preference 路徑。**
+- 推薦 PUMA，conditions 為空。
+- `MethodComparisonReview` 的 preference 是 run_puma，tags 為 message_passing、mirna_regulation，引用是整句目標。
+- `_recommend_from_preference` 只檢查引用存在、tags 屬於該 workflow。這次沒有任何條件主張，CR1 不會作用，屬既有漏洞。
+
+**判定：** 保留 CR1。
+
+**後續（需另外宣告）：**
+- 同一條規則（標籤或條件要由請求說出）還缺兩處：
+  1. 第一次判讀／patch 的方法標籤：在 registry tag 比對時套用 `SELECTION_TAG_WITNESSES`。
+  2. 推薦的 preference：tags 中的方法標籤要由其引用說出；`mirna_regulation` 可沿用 regulator_class 的字詞。
+- 效益門檻可用本輪 t1-otter 的 3 次錄音與上述 preference 錄音重播；不擴散門檻用記錄中的 130 次 exact。
