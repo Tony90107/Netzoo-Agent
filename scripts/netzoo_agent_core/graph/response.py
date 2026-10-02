@@ -38,6 +38,7 @@ from ..interpretation.hypothesis_routes import render_hypothesis_routes
 from ..interpretation.research_choices import render_research_choices
 from ..interpretation.scientific_guidance import render_scientific_guidance
 from ..interpretation.input_alternatives import with_input_alternative_reply
+from ..interpretation.outside_steps import with_outside_steps_reply
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..presentation import strip_cli_owned_guidance_tail
@@ -78,7 +79,8 @@ def _reply(content: str, kind: str) -> dict:
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
     result = _respond(context, state)
-    return with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
+    result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
+    return with_outside_steps_reply(result, state, _reply)
 
 
 def _respond(context: _GraphContext, state: AgentState) -> dict:
@@ -180,7 +182,7 @@ def _respond(context: _GraphContext, state: AgentState) -> dict:
     composition_guidance = render_workflow_composition_guidance(
         decision,
         context.project_policy,
-        state.get("semantic_goal"),
+        state.get("semantic_goal"), task=task,
     )
     if composition_guidance is not None:
         return _reply(composition_guidance, "composition")

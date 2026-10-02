@@ -19,6 +19,7 @@ from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
 from .method_philosophy import method_philosophies_for, question_fit_for
+from .practical_notes import practical_notes
 from .request_parameters import extract_explicit_request_parameters, render_request_parameters
 
 
@@ -227,6 +228,7 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                             for field in group
                         )
                     )
+            lines.extend(practical_notes(action))
             # Only a control whose registry tags meet the request's tags, or that a
             # quoted concern points to (Log 223), is matched to it; the rest are
             # declared but not claimed as relevant (Log 221).
@@ -329,6 +331,7 @@ def _render_compact(lines, decision, selected, workflows, facts, concerns) -> No
             if group:
                 lines.append("Required alternative (provide one):\n\n" + "\n".join(
                     f"- `{f}`: {labels.get(f, f.replace('_', ' '))}" for f in group))
+        lines.extend(practical_notes(action))
         artifacts = capability["produced_artifacts"] or [capability["artifact_type"]]
         lines.append("Outputs:\n\n" + "\n".join(
             f"- `{a}`: {facts['artifact_definitions'][a]}." for a in sorted(artifacts)))

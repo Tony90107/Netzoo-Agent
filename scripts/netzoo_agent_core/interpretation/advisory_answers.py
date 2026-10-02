@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 
 from workflow_registry import (
@@ -17,6 +18,19 @@ from .tie_guidance import _inputs, concern_section, concern_section_for_workflow
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..routing.capability_compatibility import _supported_artifacts
+
+
+_GLOBAL_OPTIMUM_CLAIM = re.compile(r"\bconvex|global(?:ly)?[- ]optim|global\s+(?:minimum|optimum|solution)", re.I)
+
+
+def _without_global_optimum_claims(rationale: str) -> str:
+    """The model's rationale without sentences claiming a convex or global optimum (Log 320).
+
+    No registered workflow has that guarantee (OUTSIDE_STEPS "convex_guarantee");
+    Test 9's rationale said OTTER "guarantees a globally optimal solution".
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", rationale.strip())
+    return " ".join(item for item in sentences if item and not _GLOBAL_OPTIMUM_CLAIM.search(item))
 
 
 def _condition_label(condition: str) -> str:
@@ -121,8 +135,8 @@ def render_advisory_recommendation(
         decision.requested_outcome, spec.workflow, spec.output_capability, mechanism=False,
     )
     lines = [lead]
-    if recommendation.conditions and recommendation.rationale:
-        lines.append("Why it addresses this question: " + recommendation.rationale)
+    if recommendation.conditions and (rationale := _without_global_optimum_claims(recommendation.rationale)):
+        lines.append("Why it addresses this question: " + rationale)
     if fit:
         lines.append(fit)
     listed = [a for a in dict.fromkeys([recommendation.action, *decision.hypothesis_actions]) if a in policy.workflows]
