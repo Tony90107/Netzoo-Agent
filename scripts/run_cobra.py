@@ -12,7 +12,10 @@ import numpy as np
 import pandas as pd
 
 from netZooPy.cobra import cobra
-from netzoo_agent_core.data.cobra import load_cobra_inputs
+from netzoo_agent_core.data.cobra import (
+    cobra_input_output_collisions,
+    load_cobra_inputs,
+)
 from netzoo_agent_core.data.coexpression import (
     adjusted_coexpression_from_cobra,
     write_adjusted_coexpression,
@@ -29,6 +32,11 @@ def main() -> int:
     parser.add_argument("-d", "--design", required=True)
     parser.add_argument("-o", "--output-dir", required=True)
     args = parser.parse_args()
+    collisions = cobra_input_output_collisions(args.expression, args.design, args.output_dir)
+    if collisions:
+        raise ValueError(
+            "COBRA output would overwrite an input: " + ", ".join(map(str, collisions))
+        )
     expression, design = load_cobra_inputs(args.expression, args.design)
     if "intercept" not in design.columns:
         design.insert(0, "intercept", 1.0)

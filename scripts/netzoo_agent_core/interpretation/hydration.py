@@ -18,6 +18,7 @@ from .extraction import (
 from .outcome_consistency import select_primary_hypothesis
 from .request_parameters import (
     extract_explicit_request_parameters,
+    extract_explicit_workflow_controls,
 )
 
 __all__: list[str] = []
@@ -69,6 +70,7 @@ def hydrate_router_decision(
         for field_name, value in explicit_parameters.items()
         if field_name in PARAMETER_FIELDS
     }
+    parameter_updates.update(extract_explicit_workflow_controls(task, decision.action))
     if parameter_updates:
         decision = TaskDecision.model_validate({
             **decision.model_dump(),

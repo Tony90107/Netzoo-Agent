@@ -23,7 +23,11 @@ from .data.inspection import (
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
-from .data.cobra import inspect_cobra_inputs_impl
+from .data.cobra import (
+    cobra_artifact_paths,
+    cobra_input_output_collisions,
+    inspect_cobra_inputs_impl,
+)
 from .data.sambar import inspect_sambar_inputs_impl
 from .data.dragon import (
     DRAGON_OUTPUT_FORMATS,
@@ -525,6 +529,13 @@ def run_condor(
 @tool
 def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
     """Run covariate-aware COBRA co-expression decomposition."""
+    collisions = cobra_input_output_collisions(expression_file, design_file, output_dir)
+    if collisions:
+        return (
+            "COBRA input validation failed; no command was executed.\n"
+            "- error: output would overwrite an input: "
+            + ", ".join(map(str, collisions))
+        )
     validation_report, inputs_ok = inspect_cobra_inputs_impl(expression_file, design_file)
     if not inputs_ok:
         return "COBRA input validation failed; no command was executed.\n\n" + validation_report
@@ -532,13 +543,7 @@ def run_cobra(expression_file: str, design_file: str, output_dir: str) -> str:
     command = ["run-cobra", "-e", expression_file, "-d", design_file, "-o", str(output_path)]
     return validation_report + "\n\n" + _run_command(
         command,
-        additional_output_files=[
-            str(output_path / "manifest.json"),
-            str(output_path / "components.npz"),
-            str(output_path / "summary.tsv"),
-            str(output_path / "adjusted_coexpression.tsv"),
-            str(output_path / "adjusted_coexpression.npz"),
-        ],
+        additional_output_files=[str(path) for path in cobra_artifact_paths(output_path)],
     )
 
 

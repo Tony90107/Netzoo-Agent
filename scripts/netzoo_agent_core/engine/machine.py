@@ -479,9 +479,16 @@ class ConversationMachine:
             task = resolve_next_turn_input(state.next_prompt, decision, option["answer"])
             if not task:
                 return [_notice("That option no longer matches this conversation. Describe what you want instead.")]
-            state.pending_continuation = build_workflow_continuation(
-                state.next_prompt, state.follow_up_context, decision, task
-            )
+            try:
+                state.pending_continuation = build_workflow_continuation(
+                    state.next_prompt, state.follow_up_context, decision, task
+                )
+            except ValueError:
+                state.pending_continuation = None
+                return [_notice(
+                    "A previously supplied workflow parameter is invalid. "
+                    "Restate the workflow request with corrected inputs and controls."
+                )]
             state.reply_card = None
             return self._accept_task(task)
         task = follow_up_task(state.follow_up_context, option["answer"])
@@ -585,9 +592,16 @@ class ConversationMachine:
                     "requested input path, or describe another NetZoo goal."
                 )
             ]
-        state.pending_continuation = build_workflow_continuation(
-            state.next_prompt, state.follow_up_context, resolution, task
-        )
+        try:
+            state.pending_continuation = build_workflow_continuation(
+                state.next_prompt, state.follow_up_context, resolution, task
+            )
+        except ValueError:
+            state.pending_continuation = None
+            return [_notice(
+                "A previously supplied workflow parameter is invalid. "
+                "Restate the workflow request with corrected inputs and controls."
+            )]
         return self._accept_task(task)
 
     def _finish_interaction_run(self, interaction_status: str) -> None:
@@ -813,7 +827,7 @@ class ConversationMachine:
             ):
                 delete_session(state.session_id)
                 _trace("done", "Removed the successful ephemeral session checkpoint")
-            self.stop(0)
+            self.stop(1 if terminal_status == "failed" else 0)
         return events
 
     def _remember_turn(self, result: dict, task: str = "") -> None:

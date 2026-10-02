@@ -114,7 +114,8 @@ def _path_candidates(task: str, nearby: Path) -> list[Path]:
 
 def _preview(path: Path) -> str:
     try:
-        data = path.read_bytes()[:_MAX_PREVIEW_CHARS]
+        with path.open("rb") as source:
+            data = source.read(_MAX_PREVIEW_CHARS)
     except OSError as error:
         return f"<unreadable: {type(error).__name__}>"
     return data.decode("utf-8", errors="replace").replace("\x00", " ").strip()

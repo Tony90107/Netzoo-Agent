@@ -73,6 +73,7 @@ class SessionHandle:
     active_view: Envelope | None = None
     last_activity: float = field(default_factory=time.monotonic)
     stopped: bool = False
+    turn_running: bool = False
     pid: int | None = None
 
     def snapshot(self, since: int) -> list[Envelope]:
@@ -294,6 +295,10 @@ class SessionSupervisor:
             payload.setdefault("occurred_at", datetime.now(timezone.utc).isoformat())
         envelope = envelope.model_copy(update={"seq": handle.seq, "payload": payload})
         refresh_prompt = False
+        if envelope.type == "turn_started":
+            handle.turn_running = True
+        elif envelope.type in {"turn_finished", "stopped"}:
+            handle.turn_running = False
         if envelope.type == "view":
             handle.active_prompt_seq = envelope.seq
             handle.pending_prompt_seq = None
@@ -316,6 +321,7 @@ class SessionSupervisor:
 
     def _mark_stopped(self, handle: SessionHandle) -> None:
         handle.stopped = True
+        handle.turn_running = False
         for subscriber in list(handle.subscribers):
             subscriber.put_nowait(None)
 
@@ -324,7 +330,9 @@ class SessionSupervisor:
             await asyncio.sleep(60)
             deadline = time.monotonic() - self._idle_timeout
             for session_id, handle in list(self._sessions.items()):
-                if handle.last_activity < deadline:
+                if handle.last_activity < deadline and not (
+                    handle.turn_running and handle.process.is_alive()
+                ):
                     await self.close(session_id)
                 elif (handle.stopped or not handle.process.is_alive()) and not handle.subscribers:
                     # Finished sessions stay addressable while a client is
