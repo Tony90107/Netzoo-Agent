@@ -184,7 +184,7 @@ def recommend_from_claims(
             rejected.append({"condition": claim.condition, "reason": "not_offered"})
         elif not _quote_grounded(user_task, claim.text_span):
             rejected.append({"condition": claim.condition, "reason": "quote_not_in_request"})
-        elif (witness := SELECTION_AXES[option.axis].get("witness")) and not re.search(witness, claim.text_span, re.I):
+        elif (witness := SELECTION_AXES[option.axis].get("witness")) and not re.search(witness, user_task, re.I):
             # Log 300: a verbatim quote proves the words occurred, not that they
             # state this condition; an axis with a witness needs it in the request.
             rejected.append({"condition": claim.condition, "reason": "condition_not_in_request"})

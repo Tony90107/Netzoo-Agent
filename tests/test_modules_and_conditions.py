@@ -77,6 +77,30 @@ def test_a_request_describing_the_molecules_keeps_the_condition(task):
     assert recommendation is not None and recommendation.action == "run_lioness_puma"
 
 
+MIRNA_DEGRADATION = (
+    "We found a set of genes heavily suppressed in the cells, but this isn't because upstream "
+    "regulatory proteins failed to bind. Instead, another type of 'short non-coding molecule' "
+    "directly degraded the products post-transcription. Do you have a tool specifically for "
+    "this class of molecules?"
+)
+
+
+def test_the_evidence_words_may_sit_outside_the_quote():
+    """Log 269 / Log 300: a functional description elsewhere in the request states the class.
+
+    The recorded quote of mirna-degradation-en names no molecule; the request
+    around it does. Checking only the quote rejected it (restored after Log 303).
+    """
+    quote = "Do you have a tool specifically for this class of molecules?"
+    claims = SelectionConditionClaims(claims=[ConditionClaim(condition="regulator_class:mirna", text_span=quote)])
+    candidates = ["run_lioness_panda", "run_lioness_puma"]
+    recommendation, rejected = recommend_from_claims(
+        MIRNA_DEGRADATION, claims, condition_options(candidates), candidates,
+    )
+    assert recommendation is not None and recommendation.action == "run_lioness_puma"
+    assert rejected == []
+
+
 def test_the_recorded_modules_tie_no_longer_recommends_lioness_puma(monkeypatch):
     # With II-C the first pass is already the community gap; either way no
     # LIONESS-PUMA recommendation rests on an unstated miRNA premise.
