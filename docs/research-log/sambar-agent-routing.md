@@ -16180,3 +16180,52 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 只有數字的 trap-individual-coexpression（50）、cs-count-tumours（60）、cs-count-cohort（200）三題，兩臂都 3／3 推薦 BONOBO。
 - 這些推薦來自 preference 路徑，conditions 為空。理由是「BONOBO is designed to infer sample-specific gene-gene co-expression networks」，對 LIONESS-COEXPRESSION 同樣成立；請求沒有說出 Bayesian、p-value 或樣本很少。
 - 這是 Log 307 記下的「preference 路徑缺少見證」，這次以 BONOBO 的形式出現。
+
+## Log 317｜顯示修正：方法選項從使用者的角度說明——得到什麼、和其他選項差在哪、什麼時候選
+
+日期／時區：2026-10-03，Asia/Taipei。使用者看了 Test 1（肺癌）實測的方法卡片後回饋：選項下方的文字「只是單純在敘述這個 method 在幹嘛」，沒有針對使用者的問題分析，也沒說用它有什麼好處、為什麼選它。要求改成更貼近使用者的角度。
+只改回覆卡片，不改路由、不改 prompt、不改全文（指紋不變）。
+
+**問題：**
+- 方法選項的第一段是 `method_notes._HIGHLIGHTS`，每個請求都一樣，講的是機制，例如 PANDA「Widely used baseline: message passing over motif, PPI and co-expression evidence」、LIONESS-PANDA「derived leave-one-out from the cohort」。
+- Test 1 的請求有兩件事卡片完全沒回應：
+  - 沒說要整群一張還是每個樣本一張網路，而 LIONESS-PANDA 和其他三個的差別正是這個。
+  - 使用者明說要考慮「TFs that cooperate in complexes」，四個方法都透過 PPI 網路處理，卡片沒提。
+- OTTER 的 highlight 寫「with a convergence check」，與 registry 自己的 netZooPy 註記（`REQUEST_CONCERNS["run_otter"]`：固定跑 `iterations` 步、沒有收斂檢定）矛盾。
+
+**修正（`reply_cards/method_notes.py`、新模組 `reply_cards/option_reasons.py`、`choices.py`、`builder.py`）：**
+- 方法選項的順序改為：得到什麼 → 和請求的差異（既有 fit notes）→ 每樣本網路能做什麼與代價 → 「Pick it if …」（既有的區分條件，原本寫作「Best if」）→ 「Also needs …」。
+- 「得到什麼」用新表 `_GIVES`，以使用者的話寫出結果與尺度，例如「One TF-gene network across all your samples」、「One TF-gene network per sample, plus the cohort network」。機制留在 workflow 卡片的「Method:」與全文。
+- 和前面某個選項的 registry 輸出完全相同時（artifact、產出、尺度、regulator），不重複那句，改說「The same kind of network as PANDA, from a different algorithm」。目前只有 PANDA／OTTER。
+- 每樣本選項旁邊有只給整群結果的選項、且請求不是明確要整群時，才加「Lets you compare samples, or relate them to outcomes such as survival」與「Slower: it reruns PANDA once per sample」。前者出自 DOWNSTREAM_ANALYSES 的 LIONESS 註記，後者出自 LIONESS 的定義（每個樣本都要重跑一次 base method）。代價一定和用途一起出現，不會單獨出現。
+- 說明長度上限 170 → 200（終端機約三行）。超過時依優先順序保留：推薦理由、得到什麼、不符之處、缺的輸入、什麼時候選、符合之處、每樣本用途。顯示順序不變。
+- 卡片要點（每張最多 6 點）：
+  - 請求的尺度沒有被判讀出來，且選項有的每樣本、有的整群時，加一點「Scale differs too: only LIONESS-PANDA gives one network per sample; PANDA, OTTER and GIRAFFE give one across all samples.」。
+    - 第一版寫「Your request does not say whether…」。重播時發現「For each individual in my study I want their own … network」的舊錄製決策也沒判讀出尺度，這句就成了錯誤陳述，所以改成只陳述選項本身的 registry 事實。
+  - 每個選項都需要 PPI，而且請求提到 TF 合作或複合體（`_COOPERATION`：cooperat、complexes、TF／protein complex；單獨的「complex」不算，例如「complex disease」）時，加一點「As for TFs that cooperate in complexes, all four model this through the PPI network.」。只決定要不要說這一句，不影響排序或推薦。
+  - 點數超過 6 時，先省略「Picking an option explains it…」。
+- Scale 澄清題：答案已經寫了尺度，所以每樣本的答案改說用途與代價，整群的答案不再重複尺度。其他澄清題原本用 highlight 的地方，改用 `_GIVES`。
+- 組合卡片（每樣本對整群）的兩個答案也改成用途與代價：「A single PANDA run, so faster · It will not show how samples differ」。
+- GIRAFFE 在每樣本請求下的不符說明原本是「Gives one cohort-level result, not one per sample」，旁邊又寫「each TF's activity in each sample」，讀起來互相矛盾。網路類結果改為「Its network covers the whole cohort, not one per sample」。
+- OTTER 的 highlight 改為「Explicit objective (graph matching), fitted by a fixed number of gradient steps; lighter on memory」。
+
+**Test 1 卡片（同一份錄製決策 `scale-unit-2026-10-02/live-sw-cand-s1-targeted` t1-en，修正前→後）：**
+- PANDA：「Widely used baseline: message passing over motif, PPI and co-expression evidence · Best if you want the standard published method or a base for LIONESS」→「One TF-gene network across all your samples · Pick it if you want the standard published method or a base for LIONESS」。
+- LIONESS-PANDA：「One TF-gene network per sample, derived leave-one-out from the cohort」→「One TF-gene network per sample, plus the cohort network · Lets you compare samples, or relate them to outcomes such as survival · Slower: it reruns PANDA once per sample」。
+- OTTER：「Explicit objective (graph matching) with a convergence check; lighter on memory · Best if memory or runtime is a concern」→「The same kind of network as PANDA, from a different algorithm · Pick it if memory or runtime is a concern」。
+- GIRAFFE：「Also estimates per-sample TF activity and signed activating/repressing effects · Best if …」→「One signed TF-gene network (activating or repressing), plus each TF's activity in each sample · Pick it if TF activity may differ from its mRNA level」。
+- 要點多了尺度與 TF 複合體兩點。
+
+**重播（`test12-2026-10-02/replay_cards.py`，3139 種 prompt＋decision，HEAD `790001f` 對新程式）：**
+- 全文、標題、選項順序：0 變化。錯誤 2 個，兩邊相同（既有的超過 8 個選項）。
+- 選項說明 652 處、要點 236 處有變化：
+  - 174 處是 workflow 卡片的 OTTER「Method:」那一句。
+  - 尺度那一點出現 42 次，全部是 PANDA 家族同時有 LIONESS 與整群選項的平手。
+  - TF 複合體那一點出現 27 次，請求都寫了 cooperate、cooperativity 或 TF complexes。
+- 說明最長 197 字元。
+
+**測試：** 全套件 3114 passed／35 skipped。更新 2 個釘住舊字串的測試（「Best if」、cohort-level 不符說明），新增 7 個：每個 workflow 都有 `_GIVES`、且不含機制字詞；Test 1 四個選項的文字；Test 1 卡片的兩個要點；沒提到合作或只寫「complex disease」時不加；整群請求不加每樣本用途；超過長度時保留「Pick it if」，且代價不會單獨出現；Scale 答案說明用途。
+
+**觀察到、未處理：**
+- preference 路徑的推薦理由會直接顯示模型寫的 rationale，例如「Fits what you said: BONOBO is designed to infer sample-specific gene-gene co-expression networks…」。這同樣是在描述方法、不是使用者說了什麼，是 Log 307／316 記下的「preference 路徑缺少見證」。
+- 方法卡片的標題仍寫「they differ in their modeling assumptions」：planner 判斷差異維度時，LIONESS-PANDA 也算有整群結果，所以不是 scale。尺度差異現在由上面的要點說明。

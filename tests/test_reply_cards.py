@@ -32,6 +32,7 @@ from netzoo_agent_core.reply_cards.choices import (  # noqa: E402
 from netzoo_agent_core.reply_cards.method_notes import (  # noqa: E402
     condition_phrase,
     fit_notes,
+    gives,
     highlight,
 )
 from netzoo_agent_core.routing.clarification_planner import plan_clarification  # noqa: E402
@@ -86,6 +87,15 @@ def test_every_run_workflow_has_a_short_highlight():
         assert len(text) <= 100, (action, len(text))
 
 
+def test_every_run_workflow_says_what_it_gives_in_the_users_terms():
+    for action in OUTPUT_CAPABILITIES:
+        text = gives(action)
+        assert text, action
+        assert len(text) <= 100, (action, len(text))
+        # The mechanism belongs to the method line and the full reply.
+        assert not any(word in text for word in ("message passing", "leave-one-out", "Bayesian")), action
+
+
 def test_every_registered_condition_has_a_short_phrase():
     declared = {condition for cap in OUTPUT_CAPABILITIES.values() for condition in cap.prefer_when}
     offered = {f"{axis}:{value}" for axis, spec in SELECTION_AXES.items() for value in spec["values"]}
@@ -103,7 +113,7 @@ def test_fit_notes_read_typed_dimensions_only():
     matches, mismatches = fit_notes("run_panda", outcome)
     assert matches == []
     assert "models TF only, not miRNA" in mismatches
-    assert "gives one cohort-level result, not one per sample" in mismatches
+    assert "its network covers the whole cohort, not one per sample" in mismatches
 
 
 # -- method ties --------------------------------------------------------------
@@ -118,9 +128,9 @@ def test_a_tie_without_stated_facts_marks_nothing_recommended():
     assert [option.action for option in choices.options] == TIE
     assert not any(option.recommended or option.badge for option in choices.options)
     assert all(option.resolution == "confirm_workflow" for option in choices.options)
-    assert all(len(option.description) <= 170 for option in choices.options)
+    assert all(len(option.description) <= 200 for option in choices.options)
     assert choices.options[1].answer == "Use OTTER"
-    assert "Best if memory or runtime is a concern" in choices.options[1].description
+    assert "Pick it if memory or runtime is a concern" in choices.options[1].description
 
 
 def test_a_grounded_recommendation_comes_first_and_says_why_in_registry_words():
@@ -455,3 +465,84 @@ def test_a_stated_regulator_role_is_not_offered_a_network_without_regulators():
     text, kind, card = respond_and_card(task, made)
     assert "What your data allows" not in text and not (card.choices and card.choices.header == "Inputs")
     assert "Not mentioned in your request: motif prior and PPI network." in card.points
+
+
+# -- option lines from the user's side (2026-10-02 feedback on Test 1) -------------
+
+def test_lung_options_say_what_each_gives_and_how_it_differs_not_how_it_works():
+    choices = method_choices(_lung_tie(), POLICY, task=LUNG)
+    lines = {POLICY.workflows[option.action].workflow: option.description for option in choices.options}
+    assert lines["PANDA"].startswith("One TF-gene network across all your samples · Pick it if you want the standard")
+    assert lines["LIONESS-PANDA"] == ("One TF-gene network per sample, plus the cohort network · Lets you compare "
+                                      "samples, or relate them to outcomes such as survival · Slower: it reruns "
+                                      "PANDA once per sample")
+    assert lines["OTTER"] == ("The same kind of network as PANDA, from a different algorithm · "
+                              "Pick it if memory or runtime is a concern")
+    assert lines["GIRAFFE"].startswith("One signed TF-gene network (activating or repressing), plus each TF's activity")
+    assert not any(word in line for line in lines.values()
+                   for word in ("message passing", "leave-one-out", "convergence check"))
+
+
+def _asking(made):
+    return made.model_copy(update={"clarification_question": "Which modeling assumption best matches your experiment?"})
+
+
+def test_lung_card_says_once_what_separates_and_what_all_options_share():
+    text, kind, card = respond_and_card(LUNG, _asking(_lung_tie()))
+    assert card.kind == "method_choice"
+    assert ("Scale differs too: only LIONESS-PANDA gives one network per sample; PANDA, OTTER and GIRAFFE give "
+            "one across all samples.") in card.points
+    assert "As for TFs that cooperate in complexes, all four model this through the PPI network." in card.points
+    assert len(card.points) <= 6
+
+
+def test_the_cooperation_note_needs_the_request_to_mention_it():
+    plain = "We have expression, motif and PPI data and want a TF-gene network. Which method?"
+    disease = "Lung cancer is a complex disease; we have expression, motif and PPI data. Which method?"
+    for task in (plain, disease):
+        _, _, card = respond_and_card(task, _asking(_lung_tie()))
+        assert card.kind == "method_choice"
+        assert not any("cooperate" in point for point in card.points), task
+
+
+def test_a_cohort_request_is_not_sold_per_sample_networks():
+    # Blind case 6 asks for cohort-level co-expression: LIONESS-COEXPRESSION
+    # also offers one per sample, but that is not a reason to pick it here.
+    made = decision([reading("coexpression_network", ["expression_matrix"], entities=["gene"])],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_lioness_coexpression", "run_cobra"])
+    choices = method_choices(made, POLICY, task="Which parts of the co-expression are driven by the batch?")
+    assert not any("compare samples" in option.description or "Slower" in option.description
+                   for option in choices.options)
+    _, _, card = respond_and_card("Which parts of the co-expression are driven by the batch?", _asking(made))
+    assert card.kind == "method_choice"
+    assert not any(point.startswith("Scale differs") for point in card.points)
+
+
+def test_when_to_pick_it_outlasts_a_shared_note_and_a_cost_never_shows_alone():
+    # Case 4's tie: both LIONESS options split by sample beside GIRAFFE, and
+    # LIONESS-PUMA also needs a miRNA list; its line is over budget.
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="sample_specific")],
+                    capability_match_status="ambiguous",
+                    hypothesis_actions=["run_lioness_panda", "run_giraffe", "run_lioness_puma"])
+    task = "data/blind-neutral/case-4/ has expression, motif and PPI files; each patient's TF wiring. Which tool?"
+    choices = method_choices(made, POLICY, task=task)
+    puma = next(option for option in choices.options if option.action == "run_lioness_puma")
+    assert "Pick it if the regulators include miRNAs" in puma.description
+    assert "Also needs miRNA list" in puma.description
+    for option in choices.options:
+        assert "Slower" not in option.description or "compare samples" in option.description
+    giraffe = next(option for option in choices.options if option.action == "run_giraffe")
+    assert "Its network covers the whole cohort, not one per sample" in giraffe.description
+
+
+def test_a_scale_answer_says_what_that_scale_is_for():
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf", "mirna"], granularity="unknown")],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_puma", "run_lioness_puma"])
+    plan = plan_clarification(made.hypothesis_actions, outcomes=[h.outcome for h in made.outcome_hypotheses])
+    made = made.model_copy(update={"clarification_question": plan.question})
+    choices = clarification_choices(made, POLICY)
+    per_sample = next(option for option in choices.options if option.action == "run_lioness_puma")
+    assert per_sample.description == ("Leads to LIONESS-PUMA · Lets you compare samples, or relate them to outcomes "
+                                      "such as survival · Slower: it reruns PUMA once per sample")
+    cohort = next(option for option in choices.options if option.action == "run_puma")
+    assert cohort.description == "Leads to PUMA"

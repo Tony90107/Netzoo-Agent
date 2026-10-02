@@ -23,6 +23,7 @@ __all__ = [
     "SHORT_INPUT_LABELS",
     "condition_phrase",
     "fit_notes",
+    "gives",
     "highlight",
     "input_fields",
     "missing_input_labels",
@@ -33,7 +34,9 @@ __all__ = [
 _HIGHLIGHTS: dict[str, str] = {
     "run_panda": "Widely used baseline: message passing over motif, PPI and co-expression evidence",
     "run_puma": "PANDA's message passing with miRNA regulators added",
-    "run_otter": "Explicit objective (graph matching) with a convergence check; lighter on memory",
+    # No convergence test: OTTER runs a fixed number of gradient steps
+    # (REQUEST_CONCERNS["run_otter"], netZooPy otter/otter.py).
+    "run_otter": "Explicit objective (graph matching), fitted by a fixed number of gradient steps; lighter on memory",
     "run_giraffe": "Also estimates per-sample TF activity and signed activating/repressing effects",
     "run_lioness_panda": "One TF-gene network per sample, derived leave-one-out from the cohort",
     "run_lioness_puma": "One TF + miRNA network per sample, derived leave-one-out from the cohort",
@@ -44,6 +47,27 @@ _HIGHLIGHTS: dict[str, str] = {
     "run_lioness_dragon": "One two-layer partial-correlation network per sample, derived leave-one-out",
     "run_condor": "Finds TF-gene communities (modules) in a two-mode network",
     "run_sambar": "Pathway-level mutation scores, then patient subtypes by clustering",
+}
+
+# What the user gets from a workflow, in the user's terms and with its scale
+# said outright; the mechanism stays in `_HIGHLIGHTS` and the full reply. An
+# option line starts here, so a reader choosing a method sees the result, not
+# the algorithm (2026-10-02 feedback on Test 1's card). Registry outputs only:
+# granularities, produced artifacts, regulator types, required inputs.
+_GIVES: dict[str, str] = {
+    "run_panda": "One TF-gene network across all your samples",
+    "run_puma": "One TF + miRNA network across all your samples",
+    "run_otter": "One TF-gene network across all your samples",
+    "run_giraffe": "One signed TF-gene network (activating or repressing), plus each TF's activity in each sample",
+    "run_lioness_panda": "One TF-gene network per sample, plus the cohort network",
+    "run_lioness_puma": "One TF + miRNA network per sample, plus the cohort network",
+    "run_lioness_coexpression": "One gene co-expression network per sample, from expression data alone",
+    "run_bonobo": "One gene co-expression network per sample, with a p-value for each connection",
+    "run_cobra": "Co-expression split into the parts your covariates (batch, site, condition) explain and the rest",
+    "run_dragon": "One network of direct (partial-correlation) links within and across two omics layers",
+    "run_lioness_dragon": "One two-layer partial-correlation network per sample",
+    "run_condor": "TF-gene communities (modules) found in a network you already have",
+    "run_sambar": "Pathway mutation scores per patient, then patient subtypes",
 }
 
 _CONDITIONS: dict[str, str] = {
@@ -88,6 +112,9 @@ INPUT_ARTIFACTS: dict[str, str] = {
 }
 
 _REGULATORS = {"tf": "TF", "mirna": "miRNA"}
+_NETWORK_RESULTS = frozenset({
+    "regulatory_network", "signed_regulatory_effect_network", "coexpression_network", "multi_omic_network",
+})
 _NOUNS = {
     "regulatory_network": "a regulatory network",
     "signed_regulatory_effect_network": "a signed regulatory-effect network",
@@ -100,6 +127,10 @@ _NOUNS = {
 
 def highlight(action: str) -> str:
     return _HIGHLIGHTS.get(action, "")
+
+
+def gives(action: str) -> str:
+    return _GIVES.get(action, "")
 
 
 def condition_phrase(condition: str) -> str:
@@ -132,7 +163,10 @@ def fit_notes(action: str, outcome) -> tuple[list[str], list[str]]:
             mismatches.append(f"also adds {_regulators(offered - requested)} regulators")
     scales = set(capability.granularities)
     if outcome.granularity == "sample_specific" and "sample_specific" not in scales:
-        mismatches.append("gives one cohort-level result, not one per sample")
+        # GIRAFFE's TF activity is per sample while its network is not.
+        mismatches.append("its network covers the whole cohort, not one per sample"
+                          if capability.artifact_type in _NETWORK_RESULTS
+                          else "gives one cohort-level result, not one per sample")
     elif outcome.granularity == "aggregate" and "aggregate" not in scales:
         mismatches.append("gives one result per sample, not one cohort network")
     supported = _supported_artifacts(capability)
