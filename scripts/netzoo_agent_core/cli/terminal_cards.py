@@ -72,8 +72,9 @@ def render_markdown(text: str, *, color: bool | None = None) -> str:
 
 
 def _wrap(text: str, indent: str) -> list[str]:
+    # A marker ("  • ") starts the item once; its wrapped lines align under the text.
     return textwrap.wrap(text, width=_width() - len(indent), initial_indent=indent,
-                         subsequent_indent=indent) or [indent]
+                         subsequent_indent=" " * len(indent)) or [indent]
 
 
 def render_card(card: dict, *, color: bool | None = None) -> str:

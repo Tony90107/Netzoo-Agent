@@ -58,6 +58,18 @@ def test_a_card_shows_the_brief_form_and_where_the_full_reply_is():
     assert text.endswith("Full explanation: /details")
 
 
+def test_a_wrapped_point_keeps_one_bullet(monkeypatch):
+    # Test 2, 2026-10-02: each wrapped line of a point started with its own "•".
+    monkeypatch.setattr("netzoo_agent_core.cli.terminal_cards._width", lambda: 40)
+    card = {"kind": "workflow_guidance", "headline": "LIONESS-PUMA fits your goal.",
+            "points": ["Needs: expression matrix, motif prior, PPI network, miRNA list."]}
+    lines = render_card(card, color=False).splitlines()
+    point = [line for line in lines if "Needs:" in line or line.startswith("    ")]
+    assert len(point) >= 2 and point[0].startswith("  • Needs:")
+    assert all(line.startswith("    ") and "•" not in line for line in point[1:])
+    assert sum("•" in line for line in lines) == 2  # the point and "Nothing has run yet."
+
+
 def test_options_are_numbered_as_the_machine_numbers_them():
     lines = render_options(CARD, color=False)
     assert "  1) BONOBO  (Recommended)" in lines

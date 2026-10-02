@@ -157,7 +157,9 @@ def test_collapsed_routing_yields_two_concise_biological_routes():
     assert [c.role for c in usage.calls] == ["hypothesis_bases"]
     text = render_hypothesis_routes(advised, POLICY, task=ZH)
     assert all(quote in text for _, quote in PAIRS)
-    assert "SAMBAR" in text and "PANDA → LIONESS-PANDA" in text
+    assert "SAMBAR" in text and "**LIONESS-PANDA**" in text
+    # LIONESS-PANDA writes the PANDA cohort network itself; no arrow suggests two runs.
+    assert "PANDA → LIONESS-PANDA" not in text and "so PANDA need not run first" in text
     for needed in ("somatic mutation matrix", "gene/exon-size", "cancer-gene list", "GMT pathway",
                    "expression matrix", "motif/prior", "PPI network"):
         assert needed in text

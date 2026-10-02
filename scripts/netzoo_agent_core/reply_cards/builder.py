@@ -26,9 +26,9 @@ from .choices import (
     reading_parts,
 )
 from .contracts import ReplyCard, ReplyChoices, ReplyOption
-from .method_notes import highlight, needs_line
+from .method_notes import highlight, needs_line, unmentioned_input_labels
 from .next_steps import next_steps, plan_step
-from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outcome, quote, result_phrase, sequence_name, workflow_name
+from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outcome, quote, result_phrase, workflow_name
 
 __all__ = ["build_reply_card"]
 
@@ -80,6 +80,37 @@ def _produces(action: str) -> str:
     return join_names([artifact_noun(a) for a in artifacts], "and") + scale
 
 
+def _base_not_first(policy, action: str) -> str:
+    """A per-sample extension also writes its base's cohort network, so the base need not run first.
+
+    The headline used to name the pair "PUMA → LIONESS-PUMA", which reads as two
+    runs, while the composition card for the same pair says the opposite
+    (Test 2, 2026-10-02). Said only when the registry gives both scales.
+    """
+    capability = OUTPUT_CAPABILITIES.get(action)
+    if capability is None or not {"aggregate", "sample_specific"} <= set(capability.granularities):
+        return ""
+    bases = [workflow_name(policy, a) for a in capability.guidance_predecessors if a in policy.workflows]
+    return (f"It also writes the cohort network, so {join_names(bases, 'and')} need not run first."
+            if bases else "")
+
+
+def _unmentioned(actions, task: str, decision: TaskDecision) -> str:
+    """Inputs every listed workflow needs that the request does not name (Test 2, 2026-10-02).
+
+    A request that names only expression data was led to a workflow needing a
+    motif prior and a PPI network without a word about either.
+    """
+    present = present_inputs(task, decision)
+    lists = [unmentioned_input_labels(action, task, present) for action in actions]
+    shared = [label for label in lists[0] if all(label in other for other in lists[1:])] if lists else []
+    if not shared:
+        return ""
+    names = join_names(shared, "and")
+    return (f"Not mentioned in your request: {names}." if len(lists) == 1 else
+            f"Every option also needs {names}, which your request does not mention.")
+
+
 def _narrowed_from(decision, policy, task) -> tuple[str | None, list[str]]:
     """(the quote, the other candidates) when one method signal narrowed a tie.
 
@@ -108,8 +139,8 @@ def _narrowed_from(decision, policy, task) -> tuple[str | None, list[str]]:
     return (spans[0] if spans else None), others
 
 
-def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance") -> ReplyCard:
-    name = sequence_name(policy, action)
+def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance", base_note=True) -> ReplyCard:
+    name = workflow_name(policy, action)
     outcome = primary_outcome(decision)
     if decision.capability_match_status == "fallback":
         headline = f"{name} is the closest registered match, but it is not a verified match for your request."
@@ -136,7 +167,9 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance") 
         f"{first}." if first else "",
         f"Method: {highlight(action)}." if highlight(action) else "",
         f"Needs: {needs_line(action)}." if needs_line(action) else "",
+        _unmentioned([action], task, decision),
         f"Produces: {_produces(action)}." if _produces(action) else "",
+        _base_not_first(policy, action) if base_note else "",
     ]
     card = ReplyCard(kind=kind, headline=clip(headline, 300), points=[clip(p, 300) for p in points if p])
     if first:
@@ -189,7 +222,8 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
         headline = f"{count} registered methods can build {result_phrase(outcome)}; they differ in {difference}."
     else:
         headline = f"{count} registered workflows fit your request; they differ in {difference}."
-    points = [_understood(decision, task)]
+    points = [_understood(decision, task),
+              _unmentioned([option.action for option in choices.options if option.action], task, decision)]
     recommended = next((option for option in choices.options if option.badge == "Recommended"), None)
     best = next((option for option in choices.options if option.badge == "Best match"), None)
     if recommended is not None:
@@ -208,7 +242,8 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
 def _clarification_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
     count = len([a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows])
     headline = f"{count} registered workflows fit; one detail about your study decides between them."
-    points = [_understood(decision, task)]
+    points = [_understood(decision, task), _unmentioned(
+        [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows], task, decision)]
     return ReplyCard(kind="clarification", headline=clip(headline, 300),
                      points=[clip(p, 300) for p in points if p], choices=choices)
 
@@ -221,7 +256,7 @@ def _composition_card(decision, policy, task) -> ReplyCard | None:
     base, final = chain[0], chain[-1]
     outcome = primary_outcome(decision)
     if outcome is not None and outcome.granularity == "sample_specific":
-        card = _workflow_card(decision, policy, task, final)
+        card = _workflow_card(decision, policy, task, final, base_note=False)
         return card.model_copy(update={
             "kind": "composition",
             "headline": f"{workflow_name(policy, final)} gives the per-sample result you asked for; "
@@ -246,7 +281,7 @@ def _composition_card(decision, policy, task) -> ReplyCard | None:
         kind="composition",
         headline=(f"{workflow_name(policy, final)} gives one network per sample and also the cohort network; "
                   f"{workflow_name(policy, base)} alone gives only the cohort network."),
-        points=[f"Needs: {needs_line(final)}."],
+        points=[p for p in (f"Needs: {needs_line(final)}.", _unmentioned([final], task, decision)) if p],
         choices=choices,
     )
 
@@ -376,7 +411,7 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
     if kind == "outcome_clarification":
         if decision.advisory_capability_gap is not None:
             return _method_gap_card(decision, policy, task)
-        if (clarification := clarification_choices(decision, policy)) is not None:
+        if (clarification := clarification_choices(decision, policy, task=task)) is not None:
             return _clarification_card(decision, policy, task, clarification)
         if (method := method_choices(decision, policy, task=task)) is not None:
             return _method_card(decision, policy, task, method)

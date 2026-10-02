@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from workflow_registry import OUTPUT_CAPABILITIES
-
 __all__ = [
     "primary_outcome",
     "artifact_noun",
@@ -12,7 +10,6 @@ __all__ = [
     "join_names",
     "quote",
     "result_phrase",
-    "sequence_name",
     "workflow_name",
 ]
 
@@ -80,14 +77,6 @@ def quote(text: str, limit: int = 60) -> str:
 def workflow_name(policy, action: str) -> str:
     spec = policy.workflows.get(action)
     return spec.workflow if spec is not None else action.removeprefix("run_").upper()
-
-
-def sequence_name(policy, action: str) -> str:
-    """`PANDA → LIONESS-PANDA` for a workflow whose guidance starts elsewhere."""
-    capability = OUTPUT_CAPABILITIES.get(action)
-    chain = [*(capability.guidance_predecessors if capability else ()), action]
-    names = [workflow_name(policy, item) for item in chain if item in policy.workflows]
-    return " → ".join(names) if names else workflow_name(policy, action)
 
 
 def join_names(names: list[str], word: str = "or") -> str:
