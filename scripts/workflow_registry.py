@@ -212,6 +212,14 @@ SELECTION_AXES: Mapping[str, Mapping[str, Any]] = {
                 "a miRNA-target prior and a list of the miRNAs, before analysis."
             ),
         },
+        # Log 300: the request must describe such molecules somewhere. A quote
+        # of "Which workflow finds gene modules within each patient?" was taken
+        # as stating that the regulators include miRNAs.
+        "witness": (
+            r"\bmi(?:cro)?[- ]?rnas?\b|\bmir[- ]?\d|non[- ]?coding|\bnc[- ]?rnas?\b|"
+            r"\bsmall\s+(?:[\w-]+\s+)?rnas?\b|post[- ]?transcription|"
+            r"微小核糖核酸|微型\s*RNA|小\s*RNA|非編碼|轉錄後"
+        ),
     },
     "cohort_size": {
         "question": "About how many samples do you have?",

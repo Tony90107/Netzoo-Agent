@@ -18,6 +18,7 @@ the user to choose.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from typing import Literal
@@ -183,6 +184,10 @@ def recommend_from_claims(
             rejected.append({"condition": claim.condition, "reason": "not_offered"})
         elif not _quote_grounded(user_task, claim.text_span):
             rejected.append({"condition": claim.condition, "reason": "quote_not_in_request"})
+        elif (witness := SELECTION_AXES[option.axis].get("witness")) and not re.search(witness, claim.text_span, re.I):
+            # Log 300: a verbatim quote proves the words occurred, not that they
+            # state this condition; an axis with a witness needs it in the request.
+            rejected.append({"condition": claim.condition, "reason": "condition_not_in_request"})
         else:
             accepted.append((option, claim.text_span))
     if not accepted:

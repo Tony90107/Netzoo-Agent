@@ -174,12 +174,13 @@ def test_aggregate_tf_request_stays_a_real_method_choice():
     ("The model has individual-specific random effects.", []),
     ("For the same individuals I have gene expression and methylation tables.", []),
     # Log 298: the communities of each unit's network, still bound to that
-    # noun; a partition of one network states no scale. "Modules" is left out
-    # (Log 299).
+    # noun; a partition of one network states no scale. Log 300: modules too,
+    # now that a stated module result is a community assignment.
     ("Which tool finds gene communities for each patient? Advice only.", ["sample_specific"]),
     ("I want patient-specific gene communities.", ["sample_specific"]),
     ("Which tool gives per-patient gene communities?", ["sample_specific"]),
-    ("Which workflow finds gene modules within each patient? Advice only.", []),
+    ("Which workflow finds gene modules within each patient? Advice only.", ["sample_specific"]),
+    ("I need per-patient gene modules.", ["sample_specific"]),
     ("I have a regulator-gene bipartite network and want to find its communities.", []),
     ("Which tool finds gene communities in my cohort's regulatory network?", []),
 ])

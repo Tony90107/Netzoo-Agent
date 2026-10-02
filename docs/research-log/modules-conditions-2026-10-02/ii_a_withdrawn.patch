@@ -1,0 +1,26 @@
+diff --git a/scripts/netzoo_agent_core/routing/scale_relaxation.py b/scripts/netzoo_agent_core/routing/scale_relaxation.py
+index d51a687..3b651cf 100644
+--- a/scripts/netzoo_agent_core/routing/scale_relaxation.py
++++ b/scripts/netzoo_agent_core/routing/scale_relaxation.py
+@@ -82,8 +82,20 @@ def _scale_only_choice(match, outcome):
+     return relaxed, others[0], alternatives
+ 
+ 
++def _lone_reading(hypotheses):
++    """Readings that all carry one outcome are one reading (Log 300).
++
++    Blind case 7 once came back as two identical per-sample multi-omic
++    readings. Counted as two, neither rule here applied, and the unstated
++    scale chose LIONESS-DRAGON on the unverified-evidence path.
++    """
++    if hypotheses and len({item.outcome.model_dump_json() for item in hypotheses}) == 1:
++        return [hypotheses[0]]
++    return list(hypotheses)
++
++
+ def relax_unstated_scale(task, interpretation, match):
+-    hypotheses = interpretation.outcome_hypotheses
++    hypotheses = _lone_reading(interpretation.outcome_hypotheses)
+     if len(hypotheses) == 1 and not granularity_mentions(task):
+         found = _scale_only_choice(match, hypotheses[0].outcome)
+         if found is not None:

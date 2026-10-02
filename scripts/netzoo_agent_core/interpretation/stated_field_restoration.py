@@ -92,6 +92,22 @@ _MOVABLE = (
 )
 
 
+#: A result named as modules or communities of a network's nodes (Log 300).
+_STATED_PARTITION = re.compile(r"\b(?:modules?|communit(?:y|ies))\b", re.I)
+#: A clause that describes what the user already holds, not what to produce.
+_HELD = re.compile(r"\b(?:i|we)\s+(?:already\s+)?(?:have|hold|got|obtained)\b|\balready\b|\bexisting\b", re.I)
+
+
+def _stated_partition(user_task: str) -> str | None:
+    """The quoted module or community result, if the request asks for one."""
+    for sentence in re.split(r"[.;!?\n]", user_task):
+        match = _STATED_PARTITION.search(sentence)
+        if match and not _HELD.search(sentence):
+            start = max(0, sentence.rfind(" ", 0, max(0, match.start() - 1)) + 1)
+            return sentence[start:match.end()].strip()
+    return None
+
+
 def _witnessed_current(user_task: str) -> dict[str, str]:
     witnessed: dict[str, str] = {}
     for item in input_mentions(user_task):
@@ -326,6 +342,28 @@ def restore_stated_fields(
                     "witnessed_span": None,
                 })
             outcome = candidate
+        partition = (
+            _stated_partition(user_task)
+            if len(interpretation.outcome_hypotheses) == 1 and outcome.artifact_type == _UNKNOWN else None
+        )
+        if partition is not None:
+            # Log 300: "Which workflow finds gene modules within each patient?"
+            # read as an unknown result; the request names it.
+            candidate = _without_roles(outcome.model_copy(update={"artifact_type": "community_assignment"}))
+            if candidate is not None and not set(outcome_consistency_issues(candidate)) - {
+                "artifact_granularity:community_assignment"
+            }:
+                evidence = [item for item in evidence if item.dimension != "artifact_type"] + [OutcomeEvidence(
+                    dimension="artifact_type", value="community_assignment", source="explicit",
+                    text_span=partition,
+                    rationale="The request names modules or communities, the ontology's community assignment.",
+                )]
+                restored.append({
+                    "hypothesis": index, "field": "artifact_type", "value": "community_assignment",
+                    "previous_value": _UNKNOWN, "source": "stated_partition_entailment",
+                    "witnessed_span": partition,
+                })
+                outcome = candidate
         baseline = set(outcome_consistency_issues(outcome))
         granularity_witnesses = (
             {

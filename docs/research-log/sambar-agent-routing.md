@@ -15158,3 +15158,140 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 「gene modules … each patient」的讀法是 artifact `unknown`。若要回到缺口回覆，需要讓說出的 modules 推得 `community_assignment`。這會改變路由，需要另一輪。
 - DD3 未涵蓋證據未驗證的 fallback 路徑（case 7 s3）。
 - 平手推薦會編造使用者沒說的前提（miRNA）。
+
+## Log 300｜事前宣告：II——三項各自設門檻：重複讀法（II-A）、推薦條件要有根據（II-B）、說出的 modules（II-C）
+
+日期／時區：2026-10-02，Asia/Taipei。使用者決定：「commit 然後處理剩下的問題」。HH 已 commit 為 `bd051bb`。
+本條目寫於任何程式修改與 live 呼叫之前；標靶語料 `docs/research-log/modules-conditions-2026-10-02/targeted_en.json`
+與分析腳本 `analyze.py`（門檻寫在程式內）同時寫定，之後不改門檻。
+記取 Log 297 的教訓：三項各自有門檻，只撤回不成立的那一項；blind 退步則三項全撤回。
+
+**II-A（`routing/scale_relaxation.py` 的 `_lone_reading`）：** 所有讀法的 outcome 完全相同時，DD3 與 Log 281 的放寬都當成單一讀法。
+- 背景：Log 299 的 case7 s3，模型給了兩個相同的每個樣本 multi-omic 讀法，兩條規則都要求單一讀法，所以未說出的尺度在證據未驗證的路徑上選了 LIONESS-DRAGON。
+- 離線證據：
+  - 以錄下的回應跑完整流程：目前的程式是 fallback LIONESS-DRAGON，II-A 是 fallback DRAGON（尺度放寬並附說明）。
+  - 重播 FF／GG／EE／HH 共 360 個 trial，改變的只有這 1 個。
+- 觸發很少見，效益以離線為準；live 只檢查 case 7 不會新增 LIONESS-DRAGON 的選擇。
+
+**II-B（`workflow_registry.SELECTION_AXES` 的 `witness` ＋ `graph/condition_recommender.recommend_from_claims`）：**
+- 軸可以宣告證據字詞；有宣告的軸，主張只有在請求原文含有證據時才成立，否則以 `condition_not_in_request` 拒絕。
+- `regulator_class` 的證據字詞：miRNA／microRNA／miR-n、non-coding、ncRNA、small … RNA、post-transcription，以及中文的微小核糖核酸、小 RNA、非編碼、轉錄後。
+- 背景：Log 299 的 s1，`MethodComparisonReview` 引用整句「Which workflow finds gene modules within each patient?」主張 regulator_class:mirna，被接受後推薦 LIONESS-PUMA，理由是使用者沒說過的 miRNA。
+  - 原有檢查只要求引用逐字存在。
+  - Log 269 的使用者決定允許「功能性描述」，所以證據字詞看整個請求，而不是只看引用：功能性描述題引用的是「Do you have a tool specifically for this class of molecules?」，描述在別句。
+- 離線證據：
+  - 歷史上被接受的 16 次 regulator_class:mirna 條件中，保留 9 次（功能性描述題 `mirna-degradation-en`），拒絕 7 次（模組題 6 次、blind case 4 的 1 次，都沒有提到這類分子）。
+  - blind case 5 的原文（small RNAs、mirna.txt）符合證據字詞。
+  - 以錄下的回應跑完整流程：模組題 s1 的 LIONESS-PUMA 推薦消失，仍是平手。
+- 不是模型可見的改動：`SELECTION_AXES` 只會被逐鍵讀取，不會整份序列化進 prompt。
+- 效益以離線為準；live 檢查 `mirna-degradation-en` 的條件推薦不少於 baseline − 1（歷史上 18 次中 9 次）。
+
+**II-C（`interpretation/stated_field_restoration.py` 的 `_stated_partition` ＋ `request_integrity.py`）：**
+- C1：只有一個讀法、artifact 是 `unknown`，而請求把 modules／communities 當成要的結果時，推得 `community_assignment`。
+  - 「我們已經有模組」這類持有描述的句子不算。
+  - 改後的一致性問題只能是 community 的尺度缺口。
+- C2：把 Log 299 事後拿掉的 modules 加回每個樣本的寫法。
+- C1 與 C2 一起撤回：只有 C2 會重現 Log 299 的平手，只有 C1 則回到 cohort-level 的 CONDOR。
+- 離線證據：
+  - 以模組題錄下的第一次輸出跑完整流程：目前的程式是 artifact `unknown` 的平手，II-C 是「do not produce sample-specific community assignments. CONDOR can instead …」。
+  - 重播 360 個 trial，改變的只有模組題（13 個）。
+  - 3 題新正例在目前程式下都偵測不到尺度，在 II-C 下都是 `sample_specific`＋「gene modules」。
+  - 持有模組的陷阱題兩邊都不觸發。
+  - 整體分模組的對照題只推得 community、不帶尺度。
+- 三項合併的原型指紋不變。
+
+**標靶語料（9 題）：**
+- 正例 3 題（新寫法，都避開現有規則會偵測的「network modules」）：
+  - 「Which tool finds gene modules for each patient separately?」
+  - 「I need per-patient gene modules.」
+  - 「Which workflow gives patient-specific gene modules?」
+- 對照 4 題：
+  - `ii-ctl-modules-aggregate`（「splits my regulator-gene network into gene modules」→ CONDOR）；
+  - `ctl-condor-aggregate`；
+  - `ii-trap-held-modules`（「We already have gene modules … Which tool infers a TF-gene regulatory network?」）；
+  - `mirna-degradation-en`（與原語料同一字句）。
+- 報告題 2 題：`gg-modules-within-each-patient`、`pf-patient-specific-modules`。
+
+**量測（gpt-4o-mini，使用者預先授權；legacy contract，traced harness，Docker）：**
+- 兩臂：candidate＝II-A＋II-B＋II-C；baseline＝`bd051bb` 的副本。兩臂同時段平行執行，交錯 3 個時段。
+- 每時段每臂：`blind_en.json`（10 題）×1、`targeted_en.json`（9 題）×1。
+- provider 錯誤沿用 Log 290 補充 4 的規則；兩臂語料先做 smoke 載入；runner 先凍結副本再執行。
+
+**條件：**
+- 離線（live 之前）：全套件通過、核心模組 ≤ 1000 行、指紋不變；以實際程式重做上述檢查，結果相同。不成立則不跑 live。
+- II-C（任一不成立即撤回 C1、C2）：
+  - 有效性：baseline 正例 9 個 trial 中為缺口回覆形狀的＝0，否則此輪作廢。
+  - 效益：candidate ≥ 6／9，且 ≥ baseline＋3。
+  - 不擴散：正例與報告題以外的 42 個 trial 中 `["granularity"]` 缺口＝0。
+  - 陷阱：持有模組題 3 個 trial 中選 CONDOR 或成為缺口＝0。
+  - 對照：兩題 exact CONDOR，各自 ≥ baseline − 1。
+- II-B：`mirna-degradation-en` 帶 regulator_class 條件的推薦 ≥ baseline − 1；不成立撤回 II-B。
+- II-A：case7-en 選中 LIONESS-DRAGON 的次數 ≤ baseline；不成立撤回 II-A。
+- 全部：candidate blind-en 最終 WRONG ≤ baseline＋3；不成立則三項全撤回。
+
+**Log 300 補充（實作後、live 前寫；門檻不變）：離線條件成立。**
+- repo 的程式與合併原型逐字相同，重播與掃描的結果直接適用。
+- 全套件 3001 passed／35 skipped；指紋不變。
+- 新增 `tests/test_modules_and_conditions.py`（9 個），三個端對端 fixture `tests/log300_*_calls.json` 都錄自 Log 299。
+- 修改 1 個既有測試：`test_granularity_history_role_regressions` 中「gene modules within each patient」由無尺度改為 `sample_specific`，是 C2 宣告中的結果；另加入「per-patient gene modules」。
+
+## Log 301｜結果：II——保留 II-B、II-C；II-A 依門檻撤回（case 7 的 LIONESS-DRAGON 來自另一個既有漏洞）
+
+日期／時區：2026-10-02，Asia/Taipei。依 Log 300（含補充）執行；gpt-4o-mini（預先授權）、legacy contract、traced harness、Docker。
+證據：`docs/research-log/modules-conditions-2026-10-02/`：
+- 報告 `live-ii-{cand,base}-s{1,2,3}-{blind,targeted}.json.gz`、`analyze.py`、`render_replies.py`。
+- 撤回的變更 `ii_a_withdrawn.patch`。
+
+**執行：**
+- 3 個時段（01:00、01:02、01:05），每時段兩臂四個容器平行，使用凍結的 runner。
+- 每時段前後各檢查一次：兩臂 `scripts/` 只差 II 的 5 個檔案（6／6 成立）。
+- 12 份報告的 provider 錯誤 trial 都是 0。
+- 呼叫數：candidate 227，baseline 246。57 組配對的第一個模型呼叫兩臂逐字相同。
+
+**預先宣告的條件：**
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | 3001 passed／35 skipped；指紋不變 | 成立 |
+| II-C 有效性 | baseline 正例中為缺口回覆形狀的 0 | 有效 |
+| II-C 效益 | candidate 7／9（baseline 0） | 成立 |
+| II-C 不擴散 | 42 個 trial 中 `["granularity"]` 缺口 0 | 成立 |
+| II-C 陷阱 | 持有模組題：CONDOR 或缺口 0／3 | 成立 |
+| II-C 對照 | 兩題 exact CONDOR 3（3）、3（3） | 成立 |
+| II-B 對照 | `mirna-degradation-en` 帶 regulator_class 條件的推薦 3（baseline 3） | 成立 |
+| II-A | case7-en 選中 LIONESS-DRAGON：candidate 1，baseline 0 | **不成立** |
+| 全部 | blind 最終 WRONG：candidate 1，baseline 0（≤ ＋3） | 成立 |
+
+**逐題：**
+- II-C 正例：
+  - `ii-modules-for-each-patient`、`ii-patient-specific-modules`：candidate 6／6 為「The registered NetZoo workflows do not produce sample-specific community assignments. CONDOR can instead analyze aggregate community assignments.」。baseline 6／6 是 5 個 workflow（LIONESS-PANDA／PUMA／COEXPRESSION／DRAGON、BONOBO）的平手。
+  - `ii-per-patient-modules`（「I need per-patient gene modules」）：candidate 1／3 為上述回覆；2／3 被讀成每個病人的 `sample_cluster_assignment`，回覆「do not infer sample-specific sample cluster assignment. Registered outputs are: …」，沒有提到 CONDOR。baseline 2／3 為 exact SAMBAR（用突變資料做病人分群，錯的 workflow），1／3 為 exact CONDOR。
+- 報告題：
+  - `gg-modules-within-each-patient`：candidate 3／3 為缺口回覆；baseline 是 1 次平手並推薦 LIONESS-PUMA、2 次 exact CONDOR。
+  - `pf-patient-specific-modules`：兩臂都是 3／3 語意驗證失敗，沒有改變。
+- 對照：
+  - `ii-trap-held-modules`：兩臂都是 3／3 exact LIONESS-PANDA，回覆「For the sample-specific output you described, use **LIONESS-PANDA**」，但請求沒有說每個樣本。這是既有問題，與 II 無關。
+  - 兩題 CONDOR 對照都不變。
+- `mirna-degradation-en`：兩臂都是 3／3 平手並推薦 PUMA（regulator_class 條件）。II-B 沒有誤擋功能性描述。
+
+**II-A 的失敗：**
+- candidate s3 的 case 7 這次只有一個讀法（每個樣本的 multi-omic，實體 `unknown`），不是重複讀法，所以 II-A 不會作用。
+- 讀法不完整時比對不是 exact，DD3 的 `_scale_only_choice` 不適用，接著在證據未驗證的 fallback 路徑選了 LIONESS-DRAGON。
+- 這份錄音在 baseline 程式下嚴格重播 10／10 逐字相同，同樣得到 fallback LIONESS-DRAGON：不是 II 造成的。
+- 依宣告仍撤回 II-A。檢討：機率很低的事件只有 3 個 trial，用「≤ baseline」當門檻容易被抽樣左右。歸因應該靠重播，II-A 的效益（重複讀法）也已在離線驗證過。
+
+**撤回 II-A 的實作：**
+- `scale_relaxation.py` 回到 `bd051bb`，差異存為 `ii_a_withdrawn.patch`。
+- 移除 II-A 的 2 個測試與 fixture `log300_case7_duplicate_calls.json`。
+- 用保留的程式（II-B＋II-C）重播 candidate 的 57 個 trial，57／57 逐字相同（這一輪 II-A 沒有觸發）。
+- 全套件 2999 passed／35 skipped。
+
+**判定：** 保留 II-B、II-C；撤回 II-A。
+
+**後續（尚未做）：**
+- DD3 的漏洞比重複讀法更廣：未說出的尺度只要沒走到 exact，就可能在 fallback 路徑選到 LIONESS-DRAGON。
+  - Log 299 與本輪的 case 7 各 1 次。
+  - 若要修，應把 DD3 擴大到非 exact 的比對，並以重播當效益門檻。
+- 「per-patient gene modules」2／3 被讀成病人分群：Log 296 撤回的 GG2（引用含 modules 的病人分群讀法改回 community）這次會觸發，可以單獨重新宣告。
+- 未說尺度的 TF-gene 請求被讀成每個樣本，回覆卻寫「For the sample-specific output you described」（`ii-trap-held-modules`，兩臂都有）。
+
