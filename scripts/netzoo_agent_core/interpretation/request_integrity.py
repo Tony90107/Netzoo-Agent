@@ -325,6 +325,22 @@ def input_mentions(task: str) -> tuple[InputMention, ...]:
     return tuple(mentions)
 
 
+# Log 321: a role the clause then calls insufficient is the alternative the
+# user rejects, not the one asked for: "A TF-gene network alone misses the
+# post-transcriptional layer" narrowed a TF and miRNA request to TF only.
+_INSUFFICIENT_AFTER = re.compile(
+    r"\b(?:alone|by\s+itself|on\s+its\s+own)\b|"
+    r"\b(?:miss(?:es|ed)?|lacks?|ignor(?:es|ed)|overlook(?:s|ed)?|leaves?\s+out|fails?\s+to|"
+    r"(?:is|are|was|were)\s+not\s+enough|(?:isn't|aren't)\s+enough|(?:is|are)\s+insufficient|"
+    r"would\s+(?:miss|average\s+away|lose|ignore))\b|單獨|不足|遺漏|忽略|漏掉",
+    re.I,
+)
+
+
+def _rejected_role(clause: str, match) -> bool:
+    return bool(_NEGATED.search(clause[:match.start()]) or _INSUFFICIENT_AFTER.search(clause[match.end():]))
+
+
 def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
     """Return only explicit current regulator-to-target role phrases."""
     mentions = []
@@ -333,7 +349,7 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
             continue
         coordinated = []
         for match in _COORDINATED_REGULATORY_ROLE_PAIR.finditer(clause):
-            if _NEGATED.search(clause[:match.start()]):
+            if _rejected_role(clause, match):
                 continue
             coordinated.append(match.span())
             for group in ("first", "second"):
@@ -347,7 +363,7 @@ def regulatory_role_mentions(task: str) -> tuple[RegulatoryRoleMention, ...]:
         for match in _REGULATORY_ROLE_PAIR.finditer(clause):
             if any(start <= match.start() and match.end() <= end for start, end in coordinated):
                 continue
-            if _NEGATED.search(clause[:match.start()]):
+            if _rejected_role(clause, match):
                 continue
             regulator = _normalize_regulator(match.group("regulator"))
             mentions.append(RegulatoryRoleMention(
