@@ -15575,3 +15575,16 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   1. 第一次判讀／patch 的方法標籤：在 registry tag 比對時套用 `SELECTION_TAG_WITNESSES`。
   2. 推薦的 preference：tags 中的方法標籤要由其引用說出；`mirna_regulation` 可沿用 regulator_class 的字詞。
 - 效益門檻可用本輪 t1-otter 的 3 次錄音與上述 preference 錄音重播；不擴散門檻用記錄中的 130 次 exact。
+
+**Log 305 補充（清理工作目錄時寫）：Logs 302、304 引用的指紋屬於工作目錄，不是當時的 commit。**
+- Logs 302、304 寫「指紋不變（legacy `e920bf3b5d57`、claims `743b2dd0d73a`）」，比較的是兩臂共用的工作目錄。
+- 工作目錄中有一項未 commit 的模型可見修改：`gene_mutation_scores` 的說明由「Gene-by-sample」改為「Sample-by-gene」，出自另一份工作，與錄下的 SAMBAR 輸出列為樣本一致。
+- 指紋：
+  - 當時的 commit（`f2ef5d6` 以前）是 legacy `3f394e4d5d3f`、claims `9a60163744d9`。
+  - 只在 commit 上加入這一項說明修改，就得到 `e920bf3b5d57`／`743b2dd0d73a`；其餘未 commit 的修改都不進入 prompt。
+- 影響：MS、CR 兩輪的兩臂都使用 `e920bf3b5d57`，A/B 比較仍成立。兩輪中 blind case8-en（SAMBAR）在所有臂都是 exact 3／3。
+- 這項說明修改隨本補充一起 commit，之後 commit 的指紋就是兩輪實際量測時的指紋。
+- 其餘那份工作（執行中斷時終止子程序、COBRA 輸出不得覆寫輸入、步驟參數須與審核過的 plan 一致、continuation 帶入先前的輸入與 controls、忽略已婉拒或歷史性的提及、planner 呼叫計入預算）：
+  - 五個 routing grid 與 commit 逐字相同（`tools/grids.py`）。
+  - 全套件通過。
+  - 另外 commit。
