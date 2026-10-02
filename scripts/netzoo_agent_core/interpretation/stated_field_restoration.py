@@ -58,6 +58,8 @@ from __future__ import annotations
 
 import re
 
+from workflow_registry import SELECTION_TAG_WITNESSES
+
 from ..contracts.artifact_semantics import (
     ARTIFACT_SEMANTICS,
     artifacts_supporting_regulatory_roles,
@@ -305,6 +307,51 @@ def _with_supported_role_entities(
         return None, []
 
 
+# Log 321: results defined for TFs alone, and the words that state each part.
+_TF_ONLY_ARTIFACTS = {
+    "regulatory_network_and_tf_activity": (SELECTION_TAG_WITNESSES["tfa"],
+                                           frozenset({"tfa", "joint_grn_tfa_inference", "tfa_covariate_regression"})),
+    "signed_regulatory_effect_network": (SELECTION_TAG_WITNESSES["signed_partial_regulatory_effects"],
+                                         frozenset({"signed_partial_regulatory_effects", "linear_model_coefficients"})),
+}
+
+
+def _tf_only_artifact_yields(user_task, outcome, evidence):
+    """(outcome, evidence) for a TF-only result the request never states, beside miRNA regulators.
+
+    Test 6 (2026-10-03) asks for TF and miRNA regulation and says nothing of TF
+    activity, yet was read 3/3 as a network with TF activities. TF activity is
+    defined for TFs only, so the stale-role step below cleared the reading's
+    miRNA regulators and GIRAFFE matched. The reading contradicts itself; the
+    part the request never states yields, as an unstated scale does (Log 309).
+    """
+    rule = _TF_ONLY_ARTIFACTS.get(outcome.artifact_type)
+    if rule is None or "mirna" not in outcome.regulator_types or re.search(rule[0], user_task or "", re.I):
+        return None
+    witness, tags = rule
+    entities = [e for e in outcome.entity_types if e != "sample" or outcome.granularity == "sample_specific"]
+    entities = list(dict.fromkeys([*entities, *(r for r in (*outcome.regulator_types, *outcome.target_types)
+                                                if r != _UNKNOWN)]))
+    candidate = outcome.model_copy(update={
+        "artifact_type": "regulatory_network", "entity_types": entities,
+        "selection_tags": [tag for tag in outcome.selection_tags if tag not in tags],
+    })
+    kept = [
+        item for item in evidence
+        if not (item.dimension == "artifact_type" and item.value == outcome.artifact_type)
+        and not (item.dimension == "selection_tag" and item.value in tags)
+        and not (item.dimension == "entity_type" and item.value == "sample" and "sample" not in entities)
+    ]
+    if not any(item.dimension == "artifact_type" and item.value == "regulatory_network" for item in kept):
+        # The artifact keeps its evidence, as a unique-role correction does.
+        kept.append(OutcomeEvidence(
+            dimension="artifact_type", value="regulatory_network", source="inferred",
+            rationale=("The reading's regulators include miRNAs, and the request states no TF-only "
+                       "result such as TF activity, so the result is the regulatory network."),
+        ))
+    return candidate, kept
+
+
 def restore_stated_fields(
     user_task: str, interpretation: SemanticInterpretation,
     *, align_artifact_constraints: bool = False,
@@ -342,6 +389,13 @@ def restore_stated_fields(
                     "witnessed_span": None,
                 })
             outcome = candidate
+        if (yielded := _tf_only_artifact_yields(user_task, outcome, evidence)) is not None:
+            restored.append({
+                "hypothesis": index, "field": "artifact_type", "value": "regulatory_network",
+                "previous_value": outcome.artifact_type, "source": "unstated_tf_only_artifact",
+                "witnessed_span": None,
+            })
+            outcome, evidence = yielded
         partition = (
             _stated_partition(user_task)
             if len(interpretation.outcome_hypotheses) == 1 and outcome.artifact_type == _UNKNOWN else None

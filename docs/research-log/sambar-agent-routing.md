@@ -16375,3 +16375,86 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 要點的變化是 workflow 卡片多了成本或 CONDOR 一行。每張卡片仍不超過 6 點。
 
 **測試：** 全套件通過（見 commit）。新增 `tests/test_outside_steps.py` 10 個測試。Test 7 用實測錄下的決策（`test10-2026-10-03/r1-decisions.json`）。
+
+## Log 321｜事前宣告：TA——「網路＋TF activity」要有請求說出的 activity；RA——被否定的替代方案不是請求的角色
+
+日期／時區：2026-10-03，Asia/Taipei。依使用者要求修正 Log 320 的 Test 6（miRNA → GIRAFFE 6／6）。寫於任何程式變更之前。
+
+**Test 6 的 traced 輸出（`test10-2026-10-03/live-t10-s1.json.gz`，3 次）：**
+- 第一次判讀 3／3 都是 `regulatory_network_and_tf_activity`，regulator 為 tf＋mirna。artifact 證據都是 inferred、沒有引用；請求沒有任何 activity 字詞。
+- 驗證後，regulator 被收窄為 tf（`outcome_downgraded` mirna → narrowed，3／3）。
+  - 原因：`regulatory_role_mentions` 從「A TF-gene network alone misses the post-transcriptional layer」取到 TF-to-gene，`stated_field_restoration` 把 regulator 設成這個「明說的角色」。
+  - 這句話是使用者否定的替代方案。字詞規則只看比對前的否定詞（not、without、no）。
+- 結果是 GIRAFFE exact：TF-only 加上 TF activity。
+
+**規則 RA（`interpretation/request_integrity.regulatory_role_mentions`）：**
+- 同一子句在角色片語之後說它不夠時，不算明說的角色：
+  - alone、by itself、on its own；
+  - miss(es)、lack(s)、ignore(s)、overlook(s)、leave(s) out、fail(s) to；
+  - is／are not enough、is insufficient、would miss／average away／lose／ignore。
+- 原型掃描所有錄製請求：只影響 Test 6 這一句。
+
+**規則 TA（`routing/reading_selection.drop_unstated_activity`，在 MW 之後、SW 之前）：**
+- 讀法的 artifact 是 `regulatory_network_and_tf_activity`，但請求沒有 TF activity 的字詞（Log 302 的 `_TF_ACTIVITY_WITNESS`）時，改為 `regulatory_network`。
+- 同時移除 tfa、joint_grn_tfa_inference、tfa_covariate_regression 這些 tag，以及該 artifact 的證據。
+- 這與 SW 相同：請求沒說的部分不留在讀法裡。只有 `tf_activity_matrix` 的讀法不動，因為 case 4 的合法讀法也常沒有 activity 字詞。
+- 原型掃描所有錄製的最終讀法：沒有 witness 的英文案例都是誤讀，或改後仍被接受。
+  - Test 6、「how transcription factors regulate their target genes separately in each patient」、肺癌變體。
+  - case 4 一次：改後是 LIONESS-PANDA，blind 也接受。
+- 有 witness 的（case 1 共 126、factorize 12、how active 3）都不動。
+
+**判定：**
+- 離線（重播所有錄製的最終讀法，`activity-witness-2026-10-03/replay_ta.py`）：
+  - 改變只發生在沒有 activity 字詞的 `regulatory_network_and_tf_activity` 讀法。
+  - blind 判定沒有新增 WRONG。
+  - 全套件通過；兩個指紋與條件推薦 prompt hash 不變（witness 不給模型看）。
+- live（gpt-4o-mini，預先授權；traced，只跑 candidate，對照錄製的 baseline）：
+  - Test 6 ×3：至少 2／3 的結果含 PUMA，而且不是 GIRAFFE exact。
+  - 對照 ×3：blind case 1（GIRAFFE）、case 4（LIONESS-PANDA／GIRAFFE）、case 5（PUMA），以及 Test 1、Test 9。blind 三題沒有新增 WRONG；Test 1、9 的候選集合不變。
+- 任一不成立 → 撤回對應規則（TA、RA 分開判定）。
+
+**Log 321 補充（實作後、live 之前；依離線重播修改 TA）：**
+- 第一版 TA（在比對前一律去掉沒說出的 activity）重播 1613 組讀法，改變 9 組。
+  - case 4 有 2 次從 OK（GIRAFFE exact）變成 WRONG：讀法還帶著 activity 矩陣的 `sample` entity，改後對不到任何 workflow。
+  - 即使去掉 `sample`，也只會變成 PANDA 平手。case 4「each person's per-TF regulatory strength」讀成 TF activity 本來就合法（Log 219）。
+- 改為 Log 281 的原則：只有讀法**因為**沒說出的 activity 部分而對不到任何 workflow 時，才去掉它（artifact 改為 regulatory_network，去掉 activity tag 與 `sample` entity），然後重新比對。
+  - 這在比對之後、在 SW 的 relaxation 之後執行。
+  - 重新比對的狀態照原樣（exact／ambiguous），不像 Log 281 改成 fallback：去掉的是模型沒有引用的部分，剩下的是請求說出的結果。
+- Test 6 需要 RA 先讓 regulator 保持 tf＋mirna；這時 activity 讀法是 unsupported（`role_entity`），去掉後是 PUMA exact。
+- 判定門檻不變；離線重播改用新的 TA。
+- 補充二（live 之前）：轉換時去掉 `sample` entity 後，讀法少了 miRNA 這個網路節點，仍對不到 PUMA；改為把 regulator 與 target 補回 entity。第一次 live 啟動於此修正之前，已中止並刪除，不計入。
+
+**Log 321 補充三（第一次 live 之後；TA 改寫，RA 不變）：**
+- live（`activity-witness-2026-10-03/live-ta-cand-s1.json`）：Test 6 仍是 GIRAFFE 3／3。RA 確實生效，已不再出現 `explicit_role_witness`。
+  - 收窄改由 `restore_stated_fields` 的 `stale_under_artifact` 造成：結果類型不是 regulatory_network 時 regulator 一律清掉，再只從證據補回 tf。
+  - 讀法因此對得到 GIRAFFE，補充一的「對不到才放寬」不會觸發。那個版本在錄製上也 0 影響，移除。
+- 新 TA（在 `restore_stated_fields` 清除角色之前）：
+  - 條件：讀法的結果類型只對 TF 成立（`regulatory_network_and_tf_activity`、`signed_regulatory_effect_network`），請求沒有該部分的字詞（activity 用 `_TF_ACTIVITY_WITNESS`；signed 用 Log 302 的 `signed_partial_regulatory_effects` witness），而且讀法自己的 regulator 含 miRNA。
+  - 處理：結果類型改為 `regulatory_network`，保留讀法的 regulator；去掉 activity／signed 的 tag、`sample` entity 與該 artifact 的證據。
+  - 理由：讀法自相矛盾（miRNA 沒有 TF activity）。請求沒說的那一半讓位給讀法自己有的部分，與 SW 相同。
+- 離線：對所有錄製 trace 的每一次 SemanticInterpretation／SemanticPatch 輸出，以新舊 `restore_stated_fields` 比較（`replay_ta.py` 改寫）。
+- 判定門檻不變；live 重跑同一組 18 次。第一次 live 保留作為證據（RA 單獨的效果），不計入判定。
+- 補充四（第二次 live 之後）：TA 觸發 3／3，但 Test 6 都以 semantic_fallback 結束。原因是轉換時移除了舊 artifact 的證據，卻沒有補 regulatory_network 的證據，驗證要求 `missing_evidence:artifact_type=regulatory_network`；patch 之後 TA 再次轉換，仍然缺。改為替換成一筆 inferred 的 regulatory_network 證據，與既有 `unique_role_ontology_entailment` 的作法相同。live 第三次重跑同一組（`live-ta-cand-s3.json`）；第二次保留作證據。
+
+## Log 322｜結果：RA、TA——全部門檻成立，保留；Test 6 從 GIRAFFE 6／6 變成 PUMA 3／3
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 321（含補充一至四）判定。證據：`docs/research-log/activity-witness-2026-10-03/`。
+- `live-ta-ra-only-s1`：只有 RA。
+- `live-ta-cand-s2`：TA 缺 artifact 證據。
+- `live-ta-cand-s3`：判定輪。
+- `replay_ta.py`／`replay_ta.txt`。
+- 各 18 次，gpt-4o-mini，provider 錯誤 0。
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線 | TA 在 5094 次錄製判讀中觸發 60 次，全在三個 TF＋miRNA 請求：Test 6、`role-both-ss-en`、`zh-both-regulators-agg`，正解都是 PUMA／LIONESS-PUMA。RA 只改 Test 6 那一句。全套件通過；兩個指紋與條件推薦 prompt hash 不變 | 成立 |
+| Test 6 ×3 | PUMA exact 2、PUMA fallback 1；GIRAFFE 0。RA 單獨時為 GIRAFFE 3／3；TA 缺證據時為 semantic_fallback 3／3 | 成立 |
+| blind case 1 | OK 3／3（baseline，Log 316 candidate：3／3） | 成立 |
+| blind case 4 | OK 1、PARTIAL 2（baseline OK 1、PARTIAL 2） | 成立 |
+| blind case 5 | OK 2、FALLBACK 1（baseline OK 3）。該次 fallback 是模型把檔案路徑寫成 input artifact、且沒有任何證據；RA 單獨的那一輪也出現一次，TA 沒有觸發 | 成立（不可歸因） |
+| Test 1 | 候選集合 3／3 不變 | 成立 |
+| Test 9 | 2／3 不變；1 次少了 miRNA 方法，該次 RA、TA 都沒觸發，屬模型變異。OTTER 推薦 2／3（Log 320 為 1／3） | 成立（不可歸因） |
+
+**判定：** 保留 RA 與 TA。
+
+**觀察到、未處理：** Test 6 有 1 次以 `registry_guidance_fallback` 給出 PUMA（「closest registered match」）；其餘 2 次為 exact。
