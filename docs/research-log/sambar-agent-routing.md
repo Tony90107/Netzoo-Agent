@@ -15443,3 +15443,15 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - baseline 看不到這個問題：同一題 2／3 已被 discriminator 錯選成 GIRAFFE，條件推薦沒有執行。
 - II-B 只替 `regulator_class` 宣告了證據字詞；`established_method`、`compute_constraints`、`tf_activity_vs_expression` 仍只要求引用逐字存在。
 - 若要修，做法與 II-B 相同（軸的證據字詞），應以記錄中被接受的條件推薦重播為效益與不擴散的門檻，另行宣告。
+
+**Log 303 補充（commit `ea9c788`、`eee526a` 之後寫）：II-B 的判斷範圍被改窄過，已改回。**
+- 拆分 commit 時，我把 `condition_recommender.py` 的 II-B 那一段當成未被改動而保留。
+- 但 11:33 的另一份修正（已丟棄的那份）同時把 `re.search(witness, user_task)` 改成了 `re.search(witness, claim.text_span)`。
+- 證據：
+  - 前一個 session 的 II 原型（`ii_ABC`）是 `user_task`，與 Log 300 的宣告「證據字詞看整個請求，而不是只看引用」一致。
+  - Log 301 兩臂的 `mirna-degradation-en` 3／3 都以引用「Do you have a tool specifically for this class of molecules?」得到 PUMA 推薦。這句話本身沒有任何證據字詞，所以當時檢查的是整個請求。
+- 影響：只檢查引用時，Log 269 使用者決定允許的功能性描述會被拒絕。
+  - 既有測試把整個請求當成引用傳入，所以沒有抓到。
+- 修正：改回 `user_task`，並新增 `test_the_evidence_words_may_sit_outside_the_quote`（錄下的引用＋功能性描述的請求）。
+  - 這個測試在被改窄的那一行上失敗，改回後通過。
+- 其餘 II 檔案逐一與原型比對，除了已撤回的 II-A，沒有其他差異。
