@@ -24,7 +24,8 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..routing.capability_compatibility import input_availability
 from ..routing.clarification_planner import plan_clarification
 from .contracts import ReplyChoices, ReplyOption
-from .method_notes import condition_phrase, fit_notes, highlight, missing_input_labels, needs_line
+from .method_notes import condition_phrase, fit_notes, gives, highlight, missing_input_labels, needs_line
+from .option_reasons import option_parts, per_sample_use
 from .phrases import clip, join_names, primary_outcome, quote, result_phrase, workflow_name
 
 __all__ = [
@@ -38,7 +39,8 @@ __all__ = [
     "reading_parts",
 ]
 
-_DESCRIPTION_LIMIT = 170
+# Three wrapped terminal lines: what you get, how it differs, when to pick it.
+_DESCRIPTION_LIMIT = 200
 
 
 def present_inputs(task: str, decision: TaskDecision) -> frozenset[str]:
@@ -49,20 +51,26 @@ def present_inputs(task: str, decision: TaskDecision) -> frozenset[str]:
     return frozenset(present)
 
 
-def describe(parts) -> str:
-    """Short fragments joined by ' · ', filled in priority order within a budget."""
-    kept: list[str] = []
-    for part in parts:
-        part = " ".join((part or "").split()).rstrip(".")
+def describe(parts, ranks=None) -> str:
+    """Short fragments joined by ' · ' within a budget, shown in the order given.
+
+    Fragments are kept in priority order: `ranks` (lower first, one per part),
+    else the order given. A fragment that does not fit is skipped, and a
+    shorter one after it may still fit.
+    """
+    texts = [" ".join((part or "").split()).rstrip(".") for part in parts]
+    order = sorted(range(len(texts)), key=lambda i: (ranks[i] if ranks else 0, i))
+    kept: list[int] = []
+    for index in order:
+        part = texts[index]
         if not part:
             continue
-        part = part[:1].upper() + part[1:]
-        candidate = " · ".join([*kept, part])
-        if len(candidate) <= _DESCRIPTION_LIMIT:
-            kept.append(part)
+        if sum(len(texts[i]) + 3 for i in kept) + len(part) <= _DESCRIPTION_LIMIT:
+            kept.append(index)
         elif not kept:
-            kept.append(clip(part, _DESCRIPTION_LIMIT))
-    return " · ".join(kept)
+            texts[index] = clip(part, _DESCRIPTION_LIMIT)
+            kept.append(index)
+    return " · ".join(texts[i][:1].upper() + texts[i][1:] for i in sorted(kept))
 
 
 def _stated_reasons(advice) -> list[str]:
@@ -116,27 +124,29 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
     clean = [action for action in candidates if not fits[action][1]]
     best = clean[0] if len(clean) == 1 and recommended is None else None
     options = []
-    for action in order:
+    for index, action in enumerate(order):
         matches, mismatches = fits[action]
         name = workflow_name(policy, action)
         if action == recommended:
             lead = ["Fits what you said: " + "; ".join(_stated_reasons(advice))]
         else:
             lead = []
-        parts = [
-            *lead,
-            highlight(action),
-            *matches,
-            *mismatches,
-            *([] if action == recommended else
-              ["Best if " + " or ".join(conditions[action])] if conditions.get(action) else []),
-            *(["Also needs " + ", ".join(missing[action])] if missing[action] else []),
-        ]
+        got, use = option_parts(action, candidates, outcome, policy, before=order[:index])
+        when = ([] if action == recommended else
+                ["Pick it if " + " or ".join(conditions[action])] if conditions.get(action) else [])
+        needs = ["Also needs " + ", ".join(missing[action])] if missing[action] else []
+        # Read as: what you get, how it fits your request, what it lets you do
+        # and costs, when to pick it, what it needs. When over budget, what the
+        # option gives and misses is kept first, then what it needs and when to
+        # pick it; a cost is never shown without the use it pays for.
+        ranked = [(0, part) for part in lead] + [(1, part) for part in got] + [(5, part) for part in matches] \
+            + [(2, part) for part in mismatches] + ([(6, " · ".join(use))] if use else []) \
+            + [(4, part) for part in when] + [(3, part) for part in needs]
         badge = "Recommended" if action == recommended else "Best match" if action == best else ""
         options.append(ReplyOption(
             key=action,
             label=name,
-            description=describe(parts),
+            description=describe([part for _, part in ranked], [rank for rank, _ in ranked]),
             answer=f"Use {name}",
             recommended=action == recommended,
             badge=badge,
@@ -260,12 +270,20 @@ def clarification_choices(decision: TaskDecision, policy: ProjectPolicySnapshot,
         lacking = [need for need in missing.get(actions[0], [])
                    if all(need in missing.get(action, []) for action in actions[1:])]
         first = min(candidates.index(action) for action in actions)
+        if not single:
+            got = []
+        elif plan.dimension != "granularity":
+            got = [gives(single)]
+        else:
+            # The answer already names the scale; say what that scale is for.
+            got = per_sample_use(single, policy) if scale == "sample_specific" else []
         ranked.append((len(mismatches), bool(lacking), first, index, ReplyOption(
             key=f"{plan.dimension}-{index}",
             label=clip(label, 80),
             description=describe([f"Leads to {join_names([workflow_name(policy, a) for a in actions])}",
-                                  highlight(single) if single else "", *mismatches,
-                                  *(["Also needs " + ", ".join(lacking)] if lacking else [])]),
+                                  *got, *mismatches,
+                                  *(["Also needs " + ", ".join(lacking)] if lacking else [])],
+                                 [0, *([3] * len(got)), *([1] * len(mismatches)), *([2] if lacking else [])]),
             answer=clip(label, 200),
             action=single,
             granularity=option_scale(single, scale) if single else None,

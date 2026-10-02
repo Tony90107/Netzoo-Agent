@@ -28,6 +28,7 @@ from .choices import (
 from .contracts import ReplyCard, ReplyChoices, ReplyOption
 from .method_notes import highlight, needs_line, unmentioned_input_labels
 from .next_steps import next_steps, plan_step
+from .option_reasons import per_sample_use, shared_points
 from .phrases import artifact_noun, clip, input_phrase, join_names, primary_outcome, quote, result_phrase, workflow_name
 
 __all__ = ["build_reply_card"]
@@ -222,8 +223,9 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
         headline = f"{count} registered methods can build {result_phrase(outcome)}; they differ in {difference}."
     else:
         headline = f"{count} registered workflows fit your request; they differ in {difference}."
-    points = [_understood(decision, task),
-              _unmentioned([option.action for option in choices.options if option.action], task, decision)]
+    actions = [option.action for option in choices.options if option.action]
+    points = [_understood(decision, task), _unmentioned(actions, task, decision),
+              *shared_points(actions, outcome, task, policy)]
     recommended = next((option for option in choices.options if option.badge == "Recommended"), None)
     best = next((option for option in choices.options if option.badge == "Best match"), None)
     if recommended is not None:
@@ -232,11 +234,14 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
         points.append(f"Best match: {best.label} is the only one whose output matches everything you asked for.")
     else:
         points.append("Nothing you said favours one method yet; each option says when to pick it.")
-    points.append("Picking an option explains it for your data and what it needs; nothing runs.")
     if decision.addressed_concerns:
         points.append("Your stated concern is answered per method in the full explanation.")
-    return ReplyCard(kind="method_choice", headline=clip(headline, 300),
-                     points=[clip(p, 300) for p in points if p], choices=choices)
+    points = [clip(p, 300) for p in points if p]
+    # The generic note goes first when the shared points would pass the card's six.
+    picking = "Picking an option explains it for your data and what it needs; nothing runs."
+    if len(points) < 6:
+        points.insert(len(points) - bool(decision.addressed_concerns), picking)
+    return ReplyCard(kind="method_choice", headline=clip(headline, 300), points=points[:6], choices=choices)
 
 
 def _clarification_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
@@ -267,11 +272,13 @@ def _composition_card(decision, policy, task) -> ReplyCard | None:
         question="Do you need one network per sample, or only the cohort network?",
         options=[
             ReplyOption(key=final, label=f"One network per sample ({workflow_name(policy, final)})",
-                        description=describe([highlight(final), "Also writes the cohort network"]),
+                        description=describe([*per_sample_use(final, policy)[:1], "Also writes the cohort network",
+                                              *per_sample_use(final, policy)[1:]]),
                         answer=f"Use {workflow_name(policy, final)}", action=final,
                         granularity=option_scale(final, "sample_specific"), resolution="confirm_workflow"),
             ReplyOption(key=base, label=f"Cohort network only ({workflow_name(policy, base)})",
-                        description=describe([highlight(base)]),
+                        description=describe([f"A single {workflow_name(policy, base)} run, so faster",
+                                              "It will not show how samples differ"]),
                         answer=f"Use {workflow_name(policy, base)}", action=base,
                         granularity=option_scale(base, "aggregate"), resolution="confirm_workflow"),
         ],
