@@ -17035,3 +17035,29 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 2. 也處理 r4 形狀：兩個讀法的 operation 引文互相包含，卻給出不同值。
    - 這時兩者都有字句支持，結構上無法判斷哪一個對。
    - 「Before network inference」的 inference 被讀成要求的動作，屬於模型誤讀；能否用結構規則處理還不確定。
+
+## Log 339｜顯示修正：推薦不再顯示模型的理由，也不顯示「使用者已有檔案」的模型假設
+
+日期／時區：2026-10-04，Asia/Taipei。使用者決定：「先修 3 點，接著做 1、2 點」（r7 第 2 點）。
+只改回覆，路由、驗證、prompt 都不變（指紋不變）。
+
+**問題（r6、r7 的 Test 9）：**
+- form A 推薦的「Why it addresses this question」顯示模型的 rationale：「It is particularly suitable for the user's context of inferring a gene regulatory network with limited samples, as it does not depend on iterative message passing, which may not be effective with sparse data.」這些說法 registry 都沒有根據。
+  - Log 320 已經濾掉宣稱凸性或全域最優的句子；這是同一來源的第二種錯誤。
+- 模型的假設「The user has access to the required input files, including motif and PPI data, …」緊接在 Log 335 的「It also needs files for … you mention; no file is named yet.」之後，兩者矛盾。Log 259 規定模型文字不得暗示輸入已在手上。
+
+**修正（`interpretation/advisory_answers.py`）：**
+- 有 stated conditions 時（Log 318 之後，所有顯示的推薦都有），不再加「Why it addresses this question」。
+  - 開頭已經用請求的原句與 registry 的理由說明推薦（「Based on what you said — "…" — **OTTER** fits better: you asked for an explicit objective that is optimized.」），下方是 registry 的機制段。
+  - 沒有 conditions 時，開頭用 rationale 的舊路徑也套用 Log 320 的過濾。
+- `_shown_assumptions`：假設中有「It also needs …」時，不顯示「user … has／have／possess／access … files／data／inputs／priors／matrix」的模型假設。registry 寫的句子（以「It also needs」開頭的、axis 的 confirm 文字用「you」）不受影響。
+
+**重播（3410 種，HEAD `9ccb8e1` 對新程式）：**
+- 全文 142 處，13 個請求：
+  - 138 處移除「Why it addresses this question」：blind case 3 87 處、case 6 13 處、Test 9 類 7 處等。
+  - 26 處移除「The user has access to the required input files …」類的模型假設，每一處都與「It also needs」並列。
+- 沒有任何 registry 句子被移除。卡片 0 變化。
+
+**測試：** 全套件 3175 passed／35 skipped。
+- `tests/test_r5_replies.py` 新增 1 個（r7 的 Test 9）。
+- `tests/test_condition_recommender.py` 有 2 個斷言原本要求顯示模型 rationale（「explains, never decides」），依本次決定改為斷言不顯示。

@@ -107,3 +107,16 @@ def test_unassessed_inputs_are_said_with_the_closing_not_as_a_contradiction():
                          "workflow guidance only; no execution was authorized. No files were inspected and no "
                          "analysis ran.")
     assert text.index("**Comparing module structure") < text.index("Input compatibility has not been assessed")
+
+
+# -- r7 (Log 339) ----------------------------------------------------------------
+
+R7 = json.loads((OUT / "r7-decisions.json").read_text())
+
+
+def test_a_recommendation_shows_the_requests_words_not_the_models_rationale():
+    text, _, _ = _reply("test9", R7)
+    assert text.startswith('Based on what you said — "We would rather formulate the problem as an optimization')
+    assert "Why it addresses this question" not in text and "limited samples" not in text
+    assert "It also needs files for the TF-motif prior and protein-interaction prior you mention" in text
+    assert "The user has access to the required input files" not in text
