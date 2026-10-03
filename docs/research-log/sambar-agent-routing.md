@@ -16458,3 +16458,65 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **判定：** 保留 RA 與 TA。
 
 **觀察到、未處理：** Test 6 有 1 次以 `registry_guidance_fallback` 給出 PUMA（「closest registered match」）；其餘 2 次為 exact。
+
+## Log 323｜事前宣告：SH——`assumptions` 字串改為清單；FI——分群請求中，同一 workflow 的途中產物讀法併入終點讀法
+
+日期／時區：2026-10-03，Asia/Taipei。使用者要求處理 Log 320／322 記下的 Test 2、Test 5 驗證失敗。寫於任何程式變更之前。
+
+**Test 2（本機 r4，1／7）：**
+- 第一次判讀的某個 reading 把 `assumptions` 寫成字串，schema 驗證失敗。schema 錯誤時第二次呼叫是整份重寫的 SemanticReview，而不是針對性的 SemanticPatch；review 仍缺 granularity 證據，結果 fallback。
+- 把字串包成清單後，重播這份輸出只剩語意缺項（`missing_current_input:expression_matrix`、`missing_evidence:granularity=sample_specific`）。traced 的三次成功 Test 2 第一次判讀正是這些缺項，都由 SemanticPatch（加 sibling patch）修好。
+- 所有錄製中，第一次判讀有 `assumptions:list_type` 的 trial 共 9 次，7 次 fallback。
+
+**Test 5（本機 r3、r4，2／10）：**
+- 讀法 H0 是 `pathway_mutation_matrix`（輸入 mutation_matrix，有引用），H1 是 `sample_cluster_assignment`（無輸入）。
+- 請求說了把病人分型，`terminal_goal_conflict` 要求每個讀法的 artifact 都是分群。H0 兩次都沒被改過來；H1 單獨看又缺輸入（輸入寫在 H0），`keep_valid_hypotheses` 救不回，結果 fallback。
+- 成功的 8 次全是單一讀法 `sample_cluster_assignment`＋mutation_matrix → SAMBAR exact。
+
+**規則 SH（`graph/semantic_shape.py`）：**
+- reading 或 patch 的 `assumptions` 是單一字串時，包成一個元素的清單。
+- 與 `nest_unresolved_dimensions` 同類的形狀正規化：不改內容、不補值，記錄在 `routing.semantic_shape_normalized`。
+- `confidence` 缺漏（55 次，32 次 fallback）**不處理**：它決定讀法的排序，補值就是捏造。
+
+**規則 FI（`interpretation/terminal_goal_fold.py`，在 `restore_stated_fields` 之後、驗證之前）：**
+- 條件：`patient_clustering_goal(task)` 成立，有一個讀法的 artifact 是 `sample_cluster_assignment`，另有讀法的 artifact 是「產生 sample_cluster_assignment 的 registered workflow 途中也產生的 artifact」（由 registry 推導，目前即 SAMBAR 的 pathway／gene mutation scores、sample distance）。
+- 處理：把這些途中讀法併入終點讀法，移除途中讀法，把它們的 input artifacts 與模型自己寫的 input_artifact 證據併到終點讀法。記錄 `routing.intermediate_readings_folded`。
+- 這不是 Log 63 撤回的「只靠字詞補輸入」：輸入與引用都是模型在另一個讀法裡寫的，與 G1(a)（Log 242：別的讀法有就算有）一致，只是讓它在丟掉途中讀法後不消失。
+
+**判定：**
+- 離線：
+  - SH：所有錄製中第一次判讀有 `assumptions:list_type` 的輸出，包成清單後都通過 schema（另缺 confidence 的除外）。
+  - FI：
+    - Test 5 r3、r4 的被拒判讀，摺疊後通過驗證並對到 SAMBAR exact。
+    - 全部錄製中，FI 只在有分群目標、同時有終點與途中讀法的判讀觸發；列出每一個。
+  - 全套件通過；兩個指紋與條件推薦 prompt hash 不變。
+- live（gpt-4o-mini，預先授權；traced，只跑 candidate；失敗率低，live 只作 smoke，判定以離線為主）：
+  - Test 2、Test 5 各 ×5：沒有 WRONG。
+  - blind case 8（SAMBAR）×3：與錄製 baseline 相比，沒有新增 WRONG。
+- 任一不成立 → 撤回對應規則（SH、FI 分開判定）。
+
+## Log 324｜結果：SH、FI——全部門檻成立，保留
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 323 判定。證據：`docs/research-log/validation-fallbacks-2026-10-03/`。
+- `replay_vf.py`／`replay_vf.txt`：離線重播。
+- `test5-fallbacks.json`：本機 r3、r4 兩次 Test 5 失敗的被拒判讀。
+- `live-vf-t25-s1.json.gz`：Test 2、5 各 5 次。
+- `live-vf-case8-s1.json.gz`：case 8 ×3。
+- gpt-4o-mini，provider 錯誤 0。
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| SH 離線 | 第一次判讀因 `assumptions:list_type` 被拒的 11 份輸出：8 份正規化後通過 schema；3 份同時缺 confidence，不在範圍 | 成立 |
+| FI 離線（Test 5） | r3、r4 的被拒判讀摺疊後通過驗證，對到 SAMBAR exact，移入的輸入為 mutation_matrix | 成立 |
+| FI 觸發範圍 | 3113 份錄製第一次判讀中觸發 2 次，都是 blind case 8（分群＋sample distance），錄製結果原本就是 SAMBAR exact（OK） | 成立 |
+| 離線 | 全套件通過；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 `c820364a1123` 不變 | 成立 |
+| live smoke | Test 2 5／5 為 LIONESS-PANDA／PUMA 平手（先問輸入，與先前相同）；Test 5 5／5 SAMBAR exact；case 8 3／3 OK（baseline 6／6） | 成立 |
+
+- 這 13 次 live 中 SH、FI 都沒觸發：這兩種失敗形狀本來就少見（約 1／7、2／10），live 只用來確認沒有回歸。
+- 新增 `tests/test_validation_fallbacks.py` 5 個測試。
+
+**判定：** 保留 SH 與 FI。
+
+**觀察到、未處理：**
+- 第一次判讀缺 `confidence` 的有 55 次（32 次 fallback）。補值就是捏造排序，不處理。
+- 第一次判讀被 schema 擋下時，第二次呼叫是整份重寫的 review，不是 patch；這是失敗率高的原因。改變這個路由是另一項決策，未處理。
