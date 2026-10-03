@@ -16943,3 +16943,56 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 已認領時不重複；
 - 沒有字詞時不加；
 - LIONESS 說明涵蓋分期與存活。
+
+## Log 337｜事前宣告：SR——沿用他人引文、卻在對方明說的維度上改值的讀法要丟掉
+
+日期／時區：2026-10-04，Asia/Taipei。使用者決定：「先修 3 點，接著做 1、2 點」（r7 第 1 點）。
+本條目寫於 SR 的任何程式修改與 live 呼叫之前。基準為 HEAD `dd6479f`：工作目錄乾淨（`docs/diagnostics/` 不屬本專案），指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+語料 `docs/research-log/shadow-readings-2026-10-04/corpus-a.json`（test7-en、test2-en）與 `corpus-b.json`（gran-mirna-unstated-control、test1-en、test4-en）同時寫定。
+
+**問題：**
+- Test 7（r3、r4、r7）：prepare 讀法之外，多一個 infer regulatory_network 讀法，引用同一句「filter the TF-gene prior」，回覆因此變成 4 方法平手。
+  - r3、r7 的 infer 只有推論，沒有引文。
+  - r4 的 infer 另引「before network inference, we want to filter the TF-gene prior」。
+- Test 2（r6）：第二個讀法是 signed、整群尺度，引用的 artifact 句與第一個讀法相同（「reconstruct a separate regulatory network for each patient」），尺度沒有引文。這個讀法帶進 GIRAFFE。
+
+**先做的掃描（`scan_shadow.py`／`scan_shadow.txt`，全部錄製決策）：**
+- 原型第一版會觸發 4 種決策，其中 gran-mirna-unstated-control（「I have not decided between one cohort network and separate per-patient networks」）會丟掉尺度為 unknown 的讀法；那個讀法才是對的。
+- 改為 unknown／not_applicable 不算改值後，只觸發 3 種決策、2 個請求：
+  - Test 7 ×2（r3、r7）：ambiguous PANDA／LIONESS-PANDA／OTTER／GIRAFFE → unsupported（prepare 缺口）。
+  - Test 2 r6 ×1：去掉 GIRAFFE，剩 LIONESS-PANDA／PUMA。
+- r4 的 Test 7 不在範圍內：它的 infer 有自己的 explicit 引文。
+
+**SR（`routing/reading_selection.py`，在 `graph/router_invocation.py` 比對前、Log 313 規則之後呼叫）：**
+- 定義：讀法 B 是讀法 A 的影子，條件如下：
+  - 兩者都有 explicit、確實在請求中的 artifact_type 引文，且至少一段相同（忽略大小寫與結尾標點）。
+  - 在 operation 或 granularity 上，A 有 explicit 引文，B 的值與 A 不同、是具體值（不是 unknown／not_applicable），而且 B 在這個維度沒有自己的 explicit 引文。
+  - A 不是 B 的影子（不互相）。
+- 規則：丟掉影子讀法。
+  - 前提同規則 B：至少留一個讀法，且留下的讀法單獨能通過驗證。
+  - 事件 `routing.shadow_readings_dropped`。
+- 理由：同一段文字被兩個讀法引用，而它的動作或尺度只在其中一個讀法有請求的字句支持；另一個讀法的不同值沒有請求支持。
+- 不是模型可見的改動；指紋應不變。
+
+**判定（任一不成立就撤回 SR）：**
+- 離線：
+  - 全套件通過；兩個指紋與條件推薦 prompt hash 不變。
+  - 用 repository 的實作重播：與 `scan_shadow.txt` 相同（3 種決策、2 個請求）。
+  - 單元測試：
+    - Test 7 r7 錄下的讀法只剩 prepare，比對結果為 unsupported；
+    - Test 2 r6 去掉 signed 讀法；
+    - unknown 不算改值（gran-mirna-unstated-control 的錄音讀法不動）；
+    - 留下的讀法不能單獨驗證時不動。
+- live（A/B：baseline 為宣告 commit 的 worktree；traced；gpt-4o-mini，預先授權）：
+  - 有效性：兩臂 provider 錯誤皆為 0；否則依 Log 290 補充 4 重跑。
+  - 健全：candidate 所有 trial 的最終決策中，影子讀法（上述定義）＝ 0。
+  - 效果：
+    - test7-en ×5 中，最終保留 prepare 讀法且不是平手的次數，candidate ≥ baseline。
+    - baseline 出現影子平手 ≥ 1 時，candidate 須為 0。
+    - baseline 為 0 表示本輪沒有出現，改以重播判定。
+  - test2-en ×5：候選含 GIRAFFE 的次數 candidate ≤ baseline。
+  - 對照（corpus-b ×3），每題 candidate 各自 ≥ baseline − 1：
+    - gran-mirna-unstated-control：候選同時含 PUMA 與 LIONESS-PUMA；
+    - test1-en：平手且含 PANDA；
+    - test4-en：平手且含 PANDA。
+  - blind_en ×1：OK ≥ baseline − 1；WRONG ≤ baseline ＋ 1（`preference-witness-2026-10-03/replay_pw.verdict`）。
