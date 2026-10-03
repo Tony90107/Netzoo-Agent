@@ -17,7 +17,7 @@ import re
 
 from workflow_registry import OUTSIDE_STEPS, OutsideStep
 
-from .inspected_answers import _NOT_INSPECTED
+from .inspected_answers import above_closing
 
 __all__ = ["outside_steps", "with_outside_steps", "with_outside_steps_reply"]
 
@@ -47,13 +47,7 @@ def with_outside_steps(text: str, decision, task: str) -> str:
     steps = outside_steps(decision, task)
     if not steps or not text:
         return text
-    block = "\n\n".join(step.note for step in steps)
-    paragraphs = text.split("\n\n")
-    # Above the closing paragraph, which may begin with another closing sentence.
-    closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
-    if closing is None:
-        return text + "\n\n" + block
-    return "\n\n".join([*paragraphs[:closing], block, *paragraphs[closing:]])
+    return above_closing(text, "\n\n".join(step.note for step in steps))
 
 
 def with_outside_steps_reply(result: dict, state, reply) -> dict:

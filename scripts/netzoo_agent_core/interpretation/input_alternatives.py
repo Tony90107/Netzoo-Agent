@@ -16,16 +16,23 @@ the reading asks for and with the regulator roles the request states: "a
 TF-to-gene network" from expression alone is not offered a co-expression
 network, which is not the result it asked for (replay, 2026-10-02). Nothing is matched or selected: the reply says what the
 named data allows and asks whether the other inputs exist.
+
+Roles stated in the passive voice count too: "genes are regulated by
+transcription factors ... and by microRNAs" (Test 6, r4-r5) was offered a
+genes-only network, because the routing gate `regulatory_role_mentions` reads
+only "TF-to-gene"-style phrases. This wider reading stays here, in the reply.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
 
 from ..reply_cards.method_notes import INPUT_ARTIFACTS, SHORT_INPUT_LABELS, input_fields, missing_input_labels
 from ..routing.capability_compatibility import input_availability
+from .inspected_answers import above_closing
 from .request_integrity import regulatory_role_mentions
 
 __all__ = [
@@ -53,7 +60,9 @@ _RESULTS = {
     "multi_omic_network": ("network across two omics layers", ""),
 }
 _SCALES = {"sample_specific": "one {} per sample", "aggregate": "one cohort-level {}"}
-_NOT_INSPECTED = "No files were inspected and no analysis ran."
+# "genes are regulated by X and by Y": the rest of the sentence after "regulated by".
+_PASSIVE_ROLES = re.compile(r"\bgenes?\b(?:(?!\b(?:not|never)\b)[^.;?!]){0,40}?\bregulated\s+by\b(?P<by>[^.;?!]*)", re.I)
+_REGULATOR = re.compile(r"\bTFs?\b|\btranscription[- ]factors?\b|\bmi(?:cro)?[- ]?RNAs?\b|\bmiR\b", re.I)
 # Guidance replies that name workflows for the request's result; only these get the paragraph.
 _REPLY_KINDS = frozenset({
     "outcome_clarification", "research_choices", "verified_guidance", "scientific_guidance",
@@ -86,6 +95,14 @@ def _runs_on(action: str, present: frozenset[str], task: str) -> bool:
     return judged and not missing_input_labels(action, present, task)
 
 
+def _stated_roles(task: str) -> set[str]:
+    roles = {mention.regulator_type for mention in regulatory_role_mentions(task)}
+    for passive in _PASSIVE_ROLES.finditer(task):
+        roles.update("tf" if word.casefold().startswith(("tf", "transcription")) else "mirna"
+                     for word in _REGULATOR.findall(passive.group("by")))
+    return roles
+
+
 def _primary(decision):
     if decision.requested_outcome is not None:
         return decision.requested_outcome
@@ -107,7 +124,7 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
     if any(_runs_on(action, present, task) for action in candidates):
         return None
     scale = outcome.granularity
-    roles = {mention.regulator_type for mention in regulatory_role_mentions(task)}
+    roles = _stated_roles(task)
     alternatives = tuple(
         action for action, capability in OUTPUT_CAPABILITIES.items()
         if action in RUN_ACTIONS and action not in candidates and capability.artifact_type in _NETWORKS
@@ -191,10 +208,7 @@ def with_input_alternative(text: str, decision, task: str, policy) -> str:
     found = input_alternative(decision, task)
     if found is None or not text:
         return text
-    block = render_input_alternative(found, policy)
-    if _NOT_INSPECTED in text:
-        return text.replace(_NOT_INSPECTED, block + "\n\n" + _NOT_INSPECTED, 1)
-    return text + "\n\n" + block
+    return above_closing(text, render_input_alternative(found, policy))
 
 
 def with_input_alternative_reply(result: dict, state, policy, reply) -> dict:

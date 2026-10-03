@@ -301,7 +301,7 @@ def _composition_card(decision, policy, task) -> ReplyCard | None:
 
 
 def _gap_card(decision, policy, task) -> ReplyCard:
-    headline, alternatives, unavailable = capability_gap_parts(decision, policy)
+    headline, alternatives, unavailable = capability_gap_parts(decision, policy, task)
     points = []
     if alternatives:
         points.append("A registered workflow produces a related result; choose it below if that is what you meant.")
