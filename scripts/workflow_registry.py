@@ -712,6 +712,8 @@ class OutsideStep:
     is set, the reply lists one of them. ``note`` is the paragraph the reply
     adds (the manual route and the published method); ``name`` and ``reason``
     are the card's "not available here" row. Sources were checked when added.
+    ``concern_answer`` replaces a listed workflow's own note for a stated
+    concern whose quote names this step (Log 331).
     """
 
     key: str
@@ -721,6 +723,7 @@ class OutsideStep:
     reason: str
     source: str
     workflows: frozenset[str] = frozenset()
+    concern_answer: str = ""
 
 
 # Verified 2026-10-03 against the cited pages (TEST_PROMPTS Tests 4, 7, 8, 9).
@@ -774,11 +777,17 @@ OUTSIDE_STEPS: tuple[OutsideStep, ...] = (
             "only be judged by matching them afterwards, for example by gene overlap. ALPACA (Padi & "
             "Quackenbush 2018; netZooR `pandaToAlpaca`, not registered here) compares the two directly: it "
             "uses the control network as the null model for the disease network's modularity "
-            "(differential modularity) and returns each node's module and its contribution score."
+            "(differential modularity) and returns each node's module and its contribution score. It "
+            "takes both networks as one edge table (TF, target gene, control weight, disease weight), so "
+            "they must be given over the same TF-gene pairs."
         ),
         reason="Not registered here; ALPACA is in netZooR. CONDOR run on each network is only an approximation.",
-        source="Padi & Quackenbush 2018, npj Syst Biol Appl, doi:10.1038/s41540-018-0052-5; netZooR pandaToAlpaca",
+        source="Padi & Quackenbush 2018, npj Syst Biol Appl, doi:10.1038/s41540-018-0052-5; netZooR pandaToAlpaca, alpaca (net.table)",
         workflows=frozenset({"run_condor"}),
+        # Test 8 (r5): "how can we directly quantify this differential modular
+        # structure" was answered with CONDOR's core scores.
+        concern_answer=("CONDOR finds modules in one network at a time; it does not compare two. "
+                        "ALPACA, described below, does."),
     ),
     OutsideStep(
         key="convex_guarantee",

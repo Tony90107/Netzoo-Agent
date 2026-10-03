@@ -16716,3 +16716,41 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 另外 5 處是 Test 6 的 Inputs 選項消失。
 
 **測試：** 全套件 3155 passed／35 skipped。`tests/test_reply_cards.py` 新增 3 個：被動語態的角色、整段放在結尾段之前、gap 卡只列回覆提到的 workflow 並用使用者角度描述。
+
+## Log 331｜顯示修正：Test 4 的讀法標題、清單與單細胞說明位置；Test 8 的「What you asked about」
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定：「接著也可以開始做2.6點」（r5 回報的第 2、6 項）。
+本 Log 只做顯示部分，路由、驗證、prompt 都不變（指紋不變）。第 2 項中 Test 4 第二個讀法的誤讀屬於路由，另見 Log 332。
+
+**問題（r5）：**
+- Test 4：
+  - 讀法 1 的標題只引用「RNA-seq」。模型的兩個結果引文以句號結尾，但請求在該處接的是逗號，所以 `_spans` 找不到，只剩 input 引文。
+  - 讀法 1 列了 6 個 workflow，各自附 Registered purpose、Method premise、Mathematical interpretation 等，約 40 行。
+  - 單細胞說明放在「Which reading should we start with…?」之後，使用者先被問選哪個，才知道這些 workflow 是為 bulk 樣本設計。
+- Test 8：concern matcher 把「how can we directly quantify this differential modular structure between the two networks?」對到 CONDOR 的 downstream_use，回覆用 core score 回答。要到下一段 ALPACA 說明才更正。
+- Test 8 預期答案提到 ALPACA 的輸入格式，原說明沒有。
+
+**修正：**
+- `hypothesis_routes._spans`：引文原樣找不到時，去掉結尾的 `.,;:!?` 再找一次。只影響標題與卡片標籤。
+- `hypothesis_routes._option_lines`：一個讀法超過 3 個 workflow 時，改用 tie 回覆的精簡清單。
+  - 從 `render_tie_guidance` 抽出 `tie_guidance.method_families`：依網路類別分組、per-sample 版本併入基本方法、一行一個方法。
+  - tie 回覆的輸出不變（重播確認）。
+- `outside_steps.with_outside_steps`：結尾段前一段若是回覆自己的問題（不是清單或標題，引號外有「?」），說明放在問題之前；否則照舊放在結尾段之前。
+- `OutsideStep.concern_answer`（新欄位，只有 differential_modules 有值）＋ `outside_steps.outside_concern_answer(action, quote)`。
+  - 條件：引文本身命中該步驟的全部 witness，而且該步驟涉及這個 workflow。
+  - 此時「What you asked about」（`verified_guidance`）與 tie 的 concern 段落（`tie_guidance.concern_section`）改說「CONDOR finds modules in one network at a time; it does not compare two. ALPACA, described below, does.」，不用 CONDOR 自己的 note。
+- ALPACA 說明加上輸入格式。已對照 netZooR `alpaca` 文件：net.table 四欄為 TF、target、control weight、disease weight。文件沒有提到權重正負，所以不寫。
+
+**重播（3324 種，HEAD `efb19c0` 對新程式）：** 全文 32 處、選項標籤 6 處，要點／標題／說明 0 處。
+- Test 4（3 處）：
+  - 標題改為「compare how regulatory networks are rewired across these 6 states」。
+  - 6 個 workflow 一行一個。
+  - 單細胞說明移到問題之前。
+- Test 7（8 處）：SPIDER 說明移到「PANDA can instead… Did you mean that supported result?」之前。
+- Test 8（8 處）：concern 改指向 ALPACA，ALPACA 段加上輸入格式。
+- Test 9 類的凸性請求（9 處）：凸性更正移到「These all fit; to choose, tell me…」之前。
+- 「how TFs communicate with their target genes」請求（4 處）：
+  - 讀法標題改用結果引文「We want to capture how TFs communicate with their target genes」，原本是「RNA-seq」或調控者引文。
+  - 這個請求的讀法 2「a protein interaction map.」是另一個誤讀，不在本 Log 處理。
+
+**測試：** 全套件 3160 passed／35 skipped。新增 `tests/test_r5_replies.py`（5 個，用錄下的 r5 決策）。

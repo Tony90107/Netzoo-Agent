@@ -16,6 +16,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, REQUEST_CONCERNS, SELECTION_T
 from ..settings import INPUT_ROLE_FIELDS
 from .extraction import INPUT_LABELS
 from .method_philosophy import method_philosophies_for
+from .outside_steps import outside_concern_answer
 
 _REGISTRY_TAGS = Counter(tag for cap in OUTPUT_CAPABILITIES.values() for tag in cap.selection_tags)
 
@@ -52,7 +53,8 @@ def concern_section(decision, policy, actions) -> str:
         if declared is None:
             continue
         labels[item.concern] = declared.label
-        line = f"- **{policy.workflows[item.action].workflow}** — {declared.note}"
+        note = outside_concern_answer(item.action, item.text_span) or declared.note
+        line = f"- **{policy.workflows[item.action].workflow}** — {note}"
         if line not in by_concern.setdefault(item.concern, []):
             by_concern[item.concern].append(line)
     return "\n\n".join(f"About your concern that {labels[c]}:\n" + "\n".join(lines)
@@ -74,10 +76,13 @@ def concern_section_for_workflow(decision, policy, action) -> str:
     )
 
 
-def render_tie_guidance(decision, policy, *, family_label, assumptions: str = "") -> str | None:
-    actions = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
-    if len(actions) < 2:
-        return None
+def method_families(actions, policy, family_label) -> tuple[bool, str, list[tuple[str, list[str]]]]:
+    """(one family only and no per-sample versions, what they all share, [(family, one line per method)]).
+
+    A per-sample extension is folded into its base method's line. Tie replies
+    list their candidates this way (Log 263); a reading with many workflows
+    does too (Log 331).
+    """
     caps = {a: policy.workflows[a].output_capability for a in actions}
     extensions: dict[str, list[str]] = {a: [] for a in actions}
     bases = []
@@ -93,21 +98,19 @@ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = ""
         families.setdefault(family_label(policy.workflows[action]), []).append(action)
     several_families = len(families) > 1
     method_tie = not several_families and len(bases) > 1 and not any(extensions.values())
-    sections = [
-        "Several registered methods fit this result; they differ in their modeling assumptions:"
-        if method_tie else "I can map this to more than one compatible network result:"
-    ]
     common = sorted(tag for tag, count in shared.items()
                     if count == len(actions) and method_philosophies_for([tag]) and tag in SELECTION_TAG_GLOSSARY)
     said = frozenset(common) if common and len(bases) > 1 else frozenset()
+    sentence = ""
     if said:
         # Each gloss is a verb phrase; a clause after ";" qualifies the tag for
         # the model, not for this sentence (Test 2, 2026-10-03).
         phrases = [SELECTION_TAG_GLOSSARY[tag].split(";", 1)[0].strip() for tag in common]
         joined = phrases[0] if len(phrases) == 1 else ", ".join(phrases[:-1]) + ", and " + phrases[-1]
-        sections.append(f"All of them {joined}.")
+        sentence = f"All of them {joined}."
+    listed = []
     for label, members in sorted(families.items()):
-        lines = [f"**{label}**"] if several_families else []
+        lines = []
         for action in members:
             spec = policy.workflows[action]
             # A family with one method: that method is the precise answer for
@@ -115,7 +118,23 @@ def render_tie_guidance(decision, policy, *, family_label, assumptions: str = ""
             note = _distinguishing_note(caps[action], shared, full=several_families and len(members) == 1, said=said)
             extra = " ".join(f"Per-sample version: **{policy.workflows[e].workflow}**." for e in extensions[action])
             lines.append(f"- **{spec.workflow}** — " + " ".join(p for p in (note, extra, _inputs(spec)) if p))
-        sections.append("\n".join(lines))
+        listed.append((label, lines))
+    return method_tie, sentence, listed
+
+
+def render_tie_guidance(decision, policy, *, family_label, assumptions: str = "") -> str | None:
+    actions = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
+    if len(actions) < 2:
+        return None
+    method_tie, sentence, listed = method_families(actions, policy, family_label)
+    sections = [
+        "Several registered methods fit this result; they differ in their modeling assumptions:"
+        if method_tie else "I can map this to more than one compatible network result:"
+    ]
+    if sentence:
+        sections.append(sentence)
+    for label, lines in listed:
+        sections.append("\n".join([f"**{label}**", *lines] if len(listed) > 1 else lines))
     if concerns := concern_section(decision, policy, actions):
         sections.append(concerns)
     if assumptions:
