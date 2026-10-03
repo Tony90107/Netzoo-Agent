@@ -15,6 +15,11 @@ LIONESS-DRAGON joined the tie. When the request names no second layer, that
 reading is dropped under rule B's guard. Whether a reading lacks a quote is no
 guide: the model leaves legitimate readings (TF activity in blind cases 1 and
 4) unquoted too.
+
+Log 332: a sample-clustering reading needs a request that asks to group
+something. Test 4's "single-cell RNA-seq data ..., annotated into 6 cell
+states" got one, quoting the annotation the user already has, beside the
+network reading it asked for.
 """
 
 from __future__ import annotations
@@ -51,6 +56,13 @@ READING_WITNESSES = {
         r"ATAC|chromatin|accessib|histone|ChIP|copy[- ]?number|\bCNVs?\b|genotyp|\bSNPs?\b|microbio|"
         r"small[- ]RNA|mi(?:cro)?[- ]?RNA (?:expression|levels?|profiles?|data)|layers?\b|two (?:data|measurement|assay)|"
         r"多體學|多组学|多組學|甲基化|蛋白質體|蛋白质组|代謝|代谢|染色質|染色质|層|层",
+        re.I,
+    ),
+    "sample_cluster_assignment": re.compile(
+        r"cluster|subtyp|stratif|sub-?groups?|categori[sz]|classif|partition|"
+        r"\bgroup(?:s|ing)?\s+(?:(?:the|our|these)\s+)?(?:[\w-]+\s+)?"
+        r"(?:patients?|samples?|tumou?rs?|individuals?|cells?|donors?)\b|"
+        r"分群|亞型|亚型|分型|分組|分组|分類|分类",
         re.I,
     ),
 }

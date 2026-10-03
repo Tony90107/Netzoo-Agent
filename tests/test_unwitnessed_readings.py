@@ -63,3 +63,35 @@ def test_the_rest_must_still_validate_on_its_own():
                                                       granularity="sample_specific"), confidence=0.5)
     interpretation = _interpretation([bare, _recorded()[1]])
     assert drop_unwitnessed_readings(FIXTURE["prompt"], interpretation) == (interpretation, [])
+
+
+# -- Log 332: a sample-clustering reading needs words asking to group something --
+
+TEST4 = json.loads((HERE.parent / "docs" / "research-log" / "test10-2026-10-03" / "out"
+                    / "r5-decisions.json").read_text())["test4"]
+
+
+def _test4_readings():
+    return [OutcomeHypothesis.model_validate(item) for item in TEST4["decision"]["outcome_hypotheses"]]
+
+
+def test_the_recorded_test_4_annotation_read_as_clustering_is_dropped():
+    task, readings = TEST4["prompt"], _test4_readings()
+    assert [r.outcome.artifact_type for r in readings] == ["regulatory_network", "sample_cluster_assignment"]
+    kept, dropped = drop_unwitnessed_readings(task, _interpretation(readings))
+    assert dropped == ["sample_cluster_assignment"]
+    after = match_semantic_request(task, kept.outcome_hypotheses, request_mode="guidance")
+    assert "run_sambar" not in after.hypothesis_actions and "run_panda" in after.hypothesis_actions
+
+
+def test_a_request_asking_to_cluster_keeps_the_clustering_reading():
+    readings = _test4_readings()
+    for words in (" We also want to cluster the cells within each state.",
+                  " We also want to group the rare-state cells into subgroups."):
+        interpretation = _interpretation(readings)
+        assert drop_unwitnessed_readings(TEST4["prompt"] + words, interpretation) == (interpretation, [])
+
+
+def test_an_only_clustering_reading_is_never_dropped():
+    only = _interpretation(_test4_readings()[1:])
+    assert drop_unwitnessed_readings("I need per-patient gene modules. Which workflow fits?", only) == (only, [])

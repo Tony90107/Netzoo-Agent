@@ -16798,3 +16798,40 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 效果：baseline test4-en ×5 中出現這個並存讀法 ≥ 1，且 candidate 為 0。baseline 為 0 表示本輪沒有出現誤讀，改以重播（Log 332 的錄製決策）判定。
   - 對照（corpus-b ×3）：test5-en 與 hist-expression-then-mutation-en，candidate exact SAMBAR 的次數各 ≥ baseline − 1。
   - test4-en 的 validation fallback：candidate ≤ baseline ＋ 1。
+
+## Log 333｜結果：CW——全部門檻成立，保留；Test 4 誤讀的分群讀法 4／5 → 0／5
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 332 執行。gpt-4o-mini（預先授權）、legacy contract、traced harness。
+- baseline：HEAD `fef49a3`（即宣告 commit）的 worktree。
+- 兩臂 `scripts/` 只差 `routing/reading_selection.py`。
+- 證據在 `docs/research-log/cluster-witness-2026-10-03/`：`live-cw-{base,cand}-{a,b}.json.gz`、`analyze.py`／`analyze.txt`、`replay_cw.py`／`replay_cw.txt`。
+
+**離線（live 之前）：**
+- 全套件 3163 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a` 與條件推薦 prompt hash `c820364a1123` 不變。
+- 重播（`replay_cw.py`，只套 CW）：改變 3 種決策、1 個請求，全部是 Test 4（r4、r5、live-t10-s1）。
+  - 7 個候選 → 6 個，去掉 SAMBAR，其餘不變。
+  - 驗證前提從未擋下。
+  - 單一的分群讀法共 216 次，全部不動，其中 6 次沒有分群字詞（per-patient modules、pf）。
+- 單元測試：`tests/test_unwitnessed_readings.py` 新增 3 個。
+  - Test 4 錄下的讀法被丟掉，SAMBAR 離開候選。
+  - 加上「cluster the cells」或「group the rare-state cells into subgroups」時不動。
+  - 單一的分群讀法不動。
+
+**live：**
+
+| 條件 | baseline | candidate | 判定 |
+| --- | --- | --- | --- |
+| 有效性：provider 錯誤 | 0 | 0 | 有效 |
+| 健全：test4-en 最終決策中分群讀法與其他讀法並存 | — | 0／5 | 成立 |
+| 效果：同上，baseline ≥ 1 且 candidate 0 | 4／5 | 0／5（CW 觸發 4 次） | 成立 |
+| 對照：test5-en exact SAMBAR | 3／3 | 3／3 | 成立 |
+| 對照：hist-expression-then-mutation-en exact SAMBAR | 3／3 | 3／3 | 成立 |
+| test4-en validation fallback | 0 | 0 | 成立 |
+
+- candidate 的 test4-en 5／5 都是單一 regulatory_network 讀法，6 個候選（PANDA、PUMA、LIONESS-PANDA、LIONESS-PUMA、OTTER、GIRAFFE）。
+- baseline 4／5 另有分群讀法並帶進 SAMBAR。
+- 費用約 US$0.06。
+
+**結論：** 保留 CW。
+
+**觀察（未處理，見 Log 334）：** Test 4 只剩一個讀法後，回覆走 tie／Inputs 卡。Inputs 卡寫「Only expression data → LIONESS-COEXPRESSION or BONOBO」，但同一則回覆的單細胞說明寫「per-cell LIONESS or BONOBO networks are not advised」。r1–r3 已經如此。
