@@ -1,0 +1,69 @@
+[
+ {
+  "id": "rep-individual-communities",
+  "language": "en",
+  "category": "positive",
+  "prompt": "Which tool finds gene communities separately for each patient, with individual-specific networks split into modules per patient? Advice only.",
+  "expected": {
+   "status": "unsupported",
+   "actions": []
+  }
+ },
+ {
+  "id": "ii-modules-for-each-patient",
+  "language": "en",
+  "category": "positive",
+  "prompt": "Which tool finds gene modules for each patient separately? Advice only.",
+  "expected": {
+   "status": "unsupported",
+   "actions": []
+  }
+ },
+ {
+  "id": "ctl-condor-aggregate",
+  "language": "en",
+  "category": "positive",
+  "prompt": "I have a regulator-gene bipartite network and want to find its communities. Which tool fits? Advice only.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_condor"
+   ]
+  }
+ },
+ {
+  "id": "ctl-per-sample-tf",
+  "language": "en",
+  "category": "positive",
+  "prompt": "I have expression, TF motifs and PPI for 30 samples and want a TF-gene regulatory network for each sample. Which tool fits? Advice only.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_lioness_panda"
+   ]
+  }
+ },
+ {
+  "id": "role-tf-ss-en",
+  "language": "en",
+  "category": "paraphrase",
+  "prompt": "Which method estimates how transcription factors regulate their target genes separately in each patient? Advice only.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_lioness_panda"
+   ],
+   "input_artifacts": [],
+   "artifact_type": "regulatory_network",
+   "granularity": "sample_specific",
+   "required_discriminators": {
+    "regulator_types": [
+     "tf"
+    ]
+   },
+   "answer_required": [
+    "LIONESS-PANDA"
+   ]
+  }
+ }
+]

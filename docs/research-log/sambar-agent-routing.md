@@ -16582,3 +16582,73 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **觀察到、未處理：**
 - 上述 pf 的模組部分。
 - claims 合約沒有改（預設是 legacy）。
+
+## Log 327｜事前宣告：MG——「每位病人的網路，再找每張網路裡的模組」保留模組那一半
+
+日期／時區：2026-10-03，Asia/Taipei。使用者要求處理 Log 326 記下的 pf-patient-specific-modules 模組那一半。寫於任何程式變更之前。
+
+**traced 輸出（`schema-patch-2026-10-03/live-sp-cand-a.json.gz`，pf ×5）：**
+- 第一次判讀 5／5 都有兩個讀法：
+  - H0「patient-specific networks for my 30 patients」，artifact 寫成 `sample_specific`。SP 經 patch 改為 per-sample regulatory network。
+  - H1「the gene modules inside each patient's network」，`community_assignment`＋`sample_specific`。
+- H1 的 issue 是 `artifact_granularity:community_assignment`：本體只給 community 整群尺度，但請求明說每位病人。這正是 Log 294 FF 的「明說尺度造成的缺口」。
+  - FF 只豁免**單一讀法**（`len(hypotheses) == 1`）。這裡有兩個讀法，H1 被當成錯誤交給 sibling repair。
+  - repair 依 issue 說明把 H1 改成 regulatory_network、尺度與請求矛盾，4／5 被 `keep_valid_hypotheses` 丟掉；1／5 改成 regulatory_network 留下。模組那一半 5／5 消失。
+- 比對也同樣只處理單一讀法的缺口：多讀法時，缺口讀法會讓整個比對變成 unsupported。
+- registry 中 LIONESS-PANDA／PUMA 沒有宣告交接到 CONDOR（CONDOR 吃單一網路），所以「每位病人網路裡的模組」確實是 registry 的缺口。誠實的回覆是：第一步 LIONESS 有，第二步沒有一次到位的 registered 路徑。
+
+**規則 MG：**
+- MG1（`interpretation/outcome_validation.py`）：Log 294 的豁免推廣到多讀法。某個讀法唯一的問題是它保留了請求明說的尺度（`stated_scale_gap`），而且另有讀法不是這種缺口時，這個問題不算錯。單一讀法維持原規則。
+- MG2（`routing/reading_selection.py`＋`graph/router_invocation.py`）：比對時，另有讀法可比對的話，先擱置這種缺口讀法；它仍留在決策的 `outcome_hypotheses`，交給回覆層。
+- MG3（只動回覆層，必要時）：逐讀法回覆中，這個缺口讀法要說明「沒有 registered workflow 產生每個樣本的 community；CONDOR 一次分一張網路」。內容沿用 FF 缺口回覆與 registry。
+
+**判定：**
+- 離線：
+  - 用錄下的 pf 呼叫做端對端重播（去掉不再發生的 SiblingSemanticPatch）：決策保留兩個讀法；回覆同時含 LIONESS-PANDA／PUMA 與模組缺口／CONDOR。
+  - 掃描所有錄製的判讀：MG1 只在「多讀法、其中一個是明說尺度的缺口」時觸發；列出每一個。
+  - 全套件通過；兩個指紋與條件推薦 prompt hash 不變。
+- live（A/B：baseline 為 HEAD `335bc07` 的 worktree；traced；gpt-4o-mini，預先授權）：
+  - pf ×5：candidate 回覆同時提到每位病人的網路（LIONESS-PANDA 或 PUMA）與模組那一半（缺口或 CONDOR）的 ≥ 4／5，且 > baseline。
+  - FF／II-C 正例 ×3（rep-individual-communities、ii-modules-for-each-patient）：缺口回覆形狀 ≥ baseline − 1。
+  - 對照 ×3（ctl-condor-aggregate → CONDOR、ctl-per-sample-tf → LIONESS-PANDA）：沒有新增 WRONG。
+- 任一不成立 → 撤回 MG。
+
+**Log 327 補充（實作後、live 前；端對端重播發現）：**
+- MG1、MG2 實作後重播 pf，H1 在第一次驗證已不再被標錯。但 patch 之後的「依 artifact 本體對齊」（`restore_stated_fields(align_artifact_constraints=True)`）也作用在沒被 patch 的 H1：本體只給 community 一種尺度，就把每個樣本改成整群，接著與請求矛盾而被丟掉。
+- MG4（`stated_field_restoration.py`）：對齊不改請求明說的尺度。條件是 `stated_scale_gap` 成立，也就是請求只說了這個尺度，而 artifact 不給它。這個缺口交給 Log 294／MG1 處理。
+  - 單一讀法時，原本是「對齊→矛盾→`retain_valid_first_pass` 保留第一次判讀→缺口」，現在直接保留尺度成為缺口，結果相同但不經繞路。
+- 判定門檻不變。
+- 補充二（掃描後、live 前）：
+  - MG1 原條件在 283 份可解析的多讀法第一次判讀中套用到 7 份，**都不是目標題**。它們全是 role-tf-ss-en／role-mirna-ss-en（「how TFs regulate their target genes separately in each patient」）多出來的 per-sample TF activity／signed 讀法。
+  - 這些讀法沒有自己的結果引用（inferred 或空），或沿用讀法 1 的同一句。錄製結果都是 exact LIONESS-PANDA／PUMA；保留它們只會多一段不必要的讀法。
+  - pf 的模組讀法有自己的 explicit 結果引用（「the gene modules inside each patient's network」），與另一讀法的引用不同。
+  - 收緊 MG1、MG2：缺口讀法還必須有自己的 explicit、在請求中確實存在的 artifact_type 引用，且這段引用與其他讀法的 artifact 引用互不包含。也就是請求另外說出了這個結果。
+  - MG3 只在 MG1／MG2 保留的讀法上出現，跟著收緊。
+  - 判定門檻不變；掃描以收緊後的條件重做。
+
+## Log 328｜結果：MG——全部門檻成立，保留；pf 的模組那一半 0／5 → 5／5
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 327（含補充一、二）判定。證據：`docs/research-log/two-step-modules-2026-10-03/`。
+- `live-mg-{base,cand}-{a,b}.json.gz`：A/B 各 20 次。baseline 為 HEAD `335bc07` 的 worktree，兩臂平行，provider 錯誤 0。
+- `analyze.py`／`analyze.txt`。
+- `scan_mg.py`／`scan_mg.txt`。
+- `replay_mg.py`、`pf_recorded_calls.json`。
+- `cand_pf_replies.txt`：candidate 5 則回覆與卡片的渲染。
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線重播 | pf 錄音中不需要 sibling 呼叫的 2 次（trial 1、3），決策保留兩個讀法，回覆同時有 LIONESS-PANDA／PUMA 與「CONDOR finds them in one network at a time」。其餘 3 次需要 live 的 sibling patch 或讀法不同，無法重播 | 成立 |
+| 掃描 | 收緊後的 MG1 在 283 份錄製的多讀法第一次判讀中觸發 0 次（未收緊時 7 次，全是 role-tf-ss-en 多出的讀法） | 成立 |
+| 離線 | 全套件 3150 passed／35 skipped（新增 4 個測試）；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 `c820364a1123` 不變 | 成立 |
+| pf ×5 | 兩半都答到：candidate 5／5（渲染後 5／5 同時提到 LIONESS 與 CONDOR）；baseline 0／5（5 次都只有 per-sample regulatory network） | 成立 |
+| FF／II-C 正例 ×3＋×3 | 缺口回覆形狀：candidate 6／6，baseline 6／6 | 成立 |
+| 對照 | ctl-condor-aggregate exact CONDOR 3／3、ctl-per-sample-tf exact LIONESS-PANDA 3／3、role-tf-ss-en exact LIONESS-PANDA 3／3，兩臂相同 | 成立 |
+
+**判定：** 保留 MG1（多讀法的明說尺度缺口，需另有自己的結果引用）、MG2（比對時擱置）、MG3（缺口讀法的說明）、MG4（對齊不改明說的尺度）。
+
+**pf 的回覆（candidate trial 1，摘要）：**
+- 讀法 1「I want patient-specific networks for my 30 patients」→ LIONESS-PANDA 或 LIONESS-PUMA。
+- 讀法 2「the gene modules inside each patient's network」→「No registered workflow produces sample-specific community assignments in one step. CONDOR finds them in one network at a time: run it on each sample's network separately (outside this agent's registered steps), or on the cohort network.」
+
+**觀察到、未處理：**
+- 逐讀法回覆的開頭寫「Your request describes more than one scientific reading」，卡片寫「can be read 2 ways」。pf 其實是先後兩步，不是兩種讀法。這是 `hypothesis_routes` 既有的措辭。

@@ -34,7 +34,7 @@ from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
 from .input_inspection import invoke_input_inspection
-from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings
+from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
 from ..string_download import continued_string_download_decision, string_download_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
@@ -257,7 +257,7 @@ def _route_request(
         record_event(context, state, "routing.unnamed_scale_dropped", "classify", {"readings": unnamed})
     capability_match = match_semantic_request(
         user_task,
-        interpretation.outcome_hypotheses,
+        matchable_readings(user_task, interpretation.outcome_hypotheses),
         request_mode=interpretation.request_mode,
         ignore_tags=restored_tags,
     )

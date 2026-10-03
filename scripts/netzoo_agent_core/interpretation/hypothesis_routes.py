@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from workflow_registry import GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES
 
+from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
+
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..routing.method_rejections import rejected_methods_for
@@ -297,6 +299,8 @@ def _option_lines(outcome, actions, policy, *, single_input: bool, routes=(),
         return _composition_lines(composition, policy)
     if routes:
         return _handoff_lines(routes, outcome, policy, stated)
+    if gap := scale_gap_note(outcome, policy):
+        return [gap], "no registered workflow"
     lines = ["No registered workflow produces this result from "
              + ("this input." if single_input else "these inputs.")]
     accepting = _accepting_workflows(outcome, policy)
@@ -306,6 +310,31 @@ def _option_lines(outcome, actions, policy, *, single_input: bool, routes=(),
             + ", and what they produce instead: " + "; ".join(accepting) + "."
         )
     return lines, "no registered workflow"
+
+
+def scale_gap_note(outcome, policy) -> str:
+    """What to do about a result at a scale the ontology does not give it (Log 327).
+
+    The request stated the scale (Logs 294, 327 keep such a reading). The
+    workflows that produce the result at its registered scale are named, and
+    one that consumes a network is said to work on one network at a time, so
+    "the modules inside each patient's network" gets CONDOR on each network.
+    """
+    rule = ARTIFACT_SEMANTICS.get(outcome.artifact_type)
+    scale = _GRANULARITY_LABELS.get(outcome.granularity, "")
+    if rule is None or rule.granularities is None or not scale or outcome.granularity in rule.granularities:
+        return ""
+    makers = [spec for spec in policy.workflows.values()
+              if spec.output_capability.artifact_type == outcome.artifact_type]
+    if not makers:
+        return ""
+    names = " or ".join(spec.workflow for spec in makers)
+    label = _artifact_label(outcome.artifact_type)
+    if any("regulatory_network" in spec.output_capability.input_artifacts for spec in makers):
+        return (f"No registered workflow produces {scale} {label} in one step. {names} finds them in one "
+                "network at a time: run it on each sample's network separately (outside this agent's "
+                "registered steps), or on the cohort network.")
+    return f"No registered workflow produces {scale} {label}; {names} produces them for the whole cohort."
 
 
 def _title(number, reading, readings, task, user_data) -> str:
