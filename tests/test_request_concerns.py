@@ -325,3 +325,40 @@ def test_the_semantic_failure_path_makes_no_concern_call(monkeypatch):
 
     assert result["path"] == "semantic_fallback"
     assert calls == []
+
+
+# -- Log 336: a downstream use stated in words ----------------------------------
+
+TEST10 = ("We collected liver tissue from 90 patients across three disease stages (cirrhosis, early HCC, "
+          "and advanced HCC), with one sample per patient and follow-up survival data. We want to find "
+          "regulatory circuits that become progressively dysregulated with disease severity. Pairwise group "
+          "comparisons are not enough; we want a network for each patient so we can model associations "
+          "with disease stage and survival. What workflow would you recommend?")
+
+
+def test_a_downstream_use_stated_in_words_is_a_concern_when_no_claim_names_it():
+    addressed, rejected = request_concerns.addressed_from_claims(
+        TEST10, StatedConcernClaims(claims=[]), ["run_panda", "run_lioness_panda"])
+    assert rejected == []
+    assert [(item.action, item.concern) for item in addressed] == [
+        ("run_panda", "downstream_use"), ("run_lioness_panda", "downstream_use")]
+    assert addressed[0].text_span == (
+        "we want a network for each patient so we can model associations with disease stage and survival.")
+
+
+def test_a_claimed_downstream_use_is_not_added_twice():
+    claims = StatedConcernClaims.model_validate(_claims(("downstream_use", "model associations with disease stage")))
+    addressed, _ = request_concerns.addressed_from_claims(TEST10, claims, ["run_lioness_panda"])
+    assert [(item.concern, item.text_span) for item in addressed] == [
+        ("downstream_use", "model associations with disease stage")]
+
+
+def test_no_downstream_concern_without_the_words():
+    task = "We want to estimate how strongly each transcription factor regulates its target genes. Which method?"
+    assert request_concerns.addressed_from_claims(task, StatedConcernClaims(claims=[]), ["run_lioness_panda"]) == ([], [])
+
+
+def test_the_lioness_note_covers_ordered_stages_and_survival():
+    note = next(c.note for c in REQUEST_CONCERNS["run_lioness_panda"] if c.concern == "downstream_use")
+    assert "Cox model" in note and "ordinal or linear regression on stage" in note
+    assert "multiple-testing correction" in note and "cross-sectional" in note

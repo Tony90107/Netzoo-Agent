@@ -13,10 +13,17 @@ decides: every claim must be offered and its quote grounded in the request.
 The result is advice for the reply. It never changes ``action``,
 ``should_execute``, ``capability_match_status`` or ``matched_actions``, and the
 reply text is the registry's, never the model's.
+
+Log 336: a later analysis the request states in words is a downstream_use
+concern even when the model claims none. Test 10 ("we want a network for each
+patient so we can model associations with disease stage and survival") got no
+claim in 7 of 7 local rounds, so the registry's notes on relating per-sample
+scores to survival were never shown. The quote is the request's own sentence.
 """
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Literal
 
@@ -29,12 +36,13 @@ from ..contracts.strict_schema import strict_json_schema
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_request_concern_messages
-from .condition_recommender import _quote_grounded
+from .condition_recommender import _quote_grounded, _sentence_at
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = [
     "addressed_from_claims",
+    "witnessed_downstream_use",
     "concern_options",
     "concern_schema",
     "invoke_concern_matcher",
@@ -76,12 +84,31 @@ def concern_schema(options: list[tuple[str, str]]) -> type[BaseModel]:
     )
 
 
+# A later analysis of the result, in the request's words (Log 336): relating it
+# to survival, stage, outcome or clinical variables, or a survival model.
+_DOWNSTREAM_USE_WITNESS = re.compile(
+    r"\b(?:model|test|relate|relating|associat\w*|correlat\w*|link)\b[^.;?!]{0,40}?\b(?:with|to|against)\b"
+    r"[^.;?!]{0,30}?\b(?:survival|stages?|outcomes?|clinical|phenotypes?|grades?|prognos\w*|covariates?)\b"
+    r"|\bCox\b|\bsurvival\s+analys\w*|\bprognos\w*",
+    re.I,
+)
+
+
+def witnessed_downstream_use(user_task: str) -> str | None:
+    """The request's sentence that states a downstream analysis, or None."""
+    match = _DOWNSTREAM_USE_WITNESS.search(user_task)
+    return _sentence_at(user_task, match.start(), match.end()) if match else None
+
+
 def addressed_from_claims(
     user_task: str,
     claims: StatedConcernClaims,
     actions: list[str],
 ) -> tuple[list[AddressedConcern], list[dict]]:
-    """Grounded, offered claims for each action declaring them, and every rejected claim."""
+    """Grounded, offered claims for each action declaring them, and every rejected claim.
+
+    A downstream use the request states in words is added when no claim names it.
+    """
     offered = {concern for concern, _ in concern_options(actions)}
     addressed: list[AddressedConcern] = []
     rejected: list[dict] = []
@@ -97,6 +124,13 @@ def addressed_from_claims(
                 AddressedConcern(action=action, concern=claim.concern, text_span=claim.text_span)
                 for action in actions
                 if any(item.concern == claim.concern for item in REQUEST_CONCERNS.get(action, ()))
+            )
+    if "downstream_use" in offered and "downstream_use" not in seen:
+        if span := witnessed_downstream_use(user_task):
+            addressed.extend(
+                AddressedConcern(action=action, concern="downstream_use", text_span=span)
+                for action in actions
+                if any(item.concern == "downstream_use" for item in REQUEST_CONCERNS.get(action, ()))
             )
     return addressed[:6], rejected
 

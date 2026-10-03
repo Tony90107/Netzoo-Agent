@@ -16905,3 +16905,41 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **未處理：**
 - 第 3 點：Test 2 的尺度矛盾讀法，屬於路由。
 - 第 5 點：Test 9 的模型理由「particularly suitable for … limited samples」沒有根據，卻直接顯示。
+
+## Log 336｜r7 結果與第 3 點：請求明說的下游分析一定附上 registry 說明
+
+日期／時區：2026-10-04，Asia/Taipei。使用者決定：「再用我電腦把 10 題英文 prompt 跑一輪」，看過 r7 回報後「先修 3 點，接著做 1、2 點」。
+路由、驗證、prompt 都不變（指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、condition prompt `c820364a1123` 不變）。
+
+**r7（HEAD `326e8a0`，gpt-4o-mini，US$0.019）：** 10 題都正常結束，沒有驗證失敗。報告與決策在 `test10-2026-10-03/out/r7-*`。
+- Log 335 的修正都出現了：Test 3、8 的結尾段；Test 4 的單細胞提醒；Test 9 的「files for the … you mention」。
+- Test 2 回到 LIONESS-PANDA／PUMA。Test 10 為 exact LIONESS-PANDA。
+- 新問題（第 1 點，見 Log 337）：Test 7 變成 4 方法平手。
+  - 第二個讀法 infer regulatory_network 沿用 prepare 讀法的 artifact 引文「filter the TF-gene prior」，operation 只有推論。
+  - r3、r4、r7 三輪出現。
+
+**第 3 點的問題：** Test 10 說「we want a network for each patient so we can model associations with disease stage and survival」，但回覆沒有任何下游統計。
+- Log 283 規定下游說明只回答請求明說的 concern。
+- concern matcher 在 trace 中 offered `downstream_use`，模型 claims 為空；r1–r7 七輪都沒有認領。
+
+**修正：**
+- `graph/request_concerns.addressed_from_claims`：offered 中有 `downstream_use`、模型沒有認領，而請求文字明說下游分析時，以請求自己的那一句作為引文，加入這個 concern。
+  - 單一 workflow 的 concern 階段與 hypothesis_bases 的 tie 都經過這個函式。
+  - 只影響回覆的 concern 段，不改 action、狀態或候選。
+- 見證字表 `_DOWNSTREAM_USE_WITNESS`：
+  - model／test／relate／associate／correlate／link … with／to／against … survival／stage／outcome／clinical／phenotype／grade／prognosis／covariate；
+  - 或 Cox、survival analysis、prognos-。
+  - 掃描：重播語料 143 個不同 prompt 只命中 2 個，Test 10 與 blind case 4「one TF-level measure per patient that I can relate to survival time」。測試語料 162 個 prompt 只命中 Test 10。
+- LIONESS 的下游說明（registry `_LIONESS_TARGETING_NOTES`）依 Test 10 的預期答案補上一句：有序分期可做趨勢檢定（ordinal 或 linear regression on stage）；每個 regulator 或邊都檢定時需要多重檢定校正（例如 Benjamini-Hochberg）；不同病人的分期是橫斷面，跨分期的趨勢不是單一病人的病程。
+- 以 r7 錄下的 Test 10 決策加上見證後渲染：回覆多出 LIONESS-PANDA 的下游段，包含 Cox、分期趨勢、多重檢定、橫斷面、臨床表與非獨立性。
+
+**重播（3364 種，HEAD `326e8a0` 對新程式）：**
+- 全文 97 處，全是已認領 downstream_use 的 concern 段多了 LIONESS 那一句：blind case 4 89 處、Test 4 5 處、Test 7 3 處。
+- 卡片 0 變化。
+- 見證寫在決策中，錄製的決策不會重算，由單元測試涵蓋。
+
+**測試：** 全套件 3174 passed／35 skipped。`tests/test_request_concerns.py` 新增 4 個：
+- 沒有認領時以請求的句子加入；
+- 已認領時不重複；
+- 沒有字詞時不加；
+- LIONESS 說明涵蓋分期與存活。
