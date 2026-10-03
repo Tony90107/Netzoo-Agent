@@ -61,3 +61,14 @@ def test_a_concern_about_comparing_two_networks_is_not_answered_with_core_scores
                           "ALPACA, described below, does.")
     assert text.index("What you asked about:") < text.index("**Comparing module structure between two networks.**")
     assert "(TF, target gene, control weight, disease weight)" in text
+
+
+def test_single_cell_data_is_not_offered_the_per_cell_networks_its_note_advises_against():
+    # Log 334: r1-r3 offered "Only expression data -> LIONESS-COEXPRESSION or BONOBO".
+    item = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "out"
+                       / "r3-decisions.json").read_text())["test4"]
+    text, _, card = respond_and_card(item["prompt"], TaskDecision.model_validate(item["decision"]))
+    assert "per-cell LIONESS or BONOBO networks are not advised" in text
+    assert "What your data allows" not in text and "LIONESS-COEXPRESSION" not in text
+    assert card.choices.header != "Inputs"
+    assert not any("BONOBO" in (option.description or "") for option in card.choices.options)
