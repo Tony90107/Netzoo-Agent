@@ -16835,3 +16835,18 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **結論：** 保留 CW。
 
 **觀察（未處理，見 Log 334）：** Test 4 只剩一個讀法後，回覆走 tie／Inputs 卡。Inputs 卡寫「Only expression data → LIONESS-COEXPRESSION or BONOBO」，但同一則回覆的單細胞說明寫「per-cell LIONESS or BONOBO networks are not advised」。r1–r3 已經如此。
+
+## Log 334｜顯示修正：單細胞請求不再被建議改用 per-cell LIONESS／BONOBO
+
+日期／時區：2026-10-03，Asia/Taipei。Log 333 的觀察。只改回覆與卡片，路由、驗證、prompt 都不變（指紋不變）。
+
+**問題：** Test 4 只有網路讀法時（r1–r3，以及 CW 之後的每一次），Inputs 卡與「What your data allows」段寫：只有表現量資料時，「LIONESS-COEXPRESSION or BONOBO builds a gene-gene co-expression network instead」。同一則回覆的單細胞說明卻寫「per-cell LIONESS or BONOBO networks are not advised」，兩者矛盾。
+
+**修正：**
+- `OutsideStep.advises_against`（新欄位）：單細胞那一項列出 LIONESS-COEXPRESSION、BONOBO、LIONESS-PANDA、LIONESS-PUMA、LIONESS-DRAGON，就是說明中 per-cell LIONESS／BONOBO 的那些 workflow。
+- `input_alternatives.input_alternative`：適用於這個請求的 outside step（`outside_steps(decision, task)`，與回覆加說明的條件相同）所反對的 workflow，不列為替代。
+- Test 4 沒有剩下可用的替代，所以不出 Inputs 卡，改出 method 卡。卡上的要點「Every option also needs motif prior and PPI network, which your request does not mention.」仍然提醒缺少的輸入。
+
+**重播（3346 種，HEAD `9177bf7` 對新程式）：** 全文、要點、選項各 11 處，全是 Test 4 的決策（r1–r3、live-cw-cand 等單一讀法的決策）。其他決策 0 變化。
+
+**測試：** 全套件 3164 passed／35 skipped。`tests/test_r5_replies.py` 新增 1 個（用 r3 錄下的 Test 4 決策）。

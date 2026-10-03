@@ -713,7 +713,9 @@ class OutsideStep:
     adds (the manual route and the published method); ``name`` and ``reason``
     are the card's "not available here" row. Sources were checked when added.
     ``concern_answer`` replaces a listed workflow's own note for a stated
-    concern whose quote names this step (Log 331).
+    concern whose quote names this step (Log 331). ``advises_against`` are the
+    workflows the note advises against; the reply never offers them as what
+    the request's data allows (Log 334).
     """
 
     key: str
@@ -724,6 +726,7 @@ class OutsideStep:
     source: str
     workflows: frozenset[str] = frozenset()
     concern_answer: str = ""
+    advises_against: frozenset[str] = frozenset()
 
 
 # Verified 2026-10-03 against the cited pages (TEST_PROMPTS Tests 4, 7, 8, 9).
@@ -744,6 +747,9 @@ OUTSIDE_STEPS: tuple[OutsideStep, ...] = (
         ),
         reason="Not registered here; SCORPION is an R package (CRAN). Pseudo-bulk per state with PANDA is the registered route.",
         source="Osorio, Capasso & Kuijjer 2024, Nat Comput Sci, doi:10.1038/s43588-024-00597-5; CRAN SCORPION",
+        # "per-cell LIONESS or BONOBO networks are not advised" (the note above).
+        advises_against=frozenset({"run_lioness_coexpression", "run_bonobo", "run_lioness_panda",
+                                   "run_lioness_puma", "run_lioness_dragon"}),
     ),
     OutsideStep(
         key="chromatin_prior",

@@ -17,6 +17,11 @@ TF-to-gene network" from expression alone is not offered a co-expression
 network, which is not the result it asked for (replay, 2026-10-02). Nothing is matched or selected: the reply says what the
 named data allows and asks whether the other inputs exist.
 
+A workflow an outside-step note advises against for the request is never
+offered: Test 4 (r1-r3, Log 334) was offered LIONESS-COEXPRESSION or BONOBO
+for single-cell data whose note says per-cell LIONESS or BONOBO networks are
+not advised.
+
 Roles stated in the passive voice count too: "genes are regulated by
 transcription factors ... and by microRNAs" (Test 6, r4-r5) was offered a
 genes-only network, because the routing gate `regulatory_role_mentions` reads
@@ -33,6 +38,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
 from ..reply_cards.method_notes import INPUT_ARTIFACTS, SHORT_INPUT_LABELS, input_fields, missing_input_labels
 from ..routing.capability_compatibility import input_availability
 from .inspected_answers import above_closing
+from .outside_steps import outside_steps
 from .request_integrity import regulatory_role_mentions
 
 __all__ = [
@@ -125,9 +131,11 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
         return None
     scale = outcome.granularity
     roles = _stated_roles(task)
+    advised_against = {action for step in outside_steps(decision, task) for action in step.advises_against}
     alternatives = tuple(
         action for action, capability in OUTPUT_CAPABILITIES.items()
-        if action in RUN_ACTIONS and action not in candidates and capability.artifact_type in _NETWORKS
+        if action in RUN_ACTIONS and action not in candidates and action not in advised_against
+        and capability.artifact_type in _NETWORKS
         and (scale not in _SCALES or scale in capability.granularities)
         and roles <= set(capability.regulator_types)
         and _runs_on(action, present, task)
