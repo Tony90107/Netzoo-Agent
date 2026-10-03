@@ -158,3 +158,17 @@ def test_a_candidate_that_already_carries_the_tag_is_not_repeated():
     answer = _gap_answer(["bayesian"], ["run_panda", "run_otter", "run_bonobo"])
 
     assert "estimates a different result" not in answer
+
+
+def test_priors_the_request_names_in_words_are_mentioned_but_still_need_files(tmp_path):
+    # Log 335: Test 9 (r6) says "generic, tissue-agnostic PPI and TF motif data from
+    # public databases"; the reply said the request "does not mention" them.
+    task = ("Only a few microarray samples; we also have generic PPI and TF motif data from public "
+            "databases. I would like iterative message passing.")
+    ctx, state, _, _ = _context(tmp_path, _panda_preference("iterative message passing"))
+    updated, _, _ = invoke_condition_recommender(ctx, state, task, _network_decision(), LLMUsage(), [])
+
+    assumptions = updated.advisory_recommendation.assumptions
+    assert not any("does not mention" in item for item in assumptions)
+    assert ("It also needs files for the TF-motif prior and protein-interaction prior you mention; "
+            "no file is named yet.") in assumptions

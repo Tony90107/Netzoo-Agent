@@ -1,4 +1,4 @@
-"""Log 331: Test 4 and Test 8 replies from the r5 round (2026-10-03), rendered from the recorded decisions.
+"""Logs 331 and 335: Test 4 and Test 8 replies from the r5 and r6 rounds, rendered from the recorded decisions.
 
 Test 4 titled its reading "RNA-seq", listed six workflows with every premise
 and formula, and gave the single-cell advice after its question. Test 8's
@@ -20,11 +20,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from test_reply_cards import respond_and_card  # noqa: E402
 
-RECORDED = json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "out" / "r5-decisions.json").read_text())
+OUT = ROOT / "docs" / "research-log" / "test10-2026-10-03" / "out"
+RECORDED = json.loads((OUT / "r5-decisions.json").read_text())
 
 
-def _reply(key):
-    item = RECORDED[key]
+def _reply(key, recorded=None):
+    item = (recorded or RECORDED)[key]
     return respond_and_card(item["prompt"], TaskDecision.model_validate(item["decision"]))
 
 
@@ -72,3 +73,37 @@ def test_single_cell_data_is_not_offered_the_per_cell_networks_its_note_advises_
     assert "What your data allows" not in text and "LIONESS-COEXPRESSION" not in text
     assert card.choices.header != "Inputs"
     assert not any("BONOBO" in (option.description or "") for option in card.choices.options)
+
+
+# -- r6 (Log 335) ----------------------------------------------------------------
+
+R6 = json.loads((OUT / "r6-decisions.json").read_text())
+
+
+def test_a_per_sample_option_for_single_cell_data_says_not_on_single_cells():
+    _, _, card = _reply("test4", R6)
+    caveat = "Not on single cells: run it on pseudo-bulk profiles, one per donor and state"
+    by_label = {option.label: option.description for option in card.choices.options}
+    assert caveat in by_label["LIONESS-PANDA"] and caveat in by_label["LIONESS-PUMA"]
+    assert caveat not in by_label["PANDA"]
+
+
+def test_a_sentence_several_methods_share_is_said_once():
+    text, _, _ = _reply("test4", R6)
+    concern = text.split("About your concern", 1)[1].split("\n\n", 1)[0]
+    assert concern.count("Targeting scores: a regulator's outdegree") == 1
+    assert "- **PANDA**, **PUMA**, **OTTER** — Targeting scores:" in concern
+    assert "- **LIONESS-PANDA**, **LIONESS-PUMA** — Per-sample targeting scores:" in concern
+    assert "- **PANDA** — For per-sample scores to test against clinical variables, use LIONESS-PANDA instead." in concern
+
+
+def test_unassessed_inputs_are_said_with_the_closing_not_as_a_contradiction():
+    # Test 8 says "We have built two brain regulatory networks".
+    text, _, _ = _reply("test8", R6)
+    assert "no current input is established" not in text
+    assert not text.startswith("Input compatibility")
+    assert text.endswith("Input compatibility has not been assessed: your data was not checked against the "
+                         "workflow's required inputs; name your input files to have them checked. This is "
+                         "workflow guidance only; no execution was authorized. No files were inspected and no "
+                         "analysis ran.")
+    assert text.index("**Comparing module structure") < text.index("Input compatibility has not been assessed")

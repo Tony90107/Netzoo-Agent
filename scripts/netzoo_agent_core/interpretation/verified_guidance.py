@@ -143,8 +143,6 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
             "Assumptions behind this recommendation (not confirmed facts):\n\n"
             + "\n".join(f"- {item}" for item in assumptions[:6])
         )
-    if facts.get("input_compatibility") == "not_assessed":
-        lines.append("Input compatibility has not been assessed because no current input is established.")
     for item in rejected:
         artifacts = ", ".join(item["input_artifacts"])
         lines.append(
@@ -289,7 +287,13 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                 lines.append(OTHER_READING_NOTES[action])
     elif rejected:
         lines.append("No compatible workflow has been selected for execution.")
-    lines.append("This is workflow guidance only; no execution was authorized. "
+    # Said with the closing, as what was not done: "because no current input is
+    # established" read as a contradiction to "We have built two brain
+    # regulatory networks" (Tests 3 and 8, r6, Log 335).
+    unchecked = ("Input compatibility has not been assessed: your data was not checked against the "
+                 "workflow's required inputs; name your input files to have them checked. "
+                 if facts.get("input_compatibility") == "not_assessed" else "")
+    lines.append(unchecked + "This is workflow guidance only; no execution was authorized. "
                  "No files were inspected and no analysis ran.")
     return "\n\n".join(lines)
 

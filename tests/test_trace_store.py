@@ -165,3 +165,31 @@ def test_trace_retention_removes_only_old_sealed_runs(tmp_path: Path):
     assert removed == 1
     assert not store.run_path(sealed_id).exists()
     assert store.run_path(pending_id).exists()
+
+
+def test_trace_retention_skips_a_run_another_process_is_removing(tmp_path: Path, monkeypatch):
+    import netzoo_agent_core.session as session_module
+
+    root = tmp_path / "traces"
+    store = LocalTraceStore(root)
+    sealed_id = store.start_run({"session_id": "sealed", "profile_id": "default"})
+    store.finish_run(sealed_id, "completed", {"result": "ok"})
+    manifest_path = store.run_path(sealed_id) / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    old = datetime.now(timezone.utc) - timedelta(days=100)
+    manifest["finished_at"] = old.isoformat().replace("+00:00", "Z")
+    manifest_path.write_text(json.dumps(manifest))
+    os.utime(manifest_path, (old.timestamp(), old.timestamp()))
+    os.utime(store.run_path(sealed_id), (old.timestamp(), old.timestamp()))
+    real_rmtree = session_module.shutil.rmtree
+    calls = []
+
+    def raced(path, ignore_errors=False):
+        calls.append(ignore_errors)
+        if not ignore_errors:
+            raise FileNotFoundError(path)
+        real_rmtree(path, ignore_errors=True)
+
+    monkeypatch.setattr(session_module.shutil, "rmtree", raced)
+    assert cleanup_trace_storage(90, trace_root=root) == 0
+    assert calls == [False, True] and not store.run_path(sealed_id).exists()

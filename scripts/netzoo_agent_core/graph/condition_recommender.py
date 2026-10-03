@@ -51,6 +51,7 @@ from ..llm import append_llm_usage, build_selection_condition_messages
 from ..routing.clarification_planner import plan_clarification
 from ..routing.clarification_planner import algorithmic_assumptions_for
 from ..interpretation.input_bindings import request_input_bindings
+from ..routing.capability_compatibility import input_availability
 from .context import _GraphContext, preflight_budget, record_event
 from .input_inspection import _ROLE_LABELS, named_directories
 from .structured_calls import _serialized_structured_input, _validation_issue_types
@@ -287,6 +288,11 @@ def _candidate_facts(candidates, context) -> list[dict]:
     return facts
 
 
+# The data each input role holds, as `input_availability` names what a request states.
+_ROLE_ARTIFACTS = {"expression_file": "expression_matrix", "motif_file": "motif_prior",
+                   "ppi_file": "ppi_prior", "mirna_file": "mirna_prior"}
+
+
 def unestablished_inputs(task, action, requested_outcome=None) -> list[str]:
     """Input roles the workflow requires that the request does not establish (Log 259).
 
@@ -342,11 +348,22 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
                            + ", ".join(labels.get(role, role) for role in roles)
                            + "; confirm this scope before analysis.")
     if missing := unestablished_inputs(task, preference.action, requested_outcome):
-        # Never let model prose imply the inputs are in hand (Log 259).
-        needed = " and ".join(_ROLE_LABELS[role] for role in missing)
-        article = "an" if needed[0] in "aeiou" else "a"
-        assumptions.insert(1 if roles and assumptions and assumptions[0].startswith("This starting choice")
-                           else 0, f"It also needs {article} {needed}, which the request does not mention.")
+        # Never let model prose imply the inputs are in hand (Log 259). Data the
+        # request names in words is still not a file, but it is mentioned:
+        # Test 9 (r6, Log 335) says "PPI and TF motif data from public databases".
+        named = input_availability(task).present
+        said = [role for role in missing if _ROLE_ARTIFACTS.get(role) in named]
+        unsaid = [role for role in missing if role not in said]
+        notes = []
+        if unsaid:
+            needed = " and ".join(_ROLE_LABELS[role] for role in unsaid)
+            article = "an" if needed[0] in "aeiou" else "a"
+            notes.append(f"It also needs {article} {needed}, which the request does not mention.")
+        if said:
+            notes.append("It also needs files for the " + " and ".join(_ROLE_LABELS[role] for role in said)
+                         + " you mention; no file is named yet.")
+        at = 1 if roles and assumptions and assumptions[0].startswith("This starting choice") else 0
+        assumptions[at:at] = notes
     return AdvisoryRecommendation(
         action=preference.action, rationale=rationale,
         supporting_spans=preference.text_spans, assumptions=assumptions[:4],
