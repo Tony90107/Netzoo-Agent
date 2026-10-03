@@ -16652,3 +16652,31 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 
 **觀察到、未處理：**
 - 逐讀法回覆的開頭寫「Your request describes more than one scientific reading」，卡片寫「can be read 2 ways」。pf 其實是先後兩步，不是兩種讀法。這是 `hypothesis_routes` 既有的措辭。
+
+## Log 329｜顯示修正：結果一個接一個的讀法，說成「先後兩步」
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定：「把逐讀法回覆的措辭改成先後兩步」（Log 328 的未處理項）。
+只改回覆與卡片，路由、驗證、prompt 都不變（指紋不變）。
+
+**問題：** pf 的回覆寫「Your request describes more than one scientific reading」「Which reading should we start with」，卡片寫「can be read 2 ways」。請求其實是先建每位病人的網路，再找每張網路裡的模組，是先後兩步。
+
+**規則（`interpretation/hypothesis_routes.step_order`，回覆文字與卡片共用）：**
+- 讀法在下列兩個條件都成立時，視為步驟：
+  - 由 registry 推導，每個讀法的結果都是下一個讀法的 workflow 的輸入。例如 CONDOR 產生 community，輸入是 regulatory network。依執行順序排列，最多 3 個讀法。
+  - 請求本身有表示先後的字詞：then、after、next、followed by、subsequently、然後、接著、之後。
+- 第二個條件來自既有測試的反例：「One camp wants the most accurate TF-gene regulatory network; the other wants to split the network into functional modules」在 registry 上同樣是網路→模組，卻是兩派的不同選擇。
+- 措辭：
+  - 開頭：「Your request has 2 steps, one after the other: each step uses the result of the one before.」
+  - 標題：「Step 1 -- …」「Step 2 -- …」。
+  - 後面步驟的結果行：「from the regulatory networks of the previous step」。
+  - 結尾問題：「Should we start with step 1 (…)? Each step is planned and approved on its own. Step 2 has no registered workflow; what to do instead is described above.」
+- 卡片：
+  - 標題「Your request has 2 steps, one after the other; step 2 has no registered workflow.」
+  - 選項區「[Step] Should we start with step 1?」，選項與不可用列都以 Step 標示。
+- MG3 的說明「outside this agent's registered steps」改為「registered workflows」，避免和 Step 混淆。
+
+**重播（`test12-2026-10-02/replay_cards.py`，3282 種 prompt＋decision，HEAD `13a039b` 對新程式）：**
+- 全文、標題、選項順序（標籤）各 5 處變化，全部是 pf 的 5 個決策；其他 3277 個決策的全文與卡片 0 變化。
+- 錄製中其他走逐讀法回覆的請求（TF／miRNA 兩種假設、誤讀出的多體學讀法、單細胞等），都是不同讀法，維持原措辭。
+
+**測試：** 全套件 3152 passed／35 skipped。`tests/test_two_step_modules.py` 新增 2 個：步驟措辭（用錄下的 pf 呼叫），以及不同讀法維持原措辭（含兩派的反例、依執行順序排列）。

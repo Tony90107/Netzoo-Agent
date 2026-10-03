@@ -407,7 +407,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
             if choices is not None:
                 readings = {option.key.split("-")[1] for option in [*choices.options, *unavailable]}
                 chained = all("→" in option.label for option in choices.options)
-                headline = (f"Your request can be read {len(readings)} ways, and they lead to different workflows."
+                missing = [option.label.split(":")[0] for option in unavailable if option.key.startswith("reading-")]
+                headline = ((f"Your request has {len(readings)} steps, one after the other"
+                             + (f"; {' and '.join(missing).lower()} {'has' if len(missing) == 1 else 'have'} "
+                                "no registered workflow." if missing else "."))
+                            if choices.header == "Step" else
+                            f"Your request can be read {len(readings)} ways, and they lead to different workflows."
                             if len(readings) > 1 else
                             "No single registered workflow gives this from your inputs; a registered two-step handoff does."
                             if chained else
