@@ -1,0 +1,37 @@
+[
+ {
+  "id": "test5-en",
+  "language": "en",
+  "category": "positive",
+  "prompt": "We have binary (0/1) somatic mutation calls from tumor exome sequencing of 200 patients. The data are extremely sparse with a long tail: thousands of genes are mutated in only one or two patients, and hierarchical clustering or NMF fails to find meaningful subtypes. We want to summarize these scattered gene-level mutations into pathway-level scores for each patient using known pathway annotations, and then subtype patients on those scores. Which approach fits this?",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_sambar"
+   ]
+  }
+ },
+ {
+  "id": "hist-expression-then-mutation-en",
+  "language": "en",
+  "category": "history",
+  "prompt": "Previously I ran PANDA on an expression matrix. This time I want to cluster patients into subtypes from somatic mutation data. Which workflow? Advice only.",
+  "expected": {
+   "status": "exact",
+   "actions": [
+    "run_sambar"
+   ],
+   "input_artifacts": [
+    "mutation_matrix"
+   ],
+   "artifact_type": "sample_cluster_assignment",
+   "granularity": "aggregate",
+   "forbidden_actions": [
+    "run_panda"
+   ],
+   "answer_required": [
+    "SAMBAR"
+   ]
+  }
+ }
+]

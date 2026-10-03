@@ -16754,3 +16754,47 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
   - 這個請求的讀法 2「a protein interaction map.」是另一個誤讀，不在本 Log 處理。
 
 **測試：** 全套件 3160 passed／35 skipped。新增 `tests/test_r5_replies.py`（5 個，用錄下的 r5 決策）。
+
+## Log 332｜事前宣告：CW——「樣本分群」讀法要有請求說出的分群字詞
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定：「接著也可以開始做2.6點」。第 2 項中 Test 4 第二個讀法的誤讀屬於路由，依規則先宣告。
+本條目寫於 CW 的任何程式修改與 live 呼叫之前。基準為 HEAD `bf470f7`：工作目錄乾淨（`docs/diagnostics/` 不屬本專案），指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+語料 `docs/research-log/cluster-witness-2026-10-03/corpus-a.json`（test4-en）與 `corpus-b.json`（test5-en、hist-expression-then-mutation-en）同時寫定。
+
+**問題（r4、r5）：**
+- Test 4 說「single-cell RNA-seq data …, annotated into 6 cell states」，要比較 6 個狀態之間的網路重組，並保留觀察稀有狀態內部異質性的能力。
+- 5 輪中有 2 輪多出第二個讀法：`sample_cluster_assignment`。
+  - artifact 引用「annotated into 6 cell states.」，是使用者已經有的註記，不是要產生的結果。
+  - operation 引用「examine heterogeneity within rare states」。
+- 後果：
+  - 回覆多一段「Reading 2 … No registered workflow produces this result」。
+  - 卡片多一列不可用的讀法。
+  - 候選帶進 SAMBAR（需要突變資料）。
+- 狀態內異質性已由單細胞說明（SCORPION／metacell）回答。
+
+**先做的掃描（`replay_cards` 的全部錄製決策，3324 種）：** 有 `sample_cluster_assignment` 讀法的請求共 8 個。
+- 與其他讀法並存的只有 Test 4（3 次：r4、r5、live-t10-s1）。
+- 其餘 7 個都是單一讀法，其中 6 個有分群字詞。
+  - 沒有分群字詞的單一讀法：「I need per-patient gene modules」4 次、pf 2 次。CW 不動單一讀法，所以不受影響。
+
+**CW（`routing/reading_selection.READING_WITNESSES`，沿用 Log 313 的 `drop_unwitnessed_readings`）：**
+- 規則：`sample_cluster_assignment` 讀法與其他讀法並存，而請求完全沒有說出要把樣本分組時，丟掉這個讀法。
+  - 前提與規則 B 相同：至少留下一個讀法，且留下的讀法單獨能通過驗證。只有一個讀法時不動。
+  - 事件沿用 `routing.unwitnessed_readings_dropped`。
+- 見證字表（刻意寬鬆，只判斷「完全沒有分群的意思」）：
+  - cluster、subtype、stratify、subgroup、categorize、classify、partition；
+  - group(s／ing) ＋（the／our／these／一個字）＋ patients／samples／tumors／individuals／cells／donors；
+  - 中文：分群、亞型、分型、分組、分類。
+- 不是模型可見的改動；指紋應不變。
+
+**判定（任一不成立就撤回 CW）：**
+- 離線：
+  - 全套件通過；兩個指紋與條件推薦 prompt hash 不變。
+  - 重播全部錄製決策（套用 CW 與驗證前提）：只在沒有分群字詞的請求上觸發；列出每一次。
+  - 單元測試：Test 4 錄下的讀法被丟掉；有分群字詞時不動；單一讀法不動。
+- live（A/B：baseline 為 HEAD `bf470f7` 的 worktree；traced；gpt-4o-mini，預先授權）：
+  - 有效性：兩臂 provider 錯誤皆為 0；否則依 Log 290 補充 4 重跑。
+  - 健全：candidate 的 test4-en ×5，最終決策中 `sample_cluster_assignment` 讀法與其他讀法並存 ＝ 0。
+  - 效果：baseline test4-en ×5 中出現這個並存讀法 ≥ 1，且 candidate 為 0。baseline 為 0 表示本輪沒有出現誤讀，改以重播（Log 332 的錄製決策）判定。
+  - 對照（corpus-b ×3）：test5-en 與 hist-expression-then-mutation-en，candidate exact SAMBAR 的次數各 ≥ baseline − 1。
+  - test4-en 的 validation fallback：candidate ≤ baseline ＋ 1。
