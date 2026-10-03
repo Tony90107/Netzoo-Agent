@@ -431,6 +431,13 @@ _LIONESS_TARGETING_NOTES = (
     "to its targets) or a gene's indegree, computed in each sample's network, gives a "
     "regulator-by-sample (or gene-by-sample) matrix you can relate to sample-level "
     "variables -- survival, for example, with a Cox model.",
+    # Log 336: TEST_PROMPTS Test 10 relates per-patient networks to ordered
+    # disease stages as well as survival.
+    "An ordered variable such as disease stage can be tested for a trend, for example "
+    "with ordinal or linear regression on stage; testing every regulator or edge needs "
+    "multiple-testing correction (for example Benjamini-Hochberg). Stages seen in "
+    "different patients are cross-sectional, so a trend across them is not one "
+    "patient's progression.",
     "That association needs a clinical table (for survival: follow-up time and event "
     "status) keyed by the same sample IDs as the expression matrix; it is not a "
     "workflow input, so supply it separately.",
