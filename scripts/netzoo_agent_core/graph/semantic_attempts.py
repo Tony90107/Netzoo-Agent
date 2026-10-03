@@ -58,7 +58,8 @@ from .discriminator import (
 )
 from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
 from .first_pass_salvage import validate_first_pass
-from .semantic_shape import nest_unresolved_dimensions
+from .semantic_shape import normalize_semantic_shape
+from ..interpretation.terminal_goal_fold import fold_intermediate_readings
 
 __all__ = ["MAX_SEMANTIC_ATTEMPTS", "invoke_semantic_interpreter"]
 
@@ -211,7 +212,7 @@ def invoke_semantic_interpreter(
             )
             structured = adapter.invoke(messages)
             payload, raw = semantic_payload(structured)
-            payload, nesting = nest_unresolved_dimensions(payload)
+            payload, nesting = normalize_semantic_shape(payload)
             if nesting:
                 record_event(context, state, "routing.semantic_shape_normalized", "classify", {"attempt": attempt + 1, "moved": nesting})
             if attempt == 0:
@@ -475,6 +476,10 @@ def invoke_semantic_interpreter(
         )
         if patch is not None:
             interpretation = _fill_inferred_role_evidence(interpretation)
+        interpretation, folded = fold_intermediate_readings(user_task, interpretation)
+        if folded:
+            record_event(context, state, "routing.intermediate_readings_folded", "classify",
+                         {"attempt": attempt + 1, "folded": folded})
         restored_tags = frozenset(
             str(item["value"]) for item in restorations
             if item["field"] == "selection_tags"

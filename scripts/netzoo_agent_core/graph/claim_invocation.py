@@ -30,7 +30,8 @@ from ..routing.outcome_matching import match_semantic_request
 from .context import preflight_budget, record_event
 from .discriminator import _recover_explicit_selection_tag
 from .semantic_review_validation import normalize_advice_operation_evidence
-from .semantic_shape import nest_unresolved_dimensions
+from .semantic_shape import normalize_semantic_shape
+from ..interpretation.terminal_goal_fold import fold_intermediate_readings
 
 
 class _NoOpClaimRepair(ValueError):
@@ -147,7 +148,7 @@ def invoke_claim_interpreter(
         )
         try:
             payload, raw = semantic_payload(adapter.invoke(messages))
-            payload, nesting = nest_unresolved_dimensions(payload)
+            payload, nesting = normalize_semantic_shape(payload)
             if nesting:
                 record_event(context, state, "routing.semantic_shape_normalized", "classify", {"attempt": attempt + 1, "moved": nesting})
             payload, advice_normalizations = normalize_advice_operation_evidence(
@@ -254,6 +255,10 @@ def invoke_claim_interpreter(
                     "classify",
                     {"attempt": attempt + 1, "restored": restorations},
                 )
+            interpretation, folded = fold_intermediate_readings(user_task, interpretation)
+            if folded:
+                record_event(context, state, "routing.intermediate_readings_folded", "classify",
+                             {"attempt": attempt + 1, "folded": folded})
             previous_mode = interpretation.request_mode
             reconciled_mode = reconcile_request_mode(user_task, previous_mode)
             if reconciled_mode != previous_mode:
