@@ -12,6 +12,8 @@ already covers every reading is left exactly as it was.
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES
 
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
@@ -102,14 +104,55 @@ def _input_label(value: str) -> str:
     return value.replace("_", " ")
 
 
-def _result_line(outcome) -> str:
+def _result_line(outcome, *, after=None) -> str:
     inputs = [_input_label(value) for value in outcome.input_artifacts if value != "unknown"]
     granularity = _GRANULARITY_LABELS.get(outcome.granularity, "")
     line = "Result: " + _artifact_label(outcome.artifact_type)
     if granularity:
         line += f" ({granularity})"
+    if after is not None:
+        # A later step works on the previous step's result (Log 329).
+        return line + f", from the {_artifact_label(after.outcome.artifact_type)} of the previous step."
     line += ", from " + (" and ".join(inputs) if inputs else "inputs the request does not state")
     return line + "."
+
+
+# Words that put one thing after another. Without one, readings that could
+# feed each other are still alternatives: "One camp wants the most accurate
+# TF-gene regulatory network; the other wants to split the network into
+# functional modules" (tests/test_hypothesis_routes.py).
+_SEQUENCE = re.compile(
+    r"\bthen\b|\bafter(?:wards|\s+that)?\b|\bnext\b|\bfollowed\s+by\b|\bsubsequently\b|然後|接著|之後",
+    re.I,
+)
+
+
+def step_order(readings, policy: ProjectPolicySnapshot, task: str = ""):
+    """The readings in the order they run, when each one's result feeds the next (Log 329).
+
+    "Patient-specific networks ... then the gene modules inside each patient's
+    network" is two steps, not two readings: CONDOR, which produces the
+    modules, takes a regulatory network, the first result. The registry's
+    inputs and outputs decide the order; the request must also say one comes
+    after the other. None means the readings are alternatives.
+    """
+    if not 2 <= len(readings) <= 3 or not _SEQUENCE.search(task or ""):
+        return None
+
+    def produced(spec) -> set[str]:
+        return set(spec.output_capability.produced_artifacts) | {spec.output_capability.artifact_type}
+
+    def feeds(first, then) -> bool:
+        return any(then.outcome.artifact_type in produced(spec)
+                   and first.outcome.artifact_type in spec.output_capability.input_artifacts
+                   for spec in policy.workflows.values())
+
+    from itertools import permutations
+
+    for order in permutations(readings):
+        if all(feeds(order[i], order[i + 1]) for i in range(len(order) - 1)):
+            return list(order)
+    return None
 
 
 def _accepting_workflows(outcome, policy: ProjectPolicySnapshot) -> list[str]:
@@ -333,17 +376,17 @@ def scale_gap_note(outcome, policy) -> str:
     if any("regulatory_network" in spec.output_capability.input_artifacts for spec in makers):
         return (f"No registered workflow produces {scale} {label} in one step. {names} finds them in one "
                 "network at a time: run it on each sample's network separately (outside this agent's "
-                "registered steps), or on the cohort network.")
+                "registered workflows), or on the cohort network.")
     return f"No registered workflow produces {scale} {label}; {names} produces them for the whole cohort."
 
 
-def _title(number, reading, readings, task, user_data) -> str:
+def _title(number, reading, readings, task, user_data, noun="Reading") -> str:
     quote = _quote(reading, [other for other in readings if other is not reading], task)
     if quote is not None:
         user_data.append(quote)
-        return f'Reading {number} -- "{user_data_token(len(user_data) - 1)}"'
+        return f'{noun} {number} -- "{user_data_token(len(user_data) - 1)}"'
     granularity = _GRANULARITY_LABELS.get(reading.outcome.granularity, "")
-    return f"Reading {number} -- " + " ".join(
+    return f"{noun} {number} -- " + " ".join(
         part for part in (granularity, _artifact_label(reading.outcome.artifact_type)) if part
     )
 
@@ -361,6 +404,9 @@ def render_hypothesis_routes(
     readings = _readings(decision, policy)
     if not readings:
         return None
+    # Log 329: readings where each result is the next one's input are steps, in the order they run.
+    steps = step_order(readings, policy, task)
+    readings = steps or readings
     # Only a no-tool reply reaches here, so every reading is matched as guidance.
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
     splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
@@ -382,6 +428,10 @@ def render_hypothesis_routes(
         return with_inspection_footer(text, decision.inspected_directories)
     user_data: list[str] = []
     sections = [
+        f"Your request has {len(readings)} steps, one after the other: each step uses the result of the "
+        "one before. Each step is listed with the registered workflows that fit it, their algorithmic "
+        "premises and inputs:"
+        if steps else
         "Your request describes more than one scientific reading. Each is listed with "
         "the registered workflows that fit it, their algorithmic premises and inputs:"
         if len(readings) >= 2 else
@@ -394,8 +444,9 @@ def render_hypothesis_routes(
     ]
     choices = []
     for number, ((reading, actions), split, handoff) in enumerate(zip(routes, splits, handoffs), start=1):
-        lines = [f"**{_title(number, reading, readings, task, user_data)}**"] if len(readings) >= 2 else []
-        lines.append(_result_line(reading.outcome))
+        noun = "Step" if steps else "Reading"
+        lines = [f"**{_title(number, reading, readings, task, user_data, noun)}**"] if len(readings) >= 2 else []
+        lines.append(_result_line(reading.outcome, after=readings[number - 2] if steps and number > 1 else None))
         prefix = f"{number}: " if len(readings) >= 2 else ""
         if split:
             lines.append("Each stated input on its own:")
@@ -411,7 +462,14 @@ def render_hypothesis_routes(
             lines.extend(option)
             choices.append(f"{number} ({names})")
         sections.append("\n".join(lines))
-    if len(readings) >= 2:
+    if steps:
+        missing = [str(number) for number, (_, actions) in enumerate(routes, start=1) if not actions]
+        first = choices[0].split(" (", 1)[1].rstrip(")")
+        question = ((f"Should we start with step 1 ({first})? Each step is planned and approved on its own."
+                     if routes[0][1] else "")
+                    + (f" Step {', '.join(missing)} {'has' if len(missing) == 1 else 'have'} no registered "
+                       "workflow; what to do instead is described above." if missing else "")).strip()
+    elif len(readings) >= 2:
         question = ("Which reading should we start with: " + ", ".join(choices)
                     + "? If a reading should use different data, say which.")
     elif any(splits):

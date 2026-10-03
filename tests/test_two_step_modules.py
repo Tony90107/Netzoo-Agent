@@ -80,3 +80,34 @@ def test_recorded_pf_trials_keep_both_halves_and_answer_the_modules_gap():
         assert kind == "hypothesis_routes"
         assert "LIONESS-PANDA" in text and "CONDOR finds them in one network at a time" in text
         assert "run it on each sample's network separately" in card.replace("\n      ", " ")
+
+
+
+def test_steps_that_feed_each_other_are_worded_as_steps():
+    # Log 329: the network is the input of the workflow that finds the modules.
+    import replay_mg
+
+    fixture = json.loads((ROOT / "docs" / "research-log" / "two-step-modules-2026-10-03"
+                          / "pf_recorded_calls.json").read_text())[0]
+    kind, text, card = replay_mg.answer(fixture["prompt"], replay_mg.route(fixture))
+    assert text.startswith("Your request has 2 steps, one after the other")
+    assert '**Step 1 -- "' in text and '**Step 2 -- "' in text and "Reading 1" not in text
+    assert "from the regulatory networks of the previous step" in text
+    assert ("Should we start with step 1 (LIONESS-PANDA or LIONESS-PUMA)? Each step is planned and approved on its "
+            "own. Step 2 has no registered workflow; what to do instead is described above.") in text
+    assert card.startswith("Your request has 2 steps, one after the other; step 2 has no registered")
+    assert "[Step] Should we start with step 1?" in card and "1) Step 1:" in card
+
+
+def test_alternative_readings_keep_the_reading_wording():
+    from netzoo_agent_core.interpretation.hypothesis_routes import step_order
+    from evaluate_routing import ProjectPolicyLoader
+
+    policy = ProjectPolicyLoader(ROOT).load()
+    tf = _reading("regulatory_network", "transcription factors rewire their target genes")
+    mirna = _reading("regulatory_network", "microRNAs silence the genes")
+    assert step_order([tf, mirna], policy, TASK) is None
+    assert step_order([MODULES, NETWORKS], policy, TASK) == [NETWORKS, MODULES]  # run order, not stated order
+    camps = ("One camp wants the most accurate TF-gene regulatory network; the other wants to split the "
+             "network into functional modules.")
+    assert step_order([NETWORKS, MODULES], policy, camps) is None  # alternatives, though one could feed the other

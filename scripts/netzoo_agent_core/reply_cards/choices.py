@@ -321,16 +321,21 @@ def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task
     """(choices, unavailable) for the per-reading and per-input replies (Logs 248, 250)."""
     from ..interpretation.hypothesis_routes import (
         _candidates, _composition, _handoff_routes, _quote, _readings, _splits, _stated_inputs, scale_gap_note,
+        step_order,
     )
 
     readings = _readings(decision, policy)
+    # Log 329: readings that feed each other are steps, in the order they run.
+    steps = step_order(readings, policy, task)
+    readings = steps or readings
+    noun = "Step" if steps else "Reading"
     stated = _stated_inputs(readings, task)
     options, unavailable = [], []
     for number, reading in enumerate(readings, start=1):
         actions = [a for a in _candidates(task, reading, "guidance") if a in policy.workflows]
         said = _quote(reading, [other for other in readings if other is not reading], task)
-        label = f"Reading {number}" + (f": {quote(said, 56)}" if said else "")
-        answer = f"Start with reading {number}" + (f": {quote(said, 120)}" if said else "")
+        label = f"{noun} {number}" + (f": {quote(said, 56)}" if said else "")
+        answer = f"Start with {noun.lower()} {number}" + (f": {quote(said, 120)}" if said else "")
         result = result_phrase(reading.outcome)
         if actions:
             options.append(_reading_option(number, label, actions, policy, result, answer,
@@ -388,6 +393,11 @@ def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task
         ))
     if not options:
         return None, unavailable
+    if steps:
+        return ReplyChoices(
+            header="Step", question="Should we start with step 1?", options=options,
+            ordering="In the order the steps run; each step uses the result of the one before.",
+        ), unavailable
     return ReplyChoices(
         header="Reading", question="Which reading should we start with?", options=options,
         ordering="In the order your request states them.",
