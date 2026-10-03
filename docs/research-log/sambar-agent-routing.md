@@ -16850,3 +16850,58 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **重播（3346 種，HEAD `9177bf7` 對新程式）：** 全文、要點、選項各 11 處，全是 Test 4 的決策（r1–r3、live-cw-cand 等單一讀法的決策）。其他決策 0 變化。
 
 **測試：** 全套件 3164 passed／35 skipped。`tests/test_r5_replies.py` 新增 1 個（用 r3 錄下的 Test 4 決策）。
+
+## Log 335｜r6 結果與修正：啟動清理競爭、prior 措辭、單細胞選項提醒、concern 合併、未評估輸入的說法
+
+日期／時區：2026-10-04，Asia/Taipei。使用者決定：「再用我電腦把 10 題英文 prompt 跑一輪」，看過 r6 回報後「先修 1、2、4、6 點」。
+路由、驗證、prompt 都不變（指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、condition prompt `c820364a1123` 不變）。
+
+**r6（HEAD `22165f8`，gpt-4o-mini，約 US$0.019）：** 10 題都正常結束，沒有驗證失敗。報告與決策在 `test10-2026-10-03/out/r6-*`。
+- 與 r5 相比：
+  - Test 4 只剩網路讀法（CW 生效），單細胞說明放在提問之前。
+  - Test 6 不再建議共表現網路。
+  - Test 7 只列 PANDA。
+  - Test 8 的 concern 指向 ALPACA。
+- 模型每次輸出不同的部分：
+  - Test 9 這次推薦 OTTER。
+  - Test 10 這次問 TF 或 miRNA。
+  - Test 2 這次多一個讀法：signed、整群尺度，卻引用「a separate regulatory network for each patient」，帶進 GIRAFFE（第 3 點，未處理）。
+- 第一次執行時 Test 1–3 在啟動時就當掉（FileNotFoundError），還沒呼叫模型；重跑後正常。
+
+**修正：**
+1. **啟動清理競爭**（`session.py`）。
+   - 原因：換日後 5 個 CLI 同時啟動，都在清理過期的 session 與 trace，其中 3 個因檔案已被別的程序刪掉而當掉。
+   - `cleanup_runtime_storage` 遇到已不存在的 session 檔就跳過。
+   - `cleanup_trace_storage` 的 rmtree 遇到 FileNotFoundError 時，以 `ignore_errors=True` 收尾剩下的部分。
+2. **prior 措辭**（`graph/condition_recommender.py`）。
+   - 問題：Test 9 寫「It also needs a TF-motif prior and protein-interaction prior, which the request does not mention」，但請求明說「PPI and TF motif data from public databases」。
+   - Log 259 的規則不變：只有指定的檔案才算已有 prior。
+   - 請求用文字提到、但沒有檔案的資料（`input_availability` 的 present），改寫成「It also needs files for the TF-motif prior and protein-interaction prior you mention; no file is named yet.」。
+   - 沒提到的維持原句。
+3. **Test 4 卡片**：
+   - `OutsideStep.caveat`：單細胞那一項為「Not on single cells: run it on pseudo-bulk profiles, one per donor and state」。
+     - `advises_against` 中的 workflow 出現在 method 卡選項時，說明加上這句，優先度與「你會得到什麼」相同。
+   - `tie_guidance.concern_section`：多個方法共有的句子只說一次，掛在共有它的方法清單上（`_shared_once`）。
+     - 沒有共有句子時，輸出與原本相同。
+     - Test 4 的 6 條 downstream note 中，PANDA／PUMA／OTTER 的兩句共用，LIONESS-PANDA／LIONESS-PUMA 的四句共用。
+4. **未評估輸入的說法**（`verified_guidance`）。
+   - 問題：Test 3、8 開頭是「Input compatibility has not been assessed because no current input is established.」，但使用者說已經有算好的網路。
+   - P3（handoff 文件）要求明示 `not_assessed`，所以保留，但改為說明 agent 沒做什麼。
+   - 新句放在結尾段開頭：「Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked.」，outside step 說明因此在它之前。
+
+**重播（3356 種，HEAD `22165f8` 對新程式）：**
+- 全文 1062 處：
+  - 1023 處只是 not_assessed 句移到結尾段並改寫。
+  - 39 處是 concern 合併：blind case 4 32 處（LIONESS-PANDA／LIONESS-PUMA 合併）、Test 4 5 處、Test 7 2 處。
+- 卡片只有 Test 4 的 12 處選項說明（加上單細胞提醒）。
+- 標題、要點、選項順序 0 變化。
+- prior 措辭寫在決策中，錄製的決策不會重算，由單元測試涵蓋。
+
+**測試：** 全套件 3170 passed／35 skipped。新增：
+- `test_session_management` 與 `test_trace_store` 各 1 個，模擬另一個程序先刪掉檔案。
+- `test_evidence_order` 1 個（用文字提到的 prior）。
+- `test_r5_replies` 3 個（用 r6 錄下的 Test 4、Test 8 決策）。
+
+**未處理：**
+- 第 3 點：Test 2 的尺度矛盾讀法，屬於路由。
+- 第 5 點：Test 9 的模型理由「particularly suitable for … limited samples」沒有根據，卻直接顯示。

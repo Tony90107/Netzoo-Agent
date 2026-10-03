@@ -9,6 +9,7 @@ the registry; nothing is keyed to a request's wording.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 
 from workflow_registry import OUTPUT_CAPABILITIES, REQUEST_CONCERNS, SELECTION_TAG_GLOSSARY
@@ -42,9 +43,32 @@ def _distinguishing_note(capability, shared: Counter, *, full: bool, said=frozen
     return note if full else note.split(". ", 1)[0].rstrip(".") + "."
 
 
+_SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+
+def _shared_once(notes: dict[str, str]) -> list[str]:
+    """One bullet per set of methods, each sentence said once for all methods that share it (Log 335).
+
+    Test 4 (r6) listed six methods' downstream notes in full; four of them
+    repeat the same two sentences. Methods without a shared sentence keep
+    their own note, worded as before.
+    """
+    sentences = {name: _SENTENCE.split(note) for name, note in notes.items()}
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for name in notes:
+        for sentence in sentences[name]:
+            owners = tuple(other for other in notes if sentence in sentences[other])
+            if sentence not in groups.setdefault(owners, []):
+                groups[owners].append(sentence)
+    if all(len(owners) == 1 for owners in groups):
+        return [f"- **{name}** — {note}" for name, note in notes.items()]
+    return [f"- {', '.join(f'**{name}**' for name in owners)} — {' '.join(text)}"
+            for owners, text in groups.items()]
+
+
 def concern_section(decision, policy, actions) -> str:
     """The registry's answer to each concern the request stated, per listed method (Log 263)."""
-    by_concern: dict[str, list[str]] = {}
+    by_concern: dict[str, dict[str, str]] = {}
     labels: dict[str, str] = {}
     for item in decision.addressed_concerns:
         if item.action not in actions or item.action not in policy.workflows:
@@ -54,11 +78,9 @@ def concern_section(decision, policy, actions) -> str:
             continue
         labels[item.concern] = declared.label
         note = outside_concern_answer(item.action, item.text_span) or declared.note
-        line = f"- **{policy.workflows[item.action].workflow}** — {note}"
-        if line not in by_concern.setdefault(item.concern, []):
-            by_concern[item.concern].append(line)
-    return "\n\n".join(f"About your concern that {labels[c]}:\n" + "\n".join(lines)
-                        for c, lines in by_concern.items())
+        by_concern.setdefault(item.concern, {}).setdefault(policy.workflows[item.action].workflow, note)
+    return "\n\n".join(f"About your concern that {labels[c]}:\n" + "\n".join(_shared_once(notes))
+                        for c, notes in by_concern.items())
 
 
 def concern_section_for_workflow(decision, policy, action) -> str:

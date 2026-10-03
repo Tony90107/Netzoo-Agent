@@ -367,3 +367,31 @@ def test_a_title_is_the_first_request_never_a_stored_marker(store):
     assert load_meta("t2", sessions_root=sessions)["first_request"] == "build per-sample miRNA networks for my cohort"
     assert client.get("/v1/history/t2", headers=AUTH).json()["title"] == "build per-sample miRNA networks for my cohort"
 
+
+
+def test_a_session_another_process_already_pruned_is_skipped(tmp_path, monkeypatch):
+    # TEST_PROMPTS r6 (2026-10-04): five CLI processes started together after
+    # the date changed, and three crashed on FileNotFoundError while pruning.
+    import time as _time
+
+    from netzoo_agent_core import session as session_module
+
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    monkeypatch.setattr(session_module, "SESSION_ROOT", sessions)
+    monkeypatch.setattr(session_module, "TOOL_LOG_ROOT", tmp_path / "logs")
+    ancient = _time.time() - 400 * 86_400
+    for name in ("ffff6666", "gggg7777"):
+        path = sessions / f"{name}.json"
+        path.write_text(json.dumps({"session_id": name, "plan": {"status": "respond_only"}, "messages": []}))
+        os.utime(path, (ancient, ancient))
+    real_scandir = os.scandir
+
+    def raced(root):
+        entries = list(real_scandir(root))
+        (sessions / "ffff6666.json").unlink()  # the other process got there first
+        return iter(entries)
+
+    monkeypatch.setattr(session_module.os, "scandir", raced)
+    removed = session_module.cleanup_runtime_storage(retention_days=30, hard_retention_days=180)
+    assert removed["sessions"] == 1 and not list(sessions.glob("*.json"))

@@ -26,6 +26,7 @@ from workflow_registry import (
 )
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
+from ..interpretation.outside_steps import outside_steps
 from ..routing.capability_compatibility import input_availability
 from ..routing.clarification_planner import plan_clarification
 from .contracts import ReplyChoices, ReplyOption
@@ -131,6 +132,10 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
     ))
     clean = [action for action in candidates if not fits[action][1]]
     best = clean[0] if len(clean) == 1 and recommended is None else None
+    # Log 335: Test 4 (single-cell) listed LIONESS-PANDA with no word of the
+    # reply's own note that per-cell LIONESS networks are not advised.
+    caveats = {action: step.caveat for step in outside_steps(decision, task) if step.caveat
+               for action in step.advises_against}
     options = []
     for index, action in enumerate(order):
         matches, mismatches = fits[action]
@@ -147,7 +152,8 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
         # and costs, when to pick it, what it needs. When over budget, what the
         # option gives and misses is kept first, then what it needs and when to
         # pick it; a cost is never shown without the use it pays for.
-        ranked = [(0, part) for part in lead] + [(1, part) for part in got] + [(5, part) for part in matches] \
+        ranked = [(0, part) for part in lead] + [(1, part) for part in got] \
+            + ([(1, caveats[action])] if action in caveats else []) + [(5, part) for part in matches] \
             + [(2, part) for part in mismatches] + ([(6, " · ".join(use))] if use else []) \
             + [(4, part) for part in when] + [(3, part) for part in needs]
         badge = "Recommended" if action == recommended else "Best match" if action == best else ""

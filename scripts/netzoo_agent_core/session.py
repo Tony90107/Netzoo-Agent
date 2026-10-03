@@ -96,7 +96,11 @@ def cleanup_runtime_storage(
     retention_days: int = DEFAULT_RETENTION_DAYS,
     hard_retention_days: int = DEFAULT_SESSION_HARD_RETENTION_DAYS,
 ) -> dict[str, int]:
-    """Prune routine data, with a hard expiry for every session kind."""
+    """Prune routine data, with a hard expiry for every session kind.
+
+    Several CLI processes can start together and prune the same files; a file
+    another one already removed is skipped (TEST_PROMPTS r6, 2026-10-04).
+    """
     cutoff = time.time() - max(retention_days, 1) * 86_400
     hard_cutoff = time.time() - max(hard_retention_days, retention_days, 1) * 86_400
     removed = {"sessions": 0, "logs": 0}
@@ -106,14 +110,17 @@ def cleanup_runtime_storage(
             if not entry.is_file(follow_symlinks=False) or not entry.name.endswith(".json"):
                 continue
             path = Path(entry.path)
-            metadata = entry.stat(follow_symlinks=False)
-            if metadata.st_mode & 0o077:
-                path.chmod(0o600)
-            modified_at = metadata.st_mtime
-            if modified_at < hard_cutoff:
-                path.unlink()
-                _forget_meta(path.stem)
-                removed["sessions"] += 1
+            try:
+                metadata = entry.stat(follow_symlinks=False)
+                if metadata.st_mode & 0o077:
+                    path.chmod(0o600)
+                modified_at = metadata.st_mtime
+                if modified_at < hard_cutoff:
+                    path.unlink()
+                    _forget_meta(path.stem)
+                    removed["sessions"] += 1
+                    continue
+            except FileNotFoundError:
                 continue
             if modified_at >= cutoff or not _is_auto_session_id(path.stem):
                 continue
@@ -195,7 +202,12 @@ def cleanup_trace_storage(
             continue
         if manifest.finished_at.timestamp() >= cutoff:
             continue
-        shutil.rmtree(resolved)
+        try:
+            shutil.rmtree(resolved)
+        except FileNotFoundError:
+            # Another process is removing the same run; finish what is left.
+            shutil.rmtree(resolved, ignore_errors=True)
+            continue
         removed += 1
     return removed
 

@@ -1,0 +1,32 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.40s)
+● Matching registered workflows…
+✓ Workflow — CONDOR
+✓ Guidance prepared
+Input compatibility has not been assessed because no current input is established.
+
+Selected path: **CONDOR**.
+
+Your question asks for a cohort-level community assignment. **CONDOR** fits that result and scale. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model.
+
+**CONDOR**: Detect communities in a validated bipartite network with CONDOR.
+
+Routing-level input modality: regulatory network.
+
+Method premise: find communities in a two-mode network; return network modules or community membership.
+
+CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.
+
+Required workflow inputs:
+
+- `network_file`: bipartite network
+
+Before CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.
+
+Other declared controls (not matched to this request; defaults apply unless you set them): `prefix`=condor.
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `community_assignment`: Network-node community memberships, not patient subtype labels.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

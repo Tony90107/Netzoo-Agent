@@ -1,0 +1,28 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.65s)
+● Matching registered workflows…
+✓ Guidance prepared
+Based on what you said — "We would rather formulate the problem as an optimization with an explicit objective than use an iterative heuristic update scheme, ideally with a convex, globally optimal guarantee." — **OTTER** fits better: you asked for an explicit objective that is optimized.
+
+Why it addresses this question: OTTER directly addresses the user's need for an optimization-based approach by solving a continuous-relaxation graph-matching problem with an explicit objective. It is particularly suitable for the user's context of limited samples and the need for a robust regulatory network inference.
+
+Your question asks for a regulatory network. **OTTER** fits that result.
+
+**OTTER** (recommend) — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix. Produces inferred regulator-to-target associations (one cohort-level result).
+
+Conditional assumptions to confirm:
+- This starting choice assumes a regulator scope of transcription factors; confirm this scope before analysis.
+- It also needs a TF-motif prior and protein-interaction prior, which the request does not mention.
+- The user has access to the required input files, including motif and PPI data, and a gene-by-sample expression matrix.
+
+Other compatible option(s):
+- **PANDA** — preferred when: results must be comparable with the widely published approach, or serve as a base network for later per-sample analysis; approach: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow.
+- **LIONESS-PANDA** — preferred when: dozens of samples or more; each sample's regulator-to-target wiring (edge weights or targeting scores) is needed; approach: derive each sample network from all-sample and leave-one-out networks.
+- If you need a TF/miRNA regulatory network instead: **PUMA**, **LIONESS-PUMA**.
+- **GIRAFFE** — preferred when: a regulator's activity may differ from its own expression, or activating versus repressing effects are needed; each sample's regulator activity level is needed, apart from the regulator's own expression; approach: factor gene expression using motif and TF-protein interaction priors.
+
+**On a convex, globally optimal guarantee.** None of the registered methods offers one. OTTER is posed as a non-convex optimization (Weighill et al. 2021): the network W is fitted so that W times its transpose matches the PPI and its transpose times W matches co-expression. The paper derives a spectral solution with recovery guarantees under its assumptions, but the netZooPy OTTER registered here takes a fixed number of gradient steps from a motif-based start, which reaches a local solution. PANDA's iterative updates do not minimize a stated objective. OTTER does give the explicit objective you asked for.
+
+Should I use OTTER, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.
