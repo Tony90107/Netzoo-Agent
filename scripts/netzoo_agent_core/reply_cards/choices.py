@@ -320,7 +320,7 @@ def _reading_option(number, label, actions, policy, result, answer, scale=None) 
 def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task: str):
     """(choices, unavailable) for the per-reading and per-input replies (Logs 248, 250)."""
     from ..interpretation.hypothesis_routes import (
-        _candidates, _composition, _handoff_routes, _quote, _readings, _splits, _stated_inputs,
+        _candidates, _composition, _handoff_routes, _quote, _readings, _splits, _stated_inputs, scale_gap_note,
     )
 
     readings = _readings(decision, policy)
@@ -383,7 +383,8 @@ def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task
         unavailable.append(ReplyOption(
             key=f"reading-{number}", label=clip(label, 80), description=describe([f"Asks for {result}"]),
             available=False, resolution="none",
-            reason="No registered workflow produces this from the stated inputs.",
+            reason=clip(scale_gap_note(reading.outcome, policy)
+                        or "No registered workflow produces this from the stated inputs.", 260),
         ))
     if not options:
         return None, unavailable

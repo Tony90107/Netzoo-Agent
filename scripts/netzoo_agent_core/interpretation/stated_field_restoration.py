@@ -72,6 +72,7 @@ from .request_integrity import (
     granularity_mentions,
     input_mentions,
     regulatory_role_mentions,
+    stated_scale_gap,
 )
 
 __all__ = ["restore_stated_fields"]
@@ -750,6 +751,10 @@ def restore_stated_fields(
                 ("granularity", rule.granularities),
             ):
                 if permitted is None or len(permitted) != 1:
+                    continue
+                if field == "granularity" and stated_scale_gap(user_task, outcome) is not None:
+                    # Log 327: the request states this scale; the gap is reported
+                    # (Log 294), never aligned away into a contradiction.
                     continue
                 current = getattr(outcome, field)
                 entailed = next(iter(permitted))

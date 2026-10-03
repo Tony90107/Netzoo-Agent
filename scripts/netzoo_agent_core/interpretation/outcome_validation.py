@@ -537,6 +537,17 @@ def validate_outcome_hypotheses(
     kept_scale = stated_scale_gap(user_task, hypotheses[0].outcome) if len(hypotheses) == 1 else None
     if kept_scale is not None and unique_issues == (f"hypothesis[0].{kept_scale}",):
         unique_issues = ()
+    # Log 327: the same holds for one reading among others that are not such a
+    # gap. "Patient-specific networks ... then the gene modules inside each
+    # patient's network" lost its modules reading to a repair that could only
+    # break the request or the ontology.
+    gaps = {index: stated_scale_gap(user_task, hypotheses[index].outcome)
+            for index in separately_stated_gaps(user_task, hypotheses)}
+    if gaps and len(gaps) < len(hypotheses):
+        for index, gap in gaps.items():
+            own = [issue for issue in unique_issues if issue.startswith(f"hypothesis[{index}].")]
+            if own == [f"hypothesis[{index}].{gap}"]:
+                unique_issues = tuple(issue for issue in unique_issues if issue != own[0])
     recoverable = bool(unique_issues) and all(
         ".ungrounded_evidence:" in issue for issue in unique_issues
     )
@@ -546,3 +557,34 @@ def validate_outcome_hypotheses(
         recoverable,
         tuple(evidence_shapes),
     )
+
+
+def _artifact_quotes(user_task, hypothesis) -> set[str]:
+    return {
+        " ".join(item.text_span.split()).casefold() for item in hypothesis.evidence
+        if item.dimension == "artifact_type" and item.value == hypothesis.outcome.artifact_type
+        and item.source == "explicit" and item.text_span and explicit_evidence_grounded(user_task, item)
+    }
+
+
+def separately_stated_gaps(user_task, hypotheses) -> list[int]:
+    """Readings that keep a stated scale their result cannot have, and that the request names apart (Log 327).
+
+    Each must quote its own result, in the request's words, apart from every
+    other reading's result quote ("the gene modules inside each patient's
+    network" beside "patient-specific networks"), and at least one reading
+    must not be such a gap. A reading the model added without a quote of its
+    own -- per-sample TF activity beside the regulatory network asked for --
+    is not one.
+    """
+    if len(hypotheses) < 2:
+        return []
+    quotes = [_artifact_quotes(user_task, item) for item in hypotheses]
+    gaps = []
+    for index, item in enumerate(hypotheses):
+        own = quotes[index]
+        others = set().union(*(quotes[other] for other in range(len(hypotheses)) if other != index))
+        if (stated_scale_gap(user_task, item.outcome) is not None and own
+                and not any(a in b or b in a for a in own for b in others)):
+            gaps.append(index)
+    return gaps if len(gaps) < len(hypotheses) else []

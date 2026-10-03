@@ -67,3 +67,15 @@ def drop_unwitnessed_readings(task, interpretation):
     dropped = [r.outcome.artifact_type for r in readings if r not in kept]
     return interpretation.model_copy(update={"outcome_hypotheses": kept}), dropped
 
+
+
+def matchable_readings(task, hypotheses):
+    """The readings to match, setting aside a stated-scale gap beside a matchable one (Log 327).
+
+    The gap reading stays in the interpretation: the reply answers it as the
+    capability gap it is, while the other reading is matched as usual.
+    """
+    from ..interpretation.outcome_validation import separately_stated_gaps
+
+    gaps = set(separately_stated_gaps(task, list(hypotheses)))
+    return [item for index, item in enumerate(hypotheses) if index not in gaps]
