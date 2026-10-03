@@ -268,7 +268,9 @@ def test_a_stated_regulator_scope_recommends_the_per_sample_method_for_it(tmp_pa
     answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
     assert answer.count("(recommend)") == 1
     assert "fits better: the regulators include miRNAs" in answer and "LIONESS-PANDA" in answer
-    assert "LIONESS-PUMA estimates individual TF and miRNA wiring." in answer  # explains, never decides
+    # Log 339: the reason is the request's words and the registry's; the
+    # model's rationale is never shown beside them.
+    assert "LIONESS-PUMA estimates individual TF and miRNA wiring." not in answer
 
 
 @pytest.mark.parametrize("parsed, expect_recommendation", [
@@ -345,7 +347,8 @@ def test_grounded_method_reason_explains_question_without_changing_claim_choice(
     updated, _, _ = invoke_condition_recommender(context, state, TASK, _decision(), LLMUsage(), [])
     assert updated.advisory_recommendation.action == "run_bonobo"
     answer = render_outcome_clarification(updated, ProjectPolicyLoader(ROOT).load())
-    assert "Why it addresses this question: Bayesian shrinkage borrows cohort information" in answer
+    assert "Why it addresses this question" not in answer  # Log 339: model prose is not shown
+    assert "BONOBO** fits better: only a handful of samples." in answer
 
     parsed["preference"]["action"] = "run_lioness_coexpression"
     parsed["preference"]["selection_tags"] = ["leave_one_out_network_inference"]

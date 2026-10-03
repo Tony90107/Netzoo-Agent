@@ -33,6 +33,22 @@ def _without_global_optimum_claims(rationale: str) -> str:
     return " ".join(item for item in sentences if item and not _GLOBAL_OPTIMUM_CLAIM.search(item))
 
 
+# A model assumption that the user already holds the inputs (Log 339). Said
+# beside "It also needs files ... no file is named yet" it contradicts the
+# reply, and Log 259 never lets model prose imply the inputs are in hand.
+_INPUTS_IN_HAND = re.compile(
+    r"\buser\b[^.;]*\b(?:has|have|possess\w*|access)\b[^.;]*\b(?:files?|data|inputs?|priors?|matri(?:x|ces))\b",
+    re.I,
+)
+
+
+def _shown_assumptions(assumptions) -> list[str]:
+    """The assumptions to show: none claiming inputs in hand when the reply says some are missing."""
+    if not any(item.startswith("It also needs") for item in assumptions):
+        return list(assumptions)
+    return [item for item in assumptions if item.startswith("It also needs") or not _INPUTS_IN_HAND.search(item)]
+
+
 def _condition_label(condition: str) -> str:
     axis, _, value = condition.partition(":")
     if axis == "selection_tag":  # a stated method signal (Log 318)
@@ -128,15 +144,18 @@ def render_advisory_recommendation(
         (f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}."
          if quotes else f"Based on the stated study conditions, **{spec.workflow}** fits better: {reasons}.")
         if recommendation.conditions else
-        f"My recommended starting method is **{spec.workflow}**: {recommendation.rationale}"
+        f"My recommended starting method is **{spec.workflow}**: "
+        f"{_without_global_optimum_claims(recommendation.rationale)}"
     )
     # The lead states the conditions and the block below the mechanism (Log 275).
     fit = question_fit_for(
         decision.requested_outcome, spec.workflow, spec.output_capability, mechanism=False,
     )
+    # The lead gives the request's words and the registry's reason; the
+    # model's rationale is not shown beside it (Log 339: Test 9's said OTTER
+    # "is particularly suitable for ... limited samples", Log 320's claimed a
+    # global optimum).
     lines = [lead]
-    if recommendation.conditions and (rationale := _without_global_optimum_claims(recommendation.rationale)):
-        lines.append("Why it addresses this question: " + rationale)
     if fit:
         lines.append(fit)
     listed = [a for a in dict.fromkeys([recommendation.action, *decision.hypothesis_actions]) if a in policy.workflows]
@@ -144,10 +163,8 @@ def render_advisory_recommendation(
     lines.append(_recommended_block(recommendation.action, policy, shared))
     if not recommendation.conditions and spans:
         lines.append(f"Request evidence: {quotes}.")
-    if recommendation.assumptions:
-        lines.append("Conditional assumptions to confirm:\n" + "\n".join(
-            f"- {item}" for item in recommendation.assumptions
-        ))
+    if assumptions := _shown_assumptions(recommendation.assumptions):
+        lines.append("Conditional assumptions to confirm:\n" + "\n".join(f"- {item}" for item in assumptions))
     others = _alternative_lines(recommendation.action, listed, policy, shared, family_label)
     if others:
         lines.append("Other compatible option(s):\n" + "\n".join(others))
