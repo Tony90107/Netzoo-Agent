@@ -22,16 +22,19 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..routing.method_rejections import rejected_methods_for
 from ..routing.outcome_matching import match_requested_outcome, match_semantic_request
-from .concept_answers import _GRANULARITY_LABELS, _artifact_label, _candidate_details
+from .concept_answers import _GRANULARITY_LABELS, _artifact_label, _candidate_details, _network_family_label
 from .research_choices import render_research_choices
 from .scientific_guidance import method_paragraphs
 from .inspected_answers import with_inspection_footer
+from .tie_guidance import method_families
 
 __all__ = ["render_hypothesis_routes"]
 
 _NOT_INSPECTED = "No files were inspected and no analysis ran."
 # Evidence that says what a reading is about, in the order it is quoted.
 _QUOTED_DIMENSIONS = ("artifact_type", "granularity", "regulator_type", "operation", "input_artifact")
+# More workflows than this for one reading are listed one line each.
+_FULL_DETAILS = 3
 
 
 def _input_only_artifacts(policy: ProjectPolicySnapshot) -> frozenset[str]:
@@ -82,14 +85,21 @@ def _candidates(task: str, reading, request_mode: str) -> list[str]:
 
 
 def _spans(reading, task: str) -> list[str]:
-    """The reading's explicit quotes that the request really contains, in order."""
+    """The reading's explicit quotes that the request really contains, in order.
+
+    A quote may end in a period where the request goes on after a comma; Test 4
+    (r5) titled its reading "RNA-seq" because its two result quotes did.
+    """
     folded = task.casefold()
     spans = []
     for dimension in _QUOTED_DIMENSIONS:
         for item in reading.evidence:
-            span = (item.text_span or "").strip()
-            if (item.dimension == dimension and item.source == "explicit" and span
-                    and span.casefold() in folded and span not in spans):
+            if item.dimension != dimension or item.source != "explicit":
+                continue
+            whole = (item.text_span or "").strip()
+            span = next((text for text in (whole, whole.rstrip(".,;:!?").rstrip())
+                         if text and text.casefold() in folded), None)
+            if span is not None and span not in spans:
                 spans.append(span)
     return spans
 
@@ -334,6 +344,14 @@ def _composition_lines(composition, policy) -> tuple[list[str], str]:
 def _option_lines(outcome, actions, policy, *, single_input: bool, routes=(),
                   stated=frozenset()) -> tuple[list[str], str]:
     specs = [(action, policy.workflows[action]) for action in actions if action in policy.workflows]
+    if len(specs) > _FULL_DETAILS:
+        # Test 4 (r5, Log 331): six workflows with every premise and formula
+        # buried the reply's point. One line each, as tie replies list them.
+        _, sentence, listed = method_families([action for action, _ in specs], policy, _network_family_label)
+        lines = [sentence] if sentence else []
+        for label, members in listed:
+            lines.extend([f"- {label}:", *("  " + line for line in members)] if len(listed) > 1 else members)
+        return lines, " or ".join(spec.workflow for _, spec in specs)
     if specs:
         lines = [line for action, spec in specs for line in _candidate_details(action, spec, policy)]
         return lines, " or ".join(spec.workflow for _, spec in specs)

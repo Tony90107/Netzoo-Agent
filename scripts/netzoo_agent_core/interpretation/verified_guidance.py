@@ -19,6 +19,7 @@ from .extraction import INPUT_LABELS
 from .guidance_interaction import guidance_interaction
 from .scientific_explanations import scientific_explanations
 from .method_philosophy import method_philosophies_for, question_fit_for
+from .outside_steps import outside_concern_answer
 from .practical_notes import practical_notes
 from .request_parameters import extract_explicit_request_parameters, render_request_parameters
 
@@ -108,7 +109,8 @@ def addressed_concern_facts(decision: TaskDecision) -> list[dict]:
         if declared is not None:
             facts.append(dict(
                 action=item.action, concern=item.concern, text_span=item.text_span,
-                note=declared.note, controls=list(declared.controls),
+                note=outside_concern_answer(item.action, item.text_span) or declared.note,
+                controls=list(declared.controls),
                 artifacts=list(declared.artifacts),
             ))
     return facts
