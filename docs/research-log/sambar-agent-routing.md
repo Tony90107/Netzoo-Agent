@@ -16996,3 +16996,42 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
     - test1-en：平手且含 PANDA；
     - test4-en：平手且含 PANDA。
   - blind_en ×1：OK ≥ baseline − 1；WRONG ≤ baseline ＋ 1（`preference-witness-2026-10-03/replay_pw.verdict`）。
+
+## Log 338｜結果：SR——效果門檻不成立，依宣告撤回；live 中的平手大多是另一種形狀
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 337 執行。gpt-4o-mini（預先授權）、legacy contract、traced harness。
+- baseline：宣告 commit `e54b987` 的 worktree；兩臂 `scripts/` 只差 SR 的 2 個檔案。
+- 證據在 `docs/research-log/shadow-readings-2026-10-04/`：`live-sr-{base,cand}-{a,b,blind}.json.gz`、`analyze.py`／`analyze.txt`、`scan_shadow.*`、`replay_sr.*`。
+- 費用約 US$0.14。
+
+**離線（live 之前）：** 全部成立。
+- 全套件 3179 passed／35 skipped；指紋與條件推薦 prompt hash 不變。
+- `replay_sr.txt` 與 `scan_shadow.txt` 相同（3 種決策、2 個請求）。
+- 5 個單元測試通過。
+
+**live：**
+
+| 條件 | baseline | candidate | 判定 |
+| --- | --- | --- | --- |
+| 有效性：provider 錯誤 | 0／29 | 0／29 | 有效 |
+| 健全：最終決策中的影子讀法 | 1 | 0 | 成立 |
+| 效果：test7-en 保留 prepare 且不是平手 | 4／5 | 3／5 | **不成立** |
+| 效果：baseline 有影子平手時 candidate 須為 0 | 1 | 0 | 成立 |
+| test2-en 候選含 GIRAFFE | 0／5 | 0／5 | 成立 |
+| 對照 gran-mirna-unstated-control | 0／3 | 0／3 | 成立（≥ baseline − 1） |
+| 對照 test1-en、test4-en | 3／3、3／3 | 3／3、3／3 | 成立 |
+| blind_en | OK 10 | OK 10 | 成立 |
+
+**原因：** candidate 從未觸發 SR（事件 0 次）。
+- candidate 的 2 次 Test 7 平手都是 r4 的形狀：infer 讀法有自己的 explicit 引文「Before network inference, we want to filter the TF-gene prior」，而這段引文包含在 prepare 讀法的引文裡。SR 依定義不處理這種形狀。
+- baseline 唯一的平手是 SR 針對的形狀：infer 沒有引文。
+- 兩臂的差異來自模型輸出的變動，不是 SR 造成的；但宣告寫明任一條件不成立就撤回。
+
+**結論：** 撤回 SR。程式與單元測試移除，研究檔案保留。
+- 這次的效果門檻設計不佳：它比較的是所有 Test 7 trial 的 prepare 次數（每臂 5 次），而 SR 只作用於其中一種形狀，因此主要量到的是變動。
+
+**之後若要再處理 Test 7（需使用者決定，並重新宣告）：**
+1. 只在影子形狀的 trial 上判定，並增加次數。
+2. 也處理 r4 形狀：兩個讀法的 operation 引文互相包含，卻給出不同值。
+   - 這時兩者都有字句支持，結構上無法判斷哪一個對。
+   - 「Before network inference」的 inference 被讀成要求的動作，屬於模型誤讀；能否用結構規則處理還不確定。
