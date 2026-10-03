@@ -27,7 +27,10 @@ Two repairs, and nothing else:
 A malformed entry (a dimension that is not a string, a value outside the
 vocabulary) and any other schema error keep the original located failure, as
 the P0 malformed-payload contract requires; `SemanticInterpretation` itself is
-not relaxed.
+not relaxed. Log 325 adds one narrow exception, by the user's decision: a
+missing hypothesis confidence or an out-of-vocabulary `outcome.artifact_type`
+becomes a placeholder in a draft that only a patch can complete
+(`schema_placeholders`); the draft itself is never accepted.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ from copy import deepcopy
 from pydantic import ValidationError
 
 from ..contracts.outcomes import SemanticInterpretation
+from .schema_placeholders import placeholder_draft
 
 __all__ = ["validate_first_pass"]
 
@@ -104,6 +108,16 @@ def validate_first_pass(payload) -> tuple[SemanticInterpretation, dict]:
             candidate, remaining = payload, error
         else:
             salvage["nested"] = ["assumptions"]
+            try:
+                return SemanticInterpretation.model_validate(candidate), salvage
+            except ValidationError as still:
+                remaining = still
+        # Log 325: a missing confidence or an out-of-vocabulary artifact becomes
+        # a placeholder the patch must write; the draft is never accepted as is.
+        placed = placeholder_draft(candidate, remaining)
+        if placed is not None:
+            candidate, placeholders = placed
+            salvage["placeholders"] = placeholders.record()
             try:
                 return SemanticInterpretation.model_validate(candidate), salvage
             except ValidationError as still:
