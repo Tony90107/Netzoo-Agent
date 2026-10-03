@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..presentation import _ui_text_with_user_data, user_data_token
 
-__all__ = ["inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
+__all__ = ["above_closing", "inspection_footer", "render_inspected_recommendation", "with_inspection_footer"]
 
 _ROLE_LABELS = {
     "expression_file": "expression matrix",
@@ -13,6 +13,20 @@ _ROLE_LABELS = {
     "mirna_file": "miRNA list",
 }
 _NOT_INSPECTED = "No files were inspected and no analysis ran."
+
+
+def above_closing(text: str, block: str) -> str:
+    """`block` as its own paragraph above the closing one.
+
+    The closing paragraph may begin with another closing sentence ("This is
+    workflow guidance only; ..."); splitting it put an added paragraph
+    between the two (Test 6, 2026-10-03).
+    """
+    paragraphs = text.split("\n\n")
+    closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
+    if closing is None:
+        return text + "\n\n" + block
+    return "\n\n".join([*paragraphs[:closing], block, *paragraphs[closing:]])
 
 
 def inspection_footer(directories: list[str]) -> str:

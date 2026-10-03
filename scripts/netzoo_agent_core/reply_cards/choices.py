@@ -18,8 +18,11 @@ with the reason, never mixed into the options.
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import (
-    EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, SELECTION_AXES, STATED_TAG_PHRASES,
+    EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES,
+    STATED_TAG_PHRASES,
 )
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
@@ -476,8 +479,25 @@ def _producer_first(action: str, stated: frozenset[str], policy) -> str:
     return f"Needs a {wanted} first: build it with {join_names([workflow_name(policy, p) for p in producers])}"
 
 
-def capability_gap_parts(decision: TaskDecision, policy: ProjectPolicySnapshot):
-    """(headline, alternatives, unavailable) for a result no workflow produces."""
+def _gap_alternatives(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str) -> list[str]:
+    """The alternative the reply names, then one more only if it adds nothing the request leaves out.
+
+    The reply offers `alternative_actions[0]` alone. Test 7 (r5, 2026-10-03)
+    listed PUMA beside PANDA for a request that never mentions miRNAs.
+    """
+    actions = [a for a in decision.alternative_actions if a in policy.workflows]
+    mirna_named = re.search(SELECTION_AXES["regulator_class"]["witness"], task, re.I) is not None
+    more = [a for a in actions[1:]
+            if mirna_named or "mirna" not in getattr(OUTPUT_CAPABILITIES.get(a), "regulator_types", ())]
+    return actions[:1] + more[:1]
+
+
+def capability_gap_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, task: str = ""):
+    """(headline, alternatives, unavailable) for a result no workflow produces.
+
+    Each alternative says what it gives you, not how it works; for a prior the
+    request wants to build, that the workflow takes it as its motif prior.
+    """
     outcome = primary_outcome(decision)
     wanted = result_phrase(outcome)
     acquire = outcome is not None and outcome.operation == "acquire"
@@ -489,12 +509,15 @@ def capability_gap_parts(decision: TaskDecision, policy: ProjectPolicySnapshot):
                 "No registered workflow prepares this as an input; the workflows infer networks from your inputs."
                 if prepare else "No registered workflow produces this."),
     )]
+    builds_prior = prepare and outcome.artifact_type == "regulatory_network"
     alternatives = []
-    for action in [a for a in decision.alternative_actions if a in policy.workflows][:2]:
+    for action in _gap_alternatives(decision, policy, task):
         name = workflow_name(policy, action)
+        takes_prior = builds_prior and "motif_file" in REQUIRED_INPUTS.get(action, ())
         alternatives.append(ReplyOption(
             key=action, label=f"Use {name} instead",
-            description=describe([highlight(action), f"Needs {needs_line(action)}"]),
+            description=describe([gives(action), "Can use the prior you build as its motif prior" if takes_prior else "",
+                                  f"Needs {needs_line(action)}"]),
             answer=f"Use {name} instead", action=action, resolution="confirm_workflow",
         ))
     headline = (f"This agent cannot download {wanted}." if acquire

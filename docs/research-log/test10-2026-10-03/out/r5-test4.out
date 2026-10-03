@@ -1,0 +1,58 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.48s)
+● Matching registered workflows…
+✓ Guidance prepared
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "RNA-seq"**
+Result: regulatory networks, from expression matrix.
+- **TF-only regulatory network — PANDA**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with PANDA.
+  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF/miRNA regulatory network — PUMA**
+  - Registered purpose: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.
+  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow; PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.
+  - Mathematical interpretation: PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only regulatory network — PANDA → LIONESS-PANDA**
+  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+- **TF/miRNA regulatory network — PUMA → LIONESS-PUMA**
+  - Registered purpose: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+- **TF-only regulatory network — OTTER**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.
+  - Method premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing
+  - Mathematical interpretation: OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+  - Required inputs: all of: motif/prior, PPI network; and one of: expression matrix or adjusted co-expression matrix.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only signed regulatory-effect network — GIRAFFE**
+  - Registered purpose: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
+  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix
+  - Mathematical interpretation: GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks, TF activity matrices (cohort-level aggregate).
+
+**Reading 2 -- "annotated into 6 cell states."**
+Result: sample cluster assignment (aggregate), from inputs the request does not state.
+No registered workflow produces this result from these inputs.
+
+Which reading should we start with: 1 (PANDA or PUMA or LIONESS-PANDA or LIONESS-PUMA or OTTER or GIRAFFE), 2 (no registered workflow)? If a reading should use different data, say which.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+No files were inspected and no analysis ran.

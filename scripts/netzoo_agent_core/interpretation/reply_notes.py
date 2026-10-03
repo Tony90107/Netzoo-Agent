@@ -30,7 +30,7 @@ from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 from ..presentation import _ui_text_with_user_data, user_data_token
 from ..settings import INPUT_ROLE_FIELDS, PROJECT_ROOT
 from .input_bindings import request_input_bindings
-from .inspected_answers import _NOT_INSPECTED, _ROLE_LABELS
+from .inspected_answers import _ROLE_LABELS, above_closing
 
 __all__ = ["with_reply_notes"]
 
@@ -220,7 +220,4 @@ def with_reply_notes(text: str | None, decision, task: str = "") -> str | None:
     ) if note]
     if not notes:
         return text
-    block = _ui_text_with_user_data("\n\n".join(notes), user_data)
-    if _NOT_INSPECTED in text:
-        return text.replace(_NOT_INSPECTED, block + "\n\n" + _NOT_INSPECTED)
-    return text + "\n\n" + block
+    return above_closing(text, _ui_text_with_user_data("\n\n".join(notes), user_data))

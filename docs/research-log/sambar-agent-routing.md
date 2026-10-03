@@ -16680,3 +16680,39 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 - 錄製中其他走逐讀法回覆的請求（TF／miRNA 兩種假設、誤讀出的多體學讀法、單細胞等），都是不同讀法，維持原措辭。
 
 **測試：** 全套件 3152 passed／35 skipped。`tests/test_two_step_modules.py` 新增 2 個：步驟措辭（用錄下的 pf 呼叫），以及不同讀法維持原措辭（含兩派的反例、依執行順序排列）。
+
+## Log 330｜顯示修正：r5 的 Test 6 排版與替代建議、Test 7 的替代選項
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定：「先幫我修正1.5點」（r5 回報的第 1、5 項）。
+只改回覆與卡片，路由、驗證、prompt 都不變（指紋不變：legacy `e920bf3b5d57`、claims `743b2dd0d73a`、condition prompt `c820364a1123`）。
+
+**r5（HEAD `f73bda6`，10 題英文 prompt，gpt-4o-mini，US$0.019）：** 10 題全部結束、沒有驗證失敗。Test 6 為 PUMA，Test 7 有 prepare 措辭與 SPIDER，Test 8 有 ALPACA，Test 10 算出 91 次 PANDA。報告與決策在 `test10-2026-10-03/out/r5-*`。
+
+**問題：**
+1. Test 6 的「What your data allows」段被插在結尾段中間（「…no execution was authorized. **What your data allows.** …」）。
+   - 原因：`with_input_alternative` 用字串取代，把段落接在「No files were inspected…」前面；這次的結尾段開頭還有「This is workflow guidance only…」。`reply_notes` 也用同樣的寫法。
+   - 同一段建議 TF＋miRNA 的請求改用 LIONESS-COEXPRESSION（只有基因、沒有調控者角色）。Log 312 只提供涵蓋請求所述調控者角色的替代，但 Test 6 用被動語態寫角色（「genes are regulated by transcription factors … and by microRNAs」），`regulatory_role_mentions` 讀不到。唯一讀得到的「A TF-gene network alone misses…」在 Log 321（RA）被判為不足而排除。r4 已經出現。
+2. Test 7 的「Instead」選項仍是方法原理（「Widely used baseline: message passing…」）。
+   - 在沒提到 miRNA 的請求裡列出 PUMA。
+   - 回覆全文只提 PANDA（`alternative_actions[0]`），違反卡片「不提供全文沒提的 workflow」的原則。
+
+**修正：**
+- `inspected_answers.above_closing(text, block)`：新段落放在整個結尾段之前（Log 320 `outside_steps` 的做法）。`input_alternatives`、`outside_steps`、`reply_notes` 共用。
+- `input_alternatives._stated_roles`：在 `regulatory_role_mentions` 之外，再讀「genes … regulated by X (and by Y)」同一句中的 TF／miRNA 字詞；gene 與 regulated 之間有 not／never 不算。
+  - 只用在回覆的替代建議。
+  - 路由 gate `regulatory_role_mentions` 不變（`test_activity_witness` 仍斷言 Test 6 為空）。
+- `choices.capability_gap_parts(decision, policy, task)`：
+  - 先列回覆提到的那一個（`alternative_actions[0]`），再最多一個；若它加入請求沒提到的 miRNA（`SELECTION_AXES["regulator_class"]["witness"]` 沒命中），就不列。
+  - 說明改為「你會得到什麼」（`gives`）＋需要的輸入。
+  - 請求要準備的是 TF-gene prior（operation=prepare、artifact=regulatory_network），且該 workflow 需要 motif prior 時，加「Can use the prior you build as its motif prior」。
+
+**重播（`test12-2026-10-02/replay_cards.py`，現在也讀 test10 r1–r5 的決策；3324 種 prompt＋decision，HEAD `f73bda6` 對新程式）：**
+- 全文 5 處、卡片要點 5 處：全是 Test 6 的 5 個決策。不再有「What your data allows」段與 Inputs 卡，要點改為「Not mentioned in your request: motif prior and PPI network.」。
+- 結尾段排版：其他決策 0 變化（錄製中只有 Test 6 被插在段中），由新測試覆蓋。
+- 選項說明 53 處：
+  - 43 處是 CONDOR 的 gap 卡：「Finds TF-gene communities (modules) in a two-mode network」→「TF-gene communities (modules) found in a network you already have」。
+  - Test 7 的 4 處：只剩 PANDA，並加上 prior 那一句。
+  - 1 處 per-sample miRNA 請求：PUMA 保留，因為請求提到 miRNA。
+  - 另外 5 處是 Test 6 的 Inputs 選項消失。
+
+**測試：** 全套件 3155 passed／35 skipped。`tests/test_reply_cards.py` 新增 3 個：被動語態的角色、整段放在結尾段之前、gap 卡只列回覆提到的 workflow 並用使用者角度描述。

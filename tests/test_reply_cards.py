@@ -572,3 +572,51 @@ def test_a_stated_method_signal_reads_as_what_the_user_asked_for():
     choices = method_choices(made, POLICY, task="Each patient's co-expression with probabilistic uncertainty.")
     assert choices.options[0].description.startswith(
         "Fits what you said: you asked for probabilistic (Bayesian) uncertainty · One gene co-expression network")
+
+
+# -- r5 display fixes (Log 330) -------------------------------------------------
+
+def _prompt(name: str) -> str:
+    import json
+    return json.loads((ROOT / "docs" / "research-log" / "test10-2026-10-03" / "prompts.json").read_text())[name]
+
+
+def test_regulators_stated_in_the_passive_voice_are_not_offered_a_genes_only_network():
+    # Test 6, r4-r5: "genes are regulated by transcription factors ... and by
+    # microRNAs" was offered LIONESS-COEXPRESSION, which has no regulator roles.
+    made = decision([reading("regulatory_network", ["expression_matrix"], ["tf", "mirna"])],
+                    capability_match_status="exact", matched_actions=["run_puma"])
+    text, kind, card = respond_and_card(_prompt("test6"), made)
+    assert "What your data allows" not in text and "LIONESS-COEXPRESSION" not in text
+    assert card.choices is None or card.choices.header != "Inputs"
+    assert "Not mentioned in your request: motif prior and PPI network." in card.points
+
+
+def test_an_added_paragraph_goes_above_the_whole_closing_paragraph():
+    from netzoo_agent_core.interpretation.input_alternatives import with_input_alternative
+
+    closing = ("This is workflow guidance only; no execution was authorized. "
+               "No files were inspected and no analysis ran.")
+    text = with_input_alternative("Selected path: **LIONESS-PANDA**.\n\n" + closing, _heart_failure_tie(),
+                                  HEART_FAILURE, POLICY)
+    paragraphs = text.split("\n\n")
+    assert paragraphs[1].startswith("**What your data allows.**") and paragraphs[2] == closing
+
+
+def _prior_gap(alternatives):
+    prepared = reading("regulatory_network", regulators=["tf"])
+    prepared["outcome"]["operation"] = "prepare"
+    return decision([prepared], capability_match_status="unsupported", alternative_actions=alternatives)
+
+
+def test_a_gap_card_offers_what_the_reply_names_in_the_users_terms():
+    # Test 7, r5: the options described each method, and PUMA was listed for a
+    # request that never mentions miRNAs while the reply named PANDA alone.
+    _, alternatives, _ = capability_gap_parts(_prior_gap(["run_panda", "run_puma"]), POLICY, _prompt("test7"))
+    assert [option.label for option in alternatives] == ["Use PANDA instead"]
+    assert alternatives[0].description == (
+        "One TF-gene network across all your samples · Can use the prior you build as its motif prior · "
+        "Needs expression matrix, motif prior, PPI network")
+    mirna = _prompt("test7").replace("TF-gene prior", "TF- and miRNA-gene prior")
+    _, alternatives, _ = capability_gap_parts(_prior_gap(["run_panda", "run_puma"]), POLICY, mirna)
+    assert [option.label for option in alternatives] == ["Use PANDA instead", "Use PUMA instead"]

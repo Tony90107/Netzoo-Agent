@@ -7,8 +7,9 @@ Usage (from the repository root):
 Run it once with a checkout of the base commit's `scripts/` and once with the
 working tree's, then compare the two outputs with `--diff base.json cand.json [--keys]`.
 Each distinct (prompt, decision) from every traced report under
-docs/research-log/ (plain or gzip) is rendered as `tests/test_reply_cards.py`
-does: respond() for the full text and reply kind, then build_reply_card().
+docs/research-log/ (plain or gzip), and from the local TEST_PROMPTS rounds
+(`test10-2026-10-03/**/r*-decisions.json`, added in Log 330), is rendered as
+`tests/test_reply_cards.py` does: respond() for the full text and reply kind, then build_reply_card().
 Nothing calls a model.
 """
 import gzip
@@ -23,6 +24,10 @@ RESEARCH = ROOT / "docs" / "research-log"
 
 
 def rows():
+    for path in sorted((RESEARCH / "test10-2026-10-03").glob("**/r*-decisions.json")):
+        for item in json.loads(path.read_text()).values():
+            if item.get("decision"):
+                yield item["prompt"], item["decision"]
     paths = sorted({*RESEARCH.glob("**/live-*.json"), *RESEARCH.glob("**/live-*.json.gz")})
     for path in paths:
         if ".provider-error" in path.name or ".unpaired" in path.name:  # void by rule, never analyzed
