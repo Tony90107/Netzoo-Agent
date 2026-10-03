@@ -216,6 +216,29 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
                 "Metadata belongs in outcome_hypothesis.confidence, outcome_hypothesis.evidence, "
                 "outcome_hypothesis.assumptions; outcome fields in outcome_hypothesis.outcome."
             )
+        # Log 325: a schema-failed first pass handed to the patch as a draft.
+        if "schema_missing:confidence" in issue:
+            expected.update(
+                action="write_missing_field",
+                review_path="confidence",
+                instruction=(
+                    "The first pass gave this hypothesis no confidence; the draft shows null. "
+                    "Write this hypothesis's confidence (0 to 1) in the patch."
+                ),
+            )
+        if "schema_invalid_value:artifact_type=" in issue:
+            written = issue.split("=", 1)[1]
+            expected.update(
+                action="replace_invalid_value",
+                review_path="outcome.artifact_type",
+                written_value=written,
+                allowed_values=sorted(ARTIFACT_SEMANTICS),
+                instruction=(
+                    f"The first pass wrote {written!r} as artifact_type, which is not an artifact_type; "
+                    "the draft shows unknown. Set artifact_type to the requested result, or leave unknown, "
+                    "with matching evidence. A value that names another dimension belongs in that field."
+                ),
+            )
         if "evidence" in issue:
             pair = re.search(r"evidence:([a-z_]+)=(.+)$", issue)
             if pair:

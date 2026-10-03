@@ -58,6 +58,7 @@ from .discriminator import (
 )
 from .evidence_supply import evidence_supply_schema, supplied_pairs, supply_as_patch
 from .first_pass_salvage import validate_first_pass
+from .schema_placeholders import SchemaPlaceholders
 from .semantic_shape import normalize_semantic_shape
 from ..interpretation.terminal_goal_fold import fold_intermediate_readings
 
@@ -108,6 +109,8 @@ def invoke_semantic_interpreter(
     first_pass_shapes: tuple[dict, ...] = ()
     patched_index: int | None = None
     partial_first: SemanticInterpretation | None = None
+    # Log 325: what a schema-failed first pass left for the patch to write.
+    placeholders = SchemaPlaceholders()
     for attempt in range(MAX_SEMANTIC_ATTEMPTS):
         role = "semantic_interpreter" if attempt == 0 else "semantic_reviewer"
         subject_recovery = (
@@ -149,7 +152,7 @@ def invoke_semantic_interpreter(
             (build_semantic_patch_messages if patching else build_semantic_reviewer_messages)(
                 context.semantic_prompt,
                 user_task,
-                proposal,
+                placeholders.view(proposal) if patching else proposal,
                 validation_issues,
                 discriminator_context,
             )
@@ -251,6 +254,7 @@ def invoke_semantic_interpreter(
                 # Logs 213, 215: faulty evidence entries or root-level
                 # assumptions alone do not discard the draft.
                 interpretation, salvage = validate_first_pass(payload)
+                placeholders = SchemaPlaceholders.from_record(salvage.get("placeholders"))
                 if salvage:
                     record_event(context, state, "routing.semantic_first_pass_salvaged", "classify", {
                         "attempt": 1, **salvage,
@@ -265,6 +269,7 @@ def invoke_semantic_interpreter(
                                     and not guidance_subject_review_issues(validated)),
                 )
                 patched_index = patched_hypothesis_index(proposal, patch)
+                placeholders.written(patched_index, patch)
                 record_event(
                     context,
                     state,
@@ -539,19 +544,28 @@ def invoke_semantic_interpreter(
                     "classify",
                     {"issues": list(completion_validation.issues)},
                 )
-        validation = validate_outcome_hypotheses(
+        if attempt == 1 and patch is None:
+            placeholders = SchemaPlaceholders()  # a whole review wrote every field itself
+        validation = placeholders.require(validate_outcome_hypotheses(
             user_task,
             interpretation.outcome_hypotheses,
             interpretation.request_mode,
-        )
+        ))
         invalid_before_sibling_repair = frozenset(issue_indices(validation.issues))
         if patch is not None:
             interpretation, validation, usage, budget_warnings = repair_sibling_hypotheses(
                 context, state, user_task, interpretation, validation,
                 patched_index=patched_index, usage=usage, budget_warnings=budget_warnings,
-                discriminator_context=discriminator_context,
+                discriminator_context=discriminator_context, placeholders=placeholders,
             )
+            placeholders.artifact.clear()
+            validation = placeholders.require(validation)
         if attempt + 1 >= MAX_SEMANTIC_ATTEMPTS:
+            interpretation, validation, unwritten = placeholders.resolve(user_task, interpretation, validation)
+            if unwritten or placeholders:
+                record_event(context, state, "routing.schema_placeholders_unwritten", "classify", {
+                    "attempt": attempt + 1, "dropped": unwritten, "remaining": placeholders.record(),
+                })
             interpretation, validation = keep_valid_hypotheses(
                 context, state, user_task, interpretation, validation, attempt,
                 primary=patched_index if patch is not None else None,
@@ -591,7 +605,7 @@ def invoke_semantic_interpreter(
             )
             if attempt == 0:
                 first_pass_shapes = tuple(dict(item) for item in validation.evidence_shapes)
-                partial_first = valid_first_pass_subset(user_task, interpretation)
+                partial_first = None if placeholders else valid_first_pass_subset(user_task, interpretation)
             if attempt + 1 < MAX_SEMANTIC_ATTEMPTS:
                 validation_issues = (*validation.issues, *guidance_subject_review_issues(interpretation))
                 record_event(

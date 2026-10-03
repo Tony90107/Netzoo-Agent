@@ -16520,3 +16520,65 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **觀察到、未處理：**
 - 第一次判讀缺 `confidence` 的有 55 次（32 次 fallback）。補值就是捏造排序，不處理。
 - 第一次判讀被 schema 擋下時，第二次呼叫是整份重寫的 review，不是 patch；這是失敗率高的原因。改變這個路由是另一項決策，未處理。
+
+## Log 325｜事前宣告：SP——第一次判讀的格式錯誤也走 patch 補修，不再整份重寫
+
+日期／時區：2026-10-03，Asia/Taipei。使用者決定（Log 324 列為「另一項決策」）：「改成格式錯誤時也走 patch 補修」。寫於任何程式變更之前。
+
+**現況：**
+- 第一次判讀解析失敗時，沒有結構有效的草稿可以 patch，第二次呼叫是整份重寫的 SemanticReview。`first_pass_salvage` 的說明記載這是較差的路徑：83 組中有 71 組由 review 引入新問題。
+- Log 213、215 的搶救只涵蓋無效的證據項目與放錯層的 assumptions。Log 323 的 SH 處理 assumptions 字串。
+- 剩下的第一次判讀 schema 失敗，在所有錄製中有 45 份不同輸出，只有兩種錯誤：
+  - 讀法沒寫 `confidence`（40 份，而且每次都是所有讀法一起漏）。
+  - `outcome.artifact_type` 寫成 `"sample_specific"`（17 份，是 granularity 的值）。
+- 其中 27 份最後 fallback。集中在 pf-patient-specific-modules（17／17）、ctl-condor-aggregate（10／16，review 都成功）、case5-en（8，全 fallback）、case10-en（7，全 fallback）、ctl-per-sample-tf（3，review 成功）。
+
+**規則 SP（`graph/schema_placeholders.py`、`first_pass_salvage`、`semantic_attempts`、`sibling_repair`、`semantic_repair`）：**
+- 草稿：剩下的錯誤只有上述兩種時，建一份結構有效的草稿。
+  - 缺 confidence 的讀法記為「待補」。
+  - 無效的 artifact_type 改為 `unknown`，原值記在 issue 裡。
+  - 其餘內容都是模型寫的原樣。`SemanticInterpretation` 本身不放寬。
+- 第一次判讀因此不能被接受，也不能作為「部分有效」保留：issue 加上 `hypothesis[i].schema_missing:confidence` 與 `hypothesis[i].schema_invalid_value:artifact_type=<原值>`，第二次呼叫走 patch。
+  - `schema_invalid_value` 授權修改 artifact_type；`schema_missing:confidence` 不授權任何 outcome 欄位。
+  - 給 patch 看的草稿中，待補的 confidence 顯示為 null。
+  - `repair_feedback` 說明這兩種 issue 要回傳什麼（描述契約，不是勸說措辭）。
+- 解除待補：patch 或 sibling patch 寫了該讀法的 confidence，才算解除。sibling repair 也會修只有 confidence 待補的兄弟讀法。
+- 最後一次嘗試後，仍待補的讀法會被移除，前提是還有其他讀法留下；全部待補就照原本 schema 失敗處理。系統絕不採用它沒寫的 confidence，維持 `SemanticPatch`「合併只帶入模型寫過的值」。
+- artifact 留在 `unknown` 不是捏造（表示不知道），交給既有驗證處理。
+- claims 合約不在範圍內（預設是 legacy）。
+
+**判定（A/B：baseline 為 HEAD `fbf149b` 的 worktree，candidate 為工作樹；traced；gpt-4o-mini，預先授權）：**
+- 語料：pf-patient-specific-modules ×5、ctl-condor-aggregate ×5、case5-en ×3、case10-en ×3、ctl-per-sample-tf ×3，兩臂相同。
+- 效果：candidate 中第一次判讀有上述格式錯誤的 trial，第二次呼叫是 patch（或 strict supply）的比例 ≥ 90%；這類 trial 的 fallback 數 < baseline 同類 trial。
+- 安全：
+  - candidate 接受的判讀中，沒有任何讀法的 confidence 不是模型寫的（以事件核對：待補讀法被移除或失敗都有記錄）。
+  - 有已知答案的題（ctl-condor-aggregate → CONDOR、ctl-per-sample-tf → LIONESS-PANDA、case5 → PUMA、case10 → no_tool）沒有新增 WRONG。
+- 離線：全套件通過；兩個指紋與條件推薦 prompt hash 不變。重播所有錄製的 schema 失敗第一次判讀：草稿的建立只在這兩種錯誤時發生；其餘 malformed 輸出仍保留原本的定位錯誤（P0）。
+- 任一不成立 → 撤回 SP。
+
+## Log 326｜結果：SP——全部門檻成立，保留；格式錯誤的第一次判讀改走 patch，fallback 4 → 0
+
+日期／時區：2026-10-03，Asia/Taipei。依 Log 325 判定。證據：`docs/research-log/schema-patch-2026-10-03/`。
+- `live-sp-{base,cand}-{a,b}.json.gz`：A/B 各 19 次，baseline 為 HEAD `fbf149b` 的 worktree，兩臂平行，provider 錯誤 0。
+- `analyze.py`／`analyze.txt`。
+- `replay_sp.py`／`replay_sp.txt`。
+
+| 條件 | 結果 | 判定 |
+| --- | --- | --- |
+| 離線重播 | 所有錄製中 60 份 schema 失敗的第一次判讀，第二次呼叫都是 patch（52）或 strict supply（8），整份 review 0。草稿只在 confidence 缺漏或 artifact_type 不在詞彙內時建立；其他 malformed 仍保留定位錯誤（既有 P0 測試通過） | 成立 |
+| 離線 | 全套件 3146 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 `c820364a1123` 不變 | 成立 |
+| 效果 | 格式錯誤的第一次判讀：baseline 13 次全走 SemanticReview，4 次 fallback；candidate 13 次全走 SemanticPatch（100%），0 次 fallback | 成立 |
+| 安全 | candidate 中有待補 confidence 的 11 次，每個待補都由 patch 或 sibling patch 寫入，或該讀法被移除；0 違規 | 成立 |
+| 已知答案 | ctl-condor-aggregate 5／5 CONDOR、ctl-per-sample-tf 3／3 LIONESS-PANDA、case5 3／3 OK、case10 3／3 OK，兩臂相同 | 成立 |
+
+**判定：** 保留 SP。
+
+**pf-patient-specific-modules（沒有預設答案，只作描述）：**
+- 請求：「每位病人的網路，再找每個網路內的基因模組」。
+- baseline：4 次 fallback，1 次讀成 per-sample community 卻 unsupported。
+- candidate：5 次都是 per-sample regulatory network，LIONESS-PANDA／PUMA 平手；1 次另帶一個 artifact 留在 unknown 的讀法。
+- 第一步有答案了，但「模組」這一半在 patch 選 artifact 時被省略，回覆不會提到 CONDOR。這是 patch 的選擇，記為未處理。
+
+**觀察到、未處理：**
+- 上述 pf 的模組部分。
+- claims 合約沒有改（預設是 legacy）。

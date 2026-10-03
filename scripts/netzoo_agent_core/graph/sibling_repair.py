@@ -98,21 +98,29 @@ def repair_sibling_hypotheses(
     usage,
     budget_warnings: list[str],
     discriminator_context: str = "",
+    placeholders=None,
 ):
-    """Return the interpretation, its validation, usage and warnings after the repairs."""
+    """Return the interpretation, its validation, usage and warnings after the repairs.
+
+    `placeholders` (Log 325) adds the readings whose confidence a schema-failed
+    first pass left for a patch to write, and is told what each patch wrote.
+    """
     llm = getattr(context, "selection_condition_llm", None)
     hypotheses = interpretation.outcome_hypotheses
     if validation.valid or patched_index is None or len(hypotheses) < 2 or llm is None:
         return interpretation, validation, usage, budget_warnings
     _, dropped = _valid_subset(user_task, interpretation, with_siblings=True)
-    targets = [item["hypothesis"] for item in dropped if item["hypothesis"] != patched_index]
+    waiting = sorted(placeholders.confidence) if placeholders else []
+    targets = [index for index in dict.fromkeys([*(item["hypothesis"] for item in dropped), *waiting])
+               if index != patched_index]
     for index in targets[:SIBLING_REPAIR_LIMIT]:
         prefix = f"hypothesis[{index}]."
         issues = tuple(issue for issue in validation.issues if issue.startswith(prefix))
         if not issues:
             continue
         schema = sibling_patch_schema(index)
-        messages = _messages(context, user_task, interpretation, index, issues, discriminator_context)
+        shown = placeholders.view(interpretation) if placeholders else interpretation
+        messages = _messages(context, user_task, shown, index, issues, discriminator_context)
         input_text = _serialized_structured_input(messages, schema)
         semantic_state = dict(state)
         semantic_state["token_usage"] = usage.model_dump()
@@ -159,6 +167,8 @@ def repair_sibling_hypotheses(
         else:
             status = "success"
             interpretation = merged
+            if placeholders is not None:
+                placeholders.written(index, patch)
             alone = validate_outcome_hypotheses(
                 user_task, [merged.outcome_hypotheses[index].model_copy(deep=True)],
                 merged.request_mode,
