@@ -17687,3 +17687,44 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 只報告：兩臂目的段落與缺口句的次數。
 
 成本估計：192 個 CLI session，約 US$0.4。
+
+## Log 353｜結果：D3——設計召回只多 5 個百分點，依宣告撤回；字詞表在設計上同樣不泛化
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 352 執行。主要判定不成立，live 照宣告不跑。
+證據在 `docs/research-log/purpose-contract-2026-10-04/`：`witness_eval_heldout4.txt`、`d3_withdrawn.patch`、`d3_withdrawn_tests.patch`、`study_purpose.d3.frozen.py`。
+
+**判定：**
+
+| 判定 | 基準 v1＋PN＋CN | D3 | 門檻 | 成立 |
+|---|---|---|---|---|
+| W1 設計召回 | 1/23（4%） | 2/23（9%） | +25 個百分點 | **否（+5）** |
+| W2a 設計誤判 ≤ 1 | 0 | 1（K1：「two diets」讀成分組，其實是同一批人的交叉試驗） | | 是 |
+| W2b 結論誤判不多於基準 | 1 | 1 | | 是 |
+| W2b causal／prediction 誤判不多於基準 | 1（T8） | 1（T8） | | 是 |
+
+**決定：** D3 撤回。`scripts/` 保持 v1＋PN＋CN（`5f3fea8583fe`）。
+
+**設計逐家族：**
+- D3 只讀對 T1（lupus vs healthy donors，基準也讀對）與 T3（「26 symptomatic and 31 asymptomatic patients」）。
+- 六個有設計的家族全部沒讀到，K1 還讀錯：
+  - K1：交叉試驗，沒寫 crossover。
+  - K2：「0, 5, 25 or 100 µM cadmium, six plants per level」。
+  - K3：「once in each trimester」。
+  - K4：欄名「WT_1 … Ezh2cKO_10, one mouse each」。
+  - K6：「each … split, one half … the other …」。
+  - T8：「bled on days 0, 3, 7, 14 and 28」。
+- 第四組的指示要求每個家族用不同方式寫設計。v3 的設計規則在第三組新資料上 +65 個百分點，在這組只 +5。
+
+**兩版共有的結論錯誤（只報告）：** T8「We want to predict the target genes of each transcription factor」被讀成 prediction。這是線上版本的問題；預測 witness 的排除只涵蓋緊接著的「predict targets／binding …」。
+
+**四組保留集的總結（設計與結論的第一次接觸召回）：**
+
+| 保留集 | 當時線上版設計 | 當時線上版結論 | 依前一組調整的版本在此組 |
+|---|---|---|---|
+| 第一組（Log 343） | 4/22 | 10/20 | — |
+| 第二組（Log 345） | 1/22 | 11/20 | v2：11/22、15/20 |
+| 第三組（Log 349） | 0/23 | 6/20 | v3：15/23、8/20 |
+| 第四組（Log 353） | 1/23 | 16/22 | D3（只換設計）：2/23 |
+
+- 判讀：字詞表能在每一組已看過的資料上做到 100%，精確度也能維持（設計誤判 0–2）。但在新寫法上召回不穩：結論如此，刻意多樣的設計寫法也如此。
+- 繼續擴充字詞表的邊際效益很低，每多一組新資料只解決上一組的說法。

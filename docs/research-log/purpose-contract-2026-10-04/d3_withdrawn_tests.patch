@@ -1,0 +1,51 @@
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index 61f48a3..bc60715 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -256,3 +256,46 @@ def test_cause_as_a_noun_is_no_causal_claim(task):
+ ])
+ def test_asking_for_the_cause_is_still_a_causal_claim(task):
+     assert study_purpose(task).claim == "causal"
++
++
++# -- D3: the design witnesses of v3 (Log 352) ------------------------------------------
++
++_SEEN_SETS = [
++    item
++    for path in ("heldout", "heldout2", "heldout3")
++    for item in json.loads((ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / path / "heldout.json")
++                           .read_text())["items"]
++]
++
++
++@pytest.mark.parametrize("item", _SEEN_SETS, ids=lambda item: item["id"] + "/" + item["family"])
++def test_the_seen_held_out_sets_keep_their_design_labels(item):
++    # The three held-out sets are development data for the design witnesses now (Logs 345, 349).
++    assert (study_purpose(item["prompt"]).design or "none") == item["comparison_design"]
++
++
++@pytest.mark.parametrize("task", [
++    "We checked the expression distributions before and after normalization; which network method fits?",
++    "We have paired continuous transcriptomics and metabolomics matrices from the same cohort.",
++    "We recruited 40 healthy volunteers and sequenced their monocytes.",
++    "We have 24 patients and 48 samples of RNA-seq.",
++    "We profiled 300 genes and 40 TFs in 20 tumors.",
++    "We have three concentration levels of the standard curve for normalization.",
++    "Each sample was sequenced at two depths for QC.",
++    "We sequenced 10 tumors at two sites and at a reference lab.",
++])
++def test_processing_omics_one_group_and_units_are_no_design(task):
++    assert study_purpose(task).design is None
++
++
++@pytest.mark.parametrize("task, design", [
++    ("Blood was drawn from 22 asthma patients at enrollment and again after six months of inhaled steroids.", "paired"),
++    ("Each patient was sampled at baseline, during treatment and after completion.", "paired"),
++    ("Tumor and matched normal tissue from 30 patients were profiled.", "paired"),
++    ("We have 3 visits per participant over a year.", "paired"),
++    ("We have 15 vehicle-treated and 15 drug-treated rats, liver RNA-seq.", "groups"),
++    ("Cells were treated with vehicle and three drug concentrations in triplicate.", "groups"),
++    ("Liver from young and aged mice was sequenced.", "groups"),
++])
++def test_designs_stated_with_moments_counts_doses_or_contrasting_groups(task, design):
++    assert study_purpose(task).design == design
