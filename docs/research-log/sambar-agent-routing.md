@@ -17240,3 +17240,69 @@ live：
   - 兩臂各句眾數回覆的 must_include／red_flags 判讀（由我判讀，非盲測，作為論文的定性材料）。
 
 成本估計：156 個 CLI session，約 US$0.3。
+
+## Log 343｜結果：研究目的契約階段 1——全部門檻成立，保留；字詞召回偏低是主要限制
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 342 執行。
+- 候選：`9b05e1b`。baseline：宣告 commit `03d63bc` 的 worktree（`.worktrees/netzoo-purpose-baseline`）。
+- gpt-4o-mini（預先授權），本機 CLI，兩臂交錯同時跑。保留集 26 句 × 3 × 2 臂，共 156 個 session，全部 exit 0。花費 base US$0.138、cand US$0.136。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `replay_stage1.py`／`.txt`（O3、O5）
+  - `run_live.py`、`analyze_live.py`
+  - `live/s1-analysis.txt`、`live/s1-replies.md`（兩臂全部回覆）、`live/s1-decisions.json`（重播用）
+
+**離線（live 之前）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| O1 | 全套件 3211 passed／35 skipped（基準 3175，新增 `tests/test_study_purpose.py` 36 個）。指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 prompt hash `c820364a1123`、policy hash `b0570ff267af` 都不變；witness 檔 `37caf959136c` 不變 | 是 |
+| O2 | `audit_witnesses.py` 輸出與凍結時完全相同 | 是 |
+| O3 | 3,592 個 traced 決策全部可離線重播（沒有需要 response model 的）；有 witness 的 0 個，回覆改變 0 個 | 是 |
+| O4 | diff 只觸及宣告列出的檔案；唯一修改的既有測試就是宣告的那一個 | 是 |
+| O5 | Log 341 的 27 個決策全部符合宣告預期；A0、A5、B2 的 9 個回覆與 baseline 完全相同 | 是 |
+
+**live 判定：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| 有效性 | 兩臂 provider 錯誤 0、缺 session 0 | 是 |
+| E1 | 合格 trial 11 個，出現目的段落 11 個（100%）。分布：F1-a ×3、F5-a ×3、F5-b ×3、N2 ×2 | 是 |
+| E2 | 有 causal／prediction witness 的 5 句（F3-c、F4-a、F5-c、F6-a、F6-c）每句 3/3 | 是 |
+| H1 | 標註非 causal／prediction 的句子出現缺口句 0 次，含 N1、N2 陷阱 | 是 |
+| H2 | 候選臂 78 個 trial：「只增不改」77 個，R4 整段替換 1 個（F3-c 中一次 fallback），失敗 0；對照句加入段落 0 次 | 是 |
+| H3 | 候選臂沒有新的呼叫角色；平均呼叫 base 4.95、cand 4.99（只報告） | 是 |
+
+**決定：** 階段 1 保留。
+
+**只報告的量測：**
+
+1. **凍結 witness 在保留集上的表現：**
+   - 精確度：設計與結論都沒有誤中。所有對照與兩句否定陷阱，凍結 witness 的設計與結論都正確為空。
+   - 召回偏低。
+     - 設計：標註為配對或分組的 22 句只命中 4 句，全在 F5「before and after 10 days of bed rest」。
+     - 結論：標註非 none 的 20 句命中 10 句。
+   - 漏掉的寫法：
+     - 數字夾在組名中間：「40 schizophrenia donors and 40 age-matched controls」「12 wild-type and 12 Nrf2-knockout mice」「35 lean and 35 obese women」。
+     - 「before」與「after」之間插字：「sampled before surgery and three months after」「taken before anti-TNF therapy and after eight weeks」「at ICU admission and on day five」。
+     - 少見動詞：「pin … on」「flag … in a new cohort」「reshuffled」「atypical」。
+   - 很多結論漏掉是因為 `group_difference` 需要設計，而設計已經漏了。
+   - **保留集現在已經看過。** 之後任何 witness 修改都不能拿它評估，需要新的保留集。
+2. **判讀**（我的判讀，非盲測）：
+   - 範圍：只判讀兩臂可能不同的 9 句，也就是有加入段落的句子。其他 17 句兩臂由同樣的渲染器產生，不同只來自取樣。
+   - 有改善：
+     - F1-a：多了每個 TF 的前後比較與「paired when the same individuals give both」，baseline 只問 miRNA 與計算資源。
+     - F5-a、F5-b：多了個體內差值與配對比較。
+     - F3-c、F5-c、F6-c：說明沒有預測模型、需要結果資料與獨立驗證，baseline 完全沒提。
+     - F4-a、F6-a：明說不能證明因果。
+   - 仍不足：
+     - F4-a 沒說 knockout 設計本身可以支持歸因，也沒給 genotype 比較步驟。
+     - F5-b、F5-c 沒提 6 個人的檢定力限制。
+     - N2 因設計漏判，只給「跟 cohort 比誰突出」，沒給「每位病人前後相減」；而且兩臂都推薦需要 motif／PPI 的 LIONESS-PANDA／PUMA，但使用者說只有表現量（既有路由問題）。
+3. **路由層的觀察（兩臂相同，與階段 1 無關）：** F2-a、F2-c、F2-d、F3-d、F4-c 多數 trial 是 ambiguous 但候選為 0，所以即使 witness 命中也沒有 workflow 可加段落。
+
+**下一步（待使用者決定）：**
+- 階段 2（推薦與追問）照 Log 342 的使用者決定另行宣告。但 E3（追問結論類型）依賴設計 witness；以目前召回，保留集只有 F5 會觸發。
+- 若要提高召回：
+  - (a) 擴大字詞表，以新的保留集評估；或
+  - (b) 讓既有呼叫提出設計與結論候選、再用字詞或引文驗證（提案第 3.1 節延後的那條路）。
+- 兩者都需要新保留集。
