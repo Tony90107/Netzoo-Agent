@@ -390,7 +390,7 @@ def _render_beginner_group_network_guidance(
         return None
 
     return _ui_text(
-        "Your goal is to compare TF-to-gene regulation between cancer and normal groups. "
+        "Your goal is to compare TF-to-gene regulation between two groups. "
         "You do not need to choose among matrix factorization, message passing, or graph "
         "matching assumptions before getting started.\n\n"
         "A straightforward first step is to prepare a normalized or appropriately "
@@ -402,7 +402,7 @@ def _render_beginner_group_network_guidance(
         "network per sample, followed by a group comparison of edge weights. That "
         "statistical comparison is a later analysis step; network inference alone does "
         "not prove causal regulation.\n\n"
-        "About how many patients are in each group? Are the cancer and normal samples "
+        "About how many patients are in each group? Are the samples in the two groups "
         "paired, and do you already have TF-motif and PPI priors?\n\n"
         "No files were inspected and no analysis ran."
     )

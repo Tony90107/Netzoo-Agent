@@ -504,6 +504,38 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
     return card.model_copy(update={"unavailable": [*card.unavailable, *rows][:8]})
 
 
+def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str) -> ReplyCard:
+    """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
+    from workflow_registry import UNSUPPORTED_CLAIMS
+
+    from ..interpretation.study_purpose_notes import CLAIM_LABELS, claim_cells, gap_claims, question_claim
+    from ..routing.study_purpose import study_purpose
+
+    purpose = study_purpose(task)
+    gaps = gap_claims(purpose)
+    if kind == "unresolved":
+        if not gaps:
+            return card
+        label = UNSUPPORTED_CLAIMS[gaps[0][0]][2]
+        return card.model_copy(update={
+            "headline": clip(f"No registered workflow can do this: {label[:1].lower()}{label[1:]}.", 300),
+            "points": [clip(UNSUPPORTED_CLAIMS[gaps[0][0]][3], 300)],
+        })
+    rows = [ReplyOption(key=f"purpose-{claim}", label=clip(UNSUPPORTED_CLAIMS[claim][2], 80), available=False,
+                        resolution="none", reason=clip(UNSUPPORTED_CLAIMS[claim][3], 260))
+            for claim, _ in gaps]
+    points = list(card.points)
+    cells = claim_cells(decision, purpose)
+    question = question_claim(purpose)
+    if cells and question and len(points) < 6:
+        names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
+        points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
+                           "give toward it and the step after each.", 300))
+    if not rows and points == card.points:
+        return card
+    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
+
+
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
     """The card for a finished turn, or None when the turn is a wizard or not a policy run."""
     if not isinstance(policy, ProjectPolicySnapshot):
@@ -521,6 +553,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _with_input_alternative(card, decision, policy, task)
     if card is not None and kind != "execution":
         card = _with_outside_steps(card, decision, task)
+        card = _with_study_purpose(card, kind, decision, policy, task)
     outputs = [
         path.removeprefix("/work/")
         for item in results if item.action.startswith("run_") and item.status == "success"
