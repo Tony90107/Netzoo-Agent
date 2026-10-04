@@ -10,6 +10,7 @@ parallel; a hung session is recorded as a timeout and the rest continue.
 A job argument `cand:F1-a:2` reruns only that one.
 """
 import json
+import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -18,7 +19,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 ARMS = {"base": Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-purpose-baseline"), "cand": ROOT}
-ITEMS = {item["id"]: item for item in json.loads((HERE / "heldout" / "heldout.json").read_text())["items"]}
+# Log 359: HELDOUT names another held-out set (default the first, as in Log 343).
+HELDOUT = HERE / os.environ.get("HELDOUT", "heldout/heldout.json")
+ITEMS = {item["id"]: item for item in json.loads(HELDOUT.read_text())["items"]}
 
 
 def run(tag, arm, key, rep):

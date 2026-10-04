@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (6.18s)
+● Matching registered workflows…
+✓ Guidance prepared
+About "Goal: prove that glucose-driven miRNA loss causes the inflammatory switch.": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why.
+
+I can map this to more than one compatible network result:
+
+**Multi omic network**
+- **DRAGON** — DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. Per-sample version: **LIONESS-DRAGON**. Needs DRAGON omics layer 1 and DRAGON omics layer 2.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Per-sample version: **LIONESS-PUMA**. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Unconfirmed assumptions in these interpretations (please correct me if needed):
+- Transcription factor activity will provide insights into the inflammatory response.
+- Sample-specific analysis is necessary to account for donor variability.
+- The multi-omic approach will provide a comprehensive view of the regulatory mechanisms involved.
+
+Which result do you mean: inferred regulator-to-target associations (PUMA or LIONESS-PUMA); or inferred transcription-factor-by-sample activity values (GIRAFFE); or inferred associations between omics features (DRAGON or LIONESS-DRAGON)?
+
+No files were inspected and no analysis ran.

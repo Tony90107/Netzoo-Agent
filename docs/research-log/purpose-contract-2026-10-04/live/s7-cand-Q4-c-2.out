@@ -1,0 +1,29 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.56s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+Fallback recommendation: **DRAGON**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+Your question asks for a cohort-level multi-omic network. **DRAGON** is related to that result and scale.
+
+**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+
+Required workflow inputs:
+
+- `omics_layer_1`: DRAGON omics layer 1
+- `omics_layer_2`: DRAGON omics layer 2
+
+Outputs:
+
+- `multi_omic_network`: Inferred associations between omics features.
+
+Workflow-specific scientific notes:
+
+- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.
+- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

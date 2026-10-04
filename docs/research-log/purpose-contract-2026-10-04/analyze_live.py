@@ -8,6 +8,7 @@ calls a model.
 """
 import glob
 import json
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -26,24 +27,45 @@ from netzoo_agent_core.routing.study_purpose import StudyPurpose, study_purpose 
 from workflow_registry import UNSUPPORTED_CLAIMS  # noqa: E402
 
 ARMS = {"base": Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-purpose-baseline"), "cand": ROOT}
-ITEMS = json.loads((HERE / "heldout" / "heldout.json").read_text())["items"]
+# Log 359: HELDOUT names another held-out set (default the first, as in Log 343).
+ITEMS = json.loads((HERE / os.environ.get("HELDOUT", "heldout/heldout.json")).read_text())["items"]
 POLICY = ProjectPolicyLoader(ROOT).load()
 STAGE1 = (response.with_study_purpose_reply, practical_notes.study_purpose)
 GAP_TEXTS = [entry[0] for entry in UNSUPPORTED_CLAIMS.values()]
 MODEL_ERRORS = {"ValueError", "ValidationError", "JSONDecodeError", "OutputParserException", "KeyError", "TypeError"}
 
 
-def render(task, decision, stage1):
+def render(task, decision, stage1, purpose=None):
     response.with_study_purpose_reply, practical_notes.study_purpose = (
         STAGE1 if stage1 else (lambda result, state, reply: result, lambda task: StudyPurpose()))
     plan = WorkflowPlan(workflow="NO-TOOL", objective=task[:200], decision=decision.model_dump(), status="respond_only")
     state = {"decision": decision.model_dump(), "plan": plan.model_dump(), "messages": [HumanMessage(content=task)],
              "tool_results": [], "evaluation": None}
+    if purpose is not None:
+        state["study_purpose"] = purpose
     try:
         out = response.respond(SimpleNamespace(project_policy=POLICY), state)
     except Exception:
         return None, "response_model"
     return str(out["messages"][-1].content), out.get("reply_kind")
+
+
+def trace_purposes(arm):
+    """session id -> the study purpose its trace recorded (routing.study_purpose_detected), if any."""
+    found = {}
+    for manifest in glob.glob(str(ARMS[arm] / ".netzoo" / "traces" / "*" / "manifest.json")):
+        try:
+            session = json.loads(Path(manifest).read_text()).get("session_id", "")
+        except ValueError:
+            continue
+        if not session.startswith("hp-"):
+            continue
+        for line in open(Path(manifest).parent / "events.jsonl"):
+            event = json.loads(line)
+            if event.get("event_type") == "routing.study_purpose_detected":
+                payload = event["payload"]
+                found[session] = {key: payload.get(key) for key in ("source", "design", "design_quote", "claims")}
+    return found
 
 
 def trace_errors(arm):
@@ -104,6 +126,7 @@ def only_adds(base, cand):
 def main(tag, repeats):
     lines, replies = [f"# Log 342 live `{tag}`", ""], [f"# Log 342 live `{tag}`: replies", ""]
     errors = {arm: trace_errors(arm) for arm in ARMS}
+    purposes = {arm: trace_purposes(arm) for arm in ARMS}
     roles = {arm: set() for arm in ARMS}
     calls = {arm: [] for arm in ARMS}
     cost = Counter()
@@ -111,6 +134,7 @@ def main(tag, repeats):
     e1 = Counter()
     e2 = {}
     h1 = []
+    h1_by_arm = {arm: [] for arm in ARMS}
     h2 = Counter()
     h2_failures = []
     controls = []
@@ -142,24 +166,32 @@ def main(tag, repeats):
                 arm_shapes[(decision.capability_match_status,
                             tuple(sorted(decision.hypothesis_actions or decision.matched_actions)))] += 1
                 text = run["reply"]
-                replies += [f"### {arm} r{rep}", "", "```", text, "```", ""]
+                traced = purposes[arm].get(session)
+                replies += [f"### {arm} r{rep}" + (f" (study purpose: {traced})" if traced else ""), "",
+                            "```", text, "```", ""]
+                # Log 359: false gaps are counted in both arms (H1 is relative to the baseline arm).
+                if item["claim_kind"] not in UNSUPPORTED_CLAIMS and has_gap(text):
+                    h1_by_arm[arm].append(f"{key}-{rep}")
                 if arm != "cand":
                     continue
+                trial_purpose = (StudyPurpose(traced.get("design"), traced.get("design_quote") or "",
+                                              tuple(tuple(c) for c in traced.get("claims") or ()))
+                                 if traced else purpose)
                 if item["is_control"] and (has_gap(text) or has_purpose(text)):
                     controls.append(f"{key}-{rep}")
                 if item["claim_kind"] not in UNSUPPORTED_CLAIMS and has_gap(text):
                     h1.append(f"{key}-{rep}")
-                if any(claim in UNSUPPORTED_CLAIMS for claim in claims):
+                if item["claim_kind"] in UNSUPPORTED_CLAIMS:
                     e2.setdefault(key, []).append(has_gap(text))
-                eligible = (question_claim(purpose) is not None and len(decision.outcome_hypotheses) <= 1
-                            and bool(claim_cells(decision, purpose)))
+                eligible = (question_claim(trial_purpose) is not None and len(decision.outcome_hypotheses) <= 1
+                            and bool(claim_cells(decision, trial_purpose)))
                 if eligible:
                     e1["eligible"] += 1
                     e1["present"] += has_purpose(text)
                     if not has_purpose(text):
                         e1[f"missing:{key}-{rep}"] += 1
                 base_render, _ = render(task, decision, False)
-                cand_render, kind = render(task, decision, True)
+                cand_render, kind = render(task, decision, True, traced)
                 if kind == "response_model":
                     h2["response_model"] += 1
                     if has_gap(text) or has_purpose(text):
@@ -181,7 +213,7 @@ def main(tag, repeats):
         f"E1: present {e1['present']} / eligible {e1['eligible']} = {e1_rate}  (gate >= 0.90) "
         f"missing: {[k for k in e1 if k.startswith('missing:')]}",
         f"E2 (gate: every prompt >= 2/3): {e2_ok}",
-        f"H1 false gaps (gate 0): {h1}",
+        f"H1 false gaps (cand): {h1}; by arm: { {arm: len(found) for arm, found in h1_by_arm.items()} }",
         f"H2 (gate: no failures; controls 0): {dict(h2)} failures={h2_failures} controls={controls}",
         f"H3 roles only in cand (gate none): {sorted(roles['cand'] - roles['base'])}",
         f"calls per trial: base {sum(calls['base']) / max(1, len(calls['base'])):.2f}, "

@@ -18051,3 +18051,63 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 只報告：平均呼叫數、延遲、兩臂目的段落與缺口句的次數。
 
 成本估計：離線約 US$0.01；live 約 US$0.4。
+
+## Log 360｜結果：b″——離線與 live 判定全部成立，保留；研究目的由模型提出、確定性規則驗證，正式上線
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 359 執行。
+- 候選：`9abbb44`（`9abbb44` 為實作）。baseline：宣告 commit `5d165fe` 的 worktree（v1＋PN＋CN）。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `b_eval_heldout7.txt`、`heldout7-calls.json`（離線 96 次）
+  - `replay_dump.py`（O3／O6）
+  - `live/s7-analysis.txt`、`live/s7-replies.md`、`live/s7-decisions.json`（192 個 session，含各 trial 的研究目的）
+  - `run_live.py`、`analyze_live.py` 加了 `HELDOUT` 參數，研究目的取自 trace。
+
+**離線：**
+
+| 判定 | 線上 witness | b″ | 判準 | 成立 |
+|---|---|---|---|---|
+| W1 設計召回 | 0/72（0%） | 62/72（86%） | +25 個百分點 | 是（+86） |
+| W1 結論召回 | 36/69（52%） | 69/69（100%） | +15 個百分點 | 是（+48） |
+| W2a causal／prediction 誤判 | 6 | 0 | ≤ 基準且 ≤ 3 | 是 |
+| W2b 設計＋結論誤判 | 6＋6＝12 | 3＋0＝3 | ≤ 基準且 ≤ 9 | 是 |
+| O1 | 全套件 3258 passed／35 skipped；指紋、條件推薦 prompt hash、policy hash 不變 | | | 是 |
+| O3 | 3,592 個 traced 決策：兩個程式樹的回覆逐字相同，改變 0 | | | 是 |
+| O6 | Log 343 的 156 個 live 決策：改變 0 | | | 是 |
+
+- b″ 的 3 次設計誤判都是 T3：「24 bleached and 24 unbleached Acropora colonies sampled on the same reef」讀成配對。
+- 線上 witness 的誤判：
+  - T1「Predicting progression or proving causality is off the table」讀成 causal＋prediction ×3。
+  - T5「HPV is already known to cause these cancers」讀成 causal ×3（Log 359 審稿時預先寫下的風險；b″ 沒有犯）。
+  - T2、T5 的設計誤判各 ×3。
+
+**live（第七組 32 句 × 3 × 2 臂 = 192 個 session，gpt-4o-mini，花費 base US$0.176、cand US$0.180）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| 有效性 | 兩臂 provider 錯誤 0、缺 session 0 | 是 |
+| E1 | 合格 trial 33/33 出現目的段落（100%）。Log 343 的 witness 版本只有 11 個合格 trial | 是 |
+| E2 | 標註 causal／prediction 的 8 句（Q2-a、Q2-b、Q3-b、Q4-b、Q5-a、Q5-c、Q6-b、Q6-c）每句 3/3 | 是 |
+| H1（相對） | 標註不是 causal／prediction 的句子出現缺口句：baseline 6、候選 0 | 是 |
+| H2 | 候選 96 個 trial：只增不改 95、R4 1、失敗 0；對照句加入段落 0 | 是 |
+| H3 | 候選臂只多一個角色 `study_purpose` | 是 |
+
+**只報告：**
+- 每個新請求的 `study_purpose` 呼叫：95/96 次各 1 次、全部成功；延遲中位數 1.18 秒、p90 1.42 秒、最大 2.60 秒。
+- 例外是 T6 r2：總預算 30000 已用到 26607，預檢擋下呼叫，照設計改用 witness（`budget`）。
+- 平均呼叫數 base 5.28、cand 6.24。
+- 回覆中出現目的段落：base 16、cand 33。缺口句：兩臂都是 24 次，但 baseline 的 24 次中 6 次是假缺口，候選全部落在標註 causal／prediction 的句子。
+
+**決定：** b″ 保留。線上的研究目的改為：
+- 由 `study_purpose` 呼叫提出（gpt-4o-mini，strict）。
+- `verify_proposal`（`b3_frozen`）驗證。
+- 呼叫未設定、預算不足或失敗時，用 v1＋PN＋CN witness。
+
+**已知限制與下一步（使用者 2026-10-04 的提問後量測）：**
+- 驗證層的字詞否決會擋掉模型其實讀對的部分。
+  - 在約 1000 筆已錄提案中，模型設計正確 476/498，其中 49 次被「技術性配對」否決誤擋。
+  - 原因是比對沒有字詞邊界、也不限語境：「litter」命中「littermates」，「matrix」命中「count／expression matrix」，「replicate」命中「replicate pools」。
+  - 結論正確 431/459，被誤擋 21 次：14 次是設計先被擋，6 次沒有線索字。
+  - 被擋時只會當作沒讀到，回覆照舊，不會出現錯誤段落。
+- 可做：
+  - 收緊技術性配對的否決（字詞邊界、只在配對語境），以第八組保留集評估。
+  - 階段 2 的推薦與追問，用來處理完全沒說研究目的的請求。
