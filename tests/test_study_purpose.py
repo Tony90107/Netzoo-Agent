@@ -232,3 +232,27 @@ def test_a_negation_after_a_design_witness_keeps_the_design():
     # The data were sampled twice whatever the user wants to conclude.
     task = "Each patient was sampled before and after treatment; comparing them is not the point."
     assert study_purpose(task).design == "paired"
+
+
+# -- CN: "cause" as a noun (Log 350) ------------------------------------------------
+
+@pytest.mark.parametrize("task", [
+    "Bulk RNA-seq of 70 postmortem human hypothalami, with a donor table giving age, sex, RNA integrity and "
+    "cause of death. We want to remove the effect of RNA integrity on co-expression before looking for gene modules.",
+    "The covariate table lists causes of death and post-mortem interval.",
+    "We stratified donors by cause-of-death category before building networks.",
+    "Cause-specific mortality is recorded; we want one network.",
+    "The main causes of variation are batch and sex.",
+])
+def test_cause_as_a_noun_is_no_causal_claim(task):
+    assert study_purpose(task).claims == ()
+
+
+@pytest.mark.parametrize("task", [
+    "We want to identify the cause of the regulatory rewiring after treatment.",
+    "We hope to determine the cause of the interferon shift.",
+    "Does the mutation cause the module collapse?",
+    "Can we establish that the miR-146a rise causes the dampened interferon response?",
+])
+def test_asking_for_the_cause_is_still_a_causal_claim(task):
+    assert study_purpose(task).claim == "causal"

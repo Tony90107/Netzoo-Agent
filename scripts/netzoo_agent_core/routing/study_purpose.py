@@ -20,6 +20,9 @@ Log 346 (PN): a conclusion is also negated by the rest of its own clause --
 most" read as a prediction request. Only conclusions: the design is what the
 data are, and the user negates what to conclude from them.
 
+Log 350 (CN): "cause" as a noun names a variable ("a donor table giving ...
+cause of death") unless a verb asks for the cause ("identify the cause of").
+
 Pure: nothing here selects, ranks or removes a workflow.
 """
 
@@ -202,6 +205,27 @@ def _negated(task: str, start: int) -> bool:
     return bool(_NEGATION.search(task, clause_start, start))
 
 
+# Log 350 (CN): "cause" as a noun names a variable, not a claim -- "a donor
+# table giving age, sex, RNA integrity and cause of death" (third held-out set,
+# T8). It is a claim only after a verb asking for the cause: "identify the
+# cause of the rewiring".
+_CAUSE_NOUN = re.compile(r"^causes?$", _I)
+_NOUN_AFTER = re.compile(r"^(?:\s+of\b|-)", _I)
+_ASKS_FOR_CAUSE = re.compile(
+    r"\b(?:find|identify|determine|establish|discover|uncover|reveal|pinpoint|trace|explain|show|prove|"
+    r"demonstrate|understand|learn|know|test|confirm)\w*\b[^.;:!?,]{0,60}$",
+    _I,
+)
+
+
+def _cause_as_variable(task: str, match: re.Match[str]) -> bool:
+    """"cause of death" or "cause-specific" with no verb asking for the cause (Log 350)."""
+    if not (_CAUSE_NOUN.match(match.group(0)) and _NOUN_AFTER.match(task[match.end():])):
+        return False
+    clause_start = max((m.end() for m in _CLAUSE_BREAK.finditer(task, 0, match.start())), default=0)
+    return not _ASKS_FOR_CAUSE.search(task[clause_start:match.start()])
+
+
 def _negated_after(task: str, end: int) -> bool:
     """The rest of the witness's clause negates it ("Predicting relapse isn't the point")."""
     return bool(_NEGATED_AFTER.search(task[end:]))
@@ -209,7 +233,8 @@ def _negated_after(task: str, end: int) -> bool:
 
 def _witness(pattern: re.Pattern[str], task: str, *, claim: bool = False) -> str | None:
     for match in pattern.finditer(task):
-        if _negated(task, match.start()) or claim and _negated_after(task, match.end()):
+        if _negated(task, match.start()) or claim and (
+                _negated_after(task, match.end()) or _cause_as_variable(task, match)):
             continue
         return _sentence(task, match.start(), match.end())
     return None
