@@ -504,15 +504,14 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
     return card.model_copy(update={"unavailable": [*card.unavailable, *rows][:8]})
 
 
-def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str, state=None) -> ReplyCard:
+def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str) -> ReplyCard:
     """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
     from workflow_registry import UNSUPPORTED_CLAIMS
 
-    from ..interpretation.study_purpose_notes import (
-        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
-    )
+    from ..interpretation.study_purpose_notes import CLAIM_LABELS, claim_cells, gap_claims, question_claim
+    from ..routing.study_purpose import study_purpose
 
-    purpose = purpose_from_state(state, task)
+    purpose = study_purpose(task)
     gaps = gap_claims(purpose)
     if kind == "unresolved":
         if not gaps:
@@ -554,7 +553,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _with_input_alternative(card, decision, policy, task)
     if card is not None and kind != "execution":
         card = _with_outside_steps(card, decision, task)
-        card = _with_study_purpose(card, kind, decision, policy, task, result)
+        card = _with_study_purpose(card, kind, decision, policy, task)
     outputs = [
         path.removeprefix("/work/")
         for item in results if item.action.startswith("run_") and item.status == "success"
