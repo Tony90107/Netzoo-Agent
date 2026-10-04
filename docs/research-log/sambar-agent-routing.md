@@ -18269,3 +18269,53 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - 標註 `recommended_subset` 非空的句子中有推薦的比例。
 
 成本估計：約 US$0.2。
+
+## Log 364｜結果：(a″) 平手推薦——H2（宣告的 `only_adds`）不成立，撤回
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 363 執行。
+- 候選：`e41b629`（實作），只跑候選臂。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `analyze_rec.py`、`live/s9-rec-analysis.txt`（宣告的判定）
+  - `live/s9-decisions.json`、`live/s9-run.log`、`live/s9-cand-*`（96 個 session）
+  - `h2_lines.py`、`live/s9-rec-diffs.txt`（事後、只報告）
+
+**live（第九組 32 句 × 3 = 96 個 session，gpt-4o-mini，花費 US$0.186，每個 trial 平均 5.95 次呼叫）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| 有效性 | 缺 session 0；trace 中的錯誤都是模型輸出驗證（ValidationError 19、ValueError 5），沒有 provider 錯誤 | 是 |
+| R1 推薦精確度 | 有推薦的 11 個 trial，全部落在 `acceptable_candidates` 內（11/11） | 是 |
+| R2 不該推薦時不推薦 | 對照、causal、prediction 句推薦 0 次 | 是 |
+| H2 只加不改（`only_adds`） | 96 個 trial 的 live 回覆都等於離線含 (a″) 的渲染；(a″) 改到的 11 個全部被 `only_adds` 判為「改了原文」 | **否** |
+| H3 | 沒有第七、八組候選臂以外的呼叫角色 | 是 |
+| O1 | 全套件 3274 passed／35 skipped（基準 3268，新增 6）；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 prompt hash `c820364a1123`、policy hash `b0570ff267af` 不變 | 是 |
+
+**H2 為什麼不成立：**
+- `only_adds` 來自 Log 342，以段落為單位比對：不含 (a″) 的每一段都要在含 (a″) 的回覆中原樣出現。
+- 但 Log 363 宣告的 (a″) 本身，就把「Start with …」那一行加在目的段落內部。所以凡是 (a″) 有作用的回覆，目的段落都不會原樣出現，H2 必然失敗。
+- 逐一比對這 11 個回覆，差異只有兩種（`live/s9-rec-diffs.txt`）：
+  - 11 個都在目的段落中多一行「Start with …」。
+  - S1-b 的 3 個，「Both fit; to choose, tell me:」改為宣告中的推薦開頭。
+  - 沒有其他字被改，也沒有列被重新排序。
+- 也就是說，宣告的檢查方法與同一條宣告的 (a″) 形狀互相矛盾。這是宣告時的錯誤，不是看到結果後才發現的行為問題。
+
+**事後、只報告（不取代宣告的判定）：**
+- `h2_lines.py` 照 H2 條文字面，逐行比對：拿掉「Start with」行、把平手開頭換成同一記號後，96 個 trial 中有 96 個等於不含 (a″) 的渲染。
+- 這個方法是在看到失敗之後才寫的，依協定不能拿來改判，所以只報告。
+
+**決定：** 撤回。`e41b629` 已以 revert commit 撤回。線上回到 b‴（`fb45456`，驗證 `b4_frozen`）。撤回後全套件 3268 passed／35 skipped，指紋不變。
+
+**其他只報告的量測：**
+- 與 `recommended_subset` 的吻合：
+  - 完全相同 5 次（S1-a ×2、T3 ×3）。
+  - 有交集但較寬 3 次（S6-b：標註只有 BONOBO，(a″) 推薦 LIONESS-COEXPRESSION 與 BONOBO）。這是 Log 363 預先寫下的限制（樣本少又要每條邊的信賴度 → BONOBO）。
+  - 標註為不推薦卻推薦 3 次（S1-b：同一批人飲食前後、問整個群體，(a″) 推薦 LIONESS-COEXPRESSION、排除 COBRA）。這不是 R1 或 R2 的違規，但說明「沒有宣告格子」被當成「不推薦」：COBRA 只有兩組比較的格子，在配對設計下就被排除了。
+- 標註非空的 39 個 trial 中，有推薦的是 8 個。沒有推薦的 31 個：
+  - 24 個在 live 中根本不是平手（exact 18、fallback 6），(a″) 不適用。
+  - 6 個每個候選都有宣告格子，問題本身分不出候選。
+  - 1 個（S1-a r2）路由給了不只一個解讀。
+
+**若要重來（尚未宣告，等使用者決定）：**
+- (a″) 的行為不變。H2 在事前就寫成逐行的版本：拿掉推薦行、還原平手開頭後，整份回覆逐字相等，也不能重新排序。
+- 用新的、隔離撰寫的保留集評估。第九組的結果已經看過，不能再用來判定。
+- S1-b 的情形要先決定：COBRA 沒被推薦，只是因為它在配對設計下沒有宣告格子，不是因為它不適合（共變數可以放入個體）。這與階段 1「沒宣告 ≠ 不支持」的原則衝突。可選的做法：只有在其他候選有格子、但寫明較不適合時才推薦；或先替 COBRA 補上配對設計的格子。
