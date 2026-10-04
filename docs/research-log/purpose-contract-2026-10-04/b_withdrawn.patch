@@ -1,0 +1,890 @@
+commit 71c0ea1efd7159c40f5456de57f7096c4a2c3f5a
+Author: wayne1007 <tony90107@icloud.com>
+Date:   Sun Oct 4 18:57:09 2026 +0800
+
+    feat(routing): a model proposes the study purpose and deterministic rules verify it (Log 355)
+    
+    After routing, one strict call (role study_purpose, the semantic model)
+    proposes the comparison design and up to three conclusions, each with an
+    exact quote. verify_proposal keeps only what the quote supports: it must be
+    in the request, carry a cue for its value, not be negated before or after
+    (the witnesses' rules, PN, CN), not be "predict the target genes", name a
+    regulator for a regulator change, show a contrast for groups, and not be a
+    technical or two-data-type pairing; a group difference needs a verified
+    design. The verified reading is state (study_purpose); the reply layer and
+    cards read it, and fall back to the word witnesses when the call is not
+    configured, blocked or fails. No decision field changes.
+    
+    Pinned call-sequence tests gain the one study_purpose call (declared in Log 355).
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/scripts/netzoo_agent_core/contracts/state.py b/scripts/netzoo_agent_core/contracts/state.py
+index c902fe3..683625c 100644
+--- a/scripts/netzoo_agent_core/contracts/state.py
++++ b/scripts/netzoo_agent_core/contracts/state.py
+@@ -36,6 +36,8 @@ class AgentState(TypedDict):
+     method_comparison: NotRequired[dict | None]
+     # Which deterministic renderer wrote the reply; display metadata only.
+     reply_kind: NotRequired[str]
++    # Log 355: the verified study purpose of this turn's request (design, claims, source).
++    study_purpose: NotRequired[dict | None]
+ 
+ class AgentTurnInterrupted(Exception):
+     """Raised when the user interrupts an in-flight graph turn."""
+diff --git a/scripts/netzoo_agent_core/contracts/study_purpose.py b/scripts/netzoo_agent_core/contracts/study_purpose.py
+new file mode 100644
+index 0000000..cf08e9d
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/study_purpose.py
+@@ -0,0 +1,40 @@
++"""The study purpose a model proposes for a request, before verification (Log 355).
++
++Log 353: word lists read 100% of the wording they were written for and
++little of new wording, for designs and conclusions alike, across four
++held-out sets. Log 354: one strict call proposing the design and the
++conclusions, each with an exact quote, followed by deterministic
++verification (`routing/study_purpose_verify.py`), read 86% of designs and 90%
++of conclusions on the same data with no false reading. The proposal is never
++used unverified.
++"""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, ConfigDict, Field
++
++from .strict_schema import strict_json_schema
++
++__all__ = ["PurposeClaim", "StudyPurposeProposal"]
++
++
++class PurposeClaim(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++    claim: Literal["group_difference", "individual_change", "regulator_change", "causal", "prediction"]
++    text_span: str = Field(description="Exact contiguous quote from the request that states this conclusion.")
++
++
++class StudyPurposeProposal(BaseModel):
++    """How the request's samples relate and what it wants to conclude, as it states them."""
++
++    model_config = ConfigDict(extra="forbid")
++    design: Literal["paired", "groups", "none"]
++    design_span: str = Field(description="Exact contiguous quote stating the design; empty when design is none.")
++    claims: list[PurposeClaim] = Field(max_length=3)
++
++    @classmethod
++    def model_json_schema(cls, *args, **kwargs):
++        """The provider sees the strict-mode form; validation is unchanged (Log 208)."""
++        return strict_json_schema(super().model_json_schema(*args, **kwargs))
+diff --git a/scripts/netzoo_agent_core/graph/context.py b/scripts/netzoo_agent_core/graph/context.py
+index 9c4d7ec..d337c8a 100644
+--- a/scripts/netzoo_agent_core/graph/context.py
++++ b/scripts/netzoo_agent_core/graph/context.py
+@@ -48,6 +48,9 @@ class _GraphContext:
+     # only when a method tie occurs, so graph construction binds nothing new.
+     # Log 198 binds it the same way to a per-call strict evidence-supply schema.
+     selection_condition_llm: Any = None
++    # Log 355: the model bound per call to StudyPurposeProposal; None (tests, the
++    # routing harness) keeps the word witnesses as the only reading.
++    study_purpose_llm: Any = None
+ 
+ 
+ def record_event(
+diff --git a/scripts/netzoo_agent_core/graph/factory.py b/scripts/netzoo_agent_core/graph/factory.py
+index 187a2e3..68c4070 100644
+--- a/scripts/netzoo_agent_core/graph/factory.py
++++ b/scripts/netzoo_agent_core/graph/factory.py
+@@ -123,6 +123,7 @@ def build_graph(
+         semantic_patcher=semantic_patcher,
+         semantic_discriminator=semantic_discriminator,
+         selection_condition_llm=semantic_llm,
++        study_purpose_llm=semantic_llm,
+         semantic_claims=semantic_contract == "claims",
+         review_policy=review_policy,
+         intent_router=intent_router,
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index f472354..72ba244 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -30,13 +30,13 @@ from .intent_invocation import _invoke_intent_router
+ from .invocation_types import RouterInvocation as _RouterInvocation
+ from .condition_recommender import invoke_condition_recommender
+ from .request_concerns import invoke_concern_matcher
++from .study_purpose_call import invoke_study_purpose
+ from .hypothesis_bases import (
+     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
+ )
+ from .input_inspection import invoke_input_inspection
+ from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
+ from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
+-from ..routing.study_purpose import study_purpose
+ from ..string_download import continued_string_download_decision, string_download_decision
+ from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
+ from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
+@@ -129,9 +129,22 @@ def invoke_router(
+     state: AgentState,
+     user_task: str,
+ ) -> _RouterInvocation:
+-    """Route, then keep an unstated scale out of the reply on every path (Log 281)."""
++    """Route, then keep an unstated scale out of the reply on every path (Log 281).
++
++    Log 355: a new request's study purpose is read once, after routing; a
++    follow-up turn (a continuation, a method comparison, a choice) is not a
++    new purpose, so it carries none and the reply reads its own words.
++    """
++    follow_up = (state.get("method_comparison") is not None or state.get("workflow_continuation") is not None)
+     result = _route_request(context, state, user_task)
+-    _record_study_purpose(context, state, user_task)
++    if follow_up or result.reason_code == "string_download_continuation":
++        result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
++    else:
++        purpose, usage, warnings = invoke_study_purpose(
++            context, state, user_task, result.usage, result.budget_warnings,
++        )
++        result = replace(result, usage=usage, budget_warnings=warnings,
++                         routing_state={**result.routing_state, "study_purpose": purpose})
+     decision = note_unstated_scale(user_task, result.decision)
+     if decision is result.decision:
+         return result
+@@ -146,18 +159,6 @@ def invoke_router(
+     })
+ 
+ 
+-def _record_study_purpose(context: _GraphContext, state: AgentState, user_task: str) -> None:
+-    """Trace the design and conclusions the request states (Log 342); the decision is untouched."""
+-    purpose = study_purpose(user_task)
+-    if purpose.design is None and not purpose.claims:
+-        return
+-    record_event(context, state, "routing.study_purpose_detected", "classify", {
+-        "design": purpose.design,
+-        "design_quote": purpose.design_quote,
+-        "claims": [{"claim": claim, "quote": quote} for claim, quote in purpose.claims],
+-    })
+-
+-
+ def _route_request(
+     context: _GraphContext,
+     state: AgentState,
+diff --git a/scripts/netzoo_agent_core/graph/study_purpose_call.py b/scripts/netzoo_agent_core/graph/study_purpose_call.py
+new file mode 100644
+index 0000000..5e54ee3
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/study_purpose_call.py
+@@ -0,0 +1,109 @@
++"""The study-purpose call: a model proposes, deterministic rules verify (Log 355).
++
++One strict call per new request, after routing. Its proposal is never used
++as is: `verify_proposal` keeps only what the request's own words support.
++When the call is not configured, blocked by the budget or fails, the word
++witnesses read the request as before (Log 342), so a reply never loses the
++reading it had. The result is state for the reply layer; the decision is
++never touched.
++"""
++
++from __future__ import annotations
++
++import time
++
++from pydantic import BaseModel
++
++from ..contracts import AgentState, LLMUsage
++from ..contracts.study_purpose import StudyPurposeProposal
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_repair import semantic_payload
++from ..llm import append_llm_usage, build_study_purpose_messages
++from ..routing.study_purpose import StudyPurpose, study_purpose
++from ..routing.study_purpose_verify import verify_proposal
++from .context import _GraphContext, preflight_budget, record_event
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++
++__all__ = ["invoke_study_purpose", "purpose_state"]
++
++
++def purpose_state(purpose: StudyPurpose, source: str) -> dict:
++    """The state entry the reply layer reads (`interpretation.study_purpose_notes.purpose_from_state`)."""
++    return {
++        "source": source,
++        "design": purpose.design,
++        "design_quote": purpose.design_quote,
++        "claims": [[claim, quote] for claim, quote in purpose.claims],
++    }
++
++
++def _witness_state(context, state, user_task: str, reason: str) -> dict:
++    purpose = study_purpose(user_task)
++    if purpose.design is not None or purpose.claims:
++        record_event(context, state, "routing.study_purpose_detected", "classify", {
++            "source": "witness", "reason": reason, **purpose_state(purpose, "witness"),
++        })
++    return purpose_state(purpose, "witness")
++
++
++def invoke_study_purpose(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    usage: LLMUsage,
++    budget_warnings: list[str],
++) -> tuple[dict, LLMUsage, list[str]]:
++    """The verified study purpose of the request, with the call's usage recorded."""
++    llm = getattr(context, "study_purpose_llm", None)
++    if llm is None:
++        return _witness_state(context, state, user_task, "not_configured"), usage, budget_warnings
++    messages = build_study_purpose_messages(user_task)
++    input_text = _serialized_structured_input(messages, StudyPurposeProposal)
++    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
++    budget, budget_warnings = preflight_budget(
++        context, call_state, role="study_purpose",
++        model=context.semantic_model_name, input_text=input_text,
++        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
++    )
++    if budget.status == "blocked":
++        usage.budget_exhausted = True
++        return _witness_state(context, state, user_task, "budget"), usage, budget_warnings
++    started_ns = time.monotonic_ns()
++    raw = None
++    payload = None
++    output_text = ""
++    call_status = "failed"
++    try:
++        adapter = llm.with_structured_output(
++            StudyPurposeProposal, method="function_calling", include_raw=True, strict=True,
++        )
++        payload, raw = semantic_payload(adapter.invoke(messages))
++        if isinstance(payload, BaseModel):
++            payload = payload.model_dump()
++        proposal = StudyPurposeProposal.model_validate(payload)
++        output_text = proposal.model_dump_json()
++        call_status = "success"
++        purpose, rejected = verify_proposal(user_task, proposal)
++        record_event(context, state, "routing.study_purpose_detected", "classify", {
++            "source": "model", "proposal": proposal.model_dump(), "rejected": rejected,
++            **purpose_state(purpose, "model"),
++        })
++        result = purpose_state(purpose, "model")
++    except BaseException as error:
++        if _is_fatal_exception(error):
++            raise
++        record_event(context, state, "routing.study_purpose_failed", "classify", {
++            "error_type": type(error).__name__,
++            "error_message": str(error)[:2000],
++            "validation_issues": _validation_issue_types(error),
++            "provider_payload": payload,
++        })
++        result = _witness_state(context, state, user_task, "call_failed")
++    usage = append_llm_usage(
++        usage, role="study_purpose", model=context.semantic_model_name,
++        response=raw, input_text=input_text, output_text=output_text,
++        budget_tokens=context.task_token_budget,
++        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++        status=call_status, price_catalog=context.price_catalog,
++    )
++    return result, usage, budget_warnings
+diff --git a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+index 2d81f6d..4085615 100644
+--- a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
++++ b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+@@ -35,6 +35,7 @@ from .outside_steps import _REPLY_KINDS, _asks
+ 
+ __all__ = [
+     "CLAIM_LABELS",
++    "purpose_from_state",
+     "claim_cells",
+     "gap_claims",
+     "question_claim",
+@@ -79,6 +80,20 @@ def _listed(decision) -> list[str]:
+     ]))
+ 
+ 
++def purpose_from_state(state, task: str) -> StudyPurpose:
++    """This turn's verified study purpose (Log 355), or the word witnesses' reading.
++
++    The study-purpose call writes it to state after routing; a state without it
++    (a follow-up turn, a context without the call, an older session) falls back
++    to the request's own words as read since Log 342.
++    """
++    entry = (state or {}).get("study_purpose")
++    if not entry:
++        return study_purpose(task)
++    return StudyPurpose(entry.get("design"), entry.get("design_quote") or "",
++                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()))
++
++
+ def gap_claims(purpose: StudyPurpose) -> list[tuple[str, str]]:
+     """(claim, quote) for each stated conclusion no registered workflow supports."""
+     return [(claim, quote) for claim, quote in purpose.claims if claim in UNSUPPORTED_CLAIMS]
+@@ -181,7 +196,7 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
+     kind = result.get("reply_kind")
+     if kind not in _REPLY_KINDS | {"unresolved"}:
+         return result
+-    purpose = study_purpose(latest_user_task(state["messages"]))
++    purpose = purpose_from_state(state, latest_user_task(state["messages"]))
+     if purpose.design is None and not purpose.claims:
+         return result
+     text = str(result["messages"][-1].content)
+diff --git a/scripts/netzoo_agent_core/llm.py b/scripts/netzoo_agent_core/llm.py
+index 520a7eb..702c012 100644
+--- a/scripts/netzoo_agent_core/llm.py
++++ b/scripts/netzoo_agent_core/llm.py
+@@ -626,6 +626,41 @@ def build_request_concern_messages(
+     ]
+ 
+ 
++# Log 355: the study-purpose call's whole instruction, as measured in Log 354.
++STUDY_PURPOSE_SYSTEM = (
++    "Return only the StudyPurposeProposal structure for the user's request. Record only what the "
++    "request states; when it does not state something, use none or an empty list.\n\n"
++    "design -- how the samples relate:\n"
++    "- paired: the same individuals are measured under two or more conditions or time points "
++    "(before/after an intervention, repeated visits, matched tissues from the same people, a time course "
++    "in the same animals, a crossover, one sample split between treatments).\n"
++    "- groups: different individuals are split into two or more groups (cases vs controls, genotypes, "
++    "treatment arms, dose groups, strains).\n"
++    "- none: no comparison structure is stated. Technical terms are not designs: paired-end reads, two omics "
++    "layers from the same samples, batches, replicates, litters used only as blocks, data before and after "
++    "normalization.\n\n"
++    "claims -- the conclusions the request wants, most important first (at most 3):\n"
++    "- group_difference: whether something differs between the groups or changes across conditions at the "
++    "cohort level.\n"
++    "- individual_change: which individuals (patients, animals, samples) differ or change the most.\n"
++    "- regulator_change: which regulators (transcription factors, miRNAs) change or differ the most.\n"
++    "- causal: to establish that one thing causes another.\n"
++    "- prediction: to predict an outcome for new, unseen samples or individuals.\n"
++    "A goal the request rules out ('not causal', 'prediction isn't the point') is not a claim. Describing a "
++    "network, finding modules or clustering samples is no claim. Inferring or 'predicting' target genes of a "
++    "regulator is network inference, not prediction. A variable such as 'cause of death' is not a causal claim.\n\n"
++    "Every text_span and design_span must be copied exactly from the request, without translation."
++)
++
++
++def build_study_purpose_messages(user_task: str) -> list:
++    """Ask for the comparison design and the conclusions the request states, with quotes (Log 355)."""
++    return [
++        SystemMessage(content=STUDY_PURPOSE_SYSTEM),
++        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
++    ]
++
++
+ def build_intent_router_messages(
+     intent_prompt: str,
+     user_task: str,
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 7269949..004e81c 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -504,14 +504,15 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
+     return card.model_copy(update={"unavailable": [*card.unavailable, *rows][:8]})
+ 
+ 
+-def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str) -> ReplyCard:
++def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str, state=None) -> ReplyCard:
+     """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
+     from workflow_registry import UNSUPPORTED_CLAIMS
+ 
+-    from ..interpretation.study_purpose_notes import CLAIM_LABELS, claim_cells, gap_claims, question_claim
+-    from ..routing.study_purpose import study_purpose
++    from ..interpretation.study_purpose_notes import (
++        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
++    )
+ 
+-    purpose = study_purpose(task)
++    purpose = purpose_from_state(state, task)
+     gaps = gap_claims(purpose)
+     if kind == "unresolved":
+         if not gaps:
+@@ -553,7 +554,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
+         card = _with_input_alternative(card, decision, policy, task)
+     if card is not None and kind != "execution":
+         card = _with_outside_steps(card, decision, task)
+-        card = _with_study_purpose(card, kind, decision, policy, task)
++        card = _with_study_purpose(card, kind, decision, policy, task, result)
+     outputs = [
+         path.removeprefix("/work/")
+         for item in results if item.action.startswith("run_") and item.status == "success"
+diff --git a/scripts/netzoo_agent_core/routing/study_purpose_verify.py b/scripts/netzoo_agent_core/routing/study_purpose_verify.py
+new file mode 100644
+index 0000000..53476e3
+--- /dev/null
++++ b/scripts/netzoo_agent_core/routing/study_purpose_verify.py
+@@ -0,0 +1,148 @@
++"""Deterministic verification of a model-proposed study purpose (Log 355).
++
++Log 341: offered a list of conditions, the model quoted the request's goal
++sentence for whichever it chose, the control request included. Log 354: the
++same happens with study purposes -- unverified, the model's conclusions were
++wrong 129 times in 387 proposals, mostly "regulator_change" for any request
++naming TFs. A proposal therefore stands only on its own quote:
++
++- the quote is in the request;
++- it contains a cue word for the value it supports (the lists are loose: they
++  reject a generic goal sentence, they do not decide the value);
++- the cue is not negated before or after it in its clause, and is not "cause"
++  as a noun (the word witnesses' _negated, PN and CN);
++- "predict the target genes" is network inference, not prediction;
++- a regulator change needs a regulator noun and a change ("regulatory
++  network" names none);
++- groups need a contrast, and a paired design is not two data types from the
++  same samples or a technical pairing (paired-end reads, batches);
++- a group difference needs a verified design.
++
++What survives is the StudyPurpose the reply layer reads; nothing here selects,
++ranks or removes a workflow.
++"""
++
++from __future__ import annotations
++
++import re
++
++from ..contracts.study_purpose import StudyPurposeProposal
++from .study_purpose import StudyPurpose, _cause_as_variable, _negated, _negated_after
++
++__all__ = ["verify_proposal"]
++
++_I = re.I
++_CLAIM_CUES = {
++    "group_difference": re.compile(
++        r"differ\w*|chang\w*|shift\w*|alter\w*|rewir\w*|reshap\w*|compar\w*|\bbetween\b|versus|\bvs\.?\b|"
++        # Not "respond": "non-responders" names a group (Log 340).
++        r"relative\s+to|disrupt\w*|reorgani\w*|remodel\w*|diverg\w*|perturb\w*|unlike|"
++        r"affect\w*|depart\w*|deviat\w*|return\w*", _I),
++    "individual_change": re.compile(
++        r"\bwhich\b|\bwhose\b|\brank\w*|individual\w*|outlier\w*|atypical|unusual|stand\w*\s+out|"
++        r"\bmost\b|\bleast\b|deviat\w*|\beach\s+(?:patient|individual|subject|donor|animal|mouse)", _I),
++    # A regulator noun ("regulatory network" is none) and a change, difference or ranking.
++    "regulator_change": re.compile(
++        r"(?=[^.;?]*(?:transcription[- ]factors?|\bTFs?\b|\bregulators\b|miRNAs?|micro-?RNAs?|\bmiR-))"
++        r"[^.;?]*?\b(?:chang\w*|differ\w*|shift\w*|gain\w*|los[et]\w*|var(?:y|ies|ied|iation|iable)|rank\w*|"
++        r"most|least|rewir\w*|switch\w*|alter\w*|reshuffl\w*|deviat\w*)\b", _I),
++    "causal": re.compile(
++        r"\bcaus\w*|\bdriv\w*|responsib\w*|mechanis\w*|underl\w*|\bprove\w*|\bestablish\w*|demonstrat\w*|"
++        r"attribut\w*|because|leads?\s+to|results?\s+in|induc\w*|trigger\w*|mediat\w*|\bpin\w*", _I),
++    "prediction": re.compile(
++        r"predict\w*|forecast\w*|classif\w*|\bflag\w*|diagnos\w*|prognos\w*|signature|risk|\bfuture\b|"
++        r"\bnew\b|unseen|independent|\bwill\b|biomarker\w*", _I),
++}
++_DESIGN_CUES = {
++    "paired": re.compile(
++        r"\bsame\b|\beach\b|\bboth\b|before|after|again|\bpre\b|pre-|post-|\bpost\b|time|visit\w*|trimester\w*|"
++        r"\bdays?\b|weeks?|months?|years?|split|halves|\bhalf\b|cross-?over|random\s+order|paired|matched|"
++        r"repeat\w*|longitudinal|serial\w*|baseline|follow-?up|admission|discharge|diagnosis|relapse|recovery|"
++        r"stable|during|from\s+the\s+same", _I),
++    # A contrast: two sides joined, or named groups, levels or arms. "85 lines, each from a
++    # different donor" is one collection.
++    "groups": re.compile(
++        r"\band\b|\bvs\.?\b|versus|\bor\b|between|compared|\bplus\b|groups?|arms?|levels?|doses?|"
++        r"concentrations?|strains?|genotypes?|cohorts?", _I),
++}
++_TECHNICAL_PAIRING = re.compile(
++    r"paired-end|read\s+pairs|matri\w*|layers?|omics|batch\w*|librar\w*|lanes?|replicates?|litters?|"
++    r"normali[sz]\w*|filter\w*", _I)
++_TIMED = re.compile(
++    r"\bsame\b|before|after|visit|trimester|split|cross|\bdays?\b|weeks?|months?|baseline", _I)
++_DATA_TYPE = re.compile(
++    r"expression|methylation|RNA-?seq|microarray|arrays?|proteom\w*|metabolom\w*|small-?RNA|miRNA|ATAC|ChIP|"
++    r"genotyp\w*|SNPs?|CNVs?|mutation\w*|transcriptom\w*", _I)
++_PREDICT_NETWORK = re.compile(
++    r"predict\w*\s+(?:the\s+|their\s+|its\s+)?(?:target\w*|binding|sites?|motifs?|interactions?|edges?|regulat\w*)", _I)
++_NO_COMPARISON = re.compile(r"\bno\s+(?:control|comparison)|\bnobody\b|\bnone\s+of", _I)
++
++
++def _locate(task: str, quote: str) -> tuple[int, int] | None:
++    """(start, end) of the quote in the request, ignoring case and spacing, or None."""
++    quote = quote.strip().strip('"“”').strip()
++    if not quote:
++        return None
++    index = task.find(quote)
++    if index >= 0:
++        return index, index + len(quote)
++    pattern = r"\s+".join(re.escape(word) for word in quote.split())
++    match = re.search(pattern, task, _I)
++    return (match.start(), match.end()) if match else None
++
++
++def _claim_reason(task: str, claim: str, quote: str) -> str:
++    span = _locate(task, quote)
++    if span is None:
++        return "quote_not_in_request"
++    cues = list(_CLAIM_CUES[claim].finditer(task, *span))
++    if not cues:
++        return "no_cue"
++    for match in cues:
++        if _negated(task, match.start()) or _negated_after(task, match.end()):
++            continue
++        if claim == "causal" and _cause_as_variable(task, match):
++            continue
++        if claim == "prediction" and _PREDICT_NETWORK.match(task, match.start()):
++            continue
++        return "ok"
++    return "negated_or_vetoed"
++
++
++def _design_reason(task: str, design: str, quote: str) -> str:
++    located = _locate(task, quote)
++    if located is None:
++        return "quote_not_in_request"
++    span = task[located[0]:located[1]]
++    if not _DESIGN_CUES[design].search(span):
++        return "no_cue"
++    timed = _TIMED.search(span)
++    if _TECHNICAL_PAIRING.search(span) and not timed:
++        return "technical"
++    if design == "paired" and len({m.group(0).lower() for m in _DATA_TYPE.finditer(span)}) >= 2 and not timed:
++        return "two_data_types"
++    if _negated(task, located[0] + 1) or _NO_COMPARISON.search(span):
++        return "negated"
++    return "ok"
++
++
++def verify_proposal(task: str, proposal: StudyPurposeProposal) -> tuple[StudyPurpose, list[dict]]:
++    """The verified StudyPurpose and every rejected part of the proposal, with its reason."""
++    rejected: list[dict] = []
++    design, design_quote = None, ""
++    if proposal.design != "none":
++        reason = _design_reason(task, proposal.design, proposal.design_span)
++        if reason == "ok":
++            design, design_quote = proposal.design, proposal.design_span.strip()
++        else:
++            rejected.append({"field": "design", "value": proposal.design, "reason": reason})
++    claims: list[tuple[str, str]] = []
++    for item in proposal.claims:
++        reason = _claim_reason(task, item.claim, item.text_span)
++        if reason == "ok" and item.claim == "group_difference" and design is None:
++            reason = "needs_design"
++        if reason != "ok":
++            rejected.append({"field": "claim", "value": item.claim, "reason": reason})
++        elif item.claim not in {claim for claim, _ in claims}:
++            claims.append((item.claim, item.text_span.strip()))
++    return StudyPurpose(design, design_quote, tuple(claims)), rejected
+diff --git a/tests/test_agent_gate.py b/tests/test_agent_gate.py
+index 23ded6d..24b6dfc 100644
+--- a/tests/test_agent_gate.py
++++ b/tests/test_agent_gate.py
+@@ -3866,10 +3866,11 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
+             result["plan"]["policy_hash"], result["project_policy"]["policy_hash"]
+         )
+         # The episode assertion moved with the episode: there is none to check.
+-        self.assertEqual(len(result["token_usage"]["calls"]), 3)
++        # Log 355: + the study-purpose call after routing.
++        self.assertEqual(len(result["token_usage"]["calls"]), 4)
+         self.assertEqual(
+             [call["role"] for call in result["token_usage"]["calls"]],
+-            ["semantic_interpreter", "semantic_reviewer", "intent_router"],
++            ["semantic_interpreter", "semantic_reviewer", "intent_router", "study_purpose"],
+         )
+         self.assertLessEqual(
+             result["token_usage"]["total_tokens"],
+diff --git a/tests/test_graph_tracing.py b/tests/test_graph_tracing.py
+index e5fd451..aa9436f 100644
+--- a/tests/test_graph_tracing.py
++++ b/tests/test_graph_tracing.py
+@@ -1085,6 +1085,7 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
++        "study_purpose",  # Log 355
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     event_types = [event.event_type for event in store.read_events(run_id)]
+@@ -1139,7 +1140,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+     )
+     events = store.read_events(run_id)
+ 
+-    assert router.calls == 3
++    assert router.calls == 4  # Log 355: + the study-purpose call
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+@@ -1152,6 +1153,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
++        "study_purpose",  # Log 355
+     ]
+     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
+         result["messages"][-1].content
+@@ -1210,7 +1212,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+     events = store.read_events(run_id)
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 4
++    assert router.calls == 5  # Log 355: + the study-purpose call
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1228,6 +1230,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
++        "study_purpose",  # Log 355
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     assert any(
+@@ -1282,7 +1285,7 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 4
++    assert router.calls == 5  # Log 355: + the study-purpose call
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1342,7 +1345,7 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 4
++    assert router.calls == 5  # Log 355: + the study-purpose call
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+     proposed = next(
+@@ -1396,7 +1399,7 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
+         }
+     )
+ 
+-    assert router.calls == 2
++    assert router.calls == 3  # Log 355: + the study-purpose call
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["recommended_actions"] == []
+@@ -1411,6 +1414,7 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
+     assert [call["role"] for call in calls] == [
+         "semantic_interpreter",
+         "semantic_reviewer",
++        "study_purpose",  # Log 355
+     ]
+     assert calls[0]["status"] == "failed"
+     assert calls[1]["status"] == "failed"
+@@ -1458,7 +1462,7 @@ ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/p
+ 
+     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
+ 
+-    assert router.calls == 2
++    assert router.calls == 3  # Log 355: + the study-purpose call
+     assert result["decision"]["action"] == "run_panda"
+     assert result["decision"]["match_basis"] == "workflow_name"
+     assert result["decision"]["expression_file"].endswith("/expression.tsv")
+diff --git a/tests/test_semantic_claims.py b/tests/test_semantic_claims.py
+index 5bec484..7c721f6 100644
+--- a/tests/test_semantic_claims.py
++++ b/tests/test_semantic_claims.py
+@@ -761,7 +761,8 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
+     )
+     result = app.invoke({"messages": [HumanMessage(content=TASK)]})
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims"]
++    # Log 355: the study-purpose call comes after routing.
++    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal"]
+     assert result["decision"]["should_execute"] is False
+     assert result["decision"]["action"] == "no_tool"
+     assert result["plan"]["status"] == "respond_only"
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index 61f48a3..b56a776 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -11,6 +11,7 @@ from __future__ import annotations
+ import json
+ import sys
+ from pathlib import Path
++from types import SimpleNamespace
+ from typing import get_args
+ 
+ import pytest
+@@ -190,15 +191,17 @@ def test_the_paired_count_never_counts_individuals_as_samples_without_a_number_e
+     assert "(for your 40 patients, 41 PANDA runs)" in unpaired
+ 
+ 
+-def test_the_trace_event_reads_the_request_only(monkeypatch):
++def test_without_the_call_the_words_are_read_and_traced():
++    # Log 355: the witness event moved into the study-purpose call's fallback.
++    from netzoo_agent_core.graph.study_purpose_call import invoke_study_purpose
++    from netzoo_agent_core.contracts import LLMUsage
++
+     events = []
+-    monkeypatch.setattr(router_invocation, "record_event",
+-                        lambda context, state, name, node, payload: events.append((name, payload)))
+-    router_invocation._record_study_purpose(None, {}, PROMPTS["A4"])
+-    router_invocation._record_study_purpose(None, {}, PROMPTS["B2"].replace("30 from", "some from"))
+-    assert events[0][0] == "routing.study_purpose_detected"
+-    assert events[0][1]["design"] == "paired" and events[0][1]["claims"][0]["claim"] == "causal"
+-    assert len(events) == 2 and events[1][1]["claims"] == []
++    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, name, node, data: events.append((name, data))))
++    entry, usage, _ = invoke_study_purpose(context, {}, PROMPTS["A4"], LLMUsage(), [])
++    assert entry["source"] == "witness" and entry["design"] == "paired" and entry["claims"][0][0] == "causal"
++    assert events[0][0] == "routing.study_purpose_detected" and events[0][1]["reason"] == "not_configured"
++    assert usage.calls == []
+ 
+ 
+ # -- PN: a negation after a conclusion witness (Log 346) ------------------------------
+diff --git a/tests/test_study_purpose_call.py b/tests/test_study_purpose_call.py
+new file mode 100644
+index 0000000..247fa6b
+--- /dev/null
++++ b/tests/test_study_purpose_call.py
+@@ -0,0 +1,165 @@
++"""Log 355: the study-purpose call -- a model proposes, deterministic rules verify.
++
++The provider is a fake; the proposals are shaped like Log 354's recorded ones,
++including the failure the verification exists for: a request's goal sentence
++quoted for a conclusion it does not state.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++
++import pytest
++
++ROOT = Path(__file__).parents[1]
++sys.path.insert(0, str(ROOT / "scripts"))
++sys.path.insert(0, str(Path(__file__).parent))
++
++from langchain_core.messages import AIMessage  # noqa: E402
++from netzoo_agent_core.contracts import LLMUsage, TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.study_purpose import StudyPurposeProposal  # noqa: E402
++from netzoo_agent_core.graph.study_purpose_call import invoke_study_purpose  # noqa: E402
++from netzoo_agent_core.interpretation.study_purpose_notes import purpose_from_state  # noqa: E402
++from netzoo_agent_core.routing.study_purpose_verify import verify_proposal  # noqa: E402
++from test_reply_cards import respond_and_card  # noqa: E402
++
++TASK = ("Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, "
++        "with whole-blood RNA-seq after each; expression only. We want to find the participants whose "
++        "co-expression networks shift most between diets.")
++
++
++def _proposal(design="none", design_span="", claims=()):
++    return StudyPurposeProposal(design=design, design_span=design_span,
++                                claims=[{"claim": c, "text_span": q} for c, q in claims])
++
++
++class Adapter:
++    def __init__(self, reply):
++        self.reply = reply
++
++    def invoke(self, _messages):
++        if isinstance(self.reply, BaseException):
++            raise self.reply
++        return {"parsed": self.reply, "raw": AIMessage(content=""), "parsing_error": None}
++
++
++class Provider:
++    def __init__(self, reply):
++        self.reply = reply
++        self.options = []
++
++    def with_structured_output(self, schema, **options):
++        self.options.append((schema, options))
++        return Adapter(self.reply)
++
++
++def _context(reply):
++    events = []
++    context = SimpleNamespace(
++        study_purpose_llm=Provider(reply), semantic_model_name="offline", router_max_tokens=2000,
++        task_token_budget=100000, price_catalog=None,
++        recorder=SimpleNamespace(append=lambda run, name, node, data: events.append((name, data))),
++    )
++    return context, events
++
++
++# -- verification ----------------------------------------------------------------------
++
++def test_a_design_stated_without_the_usual_words_is_kept_when_its_quote_supports_it():
++    purpose, rejected = verify_proposal(TASK, _proposal(
++        "paired", "each did two weeks on a high-salt and two weeks on a low-salt diet, in random order",
++        [("individual_change", "find the participants whose co-expression networks shift most between diets")]))
++    assert purpose.design == "paired" and purpose.claim == "individual_change" and rejected == []
++
++
++@pytest.mark.parametrize("task, claim, quote, reason", [
++    # Log 354: a goal sentence naming TFs was offered as a regulator change.
++    ("We want a single combined TF and miRNA regulatory network for maternal blood.", "regulator_change",
++     "We want a single combined TF and miRNA regulatory network for maternal blood.", "no_cue"),
++    ("We want to predict the target genes of each transcription factor at every time point.", "prediction",
++     "predict the target genes of each transcription factor", "negated_or_vetoed"),
++    ("We don't want a diagnostic classifier; we just want to know whether the network differs.", "prediction",
++     "We don't want a diagnostic classifier", "negated_or_vetoed"),
++    ("A donor table gives age, sex and cause of death. We want gene modules.", "causal",
++     "cause of death", "negated_or_vetoed"),
++    ("We want gene modules.", "causal", "the treatment causes rewiring", "quote_not_in_request"),
++])
++def test_a_proposed_conclusion_stands_only_on_its_own_quote(task, claim, quote, reason):
++    purpose, rejected = verify_proposal(task, _proposal(claims=[(claim, quote)]))
++    assert purpose.claims == () and rejected == [{"field": "claim", "value": claim, "reason": reason}]
++
++
++@pytest.mark.parametrize("design, quote, reason", [
++    ("paired", "2 x 150 bp paired-end RNA-seq", "technical"),
++    ("paired", "matched expression and 450K methylation arrays on 110 primary neuroblastomas", "two_data_types"),
++    ("groups", "85 primary cardiac fibroblast lines, each derived from a different adult donor", "no_cue"),
++])
++def test_a_proposed_design_needs_a_quote_that_states_one(design, quote, reason):
++    task = f"We have {quote}. We want one network."
++    purpose, rejected = verify_proposal(task, _proposal(design, quote))
++    assert purpose.design is None and rejected == [{"field": "design", "value": design, "reason": reason}]
++
++
++def test_a_group_difference_needs_a_verified_design():
++    task = "We have 30 tumors. We want to know whether co-expression differs between subtypes we find."
++    purpose, rejected = verify_proposal(task, _proposal(claims=[(
++        "group_difference", "whether co-expression differs between subtypes we find")]))
++    assert purpose.claims == () and rejected[0]["reason"] == "needs_design"
++
++
++# -- the call ---------------------------------------------------------------------------
++
++def test_the_call_is_strict_and_its_verified_reading_is_state():
++    reply = _proposal("paired", "each did two weeks on a high-salt and two weeks on a low-salt diet",
++                      [("individual_change", "find the participants whose co-expression networks shift most"),
++                       ("regulator_change", "We want to find the participants")])
++    context, events = _context(reply)
++    entry, usage, _ = invoke_study_purpose(context, {}, TASK, LLMUsage(), [])
++    assert context.study_purpose_llm.options[0][1] == {
++        "method": "function_calling", "include_raw": True, "strict": True}
++    assert entry == {"source": "model", "design": "paired",
++                     "design_quote": "each did two weeks on a high-salt and two weeks on a low-salt diet",
++                     "claims": [["individual_change", "find the participants whose co-expression networks shift most"]]}
++    assert [call.role for call in usage.calls] == ["study_purpose"]
++    detected = dict(events)["routing.study_purpose_detected"]
++    assert detected["rejected"] == [{"field": "claim", "value": "regulator_change", "reason": "no_cue"}]
++
++
++def test_a_failed_call_falls_back_to_the_words():
++    context, events = _context(RuntimeError("provider down"))
++    entry, usage, _ = invoke_study_purpose(context, {}, "We want to show that the drug causes it.", LLMUsage(), [])
++    assert entry["source"] == "witness" and entry["claims"][0][0] == "causal"
++    assert [name for name, _ in events] == ["routing.study_purpose_failed", "routing.study_purpose_detected"]
++    assert [(call.role, call.status) for call in usage.calls] == [("study_purpose", "failed")]
++
++
++def test_a_verified_empty_reading_is_not_replaced_by_the_words():
++    # The model is primary: when it states nothing, the words do not add a reading back.
++    state = {"study_purpose": {"source": "model", "design": None, "design_quote": "", "claims": []}}
++    assert purpose_from_state(state, "We want to show that the drug causes it.").claims == ()
++    assert purpose_from_state({}, "We want to show that the drug causes it.").claim == "causal"
++
++
++def test_the_reply_reads_the_states_purpose():
++    from netzoo_agent_core.graph import response
++    from netzoo_agent_core.contracts import WorkflowPlan
++    from langchain_core.messages import HumanMessage
++
++    task = "We have expression from 40 patients. We want to know which patients stand out the most."
++    decision = TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question", confidence=.9,
++        reason="Guidance", capability_match_status="exact", match_basis="registry_features",
++        matched_actions=["run_lioness_coexpression"], recommended_actions=["run_lioness_coexpression"])
++    plan = WorkflowPlan(workflow="NO-TOOL", objective=task, decision=decision.model_dump(), status="respond_only")
++    base = {"decision": decision.model_dump(), "plan": plan.model_dump(), "messages": [HumanMessage(content=task)],
++            "tool_results": [], "evaluation": None}
++    from test_reply_cards import POLICY
++    with_purpose = response.respond(SimpleNamespace(project_policy=POLICY), {**base, "study_purpose": {
++        "source": "model", "design": None, "design_quote": "",
++        "claims": [["prediction", "We want to know which patients stand out the most."]]}})
++    without = response.respond(SimpleNamespace(project_policy=POLICY), {**base, "study_purpose": {
++        "source": "model", "design": None, "design_quote": "", "claims": []}})
++    assert "No registered workflow builds a model" in with_purpose["messages"][-1].content
++    assert "No registered workflow builds a model" not in without["messages"][-1].content
