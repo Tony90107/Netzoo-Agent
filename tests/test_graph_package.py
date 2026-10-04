@@ -985,7 +985,10 @@ def test_beginner_group_network_guidance_does_not_ask_for_algorithm_assumptions(
     )
 
     answer = result["messages"][0].content
-    assert "cancer" in answer.casefold() and "normal" in answer.casefold()
+    # Log 342: the wording names no group, so another two-group request is not told
+    # it compares cancer with normal.
+    assert "between two groups" in answer.casefold()
+    assert "cancer" not in answer.casefold()
     assert "PANDA" in answer and "LIONESS-PANDA" in answer
     assert "each group" in answer.casefold() and "paired" in answer.casefold()
     assert "Which modeling assumption" not in answer

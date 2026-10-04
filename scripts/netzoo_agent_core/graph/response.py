@@ -39,6 +39,7 @@ from ..interpretation.research_choices import render_research_choices
 from ..interpretation.scientific_guidance import render_scientific_guidance
 from ..interpretation.input_alternatives import with_input_alternative_reply
 from ..interpretation.outside_steps import with_outside_steps_reply
+from ..interpretation.study_purpose_notes import with_study_purpose_reply
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..presentation import strip_cli_owned_guidance_tail
@@ -80,7 +81,8 @@ def _reply(content: str, kind: str) -> dict:
 def respond(context: _GraphContext, state: AgentState) -> dict:
     result = _respond(context, state)
     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
-    return with_outside_steps_reply(result, state, _reply)
+    result = with_outside_steps_reply(result, state, _reply)
+    return with_study_purpose_reply(result, state, _reply)
 
 
 def _respond(context: _GraphContext, state: AgentState) -> dict:

@@ -36,6 +36,7 @@ from .hypothesis_bases import (
 from .input_inspection import invoke_input_inspection
 from ..routing.reading_selection import drop_input_only_readings, drop_unwitnessed_readings, matchable_readings
 from ..routing.scale_relaxation import drop_unnamed_scale, note_unstated_scale, relax_unstated_scale
+from ..routing.study_purpose import study_purpose
 from ..string_download import continued_string_download_decision, string_download_decision
 from .discriminator import invoke_semantic_discriminator as _invoke_semantic_discriminator
 from .semantic_attempts import invoke_semantic_interpreter as _invoke_semantic_interpreter
@@ -130,6 +131,7 @@ def invoke_router(
 ) -> _RouterInvocation:
     """Route, then keep an unstated scale out of the reply on every path (Log 281)."""
     result = _route_request(context, state, user_task)
+    _record_study_purpose(context, state, user_task)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -141,6 +143,18 @@ def invoke_router(
         **result.routing_state,
         "requested_outcome": decision.requested_outcome.model_dump(),
         "outcome_hypotheses": [item.model_dump() for item in decision.outcome_hypotheses],
+    })
+
+
+def _record_study_purpose(context: _GraphContext, state: AgentState, user_task: str) -> None:
+    """Trace the design and conclusions the request states (Log 342); the decision is untouched."""
+    purpose = study_purpose(user_task)
+    if purpose.design is None and not purpose.claims:
+        return
+    record_event(context, state, "routing.study_purpose_detected", "classify", {
+        "design": purpose.design,
+        "design_quote": purpose.design_quote,
+        "claims": [{"claim": claim, "quote": quote} for claim, quote in purpose.claims],
     })
 
 

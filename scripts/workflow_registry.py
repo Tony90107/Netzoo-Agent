@@ -825,6 +825,172 @@ OUTSIDE_STEPS: tuple[OutsideStep, ...] = (
 )
 
 
+class ClaimSupport(NamedTuple):
+    """What one workflow gives toward a conclusion the request states (Log 342).
+
+    ``direct``: the workflow's own output answers the question (COBRA's group
+    component for a stated two-group comparison). ``with_step``: it gives the
+    material, and ``text`` names the step after it, which NetZoo does not run.
+    There is deliberately no "cannot": an undeclared cell says nothing, and
+    only ``UNSUPPORTED_CLAIMS`` states a gap -- CC1 (Logs 288-289) showed that
+    gaps inferred from missing declarations are false.
+    """
+
+    level: Literal["direct", "with_step"]
+    text: str
+    caveats: tuple[str, ...] = ()
+
+
+# Log 342 (Log 341's minimal pairs): the purpose a request states -- a
+# comparison design and the kind of conclusion -- had no typed slot, so "does
+# the network change after treatment?" got the reply of "one summary network".
+# Keyed by (action, claim, design), design "*" for any; a reply looks up the
+# stated design first, then "*". Python-only, like DOWNSTREAM_ANALYSES: not
+# part of the policy snapshot, so neither the policy hash nor any provider
+# prompt changes, and routing never reads it. Sources: [R] registry sentences
+# checked in earlier Logs; COBRA, Micheletti et al. 2024 Bioinformatics
+# 40(9):btae531 (a covariate's co-expression component; values may leave
+# [-1, 1]); lionessR, Kuijjer et al. 2019 BMC Cancer 19:1003 (limma on LIONESS
+# edges between groups); the rest is general statistics.
+_LIONESS_DEPENDENCE = (
+    "All LIONESS networks are derived from the same cohort, so they are not statistically "
+    "independent; account for this in any test across samples."
+)
+_OTTER_SCALE = (
+    "OTTER weights are on a different scale from PANDA's; compare OTTER networks only with "
+    "other OTTER networks built with the same parameters."
+)
+
+
+def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = ()) -> dict:
+    return {
+        (action, "group_difference", "groups"): ClaimSupport("with_step", (
+            "Build one network per group on the same genes and priors, then compare edge weights or "
+            "each regulator's targeting score (out-degree) between the group networks. Two aggregate "
+            "networks give one value per edge per group: they show where the groups differ, but give "
+            f"no per-sample spread to test it. For a statistical test, use {per_sample} and test "
+            "between the groups."
+        ), caveats),
+        (action, "group_difference", "paired"): ClaimSupport("with_step", (
+            "Build one network for each time point on the same genes and priors, then compare edge "
+            "weights or targeting scores between them. This compares the time points across all "
+            "individuals but does not use the pairing: each individual's samples from the different "
+            f"time points are pooled into separate networks. To keep the pairing, use {per_sample} "
+            "and compare each individual's samples."
+        ), caveats),
+        (action, "regulator_change", "*"): ClaimSupport("with_step", (
+            "Comparing each regulator's targeting score (out-degree) between networks built "
+            "separately for each condition shows regulators whose targeting changes. Without "
+            "per-sample networks this ranks regulators by the size of the change, with no test of "
+            "whether it exceeds chance."
+        ), caveats),
+    }
+
+
+def _per_sample_claims(action: str) -> dict:
+    caveats = (_LIONESS_DEPENDENCE,)
+    return {
+        (action, "group_difference", "groups"): ClaimSupport("with_step", (
+            "Each sample gets its own network, so each edge weight or targeting score can be tested "
+            "between the groups across samples -- for example with a linear model such as limma."
+        ), caveats),
+        (action, "group_difference", "paired"): ClaimSupport("with_step", (
+            "Each sample gets its own network, so each individual's networks from the different time "
+            "points can be compared directly: test the within-individual differences of edge weights "
+            "or targeting scores, for example with a paired test or a linear model with an "
+            "individual term."
+        ), caveats),
+        (action, "individual_change", "paired"): ClaimSupport("with_step", (
+            "Each individual has a network for each time point; the difference between an "
+            "individual's own networks (or their regulators' targeting scores) measures how much "
+            "that individual changed, and ranks individuals by it."
+        ), caveats),
+        (action, "individual_change", "*"): ClaimSupport("with_step", (
+            "Each sample gets its own network; comparing each sample's network or targeting scores "
+            "with the rest of the cohort shows which individuals stand out."
+        ), caveats),
+        (action, "regulator_change", "*"): ClaimSupport("with_step", (
+            "Per-sample targeting scores (out-degree) give a regulator-by-sample matrix; test each "
+            "regulator between the conditions (paired when the same individuals give both), with "
+            "multiple-testing correction across regulators."
+        ), caveats),
+    }
+
+
+def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
+    return {
+        (action, "group_difference", "*"): ClaimSupport("with_step", (
+            "Per-sample gene degree or edge weights can be compared between the groups or time "
+            "points (paired when the same individuals give both)."
+        ), caveats),
+        (action, "individual_change", "*"): ClaimSupport("with_step", (
+            "Comparing each sample's network with the rest of the cohort -- or, with repeated "
+            "samples, with the same individual's other sample -- shows which individuals change or "
+            "stand out."
+        ), caveats),
+    }
+
+
+CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+    **_aggregate_claims("run_panda", "the per-sample (LIONESS) version"),
+    **_aggregate_claims("run_puma", "the per-sample (LIONESS) version"),
+    # OTTER has no per-sample version registered.
+    **_aggregate_claims("run_otter", "a per-sample method such as LIONESS-PANDA", (_OTTER_SCALE,)),
+    **_per_sample_claims("run_lioness_panda"),
+    **_per_sample_claims("run_lioness_puma"),
+    ("run_giraffe", "regulator_change", "*"): ClaimSupport("with_step", (
+        "GIRAFFE's TF-by-sample activity matrix gives each TF's activity in each sample; test each "
+        "TF's activity between the conditions (paired when the same individuals give both), with "
+        "multiple-testing correction."
+    )),
+    ("run_giraffe", "individual_change", "paired"): ClaimSupport("with_step", (
+        "The difference between an individual's activity profiles at the time points measures how "
+        "much that individual's TF activity changed."
+    )),
+    ("run_giraffe", "group_difference", "*"): ClaimSupport("with_step", (
+        "The activity matrix compares TF activity, not network wiring, between the conditions; test "
+        "each TF's activity between them (paired when the same individuals give both)."
+    )),
+    # The COBRA paper does not describe an individual term in the design
+    # matrix, so a paired design is not declared.
+    ("run_cobra", "group_difference", "groups"): ClaimSupport("direct", (
+        "Put the group label in COBRA's design matrix: it returns a co-expression component for "
+        "that variable -- the part of each gene pair's co-expression associated with the group -- "
+        "alongside components for any other covariates you include, such as batch."
+    ), (
+        "Some component values fall outside -1 to 1; read them as contributions, not correlations. "
+        "Deciding which gene pairs differ beyond chance is a separate analysis.",
+    )),
+    **_coexpression_claims("run_lioness_coexpression", (_LIONESS_DEPENDENCE,)),
+    **_coexpression_claims("run_bonobo", (
+        "With p-value output, edges can be filtered per sample at a chosen confidence.",
+    )),
+}
+
+# Conclusions no registered workflow can support, said once for the whole
+# reply: (the text, an addition for a stated paired design, the card row).
+UNSUPPORTED_CLAIMS: Mapping[str, tuple[str, str, str, str]] = {
+    "causal": (
+        "None of the registered workflows can show that one thing causes another: they estimate "
+        "associations or model coefficients from the expression data, so the networks can describe "
+        "what differs or changes but not show why.",
+        "A before-and-after comparison without an untreated comparison group also cannot separate "
+        "the treatment's effect from time or other changes.",
+        "Show that one thing causes another",
+        "Registered workflows estimate associations; they can describe what changes, not prove its cause.",
+    ),
+    "prediction": (
+        "No registered workflow builds a model that predicts an outcome for new samples. Per-sample "
+        "results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes "
+        "-- can serve as features for a classifier you build outside NetZoo, which then needs the "
+        "outcome for each sample and testing on samples not used to build it.",
+        "",
+        "Predict outcomes for new samples",
+        "No registered workflow builds a predictive model; per-sample results can only be its features.",
+    ),
+}
+
+
 # Python-only, like DOWNSTREAM_ANALYSES: not part of the policy snapshot, so
 # neither the policy hash nor any provider prompt changes. Every note must be
 # verifiable in the netZooPy source or the executor that wraps it.
