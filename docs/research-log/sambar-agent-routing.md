@@ -17887,3 +17887,53 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
    - 設計引文表明同一個體在兩種條件下（「each … split」「from the same … into」「both … and」）時，分組不成立。
    - 兩條都只會減少命中。
 2. 改變判定規則屬於使用者的決定，只能用於之後的宣告，不能回溯到本輪。
+
+## Log 357｜事前宣告：b′——(b) 加兩條設計驗證，以第六組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`595e245..c647d52`，已完成），然後做 b′。第六組保留集照原稿，判定照建議（同 Log 355）。
+本條目寫於實作 commit 與任何第六組保留集上的呼叫之前。
+- 基準為 HEAD `9b74954`：線上是 v1＋PN＋CN，`scripts/`、`tests/` 與 `c647d52` 相同。
+- 工作目錄是 (b) 的實作（`71c0ea1` 的內容，以 `git cherry-pick -n` 套回）加 b′ 的兩條驗證與新測試，尚未 commit。
+- 全套件（基準）3234 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**程序上的一個更正（公開）：**
+- 第一次凍結 commit（`9b82188`，未 push）誤把 cherry-pick 後已 stage 的 (b) 實作一起 commit。
+- 已在 push 前以 `git reset --soft` 改寫為只含 docs 的 `9b74954`。HEAD 的程式從未帶有 b′。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `b2_frozen/`（`9b74954`，早於第六組保留集寫完）：
+  - 提示 `e2af95adf863`、契約 `cb2c1fcdde6e`，與 `b_frozen/` 相同。
+  - 驗證 `8fe49efcc9e7`。
+- `heldout6/heldout.json`（`6389241f518f`）：隔離 subagent 撰寫，使用者審過、照原稿，共 32 句：
+  - 6 家族 × 4：P1、P3 配對；P2、P4、P6 分組；P5 無。
+  - 3 句否定陷阱、5 句精確度陷阱。
+
+**b′ 相對 (b) 的兩條驗證**（`FREEZE6.md`）：
+1. 只有時間點或條件字詞（不含「same」）才解除「兩種資料型態」與技術性配對的否決。
+2. 分組在引文所在句子把同一批個體分到各條件時不成立（each … split、split into、halves、from the same N patients、within-donor）。
+
+兩條都只會減少命中。在已看過的提案上：
+- Log 354 的 387 筆不變（設計 254/297、結論 237/264，0 誤判）。
+- 第五組的 96 筆：設計 48/66，0 誤判（(b) 為 9）；結論 54/66，0 誤判。
+
+**審稿時讀到的風險（公開，沒有執行任何東西）：**
+- P3「Each of 20 periodontitis patients gave a diseased and a healthy gingival biopsy」標註配對。
+- 若模型給 groups，第 2 條驗證的字詞（split、from the same …）不涵蓋「each … gave a … and a …」，可能造成設計誤判。規則照凍結不改。
+
+**實作與預期修改的既有測試：** 同 Log 355（其實作清單與測試修改照列）。另外：
+- `tests/test_study_purpose_call.py` 新增 5 個 b′ 測試。
+- 工作目錄全套件預期為 3253 passed。
+
+**判定（同 Log 355；任一不成立就撤回 b′）：**
+- 主要判定（離線，第六組 32 句 × 3 = 96 次，`b_eval.py`，基準為線上 witness）：
+  - **W1**：設計召回 b′ − 基準 ≥ 25 個百分點；主要結論 ≥ 15 個百分點。
+  - **W2**：設計誤判 ≤ 3；結論誤判 ≤ 3；causal／prediction 誤判 ＝ 0。
+- **O1**：全套件通過；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O3**：3,592 個 traced 決策重播，回覆改變 0（沒有 state 時走 witness）。
+- **O6**：Log 343 的 156 個 live 決策重播，同上，改變 0。
+- live（主要判定成立才跑）：
+  - baseline 是本宣告 commit 的 worktree，候選是 b′ 的實作 commit；第六組 32 句 × 3，交錯同時跑。
+  - E1、E2、H1、H2、H3 同 Log 355。
+
+成本估計：離線約 US$0.01；live 約 US$0.4。
