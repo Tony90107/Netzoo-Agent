@@ -1,0 +1,808 @@
+{
+  "authored_by": "subagent, isolated from the verification rules",
+  "items": [
+    {
+      "id": "M1-a",
+      "family": "M1",
+      "data_sentence": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available.",
+      "purpose_sentence": "Does the race shift regulatory wiring of inflammatory genes across the cohort as a whole?",
+      "prompt": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available. Does the race shift regulatory wiring of inflammatory genes across the cohort as a whole?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER",
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Recognises that both draws come from the same 18 runners, so the pre- vs post-race contrast is analysed as paired (runner as the pairing unit).",
+        "Says the cohort-level test of the shift is a statistical step outside the suite, applied to the networks or edge weights."
+      ],
+      "red_flags": [
+        "Treating pre- and post-race samples as two independent groups.",
+        "Claiming a registered tool itself tests whether the shift is significant.",
+        "Answering with a per-runner ranking instead of a cohort-level change."
+      ]
+    },
+    {
+      "id": "M1-b",
+      "family": "M1",
+      "data_sentence": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available.",
+      "purpose_sentence": "For a first pass, just give me one consensus network built from all 36 libraries.",
+      "prompt": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available. For a first pass, just give me one consensus network built from all 36 libraries.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one aggregate TF-gene network from all 36 samples with the stated motif and PPI priors.",
+        "Notes that the pre/post-race pairing is not needed for this first-pass request."
+      ],
+      "red_flags": [
+        "Adding a pre- vs post-race comparison or test the user did not ask for.",
+        "Proposing miRNA-based tools although no miRNA data were stated."
+      ]
+    },
+    {
+      "id": "M1-c",
+      "family": "M1",
+      "data_sentence": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available.",
+      "purpose_sentence": "I'd like to rank the runners by how strongly their own networks were perturbed.",
+      "prompt": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available. I'd like to rank the runners by how strongly their own networks were perturbed.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds a network for every sample (each runner at each time point) and scores each runner's own pre-to-post network change.",
+        "Ranks runners by that within-runner change."
+      ],
+      "red_flags": [
+        "Only one aggregate network per time point, which cannot rank individual runners.",
+        "Scoring runners against other runners' samples instead of against their own baseline."
+      ]
+    },
+    {
+      "id": "M1-d",
+      "family": "M1",
+      "data_sentence": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available.",
+      "purpose_sentence": "Which transcription factors gain or lose the most target genes after the run?",
+      "prompt": "Whole-blood RNA-seq from 18 amateur marathoners, drawn the morning before the race and 24 h after; TF motif and PPI priors available. Which transcription factors gain or lose the most target genes after the run?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting (e.g., out-degree or differential targeting) between pre- and post-race networks and ranks TFs.",
+        "Keeps the pairing by runner when judging which TFs change."
+      ],
+      "red_flags": [
+        "Treating the two time points as unrelated groups.",
+        "Adding miRNAs as regulators without stated miRNA data.",
+        "Ranking runners instead of transcription factors."
+      ]
+    },
+    {
+      "id": "M2-a",
+      "family": "M2",
+      "data_sentence": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network.",
+      "purpose_sentence": "Which TFs are most differentially targeting synaptic genes in the mutant brains?",
+      "prompt": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network. Which TFs are most differentially targeting synaptic genes in the mutant brains?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds genotype-specific (or per-sample) TF-gene networks with the stated priors and compares TF targeting between mutant and wild-type mice.",
+        "Ranks TFs by differential targeting of synaptic genes."
+      ],
+      "red_flags": [
+        "Treating mutants and wild-type littermates as repeated measures of the same animals.",
+        "Ranking individual mice instead of TFs."
+      ]
+    },
+    {
+      "id": "M2-b",
+      "family": "M2",
+      "data_sentence": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network.",
+      "purpose_sentence": "We hope to demonstrate that losing Shank3 drives the down-regulation of synaptic genes through a specific TF.",
+      "prompt": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network. We hope to demonstrate that losing Shank3 drives the down-regulation of synaptic genes through a specific TF.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "OTTER"
+      ],
+      "must_include": [
+        "States that network inference shows association; showing that a specific TF mediates the Shank3 effect needs experimental follow-up outside the suite (e.g., perturbing that TF).",
+        "Networks can nominate candidate mediating TFs for that follow-up."
+      ],
+      "red_flags": [
+        "Claiming a network difference proves that Shank3 loss acts through a TF.",
+        "Saying a registered tool establishes causality."
+      ]
+    },
+    {
+      "id": "M2-c",
+      "family": "M2",
+      "data_sentence": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network.",
+      "purpose_sentence": "Mostly we want gene modules that are co-regulated across all 24 brains.",
+      "prompt": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network. Mostly we want gene modules that are co-regulated across all 24 brains.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "Builds an aggregate TF-gene network from all 24 brains and detects communities/modules in it.",
+        "No genotype comparison is required for this request."
+      ],
+      "red_flags": [
+        "Adding a mutant-vs-wild-type test the user did not request.",
+        "Running community detection without first building the bipartite TF-gene network it needs."
+      ]
+    },
+    {
+      "id": "M2-d",
+      "family": "M2",
+      "data_sentence": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network.",
+      "purpose_sentence": "Aim 1 asks whether network topology in the mutant cortex departs from wild type.",
+      "prompt": "Bulk RNA-seq of prefrontal cortex from 12 Shank3-mutant mice and 12 wild-type littermates, plus a mouse TF-motif prior and a protein-interaction network. Aim 1 asks whether network topology in the mutant cortex departs from wild type.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Treats mutant and wild-type mice as two independent groups of different animals.",
+        "Builds networks per genotype or per sample, then tests the topology difference with a statistical step outside the suite."
+      ],
+      "red_flags": [
+        "Describing the design as paired or repeated measures.",
+        "Claiming a registered tool performs the between-group test."
+      ]
+    },
+    {
+      "id": "M3-a",
+      "family": "M3",
+      "data_sentence": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet.",
+      "purpose_sentence": "Can the tumours be grouped into regulatory subtypes from their sample-level networks?",
+      "prompt": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet. Can the tumours be grouped into regulatory subtypes from their sample-level networks?",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-sample co-expression networks from the expression data and clusters tumours on them (clustering itself outside the suite).",
+        "No comparison groups are stated; subtypes are to be discovered."
+      ],
+      "red_flags": [
+        "Proposing mutation-based subtyping although no mutation data were stated.",
+        "Recommending motif/PPI-based tools as if those priors were available."
+      ]
+    },
+    {
+      "id": "M3-b",
+      "family": "M3",
+      "data_sentence": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet.",
+      "purpose_sentence": "Which tumours carry co-expression patterns most unlike the rest of the cohort?",
+      "prompt": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet. Which tumours carry co-expression patterns most unlike the rest of the cohort?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds a co-expression network for each tumour and scores how far each departs from the cohort.",
+        "Reports the most atypical tumours."
+      ],
+      "red_flags": [
+        "Only one aggregate network for all 310 tumours.",
+        "Inventing a comparison group (e.g., normal tissue) that was not stated."
+      ]
+    },
+    {
+      "id": "M3-c",
+      "family": "M3",
+      "data_sentence": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet.",
+      "purpose_sentence": "Down the line we'd like to forecast platinum resistance in newly diagnosed women from their tumour networks.",
+      "prompt": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet. Down the line we'd like to forecast platinum resistance in newly diagnosed women from their tumour networks.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Says no registered tool builds or validates a predictive model; per-tumour networks could supply features to an external classifier.",
+        "Notes that platinum-response labels and validation on independent patients are needed."
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts platinum resistance.",
+        "Ignoring that no outcome labels were stated."
+      ]
+    },
+    {
+      "id": "M3-d",
+      "family": "M3",
+      "data_sentence": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet.",
+      "purpose_sentence": "The real question is whether PAX8 is what drives the proliferative program in these tumours.",
+      "prompt": "We have microarray profiles for 310 high-grade serous ovarian tumours from one hospital biobank, nothing else yet. The real question is whether PAX8 is what drives the proliferative program in these tumours.",
+      "comparison_design": "none",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "States that no registered tool establishes causality and that observational tumour expression alone cannot show PAX8 drives proliferation.",
+        "Network analysis can at most show association; a causal test (e.g., PAX8 knockdown) lies outside the suite."
+      ],
+      "red_flags": [
+        "Presenting a PAX8-centred network as evidence that PAX8 drives the program.",
+        "Using motif-based TF-gene tools as if a motif prior had been stated."
+      ]
+    },
+    {
+      "id": "M4-a",
+      "family": "M4",
+      "data_sentence": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Who shows the most dramatic rewiring between the primary and the metastasis?",
+      "prompt": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors. Who shows the most dramatic rewiring between the primary and the metastasis?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds a network per sample (each patient's primary and metastasis) and computes each patient's within-patient primary-to-metastasis change.",
+        "Ranks patients by that change."
+      ],
+      "red_flags": [
+        "Only aggregate primary and metastasis networks, which cannot rank patients.",
+        "Comparing primaries and metastases as unrelated groups."
+      ]
+    },
+    {
+      "id": "M4-b",
+      "family": "M4",
+      "data_sentence": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We'd like the TFs and miRNAs whose targeting shifts most on the way to the liver.",
+      "prompt": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors. We'd like the TFs and miRNAs whose targeting shifts most on the way to the liver.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Uses the stated small-RNA data and miRNA-target prior so miRNAs are regulators alongside TFs.",
+        "Compares regulator targeting between primaries and metastases while keeping the patient pairing."
+      ],
+      "red_flags": [
+        "Dropping the miRNAs (a TF-only network).",
+        "Treating the 44 samples as two independent groups."
+      ]
+    },
+    {
+      "id": "M4-c",
+      "family": "M4",
+      "data_sentence": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Could a primary-tumour network signature predict metastatic spread in patients we haven't seen yet?",
+      "prompt": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors. Could a primary-tumour network signature predict metastatic spread in patients we haven't seen yet?",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Says no registered tool builds a predictive model; per-sample networks could feed an external classifier validated on new patients.",
+        "Notes that all 22 patients already have liver metastases, so the cohort has no non-metastatic cases to learn from."
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts metastatic spread.",
+        "Promising a predictor from this cohort without addressing the missing non-metastatic class."
+      ]
+    },
+    {
+      "id": "M4-d",
+      "family": "M4",
+      "data_sentence": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Mainly we need a description of the regulatory landscape across these 44 samples.",
+      "prompt": "Matched primary colorectal tumours and liver metastases from 22 patients, with mRNA and small-RNA sequencing plus TF motif, PPI and miRNA-target priors. Mainly we need a description of the regulatory landscape across these 44 samples.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "Builds an aggregate regulatory network describing the samples, preferably with miRNAs since miRNA data are stated.",
+        "No primary-vs-metastasis test is required for this descriptive request."
+      ],
+      "red_flags": [
+        "Adding a paired comparison or statistical test the user did not ask for.",
+        "Treating the request as causal or predictive."
+      ]
+    },
+    {
+      "id": "M5-a",
+      "family": "M5",
+      "data_sentence": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose).",
+      "purpose_sentence": "Our goal is to prove that cisplatin itself, not weight loss, causes the breakdown of tubular gene coordination.",
+      "prompt": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose). Our goal is to prove that cisplatin itself, not weight loss, causes the breakdown of tubular gene coordination.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "States that no registered tool establishes causality; co-expression results describe associations with dose.",
+        "Separating cisplatin from weight loss needs design or covariate adjustment (e.g., body weight as a covariate) and causal reasoning outside the suite."
+      ],
+      "red_flags": [
+        "Claiming the co-expression analysis proves cisplatin causes the loss of coordination.",
+        "Recommending motif/PPI-based tools although no priors were stated."
+      ]
+    },
+    {
+      "id": "M5-b",
+      "family": "M5",
+      "data_sentence": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose).",
+      "purpose_sentence": "Is there a dose-dependent loss of co-expression among proximal tubule genes?",
+      "prompt": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose). Is there a dose-dependent loss of co-expression among proximal tubule genes?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Treats the four dose groups as independent groups of different rats, with dose as an ordered covariate.",
+        "A dose-trend test on co-expression is a statistical step outside the suite."
+      ],
+      "red_flags": [
+        "Treating dose groups as repeated measurements of the same animals.",
+        "Recommending TF-gene tools that need motif/PPI priors not stated."
+      ]
+    },
+    {
+      "id": "M5-c",
+      "family": "M5",
+      "data_sentence": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose).",
+      "purpose_sentence": "Right now I only want a co-expression network for each animal that we can explore later.",
+      "prompt": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose). Right now I only want a co-expression network for each animal that we can explore later.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds one co-expression network per rat (24 networks) from expression alone.",
+        "No dose comparison or test is needed for this request."
+      ],
+      "red_flags": [
+        "Adding a dose-group comparison the user did not ask for.",
+        "Ranking animals by how much they change, which was not asked."
+      ]
+    },
+    {
+      "id": "M5-d",
+      "family": "M5",
+      "data_sentence": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose).",
+      "purpose_sentence": "Ultimately we want a signature that predicts kidney injury in rats dosed with compounds we have not tested.",
+      "prompt": "Kidney cortex RNA-seq from 24 male rats dosed with saline or 1, 3 or 6 mg/kg cisplatin (six per dose). Ultimately we want a signature that predicts kidney injury in rats dosed with compounds we have not tested.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Says no registered tool builds or validates a classifier; per-animal networks could supply features to an external model.",
+        "Validation must use compounds and animals outside this dataset; one compound across doses is a narrow training set."
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts kidney injury for new compounds.",
+        "Treating within-dataset fit as prediction for untested compounds."
+      ]
+    },
+    {
+      "id": "M6-a",
+      "family": "M6",
+      "data_sentence": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready.",
+      "purpose_sentence": "Rank transcription factors by how much their regulatory activity moves with IL-22 exposure.",
+      "prompt": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready. Rank transcription factors by how much their regulatory activity moves with IL-22 exposure.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "Estimates TF activity or targeting in IL-22 and vehicle wells and ranks TFs by the change.",
+        "Pairs each IL-22 well with the vehicle well from the same donor."
+      ],
+      "red_flags": [
+        "Treating IL-22 and vehicle wells as independent groups.",
+        "Ranking donors instead of TFs."
+      ]
+    },
+    {
+      "id": "M6-b",
+      "family": "M6",
+      "data_sentence": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready.",
+      "purpose_sentence": "Mostly I want to know which TFs regulate the mucin genes.",
+      "prompt": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready. Mostly I want to know which TFs regulate the mucin genes.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds a TF-gene network with the stated motif and PPI priors and reports the TFs targeting mucin genes.",
+        "No IL-22 comparison is required for this request."
+      ],
+      "red_flags": [
+        "Adding an IL-22-vs-vehicle test the user did not request.",
+        "Reading the request as asking which TFs change the most."
+      ]
+    },
+    {
+      "id": "M6-c",
+      "family": "M6",
+      "data_sentence": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready.",
+      "purpose_sentence": "On average, does IL-22 remodel the epithelial regulatory network?",
+      "prompt": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready. On average, does IL-22 remodel the epithelial regulatory network?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER",
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recognises each donor contributes an IL-22 and a vehicle well, so the average effect is assessed within donor (donor as block).",
+        "The significance test is a step outside the suite."
+      ],
+      "red_flags": [
+        "Treating the 20 wells as two independent groups.",
+        "Claiming a registered tool tests the IL-22 effect."
+      ]
+    },
+    {
+      "id": "M6-d",
+      "family": "M6",
+      "data_sentence": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready.",
+      "purpose_sentence": "Which donors' organoids show the strongest network response to IL-22?",
+      "prompt": "Colonic organoids from 10 donors were each split into an IL-22 well and a vehicle well for RNA-seq; human motif and PPI priors are ready. Which donors' organoids show the strongest network response to IL-22?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-well networks and computes each donor's IL-22-minus-vehicle network change.",
+        "Ranks donors by that within-donor response."
+      ],
+      "red_flags": [
+        "Only pooled IL-22 and vehicle networks, which cannot rank donors.",
+        "Ignoring the donor pairing."
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T1",
+      "data_sentence": "Blood RNA-seq from 20 Antarctic expedition members, drawn on arrival and again at midwinter, with human motif and PPI priors.",
+      "purpose_sentence": "We want to know whether immune gene regulation shifts across the crew between draws, not whether darkness causes it.",
+      "prompt": "Blood RNA-seq from 20 Antarctic expedition members, drawn on arrival and again at midwinter, with human motif and PPI priors. We want to know whether immune gene regulation shifts across the crew between draws, not whether darkness causes it.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER",
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Treats the arrival and midwinter draws as paired within crew member.",
+        "Answers the descriptive question of whether regulation shifts at crew level, with the test outside the suite."
+      ],
+      "red_flags": [
+        "Framing the request as establishing that darkness causes the change.",
+        "Treating the two draws as independent groups."
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T2",
+      "data_sentence": "Diagnostic tumour RNA-seq from 95 children with medulloblastoma; we have expression data only.",
+      "purpose_sentence": "This is not about predicting survival: we want to find which children's tumours have the most atypical co-expression networks.",
+      "prompt": "Diagnostic tumour RNA-seq from 95 children with medulloblastoma; we have expression data only. This is not about predicting survival: we want to find which children's tumours have the most atypical co-expression networks.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-tumour co-expression networks and identifies the children whose tumours are most atypical relative to the cohort."
+      ],
+      "red_flags": [
+        "Proposing survival or prognostic modelling, which the user ruled out.",
+        "Recommending motif/PPI-based tools when only expression data were stated."
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T3",
+      "data_sentence": "Achilles tendon RNA-seq from 26 surgical patients at two hospitals, which we have no interest in comparing; motif and PPI priors available.",
+      "purpose_sentence": "Please map the TF-gene regulatory network of human tendon.",
+      "prompt": "Achilles tendon RNA-seq from 26 surgical patients at two hospitals, which we have no interest in comparing; motif and PPI priors available. Please map the TF-gene regulatory network of human tendon.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one TF-gene network from all 26 tendon samples with the stated priors.",
+        "Treats hospital at most as a batch factor, not a comparison."
+      ],
+      "red_flags": [
+        "Proposing a between-hospital comparison, which the user excluded.",
+        "Labelling the design as two groups to compare."
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T4",
+      "data_sentence": "Paired RNA-seq and methylation arrays from the same 80 lung adenocarcinoma resections.",
+      "purpose_sentence": "We want a network that links CpG methylation to gene expression across the cohort.",
+      "prompt": "Paired RNA-seq and methylation arrays from the same 80 lung adenocarcinoma resections. We want a network that links CpG methylation to gene expression across the cohort.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "Recognises that 'paired' means two omics layers measured on the same tumours, not two conditions.",
+        "Builds one expression-methylation network across all 80 tumours."
+      ],
+      "red_flags": [
+        "Treating the data as a before/after or tumour-vs-normal paired design.",
+        "Proposing a paired statistical test."
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T5",
+      "data_sentence": "mRNA and small-RNA sequencing of 48 donor corneas, plus predicted TF binding sites, predicted miRNA targets and a protein-interaction network.",
+      "purpose_sentence": "Which genes is each TF or miRNA predicted to regulate in corneal tissue?",
+      "prompt": "mRNA and small-RNA sequencing of 48 donor corneas, plus predicted TF binding sites, predicted miRNA targets and a protein-interaction network. Which genes is each TF or miRNA predicted to regulate in corneal tissue?",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "must_include": [
+        "Builds one TF/miRNA-gene network across the 48 corneas from the expression data and the stated priors.",
+        "Treats 'predicted' as prior binding/target evidence, not as predicting outcomes for new samples."
+      ],
+      "red_flags": [
+        "Treating the request as building or validating a predictive model.",
+        "Dropping the miRNA data."
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T6",
+      "data_sentence": "Somatic mutation calls for 410 bladder cancers, with known driver genes flagged.",
+      "purpose_sentence": "We want to summarise each patient's mutational impact on pathways and subtype the cohort from that.",
+      "prompt": "Somatic mutation calls for 410 bladder cancers, with known driver genes flagged. We want to summarise each patient's mutational impact on pathways and subtype the cohort from that.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "SAMBAR"
+      ],
+      "must_include": [
+        "Computes pathway-level mutation scores per patient and subtypes patients from them.",
+        "Notes that no expression data are stated, so expression-based network tools do not apply."
+      ],
+      "red_flags": [
+        "Reading 'driver' or 'impact' as a request to establish causation.",
+        "Recommending expression-based network tools."
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T7",
+      "data_sentence": "From a longitudinal birth cohort, we have one cord-blood RNA-seq sample per newborn (n = 150), plus motif and PPI priors.",
+      "purpose_sentence": "Which infants' regulatory networks deviate furthest from the cohort as a whole?",
+      "prompt": "From a longitudinal birth cohort, we have one cord-blood RNA-seq sample per newborn (n = 150), plus motif and PPI priors. Which infants' regulatory networks deviate furthest from the cohort as a whole?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recognises there is one sample per newborn, so there are no repeated measures despite the longitudinal cohort.",
+        "Builds per-sample networks and ranks infants by deviation from the cohort."
+      ],
+      "red_flags": [
+        "Treating the data as longitudinal or paired.",
+        "Building only one aggregate network."
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T8",
+      "data_sentence": "Quadriceps biopsies from 15 inclusion-body myositis patients and 15 age- and sex-matched controls, profiled by RNA-seq; motif and PPI priors at hand.",
+      "purpose_sentence": "Which TFs are most rewired in myositis muscle?",
+      "prompt": "Quadriceps biopsies from 15 inclusion-body myositis patients and 15 age- and sex-matched controls, profiled by RNA-seq; motif and PPI priors at hand. Which TFs are most rewired in myositis muscle?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Treats patients and matched controls as two groups of different people (matching on age and sex does not make them the same individuals).",
+        "Compares TF targeting between myositis and control networks and ranks TFs."
+      ],
+      "red_flags": [
+        "Treating the design as paired samples from the same individuals.",
+        "Adding miRNAs as regulators without stated miRNA data."
+      ]
+    }
+  ]
+}

@@ -17764,3 +17764,82 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 分組逐組（S2）：設計 100%、83%、71%、83%；結論 90%、95%、80%、91%（第一到第四組）。
 
 **限制：** 提示與驗證規則都依這些資料調整，數字是上限估計；要看第五組新資料。
+
+## Log 355｜事前宣告：(b) 路線上線——研究目的由模型提出、確定性規則驗證，以第五組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`b7dbf44..595e245`，已完成），然後照建議做 (b)：
+- 獨立的新呼叫。
+- witness 只在呼叫失敗或未設定時作為備援。
+- 第五組保留集照原稿；判定照建議。
+本條目寫於實作 commit 與任何第五組保留集上的呼叫之前。
+- 基準為 HEAD `c0ffae9`：線上是 v1＋PN＋CN，沒有研究目的呼叫。實作在工作目錄、尚未 commit。
+- 全套件（基準）3234 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `b_frozen/`（`c0ffae9`，早於打開第五組保留集）：
+  - `study_purpose_system.txt`（`e2af95adf863`）：提示，與 Log 354 原型逐字相同。
+  - `study_purpose.py`（`cb2c1fcdde6e`）：契約。
+  - `study_purpose_verify.py`（`495f7e19b061`）：驗證。在 Log 354 的 387 筆提案上與原型 S2 差異 0 列。
+- `heldout5/heldout.json`（`5761d10f7c7d`）：隔離 subagent 撰寫，使用者審過、照原稿，共 32 句：
+  - 6 家族 × 4：M1、M4、M6 配對；M2、M5 分組；M3 無。
+  - 3 句否定陷阱（T1–T3）、5 句精確度陷阱（T4–T8）。
+
+**審稿時讀到的一點（公開，沒有執行任何東西）：**
+- T4「Paired RNA-seq and methylation arrays from the same 80 lung adenocarcinoma resections」標註無設計。
+- 凍結的驗證把「same」當作時間或同一人的線索，使「兩種資料型態」的否決不適用，因此可能通過配對驗證。規則照凍結不改。
+
+**實作（未 commit 的工作目錄）：**
+- `contracts/study_purpose.py`（契約）、`routing/study_purpose_verify.py`（驗證）。
+- `llm.build_study_purpose_messages`／`STUDY_PURPOSE_SYSTEM`（提示）。
+- `graph/study_purpose_call.py`：一次 strict 呼叫，角色 `study_purpose`，模型為 semantic 模型（gpt-4o-mini），經 budget 預檢。
+  - 失敗、預算不足或 `context.study_purpose_llm` 未設定時，改用 witness。
+  - 事件：`routing.study_purpose_detected`（含原始提案與被拒部分）、`routing.study_purpose_failed`。
+- `graph/router_invocation.invoke_router`：
+  - 新請求在路由後呼叫一次，結果寫進 state 的 `study_purpose`（新增於 `AgentState`）。
+  - 延續、方法比較、STRING 延續等後續回合寫 `None`，回覆改讀該回合自己的字詞。
+  - 原本只記錄 witness 的 `_record_study_purpose` 移入呼叫模組。
+- `graph/factory.py`：`study_purpose_llm=semantic_llm`。路由評估工具（`evaluate_routing`）自行建 context，不呼叫，指紋不受影響。
+- 回覆層與卡片改讀 state（`purpose_from_state`）。
+  - state 中有模型結果時，以它為準：模型判定「沒有」也不會再用 witness 補回。
+  - 沒有 state 時，用 witness。
+- `practical_notes` 的 LIONESS 執行次數仍用 witness 的設計，不改。
+
+**預期修改的既有測試**（都是多了一次 `study_purpose` 呼叫，或事件移位）：
+- `tests/test_graph_tracing.py`：
+  - 6 個測試的 `router.calls` 各加 1。
+  - 4 個測試的角色清單最後加 `"study_purpose"`。
+- `tests/test_semantic_claims.py::test_default_graph_skips_review_but_keeps_guidance_out_of_executor`：結構呼叫清單加 `"StudyPurposeProposal"`。
+- `tests/test_agent_gate.py::…test_graph_runs_plan_execute_evaluate_loop`：呼叫數 3 → 4，角色清單加 `"study_purpose"`。
+- `tests/test_study_purpose.py`：Log 342 的事件測試改寫為「沒有呼叫時讀字詞並記錄」。
+- 新增 `tests/test_study_purpose_call.py`。
+- 工作目錄全套件為 3248 passed／35 skipped。
+
+**判定（任一不成立就撤回 (b)，回到 v1＋PN＋CN）：**
+
+主要判定（離線；呼叫實際模型，每句 3 次，共 96 次；以實作模組評分 `b_eval.py`；基準為線上 witness）：
+- **W1 召回**（次數加總）：
+  - 設計：(b) − 基準 ≥ 25 個百分點。
+  - 主要結論：(b) − 基準 ≥ 15 個百分點。
+- **W2 精確度**（96 次中）：
+  - 設計誤判 ≤ 3。
+  - 結論誤判 ≤ 3。
+  - 誤判出 causal／prediction（標註不是）＝ 0。
+
+其他離線判定：
+- **O1**：全套件通過；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O3**：3,592 個 traced 決策重播（state 中沒有研究目的，等於 witness 路徑），回覆改變 0。
+- **O6**：Log 343 的 156 個 live 決策重播，同上，回覆改變 0。
+
+live（主要判定成立才跑；gpt-4o-mini，預先授權）：
+- baseline 是宣告 commit 的 worktree（v1＋PN＋CN），候選是 (b) 的實作 commit，交錯同時跑。第五組 32 句 × 3。
+- 研究目的取自候選臂各 session 的 `routing.study_purpose_detected` 事件。
+- 有效性：兩臂 provider 錯誤皆為 0，否則只重跑失敗的 session。
+- **E1**：同 Log 342；合格與否用該 trial 的研究目的判定。
+- **E2**：標註為 causal／prediction 的句子，候選臂缺口句出現 ≥ 2/3 次。
+- **H1**：標註不是 causal／prediction 的句子，候選臂缺口句＝0。
+- **H2**：同 Log 342，重播時帶入該 trial 的研究目的。
+- **H3**：候選臂比 baseline 臂只多一個呼叫角色 `study_purpose`，且每個新請求恰好一次。
+- 只報告：平均呼叫數與延遲、兩臂目的段落與缺口句的次數。
+
+成本估計：離線 96 次呼叫約 US$0.01；live 192 個 session 約 US$0.4。
