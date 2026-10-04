@@ -108,14 +108,17 @@ def test_every_declared_cell_names_a_workflow_a_claim_and_a_design():
         assert action in OUTPUT_CAPABILITIES, action
         assert claim in claims - set(UNSUPPORTED_CLAIMS), claim
         assert design in {"paired", "groups", "*"}, design
-        assert cell.level in {"direct", "with_step"} and cell.text
+        assert cell.level in {"direct", "with_step", "cannot"} and cell.text
+        # Log 365: a "cannot" names the per-sample workflows for the same data, and only those.
+        assert bool(cell.instead) == (cell.level == "cannot"), (action, claim, design)
+        assert all(other in OUTPUT_CAPABILITIES for other in cell.instead)
 
 
 def test_only_the_global_table_states_a_gap():
     assert set(UNSUPPORTED_CLAIMS) == {"causal", "prediction"}
-    # v1 declares no multi-omic or community workflow (proposal, section 3.2).
-    assert not any(action in {"run_dragon", "run_lioness_dragon", "run_condor", "run_sambar"}
-                   for action, _, _ in CLAIM_SUPPORT)
+    # v1 declared no multi-omic or community workflow (proposal, section 3.2); Log 365
+    # restores Log 363's reviewed multi-omic cells. Community workflows stay undeclared.
+    assert not any(action in {"run_condor", "run_sambar"} for action, _, _ in CLAIM_SUPPORT)
 
 
 # -- replies (recorded Log 341 decisions) ------------------------------------------
