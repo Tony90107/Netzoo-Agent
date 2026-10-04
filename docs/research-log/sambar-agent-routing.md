@@ -17452,3 +17452,24 @@ live（gpt-4o-mini，預先授權）：
 **公開：**
 - PN 是看過第二組保留集 T2 之後設計的，判定也全在已看過的資料上。
 - 它的召回代價（真主張被誤當成否定）要等之後若做 v3、用第三組保留集才能在新資料上量到。
+
+## Log 347｜結果：PN——全部判定成立，保留
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 346 執行，實作 commit `b14bee1`。live 照宣告不跑。
+證據：`docs/research-log/purpose-contract-2026-10-04/check_pn.py`／`check_pn.txt`；測試在 `tests/test_study_purpose.py`（新增 14 個）。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| N1 | T2 不再有任何結論。7 句後置否定探針都沒有結論；7 句同時含 not 的真主張探針結論不變，另加 1 句設計不受影響 | 是 |
+| N2 | Log 340 開發集、第一組保留集：改變 0。第二組保留集只有 T2 改變（prediction → 無）。結論命中 v1／PN：6／6、10／10、11／11 | 是 |
+| N3 | 310 個真實請求改變 0；`audit_witnesses.py` 輸出與 `audit_witnesses.txt` 相同 | 是 |
+| O1 | 全套件 3225 passed／35 skipped（基準 3211，新增 14）；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 prompt hash `c820364a1123`、policy hash `b0570ff267af` 不變 | 是 |
+| O3 | 3,592 個 traced 決策：命中 0、改變 0 | 是 |
+| O6 | Log 343 的 156 個 live 決策：PN 與 v1 的回覆相同，差異 0 | 是 |
+
+**決定：** PN 保留。witness 現為 v1＋PN。
+
+**仍未處理（Log 345 列出）：**
+- 線上 v1 在第二組保留集上的三個設計誤判：T3「before and after normalization」、T6 單獨的「healthy volunteers」、G2-a 同一人的 tumor／non-tumor。
+- 設計誤判本身不產生段落，但 T3 型遇到以個體計數的請求時會改變 LIONESS 執行次數的說明。
+- 這些與 v2 的召回擴充一起留給 v3，需要第三組保留集。
