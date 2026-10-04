@@ -35,6 +35,7 @@ from .outside_steps import _REPLY_KINDS, _asks
 
 __all__ = [
     "CLAIM_LABELS",
+    "purpose_from_state",
     "claim_cells",
     "gap_claims",
     "question_claim",
@@ -77,6 +78,20 @@ def _listed(decision) -> list[str]:
         *([advice.action] if advice is not None else []),
         *decision.recommended_actions, *decision.matched_actions, *decision.hypothesis_actions,
     ]))
+
+
+def purpose_from_state(state, task: str) -> StudyPurpose:
+    """This turn's verified study purpose (Log 355), or the word witnesses' reading.
+
+    The study-purpose call writes it to state after routing; a state without it
+    (a follow-up turn, a context without the call, an older session) falls back
+    to the request's own words as read since Log 342.
+    """
+    entry = (state or {}).get("study_purpose")
+    if not entry:
+        return study_purpose(task)
+    return StudyPurpose(entry.get("design"), entry.get("design_quote") or "",
+                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()))
 
 
 def gap_claims(purpose: StudyPurpose) -> list[tuple[str, str]]:
@@ -181,7 +196,7 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
     kind = result.get("reply_kind")
     if kind not in _REPLY_KINDS | {"unresolved"}:
         return result
-    purpose = study_purpose(latest_user_task(state["messages"]))
+    purpose = purpose_from_state(state, latest_user_task(state["messages"]))
     if purpose.design is None and not purpose.claims:
         return result
     text = str(result["messages"][-1].content)

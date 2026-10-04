@@ -36,6 +36,8 @@ class AgentState(TypedDict):
     method_comparison: NotRequired[dict | None]
     # Which deterministic renderer wrote the reply; display metadata only.
     reply_kind: NotRequired[str]
+    # Log 355: the verified study purpose of this turn's request (design, claims, source).
+    study_purpose: NotRequired[dict | None]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""
