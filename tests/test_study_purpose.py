@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import get_args
 
 import pytest
@@ -190,15 +191,17 @@ def test_the_paired_count_never_counts_individuals_as_samples_without_a_number_e
     assert "(for your 40 patients, 41 PANDA runs)" in unpaired
 
 
-def test_the_trace_event_reads_the_request_only(monkeypatch):
+def test_without_the_call_the_words_are_read_and_traced():
+    # Log 355: the witness event moved into the study-purpose call's fallback.
+    from netzoo_agent_core.graph.study_purpose_call import invoke_study_purpose
+    from netzoo_agent_core.contracts import LLMUsage
+
     events = []
-    monkeypatch.setattr(router_invocation, "record_event",
-                        lambda context, state, name, node, payload: events.append((name, payload)))
-    router_invocation._record_study_purpose(None, {}, PROMPTS["A4"])
-    router_invocation._record_study_purpose(None, {}, PROMPTS["B2"].replace("30 from", "some from"))
-    assert events[0][0] == "routing.study_purpose_detected"
-    assert events[0][1]["design"] == "paired" and events[0][1]["claims"][0]["claim"] == "causal"
-    assert len(events) == 2 and events[1][1]["claims"] == []
+    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, name, node, data: events.append((name, data))))
+    entry, usage, _ = invoke_study_purpose(context, {}, PROMPTS["A4"], LLMUsage(), [])
+    assert entry["source"] == "witness" and entry["design"] == "paired" and entry["claims"][0][0] == "causal"
+    assert events[0][0] == "routing.study_purpose_detected" and events[0][1]["reason"] == "not_configured"
+    assert usage.calls == []
 
 
 # -- PN: a negation after a conclusion witness (Log 346) ------------------------------
