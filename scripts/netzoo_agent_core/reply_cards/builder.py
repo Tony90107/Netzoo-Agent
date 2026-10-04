@@ -505,12 +505,7 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
 
 
 def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str, state=None) -> ReplyCard:
-    """The stated question as a point, and conclusions no workflow supports as rows (Log 342).
-
-    Log 365: listed workflows that cannot show the question get a point naming
-    the per-sample workflows that can; when none of the listed ones can, those
-    become the card's next steps (planning one still asks before anything runs).
-    """
+    """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
     from workflow_registry import UNSUPPORTED_CLAIMS
 
     from ..interpretation.study_purpose_notes import (
@@ -531,31 +526,15 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
                         resolution="none", reason=clip(UNSUPPORTED_CLAIMS[claim][3], 260))
             for claim, _ in gaps]
     points = list(card.points)
-    every = claim_cells(decision, purpose)
-    cells = [(action, cell) for action, cell in every if cell.level != "cannot"]
-    cannot = [(action, cell) for action, cell in every if cell.level == "cannot"]
+    cells = claim_cells(decision, purpose)
     question = question_claim(purpose)
     if cells and question and len(points) < 6:
         names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
         points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
                            "give toward it and the step after each.", 300))
-    steps = list(card.next_steps)
-    if cannot and question and len(points) < 6:
-        names = join_names([workflow_name(policy, action) for action, _ in cannot], "and")
-        instead = list(dict.fromkeys(action for _, cell in cannot for action in cell.instead))
-        one, alternatives = len(cannot) == 1, [workflow_name(policy, action) for action in instead]
-        points.append(clip(
-            f"{names} {'gives' if one else 'give'} one result for all the samples, so "
-            f"{'it' if one else 'they'} cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
-            f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
-        if not cells:
-            planned = {step.action for step in steps}
-            steps += [plan_step(policy, action) for action in instead
-                      if action in RUN_ACTIONS and action not in planned]
-    if not rows and points == card.points and steps == card.next_steps:
+    if not rows and points == card.points:
         return card
-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8],
-                                   "next_steps": steps})
+    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
 
 
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:

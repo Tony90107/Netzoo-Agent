@@ -17,11 +17,6 @@ decision:
   ``CLAIM_SUPPORT`` cell says what it gives toward it and the step after it,
   above the reply's question. A workflow without a cell says nothing: a
   missing declaration is never a gap (CC1, Logs 288-289);
-- a workflow whose declared cell is "cannot" (Log 365: one result for all
-  the samples, asked about individuals) says so after the others and names
-  the per-sample workflow that takes the same data; when no listed workflow
-  answers the question, that paragraph comes first, and a tie's lead says
-  which of them cannot show it;
 - a semantic fallback on a request stating such a conclusion is answered with
   the gap instead of "could not validate".
 
@@ -41,7 +36,6 @@ from .outside_steps import _REPLY_KINDS, _asks
 __all__ = [
     "CLAIM_LABELS",
     "purpose_from_state",
-    "cannot_cells",
     "claim_cells",
     "gap_claims",
     "question_claim",
@@ -124,11 +118,6 @@ def claim_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport
     return cells
 
 
-def cannot_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport]]:
-    """The listed workflows whose declared cell says they cannot answer the question (Log 365)."""
-    return [(action, cell) for action, cell in claim_cells(decision, purpose) if cell.level == "cannot"]
-
-
 def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
     paragraphs = []
     for claim, quote in gap_claims(purpose):
@@ -145,33 +134,11 @@ def _purpose_paragraph(cells, quote: str, user_data: list[str]) -> str:
     # Workflows whose cell says the same thing share one line (PANDA and PUMA).
     by_text: dict[str, list[str]] = {}
     for action, cell in cells:
-        if cell.level != "cannot":
-            by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
+        by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
     lines += [f"- {', '.join(names)} — {text}" for text, names in by_text.items()]
-    lines += _cannot_lines(cells)
     caveats = dict.fromkeys(caveat for _, cell in cells for caveat in cell.caveats)
     lines += [f"Note: {caveat}" for caveat in caveats]
     return "\n".join(lines)
-
-
-def _cannot_lines(cells) -> list[str]:
-    """Log 365: after the workflows that answer it, those that cannot, one line per reason."""
-    by_text: dict[str, list[str]] = {}
-    for action, cell in cells:
-        if cell.level == "cannot":
-            by_text.setdefault(cell.text, []).append(action)
-    lines = []
-    for text, actions in by_text.items():
-        one = len(actions) == 1
-        instead = list(dict.fromkeys(other for action, cell in cells if cell.text == text
-                                     and cell.level == "cannot" for other in cell.instead))
-        lines.append(
-            f"- {', '.join(f'**{_name(action)}**' for action in actions)} — {'does' if one else 'do'} not answer "
-            f"this: {'it gives' if one else 'each gives'} {text}, so when each individual gives one sample (per "
-            f"time point) there is no result for an individual. Per-sample "
-            f"{'workflow' if len(instead) == 1 else 'workflows'} for the same data: "
-            f"{', '.join(f'**{_name(action)}**' for action in instead)}.")
-    return lines
 
 
 def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
@@ -180,20 +147,6 @@ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
         if paragraph.startswith(lead):
             return (f"These fit the result you described, but none can {cannot}; to choose among them, "
                     f"tell me:{paragraph[len(lead):]}")
-    return paragraph
-
-
-def _join(names: list[str]) -> str:
-    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
-
-
-def _cannot_lead(paragraph: str, cannot: list[tuple[str, ClaimSupport]], claim: str) -> str:
-    """Log 365: a tie's lead no longer says all fit when some cannot show what is asked."""
-    names = _join([f"**{_name(action)}**" for action, _ in cannot])
-    for lead in _TIE_LEADS:
-        if paragraph.startswith(lead):
-            return (f"These fit the result you described, but {names} cannot show {CLAIM_LABELS[claim]}; "
-                    f"to choose, tell me:{paragraph[len(lead):]}")
     return paragraph
 
 
@@ -211,13 +164,7 @@ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
     paragraphs = text.split("\n\n")
     if gaps:
         paragraphs = [*gaps, *(_reworded_lead(part, purpose) for part in paragraphs)]
-    cannot = cannot_cells(decision, purpose) if purpose_block else []
-    if cannot and not gaps:
-        paragraphs = [_cannot_lead(part, cannot, question[0]) for part in paragraphs]
-    if cannot and len(cannot) == len(cells):
-        # No listed workflow answers the question: say so first, after any gap.
-        paragraphs = [*paragraphs[:len(gaps)], purpose_block, *paragraphs[len(gaps):]]
-    elif purpose_block:
+    if purpose_block:
         closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
         if closing is not None and closing > 1 and _asks(paragraphs[closing - 1]):
             paragraphs = [*paragraphs[:closing - 1], purpose_block, *paragraphs[closing - 1:]]
