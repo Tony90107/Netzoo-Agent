@@ -18319,3 +18319,75 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - (a″) 的行為不變。H2 在事前就寫成逐行的版本：拿掉推薦行、還原平手開頭後，整份回覆逐字相等，也不能重新排序。
 - 用新的、隔離撰寫的保留集評估。第九組的結果已經看過，不能再用來判定。
 - S1-b 的情形要先決定：COBRA 沒被推薦，只是因為它在配對設計下沒有宣告格子，不是因為它不適合（共變數可以放入個體）。這與階段 1「沒宣告 ≠ 不支持」的原則衝突。可選的做法：只有在其他候選有格子、但寫明較不適合時才推薦；或先替 COBRA 補上配對設計的格子。
+
+## Log 365｜事前宣告：對照表加入「不能回答」格子，研究目的開始檢查路由選出的工具，以第十組保留集評估
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 先 push（`eed283d..b138b82`，已完成），然後做「1 加 2」：對照表加入明確的「不能回答」，並讓研究目的檢查路由選出的工具。
+- 第十組保留集、新的說明文字、判定條文（含公開的 T1、T2 風險，不修改）都「照建議」。
+本條目寫於實作 commit 與任何第十組保留集上的 session 之前。
+- 基準為 HEAD `504c2de`：線上是 b‴（`fb45456`，驗證 `b4_frozen`）。
+- 工作目錄的差異即凍結的 `c_frozen.patch`（sha256 `c8ef59f35115`）。
+
+**為什麼做這個：**
+- Log 364 撤回 (a″) 時看到：「沒有宣告格子」被當成「不推薦」（S1-b 的 COBRA），違反「沒寫 ≠ 不支持」。
+- 研究目的到目前只影響回覆的說明，不檢查路由選出的工具。路由選了只給整個群體一個結果的工具，使用者卻問「哪些人變化最大」時，回覆不會指出。
+- 已看過的資料（第七到九組 live 候選臂，288 次）：這種情形出現 32 次。被點名的工具 32/32 都在標註的可接受範圍外。
+
+**內容（`FREEZE10.md`；只改回覆與卡片，不改決策欄位、模型呼叫或 prompt）：**
+- `ClaimSupport` 新增等級 `cannot` 與欄位 `instead`（同一份資料可用的逐樣本工具）。「不能回答」只來自明確宣告的格子，從方法的輸出寫成，絕不從「沒宣告」推論（CC1 的教訓不變）。
+- 五個宣告格子，全部是「個體變化」：
+  - PANDA、PUMA、OTTER：只給所有樣本合起來的一個網路。逐樣本：LIONESS-PANDA、LIONESS-PUMA、LIONESS-PANDA。
+  - COBRA：只給整個群體中與各共變數相關的共表現。逐樣本：LIONESS-COEXPRESSION、BONOBO。
+  - DRAGON：只給所有樣本合起來的一個雙層網路。逐樣本：LIONESS-DRAGON。
+  - 文字限定「每個人只有一個樣本（每個時間點）時」。每個人有很多樣本時，就不是這個情形。
+- 恢復 Log 363 使用者審過的四個多體學格子（DRAGON 兩組／配對的群體差異；LIONESS-DRAGON 的群體差異與個體變化）。
+- 回覆：
+  - 目的段落中，能回答的工具在前，不能回答的在後，同一理由合成一行：「- **X**, **Y** — do not answer this: each gives …, so when each individual gives one sample (per time point) there is no result for an individual. Per-sample workflows for the same data: …」。
+  - 列出的工具都不能回答時，這一段放在最前面（在缺口段落之後）。
+  - 平手開頭「These all fit; to choose, tell me:」改為「These fit the result you described, but X cannot show which individuals change or stand out; to choose, tell me:」（已有因果／預測缺口的開頭時不改）。
+- 卡片：
+  - 加一點，說明哪些工具不能回答、哪些逐樣本工具可以。
+  - 列出的工具都不能回答時，加入規劃逐樣本工具的下一步（規劃仍會先預覽、等使用者核准才執行），不再自動加入規劃那個不能回答的工具。
+
+**預期修改的既有測試：**
+- `tests/test_study_purpose.py::test_every_declared_cell_names_a_workflow_a_claim_and_a_design`：允許 `cannot`，且只有 `cannot` 有 `instead`。
+- `tests/test_study_purpose.py::test_only_the_global_table_states_a_gap`：只排除 CONDOR、SAMBAR（同 Log 363）。
+- `tests/test_study_purpose_call.py` 新增 5 個測試（用已看過的 live 決策）。
+
+**量測工具先自我測試（Log 364 的教訓）：**
+- `analyze_cannot.py selftest`：9 個合成情形全部判對。
+  - 通過：段落內加行、在最前面加新段落、宣告的平手開頭。
+  - 不通過：改一個字、刪一行、調換順序、未宣告的加行、因果缺口的開頭。
+
+**第十組保留集**（`heldout10/heldout.json`，`996e10595fd7`）：
+- 隔離 subagent 撰寫，在凍結之後才開始寫，沒讀任何專案檔案。
+- 共 32 句：6 家族 × 4（每家族：問個體、問群體、對照、另一題），加 8 句單獨題。
+- 資料：只有表現量 2 家族、表現量＋motif＋PPI 2 家族、miRNA 1 家族、兩種 omics 1 家族。
+- 單獨題：每個人有很多樣本的精確度陷阱 2 句（T1、T2）、排除個體的否定陷阱 2 句（T3、T4）、間接問個體 1 句、每人的調控者 1 句、預測 1 句、「each individual transcription factor」陷阱 1 句。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- T1（6 位捐贈者，每人約 40 個組織）、T2（3 人每週抽血一年）標註為：只給群體結果的工具，對每個人單獨跑也可以接受。
+  - 實作不讀每人的樣本數，只靠文字限定「when each individual gives one sample」。
+  - 若這兩句被讀成「個體變化」，而路由又列出 PANDA、OTTER 或 DRAGON，回覆仍會說它們「do not answer this」，C1 會記為錯誤，最多 6 次。
+  - 這是預先知道的風險，照凍結版本測，不改。
+- F2c 的可接受清單是空的（只有表現量卻問 TF 活性）。它是調控者問題，不會觸發「不能回答」，不影響判定。
+- F1b（「每人一個分數」）、F6b（「找出那些腫瘤」）、T5（「誰的網路最不像其他人」）測的是研究目的有沒有讀到，不是格子本身；讀不到只會少說明，不會說錯。
+
+**判定（任一不成立就撤回）：**
+- live：gpt-4o-mini，預先授權，只跑候選臂（實作 commit）。第十組 32 句 × 3 = 96 個 session。
+- 比較對象：同一批 session 在離線時把 Log 365 新增的格子移除後的回覆，因此差異只來自這次改動。
+- **C1 點名精確度**：出現「不能回答」的 trial 中，被點名的工具全部不在標註的 `acceptable_candidates` 內的比例 ≥ 90%。
+- **C2 對照句**：標註 claim none 的句子出現「不能回答」的次數 ＝ 0。
+- **C3 導向精確度**：列出的工具都不能回答、卡片改為規劃逐樣本工具的 trial 中，那些逐樣本工具都在 `acceptable_candidates` 內的比例 ≥ 90%。這種 trial 少於 3 次時只報告。
+- **H2 只加不改（逐行）**：每個 trial 的 live 回覆等於離線含改動的渲染；`lines_only_add`（已自我測試）全部通過。
+- **H3**：呼叫角色沒有超出第七到九組候選臂已有的角色。
+- **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 標註「個體變化」、且候選中有只給群體結果之工具的 trial 中，出現說明的比例。
+  - 與能回答的工具並列時，被提到的逐樣本工具不在可接受範圍內的次數。
+  - 有「不能回答」格子卻沒顯示的 trial 數（回覆種類不在目的段落的範圍內）。
+  - T1、T2 陷阱句的結果。
+
+成本估計：約 US$0.2。

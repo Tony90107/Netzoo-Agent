@@ -1,0 +1,791 @@
+{
+  "authored_by": "subagent, isolated from the reply rules",
+  "items": [
+    {
+      "id": "F1a",
+      "family": "F1",
+      "data_sentence": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later.",
+      "purpose_sentence": "Across the cohort as a whole, does liver co-expression differ between surgery and one year later?",
+      "prompt": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later. Across the cohort as a whole, does liver co-expression differ between surgery and one year later?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Answers at the cohort level (surgery vs one year later), not with a ranking of patients",
+        "Allows for the pairing, e.g. patient as a covariate in COBRA or a paired test across per-biopsy networks",
+        "Stays with expression-only workflows"
+      ],
+      "red_flags": [
+        "Claims per-biopsy networks cannot support a cohort-level comparison",
+        "Says a TF motif prior or PPI is required to answer",
+        "Turns the question into finding which patients changed most"
+      ]
+    },
+    {
+      "id": "F1b",
+      "family": "F1",
+      "data_sentence": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later.",
+      "purpose_sentence": "We'd like a per-person score of how far liver co-expression moved over the year, to set against their weight loss.",
+      "prompt": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later. We'd like a per-person score of how far liver co-expression moved over the year, to set against their weight loss.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recognises that a per-patient score is needed, so one co-expression network per biopsy (LIONESS-COEXPRESSION or BONOBO)",
+        "Scores each patient by the distance between their own two networks, then relates the scores to weight loss"
+      ],
+      "red_flags": [
+        "Offers COBRA or another cohort-level result, which yields no per-patient score",
+        "Requires motif or PPI priors that were not stated"
+      ]
+    },
+    {
+      "id": "F1c",
+      "family": "F1",
+      "data_sentence": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later.",
+      "purpose_sentence": "Which patients show the largest rewiring of liver gene co-expression between their two biopsies?",
+      "prompt": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later. Which patients show the largest rewiring of liver gene co-expression between their two biopsies?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recommends one co-expression network per biopsy (LIONESS-COEXPRESSION or BONOBO)",
+        "Compares each patient's two networks with each other to rank patients by change",
+        "Works from expression alone"
+      ],
+      "red_flags": [
+        "Offers COBRA or another single cohort-level result as the way to tell which patients changed",
+        "Recommends a motif/PPI-based workflow as if those priors were supplied",
+        "Pools the 44 biopsies as unrelated samples, ignoring the within-patient pairs"
+      ]
+    },
+    {
+      "id": "F1d",
+      "family": "F1",
+      "data_sentence": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later.",
+      "purpose_sentence": "For now we simply want to look at the co-expression structure of each biopsy, with no test in mind.",
+      "prompt": "We only have RNA-seq counts, nothing else, from liver biopsies of 22 patients taken during bariatric surgery and again one year later. For now we simply want to look at the co-expression structure of each biopsy, with no test in mind.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Offers per-biopsy co-expression networks (LIONESS-COEXPRESSION or BONOBO)",
+        "Does not add a test or claim the user did not ask for"
+      ],
+      "red_flags": [
+        "Makes a before/after test or a patient ranking the main deliverable",
+        "Warns that a workflow cannot answer a question the user never asked",
+        "Recommends a motif/PPI workflow"
+      ]
+    },
+    {
+      "id": "F2a",
+      "family": "F2",
+      "data_sentence": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive.",
+      "purpose_sentence": "We would mainly like to see the co-expression network of each line; no comparison is planned yet.",
+      "prompt": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive. We would mainly like to see the co-expression network of each line; no comparison is planned yet.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Offers one co-expression network per line (LIONESS-COEXPRESSION or BONOBO)",
+        "Does not add a tolerance-class comparison the user did not ask for"
+      ],
+      "red_flags": [
+        "Recommends TF motif/PPI workflows although only expression was described",
+        "Raises a 'cannot answer' caveat about a question the user did not ask"
+      ]
+    },
+    {
+      "id": "F2b",
+      "family": "F2",
+      "data_sentence": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive.",
+      "purpose_sentence": "Which individual lines have root co-expression that looks out of place for their tolerance class?",
+      "prompt": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive. Which individual lines have root co-expression that looks out of place for their tolerance class?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds one co-expression network per line (LIONESS-COEXPRESSION or BONOBO)",
+        "Compares each line's network with the rest of its tolerance class to flag misfits"
+      ],
+      "red_flags": [
+        "Offers COBRA or one network per class as the way to find individual lines",
+        "Recommends TF motif/PPI workflows although only expression was described"
+      ]
+    },
+    {
+      "id": "F2c",
+      "family": "F2",
+      "data_sentence": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive.",
+      "purpose_sentence": "Which transcription factors differ most in regulatory activity between the tolerant and the sensitive lines?",
+      "prompt": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive. Which transcription factors differ most in regulatory activity between the tolerant and the sensitive lines?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [],
+      "must_include": [
+        "Says expression alone gives co-expression, not transcription factor regulatory activity",
+        "Names the missing inputs (a wheat TF motif prior, ideally protein interactions) and what would answer once they are added (e.g. PANDA per class or GIRAFFE)"
+      ],
+      "red_flags": [
+        "Recommends a motif/PPI workflow as if the prior and interactions were already in hand",
+        "Presents co-expression of TF genes as their regulatory activity without a caveat"
+      ]
+    },
+    {
+      "id": "F2d",
+      "family": "F2",
+      "data_sentence": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive.",
+      "purpose_sentence": "As groups, do the tolerant and sensitive lines differ in their root co-expression under salt?",
+      "prompt": "We sequenced root-tip RNA from 40 bread wheat lines grown under salt stress, 20 classed as salt-tolerant and 20 as salt-sensitive. As groups, do the tolerant and sensitive lines differ in their root co-expression under salt?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Gives a group-level comparison of tolerant vs sensitive lines",
+        "Uses COBRA with tolerance class as a covariate, or per-line networks compared between classes"
+      ],
+      "red_flags": [
+        "Claims per-line networks cannot support a group comparison",
+        "Answers with a list of individual lines",
+        "Recommends TF motif/PPI workflows although only expression was described"
+      ]
+    },
+    {
+      "id": "F3a",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions.",
+      "purpose_sentence": "Which patients' tumours change their transcription factor regulation most between the two biopsies?",
+      "prompt": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions. Which patients' tumours change their transcription factor regulation most between the two biopsies?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Uses per-sample output for each biopsy (LIONESS-PANDA networks or GIRAFFE TF activity)",
+        "Compares each patient's two biopsies to rank patients by change",
+        "If PANDA or OTTER is mentioned, says it gives one network for the samples given and cannot rank patients"
+      ],
+      "red_flags": [
+        "Offers PANDA or OTTER alone as the answer to which patients changed",
+        "Proposes building an aggregate network per patient from only two biopsies"
+      ]
+    },
+    {
+      "id": "F3b",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions.",
+      "purpose_sentence": "For a first look we just want the transcription factor to gene network of the pre-treatment biopsies.",
+      "prompt": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions. For a first look we just want the transcription factor to gene network of the pre-treatment biopsies.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Offers one aggregate TF-to-gene network from the pre-treatment biopsies (e.g. PANDA or OTTER)",
+        "Does not add a comparison the user did not ask for"
+      ],
+      "red_flags": [
+        "Insists on per-sample networks or a pre/post test",
+        "Raises a 'cannot answer' caveat about a question the user did not ask"
+      ]
+    },
+    {
+      "id": "F3c",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions.",
+      "purpose_sentence": "Across the cohort, does tumour transcription factor regulation shift from before treatment to three weeks in?",
+      "prompt": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions. Across the cohort, does tumour transcription factor regulation shift from before treatment to three weeks in?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Answers at the cohort level: one network per time point compared, or per-sample networks or activities with a paired test",
+        "Treats an aggregate network per time point as able to answer the question"
+      ],
+      "red_flags": [
+        "Claims an aggregate network per time point cannot answer a cohort-level question",
+        "Turns it into a ranking of individual patients"
+      ]
+    },
+    {
+      "id": "F3d",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions.",
+      "purpose_sentence": "We're not after single patients; which transcription factors change most between the two time points across the cohort?",
+      "prompt": "We have RNA-seq of melanoma biopsies from 28 patients before and three weeks into anti-PD-1 therapy, plus a TF motif prior and protein interactions. We're not after single patients; which transcription factors change most between the two time points across the cohort?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Gives a cohort-level ranking of transcription factors between the two time points",
+        "Accepts an aggregate network per time point (or GIRAFFE activity with a paired test) without requiring per-patient output"
+      ],
+      "red_flags": [
+        "Insists on patient-level networks after the user ruled that out",
+        "Ranks transcription factors only by changes in their own mRNA"
+      ]
+    },
+    {
+      "id": "F4a",
+      "family": "F4",
+      "data_sentence": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions.",
+      "purpose_sentence": "Which transcription factors are most differently active in coeliac disease, beyond any change in their own expression?",
+      "prompt": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions. Which transcription factors are most differently active in coeliac disease, beyond any change in their own expression?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Compares TF activity or targeting between coeliac and control biopsies at the group level",
+        "Points to GIRAFFE activity or differential TF targeting from networks rather than TF mRNA levels"
+      ],
+      "red_flags": [
+        "Ranks transcription factors by differential expression of their own genes",
+        "Says only per-sample workflows can answer"
+      ]
+    },
+    {
+      "id": "F4b",
+      "family": "F4",
+      "data_sentence": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions.",
+      "purpose_sentence": "Is transcription factor regulation in the coeliac biopsies different overall from that in the controls?",
+      "prompt": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions. Is transcription factor regulation in the coeliac biopsies different overall from that in the controls?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Answers at the group level: one aggregate network per group compared, or per-sample networks tested between groups",
+        "Treats one PANDA or OTTER network per group as able to answer"
+      ],
+      "red_flags": [
+        "Claims aggregate networks cannot compare groups",
+        "Answers with individual patients"
+      ]
+    },
+    {
+      "id": "F4c",
+      "family": "F4",
+      "data_sentence": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions.",
+      "purpose_sentence": "Right now we only want a single regulatory network describing the coeliac biopsies; comparisons can come later.",
+      "prompt": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions. Right now we only want a single regulatory network describing the coeliac biopsies; comparisons can come later.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Offers one aggregate regulatory network of the coeliac biopsies (e.g. PANDA or OTTER)",
+        "Does not add a comparison now"
+      ],
+      "red_flags": [
+        "Builds the coeliac-vs-control comparison the user postponed",
+        "Insists on per-sample networks"
+      ]
+    },
+    {
+      "id": "F4d",
+      "family": "F4",
+      "data_sentence": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions.",
+      "purpose_sentence": "Which patients stand out most from the controls in how transcription factors regulate their duodenal genes?",
+      "prompt": "We have duodenal biopsy RNA-seq from 40 people with active coeliac disease and 30 controls, with a human TF motif prior and protein interactions. Which patients stand out most from the controls in how transcription factors regulate their duodenal genes?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Uses per-sample regulatory output (LIONESS-PANDA networks or GIRAFFE TF activity)",
+        "Scores each patient against the distribution in the controls"
+      ],
+      "red_flags": [
+        "Offers one PANDA or OTTER network per group as the answer to which patients stand out",
+        "Replaces TF regulation with expression-only co-expression"
+      ]
+    },
+    {
+      "id": "F5a",
+      "family": "F5",
+      "data_sentence": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded.",
+      "purpose_sentence": "Does combined miRNA and TF regulation differ between high-grade and lower-grade tumours as groups?",
+      "prompt": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded. Does combined miRNA and TF regulation differ between high-grade and lower-grade tumours as groups?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Group-level answer: one PUMA network per grade group compared, or per-tumour LIONESS-PUMA networks tested by grade",
+        "Keeps the miRNA layer"
+      ],
+      "red_flags": [
+        "Claims a network per grade group cannot answer a group question",
+        "Drops the miRNAs and uses a TF-only workflow"
+      ]
+    },
+    {
+      "id": "F5b",
+      "family": "F5",
+      "data_sentence": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded.",
+      "purpose_sentence": "Which tumours stand out from the rest in how miRNAs and transcription factors regulate their genes?",
+      "prompt": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded. Which tumours stand out from the rest in how miRNAs and transcription factors regulate their genes?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Recommends per-tumour networks that include miRNAs (LIONESS-PUMA)",
+        "Scores each tumour against the rest of the cohort"
+      ],
+      "red_flags": [
+        "Offers PUMA's single cohort network as the way to find standout tumours",
+        "Drops the miRNAs (LIONESS-PANDA or co-expression only)"
+      ]
+    },
+    {
+      "id": "F5c",
+      "family": "F5",
+      "data_sentence": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded.",
+      "purpose_sentence": "Which miRNAs vary most in their regulatory influence from one tumour to the next?",
+      "prompt": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded. Which miRNAs vary most in their regulatory influence from one tumour to the next?",
+      "comparison_design": "none",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Notes that tumour-to-tumour variation needs each tumour's own network; one aggregate network cannot show it",
+        "Recommends LIONESS-PUMA and ranks miRNAs by how much their targeting varies across tumours"
+      ],
+      "red_flags": [
+        "Recommends PUMA alone, which gives one network for all tumours",
+        "Ranks miRNAs by the variance of their own expression"
+      ]
+    },
+    {
+      "id": "F5d",
+      "family": "F5",
+      "data_sentence": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded.",
+      "purpose_sentence": "We would just like one network of how miRNAs and transcription factors regulate genes in these tumours.",
+      "prompt": "We have matched mRNA and miRNA sequencing from 130 primary prostate tumours, plus TF motif and miRNA-target priors and protein interactions; Gleason grade is recorded. We would just like one network of how miRNAs and transcription factors regulate genes in these tumours.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "must_include": [
+        "Recommends one aggregate network with miRNAs and TFs (PUMA)",
+        "Does not add a comparison or tumour ranking"
+      ],
+      "red_flags": [
+        "Adds a grade comparison or a tumour ranking",
+        "Uses a TF-only workflow and drops the miRNAs"
+      ]
+    },
+    {
+      "id": "F6a",
+      "family": "F6",
+      "data_sentence": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece.",
+      "purpose_sentence": "We just want a joint methylation-expression network of the tumour samples to explore.",
+      "prompt": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece. We just want a joint methylation-expression network of the tumour samples to explore.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "Recommends one joint methylation-expression network of the tumour samples (DRAGON)",
+        "Does not add a tumour-normal comparison"
+      ],
+      "red_flags": [
+        "Adds a tumour-vs-normal test or a patient ranking",
+        "Analyses the two layers separately instead of jointly"
+      ]
+    },
+    {
+      "id": "F6b",
+      "family": "F6",
+      "data_sentence": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece.",
+      "purpose_sentence": "Some tumours may have kept an almost normal methylation-expression coupling, and we would like to find those.",
+      "prompt": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece. Some tumours may have kept an almost normal methylation-expression coupling, and we would like to find those.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Recognises this asks about individual tumours, so per-sample two-layer networks (LIONESS-DRAGON)",
+        "Compares each tumour with its own patient's normal kidney or with the normal samples as a whole"
+      ],
+      "red_flags": [
+        "Answers with a single DRAGON tumour-vs-normal comparison",
+        "Drops methylation and uses expression-only per-sample networks"
+      ]
+    },
+    {
+      "id": "F6c",
+      "family": "F6",
+      "data_sentence": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece.",
+      "purpose_sentence": "Which patients show the biggest tumour-versus-normal change in how methylation and expression are linked?",
+      "prompt": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece. Which patients show the biggest tumour-versus-normal change in how methylation and expression are linked?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Recommends per-sample two-layer networks (LIONESS-DRAGON)",
+        "Compares each patient's tumour network with their own normal network"
+      ],
+      "red_flags": [
+        "Offers DRAGON's single network as the way to rank patients",
+        "Drops methylation and uses expression-only per-sample networks"
+      ]
+    },
+    {
+      "id": "F6d",
+      "family": "F6",
+      "data_sentence": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece.",
+      "purpose_sentence": "Overall, is the coupling between methylation and expression different in tumour compared with normal kidney?",
+      "prompt": "From 30 nephrectomy patients we profiled clear-cell renal tumour and adjacent normal kidney, each by RNA-seq and methylation arrays on the same tissue piece. Overall, is the coupling between methylation and expression different in tumour compared with normal kidney?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Answers at the cohort level: one DRAGON network per tissue type compared, or per-sample networks with a paired test",
+        "Treats a DRAGON network per tissue type as able to answer"
+      ],
+      "red_flags": [
+        "Claims a DRAGON network per tissue type cannot answer the question",
+        "Correlates methylation and expression gene by gene without a joint network"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T",
+      "data_sentence": "We have RNA-seq from six deceased organ donors, each contributing samples from about 40 different tissues, plus a human TF motif prior and protein interactions.",
+      "purpose_sentence": "How does each donor's gene regulatory network differ from those of the other donors?",
+      "prompt": "We have RNA-seq from six deceased organ donors, each contributing samples from about 40 different tissues, plus a human TF motif prior and protein interactions. How does each donor's gene regulatory network differ from those of the other donors?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Says each donor has enough samples (~40) to build that donor's own aggregate network, e.g. PANDA or OTTER run per donor",
+        "Notes that tissue differences dominate, so donors should be compared on matched tissues (per donor, or per tissue with LIONESS-PANDA)"
+      ],
+      "red_flags": [
+        "Claims aggregate workflows cannot give a per-donor answer",
+        "Pools all six donors into one network"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T",
+      "data_sentence": "Three adults with type 1 diabetes gave blood weekly for a year, and each draw has RNA-seq and proteomics of the same mononuclear cell sample.",
+      "purpose_sentence": "In what ways does each person's transcript-protein network differ from the other two people's?",
+      "prompt": "Three adults with type 1 diabetes gave blood weekly for a year, and each draw has RNA-seq and proteomics of the same mononuclear cell sample. In what ways does each person's transcript-protein network differ from the other two people's?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Says roughly 50 draws per person are enough to build one DRAGON network per person and compare the three",
+        "Notes that three people support description, not population-level inference"
+      ],
+      "red_flags": [
+        "Claims an aggregate workflow cannot answer a per-person question",
+        "Drops the proteomics layer"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T",
+      "data_sentence": "We have RNA-seq, and nothing else, from lesional skin of 36 atopic dermatitis patients biopsied before and after 16 weeks of an anti-IL-13 antibody.",
+      "purpose_sentence": "We don't care which patients responded; we want to know whether skin co-expression shifts across the cohort with treatment.",
+      "prompt": "We have RNA-seq, and nothing else, from lesional skin of 36 atopic dermatitis patients biopsied before and after 16 weeks of an anti-IL-13 antibody. We don't care which patients responded; we want to know whether skin co-expression shifts across the cohort with treatment.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Gives a cohort-level before/after comparison, not a list of responders",
+        "Uses expression-only workflows and allows for the pairing (patient covariate or paired test)"
+      ],
+      "red_flags": [
+        "Routes to identifying individual responders because 'which patients' appears",
+        "Recommends motif/PPI workflows although only expression was stated"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T",
+      "data_sentence": "We have heart RNA-seq and small-RNA-seq from 20 ground squirrels in winter torpor and 20 in summer, plus TF motif, miRNA-target and protein-interaction priors.",
+      "purpose_sentence": "We're not looking at single animals; does miRNA and TF regulation in the heart differ between seasons?",
+      "prompt": "We have heart RNA-seq and small-RNA-seq from 20 ground squirrels in winter torpor and 20 in summer, plus TF motif, miRNA-target and protein-interaction priors. We're not looking at single animals; does miRNA and TF regulation in the heart differ between seasons?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Group-level answer: one PUMA network per season compared, or per-animal networks tested between seasons",
+        "Keeps the miRNA layer"
+      ],
+      "red_flags": [
+        "Produces a per-animal ranking after the user ruled it out",
+        "Drops the miRNAs and uses a TF-only workflow"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T",
+      "data_sentence": "We have blood RNA-seq from 30 wild bottlenose dolphins, each sampled once during routine health assessments, with no comparison group.",
+      "purpose_sentence": "Whose blood co-expression network looks least like the others', and how strongly does it differ?",
+      "prompt": "We have blood RNA-seq from 30 wild bottlenose dolphins, each sampled once during routine health assessments, with no comparison group. Whose blood co-expression network looks least like the others', and how strongly does it differ?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recognises that 'whose' asks about individual dolphins, so one co-expression network per animal (LIONESS-COEXPRESSION or BONOBO)",
+        "Scores each dolphin's network against the rest"
+      ],
+      "red_flags": [
+        "Offers COBRA or a single cohort network as the answer",
+        "Recommends motif/PPI workflows although only expression was stated"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T",
+      "data_sentence": "We have RNA-seq of matched primary breast tumours and brain metastases from 22 patients, plus a human TF motif prior and protein-protein interactions.",
+      "purpose_sentence": "Within each patient, which transcription factors change their activity most between the primary tumour and the metastasis?",
+      "prompt": "We have RNA-seq of matched primary breast tumours and brain metastases from 22 patients, plus a human TF motif prior and protein-protein interactions. Within each patient, which transcription factors change their activity most between the primary tumour and the metastasis?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Uses per-sample TF output (GIRAFFE activity or LIONESS-PANDA networks) so each patient's two samples can be compared",
+        "Reports TF changes patient by patient, not only pooled"
+      ],
+      "red_flags": [
+        "Gives one cohort-level TF ranking from aggregate networks as the per-patient answer",
+        "Proposes an aggregate network per patient from two samples"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T",
+      "data_sentence": "We have baseline ileal biopsy RNA-seq from 90 Crohn's disease patients starting anti-TNF therapy, their week-14 response, a TF motif prior and protein interactions.",
+      "purpose_sentence": "Could baseline regulatory networks tell us in advance which patients will respond?",
+      "prompt": "We have baseline ileal biopsy RNA-seq from 90 Crohn's disease patients starting anti-TNF therapy, their week-14 response, a TF motif prior and protein interactions. Could baseline regulatory networks tell us in advance which patients will respond?",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Needs per-patient features (LIONESS-PANDA networks or GIRAFFE TF activity), not one network per response group",
+        "Says the network workflow does not predict by itself: a classifier with cross-validation or a held-out set is needed"
+      ],
+      "red_flags": [
+        "Claims a network workflow itself predicts response",
+        "Uses aggregate responder vs non-responder networks to predict individual patients",
+        "Reports in-sample association as predictive accuracy"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T",
+      "data_sentence": "We have cochlear RNA-seq from 25 mice exposed to loud noise and 25 unexposed mice, with a mouse TF motif prior and protein-protein interactions.",
+      "purpose_sentence": "Looking at each individual transcription factor in turn, which ones change their targeting most after noise exposure?",
+      "prompt": "We have cochlear RNA-seq from 25 mice exposed to loud noise and 25 unexposed mice, with a mouse TF motif prior and protein-protein interactions. Looking at each individual transcription factor in turn, which ones change their targeting most after noise exposure?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Reads 'each individual' as referring to transcription factors, not mice",
+        "Accepts one aggregate network per group (PANDA or OTTER) compared by TF targeting"
+      ],
+      "red_flags": [
+        "Insists on per-mouse networks because of the words 'each individual'",
+        "Claims aggregate networks cannot rank transcription factors"
+      ]
+    }
+  ]
+}
