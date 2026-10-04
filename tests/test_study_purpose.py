@@ -113,9 +113,9 @@ def test_every_declared_cell_names_a_workflow_a_claim_and_a_design():
 
 def test_only_the_global_table_states_a_gap():
     assert set(UNSUPPORTED_CLAIMS) == {"causal", "prediction"}
-    # v1 declared no multi-omic or community workflow (proposal, section 3.2); Log 363 adds the
-    # multi-omic ones, community detection and subtyping stay undeclared.
-    assert not any(action in {"run_condor", "run_sambar"} for action, _, _ in CLAIM_SUPPORT)
+    # v1 declares no multi-omic or community workflow (proposal, section 3.2).
+    assert not any(action in {"run_dragon", "run_lioness_dragon", "run_condor", "run_sambar"}
+                   for action, _, _ in CLAIM_SUPPORT)
 
 
 # -- replies (recorded Log 341 decisions) ------------------------------------------
