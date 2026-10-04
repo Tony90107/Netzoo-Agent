@@ -626,6 +626,41 @@ def build_request_concern_messages(
     ]
 
 
+# Log 355: the study-purpose call's whole instruction, as measured in Log 354.
+STUDY_PURPOSE_SYSTEM = (
+    "Return only the StudyPurposeProposal structure for the user's request. Record only what the "
+    "request states; when it does not state something, use none or an empty list.\n\n"
+    "design -- how the samples relate:\n"
+    "- paired: the same individuals are measured under two or more conditions or time points "
+    "(before/after an intervention, repeated visits, matched tissues from the same people, a time course "
+    "in the same animals, a crossover, one sample split between treatments).\n"
+    "- groups: different individuals are split into two or more groups (cases vs controls, genotypes, "
+    "treatment arms, dose groups, strains).\n"
+    "- none: no comparison structure is stated. Technical terms are not designs: paired-end reads, two omics "
+    "layers from the same samples, batches, replicates, litters used only as blocks, data before and after "
+    "normalization.\n\n"
+    "claims -- the conclusions the request wants, most important first (at most 3):\n"
+    "- group_difference: whether something differs between the groups or changes across conditions at the "
+    "cohort level.\n"
+    "- individual_change: which individuals (patients, animals, samples) differ or change the most.\n"
+    "- regulator_change: which regulators (transcription factors, miRNAs) change or differ the most.\n"
+    "- causal: to establish that one thing causes another.\n"
+    "- prediction: to predict an outcome for new, unseen samples or individuals.\n"
+    "A goal the request rules out ('not causal', 'prediction isn't the point') is not a claim. Describing a "
+    "network, finding modules or clustering samples is no claim. Inferring or 'predicting' target genes of a "
+    "regulator is network inference, not prediction. A variable such as 'cause of death' is not a causal claim.\n\n"
+    "Every text_span and design_span must be copied exactly from the request, without translation."
+)
+
+
+def build_study_purpose_messages(user_task: str) -> list:
+    """Ask for the comparison design and the conclusions the request states, with quotes (Log 355)."""
+    return [
+        SystemMessage(content=STUDY_PURPOSE_SYSTEM),
+        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
+    ]
+
+
 def build_intent_router_messages(
     intent_prompt: str,
     user_task: str,
