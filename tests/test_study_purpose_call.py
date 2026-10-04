@@ -256,3 +256,91 @@ def test_a_technical_word_beside_a_real_design_does_not_veto_it(design, quote):
 def test_a_technical_pairing_or_grouping_is_still_no_design(design, quote):
     purpose, rejected = verify_proposal(f"We have RNA-seq, {quote}. We want one network.", _proposal(design, quote))
     assert purpose.design is None and rejected[0]["reason"] in {"technical", "two_data_types"}
+
+
+# -- Log 365: "cannot" cells ----------------------------------------------------------------
+# Recorded decisions from earlier live rounds (already read), so only the reply layer is under test.
+
+LIVE = ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / "live"
+
+
+def _recorded(tag, key, purpose=None):
+    from langchain_core.messages import HumanMessage
+    from netzoo_agent_core.contracts import WorkflowPlan
+    from netzoo_agent_core.cli.follow_up import build_next_turn_prompt
+    from netzoo_agent_core.graph import response
+    from netzoo_agent_core.reply_cards.builder import build_reply_card
+    from test_reply_cards import POLICY
+    import ast
+    import json
+
+    item = json.loads((LIVE / f"{tag}-decisions.json").read_text())[key]
+    traced = item["study_purpose"]
+    traced = purpose or (ast.literal_eval(traced) if isinstance(traced, str) else traced)
+    decision = TaskDecision.model_validate(item["decision"])
+    plan = WorkflowPlan(workflow="NO-TOOL", objective=item["prompt"][:200], decision=decision.model_dump(),
+                        status="respond_only")
+    state = {"decision": decision.model_dump(), "plan": plan.model_dump(), "tool_results": [], "evaluation": None,
+             "messages": [HumanMessage(content=item["prompt"])], "study_purpose": traced}
+    out = response.respond(SimpleNamespace(project_policy=POLICY), state)
+    result = {**state, "messages": [*state["messages"], out["messages"][-1]], "reply_kind": out["reply_kind"]}
+    card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
+    return out["messages"][-1].content, card
+
+
+def test_when_no_listed_workflow_shows_individuals_the_reply_says_so_first_and_the_card_plans_per_sample():
+    # s9 S3-c: "Which patients show the biggest tumour-versus-normal shift ..." got PUMA as a fallback.
+    text, card = _recorded("s9", "cand-S3-c-1")
+    assert text.startswith('For your question ("Which patients show the biggest')
+    assert ("- **PUMA** — does not answer this: it gives one network from all the samples, so when each "
+            "individual gives one sample (per time point) there is no result for an individual. Per-sample "
+            "workflow for the same data: **LIONESS-PUMA**.") in text
+    assert "Fallback recommendation: **PUMA**" in text  # the decision and the rest of the reply are unchanged
+    planned = [step.action for step in card.next_steps if step.resolution == "plan_workflow"]
+    assert "run_lioness_puma" in planned and "run_puma" not in planned
+    assert any(point.startswith("PUMA gives one result for all the samples, so it cannot show which individuals")
+               for point in card.points)
+
+
+def test_a_tie_lists_the_workflows_that_answer_before_those_that_cannot_and_says_so_in_its_lead():
+    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER.
+    text, card = _recorded("s7", "cand-T1-1")
+    block = text.split("For your question (", 1)[1]
+    assert block.index("- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample") < block.index(
+        "- **PANDA**, **PUMA**, **OTTER** — do not answer this: each gives one network")
+    assert "Per-sample workflows for the same data: **LIONESS-PANDA**, **LIONESS-PUMA**." in block
+    assert ("These fit the result you described, but **PANDA**, **PUMA** and **OTTER** cannot show which "
+            "individuals change or stand out; to choose, tell me: (1)") in text
+    assert "These all fit" not in text
+    # Others answer the question, so the card adds no planning step of its own.
+    assert not any(step.key == "plan-run_lioness_panda" for step in card.next_steps)
+
+
+def test_cobra_says_it_cannot_show_individuals_but_stays_silent_where_no_cell_is_declared():
+    text, _ = _recorded("s9", "cand-S1-a-1")
+    assert "- **COBRA** — does not answer this: it gives the co-expression associated with each covariate" in text
+    assert "Per-sample workflows for the same data: **LIONESS-COEXPRESSION**, **BONOBO**." in text
+    # s9 S1-b asks whether the diet changes co-expression across the cohort (paired): COBRA has no
+    # declared cell for a paired group difference, and an undeclared cell says nothing (CC1).
+    text, _ = _recorded("s9", "cand-S1-b-1")
+    assert "not answer this:" not in text and "cannot show" not in text
+
+
+def test_a_cohort_question_keeps_the_one_result_workflows():
+    # The same tie asked about the groups, not individuals: no "cannot" anywhere.
+    text, card = _recorded("s7", "cand-T1-1", purpose={
+        "source": "model", "design": "groups", "design_quote": "x",
+        "claims": [["group_difference", "we just want to see whose marrow networks stand out most."]]})
+    assert "not answer this:" not in text and "cannot show" not in text
+    assert not any("one result for all the samples" in point for point in card.points)
+
+
+def test_a_causal_claim_keeps_its_gap_lead_and_the_cannot_line_stays_in_the_paragraph():
+    # The reply layer takes the state's reading as given (verifying it is the call's job).
+    text, _ = _recorded("s7", "cand-T1-1", purpose={
+        "source": "model", "design": None, "design_quote": "",
+        "claims": [["causal", "Predicting progression or proving causality is off the table"],
+                   ["individual_change", "we just want to see whose marrow networks stand out most."]]})
+    assert text.startswith('About "Predicting progression or proving causality is off the table": None of the')
+    assert "but none can show that one thing causes another; to choose among them, tell me:" in text
+    assert "- **PANDA**, **PUMA**, **OTTER** — do not answer this" in text
