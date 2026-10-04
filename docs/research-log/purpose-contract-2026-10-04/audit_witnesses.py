@@ -2,7 +2,7 @@
 
 Usage (repository root): python3 docs/research-log/purpose-contract-2026-10-04/audit_witnesses.py
 Reads every traced recording (docs/research-log, via tools/traces.py) and the
-user messages of .netzoo/sessions (except the mp-/t10- research sessions), and
+user messages of .netzoo/sessions (except the mp-/t10-/hp- research sessions), and
 prints each request on which `study_purpose` finds a design or a claim, with the
 quote. Every fire is judged by hand in the log. Nothing calls a model.
 """
@@ -26,7 +26,7 @@ for _path, _index, row in traced_rows():
         recorded.setdefault(text, "recorded")
 sessions = {}
 for path in glob.glob(str(ROOT / ".netzoo" / "sessions" / "*.json")):
-    if re.search(r"/(?:mp|t10)-", path):
+    if re.search(r"/(?:mp|t10|hp)-", path):
         continue
     try:
         data = json.loads(Path(path).read_text())
