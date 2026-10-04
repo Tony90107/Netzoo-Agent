@@ -17366,3 +17366,51 @@ live（gpt-4o-mini，預先授權）：
 - 只報告：兩臂各有幾次出現目的段落與缺口句；G5（DRAGON 未宣告）另列。
 
 成本估計：180 個 CLI session，約 US$0.35。
+
+## Log 345｜結果：witness v2——召回判定成立，精確度判定不成立，依宣告撤回；v1 在新保留集上同樣有誤判
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 344 執行。live 沒有跑：主要判定是離線、結果固定的，W2 不成立已足以撤回。
+證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+- `witness_eval_heldout2.txt`（W1、W2）
+- `replay_o6.py`
+- `v2_withdrawn.patch`、`v2_withdrawn_tests.patch`（撤回的實作與 42 個新增測試）
+- `study_purpose.v2.frozen.py`
+
+**判定：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| W1 設計召回 | v1 1/22（5%）→ v2 11/22（50%），+45 個百分點（門檻 +25） | 是 |
+| W1 結論召回 | v1 11/20（55%）→ v2 15/20（75%），+20 個百分點（門檻 +15） | 是 |
+| W2 設計誤判 ≤ 1 | v2 2 次：G2-a、T6 | **否** |
+| W2 結論誤判 ≤ 1 | v2 1 次：T2 | 是 |
+| W2 誤判 causal／prediction ＝ 0 | v2 1 次：T2 | **否** |
+| O1 | 全套件 3253 passed／35 skipped（含 42 個 v2 測試）；指紋、條件推薦 prompt hash、policy hash 不變 | 是 |
+| O2 | 稽核與 `audit_witnesses_v2.txt` 相同 | 是 |
+| O3 | 3,592 個 traced 決策：命中 0、改變 0 | 是 |
+| O6 | Log 343 的 156 個 live 決策以 v2 重播：只增不改 154 個（其中 85 個實際改變），R4 2 個，失敗 0 | 是 |
+
+**決定：** v2 撤回。`scripts/` 保持 v1（`37caf959136c`），全套件回到 3211 passed。
+
+**誤判逐一說明：**
+
+| 句子 | 標註 | v1 | v2 | 原因 |
+|---|---|---|---|---|
+| G2-a「Matched tumor and adjacent non-tumor gastric mucosa from the same 32 patients … between their tumor and normal co-expression」 | 配對 | 分組 | 分組 | 配對 witness 不認得「non-tumor」與「from the same 32 patients」；目的句的「tumor and normal」命中分組 |
+| T2「sampled at diagnosis and again at relapse … Predicting relapse isn't the point」 | 配對／個體 | 無／**預測** | 配對／**預測** | 否定在 witness 之後（「X isn't the point」）。`_negated` 只看子句中 witness 之前的字 |
+| T3「saved the count matrix both before and after normalization」 | 無 | **配對** | 無 | v1 沒有處理步驟排除；v2 已修正 |
+| T6「210 healthy volunteers … four batches」 | 無 | **分組** | **分組** | 單獨的「healthy volunteers」就命中分組，但沒有對照的另一組 |
+
+**對目前線上版本（v1）的意義：**
+- v1 在新保留集上有 3 次設計誤判與 1 次缺口誤判，Log 343 的第一組保留集沒有測到這些。
+- T2 型句子（「預測不是重點；我們想知道誰的網路變最多」）在線上會多出一段「沒有工具能建預測模型」。內容本身正確，但違反使用者明說的意圖，正是這個專案一開始要處理的那類問題：使用者的否定在後續階段遺失。
+- 設計誤判本身不會產生段落（段落需要結論）。但 T3 型的配對誤判遇到以個體計數的請求時，會改變 LIONESS 的執行次數說明。
+
+**沒有做的事：** 沒有放寬門檻。v2 的精確度其實比 v1 好（設計誤判 2 對 3），但 Log 344 的門檻是絕對值，照宣告撤回。
+
+**下一步（待使用者決定）：**
+1. **後置否定修正**：子句中 witness 之後出現「isn't／is not the point、goal、aim、focus」「out of scope」等。
+   - 這只會讓命中變少，方向是安全的，而且 v1 線上就有這個問題。
+   - 可以單獨宣告：用單元測試、稽核與已看過的資料檢查召回損失。
+2. **v3** = v2 ＋ 後置否定 ＋ G2-a／T6 兩種修正（「the same N patients」加兩種組織算配對；單獨的「healthy X」不算分組）。
+   - 兩組保留集都已看過，評估 v3 需要第三組保留集。
