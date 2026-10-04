@@ -18111,3 +18111,53 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 可做：
   - 收緊技術性配對的否決（字詞邊界、只在配對語境），以第八組保留集評估。
   - 階段 2 的推薦與追問，用來處理完全沒說研究目的的請求。
+
+## Log 361｜事前宣告：技術名詞只否決它所配對或分組的東西——以第八組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`daba5b9..d989dec`，已完成），然後做 Log 360 的第 1 項。第八組保留集照原稿，判定照建議。
+本條目寫於實作 commit 與任何第八組保留集上的呼叫之前。
+- 基準為 HEAD `5dd6c6b`：線上是 b″（`9abbb44`，驗證 `b3_frozen` `25a247ab45c5`）。
+- 工作目錄中未 commit 的 `routing/study_purpose_verify.py` 即凍結的 `b4_frozen`；新增 10 個測試；全套件 3268 passed／35 skipped。
+- 指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**問題（Log 360 的量測）：**
+- 在約 1000 筆已錄提案中，模型設計正確 476/498，其中 49 次被「技術性配對」否決誤擋。
+- 那條清單沒有字詞邊界、也不限語境：「litter」命中「littermates」，「matrix」命中「count／expression matrix」，「replicate」命中「replicate pools」。
+
+**改動（`b4_frozen/study_purpose_verify.py`，sha256 `fb2d4f0bc917`；`FREEZE8.md`）：**
+- 配對：只在以下情況否決：paired-end、read／mate pairs；「paired／matched … matrices／layers／omics／datasets／assays／modalities」；「before／after normalization／filtering／batch correction／QC／preprocessing／trimming」。
+- 分組：只在以下情況否決：「N batches／lanes／runs／plates／litters／replicates／libraries／hospitals／sites／centres／platforms／kits／chips／flow cells」；方法、正規化、流程、演算法、先驗或 motif 集合之間的對比。
+- 這次改動會**放寬**否決（讓更多設計通過），不屬於只減少命中的方向，所以照新版本評估。
+- 在已看過的提案上（b″ → 新版，誤判數都不變）：
+  - 387 筆：設計 254 → 289/297、結論 237 → 245/264。
+  - 第五組：設計 48 → 60/66、結論 54 → 57/66。
+  - 第六組：不變。
+  - 第七組：設計 62 → 64/72。
+
+**第八組保留集**（`heldout8/heldout.json`，`9b5afa8e50f9`）：
+- 隔離 subagent 撰寫，要求在真實設計旁放技術細節；使用者審過、照原稿。
+- 共 32 句：6 家族 × 4（R1、R3 配對；R2、R4、R6 分組；R5 無）、3 句否定陷阱、5 句精確度陷阱（3 句以上基於技術單位）。
+
+**審稿時讀到的風險（公開，沒有執行任何東西）：**
+- T5「RNA from each of 36 sheep … split into two aliquots, one sequenced at 20 million and one at 60 million reads, as a depth check」：若模型給 paired，兩個版本都擋不住（否決清單沒有 depth／aliquot）。
+- R2「10 wild-type littermates (five litters)」：新版的「N litters」否決會擋下這個真實的分組設計，只會少抓、不會誤判。
+
+**判定（相對於線上 b″；同一批提案分別以兩個驗證評分，`b_eval.py --base-verify b3_frozen/study_purpose_verify.py`；任一不成立就撤回）：**
+
+主要判定（離線，32 句 × 3 = 96 次）：
+- **W1a 設計召回**：新版 − b″ ≥ 5 個百分點。
+- **W1b 主要結論召回**：新版 ≥ b″。
+- **W2a causal／prediction 誤判**：新版 ≤ b″，且 ≤ 3。
+- **W2b 設計＋結論誤判**：新版 ≤ b″，且 ≤ 9。
+
+其他離線判定：
+- **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O3／O6**：3,592 個 traced 決策與 Log 343 的 156 個 live 決策，在兩個程式樹上重播（沒有研究目的 state），回覆逐字相同。
+
+live（主要判定成立才跑；gpt-4o-mini，預先授權）：
+- baseline 是本宣告 commit 的 worktree（b″），候選是新版的實作 commit；第八組 32 句 × 3，交錯同時跑。
+- E1、E2、H1（相對）、H2、H3 同 Log 359。
+- 只報告：兩臂讀出的設計次數與目的段落次數。
+
+成本估計：離線約 US$0.01；live 約 US$0.4。

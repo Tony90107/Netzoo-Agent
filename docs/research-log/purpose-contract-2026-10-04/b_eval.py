@@ -1,7 +1,10 @@
 """Log 355 W1/W2: the implemented study-purpose call on a held-out set, scored against the live witnesses.
 
 Usage (repository root, provider key in .env, never printed):
-  set -a; . ./.env; set +a; python3 docs/research-log/purpose-contract-2026-10-04/b_eval.py <heldout.json> <tag> <repeats>
+  set -a; . ./.env; set +a; python3 docs/research-log/purpose-contract-2026-10-04/b_eval.py <heldout.json> <tag> <repeats> [--base-verify <frozen verify.py>]
+
+Log 361: with --base-verify, the same calls are also scored with that frozen
+verification (the live version), which is then the baseline.
 
 Uses the production modules only: llm.build_study_purpose_messages, the
 StudyPurposeProposal contract and routing.study_purpose_verify.verify_proposal,
@@ -76,7 +79,17 @@ def model_reading(row):
     return purpose.design or "none", [claim for claim, _ in purpose.claims]
 
 
-def main(path, tag, repeats):
+def _frozen_verify(path):
+    """verify_proposal from a frozen copy, with its package-relative imports resolved."""
+    source = Path(path).read_text().replace(
+        "from ..contracts.study_purpose", "from netzoo_agent_core.contracts.study_purpose").replace(
+        "from .study_purpose", "from netzoo_agent_core.routing.study_purpose")
+    namespace = {}
+    exec(compile(source, str(path), "exec"), namespace)
+    return namespace["verify_proposal"]
+
+
+def main(path, tag, repeats, base_verify=None):
     items = json.loads(Path(path).read_text())["items"]
     llm = build_llm("openai/gpt-4o-mini", 0.0, max_output_tokens=2000, timeout_seconds=60)
     jobs = [(item, rep) for rep in range(1, repeats + 1) for item in items]
@@ -87,7 +100,18 @@ def main(path, tag, repeats):
     (HERE / f"{tag}-calls.json").write_text(json.dumps(
         [{k: v for k, v in row.items() if k != "label"} for row in rows], ensure_ascii=False, indent=1))
     print(f"{len(rows)} calls, {sum(1 for row in rows if row['error'])} failed")
-    for name, reading in (("witness (live)", witness_reading), ("model + verification", model_reading)):
+    readings = [("witness", witness_reading)]
+    if base_verify:
+        frozen = _frozen_verify(base_verify)
+
+        def base_reading(row):
+            if row["proposal"] is None:
+                return witness_reading(row)
+            purpose, _ = frozen(row["prompt"], StudyPurposeProposal.model_validate(row["proposal"]))
+            return purpose.design or "none", [claim for claim, _ in purpose.claims]
+        readings.append((f"base {Path(base_verify).parent.name}", base_reading))
+    readings.append(("model + verification", model_reading))
+    for name, reading in readings:
         t, errors = score(rows, reading)
         print(f"{name:22} design {t['design_hit']}/{t['design_labelled']} ({t['design_hit'] / max(1, t['design_labelled']):.0%}) "
               f"false {t['design_false']} | claim {t['claim_hit']}/{t['claim_labelled']} "
@@ -97,4 +121,5 @@ def main(path, tag, repeats):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+    base = sys.argv[sys.argv.index("--base-verify") + 1] if "--base-verify" in sys.argv else None
+    main(sys.argv[1], sys.argv[2], int(sys.argv[3]), base)

@@ -1,0 +1,806 @@
+{
+  "authored_by": "subagent, isolated from the verification rules",
+  "items": [
+    {
+      "id": "R1-a",
+      "family": "R1",
+      "data_sentence": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes.",
+      "purpose_sentence": "Across the cohort, does prednisolone measurably rewire monocyte gene regulation?",
+      "prompt": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes. Across the cohort, does prednisolone measurably rewire monocyte gene regulation?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "COBRA"
+      ],
+      "must_include": [
+        "Recognises the pre/post design within the same 18 donors and keeps donor pairing (per-sample networks or a donor-adjusted model)",
+        "Says the significance test of the pre vs post difference is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats pre and post samples as independent groups",
+        "Treats the two sequencing lanes as the comparison of interest",
+        "Claims a suite tool itself tests whether the networks differ"
+      ]
+    },
+    {
+      "id": "R1-b",
+      "family": "R1",
+      "data_sentence": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes.",
+      "purpose_sentence": "I'd like to rank volunteers by how strongly their regulatory network shifts after dosing.",
+      "prompt": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes. I'd like to rank volunteers by how strongly their regulatory network shifts after dosing.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds sample-specific networks (or per-sample TF activity) for each visit",
+        "Ranks donors by their own post-minus-pre change"
+      ],
+      "red_flags": [
+        "Offers only one aggregate network per visit, which cannot rank individuals",
+        "Ignores which pre and post samples belong to the same donor"
+      ]
+    },
+    {
+      "id": "R1-c",
+      "family": "R1",
+      "data_sentence": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes.",
+      "purpose_sentence": "Which transcription factors gain or lose the most target genes after the steroid?",
+      "prompt": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes. Which transcription factors gain or lose the most target genes after the steroid?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting (e.g. out-degree or TF activity) between pre and post networks",
+        "Keeps the donor pairing when ranking or testing TFs; the ranking/test is done outside the suite"
+      ],
+      "red_flags": [
+        "Treats lane as the condition",
+        "Answers with gene-level differential expression only, without regulator targeting"
+      ]
+    },
+    {
+      "id": "R1-d",
+      "family": "R1",
+      "data_sentence": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes.",
+      "purpose_sentence": "For a methods figure we just need one consensus regulatory network of these monocytes.",
+      "prompt": "Sample sheet columns are donor_id, visit (pre/post) and lane: CD14+ monocytes from 18 volunteers, RNA-sequenced before and 6 hours after one oral prednisolone dose, run on two lanes. For a methods figure we just need one consensus regulatory network of these monocytes.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one aggregate TF-gene network over the samples"
+      ],
+      "red_flags": [
+        "Adds a pre vs post significance test or claim the user did not ask for",
+        "Insists on sample-specific networks for a single consensus network"
+      ]
+    },
+    {
+      "id": "R2-a",
+      "family": "R2",
+      "data_sentence": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run.",
+      "purpose_sentence": "We aim to demonstrate that Ucp1 loss causes the rewiring of the thermogenic transcriptional program.",
+      "prompt": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run. We aim to demonstrate that Ucp1 loss causes the rewiring of the thermogenic transcriptional program.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "States that no suite tool establishes causality; inferred network differences are associations",
+        "Notes that any causal argument rests on the knockout experiment plus outside statistics or validation, not on the networks"
+      ],
+      "red_flags": [
+        "Claims a network method proves that Ucp1 loss causes the rewiring",
+        "Treats litters or the single pooled sequencing run as the comparison groups"
+      ]
+    },
+    {
+      "id": "R2-b",
+      "family": "R2",
+      "data_sentence": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run.",
+      "purpose_sentence": "Which transcription factors are most differently wired between knockouts and controls?",
+      "prompt": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run. Which transcription factors are most differently wired between knockouts and controls?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds networks per genotype (or per animal) and compares TF targeting between knockout and wild-type",
+        "Says the statistical test between genotypes is outside the suite"
+      ],
+      "red_flags": [
+        "Treats the pooled libraries or sequencing run as a design factor",
+        "Treats knockout and wild-type animals as paired measurements of the same individuals"
+      ]
+    },
+    {
+      "id": "R2-c",
+      "family": "R2",
+      "data_sentence": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run.",
+      "purpose_sentence": "Are there particular knockout animals whose networks depart furthest from the wild-type pattern?",
+      "prompt": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run. Are there particular knockout animals whose networks depart furthest from the wild-type pattern?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds per-animal networks and scores each knockout against the wild-type reference",
+        "May use litter as a blocking factor, not as a comparison"
+      ],
+      "red_flags": [
+        "Offers only one aggregate network per genotype, which cannot single out animals",
+        "Treats litters as the groups being compared"
+      ]
+    },
+    {
+      "id": "R2-d",
+      "family": "R2",
+      "data_sentence": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run.",
+      "purpose_sentence": "Mainly we want to find co-regulated gene modules in brown fat.",
+      "prompt": "Brown adipose tissue from 10 Ucp1-knockout mice and 10 wild-type littermates (five litters) was RNA-sequenced, with all 20 libraries pooled on a single sequencing run. Mainly we want to find co-regulated gene modules in brown fat.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "Builds a TF-gene network and then detects communities/modules in it"
+      ],
+      "red_flags": [
+        "Makes a knockout vs wild-type significance test the main analysis",
+        "Proposes a mutation-based subtyping tool"
+      ]
+    },
+    {
+      "id": "R3-a",
+      "family": "R3",
+      "data_sentence": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data.",
+      "purpose_sentence": "Aim 1 asks whether the methylation–expression network is systematically altered in lesional versus perilesional skin.",
+      "prompt": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data. Aim 1 asks whether the methylation–expression network is systematically altered in lesional versus perilesional skin.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Uses the two omics layers of each biopsy as the multi-omic input, and lesional vs perilesional within patient as the design",
+        "Keeps the patient pairing; the paired test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats methylation vs expression as the two groups being compared",
+        "Treats the 30 biopsies as two independent groups"
+      ]
+    },
+    {
+      "id": "R3-b",
+      "family": "R3",
+      "data_sentence": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data.",
+      "purpose_sentence": "Ultimately we want a model that predicts, from a new patient's perilesional biopsy, whether lesions will spread there.",
+      "prompt": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data. Ultimately we want a model that predicts, from a new patient's perilesional biopsy, whether lesions will spread there.",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Says no suite tool builds a predictive classifier; per-sample networks can only supply features",
+        "Notes that follow-up outcome labels and independent validation are needed, and 15 patients is small"
+      ],
+      "red_flags": [
+        "Claims a network tool predicts lesion spread by itself",
+        "Presents in-sample fit as prediction for new patients"
+      ]
+    },
+    {
+      "id": "R3-c",
+      "family": "R3",
+      "data_sentence": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data.",
+      "purpose_sentence": "We want to establish that promoter hypermethylation is what causes barrier genes to be silenced in lesions.",
+      "prompt": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data. We want to establish that promoter hypermethylation is what causes barrier genes to be silenced in lesions.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "States that methylation-expression partial correlations are associations, not causal evidence",
+        "Points to perturbation or other outside methods for the causal claim"
+      ],
+      "red_flags": [
+        "Claims the multi-omic network shows that methylation causes silencing",
+        "Treats lesional and perilesional biopsies as unrelated groups"
+      ]
+    },
+    {
+      "id": "R3-d",
+      "family": "R3",
+      "data_sentence": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data.",
+      "purpose_sentence": "To start, we'd like a single integrated network linking methylation and expression across all 30 biopsies.",
+      "prompt": "From each of 15 hidradenitis suppurativa patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data. To start, we'd like a single integrated network linking methylation and expression across all 30 biopsies.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "Builds one multi-omic network from the expression and methylation matrices of the same biopsies"
+      ],
+      "red_flags": [
+        "Adds a lesional vs perilesional test the user did not ask for",
+        "Treats the two omics layers as two conditions"
+      ]
+    },
+    {
+      "id": "R4-a",
+      "family": "R4",
+      "data_sentence": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries.",
+      "purpose_sentence": "Does the regulatory network shift in a dose-dependent way across the three exposure groups?",
+      "prompt": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries. Does the regulatory network shift in a dose-dependent way across the three exposure groups?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "COBRA"
+      ],
+      "must_include": [
+        "Treats the three doses as groups of different fish and collapses the technical replicate libraries per fish",
+        "Says the dose-trend test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Counts the three technical libraries per liver as independent samples",
+        "Treats libraries or tanks as the comparison design"
+      ]
+    },
+    {
+      "id": "R4-b",
+      "family": "R4",
+      "data_sentence": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries.",
+      "purpose_sentence": "Which transcription factors change their targeting most between control fish and the 50 ng/L group?",
+      "prompt": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries. Which transcription factors change their targeting most between control fish and the 50 ng/L group?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting between the 0 and 50 ng/L networks and ranks TFs",
+        "Collapses technical replicate libraries before building networks"
+      ],
+      "red_flags": [
+        "Treats technical replicate libraries as the groups",
+        "Proposes miRNA regulators when no miRNA data or prior was mentioned"
+      ]
+    },
+    {
+      "id": "R4-c",
+      "family": "R4",
+      "data_sentence": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries.",
+      "purpose_sentence": "We'd like to predict the exposure level of wild-caught trout from their liver expression.",
+      "prompt": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries. We'd like to predict the exposure level of wild-caught trout from their liver expression.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Says the predictive model is outside the suite; per-sample networks or TF activity can only supply features",
+        "Notes that a model trained on lab exposures needs validation on field fish"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts exposure level",
+        "Inflates the training set by counting technical replicate libraries as fish"
+      ]
+    },
+    {
+      "id": "R4-d",
+      "family": "R4",
+      "data_sentence": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries.",
+      "purpose_sentence": "For now, please just describe the hepatic regulatory landscape of these fish.",
+      "prompt": "We sequenced livers of rainbow trout exposed to 0, 5 or 50 ng/L ethinylestradiol for 21 days (eight fish per tank), each extract as three technical replicate libraries. For now, please just describe the hepatic regulatory landscape of these fish.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one aggregate liver TF-gene network (technical replicates collapsed)"
+      ],
+      "red_flags": [
+        "Insists on a dose comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "R5-a",
+      "family": "R5",
+      "data_sentence": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns.",
+      "purpose_sentence": "Can you group these pulps into molecular subtypes based on their regulatory wiring?",
+      "prompt": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns. Can you group these pulps into molecular subtypes based on their regulatory wiring?",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "GIRAFFE",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-sample networks or TF activity and clusters samples (clustering itself outside the suite)",
+        "Treats batch and lane as technical covariates, not groups"
+      ],
+      "red_flags": [
+        "Treats the three batches as the subtypes or groups to compare",
+        "Proposes mutation-based subtyping without any mutation data"
+      ]
+    },
+    {
+      "id": "R5-b",
+      "family": "R5",
+      "data_sentence": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns.",
+      "purpose_sentence": "Which individual pulps have regulatory networks that deviate most from the rest?",
+      "prompt": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns. Which individual pulps have regulatory networks that deviate most from the rest?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds per-sample networks and ranks samples by deviation",
+        "Checks that outliers are not explained by batch or lane"
+      ],
+      "red_flags": [
+        "Treats batch or lane as a comparison design",
+        "Offers only one aggregate network"
+      ]
+    },
+    {
+      "id": "R5-c",
+      "family": "R5",
+      "data_sentence": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns.",
+      "purpose_sentence": "We hope to prove that RUNX2 causes the mineralization gene program in dental pulp cells.",
+      "prompt": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns. We hope to prove that RUNX2 causes the mineralization gene program in dental pulp cells.",
+      "comparison_design": "none",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "States that inferred RUNX2-target edges or activity are associations, not proof of causation",
+        "Points to perturbation experiments or outside causal methods"
+      ],
+      "red_flags": [
+        "Claims the network proves RUNX2 causes the program",
+        "Invents a comparison between batches"
+      ]
+    },
+    {
+      "id": "R5-d",
+      "family": "R5",
+      "data_sentence": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns.",
+      "purpose_sentence": "Could these profiles train something that predicts pulp calcification in future patients?",
+      "prompt": "Our 64 dental pulp samples from extracted third molars were RNA-sequenced in three batches across six lanes; counts are normalized and batch-corrected, with batch and lane kept as columns. Could these profiles train something that predicts pulp calcification in future patients?",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Notes that no calcification outcome is stated and labelled follow-up data would be needed",
+        "Says the classifier is outside the suite; networks can only supply features"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts calcification",
+        "Uses batch or lane as the outcome label"
+      ]
+    },
+    {
+      "id": "R6-a",
+      "family": "R6",
+      "data_sentence": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced.",
+      "purpose_sentence": "Which microRNAs and transcription factors show the biggest change in regulatory influence in PCOS?",
+      "prompt": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced. Which microRNAs and transcription factors show the biggest change in regulatory influence in PCOS?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Uses a method that includes miRNAs as regulators and says a miRNA list and miRNA-target prior are needed",
+        "Compares regulator targeting between PCOS and control networks; the test is outside the suite"
+      ],
+      "red_flags": [
+        "Proposes a TF-only method as if it covered miRNAs",
+        "Treats the women as paired measurements"
+      ]
+    },
+    {
+      "id": "R6-b",
+      "family": "R6",
+      "data_sentence": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced.",
+      "purpose_sentence": "We'd like a classifier that flags PCOS from a new patient's granulosa cell profile.",
+      "prompt": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced. We'd like a classifier that flags PCOS from a new patient's granulosa cell profile.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Says the classifier is outside the suite; per-sample networks or TF activity can only supply features",
+        "Mentions independent validation on new patients"
+      ],
+      "red_flags": [
+        "Claims a suite tool classifies patients",
+        "Reports training accuracy as prediction for new patients"
+      ]
+    },
+    {
+      "id": "R6-c",
+      "family": "R6",
+      "data_sentence": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced.",
+      "purpose_sentence": "Is gene co-expression structure in PCOS granulosa cells different from controls overall?",
+      "prompt": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced. Is gene co-expression structure in PCOS granulosa cells different from controls overall?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "COBRA",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds co-expression per group, per sample, or decomposed by the PCOS covariate",
+        "Says the group test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats cases and controls as paired",
+        "Claims a suite tool returns the significance of the difference"
+      ]
+    },
+    {
+      "id": "R6-d",
+      "family": "R6",
+      "data_sentence": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced.",
+      "purpose_sentence": "We mostly want to describe how microRNAs fit into the granulosa cell regulatory network.",
+      "prompt": "Granulosa cells from 30 women with polycystic ovary syndrome and 30 ovulatory controls, all collected at IVF oocyte retrieval, were bulk RNA-sequenced. We mostly want to describe how microRNAs fit into the granulosa cell regulatory network.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "must_include": [
+        "Builds one network with miRNAs among regulators and notes a miRNA-target prior is needed"
+      ],
+      "red_flags": [
+        "Insists on a PCOS vs control comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T1",
+      "data_sentence": "We have RNA-seq from 45 resected meningiomas, all from one surgical series and sequenced in three batches.",
+      "purpose_sentence": "Predicting recurrence is a separate project down the line; here I only want a regulatory network describing the series as a whole.",
+      "prompt": "We have RNA-seq from 45 resected meningiomas, all from one surgical series and sequenced in three batches. Predicting recurrence is a separate project down the line; here I only want a regulatory network describing the series as a whole.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one aggregate TF-gene network for the whole series",
+        "Respects that prediction is explicitly deferred"
+      ],
+      "red_flags": [
+        "Builds or recommends a recurrence predictor",
+        "Treats the three sequencing batches as groups"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T2",
+      "data_sentence": "Whole-blood RNA-seq from 22 Graves' disease patients, each sampled at diagnosis and at remission on antithyroid drugs; we have no healthy controls and are not comparing against any.",
+      "purpose_sentence": "Which patients show the largest shift in their regulatory networks between the two draws?",
+      "prompt": "Whole-blood RNA-seq from 22 Graves' disease patients, each sampled at diagnosis and at remission on antithyroid drugs; we have no healthy controls and are not comparing against any. Which patients show the largest shift in their regulatory networks between the two draws?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-COEXPRESSION",
+        "GIRAFFE",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-sample networks and ranks patients by their own diagnosis-to-remission change"
+      ],
+      "red_flags": [
+        "Proposes a patient vs healthy-control comparison",
+        "Treats the two draws as independent groups"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T3",
+      "data_sentence": "Hepatopancreas RNA-seq from 12 shrimp of a white spot virus–resistant line and 12 of a susceptible line, reared in the same pond.",
+      "purpose_sentence": "Which transcription factors are wired most differently between the lines, with no claim that any of them causes resistance?",
+      "prompt": "Hepatopancreas RNA-seq from 12 shrimp of a white spot virus–resistant line and 12 of a susceptible line, reared in the same pond. Which transcription factors are wired most differently between the lines, with no claim that any of them causes resistance?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Ranks TFs by differential targeting between the resistant and susceptible lines",
+        "Keeps the answer associational, as the user asked"
+      ],
+      "red_flags": [
+        "Frames the result as causal evidence for resistance",
+        "Refuses or redirects as if a causal claim had been requested"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T4",
+      "data_sentence": "iPSC-derived hepatocytes from a single donor line were plated in 24 replicate wells spread over four plates, with plate and well recorded in the sample sheet.",
+      "purpose_sentence": "We'd like a baseline regulatory network for this line to use as a reference.",
+      "prompt": "iPSC-derived hepatocytes from a single donor line were plated in 24 replicate wells spread over four plates, with plate and well recorded in the sample sheet. We'd like a baseline regulatory network for this line to use as a reference.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Treats wells and plates as technical replicates, not groups",
+        "Builds one aggregate network"
+      ],
+      "red_flags": [
+        "Compares plates as if they were conditions",
+        "Reads 'baseline' as a before/after time course"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T5",
+      "data_sentence": "RNA from each of 36 sheep rumen epithelium samples was split into two aliquots, one sequenced at 20 million and one at 60 million reads, as a depth check.",
+      "purpose_sentence": "Which animals have the most atypical co-expression networks compared with the rest of the flock?",
+      "prompt": "RNA from each of 36 sheep rumen epithelium samples was split into two aliquots, one sequenced at 20 million and one at 60 million reads, as a depth check. Which animals have the most atypical co-expression networks compared with the rest of the flock?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Treats the two aliquots as technical (keeps one per animal or merges them)",
+        "Builds per-sample co-expression networks and ranks animals by atypicality"
+      ],
+      "red_flags": [
+        "Treats the two sequencing depths as paired conditions",
+        "Counts each animal twice"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T6",
+      "data_sentence": "We generated paired ATAC-seq and RNA-seq on the same 30 mouse embryonic forelimb buds collected at E11.5, two libraries per bud.",
+      "purpose_sentence": "The goal is one integrated network connecting chromatin accessibility with gene expression across all buds.",
+      "prompt": "We generated paired ATAC-seq and RNA-seq on the same 30 mouse embryonic forelimb buds collected at E11.5, two libraries per bud. The goal is one integrated network connecting chromatin accessibility with gene expression across all buds.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "Treats the two layers from the same buds as multi-omic inputs, not conditions",
+        "Builds one integrated two-omics network"
+      ],
+      "red_flags": [
+        "Reads 'paired' as a paired comparison design",
+        "Compares ATAC against RNA as two groups"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T7",
+      "data_sentence": "Peripheral blood mononuclear cell RNA-seq from 70 people with early Parkinson's disease and 70 age-matched controls, recruited through two movement-disorder clinics.",
+      "purpose_sentence": "As a first deliverable we need every transcription factor's predicted target genes, with edge weights, for the whole cohort.",
+      "prompt": "Peripheral blood mononuclear cell RNA-seq from 70 people with early Parkinson's disease and 70 age-matched controls, recruited through two movement-disorder clinics. As a first deliverable we need every transcription factor's predicted target genes, with edge weights, for the whole cohort.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds one aggregate TF-gene network over all 140 samples",
+        "Treats 'predicted target genes' as network edges, not a prediction task"
+      ],
+      "red_flags": [
+        "Builds or recommends a classifier",
+        "Starts a Parkinson's vs control comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T8",
+      "data_sentence": "Olfactory epithelium from 40 untreated adult C57BL/6J mice drawn from ten litters was RNA-sequenced; litter is recorded only so we can adjust for it.",
+      "purpose_sentence": "We want a directed map of which transcription factors regulate which genes in normal olfactory tissue.",
+      "prompt": "Olfactory epithelium from 40 untreated adult C57BL/6J mice drawn from ten litters was RNA-sequenced; litter is recorded only so we can adjust for it. We want a directed map of which transcription factors regulate which genes in normal olfactory tissue.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Treats litter as a nuisance/blocking variable",
+        "Builds one TF-to-gene network"
+      ],
+      "red_flags": [
+        "Treats the ten litters as groups to compare",
+        "Claims the directed edges prove causal regulation"
+      ]
+    }
+  ]
+}
