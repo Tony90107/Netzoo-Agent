@@ -17414,3 +17414,41 @@ live（gpt-4o-mini，預先授權）：
    - 可以單獨宣告：用單元測試、稽核與已看過的資料檢查召回損失。
 2. **v3** = v2 ＋ 後置否定 ＋ G2-a／T6 兩種修正（「the same N patients」加兩種組織算配對；單獨的「healthy X」不算分組）。
    - 兩組保留集都已看過，評估 v3 需要第三組保留集。
+
+## Log 346｜事前宣告：PN——結論 witness 之後的否定（「X isn't the point」）也算否定
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`ce7d7d5..d6cbb9c`，已完成），然後做 Log 345 的第 1 項。
+本條目寫於 `scripts/` 的任何修改之前。基準為 HEAD `d6cbb9c`：
+- witness v1（`37caf959136c`）
+- 全套件 3211 passed／35 skipped
+- 指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`
+
+**問題：**
+- 第二組保留集 T2：「Predicting relapse isn't the point; we want to see whose networks changed most between samples.」
+- v1 讀出 prediction，回覆會多一段「沒有工具能建預測模型」，違反使用者明說的意圖。
+- 原因：`_negated` 只看子句中 witness 之前的字，否定在後面時看不到。
+
+**PN（只改 `routing/study_purpose.py`；原型在 scratchpad，規則如下）：**
+- 只用於結論 witness，不用於設計。設計是資料的結構，使用者否定的是要下的結論。
+- 對結論 witness 的每一次命中，往後看到子句結束（不跨越 `.;:!?,`，最多 40 字元），以下任一出現就不算：
+  1. 「is／are／was／were／'s／'re」接「n't／not」，再接一個目標詞：the／our／my／a／an／what we（I）／why／needed／required／necessary／relevant／important／of interest／in scope。例：「isn't the point」「is not what we are after」「is not needed」。
+  2. 「isn't／aren't／wasn't／weren't」，接法同上。
+  3. 「is／are …」接 out of scope／beyond the（our）scope／beside the point／irrelevant／secondary／not our（my、the）＋目標名詞（point、goal、aim、focus、question、purpose …）。
+- 方向是安全的：PN 只會讓命中變少，不會新增任何命中。
+
+**判定（任一不成立就撤回 PN）：**
+- **N1**：
+  - T2 不再有 causal／prediction。
+  - 7 句後置否定探針沒有任何結論。
+  - 7 句同時含 not 的真主張探針，結論與 v1 相同。例：「We want to predict relapse, which is not easy.」「Our goal is to predict response, and batch is not the point.」
+- **N2**：在 Log 340 開發集、第一組、第二組保留集上，只有第二組的 T2 改變；每組的結論命中數不低於 v1。
+- **N3**：310 個真實請求（78 個錄音、236 則 session 訊息），改變為 0；`audit_witnesses.py` 輸出與 `audit_witnesses.txt` 相同。
+- **O1**：全套件通過（含新增測試）；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O3**：3,592 個 traced 決策重播，改變 0。
+- **O6**：Log 343 的 156 個 live 決策重播，回覆與 `d6cbb9c` 的重播完全相同（第一組保留集沒有後置否定）。
+- **不跑 live。** PN 只移除結論 witness，沒有結論的請求走的就是 O3／O5 已驗證的「沒有 witness」路徑；效果完全在離線判定中決定。
+
+**公開：**
+- PN 是看過第二組保留集 T2 之後設計的，判定也全在已看過的資料上。
+- 它的召回代價（真主張被誤當成否定）要等之後若做 v3、用第三組保留集才能在新資料上量到。
