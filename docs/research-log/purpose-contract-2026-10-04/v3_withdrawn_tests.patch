@@ -1,0 +1,91 @@
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index e8eb7c1..d568f64 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -203,8 +203,14 @@ def test_the_trace_event_reads_the_request_only(monkeypatch):
+ 
+ # -- PN: a negation after a conclusion witness (Log 346) ------------------------------
+ 
++def test_a_negated_prediction_leaves_the_question_that_follows():
++    # Log 348: v3 also reads "whose networks changed most" (second held-out set, T2).
++    purpose = study_purpose(
++        "Predicting relapse isn't the point; we want to see whose networks changed most between samples.")
++    assert [claim for claim, _ in purpose.claims] == ["individual_change"]
++
++
+ @pytest.mark.parametrize("task", [
+-    "Predicting relapse isn't the point; we want to see whose networks changed most between samples.",
+     "Prediction is not our goal here.",
+     "Causality is not what we are after.",
+     "Whether the drug causes these changes is beside the point.",
+@@ -232,3 +238,70 @@ def test_a_negation_after_a_design_witness_keeps_the_design():
+     # The data were sampled twice whatever the user wants to conclude.
+     task = "Each patient was sampled before and after treatment; comparing them is not the point."
+     assert study_purpose(task).design == "paired"
++
++
++# -- v2/v3 witnesses (Logs 344, 348) ---------------------------------------------------------
++
++FIRST_HELDOUT = json.loads(
++    (ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / "heldout" / "heldout.json").read_text())["items"]
++
++
++@pytest.mark.parametrize("item", FIRST_HELDOUT, ids=lambda item: item["id"])
++def test_the_first_held_out_set_now_development_data_keeps_its_labels(item):
++    # v2 was written against these (v1 found 4 of 22 designs); a later change must not lose them.
++    purpose = study_purpose(item["prompt"])
++    assert (purpose.design or "none", purpose.claim or "none") == (item["comparison_design"], item["claim_kind"])
++
++
++@pytest.mark.parametrize("task", [
++    "We checked the expression distributions before and after normalization; which network method fits?",
++    "We filtered the prior before network inference and after removing lowly expressed genes.",
++    "We have TF and miRNA regulators versus target genes; build one network.",
++    "Compare PANDA versus OTTER on our 50 samples.",
++    "Much of the variance is attributable to batch effects in our 3 batches and 2 lanes.",
++    "Our prior combines predicted binding sites and sequence-based target prediction from TargetScan.",
++    "We have 24 patients and 48 samples of RNA-seq.",
++    "We profiled 300 genes and 40 TFs in 20 tumors.",
++    "We have high and low expression genes in our 30 samples.",
++    "We sequenced 10 tumors at two sites and at a reference lab.",
++])
++def test_processing_steps_data_types_and_unit_counts_are_no_design(task):
++    purpose = study_purpose(task)
++    assert purpose.design is None and purpose.claims == ()
++
++
++@pytest.mark.parametrize("task, design", [
++    ("Blood was drawn from 22 asthma patients at enrollment and again after six months of inhaled steroids.", "paired"),
++    ("Tumor and matched normal tissue from 30 patients were profiled.", "paired"),
++    ("We have 3 visits per participant over a year.", "paired"),
++    ("We have 15 vehicle-treated and 15 drug-treated rats, liver RNA-seq.", "groups"),
++    ("Liver from young and aged mice was sequenced.", "groups"),
++])
++def test_designs_stated_with_counts_moments_or_contrasting_groups(task, design):
++    assert study_purpose(task).design == design
++
++
++def test_v2_causal_and_predictive_phrasings():
++    assert study_purpose("We want to attribute these expression changes to the knockout itself.").claim == "causal"
++    assert study_purpose("Can network features identify responders in an independent validation cohort?").claim == "prediction"
++
++
++@pytest.mark.parametrize("item", json.loads(
++    (ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / "heldout2" / "heldout.json").read_text())["items"],
++    ids=lambda item: item["id"])
++def test_the_second_held_out_set_now_development_data_keeps_its_labels(item):
++    # v3 was written against these (Log 345: v2 read G2-a and T6 as groups, T2 as prediction).
++    purpose = study_purpose(item["prompt"])
++    assert (purpose.design or "none", purpose.claim or "none") == (item["comparison_design"], item["claim_kind"])
++
++
++@pytest.mark.parametrize("task", [
++    "We recruited 40 healthy volunteers and sequenced their monocytes.",
++    "We have paired continuous transcriptomics and metabolomics matrices from the same cohort.",
++    "Cells were stimulated during the assay and again after washing to normalize the signal.",
++    "Rank TFs by their out-degree in the aggregate network.",
++    "Rank patients by survival time.",
++])
++def test_one_group_omics_layers_processing_and_plain_rankings_are_no_witness(task):
++    purpose = study_purpose(task)
++    assert purpose.design is None and purpose.claims == ()

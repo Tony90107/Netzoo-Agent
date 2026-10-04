@@ -17530,3 +17530,59 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 只報告：兩臂各有幾次出現目的段落與缺口句；H5（DRAGON 未宣告）另列。
 
 成本估計：192 個 CLI session，約 US$0.4。
+
+## Log 349｜結果：witness v3——設計召回大幅提高，但結論召回與因果誤判兩項判定不成立，依宣告撤回
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 348 執行。live 沒有跑：主要判定不成立，照宣告撤回。
+證據在 `docs/research-log/purpose-contract-2026-10-04/`：`witness_eval_heldout3.txt`、`v3_withdrawn.patch`、`v3_withdrawn_tests.patch`、`study_purpose.v3.frozen.py`。
+
+**判定：**
+
+| 判定 | 基準 v1＋PN | v3 | 門檻 | 成立 |
+|---|---|---|---|---|
+| W1 設計召回 | 0/23（0%） | 15/23（65%） | +25 個百分點 | 是（+65） |
+| W1 結論召回 | 6/20（30%） | 8/20（40%） | +15 個百分點 | **否（+10）** |
+| W2 設計誤判 ≤ 1 | 0 | 0 | | 是 |
+| W2 結論誤判 ≤ 1 | 1 | 1 | | 是 |
+| W2 誤判 causal／prediction ＝ 0 | 1（T8） | 1（T8） | | **否** |
+
+**決定：** v3 撤回。`scripts/` 保持 v1＋PN（`dcdb761c8289`），全套件仍是 3225 passed。
+
+**T8，線上版本也會犯：**
+- 原句：「donor table giving age, sex, RNA integrity and cause of death … remove the effect of RNA integrity」。
+- 共變數名稱「cause of death」命中因果 witness（`\bcaus(?:e|es|…)\b`）。
+- 線上的 v1＋PN 會在這類請求前加一段「沒有工具能證明因果」，而使用者只是要做技術性校正。
+
+**結論漏判的形狀（v3 的 12 個）：**
+- 8 個的設計已讀對，漏的是新的說法：
+  - 「rewired in lesions relative to uninvolved skin」
+  - 「rank patients by how far … departs from」
+  - 「different from that of OA synovium」
+  - 「classifies new biopsies」（另一個實作錯誤：`classify\w*` 不會匹配「classifies」）
+  - 「least like those of the OA group」
+  - 「drives the inflammation or merely accompanies it」
+  - 「flag which healthy cows will develop」
+  - 「which piglets have the most atypical」
+- 4 個因設計漏判，連帶 `group_difference` 無法成立，或沒有個體單位：
+  - H3「each sampled when stable, during an exacerbation and after recovery」
+  - H6「four replicate pools at each of vehicle and three concentrations」
+
+**三組保留集的整體圖像**（每一組都是第一次接觸時量的；「線上版」指當時的版本）：
+
+| 保留集 | 線上版設計召回 | 線上版結論召回 | 調整後的版本在下一組新資料上 |
+|---|---|---|---|
+| 第一組（Log 343） | 4/22 | 10/20 | — |
+| 第二組（Log 345） | 1/22 | 11/20 | v2：設計 11/22、結論 15/20 |
+| 第三組（Log 349） | 0/23 | 6/20 | v3：設計 15/23、結論 8/20 |
+
+- 每一版在看過的資料上都調到 100%，但在下一組新資料上：
+  - 設計的增益能延續（+45、+65 個百分點）。
+  - 結論只多 +20、+10 個百分點。
+- 精確度方面，設計誤判從 v2 的 2 次降到 v3 的 0 次。結論的因果誤判每一組都換一種形狀：第二組是後置否定，第三組是「cause of death」。
+- 判讀：比較設計的寫法有限而有規律（數字、時間點、配對字詞），字詞表能泛化；結論的寫法是開放的，字詞表每遇到一組新資料就漏掉一批新說法。
+
+**下一步（待使用者決定）：**
+1. 「cause of death」這類名詞用法的精確度修正（只減少命中，同 PN）。
+2. 只採用 v3 的設計部分（設計誤判 0、召回 65%）。但第三組已看過，需要第四組保留集。
+3. 結論改成提案的 (b) 路：既有呼叫提出結論類型與引文，再用確定性規則驗證。
+   - Log 341 的教訓：模型會把目的句拿去對應任何選項，驗證規則要能擋住。
