@@ -17619,3 +17619,19 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - **不跑 live**，理由同 Log 346。
 
 **公開：** CN 是看過第三組 T8 之後設計的，判定全在已看過的資料上。
+
+## Log 351｜結果：CN——全部判定成立，保留
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 350 執行，實作 commit `1e4f957`。live 照宣告不跑。
+證據：`docs/research-log/purpose-contract-2026-10-04/check_change.py`／`check_cn.txt`；測試在 `tests/test_study_purpose.py`（新增 9 個）。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| C1 | T8 不再有任何結論。5 句名詞探針沒有結論；4 句因果主張探針仍是 causal（第 5 句「show that … causes changes」已由 Log 342 的測試涵蓋） | 是 |
+| C2 | 開發集、第一組、第二組保留集改變 0；第三組只有 T8 改變（causal → 無）。結論命中基準／CN：6／6、10／10、11／11、6／6 | 是 |
+| C3 | 310 個真實請求改變 0；`audit_witnesses.py` 輸出與 `audit_witnesses.txt` 相同 | 是 |
+| O1 | 全套件 3234 passed／35 skipped（基準 3225，新增 9）；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 prompt hash `c820364a1123`、policy hash `b0570ff267af` 不變 | 是 |
+| O3 | 3,592 個 traced 決策：命中 0、改變 0 | 是 |
+| O6 | Log 343 的 156 個 live 決策：回覆差異 0 | 是 |
+
+**決定：** CN 保留。witness 現為 v1＋PN＋CN。
