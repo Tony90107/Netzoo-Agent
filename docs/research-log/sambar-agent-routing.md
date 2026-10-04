@@ -17988,3 +17988,66 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
    - 以第七組保留集評估，判定不變。
 2. 改用相對判準評估 b′ 或 b″（第七組）。
 3. 停在這裡，把六輪結果寫進論文。
+
+## Log 359｜事前宣告：b″——b′ 加兩條驗證，改用相對判準，以第七組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`c647d52..daba5b9`，已完成），然後照建議做「1 加 2」：
+- 做 b″。
+- 改用相對判準，只適用本輪與之後，不回溯 b′。
+- 第七組保留集照原稿；判定條文照建議。
+本條目寫於 b″ 的實作 commit 與任何第七組保留集上的呼叫之前。
+- 基準為 HEAD `3f69baa`：線上 v1＋PN＋CN，`scripts/`、`tests/` 與 `daba5b9` 相同。
+- 工作目錄是 b′ 的實作（`554475a`，以 `cherry-pick -n` 套回後立即 unstage）加 b″ 的兩條驗證與新測試，尚未 commit。
+- 全套件（基準）3234 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `b3_frozen/`（`3f69baa`，早於第七組寫完）：
+  - 提示 `e2af95adf863`、契約 `cb2c1fcdde6e`，與 (b)、b′ 相同。
+  - 驗證 `25a247ab45c5`。
+- `heldout7/heldout.json`（`370a4561a054`）：隔離 subagent 撰寫，使用者審過、照原稿，共 32 句：
+  - 6 家族 × 4：Q1、Q3 配對；Q2、Q4、Q6 分組；Q5 無。
+  - 3 句否定陷阱、5 句精確度陷阱。
+
+**b″ 相對 b′ 的兩條驗證**（`FREEZE7.md`）：
+1. 引文要證明某個原因（show／prove／establish／demonstrate／confirm that … cause／drive …，或動詞用法的 cause）時，只能支持 causal（第六組 P2-b）。
+2. 個體變化除了個體線索（which／whose／who／rank／individual／each patient 或個體名詞），還須有改變、極值或排名字詞（第六組 P2-d）。
+   - 「who」是因為第一版規則誤殺第五組 M4-a 而補上的。
+- 在已看過的提案上：
+  - 387 筆：設計 254/297、結論 237/264，0 誤判。
+  - 第五組：設計 48/66、結論 54/66，0 誤判。
+  - 第六組：設計 63/63、結論 50/60，0 誤判（b′ 為 4）。
+  - 因果／預測誤判各處皆 0。
+
+**審稿時讀到的風險（公開，沒有執行任何東西）：**
+- T5「HPV is already known to cause these cancers; what we want is which transcription factors are most rewired in tumour.」
+- 若模型把背景事實當成 causal 提出，驗證擋不住（cause 是動詞用法、沒有否定），會造成一次缺口誤判。
+- 線上 witness 也可能在此句讀出 causal。
+
+**實作與預期修改的既有測試：** 同 Log 355／357；`tests/test_study_purpose_call.py` 再新增 5 個 b″ 測試。
+
+**判定（相對判準；任一不成立就撤回 b″）：**
+
+主要判定（離線，第七組 32 句 × 3 = 96 次，`b_eval.py`，基準為線上 witness）：
+- **W1 召回**：設計 b″ − 基準 ≥ 25 個百分點；主要結論 ≥ 15 個百分點。
+- **W2a 因果／預測誤判**（標註不是）：b″ ≤ 基準，且 ≤ 3。
+- **W2b 設計誤判＋結論誤判的總和**：b″ ≤ 基準，且 ≤ 9。
+  - 上限是為了避免整組資料很難時，兩邊都很差也算通過。
+
+其他離線判定：
+- **O1**：全套件通過；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O3**：3,592 個 traced 決策重播，回覆改變 0（沒有 state 時走 witness）。
+- **O6**：Log 343 的 156 個 live 決策重播，同上，改變 0。
+
+live（主要判定成立才跑；gpt-4o-mini，預先授權）：
+- baseline 是本宣告 commit 的 worktree，候選是 b″ 的實作 commit；第七組 32 句 × 3，交錯同時跑（`HELDOUT=heldout7/heldout.json`）。
+- 候選臂各 trial 的研究目的取自 `routing.study_purpose_detected` 事件。
+- **有效性**：兩臂 provider 錯誤皆為 0，否則只重跑失敗的 session。
+- **E1**：同 Log 342，以該 trial 的研究目的判定是否合格，≥ 90%。
+- **E2**：標註 causal／prediction 的每一句，候選臂缺口句 ≥ 2/3。
+- **H1（相對）**：標註不是 causal／prediction 的句子，候選臂的缺口句次數 ≤ baseline 臂。
+- **H2**：只增不改，R4 例外；對照句不加段落。
+- **H3**：候選臂只比 baseline 多一個呼叫角色 `study_purpose`。
+- 只報告：平均呼叫數、延遲、兩臂目的段落與缺口句的次數。
+
+成本估計：離線約 US$0.01；live 約 US$0.4。

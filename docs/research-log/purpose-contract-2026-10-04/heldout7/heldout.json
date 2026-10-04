@@ -1,0 +1,780 @@
+{
+  "authored_by": "subagent, isolated from the verification rules",
+  "items": [
+    {
+      "id": "Q1-a",
+      "family": "Q1",
+      "data_sentence": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network.",
+      "purpose_sentence": "Does the macrophage regulatory network shift, on average, after the challenge?",
+      "prompt": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network. Does the macrophage regulatory network shift, on average, after the challenge?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "COBRA"
+      ],
+      "must_include": [
+        "Accounts for the pairing: the same 14 volunteers at baseline and 6 h",
+        "The test of an average shift (e.g., a paired test on per-sample edge or TF scores) is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats baseline and post-challenge samples as independent groups",
+        "Claims a suite tool itself returns a significance test for the shift"
+      ]
+    },
+    {
+      "id": "Q1-b",
+      "family": "Q1",
+      "data_sentence": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network.",
+      "purpose_sentence": "Which volunteers had the most rewired networks post-exposure?",
+      "prompt": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network. Which volunteers had the most rewired networks post-exposure?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Needs per-sample networks (or per-sample TF activity) so each volunteer's post-minus-baseline change can be computed",
+        "Ranks volunteers by the size of their own within-person change"
+      ],
+      "red_flags": [
+        "Proposes only one aggregate network, which cannot rank volunteers",
+        "Answers with a population-average comparison instead of per-volunteer change"
+      ]
+    },
+    {
+      "id": "Q1-c",
+      "family": "Q1",
+      "data_sentence": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network.",
+      "purpose_sentence": "Which transcription factors gain or lose the most targets after endotoxin?",
+      "prompt": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network. Which transcription factors gain or lose the most targets after endotoxin?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting (e.g., out-degree) or TF activity between baseline and post-endotoxin",
+        "Uses the motif prior and PPI network the user has"
+      ],
+      "red_flags": [
+        "Recommends only expression-only co-expression tools that give no TF-level result",
+        "Ranks genes or volunteers instead of transcription factors"
+      ]
+    },
+    {
+      "id": "Q1-d",
+      "family": "Q1",
+      "data_sentence": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network.",
+      "purpose_sentence": "For now, one reference regulatory network for these cells is enough.",
+      "prompt": "Alveolar macrophages from 14 volunteers were collected by lavage at baseline and 6 h after inhaled endotoxin; we have RNA-seq plus a human motif prior and PPI network. For now, one reference regulatory network for these cells is enough.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "A single aggregate TF-gene network from expression, motif prior and PPI answers the request"
+      ],
+      "red_flags": [
+        "Turns the request into a baseline-vs-endotoxin test the user did not ask for",
+        "Ignores the motif and PPI priors and builds only co-expression"
+      ]
+    },
+    {
+      "id": "Q2-a",
+      "family": "Q2",
+      "data_sentence": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix.",
+      "purpose_sentence": "Ultimately we want to show that disrupted interferon co-expression causes the coronary artery damage.",
+      "prompt": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix. Ultimately we want to show that disrupted interferon co-expression causes the coronary artery damage.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "No suite tool can establish that co-expression changes cause coronary damage; network results are associations",
+        "A causal claim needs designs or methods outside the suite, and coronary outcome data are not stated"
+      ],
+      "red_flags": [
+        "Claims a network analysis will prove causation",
+        "Proposes motif- or PPI-based tools though only expression is available"
+      ]
+    },
+    {
+      "id": "Q2-b",
+      "family": "Q2",
+      "data_sentence": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix.",
+      "purpose_sentence": "We'd like something that tells, at admission, whether a new febrile child has Kawasaki disease.",
+      "prompt": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix. We'd like something that tells, at admission, whether a new febrile child has Kawasaki disease.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Building and validating a classifier for new children is outside the suite",
+        "Per-sample network features could feed an external classifier evaluated on held-out children"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts the diagnosis of new patients",
+        "Proposes motif- or PPI-based tools without the required priors"
+      ]
+    },
+    {
+      "id": "Q2-c",
+      "family": "Q2",
+      "data_sentence": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix.",
+      "purpose_sentence": "Is gene co-expression wired differently in Kawasaki disease than in the other fevers?",
+      "prompt": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix. Is gene co-expression wired differently in Kawasaki disease than in the other fevers?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Compares co-expression between Kawasaki and febrile-control children (different individuals)",
+        "The formal between-group test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats the design as paired or matched",
+        "Requires motif or PPI priors the user does not have"
+      ]
+    },
+    {
+      "id": "Q2-d",
+      "family": "Q2",
+      "data_sentence": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix.",
+      "purpose_sentence": "First step: one co-expression network per child, to explore.",
+      "prompt": "Whole-blood RNA-seq from 60 children with Kawasaki disease and 40 febrile children with other infections; we only have the expression matrix. First step: one co-expression network per child, to explore.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Per-sample co-expression networks built from the expression matrix alone"
+      ],
+      "red_flags": [
+        "Requires motif or PPI priors the user does not have",
+        "Adds an unrequested Kawasaki-vs-control test as the goal"
+      ]
+    },
+    {
+      "id": "Q3-a",
+      "family": "Q3",
+      "data_sentence": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Which miRNAs and TFs are most rewired by high glucose?",
+      "prompt": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors. Which miRNAs and TFs are most rewired by high glucose?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Includes miRNAs as regulators using the miRNA-target prior",
+        "Compares regulator targeting between high- and normal-glucose cultures, respecting the donor matching"
+      ],
+      "red_flags": [
+        "Drops the miRNA data and ranks only TFs",
+        "Treats the split cultures as independent groups"
+      ]
+    },
+    {
+      "id": "Q3-b",
+      "family": "Q3",
+      "data_sentence": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Goal: prove that glucose-driven miRNA loss causes the inflammatory switch.",
+      "prompt": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors. Goal: prove that glucose-driven miRNA loss causes the inflammatory switch.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Networks can nominate candidate miRNAs but cannot prove causation",
+        "Proof needs perturbation experiments (e.g., miRNA mimic or inhibitor) outside the suite"
+      ],
+      "red_flags": [
+        "Claims the network result itself proves the miRNA causes the switch"
+      ]
+    },
+    {
+      "id": "Q3-c",
+      "family": "Q3",
+      "data_sentence": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "Whose monocytes respond most strongly to glucose, network-wise?",
+      "prompt": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors. Whose monocytes respond most strongly to glucose, network-wise?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Per-sample networks, then each donor's high-minus-normal glucose difference",
+        "Ranks donors by the size of their own change"
+      ],
+      "red_flags": [
+        "Uses only aggregate networks, which cannot rank donors",
+        "Compares donors without using each donor's matched normal-glucose culture"
+      ]
+    },
+    {
+      "id": "Q3-d",
+      "family": "Q3",
+      "data_sentence": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We want one combined TF-and-miRNA network as a lab resource.",
+      "prompt": "Monocytes from 9 donors were each split into high- and normal-glucose cultures; we have mRNA and small-RNA sequencing for all 18, plus motif, PPI and miRNA-target priors. We want one combined TF-and-miRNA network as a lab resource.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "must_include": [
+        "One aggregate network with both TFs and miRNAs as regulators"
+      ],
+      "red_flags": [
+        "Leaves miRNAs out of the network",
+        "Adds an unrequested high- vs normal-glucose comparison"
+      ]
+    },
+    {
+      "id": "Q4-a",
+      "family": "Q4",
+      "data_sentence": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain.",
+      "purpose_sentence": "Does methylation-expression coupling differ between nurses and foragers?",
+      "prompt": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain. Does methylation-expression coupling differ between nurses and foragers?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Builds methylation-expression networks per group or per bee",
+        "The nurse-vs-forager test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats the two omics layers measured on the same brain as a paired comparison design",
+        "Proposes motif- or PPI-based tools though no priors are stated"
+      ]
+    },
+    {
+      "id": "Q4-b",
+      "family": "Q4",
+      "data_sentence": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain.",
+      "purpose_sentence": "Next season we want to classify newly collected bees as nurse or forager from their brain profiles.",
+      "prompt": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain. Next season we want to classify newly collected bees as nurse or forager from their brain profiles.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Classifying new bees needs an external classifier with held-out validation",
+        "Per-bee multi-omic network features could serve as classifier inputs"
+      ],
+      "red_flags": [
+        "Claims a suite tool classifies new bees",
+        "Evaluates the classifier only on the same 60 bees used to build it"
+      ]
+    },
+    {
+      "id": "Q4-c",
+      "family": "Q4",
+      "data_sentence": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain.",
+      "purpose_sentence": "Mainly we need one joint network linking methylated loci to expressed genes across all 60 brains.",
+      "prompt": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain. Mainly we need one joint network linking methylated loci to expressed genes across all 60 brains.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "One joint methylation-expression network across all 60 brains"
+      ],
+      "red_flags": [
+        "Uses only the expression data",
+        "Adds an unrequested nurse-vs-forager test"
+      ]
+    },
+    {
+      "id": "Q4-d",
+      "family": "Q4",
+      "data_sentence": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain.",
+      "purpose_sentence": "Which individual bees have the most atypical methylation-expression wiring?",
+      "prompt": "We profiled brains of 30 nurse and 30 forager honeybees, with RNA-seq and bisulfite methylation measured on each individual brain. Which individual bees have the most atypical methylation-expression wiring?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Per-bee multi-omic networks, scoring how far each bee departs from the rest"
+      ],
+      "red_flags": [
+        "Uses only one aggregate network, which cannot rank bees",
+        "Ranks genes or loci instead of bees"
+      ]
+    },
+    {
+      "id": "Q5-a",
+      "family": "Q5",
+      "data_sentence": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network.",
+      "purpose_sentence": "The aim is to forecast relapse risk for future patients from their individual networks.",
+      "prompt": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network. The aim is to forecast relapse risk for future patients from their individual networks.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Relapse prediction for new patients needs an external model and validation outside the suite",
+        "Relapse or follow-up data are needed and are not stated"
+      ],
+      "red_flags": [
+        "Claims a suite tool forecasts relapse",
+        "Invents a relapse-vs-non-relapse group comparison as if it were given"
+      ]
+    },
+    {
+      "id": "Q5-b",
+      "family": "Q5",
+      "data_sentence": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Which tumours have the most unusual regulatory wiring compared with the rest of the cohort?",
+      "prompt": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network. Which tumours have the most unusual regulatory wiring compared with the rest of the cohort?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Per-tumour networks, then a score of each tumour's distance from the cohort"
+      ],
+      "red_flags": [
+        "Uses only one aggregate network, which cannot rank tumours",
+        "Invents a subgroup comparison not in the request"
+      ]
+    },
+    {
+      "id": "Q5-c",
+      "family": "Q5",
+      "data_sentence": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network.",
+      "purpose_sentence": "We hope to establish that EWS-FLI1 binding directly causes the proliferation programme in these tumours.",
+      "prompt": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network. We hope to establish that EWS-FLI1 binding directly causes the proliferation programme in these tumours.",
+      "comparison_design": "none",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Networks can show EWS-FLI1 targeting associations but cannot establish direct causation",
+        "Causation needs perturbation (e.g., fusion knockdown) outside the suite"
+      ],
+      "red_flags": [
+        "Claims motif-based network edges prove direct causal binding"
+      ]
+    },
+    {
+      "id": "Q5-d",
+      "family": "Q5",
+      "data_sentence": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Aim 1: describe the regulatory landscape and find TF-gene modules.",
+      "prompt": "Expression arrays from 210 primary Ewing sarcoma tumours at diagnosis, along with a human TF motif prior and a protein interaction network. Aim 1: describe the regulatory landscape and find TF-gene modules.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "An aggregate TF-gene network, then community detection for modules"
+      ],
+      "red_flags": [
+        "Invents a comparison between tumour groups",
+        "Proposes mutation-based subtyping, which needs mutation data the user does not have"
+      ]
+    },
+    {
+      "id": "Q6-a",
+      "family": "Q6",
+      "data_sentence": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available.",
+      "purpose_sentence": "Which TFs change their targeting most as dose increases?",
+      "prompt": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available. Which TFs change their targeting most as dose increases?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting or TF activity across the four dose groups (different rats)",
+        "Trend testing across dose is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats dose levels as repeated measures on the same rats",
+        "Ranks genes instead of TFs"
+      ]
+    },
+    {
+      "id": "Q6-b",
+      "family": "Q6",
+      "data_sentence": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available.",
+      "purpose_sentence": "Can we show that diesel-induced NF-kB activation causes the fibrotic gene switch-on?",
+      "prompt": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available. Can we show that diesel-induced NF-kB activation causes the fibrotic gene switch-on?",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Network results cannot establish that NF-kB activation causes fibrotic gene induction",
+        "Needs an intervention (e.g., NF-kB inhibition) outside the suite"
+      ],
+      "red_flags": [
+        "Treats a dose-associated network change as proof of causation"
+      ]
+    },
+    {
+      "id": "Q6-c",
+      "family": "Q6",
+      "data_sentence": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available.",
+      "purpose_sentence": "Could network signatures predict the exposure level of rats in a future study?",
+      "prompt": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available. Could network signatures predict the exposure level of rats in a future study?",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Predicting exposure in new rats needs an external model with held-out validation"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts exposure level"
+      ]
+    },
+    {
+      "id": "Q6-d",
+      "family": "Q6",
+      "data_sentence": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available.",
+      "purpose_sentence": "To begin with, I'm just after one regulatory network for rat lung.",
+      "prompt": "Sample sheet: 32 rat lungs (RNA-seq), dose column 0/0.5/2.5/10 mg/m3 diesel exhaust, 8 rats per dose; rat motif and PPI priors available. To begin with, I'm just after one regulatory network for rat lung.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "One aggregate rat-lung TF-gene network from expression, motif prior and PPI"
+      ],
+      "red_flags": [
+        "Adds an unrequested dose comparison"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T1",
+      "data_sentence": "Bone-marrow RNA-seq from 45 patients with myelodysplastic syndrome, all sampled at diagnosis, with motif and PPI priors.",
+      "purpose_sentence": "Predicting progression or proving causality is off the table; we just want to see whose marrow networks stand out most.",
+      "prompt": "Bone-marrow RNA-seq from 45 patients with myelodysplastic syndrome, all sampled at diagnosis, with motif and PPI priors. Predicting progression or proving causality is off the table; we just want to see whose marrow networks stand out most.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "Per-patient networks, ranking patients by how far each departs from the cohort",
+        "No prediction or causal component: the user ruled both out"
+      ],
+      "red_flags": [
+        "Proposes a progression-prediction model or a causal analysis",
+        "Uses a single aggregate network that cannot rank patients"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T2",
+      "data_sentence": "Whole-blood RNA-seq from 52 long-COVID patients; matched healthy controls exist in our biobank but were deliberately not sequenced for this project.",
+      "purpose_sentence": "We want to sort the patients into molecular subtypes from their co-expression networks.",
+      "prompt": "Whole-blood RNA-seq from 52 long-COVID patients; matched healthy controls exist in our biobank but were deliberately not sequenced for this project. We want to sort the patients into molecular subtypes from their co-expression networks.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Per-patient co-expression networks, with clustering into subtypes done outside the suite",
+        "No patient-vs-control comparison: the controls were not sequenced"
+      ],
+      "red_flags": [
+        "Plans a long-COVID vs healthy-control comparison",
+        "Treats the mention of matched controls as a paired design",
+        "Proposes mutation-based subtyping, which needs mutation data"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T3",
+      "data_sentence": "RNA-seq of 24 bleached and 24 unbleached Acropora colonies sampled on the same reef during one heatwave; expression only.",
+      "purpose_sentence": "We ask whether gene co-expression differs between the two sets, leaving whether it drives bleaching to later transplant experiments.",
+      "prompt": "RNA-seq of 24 bleached and 24 unbleached Acropora colonies sampled on the same reef during one heatwave; expression only. We ask whether gene co-expression differs between the two sets, leaving whether it drives bleaching to later transplant experiments.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Compares co-expression between bleached and unbleached colonies (different colonies)",
+        "The between-group test is outside the suite, and no causal claim is made (the user deferred it)"
+      ],
+      "red_flags": [
+        "Frames the result as showing what causes bleaching",
+        "Requires motif or PPI priors the user does not have"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T4",
+      "data_sentence": "Testis biopsies from 18 men with non-obstructive and 18 with obstructive azoospermia: mRNA and small-RNA sequencing, motif and PPI priors, and predicted miRNA targets.",
+      "purpose_sentence": "Which miRNAs show the biggest difference in predicted regulatory influence between the two forms?",
+      "prompt": "Testis biopsies from 18 men with non-obstructive and 18 with obstructive azoospermia: mRNA and small-RNA sequencing, motif and PPI priors, and predicted miRNA targets. Which miRNAs show the biggest difference in predicted regulatory influence between the two forms?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Builds networks with miRNAs as regulators from the miRNA-target prior, per azoospermia form",
+        "Ranks miRNAs by the difference in targeting between the two groups"
+      ],
+      "red_flags": [
+        "Reads 'predicted' as a request for a predictive model",
+        "Drops the miRNA data"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T5",
+      "data_sentence": "Matched tumour and adjacent normal cervix from 22 women with HPV-positive cervical cancer, RNA-seq, with motif and PPI priors.",
+      "purpose_sentence": "HPV is already known to cause these cancers; what we want is which transcription factors are most rewired in tumour.",
+      "prompt": "Matched tumour and adjacent normal cervix from 22 women with HPV-positive cervical cancer, RNA-seq, with motif and PPI priors. HPV is already known to cause these cancers; what we want is which transcription factors are most rewired in tumour.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares TF targeting between tumour and matched adjacent normal from the same women",
+        "Ranks transcription factors by rewiring"
+      ],
+      "red_flags": [
+        "Treats the HPV statement as a request to establish causality",
+        "Treats tumour and normal as independent groups"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T6",
+      "data_sentence": "Lungs from 30 mice, all harvested 21 days after influenza infection, RNA-seq with mouse motif and PPI priors.",
+      "purpose_sentence": "We want one regulatory network and to check whether TMM versus quantile normalisation changes it much.",
+      "prompt": "Lungs from 30 mice, all harvested 21 days after influenza infection, RNA-seq with mouse motif and PPI priors. We want one regulatory network and to check whether TMM versus quantile normalisation changes it much.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "One aggregate TF-gene network, rebuilt under each normalisation to check robustness"
+      ],
+      "red_flags": [
+        "Reads 'after infection' or 'versus' as a sample comparison design",
+        "Proposes a group or before/after test"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T7",
+      "data_sentence": "Skin fibroblast RNA-seq from 140 adults with systemic sclerosis, collected at two hospitals over three years; expression matrix plus a site and year table.",
+      "purpose_sentence": "We need this cohort's gene co-expression structure with hospital and collection-year effects removed.",
+      "prompt": "Skin fibroblast RNA-seq from 140 adults with systemic sclerosis, collected at two hospitals over three years; expression matrix plus a site and year table. We need this cohort's gene co-expression structure with hospital and collection-year effects removed.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "COBRA"
+      ],
+      "must_include": [
+        "Hospital and collection year are nuisance covariates to remove, not groups to compare",
+        "Covariate-aware co-expression that separates site and year components"
+      ],
+      "red_flags": [
+        "Sets up a hospital-vs-hospital or year-vs-year comparison",
+        "Requires motif or PPI priors the user does not have"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T8",
+      "data_sentence": "We ran 150-bp paired-end RNA-seq on dorsal root ganglia from 12 wild-type and 12 Scn9a-knockout mice, with mouse motif and PPI priors.",
+      "purpose_sentence": "Is the overall regulatory network different between genotypes?",
+      "prompt": "We ran 150-bp paired-end RNA-seq on dorsal root ganglia from 12 wild-type and 12 Scn9a-knockout mice, with mouse motif and PPI priors. Is the overall regulatory network different between genotypes?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "COBRA"
+      ],
+      "must_include": [
+        "Compares wild-type and knockout mice as independent groups",
+        "The between-genotype test is a step outside the suite"
+      ],
+      "red_flags": [
+        "Reads 'paired-end' as a paired design",
+        "Claims a suite tool runs the significance test"
+      ]
+    }
+  ]
+}
