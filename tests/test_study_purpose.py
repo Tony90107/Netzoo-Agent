@@ -199,3 +199,36 @@ def test_the_trace_event_reads_the_request_only(monkeypatch):
     assert events[0][0] == "routing.study_purpose_detected"
     assert events[0][1]["design"] == "paired" and events[0][1]["claims"][0]["claim"] == "causal"
     assert len(events) == 2 and events[1][1]["claims"] == []
+
+
+# -- PN: a negation after a conclusion witness (Log 346) ------------------------------
+
+@pytest.mark.parametrize("task", [
+    "Predicting relapse isn't the point; we want to see whose networks changed most between samples.",
+    "Prediction is not our goal here.",
+    "Causality is not what we are after.",
+    "Whether the drug causes these changes is beside the point.",
+    "A predictive model is out of scope for this project.",
+    "Building a classifier is not needed.",
+    "Proving causation isn't really the aim.",
+])
+def test_a_conclusion_negated_after_it_is_no_witness(task):
+    assert study_purpose(task).claims == ()
+
+
+@pytest.mark.parametrize("task, claim", [
+    ("We want to predict relapse, which is not easy.", "prediction"),
+    ("We want to predict relapse, not just describe it.", "prediction"),
+    ("We want a classifier; the network method is not important.", "prediction"),
+    ("Can we predict which patients will relapse? The cost is not a concern.", "prediction"),
+    ("Our goal is to predict response, and batch is not the point.", "prediction"),
+    ("We want to predict response and it is not obvious how.", "prediction"),
+])
+def test_a_later_not_about_something_else_keeps_the_conclusion(task, claim):
+    assert study_purpose(task).claim == claim
+
+
+def test_a_negation_after_a_design_witness_keeps_the_design():
+    # The data were sampled twice whatever the user wants to conclude.
+    task = "Each patient was sampled before and after treatment; comparing them is not the point."
+    assert study_purpose(task).design == "paired"
