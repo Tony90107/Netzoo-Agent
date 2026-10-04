@@ -1,0 +1,616 @@
+{
+  "authored_by": "subagent, isolated from the witness lists",
+  "items": [
+    {
+      "id": "F1-a",
+      "family": "F1",
+      "data_sentence": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors.",
+      "purpose_sentence": "Which transcription factors shift their targets the most between the two draws?",
+      "prompt": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors. Which transcription factors shift their targets the most between the two draws?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "a per-TF comparison of targeting (e.g., out-degree or activity) between the pre- and post-transplant samples",
+        "that the comparison respects pairing within recipients (paired test or within-person differences)",
+        "that the statistical test is a step outside the network tools"
+      ],
+      "red_flags": [
+        "treating the pre and post samples as independent groups",
+        "recommending miRNA-based tools (PUMA, LIONESS-PUMA) without miRNA data",
+        "ranking TFs by raw edge-weight differences with no significance assessment"
+      ]
+    },
+    {
+      "id": "F1-b",
+      "family": "F1",
+      "data_sentence": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors.",
+      "purpose_sentence": "I'd like to rank the recipients by how much their regulatory networks rewired after transplant.",
+      "prompt": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors. I'd like to rank the recipients by how much their regulatory networks rewired after transplant.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "one network (or TF activity profile) per sample, not only one aggregate per time point",
+        "a within-recipient post-minus-pre difference used to rank the recipients"
+      ],
+      "red_flags": [
+        "only aggregate per-time-point networks, which cannot rank individuals",
+        "answering with a cohort-level test instead of a per-recipient ranking"
+      ]
+    },
+    {
+      "id": "F1-c",
+      "family": "F1",
+      "data_sentence": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors.",
+      "purpose_sentence": "Can we pin any regulatory changes on the immunosuppressive drugs themselves?",
+      "prompt": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors. Can we pin any regulatory changes on the immunosuppressive drugs themselves?",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "that network inference is correlational and cannot establish that the drugs cause the changes",
+        "that every recipient had surgery and the drugs, so a drug effect cannot be separated from time, surgery or graft effects without another comparison group"
+      ],
+      "red_flags": [
+        "claiming a registered tool can demonstrate the drug effect",
+        "presenting a pre/post network difference as proof of causation"
+      ]
+    },
+    {
+      "id": "F1-d",
+      "family": "F1",
+      "data_sentence": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors.",
+      "purpose_sentence": "To start, I only want one network summarizing gene regulation across all 36 samples.",
+      "prompt": "I've got whole-blood microarrays from 18 kidney transplant recipients, each sampled before surgery and three months after, plus TF motif and protein interaction priors. To start, I only want one network summarizing gene regulation across all 36 samples.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "a single aggregate TF-gene network built from all samples"
+      ],
+      "red_flags": [
+        "making a pre/post comparison the main analysis when none was asked for",
+        "recommending miRNA-based tools (PUMA, LIONESS-PUMA) without miRNA data"
+      ]
+    },
+    {
+      "id": "F2-a",
+      "family": "F2",
+      "data_sentence": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data.",
+      "purpose_sentence": "Are gene-gene relationships wired differently in the schizophrenia brains compared with controls?",
+      "prompt": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data. Are gene-gene relationships wired differently in the schizophrenia brains compared with controls?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "co-expression-based networks only, since no motif or interaction priors are available",
+        "an explicit between-group comparison step (e.g., diagnosis as a covariate, or a test on per-sample networks)"
+      ],
+      "red_flags": [
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available",
+        "treating the age-matched controls as paired samples",
+        "comparing two aggregate networks by eye without a statistical test"
+      ]
+    },
+    {
+      "id": "F2-b",
+      "family": "F2",
+      "data_sentence": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data.",
+      "purpose_sentence": "Down the line we'd like to flag schizophrenia from brain tissue in a new, independent cohort.",
+      "prompt": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data. Down the line we'd like to flag schizophrenia from brain tissue in a new, independent cohort.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "no registered tool builds a predictive model; network summaries could only serve as features for a classifier built outside the suite",
+        "that the classifier must be trained and validated outside the suite, with the independent cohort kept out of training"
+      ],
+      "red_flags": [
+        "claiming a network tool itself classifies new samples",
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available"
+      ]
+    },
+    {
+      "id": "F2-c",
+      "family": "F2",
+      "data_sentence": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data.",
+      "purpose_sentence": "I'm curious which donors stand out most, network-wise, from the rest of the cohort.",
+      "prompt": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data. I'm curious which donors stand out most, network-wise, from the rest of the cohort.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "sample-specific co-expression networks",
+        "a per-donor distance or outlier score against the rest of the cohort"
+      ],
+      "red_flags": [
+        "only group-level networks, which cannot single out donors",
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available"
+      ]
+    },
+    {
+      "id": "F2-d",
+      "family": "F2",
+      "data_sentence": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data.",
+      "purpose_sentence": "Ignoring diagnosis for now, we'd like to see whether the brains fall into distinct molecular subtypes.",
+      "prompt": "We have RNA-seq of postmortem prefrontal cortex from 40 schizophrenia donors and 40 age-matched controls, but no motif or protein interaction data. Ignoring diagnosis for now, we'd like to see whether the brains fall into distinct molecular subtypes.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "per-sample network features followed by clustering, with the clustering as a step outside the network tools"
+      ],
+      "red_flags": [
+        "recasting the request as a case-control comparison",
+        "recommending mutation-based subtyping (no mutation data)",
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available"
+      ]
+    },
+    {
+      "id": "F3-a",
+      "family": "F3",
+      "data_sentence": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "Mostly we want a picture of how TFs and miRNAs jointly regulate genes in these tumors.",
+      "prompt": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors. Mostly we want a picture of how TFs and miRNAs jointly regulate genes in these tumors.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "an aggregate network with both TFs and miRNAs as regulators"
+      ],
+      "red_flags": [
+        "inventing a comparison (e.g., tumor vs normal) that is not in the data",
+        "dropping the miRNA data without saying so"
+      ]
+    },
+    {
+      "id": "F3-b",
+      "family": "F3",
+      "data_sentence": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "Which TFs and miRNAs vary most in their targeting from one tumor to the next?",
+      "prompt": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors. Which TFs and miRNAs vary most in their targeting from one tumor to the next?",
+      "comparison_design": "none",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "sample-specific networks that include miRNA regulators",
+        "a per-regulator variability measure across tumors (e.g., variance of out-degree)"
+      ],
+      "red_flags": [
+        "a single aggregate network, which has no tumor-to-tumor variation",
+        "inventing groups to compare"
+      ]
+    },
+    {
+      "id": "F3-c",
+      "family": "F3",
+      "data_sentence": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "Ultimately we hope to predict which patients will relapse after resection from their tumor's regulatory profile.",
+      "prompt": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors. Ultimately we hope to predict which patients will relapse after resection from their tumor's regulatory profile.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "no registered tool builds a predictive model; network summaries could only serve as features for a classifier built outside the suite",
+        "that relapse outcomes are needed (not stated in the data) and the model must be validated on held-out patients"
+      ],
+      "red_flags": [
+        "claiming a network tool predicts relapse",
+        "using an aggregate network as a per-patient predictor"
+      ]
+    },
+    {
+      "id": "F3-d",
+      "family": "F3",
+      "data_sentence": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "We'd like to pick out the individual tumors whose regulatory wiring is most atypical.",
+      "prompt": "Our cohort is 120 hepatocellular carcinoma tumors profiled by RNA-seq and small-RNA sequencing, and we have TF motif, protein interaction and miRNA-target priors. We'd like to pick out the individual tumors whose regulatory wiring is most atypical.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "one network (or regulator activity profile) per tumor",
+        "a per-tumor atypicality score (e.g., distance from the cohort)"
+      ],
+      "red_flags": [
+        "only an aggregate network",
+        "inventing a tumor-vs-normal comparison"
+      ]
+    },
+    {
+      "id": "F4-a",
+      "family": "F4",
+      "data_sentence": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors.",
+      "purpose_sentence": "We want to demonstrate that losing Nrf2 causes the rewiring of antioxidant gene regulation.",
+      "prompt": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors. We want to demonstrate that losing Nrf2 causes the rewiring of antioxidant gene regulation.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "that inferred networks are correlational: they can describe genotype-associated differences but cannot establish the causal mechanism",
+        "that the knockout design, not the network tool, is what supports attributing differences to Nrf2 loss, and mechanistic validation is outside the suite",
+        "a between-genotype comparison step to establish that rewiring exists at all"
+      ],
+      "red_flags": [
+        "claiming a registered tool proves Nrf2 loss causes the rewiring",
+        "assuming the rewiring exists without testing it"
+      ]
+    },
+    {
+      "id": "F4-b",
+      "family": "F4",
+      "data_sentence": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors.",
+      "purpose_sentence": "I'm after the TFs whose target genes get reshuffled the most in the knockouts.",
+      "prompt": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors. I'm after the TFs whose target genes get reshuffled the most in the knockouts.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "a per-TF comparison of targeting between genotypes after building networks",
+        "a significance assessment (e.g., label permutation or a test on per-sample networks) done outside the network tools"
+      ],
+      "red_flags": [
+        "treating knockout and wild-type mice as paired",
+        "recommending miRNA-based tools (PUMA, LIONESS-PUMA) without miRNA data"
+      ]
+    },
+    {
+      "id": "F4-c",
+      "family": "F4",
+      "data_sentence": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors.",
+      "purpose_sentence": "Overall, is the TF-to-gene network detectably different between the two genotypes?",
+      "prompt": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors. Overall, is the TF-to-gene network detectably different between the two genotypes?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "an explicit between-genotype comparison or test after network building (e.g., per-sample networks plus a test, or label permutation)"
+      ],
+      "red_flags": [
+        "two aggregate networks compared by eye with no test",
+        "treating the mice as paired"
+      ]
+    },
+    {
+      "id": "F4-d",
+      "family": "F4",
+      "data_sentence": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors.",
+      "purpose_sentence": "Mainly we'd like to see which gene modules the lung regulatory network breaks into.",
+      "prompt": "Lung RNA-seq from 12 wild-type and 12 Nrf2-knockout mice after two weeks of cigarette smoke exposure, plus mouse TF motif and protein interaction priors. Mainly we'd like to see which gene modules the lung regulatory network breaks into.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "building a TF-gene network and then detecting communities/modules in it"
+      ],
+      "red_flags": [
+        "making a genotype comparison the main analysis when none was asked for",
+        "recommending miRNA-based tools (PUMA, LIONESS-PUMA) without miRNA data"
+      ]
+    },
+    {
+      "id": "F5-a",
+      "family": "F5",
+      "data_sentence": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts.",
+      "purpose_sentence": "Which volunteers' gene networks shifted the most over the bed rest?",
+      "prompt": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts. Which volunteers' gene networks shifted the most over the bed rest?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "a network per biopsy and a within-person pre/post difference for each volunteer",
+        "that 12 samples is very few, favouring a method suited to small sample sizes"
+      ],
+      "red_flags": [
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available",
+        "answering with a group-level test instead of per-volunteer changes"
+      ]
+    },
+    {
+      "id": "F5-b",
+      "family": "F5",
+      "data_sentence": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts.",
+      "purpose_sentence": "Does bed rest consistently change how genes co-vary across the group as a whole?",
+      "prompt": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts. Does bed rest consistently change how genes co-vary across the group as a whole?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION",
+        "COBRA"
+      ],
+      "must_include": [
+        "a paired pre/post comparison that accounts for the same volunteers being sampled twice",
+        "that six pairs give very limited statistical power"
+      ],
+      "red_flags": [
+        "treating pre and post samples as independent groups",
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available"
+      ]
+    },
+    {
+      "id": "F5-c",
+      "family": "F5",
+      "data_sentence": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts.",
+      "purpose_sentence": "Could these profiles predict how much muscle strength a new volunteer would lose?",
+      "prompt": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts. Could these profiles predict how much muscle strength a new volunteer would lose?",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "no registered tool builds a predictive model; network summaries could only serve as features for a classifier built outside the suite",
+        "that six volunteers are far too few to train and validate a predictor, and strength outcomes are not stated"
+      ],
+      "red_flags": [
+        "claiming a network tool will predict strength loss",
+        "omitting any sample-size caveat"
+      ]
+    },
+    {
+      "id": "F5-d",
+      "family": "F5",
+      "data_sentence": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts.",
+      "purpose_sentence": "At this stage I just want to describe which genes move together in muscle.",
+      "prompt": "We did RNA-seq on thigh muscle biopsies from 6 volunteers before and after 10 days of bed rest, and have only the counts. At this stage I just want to describe which genes move together in muscle.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION",
+        "COBRA"
+      ],
+      "must_include": [
+        "a co-expression-based description, since no regulatory priors are available"
+      ],
+      "red_flags": [
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available",
+        "imposing a pre/post comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "F6-a",
+      "family": "F6",
+      "data_sentence": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks.",
+      "purpose_sentence": "Our hope is to establish that methylation changes drive the expression response to treatment.",
+      "prompt": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks. Our hope is to establish that methylation changes drive the expression response to treatment.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "that partial correlations between methylation and expression are undirected and cannot show that methylation drives expression",
+        "that a causal claim needs perturbation experiments or other evidence outside the suite"
+      ],
+      "red_flags": [
+        "reading network edges as methylation-to-expression causal arrows",
+        "claiming a registered tool establishes causation"
+      ]
+    },
+    {
+      "id": "F6-b",
+      "family": "F6",
+      "data_sentence": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks.",
+      "purpose_sentence": "Does the coupling between methylation and expression shift after treatment, across the cohort?",
+      "prompt": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks. Does the coupling between methylation and expression shift after treatment, across the cohort?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "joint methylation-expression networks plus an explicit pre/post comparison step",
+        "that the comparison accounts for the same patients being sampled twice"
+      ],
+      "red_flags": [
+        "treating pre and post biopsies as independent groups",
+        "ignoring the methylation data and using expression-only tools"
+      ]
+    },
+    {
+      "id": "F6-c",
+      "family": "F6",
+      "data_sentence": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks.",
+      "purpose_sentence": "From the baseline biopsy alone, we'd like to forecast which future patients will reach remission.",
+      "prompt": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks. From the baseline biopsy alone, we'd like to forecast which future patients will reach remission.",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "no registered tool builds a predictive model; network summaries could only serve as features for a classifier built outside the suite",
+        "using baseline samples only, with remission labels and validation in held-out patients (20 patients is small)"
+      ],
+      "red_flags": [
+        "claiming a network tool predicts remission",
+        "using post-treatment biopsies as predictors for a baseline forecast"
+      ]
+    },
+    {
+      "id": "F6-d",
+      "family": "F6",
+      "data_sentence": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks.",
+      "purpose_sentence": "First, we just want a map of how methylation and expression relate in these biopsies.",
+      "prompt": "We have matched RNA-seq and DNA methylation arrays from colon biopsies of 20 ulcerative colitis patients, taken before anti-TNF therapy and after eight weeks. First, we just want a map of how methylation and expression relate in these biopsies.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "a joint methylation-expression (partial correlation) network"
+      ],
+      "red_flags": [
+        "imposing a pre/post comparison the user did not ask for",
+        "ignoring the methylation data"
+      ]
+    },
+    {
+      "id": "N1",
+      "family": "N1",
+      "data_sentence": "Adipose microarrays from 35 lean and 35 obese women are available, together with TF motif and protein interaction networks.",
+      "purpose_sentence": "I'm not out to prove obesity causes anything; I only want to see if gene regulation differs between the groups.",
+      "prompt": "Adipose microarrays from 35 lean and 35 obese women are available, together with TF motif and protein interaction networks. I'm not out to prove obesity causes anything; I only want to see if gene regulation differs between the groups.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "an explicit between-group comparison step after building networks",
+        "taking the user at their word that causation is not the goal"
+      ],
+      "red_flags": [
+        "treating the request as causal, or making causal caveats the centrepiece of the answer",
+        "treating lean and obese women as paired"
+      ]
+    },
+    {
+      "id": "N2",
+      "family": "N2",
+      "data_sentence": "Blood RNA-seq from 40 septic shock patients, each sampled at ICU admission and on day five; expression is all we have.",
+      "purpose_sentence": "This isn't about a mortality classifier; we want to know which patients' networks changed most.",
+      "prompt": "Blood RNA-seq from 40 septic shock patients, each sampled at ICU admission and on day five; expression is all we have. This isn't about a mortality classifier; we want to know which patients' networks changed most.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "sample-specific co-expression networks and a within-patient admission-to-day-five difference",
+        "a per-patient ranking of change"
+      ],
+      "red_flags": [
+        "proposing a mortality predictor or classifier",
+        "recommending motif/PPI-based tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) when no priors are available",
+        "answering only at the cohort level"
+      ]
+    }
+  ]
+}

@@ -17145,3 +17145,98 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
    - trace：`.netzoo/traces/4b2d6153-…/events.jsonl`。
 
 **判讀限制：** 每句只有 3 次，且是同一批連續執行。這裡只描述行為，不比較任何兩句之間 ≤ 1 次的差異。字詞掃描欄（`compare_step`、`causal_limit`、`predictor`）的命中都來自 registry 固定句（GIRAFFE 的 causality 句、「sample-varying predictors」），不能當指標；上表結論全部來自人工閱讀回覆。
+
+## Log 342｜事前宣告：研究目的契約，階段 1——回覆說出各方法對使用者問題提供什麼；因果與預測給明確缺口
+
+日期／時區：2026-10-04，Asia/Taipei。
+本條目寫於階段 1 的任何程式修改與 live 呼叫之前。`routing/study_purpose.py` 是已凍結的原型（`2dc0773`），尚未接到任何程式路徑。
+基準為 HEAD `2dc0773`：
+- 全套件 3175 passed／35 skipped。
+- 指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`。
+- 條件推薦 prompt hash `c820364a1123`。
+- policy hash `b0570ff267af`。
+
+**使用者決定（2026-10-04）：**
+- 詞彙照提案：結論類型 5 個，比較設計 2 個。
+- 保留集由看不到字詞表的 subagent 撰寫，使用者審過，照原稿。
+- B3（預測請求的 fallback）與 A2（樣本數）併入階段 1。
+- 階段 2 的推薦與追問都做，但另行宣告。
+- `CLAIM_SUPPORT` 說明文字照草稿。
+
+**同時凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+
+| 檔案 | sha256（前 12 碼） | 說明 |
+|---|---|---|
+| `proposal.md` | `5045644ce320` | 設計 |
+| `heldout/heldout.json` | `bc696e1182ed` | 26 句：6 家族 × 4，加 2 句否定陷阱，含事前標註 |
+| `claim_support_draft.md` | `adce52197958` | 使用者核可的回覆文字 |
+| `scripts/netzoo_agent_core/routing/study_purpose.py` | `37caf959136c` | witness，與 `study_purpose.frozen.py` 相同 |
+
+- 字詞表凍結（`2dc0773`）早於打開保留集。
+- 階段 1 期間 witness 不再修改。若必須修改，視為另一次變更，結果與保留集結果分開報告。
+
+**讀過保留集之後才定的事（公開）：**
+1. 因果說明改寫：草稿的「from observational data」改成「from the expression data, so the networks can describe what differs or changes but not show why」。
+   - 原因：F4-a 是 knockout 實驗，資料不是觀察性的。
+   - 「前後比較沒有未處理組」那句本來就只在 `design=paired` 出現，這點不變。
+2. 不是因保留集而改、但與草稿有差異的地方：
+   - OTTER 沒有 per-sample 版本，所以 OTTER 那格寫「a per-sample method such as LIONESS-PANDA」。
+   - 「patients」「before and after」改成「individuals」「the different time points」，讓多時間點設計也適用。
+   - GIRAFFE `group_difference` 格去掉「as above」（那句可能單獨出現）。
+3. 範圍刻意不擴大：v1 不宣告 DRAGON／LIONESS-DRAGON（照提案）。保留集 F6 家族另列，不算進 E1。
+
+**與提案不同的一點：6a72164 特例不取代。**
+- `_render_beginner_group_network_guidance` 保留，只把寫死的「between cancer and normal groups」「Are the cancer and normal samples paired」改成中性措辭。
+- 理由：
+  - 它也處理中文請求，是使用者真實 session 的兩組比較；v1 的 witness 只有英文，直接移除會讓那個請求退化。
+  - 它只在追問仍是「Which modeling assumption …」時觸發；condition recommender 產生追問時不會觸發。
+- 預期修改的測試：`test_beginner_group_network_guidance_does_not_ask_for_algorithm_assumptions` 中「cancer」「normal」在回覆中的斷言，改為中性措辭的斷言。
+
+**階段 1 實作（全部只動回覆層，`TaskDecision` 不寫入任何欄位）：**
+- `workflow_registry.py`：新增 `ClaimSupport`、`CLAIM_SUPPORT`（鍵為 (action, claim, design 或 `*`)，level 只有 direct／with_step）、`UNSUPPORTED_CLAIMS`（causal、prediction）。
+  - 只存在 Python 中，不進 policy snapshot，也不進任何 prompt。
+- `interpretation/study_purpose_notes.py`：`with_study_purpose_reply`，接在 `respond()` 的最後一步（outside steps 之後）。
+  - **R1**：只處理 outside steps 涵蓋的那些回覆類型，再加上 `unresolved`（只用於 R4）。
+  - **R2 缺口**：請求帶 causal 或 prediction witness 時，缺口段落放在回覆最前面。若有以「These all fit; 」或「Both fit; 」開頭的追問段落，改寫它的開頭，不再說「all fit」而不提限制。
+  - **R3 目的段落**：取第一個非缺口類的結論。條件：決策至多一個讀法，而且列出的 workflow 中至少一個有宣告的格子。段落列出各 workflow 的說明與注意事項（相同注意事項只說一次），引用請求原句。位置規則同 outside steps：在回覆的追問之上，沒有追問就在結尾段落之上。
+  - **R4**：`unresolved`（semantic fallback）且帶 causal 或 prediction witness 時，整段回覆改成缺口說明，加上網路能提供什麼的一句與追問。
+- `interpretation/practical_notes.py`（R5，A2）：`design=paired`、`timepoint_count` 有值，且計數單位是個體（patients／individuals／subjects／donors／participants）時，說「for your N patients × m samples each = N·m samples, N·m+1 runs」。倍數不明時，不把個體數當成樣本數。
+- 卡片（R6）：
+  - 缺口類加一列「not available here」。
+  - 目的段落在 points 有空位時加一點。
+  - R4 的 `unresolved` 卡片 headline 改成缺口說明。
+- `graph/router_invocation.invoke_router`：witness 有結果時記錄事件 `routing.study_purpose_detected`（設計、結論與引文），不改決策。
+
+**判定（任一不成立就撤回階段 1，不事後重解）：**
+
+離線（live 之前）：
+- **O1**：全套件通過。兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O2**：witness 稽核（`audit_witnesses.py`）與凍結時的 `audit_witnesses.txt` 完全相同（3 次命中，全部正確）。
+- **O3 no-op**：所有 traced 錄音決策（3,592 列）經 `respond()` 重播，比較有無 `with_study_purpose_reply` 與 R5。沒有 witness 的請求，回覆變化＝0。走 response model 的決策無法離線重播，計數另列。
+- **O4**：diff 只觸及上列檔案與對應測試。`TaskDecision` 無寫入，以單元測試確認事件紀錄不改決策。
+- **O5**：Log 341 錄下的 27 個決策（`mp-s1-*`）經 `respond()` 重播：
+  - A1-1、A1-2：有目的段落（group_difference，paired）。A1-3 有兩個讀法，所以沒有段落。
+  - A2-1、A2-2：有個體變化段落，並出現「24 patients × 2 samples each = 48 samples, 49 PANDA runs」。
+  - A3：有調控子變化段落（GIRAFFE）。
+  - A4：第一段是因果缺口，含 paired 那句；回覆中不再出現「These all fit;」。
+  - B1：有段落，COBRA 為 direct。
+  - B3：缺口回覆，不再出現「could not validate」。
+  - A0、A5、B2：回覆與重播 baseline 完全相同。
+
+live：
+- gpt-4o-mini，已預先授權。
+- 保留集 26 句 × 3。baseline 用宣告 commit 的 worktree，與候選版交錯同時跑（`run_local.py` 型 CLI session）。
+- **有效性**：兩臂 provider 錯誤皆為 0，否則依 Log 290 補充 4 只重跑失敗的 session。逾時的 session 也照此重跑。
+- 效果：
+  - **E1**：凍結 witness 找到非缺口結論、單一讀法、且回覆列出至少一個有宣告格子的 workflow 的 trial 為合格 trial。候選臂合格 trial 中出現目的段落的比例 ≥ 90%。逐句另列。
+  - **E2**：凍結 witness 找到 causal 或 prediction 的每一句，候選臂缺口句出現 ≥ 2/3 次。
+- 傷害：
+  - **H1 假缺口**：標註的 claim 不是 causal／prediction 的句子（含 N1、N2 陷阱與對照），候選臂出現缺口句＝0。
+  - **H2 只增不改**：每個候選臂 trial，把回覆去掉階段 1 加入的段落並還原改寫的開頭之後，必須等於同一決策在沒有階段 1 時的重播回覆。另外，對照句（`is_control`）的目的段落與缺口句出現次數＝0。
+  - **H3 不加呼叫**：候選臂沒有任何 baseline 臂沒出現過的呼叫角色。平均呼叫數只報告，不設門檻，因為受取樣影響。
+- **H4（blind_en）在階段 1 不跑**，與提案不同：階段 1 沒有改任何路由程式（O4 保證），blind_en 的路由分數不可能因本變更而改變；階段 2 會改推薦，屆時照跑。
+- 只報告、不設門檻：
+  - 凍結 witness 在保留集上的設計與結論召回率、精確度（對照標註）。
+  - 兩臂各句眾數回覆的 must_include／red_flags 判讀（由我判讀，非盲測，作為論文的定性材料）。
+
+成本估計：156 個 CLI session，約 US$0.3。
