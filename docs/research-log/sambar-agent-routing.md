@@ -17586,3 +17586,36 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 2. 只採用 v3 的設計部分（設計誤判 0、召回 65%）。但第三組已看過，需要第四組保留集。
 3. 結論改成提案的 (b) 路：既有呼叫提出結論類型與引文，再用確定性規則驗證。
    - Log 341 的教訓：模型會把目的句拿去對應任何選項，驗證規則要能擋住。
+
+## Log 350｜事前宣告：CN——名詞用法的「cause」（cause of death）不算因果主張
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`5bb6b5e..e684029`，已完成），然後做 Log 349 的第 1 項。
+本條目寫於 `scripts/` 的任何修改之前。基準為 HEAD `e684029`：
+- witness v1＋PN（`dcdb761c8289`）
+- 全套件 3225 passed／35 skipped
+- 指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`
+
+**問題：**
+- 第三組保留集 T8：「a donor table giving age, sex, RNA integrity and cause of death. We want to remove the effect of RNA integrity on co-expression …」
+- 因果 witness `\bcaus(?:e|es|…)\b` 把共變數名稱讀成因果主張。線上回覆會先說「沒有工具能證明因果」。
+
+**CN（只改 `routing/study_purpose.py`；原型在 scratchpad）：**
+- 因果 witness 命中的詞是「cause」或「causes」，而且緊接著「 of」或連字號（cause of death、causes of variation、cause-of-death、cause-specific）時，視為名詞，不算主張。
+- 例外：同一子句前面有要求找出原因的動詞時仍算主張。動詞包括 find、identify、determine、establish、discover、uncover、reveal、pinpoint、trace、explain、show、prove、demonstrate、understand、learn、know、test、confirm 及其變化形，例如「identify the cause of the rewiring」。
+- 動詞用法（「the treatment causes changes」「does the mutation cause …」）、causal、causality、causation 都不受影響。
+- 方向是安全的：只會讓命中變少。
+
+**判定（任一不成立就撤回 CN）：**
+- **C1**：
+  - T8 不再有任何結論。
+  - 5 句名詞探針沒有結論。
+  - 5 句因果主張探針（含「identify the cause of」「determine the cause of」）仍是 causal。
+- **C2**：在 Log 340 開發集與三組保留集上，只有第三組的 T8 改變；每組結論命中數不低於基準。
+- **C3**：310 個真實請求改變 0；`audit_witnesses.py` 輸出與 `audit_witnesses.txt` 相同。
+- **O1**：全套件通過（含新增測試）；hash 都不變。
+- **O3**：3,592 個 traced 決策重播，改變 0。
+- **O6**：Log 343 的 156 個 live 決策重播，回覆差異 0。
+- **不跑 live**，理由同 Log 346。
+
+**公開：** CN 是看過第三組 T8 之後設計的，判定全在已看過的資料上。
