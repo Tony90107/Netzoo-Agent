@@ -1085,7 +1085,6 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
-        "study_purpose",  # Log 355
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     event_types = [event.event_type for event in store.read_events(run_id)]
@@ -1140,7 +1139,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     )
     events = store.read_events(run_id)
 
-    assert router.calls == 4  # Log 355: + the study-purpose call
+    assert router.calls == 3
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
@@ -1153,7 +1152,6 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
-        "study_purpose",  # Log 355
     ]
     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
         result["messages"][-1].content
@@ -1212,7 +1210,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     events = store.read_events(run_id)
 
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
-    assert router.calls == 5  # Log 355: + the study-purpose call
+    assert router.calls == 4
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
@@ -1230,7 +1228,6 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
-        "study_purpose",  # Log 355
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
@@ -1285,7 +1282,7 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
     )
 
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
-    assert router.calls == 5  # Log 355: + the study-purpose call
+    assert router.calls == 4
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
@@ -1345,7 +1342,7 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
     )
 
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
-    assert router.calls == 5  # Log 355: + the study-purpose call
+    assert router.calls == 4
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
     proposed = next(
@@ -1399,7 +1396,7 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
         }
     )
 
-    assert router.calls == 3  # Log 355: + the study-purpose call
+    assert router.calls == 2
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["recommended_actions"] == []
@@ -1414,7 +1411,6 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
     assert [call["role"] for call in calls] == [
         "semantic_interpreter",
         "semantic_reviewer",
-        "study_purpose",  # Log 355
     ]
     assert calls[0]["status"] == "failed"
     assert calls[1]["status"] == "failed"
@@ -1462,7 +1458,7 @@ ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/p
 
     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
 
-    assert router.calls == 3  # Log 355: + the study-purpose call
+    assert router.calls == 2
     assert result["decision"]["action"] == "run_panda"
     assert result["decision"]["match_basis"] == "workflow_name"
     assert result["decision"]["expression_file"].endswith("/expression.tsv")
