@@ -26,6 +26,8 @@ own quoted sentence.
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import ACTION_DEFINITIONS, CLAIM_SUPPORT, UNSUPPORTED_CLAIMS, ClaimSupport
 
 from ..presentation import _ui_text_with_user_data, user_data_token
@@ -35,6 +37,7 @@ from .outside_steps import _REPLY_KINDS, _asks
 
 __all__ = [
     "CLAIM_LABELS",
+    "recommended_actions",
     "purpose_from_state",
     "claim_cells",
     "gap_claims",
@@ -118,6 +121,53 @@ def claim_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport
     return cells
 
 
+# Log 363 (a''): the data a request names, read narrowly. input_availability missed "no
+# motif or protein interaction data" and "miRNA-target priors", so these only decide whom
+# to recommend -- never which workflows are listed.
+_MIRNA_DATA = re.compile(r"mi(?:cro)?-?RNAs?|\bmiR-|small[- ]?RNA", re.I)
+_PRIORS = re.compile(r"motif|\bpriors?\b|\bPPI\b|protein[- ](?:protein\s+)?interaction|binding[- ]sites?", re.I)
+_NO_PRIORS = re.compile(
+    r"expression\s+(?:data\s+|matrix\s+)?only|only\s+(?:have\s+)?(?:the\s+)?(?:expression|counts?|count\s+matrix|RNA-?seq)"
+    r"|(?:expression|counts?)\s+(?:data\s+|matrix\s+)?(?:is|are)\s+all\s+we\s+have"
+    r"|\bno\s+(?:other\s+data|(?:TF\s+|regulatory\s+)?priors?|motif|protein)|without\s+(?:any\s+)?(?:priors?|motif)"
+    r"|nothing\s+else", re.I)
+_MIRNA_TOOLS = frozenset({"run_puma", "run_lioness_puma"})
+_PRIOR_TOOLS = frozenset({"run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma", "run_otter", "run_giraffe"})
+_MULTI_OMIC_TOOLS = frozenset({"run_dragon", "run_lioness_dragon"})
+
+
+def recommended_actions(decision, purpose: StudyPurpose, task: str) -> list[str]:
+    """The tied workflows that answer the stated question with the data the request names (Log 363).
+
+    Only a tie, only a question some but not all candidates have a declared
+    cell for (the question separates them; the named data only narrows), and never beside a causal or predictive claim. A miRNA workflow
+    needs miRNA data named, a prior-based one needs priors named and not
+    ruled out ("expression only"), and two named omics layers prefer the
+    multi-omic workflows. An empty list recommends nothing.
+    """
+    from ..routing.reading_selection import READING_WITNESSES
+
+    candidates = list(dict.fromkeys(decision.hypothesis_actions))
+    question = question_claim(purpose)
+    if (decision.capability_match_status != "ambiguous" or len(candidates) < 2 or question is None
+            or gap_claims(purpose) or len(decision.outcome_hypotheses) > 1):
+        return []
+    claim, design = question[0], purpose.design or "*"
+    declared = [action for action in candidates
+                if CLAIM_SUPPORT.get((action, claim, design)) or CLAIM_SUPPORT.get((action, claim, "*"))]
+    # The question itself must separate the candidates; the named data only narrows its choice.
+    if not declared or len(declared) == len(candidates):
+        return []
+    priors = bool(_PRIORS.search(task)) and not _NO_PRIORS.search(task)
+    mirna = bool(_MIRNA_DATA.search(task))
+    fit = [action for action in declared
+           if (action not in _PRIOR_TOOLS or priors) and (action not in _MIRNA_TOOLS or mirna)]
+    multi_omic = [action for action in fit if action in _MULTI_OMIC_TOOLS]
+    if multi_omic and READING_WITNESSES["multi_omic_network"].search(task):
+        fit = multi_omic
+    return fit if fit and len(fit) < len(candidates) else []
+
+
 def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
     paragraphs = []
     for claim, quote in gap_claims(purpose):
@@ -128,9 +178,13 @@ def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
     return paragraphs
 
 
-def _purpose_paragraph(cells, quote: str, user_data: list[str]) -> str:
+def _purpose_paragraph(cells, quote: str, user_data: list[str], recommended: list[str] = ()) -> str:
     user_data.append(quote)
     lines = [f'For your question ("{user_data_token(len(user_data) - 1)}"):']
+    if recommended:
+        names = " or ".join(f"**{_name(action)}**" for action in recommended)
+        lines.append(f"Start with {names}: with the data you named, these answer it, as below.")
+        cells = sorted(cells, key=lambda item: item[0] not in recommended)
     # Workflows whose cell says the same thing share one line (PANDA and PUMA).
     by_text: dict[str, list[str]] = {}
     for action, cell in cells:
@@ -150,7 +204,16 @@ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
     return paragraph
 
 
-def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
+def _recommending_lead(paragraph: str, recommended: list[str]) -> str:
+    names = " or ".join(f"**{_name(action)}**" for action in recommended)
+    for lead in _TIE_LEADS:
+        if paragraph.startswith(lead):
+            return (f"These fit the result you described; for your question, start with {names}. To choose "
+                    f"otherwise, tell me:{paragraph[len(lead):]}")
+    return paragraph
+
+
+def with_study_purpose(text: str, decision, purpose: StudyPurpose, task: str = "") -> str:
     """The reply with the gap first and the purpose paragraph above its question."""
     if not text:
         return text
@@ -158,12 +221,15 @@ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
     gaps = _gap_paragraphs(purpose, user_data)
     cells = claim_cells(decision, purpose)
     question = question_claim(purpose)
-    purpose_block = _purpose_paragraph(cells, question[1], user_data) if cells and question else ""
+    recommended = recommended_actions(decision, purpose, task) if task else []
+    purpose_block = _purpose_paragraph(cells, question[1], user_data, recommended) if cells and question else ""
     if not gaps and not purpose_block:
         return text
     paragraphs = text.split("\n\n")
     if gaps:
         paragraphs = [*gaps, *(_reworded_lead(part, purpose) for part in paragraphs)]
+    if recommended and purpose_block:
+        paragraphs = [_recommending_lead(part, recommended) for part in paragraphs]
     if purpose_block:
         closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
         if closing is not None and closing > 1 and _asks(paragraphs[closing - 1]):
@@ -203,5 +269,6 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
     if kind == "unresolved":
         updated = unresolved_gap_reply(purpose)
     else:
-        updated = with_study_purpose(text, TaskDecision.model_validate(state["decision"]), purpose)
+        updated = with_study_purpose(text, TaskDecision.model_validate(state["decision"]), purpose,
+                                     latest_user_task(state["messages"]))
     return result if not updated or updated == text else reply(updated, kind)
