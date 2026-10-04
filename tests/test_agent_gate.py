@@ -3866,10 +3866,11 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             result["plan"]["policy_hash"], result["project_policy"]["policy_hash"]
         )
         # The episode assertion moved with the episode: there is none to check.
-        self.assertEqual(len(result["token_usage"]["calls"]), 3)
+        # Log 355: + the study-purpose call after routing.
+        self.assertEqual(len(result["token_usage"]["calls"]), 4)
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
-            ["semantic_interpreter", "semantic_reviewer", "intent_router"],
+            ["semantic_interpreter", "semantic_reviewer", "intent_router", "study_purpose"],
         )
         self.assertLessEqual(
             result["token_usage"]["total_tokens"],
