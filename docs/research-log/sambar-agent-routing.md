@@ -17937,3 +17937,54 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - E1、E2、H1、H2、H3 同 Log 355。
 
 成本估計：離線約 US$0.01；live 約 US$0.4。
+
+## Log 358｜結果：b′——設計 100% 且零誤判、結論零缺口誤判，但結論誤判 4 次超過門檻 1 次，依宣告撤回
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 357 執行。主要判定不成立，live 照宣告不跑。
+- 實作 commit `554475a` 已 revert；`scripts/`、`tests/` 與宣告 commit `0f710ec` 相同。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：`b_eval_heldout6.txt`、`heldout6-calls.json`、`b2_withdrawn.patch`。
+
+**判定（第六組保留集，96 次呼叫、0 失敗）：**
+
+| 判定 | 線上 witness | b′ | 門檻 | 成立 |
+|---|---|---|---|---|
+| W1 設計召回 | 12/63（19%） | 63/63（100%） | +25 個百分點 | 是（+81） |
+| W1 結論召回 | 33/60（55%） | 50/60（83%） | +15 個百分點 | 是（+28） |
+| W2 設計誤判 ≤ 3 | 6 | 0 | | 是 |
+| W2 結論誤判 ≤ 3 | 3 | **4** | | **否** |
+| W2 causal／prediction 誤判 ＝ 0 | **3** | 0 | | 是（線上 witness 不成立） |
+
+**決定：** b′ 撤回，線上維持 v1＋PN＋CN。
+
+**b′ 的 4 次結論誤判：**
+- **P2-b ×3**：
+  - 原句「The grant aim is to show that immune co-expression changes drive motor neuron loss.」標註 causal。
+  - 模型三次都只提出 group_difference（引文含「changes」，驗證通過），沒有提出 causal。
+  - 這是模型的標記錯誤：引文同時含因果線索（show that … drive）。
+- **P2-d ×1**：
+  - 原句「For now I just want each subject's co-expression network built so the team can browse them.」標註 none。
+  - 模型提出 individual_change，引文的「each subject」通過驗證。
+  - 另兩次沒有提出。
+
+**線上 witness 在同一組上的錯誤（同時記錄）：**
+- T1「Building a prognostic predictor is a colleague's project; I only need a description …」讀成 prediction，3/3 都會在回覆前加「沒有工具能建預測模型」。
+- 間接否定（「是同事的計畫」）不在 PN 的範圍內。
+- 另有 P3 讀成分組 ×3、T3 讀成分組 ×3。
+
+**六輪的整體觀察（同時記錄，不改變本輪判定）：**
+- (b) 與 b′ 是在新資料上召回能泛化的做法：
+  - 設計：0% → 73%（第五組）、19% → 100%（第六組）。
+  - 結論：45% → 86%、55% → 83%。
+- 兩輪都沒有缺口誤判。
+- 兩輪都因一種精確度門檻多出 1–6 次而撤回。
+- 同樣的絕對門檻，線上 witness 在第六組也不成立：設計誤判 6、缺口誤判 3。
+- 是否改用相對判準（例如：不比線上差、且召回提高），是使用者的方法學決定，只能用於之後的宣告與新的保留集，不能回溯本輪。
+
+**可行的下一步（待使用者決定）：**
+1. **b″**：
+   - 驗證再加兩條（都只會減少命中）：
+     - 引文含因果線索（show／prove／establish／demonstrate that … cause／drive …）時，非 causal 的結論不成立。
+     - 個體變化與調控子改變一樣，須同時有改變、極值或排名字詞。
+   - 以第七組保留集評估，判定不變。
+2. 改用相對判準評估 b′ 或 b″（第七組）。
+3. 停在這裡，把六輪結果寫進論文。
