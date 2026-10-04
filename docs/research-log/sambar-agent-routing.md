@@ -17061,3 +17061,87 @@ candidate s2 的回覆（`render_replies.py` 重繪；s3 相同，但模組讀�
 **測試：** 全套件 3175 passed／35 skipped。
 - `tests/test_r5_replies.py` 新增 1 個（r7 的 Test 9）。
 - `tests/test_condition_recommender.py` 有 2 個斷言原本要求顯示模型 rationale（「explains, never decides」），依本次決定改為斷言不顯示。
+
+## Log 340｜事前宣告：最小對照組——輸入固定、只換研究目的，觀察現在的推薦會不會跟著變
+
+日期／時區：2026-10-04，Asia/Taipei。使用者決定：「先跑最小對照組看現在的行為」。
+本條目寫於任何 live 呼叫之前。基準為 HEAD `c1ad764`，不改程式碼；工作目錄只有不屬本專案的 `docs/diagnostics/` 與先前未提交的 `test10-2026-10-03/out/r8-*`。
+語料 `docs/research-log/minimal-pairs-2026-10-04/prompts.json` 同時寫定；執行與彙整用同目錄的 `run_local.py`、`collect.py`（本機 CLI，與 Log 320 相同路徑）。
+
+**目的：** 這是觀察輪，不是候選改動的 A/B，因此沒有撤回條件。要回答的問題只有一個：輸入與資料描述完全相同、只換最後一句研究目的時，現在的系統會不會給出不同的候選、推薦或澄清，並說明各方法能提供與不能提供的證據。
+
+**設計：**
+- A 組（6 句，共用資料句）：「24 位病人、治療前後各一份 RNA-seq，另有 TF motif 與蛋白交互作用資料」。
+- B 組（3 句）：「60 個腫瘤、30 responders／30 non-responders 的 bulk RNA-seq，沒有其他資料」。
+- 只換最後一句。英文，gpt-4o-mini（預先授權），每句 3 次，共 27 個 session（`mp-s1-<id>-<rep>`）。
+
+**事前寫下的預期（判讀依據，跑之前寫定）：**
+
+| id | 目的 | 好的回應應包含 | 紅旗 |
+|---|---|---|---|
+| A0 | 對照：一個網路概括 48 份樣本 | 整體網路（PANDA／OTTER 平手可接受）；能提到前後混在一起更好 | 給 per-sample |
+| A1 | 整個 cohort 的網路是否因治療改變 | 分前後建網路再比較，或 LIONESS-PANDA 後做配對檢定；要有「比較」這一步 | 只給一個整體網路、沒有比較步驟 |
+| A2 | 哪些病人自己的網路改變最多 | LIONESS-PANDA（每份樣本）後算每位病人前後差；提 LIONESS 網路不獨立 | 只給整體 PANDA |
+| A3 | 哪些 TF 的調控活性改變最多 | GIRAFFE TF 活性或 LIONESS-PANDA out-degree，接前後配對比較 | 沒有比較步驟 |
+| A4 | 證明治療本身造成調控改變 | 說明網路推論與無對照的前後比較不能支持因果；可提供描述改變的方法 | 把某工具說成能證明因果 |
+| A5 | 使用者的原例：病人的調控是否在治療後改變（含糊） | 問一個能分開「群體／個別病人／哪些 TF」的問題，或給有條件的推薦 | 先問與目的無關的軸（miRNA、樣本數）；無條件給單一工具 |
+| B1 | 兩組的共表現是否不同 | COBRA（組別當共變數）；每份樣本共表現＋組間檢定可接受 | 需要 prior 的 TF 網路工具 |
+| B2 | non-responders 是否分成次群 | 每份樣本共表現（LIONESS-coexpression／BONOBO）＋NetZoo 外的分群（`GUIDANCE_COMPOSITIONS`） | SAMBAR（需要突變資料） |
+| B3 | 預測新病人是否有反應 | 說明沒有已登錄 workflow 產生預測模型；可提網路特徵＋外部分類器與驗證 | 把網路工具當成預測器 |
+
+**記錄的結構計數（只描述，不做門檻）：**
+- 每句的最終形狀（status、候選集合、推薦）與 3 次中的眾數。
+- 目的敏感度：A1、A2、A3 的眾數候選集合有幾種不同（1 種＝對這三種目的沒有區分）；B1、B2、B3 同理。
+- 回覆字詞掃描（只當人工判讀的指引）：比較步驟、因果限制、預測、NetZoo 外步驟。
+- A5 的卡片問的是哪一軸。
+- 每個 session 的呼叫數與花費。
+
+同碼重跑的波動是 3–4（Log 98），本輪每句只有 3 次，因此只描述行為，不對任何兩句之間 ≤ 1 次的差異下結論。
+
+## Log 341｜結果：最小對照組——推薦只對「產物／尺度」的差異敏感，對「比較設計／結論類型」的差異不敏感
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 340 執行，HEAD `c1ad764`，不改程式碼。
+27 個 session 全部完成，花費 US$0.053。輸出在 `docs/research-log/minimal-pairs-2026-10-04/out/`：`s1-summary.md`（表）、`s1-report.md`（卡片與完整回覆）、`s1-decisions.json`。
+
+**執行事件：**
+- `mp-s1-B1-2` 印出「Guidance prepared」後卡住超過 600 秒，被 runner 的逾時終止。
+  - 暫存的 session 檔是完整 JSON，但沒有改名成正式檔，表示卡在存檔。原因未查。
+  - 該檔已移到 `out/s1-B1-2.hung-session.json`。
+- 原 runner 沒有處理 `TimeoutExpired`，例外讓 `pool.map` 取消了 7 個尚未開始的工作。runner 已改成記錄 timeout 後繼續，並支援 `A0-3` 這種單次重跑。
+- 補跑的 8 個（A0-3、A3-3、A4-3、A5-3、B1-2、B1-3、B2-3、B3-3）全部正常。
+
+**逐句結果（與 Log 340 的事前預期對照）：**
+
+| id | 3 次的形狀 | 卡片「Understood goal」 | 對照預期 |
+|---|---|---|---|
+| A0 對照 | 3/3 平手 PANDA／OTTER／GIRAFFE／PUMA | cohort-level（TF-gene）regulatory network | 符合（整體網路）；沒有提到前後樣本混在一起 |
+| A1 cohort 是否改變 | 2/3 與 A0 同形狀；1/3 兩個讀法（aggregate＋unknown） | 與 A0 相同 | **紅旗 3/3**：沒有比較步驟。A0-1 與 A1-1 的回覆只有最後一句問題不同 |
+| A2 哪些病人改變最多 | 2/3 exact LIONESS-PANDA；1/3 LIONESS-PANDA／PUMA 平手，問調控子類型 | per-sample TF-gene network | 工具大致對；**每位病人的前後差 0/3**；LIONESS 不獨立 0/3；**樣本數算錯 2/2**（見下） |
+| A3 哪些 TF 活性改變最多 | 3/3 exact GIRAFFE（「cohort-level TF activity matrix」） | （exact 沒有此行） | 工具合理；**前後配對比較 0/3** |
+| A4 證明治療造成改變 | 3/3 六方法平手，問 miRNA 與計算資源 | TF-gene regulatory network | **因果限制 0/3**：唯一相關句是 GIRAFFE 的 registry 句，所有列出 GIRAFFE 的回覆都有（含 A0）；回覆還說「These all fit」 |
+| A5 使用者原例（含糊） | 3/3 平手 PANDA／LIONESS-PANDA／OTTER／GIRAFFE | TF-gene regulatory network | **紅旗 3/3**：問計算資源與 TF 活性，沒有問群體／個別病人／哪些 TF |
+| B1 兩組共表現是否不同 | 3/3 平手 COBRA／LIONESS-COEXPRESSION | cohort-level co-expression network | 候選對；但問題問「是否要調整 batch、site 等共變數」，沒有把已說明的 responder 分組連到 COBRA |
+| B2 non-responders 是否分次群 | 3/3 `GUIDANCE_COMPOSITIONS`（每份樣本特徵＋NetZoo 外分群＋LIONESS 不獨立＋分群需對照結果） | — | 最接近預期；SAMBAR 0/3。但 5 個來源中 3 個需要 motif／PPI，使用者說「no other data」，**回覆 0/3 提到** |
+| B3 預測新病人 | 3/3 `semantic_fallback`：「The system could not validate its interpretation」 | — | **0/3 說明沒有已登錄 workflow 產生預測模型**；見下 |
+
+**目的敏感度（結構計數）：**
+- A1／A2／A3 的眾數候選集合有 3 種，B1／B2／B3 也是 3 種。
+- 但能分開的差異都落在既有的型別欄位上：per-sample（A2）、TF activity（A3）、分群（B2）。
+- 只差在比較或結論類型的句子，沒有分開：A0 對照與 A1 完全相同，A4、A5 也只得到一般的網路平手。
+- 三種比較設計（配對前後、兩組、因果）在 27 個 session 的推薦與卡片中都沒有出現。
+
+**機制（在哪裡遺失）：**
+- 理解階段其實引用了目的句。A1 的證據引文有「regulatory network changes after treatment」，A4 有「the treatment itself causes changes in gene regulation」，B1 有「gene co-expression differs between responders and non-responders」。
+- 但型別欄位只有 operation／artifact_type／granularity：A0 與 A1 都是 `infer regulatory_network aggregate`，B1 是 `infer coexpression_network aggregate`。
+- 下游只讀型別欄位，所以引文雖然存在，卻沒有任何階段使用；卡片上的「Understood goal」也直接顯示被壓縮後的產物。
+- 這修正了 Log 340 前的說法：目的不是在理解時遺失，而是**沒有型別欄位能承接**。
+
+**另外兩個具體缺陷：**
+1. **A2 樣本數錯誤。** `practical_notes._COUNT` 取第一個「數字＋patients」。回覆說「for your 24 patients, 25 PANDA runs」，但請求是 24 位病人 × 前後兩份 = 48 份樣本，應是 49 次。這是比較設計沒有表示的直接後果。
+2. **B3 範圍外的目的變成系統錯誤。**
+   - 模型把預測需求硬套成 `infer regulatory_network sample_specific`，證據全部是 inferred。
+   - 驗證正確拒絕（`missing_evidence`、`role_entity`）。
+   - 使用者得到的是「系統無法驗證解讀」，而不是「沒有已登錄 workflow 能建預測模型；網路結果只能當特徵」。
+   - trace：`.netzoo/traces/4b2d6153-…/events.jsonl`。
+
+**判讀限制：** 每句只有 3 次，且是同一批連續執行。這裡只描述行為，不比較任何兩句之間 ≤ 1 次的差異。字詞掃描欄（`compare_step`、`causal_limit`、`predictor`）的命中都來自 registry 固定句（GIRAFFE 的 causality 句、「sample-varying predictors」），不能當指標；上表結論全部來自人工閱讀回覆。
