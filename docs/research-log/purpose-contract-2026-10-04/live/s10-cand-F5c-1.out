@@ -1,0 +1,29 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.61s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PUMA
+✓ Guidance prepared
+For the sample-specific output you described, use **LIONESS-PUMA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - `mirna_file`: miRNA list
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PUMA** separately; **LIONESS-PUMA** also produces the aggregate output. Use **PUMA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PUMA once on all samples and once more without each sample, so N samples take N+1 PUMA runs and give N network files (for your 130 tumours, 131 PUMA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("Which miRNAs vary most in their regulatory influence from one tumour to the next?"):
+- **PUMA** — Comparing each regulator's targeting score (out-degree) between networks built separately for each condition shows regulators whose targeting changes. Without per-sample networks this ranks regulators by the size of the change, with no test of whether it exceeds chance.
+- **LIONESS-PUMA** — Per-sample targeting scores (out-degree) give a regulator-by-sample matrix; test each regulator between the conditions (paired when the same individuals give both), with multiple-testing correction across regulators.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.

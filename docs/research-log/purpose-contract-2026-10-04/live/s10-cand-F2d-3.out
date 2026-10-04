@@ -1,0 +1,18 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.51s)
+● Matching registered workflows…
+✓ Guidance prepared
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+
+For your question ("do the tolerant and sensitive lines differ in their root co-expression under salt?"):
+- **LIONESS-COEXPRESSION** — Per-sample gene degree or edge weights can be compared between the groups or time points (paired when the same individuals give both).
+- **COBRA** — Put the group label in COBRA's design matrix: it returns a co-expression component for that variable -- the part of each gene pair's co-expression associated with the group -- alongside components for any other covariates you include, such as batch.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: Some component values fall outside -1 to 1; read them as contributions, not correlations. Deciding which gene pairs differ beyond chance is a separate analysis.
+
+Both fit; to choose, tell me: (1) Do you need to separate or adjust co-expression for batch, site or other sample covariates? (co-expression must be separated or adjusted for batch, site or other covariates → COBRA; no sample covariates need to be separated or adjusted → LIONESS-COEXPRESSION)
+
+No files were inspected and no analysis ran.

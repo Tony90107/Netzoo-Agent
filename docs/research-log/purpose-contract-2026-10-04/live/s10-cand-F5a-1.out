@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.16s)
+● Matching registered workflows…
+● Preparing next step…
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "combined miRNA and TF regulation"**
+Result: multi omic network (aggregate), from inputs the request does not state.
+- **Multi omic network — DRAGON**
+  - Registered purpose: Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON.
+  - Method premise: infer conditional associations using partial correlation; DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+  - Mathematical interpretation: DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+  - Required inputs: all of: DRAGON omics layer 1, DRAGON omics layer 2.
+  - Declared output: multi omic network (cohort-level aggregate).
+
+**Reading 2 -- "high-grade and lower-grade tumours as groups"**
+Result: sample cluster assignment (aggregate), from inputs the request does not state.
+- **Pathway mutation matrix — SAMBAR**
+  - Registered purpose: Subtype somatic-mutation samples through pathway mutation scores with SAMBAR.
+  - Method premise: derive patient or tumor subtypes; produce pathway-level mutation scores
+  - Mathematical interpretation: SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+  - Required inputs: all of: somatic mutation matrix, gene/exon-size CSV, cancer-gene list, GMT pathway file.
+  - Declared output: gene mutation scores, pathway mutation matrix, sample cluster assignment, sample distance matrix (cohort-level aggregate).
+
+Which reading should we start with: 1 (DRAGON), 2 (SAMBAR)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.

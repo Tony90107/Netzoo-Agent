@@ -1,0 +1,36 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.84s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+For your question ("Which tumours stand out from the rest in how miRNAs and transcription factors regulate their genes?"):
+- **PUMA** — does not answer this: it gives one network from all the samples, so when each individual gives one sample (per time point) there is no result for an individual. Per-sample workflow for the same data: **LIONESS-PUMA**.
+
+Assumptions behind this recommendation (not confirmed facts):
+
+- No scale was stated; PUMA gives one result for the whole cohort; LIONESS-PUMA gives one result for the whole cohort or one result per sample.
+
+Fallback recommendation: **PUMA**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+Your question asks for a regulatory network. **PUMA** is related to that result.
+
+**PUMA** — Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA. PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+- `mirna_file`: miRNA list
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Workflow-specific scientific notes:
+
+- PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

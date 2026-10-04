@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.54s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-DRAGON
+✓ Guidance prepared
+For the sample-specific output you described, use **LIONESS-DRAGON**.
+
+Required inputs:
+   - `omics_layer_1`: Omics layer 1 (samples x features)
+   - `omics_layer_2`: Omics layer 2 (the same samples)
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **DRAGON** separately; **LIONESS-DRAGON** also produces the aggregate output. Use **DRAGON** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.
+
+For your question ("In what ways does each person's transcript-protein network differ from the other two people's?"):
+- **LIONESS-DRAGON** — Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort -- or, with repeated samples, with the same individual's other sample -- shows which individuals change or stand out.
+- **DRAGON** — does not answer this: it gives one two-layer network from all the samples, so when each individual gives one sample (per time point) there is no result for an individual. Per-sample workflow for the same data: **LIONESS-DRAGON**.
+Note: A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.
