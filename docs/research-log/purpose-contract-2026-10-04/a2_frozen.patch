@@ -1,0 +1,294 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+index 4085615..9adab65 100644
+--- a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
++++ b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+@@ -26,6 +26,8 @@ own quoted sentence.
+ 
+ from __future__ import annotations
+ 
++import re
++
+ from workflow_registry import ACTION_DEFINITIONS, CLAIM_SUPPORT, UNSUPPORTED_CLAIMS, ClaimSupport
+ 
+ from ..presentation import _ui_text_with_user_data, user_data_token
+@@ -35,6 +37,7 @@ from .outside_steps import _REPLY_KINDS, _asks
+ 
+ __all__ = [
+     "CLAIM_LABELS",
++    "recommended_actions",
+     "purpose_from_state",
+     "claim_cells",
+     "gap_claims",
+@@ -118,6 +121,53 @@ def claim_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport
+     return cells
+ 
+ 
++# Log 363 (a''): the data a request names, read narrowly. input_availability missed "no
++# motif or protein interaction data" and "miRNA-target priors", so these only decide whom
++# to recommend -- never which workflows are listed.
++_MIRNA_DATA = re.compile(r"mi(?:cro)?-?RNAs?|\bmiR-|small[- ]?RNA", re.I)
++_PRIORS = re.compile(r"motif|\bpriors?\b|\bPPI\b|protein[- ](?:protein\s+)?interaction|binding[- ]sites?", re.I)
++_NO_PRIORS = re.compile(
++    r"expression\s+(?:data\s+|matrix\s+)?only|only\s+(?:have\s+)?(?:the\s+)?(?:expression|counts?|count\s+matrix|RNA-?seq)"
++    r"|(?:expression|counts?)\s+(?:data\s+|matrix\s+)?(?:is|are)\s+all\s+we\s+have"
++    r"|\bno\s+(?:other\s+data|(?:TF\s+|regulatory\s+)?priors?|motif|protein)|without\s+(?:any\s+)?(?:priors?|motif)"
++    r"|nothing\s+else", re.I)
++_MIRNA_TOOLS = frozenset({"run_puma", "run_lioness_puma"})
++_PRIOR_TOOLS = frozenset({"run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma", "run_otter", "run_giraffe"})
++_MULTI_OMIC_TOOLS = frozenset({"run_dragon", "run_lioness_dragon"})
++
++
++def recommended_actions(decision, purpose: StudyPurpose, task: str) -> list[str]:
++    """The tied workflows that answer the stated question with the data the request names (Log 363).
++
++    Only a tie, only a question some but not all candidates have a declared
++    cell for (the question separates them; the named data only narrows), and never beside a causal or predictive claim. A miRNA workflow
++    needs miRNA data named, a prior-based one needs priors named and not
++    ruled out ("expression only"), and two named omics layers prefer the
++    multi-omic workflows. An empty list recommends nothing.
++    """
++    from ..routing.reading_selection import READING_WITNESSES
++
++    candidates = list(dict.fromkeys(decision.hypothesis_actions))
++    question = question_claim(purpose)
++    if (decision.capability_match_status != "ambiguous" or len(candidates) < 2 or question is None
++            or gap_claims(purpose) or len(decision.outcome_hypotheses) > 1):
++        return []
++    claim, design = question[0], purpose.design or "*"
++    declared = [action for action in candidates
++                if CLAIM_SUPPORT.get((action, claim, design)) or CLAIM_SUPPORT.get((action, claim, "*"))]
++    # The question itself must separate the candidates; the named data only narrows its choice.
++    if not declared or len(declared) == len(candidates):
++        return []
++    priors = bool(_PRIORS.search(task)) and not _NO_PRIORS.search(task)
++    mirna = bool(_MIRNA_DATA.search(task))
++    fit = [action for action in declared
++           if (action not in _PRIOR_TOOLS or priors) and (action not in _MIRNA_TOOLS or mirna)]
++    multi_omic = [action for action in fit if action in _MULTI_OMIC_TOOLS]
++    if multi_omic and READING_WITNESSES["multi_omic_network"].search(task):
++        fit = multi_omic
++    return fit if fit and len(fit) < len(candidates) else []
++
++
+ def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
+     paragraphs = []
+     for claim, quote in gap_claims(purpose):
+@@ -128,9 +178,13 @@ def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
+     return paragraphs
+ 
+ 
+-def _purpose_paragraph(cells, quote: str, user_data: list[str]) -> str:
++def _purpose_paragraph(cells, quote: str, user_data: list[str], recommended: list[str] = ()) -> str:
+     user_data.append(quote)
+     lines = [f'For your question ("{user_data_token(len(user_data) - 1)}"):']
++    if recommended:
++        names = " or ".join(f"**{_name(action)}**" for action in recommended)
++        lines.append(f"Start with {names}: with the data you named, these answer it, as below.")
++        cells = sorted(cells, key=lambda item: item[0] not in recommended)
+     # Workflows whose cell says the same thing share one line (PANDA and PUMA).
+     by_text: dict[str, list[str]] = {}
+     for action, cell in cells:
+@@ -150,7 +204,16 @@ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
+     return paragraph
+ 
+ 
+-def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
++def _recommending_lead(paragraph: str, recommended: list[str]) -> str:
++    names = " or ".join(f"**{_name(action)}**" for action in recommended)
++    for lead in _TIE_LEADS:
++        if paragraph.startswith(lead):
++            return (f"These fit the result you described; for your question, start with {names}. To choose "
++                    f"otherwise, tell me:{paragraph[len(lead):]}")
++    return paragraph
++
++
++def with_study_purpose(text: str, decision, purpose: StudyPurpose, task: str = "") -> str:
+     """The reply with the gap first and the purpose paragraph above its question."""
+     if not text:
+         return text
+@@ -158,12 +221,15 @@ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
+     gaps = _gap_paragraphs(purpose, user_data)
+     cells = claim_cells(decision, purpose)
+     question = question_claim(purpose)
+-    purpose_block = _purpose_paragraph(cells, question[1], user_data) if cells and question else ""
++    recommended = recommended_actions(decision, purpose, task) if task else []
++    purpose_block = _purpose_paragraph(cells, question[1], user_data, recommended) if cells and question else ""
+     if not gaps and not purpose_block:
+         return text
+     paragraphs = text.split("\n\n")
+     if gaps:
+         paragraphs = [*gaps, *(_reworded_lead(part, purpose) for part in paragraphs)]
++    if recommended and purpose_block:
++        paragraphs = [_recommending_lead(part, recommended) for part in paragraphs]
+     if purpose_block:
+         closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
+         if closing is not None and closing > 1 and _asks(paragraphs[closing - 1]):
+@@ -203,5 +269,6 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
+     if kind == "unresolved":
+         updated = unresolved_gap_reply(purpose)
+     else:
+-        updated = with_study_purpose(text, TaskDecision.model_validate(state["decision"]), purpose)
++        updated = with_study_purpose(text, TaskDecision.model_validate(state["decision"]), purpose,
++                                     latest_user_task(state["messages"]))
+     return result if not updated or updated == text else reply(updated, kind)
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 004e81c..0af466c 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -509,7 +509,7 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
+     from workflow_registry import UNSUPPORTED_CLAIMS
+ 
+     from ..interpretation.study_purpose_notes import (
+-        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
++        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim, recommended_actions,
+     )
+ 
+     purpose = purpose_from_state(state, task)
+@@ -532,9 +532,23 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
+         names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
+         points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
+                            "give toward it and the step after each.", 300))
+-    if not rows and points == card.points:
++    choices = card.choices
++    recommended = recommended_actions(decision, purpose, task) if card.choices else []
++    if recommended:
++        # Log 363 (a''): the tied workflows that answer the stated question with the named data.
++        options = [option.model_copy(update={"recommended": True, "badge": "Recommended"})
++                   if option.action in recommended else option for option in card.choices.options]
++        options.sort(key=lambda option: option.action not in recommended)
++        choices = card.choices.model_copy(update={
++            "options": options,
++            "ordering": clip("Recommended first: they answer your question with the data you named.", 200)})
++        if len(points) < 6:
++            points.append(clip(f"Recommended for your question: "
++                               f"{join_names([workflow_name(policy, action) for action in recommended])}.", 300))
++    if not rows and points == card.points and choices is card.choices:
+         return card
+-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
++    return card.model_copy(update={"points": points, "choices": choices,
++                                   "unavailable": [*card.unavailable, *rows][:8]})
+ 
+ 
+ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index b024455..d4af936 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -961,6 +961,43 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+         "Some component values fall outside -1 to 1; read them as contributions, not correlations. "
+         "Deciding which gene pairs differ beyond chance is a separate analysis.",
+     )),
++    # Log 363 (draft for review): the multi-omic workflows. [R] the DRAGON and LIONESS-DRAGON
++    # downstream notes (partial correlations depend on every feature; a LIONESS-DRAGON sample's
++    # edges are relative to the cohort it was built from).
++    ("run_dragon", "group_difference", "groups"): ClaimSupport("with_step", (
++        "Build one network per group on the same features of both layers, then compare the cross-layer "
++        "edges (the partial correlations between the two omics layers) between the group networks; two "
++        "aggregate networks show where the groups differ but give no per-sample spread to test it."
++    ), (
++        "Partial correlations are conditional on every other feature in both layers, so use the same "
++        "feature set in every network you compare.",
++    )),
++    ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
++        "Build one network per time point or condition on the same features and compare the cross-layer "
++        "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
++        "individual's samples."
++    ), (
++        "Partial correlations are conditional on every other feature in both layers, so use the same "
++        "feature set in every network you compare.",
++    )),
++    ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
++        "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
++        "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
++        "associations differ."
++    ), (
++        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
++        "to the cohort the network was built from.",
++        _LIONESS_DEPENDENCE,
++    )),
++    ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
++        "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
++        "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
++        "change or stand out."
++    ), (
++        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
++        "to the cohort the network was built from.",
++        _LIONESS_DEPENDENCE,
++    )),
+     **_coexpression_claims("run_lioness_coexpression", (_LIONESS_DEPENDENCE,)),
+     **_coexpression_claims("run_bonobo", (
+         "With p-value output, edges can be filtered per sample at a chosen confidence.",
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index b56a776..26afddd 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -113,9 +113,9 @@ def test_every_declared_cell_names_a_workflow_a_claim_and_a_design():
+ 
+ def test_only_the_global_table_states_a_gap():
+     assert set(UNSUPPORTED_CLAIMS) == {"causal", "prediction"}
+-    # v1 declares no multi-omic or community workflow (proposal, section 3.2).
+-    assert not any(action in {"run_dragon", "run_lioness_dragon", "run_condor", "run_sambar"}
+-                   for action, _, _ in CLAIM_SUPPORT)
++    # v1 declared no multi-omic or community workflow (proposal, section 3.2); Log 363 adds the
++    # multi-omic ones, community detection and subtyping stay undeclared.
++    assert not any(action in {"run_condor", "run_sambar"} for action, _, _ in CLAIM_SUPPORT)
+ 
+ 
+ # -- replies (recorded Log 341 decisions) ------------------------------------------
+diff --git a/tests/test_study_purpose_call.py b/tests/test_study_purpose_call.py
+index 8a724fb..6d82c8b 100644
+--- a/tests/test_study_purpose_call.py
++++ b/tests/test_study_purpose_call.py
+@@ -256,3 +256,52 @@ def test_a_technical_word_beside_a_real_design_does_not_veto_it(design, quote):
+ def test_a_technical_pairing_or_grouping_is_still_no_design(design, quote):
+     purpose, rejected = verify_proposal(f"We have RNA-seq, {quote}. We want one network.", _proposal(design, quote))
+     assert purpose.design is None and rejected[0]["reason"] in {"technical", "two_data_types"}
++
++
++# -- Log 363 (a''): recommend the tied workflows the question and the named data favour --------
++
++def _tie(actions):
++    return TaskDecision(
++        action="no_tool", in_scope=True, should_execute=False, intent_type="answer_question", confidence=.9,
++        reason="Tie", capability_match_status="ambiguous", match_basis="semantic", hypothesis_actions=actions)
++
++
++def _purpose(design, claim, quote="q"):
++    from netzoo_agent_core.routing.study_purpose import StudyPurpose
++    return StudyPurpose(design, "d", ((claim, quote),) if claim else ())
++
++
++def test_a_per_individual_question_recommends_the_per_sample_workflows_with_named_priors():
++    from netzoo_agent_core.interpretation.study_purpose_notes import recommended_actions
++    task = "RNA-seq at baseline and 6 h after endotoxin, plus a human motif prior and PPI network. Which volunteers changed most?"
++    decision = _tie(["run_panda", "run_puma", "run_lioness_panda", "run_lioness_puma", "run_otter", "run_giraffe"])
++    assert recommended_actions(decision, _purpose("paired", "individual_change"), task) == [
++        "run_lioness_panda", "run_giraffe"]
++
++
++def test_no_priors_or_no_mirna_named_narrows_the_recommendation():
++    from netzoo_agent_core.interpretation.study_purpose_notes import recommended_actions
++    decision = _tie(["run_panda", "run_lioness_panda", "run_lioness_coexpression", "run_bonobo"])
++    task = "Blood RNA-seq from 40 patients sampled twice; expression is all we have. Which patients changed most?"
++    assert recommended_actions(decision, _purpose("paired", "individual_change"), task) == [
++        "run_lioness_coexpression", "run_bonobo"]
++
++
++@pytest.mark.parametrize("claim, actions", [
++    # Every candidate has a cell: the question does not separate them.
++    ("group_difference", ["run_panda", "run_puma", "run_otter", "run_giraffe"]),
++    # No stated conclusion, or a causal one: nothing to recommend for.
++    (None, ["run_panda", "run_lioness_panda"]),
++    ("causal", ["run_panda", "run_lioness_panda"]),
++])
++def test_nothing_is_recommended_when_the_question_does_not_separate(claim, actions):
++    from netzoo_agent_core.interpretation.study_purpose_notes import recommended_actions
++    task = "RNA-seq before and after treatment with motif and PPI priors."
++    assert recommended_actions(_tie(actions), _purpose("paired", claim), task) == []
++
++
++def test_two_named_omics_layers_prefer_the_multi_omic_workflow():
++    from netzoo_agent_core.interpretation.study_purpose_notes import recommended_actions
++    task = "RNA-seq and methylation arrays on 40 tumours from two clinics. Which tumours have the most atypical networks?"
++    decision = _tie(["run_panda", "run_lioness_coexpression", "run_lioness_dragon"])
++    assert recommended_actions(decision, _purpose("groups", "individual_change"), task) == ["run_lioness_dragon"]
