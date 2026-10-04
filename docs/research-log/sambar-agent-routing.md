@@ -17635,3 +17635,55 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 | O6 | Log 343 的 156 個 live 決策：回覆差異 0 | 是 |
 
 **決定：** CN 保留。witness 現為 v1＋PN＋CN。
+
+## Log 352｜事前宣告：D3——只採用 v3 的設計 witness，以第四組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`e684029..a71646e`，已完成），然後做「v3 的設計部分」。第四組保留集照原稿，判定「照建議」（只看 D3 實際改變的部分，見下）。
+本條目寫於 D3 接到程式路徑之前，也寫於把任何 witness 跑在第四組保留集之前。
+- 基準為 HEAD `8968cc8`：`scripts/` 的 witness 是線上的 v1＋PN＋CN（sha256 `5f3fea8583fe`，複本為 `study_purpose.v1pncn.frozen.py`）。
+- 工作目錄中未 commit 的 `routing/study_purpose.py` 就是凍結的 D3。
+- 全套件 3234 passed／35 skipped；指紋、條件推薦 prompt hash、policy hash 同 Log 351。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `study_purpose.d3.frozen.py`：sha256 `8e556d23ee44`，在 `8968cc8` 凍結，當時第四組保留集還沒寫完。
+- `heldout4/heldout.json`：sha256 `e5b6ae690537`。隔離的 subagent 撰寫，重點是設計寫法的多樣性與設計類陷阱；使用者審過、照原稿。共 32 句：
+  - 6 家族 × 4：K1、K3、K6 配對；K2、K4 分組；K5 無。
+  - 3 句否定陷阱（T1–T3）、5 句精確度陷阱（T4–T8）。
+
+**D3 內容**（凍結檔即全文；`FREEZE4.md` 有逐項說明）：
+- 結論 witness 完全是線上的 v1＋PN＋CN。
+- 設計 witness 換成撤回的 v3 的設計部分，加上：
+  - 第三組 H3「each sampled when stable, during an exacerbation and after recovery」（60 字元的範圍）。
+  - 第三組 H6「vehicle and three … concentrations」（劑量組）。
+  - 處理步驟排除加上 depth、lanes、libraries、standard curve、spike-ins；套用到劑量組規則與「each … sampled」規則。
+
+**為什麼這次判定只看 D3 改變的部分（使用者核可）：**
+- 審保留集時，我讀到 T8「predict the target genes of each transcription factor」，判斷它可能命中線上既有的預測 witness。這是讀句子時的判斷，沒有執行任何 witness。
+- D3 不改結論 witness，所以這類錯誤兩個版本都會有。若沿用 Log 344／348 的絕對門檻，D3 會因一個與設計無關的線上問題被撤回。
+- 因此結論類判定改成「D3 不得新增錯誤」。兩版共有的錯誤只報告，之後另案修正，做法同 PN／CN。
+
+**判定（任一不成立就撤回 D3，回到 v1＋PN＋CN）：**
+
+主要判定（離線，結果固定，`witness_eval.py heldout4/heldout.json --base study_purpose.v1pncn.frozen.py`）：
+- **W1 設計召回**（標註 paired／groups 的 23 句）：D3 − 基準 ≥ 25 個百分點。
+- **W2a 設計誤判**：D3 ≤ 1。
+- **W2b 不新增結論錯誤**：D3 的結論誤判數 ≤ 基準；D3 誤判出 causal／prediction 的次數 ≤ 基準。
+  - 結論誤判的定義同 `witness_eval.py`：給了值但與標註不同。
+  - 設計被讀出後連帶產生的 group_difference 錯誤也算在內。
+- 只報告：兩版共有的結論錯誤，逐句列出。
+
+其他離線判定：
+- **O1**：全套件通過（含 D3 測試）；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O2**：`audit_witnesses.py` 輸出與 `audit_witnesses_d3.txt` 相同（真實請求只有 3 次正確的 prediction 命中，與 v1 相同）。
+- **O3**：3,592 個 traced 決策重播，只有 witness 命中的請求可以改變回覆。
+- **O6**：Log 343 的 156 個 live 決策以 D3 重播，仍然只增不改（R4 例外）。
+
+live（主要判定成立才跑；gpt-4o-mini，預先授權）：
+- baseline 是宣告 commit 的 worktree（v1＋PN＋CN），候選是 D3 的實作 commit，交錯同時跑。第四組保留集 32 句 × 3。
+- 有效性：兩臂 provider 錯誤皆為 0，否則只重跑失敗的 session。
+- E1、E2、H2、H3 同 Log 342。
+- **H1 改為**：在 D3 與基準結論讀法不同的句子中，候選臂的假缺口＝0。兩臂的絕對假缺口次數都報告。
+- 只報告：兩臂目的段落與缺口句的次數。
+
+成本估計：192 個 CLI session，約 US$0.4。

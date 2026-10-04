@@ -1,0 +1,804 @@
+{
+  "authored_by": "subagent, isolated from the witness lists",
+  "items": [
+    {
+      "id": "K1-a",
+      "family": "K1",
+      "data_sentence": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only.",
+      "purpose_sentence": "We want to know whether blood gene co-expression differs between the two diets.",
+      "prompt": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only. We want to know whether blood gene co-expression differs between the two diets.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "COBRA"
+      ],
+      "must_include": [
+        "Uses expression-only methods, since no motif or PPI prior is available",
+        "Respects the within-person pairing (per-sample networks compared with a paired test, or subject as a covariate)",
+        "Says the between-diet test itself is a step outside the suite"
+      ],
+      "red_flags": [
+        "Treats the 44 samples as two independent groups",
+        "Proposes tools that need motif or PPI priors",
+        "Claims a suite tool returns the between-diet p-value"
+      ]
+    },
+    {
+      "id": "K1-b",
+      "family": "K1",
+      "data_sentence": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only.",
+      "purpose_sentence": "We want to find the participants whose co-expression networks shift most between diets.",
+      "prompt": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only. We want to find the participants whose co-expression networks shift most between diets.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds one co-expression network per sample",
+        "Computes each participant's own high-salt vs low-salt network change and ranks participants"
+      ],
+      "red_flags": [
+        "Offers only one aggregate network per diet, which cannot rank participants",
+        "Ignores that each participant contributes both samples",
+        "Requires motif or PPI priors"
+      ]
+    },
+    {
+      "id": "K1-c",
+      "family": "K1",
+      "data_sentence": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only.",
+      "purpose_sentence": "We want to show that high salt causes rewiring of immune gene co-expression.",
+      "prompt": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only. We want to show that high salt causes rewiring of immune gene co-expression.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO",
+        "COBRA"
+      ],
+      "must_include": [
+        "States that no suite tool establishes causality",
+        "Notes the randomized crossover can support a causal estimate of the diet effect only through a within-person analysis done outside the suite",
+        "Co-expression edges themselves remain associations"
+      ],
+      "red_flags": [
+        "Claims a network method proves that salt causes the rewiring",
+        "Treats the samples as independent groups",
+        "Proposes motif- or PPI-based tools"
+      ]
+    },
+    {
+      "id": "K1-d",
+      "family": "K1",
+      "data_sentence": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only.",
+      "purpose_sentence": "We just want one co-expression network per blood sample for our collaborators.",
+      "prompt": "Twenty-two adults each did two weeks on a high-salt and two weeks on a low-salt diet, in random order, with whole-blood RNA-seq after each; expression only. We just want one co-expression network per blood sample for our collaborators.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds one co-expression network for each of the 44 samples",
+        "Does not require a comparison or a test"
+      ],
+      "red_flags": [
+        "Adds an unrequested diet comparison as the main deliverable",
+        "Asks for motif or PPI priors"
+      ]
+    },
+    {
+      "id": "K2-a",
+      "family": "K2",
+      "data_sentence": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors.",
+      "purpose_sentence": "Which transcription factors change their targeting most as cadmium concentration rises?",
+      "prompt": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors. Which transcription factors change their targeting most as cadmium concentration rises?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds TF-gene networks per cadmium level (or per sample) and ranks TFs by change in targeting, e.g. out-degree, across levels",
+        "Treats the four levels as independent groups of plants, with any dose-trend test done outside the suite"
+      ],
+      "red_flags": [
+        "Treats plants at different levels as paired or repeated measures",
+        "Ranks genes rather than transcription factors",
+        "Claims a suite tool performs the dose-trend test"
+      ]
+    },
+    {
+      "id": "K2-b",
+      "family": "K2",
+      "data_sentence": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors.",
+      "purpose_sentence": "We want one regulatory network built from all 24 root samples together.",
+      "prompt": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors. We want one regulatory network built from all 24 root samples together.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "Builds a single aggregate TF-gene network from all 24 samples"
+      ],
+      "red_flags": [
+        "Splits the samples by cadmium level when that was not asked",
+        "Recommends a statistical comparison"
+      ]
+    },
+    {
+      "id": "K2-c",
+      "family": "K2",
+      "data_sentence": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors.",
+      "purpose_sentence": "We want to predict the cadmium level of new seedlings from root expression.",
+      "prompt": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors. We want to predict the cadmium level of new seedlings from root expression.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "States that no suite tool builds a predictive model; the regression or classifier is an outside step",
+        "Per-sample networks or TF activities can serve as features, validated on held-out seedlings",
+        "Warns that 24 plants is a small training set"
+      ],
+      "red_flags": [
+        "Claims a network tool itself predicts cadmium level",
+        "Offers no held-out or cross-validation",
+        "Answers only with a group comparison"
+      ]
+    },
+    {
+      "id": "K2-d",
+      "family": "K2",
+      "data_sentence": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors.",
+      "purpose_sentence": "Does the root regulatory network differ between cadmium levels?",
+      "prompt": "Rice seedlings were grown at 0, 5, 25 or 100 µM cadmium, six plants per level, and roots were RNA-sequenced; we have rice TF motif and PPI priors. Does the root regulatory network differ between cadmium levels?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds networks per level or per sample, then tests the difference outside the suite",
+        "Treats the levels as independent groups of plants"
+      ],
+      "red_flags": [
+        "Treats the design as paired or repeated measures",
+        "Claims a suite tool returns the significance"
+      ]
+    },
+    {
+      "id": "K3-a",
+      "family": "K3",
+      "data_sentence": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We want to know which miRNAs and transcription factors shift their targeting most across pregnancy.",
+      "prompt": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors. We want to know which miRNAs and transcription factors shift their targeting most across pregnancy.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Includes miRNAs as regulators alongside TFs",
+        "Accounts for the three repeated samples per woman, with the repeated-measures comparison done outside the suite"
+      ],
+      "red_flags": [
+        "Uses a TF-only method and loses the miRNAs",
+        "Treats the trimesters as independent groups of women"
+      ]
+    },
+    {
+      "id": "K3-b",
+      "family": "K3",
+      "data_sentence": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We want to identify the women whose regulatory networks change most from first to third trimester.",
+      "prompt": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors. We want to identify the women whose regulatory networks change most from first to third trimester.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Builds per-sample networks",
+        "Computes each woman's own first-to-third-trimester change and ranks the women"
+      ],
+      "red_flags": [
+        "Offers only aggregate networks per trimester, which cannot rank women",
+        "Ignores the pairing within women"
+      ]
+    },
+    {
+      "id": "K3-c",
+      "family": "K3",
+      "data_sentence": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We want a single combined TF and miRNA regulatory network for maternal blood.",
+      "prompt": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors. We want a single combined TF and miRNA regulatory network for maternal blood.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "must_include": [
+        "Builds one aggregate network with TFs and miRNAs as regulators from all samples"
+      ],
+      "red_flags": [
+        "Drops the miRNAs",
+        "Adds a trimester comparison that was not asked for"
+      ]
+    },
+    {
+      "id": "K3-d",
+      "family": "K3",
+      "data_sentence": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors.",
+      "purpose_sentence": "We want to use first-trimester networks to predict preeclampsia in future pregnancies.",
+      "prompt": "We drew blood from 30 pregnant women once in each trimester and ran expression microarrays; we also have TF motif, PPI and miRNA-target priors. We want to use first-trimester networks to predict preeclampsia in future pregnancies.",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Notes that preeclampsia outcomes are not stated and are needed",
+        "The predictor is built and validated outside the suite, using only first-trimester samples as features"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts preeclampsia",
+        "Uses second- or third-trimester samples as predictors",
+        "Offers no held-out validation"
+      ]
+    },
+    {
+      "id": "K4-a",
+      "family": "K4",
+      "data_sentence": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors.",
+      "purpose_sentence": "Which transcription factors gain or lose the most targets in the knockouts?",
+      "prompt": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors. Which transcription factors gain or lose the most targets in the knockouts?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds networks per genotype (or per sample) and ranks TFs by change in targeting",
+        "Treats wild-type and knockout mice as two independent groups of 10"
+      ],
+      "red_flags": [
+        "Pairs WT_n with Ezh2cKO_n by column number",
+        "Claims a suite tool supplies the significance test"
+      ]
+    },
+    {
+      "id": "K4-b",
+      "family": "K4",
+      "data_sentence": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors.",
+      "purpose_sentence": "We want to demonstrate that Ezh2 loss directly causes derepression of effector T-cell genes.",
+      "prompt": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors. We want to demonstrate that Ezh2 loss directly causes derepression of effector T-cell genes.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "States that no suite tool establishes causality and network edges cannot show direct regulation",
+        "The knockout contrast supports an effect of Ezh2 loss on expression, but 'directly' needs experimental evidence such as chromatin profiling"
+      ],
+      "red_flags": [
+        "Claims a network result proves direct causation",
+        "Pairs samples by column number"
+      ]
+    },
+    {
+      "id": "K4-c",
+      "family": "K4",
+      "data_sentence": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors.",
+      "purpose_sentence": "We'd like to know whether the knockout Treg regulatory network differs from wild-type.",
+      "prompt": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors. We'd like to know whether the knockout Treg regulatory network differs from wild-type.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares two independent groups of 10 mice, with the test done outside the suite"
+      ],
+      "red_flags": [
+        "Treats the columns as matched pairs",
+        "Claims a suite tool returns the p-value"
+      ]
+    },
+    {
+      "id": "K4-d",
+      "family": "K4",
+      "data_sentence": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors.",
+      "purpose_sentence": "We want to find regulatory modules in one Treg network built from all 20 samples.",
+      "prompt": "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10, one mouse each, plus TF motif and PPI priors. We want to find regulatory modules in one Treg network built from all 20 samples.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "Builds one aggregate TF-gene network from all 20 samples",
+        "Finds modules by community detection on that bipartite network"
+      ],
+      "red_flags": [
+        "Adds a genotype comparison that was not asked for",
+        "Builds the network per genotype instead of from all 20 samples"
+      ]
+    },
+    {
+      "id": "K5-a",
+      "family": "K5",
+      "data_sentence": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors.",
+      "purpose_sentence": "We want to find communities of transcription factors and target genes in these lymphomas.",
+      "prompt": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors. We want to find communities of transcription factors and target genes in these lymphomas.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "must_include": [
+        "Builds an aggregate TF-gene network from all biopsies",
+        "Detects communities on that bipartite network"
+      ],
+      "red_flags": [
+        "Invents a subtype comparison (e.g. cell of origin) that was not stated",
+        "Recommends a statistical test"
+      ]
+    },
+    {
+      "id": "K5-b",
+      "family": "K5",
+      "data_sentence": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors.",
+      "purpose_sentence": "We want to predict two-year survival of newly diagnosed patients from their tumor's regulatory profile.",
+      "prompt": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors. We want to predict two-year survival of newly diagnosed patients from their tumor's regulatory profile.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Notes that survival outcomes are not stated and are needed",
+        "The predictor is built and validated outside the suite, with per-sample networks or TF activities as features"
+      ],
+      "red_flags": [
+        "Claims a suite tool predicts survival",
+        "Offers no independent validation"
+      ]
+    },
+    {
+      "id": "K5-c",
+      "family": "K5",
+      "data_sentence": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors.",
+      "purpose_sentence": "We want to know which patients' tumors have the most unusual regulatory wiring.",
+      "prompt": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors. We want to know which patients' tumors have the most unusual regulatory wiring.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds per-sample networks or per-sample TF activities",
+        "Scores each tumor's deviation from the cohort and ranks patients"
+      ],
+      "red_flags": [
+        "Invents comparison groups that were not stated",
+        "Offers only an aggregate network"
+      ]
+    },
+    {
+      "id": "K5-d",
+      "family": "K5",
+      "data_sentence": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors.",
+      "purpose_sentence": "We want to establish that high MYC activity causes the aggressive clinical course.",
+      "prompt": "We have microarray profiles of 480 diffuse large B-cell lymphoma biopsies from a national registry, together with TF motif and PPI priors. We want to establish that high MYC activity causes the aggressive clinical course.",
+      "comparison_design": "none",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "States that observational registry data cannot establish causality and no suite tool does",
+        "Per-sample MYC activity or targeting can only show association with outcome"
+      ],
+      "red_flags": [
+        "Claims a network result shows MYC causes aggressiveness",
+        "Invents a comparison design"
+      ]
+    },
+    {
+      "id": "K6-a",
+      "family": "K6",
+      "data_sentence": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors.",
+      "purpose_sentence": "We only need a regulatory network for each of the 24 slice halves.",
+      "prompt": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors. We only need a regulatory network for each of the 24 slice halves.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Builds one TF-gene network per sample (24 networks)",
+        "Does not require a comparison"
+      ],
+      "red_flags": [
+        "Adds a treatment comparison that was not asked for",
+        "Gives only aggregate networks"
+      ]
+    },
+    {
+      "id": "K6-b",
+      "family": "K6",
+      "data_sentence": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors.",
+      "purpose_sentence": "We want to know whether TGF-beta reshapes the liver regulatory network.",
+      "prompt": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors. We want to know whether TGF-beta reshapes the liver regulatory network.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Respects the donor pairing (within-donor comparison or donor as a factor), with the test done outside the suite"
+      ],
+      "red_flags": [
+        "Treats the two halves as independent groups",
+        "Claims a suite tool returns the p-value"
+      ]
+    },
+    {
+      "id": "K6-c",
+      "family": "K6",
+      "data_sentence": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors.",
+      "purpose_sentence": "Which transcription factors' target sets change most with TGF-beta?",
+      "prompt": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors. Which transcription factors' target sets change most with TGF-beta?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Ranks TFs by change in targeting (e.g. out-degree) between treated and untreated halves",
+        "Uses the within-donor pairing"
+      ],
+      "red_flags": [
+        "Ignores the pairing",
+        "Uses expression-only co-expression tools that have no TF regulators"
+      ]
+    },
+    {
+      "id": "K6-d",
+      "family": "K6",
+      "data_sentence": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors.",
+      "purpose_sentence": "We want to prove that TGF-beta drives fibrosis through specific transcription factors.",
+      "prompt": "Each of 12 donor liver slices was split, one half cultured with TGF-beta and the other in plain medium; we have RNA-seq plus TF motif and PPI priors. We want to prove that TGF-beta drives fibrosis through specific transcription factors.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "The split-slice experiment supports an effect of TGF-beta on expression, but networks cannot show the effect runs through specific TFs",
+        "States that no suite tool establishes causality; TF perturbation experiments would be needed"
+      ],
+      "red_flags": [
+        "Claims network edges prove the mechanism",
+        "Treats the halves as independent samples"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T1",
+      "data_sentence": "We have monocyte microarrays from 45 women with systemic lupus and 30 healthy female donors, plus TF motif and PPI priors.",
+      "purpose_sentence": "We don't want a diagnostic classifier; we just want to know whether the regulatory network differs between patients and donors.",
+      "prompt": "We have monocyte microarrays from 45 women with systemic lupus and 30 healthy female donors, plus TF motif and PPI priors. We don't want a diagnostic classifier; we just want to know whether the regulatory network differs between patients and donors.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Compares networks between the two independent groups, with the test done outside the suite",
+        "Does not propose a classifier"
+      ],
+      "red_flags": [
+        "Builds a diagnostic or predictive model",
+        "Treats patients and donors as paired"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T2",
+      "data_sentence": "Whole-blood RNA-seq from 38 adults with newly diagnosed pulmonary tuberculosis; there is no control group, nobody was resampled, and we have expression only.",
+      "purpose_sentence": "We want a network for each patient to see whose co-expression looks most unusual.",
+      "prompt": "Whole-blood RNA-seq from 38 adults with newly diagnosed pulmonary tuberculosis; there is no control group, nobody was resampled, and we have expression only. We want a network for each patient to see whose co-expression looks most unusual.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Builds per-sample co-expression networks",
+        "Ranks patients by deviation from the rest of the cohort, with no group or before/after comparison"
+      ],
+      "red_flags": [
+        "Proposes a comparison with healthy controls or follow-up samples that do not exist",
+        "Requires motif or PPI priors"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T3",
+      "data_sentence": "Carotid endarterectomy plaques from 26 symptomatic and 31 asymptomatic patients were RNA-sequenced, and we have human TF motif and PPI priors.",
+      "purpose_sentence": "We want the transcription factors whose targeting differs most between groups, with no claim that they cause symptoms.",
+      "prompt": "Carotid endarterectomy plaques from 26 symptomatic and 31 asymptomatic patients were RNA-sequenced, and we have human TF motif and PPI priors. We want the transcription factors whose targeting differs most between groups, with no claim that they cause symptoms.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Ranks TFs by differential targeting between symptomatic and asymptomatic plaques",
+        "Presents the ranking as associational, as the user asked"
+      ],
+      "red_flags": [
+        "Frames the result as causal or adds a causal-inference step",
+        "Treats the groups as paired",
+        "Claims a suite tool performs the test"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T4",
+      "data_sentence": "We have 2 x 150 bp paired-end RNA-seq, about 40 million read pairs per library, from 64 primary uveal melanomas, plus TF motif and PPI priors.",
+      "purpose_sentence": "We want to sort the tumors into regulatory subtypes.",
+      "prompt": "We have 2 x 150 bp paired-end RNA-seq, about 40 million read pairs per library, from 64 primary uveal melanomas, plus TF motif and PPI priors. We want to sort the tumors into regulatory subtypes.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Reads 'paired-end' as a sequencing format, not a paired design",
+        "Builds per-sample networks or TF activities and clusters the tumors"
+      ],
+      "red_flags": [
+        "Assumes matched or paired samples",
+        "Proposes a between-group test"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T5",
+      "data_sentence": "Esophageal adenocarcinoma biopsies from 52 patients, all taken before neoadjuvant chemoradiotherapy began, were RNA-sequenced; we have TF motif and PPI priors.",
+      "purpose_sentence": "We want to map the TF regulatory landscape of these tumors.",
+      "prompt": "Esophageal adenocarcinoma biopsies from 52 patients, all taken before neoadjuvant chemoradiotherapy began, were RNA-sequenced; we have TF motif and PPI priors. We want to map the TF regulatory landscape of these tumors.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Treats the data as a single pre-treatment time point",
+        "Builds one aggregate TF-gene network"
+      ],
+      "red_flags": [
+        "Assumes after-treatment samples or a before/after comparison",
+        "Turns the request into response prediction"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T6",
+      "data_sentence": "We have RNA-seq of postmortem retina from 105 donors without eye disease, a PPI network, and two different TF motif collections.",
+      "purpose_sentence": "We want to compare the networks built with each motif collection to see how much the choice of prior matters.",
+      "prompt": "We have RNA-seq of postmortem retina from 105 donors without eye disease, a PPI network, and two different TF motif collections. We want to compare the networks built with each motif collection to see how much the choice of prior matters.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "Builds the same network twice from all 105 samples, once per motif collection, and compares edges or TF degrees",
+        "Recognises that the comparison is between priors, not between sample groups"
+      ],
+      "red_flags": [
+        "Splits the donors into groups",
+        "Proposes a statistical test between sample groups"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T7",
+      "data_sentence": "Cerebellar RNA-seq comes from 36 wild-type mouse pups on postnatal day 7, four from each of nine litters, with mouse TF motif and PPI priors.",
+      "purpose_sentence": "We want to find which individual pups have the most atypical regulatory networks.",
+      "prompt": "Cerebellar RNA-seq comes from 36 wild-type mouse pups on postnatal day 7, four from each of nine litters, with mouse TF motif and PPI priors. We want to find which individual pups have the most atypical regulatory networks.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Builds per-sample networks and ranks pups by deviation",
+        "Treats litter as a nuisance or blocking factor, not as comparison groups"
+      ],
+      "red_flags": [
+        "Frames the litters as groups to compare",
+        "Offers only an aggregate network"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T8",
+      "data_sentence": "Nine rhesus macaques were bled on days 0, 3, 7, 14 and 28 after yellow fever vaccination for RNA-seq; we have TF motif and PPI priors.",
+      "purpose_sentence": "We want to predict the target genes of each transcription factor at every time point.",
+      "prompt": "Nine rhesus macaques were bled on days 0, 3, 7, 14 and 28 after yellow fever vaccination for RNA-seq; we have TF motif and PPI priors. We want to predict the target genes of each transcription factor at every time point.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Reads 'predict' as network inference, not outcome prediction",
+        "Builds a TF-gene network for each time point (or per sample) from the same nine animals"
+      ],
+      "red_flags": [
+        "Proposes a predictive classifier or outcome model",
+        "Treats the time points as different animals"
+      ]
+    }
+  ]
+}
