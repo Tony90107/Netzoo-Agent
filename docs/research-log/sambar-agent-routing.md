@@ -17306,3 +17306,63 @@ live：
   - (a) 擴大字詞表，以新的保留集評估；或
   - (b) 讓既有呼叫提出設計與結論候選、再用字詞或引文驗證（提案第 3.1 節延後的那條路）。
 - 兩者都需要新保留集。
+
+## Log 344｜事前宣告：研究目的 witness v2——擴大字詞表，以第二組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`c1ad764..ce7d7d5`，已完成），然後走 (a) 擴大字詞表。第二組保留集與下列判定「照建議」。
+本條目寫於 v2 接到程式路徑之前，也寫於把任何 witness 跑在第二組保留集之前。
+- 基準為 HEAD `5e89ad8`：`scripts/` 的 witness 仍是 v1（`37caf959136c`）。工作目錄中未 commit 的 `routing/study_purpose.py` 就是凍結的 v2。
+- 全套件 3211 passed／35 skipped。
+- 指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `study_purpose.v2.frozen.py`：sha256 `9e584e8b9015`，在 `5e89ad8` 凍結，早於打開第二組保留集。
+- `heldout2/heldout.json`：sha256 `e72d776135a8`。由隔離的 subagent 撰寫，使用者審過、照原稿，共 30 句：
+  - 6 家族 × 4：G1、G2 配對；G3、G4、G5 分組；G6 無設計。
+  - 2 句否定陷阱（T1、T2）。
+  - 4 句精確度陷阱（T3–T6）：處理步驟的 before/after、TF versus miRNA、比較兩種方法、attributable to batch。
+- 精確度陷阱的類別是我寫在 subagent 指示中的，所以這 4 句對 witness 設計不算盲測；召回題是盲的。
+- 第一組保留集（`heldout/`）已看過，v2 照它調整過（22/22、20/20），因此只作開發資料，不作判定。
+
+**v2 改了什麼**（只動 `routing/study_purpose.py`，凍結檔即全文）：
+- 配對：
+  - 「before X and … after」需句中有取樣字詞，且排除處理步驟（normalization、filtering 等）。v1 的「before and after」也加上處理步驟排除。
+  - 「at diagnosis／admission… and at／on／after <時間>」、「baseline … follow-up」、「admission and discharge」類。
+  - within-patient、「visits per patient」、matched pairs、tumor-normal pairs，以及 each … sampled 的寬鬆形式。
+- 分組：
+  - 「N 個 A and N 個 B」，排除 samples、genes、cells、batches 等單位。
+  - 成對的對比詞（lean／obese、wild-type／knockout、vehicle／treated …），兩邊必須不同。
+  - two genotypes／strains／diets／sexes。
+- 結論：
+  - 改變類動詞加 vary、reshuffle、remodel、disrupt 等。
+  - 個體類加「rank … by」、atypical、tumors／samples 等單位。
+  - 因果加「pin … on」「attribute (changes) to」。
+  - 預測加「flag／identify … in a new／independent cohort」「which patients will」，並排除「target prediction」。
+  - group_difference 加「… compared with」。
+- 回覆層、registry、prompt 都不變。
+
+**判定（任一不成立就撤回 v2，回到 v1）：**
+
+主要判定（離線，結果固定，v1 與 v2 在第二組保留集上比較，`witness_eval.py`）：
+- **W1 召回**（只算標註不是 none 的句子）：
+  - 設計：v2 − v1 ≥ 25 個百分點。
+  - 主要結論：v2 − v1 ≥ 15 個百分點。
+- **W2 精確度**：
+  - v2 的設計誤判（給了值，但與標註不同）≤ 1。
+  - 結論誤判（同樣定義）≤ 1。
+  - 誤判出 causal 或 prediction（標註不是）＝ 0。
+
+其他離線判定：
+- **O1**：全套件通過（含新增 v2 測試）。兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O2**：`audit_witnesses.py` 輸出與 `audit_witnesses_v2.txt` 相同（真實請求只有 3 次正確的 prediction 命中）。
+- **O3**：3,592 個 traced 決策重播，只有 witness 命中的請求可以改變回覆。
+- **O6**：Log 343 的 156 個 live 決策（`live/s1-decisions.json`）以 v2 重播，Log 342 的 H2 規則仍成立：只增不改，R4 例外。
+
+live（gpt-4o-mini，預先授權）：
+- baseline 是宣告 commit 的 worktree（v1），候選是 v2 的實作 commit，交錯同時跑。第二組保留集 30 句 × 3。
+- 有效性：兩臂 provider 錯誤皆為 0，否則只重跑失敗的 session。
+- E1、E2、H1、H2、H3 的定義、門檻與 Log 342 相同，在候選臂上計算。
+- 只報告：兩臂各有幾次出現目的段落與缺口句；G5（DRAGON 未宣告）另列。
+
+成本估計：180 個 CLI session，約 US$0.35。
