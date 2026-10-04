@@ -229,3 +229,30 @@ def test_an_individual_change_needs_a_change_or_an_extreme():
 def test_individuals_with_a_change_or_an_extreme_stay(quote):
     purpose, _ = verify_proposal(f"We have RNA-seq. {quote}", _proposal(claims=[("individual_change", quote)]))
     assert purpose.claim == "individual_change"
+
+
+# -- Log 361: technical terms veto only what they pair or group ------------------------------
+
+@pytest.mark.parametrize("design, quote", [
+    ("groups", "12 Shank3-mutant mice and 12 wild-type littermates"),
+    ("groups", "Our count matrix of sorted splenic Treg cells has columns WT_1 to WT_10 and Ezh2cKO_1 to Ezh2cKO_10"),
+    ("groups", "four replicate pools at each of vehicle and three bisphenol S concentrations"),
+    ("groups", "60 children with Kawasaki disease and 40 febrile children with other infections; we only have the "
+               "expression matrix"),
+])
+def test_a_technical_word_beside_a_real_design_does_not_veto_it(design, quote):
+    purpose, rejected = verify_proposal(f"{quote}. We want one network.", _proposal(design, quote))
+    assert purpose.design == design and rejected == []
+
+
+@pytest.mark.parametrize("design, quote", [
+    ("paired", "2 x 150 bp paired-end RNA-seq, about 40 million read pairs per library"),
+    ("paired", "paired RNA-seq and proteomics matrices from the same tumours"),
+    ("paired", "I saved the count matrix both before and after normalization"),
+    ("groups", "collected at two hospitals and over three years"),
+    ("groups", "sequenced in four batches and two lanes"),
+    ("groups", "TMM versus quantile normalisation"),
+])
+def test_a_technical_pairing_or_grouping_is_still_no_design(design, quote):
+    purpose, rejected = verify_proposal(f"We have RNA-seq, {quote}. We want one network.", _proposal(design, quote))
+    assert purpose.design is None and rejected[0]["reason"] in {"technical", "two_data_types"}

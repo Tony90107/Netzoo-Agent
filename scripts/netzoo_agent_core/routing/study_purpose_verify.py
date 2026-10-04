@@ -21,6 +21,9 @@ naming TFs. A proposal therefore stands only on its own quote:
   the same resections" is one condition); and groups are not groups when the
   sentence splits the same individuals between the conditions ("organoids from
   10 donors were each split into an IL-22 well and a vehicle well");
+- Log 361: a technical term (paired-end reads, omics layers, normalization,
+  batches, lanes, litters, sites) vetoes a design only when it is what the
+  quote pairs or groups, not when it stands beside a real design;
 - Log 359 (b''): a quote that sets out to show a cause supports no other
   conclusion ("show that immune co-expression changes drive motor neuron
   loss" is not a group difference), and an individual change needs a change,
@@ -79,9 +82,22 @@ _DESIGN_CUES = {
         r"\band\b|\bvs\.?\b|versus|\bor\b|between|compared|\bplus\b|groups?|arms?|levels?|doses?|"
         r"concentrations?|strains?|genotypes?|cohorts?", _I),
 }
-_TECHNICAL_PAIRING = re.compile(
-    r"paired-end|read\s+pairs|matri\w*|layers?|omics|batch\w*|librar\w*|lanes?|replicates?|litters?|"
-    r"normali[sz]\w*|filter\w*", _I)
+# Log 361: a technical term vetoes a design only when it is what is paired or grouped. The
+# Log 354 list matched anywhere in the quote and without word boundaries, so "wild-type
+# littermates", "count matrix" and "replicate pools" beside a real design were vetoed:
+# 49 of 476 correct design proposals on the seen data.
+_TECHNICAL_PAIRED = re.compile(
+    r"\bpaired-end\b|\bread\s+pairs?\b|\bmate[- ]pairs?\b"
+    r"|\b(?:paired|matched)\s+(?:[\w-]+\s+){0,5}?(?:matri(?:x|ces)|layers?|omics|data\s*sets?|assays?|modalit\w*)\b"
+    r"|\b(?:before|after)\s+(?:and\s+(?:before|after)\s+)?(?:the\s+)?(?:normali[sz]\w*|filter\w*|batch[- ]correct\w*|"
+    r"QC\b|quality\s+control|pre-?process\w*|trimm\w*)", _I)
+_TECHNICAL_GROUPS = re.compile(
+    r"\b(?:two|three|four|five|six|seven|eight|nine|ten|several|multiple|\d+)\s+(?:sequencing\s+|separate\s+|different\s+)?"
+    r"(?:batches|lanes|runs|plates|litters|replicates|libraries|hospitals|sites|centres|centers|platforms|kits|chips|"
+    r"flow\s+cells)\b"
+    r"|\b(?:normali[sz]\w*|methods?|approaches|pipelines?|algorithms?|priors?|motif\s+collections?)\b[^.;]{0,40}"
+    r"\b(?:versus|vs\.?|or|and|compared)\b"
+    r"|\b(?:versus|vs\.?)\s+(?:[\w-]+\s+){0,2}?(?:normali[sz]\w*|methods?|approaches|pipelines?|algorithms?)\b", _I)
 # Log 357: a time point or a condition, without "same" -- "the same 80 resections" is one condition.
 _TIMED = re.compile(
     r"before|after|visit|trimester|split|cross|\bdays?\b|weeks?|months?|baseline|again|follow-?up|"
@@ -145,7 +161,7 @@ def _design_reason(task: str, design: str, quote: str) -> str:
     if not _DESIGN_CUES[design].search(span):
         return "no_cue"
     timed = _TIMED.search(span)
-    if _TECHNICAL_PAIRING.search(span) and not timed:
+    if (design == "paired" and _TECHNICAL_PAIRED.search(span)) or (design == "groups" and _TECHNICAL_GROUPS.search(span)):
         return "technical"
     if design == "paired" and len({m.group(0).lower() for m in _DATA_TYPE.finditer(span)}) >= 2 and not timed:
         return "two_data_types"
