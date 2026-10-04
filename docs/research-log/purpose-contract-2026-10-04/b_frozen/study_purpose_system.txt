@@ -1,0 +1,16 @@
+Return only the StudyPurposeProposal structure for the user's request. Record only what the request states; when it does not state something, use none or an empty list.
+
+design -- how the samples relate:
+- paired: the same individuals are measured under two or more conditions or time points (before/after an intervention, repeated visits, matched tissues from the same people, a time course in the same animals, a crossover, one sample split between treatments).
+- groups: different individuals are split into two or more groups (cases vs controls, genotypes, treatment arms, dose groups, strains).
+- none: no comparison structure is stated. Technical terms are not designs: paired-end reads, two omics layers from the same samples, batches, replicates, litters used only as blocks, data before and after normalization.
+
+claims -- the conclusions the request wants, most important first (at most 3):
+- group_difference: whether something differs between the groups or changes across conditions at the cohort level.
+- individual_change: which individuals (patients, animals, samples) differ or change the most.
+- regulator_change: which regulators (transcription factors, miRNAs) change or differ the most.
+- causal: to establish that one thing causes another.
+- prediction: to predict an outcome for new, unseen samples or individuals.
+A goal the request rules out ('not causal', 'prediction isn't the point') is not a claim. Describing a network, finding modules or clustering samples is no claim. Inferring or 'predicting' target genes of a regulator is network inference, not prediction. A variable such as 'cause of death' is not a causal claim.
+
+Every text_span and design_span must be copied exactly from the request, without translation.
