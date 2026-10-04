@@ -18208,3 +18208,64 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 3. **R3 ×3**：「From each of 15 … patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data」。真實的病人內配對被「兩種資料型態」否決擋下。
 
 這三種都可以修，但都是放寬（讓更多通過），需照本輪方式以新保留集評估。
+
+## Log 363｜事前宣告：(a″)——平手時，依研究問題與使用者說出的資料推薦，以第九組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：
+- 先 push（`d989dec..eed283d`，已完成），然後做階段 2。
+- 看過量測後選「先做 (a″)」；計畫書不用處理（使用者已有可交版本）。
+- 第九組保留集、DRAGON 說明文字、判定條文都「照建議」。
+本條目寫於 (a″) 的實作 commit 與任何第九組保留集上的 session 之前。
+- 基準為 HEAD `346c88f`：線上是 b‴（`fb45456`，驗證 `b4_frozen`）。
+- 工作目錄的差異即凍結的 `a2_frozen.patch`（sha256 `60b6d43fc0d4`）。
+
+**為什麼不是原規劃的階段 2（量測，第七、八組 live 候選臂 121 次平手）：**
+- 原規劃的追問（有設計、沒讀到結論就問層級）會在 18 次觸發，其中 15 次是對照句（只要描述），會變成過度追問。b″ 讀結論很準之後，「沒有結論」幾乎都代表「只要描述」。
+- 原規劃的推薦（只在有 direct 支持時）觸發 0 次。
+- 放寬為「部分候選有宣告格子就推薦」：觸發 18 次，其中 10 次推薦了不適用的工具（沒有 miRNA 資料卻推薦 PUMA 系列；兩種 omics 卻推薦單一 omics 的方法）。
+- 因此 (a″) 再依使用者說出的資料縮小推薦範圍；層級不明的追問 (b″) 需要契約變更，留待之後。
+
+**(a″) 內容（`FREEZE9.md`；只改回覆與卡片，不改決策欄位、模型呼叫或 prompt）：**
+- `study_purpose_notes.recommended_actions` 的觸發條件：
+  - 平手。
+  - 已驗證的研究目的有非 causal／prediction 的結論，且沒有 causal／prediction 主張。
+  - 只有部分候選有對應的 `CLAIM_SUPPORT` 格子（由問題本身分出）。
+- 再依使用者說出的資料縮小：
+  - miRNA 方法需提到 miRNA／small RNA。
+  - 需 prior 的方法需提到 motif、prior 或 PPI，且未排除（expression only、no motif、nothing else）。
+  - 提到兩種 omics 時，偏好 DRAGON 系列。
+- 回覆：目的段落加「Start with X or Y: with the data you named, these answer it, as below.」，推薦的列在前。平手開頭改為「These fit the result you described; for your question, start with X. To choose otherwise, tell me:」。
+- 卡片：推薦的選項標上 recommended 與「Recommended」徽章並排在最前，另加一點說明。
+- `CLAIM_SUPPORT` 新增 DRAGON（兩組比較、前後配對）與 LIONESS-DRAGON（群體差異、個體變化）四格。使用者已審過文字，照草稿。
+- 在已看過的資料（第七、八組 live 候選臂）上：推薦 13 次，13 次都在標註可接受的工具內，對照句 0 次。
+
+**預期修改的既有測試：**
+- `tests/test_study_purpose.py::test_only_the_global_table_states_a_gap`：原斷言「v1 不宣告 DRAGON」，改為只排除 CONDOR、SAMBAR。
+- `tests/test_study_purpose_call.py` 新增 6 個測試。
+
+**第九組保留集**（`heldout9/heldout.json`，`d7e97e739346`）：
+- 隔離 subagent 撰寫，平手題為主，資料內容有變化，每句標有 `recommended_subset`。使用者審過、照原稿。
+- 共 32 句：6 家族 × 4，加 8 句單獨題（含 2 句「問題分不出」、2 句否定陷阱）。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- 標註的推薦有些依據 (a″) 不涵蓋的理由：
+  - TF 活化或抑制 → GIRAFFE。
+  - 樣本很少又要每條邊的信賴度 → BONOBO。
+  - 共變數歸因 → COBRA。
+  - 不需要每人網路 → PUMA。
+- 在這些句子上，(a″) 會不推薦，或推薦範圍比標註寬。所以與標註的吻合只報告，不設門檻。
+
+**判定（任一不成立就撤回 (a″)）：**
+- live：gpt-4o-mini，預先授權，只跑候選臂（實作 commit）。第九組 32 句 × 3 = 96 個 session。
+- 比較對象是同一批 session 在離線時把 `recommended_actions` 設為空的回覆，因此差異只來自 (a″)。
+- **R1 推薦精確度**：有推薦的 trial 中，推薦全部落在標註的 `acceptable_candidates` 內的比例 ≥ 90%。
+- **R2 不該推薦時不推薦**：標註為對照（claim none）或 causal／prediction 的句子，推薦次數 ＝ 0。
+- **H2 只加不改**：每個 trial 的 live 回覆等於離線含 (a″) 的渲染。去掉 (a″) 的推薦與改寫的平手開頭後，等於不含 (a″) 的渲染（`only_adds`）。
+- **H3**：呼叫角色沒有超出第七、八組候選臂已有的角色。
+- **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 推薦與 `recommended_subset` 的吻合（完全相同、有交集、無交集）。
+  - 標註 `recommended_subset` 非空的句子中有推薦的比例。
+
+成本估計：約 US$0.2。

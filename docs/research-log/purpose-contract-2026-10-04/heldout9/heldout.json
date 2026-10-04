@@ -1,0 +1,850 @@
+{
+  "authored_by": "subagent, isolated from the recommendation rules",
+  "items": [
+    {
+      "id": "S1-a",
+      "family": "S1",
+      "data_sentence": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors.",
+      "purpose_sentence": "Which volunteers show the largest rewiring of their gene co-expression from before to after the diet?",
+      "prompt": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors. Which volunteers show the largest rewiring of their gene co-expression from before to after the diet?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Per-sample co-expression networks let each volunteer's after-diet network be compared with their own before-diet network",
+        "Runs on expression alone; no motif or PPI prior is needed"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Offering only a cohort-level analysis (e.g., COBRA alone) that cannot rank volunteers"
+      ]
+    },
+    {
+      "id": "S1-b",
+      "family": "S1",
+      "data_sentence": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors.",
+      "purpose_sentence": "Does the diet change gene co-expression across the cohort as a whole?",
+      "prompt": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors. Does the diet change gene co-expression across the cohort as a whole?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Expression-only co-expression tools fit; the question does not single one out (covariate decomposition with volunteer as a covariate, or per-sample networks compared pairwise)",
+        "No registered tool runs the paired test itself; the before/after pairing must be used in an external test"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Claiming a registered tool directly returns a significance test of the diet effect",
+        "Treating the 24 samples as independent groups and ignoring the pairing"
+      ]
+    },
+    {
+      "id": "S1-c",
+      "family": "S1",
+      "data_sentence": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors.",
+      "purpose_sentence": "Before comparing anything, I just want to see which genes move together in this muscle tissue.",
+      "prompt": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors. Before comparing anything, I just want to see which genes move together in this muscle tissue.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "A descriptive co-expression analysis from expression alone; no comparison or test is needed"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Steering the user into a before/after comparison they did not ask for"
+      ]
+    },
+    {
+      "id": "S1-d",
+      "family": "S1",
+      "data_sentence": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors.",
+      "purpose_sentence": "Which transcription factors change their regulatory activity the most after the diet?",
+      "prompt": "I have RNA-seq of thigh muscle biopsies from 12 volunteers, each sampled before and after ten days on a ketogenic diet; expression only, no priors. Which transcription factors change their regulatory activity the most after the diet?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "TF regulatory activity needs a TF-gene motif prior (and PPI), which the user says they do not have",
+        "Co-expression of TF genes is only a proxy; the user should be told this or asked whether a motif prior can be obtained"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, GIRAFFE or OTTER as if they could run on expression alone",
+        "Presenting co-expression hubs as TF regulatory activity without a caveat"
+      ]
+    },
+    {
+      "id": "S2-a",
+      "family": "S2",
+      "data_sentence": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Which transcription factors differ most in how they target genes between the two diagnoses?",
+      "prompt": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network. Which transcription factors differ most in how they target genes between the two diagnoses?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Several motif-based tools can compare TF targeting between diagnoses (one aggregate network per diagnosis, or per-sample networks); the question does not single one out",
+        "Which TFs differ significantly has to be judged with a comparison outside the tools"
+      ],
+      "red_flags": [
+        "Claiming a registered tool directly tests which TFs differ significantly",
+        "Recommending expression-only co-expression tools as the answer to a TF targeting question when the priors are available",
+        "Recommending PUMA or LIONESS-PUMA without miRNA data"
+      ]
+    },
+    {
+      "id": "S2-b",
+      "family": "S2",
+      "data_sentence": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Before any comparison, I want one regulatory network for all 68 biopsies and its main communities.",
+      "prompt": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network. Before any comparison, I want one regulatory network for all 68 biopsies and its main communities.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "CONDOR"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "One aggregate TF-gene network over all biopsies, with community detection on that bipartite network",
+        "No comparison or test is needed"
+      ],
+      "red_flags": [
+        "Turning the request into a lupus-versus-minimal-change comparison",
+        "Recommending tools that need data the user lacks (miRNA, second omics layer, mutations)"
+      ]
+    },
+    {
+      "id": "S2-c",
+      "family": "S2",
+      "data_sentence": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Which individual patients have regulatory networks that stand furthest from the rest of their diagnosis?",
+      "prompt": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network. Which individual patients have regulatory networks that stand furthest from the rest of their diagnosis?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "One regulatory network per patient (LIONESS-PANDA) so outliers within each diagnosis can be found",
+        "Uses the TF motif prior and PPI the user has"
+      ],
+      "red_flags": [
+        "Recommending only aggregate networks (PANDA or OTTER), which cannot rank individual patients",
+        "Recommending PUMA-family tools without miRNA data"
+      ]
+    },
+    {
+      "id": "S2-d",
+      "family": "S2",
+      "data_sentence": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Is the regulatory network wired differently overall in lupus nephritis than in minimal change disease?",
+      "prompt": "We have glomerular RNA-seq from biopsies of 38 lupus nephritis and 30 minimal change disease patients, plus a TF motif prior and a protein interaction network. Is the regulatory network wired differently overall in lupus nephritis than in minimal change disease?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Several motif-based tools fit and the question does not favour one",
+        "No registered tool performs the between-group test; group or per-sample networks must be compared with an external test"
+      ],
+      "red_flags": [
+        "Claiming a tool returns a significance test of overall rewiring",
+        "Recommending PUMA-family tools without miRNA data"
+      ]
+    },
+    {
+      "id": "S3-a",
+      "family": "S3",
+      "data_sentence": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "For now I only want one combined TF and microRNA regulatory network describing all 90 samples.",
+      "prompt": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors. For now I only want one combined TF and microRNA regulatory network describing all 90 samples.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "One aggregate network with both TFs and miRNAs as regulators, built over all samples",
+        "No comparison is needed"
+      ],
+      "red_flags": [
+        "Using a TF-only tool and silently dropping the miRNA data",
+        "Imposing a tumour-versus-normal comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "S3-b",
+      "family": "S3",
+      "data_sentence": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "Which microRNAs gain or lose the most regulatory influence in each tumour compared with that patient's normal tissue?",
+      "prompt": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors. Which microRNAs gain or lose the most regulatory influence in each tumour compared with that patient's normal tissue?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Only the PUMA family places miRNAs among the regulators",
+        "A within-patient tumour-versus-normal comparison needs one network per sample (LIONESS-PUMA); the paired comparison itself is done outside the tool"
+      ],
+      "red_flags": [
+        "Recommending TF-only tools (PANDA, OTTER, GIRAFFE, LIONESS-PANDA) for a microRNA question",
+        "Recommending only one aggregate network per tissue, which loses the patient pairing the user asked for"
+      ]
+    },
+    {
+      "id": "S3-c",
+      "family": "S3",
+      "data_sentence": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "Which patients show the biggest tumour-versus-normal shift in their combined TF and microRNA regulatory network?",
+      "prompt": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors. Which patients show the biggest tumour-versus-normal shift in their combined TF and microRNA regulatory network?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Per-sample combined TF/miRNA networks for every tumour and normal sample, so each patient's shift can be scored",
+        "Uses the miRNA-target prior together with the TF motif prior and PPI"
+      ],
+      "red_flags": [
+        "Recommending aggregate PUMA alone, which cannot rank patients",
+        "Dropping the miRNA layer (e.g., LIONESS-PANDA) when the user asked for combined TF and miRNA regulation"
+      ]
+    },
+    {
+      "id": "S3-d",
+      "family": "S3",
+      "data_sentence": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "I want to prove that loss of miR-122 drives the regulatory changes seen in these tumours.",
+      "prompt": "We sequenced mRNA and miRNA in matched hepatocellular carcinoma and adjacent non-tumour liver from 45 patients, and have TF motif, protein interaction and miRNA-target priors. I want to prove that loss of miR-122 drives the regulatory changes seen in these tumours.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Network inference is correlational and cannot prove that miR-122 loss causes the changes",
+        "Causal evidence needs perturbation experiments (e.g., restoring or knocking down miR-122); networks can only generate hypotheses"
+      ],
+      "red_flags": [
+        "Claiming PUMA or LIONESS-PUMA output establishes causation",
+        "Recommending a tool as the way to prove the causal claim"
+      ]
+    },
+    {
+      "id": "S4-a",
+      "family": "S4",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women.",
+      "purpose_sentence": "Does the coupling between methylation and expression differ between the two groups of women?",
+      "prompt": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women. Does the coupling between methylation and expression differ between the two groups of women?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Two-omic partial-correlation networks (one per group, or one per woman) capture methylation-expression coupling; the question does not favour one",
+        "No registered tool tests the group difference; an external comparison is required"
+      ],
+      "red_flags": [
+        "Analysing expression alone with co-expression tools and ignoring the methylation layer",
+        "Claiming a tool directly tests the difference between groups"
+      ]
+    },
+    {
+      "id": "S4-b",
+      "family": "S4",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women.",
+      "purpose_sentence": "Which women have the most unusual methylation-expression network compared with the rest of the cohort?",
+      "prompt": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women. Which women have the most unusual methylation-expression network compared with the rest of the cohort?",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Per-sample two-omic networks (LIONESS-DRAGON) give one methylation-expression network per woman",
+        "Outlying women are identified by comparing those networks across the cohort outside the tool"
+      ],
+      "red_flags": [
+        "Recommending aggregate DRAGON only, which cannot rank individual women",
+        "Recommending motif/PPI-based tools the user has no priors for"
+      ]
+    },
+    {
+      "id": "S4-c",
+      "family": "S4",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women.",
+      "purpose_sentence": "I want to use both layers to predict who will develop type 2 diabetes within five years.",
+      "prompt": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women. I want to use both layers to predict who will develop type 2 diabetes within five years.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "No registered tool builds a predictive model; per-sample network outputs could only serve as features for an external classifier",
+        "Prediction needs recorded follow-up outcomes and validation on held-out women"
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts future type 2 diabetes",
+        "Recommending a tool as a predictor without stating the need for an external model and validation"
+      ]
+    },
+    {
+      "id": "S4-d",
+      "family": "S4",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women.",
+      "purpose_sentence": "I only want to describe which methylation sites and genes are directly linked in this tissue.",
+      "prompt": "We have RNA-seq and DNA methylation arrays from the same subcutaneous fat biopsies taken at caesarean from 52 women with gestational diabetes and 48 normoglycaemic women. I only want to describe which methylation sites and genes are directly linked in this tissue.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "A single two-omic partial-correlation network across all women describes direct methylation-gene links",
+        "No group comparison is needed"
+      ],
+      "red_flags": [
+        "Treating methylation as a regulatory prior for motif-based tools",
+        "Imposing a gestational-diabetes comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "S5-a",
+      "family": "S5",
+      "data_sentence": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Does vaccination shift the T-cell regulatory network across the cohort, testing each person against their own baseline?",
+      "prompt": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network. Does vaccination shift the T-cell regulatory network across the cohort, testing each person against their own baseline?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE",
+        "PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "A within-person test needs one regulatory network per sample (LIONESS-PANDA), so each post-vaccination network can be paired with the same person's baseline",
+        "The paired test itself is run outside the tools"
+      ],
+      "red_flags": [
+        "Recommending only one aggregate network per time point, which loses the pairing",
+        "Claiming a tool performs the paired test"
+      ]
+    },
+    {
+      "id": "S5-b",
+      "family": "S5",
+      "data_sentence": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "For now I only want one reference regulatory network of resting T cells from the pre-vaccination samples.",
+      "prompt": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network. For now I only want one reference regulatory network of resting T cells from the pre-vaccination samples.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "One aggregate TF-gene network built from the baseline samples only",
+        "No comparison is needed"
+      ],
+      "red_flags": [
+        "Imposing a before/after comparison the user did not ask for",
+        "Answering with expression-only co-expression tools when the user wants a TF regulatory network and has the priors"
+      ]
+    },
+    {
+      "id": "S5-c",
+      "family": "S5",
+      "data_sentence": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Which transcription factors change their activity most after vaccination, judged within each person?",
+      "prompt": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network. Which transcription factors change their activity most after vaccination, judged within each person?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Judging change within each person needs per-sample regulator scores: a TF-by-sample activity matrix (GIRAFFE) or TF targeting from per-sample networks (LIONESS-PANDA)",
+        "The paired test of those scores is done outside the tools"
+      ],
+      "red_flags": [
+        "Recommending only aggregate per-time-point networks (PANDA or OTTER), which cannot judge change within each person",
+        "Recommending PUMA-family tools without miRNA data"
+      ]
+    },
+    {
+      "id": "S5-d",
+      "family": "S5",
+      "data_sentence": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "From the baseline samples alone, I want to predict who will mount a strong neutralizing antibody response.",
+      "prompt": "I have RNA-seq of CD4 T cells from 24 adults before and seven days after yellow fever vaccination, plus a TF motif prior and a protein interaction network. From the baseline samples alone, I want to predict who will mount a strong neutralizing antibody response.",
+      "comparison_design": "paired",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "No registered tool predicts antibody response; baseline per-sample networks or TF activities could only be features for an external model",
+        "With 24 people and an antibody outcome still to be measured, any predictor needs careful external validation"
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts responders",
+        "Presenting a network output as a validated biomarker"
+      ]
+    },
+    {
+      "id": "S6-a",
+      "family": "S6",
+      "data_sentence": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis.",
+      "purpose_sentence": "I want to establish whether interferon-gamma signalling causes the granuloma gene programme in these nodes.",
+      "prompt": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis. I want to establish whether interferon-gamma signalling causes the granuloma gene programme in these nodes.",
+      "comparison_design": "none",
+      "claim_kind": "causal",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Co-expression networks cannot establish that interferon-gamma signalling causes the granuloma programme",
+        "Causal claims need perturbation or intervention data; networks can only suggest hypotheses"
+      ],
+      "red_flags": [
+        "Claiming a co-expression or regulatory network proves causation",
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have"
+      ]
+    },
+    {
+      "id": "S6-b",
+      "family": "S6",
+      "data_sentence": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis.",
+      "purpose_sentence": "Which of the nine patients has a gene co-expression network most unlike the others, and how confident can I be in each link?",
+      "prompt": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis. Which of the nine patients has a gene co-expression network most unlike the others, and how confident can I be in each link?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "BONOBO"
+      ],
+      "must_include": [
+        "With nine samples, sample-specific networks with per-edge p-values (BONOBO) fit both parts of the question",
+        "Works from expression only; no motif or PPI prior is assumed"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Offering only a single aggregate network that cannot single out a patient"
+      ]
+    },
+    {
+      "id": "S6-c",
+      "family": "S6",
+      "data_sentence": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis.",
+      "purpose_sentence": "I simply want to describe the main groups of co-expressed genes across these nodes, without comparing anything.",
+      "prompt": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis. I simply want to describe the main groups of co-expressed genes across these nodes, without comparing anything.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "A descriptive co-expression analysis from expression alone is enough; with nine samples results should be read cautiously",
+        "No comparison or test is needed"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Introducing a comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "S6-d",
+      "family": "S6",
+      "data_sentence": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis.",
+      "purpose_sentence": "I want to predict from these profiles which patients will need systemic steroids within a year.",
+      "prompt": "I have bulk RNA-seq from mediastinal lymph node biopsies of nine patients with sarcoidosis. I want to predict from these profiles which patients will need systemic steroids within a year.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "No registered tool builds a predictive classifier",
+        "Nine patients with no recorded outcome are far too few to build and validate a predictor"
+      ],
+      "red_flags": [
+        "Claiming a registered tool predicts steroid need",
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T1",
+      "data_sentence": "I have RNA-seq of lesional and non-lesional skin from each of five patients with vitiligo, and nothing else.",
+      "purpose_sentence": "I want to see whose lesions are most rewired in gene co-expression, with a significance value for every edge.",
+      "prompt": "I have RNA-seq of lesional and non-lesional skin from each of five patients with vitiligo, and nothing else. I want to see whose lesions are most rewired in gene co-expression, with a significance value for every edge.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "BONOBO"
+      ],
+      "must_include": [
+        "With ten samples and per-edge significance requested, BONOBO's sample-specific networks with edge p-values fit best",
+        "Each patient's lesional network is compared with their own non-lesional network"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Recommending only a cohort-level analysis that cannot say whose lesions are most rewired"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T2",
+      "data_sentence": "We have RNA-seq of bone marrow from 70 patients with myelodysplastic syndrome and 25 healthy donors, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Which transcription factors are switched on or off in the patients, and do they activate or repress their targets?",
+      "prompt": "We have RNA-seq of bone marrow from 70 patients with myelodysplastic syndrome and 25 healthy donors, plus a TF motif prior and a protein interaction network. Which transcription factors are switched on or off in the patients, and do they activate or repress their targets?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "GIRAFFE gives signed TF-gene effects (activation versus repression) and a TF-by-sample activity matrix",
+        "Differences between patients and donors still need a comparison outside the tool"
+      ],
+      "red_flags": [
+        "Recommending PANDA or OTTER alone as if their edge weights told activation from repression",
+        "Claiming a tool directly tests which TFs differ significantly"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T3",
+      "data_sentence": "We measured RNA-seq and proteomics on the same pancreatic islet preparations from 18 donors with type 2 diabetes and 22 without.",
+      "purpose_sentence": "I am not interested in how protein tracks transcript; I only want to know which donors' gene co-expression departs most from their group.",
+      "prompt": "We measured RNA-seq and proteomics on the same pancreatic islet preparations from 18 donors with type 2 diabetes and 22 without. I am not interested in how protein tracks transcript; I only want to know which donors' gene co-expression departs most from their group.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "The user ruled out the protein-transcript link, so per-sample co-expression networks from the RNA-seq answer the question",
+        "Each donor's network is compared with the rest of their group outside the tool"
+      ],
+      "red_flags": [
+        "Recommending DRAGON or LIONESS-DRAGON even though the user excluded protein-transcript relations",
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T4",
+      "data_sentence": "We have RNA-seq of nasal epithelial brushings from 36 children with cystic fibrosis and 30 healthy children, plus a TF motif prior and a protein interaction network.",
+      "purpose_sentence": "Is gene regulation in the airway epithelium different overall between the two groups of children?",
+      "prompt": "We have RNA-seq of nasal epithelial brushings from 36 children with cystic fibrosis and 30 healthy children, plus a TF motif prior and a protein interaction network. Is gene regulation in the airway epithelium different overall between the two groups of children?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Several motif-based tools fit (one network per group, or one per child); the question does not single one out",
+        "No registered tool performs the group test; an external comparison is needed"
+      ],
+      "red_flags": [
+        "Claiming a tool directly tests the overall group difference",
+        "Presenting one tool as uniquely right without a reason drawn from the question"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T5",
+      "data_sentence": "We sequenced mRNA and miRNA from 30 pre-eclamptic and 30 normotensive placentas and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "I would like to know whether placental gene regulation differs overall between the two kinds of pregnancy.",
+      "prompt": "We sequenced mRNA and miRNA from 30 pre-eclamptic and 30 normotensive placentas and have TF motif, protein interaction and miRNA-target priors. I would like to know whether placental gene regulation differs overall between the two kinds of pregnancy.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA",
+        "PANDA",
+        "LIONESS-PANDA",
+        "OTTER",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Both TF-only and TF-plus-miRNA tools fit the data; the question does not say whether miRNAs matter, so it does not single one out",
+        "No registered tool tests the group difference; an external comparison is needed"
+      ],
+      "red_flags": [
+        "Claiming a tool directly tests the overall difference",
+        "Presenting one tool as uniquely right without a reason drawn from the question"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T6",
+      "data_sentence": "We have RNA-seq and proteomics on the same synovial tissue samples from 26 people with rheumatoid arthritis and 24 with osteoarthritis.",
+      "purpose_sentence": "Is the relationship between transcript and protein levels different between the two diseases?",
+      "prompt": "We have RNA-seq and proteomics on the same synovial tissue samples from 26 people with rheumatoid arthritis and 24 with osteoarthritis. Is the relationship between transcript and protein levels different between the two diseases?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "Two-omic networks (one per disease, or one per sample) fit the two layers; the question does not favour one",
+        "The between-disease comparison must be done outside the tools"
+      ],
+      "red_flags": [
+        "Analysing RNA-seq alone and ignoring the proteomics layer",
+        "Claiming a tool directly tests the difference between diseases"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T7",
+      "data_sentence": "I have RNA-seq of Achilles tendon biopsies from 40 people with tendinopathy and 40 without, with age and sex recorded; expression only.",
+      "purpose_sentence": "I want the part of gene co-expression attributable to tendinopathy after accounting for age and sex.",
+      "prompt": "I have RNA-seq of Achilles tendon biopsies from 40 people with tendinopathy and 40 without, with age and sex recorded; expression only. I want the part of gene co-expression attributable to tendinopathy after accounting for age and sex.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [
+        "COBRA"
+      ],
+      "must_include": [
+        "COBRA decomposes co-expression into components attributable to covariates, so tendinopathy status can be separated from age and sex",
+        "Works from expression plus the covariate table; no priors needed"
+      ],
+      "red_flags": [
+        "Recommending PANDA, LIONESS-PANDA, OTTER or GIRAFFE, which need a TF motif prior and PPI the user does not have",
+        "Ignoring the age and sex adjustment the user asked for"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T8",
+      "data_sentence": "We sequenced mRNA and miRNA from 60 neuroblastoma tumours, 30 high-risk and 30 low-risk, and have TF motif, protein interaction and miRNA-target priors.",
+      "purpose_sentence": "I don't need per-patient networks; I want to know which microRNAs differ most in regulatory influence between the risk groups.",
+      "prompt": "We sequenced mRNA and miRNA from 60 neuroblastoma tumours, 30 high-risk and 30 low-risk, and have TF motif, protein interaction and miRNA-target priors. I don't need per-patient networks; I want to know which microRNAs differ most in regulatory influence between the risk groups.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "recommended_subset": [
+        "PUMA"
+      ],
+      "must_include": [
+        "Only the PUMA family treats miRNAs as regulators; since per-patient networks are not wanted, one aggregate network per risk group answers the question",
+        "Differences between the two group networks are compared outside the tool"
+      ],
+      "red_flags": [
+        "Recommending per-sample LIONESS-PUMA as the main route although the user ruled out per-patient networks",
+        "Recommending TF-only tools for a microRNA question"
+      ]
+    }
+  ]
+}
