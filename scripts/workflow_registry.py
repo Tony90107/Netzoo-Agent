@@ -961,6 +961,43 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
         "Some component values fall outside -1 to 1; read them as contributions, not correlations. "
         "Deciding which gene pairs differ beyond chance is a separate analysis.",
     )),
+    # Log 363 (draft for review): the multi-omic workflows. [R] the DRAGON and LIONESS-DRAGON
+    # downstream notes (partial correlations depend on every feature; a LIONESS-DRAGON sample's
+    # edges are relative to the cohort it was built from).
+    ("run_dragon", "group_difference", "groups"): ClaimSupport("with_step", (
+        "Build one network per group on the same features of both layers, then compare the cross-layer "
+        "edges (the partial correlations between the two omics layers) between the group networks; two "
+        "aggregate networks show where the groups differ but give no per-sample spread to test it."
+    ), (
+        "Partial correlations are conditional on every other feature in both layers, so use the same "
+        "feature set in every network you compare.",
+    )),
+    ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
+        "Build one network per time point or condition on the same features and compare the cross-layer "
+        "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
+        "individual's samples."
+    ), (
+        "Partial correlations are conditional on every other feature in both layers, so use the same "
+        "feature set in every network you compare.",
+    )),
+    ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
+        "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
+        "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
+        "associations differ."
+    ), (
+        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+        "to the cohort the network was built from.",
+        _LIONESS_DEPENDENCE,
+    )),
+    ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
+        "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
+        "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
+        "change or stand out."
+    ), (
+        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+        "to the cohort the network was built from.",
+        _LIONESS_DEPENDENCE,
+    )),
     **_coexpression_claims("run_lioness_coexpression", (_LIONESS_DEPENDENCE,)),
     **_coexpression_claims("run_bonobo", (
         "With p-value output, edges can be filtered per sample at a chosen confidence.",

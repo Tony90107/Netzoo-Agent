@@ -509,7 +509,7 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
     from workflow_registry import UNSUPPORTED_CLAIMS
 
     from ..interpretation.study_purpose_notes import (
-        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
+        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim, recommended_actions,
     )
 
     purpose = purpose_from_state(state, task)
@@ -532,9 +532,23 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
         names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
         points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
                            "give toward it and the step after each.", 300))
-    if not rows and points == card.points:
+    choices = card.choices
+    recommended = recommended_actions(decision, purpose, task) if card.choices else []
+    if recommended:
+        # Log 363 (a''): the tied workflows that answer the stated question with the named data.
+        options = [option.model_copy(update={"recommended": True, "badge": "Recommended"})
+                   if option.action in recommended else option for option in card.choices.options]
+        options.sort(key=lambda option: option.action not in recommended)
+        choices = card.choices.model_copy(update={
+            "options": options,
+            "ordering": clip("Recommended first: they answer your question with the data you named.", 200)})
+        if len(points) < 6:
+            points.append(clip(f"Recommended for your question: "
+                               f"{join_names([workflow_name(policy, action) for action in recommended])}.", 300))
+    if not rows and points == card.points and choices is card.choices:
         return card
-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
+    return card.model_copy(update={"points": points, "choices": choices,
+                                   "unavailable": [*card.unavailable, *rows][:8]})
 
 
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
