@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.76s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, LIONESS-PANDA, OTTER, GIRAFFE
+? Clarification needed
+I can map this to more than one compatible network result:
+
+**TF-only regulatory network**
+- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.
+- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+For your question ("does prednisolone measurably rewire monocyte gene regulation?"):
+- **PANDA** — Build one network for each time point on the same genes and priors, then compare edge weights or targeting scores between them. This compares the time points across all individuals but does not use the pairing: each individual's samples from the different time points are pooled into separate networks. To keep the pairing, use the per-sample (LIONESS) version and compare each individual's samples.
+- **LIONESS-PANDA** — Each sample gets its own network, so each individual's networks from the different time points can be compared directly: test the within-individual differences of edge weights or targeting scores, for example with a paired test or a linear model with an individual term.
+- **OTTER** — Build one network for each time point on the same genes and priors, then compare edge weights or targeting scores between them. This compares the time points across all individuals but does not use the pairing: each individual's samples from the different time points are pooled into separate networks. To keep the pairing, use a per-sample method such as LIONESS-PANDA and compare each individual's samples.
+- **GIRAFFE** — The activity matrix compares TF activity, not network wiring, between the conditions; test each TF's activity between them (paired when the same individuals give both).
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.
+
+No files were inspected and no analysis ran.

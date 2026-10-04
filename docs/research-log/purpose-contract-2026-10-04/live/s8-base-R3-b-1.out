@@ -1,0 +1,24 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (7.46s)
+● Matching registered workflows…
+✓ Guidance prepared
+About "we want a model that predicts, from a new patient's perilesional biopsy, whether lesions will spread there.": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.
+
+I can map this to more than one compatible network result:
+
+All of them derive each sample network from all-sample and leave-one-out networks.
+
+**Multi omic network**
+- **LIONESS-DRAGON** — DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. Needs DRAGON omics layer 1 and DRAGON omics layer 2.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability. Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA); or inferred associations between omics features, one result per sample (LIONESS-DRAGON)?
+
+**What your data allows.** Your request names only expression data. LIONESS-PANDA also needs a motif prior and a PPI network; LIONESS-PUMA also needs a motif prior, a PPI network and a miRNA list; LIONESS-DRAGON needs omics layer 1 and omics layer 2. With expression data alone, LIONESS-COEXPRESSION or BONOBO builds one gene-gene co-expression network per sample (genes only, no regulator roles) instead. Do you also have a motif prior and a PPI network?
+
+No files were inspected and no analysis ran.

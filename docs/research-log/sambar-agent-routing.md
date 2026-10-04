@@ -18161,3 +18161,50 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 只報告：兩臂讀出的設計次數與目的段落次數。
 
 成本估計：離線約 US$0.01；live 約 US$0.4。
+
+## Log 362｜結果：技術否決收緊——離線與 live 判定全部成立，保留
+
+日期／時區：2026-10-04，Asia/Taipei。依 Log 361 執行。
+- 候選：`fb45456`（`fb45456` 為實作）。baseline：宣告 commit `ed7c527` 的 worktree（b″）。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `b_eval_heldout8.txt`、`heldout8-calls.json`（離線 96 次；同一批提案以兩個驗證評分）
+  - `live/s8-analysis.txt`、`live/s8-replies.md`、`live/s8-decisions.json`
+
+**離線（第八組，96 次呼叫、0 失敗）：**
+
+| 判定 | b″（線上） | 新版 | 判準 | 成立 |
+|---|---|---|---|---|
+| W1a 設計召回 | 42/69（61%） | 47/69（68%） | +5 個百分點 | 是（+7.2） |
+| W1b 主要結論召回 | 55/63（87%） | 55/63（87%） | 不低於 b″ | 是 |
+| W2a causal／prediction 誤判 | 0 | 0 | 不高於 b″ 且 ≤ 3 | 是 |
+| W2b 設計＋結論誤判 | 2 | 2 | 不高於 b″ 且 ≤ 9 | 是 |
+| O1 | 全套件 3268 passed／35 skipped；指紋、條件推薦 prompt hash、policy hash 不變 | | | 是 |
+| O3／O6 | 兩個程式樹重播 3,592＋156 個決策，回覆逐字相同 | | | 是 |
+
+- 兩版共同的 2 次設計誤判都是 T5（RNA 分兩管、兩種深度，讀成 paired），即宣告中預先寫下的風險。
+- 線上 witness 的參考值：設計 12/69、結論 48/63、缺口誤判 3。
+
+**live（第八組 32 句 × 3 × 2 臂 = 192 個 session，花費 base US$0.180、cand US$0.169）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| 有效性 | 兩臂 provider 錯誤 0、缺 session 0 | 是 |
+| E1 | 合格 trial 19/19 出現目的段落 | 是 |
+| E2 | 標註 causal／prediction 的 7 句每句 3/3 | 是 |
+| H1（相對） | 假缺口 base 0、cand 0 | 是 |
+| H2 | 候選 96 個 trial：只增不改 93、R4 3、失敗 0；對照句加入段落 0 | 是 |
+| H3 | 候選臂沒有 baseline 沒有的呼叫角色 | 是 |
+
+- 只報告：
+  - 每個候選 session 恰好 1 次 `study_purpose` 呼叫，延遲中位數 1.25 秒。
+  - live 中讀對的設計：base 42、cand 46。
+  - 目的段落：base 21、cand 19。兩臂的模型提案與路由各自取樣，非判定項。
+
+**決定：** 保留。線上驗證為 `b4_frozen`（`fb45456`）。
+
+**新版在第八組仍漏掉的 22 次設計（都只造成少抓，沒有誤判）：**
+1. **R1 ×9、R4 ×3**：模型的設計引文抄自系統提示的定義句（「the same individuals are measured under two or more conditions …」），不在請求中，被正確拒絕。R1 的設計是樣本表欄位形式（donor_id, visit (pre/post), lane）。
+2. **R2 ×7**：「10 wild-type littermates (five litters)」被「N litters」否決擋下，即宣告中預先寫下的風險。
+3. **R3 ×3**：「From each of 15 … patients we took one lesional and one perilesional skin biopsy, and every biopsy has both RNA-seq and methylation array data」。真實的病人內配對被「兩種資料型態」否決擋下。
+
+這三種都可以修，但都是放寬（讓更多通過），需照本輪方式以新保留集評估。
