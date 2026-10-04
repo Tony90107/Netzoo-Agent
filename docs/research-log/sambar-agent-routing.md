@@ -17473,3 +17473,60 @@ live（gpt-4o-mini，預先授權）：
 - 線上 v1 在第二組保留集上的三個設計誤判：T3「before and after normalization」、T6 單獨的「healthy volunteers」、G2-a 同一人的 tumor／non-tumor。
 - 設計誤判本身不產生段落，但 T3 型遇到以個體計數的請求時會改變 LIONESS 執行次數的說明。
 - 這些與 v2 的召回擴充一起留給 v3，需要第三組保留集。
+
+## Log 348｜事前宣告：研究目的 witness v3——以第三組保留集評估
+
+日期／時區：2026-10-04，Asia/Taipei。
+使用者決定：先 push（`d6cbb9c..5bb6b5e`，已完成），然後做 v3。第三組保留集與下列判定「照建議」。
+本條目寫於 v3 接到程式路徑之前，也寫於把任何 witness 跑在第三組保留集之前。
+- 基準為 HEAD `b67efec`：`scripts/` 的 witness 是 v1＋PN（`b14bee1`，sha256 `dcdb761c8289`，複本為 `study_purpose.v1pn.frozen.py`）。
+- 工作目錄中未 commit 的 `routing/study_purpose.py` 就是凍結的 v3。
+- 全套件 3225 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`；條件推薦 prompt hash `c820364a1123`；policy hash `b0570ff267af`。
+
+**凍結的檔案**（`docs/research-log/purpose-contract-2026-10-04/`）：
+- `study_purpose.v3.frozen.py`：sha256 `fd4ae91446f3`，在 `b67efec` 凍結，當時第三組保留集還沒寫完。
+- `heldout3/heldout.json`：sha256 `17c697086291`。隔離的 subagent 撰寫，使用者審過、照原稿，共 32 句：
+  - 6 家族 × 4：H1、H3 配對；H2、H4、H6 分組；H5 無設計。
+  - 3 句否定陷阱（T1–T3）。
+  - 5 句精確度陷阱（T4–T8），類別由 subagent 自己設計，這次對 witness 設計也是盲的。
+- 第一、二組保留集都已看過，v3 照兩者調整（各 22/22、20/20），只作開發資料。
+
+**v3 內容**（凍結檔即全文）：
+- 撤回的 v2（Log 345）加上 PN（Log 346）。
+- 修 v2 在第二組的誤判：
+  - 單獨的「healthy volunteers／donors」不算分組，只有「healthy controls」算。
+  - 「from the same N patients」的兩種組織算配對；被配對的是 omics 層時不算。
+- 補第二組的漏判：
+  - 「during X and again … after Y」
+  - 「rank TFs／patients by」後面要有改變字詞
+  - 「regulated／wired differently」
+  - 「16 rats fed X and 16 fed Y」
+  - 「whose networks changed most」
+  - 「flags … not yet diagnosed」
+- 回覆層、registry、prompt 都不變。
+
+**預期修改的既有測試：** PN 的測試把 T2 句（「Predicting relapse isn't the point; we want to see whose networks changed most …」）列為沒有任何結論。v3 讀出個體變化，這正是第二組保留集的標註。該句移到新測試，斷言結論為 `["individual_change"]`。
+
+**判定（任一不成立就撤回 v3，回到 v1＋PN）：**
+
+主要判定（離線，結果固定，基準 v1＋PN 與 v3 在第三組保留集上比較，`witness_eval.py --base study_purpose.v1pn.frozen.py`）：
+- **W1 召回**（只算標註不是 none 的句子）：
+  - 設計：v3 − 基準 ≥ 25 個百分點。
+  - 主要結論：v3 − 基準 ≥ 15 個百分點。
+- **W2 精確度**：
+  - v3 設計誤判 ≤ 1、結論誤判 ≤ 1。
+  - 誤判出 causal 或 prediction（標註不是）＝ 0。
+
+其他離線判定：
+- **O1**：全套件通過；兩個指紋、條件推薦 prompt hash、policy hash 都不變。
+- **O2**：`audit_witnesses.py` 輸出與 `audit_witnesses_v3.txt` 相同。
+- **O3**：3,592 個 traced 決策重播，只有 witness 命中的請求可以改變回覆。
+- **O6**：Log 343 的 156 個 live 決策以 v3 重播，仍然只增不改（R4 例外）。
+
+live（主要判定成立才跑；gpt-4o-mini，預先授權）：
+- baseline 是宣告 commit 的 worktree（v1＋PN），候選是 v3 的實作 commit，交錯同時跑。第三組保留集 32 句 × 3。
+- 有效性：兩臂 provider 錯誤皆為 0，否則只重跑失敗的 session。
+- E1、E2、H1、H2、H3 的定義與門檻同 Log 342，在候選臂上計算。
+- 只報告：兩臂各有幾次出現目的段落與缺口句；H5（DRAGON 未宣告）另列。
+
+成本估計：192 個 CLI session，約 US$0.4。

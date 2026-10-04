@@ -1,10 +1,11 @@
 """Log 344 prep: score the study-purpose witnesses on a labelled set, against the frozen v1.
 
-Usage (repository root): python3 docs/research-log/purpose-contract-2026-10-04/witness_eval.py <heldout.json> [--quiet]
+Usage (repository root): python3 docs/research-log/purpose-contract-2026-10-04/witness_eval.py <heldout.json> [--quiet] [--base <file>]
 Prints design and primary-claim recall (labels other than none), false hits
 (a value where the label says none, or a different value), and every
-disagreement, for the current `routing/study_purpose.py` and for v1
-(`study_purpose.frozen.py`). Nothing calls a model.
+disagreement, for the current `routing/study_purpose.py` and for a baseline: v1
+(`study_purpose.frozen.py`) unless `--base` names another frozen file (Log 348
+compares with v1+PN, `study_purpose.v1pn.frozen.py`). Nothing calls a model.
 """
 import importlib.util
 import json
@@ -16,7 +17,8 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from netzoo_agent_core.routing import study_purpose as current  # noqa: E402
 
-spec = importlib.util.spec_from_file_location("study_purpose_v1", HERE / "study_purpose.frozen.py")
+_BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "study_purpose.frozen.py"
+spec = importlib.util.spec_from_file_location("study_purpose_base", HERE / _BASE)
 v1 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v1)
 
@@ -50,7 +52,7 @@ def score(module, items):
 def main(path, quiet=False):
     data = json.loads(Path(path).read_text())
     items = data["items"] if isinstance(data, dict) else data
-    for name, module in (("v1", v1), ("current", current)):
+    for name, module in ((Path(_BASE).stem, v1), ("current", current)):
         counts, misses = score(module, items)
         recall_d = counts["design_hit"] / max(1, counts["design_labelled"])
         recall_c = counts["claim_hit"] / max(1, counts["claim_labelled"])
