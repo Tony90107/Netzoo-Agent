@@ -15,6 +15,11 @@ leaves every reply as it was. A witness in a clause that negates it ("This is
 not causal", "we are not trying to predict") does not count. A number is no
 witness ("24 patients" states no design).
 
+Log 346 (PN): a conclusion is also negated by the rest of its own clause --
+"Predicting relapse isn't the point; we want to see whose networks changed
+most" read as a prediction request. Only conclusions: the design is what the
+data are, and the user negates what to conclude from them.
+
 Pure: nothing here selects, ranks or removes a workflow.
 """
 
@@ -142,6 +147,23 @@ _NEGATION = re.compile(
     _I,
 )
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)|\n")
+# Log 346: a negation after the witness, with the witness as what is negated:
+# "Predicting relapse isn't the point" (second held-out set, T2).
+_GOAL_NOUN = (
+    r"(?:point|goal|aim|focus|question|purpose|interest|concern|objective|priority|intention|plan|idea|"
+    r"target|task|agenda)"
+)
+_NEGATED_AFTER = re.compile(
+    r"^[^.;:!?,]{0,40}?\b(?:is|are|was|were|'s|'re)\s*(?:n't|not)\s+(?:really\s+|actually\s+)?"
+    r"(?:the\s+|our\s+|my\s+|a\s+|an\s+|what\s+(?:we|i)\b|why\b|needed\b|required\b|necessary\b|relevant\b|"
+    r"important\b|of\s+interest\b|in\s+scope\b)"
+    r"|^[^.;:!?,]{0,40}?\b(?:isn't|aren't|wasn't|weren't)\s+(?:really\s+|actually\s+)?"
+    r"(?:the\s+|our\s+|my\s+|a\s+|an\s+|what\s+(?:we|i)\b|why\b|needed\b|required\b|necessary\b|relevant\b|"
+    r"important\b|of\s+interest\b|in\s+scope\b)"
+    r"|^[^.;:!?,]{0,40}?\b(?:is|are|was|were|'s|'re)\s+(?:out\s+of\s+scope|beyond\s+(?:the|our)\s+scope|"
+    r"beside\s+the\s+point|irrelevant|secondary|not\s+(?:our|my|the)\s+" + _GOAL_NOUN + r")",
+    _I,
+)
 
 _NUMBER_WORDS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "twice": 2}
 _TIMEPOINTS = re.compile(
@@ -180,10 +202,16 @@ def _negated(task: str, start: int) -> bool:
     return bool(_NEGATION.search(task, clause_start, start))
 
 
-def _witness(pattern: re.Pattern[str], task: str) -> str | None:
+def _negated_after(task: str, end: int) -> bool:
+    """The rest of the witness's clause negates it ("Predicting relapse isn't the point")."""
+    return bool(_NEGATED_AFTER.search(task[end:]))
+
+
+def _witness(pattern: re.Pattern[str], task: str, *, claim: bool = False) -> str | None:
     for match in pattern.finditer(task):
-        if not _negated(task, match.start()):
-            return _sentence(task, match.start(), match.end())
+        if _negated(task, match.start()) or claim and _negated_after(task, match.end()):
+            continue
+        return _sentence(task, match.start(), match.end())
     return None
 
 
@@ -199,7 +227,7 @@ def study_purpose(task: str) -> StudyPurpose:
     for claim, pattern in _CLAIMS:
         if claim in _NEEDS_DESIGN and design is None:
             continue
-        if quote := _witness(pattern, task):
+        if quote := _witness(pattern, task, claim=True):
             claims.append((claim, quote))
     return StudyPurpose(design, design_quote, tuple(claims))
 
