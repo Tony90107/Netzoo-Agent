@@ -48,6 +48,9 @@ class _GraphContext:
     # only when a method tie occurs, so graph construction binds nothing new.
     # Log 198 binds it the same way to a per-call strict evidence-supply schema.
     selection_condition_llm: Any = None
+    # Log 355: the model bound per call to StudyPurposeProposal; None (tests, the
+    # routing harness) keeps the word witnesses as the only reading.
+    study_purpose_llm: Any = None
 
 
 def record_event(
