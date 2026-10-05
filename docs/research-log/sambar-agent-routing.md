@@ -18463,3 +18463,75 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 **決定：** 不執行（離線與 live 都沒跑，沒有花費）。凍結的改動不 commit。
 - 教訓與 Log 353 相同：驗證規則一旦依賴封閉的字詞清單，換個寫法就失效。
 - 第十一組已看過，之後不能用來判定。
+
+## Log 368｜事前宣告：(B′)——只給群體結果的工具，以條件句說明，以第十二組保留集評估
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 看過 Log 367 的審查結果後，選 (B′)：不讀「每人是否有很多樣本」，改成永遠為真的說法。
+- 判定條文「照建議」。保留集由我先審：沒有擋路的問題就直接宣告並執行，有問題先停下來問（使用者同意）。
+本條目寫於實作 commit 與任何第十二組保留集上的 session 之前。
+- 基準為 HEAD `97d10c3`：線上是 b‴（`fb45456`，驗證 `b4_frozen`），沒有這類說明。
+- 工作目錄的差異即凍結的 `o_frozen.patch`（sha256 `5b365af0dcae`）。
+
+**為什麼這樣做：**
+- Log 366：「does not answer this」只有在每人一個樣本時才對。每人有很多樣本時（T2），是錯的。
+- Log 367：要讀出「每人是否有很多樣本」，驗證規則又得依賴字詞清單，換個寫法就失效。
+- 所以改成不需要讀這個前提的說法：說清楚工具給什麼，以及在什麼條件下說不出單一個人的事。兩種情況都正確。
+
+**內容（`FREEZE12.md`；只改回覆與卡片，不改契約、prompt、模型呼叫或決策）：**
+- `ClaimSupport` 的等級 `one_result`（取代 Log 365 的 `cannot`）與 `instead`。五個「個體變化」格子同 Log 365，另恢復 Log 363 的四個多體學格子。
+- 回覆：目的段落中，能回答的工具在前；只給群體結果的工具在後，同一種輸出合成一行：
+  - 「- **X**, **Y** — each gives one network from all the samples it is given. With one sample per individual (per time point), that says nothing about a single individual; a result for one individual needs many samples from that individual. Per-sample workflows for the same data: …」
+  - 不再出現「cannot」或「does not answer」。
+- 只點名回覆中當作候選的工具（matched、hypothesis、advisory）。只因「逐樣本版本也會產出聚合結果」而出現的不算（Log 366 的 T2-1、T2-2）。
+- 列出的工具都沒有可回答的格子時，這一段放在最前面（在缺口段落之後）。
+- 平手開頭改為「These fit the result you described; X gives one result for all the samples it is given. To choose, tell me:」（已有因果／預測缺口的開頭時不改）。
+- 卡片：
+  - 加一點：「X gives one result for all the samples: with one sample per individual that cannot show …; Y gives one result per sample from the same data.」
+  - 列出的工具都沒有可回答的格子時，在卡片原有步驟之後加入規劃逐樣本工具的步驟。不刪除任何步驟，所以每人很多樣本的使用者仍可規劃原本那個工具。
+
+**預期修改的既有測試：**
+- `tests/test_study_purpose.py` 的兩項（同 Log 365，等級名稱改為 `one_result`）。
+- `tests/test_study_purpose_call.py` 新增 7 個測試。
+
+**量測工具先自我測試：**
+- `analyze_cannot.py selftest`：9 個合成情形全部判對（新的行與開頭）。
+
+**已看過的資料（s7–s10 候選臂，384 次；只用於設計）：**
+- 說明出現 45 次，全部在標註為「個體變化」的句子上。
+- 對照句 0 次；新增的規劃步驟 15/15 在可接受範圍內；卡片刪除或調換步驟 0 次；逐行只加不改 384/384。
+
+**第十二組保留集**（`heldout12/heldout.json`，`3863ad6be247`）：
+- 隔離 subagent 在凍結後撰寫。32 句：個體變化 11、群體差異 10、對照 6、調控者 4、預測 1。每人一個樣本 23 句，每人很多樣本 9 句。
+- 家族：
+  - F1 偏頭痛 CGRP 抗體前後（只有表現量，配對）。
+  - F2 二尖瓣疾病犬 vs 健康犬（只有表現量，兩組）。
+  - F3 160 位捐贈者的 lymphoblastoid lines（motif＋PPI，無比較）。
+  - F4 中風三個時間點（mRNA＋miRNA）。
+  - F5 8 位女性每人約 30 個拭子（motif＋PPI，每人很多樣本）。
+  - F6 9 位臥床受試者每兩天抽血（RNA-seq＋甲基化，每人很多樣本）。
+- 單獨題：間接問個體 2 句；提到個體但其實問群體的精確度陷阱 2 句（T3「Across all 50 aneurysm mice」、T4「In every fish, on average」）；排除個體再問調控者 1 句；每人很多樣本的個體題 1 句；預測 1 句；「a score for each transcription factor」陷阱 1 句。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- 沒有像 Log 367 那種事先就注定失敗的情形：這輪的改動不讀新的前提，只依已驗證的研究目的。
+- P1 只會在研究目的被讀錯時失敗：T3、T4、T8、F1d、F6d、T5 若被讀成「個體變化」，就會出現說明而記為錯誤。
+- F5、F6、T6 是每人很多樣本的個體題。條件句在這些句子上仍正確，P1 把它們算作個體題。
+
+**判定（任一不成立就撤回）：**
+- live：gpt-4o-mini，預先授權，只跑候選臂（實作 commit），32 句 × 3 = 96 個 session。
+- 比較對象：同一批 session 在離線時移除本輪新增格子後的回覆與卡片。
+- **P1 說明只在問個體時出現**：出現說明的 trial 中，標註為「個體變化」的比例 ≥ 90%。
+- **C2 對照句**：claim none 的句子出現說明的次數 ＝ 0。
+- **C3 新增的規劃步驟**：卡片新增的逐樣本規劃步驟中，工具都在 `acceptable_candidates` 內的比例 ≥ 90%；少於 3 次只報告。
+- **K1 卡片不刪步驟**：每個 trial 中，不含改動時卡片的每個步驟都仍在，且順序不變（＝ 全部）。
+- **H2 只加不改（逐行）**：live 回覆等於離線渲染；`lines_only_add` 全部通過。
+- **H3**：呼叫角色沒有超出第七到十組候選臂已有的角色。
+- **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 舊的 C1：被點名的工具不在可接受範圍內的比例。說明已改為條件句，不再當判定。
+  - 標註「個體變化」、候選中有只給群體結果之工具的 trial 中，出現說明的比例。
+  - 每人很多樣本的句子上的情形。
+  - 卡片兩邊都建不出來的次數（既有問題：平手超過 8 個工具）。
+
+成本估計：約 US$0.2。
