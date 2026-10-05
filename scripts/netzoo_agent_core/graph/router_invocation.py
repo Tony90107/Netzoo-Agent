@@ -30,6 +30,7 @@ from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
 from .request_concerns import invoke_concern_matcher
+from .data_facts_call import invoke_data_facts
 from .study_purpose_call import invoke_study_purpose
 from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
@@ -134,17 +135,22 @@ def invoke_router(
     Log 355: a new request's study purpose is read once, after routing; a
     follow-up turn (a continuation, a method comparison, a choice) is not a
     new purpose, so it carries none and the reply reads its own words.
+    Log 376: on a tie whose purpose states a question, what the request says
+    about its TF priors is read too (the tie reply's only use of it).
     """
     follow_up = (state.get("method_comparison") is not None or state.get("workflow_continuation") is not None)
     result = _route_request(context, state, user_task)
     if follow_up or result.reason_code == "string_download_continuation":
-        result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
+        result = replace(result, routing_state={**result.routing_state, "study_purpose": None, "data_facts": None})
     else:
         purpose, usage, warnings = invoke_study_purpose(
             context, state, user_task, result.usage, result.budget_warnings,
         )
+        facts = None
+        if _tie_with_question(result.decision, purpose):
+            facts, usage, warnings = invoke_data_facts(context, state, user_task, usage, warnings)
         result = replace(result, usage=usage, budget_warnings=warnings,
-                         routing_state={**result.routing_state, "study_purpose": purpose})
+                         routing_state={**result.routing_state, "study_purpose": purpose, "data_facts": facts})
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -157,6 +163,17 @@ def invoke_router(
         "requested_outcome": decision.requested_outcome.model_dump(),
         "outcome_hypotheses": [item.model_dump() for item in decision.outcome_hypotheses],
     })
+
+
+def _tie_with_question(decision, purpose: dict | None) -> bool:
+    """The tie reply ranks by a stated question (Log 370): only then are the data facts read."""
+    from workflow_registry import UNSUPPORTED_CLAIMS
+
+    claims = [claim for claim, _ in (purpose or {}).get("claims") or ()]
+    return (decision is not None and decision.capability_match_status == "ambiguous"
+            and len(set(decision.hypothesis_actions)) >= 2 and len(decision.outcome_hypotheses) <= 1
+            and any(claim not in UNSUPPORTED_CLAIMS for claim in claims)
+            and not any(claim in UNSUPPORTED_CLAIMS for claim in claims))
 
 
 def _route_request(
