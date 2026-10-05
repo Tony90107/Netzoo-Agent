@@ -1,4 +1,6 @@
 """Log 370 gates: on a tie with a verified question, lead with what fits it, every candidate kept.
+Log 372: unmentioned priors that decide the answer give both answers and the card asks; S1 judges the
+recommendation for the data the request named, Q1 the data question (label `data_question`).
 
 Usage (repository root):
   live round:  HELDOUT=heldout13/heldout.json python3 docs/research-log/purpose-contract-2026-10-04/analyze_intent.py live <tag> <repeats>
@@ -23,7 +25,7 @@ from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.interpretation import intent_shortlist as I  # noqa: E402
 from workflow_registry import ACTION_DEFINITIONS  # noqa: E402
 
-LEAD = "these fit best, and here is why:"
+LEAD = re.compile(r"these fit best, and here is why:|which workflow fits depends on whether you have")
 
 
 def name(action):
@@ -48,6 +50,7 @@ def _option_keys(card):
 def score(trials, out_name):
     counts, lines = Counter(), []
     s1_bad, s2, s3_bad, s4_bad, u1_bad, h2_bad, k1_bad = [], Counter(), [], [], [], [], []
+    q1, q1_bad, q2_missed = Counter(), [], []
     for trial in trials:
         item, decision, traced = trial["item"], trial["decision"], trial["traced"]
         with_c, without_c, kind, card_with, card_without = render_pair(item["prompt"], decision, traced)
@@ -57,18 +60,30 @@ def score(trials, out_name):
             continue
         if trial["reply"] is not None and with_c != trial["reply"]:
             h2_bad.append(f"{trial['key']}: live reply differs from its offline render ({kind})")
-        # K1: the card keeps every option and step it had.
-        if sorted(_option_keys(card_with)) != sorted(_option_keys(card_without)):
+        asked = card_with is not None and not isinstance(card_with, str) and card_with.choices is not None \
+            and card_with.choices.header == "Your data"
+        # K1: the card keeps every option it had, unless it asks about data instead.
+        if not asked and sorted(_option_keys(card_with)) != sorted(_option_keys(card_without)):
             k1_bad.append(f"{trial['key']}: options {_option_keys(card_without)} -> {_option_keys(card_with)}")
-        fired = LEAD in (with_c or "")
+        labelled_question = item.get("data_question")
+        if asked:
+            q1["asked"] += 1
+            if labelled_question is not None and labelled_question != "priors":
+                q1_bad.append(f"{trial['key']} (label {labelled_question})")
+        fired = bool(LEAD.search(with_c or ""))
+        if labelled_question == "priors" and fired and not asked:
+            q2_missed.append(trial["key"])
         if not fired:
             if with_c != without_c:
                 u1_bad.append(f"{trial['key']}: changed without a shortlist ({kind})")
             continue
         counts["fired"] += 1
         purpose = C.purpose_of(traced)
-        recommended, others = I.intent_shortlist(decision, purpose, item["prompt"])
-        names = {name(r.action) for r in recommended}
+        shortlist = I.intent_shortlist(decision, purpose, item["prompt"])
+        # S1 judges what is recommended for the data the request named; "if you have the priors" is conditional.
+        named = shortlist.recommended if shortlist.without is None else shortlist.without
+        names = {name(r.action) for r in named}
+        compared = names or {name(r.action) for r in shortlist.recommended}
         acceptable = set(item["acceptable_candidates"])
         label = set(item.get("recommended_subset") or [])
         counts["chars_without"] += len(without_c)
@@ -77,7 +92,7 @@ def score(trials, out_name):
             s1_bad.append(f"{trial['key']}: {sorted(names - acceptable)} not in {sorted(acceptable)}")
         if label:
             s2["labelled"] += 1
-            s2["exact" if names == label else "overlap" if names & label else "disjoint"] += 1
+            s2["exact" if compared == label else "overlap" if compared & label else "disjoint"] += 1
         if item.get("is_control") or item["claim_kind"] in {"none", "causal", "prediction"}:
             s3_bad.append(f"{trial['key']} ({item['claim_kind']})")
         missing = [name(a) for a in dict.fromkeys(decision.hypothesis_actions)
@@ -95,7 +110,9 @@ def score(trials, out_name):
         f"S3 shortlists on controls / causal / prediction (gate 0): {s3_bad}",
         f"S4 candidates missing from the reply (gate 0): {s4_bad}",
         f"U1 replies changed without a shortlist (gate 0): {u1_bad}",
-        f"K1 cards that lost or gained an option (gate 0): {k1_bad}",
+        f"K1 cards that lost or gained an option, a data question aside (gate 0): {k1_bad}",
+        f"Q1 data questions asked {q1['asked']}; on items whose label asks for none: {q1_bad}",
+        f"report: fired trials labelled data_question=priors without the question: {q2_missed}",
         f"H2 live reply equals its offline render: failures {h2_bad}",
         f"report: reply length with/without on fired trials {counts['chars_with']}/{counts['chars_without']}",
     ]
@@ -106,7 +123,7 @@ def score(trials, out_name):
 def seen():
     trials = []
     for tag, heldout in (("s7", "heldout7"), ("s8", "heldout8"), ("s9", "heldout9"), ("s10", "heldout10"),
-                         ("s12", "heldout12")):
+                         ("s12", "heldout12"), ("s13", "heldout13")):
         items = {item["id"]: item for item in json.loads((HERE / heldout / "heldout.json").read_text())["items"]}
         for key, value in json.loads((HERE / "live" / f"{tag}-decisions.json").read_text()).items():
             if not key.startswith("cand-"):
@@ -121,7 +138,7 @@ def seen():
 def live(tag, repeats):
     purposes = A.trace_purposes("cand")
     roles_before = set()
-    for old in ("s7", "s8", "s9", "s10", "s12"):
+    for old in ("s7", "s8", "s9", "s10", "s12", "s13"):
         for path in glob.glob(str(A.ROOT / ".netzoo" / "sessions" / f"hp-{old}-cand-*.json")):
             roles_before |= {c["role"] for c in (json.loads(Path(path).read_text()).get("token_usage") or {}).get("calls", [])}
     trials, missing, new_roles = [], 0, set()
@@ -135,7 +152,7 @@ def live(tag, repeats):
             trials.append({"key": f"{item['id']}-{rep}", "item": item, "reply": run["reply"],
                            "decision": TaskDecision.model_validate(run["decision"]),
                            "traced": purposes.get(f"hp-{tag}-cand-{item['id']}-{rep}")})
-    print(f"missing {missing}; H3 roles beyond s7-s12 candidate arms (gate none): {sorted(new_roles)}")
+    print(f"missing {missing}; H3 roles beyond s7-s13 candidate arms (gate none): {sorted(new_roles)}")
     score(trials, f"{tag}-intent-analysis.txt")
 
 
