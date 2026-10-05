@@ -546,9 +546,62 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
             f"{names} {'gives' if len(pooled) == 1 else 'give'} one result for all the samples: with one sample "
             f"per individual that cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
             f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
-    if not rows and points == card.points:
+    choices = _intent_choices(card, kind, decision, purpose, task, (state or {}).get("data_facts"))
+    if choices is not card.choices:
+        from ..interpretation.intent_shortlist import PRIORS_LABEL
+
+        points = [point for point in points if not point.startswith("Nothing you said favours one method yet")]
+        if choices.header == "Your data":
+            points.insert(0, clip(f"Which workflow fits your question depends on whether you have {PRIORS_LABEL}; "
+                                  "the reply gives both answers.", 300))
+        else:
+            first = join_names([option.label for option in choices.options if option.recommended], "and")
+            points.insert(0, clip(f"Recommended for your question: {first}; the reply says why each fits and why "
+                                  "the others come later.", 300))
+    if not rows and points == card.points and choices is card.choices:
         return card
-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
+    return card.model_copy(update={"points": points[:6], "unavailable": [*card.unavailable, *rows][:8],
+                                   "choices": choices})
+
+
+def _intent_choices(card: ReplyCard, kind: str, decision, purpose, task: str, facts: dict | None = None):
+    """Logs 370-372: the card for a tie the reply leads with what fits the question.
+
+    When the TF motif prior and PPI network are not mentioned and decide the
+    answer, the card asks for them; otherwise the method card lists the
+    recommended first, none added or removed.
+    """
+    from ..interpretation.intent_shortlist import PRIORS_LABEL, intent_shortlist
+
+    if kind != "outcome_clarification" or card.choices is None:
+        return card.choices
+    shortlist = intent_shortlist(decision, purpose, task, facts)
+    if shortlist is None:
+        return card.choices
+    if shortlist.without is not None:
+        return ReplyChoices(
+            header="Your data",
+            question=f"Do you have {PRIORS_LABEL}? The recommendation depends on it.",
+            options=[
+                ReplyOption(key="data-priors-yes", label=f"Yes, I have {PRIORS_LABEL}",
+                            answer=f"I have {PRIORS_LABEL}."),
+                ReplyOption(key="data-priors-no", label="No, only the expression data",
+                            answer=f"I only have the expression data, without {PRIORS_LABEL}."),
+            ],
+            ordering="The reply gives the recommendation for each answer.",
+        )
+    if card.choices.header != "Method" or not shortlist.recommended:
+        return card.choices
+    first = [item.action for item in shortlist.recommended]
+    options = sorted(card.choices.options, key=lambda option: (
+        first.index(option.action) if option.action in first else len(first)))
+    options = [option.model_copy(update={"recommended": option.action in first,
+                                         "badge": "Recommended" if option.action in first else ""})
+               for option in options]
+    return card.choices.model_copy(update={
+        "options": options,
+        "ordering": "Recommended first, from your question and the data you named; the reply says why.",
+    })
 
 
 def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOption]) -> list[ReplyOption]:
