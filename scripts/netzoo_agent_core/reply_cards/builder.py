@@ -505,11 +505,16 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
 
 
 def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str, state=None) -> ReplyCard:
-    """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
+    """The stated question as a point, and conclusions no workflow supports as rows (Log 342).
+
+    Log 368: candidates that give one result for all the samples, asked about
+    individuals, get a point naming the per-sample workflows for the same data
+    (their planning steps are added by `_one_result_steps`).
+    """
     from workflow_registry import UNSUPPORTED_CLAIMS
 
     from ..interpretation.study_purpose_notes import (
-        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
+        CLAIM_LABELS, claim_cells, gap_claims, one_result_cells, purpose_from_state, question_claim,
     )
 
     purpose = purpose_from_state(state, task)
@@ -526,15 +531,42 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
                         resolution="none", reason=clip(UNSUPPORTED_CLAIMS[claim][3], 260))
             for claim, _ in gaps]
     points = list(card.points)
-    cells = claim_cells(decision, purpose)
+    cells = [(action, cell) for action, cell in claim_cells(decision, purpose) if cell.level != "one_result"]
+    pooled = one_result_cells(decision, purpose)
     question = question_claim(purpose)
     if cells and question and len(points) < 6:
         names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
         points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
                            "give toward it and the step after each.", 300))
+    if pooled and question and len(points) < 6:
+        names = join_names([workflow_name(policy, action) for action, _ in pooled], "and")
+        instead = list(dict.fromkeys(action for _, cell in pooled for action in cell.instead))
+        alternatives = [workflow_name(policy, action) for action in instead]
+        points.append(clip(
+            f"{names} {'gives' if len(pooled) == 1 else 'give'} one result for all the samples: with one sample "
+            f"per individual that cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
+            f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
     if not rows and points == card.points:
         return card
     return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
+
+
+def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOption]) -> list[ReplyOption]:
+    """Log 368: planning steps for the per-sample workflows, added after the card's own steps.
+
+    Only when no listed workflow has an answering cell for the stated question;
+    nothing is removed -- an individual with many samples of their own can
+    still plan the one-result workflow the reply was about.
+    """
+    from ..interpretation.study_purpose_notes import claim_cells, one_result_cells, purpose_from_state
+
+    purpose = purpose_from_state(state, task)
+    pooled = one_result_cells(decision, purpose)
+    if not pooled or any(cell.level != "one_result" for _, cell in claim_cells(decision, purpose)):
+        return steps
+    planned = {step.action for step in steps}
+    instead = dict.fromkeys(action for _, cell in pooled for action in cell.instead)
+    return [*steps, *(plan_step(policy, action) for action in instead if action in RUN_ACTIONS and action not in planned)]
 
 
 def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
@@ -570,6 +602,8 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         # A verified single-workflow answer: planning it is the obvious next step,
         # through the same continuation the reply classifier would produce.
         steps.insert(len(card.next_steps), plan_step(policy, action))
+    if card is not None and kind not in {"execution", "unresolved"}:
+        steps = _one_result_steps(decision, policy, task, result, steps)
     chosen = {option.action for option in (card.choices.options if card and card.choices else []) if option.action}
     steps = [step for step in steps if not (step.resolution == "confirm_workflow" and step.action in chosen)]
     if card is None:

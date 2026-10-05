@@ -17,6 +17,12 @@ decision:
   ``CLAIM_SUPPORT`` cell says what it gives toward it and the step after it,
   above the reply's question. A workflow without a cell says nothing: a
   missing declaration is never a gap (CC1, Logs 288-289);
+- a candidate whose declared cell is "one_result" (Logs 365-368: one result
+  for all the samples, asked about individuals) says so after the others, as
+  a condition -- with one sample per individual it says nothing about one
+  individual -- and names the per-sample workflows for the same data; when
+  no listed workflow has an answering cell, that paragraph comes first, and a
+  tie's lead names them;
 - a semantic fallback on a request stating such a conclusion is answered with
   the gap instead of "could not validate".
 
@@ -36,6 +42,7 @@ from .outside_steps import _REPLY_KINDS, _asks
 __all__ = [
     "CLAIM_LABELS",
     "purpose_from_state",
+    "one_result_cells",
     "claim_cells",
     "gap_claims",
     "question_claim",
@@ -118,6 +125,25 @@ def claim_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport
     return cells
 
 
+def one_result_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport]]:
+    """The candidates whose declared cell is "one_result" for the question (Log 368).
+
+    Only the workflows the reply offers as candidates (matched, hypothesis,
+    advisory) -- not an aggregate named because its per-sample version "also
+    produces" it (Log 366, T2).
+    """
+    advice = decision.advisory_recommendation
+    offered = {*decision.matched_actions, *decision.hypothesis_actions, *([advice.action] if advice else [])}
+    return [(action, cell) for action, cell in claim_cells(decision, purpose)
+            if cell.level == "one_result" and action in offered]
+
+
+def _shown_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport]]:
+    """The cells a reply shows: every answering cell, and the "one_result" cells of candidates."""
+    return [*((action, cell) for action, cell in claim_cells(decision, purpose) if cell.level != "one_result"),
+            *one_result_cells(decision, purpose)]
+
+
 def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
     paragraphs = []
     for claim, quote in gap_claims(purpose):
@@ -134,11 +160,32 @@ def _purpose_paragraph(cells, quote: str, user_data: list[str]) -> str:
     # Workflows whose cell says the same thing share one line (PANDA and PUMA).
     by_text: dict[str, list[str]] = {}
     for action, cell in cells:
-        by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
+        if cell.level != "one_result":
+            by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
     lines += [f"- {', '.join(names)} — {text}" for text, names in by_text.items()]
+    lines += _one_result_lines(cells)
     caveats = dict.fromkeys(caveat for _, cell in cells for caveat in cell.caveats)
     lines += [f"Note: {caveat}" for caveat in caveats]
     return "\n".join(lines)
+
+
+def _one_result_lines(cells) -> list[str]:
+    """Log 368: after the workflows that answer it, the one-result ones, one line per output, as a condition."""
+    by_text: dict[str, list[str]] = {}
+    for action, cell in cells:
+        if cell.level == "one_result":
+            by_text.setdefault(cell.text, []).append(action)
+    lines = []
+    for text, actions in by_text.items():
+        instead = list(dict.fromkeys(other for action, cell in cells if cell.text == text
+                                     and cell.level == "one_result" for other in cell.instead))
+        lines.append(
+            f"- {', '.join(f'**{_name(action)}**' for action in actions)} — "
+            f"{'gives' if len(actions) == 1 else 'each gives'} {text} it is given. With one sample per individual "
+            f"(per time point), that says nothing about a single individual; a result for one individual needs "
+            f"many samples from that individual. Per-sample {'workflow' if len(instead) == 1 else 'workflows'} "
+            f"for the same data: {', '.join(f'**{_name(action)}**' for action in instead)}.")
+    return lines
 
 
 def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
@@ -150,13 +197,28 @@ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
     return paragraph
 
 
+def _join(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _one_result_lead(paragraph: str, cells: list[tuple[str, ClaimSupport]]) -> str:
+    """Log 368: a tie's lead names the candidates that give one result for all the samples."""
+    names = _join([f"**{_name(action)}**" for action, _ in cells])
+    verb = "gives" if len(cells) == 1 else "give"
+    for lead in _TIE_LEADS:
+        if paragraph.startswith(lead):
+            return (f"These fit the result you described; {names} {verb} one result for all the samples "
+                    f"{'it is' if len(cells) == 1 else 'they are'} given. To choose, tell me:{paragraph[len(lead):]}")
+    return paragraph
+
+
 def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
     """The reply with the gap first and the purpose paragraph above its question."""
     if not text:
         return text
     user_data: list[str] = []
     gaps = _gap_paragraphs(purpose, user_data)
-    cells = claim_cells(decision, purpose)
+    cells = _shown_cells(decision, purpose)
     question = question_claim(purpose)
     purpose_block = _purpose_paragraph(cells, question[1], user_data) if cells and question else ""
     if not gaps and not purpose_block:
@@ -164,7 +226,13 @@ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
     paragraphs = text.split("\n\n")
     if gaps:
         paragraphs = [*gaps, *(_reworded_lead(part, purpose) for part in paragraphs)]
-    if purpose_block:
+    pooled = [(action, cell) for action, cell in cells if cell.level == "one_result"] if purpose_block else []
+    if pooled and not gaps:
+        paragraphs = [_one_result_lead(part, pooled) for part in paragraphs]
+    if pooled and len(pooled) == len(cells):
+        # No listed workflow has an answering cell: say what they give first, after any gap.
+        paragraphs = [*paragraphs[:len(gaps)], purpose_block, *paragraphs[len(gaps):]]
+    elif purpose_block:
         closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
         if closing is not None and closing > 1 and _asks(paragraphs[closing - 1]):
             paragraphs = [*paragraphs[:closing - 1], purpose_block, *paragraphs[closing - 1:]]

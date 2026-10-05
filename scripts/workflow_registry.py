@@ -831,14 +831,22 @@ class ClaimSupport(NamedTuple):
     ``direct``: the workflow's own output answers the question (COBRA's group
     component for a stated two-group comparison). ``with_step``: it gives the
     material, and ``text`` names the step after it, which NetZoo does not run.
-    There is deliberately no "cannot": an undeclared cell says nothing, and
-    only ``UNSUPPORTED_CLAIMS`` states a gap -- CC1 (Logs 288-289) showed that
-    gaps inferred from missing declarations are false.
+    ``one_result`` (Log 368): the workflow returns one result for all the
+    samples it is given, so with one sample per individual it says nothing
+    about a single individual; ``text`` says what it returns (completing "it
+    gives ..."), and ``instead`` names the per-sample workflows for the same
+    data. The reply states the condition rather than "cannot": Log 366 showed
+    that an individual with many samples of their own can get such a workflow's
+    result alone, and Log 367 that the request's words do not reliably say
+    which case it is. Only ever a declared cell, written from what the method
+    returns: an undeclared cell still says nothing -- CC1 (Logs 288-289)
+    showed that gaps inferred from missing declarations are false.
     """
 
-    level: Literal["direct", "with_step"]
+    level: Literal["direct", "with_step", "one_result"]
     text: str
     caveats: tuple[str, ...] = ()
+    instead: tuple[str, ...] = ()
 
 
 # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
@@ -917,6 +925,11 @@ def _per_sample_claims(action: str) -> dict:
     }
 
 
+def _one_result_claims(action: str, gives: str, instead: tuple[str, ...]) -> dict:
+    """Log 368: a workflow with one result for all its samples, asked which individuals change."""
+    return {(action, "individual_change", "*"): ClaimSupport("one_result", gives, instead=instead)}
+
+
 def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
     return {
         (action, "group_difference", "*"): ClaimSupport("with_step", (
@@ -965,6 +978,55 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     **_coexpression_claims("run_bonobo", (
         "With p-value output, edges can be filtered per sample at a chosen confidence.",
     )),
+    # Log 363's multi-omic cells (texts reviewed by the user), restored in Log 365.
+    # [R] the DRAGON and LIONESS-DRAGON downstream notes (partial correlations
+    # depend on every feature; a LIONESS-DRAGON sample's edges are relative to
+    # the cohort it was built from).
+    ("run_dragon", "group_difference", "groups"): ClaimSupport("with_step", (
+        "Build one network per group on the same features of both layers, then compare the cross-layer "
+        "edges (the partial correlations between the two omics layers) between the group networks; two "
+        "aggregate networks show where the groups differ but give no per-sample spread to test it."
+    ), (
+        "Partial correlations are conditional on every other feature in both layers, so use the same "
+        "feature set in every network you compare.",
+    )),
+    ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
+        "Build one network per time point or condition on the same features and compare the cross-layer "
+        "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
+        "individual's samples."
+    ), (
+        "Partial correlations are conditional on every other feature in both layers, so use the same "
+        "feature set in every network you compare.",
+    )),
+    ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
+        "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
+        "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
+        "associations differ."
+    ), (
+        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+        "to the cohort the network was built from.",
+        _LIONESS_DEPENDENCE,
+    )),
+    ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
+        "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
+        "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
+        "change or stand out."
+    ), (
+        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+        "to the cohort the network was built from.",
+        _LIONESS_DEPENDENCE,
+    )),
+    # Logs 365/368: one result for all the samples. Each method's own output, and the
+    # registered per-sample workflow that takes the same data. COBRA's design
+    # matrix holds covariates, not individuals (Micheletti et al. 2024).
+    **_one_result_claims("run_panda", "one network from all the samples", ("run_lioness_panda",)),
+    **_one_result_claims("run_puma", "one network from all the samples", ("run_lioness_puma",)),
+    # No per-sample OTTER is registered; LIONESS-PANDA takes the same three inputs.
+    **_one_result_claims("run_otter", "one network from all the samples", ("run_lioness_panda",)),
+    **_one_result_claims(
+        "run_cobra", "the co-expression associated with each covariate across all the samples",
+        ("run_lioness_coexpression", "run_bonobo")),
+    **_one_result_claims("run_dragon", "one two-layer network from all the samples", ("run_lioness_dragon",)),
 }
 
 # Conclusions no registered workflow can support, said once for the whole
