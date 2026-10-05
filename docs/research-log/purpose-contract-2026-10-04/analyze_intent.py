@@ -138,7 +138,7 @@ def seen():
 def live(tag, repeats):
     purposes = A.trace_purposes("cand")
     roles_before = set()
-    for old in ("s7", "s8", "s9", "s10", "s12", "s13"):
+    for old in ("s7", "s8", "s9", "s10", "s12", "s13"):  # Log 372: H3 against the s7-s13 candidate arms
         for path in glob.glob(str(A.ROOT / ".netzoo" / "sessions" / f"hp-{old}-cand-*.json")):
             roles_before |= {c["role"] for c in (json.loads(Path(path).read_text()).get("token_usage") or {}).get("calls", [])}
     trials, missing, new_roles = [], 0, set()
