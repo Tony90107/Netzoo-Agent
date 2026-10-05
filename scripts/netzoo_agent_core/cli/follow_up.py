@@ -33,7 +33,8 @@ from ..interpretation.request_parameters import (
     extract_explicit_workflow_controls,
 )
 from ..outcomes import effective_results, terminal_failed
-from ..settings import ROUTER_CONTEXT_MAX_CHARS
+from ..interpretation.request_requirements import carried_parameters
+from ..routing_window import routing_window
 
 __all__ = [
     "initial_next_turn_prompt",
@@ -457,8 +458,15 @@ def build_workflow_continuation(
     context: FollowUpContext,
     resolution: ContextualReplyResolution,
     task: str,
+    *,
+    requirements: dict | None = None,
 ) -> WorkflowContinuation | None:
-    """Carry an accepted, trusted selection separately from model input text."""
+    """Carry an accepted, trusted selection separately from model input text.
+
+    *requirements* is the RequestRequirements of the turn being followed up:
+    its stated values were read from that turn's full message, where
+    ``prior_user_goal`` keeps only its last 4,000 characters (plan item 2).
+    """
     if (
         resolution.kind != "accept_workflow"
         or not prompt.allow_workflow_continuation
@@ -476,13 +484,16 @@ def build_workflow_continuation(
     if prompt.required_fields and prompt.continuation_action:
         action = prompt.continuation_action
     prior = context.prior_user_goal
-    bindings = request_input_bindings(prior)
-    parameters = {
-        field: bindings.values[field]
-        for field in bindings.explicit_fields
-    }
-    parameters.update(extract_explicit_request_parameters(prior))
+    if requirements is not None:
+        parameters = carried_parameters(requirements)
+    else:
+        bindings = request_input_bindings(prior)
+        parameters = {
+            field: bindings.values[field]
+            for field in bindings.explicit_fields
+        }
+        parameters.update(extract_explicit_request_parameters(prior))
     parameters.update(extract_explicit_workflow_controls(prior, action))
     return WorkflowContinuation(
-        action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:], parameters=parameters,
+        action=action, task=routing_window(task), parameters=parameters,
     )

@@ -34,6 +34,9 @@ class AgentState(TypedDict):
     capability_match: NotRequired[dict]
     workflow_continuation: NotRequired[dict | None]
     method_comparison: NotRequired[dict | None]
+    # Plan item 2: what this turn's request states and forbids, read once from
+    # the full message; planning and plan evaluation read it too.
+    request_requirements: NotRequired[dict]
     # Which deterministic renderer wrote the reply; display metadata only.
     reply_kind: NotRequired[str]
     # Log 355: the verified study purpose of this turn's request (design, claims, source).

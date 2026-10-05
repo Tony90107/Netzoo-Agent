@@ -10,6 +10,7 @@ from workflow_registry import (
     workflow_name as _workflow_name,
 )
 
+from ..contracts.requirements import RequestRequirements
 from ..contracts import (
     Episode,
     ProjectPolicySnapshot,
@@ -46,6 +47,9 @@ class _PlanningContext:
     role_mismatch_hints: list[str] = field(default_factory=list)
     gene_repair_hints: list[str] = field(default_factory=list)
     role_corrections: dict[str, str] = field(default_factory=dict)
+    # Values the user stated for request fields, from the turn's requirements
+    # (plan item 2), including those carried from the request it continues.
+    stated: dict[str, Any] = field(default_factory=dict)
 
 
 def _prepare_planning_context(
@@ -55,6 +59,7 @@ def _prepare_planning_context(
     retrieved_episodes: list[Episode | dict] | None,
     project_policy: ProjectPolicySnapshot | dict | None,
     content_mapper: Any | None = None,
+    requirements: RequestRequirements | dict | None = None,
 ) -> _PlanningContext | WorkflowPlan:
     decision = raw_decision.model_copy(deep=True)
     profile_model = (
@@ -180,4 +185,16 @@ def _prepare_planning_context(
         if explicit_bonobo_handoff_requested(task)
         else None,
         content_mapper=content_mapper,
+        stated=_stated_values(requirements),
     )
+
+
+def _stated_values(requirements: RequestRequirements | dict | None) -> dict[str, Any]:
+    """Values the user stated, this turn first, from the turn's requirements."""
+    if requirements is None:
+        return {}
+    requirements = RequestRequirements.model_validate(requirements)
+    return {
+        field: requirements.stated_value(field)
+        for field in dict.fromkeys(item.field for item in requirements.stated)
+    }

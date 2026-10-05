@@ -63,6 +63,7 @@ _BAN_STOP = re.compile(
     r"\b(?:and\s+then|then|but|instead|just)\b|然後|然后|接著|接着|但是|但|而是",
     re.IGNORECASE,
 )
+_COORDINATION = re.compile(r"\s+or\s+|\s*(?:或者|或是|或|也不要|、)\s*", re.IGNORECASE)
 _RETRIEVE_TERM = re.compile(
     r"\b(?:web[- ]?search|context7|search(?:es|ing)?|google|browse|look(?:ing)?\s+up|lookup"
     r"|internet|online|the\s+web)\b"
@@ -172,10 +173,16 @@ def _clause_ban(clause: str) -> tuple[int, list[OperationBan]] | None:
         rest = clause[negation.end():negation.end() + 80]
         stop = _BAN_STOP.search(rest)
         span = rest[:stop.start()] if stop else rest
-        kinds, tools = _ban_kinds(span)
-        if kinds:
-            quote = clause[negation.start():negation.end() + len(span)].strip()
-            return negation.start(), [OperationBan(kind, tools, quote) for kind in sorted(kinds)]
+        # One negation reaches every coordinated operation: "do not search the
+        # web or run anything" forbids both.
+        bans = [
+            OperationBan(kind, tools, clause[negation.start():negation.end() + len(span)].strip())
+            for part in _COORDINATION.split(span)
+            for kinds, tools in [_ban_kinds(part)]
+            for kind in sorted(kinds)
+        ]
+        if bans:
+            return negation.start(), list(dict.fromkeys(bans))
     return None
 
 

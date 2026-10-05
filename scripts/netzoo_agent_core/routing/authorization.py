@@ -107,6 +107,7 @@ def forbidding_reason(authorization: OperationAuthorization, action: str) -> str
 
 def enforce_operation_authorization(
     decision: TaskDecision, task: str,
+    authorization: OperationAuthorization | None = None,
 ) -> TaskDecision:
     """Refuse an execution the request's words forbid; never grant one.
 
@@ -114,7 +115,7 @@ def enforce_operation_authorization(
     as they are, so the reply can still say which tool fits; only the authority
     to run it now is removed.
     """
-    authorization = read_operation_authorization(task)
+    authorization = authorization or read_operation_authorization(task)
     if authorization.is_empty:
         return decision
     reason = (

@@ -77,6 +77,8 @@ def _kinds(task: str) -> list[tuple[str, tuple[str, ...]]]:
     ("請執行 PANDA input preflight。只回報驗證結果，不要執行 PANDA。", [("run", ("panda",))]),
     ("Please don't run LIONESS; run PANDA on the pooled cohort.", [("run", ("lioness",))]),
     ("Do not execute anything; explain only.", [("any", ())]),
+    ("Do not search the web or run anything.", [("retrieve", ()), ("any", ())]),
+    ("不要搜尋文獻或執行 PANDA。", [("retrieve", ()), ("run", ("panda",))]),
     ("不要直接跑 PANDA，先告訴我需要什麼。", [("run", ("panda",))]),
     # Not bans: the negation is about something else.
     ("Don't forget to run PANDA on all samples.", []),
@@ -427,12 +429,12 @@ def test_a_reply_that_forbids_the_run_without_a_preview_gets_no_plan(runtime):  
     assert all(result["tool_results"] == [] for result in results)
 
 
-def test_a_ban_cut_from_the_routing_text_still_stops_the_search(graph_app):
-    """F3 is item 2's; until then the evaluator re-reads the whole message.
+def test_an_opening_ban_in_a_long_request_stops_the_search_in_routing(graph_app):
+    """F3, item 2: the ban is read from the full message, and routing sees the opening.
 
-    Routing reads only the last 6,000 characters, so it never sees the opening
-    ban and plans the search the tail asks for. The plan evaluator reads the
-    full message and refuses it, so the dispatcher is never reached.
+    Routing used to read only the last 6,000 characters, so only the plan
+    evaluator caught this. Now the turn's requirements carry the ban and the
+    routing window keeps the opening, so no search is even planned.
     """
     task = ("Do not search the web or run anything; explain only.\n" + "x" * 6100
             + "\nPlease use WEB-SEARCH to search for the official TP53 record.")
@@ -440,6 +442,8 @@ def test_a_ban_cut_from_the_routing_text_still_stops_the_search(graph_app):
     result, search, events = _run_graph(graph_app, task)
 
     search.assert_not_called()
-    assert "plan.rejected" in events
-    rubric = {item["criterion"]: item["result"] for item in result["plan_evaluation"]["rubric"]}
-    assert rubric["operation_authorization"] == "fail"
+    assert result["plan"]["status"] == "respond_only"
+    assert "plan.approved" not in events
+    requirements = result["request_requirements"]
+    assert requirements["omitted_chars"] > 0
+    assert {ban["kind"] for ban in requirements["operations"]["forbidden"]} == {"any", "retrieve"}

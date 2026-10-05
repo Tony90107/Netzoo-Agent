@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import re
 
 from ..data.bundles import MULTI_FILE_ACTIONS
@@ -29,7 +31,11 @@ def _path_literal_in_task(value: str | None, user_task: str) -> bool:
 def _evidence_contract_failures(
     evidence: list[InputEvidence],
     user_task: str,
+    stated: Mapping[str, object] | None = None,
 ) -> list[str]:
+    """*stated*: the turn requirements' stated values (plan item 2). A value the
+    user stated in the request a continuation carries is provided too, though
+    the continuation's own text does not repeat it."""
     failures: list[str] = []
     selected_fields = set(
         re.findall(r"SELECTED_FIELD=([a-z_]+)", user_task, flags=re.IGNORECASE)
@@ -43,7 +49,10 @@ def _evidence_contract_failures(
                 f"{item.field} carries a derived source without derived status"
             )
         if item.status == "provided":
-            if not _path_literal_in_task(item.value, user_task):
+            if not _path_literal_in_task(item.value, user_task) and not (
+                (stated or {}).get(item.field) is not None
+                and str(item.value) == str((stated or {})[item.field])
+            ):
                 failures.append(
                     f"{item.field} is marked provided but its value is not in the user request"
                 )

@@ -25,6 +25,9 @@ class PreviewState:
     workflow: str | None
     plan: WorkflowPlan
     plan_evaluation: dict | None
+    # The preview turn's RequestRequirements: /execute re-routes ``task`` and
+    # carries the values the user stated (plan item 2).
+    requirements: dict | None = None
 
 
 @dataclass(slots=True)
@@ -41,6 +44,9 @@ class ConversationState:
 
     queued_task: str | None = None
     follow_up_context: FollowUpContext | None = None
+    # The RequestRequirements of the turn that built follow_up_context; an
+    # accepted workflow carries its stated values (plan item 2).
+    follow_up_requirements: dict | None = None
     preview: PreviewState | None = None
     clarification_selections: dict[str, str] = field(default_factory=dict)
     custom_input_selection: bool = False

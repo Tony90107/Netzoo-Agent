@@ -12,6 +12,7 @@ from ..contracts import (
     WorkflowPlan,
     _trace,
 )
+from ..llm import latest_user_message
 from ..evaluation import (
     evaluate_step_result,
     evaluate_workflow_plan,
@@ -31,8 +32,9 @@ def evaluate_plan(context: _GraphContext, state: AgentState) -> dict:
     plan = WorkflowPlan.model_validate(state["plan"])
     evaluation = evaluate_workflow_plan(
         plan,
-        str(state["messages"][-1].content),
+        latest_user_message(state["messages"]),
         state.get("project_policy"),
+        requirements=state.get("request_requirements"),
     )
     _trace(
         "review",
