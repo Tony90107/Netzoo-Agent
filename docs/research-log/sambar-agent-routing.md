@@ -18851,3 +18851,34 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - 用「明說沒有」的字詞清單（本輪 C、T3）也不行。
 - 若要再做，讀資料事實的方式應該和讀研究目的一樣：模型讀、附引文、規則只做寬鬆的驗證，而不是用字詞清單決定。
 - 候選本身缺工具（D1）或全是同一類（A1）是路由的問題，要在路由層處理。
+
+## Log 374｜準備後停止：由模型讀取 prior——凍結的驗證在第十六組上必然不過，未執行
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 看過 Log 373 後選 (A)：讓模型讀「使用者有什麼資料」，附原文引文、寬鬆驗證，不再用字詞清單。
+- 先 push（`99a2378..8a8f4cf`，已完成）。
+
+**已凍結的改動**（`FREEZE16.md`，`t_frozen.patch` sha256 `aabbb6750b74`，凍結 commit `06326b2`）：
+- Log 372 的平手回覆與資料問題，加上契約欄位 `priors`（stated／ruled_out／unstated）與 `priors_span`。
+- 驗證：
+  - 「有」：引文要有 prior 名詞，且引文內沒有否定詞。
+  - 「沒有」：引文所在的句子要有否定或「只有」，並有相關名詞。
+- 已看過的第十五組上：「no transcription factor motif(s) …」15/15 讀成 ruled_out，兩輪一致；設計與結論在同一程式的起伏內。
+
+**第十六組保留集**（`heldout16/heldout.json`，`1ec0ef958c5d`）：
+- 隔離 subagent 在凍結後撰寫，32 句，標註 `priors_stated`。
+- 第一次撰寫因 API 額度中斷，沒有留下檔案；同一個 subagent 依原說明續寫完成。
+
+**審稿時的檢查（只用凍結的規則，沒有呼叫模型；`priors_bound.py`，`live/heldout16-priors-bound.txt`）：**
+- 驗證只能拒絕、不能放行。以每一句、每一個子句作為最寬鬆的引文來算：
+  - 標註「明說沒有」的 9 句中，只有 4 句（F3）可能通過。P2 最多 4/9 = 44%，門檻是 80%。
+  - 擋下的兩種寫法都沒有否定詞或「只有」：
+    - F4：「the resulting gene count table is the whole of our data」。
+    - T3：「the read-count matrix is everything we hold, and this animal's transcription-factor binding preferences remain uncharacterised」。
+- T3 的「transcription-factor binding preferences remain uncharacterised」甚至可能被當成「有」：「binding」是 prior 名詞，子句內沒有否定詞，但「uncharacterised」在語意上就是否定。
+- 標註為「有」的 12 句全部可以通過；標註為「沒提」的不受影響。
+
+**決定：** 不執行（離線與 live 都沒跑，沒有花費）。凍結的改動不 commit。
+- 教訓同 Logs 353、367、373：連「寬鬆」的驗證，只要靠封閉的否定詞清單，換個說法（「is the whole of our data」「remain uncharacterised」）就失效，而且兩個方向都會錯。
+- 第十六組已看過，之後不能用來判定。
