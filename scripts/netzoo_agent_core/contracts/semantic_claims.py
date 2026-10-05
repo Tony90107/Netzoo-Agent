@@ -15,6 +15,7 @@ from .outcomes import (
     RequestedOutcome,
     SemanticInterpretation,
 )
+from .repair_scope import DIMENSION_BY_FIELD
 
 T = TypeVar("T")
 
@@ -98,16 +99,7 @@ class ClaimedOutcome(BaseModel):
     unresolved_dimensions: list[str] = Field(default_factory=list, max_length=4)
 
 
-DIMENSIONS = {
-    "operation": "operation",
-    "artifact_type": "artifact_type",
-    "granularity": "granularity",
-    "input_artifacts": "input_artifact",
-    "entity_types": "entity_type",
-    "regulator_types": "regulator_type",
-    "target_types": "target_type",
-    "selection_tags": "selection_tag",
-}
+DIMENSIONS = DIMENSION_BY_FIELD
 
 
 def project_outcome(outcome: ClaimedOutcome):
@@ -117,7 +109,7 @@ def project_outcome(outcome: ClaimedOutcome):
         claims = getattr(outcome, field)
         many = isinstance(claims, list)
         items = claims if many else [claims]
-        values[field] = [c.value for c in items] if many else claims.value
+        values[field] = sorted({c.value for c in items}) if many else claims.value
         for claim in items:
             if claim.value not in {"unknown", "not_applicable"}:
                 evidence.append(
@@ -127,7 +119,10 @@ def project_outcome(outcome: ClaimedOutcome):
                         **claim.support.model_dump(),
                     )
                 )
-    return RequestedOutcome.model_validate(values), evidence
+    # Equal claims need only one ledger entry; different supports for the same
+    # value remain separately checkable. Ordering cannot select a meaning.
+    unique = {item.model_dump_json(): item for item in evidence}
+    return RequestedOutcome.model_validate(values), [unique[key] for key in sorted(unique)]
 
 
 class ClaimedHypothesis(BaseModel):

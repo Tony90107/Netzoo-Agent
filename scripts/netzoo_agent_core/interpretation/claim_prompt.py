@@ -17,6 +17,7 @@ from .request_integrity import (
     regulatory_role_mentions,
 )
 from .guidance_subject import SCIENTIFIC_GUIDANCE_INSTRUCTIONS
+from .validation_diagnostics import validation_diagnostic
 
 #: Issue codes whose repair needs a target value, not only a better quote. A
 #: quote-only rejection (`ungrounded_evidence`, `missing_evidence`) validated
@@ -215,7 +216,8 @@ granularity=not_applicable and empty lists. Use English except text_span quotes.
     messages = [SystemMessage(content=prompt), HumanMessage(content=user_task)]
     if proposal is not None:
         data = proposal.model_dump() if hasattr(proposal, "model_dump") else proposal
-        diagnostics = {"proposal": data, "issues": list(issues)}
+        diagnostics = {"proposal": data, "issues": list(issues),
+                       "issue_categories": [validation_diagnostic(issue) for issue in issues]}
         if patching:
             diagnostics.update(claim_repair_feedback(user_task, proposal, issues))
         messages.append(

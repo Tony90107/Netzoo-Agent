@@ -15,7 +15,7 @@ from ..contracts.outcomes import (
     SemanticPatch,
     SemanticReview,
 )
-from ..contracts.repair_scope import permitted_fields
+from ..contracts.repair_scope import permitted_fields, issues_for_hypothesis
 from ..interpretation.outcome_consistency import (
     complete_open_granularity_alternatives,
 )
@@ -262,11 +262,12 @@ def invoke_semantic_interpreter(
                 output_text = interpretation.model_dump_json()
             elif patch is not None:
                 output_text = patch.model_dump_json()
-                licensed = permitted_fields(validation_issues)
+                licensed = permitted_fields(issues_for_hypothesis(validation_issues, patch.hypothesis_index))
                 interpretation, retired_evidence = apply_semantic_patch(
                     proposal, patch, permitted_fields=licensed, user_task=user_task,
                     hold_validated=(validated is not None
                                     and not guidance_subject_review_issues(validated)),
+                    validation_issues=validation_issues,
                 )
                 patched_index = patched_hypothesis_index(proposal, patch)
                 placeholders.written(patched_index, patch)
@@ -279,9 +280,10 @@ def invoke_semantic_interpreter(
                         "attempt": attempt + 1,
                         "hypothesis_index": patched_hypothesis_index(proposal, patch),
                         "changed_fields": sorted(
-                            name for name, value in patch.outcome.model_dump().items()
-                            if value is not None
+                            name for name, value in interpretation.outcome_hypotheses[patched_index].outcome.model_dump().items()
+                            if value != getattr(proposal.outcome_hypotheses[patched_index].outcome, name)
                         ),
+                        "requested_fields": sorted(patch.outcome.model_dump(exclude_none=True)),
                         "evidence_removed": [
                             {"dimension": item.dimension, "value": item.value}
                             for item in patch.evidence_removals
@@ -305,6 +307,14 @@ def invoke_semantic_interpreter(
                         # Overrides outside this set were not applied; an empty
                         # set is the citation-only case.
                         "permitted_fields": sorted(licensed),
+                        "evidence_outside_scope": [
+                            i for i in retired_evidence
+                            if i.get("reason") == "evidence_outside_repair_scope"
+                        ],
+                        "overrides_outside_scope": [
+                            i for i in retired_evidence
+                            if i.get("reason") == "override_outside_repair_scope"
+                        ],
                         "evidence_normalizations": patch_evidence_normalizations,
                         # Instructions that could not be carried out, set aside
                         # rather than costing the repair. Never silent.

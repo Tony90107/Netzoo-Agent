@@ -28,6 +28,7 @@ from .request_integrity import (
     stated_scale_gap,
 )
 from .span_alignment import aligned_span
+from .validation_diagnostics import validation_diagnostic
 
 __all__: list[str] = []
 
@@ -45,6 +46,11 @@ class OutcomeValidation:
     #: call for opposite responses, yet nothing recorded so far distinguishes
     #: them. Only the closed-vocabulary dimension and value appear here.
     evidence_shapes: tuple[dict[str, str | int], ...] = ()
+
+    @property
+    def diagnostics(self) -> tuple[dict[str, str], ...]:
+        """Failure causes for consumers; legacy codes and repair scopes remain authoritative."""
+        return tuple(validation_diagnostic(issue) for issue in self.issues)
 
 
 def _normalized(value: str) -> str:
@@ -353,6 +359,7 @@ def reconcile_outcome_with_grounded_evidence(
     contradiction and is left for validation to report.
     """
     outcome = hypothesis.outcome
+    candidates: dict[str, set[str]] = {}
     for item in hypothesis.evidence:
         value = str(item.value)
         if (
@@ -361,16 +368,26 @@ def reconcile_outcome_with_grounded_evidence(
             or not explicit_evidence_grounded(user_task, item)
         ):
             continue
-        list_field = _LIST_FIELD_BY_DIMENSION.get(item.dimension)
-        if list_field is not None:
-            current = list(getattr(outcome, list_field) or [])
-            if current:
+        if item.dimension == "input_artifact" and item.text_span:
+            quoted_inputs = canonical_input_artifacts_in_text(item.text_span)
+            if quoted_inputs and value not in quoted_inputs:
                 continue
-            _assign_if_valid(outcome, list_field, [value])
+        field = (
+            _LIST_FIELD_BY_DIMENSION.get(item.dimension)
+            or _SCALAR_FIELD_BY_DIMENSION.get(item.dimension)
+        )
+        if field is None:
             continue
-        scalar_field = _SCALAR_FIELD_BY_DIMENSION.get(item.dimension)
-        if scalar_field is not None and getattr(outcome, scalar_field) == "unknown":
-            _assign_if_valid(outcome, scalar_field, value)
+        candidates.setdefault(field, set()).add(value)
+
+    # Decide once per field, against its original state. Sorting makes list
+    # completion deterministic; competing scalar claims must remain unresolved.
+    for field, values in candidates.items():
+        if field in _LIST_FIELD_BY_DIMENSION.values():
+            if not getattr(outcome, field):
+                _assign_if_valid(outcome, field, sorted(values))
+        elif getattr(outcome, field) == "unknown" and len(values) == 1:
+            _assign_if_valid(outcome, field, next(iter(values)))
 
 
 def _assign_if_valid(outcome: RequestedOutcome, field: str, value: object) -> None:

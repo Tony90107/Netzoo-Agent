@@ -18,10 +18,11 @@ itself in `artifact_semantics`.
 from __future__ import annotations
 
 from collections.abc import Iterable
+import re
 
 __all__ = [
     "DIMENSION_BY_FIELD", "FIELD_BY_DIMENSION", "Issue", "NO_OUTCOME_FIELDS",
-    "OUTCOME_FIELDS", "permitted_fields",
+    "OUTCOME_FIELDS", "permitted_fields", "issues_for_hypothesis", "support_repair_pairs",
 ]
 
 #: Every field of `RequestedOutcome` a review may be permitted to change. A rule
@@ -90,3 +91,22 @@ def permitted_fields(issues: Iterable[str]) -> frozenset[str]:
             return OUTCOME_FIELDS
         fields |= declared
     return frozenset(fields)
+
+
+def issues_for_hypothesis(issues: Iterable[str], index: int) -> tuple[str, ...]:
+    """Keep declarations intact and never borrow another hypothesis's authority."""
+    return tuple(
+        issue for issue in issues
+        if (match := re.match(r"hypothesis\[(\d+)\]\.", str(issue))) is None
+        or int(match[1]) == index
+    )
+
+
+def support_repair_pairs(issues: Iterable[str]) -> frozenset[tuple[str, str]]:
+    """Citation repair licenses only the exact failed dimension/value pair."""
+    pairs = set()
+    for issue in issues:
+        match = re.search(r"(?:ungrounded|missing)_evidence:([a-z_]+)=(.+)$", str(issue))
+        if match:
+            pairs.add((match[1], match[2]))
+    return frozenset(pairs)
