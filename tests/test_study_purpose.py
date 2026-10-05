@@ -124,14 +124,12 @@ def test_only_the_global_table_states_a_gap():
 # -- replies (recorded Log 341 decisions) ------------------------------------------
 
 def test_a_cohort_change_question_gets_the_comparison_step_above_the_question():
-    # Log 370: the tie now leads with what fits the question; every candidate stays.
     text, _, card = _reply("A1-1")
-    assert text.startswith('For your question ("We want to know whether the regulatory network changes after '
-                           'treatment across the cohort."), these fit best, and here is why:')
-    assert "- **PANDA** — Build one network for each time point" in text
-    assert "does not use the pairing" in text
-    assert "- **PUMA** — needs a miRNA list, which your request does not mention." in text
-    assert "These all fit" not in text
+    block = text.split("For your question (", 1)[1]
+    assert block.startswith('"We want to know whether the regulatory network changes after treatment across the cohort."')
+    assert "- **PANDA**, **PUMA** — Build one network for each time point" in block
+    assert "does not use the pairing" in block
+    assert text.index("For your question") < text.index("These all fit; to choose")
     assert any(point.startswith("Your question: whether the groups or time points differ") for point in card.points)
 
 

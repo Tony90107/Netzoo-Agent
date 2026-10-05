@@ -847,17 +847,6 @@ class ClaimSupport(NamedTuple):
     text: str
     caveats: tuple[str, ...] = ()
     instead: tuple[str, ...] = ()
-    # Log 370: how the output meets the question -- "test" (the question can be
-    # tested from it), "describe" (it shows the difference without a test, or
-    # without the stated pairing) or "other" (it answers for another quantity).
-    # A tie's reply leads with the best of them; ``limit`` says in a few words
-    # why a "describe" or "other" cell comes after a "test" one.
-    answers: Literal["test", "describe", "other"] = "test"
-    limit: str = ""
-    # Log 370: an "other" cell whose quantity the question itself names (a
-    # SELECTION_AXES witness) answers it after all: GIRAFFE's TF activity for
-    # "which TFs change their activity".
-    quantity_axis: str = ""
 
 
 # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
@@ -889,20 +878,20 @@ def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = (
             "networks give one value per edge per group: they show where the groups differ, but give "
             f"no per-sample spread to test it. For a statistical test, use {per_sample} and test "
             "between the groups."
-        ), caveats, answers="describe", limit="shows where the groups differ, with no test"),
+        ), caveats),
         (action, "group_difference", "paired"): ClaimSupport("with_step", (
             "Build one network for each time point on the same genes and priors, then compare edge "
             "weights or targeting scores between them. This compares the time points across all "
             "individuals but does not use the pairing: each individual's samples from the different "
             f"time points are pooled into separate networks. To keep the pairing, use {per_sample} "
             "and compare each individual's samples."
-        ), caveats, answers="describe", limit="compares the time points without using the pairing"),
+        ), caveats),
         (action, "regulator_change", "*"): ClaimSupport("with_step", (
             "Comparing each regulator's targeting score (out-degree) between networks built "
             "separately for each condition shows regulators whose targeting changes. Without "
             "per-sample networks this ranks regulators by the size of the change, with no test of "
             "whether it exceeds chance."
-        ), caveats, answers="describe", limit="ranks regulators by the size of the change, with no test"),
+        ), caveats),
     }
 
 
@@ -966,16 +955,15 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
         "GIRAFFE's TF-by-sample activity matrix gives each TF's activity in each sample; test each "
         "TF's activity between the conditions (paired when the same individuals give both), with "
         "multiple-testing correction."
-    ), answers="other", limit="gives TF activity, not network wiring", quantity_axis="tf_activity_vs_expression"),
+    )),
     ("run_giraffe", "individual_change", "paired"): ClaimSupport("with_step", (
         "The difference between an individual's activity profiles at the time points measures how "
         "much that individual's TF activity changed."
-    ), answers="other", limit="measures change in TF activity, not network wiring",
-        quantity_axis="tf_activity_vs_expression"),
+    )),
     ("run_giraffe", "group_difference", "*"): ClaimSupport("with_step", (
         "The activity matrix compares TF activity, not network wiring, between the conditions; test "
         "each TF's activity between them (paired when the same individuals give both)."
-    ), answers="other", limit="compares TF activity, not network wiring", quantity_axis="tf_activity_vs_expression"),
+    )),
     # The COBRA paper does not describe an individual term in the design
     # matrix, so a paired design is not declared.
     ("run_cobra", "group_difference", "groups"): ClaimSupport("direct", (
@@ -1001,7 +989,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     ), (
         "Partial correlations are conditional on every other feature in both layers, so use the same "
         "feature set in every network you compare.",
-    ), answers="describe", limit="shows where the groups differ, with no test"),
+    )),
     ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
         "Build one network per time point or condition on the same features and compare the cross-layer "
         "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
@@ -1009,7 +997,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     ), (
         "Partial correlations are conditional on every other feature in both layers, so use the same "
         "feature set in every network you compare.",
-    ), answers="describe", limit="compares the conditions without using the pairing"),
+    )),
     ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
         "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
         "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
