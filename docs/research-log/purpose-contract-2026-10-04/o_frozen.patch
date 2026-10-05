@@ -1,0 +1,461 @@
+diff --git a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+index 4085615..244b610 100644
+--- a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
++++ b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+@@ -17,6 +17,12 @@ decision:
+   ``CLAIM_SUPPORT`` cell says what it gives toward it and the step after it,
+   above the reply's question. A workflow without a cell says nothing: a
+   missing declaration is never a gap (CC1, Logs 288-289);
++- a candidate whose declared cell is "one_result" (Logs 365-368: one result
++  for all the samples, asked about individuals) says so after the others, as
++  a condition -- with one sample per individual it says nothing about one
++  individual -- and names the per-sample workflows for the same data; when
++  no listed workflow has an answering cell, that paragraph comes first, and a
++  tie's lead names them;
+ - a semantic fallback on a request stating such a conclusion is answered with
+   the gap instead of "could not validate".
+ 
+@@ -36,6 +42,7 @@ from .outside_steps import _REPLY_KINDS, _asks
+ __all__ = [
+     "CLAIM_LABELS",
+     "purpose_from_state",
++    "one_result_cells",
+     "claim_cells",
+     "gap_claims",
+     "question_claim",
+@@ -118,6 +125,25 @@ def claim_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport
+     return cells
+ 
+ 
++def one_result_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport]]:
++    """The candidates whose declared cell is "one_result" for the question (Log 368).
++
++    Only the workflows the reply offers as candidates (matched, hypothesis,
++    advisory) -- not an aggregate named because its per-sample version "also
++    produces" it (Log 366, T2).
++    """
++    advice = decision.advisory_recommendation
++    offered = {*decision.matched_actions, *decision.hypothesis_actions, *([advice.action] if advice else [])}
++    return [(action, cell) for action, cell in claim_cells(decision, purpose)
++            if cell.level == "one_result" and action in offered]
++
++
++def _shown_cells(decision, purpose: StudyPurpose) -> list[tuple[str, ClaimSupport]]:
++    """The cells a reply shows: every answering cell, and the "one_result" cells of candidates."""
++    return [*((action, cell) for action, cell in claim_cells(decision, purpose) if cell.level != "one_result"),
++            *one_result_cells(decision, purpose)]
++
++
+ def _gap_paragraphs(purpose: StudyPurpose, user_data: list[str]) -> list[str]:
+     paragraphs = []
+     for claim, quote in gap_claims(purpose):
+@@ -134,13 +160,34 @@ def _purpose_paragraph(cells, quote: str, user_data: list[str]) -> str:
+     # Workflows whose cell says the same thing share one line (PANDA and PUMA).
+     by_text: dict[str, list[str]] = {}
+     for action, cell in cells:
+-        by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
++        if cell.level != "one_result":
++            by_text.setdefault(cell.text, []).append(f"**{_name(action)}**")
+     lines += [f"- {', '.join(names)} — {text}" for text, names in by_text.items()]
++    lines += _one_result_lines(cells)
+     caveats = dict.fromkeys(caveat for _, cell in cells for caveat in cell.caveats)
+     lines += [f"Note: {caveat}" for caveat in caveats]
+     return "\n".join(lines)
+ 
+ 
++def _one_result_lines(cells) -> list[str]:
++    """Log 368: after the workflows that answer it, the one-result ones, one line per output, as a condition."""
++    by_text: dict[str, list[str]] = {}
++    for action, cell in cells:
++        if cell.level == "one_result":
++            by_text.setdefault(cell.text, []).append(action)
++    lines = []
++    for text, actions in by_text.items():
++        instead = list(dict.fromkeys(other for action, cell in cells if cell.text == text
++                                     and cell.level == "one_result" for other in cell.instead))
++        lines.append(
++            f"- {', '.join(f'**{_name(action)}**' for action in actions)} — "
++            f"{'gives' if len(actions) == 1 else 'each gives'} {text} it is given. With one sample per individual "
++            f"(per time point), that says nothing about a single individual; a result for one individual needs "
++            f"many samples from that individual. Per-sample {'workflow' if len(instead) == 1 else 'workflows'} "
++            f"for the same data: {', '.join(f'**{_name(action)}**' for action in instead)}.")
++    return lines
++
++
+ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
+     cannot = " or ".join(_CANNOT[claim] for claim, _ in gap_claims(purpose))
+     for lead in _TIE_LEADS:
+@@ -150,13 +197,28 @@ def _reworded_lead(paragraph: str, purpose: StudyPurpose) -> str:
+     return paragraph
+ 
+ 
++def _join(names: list[str]) -> str:
++    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
++
++
++def _one_result_lead(paragraph: str, cells: list[tuple[str, ClaimSupport]]) -> str:
++    """Log 368: a tie's lead names the candidates that give one result for all the samples."""
++    names = _join([f"**{_name(action)}**" for action, _ in cells])
++    verb = "gives" if len(cells) == 1 else "give"
++    for lead in _TIE_LEADS:
++        if paragraph.startswith(lead):
++            return (f"These fit the result you described; {names} {verb} one result for all the samples "
++                    f"{'it is' if len(cells) == 1 else 'they are'} given. To choose, tell me:{paragraph[len(lead):]}")
++    return paragraph
++
++
+ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
+     """The reply with the gap first and the purpose paragraph above its question."""
+     if not text:
+         return text
+     user_data: list[str] = []
+     gaps = _gap_paragraphs(purpose, user_data)
+-    cells = claim_cells(decision, purpose)
++    cells = _shown_cells(decision, purpose)
+     question = question_claim(purpose)
+     purpose_block = _purpose_paragraph(cells, question[1], user_data) if cells and question else ""
+     if not gaps and not purpose_block:
+@@ -164,7 +226,13 @@ def with_study_purpose(text: str, decision, purpose: StudyPurpose) -> str:
+     paragraphs = text.split("\n\n")
+     if gaps:
+         paragraphs = [*gaps, *(_reworded_lead(part, purpose) for part in paragraphs)]
+-    if purpose_block:
++    pooled = [(action, cell) for action, cell in cells if cell.level == "one_result"] if purpose_block else []
++    if pooled and not gaps:
++        paragraphs = [_one_result_lead(part, pooled) for part in paragraphs]
++    if pooled and len(pooled) == len(cells):
++        # No listed workflow has an answering cell: say what they give first, after any gap.
++        paragraphs = [*paragraphs[:len(gaps)], purpose_block, *paragraphs[len(gaps):]]
++    elif purpose_block:
+         closing = next((i for i, part in enumerate(paragraphs) if _NOT_INSPECTED in part), None)
+         if closing is not None and closing > 1 and _asks(paragraphs[closing - 1]):
+             paragraphs = [*paragraphs[:closing - 1], purpose_block, *paragraphs[closing - 1:]]
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 004e81c..4444112 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -505,11 +505,16 @@ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
+ 
+ 
+ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str, state=None) -> ReplyCard:
+-    """The stated question as a point, and conclusions no workflow supports as rows (Log 342)."""
++    """The stated question as a point, and conclusions no workflow supports as rows (Log 342).
++
++    Log 368: candidates that give one result for all the samples, asked about
++    individuals, get a point naming the per-sample workflows for the same data
++    (their planning steps are added by `_one_result_steps`).
++    """
+     from workflow_registry import UNSUPPORTED_CLAIMS
+ 
+     from ..interpretation.study_purpose_notes import (
+-        CLAIM_LABELS, claim_cells, gap_claims, purpose_from_state, question_claim,
++        CLAIM_LABELS, claim_cells, gap_claims, one_result_cells, purpose_from_state, question_claim,
+     )
+ 
+     purpose = purpose_from_state(state, task)
+@@ -526,17 +531,44 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
+                         resolution="none", reason=clip(UNSUPPORTED_CLAIMS[claim][3], 260))
+             for claim, _ in gaps]
+     points = list(card.points)
+-    cells = claim_cells(decision, purpose)
++    cells = [(action, cell) for action, cell in claim_cells(decision, purpose) if cell.level != "one_result"]
++    pooled = one_result_cells(decision, purpose)
+     question = question_claim(purpose)
+     if cells and question and len(points) < 6:
+         names = join_names([workflow_name(policy, action) for action, _ in cells], "and")
+         points.append(clip(f"Your question: {CLAIM_LABELS[question[0]]}; the reply says what {names} "
+                            "give toward it and the step after each.", 300))
++    if pooled and question and len(points) < 6:
++        names = join_names([workflow_name(policy, action) for action, _ in pooled], "and")
++        instead = list(dict.fromkeys(action for _, cell in pooled for action in cell.instead))
++        alternatives = [workflow_name(policy, action) for action in instead]
++        points.append(clip(
++            f"{names} {'gives' if len(pooled) == 1 else 'give'} one result for all the samples: with one sample "
++            f"per individual that cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
++            f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
+     if not rows and points == card.points:
+         return card
+     return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
+ 
+ 
++def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOption]) -> list[ReplyOption]:
++    """Log 368: planning steps for the per-sample workflows, added after the card's own steps.
++
++    Only when no listed workflow has an answering cell for the stated question;
++    nothing is removed -- an individual with many samples of their own can
++    still plan the one-result workflow the reply was about.
++    """
++    from ..interpretation.study_purpose_notes import claim_cells, one_result_cells, purpose_from_state
++
++    purpose = purpose_from_state(state, task)
++    pooled = one_result_cells(decision, purpose)
++    if not pooled or any(cell.level != "one_result" for _, cell in claim_cells(decision, purpose)):
++        return steps
++    planned = {step.action for step in steps}
++    instead = dict.fromkeys(action for _, cell in pooled for action in cell.instead)
++    return [*steps, *(plan_step(policy, action) for action in instead if action in RUN_ACTIONS and action not in planned)]
++
++
+ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str) -> ReplyCard | None:
+     """The card for a finished turn, or None when the turn is a wizard or not a policy run."""
+     if not isinstance(policy, ProjectPolicySnapshot):
+@@ -570,6 +602,8 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
+         # A verified single-workflow answer: planning it is the obvious next step,
+         # through the same continuation the reply classifier would produce.
+         steps.insert(len(card.next_steps), plan_step(policy, action))
++    if card is not None and kind not in {"execution", "unresolved"}:
++        steps = _one_result_steps(decision, policy, task, result, steps)
+     chosen = {option.action for option in (card.choices.options if card and card.choices else []) if option.action}
+     steps = [step for step in steps if not (step.resolution == "confirm_workflow" and step.action in chosen)]
+     if card is None:
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index b024455..1ab5fa8 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -831,14 +831,22 @@ class ClaimSupport(NamedTuple):
+     ``direct``: the workflow's own output answers the question (COBRA's group
+     component for a stated two-group comparison). ``with_step``: it gives the
+     material, and ``text`` names the step after it, which NetZoo does not run.
+-    There is deliberately no "cannot": an undeclared cell says nothing, and
+-    only ``UNSUPPORTED_CLAIMS`` states a gap -- CC1 (Logs 288-289) showed that
+-    gaps inferred from missing declarations are false.
++    ``one_result`` (Log 368): the workflow returns one result for all the
++    samples it is given, so with one sample per individual it says nothing
++    about a single individual; ``text`` says what it returns (completing "it
++    gives ..."), and ``instead`` names the per-sample workflows for the same
++    data. The reply states the condition rather than "cannot": Log 366 showed
++    that an individual with many samples of their own can get such a workflow's
++    result alone, and Log 367 that the request's words do not reliably say
++    which case it is. Only ever a declared cell, written from what the method
++    returns: an undeclared cell still says nothing -- CC1 (Logs 288-289)
++    showed that gaps inferred from missing declarations are false.
+     """
+ 
+-    level: Literal["direct", "with_step"]
++    level: Literal["direct", "with_step", "one_result"]
+     text: str
+     caveats: tuple[str, ...] = ()
++    instead: tuple[str, ...] = ()
+ 
+ 
+ # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
+@@ -917,6 +925,11 @@ def _per_sample_claims(action: str) -> dict:
+     }
+ 
+ 
++def _one_result_claims(action: str, gives: str, instead: tuple[str, ...]) -> dict:
++    """Log 368: a workflow with one result for all its samples, asked which individuals change."""
++    return {(action, "individual_change", "*"): ClaimSupport("one_result", gives, instead=instead)}
++
++
+ def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
+     return {
+         (action, "group_difference", "*"): ClaimSupport("with_step", (
+@@ -965,6 +978,55 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     **_coexpression_claims("run_bonobo", (
+         "With p-value output, edges can be filtered per sample at a chosen confidence.",
+     )),
++    # Log 363's multi-omic cells (texts reviewed by the user), restored in Log 365.
++    # [R] the DRAGON and LIONESS-DRAGON downstream notes (partial correlations
++    # depend on every feature; a LIONESS-DRAGON sample's edges are relative to
++    # the cohort it was built from).
++    ("run_dragon", "group_difference", "groups"): ClaimSupport("with_step", (
++        "Build one network per group on the same features of both layers, then compare the cross-layer "
++        "edges (the partial correlations between the two omics layers) between the group networks; two "
++        "aggregate networks show where the groups differ but give no per-sample spread to test it."
++    ), (
++        "Partial correlations are conditional on every other feature in both layers, so use the same "
++        "feature set in every network you compare.",
++    )),
++    ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
++        "Build one network per time point or condition on the same features and compare the cross-layer "
++        "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
++        "individual's samples."
++    ), (
++        "Partial correlations are conditional on every other feature in both layers, so use the same "
++        "feature set in every network you compare.",
++    )),
++    ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
++        "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
++        "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
++        "associations differ."
++    ), (
++        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
++        "to the cohort the network was built from.",
++        _LIONESS_DEPENDENCE,
++    )),
++    ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
++        "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
++        "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
++        "change or stand out."
++    ), (
++        "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
++        "to the cohort the network was built from.",
++        _LIONESS_DEPENDENCE,
++    )),
++    # Logs 365/368: one result for all the samples. Each method's own output, and the
++    # registered per-sample workflow that takes the same data. COBRA's design
++    # matrix holds covariates, not individuals (Micheletti et al. 2024).
++    **_one_result_claims("run_panda", "one network from all the samples", ("run_lioness_panda",)),
++    **_one_result_claims("run_puma", "one network from all the samples", ("run_lioness_puma",)),
++    # No per-sample OTTER is registered; LIONESS-PANDA takes the same three inputs.
++    **_one_result_claims("run_otter", "one network from all the samples", ("run_lioness_panda",)),
++    **_one_result_claims(
++        "run_cobra", "the co-expression associated with each covariate across all the samples",
++        ("run_lioness_coexpression", "run_bonobo")),
++    **_one_result_claims("run_dragon", "one two-layer network from all the samples", ("run_lioness_dragon",)),
+ }
+ 
+ # Conclusions no registered workflow can support, said once for the whole
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index b56a776..7b2c9f4 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -108,14 +108,17 @@ def test_every_declared_cell_names_a_workflow_a_claim_and_a_design():
+         assert action in OUTPUT_CAPABILITIES, action
+         assert claim in claims - set(UNSUPPORTED_CLAIMS), claim
+         assert design in {"paired", "groups", "*"}, design
+-        assert cell.level in {"direct", "with_step"} and cell.text
++        assert cell.level in {"direct", "with_step", "one_result"} and cell.text
++        # Log 368: a "one_result" cell names the per-sample workflows for the same data, and only those.
++        assert bool(cell.instead) == (cell.level == "one_result"), (action, claim, design)
++        assert all(other in OUTPUT_CAPABILITIES for other in cell.instead)
+ 
+ 
+ def test_only_the_global_table_states_a_gap():
+     assert set(UNSUPPORTED_CLAIMS) == {"causal", "prediction"}
+-    # v1 declares no multi-omic or community workflow (proposal, section 3.2).
+-    assert not any(action in {"run_dragon", "run_lioness_dragon", "run_condor", "run_sambar"}
+-                   for action, _, _ in CLAIM_SUPPORT)
++    # v1 declared no multi-omic or community workflow (proposal, section 3.2); Log 365
++    # restores Log 363's reviewed multi-omic cells. Community workflows stay undeclared.
++    assert not any(action in {"run_condor", "run_sambar"} for action, _, _ in CLAIM_SUPPORT)
+ 
+ 
+ # -- replies (recorded Log 341 decisions) ------------------------------------------
+diff --git a/tests/test_study_purpose_call.py b/tests/test_study_purpose_call.py
+index 8a724fb..e2b69d9 100644
+--- a/tests/test_study_purpose_call.py
++++ b/tests/test_study_purpose_call.py
+@@ -256,3 +256,121 @@ def test_a_technical_word_beside_a_real_design_does_not_veto_it(design, quote):
+ def test_a_technical_pairing_or_grouping_is_still_no_design(design, quote):
+     purpose, rejected = verify_proposal(f"We have RNA-seq, {quote}. We want one network.", _proposal(design, quote))
+     assert purpose.design is None and rejected[0]["reason"] in {"technical", "two_data_types"}
++
++
++# -- Logs 365-368: workflows with one result for all the samples ------------------------------
++# Recorded decisions from earlier live rounds (already read), so only the reply layer is under test.
++
++LIVE = ROOT / "docs" / "research-log" / "purpose-contract-2026-10-04" / "live"
++POOLED = ("With one sample per individual (per time point), that says nothing about a single individual; "
++          "a result for one individual needs many samples from that individual.")
++
++
++def _recorded(tag, key, purpose=None):
++    from langchain_core.messages import HumanMessage
++    from netzoo_agent_core.cli.follow_up import build_next_turn_prompt
++    from netzoo_agent_core.contracts import WorkflowPlan
++    from netzoo_agent_core.graph import response
++    from netzoo_agent_core.reply_cards.builder import build_reply_card
++    from test_reply_cards import POLICY
++    import ast
++    import json
++
++    item = json.loads((LIVE / f"{tag}-decisions.json").read_text())[key]
++    traced = item["study_purpose"]
++    traced = purpose or (ast.literal_eval(traced) if isinstance(traced, str) else traced)
++    decision = TaskDecision.model_validate(item["decision"])
++    plan = WorkflowPlan(workflow="NO-TOOL", objective=item["prompt"][:200], decision=decision.model_dump(),
++                        status="respond_only")
++    state = {"decision": decision.model_dump(), "plan": plan.model_dump(), "tool_results": [], "evaluation": None,
++             "messages": [HumanMessage(content=item["prompt"])], "study_purpose": traced}
++    out = response.respond(SimpleNamespace(project_policy=POLICY), state)
++    result = {**state, "messages": [*state["messages"], out["messages"][-1]], "reply_kind": out["reply_kind"]}
++    card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
++    return out["messages"][-1].content, card
++
++
++def _without_one_result(monkeypatch):
++    from netzoo_agent_core.interpretation import study_purpose_notes
++    from workflow_registry import CLAIM_SUPPORT
++
++    monkeypatch.setattr(study_purpose_notes, "CLAIM_SUPPORT", {
++        key: cell for key, cell in CLAIM_SUPPORT.items()
++        if cell.level != "one_result" and key[0] not in {"run_dragon", "run_lioness_dragon"}})
++
++
++def test_when_no_listed_workflow_answers_the_condition_comes_first_and_the_card_adds_per_sample_planning():
++    # s9 S3-c: "Which patients show the biggest tumour-versus-normal shift ..." got PUMA as a fallback.
++    text, card = _recorded("s9", "cand-S3-c-1")
++    assert text.startswith('For your question ("Which patients show the biggest')
++    assert (f"- **PUMA** — gives one network from all the samples it is given. {POOLED} Per-sample workflow for "
++            "the same data: **LIONESS-PUMA**.") in text
++    assert "does not answer" not in text and "cannot show" not in text
++    assert "Fallback recommendation: **PUMA**" in text  # the decision and the rest of the reply are unchanged
++    planned = [step.action for step in card.next_steps if step.resolution == "plan_workflow"]
++    assert "run_lioness_puma" in planned
++    assert any(point.startswith("PUMA gives one result for all the samples: with one sample per individual that "
++                                "cannot show which individuals") for point in card.points)
++
++
++def test_the_card_never_drops_a_step_it_had(monkeypatch):
++    # s10 T2-3: three people sampled weekly for a year, DRAGON as a fallback -- DRAGON run per person
++    # answers there (Log 366), so it must stay plannable wherever the card offered it.
++    with_text, with_card = _recorded("s10", "cand-T2-3")
++    _without_one_result(monkeypatch)
++    _, without_card = _recorded("s10", "cand-T2-3")
++    before = [step.key for step in without_card.next_steps]
++    after = [step.key for step in with_card.next_steps]
++    assert after[:len(before)] == before
++    assert "plan-run_lioness_dragon" in after
++    assert "- **DRAGON** — gives one two-layer network from all the samples it is given." in with_text
++
++
++def test_a_tie_lists_the_workflows_that_answer_before_the_one_result_ones_and_names_them_in_its_lead():
++    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER.
++    text, card = _recorded("s7", "cand-T1-1")
++    block = text.split("For your question (", 1)[1]
++    assert block.index("- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample") < block.index(
++        "- **PANDA**, **PUMA**, **OTTER** — each gives one network from all the samples it is given.")
++    assert "Per-sample workflows for the same data: **LIONESS-PANDA**, **LIONESS-PUMA**." in block
++    assert ("These fit the result you described; **PANDA**, **PUMA** and **OTTER** give one result for all the "
++            "samples they are given. To choose, tell me: (1)") in text
++    assert "These all fit" not in text
++    # Others answer the question, so the card adds no planning step of its own.
++    assert not any(step.key == "plan-run_lioness_panda" for step in card.next_steps)
++
++
++def test_cobra_says_what_it_gives_but_stays_silent_where_no_cell_is_declared():
++    text, _ = _recorded("s9", "cand-S1-a-1")
++    assert "- **COBRA** — gives the co-expression associated with each covariate across all the samples" in text
++    assert "Per-sample workflows for the same data: **LIONESS-COEXPRESSION**, **BONOBO**." in text
++    # s9 S1-b asks whether the diet changes co-expression across the cohort (paired): COBRA has no
++    # declared cell for a paired group difference, and an undeclared cell says nothing (CC1).
++    text, _ = _recorded("s9", "cand-S1-b-1")
++    assert "all the samples it is given" not in text and "one result for all the samples" not in text
++
++
++def test_a_cohort_question_keeps_the_one_result_workflows_silent():
++    text, card = _recorded("s7", "cand-T1-1", purpose={
++        "source": "model", "design": "groups", "design_quote": "x",
++        "claims": [["group_difference", "we just want to see whose marrow networks stand out most."]]})
++    assert POOLED not in text and "one result for all the samples" not in text
++    assert not any("one result for all the samples" in point for point in card.points)
++
++
++def test_a_causal_claim_keeps_its_gap_lead_and_the_one_result_line_stays_in_the_paragraph():
++    # The reply layer takes the state's reading as given (verifying it is the call's job).
++    text, _ = _recorded("s7", "cand-T1-1", purpose={
++        "source": "model", "design": None, "design_quote": "",
++        "claims": [["causal", "Predicting progression or proving causality is off the table"],
++                   ["individual_change", "we just want to see whose marrow networks stand out most."]]})
++    assert text.startswith('About "Predicting progression or proving causality is off the table": None of the')
++    assert "but none can show that one thing causes another; to choose among them, tell me:" in text
++    assert "- **PANDA**, **PUMA**, **OTTER** — each gives one network" in text
++
++
++def test_an_aggregate_named_only_because_its_per_sample_version_produces_it_says_nothing():
++    # s10 T2-1: LIONESS-DRAGON matched; DRAGON appears only as "also produces the aggregate" (Log 366).
++    text, _ = _recorded("s10", "cand-T2-1")
++    assert "- **LIONESS-DRAGON** — Each sample gets its own two-layer network" in text
++    assert "- **DRAGON** —" not in text

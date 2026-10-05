@@ -1,4 +1,7 @@
 """Log 365 gates: "cannot" cells (one result for all the samples, asked about individuals).
+Log 368 (B'): the cells are "one_result" and the reply states a condition; the gates are P1 (a line only
+on individual questions), C2, C3 (added planning steps), K1 (the card keeps every step it had) and the
+line-level H2. The old C1 (the named workflow outside the acceptable set) is reported only.
 
 Usage (repository root):
   live round:  HELDOUT=heldout10/heldout.json python3 docs/research-log/purpose-contract-2026-10-04/analyze_cannot.py live <tag> <repeats>
@@ -28,10 +31,12 @@ from workflow_registry import ACTION_DEFINITIONS, CLAIM_SUPPORT  # noqa: E402
 
 # The cells Log 365 adds: every "cannot" cell, and the restored multi-omic cells.
 ADDED = {key for key, cell in CLAIM_SUPPORT.items()
-         if cell.level == "cannot" or key[0] in {"run_dragon", "run_lioness_dragon"}}
+         if cell.level == "one_result" or key[0] in {"run_dragon", "run_lioness_dragon"}}
 WITHOUT = {key: cell for key, cell in CLAIM_SUPPORT.items() if key not in ADDED}
-TIE_LEAD = re.compile(r"^(?:These all fit; to choose,|Both fit; to choose,|These fit the result you described, "
-                      r"but (?!none can ).*? cannot show .*?; to choose,) tell me:")
+TIE_LEAD = re.compile(r"^(?:These all fit; to choose,|Both fit; to choose,|These fit the result you described; "
+                      r".*? one result for all the samples (?:it is|they are) given\. To choose,) tell me:")
+POOLED_LINE = re.compile(r"all the samples it is given\. With one sample per individual \(per time point\), that says "
+                         r"nothing about a single individual")
 ADDED_LINE = re.compile(r'^(?:|For your question \(".*|- \*\*.*|Note: .*)$')
 
 
@@ -58,14 +63,36 @@ def lines_only_add(base, cand):
     return (not extra), (f"undeclared added line: {extra[0][:120]!r}" if extra else "")
 
 
+def _render(task, decision, traced):
+    """A.render's reply, and the card built from it as the CLI builds it."""
+    from langchain_core.messages import AIMessage, HumanMessage
+    from netzoo_agent_core.cli.follow_up import build_next_turn_prompt
+    from netzoo_agent_core.contracts import WorkflowPlan
+    from netzoo_agent_core.reply_cards.builder import build_reply_card
+
+    text, kind = A.render(task, decision, True, traced)
+    if text is None:
+        return None, kind, None
+    plan = WorkflowPlan(workflow="NO-TOOL", objective=task[:200], decision=decision.model_dump(), status="respond_only")
+    result = {"decision": decision.model_dump(), "plan": plan.model_dump(), "tool_results": [], "evaluation": None,
+              "messages": [HumanMessage(content=task), AIMessage(content=text)], "reply_kind": kind}
+    if traced is not None:
+        result["study_purpose"] = traced
+    try:
+        card = build_reply_card(result, build_next_turn_prompt(result), A.POLICY, task=task)
+    except Exception as error:  # production skips the card too (engine/machine.py::_reply_card)
+        card = type(error).__name__
+    return text, kind, card
+
+
 def render_pair(task, decision, traced):
-    with_c, kind = A.render(task, decision, True, traced)
+    with_c, kind, card_with = _render(task, decision, traced)
     study_purpose_notes.CLAIM_SUPPORT = WITHOUT
     try:
-        without_c, _ = A.render(task, decision, True, traced)
+        without_c, _, card_without = _render(task, decision, traced)
     finally:
         study_purpose_notes.CLAIM_SUPPORT = CLAIM_SUPPORT
-    return with_c, without_c, kind
+    return with_c, without_c, kind, card_with, card_without
 
 
 def purpose_of(traced):
@@ -76,12 +103,31 @@ def purpose_of(traced):
 def score(trials, out_name):
     """trials: dicts with key, item, decision, traced, reply (None for seen data), roles."""
     counts, c1_bad, c3_bad, c2_bad, h2_fail, lines, mentioned_bad = Counter(), [], [], [], [], [], []
+    p1_bad, k1_bad = [], []
     for trial in trials:
         item, decision, traced = trial["item"], trial["decision"], trial["traced"]
-        with_c, without_c, kind = render_pair(item["prompt"], decision, traced)
-        cannot = study_purpose_notes.cannot_cells(decision, purpose_of(traced))
-        shown = [action for action, _ in cannot] if re.search(r"\b(?:does|do) not answer this:", with_c or "") else []
+        with_c, without_c, kind, card_with, card_without = render_pair(item["prompt"], decision, traced)
+        cannot = study_purpose_notes.one_result_cells(decision, purpose_of(traced))
+        shown = [action for action, _ in cannot] if POOLED_LINE.search(with_c or "") else []
         acceptable = set(item["acceptable_candidates"])
+        if isinstance(card_with, str) or isinstance(card_without, str):
+            counts["card_errors"] += 1
+            card_with = card_without = None if isinstance(card_with, str) and isinstance(card_without, str) else card_with
+            if card_with is not None and isinstance(card_without, str) or isinstance(card_with, str):
+                k1_bad.append(f"{trial['key']}: the card fails on one side only ({card_with!r}, {card_without!r})")
+                card_with = card_without = None
+        # K1: the card keeps every step it had, in order; C3: what it adds is acceptable.
+        before = [step.key for step in (card_without.next_steps if card_without else [])]
+        after = [step.key for step in (card_with.next_steps if card_with else [])]
+        if [key for key in after if key in before] != before:
+            k1_bad.append(f"{trial['key']}: steps {before} -> {after}")
+        added = [step for step in (card_with.next_steps if card_with else [])
+                 if step.key not in before and step.resolution == "plan_workflow"]
+        if added:
+            counts["steered_trials"] += 1
+            outside = sorted(name(step.action) for step in added if name(step.action) not in acceptable)
+            if outside:
+                c3_bad.append(f"{trial['key']}: added {outside} not in {sorted(acceptable)}")
         counts["trials"] += 1
         if kind == "response_model":
             counts["response_model"] += 1
@@ -100,14 +146,13 @@ def score(trials, out_name):
         counts["noted_trials"] += 1
         flagged = {name(action) for action in shown}
         instead = {name(action) for _, cell in cannot for action in cell.instead}
-        # The card steers to the per-sample workflows only when no listed workflow answers.
-        steered = len(cannot) == len(study_purpose_notes.claim_cells(decision, purpose_of(traced)))
-        counts["steered_trials"] += steered
+        steered = bool(added)
+        if item["claim_kind"] != "individual_change":
+            p1_bad.append(f"{trial['key']} ({item['claim_kind']})")
         if flagged & acceptable:
-            c1_bad.append(f"{trial['key']}: flagged {sorted(flagged & acceptable)} is acceptable {sorted(acceptable)}")
-        if not instead <= acceptable:
-            (c3_bad if steered else mentioned_bad).append(
-                f"{trial['key']}: instead {sorted(instead - acceptable)} not in {sorted(acceptable)}")
+            c1_bad.append(f"{trial['key']}: named {sorted(flagged & acceptable)} is acceptable {sorted(acceptable)}")
+        if not instead <= acceptable and not steered:
+            mentioned_bad.append(f"{trial['key']}: instead {sorted(instead - acceptable)} not in {sorted(acceptable)}")
         if item.get("is_control") or item["claim_kind"] == "none":
             c2_bad.append(f"{trial['key']} ({item['claim_kind']})")
         lines.append(f"- {trial['key']}: [{item['comparison_design']}/{item['claim_kind']}] {kind} "
@@ -117,13 +162,14 @@ def score(trials, out_name):
     noted = counts["noted_trials"]
     summary = [
         f"trials {counts['trials']}, response_model {counts['response_model']}, noted {noted}, "
-        f"cannot cells not shown {counts['cells_not_shown']}",
-        f"C1 flagged workflow outside acceptable: {noted - len(c1_bad)}/{noted}; failures {c1_bad}",
-        f"C2 notes on controls / claim none (gate 0): {c2_bad}",
-        f"C3 per-sample next steps (no listed workflow answers) within acceptable: "
+        f"one-result cells not shown {counts['cells_not_shown']}, card errors on both sides {counts['card_errors']}",
+        f"P1 one-result lines on individual-change items: {noted - len(p1_bad)}/{noted}; failures {p1_bad}",
+        f"C2 lines on controls / claim none (gate 0): {c2_bad}",
+        f"C3 added per-sample planning steps within acceptable: "
         f"{counts['steered_trials'] - len(c3_bad)}/{counts['steered_trials']}; failures {c3_bad}",
-        f"report: per-sample workflows named beside others that answer, outside acceptable: "
-        f"{len(mentioned_bad)}/{noted - counts['steered_trials']} {mentioned_bad}",
+        f"K1 cards that dropped or reordered a step (gate 0): {k1_bad}",
+        f"report (old C1): named workflow outside acceptable {noted - len(c1_bad)}/{noted}; acceptable {c1_bad}",
+        f"report: per-sample workflows named beside others that answer, outside acceptable: {mentioned_bad}",
         f"H2 lines_only_add: ok {counts['h2_ok']} (changed {counts['h2_changed']}); failures {h2_fail}",
     ]
     (HERE / "live" / out_name).write_text("\n".join(summary + [""] + lines) + "\n", encoding="utf-8")
@@ -170,19 +216,19 @@ def selftest():
     """Log 364's lesson: check the measuring function on the declared output shapes before freezing."""
     base = ("Several fit:\n\nFor your question (\"q\"):\n- **A** — gives it.\nNote: n.\n\n"
             "These all fit; to choose, tell me: (1) x?\n\nNo files were inspected.")
-    line = "- **B** — does not answer this: it gives one network from all the samples, so ..."
+    line = "- **B** — gives one network from all the samples it is given. With one sample per individual ..."
     cases = {
-        "a cannot line inside the paragraph": (base.replace("gives it.\n", f"gives it.\n{line}\n"), True),
+        "a one-result line inside the paragraph": (base.replace("gives it.\n", f"gives it.\n{line}\n"), True),
         "a new paragraph first": (f"For your question (\"q\"):\n{line}\n\n{base}", True),
         "the declared tie lead": (base.replace("These all fit; to choose,",
-                                               "These fit the result you described, but **B** cannot show which "
-                                               "individuals change or stand out; to choose,"), True),
+                                               "These fit the result you described; **B** gives one result for all "
+                                               "the samples it is given. To choose,"), True),
         "unchanged": (base, True),
         "a changed word": (base.replace("gives it.", "gives that."), False),
         "a removed line": (base.replace("Note: n.\n", ""), False),
         "reordered lines": (base.replace("- **A** — gives it.\nNote: n.", "Note: n.\n- **A** — gives it."), False),
         "an undeclared added line": (base.replace("Several fit:", "Several fit:\nStart with **A**."), False),
-        "the gap lead is not the cannot lead": (base.replace("These all fit; to choose,",
+        "the gap lead is not the one-result lead": (base.replace("These all fit; to choose,",
                                                              "These fit the result you described, but none can "
                                                              "show that one thing causes another; to choose,"), False),
     }
