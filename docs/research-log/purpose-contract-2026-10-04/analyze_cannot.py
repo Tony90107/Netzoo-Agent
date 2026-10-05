@@ -132,7 +132,8 @@ def score(trials, out_name):
 
 def seen():
     trials = []
-    for tag, heldout in (("s7", "heldout7"), ("s8", "heldout8"), ("s9", "heldout9")):
+    # Log 367: s10 too (seen in Log 366); its traces predate the many-samples field.
+    for tag, heldout in (("s7", "heldout7"), ("s8", "heldout8"), ("s9", "heldout9"), ("s10", "heldout10")):
         items = {item["id"]: item for item in json.loads((HERE / heldout / "heldout.json").read_text())["items"]}
         for key, value in json.loads((HERE / "live" / f"{tag}-decisions.json").read_text()).items():
             if not key.startswith("cand-"):
