@@ -18991,3 +18991,80 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 **若要重來（尚未宣告，等使用者決定）：**
 - 把 prior 的讀取放到一個獨立的小呼叫，研究目的的 prompt 完全不動。這樣設計與結論的讀取不會受影響，W 判定也不再需要。
 - 代價是每個請求多一次呼叫（新的呼叫角色，H3 要另外宣告）。
+
+## Log 376｜事前宣告：prior 由獨立的小呼叫讀取，研究目的的 prompt 不動，以第十八組保留集評估
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 看過 Log 375 的離線結果後選 (1)：把 prior 的讀取改成獨立的小呼叫，研究目的的 prompt 完全不動。
+- 先 push（`e027b66..2120f96`，已完成）。
+- 保留集由我先審，沒有擋路的問題就直接宣告並執行（同 Log 368、370、372、375）。
+- 使用者說明主目錄的其他改動是 Codex 在修 semantic router 與 evidence outcome，照建議繼續。
+本條目寫於實作 commit 與任何第十八組保留集上的呼叫或 session 之前。
+- 基準為 HEAD `2c3cc07`：線上＝b‴ 加 `one_result` 格子（`e60c513`）。
+- 凍結的改動是 `w_frozen.patch`（sha256 `3a70f1253007`），12 個檔案，都不在 Codex 正在修改的檔案之中。
+- 開發、測試與 live 都在乾淨的 worktree（`.worktrees/netzoo-purpose-cand`）進行；主目錄 Codex 的檔案完全不動。
+
+**內容（`FREEZE18.md`）：**
+- Log 372 的平手回覆與資料問題。
+- prior 改由獨立的小呼叫讀取：
+  - 契約 `DataFactsProposal`（`priors`、`priors_span`），prompt 是 `DATA_FACTS_SYSTEM`。
+  - 只在路由之後、平手、單一解讀、已驗證的研究目的有問題且沒有因果／預測主張時才呼叫，角色 `data_facts`。
+  - 只驗證出處：引文在請求中即可。
+  - 呼叫沒設定、被預算擋下或失敗時，不讀；平手回覆退回 Log 372 的字詞清單。
+- 平手回覆以使用者的原話顯示這個前提（同 A′）；所有候選都需要使用者說沒有的 prior 時，直接說明。
+- `STUDY_PURPOSE_SYSTEM` 與其 schema 和線上逐字相同（sha256 `e2af95adf863`、`83461bb34d77`）。
+
+**預期修改的既有測試：**
+- 同 Log 372。
+- 新增 `tests/test_data_facts.py` 8 個測試。
+
+**已看過的資料（只用於設計）：**
+- 新呼叫在第十六、十七組上，誤讀成「有」都是 0；「有」的召回 36/36、33/33；「明說沒有」15/27、18/27。
+- 全套件（乾淨 worktree）：3291 passed（基準 3275，新增 16 個），指紋不變。
+
+**第十八組保留集**（`heldout18/heldout.json`，`fff915a09ebd`）：
+- 隔離 subagent 在凍結後撰寫，32 句。
+- prior 的寫法：
+  - stated：
+    - A「promoter scans of transcription factor binding sites and a map of factor-factor protein contacts」。
+    - B「JASPAR-derived regulator-to-target pairings and a STRING list of interacting protein partners」，沒有 motif、prior、PPI 這些字。
+    - T4 的 JASPAR、STRING，旁邊有「we did not profile microRNAs」。
+    - T6。
+  - ruled_out：
+    - C「we hold nothing on transcription factor binding or protein contacts」。
+    - D「these expression counts are everything we have」。
+    - T3「expression counts are the full extent of our data」。
+    - D、T3 都沒有否定詞或「only」。
+  - unstated：E「poly(A)-selected Illumina libraries」、F「full-length cDNA … nanopore flow cell」、T1、T2 等。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- 驗證只檢查出處，沒有事先就注定失敗的情形。
+- D 與 T3 的寫法與第十六組 F4、第十七組 D 相似，可能讀成 unstated：
+  - 離線只影響只報告的 P2。
+  - live 中若觸發平手回覆，會多問一次。D 有 4 句 × 3 次，是 Q1 的主要風險。
+- B 的「有」完全沒有 prior 的常用字，考驗模型的讀取（P3）。
+
+**判定（任一不成立就撤回）：**
+- 第一步，離線（先做；不成立就不跑 live）：第十八組 32 × 3 次，新呼叫（`d_eval.py`），gpt-4o-mini。
+  - **P1 誤讀成「有」**：標註為 ruled_out 或 unstated 的呼叫中，讀成 stated 的次數 ≤ 2。
+  - **P3「有」的召回**：標註為 stated 的呼叫中，讀成 stated 的比例 ≥ 80%。
+  - **O2**：`STUDY_PURPOSE_SYSTEM` 與其 schema 的 hash 和線上相同。
+- 第二步，live：gpt-4o-mini，預先授權，只跑候選臂，在乾淨 worktree 的實作 commit 上執行，32 × 3 = 96 個 session。比較對象是同一批 session 離線時不含平手改動的回覆與卡片；離線渲染使用該 session trace 中記錄的 prior 讀取。
+  - **S1**：觸發的 trial 中，用使用者提到的資料所做的推薦全部在 `acceptable_candidates` 內的比例 ≥ 90%。
+  - **S2**：觸發且標註 `recommended_subset` 非空的 trial 中，推薦與標註有交集的比例 ≥ 80%。
+  - **Q1**：卡片問了資料的 trial 中，標註 `data_question` 為 "priors" 的比例 ≥ 80%；少於 3 次只報告。
+  - **S3**：對照、因果、預測句觸發 ＝ 0。
+  - **S4**：觸發的回覆中，每個候選都被提到。
+  - **U1**：沒觸發的回覆與不含平手改動時逐字相同。
+  - **K1**：卡片的選項集合不變，改問資料時除外。
+  - **H2**：live 回覆等於離線渲染。
+  - **H3**：新的呼叫角色只有 `data_facts`，且只出現在符合觸發條件的 trial。
+  - **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 離線：「明說沒有」的召回。
+  - live 中 prior 讀取與標註的一致。
+  - `data_facts` 呼叫的次數、延遲與花費。
+  - 觸發率、回覆長度、`size_preferred`。
+
+成本估計：離線不到 US$0.01；live 約 US$0.2。
