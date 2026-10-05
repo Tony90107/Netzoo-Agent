@@ -286,7 +286,10 @@ def _recorded(tag, key, purpose=None):
              "messages": [HumanMessage(content=item["prompt"])], "study_purpose": traced}
     out = response.respond(SimpleNamespace(project_policy=POLICY), state)
     result = {**state, "messages": [*state["messages"], out["messages"][-1]], "reply_kind": out["reply_kind"]}
-    card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
+    try:
+        card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
+    except ValueError:  # a tie of 9+ workflows exceeds the method card; production skips the card too
+        card = None
     return out["messages"][-1].content, card
 
 
@@ -326,24 +329,24 @@ def test_the_card_never_drops_a_step_it_had(monkeypatch):
     assert "- **DRAGON** — gives one two-layer network from all the samples it is given." in with_text
 
 
-def test_a_tie_lists_the_workflows_that_answer_before_the_one_result_ones_and_names_them_in_its_lead():
-    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER.
+def test_a_tie_puts_the_one_result_workflows_after_the_ones_that_answer_and_says_why():
+    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER (Log 370).
     text, card = _recorded("s7", "cand-T1-1")
-    block = text.split("For your question (", 1)[1]
-    assert block.index("- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample") < block.index(
-        "- **PANDA**, **PUMA**, **OTTER** — each gives one network from all the samples it is given.")
-    assert "Per-sample workflows for the same data: **LIONESS-PANDA**, **LIONESS-PUMA**." in block
-    assert ("These fit the result you described; **PANDA**, **PUMA** and **OTTER** give one result for all the "
-            "samples they are given. To choose, tell me: (1)") in text
+    assert text.startswith('For your question ("we just want to see whose marrow networks stand out most."), these '
+                           "fit best, and here is why:\n- **LIONESS-PANDA** — Each sample gets its own network")
+    assert ("- **PANDA** — gives one network from all the samples; with one sample per individual that says nothing "
+            "about a single individual.") in text
     assert "These all fit" not in text
+    assert [option.label for option in card.choices.options][0] == "LIONESS-PANDA"
     # Others answer the question, so the card adds no planning step of its own.
     assert not any(step.key == "plan-run_lioness_panda" for step in card.next_steps)
 
 
 def test_cobra_says_what_it_gives_but_stays_silent_where_no_cell_is_declared():
     text, _ = _recorded("s9", "cand-S1-a-1")
-    assert "- **COBRA** — gives the co-expression associated with each covariate across all the samples" in text
-    assert "Per-sample workflows for the same data: **LIONESS-COEXPRESSION**, **BONOBO**." in text
+    assert ("- **COBRA** — gives the co-expression associated with each covariate across all the samples; with one "
+            "sample per individual that says nothing about a single individual.") in text
+    assert "Should I plan **LIONESS-COEXPRESSION** or **BONOBO**, or do you need one of the others?" in text
     # s9 S1-b asks whether the diet changes co-expression across the cohort (paired): COBRA has no
     # declared cell for a paired group difference, and an undeclared cell says nothing (CC1).
     text, _ = _recorded("s9", "cand-S1-b-1")
@@ -374,3 +377,132 @@ def test_an_aggregate_named_only_because_its_per_sample_version_produces_it_says
     text, _ = _recorded("s10", "cand-T2-1")
     assert "- **LIONESS-DRAGON** — Each sample gets its own two-layer network" in text
     assert "- **DRAGON** —" not in text
+
+
+# -- Log 370: a tie led by what fits the stated question ----------------------------------
+
+def _without_intent(monkeypatch):
+    from netzoo_agent_core.interpretation import intent_shortlist
+
+    monkeypatch.setattr(intent_shortlist, "intent_reply", lambda *args, **kwargs: None)
+
+
+def test_a_tie_leads_with_what_fits_the_question_says_why_and_keeps_every_candidate(monkeypatch):
+    # s7 Q1-a: paired before/after, "does the network shift, on average", motif and PPI, no miRNA.
+    text, card = _recorded("s7", "cand-Q1-a-1")
+    head, later = text.split("The other registered options, and why they come later:")
+    assert head.startswith('For your question ("Does the macrophage regulatory network shift, on average, after the '
+                           'challenge?"), these fit best, and here is why:')
+    assert "- **LIONESS-PANDA** — Each sample gets its own network, so each individual's networks" in head
+    assert "a paired test or a linear model with an individual term" in head
+    assert "- **PANDA** — Build one network for each time point" in head and "does not use the pairing" in head
+    assert "Method:" not in text  # the user asked for why, not how the algorithms work
+    assert "- **PUMA** and **LIONESS-PUMA** — model miRNA regulators, which your request does not mention." in later
+    assert "- **OTTER** — compares the time points without using the pairing." in later
+    assert "- **GIRAFFE** — compares TF activity, not network wiring." in later
+    assert "Should I plan **LIONESS-PANDA** or **PANDA**, or do you need one of the others?" in text
+    assert text.endswith("No files were inspected and no analysis ran.")
+    # The card lists the same options, the recommended first; none is added or removed.
+    options = [option.label for option in card.choices.options]
+    assert options[:2] == ["LIONESS-PANDA", "PANDA"]
+    assert [o.badge for o in card.choices.options][:3] == ["Recommended", "Recommended", ""]
+    assert card.points[0].startswith("Recommended for your question: LIONESS-PANDA and PANDA;")
+    assert not any(point.startswith("Nothing you said favours one method yet") for point in card.points)
+    _without_intent(monkeypatch)
+    before, before_card = _recorded("s7", "cand-Q1-a-1")
+    assert sorted(options) == sorted(option.label for option in before_card.choices.options)
+    assert "these fit best" not in before
+
+
+def test_two_named_omics_layers_recommend_only_the_workflow_that_uses_both():
+    # s10 F6c: tumour vs normal kidney, RNA-seq and methylation, "how methylation and expression are linked".
+    # Its live reply was research_choices, which this change leaves alone; the ranking itself is checked.
+    import json
+
+    from netzoo_agent_core.interpretation.intent_shortlist import intent_reply, intent_shortlist
+    from netzoo_agent_core.interpretation.study_purpose_notes import purpose_from_state
+
+    item = json.loads((LIVE / "s10-decisions.json").read_text())["cand-F6c-1"]
+    decision = TaskDecision.model_validate(item["decision"])
+    purpose = purpose_from_state({"study_purpose": item["study_purpose"]}, item["prompt"])
+    shortlist = intent_shortlist(decision, purpose, item["prompt"])
+    assert [entry.action for entry in shortlist.recommended] == ["run_lioness_dragon"] and shortlist.without is None
+    text = intent_reply(item["reply"], decision, purpose, item["prompt"])
+    later = text.split("The other registered options, and why they come later:")[1]
+    assert ("**LIONESS-COEXPRESSION**, **COBRA**, **OTTER**, **GIRAFFE** and **BONOBO** — use one of the two data "
+            "types you named, not both.") in later
+
+
+def test_mirna_workflows_are_recommended_only_when_the_request_mentions_mirnas():
+    # s8 R1-a: no input named at all; the miRNA workflows come later whatever the priors.
+    text, _ = _recorded("s8", "cand-R1-a-3")
+    head, later = text.split("The other registered options, and why they come later:")
+    assert "**LIONESS-PUMA**" not in head
+    assert "**PUMA** and **LIONESS-PUMA** — model miRNA regulators, which your request does not mention." in later
+
+
+def test_tf_activity_answers_only_a_question_that_names_activity():
+    # s12 T3: "which TF-to-gene edges differ" -- GIRAFFE's TF activity comes later.
+    text, _ = _recorded("s12", "cand-T3-1")
+    head, later = text.split("The other registered options, and why they come later:")
+    assert "**GIRAFFE**" not in head and "- **GIRAFFE** — gives TF activity, not network wiring." in later
+    # The same decision asked about activity puts GIRAFFE among the recommended.
+    text, _ = _recorded("s12", "cand-T3-1", purpose={
+        "source": "model", "design": "groups", "design_quote": "50 mice that developed aneurysms ... and 30 saline",
+        "claims": [["regulator_change", "which transcription factors change their activity most"]]})
+    head, _ = text.split("The other registered options, and why they come later:")
+    assert "- **GIRAFFE** — GIRAFFE's TF-by-sample activity matrix" in head
+
+
+def test_a_tie_without_a_verified_question_keeps_its_reply(monkeypatch):
+    empty = {"source": "model", "design": None, "design_quote": "", "claims": []}
+    text, card = _recorded("s7", "cand-Q1-a-1", purpose=empty)
+    _without_intent(monkeypatch)
+    before, before_card = _recorded("s7", "cand-Q1-a-1", purpose=empty)
+    assert text == before and "these fit best" not in text
+    assert [o.label for o in card.choices.options] == [o.label for o in before_card.choices.options]
+
+
+# -- Log 372: data the answer depends on is asked about, never guessed ------------------------
+
+def test_unmentioned_priors_that_decide_the_answer_give_both_answers_and_the_card_asks(monkeypatch):
+    # s13 B4: 104 sticklebacks, no prior named, "which transcription factors differ most between the lakes".
+    text, card = _recorded("s13", "cand-B4-1")
+    assert ("which workflow fits depends on whether you have a TF motif prior and a PPI network; your request does "
+            "not mention them.") in text
+    head = text.split("With only the data you named:")[0]
+    assert "If you have a TF motif prior and a PPI network:\n- **LIONESS-PANDA** — Per-sample targeting scores" in head
+    assert ("With only the data you named:\n- None of the workflows suggested for this result answers it without a "
+            "TF motif prior and a PPI network.") in text
+    assert "Do you have a TF motif prior and a PPI network? Tell me, and I will narrow this down." in text
+    assert card.choices.header == "Your data"
+    assert [option.answer for option in card.choices.options] == [
+        "I have a TF motif prior and a PPI network.",
+        "I only have the expression data, without a TF motif prior and a PPI network."]
+    assert card.choices.allow_other
+    # Every candidate is still in the reply.
+    for name in ("LIONESS-PANDA", "PANDA", "OTTER", "GIRAFFE"):
+        assert f"**{name}**" in text
+
+
+def test_named_or_ruled_out_priors_are_never_asked_about():
+    from netzoo_agent_core.interpretation.intent_shortlist import priors_status
+
+    assert priors_status("RNA-seq plus a human motif prior and PPI network.") == "named"
+    assert priors_status("We only have the expression data.") == "ruled_out"
+    # A mention inside the words that rule them out is no mention.
+    assert priors_status("I have RNA-seq of 12 volunteers; expression only, no priors.") == "ruled_out"
+    assert priors_status("We have RNA-seq and a motif prior, but no protein interaction data.") == "named"
+    assert priors_status("We sequenced head-kidney transcriptomes from 104 sticklebacks.") == "unknown"
+    # s7 Q1-a names its priors: no data question, the method card as before.
+    text, card = _recorded("s7", "cand-Q1-a-1")
+    assert "depends on whether you have" not in text and card.choices.header == "Method"
+
+
+def test_tied_recommendations_say_when_to_pick_each_first_from_their_registered_conditions():
+    # s13 T5: nine children, edge confidence -- the agent never infers "few" from a number (Log 315),
+    # so both are recommended and each says when to pick it first.
+    text, _ = _recorded("s13", "cand-T5-1")
+    assert "- **BONOBO** — " in text and "Pick it first if you have only a handful of samples or you need a p-value " \
+        "for each edge." in text
+    assert "Pick it first if you have dozens of samples or more" in text
