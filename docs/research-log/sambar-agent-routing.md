@@ -18960,3 +18960,34 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - `size_preferred`、觸發率、回覆長度。
 
 成本估計：離線約 US$0.04；live 約 US$0.2。
+
+## Log 375（結果）｜離線判定 W2、W4 不成立，未跑 live，撤回 (A′)
+
+日期／時區：2026-10-05，Asia/Taipei。依上方 Log 375 的宣告執行第一步。
+- 證據：`p17-base-calls.json`（線上 prompt，基準 worktree）、`p17-cand-calls.json`（新 prompt，乾淨 worktree）、`live/p17-base.txt`、`live/p17-cand.txt`。
+
+**離線（第十七組 32 × 3 次，每臂 96 次呼叫，0 失敗）：**
+
+| 判定 | 線上 prompt | 新 prompt | 判準 | 成立 |
+|---|---|---|---|---|
+| P1 誤讀成「有」 | — | 0 | ≤ 2 | 是 |
+| P3「有」的召回 | — | 33/33 | ≥ 80% | 是 |
+| W1 設計召回 | 78/84 | 78/84 | 不低於 5 個百分點以上 | 是 |
+| W2 結論召回 | 74/78（94.9%） | 70/78（89.7%） | 不低於 5 個百分點以上 | **否**（低 5.13） |
+| W3 假缺口 | 0 | 0 | 不高於 | 是 |
+| W4 設計＋結論誤判 | 3＋1＝4 | 3＋5＝8 | ≤ 4＋2 | **否** |
+
+- 只報告：「明說沒有」的召回 15/27。D 家族「the resulting RNA-seq count matrix is our entire dataset」12/12 讀成 unstated，同第十六組的 F4。
+- 多出的結論誤判集中在兩句：
+  - T5「which children's networks depart most from the healthy ones」：讀成 group_difference，新版 3/3、線上 1/3。
+  - E4「which transcription factors vary most in activity from one mother to another」：讀成 individual_change，新版 2/3、線上 0/3。標註者自己也把它列為不確定。
+- 設計的 3 次誤判（F1 讀成 paired）兩臂相同。
+- 第十五組上量到同一程式重跑的結論差距是 2–3 次，這次差 4 次，W2 只超出 0.13 個百分點。但依協定不事後放寬。
+
+**決定：** 撤回，不跑 live。凍結的改動不 commit，第十七組已看過。
+- prior 的讀取本身表現很好：兩組新保留集上，誤讀成「有」都是 0，「有」的召回 100%。
+- 失敗在於：把 prior 的說明加進同一個研究目的 prompt 後，結論的讀取變差了一點。
+
+**若要重來（尚未宣告，等使用者決定）：**
+- 把 prior 的讀取放到一個獨立的小呼叫，研究目的的 prompt 完全不動。這樣設計與結論的讀取不會受影響，W 判定也不再需要。
+- 代價是每個請求多一次呼叫（新的呼叫角色，H3 要另外宣告）。
