@@ -19150,3 +19150,29 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 與 Log 341 同一句的差異。
 
 同碼重跑波動是 3–4（Log 98）。每句只有 3 次，因此不對 ≤ 1 次的差異下結論。
+
+## Log 378（結果）｜研究目的讀得到、決策用不到：27 次讀取全部一致，進入工具選擇 0 次
+
+依 Log 378 執行（`9f95e14`，乾淨 worktree）。27 個 session 全部完成（exit 0），花費 US$0.053。
+輸出在 `minimal-pairs-2026-10-04/out/b0-*`（`b0-summary.md`、`b0-report.md`、`b0-decisions.json`）。
+
+| id | 研究目的讀取（3/3 一致） | 決策（眾數） | 推薦 |
+|---|---|---|---|
+| A0 對照 | paired，無結論 | 平手 PANDA／OTTER／GIRAFFE／PUMA ×3 | 無 |
+| A1 cohort 是否改變 | paired，group_difference | 與 A0 **相同** ×3 | 無 |
+| A2 哪些病人改變最多 | paired，individual_change | 平手 LIONESS-PANDA／LIONESS-PUMA ×2（卡片問 TF 或 miRNA；使用者沒有 miRNA），exact 型態 ×1 | 無 |
+| A3 哪些 TF 改變最多 | paired，regulator_change | exact GIRAFFE ×3 | — |
+| A4 證明因果 | paired，causal | 平手 GIRAFFE／LIONESS-PANDA／OTTER／PANDA ×3；回覆有因果缺口 | 無 |
+| A5 原例（含糊） | paired，無結論 | 與 A4 相同 ×3 | 無 |
+| B1 兩組共表現 | groups，group_difference | 平手 COBRA／LIONESS-COEXPRESSION ×3 | 無 |
+| B2 是否分次群 | groups，無結論 | 讀法選擇（`GUIDANCE_COMPOSITIONS`）×3 | — |
+| B3 預測 | groups，prediction | 2/3 沒有候選、回覆說明缺口；1/3 六方法平手，並問「Do you also have a motif prior and a PPI network?」（使用者已說 no other data） | 無 |
+
+**判讀：**
+- b″ 的研究目的讀取在這 9 句上 27/27 正確且一致。
+- 但研究目的只進到回覆文字（階段 1 的比較步驟與缺口），沒有任何階段用它來選工具：
+  - 27 次推薦數為 0。
+  - A0 與 A1 的決策完全相同。
+  - A2 的平手問的是與目的無關的軸，而且那一軸需要使用者沒有的資料（miRNA）。
+- Log 341 的「沒有型別欄位能承接研究目的」已解決一半：型別有了，**決策順序仍是先選工具、後讀目的**。這就是 Codex 計畫第 3 項要處理的缺口。
+- 另見 B3-1：明說沒有其他資料，仍問 motif／PPI。屬於輸入可用性（第 4 項），本輪只記錄。
