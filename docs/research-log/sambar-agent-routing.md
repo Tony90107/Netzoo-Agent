@@ -19068,3 +19068,55 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - 觸發率、回覆長度、`size_preferred`。
 
 成本估計：離線不到 US$0.01；live 約 US$0.2。
+
+## Log 377｜結果：prior 的獨立呼叫——離線通過；live 的 U1 不成立（分析漏認一種回覆），並發現「沒提」永遠不問的 bug；撤回待協調
+
+日期／時區：2026-10-05，Asia/Taipei。依 Log 376 執行。
+- 候選：`06d5b48`（實作，差異 sha256 `3a70f1253007`，與凍結版相同）。live 在乾淨 worktree 的同一 commit 上執行。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `d18-calls.json`、`live/d18.txt`（離線）
+  - `live/s18-intent-analysis.txt`、`live/s18-decisions.json`、`live/s18-run.log`、`live/s18-cand-*`（96 個 session）
+
+**離線（第十八組 32 × 3 次，新呼叫）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| P1 誤讀成「有」 | 0 | 是 |
+| P3「有」的召回 | 33/33 | 是 |
+| O2 研究目的的 prompt 與 schema | hash 與線上相同（`e2af95adf863`、`83461bb34d77`） | 是 |
+
+- 只報告：「明說沒有」27/27，包括 D 的「these expression counts are everything we have」與 T3 的「the full extent of our data」。
+- 唯一的誤讀：E3「We only want a map of which genes rise and fall together」讀成 ruled_out（對照句，不觸發平手回覆）。
+
+**live（第十八組 96 個 session，gpt-4o-mini，花費 US$0.185；`data_facts` 呼叫 37 次，中位 0.9 秒，共 US$0.002）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| S1 推薦精確度 | 16/17（94%） | 是 |
+| S2 推薦命中 | 17/17 有交集（完全相同 12） | 是 |
+| Q1 資料問題 | 問了 0 次（少於 3 次，只報告） | 只報告 |
+| S3、S4、K1、H2 | 全部 0 次問題 | 是 |
+| U1 沒觸發的回覆不變 | 分析程式記為 17 次改變 | **否（依程式）** |
+| H3 | 新角色只有 `data_facts` | 是 |
+| O1 | 全套件 3291 passed；指紋、hash 不變 | 是 |
+
+**U1 的 17 次與一個 bug：**
+1. **U1 的 17 次**全是 FREEZE18 宣告過的第三種回覆：所有候選都需要使用者說沒有的 prior，回覆直接說明（C2、C4、D1、D2、D4、T3 等）。
+   - 這些題目的 prior 讀取全部正確，例如 D1 引用「these expression counts are everything we have」。
+   - 分析程式判斷「觸發」時只認得前兩種開頭，所以把它們算成「沒觸發卻被改動」。
+   - 這和 Log 364 一樣是量測程式沒對上宣告的輸出形式；凍結前做過的自我測試沒有包含這一種。
+2. **bug：新呼叫回傳的「沒提」是 `unstated`，但平手回覆只把 `unknown` 當成「沒提、要問」。**
+   - 結果是：呼叫讀到「沒提」時永遠不問，直接把需要 prior 的工具當成可推薦（F1-3、F4、T2 共 7 次本該問）。
+   - 這正是 Log 371 B4 的失敗模式。單元測試涵蓋了「有」「明說沒有」「沒讀到」，漏了「沒提」。
+3. S1 唯一的錯誤（T4-1）：「we did not profile microRNAs」中的 microRNAs 被 miRNA 規則當成提到 miRNA，推薦了 LIONESS-PUMA。miRNA 仍是字詞判斷。
+
+**決定：** 撤回。
+- 依程式 U1 不成立；即使修正分類，也已知有上述 bug，不能保留。
+- 但 Codex 在 20:39 已在 `06d5b48` 的 `router_invocation.py` 之上加入操作授權的改動（尚未 commit），撤回會動到 Codex 正在編輯的檔案。
+- 因此 revert 暫緩，等使用者決定協調方式。`06d5b48` 尚未 push。
+
+**若要重來（尚未宣告）：**
+- 修正「`unstated` 視為沒提」並補測試。
+- 分析程式納入第三種回覆，並在凍結前用所有宣告的回覆形式自我測試。
+- 考慮讓新呼叫一併讀 miRNA 的有無，取代 miRNA 的字詞規則。
+- 用新的第十九組保留集評估。

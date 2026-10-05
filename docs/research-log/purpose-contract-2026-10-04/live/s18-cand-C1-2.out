@@ -1,0 +1,29 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.49s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, OTTER
+✓ Guidance prepared
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “infection reorganise the gene network”:
+
+**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.
+
+For “infection reorganise the gene network”:
+
+**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+You would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.
+
+For “across the whole group of plants”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method.
+
+For your question ("Does infection reorganise the gene network across the whole group of plants?"):
+- **PANDA** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use the per-sample (LIONESS) version and test between the groups.
+- **OTTER** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use a per-sample method such as LIONESS-PANDA and test between the groups.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.
