@@ -1,5 +1,12 @@
 # Log 370 freeze: a tie led by what fits the stated question, every candidate kept
 
+**Superseded before the held-out set was read (2026-10-05):** the user asked that the lines not explain the
+algorithms, only why each workflow is recommended for the question. The live freeze is now `q_frozen.patch`,
+sha256 `d1e48608078c`: the "Method: ..." part of each line is removed (the unused `how_it_works` with it); a
+recommended line is "- **X** — <its cell>" and a later one "- **X** — <reason>.". Nothing else changed.
+Seen data unchanged except length: 107,485 vs 232,046 characters on the 98 fired trials. The earlier
+`p_frozen.patch` is kept for the record.
+
 Frozen before anyone on the implementing side read the thirteenth held-out set (`heldout13/`),
 which an isolated subagent writes after this freeze.
 
