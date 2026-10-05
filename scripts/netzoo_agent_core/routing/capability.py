@@ -16,6 +16,7 @@ from workflow_registry import (
 )
 
 from ..contracts import TaskDecision
+from .request_scope import admissible_request_text, operation_scope
 
 __all__ = [
     "MIN_TOOL_CONFIDENCE",
@@ -33,6 +34,7 @@ __all__ = [
     "is_input_preflight_request",
     "apply_input_preflight_intent",
     "reconcile_request_mode",
+    "requested_operation_kinds",
     "validate_task_text",
     "normalize_context7_library",
     "enforce_capability_gate",
@@ -126,9 +128,9 @@ _EXPLICIT_ADVICE_INTENT = re.compile(
 # so phrases such as "how do I run" remain advisory.
 EXPLICIT_EXECUTION_PATTERNS = (
     r"(?:^|[，,。！？!?;；\n])\s*(?:請|幫我|替我|我要|我想(?:要)?|please\s+)?"
-    r"(?:直接\s*)?(?:執行|跑|試跑|測試|檢查|驗證|分析)\b",
+    r"(?:直接\s*)?(?:執行|跑|試跑|測試|檢查|驗證|分析)(?:\b|(?=[A-Za-z0-9]))",
     r"(?:^|[，,。！？!?;；\n])\s*(?:請|幫我|替我|我要|我想(?:要)?)?"
-    r"(?:用|使用)[^，,。！？!?;；\n]{1,400}?(?:執行|跑|試跑|測試|檢查|驗證|分析)\b",
+    r"(?:用|使用)[^，,。！？!?;；\n]{1,400}?(?:執行|跑|試跑|測試|檢查|驗證|分析)(?:\b|(?=[A-Za-z0-9]))",
     r"(?:^|[,.!?;\n])\s*(?:(?:please|can you|could you)\s+|"
     r"i\s+(?:want|need)\s+to\s+)?(?:directly\s+)?"
     r"(?:run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b",
@@ -139,14 +141,17 @@ EXPLICIT_EXECUTION_PATTERNS = (
 # an authorization to run an analysis.  Keep this deliberately narrow: a
 # concrete input binding plus an explicit validation/preflight marker is
 # required, so ordinary questions such as ``PANDA 需要哪些輸入？`` remain
-# informational.
+# informational.  Markers are read in the authority-bearing text only, and
+# declining an analysis ("不要執行分析") is not a marker: refusing one operation
+# never asks for another (diagnostics F2).
 _INPUT_PREFLIGHT_MARKER_PATTERNS = (
     r"\binput\s+preflight\b",
     r"\bpreflight\b",
+    # The English counterpart of 檢查輸入/驗證檔案 below.
+    r"\b(?:check|validate|verify|inspect)\b.{0,24}\b(?:inputs?|files?)\b",
     r"(?:輸入|檔案|資料).{0,12}(?:預檢|檢查|驗證)",
     r"(?:預檢|檢查|驗證).{0,12}(?:輸入|檔案|資料)",
     r"(?:只|僅)\s*(?:回報|返回|報告).{0,16}(?:輸入|檔案|基因|gene).{0,16}(?:結果|驗證|檢查|authority)",
-    r"(?:不要|勿|不直接)\s*(?:執行|跑).{0,20}(?:分析|workflow|panda|puma)",
     r"\b(?:gene\s+authority|authority\s+lookup)\b",
 )
 _INPUT_PREFLIGHT_BINDING_PATTERN = re.compile(
@@ -174,8 +179,9 @@ def is_input_preflight_request(task: str) -> bool:
     """
     if not _INPUT_PREFLIGHT_BINDING_PATTERN.search(task):
         return False
+    admissible = admissible_request_text(task)
     return any(
-        re.search(pattern, task, flags=re.IGNORECASE | re.DOTALL)
+        re.search(pattern, admissible, flags=re.IGNORECASE | re.DOTALL)
         for pattern in _INPUT_PREFLIGHT_MARKER_PATTERNS
     )
 
@@ -284,7 +290,7 @@ def has_direct_execution_intent(task: str) -> bool:
         re.search(
             r"((?:請|幫我|替我).{0,24}(?:建立|建構|產生|推論|執行|跑|試跑|測試|檢查|驗證|分析|做)|"
             r"\b(?:please\s+)?(?:build|create|generate|infer|run|execute|perform|test|dry[- ]?run|inspect|validate|check)\b)",
-            task,
+            admissible_request_text(task),
             flags=re.IGNORECASE | re.DOTALL,
         )
     )
@@ -299,8 +305,9 @@ def has_explicit_execution_request(task: str) -> bool:
     """
     if is_workflow_information_request(task):
         return False
+    admissible = admissible_request_text(task)
     return any(
-        re.search(pattern, task, flags=re.IGNORECASE | re.DOTALL)
+        re.search(pattern, admissible, flags=re.IGNORECASE | re.DOTALL)
         for pattern in EXPLICIT_EXECUTION_PATTERNS
     )
 
@@ -310,22 +317,48 @@ def has_direct_retrieval_request(task: str) -> bool:
 
     Retrieval is a direct tool operation even when the request does not use a
     workflow verb such as ``run`` or ``execute``.  Informational questions are
-    excluded so ``How do I use WEB-SEARCH?`` remains guidance-only.
+    excluded so ``How do I use WEB-SEARCH?`` remains guidance-only, and a
+    forbidding or quoted mention is not a request: ``Do not use WEB-SEARCH``
+    used to select the search it forbids (diagnostics F1).
     """
+    admissible = admissible_request_text(task)
     return (
         not is_workflow_information_request(task)
-        and bool(_DIRECT_RETRIEVAL_ACTION_PATTERN.search(task))
-        and bool(_DIRECT_RETRIEVAL_QUERY_PATTERN.search(task))
+        and bool(_DIRECT_RETRIEVAL_ACTION_PATTERN.search(admissible))
+        and bool(_DIRECT_RETRIEVAL_QUERY_PATTERN.search(admissible))
     )
 
 
+def requested_operation_kinds(task: str) -> tuple[str, ...]:
+    """Operation kinds the request positively asks for now, in authority-bearing text."""
+    kinds = []
+    if has_explicit_execution_request(task):
+        kinds.append("run")
+    if is_input_preflight_request(task):
+        kinds.append("inspect")
+    if has_direct_retrieval_request(task):
+        kinds.append("retrieve")
+    # Acquisition keeps its own whole-request reading: it already refuses any
+    # negation or mixed operation (acquisition_intent).
+    if explicit_acquisition_request(task) and not is_workflow_information_request(task):
+        kinds.append("acquire")
+    return tuple(kinds)
+
+
 def reconcile_request_mode(task: str, request_mode: str) -> str:
-    """Preserve explicit execution and classify workflow questions as guidance."""
-    if request_mode != "execute" and (
-        has_explicit_execution_request(task)
-        or has_direct_retrieval_request(task)
-        or (explicit_acquisition_request(task) and not is_workflow_information_request(task))
-    ):
+    """Preserve explicit execution and classify workflow questions as guidance.
+
+    A command whose whole kind the request also forbids ("Do not execute
+    anything ... Run PANDA") is not promoted; the operation gate would refuse
+    the execution anyway, and the request should be read as guidance.
+    """
+    bans = operation_scope(task).bans
+    wholly_forbidden = {ban.kind for ban in bans if not ban.tools}
+    promotable = [
+        kind for kind in requested_operation_kinds(task)
+        if kind != "inspect" and "any" not in wholly_forbidden and kind not in wholly_forbidden
+    ]
+    if request_mode != "execute" and promotable:
         return "execute"
     if request_mode == "unknown" and (
         is_workflow_selection_request(task)
