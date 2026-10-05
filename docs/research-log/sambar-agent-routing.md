@@ -18578,3 +18578,100 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 - 可做的方向：
   - 依使用者提到的資料分組呈現（不刪除）。
   - 問個體時，逐樣本工具排在前面。
+
+## Log 370｜事前宣告：平手時先回答意圖——依研究問題與使用者說出的資料推薦，說明方法與理由，不刪除任何候選，以第十三組保留集評估
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 先 push（`c780bb8..6be7632`，已完成），然後做「平手太大」的方向 (1)。
+- 使用者指出：列出太多選項顯得沒有理解意圖，只是在看需要什麼輸入。
+- 看過重寫的範例後「照建議」，並要求：可以給多個建議，但要告訴使用者為什麼列出這幾個。
+- 看過含演算法說明的版本後改為：不用寫出演算法邏輯，只寫根據使用者的問題、為什麼推薦。
+- 保留集由我先審，沒有擋路的問題就直接宣告並執行（同 Log 368）。審查結果見下。
+本條目寫於實作 commit 與任何第十三組保留集上的 session 之前。
+- 基準為 HEAD `19f8a3f`：線上＝b‴ 加 `one_result` 格子（`e60c513`）。
+- 工作目錄的差異即凍結的 `q_frozen.patch`（sha256 `d1e48608078c`）。取代先前的 `p_frozen.patch`；那時第十三組保留集還沒被讀過。
+
+**為什麼做這個（第七到十組 live 候選臂，241 次平手）：**
+- 平均 3.7 個工具，6 個以上 57 次，最多 11 個；40% 的候選不在標註的可接受範圍內。
+- 沒提到的資料被當成「不知道」（沒提 miRNA 仍列 PUMA 系列）。
+- 研究目的沒有用來縮小範圍：問個體的 48 次中，37 次仍列出只給群體結果的工具。
+- 回覆把所有工具列兩次（方法說明一次、「For your question」一次），再請使用者自己選。
+- 路由的推薦理由可能不是使用者說的。例如 Q1-a 的「at baseline and 6 h after」中，時間點「baseline」碰到了「已發表方法」的關鍵字。
+
+**內容（`FREEZE13.md`；只改回覆與卡片，不改契約、prompt、模型呼叫或決策）：**
+- `ClaimSupport` 新增：
+  - `answers`：test＝可檢定；describe＝只能描述，或不使用配對；other＝回答的是另一個量。
+  - `limit`：幾個字說明為何排在後面。
+  - `quantity_axis`。
+- 新的說明文字（`limit`）：
+  - 聚合網路：「shows where the groups differ, with no test」、「compares the time points without using the pairing」、「ranks regulators by the size of the change, with no test」。
+  - DRAGON：「shows where the groups differ, with no test」、「compares the conditions without using the pairing」。
+  - GIRAFFE：「compares TF activity, not network wiring」、「gives TF activity, not network wiring」、「measures change in TF activity, not network wiring」。只有使用者的問句本身提到活性（沿用 `tf_activity_vs_expression` 的線索）時，GIRAFFE 才算可檢定。
+- 排序（`interpretation/intent_shortlist.py`）：
+  - 只用於：平手（outcome_clarification）、單一解讀、已驗證的研究問題、沒有因果／預測主張。
+  - 等級：直接 > 可檢定 > 只能描述 > 另一個量 > 未宣告 > 只給群體結果（問個體時）。
+  - 不推薦的情況：
+    - 需要使用者沒提到的輸入，而其他候選不需要（只看使用者自己的字，不看路由解讀列出的輸入）。
+    - 使用者提到兩種 omics 時，只用一種資料的工具。
+    - 使用者沒提到 miRNA 時，miRNA 工具。
+  - 推薦最好的一級（最多三個）；只有一個時，加上它的聚合版本作為「只要描述」的選項。最好的一級至少要「只能描述」，且推薦數要少於候選數，才觸發。
+- 回覆：
+  - 「For your question (…), these fit best, and here is why:」，每個推薦一行，寫出它怎麼回答這個問題（格子文字），加上注意事項。
+  - 「The other registered options, and why they come later:」，其他每個候選一行，寫出排在後面的原因。
+  - 不寫演算法說明（使用者要求）。
+  - 一句問要規劃哪個，加上原回覆的假設段落與結尾。每個候選都會被提到。
+- 卡片：方法卡把推薦的排在前面，並標「Recommended」，不增減選項。第一點說明推薦哪些；「Nothing you said favours one method yet」這句拿掉。
+
+**預期修改的既有測試：**
+- `tests/test_study_purpose.py` 的兩個平手測試（A1-1、B1-1）改為新版面。
+- `tests/test_study_purpose_call.py` 的兩個 Log 368 平手測試改為新版面；新增 5 個測試；`_recorded` 在卡片建不出來時跳過（同正式流程）。
+
+**已看過的資料（s7–s12 候選臂，480 次；只用於設計）：**
+- 觸發 98 次；推薦全部在可接受範圍內（98/98）。
+- 與第九組標註的 `recommended_subset` 比較（12 次）：完全相同 9、有交集 3、無交集 0。
+- 對照、因果、預測句觸發 0 次；漏掉候選 0 次；沒觸發時回覆改變 0 次；卡片增減選項 0 次。
+- 觸發時回覆長度約減少 54%（107,485 vs 232,046 字元）。
+- 已知限制：S6-b（9 位病人，問每條邊多可信）推薦 LIONESS-COEXPRESSION 與 BONOBO，標註只有 BONOBO。使用者說出的條件（每條邊的信賴度）沒有用於排序。
+
+**第十三組保留集**（`heldout13/heldout.json`，`59410667c3db`）：
+- 隔離 subagent 在凍結後撰寫，32 句。每題都標註 `recommended_subset`（11 句為空：對照、預測，以及可接受的工具都一樣合適）。
+- 家族：
+  - A 乳牛產犢前後肝臟（只有表現量，配對）。
+  - B 104 條野生刺魚（單一集合，有性別、體長、湖）。
+  - C 圓禿 JAK 抑制劑前後（motif＋PPI）。
+  - D 乾燥症 vs sicca 唾液腺（motif＋PPI）。
+  - E 卵巢切除 vs sham 小鼠股骨（mRNA＋miRNA）。
+  - F 61 個腎上腺皮質腫瘤（RNA-seq＋甲基化）。
+- 單獨題：
+  - T1 問 TF 活性；T2 問 TF 的 targeting，明說不是活性。
+  - T3 有 motif＋PPI、沒提 miRNA 的逐樣本題；T4 只提 RNA-seq 的群體題。
+  - T5 9 位病童、問每條邊的信賴度；T6 只要快速描述、不要檢定。
+  - T7 預測；T8 有突變資料、明說忽略表現量。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- 沒有事先就注定失敗的情形。
+- 「只要描述、不要檢定」的四句（A4、D4、F4、T6），標註推薦聚合工具；本改動不讀這種措辭，仍會先推薦可檢定的逐樣本工具：
+  - D4、F4、T6 的建議會帶上聚合版本，預期與標註有交集。
+  - A4（配對、只有表現量，標註只有 COBRA）：COBRA 沒有配對設計的格子，預期與標註無交集。
+- T5（小樣本、問每條邊的信賴度，標註 BONOBO）：同已知限制，預期推薦 BONOBO 與 LIONESS-COEXPRESSION（有交集、不完全相同）。
+- B4 的可接受清單是空的（沒有 TF prior 卻問 TF）。若觸發推薦，會記為 S1 錯誤。
+
+**判定（任一不成立就撤回）：**
+- live：gpt-4o-mini，預先授權，只跑候選臂（實作 commit），32 句 × 3 = 96 個 session。比較對象是同一批 session 離線時不含本改動的回覆與卡片。
+- **S1 推薦精確度**：觸發的 trial 中，推薦的工具全部在 `acceptable_candidates` 內的比例 ≥ 90%。
+- **S2 推薦命中**：觸發且標註 `recommended_subset` 非空的 trial 中，推薦與標註有交集的比例 ≥ 80%。
+- **S3**：對照、因果、預測句觸發的次數 ＝ 0。
+- **S4 不刪除**：觸發的回覆中，每個候選都被提到（＝ 全部）。
+- **U1**：沒觸發的回覆與不含本改動時逐字相同（＝ 全部）。
+- **K1**：卡片的選項集合不變（＝ 全部）。
+- **H2**：live 回覆等於離線渲染。
+- **H3**：呼叫角色沒有超出第七到十二組候選臂已有的角色。
+- **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 觸發率（平手中觸發的比例）。
+  - 與標註完全相同的比例。
+  - 回覆長度的變化。
+  - S2 的分母少於 10 時的情形。
+
+成本估計：約 US$0.2。
