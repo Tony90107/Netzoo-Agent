@@ -18882,3 +18882,81 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
 **決定：** 不執行（離線與 live 都沒跑，沒有花費）。凍結的改動不 commit。
 - 教訓同 Logs 353、367、373：連「寬鬆」的驗證，只要靠封閉的否定詞清單，換個說法（「is the whole of our data」「remain uncharacterised」）就失效，而且兩個方向都會錯。
 - 第十六組已看過，之後不能用來判定。
+
+## Log 375｜事前宣告：(A′) 由模型判斷 prior 的意思、規則只檢查出處，再跑平手回覆與資料問題，以第十七組保留集評估
+
+日期／時區：2026-10-05，Asia/Taipei。
+使用者決定：
+- 看過 Log 374 後選 (A′)：讓模型決定意思，規則只檢查引文是否在請求中；回覆以使用者的原話顯示這個前提。
+- 先 push（`8a8f4cf..e027b66`，已完成）。
+- 保留集由我先審，沒有擋路的問題就直接宣告並執行（同 Log 368、370、372）。
+本條目寫於實作 commit 與任何第十七組保留集上的呼叫或 session 之前。
+- 基準為 HEAD `b7ac3e1`：線上＝b‴ 加 `one_result` 格子（`e60c513`）。
+- 凍結的改動是 `v_frozen.patch`（sha256 `10130826014c`），只含本改動的 11 個檔案。
+
+**另一個 session 在主目錄的改動（公開）：**
+- 今天 16:15 起，主目錄有不屬於本工作的檔案被修改或新增（語意修復與 claim 驗證，例如 `semantic_repair.py`、`claim_invocation.py`、新的 `claim_projection.py` 與其測試）。
+- 第一次凍結的 patch 是整個工作目錄的差異，把這些改動包了進去；那份 patch 沒有公開、已刪除，改用只含本改動的 `v_frozen.patch`。
+- 16:15 之後在主目錄跑的全套件數字（3308 等）包含了那些測試。Logs 371、373 的 live 回合分別在 12:05、12:55–13:00，在那些改動之前。
+- 從這裡起，本改動只在乾淨的 worktree（`.worktrees/netzoo-purpose-cand`）中套用、測試與執行 live；主目錄的那些檔案完全不動。
+
+**內容（`FREEZE17.md`）：**
+- Log 372 的平手回覆與資料問題，加上 Log 374 的契約欄位 `priors`（stated／ruled_out／unstated）與 `priors_span`，以及 `STUDY_PURPOSE_SYSTEM` 的說明段落。
+- 驗證只檢查出處：引文在請求中就成立，不用任何否定詞或名詞清單。
+- 回覆以使用者的原話顯示這個前提：
+  - 「with the TF motif prior and PPI network you mentioned ("…")」。
+  - 「which you said you do not have ("…")」。
+- 所有候選都需要使用者說沒有的 prior 時，直接說明，並列出每個候選與原因。
+
+**已看過的資料（只用於設計）：**
+- 第十五組：「no transcription factor motif(s) …」15/15 讀成 ruled_out，兩輪一致。
+- 第十六組（僅檢查出處）：
+  - stated 36/36、unstated 33/33，誤讀成「有」0 次。
+  - ruled_out 15/27：F4 的「the gene count table is the whole of our data」12/12 讀成「沒提」。
+  - 設計：線上 78/78、新版 74/78。結論：線上 72/78、新版 70/78。都在同一程式的起伏內。
+- 全套件（乾淨 worktree，只有本改動）：3291 passed（基準 3275，新增 16 個），指紋不變。
+
+**第十七組保留集**（`heldout17/heldout.json`，`6bf4f61e7551`）：
+- 隔離 subagent 在凍結後撰寫，32 句，標註 `priors_stated`。
+- prior 的寫法：
+  - stated：A「promoter motif-scan table linking regulators to genes」「curated protein contact map」；B「position-weight-matrix hits for regulators」「equine interactome of protein complexes」；T4 的 JASPAR、STRING，旁邊有一句與 prior 無關的否定。
+  - ruled_out：C「nothing on regulator binding or protein interactions exists for this species」；D「the resulting RNA-seq count matrix is our entire dataset」（沒有任何否定詞或「only」）；T3「resources for this species remain unbuilt, so the read counts are all we have」。
+  - unstated：E、F、T1、T2 等，定序的描述各不相同。
+- 需要問 prior 的有 6 句（E2、E3、E4、F4、T1、T2）；6 句沒提 prior 但不該問（E1、F1–F3、T5、T8）。
+
+**審稿時讀到的限制（公開，沒有執行任何東西）：**
+- 驗證只檢查出處，沒有事先就注定失敗的情形，結果取決於模型的讀取。
+- A、B 的「有」寫法很不尋常（「regulators」而非「transcription factors」；「interactome of protein complexes」嚴格說不是成對的 PPI），可能讀成 unstated，影響 P3。
+- D 與第十六組的 F4 相似（「is our entire dataset」），可能讀成 unstated；P2 只報告。
+
+**與 Log 374 草稿不同的門檻（看過第十六組後、第十七組撰寫前決定，理由是錯誤代價不對稱）：**
+- 「明說沒有」讀成「沒提」改為只報告：代價只是多問一次，不會推薦錯的工具。
+- 資料問題的精確度門檻由 90% 改為 80%：多問一次的代價同上。
+- 「誤讀成有」維持最嚴格（≤ 2）：這會推薦使用者沒有資料的工具。
+
+**判定（任一不成立就撤回）：**
+- 第一步，離線（先做；不成立就不跑 live）：第十七組 32 × 3 次，線上 prompt（baseline worktree，b_eval）與新 prompt（p_eval）各一輪，gpt-4o-mini。
+  - **P1 誤讀成「有」**：標註為 ruled_out 或 unstated 的呼叫中，驗證後讀成 stated 的次數 ≤ 2。
+  - **P3「有」的召回**：標註為 stated 的呼叫中，讀成 stated 的比例 ≥ 80%。
+  - **W1 設計召回**：新版不低於線上版 5 個百分點以上。
+  - **W2 結論召回**：新版不低於線上版 5 個百分點以上。
+  - **W3 假缺口**：新版不高於線上版。
+  - **W4 設計＋結論誤判**：新版不高於線上版加 2。
+- 第二步，live：gpt-4o-mini，預先授權，只跑候選臂，在乾淨 worktree 的實作 commit 上執行，32 × 3 = 96 個 session。比較對象是同一批 session 離線時不含平手改動的回覆與卡片。
+  - **S1**：觸發的 trial 中，用使用者提到的資料所做的推薦全部在 `acceptable_candidates` 內的比例 ≥ 90%。
+  - **S2**：觸發且標註 `recommended_subset` 非空的 trial 中，推薦與標註有交集的比例 ≥ 80%。
+  - **Q1**：卡片問了資料的 trial 中，標註 `data_question` 為 "priors" 的比例 ≥ 80%；少於 3 次只報告。
+  - **S3**：對照、因果、預測句觸發 ＝ 0。
+  - **S4**：觸發的回覆中，每個候選都被提到。
+  - **U1**：沒觸發的回覆與不含平手改動時逐字相同。
+  - **K1**：卡片的選項集合不變，改問資料時除外。
+  - **H2**：live 回覆等於離線渲染。
+  - **H3**：呼叫角色沒有超出第七到十五組候選臂已有的角色。
+  - **O1**：全套件通過；指紋、條件推薦 prompt hash、policy hash 都不變。
+- **只報告**：
+  - 離線：「明說沒有」的召回。
+  - live trace 中 prior 讀取與標註的一致。
+  - 標註為 "priors" 且觸發時有問的比例。
+  - `size_preferred`、觸發率、回覆長度。
+
+成本估計：離線約 US$0.04；live 約 US$0.2。
