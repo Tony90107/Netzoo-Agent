@@ -1,5 +1,12 @@
 # Log 372 freeze: tie replies led by the stated question, asking about data the answer depends on
 
+**Superseded after the fourteenth set's summary was read (2026-10-05):** reviewing it, I found that
+`priors_status` checked for a mention before the words that rule priors out, so "expression only, no
+priors" read as "named" -- and the frozen tests asserted it. Fixing it after reading the summary would be
+post hoc, and running a known bug would ship it, so: the fix (a mention inside the ruled-out words is no
+mention) is frozen as `s_frozen.patch`, sha256 `59efe053ba00`; `heldout14/` (`71f1257f8bc9`) is archived as seen and not
+used to judge; a fifteenth set is written after this freeze. Seen-data results are unchanged by the fix.
+
 Frozen before anyone on the implementing side read the fourteenth held-out set (`heldout14/`),
 which an isolated subagent writes after this freeze.
 
