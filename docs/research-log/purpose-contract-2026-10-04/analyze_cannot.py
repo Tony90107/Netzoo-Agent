@@ -194,7 +194,7 @@ def seen():
 def live(tag, repeats):
     purposes = A.trace_purposes("cand")
     roles_before = set()
-    for old in ("s7", "s8", "s9"):
+    for old in ("s7", "s8", "s9", "s10"):  # Log 368 declares H3 against the s7-s10 candidate arms
         for path in glob.glob(str(A.ROOT / ".netzoo" / "sessions" / f"hp-{old}-cand-*.json")):
             roles_before |= {call["role"] for call in (json.loads(Path(path).read_text()).get("token_usage") or {}).get("calls", [])}
     trials, missing, new_roles = [], 0, set()
@@ -208,7 +208,7 @@ def live(tag, repeats):
             trials.append({"key": f"{item['id']}-{rep}", "item": item, "reply": run["reply"],
                            "decision": TaskDecision.model_validate(run["decision"]),
                            "traced": purposes.get(f"hp-{tag}-cand-{item['id']}-{rep}")})
-    print(f"missing {missing}; H3 roles beyond s7-s9 candidate arms (gate none): {sorted(new_roles)}")
+    print(f"missing {missing}; H3 roles beyond s7-s10 candidate arms (gate none): {sorted(new_roles)}")
     score(trials, f"{tag}-cannot-analysis.txt")
 
 

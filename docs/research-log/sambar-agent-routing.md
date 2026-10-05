@@ -18535,3 +18535,46 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - 卡片兩邊都建不出來的次數（既有問題：平手超過 8 個工具）。
 
 成本估計：約 US$0.2。
+
+## Log 369｜結果：(B′) 以條件句說明只給群體結果的工具——判定全部成立，保留
+
+日期／時區：2026-10-05，Asia/Taipei。依 Log 368 執行。
+- 候選：`e60c513`（實作，差異 sha256 `5b365af0dcae`，與凍結版相同），只跑候選臂。
+- 證據在 `docs/research-log/purpose-contract-2026-10-04/`：
+  - `live/s12-cannot-analysis.txt`（宣告的判定）
+  - `live/s12-decisions.json`、`live/s12-run.log`、`live/s12-cand-*`（96 個 session）
+- 執行前照宣告，把 `analyze_cannot.py` 的 H3 基準改為第七到十組候選臂。
+
+**live（第十二組 32 句 × 3 = 96 個 session，gpt-4o-mini，花費 US$0.190）：**
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| 有效性 | 缺 session 0；provider 錯誤 0。trace 中的錯誤都是模型輸出驗證（ValidationError 21），由字詞讀取接手 | 是 |
+| P1 說明只在問個體時出現 | 11/11 | 是 |
+| C2 對照句 | 0 | 是 |
+| C3 新增的規劃步驟 | 0 次（少於 3 次，只報告） | 只報告 |
+| K1 卡片不刪步驟 | 96/96 | 是 |
+| H2 只加不改（逐行） | 96/96（13 個有變化）；live 回覆都等於離線渲染 | 是 |
+| H3 | 沒有新的呼叫角色 | 是 |
+| O1 | 全套件 3275 passed／35 skipped；指紋 legacy `e920bf3b5d57`、claims `743b2dd0d73a`、條件推薦 prompt hash `c820364a1123`、policy hash `b0570ff267af` 不變 | 是 |
+
+- 精確度陷阱都沒有讀成「個體變化」，沒有出現說明：T3「Across all 50 aneurysm mice」、T4「In every fish, on average」、T8「a score for each transcription factor」，以及否定句 F1d、F6d、T5。
+
+**決定：** 保留。線上＝b‴（驗證 `b4_frozen`）加上 `one_result` 格子（`e60c513`）。
+
+**只報告：**
+- 舊的 C1（被點名的工具不在可接受範圍內）：6/11。另外 5 次是每人很多樣本的 F5a、T6，PANDA、OTTER 對每個人單獨跑是可接受的。
+  - 這 5 次在 Log 365 的說法（「does not answer this」）下會是錯的。現在的條件句「a result for one individual needs many samples from that individual」在這裡是對的，正是 (B′) 要處理的情形。
+- 覆蓋：標註「個體變化」、候選中有只給群體結果之工具的 22 個 trial 中，出現說明的有 11 個。
+  - 10 個沒有讀到「個體變化」：F4a「Patient by patient, how does … shift」、F6a、T1「Does any boy stand apart」等。
+  - 1 個是其他原因。
+- 與能回答的工具並列時，被提到的逐樣本工具不在可接受範圍內 1 次：F5a-3 提到 LIONESS-PUMA，因為路由列出了 PUMA。
+
+**之後的方向（使用者看過平手的量測後提出，尚未宣告）：**
+- 第七到十組的平手平均 3.7 個工具，6 個以上 57 次，最多 11 個；其中 40% 的候選不在可接受範圍內。
+- 原因有二：
+  - 沒提到的資料被當成「不知道」，例如沒提 miRNA 仍列 PUMA 系列。
+  - 研究目的沒有用來縮小範圍：問個體的 48 次平手中，37 次仍列出只給群體結果的工具。
+- 可做的方向：
+  - 依使用者提到的資料分組呈現（不刪除）。
+  - 問個體時，逐樣本工具排在前面。
