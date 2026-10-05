@@ -268,14 +268,6 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
     if purpose.design is None and not purpose.claims:
         return result
     text = str(result["messages"][-1].content)
-    if kind == "outcome_clarification":
-        # Log 370: a tie with a verified question leads with what fits it, every candidate kept.
-        from .intent_shortlist import intent_reply
-
-        led = intent_reply(text, TaskDecision.model_validate(state["decision"]), purpose,
-                           latest_user_task(state["messages"]))
-        if led:
-            return reply(led, kind)
     if kind == "unresolved":
         updated = unresolved_gap_reply(purpose)
     else:

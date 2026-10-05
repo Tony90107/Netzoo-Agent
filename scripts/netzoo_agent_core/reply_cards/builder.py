@@ -546,37 +546,9 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
             f"{names} {'gives' if len(pooled) == 1 else 'give'} one result for all the samples: with one sample "
             f"per individual that cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
             f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
-    choices = _intent_choices(card, kind, decision, purpose, task)
-    if choices is not card.choices:
-        first = join_names([option.label for option in choices.options if option.recommended], "and")
-        points = [point for point in points if not point.startswith("Nothing you said favours one method yet")]
-        points.insert(0, clip(f"Recommended for your question: {first}; the reply says how each method works "
-                              "and why the others come later.", 300))
-    if not rows and points == card.points and choices is card.choices:
+    if not rows and points == card.points:
         return card
-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8],
-                                   "choices": choices})
-
-
-def _intent_choices(card: ReplyCard, kind: str, decision, purpose, task: str):
-    """Log 370: on a tie the reply leads with, the method card lists the same options first; none removed."""
-    from ..interpretation.intent_shortlist import intent_shortlist
-
-    if kind != "outcome_clarification" or card.choices is None or card.choices.header != "Method":
-        return card.choices
-    ranked = intent_shortlist(decision, purpose, task)
-    if ranked is None:
-        return card.choices
-    first = [item.action for item in ranked[0]]
-    options = sorted(card.choices.options, key=lambda option: (
-        first.index(option.action) if option.action in first else len(first)))
-    options = [option.model_copy(update={"recommended": option.action in first,
-                                         "badge": "Recommended" if option.action in first else ""})
-               for option in options]
-    return card.choices.model_copy(update={
-        "options": options,
-        "ordering": "Recommended first, from your question and the data you named; the reply says why.",
-    })
+    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
 
 
 def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOption]) -> list[ReplyOption]:
