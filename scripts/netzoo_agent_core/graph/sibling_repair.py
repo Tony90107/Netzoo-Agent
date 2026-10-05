@@ -151,6 +151,7 @@ def repair_sibling_hypotheses(
             output_text = patch.model_dump_json()
             merged, retired = apply_semantic_patch(
                 interpretation, patch, permitted_fields=permitted_fields(issues),
+                validation_issues=issues,
                 user_task=user_task,
             )
             merged, restorations = restore_stated_fields(

@@ -10,6 +10,7 @@ from ..contracts.artifact_semantics import (
 )
 from ..contracts.outcomes import SemanticInterpretation
 from .request_integrity import regulatory_role_mentions
+from .validation_diagnostics import validation_diagnostic
 
 
 def proposal_data(proposal):
@@ -256,7 +257,33 @@ def repair_feedback(proposal, issues: tuple[str, ...], user_task: str = "") -> l
             }
         ):
             expected["roles"] = "Non-regulatory outputs have empty role lists and no unresolved regulator/target fields."
-        feedback.append({"issue": issue, "location": location, "actual": outcome, "expected": expected})
+        diagnostic = validation_diagnostic(issue)
+        category = diagnostic["category"]
+        if category == "missing_evidence":
+            expected["evidence"] = (
+                "Preserve outcome fields unless a separate issue permits changing them. "
+                "Supply support for the named pair from the original request; "
+                "this is missing model evidence, not proof that the user omitted information. "
+                "Use a real quote for explicit evidence or a justified inference. Do not invent support."
+            )
+        elif category == "invalid_reference":
+            expected["evidence"] = (
+                "Repair the absent or unmatched quote against the original request. Preserve outcome fields "
+                "unless a separate issue permits changing them. Do not invent quotes or relabel an invalid "
+                "quote as inference. Leave unsupported claims unresolved."
+            )
+        elif category == "value_conflict":
+            expected["resolution"] = (
+                "Compare the disputed value with the original request and its supporting evidence. "
+                "Correct only fields permitted by the issue; do not choose by evidence order."
+            )
+        elif category == "request_underspecified":
+            expected["resolution"] = (
+                "The request leaves granularity open. Preserve unknown and unresolved_dimensions, or "
+                "supported alternatives, so the clarification flow can resolve it. Do not invent a "
+                "granularity to satisfy validation or use a tool default as user intent."
+            )
+        feedback.append({**diagnostic, "location": location, "actual": outcome, "expected": expected})
     return feedback
 
 

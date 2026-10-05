@@ -819,13 +819,16 @@ def _diagnostics(messages):
     return json.loads(messages[-1].content.split("\n", 1)[1])
 
 
-def test_quote_only_rejection_sends_the_same_diagnostics_as_before():
+def test_quote_only_rejection_keeps_issues_and_adds_failure_category():
     from netzoo_agent_core.interpretation.claim_prompt import claim_messages
 
     proposal = SemanticClaims.model_validate(payload())
     issues = ("hypothesis[0].ungrounded_evidence:regulator_type=mirna",)
     data = _diagnostics(claim_messages(TASK, proposal, issues, patching=True))
-    assert set(data) == {"proposal", "issues"}
+    assert set(data) == {"proposal", "issues", "issue_categories"}
+    assert data["issue_categories"] == [{
+        "issue": issues[0], "category": "invalid_reference", "action": "repair_citation",
+    }]
 
 
 def test_terminal_goal_conflict_names_the_required_artifact_and_request_facts():

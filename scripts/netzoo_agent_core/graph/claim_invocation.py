@@ -5,7 +5,8 @@ import time
 from workflow_registry import OUTPUT_CAPABILITIES
 from ..contracts import _trace, SystemMessage, HumanMessage
 from ..contracts.semantic_claims import SemanticClaims, SemanticClaimRepair
-from ..contracts.repair_scope import FIELD_BY_DIMENSION, permitted_fields
+from ..contracts.repair_scope import FIELD_BY_DIMENSION, permitted_fields, issues_for_hypothesis
+from ..interpretation.claim_projection import project_claims
 from ..interpretation.claim_prompt import claim_messages
 from ..interpretation.outcome_consistency import (
     complete_open_granularity_alternatives,
@@ -45,13 +46,7 @@ def _claim_repair_issues(issues, hypothesis_index: int):
     codes. Keep indexed issues for other hypotheses out of this patch's scope;
     unindexed issues describe interpretation-wide constraints and still apply.
     """
-    relevant = []
-    for issue in issues:
-        match = re.match(r"hypothesis\[(\d+)\]\.", str(issue))
-        if match and int(match.group(1)) != hypothesis_index:
-            continue
-        relevant.append(issue)
-    return relevant
+    return issues_for_hypothesis(issues, hypothesis_index)
 
 
 def _support_repair_values(issues) -> dict[str, frozenset[str]]:
@@ -235,10 +230,17 @@ def invoke_claim_interpreter(
                 claims = decoded
             if attempt == 0:
                 proposal = claims
-            interpretation = (
-                restore_guidance_subject(valid, decoded)
-                if compact_subject else claims.to_internal()
-            )
+            if compact_subject:
+                interpretation = restore_guidance_subject(valid, decoded)
+            else:
+                projection = project_claims(user_task, claims)
+                interpretation = projection.interpretation
+                record_event(context, state, "routing.semantic_claims_projected", "classify", {
+                    "attempt": attempt + 1, "stage": "before_normalization",
+                    "valid": projection.validation.valid,
+                    "diagnostics": list(projection.validation.diagnostics),
+                    "facts": list(projection.facts),
+                })
             if compact_subject:
                 record_event(context, state, "routing.guidance_subject_reviewed", "classify", decoded.model_dump())
             interpretation, restorations = restore_stated_fields(
@@ -322,6 +324,7 @@ def invoke_claim_interpreter(
                     {
                         "attempt": attempt + 1,
                         "issues": list(issues),
+                        "diagnostics": list(validation.diagnostics),
                         "evidence_shapes": list(validation.evidence_shapes),
                         "evidence_census": list(
                             evidence_census(interpretation.outcome_hypotheses)

@@ -206,3 +206,64 @@ def test_produced_by_does_not_constrain_what_a_request_may_ask():
 
     assert ARTIFACT_SEMANTICS["regulatory_network"].operations is None
     assert "operation" not in artifact_field_constraints("regulatory_network")
+
+
+def test_multiple_inputs_are_completed_together_independent_of_order():
+    from itertools import permutations
+
+    task = _TASK + ' and mutation matrix data/mutations.tsv'
+    evidence = _base_evidence() + [_grounded('input_artifact', 'mutation_matrix', 'mutation matrix')]
+    for ordered in permutations(evidence):
+        hypothesis = _hypothesis(input_artifacts=[], evidence=list(ordered))
+        result = validate_outcome_hypotheses(task, [hypothesis])
+        assert result.valid, result.issues
+        assert hypothesis.outcome.input_artifacts == ['expression_matrix', 'mutation_matrix']
+        before = hypothesis.model_dump()
+        assert validate_outcome_hypotheses(task, [hypothesis]).valid
+        assert hypothesis.model_dump() == before
+
+
+def test_competing_scalar_evidence_does_not_choose_by_order():
+    from netzoo_agent_core.interpretation.outcome_validation import reconcile_outcome_with_grounded_evidence
+
+    evidence = [_grounded('granularity', value, value) for value in ('aggregate', 'sample_specific')]
+    for ordered in (evidence, list(reversed(evidence))):
+        hypothesis = _hypothesis(input_artifacts=[], evidence=ordered)
+        hypothesis.outcome.granularity = 'unknown'
+        reconcile_outcome_with_grounded_evidence('aggregate sample_specific', hypothesis)
+        assert hypothesis.outcome.granularity == 'unknown'
+        result = validate_outcome_hypotheses('aggregate sample_specific', [hypothesis])
+        assert any('conflicting_evidence:granularity=' in issue for issue in result.issues)
+
+
+def test_known_input_quote_with_wrong_mapping_cannot_fill_gap():
+    from netzoo_agent_core.interpretation.outcome_validation import reconcile_outcome_with_grounded_evidence
+
+    hypothesis = _hypothesis(input_artifacts=[], evidence=[
+        _grounded('input_artifact', 'mutation_matrix', 'expression matrix'),
+    ])
+    reconcile_outcome_with_grounded_evidence('Use an expression matrix', hypothesis)
+    assert hypothesis.outcome.input_artifacts == []
+
+
+def test_validation_diagnostics_distinguish_failure_causes_and_feedback():
+    from netzoo_agent_core.interpretation.outcome_validation import OutcomeValidation
+    from netzoo_agent_core.interpretation.semantic_repair import repair_feedback
+
+    issues = (
+        'hypothesis[0].missing_current_input:expression_matrix',
+        'hypothesis[0].missing_evidence:granularity=aggregate',
+        'hypothesis[0].ungrounded_evidence:operation=infer',
+        'hypothesis[0].conflicting_evidence:input_artifact=mutation_matrix',
+        'hypothesis[0].undecided_granularity',
+        'missing_hypotheses',
+    )
+    expected = ['outcome_omission', 'missing_evidence', 'invalid_reference',
+                'value_conflict', 'request_underspecified', 'outcome_omission']
+    validation = OutcomeValidation(False, issues)
+    assert [item['category'] for item in validation.diagnostics] == expected
+    feedback = repair_feedback({}, issues)
+    assert [item['category'] for item in feedback] == expected
+    assert 'Preserve' in feedback[1]['expected']['evidence']
+    assert 'quote' in feedback[2]['expected']['evidence']
+    assert 'unknown' in feedback[4]['expected']['resolution']

@@ -31,6 +31,7 @@ from ..contracts.outcomes import (
 from ..contracts.artifact_semantics import fields_opened_by_artifact
 from ..contracts.repair_scope import (
     DIMENSION_BY_FIELD, FIELD_BY_DIMENSION, OUTCOME_FIELDS,
+    issues_for_hypothesis, permitted_fields as fields_for_issues, support_repair_pairs,
 )
 
 __all__: list[str] = []
@@ -101,6 +102,7 @@ def apply_semantic_patch(
     permitted_fields: frozenset[str] | None = None,
     user_task: str = "",
     hold_validated: bool = False,
+    validation_issues: tuple[str, ...] | None = None,
 ) -> tuple[SemanticInterpretation, list[dict]]:
     """Return the merged interpretation and the stale evidence the patch retired.
 
@@ -121,8 +123,17 @@ def apply_semantic_patch(
     `hold_validated` is set when the first pass already validated and the
     review was only asked to break a tie: a concrete scalar it changes without
     a grounded quote keeps its first-pass value (Log 210).
+
+    Production callers pass `validation_issues`: scope is derived for this
+    hypothesis alone, including exact pairs whose citations need repair.
+    Scoped repairs preserve the interpretation's request mode and goal.
     """
     index = patched_hypothesis_index(proposal, patch)
+    support_targets = frozenset()
+    if validation_issues is not None:
+        relevant = issues_for_hypothesis(validation_issues, index)
+        permitted_fields = fields_for_issues(relevant)
+        support_targets = support_repair_pairs(relevant)
     base = proposal.outcome_hypotheses[index]
     held: list[dict] = []
     if hold_validated:
@@ -156,9 +167,22 @@ def apply_semantic_patch(
         (item.dimension, item.value) for item in patch.evidence_removals
         if DIMENSION_BY_FIELD.get(  # the field this dimension speaks about
             FIELD_BY_DIMENSION.get(item.dimension, ""), None
-        ) is not None and FIELD_BY_DIMENSION[item.dimension] in allowed
+        ) is not None and (
+            FIELD_BY_DIMENSION[item.dimension] in allowed
+            or (item.dimension, item.value) in support_targets
+        )
     }
     retired: list[dict] = list(held)
+    retired.extend(
+        {"field": name, "reason": "override_outside_repair_scope"}
+        for name in requested if name not in allowed
+    )
+    if permitted_fields is not None:
+        retired.extend(
+            {"field": name, "reason": "override_outside_repair_scope"}
+            for name in ("request_mode", "semantic_goal")
+            if getattr(patch, name) is not None and getattr(patch, name) != getattr(proposal, name)
+        )
     # A withdrawal of a grounded entry for a value the merged outcome still
     # asserts can only recreate `missing_evidence` for it; the citation-only
     # guard above covers the case with no licensed fields, this covers a licensed
@@ -166,6 +190,9 @@ def apply_semantic_patch(
     # licence to ignore removals: a withdrawal with a replacement quote for the
     # same value, or of an explicit quote the request does not contain, is
     # honoured, and so is any withdrawal for a value the patch changed.
+    # A specifically rejected quote cannot simply disappear while its value
+    # survives: even where evidence is optional, this would hide a failed check.
+    # It must be replaced, or the licensed outcome value must change as well.
     from .outcome_validation import explicit_evidence_grounded
 
     added_pairs = {(item.dimension, item.value) for item in patch.evidence_additions}
@@ -180,9 +207,12 @@ def apply_semantic_patch(
             and value in _values(getattr(outcome, field))
             and (dimension, value) not in added_pairs
             and entries
-            and all(
-                item.source != "explicit" or explicit_evidence_grounded(user_task, item)
-                for item in entries
+            and (
+                (dimension, value) in support_targets
+                or all(
+                    item.source != "explicit" or explicit_evidence_grounded(user_task, item)
+                    for item in entries
+                )
             )
         ):
             withdrawn.discard((dimension, value))
@@ -206,6 +236,14 @@ def apply_semantic_patch(
         evidence.append(item)
     for item in patch.evidence_additions:
         field = FIELD_BY_DIMENSION.get(item.dimension)
+        if (
+            validation_issues is not None
+            and field not in allowed
+            and (item.dimension, item.value) not in support_targets
+        ):
+            retired.append({"dimension": item.dimension, "value": item.value,
+                            "field": field, "reason": "evidence_outside_repair_scope"})
+            continue
         if field is None or item.value in _values(getattr(outcome, field)):
             evidence.append(item)
             continue
@@ -235,8 +273,10 @@ def apply_semantic_patch(
     hypotheses[index] = hypothesis
     return (
         SemanticInterpretation(
-            request_mode=proposal.request_mode if patch.request_mode is None else patch.request_mode,
-            semantic_goal=proposal.semantic_goal if patch.semantic_goal is None else patch.semantic_goal,
+            request_mode=(proposal.request_mode if permitted_fields is not None or patch.request_mode is None
+                          else patch.request_mode),
+            semantic_goal=(proposal.semantic_goal if permitted_fields is not None or patch.semantic_goal is None
+                           else patch.semantic_goal),
             outcome_hypotheses=hypotheses,
         ),
         retired,
