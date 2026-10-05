@@ -161,6 +161,12 @@ def _task_directory(task: str) -> Path | None:
     return found[0] if len(found) == 1 else None
 
 
+def _stated(context: _PlanningContext, field_name: str, value: object) -> bool:
+    """Whether the user stated *value* for *field_name* (turn requirements)."""
+    stated = context.stated.get(field_name)
+    return stated is not None and str(stated) == str(value)
+
+
 def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     decision = context.decision
     task = context.task
@@ -304,12 +310,14 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 and field_name not in corrected_bindings
             ):
                 inferred_input_values.add(field_name)
-        elif routed and str(routed) in task:
+        elif routed and (str(routed) in task or _stated(context, field_name, routed)):
             explicit_input_values[field_name] = str(routed)
         elif routed:
             # Router-produced paths are untrusted unless the literal path appears
             # in the user's request. Otherwise the Planner would present a guessed
-            # workspace file as "provided".
+            # workspace file as "provided". A path the user stated in the
+            # request this turn continues is the user's too (plan item 2): a
+            # continuation's own text does not repeat it.
             setattr(decision, field_name, None)
 
     for field_name in evidence_fields:
@@ -319,7 +327,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         parsed = _task_path(task, field_name)
         if parsed:
             setattr(decision, field_name, parsed)
-        elif routed and str(routed) not in task:
+        elif routed and str(routed) not in task and not _stated(context, field_name, routed):
             setattr(decision, field_name, None)
 
     autonomous_values: dict[str, str] = {}

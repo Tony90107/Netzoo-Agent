@@ -47,7 +47,9 @@ from ..session import (
     save_session,
 )
 from ..session_outputs import session_output_scope
-from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, ROUTER_CONTEXT_MAX_CHARS
+from ..interpretation.request_requirements import carried_parameters
+from ..routing_window import routing_window
+from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS
 from ..cli.clarification import (
     bundle_clarification_continuation,
     clarification_continuation,
@@ -89,6 +91,21 @@ _EXIT_WORDS = {"exit", "quit", "q", "離開", "結束"}
 def _notice(text: str) -> Event:
     return Event("notice", _ui_text(text))
 
+
+
+def _execution_continuation(action: str, task: str, requirements: dict | None) -> WorkflowContinuation:
+    """The /execute turn re-routes the preview's text; carry what the user stated.
+
+    A value stated in an earlier turn of the request is not in the preview's
+    own text, so without it the re-planned run would fall back to defaults or
+    workspace discovery (plan item 2).
+    """
+    try:
+        return WorkflowContinuation(
+            action=action, task=routing_window(task), parameters=carried_parameters(requirements),
+        )
+    except ValueError:
+        return WorkflowContinuation(action=action, task=routing_window(task))
 
 class ConversationMachine:
     """One interactive conversation, independent of how it is presented."""
@@ -270,8 +287,8 @@ class ConversationMachine:
         if state.preview is not None:
             action = state.preview.plan.decision["action"]
             if action in RUN_ACTIONS:
-                state.pending_continuation = WorkflowContinuation(
-                    action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:]
+                state.pending_continuation = _execution_continuation(
+                    action, task, state.preview.requirements,
                 )
         return self._accept_task(task)
 
@@ -481,7 +498,8 @@ class ConversationMachine:
                 return [_notice("That option no longer matches this conversation. Describe what you want instead.")]
             try:
                 state.pending_continuation = build_workflow_continuation(
-                    state.next_prompt, state.follow_up_context, decision, task
+                    state.next_prompt, state.follow_up_context, decision, task,
+                    requirements=state.follow_up_requirements,
                 )
             except ValueError:
                 state.pending_continuation = None
@@ -499,7 +517,7 @@ class ConversationMachine:
             try:
                 state.pending_comparison = MethodComparison(
                     actions=list(option.get("compare_actions") or []),
-                    task=task[-ROUTER_CONTEXT_MAX_CHARS:],
+                    task=routing_window(task),
                 )
             except ValueError:
                 state.pending_comparison = None
@@ -594,7 +612,8 @@ class ConversationMachine:
             ]
         try:
             state.pending_continuation = build_workflow_continuation(
-                state.next_prompt, state.follow_up_context, resolution, task
+                state.next_prompt, state.follow_up_context, resolution, task,
+                requirements=state.follow_up_requirements,
             )
         except ValueError:
             state.pending_continuation = None
@@ -629,7 +648,7 @@ class ConversationMachine:
             action = state.pending_plan.decision["action"]
             if action in RUN_ACTIONS:
                 state.pending_continuation = WorkflowContinuation(
-                    action=action, task=task[-ROUTER_CONTEXT_MAX_CHARS:]
+                    action=action, task=routing_window(task)
                 )
         state.pending_task = task
         return []
@@ -781,6 +800,7 @@ class ConversationMachine:
             state.follow_up_context = build_follow_up_context(
                 result, state.next_prompt, task
             )
+            state.follow_up_requirements = result.get("request_requirements")
             state.reply_card = self._reply_card(result, task)
             events.append(Event("message", result["messages"][-1].content, card=state.reply_card))
             if state.next_prompt.kind == "dry_run":
@@ -789,6 +809,7 @@ class ConversationMachine:
                     workflow=plan.workflow,
                     plan=plan,
                     plan_evaluation=result.get("plan_evaluation"),
+                    requirements=result.get("request_requirements"),
                 )
             elif state.next_prompt.kind == "completed":
                 state.clear_preview()

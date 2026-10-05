@@ -10,8 +10,9 @@ from ..contracts import (
     _trace,
     _ui_text,
 )
+from ..interpretation.request_requirements import read_request_requirements, with_routing
 from ..interpretation.semantic_goal import publish_routing_progress
-from ..llm import latest_user_task
+from ..llm import latest_user_message, latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
 from .operation_authority import with_operation_authority
@@ -25,9 +26,19 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
     user_task = latest_user_task(state["messages"])
     current_usage = state.get("token_usage")
+    # Plan item 2: the request's requirements are read once, from the full
+    # message; the router and model calls read the bounded window.
+    requirements = read_request_requirements(latest_user_message(state["messages"]))
     invocation = with_operation_authority(
-        context, state, user_task, invoke_router(context, state, user_task),
+        context, state, requirements, invoke_router(context, state, user_task),
     )
+    if invocation.reason_code == "workflow_continuation":
+        # Values the user stated in the request this turn continues, carried as
+        # validated typed state, are the user's words too.
+        requirements = read_request_requirements(
+            latest_user_message(state["messages"]),
+            carried=(state.get("workflow_continuation") or {}).get("parameters"),
+        )
     decision = invocation.decision
     usage = invocation.usage
     routing_state = invocation.routing_state
@@ -57,8 +68,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             "recommended_actions": decision.recommended_actions,
         },
     )
+    requirements = with_routing(requirements, decision, routing_state)
     return {
         "decision": decision.model_dump(),
+        "request_requirements": requirements.model_dump(mode="json"),
         "workflow_continuation": None,
         "method_comparison": None,
         "token_usage": usage.model_dump(),
@@ -68,7 +81,7 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
 
 
 def plan_task(context: _GraphContext, state: AgentState) -> dict:
-    user_task = str(state["messages"][-1].content)
+    user_task = latest_user_message(state["messages"])
     decision = TaskDecision.model_validate(state["decision"])
     mapper = (
         PlanningMapper(context.input_content_mapper, context, state)
@@ -80,6 +93,7 @@ def plan_task(context: _GraphContext, state: AgentState) -> dict:
         profile=state.get("profile"),
         retrieved_episodes=state.get("retrieved_episodes", []),
         project_policy=state.get("project_policy"),
+        requirements=state.get("request_requirements"),
         content_mapper=mapper,
     )
     profile = UserProfile.model_validate(state.get("profile"))

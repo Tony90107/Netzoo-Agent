@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from ..contracts import AgentState
+from ..contracts.requirements import RequestRequirements
 from ..routing.authorization import enforce_operation_authorization
 from .context import _GraphContext, record_event
 from .invocation_types import RouterInvocation
@@ -15,7 +16,7 @@ __all__ = ["with_operation_authority"]
 def with_operation_authority(
     context: _GraphContext,
     state: AgentState,
-    user_task: str,
+    requirements: RequestRequirements,
     invocation: RouterInvocation,
 ) -> RouterInvocation:
     """Refuse what the request forbids, after every routing path.
@@ -23,9 +24,13 @@ def with_operation_authority(
     Every routing stage (model intent, deterministic reconciliation, fallbacks,
     continuations) may propose execution; none may run what the request's own
     words forbid. This only removes authority, so it is safe after any path,
-    and it leaves the capability match (which tool fits) as it was.
+    and it leaves the capability match (which tool fits) as it was. The bans
+    come from the turn's requirements, read from the full message, so one
+    beyond the routing window still holds (F3).
     """
-    decision = enforce_operation_authorization(invocation.decision, user_task)
+    decision = enforce_operation_authorization(
+        invocation.decision, "", authorization=requirements.operations,
+    )
     authorization = decision.operation_authorization
     if authorization is None:
         return invocation

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from workflow_registry import (
@@ -27,6 +28,8 @@ from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..data.cobra import cobra_input_output_collisions
 from ..policy import ProjectPolicyLoader
 from ..planning.step_decision import effective_step_decision
+from ..contracts.requirements import RequestRequirements
+from ..interpretation.request_requirements import stated_path
 from ..routing.authorization import forbidding_reason, read_operation_authorization
 from ..data.paths import _resolve_user_path
 from ..string_download import requested_network_kind, requested_species
@@ -40,14 +43,19 @@ from .plan_rules import (
 
 def _operation_authorization_item(
     plan: WorkflowPlan, decision: TaskDecision, user_task: str,
+    requirements: RequestRequirements | None = None,
 ) -> PlanRubricItem:
     """Re-read operation authority from the request, not from the decision.
 
     ``should_execute`` is written by the stages being checked; a ban in the
     user's own words is independent evidence, so a plan for a forbidden
-    operation fails here even if an upstream rule promoted it (F1/F2).
+    operation fails here even if an upstream rule promoted it (F1/F2). The
+    turn's requirements hold the same reading of the full message.
     """
-    authorization = read_operation_authorization(user_task)
+    authorization = (
+        requirements.operations if requirements is not None
+        else read_operation_authorization(user_task)
+    )
     refusals = [
         f"{action}: {reason}"
         for action in dict.fromkeys([decision.action, *(step.action for step in plan.steps)])
@@ -64,10 +72,50 @@ def _operation_authorization_item(
     )
 
 
+def _same_path(planned: object, stated: object) -> bool:
+    if stated_path(str(planned)) == stated_path(str(stated)):
+        return True
+    return _resolve_user_path(stated_path(str(planned))) == _resolve_user_path(stated_path(str(stated)))
+
+
+def _request_requirements_item(
+    decision: TaskDecision, user_task: str, requirements: RequestRequirements | None,
+) -> PlanRubricItem:
+    """The plan answers the request routing read, and keeps what the user stated.
+
+    Plan item 2: a stated input or output path, in this turn or in the request
+    it continues, may not be replaced by a default or a discovered file.
+    """
+    if requirements is None:
+        return PlanRubricItem(
+            criterion="request_requirements", required=False, result="not_applicable",
+            detail="No turn requirements were supplied to this evaluation.",
+        )
+    failures = []
+    if hashlib.sha256(user_task.encode("utf-8")).hexdigest() != requirements.source_sha256:
+        failures.append("the plan is evaluated against a different request than the one routed")
+    for field in dict.fromkeys(item.field for item in requirements.stated):
+        if field not in INPUT_ROLE_FIELDS | OUTPUT_ROLE_FIELDS:
+            continue
+        stated, planned = requirements.stated_value(field), getattr(decision, field, None)
+        if planned is not None and not _same_path(planned, stated):
+            failures.append(f"{field} is {planned}, but the user stated {stated}")
+    return PlanRubricItem(
+        criterion="request_requirements",
+        result="fail" if failures else "pass",
+        detail=(
+            "; ".join(failures) if failures
+            else "The plan answers the routed request and keeps every stated input and output."
+        ),
+    )
+
+
 def evaluate_workflow_plan(
     plan: WorkflowPlan,
     user_task: str,
     project_policy: ProjectPolicySnapshot | dict | None = None,
+    *,
+    requirements: RequestRequirements | dict | None = None,
 ) -> PlanEvaluationResult:
     """Evaluate a structured plan before Executor receives any tool authority."""
     if plan.status != "ready":
@@ -110,10 +158,13 @@ def evaluate_workflow_plan(
         )
 
     action = decision.action
-    authority = _operation_authorization_item(plan, decision, user_task)
+    if requirements is not None:
+        requirements = RequestRequirements.model_validate(requirements)
+    authority = _operation_authorization_item(plan, decision, user_task, requirements)
+    stated = _request_requirements_item(decision, user_task, requirements)
     if action == "download_string":
         valid = (
-            authority.result == "pass" and
+            authority.result == "pass" and stated.result != "fail" and
             plan.workflow == "STRING-DOWNLOAD"
             and len(plan.steps) == 1
             and plan.steps[0].action == "download_string"
@@ -138,7 +189,7 @@ def evaluate_workflow_plan(
             status="approved" if valid else "rejected",
             score=100 if valid else 0,
             summary="STRING acquisition plan is valid." if valid else "STRING acquisition plan is incomplete or inconsistent.",
-            rubric=[authority, PlanRubricItem(
+            rubric=[authority, stated, PlanRubricItem(
                 criterion="string_acquisition_contract",
                 result="pass" if valid else "fail",
                 detail="Species, network type, acquisition intent, and one official download step are required.",
@@ -154,6 +205,7 @@ def evaluate_workflow_plan(
         and plan.workflow == expected_workflow
     )
     rubric.append(authority)
+    rubric.append(stated)
     rubric.append(
         PlanRubricItem(
             criterion="intent_and_capability_alignment",
@@ -267,7 +319,14 @@ def evaluate_workflow_plan(
     provenance_failures = []
     if local_data_action:
         provenance_failures.extend(
-            _evidence_contract_failures(plan.evidence, user_task)
+            _evidence_contract_failures(
+                plan.evidence, user_task,
+                stated=(
+                    {field: requirements.stated_value(field)
+                     for field in dict.fromkeys(item.field for item in requirements.stated)}
+                    if requirements is not None else None
+                ),
+            )
         )
         provenance_failures.extend(
             _derived_evidence_contract_failures(plan, decision)

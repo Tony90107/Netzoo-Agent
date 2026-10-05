@@ -7,6 +7,7 @@ from typing import Any
 from .assembly import _assemble_workflow_plan
 from .context import _prepare_planning_context
 from .evidence import _build_evidence_ledger
+from ..contracts.requirements import RequestRequirements
 from ..contracts import (
     Episode,
     InputEvidence,
@@ -27,8 +28,12 @@ def build_workflow_plan(
     retrieved_episodes: list[Episode | dict] | None = None,
     project_policy: ProjectPolicySnapshot | dict | None = None,
     content_mapper: Any | None = None,
+    requirements: RequestRequirements | dict | None = None,
 ) -> WorkflowPlan:
-    """Turn intent into an evidence-backed, multi-step NetZoo workflow."""
+    """Turn intent into an evidence-backed, multi-step NetZoo workflow.
+
+    *requirements*: the turn's RequestRequirements (plan item 2).
+    """
     if raw_decision.action == "download_string":
         decision = raw_decision.model_copy(deep=True)
         evidence = []
@@ -63,6 +68,7 @@ def build_workflow_plan(
         retrieved_episodes,
         project_policy,
         content_mapper,
+        requirements,
     )
     if isinstance(context_or_plan, WorkflowPlan):
         return context_or_plan

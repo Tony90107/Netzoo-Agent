@@ -88,12 +88,23 @@ a clarification question. Return only the IntentDecision structure.
 """.strip()
 
 
-def latest_user_task(messages: list) -> str:
-    """Return only the latest human turn, bounded for Router stability."""
+def latest_user_message(messages: list) -> str:
+    """Return the latest human turn in full, for deterministic readers."""
     for message in reversed(messages):
         if getattr(message, "type", "") in {"human", "user"}:
-            return str(message.content)[-ROUTER_CONTEXT_MAX_CHARS:]
-    return str(messages[-1].content)[-ROUTER_CONTEXT_MAX_CHARS:] if messages else ""
+            return str(message.content)
+    return str(messages[-1].content) if messages else ""
+
+
+def latest_user_task(messages: list) -> str:
+    """Return the latest human turn, bounded for Router stability.
+
+    An over-long turn keeps its opening and its end (routing_window), not only
+    its last 6,000 characters, so an opening instruction is not lost (F3).
+    """
+    from .routing_window import routing_window
+
+    return routing_window(latest_user_message(messages))
 
 
 def build_router_messages(routing_prompt: str, messages: list) -> list:
