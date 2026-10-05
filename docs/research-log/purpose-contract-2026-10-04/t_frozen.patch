@@ -1,0 +1,892 @@
+diff --git a/scripts/netzoo_agent_core/contracts/study_purpose.py b/scripts/netzoo_agent_core/contracts/study_purpose.py
+index cf08e9d..4357af6 100644
+--- a/scripts/netzoo_agent_core/contracts/study_purpose.py
++++ b/scripts/netzoo_agent_core/contracts/study_purpose.py
+@@ -7,6 +7,11 @@ conclusions, each with an exact quote, followed by deterministic
+ verification (`routing/study_purpose_verify.py`), read 86% of designs and 90%
+ of conclusions on the same data with no false reading. The proposal is never
+ used unverified.
++
++Log 374: whether the request has a TF motif prior and a PPI network is read
++the same way. Logs 371 and 373 read it with word lists and failed both ways:
++a request naming no prior got motif workflows, and "no transcription factor
++motifs or protein interaction network" read as naming them.
+ """
+ 
+ from __future__ import annotations
+@@ -33,6 +38,10 @@ class StudyPurposeProposal(BaseModel):
+     design: Literal["paired", "groups", "none"]
+     design_span: str = Field(description="Exact contiguous quote stating the design; empty when design is none.")
+     claims: list[PurposeClaim] = Field(max_length=3)
++    priors: Literal["stated", "ruled_out", "unstated"] = "unstated"
++    priors_span: str = Field(default="", description=(
++        "Exact contiguous quote saying the request has, or does not have, a TF motif or binding prior or a "
++        "protein-interaction network; empty when unstated."))
+ 
+     @classmethod
+     def model_json_schema(cls, *args, **kwargs):
+diff --git a/scripts/netzoo_agent_core/graph/study_purpose_call.py b/scripts/netzoo_agent_core/graph/study_purpose_call.py
+index 5e54ee3..f2c3399 100644
+--- a/scripts/netzoo_agent_core/graph/study_purpose_call.py
++++ b/scripts/netzoo_agent_core/graph/study_purpose_call.py
+@@ -34,6 +34,8 @@ def purpose_state(purpose: StudyPurpose, source: str) -> dict:
+         "design": purpose.design,
+         "design_quote": purpose.design_quote,
+         "claims": [[claim, quote] for claim, quote in purpose.claims],
++        "priors": purpose.priors,
++        "priors_quote": purpose.priors_quote,
+     }
+ 
+ 
+diff --git a/scripts/netzoo_agent_core/interpretation/intent_shortlist.py b/scripts/netzoo_agent_core/interpretation/intent_shortlist.py
+new file mode 100644
+index 0000000..9a54ef2
+--- /dev/null
++++ b/scripts/netzoo_agent_core/interpretation/intent_shortlist.py
+@@ -0,0 +1,282 @@
++"""On a tie, lead with the workflows the stated question favours, and ask about data it depends on (Logs 370-372).
++
++A tie listed every workflow that produces the requested kind of result -- up
++to eleven -- and asked the user to choose, so a request that had said what it
++wanted to conclude read as if only its inputs had been looked at. The verified
++study purpose (Log 355) and the declared ``CLAIM_SUPPORT`` cells rank the tied
++candidates instead: a direct answer first, then an output the question can be
++tested from, then one that only describes it, then one that answers for
++another quantity (``answers``), then an undeclared cell, then one result for
++all the samples when the question asks about individuals. Nothing is
++recommended unless the best at least describes the answer; the best (up to
++three) are recommended, with the aggregate base of a single best one as its
++descriptive option (LIONESS-PANDA, then PANDA).
++
++What the user has is a fact, not an intent, and is never guessed (Log 371: a
++request naming no prior got motif workflows recommended; requiring a mention
++instead would miss every other wording). For the TF motif prior and PPI
++network:
++
++- named in the request: the workflows that need them can be recommended;
++- ruled out ("expression only", "nothing else", "no priors"): they are not;
++- not mentioned: when that changes what is recommended, the reply gives both
++  answers -- if you have them, and with only the data you named -- and the
++  card asks which it is; otherwise nothing is asked.
++
++A miRNA workflow is recommended only when miRNAs are mentioned, and when two
++omics layers are named only the workflows that use both are (Log 363). When
++several are recommended, each says when to pick it first, from its registered
++conditions -- the agent never infers them (Log 315). Every candidate stays in
++the reply with the reason it comes later; each line says why it fits the
++question, never how the algorithm works (user decision, Log 370). Nothing here
++changes the decision; a request without a verified conclusion keeps its reply.
++"""
++
++from __future__ import annotations
++
++import re
++from typing import NamedTuple
++
++from workflow_registry import CLAIM_SUPPORT, OUTPUT_CAPABILITIES, ClaimSupport
++
++from ..routing.study_purpose import StudyPurpose
++
++__all__ = ["Ranked", "Shortlist", "intent_reply", "intent_shortlist"]
++
++_MULTI_OMIC = frozenset({"run_dragon", "run_lioness_dragon"})
++_MIRNA_TOOLS = frozenset({"run_puma", "run_lioness_puma"})
++_PRIOR_FIELDS = frozenset({"motif_file", "ppi_file"})
++_MIRNA = re.compile(r"mi(?:cro)?-?RNAs?|\bmiR-|small[- ]?RNA", re.I)
++_PRIORS = re.compile(r"motif|\bpriors?\b|\bPPI\b|protein[- ](?:protein\s+)?interaction|binding[- ]sites?", re.I)
++# Log 363: what the request rules out, in its own words.
++_NO_PRIORS = re.compile(
++    r"expression\s+(?:data\s+|matrix\s+)?only|only\s+(?:have\s+)?(?:the\s+)?(?:expression|counts?|count\s+matrix|"
++    r"RNA-?seq)|(?:expression|counts?)\s+(?:data\s+|matrix\s+)?(?:is|are)\s+all\s+we\s+have|"
++    r"\bno\s+(?:other\s+data|(?:TF\s+|regulatory\s+)?priors?|motif|protein)|without\s+(?:any\s+)?(?:priors?|motif)|"
++    r"nothing\s+else|that\s+is\s+all|and\s+nothing\s+more", re.I)
++PRIORS_LABEL = "a TF motif prior and a PPI network"
++
++_ONE_LAYER = "uses one of the two data types you named, not both"
++_NO_MIRNA = "models miRNA regulators, which your request does not mention"
++_RULED_OUT = f"needs {PRIORS_LABEL}, which you said you do not have"
++_UNNAMED = f"needs {PRIORS_LABEL}, which your request does not mention"
++
++
++class Ranked(NamedTuple):
++    action: str
++    cell: ClaimSupport | None
++    rank: int
++    needs_priors: bool
++    blocked: str = ""  # why it is never recommended for this request, or ""
++
++
++class Shortlist(NamedTuple):
++    """The recommended workflows and the rest; ``without`` is set when they need unmentioned priors."""
++
++    recommended: list[Ranked]
++    others: list[Ranked]
++    # Only when the priors are not mentioned and change the answer: what is recommended without them
++    # (possibly nothing), and the card asks.
++    without: list[Ranked] | None = None
++
++
++_RANKS = {"test": 4, "describe": 3, "other": 2}
++_DESCRIBES = 3
++
++
++def _rank(cell: ClaimSupport | None, quote: str = "") -> int:
++    if cell is None:
++        return 1
++    if cell.level == "one_result":
++        return 0
++    if cell.level == "direct":
++        return 5
++    if cell.answers == "other" and _names_quantity(cell, quote):
++        return _RANKS["test"]
++    return _RANKS[cell.answers]
++
++
++def _names_quantity(cell: ClaimSupport, quote: str) -> bool:
++    """The question itself names the quantity an "other" cell answers for (its axis witness)."""
++    from workflow_registry import SELECTION_AXES
++
++    witness = SELECTION_AXES.get(cell.quantity_axis, {}).get("witness") if cell.quantity_axis else None
++    return bool(witness and isinstance(witness, str) and re.search(witness, quote, re.I))
++
++
++def _question(purpose: StudyPurpose) -> tuple[str, str] | None:
++    """The first stated conclusion a registered workflow can work toward (as study_purpose_notes.question_claim)."""
++    from workflow_registry import UNSUPPORTED_CLAIMS
++
++    return next(((claim, quote) for claim, quote in purpose.claims if claim not in UNSUPPORTED_CLAIMS), None)
++
++
++def _needs_priors(action: str) -> bool:
++    from ..reply_cards.method_notes import input_fields
++
++    required, groups = input_fields(action)
++    return bool(_PRIOR_FIELDS & set(required)) or any(set(group) <= _PRIOR_FIELDS for group in groups)
++
++
++def _pick(pool: list[Ranked]) -> list[Ranked]:
++    """The best of a pool (up to three), with a single best one's aggregate base; [] when none answers."""
++    best = max((item.rank for item in pool), default=0)
++    if best < _DESCRIBES:
++        return []
++    recommended = [item for item in pool if item.rank == best][:3]
++    if len(recommended) == 1:
++        bases = OUTPUT_CAPABILITIES[recommended[0].action].guidance_predecessors
++        recommended += [item for item in pool if item.action in bases and _DESCRIBES <= item.rank < best]
++    return recommended
++
++
++def priors_status(task: str) -> str:
++    """"named", "ruled_out" or "unknown": what the request's own words say about a motif prior and PPI.
++
++    A mention inside the words that rule them out ("expression only, no priors") is no mention.
++    """
++    rest = _NO_PRIORS.sub(" ", task)
++    if _PRIORS.search(rest):
++        return "named"
++    return "ruled_out" if rest != task else "unknown"
++
++
++def intent_shortlist(decision, purpose: StudyPurpose, task: str) -> Shortlist | None:
++    """The shortlist for a tie with a verified question, or None."""
++    from workflow_registry import UNSUPPORTED_CLAIMS
++
++    from ..routing.reading_selection import READING_WITNESSES
++
++    question = _question(purpose)
++    if (decision.capability_match_status != "ambiguous" or question is None
++            or any(claim in UNSUPPORTED_CLAIMS for claim, _ in purpose.claims)
++            or len(decision.outcome_hypotheses) > 1):
++        return None
++    candidates = [action for action in dict.fromkeys(decision.hypothesis_actions) if action in OUTPUT_CAPABILITIES]
++    if len(candidates) < 2:
++        return None
++    claim, design = question[0], purpose.design or "*"
++    two_layers = bool(READING_WITNESSES["multi_omic_network"].search(task)) and any(
++        action in _MULTI_OMIC for action in candidates)
++    mirna = bool(_MIRNA.search(task))
++    # Log 374: the verified call's reading; the word lists only when nothing read it.
++    priors = ({"stated": "named"}.get(purpose.priors, purpose.priors) if purpose.priors is not None
++              else priors_status(task))
++    ranked = []
++    for action in candidates:
++        cell = CLAIM_SUPPORT.get((action, claim, design)) or CLAIM_SUPPORT.get((action, claim, "*"))
++        needs = _needs_priors(action)
++        blocked = (_ONE_LAYER if two_layers and action not in _MULTI_OMIC
++                   else _NO_MIRNA if action in _MIRNA_TOOLS and not mirna
++                   else _RULED_OUT if needs and priors == "ruled_out" else "")
++        ranked.append(Ranked(action, cell, _rank(cell, question[1]), needs, blocked))
++    open_pool = [item for item in ranked if not item.blocked]
++    with_priors = _pick(open_pool)
++    without = _pick([item for item in open_pool if not item.needs_priors]) if priors == "unknown" else None
++    if without is not None and [i.action for i in without] == [i.action for i in with_priors]:
++        without = None  # the priors do not change the answer: nothing to ask
++    if not with_priors and not without:
++        return None
++    if without is None and len(with_priors) >= len(candidates):
++        return None
++    shown = {item.action for item in (*with_priors, *(without or ()))}
++    return Shortlist(with_priors, [item for item in ranked if item.action not in shown], without)
++
++
++def _name(action: str) -> str:
++    from workflow_registry import ACTION_DEFINITIONS
++
++    definition = ACTION_DEFINITIONS.get(action)
++    return definition.workflow if definition is not None else action
++
++
++def _names(actions) -> str:
++    names = [f"**{_name(action)}**" for action in actions]
++    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
++
++
++def _when(item: Ranked, among: list[Ranked]) -> str:
++    """When to pick it first, from its registered conditions the others do not share (Log 315: never inferred)."""
++    from ..reply_cards.method_notes import condition_phrase
++
++    own = OUTPUT_CAPABILITIES[item.action].prefer_when
++    shared = set.intersection(*(set(OUTPUT_CAPABILITIES[other.action].prefer_when) for other in among))
++    phrases = [phrase for condition in own if condition not in shared and (phrase := condition_phrase(condition))]
++    return f" Pick it first if {' or '.join(phrases)}." if phrases and len(among) > 1 else ""
++
++
++def _recommended_lines(items: list[Ranked]) -> list[str]:
++    return [f"- **{_name(item.action)}** — {item.cell.text}{_when(item, items)}" for item in items]
++
++
++def _reason(item: Ranked) -> str:
++    """Why a candidate comes after the recommended ones, in the registry's words."""
++    from ..reply_cards.method_notes import gives
++
++    if item.blocked:
++        return item.blocked
++    if item.cell is None:
++        offered = gives(item.action)
++        offered = offered[:1].lower() + offered[1:] if offered else ""
++        return (f"gives {offered.rstrip('.')}; " if offered else "") + "the registry does not say how it answers this question"
++    if item.cell.level == "one_result":
++        return (f"gives {item.cell.text}; with one sample per individual that says nothing about a single "
++                "individual")
++    if item.cell.limit:
++        return item.cell.limit
++    first = item.cell.text.split(". ", 1)[0].rstrip(".")
++    return "also fits, after the recommended: " + first[:1].lower() + first[1:]
++
++
++def intent_reply(text: str, decision, purpose: StudyPurpose, task: str) -> str | None:
++    """A tie's reply led by the recommended workflows, every candidate kept (Logs 370-372), or None."""
++    from ..presentation import _ui_text_with_user_data, user_data_token
++    from ..reply_cards.choices import _stated_reasons
++    from .inspected_answers import _NOT_INSPECTED
++
++    shortlist = intent_shortlist(decision, purpose, task)
++    if shortlist is None or not text:
++        return None
++    recommended, others, without = shortlist
++    user_data = [_question(purpose)[1]]
++    lead = f'For your question ("{user_data_token(0)}")'
++    if without is None:
++        lines = [f"{lead}, these fit best, and here is why:", *_recommended_lines(recommended)]
++        shown = recommended
++    else:
++        lines = [f"{lead}, which workflow fits depends on whether you have {PRIORS_LABEL}; your request does "
++                 "not mention them."]
++        if recommended:
++            lines += [f"If you have {PRIORS_LABEL}:", *_recommended_lines(recommended)]
++        lines += ["With only the data you named:", *(
++            _recommended_lines(without) if without else
++            ["- None of the workflows suggested for this result answers it without "
++             f"{PRIORS_LABEL}."])]
++        shown = [*recommended, *without]
++    caveats = dict.fromkeys(caveat for item in shown for caveat in item.cell.caveats)
++    lines += [f"Note: {caveat}" for caveat in caveats]
++    advice = decision.advisory_recommendation
++    later = ["The other registered options, and why they come later:"]
++    by_reason: dict[str, list[str]] = {}
++    for item in others:
++        reason = _reason(item)
++        if advice is not None and advice.action == item.action and _stated_reasons(advice):
++            reason += "; it was suggested because " + "; ".join(_stated_reasons(advice))
++        by_reason.setdefault(reason if item.blocked else f"{item.action}:{reason}", []).append(item.action)
++    for key, actions in by_reason.items():
++        reason = key.split(":", 1)[1] if ":" in key and key.split(":", 1)[0] in actions else key
++        if len(actions) > 1:
++            for singular in ("needs ", "uses ", "gives ", "models "):
++                if reason.startswith(singular):
++                    reason = singular[:-2] + " " + reason[len(singular):]
++        later.append(f"- {_names(actions)} — {reason}.")
++    if without is None:
++        names = _names([item.action for item in recommended])
++        ask = f"Should I plan {names.replace(' and ', ' or ')}, or do you need one of the others?"
++    else:
++        ask = f"Do you have {PRIORS_LABEL}? Tell me, and I will narrow this down."
++    kept = [part for part in text.split("\n\n")
++            if part.startswith(("Assumptions behind", "Unconfirmed assumptions")) or _NOT_INSPECTED in part]
++    block = "\n\n".join(["\n".join(lines), *(["\n".join(later)] if len(later) > 1 else []), ask])
++    _ui_text_with_user_data(block, user_data)
++    return "\n\n".join([block.replace(user_data_token(0), user_data[0]), *kept])
+diff --git a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+index 244b610..a608511 100644
+--- a/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
++++ b/scripts/netzoo_agent_core/interpretation/study_purpose_notes.py
+@@ -98,7 +98,8 @@ def purpose_from_state(state, task: str) -> StudyPurpose:
+     if not entry:
+         return study_purpose(task)
+     return StudyPurpose(entry.get("design"), entry.get("design_quote") or "",
+-                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()))
++                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()),
++                        entry.get("priors"), entry.get("priors_quote") or "")
+ 
+ 
+ def gap_claims(purpose: StudyPurpose) -> list[tuple[str, str]]:
+@@ -268,6 +269,14 @@ def with_study_purpose_reply(result: dict, state, reply) -> dict:
+     if purpose.design is None and not purpose.claims:
+         return result
+     text = str(result["messages"][-1].content)
++    if kind == "outcome_clarification":
++        # Log 370: a tie with a verified question leads with what fits it, every candidate kept.
++        from .intent_shortlist import intent_reply
++
++        led = intent_reply(text, TaskDecision.model_validate(state["decision"]), purpose,
++                           latest_user_task(state["messages"]))
++        if led:
++            return reply(led, kind)
+     if kind == "unresolved":
+         updated = unresolved_gap_reply(purpose)
+     else:
+diff --git a/scripts/netzoo_agent_core/llm.py b/scripts/netzoo_agent_core/llm.py
+index 702c012..2678d70 100644
+--- a/scripts/netzoo_agent_core/llm.py
++++ b/scripts/netzoo_agent_core/llm.py
+@@ -649,7 +649,13 @@ STUDY_PURPOSE_SYSTEM = (
+     "A goal the request rules out ('not causal', 'prediction isn't the point') is not a claim. Describing a "
+     "network, finding modules or clustering samples is no claim. Inferring or 'predicting' target genes of a "
+     "regulator is network inference, not prediction. A variable such as 'cause of death' is not a causal claim.\n\n"
+-    "Every text_span and design_span must be copied exactly from the request, without translation."
++    "priors -- whether the request says it has prior knowledge of transcription-factor binding (a motif or "
++    "binding-site prior, a TF-target list) or of protein-protein interactions:\n"
++    "- stated: it says it has them, or one of them.\n"
++    "- ruled_out: it says it does not have them, or that it has only expression data.\n"
++    "- unstated: it says neither.\n"
++    "priors_span -- the words that say so; empty when unstated.\n\n"
++    "Every text_span, design_span and priors_span must be copied exactly from the request, without translation."
+ )
+ 
+ 
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 4444112..bdf10b0 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -546,9 +546,62 @@ def _with_study_purpose(card: ReplyCard, kind: str, decision, policy, task: str,
+             f"{names} {'gives' if len(pooled) == 1 else 'give'} one result for all the samples: with one sample "
+             f"per individual that cannot show {CLAIM_LABELS[question[0]]}; {join_names(alternatives, 'and')} "
+             f"{'gives' if len(alternatives) == 1 else 'give'} one result per sample from the same data.", 300))
+-    if not rows and points == card.points:
++    choices = _intent_choices(card, kind, decision, purpose, task)
++    if choices is not card.choices:
++        from ..interpretation.intent_shortlist import PRIORS_LABEL
++
++        points = [point for point in points if not point.startswith("Nothing you said favours one method yet")]
++        if choices.header == "Your data":
++            points.insert(0, clip(f"Which workflow fits your question depends on whether you have {PRIORS_LABEL}; "
++                                  "the reply gives both answers.", 300))
++        else:
++            first = join_names([option.label for option in choices.options if option.recommended], "and")
++            points.insert(0, clip(f"Recommended for your question: {first}; the reply says why each fits and why "
++                                  "the others come later.", 300))
++    if not rows and points == card.points and choices is card.choices:
+         return card
+-    return card.model_copy(update={"points": points, "unavailable": [*card.unavailable, *rows][:8]})
++    return card.model_copy(update={"points": points[:6], "unavailable": [*card.unavailable, *rows][:8],
++                                   "choices": choices})
++
++
++def _intent_choices(card: ReplyCard, kind: str, decision, purpose, task: str):
++    """Logs 370-372: the card for a tie the reply leads with what fits the question.
++
++    When the TF motif prior and PPI network are not mentioned and decide the
++    answer, the card asks for them; otherwise the method card lists the
++    recommended first, none added or removed.
++    """
++    from ..interpretation.intent_shortlist import PRIORS_LABEL, intent_shortlist
++
++    if kind != "outcome_clarification" or card.choices is None:
++        return card.choices
++    shortlist = intent_shortlist(decision, purpose, task)
++    if shortlist is None:
++        return card.choices
++    if shortlist.without is not None:
++        return ReplyChoices(
++            header="Your data",
++            question=f"Do you have {PRIORS_LABEL}? The recommendation depends on it.",
++            options=[
++                ReplyOption(key="data-priors-yes", label=f"Yes, I have {PRIORS_LABEL}",
++                            answer=f"I have {PRIORS_LABEL}."),
++                ReplyOption(key="data-priors-no", label="No, only the expression data",
++                            answer=f"I only have the expression data, without {PRIORS_LABEL}."),
++            ],
++            ordering="The reply gives the recommendation for each answer.",
++        )
++    if card.choices.header != "Method":
++        return card.choices
++    first = [item.action for item in shortlist.recommended]
++    options = sorted(card.choices.options, key=lambda option: (
++        first.index(option.action) if option.action in first else len(first)))
++    options = [option.model_copy(update={"recommended": option.action in first,
++                                         "badge": "Recommended" if option.action in first else ""})
++               for option in options]
++    return card.choices.model_copy(update={
++        "options": options,
++        "ordering": "Recommended first, from your question and the data you named; the reply says why.",
++    })
+ 
+ 
+ def _one_result_steps(decision, policy, task: str, state, steps: list[ReplyOption]) -> list[ReplyOption]:
+diff --git a/scripts/netzoo_agent_core/routing/study_purpose.py b/scripts/netzoo_agent_core/routing/study_purpose.py
+index f3e0175..4f0350a 100644
+--- a/scripts/netzoo_agent_core/routing/study_purpose.py
++++ b/scripts/netzoo_agent_core/routing/study_purpose.py
+@@ -181,6 +181,10 @@ class StudyPurpose(NamedTuple):
+     design: Design | None = None
+     design_quote: str = ""
+     claims: tuple[tuple[Claim, str], ...] = ()
++    # Log 374: "stated", "ruled_out" or "unstated" from the verified call, with its quote;
++    # None when nothing read it (the word witnesses, an older state).
++    priors: str | None = None
++    priors_quote: str = ""
+ 
+     @property
+     def claim(self) -> Claim | None:
+diff --git a/scripts/netzoo_agent_core/routing/study_purpose_verify.py b/scripts/netzoo_agent_core/routing/study_purpose_verify.py
+index 90c9987..0fe89fb 100644
+--- a/scripts/netzoo_agent_core/routing/study_purpose_verify.py
++++ b/scripts/netzoo_agent_core/routing/study_purpose_verify.py
+@@ -29,7 +29,13 @@ naming TFs. A proposal therefore stands only on its own quote:
+   loss" is not a group difference), and an individual change needs a change,
+   an extreme or a ranking besides the individuals ("each subject's network
+   built so the team can browse them" asks for none);
+-- a group difference needs a verified design.
++- a group difference needs a verified design;
++- Log 374: a priors reading stands on its quote too, loosely -- "stated" names
++  a prior (motif, binding sites, PPI, interactome ...) with no negation in the
++  quote; "ruled_out" has a negation or an "only" in its sentence, beside a
++  prior or the expression data. The model reads the wording; these only reject
++  a quote that cannot mean it. A rejected reading is "unstated", which at most
++  asks the user.
+ 
+ What survives is the StudyPurpose the reply layer reads; nothing here selects,
+ ranks or removes a workflow.
+@@ -172,6 +178,34 @@ def _design_reason(task: str, design: str, quote: str) -> str:
+     return "ok"
+ 
+ 
++_PRIOR_NOUN = re.compile(
++    r"motif|\bpriors?\b|\bPPI\b|protein[- ]?(?:protein\s+)?interact\w*|binding|interactome|regulon|"
++    r"\bTF[- ]targets?\b|transcription[- ]factor\s+targets?|JASPAR|STRING|TRANSFAC|HOCOMOCO|CIS-?BP|BioGRID", _I)
++# "Ruled out" may name the missing knowledge in any words; "stated" needs a prior noun (a false
++# "stated" would recommend workflows the user cannot run, a false "ruled out" only asks less).
++_RULED_OUT_NOUN = re.compile(r"\bbind\w*|transcription[- ]factors?|\bTFs?\b|interact\w*|regulat\w*", _I)
++_NEGATION = re.compile(
++    r"\b(?:no|not|without|lack\w*|nobody|none|absent|unavailable|missing|never|nothing|neither|nor)\b|n't\b", _I)
++_ONLY = re.compile(r"\bonly\b|\balone\b|\bsolely\b|\bthat\s+is\s+all\b|\ball\s+we\s+have\b", _I)
++_EXPRESSION_NOUN = re.compile(r"expression|RNA-?seq|transcriptom\w*|counts?|microarray|arrays?|sequenc\w*", _I)
++
++
++def _priors_reason(task: str, value: str, quote: str) -> str:
++    located = _locate(task, quote)
++    if located is None:
++        return "quote_not_in_request"
++    span = task[located[0]:located[1]]
++    sentence = _sentence(task, *located)
++    if value == "stated":
++        if not _PRIOR_NOUN.search(span):
++            return "no_cue"
++        return "negated" if _NEGATION.search(span) else "ok"
++    limited = _NEGATION.search(sentence) or _ONLY.search(sentence)
++    if limited and (_PRIOR_NOUN.search(span) or _RULED_OUT_NOUN.search(span) or _EXPRESSION_NOUN.search(span)):
++        return "ok"
++    return "no_cue"
++
++
+ def verify_proposal(task: str, proposal: StudyPurposeProposal) -> tuple[StudyPurpose, list[dict]]:
+     """The verified StudyPurpose and every rejected part of the proposal, with its reason."""
+     rejected: list[dict] = []
+@@ -191,4 +225,11 @@ def verify_proposal(task: str, proposal: StudyPurposeProposal) -> tuple[StudyPur
+             rejected.append({"field": "claim", "value": item.claim, "reason": reason})
+         elif item.claim not in {claim for claim, _ in claims}:
+             claims.append((item.claim, item.text_span.strip()))
+-    return StudyPurpose(design, design_quote, tuple(claims)), rejected
++    priors, priors_quote = "unstated", ""
++    if proposal.priors != "unstated":
++        reason = _priors_reason(task, proposal.priors, proposal.priors_span)
++        if reason == "ok":
++            priors, priors_quote = proposal.priors, proposal.priors_span.strip()
++        else:
++            rejected.append({"field": "priors", "value": proposal.priors, "reason": reason})
++    return StudyPurpose(design, design_quote, tuple(claims), priors, priors_quote), rejected
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index 1ab5fa8..132d894 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -847,6 +847,17 @@ class ClaimSupport(NamedTuple):
+     text: str
+     caveats: tuple[str, ...] = ()
+     instead: tuple[str, ...] = ()
++    # Log 370: how the output meets the question -- "test" (the question can be
++    # tested from it), "describe" (it shows the difference without a test, or
++    # without the stated pairing) or "other" (it answers for another quantity).
++    # A tie's reply leads with the best of them; ``limit`` says in a few words
++    # why a "describe" or "other" cell comes after a "test" one.
++    answers: Literal["test", "describe", "other"] = "test"
++    limit: str = ""
++    # Log 370: an "other" cell whose quantity the question itself names (a
++    # SELECTION_AXES witness) answers it after all: GIRAFFE's TF activity for
++    # "which TFs change their activity".
++    quantity_axis: str = ""
+ 
+ 
+ # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
+@@ -878,20 +889,20 @@ def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = (
+             "networks give one value per edge per group: they show where the groups differ, but give "
+             f"no per-sample spread to test it. For a statistical test, use {per_sample} and test "
+             "between the groups."
+-        ), caveats),
++        ), caveats, answers="describe", limit="shows where the groups differ, with no test"),
+         (action, "group_difference", "paired"): ClaimSupport("with_step", (
+             "Build one network for each time point on the same genes and priors, then compare edge "
+             "weights or targeting scores between them. This compares the time points across all "
+             "individuals but does not use the pairing: each individual's samples from the different "
+             f"time points are pooled into separate networks. To keep the pairing, use {per_sample} "
+             "and compare each individual's samples."
+-        ), caveats),
++        ), caveats, answers="describe", limit="compares the time points without using the pairing"),
+         (action, "regulator_change", "*"): ClaimSupport("with_step", (
+             "Comparing each regulator's targeting score (out-degree) between networks built "
+             "separately for each condition shows regulators whose targeting changes. Without "
+             "per-sample networks this ranks regulators by the size of the change, with no test of "
+             "whether it exceeds chance."
+-        ), caveats),
++        ), caveats, answers="describe", limit="ranks regulators by the size of the change, with no test"),
+     }
+ 
+ 
+@@ -955,15 +966,16 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+         "GIRAFFE's TF-by-sample activity matrix gives each TF's activity in each sample; test each "
+         "TF's activity between the conditions (paired when the same individuals give both), with "
+         "multiple-testing correction."
+-    )),
++    ), answers="other", limit="gives TF activity, not network wiring", quantity_axis="tf_activity_vs_expression"),
+     ("run_giraffe", "individual_change", "paired"): ClaimSupport("with_step", (
+         "The difference between an individual's activity profiles at the time points measures how "
+         "much that individual's TF activity changed."
+-    )),
++    ), answers="other", limit="measures change in TF activity, not network wiring",
++        quantity_axis="tf_activity_vs_expression"),
+     ("run_giraffe", "group_difference", "*"): ClaimSupport("with_step", (
+         "The activity matrix compares TF activity, not network wiring, between the conditions; test "
+         "each TF's activity between them (paired when the same individuals give both)."
+-    )),
++    ), answers="other", limit="compares TF activity, not network wiring", quantity_axis="tf_activity_vs_expression"),
+     # The COBRA paper does not describe an individual term in the design
+     # matrix, so a paired design is not declared.
+     ("run_cobra", "group_difference", "groups"): ClaimSupport("direct", (
+@@ -989,7 +1001,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     ), (
+         "Partial correlations are conditional on every other feature in both layers, so use the same "
+         "feature set in every network you compare.",
+-    )),
++    ), answers="describe", limit="shows where the groups differ, with no test"),
+     ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
+         "Build one network per time point or condition on the same features and compare the cross-layer "
+         "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
+@@ -997,7 +1009,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     ), (
+         "Partial correlations are conditional on every other feature in both layers, so use the same "
+         "feature set in every network you compare.",
+-    )),
++    ), answers="describe", limit="compares the conditions without using the pairing"),
+     ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
+         "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
+         "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
+diff --git a/tests/test_study_purpose.py b/tests/test_study_purpose.py
+index 7b2c9f4..cdbe54d 100644
+--- a/tests/test_study_purpose.py
++++ b/tests/test_study_purpose.py
+@@ -124,12 +124,14 @@ def test_only_the_global_table_states_a_gap():
+ # -- replies (recorded Log 341 decisions) ------------------------------------------
+ 
+ def test_a_cohort_change_question_gets_the_comparison_step_above_the_question():
++    # Log 370: the tie now leads with what fits the question; every candidate stays.
+     text, _, card = _reply("A1-1")
+-    block = text.split("For your question (", 1)[1]
+-    assert block.startswith('"We want to know whether the regulatory network changes after treatment across the cohort."')
+-    assert "- **PANDA**, **PUMA** — Build one network for each time point" in block
+-    assert "does not use the pairing" in block
+-    assert text.index("For your question") < text.index("These all fit; to choose")
++    assert text.startswith('For your question ("We want to know whether the regulatory network changes after '
++                           'treatment across the cohort."), these fit best, and here is why:')
++    assert "- **PANDA** — Build one network for each time point" in text
++    assert "does not use the pairing" in text
++    assert "- **PUMA** — models miRNA regulators, which your request does not mention." in text
++    assert "These all fit" not in text
+     assert any(point.startswith("Your question: whether the groups or time points differ") for point in card.points)
+ 
+ 
+diff --git a/tests/test_study_purpose_call.py b/tests/test_study_purpose_call.py
+index e2b69d9..ad4e733 100644
+--- a/tests/test_study_purpose_call.py
++++ b/tests/test_study_purpose_call.py
+@@ -30,9 +30,10 @@ TASK = ("Twenty-two adults each did two weeks on a high-salt and two weeks on a
+         "co-expression networks shift most between diets.")
+ 
+ 
+-def _proposal(design="none", design_span="", claims=()):
++def _proposal(design="none", design_span="", claims=(), priors="unstated", priors_span=""):
+     return StudyPurposeProposal(design=design, design_span=design_span,
+-                                claims=[{"claim": c, "text_span": q} for c, q in claims])
++                                claims=[{"claim": c, "text_span": q} for c, q in claims],
++                                priors=priors, priors_span=priors_span)
+ 
+ 
+ class Adapter:
+@@ -121,7 +122,8 @@ def test_the_call_is_strict_and_its_verified_reading_is_state():
+         "method": "function_calling", "include_raw": True, "strict": True}
+     assert entry == {"source": "model", "design": "paired",
+                      "design_quote": "each did two weeks on a high-salt and two weeks on a low-salt diet",
+-                     "claims": [["individual_change", "find the participants whose co-expression networks shift most"]]}
++                     "claims": [["individual_change", "find the participants whose co-expression networks shift most"]],
++                     "priors": "unstated", "priors_quote": ""}
+     assert [call.role for call in usage.calls] == ["study_purpose"]
+     detected = dict(events)["routing.study_purpose_detected"]
+     assert detected["rejected"] == [{"field": "claim", "value": "regulator_change", "reason": "no_cue"}]
+@@ -286,7 +288,10 @@ def _recorded(tag, key, purpose=None):
+              "messages": [HumanMessage(content=item["prompt"])], "study_purpose": traced}
+     out = response.respond(SimpleNamespace(project_policy=POLICY), state)
+     result = {**state, "messages": [*state["messages"], out["messages"][-1]], "reply_kind": out["reply_kind"]}
+-    card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
++    try:
++        card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=item["prompt"])
++    except ValueError:  # a tie of 9+ workflows exceeds the method card; production skips the card too
++        card = None
+     return out["messages"][-1].content, card
+ 
+ 
+@@ -326,24 +331,24 @@ def test_the_card_never_drops_a_step_it_had(monkeypatch):
+     assert "- **DRAGON** — gives one two-layer network from all the samples it is given." in with_text
+ 
+ 
+-def test_a_tie_lists_the_workflows_that_answer_before_the_one_result_ones_and_names_them_in_its_lead():
+-    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER.
++def test_a_tie_puts_the_one_result_workflows_after_the_ones_that_answer_and_says_why():
++    # s7 T1: "we just want to see whose marrow networks stand out most", tie with PANDA, PUMA, OTTER (Log 370).
+     text, card = _recorded("s7", "cand-T1-1")
+-    block = text.split("For your question (", 1)[1]
+-    assert block.index("- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample") < block.index(
+-        "- **PANDA**, **PUMA**, **OTTER** — each gives one network from all the samples it is given.")
+-    assert "Per-sample workflows for the same data: **LIONESS-PANDA**, **LIONESS-PUMA**." in block
+-    assert ("These fit the result you described; **PANDA**, **PUMA** and **OTTER** give one result for all the "
+-            "samples they are given. To choose, tell me: (1)") in text
++    assert text.startswith('For your question ("we just want to see whose marrow networks stand out most."), these '
++                           "fit best, and here is why:\n- **LIONESS-PANDA** — Each sample gets its own network")
++    assert ("- **PANDA** — gives one network from all the samples; with one sample per individual that says nothing "
++            "about a single individual.") in text
+     assert "These all fit" not in text
++    assert [option.label for option in card.choices.options][0] == "LIONESS-PANDA"
+     # Others answer the question, so the card adds no planning step of its own.
+     assert not any(step.key == "plan-run_lioness_panda" for step in card.next_steps)
+ 
+ 
+ def test_cobra_says_what_it_gives_but_stays_silent_where_no_cell_is_declared():
+     text, _ = _recorded("s9", "cand-S1-a-1")
+-    assert "- **COBRA** — gives the co-expression associated with each covariate across all the samples" in text
+-    assert "Per-sample workflows for the same data: **LIONESS-COEXPRESSION**, **BONOBO**." in text
++    assert ("- **COBRA** — gives the co-expression associated with each covariate across all the samples; with one "
++            "sample per individual that says nothing about a single individual.") in text
++    assert "Should I plan **LIONESS-COEXPRESSION** or **BONOBO**, or do you need one of the others?" in text
+     # s9 S1-b asks whether the diet changes co-expression across the cohort (paired): COBRA has no
+     # declared cell for a paired group difference, and an undeclared cell says nothing (CC1).
+     text, _ = _recorded("s9", "cand-S1-b-1")
+@@ -374,3 +379,182 @@ def test_an_aggregate_named_only_because_its_per_sample_version_produces_it_says
+     text, _ = _recorded("s10", "cand-T2-1")
+     assert "- **LIONESS-DRAGON** — Each sample gets its own two-layer network" in text
+     assert "- **DRAGON** —" not in text
++
++
++# -- Log 370: a tie led by what fits the stated question ----------------------------------
++
++def _without_intent(monkeypatch):
++    from netzoo_agent_core.interpretation import intent_shortlist
++
++    monkeypatch.setattr(intent_shortlist, "intent_reply", lambda *args, **kwargs: None)
++
++
++def test_a_tie_leads_with_what_fits_the_question_says_why_and_keeps_every_candidate(monkeypatch):
++    # s7 Q1-a: paired before/after, "does the network shift, on average", motif and PPI, no miRNA.
++    text, card = _recorded("s7", "cand-Q1-a-1")
++    head, later = text.split("The other registered options, and why they come later:")
++    assert head.startswith('For your question ("Does the macrophage regulatory network shift, on average, after the '
++                           'challenge?"), these fit best, and here is why:')
++    assert "- **LIONESS-PANDA** — Each sample gets its own network, so each individual's networks" in head
++    assert "a paired test or a linear model with an individual term" in head
++    assert "- **PANDA** — Build one network for each time point" in head and "does not use the pairing" in head
++    assert "Method:" not in text  # the user asked for why, not how the algorithms work
++    assert "- **PUMA** and **LIONESS-PUMA** — model miRNA regulators, which your request does not mention." in later
++    assert "- **OTTER** — compares the time points without using the pairing." in later
++    assert "- **GIRAFFE** — compares TF activity, not network wiring." in later
++    assert "Should I plan **LIONESS-PANDA** or **PANDA**, or do you need one of the others?" in text
++    assert text.endswith("No files were inspected and no analysis ran.")
++    # The card lists the same options, the recommended first; none is added or removed.
++    options = [option.label for option in card.choices.options]
++    assert options[:2] == ["LIONESS-PANDA", "PANDA"]
++    assert [o.badge for o in card.choices.options][:3] == ["Recommended", "Recommended", ""]
++    assert card.points[0].startswith("Recommended for your question: LIONESS-PANDA and PANDA;")
++    assert not any(point.startswith("Nothing you said favours one method yet") for point in card.points)
++    _without_intent(monkeypatch)
++    before, before_card = _recorded("s7", "cand-Q1-a-1")
++    assert sorted(options) == sorted(option.label for option in before_card.choices.options)
++    assert "these fit best" not in before
++
++
++def test_two_named_omics_layers_recommend_only_the_workflow_that_uses_both():
++    # s10 F6c: tumour vs normal kidney, RNA-seq and methylation, "how methylation and expression are linked".
++    # Its live reply was research_choices, which this change leaves alone; the ranking itself is checked.
++    import json
++
++    from netzoo_agent_core.interpretation.intent_shortlist import intent_reply, intent_shortlist
++    from netzoo_agent_core.interpretation.study_purpose_notes import purpose_from_state
++
++    item = json.loads((LIVE / "s10-decisions.json").read_text())["cand-F6c-1"]
++    decision = TaskDecision.model_validate(item["decision"])
++    purpose = purpose_from_state({"study_purpose": item["study_purpose"]}, item["prompt"])
++    shortlist = intent_shortlist(decision, purpose, item["prompt"])
++    assert [entry.action for entry in shortlist.recommended] == ["run_lioness_dragon"] and shortlist.without is None
++    text = intent_reply(item["reply"], decision, purpose, item["prompt"])
++    later = text.split("The other registered options, and why they come later:")[1]
++    assert ("**LIONESS-COEXPRESSION**, **COBRA**, **OTTER**, **GIRAFFE** and **BONOBO** — use one of the two data "
++            "types you named, not both.") in later
++
++
++def test_mirna_workflows_are_recommended_only_when_the_request_mentions_mirnas():
++    # s8 R1-a: no input named at all; the miRNA workflows come later whatever the priors.
++    text, _ = _recorded("s8", "cand-R1-a-3")
++    head, later = text.split("The other registered options, and why they come later:")
++    assert "**LIONESS-PUMA**" not in head
++    assert "**PUMA** and **LIONESS-PUMA** — model miRNA regulators, which your request does not mention." in later
++
++
++def test_tf_activity_answers_only_a_question_that_names_activity():
++    # s12 T3: "which TF-to-gene edges differ" -- GIRAFFE's TF activity comes later.
++    text, _ = _recorded("s12", "cand-T3-1")
++    head, later = text.split("The other registered options, and why they come later:")
++    assert "**GIRAFFE**" not in head and "- **GIRAFFE** — gives TF activity, not network wiring." in later
++    # The same decision asked about activity puts GIRAFFE among the recommended.
++    text, _ = _recorded("s12", "cand-T3-1", purpose={
++        "source": "model", "design": "groups", "design_quote": "50 mice that developed aneurysms ... and 30 saline",
++        "claims": [["regulator_change", "which transcription factors change their activity most"]]})
++    head, _ = text.split("The other registered options, and why they come later:")
++    assert "- **GIRAFFE** — GIRAFFE's TF-by-sample activity matrix" in head
++
++
++def test_a_tie_without_a_verified_question_keeps_its_reply(monkeypatch):
++    empty = {"source": "model", "design": None, "design_quote": "", "claims": []}
++    text, card = _recorded("s7", "cand-Q1-a-1", purpose=empty)
++    _without_intent(monkeypatch)
++    before, before_card = _recorded("s7", "cand-Q1-a-1", purpose=empty)
++    assert text == before and "these fit best" not in text
++    assert [o.label for o in card.choices.options] == [o.label for o in before_card.choices.options]
++
++
++# -- Log 372: data the answer depends on is asked about, never guessed ------------------------
++
++def test_unmentioned_priors_that_decide_the_answer_give_both_answers_and_the_card_asks(monkeypatch):
++    # s13 B4: 104 sticklebacks, no prior named, "which transcription factors differ most between the lakes".
++    text, card = _recorded("s13", "cand-B4-1")
++    assert ("which workflow fits depends on whether you have a TF motif prior and a PPI network; your request does "
++            "not mention them.") in text
++    head = text.split("With only the data you named:")[0]
++    assert "If you have a TF motif prior and a PPI network:\n- **LIONESS-PANDA** — Per-sample targeting scores" in head
++    assert ("With only the data you named:\n- None of the workflows suggested for this result answers it without a "
++            "TF motif prior and a PPI network.") in text
++    assert "Do you have a TF motif prior and a PPI network? Tell me, and I will narrow this down." in text
++    assert card.choices.header == "Your data"
++    assert [option.answer for option in card.choices.options] == [
++        "I have a TF motif prior and a PPI network.",
++        "I only have the expression data, without a TF motif prior and a PPI network."]
++    assert card.choices.allow_other
++    # Every candidate is still in the reply.
++    for name in ("LIONESS-PANDA", "PANDA", "OTTER", "GIRAFFE"):
++        assert f"**{name}**" in text
++
++
++def test_named_or_ruled_out_priors_are_never_asked_about():
++    from netzoo_agent_core.interpretation.intent_shortlist import priors_status
++
++    assert priors_status("RNA-seq plus a human motif prior and PPI network.") == "named"
++    assert priors_status("We only have the expression data.") == "ruled_out"
++    # A mention inside the words that rule them out is no mention.
++    assert priors_status("I have RNA-seq of 12 volunteers; expression only, no priors.") == "ruled_out"
++    assert priors_status("We have RNA-seq and a motif prior, but no protein interaction data.") == "named"
++    assert priors_status("We sequenced head-kidney transcriptomes from 104 sticklebacks.") == "unknown"
++    # s7 Q1-a names its priors: no data question, the method card as before.
++    text, card = _recorded("s7", "cand-Q1-a-1")
++    assert "depends on whether you have" not in text and card.choices.header == "Method"
++
++
++def test_tied_recommendations_say_when_to_pick_each_first_from_their_registered_conditions():
++    # s13 T5: nine children, edge confidence -- the agent never infers "few" from a number (Log 315),
++    # so both are recommended and each says when to pick it first.
++    text, _ = _recorded("s13", "cand-T5-1")
++    assert "- **BONOBO** — " in text and "Pick it first if you have only a handful of samples or you need a p-value " \
++        "for each edge." in text
++    assert "Pick it first if you have dozens of samples or more" in text
++
++
++# -- Log 374: the priors are read by the call, with a quote, and verified loosely -------------
++
++@pytest.mark.parametrize("task, value, quote", [
++    ("We have RNA-seq plus a human motif prior and PPI network.", "stated", "a human motif prior and PPI network"),
++    ("We have kidney RNA-seq plus TF binding-site predictions and a protein interaction map.", "stated",
++     "TF binding-site predictions and a protein interaction map"),
++    ("We have leaf RNA-seq for 72 lines, but no transcription factor motifs or protein interaction network.",
++     "ruled_out", "no transcription factor motifs or protein interaction network"),
++    ("Nobody has catalogued what this tardigrade's transcription factors bind.", "ruled_out",
++     "Nobody has catalogued what this tardigrade's transcription factors bind"),
++    ("The RNA-seq counts are all we have.", "ruled_out", "The RNA-seq counts are all we have"),
++])
++def test_a_priors_reading_stands_on_its_quote(task, value, quote):
++    purpose, rejected = verify_proposal(task, _proposal(priors=value, priors_span=quote))
++    assert (purpose.priors, purpose.priors_quote) == (value, quote) and rejected == []
++
++
++@pytest.mark.parametrize("task, value, quote, reason", [
++    # "Stated" cannot rest on a negated quote, nor on one naming no prior.
++    ("We have RNA-seq, but no motif prior.", "stated", "no motif prior", "negated"),
++    ("We RNA-sequenced 40 kidneys.", "stated", "We RNA-sequenced 40 kidneys", "no_cue"),
++    # "Ruled out" needs a negation or an "only" in its sentence.
++    ("We have RNA-seq and a motif prior.", "ruled_out", "a motif prior", "no_cue"),
++    ("We have RNA-seq and a motif prior.", "stated", "a PPI network", "quote_not_in_request"),
++])
++def test_a_priors_reading_that_its_quote_cannot_mean_is_unstated(task, value, quote, reason):
++    purpose, rejected = verify_proposal(task, _proposal(priors=value, priors_span=quote))
++    assert purpose.priors == "unstated"
++    assert rejected == [{"field": "priors", "value": value, "reason": reason}]
++
++
++def test_the_tie_reply_uses_the_calls_priors_reading_before_the_word_lists():
++    from netzoo_agent_core.interpretation.intent_shortlist import intent_shortlist, priors_status
++    from netzoo_agent_core.routing.study_purpose import StudyPurpose
++    import json
++
++    item = json.loads((LIVE / "s13-decisions.json").read_text())["cand-B4-1"]
++    decision = TaskDecision.model_validate(item["decision"])
++    claims = (("regulator_change", "which transcription factors differ most between the lakes in how strongly they "
++                                   "regulate their target genes"),)
++    task = item["prompt"]
++    assert priors_status(task) == "unknown"
++    asked = intent_shortlist(decision, StudyPurpose("groups", "x", claims), task)
++    assert asked.without is not None  # nothing read the priors: the word lists, which ask
++    ruled = intent_shortlist(decision, StudyPurpose("groups", "x", claims, "ruled_out", "q"), task)
++    assert ruled is None or (ruled.without is None and not ruled.recommended)  # nothing recommended needs them
++    named = intent_shortlist(decision, StudyPurpose("groups", "x", claims, "stated", "q"), task)
++    assert named.without is None and [i.action for i in named.recommended] == ["run_lioness_panda", "run_panda"]
