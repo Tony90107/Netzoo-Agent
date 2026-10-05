@@ -14,6 +14,7 @@ from ..interpretation.semantic_goal import publish_routing_progress
 from ..llm import latest_user_task
 from ..planning import build_workflow_plan, render_plan
 from .context import _GraphContext, record_event
+from .operation_authority import with_operation_authority
 from .router_invocation import invoke_router
 from .planning_mapper import PlanningMapper
 
@@ -24,7 +25,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
     _trace("intent", "Interpreting the request and capability boundaries")
     user_task = latest_user_task(state["messages"])
     current_usage = state.get("token_usage")
-    invocation = invoke_router(context, state, user_task)
+    invocation = with_operation_authority(
+        context, state, user_task, invoke_router(context, state, user_task),
+    )
     decision = invocation.decision
     usage = invocation.usage
     routing_state = invocation.routing_state

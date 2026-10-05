@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKey, RecommendedAction
 
+from .authorization import OperationAuthorization
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
     AddressedConcern,
@@ -153,6 +154,13 @@ class TaskDecision(BaseModel):
     # dumps while empty.
     discovered_inputs: list[str] = Field(
         default_factory=list, exclude_if=lambda value: not value,
+    )
+    # Operation authority read from the request's own words, kept apart from
+    # the capability match above (diagnostics F1/F2): which operations it asks
+    # for now, which it forbids, and any execution that refused. Code-owned;
+    # omitted from dumps while unset.
+    operation_authorization: OperationAuthorization | None = Field(
+        default=None, exclude_if=lambda value: value is None,
     )
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None

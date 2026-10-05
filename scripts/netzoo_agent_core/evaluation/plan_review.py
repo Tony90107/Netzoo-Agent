@@ -27,6 +27,7 @@ from ..data.paths import condor_artifact_paths, resolved_output_collisions
 from ..data.cobra import cobra_input_output_collisions
 from ..policy import ProjectPolicyLoader
 from ..planning.step_decision import effective_step_decision
+from ..routing.authorization import forbidding_reason, read_operation_authorization
 from ..data.paths import _resolve_user_path
 from ..string_download import requested_network_kind, requested_species
 from .plan_rules import (
@@ -36,6 +37,32 @@ from .plan_rules import (
     _expected_plan_steps,
     _path_hygiene_failures,
 )
+
+def _operation_authorization_item(
+    plan: WorkflowPlan, decision: TaskDecision, user_task: str,
+) -> PlanRubricItem:
+    """Re-read operation authority from the request, not from the decision.
+
+    ``should_execute`` is written by the stages being checked; a ban in the
+    user's own words is independent evidence, so a plan for a forbidden
+    operation fails here even if an upstream rule promoted it (F1/F2).
+    """
+    authorization = read_operation_authorization(user_task)
+    refusals = [
+        f"{action}: {reason}"
+        for action in dict.fromkeys([decision.action, *(step.action for step in plan.steps)])
+        if (reason := forbidding_reason(authorization, action))
+    ]
+    return PlanRubricItem(
+        criterion="operation_authorization",
+        result="fail" if refusals else "pass",
+        detail=(
+            "; ".join(refusals)
+            if refusals
+            else "The request does not forbid any planned operation."
+        ),
+    )
+
 
 def evaluate_workflow_plan(
     plan: WorkflowPlan,
@@ -83,8 +110,10 @@ def evaluate_workflow_plan(
         )
 
     action = decision.action
+    authority = _operation_authorization_item(plan, decision, user_task)
     if action == "download_string":
         valid = (
+            authority.result == "pass" and
             plan.workflow == "STRING-DOWNLOAD"
             and len(plan.steps) == 1
             and plan.steps[0].action == "download_string"
@@ -109,7 +138,7 @@ def evaluate_workflow_plan(
             status="approved" if valid else "rejected",
             score=100 if valid else 0,
             summary="STRING acquisition plan is valid." if valid else "STRING acquisition plan is incomplete or inconsistent.",
-            rubric=[PlanRubricItem(
+            rubric=[authority, PlanRubricItem(
                 criterion="string_acquisition_contract",
                 result="pass" if valid else "fail",
                 detail="Species, network type, acquisition intent, and one official download step are required.",
@@ -124,6 +153,7 @@ def evaluate_workflow_plan(
         recognized_action
         and plan.workflow == expected_workflow
     )
+    rubric.append(authority)
     rubric.append(
         PlanRubricItem(
             criterion="intent_and_capability_alignment",
