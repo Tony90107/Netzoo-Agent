@@ -63,14 +63,14 @@ def lines_only_add(base, cand):
     return (not extra), (f"undeclared added line: {extra[0][:120]!r}" if extra else "")
 
 
-def _render(task, decision, traced):
+def _render(task, decision, traced, facts=None):
     """A.render's reply, and the card built from it as the CLI builds it."""
     from langchain_core.messages import AIMessage, HumanMessage
     from netzoo_agent_core.cli.follow_up import build_next_turn_prompt
     from netzoo_agent_core.contracts import WorkflowPlan
     from netzoo_agent_core.reply_cards.builder import build_reply_card
 
-    text, kind = A.render(task, decision, True, traced)
+    text, kind = A.render(task, decision, True, traced, facts)
     if text is None:
         return None, kind, None
     plan = WorkflowPlan(workflow="NO-TOOL", objective=task[:200], decision=decision.model_dump(), status="respond_only")
@@ -78,6 +78,8 @@ def _render(task, decision, traced):
               "messages": [HumanMessage(content=task), AIMessage(content=text)], "reply_kind": kind}
     if traced is not None:
         result["study_purpose"] = traced
+    if facts is not None:
+        result["data_facts"] = facts
     try:
         card = build_reply_card(result, build_next_turn_prompt(result), A.POLICY, task=task)
     except Exception as error:  # production skips the card too (engine/machine.py::_reply_card)

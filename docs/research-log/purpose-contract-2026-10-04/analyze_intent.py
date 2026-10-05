@@ -32,12 +32,12 @@ def name(action):
     return ACTION_DEFINITIONS[action].workflow
 
 
-def render_pair(task, decision, traced):
-    with_c, kind, card_with = C._render(task, decision, traced)
+def render_pair(task, decision, traced, facts=None):
+    with_c, kind, card_with = C._render(task, decision, traced, facts)
     original = I.intent_reply
     I.intent_reply = lambda *args, **kwargs: None
     try:
-        without_c, _, card_without = C._render(task, decision, traced)
+        without_c, _, card_without = C._render(task, decision, traced, facts)
     finally:
         I.intent_reply = original
     return with_c, without_c, kind, card_with, card_without
@@ -53,7 +53,8 @@ def score(trials, out_name):
     q1, q1_bad, q2_missed = Counter(), [], []
     for trial in trials:
         item, decision, traced = trial["item"], trial["decision"], trial["traced"]
-        with_c, without_c, kind, card_with, card_without = render_pair(item["prompt"], decision, traced)
+        with_c, without_c, kind, card_with, card_without = render_pair(item["prompt"], decision, traced,
+                                                                       trial.get("facts"))
         counts["trials"] += 1
         if kind == "response_model":
             counts["response_model"] += 1
@@ -79,7 +80,7 @@ def score(trials, out_name):
             continue
         counts["fired"] += 1
         purpose = C.purpose_of(traced)
-        shortlist = I.intent_shortlist(decision, purpose, item["prompt"])
+        shortlist = I.intent_shortlist(decision, purpose, item["prompt"], trial.get("facts"))
         # S1 judges what is recommended for the data the request named; "if you have the priors" is conditional.
         named = shortlist.recommended if shortlist.without is None else shortlist.without
         names = {name(r.action) for r in named}
@@ -137,8 +138,9 @@ def seen():
 
 def live(tag, repeats):
     purposes = A.trace_purposes("cand")
+    facts = A.trace_data_facts("cand")  # Log 376
     roles_before = set()
-    for old in ("s7", "s8", "s9", "s10", "s12", "s13"):  # Log 372: H3 against the s7-s13 candidate arms
+    for old in ("s7", "s8", "s9", "s10", "s12", "s13", "s15"):  # Log 376: H3 against the s7-s15 candidate arms
         for path in glob.glob(str(A.ROOT / ".netzoo" / "sessions" / f"hp-{old}-cand-*.json")):
             roles_before |= {c["role"] for c in (json.loads(Path(path).read_text()).get("token_usage") or {}).get("calls", [])}
     trials, missing, new_roles = [], 0, set()
@@ -151,8 +153,9 @@ def live(tag, repeats):
             new_roles |= run["roles"] - roles_before
             trials.append({"key": f"{item['id']}-{rep}", "item": item, "reply": run["reply"],
                            "decision": TaskDecision.model_validate(run["decision"]),
-                           "traced": purposes.get(f"hp-{tag}-cand-{item['id']}-{rep}")})
-    print(f"missing {missing}; H3 roles beyond s7-s13 candidate arms (gate none): {sorted(new_roles)}")
+                           "traced": purposes.get(f"hp-{tag}-cand-{item['id']}-{rep}"),
+                           "facts": facts.get(f"hp-{tag}-cand-{item['id']}-{rep}")})
+    print(f"missing {missing}; H3 roles beyond s7-s15 candidate arms (gate: only data_facts): {sorted(new_roles)}")
     score(trials, f"{tag}-intent-analysis.txt")
 
 

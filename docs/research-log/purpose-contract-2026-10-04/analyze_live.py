@@ -35,7 +35,7 @@ GAP_TEXTS = [entry[0] for entry in UNSUPPORTED_CLAIMS.values()]
 MODEL_ERRORS = {"ValueError", "ValidationError", "JSONDecodeError", "OutputParserException", "KeyError", "TypeError"}
 
 
-def render(task, decision, stage1, purpose=None):
+def render(task, decision, stage1, purpose=None, facts=None):
     response.with_study_purpose_reply, practical_notes.study_purpose = (
         STAGE1 if stage1 else (lambda result, state, reply: result, lambda task: StudyPurpose()))
     plan = WorkflowPlan(workflow="NO-TOOL", objective=task[:200], decision=decision.model_dump(), status="respond_only")
@@ -43,6 +43,8 @@ def render(task, decision, stage1, purpose=None):
              "tool_results": [], "evaluation": None}
     if purpose is not None:
         state["study_purpose"] = purpose
+    if facts is not None:  # Log 376: the data-facts call's reading, as the live turn had it
+        state["data_facts"] = facts
     try:
         out = response.respond(SimpleNamespace(project_policy=POLICY), state)
     except Exception:
@@ -65,6 +67,24 @@ def trace_purposes(arm):
             if event.get("event_type") == "routing.study_purpose_detected":
                 payload = event["payload"]
                 found[session] = {key: payload.get(key) for key in ("source", "design", "design_quote", "claims")}
+    return found
+
+
+def trace_data_facts(arm):
+    """Log 376: session id -> the data facts its trace recorded (routing.data_facts_detected), if any."""
+    found = {}
+    for manifest in glob.glob(str(ARMS[arm] / ".netzoo" / "traces" / "*" / "manifest.json")):
+        try:
+            session = json.loads(Path(manifest).read_text()).get("session_id", "")
+        except ValueError:
+            continue
+        if not session.startswith("hp-"):
+            continue
+        for line in open(Path(manifest).parent / "events.jsonl"):
+            event = json.loads(line)
+            if event.get("event_type") == "routing.data_facts_detected":
+                payload = event["payload"]
+                found[session] = {key: payload.get(key) for key in ("source", "priors", "priors_quote")}
     return found
 
 
