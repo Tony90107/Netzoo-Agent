@@ -1,0 +1,839 @@
+{
+  "authored_by": "subagent, isolated from the reply rules",
+  "items": [
+    {
+      "id": "F1a",
+      "family": "F1",
+      "data_sentence": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available.",
+      "purpose_sentence": "We want to know how each woman's fibroid regulatory network differs from those of the other women.",
+      "prompt": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available. We want to know how each woman's fibroid regulatory network differs from those of the other women.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Notes each woman contributed 15-20 fibroids, enough to estimate a network from her own samples",
+        "Offers an aggregate network per woman (e.g. PANDA or OTTER on her fibroids alone) and compares the eight",
+        "Uses the stated TF motif and PPI priors"
+      ],
+      "red_flags": [
+        "Claims per-woman networks need a per-sample method because aggregate workflows pool everyone",
+        "Pools all fibroids into one network and stops",
+        "Treats each fibroid as a separate individual"
+      ]
+    },
+    {
+      "id": "F1b",
+      "family": "F1",
+      "data_sentence": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available.",
+      "purpose_sentence": "Do the fibroid networks of the four premenopausal women differ from those of the four postmenopausal women?",
+      "prompt": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available. Do the fibroid networks of the four premenopausal women differ from those of the four postmenopausal women?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Treats the woman as the replicate: four versus four, so power is limited",
+        "Builds per-woman (or per-group) networks and compares the two menopausal groups"
+      ],
+      "red_flags": [
+        "Treats the 60-80 fibroids per group as independent replicates",
+        "Ranks individual women instead of answering the group question"
+      ]
+    },
+    {
+      "id": "F1c",
+      "family": "F1",
+      "data_sentence": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available.",
+      "purpose_sentence": "For now we only need a description of the regulatory network operating in these fibroids.",
+      "prompt": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available. For now we only need a description of the regulatory network operating in these fibroids.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "many",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "One aggregate TF-gene network over the fibroids answers this",
+        "No comparison, test or per-sample network is needed"
+      ],
+      "red_flags": [
+        "Insists on per-sample or per-woman networks",
+        "Adds a hypothesis test or comparison the user did not ask for"
+      ]
+    },
+    {
+      "id": "F1d",
+      "family": "F1",
+      "data_sentence": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available.",
+      "purpose_sentence": "Which transcription factors differ most in activity between the women, independent of their own mRNA levels?",
+      "prompt": "From each of 8 hysterectomy patients we sequenced RNA from 15 to 20 separate fibroids; TF motif priors and a protein interaction network are also available. Which transcription factors differ most in activity between the women, independent of their own mRNA levels?",
+      "comparison_design": "none",
+      "claim_kind": "regulator_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Activity apart from a TF's own mRNA needs a TF-activity estimate (GIRAFFE), not targeting or expression",
+        "Summarises each woman's TF activity from her 15-20 fibroids and compares the women"
+      ],
+      "red_flags": [
+        "Uses TF mRNA level or PANDA/OTTER targeting (out-degree) as 'activity'",
+        "Pools the women into one network so no between-woman comparison remains"
+      ]
+    },
+    {
+      "id": "F2a",
+      "family": "F2",
+      "data_sentence": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample.",
+      "purpose_sentence": "Which of the six women shows the largest co-expression shift between her follicular and luteal phases?",
+      "prompt": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample. Which of the six women shows the largest co-expression shift between her follicular and luteal phases?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Each woman has roughly 28 daily samples per phase, enough for her own phase-specific co-expression",
+        "Compares phases within each woman, then ranks the six women",
+        "Stays with expression-only workflows"
+      ],
+      "red_flags": [
+        "Says per-woman estimation is impossible and only per-sample networks can answer it",
+        "Proposes workflows that need TF motif or PPI priors",
+        "Answers with one pooled phase comparison across all women"
+      ]
+    },
+    {
+      "id": "F2b",
+      "family": "F2",
+      "data_sentence": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample.",
+      "purpose_sentence": "Across the six women, does blood co-expression differ between the follicular and luteal phases?",
+      "prompt": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample. Across the six women, does blood co-expression differ between the follicular and luteal phases?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Recognises the paired design: the same six women in both phases",
+        "Estimates the phase effect within women or adjusts for woman (e.g. COBRA with phase and woman covariates)"
+      ],
+      "red_flags": [
+        "Treats the roughly 340 daily samples as independent replicates",
+        "Proposes motif- or PPI-based workflows despite expression-only data"
+      ]
+    },
+    {
+      "id": "F2c",
+      "family": "F2",
+      "data_sentence": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample.",
+      "purpose_sentence": "For now we just want to map the co-expression network in each woman's blood, without comparing anything.",
+      "prompt": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample. For now we just want to map the co-expression network in each woman's blood, without comparing anything.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "many",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Each woman's daily samples support a co-expression network of her own",
+        "No comparison or test is needed"
+      ],
+      "red_flags": [
+        "Invents a phase or between-woman comparison",
+        "Requires TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "F2d",
+      "family": "F2",
+      "data_sentence": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample.",
+      "purpose_sentence": "We suspect one or two participants are wired differently from the rest and want to spot them.",
+      "prompt": "Six women collected a fingerprick blood sample every morning across two full menstrual cycles; we have only RNA-seq counts, plus the cycle day of each sample. We suspect one or two participants are wired differently from the rest and want to spot them.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Reads this as finding outlying individuals among the six women",
+        "Each woman's many daily samples allow a network per woman to compare against the others"
+      ],
+      "red_flags": [
+        "Answers with a cohort-level phase comparison",
+        "Pools all women into one network",
+        "Requires TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "F3a",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors.",
+      "purpose_sentence": "We want to know how each donor's methylation-expression network differs from the other donors'.",
+      "prompt": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors. We want to know how each donor's methylation-expression network differs from the other donors'.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Each donor gave about 20 blocks, enough for a two-layer network per donor",
+        "Keeps methylation and expression together in one two-layer network",
+        "Notes each donor's lesion/normal block mix can confound donor differences"
+      ],
+      "red_flags": [
+        "Drops methylation and builds expression-only networks",
+        "Claims per-donor networks are only possible with a per-sample method",
+        "Treats each block as a separate individual"
+      ]
+    },
+    {
+      "id": "F3b",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors.",
+      "purpose_sentence": "Across donors, does methylation-expression coupling differ between lesions and normal-appearing white matter?",
+      "prompt": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors. Across donors, does methylation-expression coupling differ between lesions and normal-appearing white matter?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Paired design: lesion and normal-appearing blocks come from the same donors; the donor is the replicate",
+        "Compares two-layer networks of the two tissue types within donors"
+      ],
+      "red_flags": [
+        "Treats the 300 blocks as independent replicates",
+        "Ignores the methylation layer"
+      ]
+    },
+    {
+      "id": "F3c",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors.",
+      "purpose_sentence": "As a first step we only want one integrated methylation-expression network across all the blocks.",
+      "prompt": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors. As a first step we only want one integrated methylation-expression network across all the blocks.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "many",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "One aggregate two-layer network across all blocks answers this",
+        "No per-donor or per-block networks are needed"
+      ],
+      "red_flags": [
+        "Insists on per-sample or per-donor networks",
+        "Builds two separate single-layer networks instead of one joint network"
+      ]
+    },
+    {
+      "id": "F3d",
+      "family": "F3",
+      "data_sentence": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors.",
+      "purpose_sentence": "We do not need anything per donor; do progressive-onset donors differ from relapsing-onset donors in methylation-expression coupling?",
+      "prompt": "We have RNA-seq and DNA methylation arrays on the same 300 postmortem white-matter blocks, lesions and normal-appearing tissue, from 15 multiple sclerosis brain donors. We do not need anything per donor; do progressive-onset donors differ from relapsing-onset donors in methylation-expression coupling?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "Respects that per-donor results are not wanted",
+        "Notes the donor is still the replicate for the progressive versus relapsing test (15 donors)",
+        "Uses a two-layer method"
+      ],
+      "red_flags": [
+        "Delivers per-donor networks or rankings as the answer",
+        "Treats the 300 blocks as independent samples in the group test"
+      ]
+    },
+    {
+      "id": "F4a",
+      "family": "F4",
+      "data_sentence": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI.",
+      "purpose_sentence": "Which patients' cardiac regulatory networks remodelled most during device support?",
+      "prompt": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI. Which patients' cardiac regulatory networks remodelled most during device support?",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Only one sample per patient per time point, so a network per patient needs per-sample estimation",
+        "Ranks patients by the change between their implant and transplant sample networks"
+      ],
+      "red_flags": [
+        "Runs an aggregate network per patient from two samples",
+        "Answers from two cohort-level networks (implant versus transplant) only"
+      ]
+    },
+    {
+      "id": "F4b",
+      "family": "F4",
+      "data_sentence": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI.",
+      "purpose_sentence": "Across the cohort, did cardiac gene regulation change between implantation and transplant?",
+      "prompt": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI. Across the cohort, did cardiac gene regulation change between implantation and transplant?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "PUMA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "LIONESS-PUMA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Recognises the paired design: the same 22 patients at two time points",
+        "Answers at the cohort level, e.g. a network per time point or a paired test on per-sample networks"
+      ],
+      "red_flags": [
+        "Treats the two time points as independent groups",
+        "Gives patient-by-patient rankings instead of a cohort answer"
+      ]
+    },
+    {
+      "id": "F4c",
+      "family": "F4",
+      "data_sentence": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI.",
+      "purpose_sentence": "For now we only want the combined TF and microRNA regulatory network of these hearts.",
+      "prompt": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI. For now we only want the combined TF and microRNA regulatory network of these hearts.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "one",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Includes miRNA regulators by using the miRNA-target prior",
+        "One aggregate network is enough"
+      ],
+      "red_flags": [
+        "Drops the miRNAs and builds a TF-only network",
+        "Adds a before/after or per-patient analysis that was not asked for"
+      ]
+    },
+    {
+      "id": "F4d",
+      "family": "F4",
+      "data_sentence": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI.",
+      "purpose_sentence": "Which microRNAs change their targeting most between the two operations?",
+      "prompt": "From 22 heart failure patients we have left ventricular tissue at assist-device implantation and at transplant, with mRNA and miRNA sequencing, TF motif and miRNA-target priors, and PPI. Which microRNAs change their targeting most between the two operations?",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PUMA",
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "Needs a miRNA-aware workflow that uses the miRNA-target prior",
+        "Compares the two operations as a paired design"
+      ],
+      "red_flags": [
+        "Recommends TF-only workflows (PANDA, LIONESS-PANDA, OTTER, GIRAFFE) for a miRNA question",
+        "Ignores that the samples are paired by patient"
+      ]
+    },
+    {
+      "id": "F5a",
+      "family": "F5",
+      "data_sentence": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network.",
+      "purpose_sentence": "We want to find which infected mice have regulatory networks most unlike the uninfected baseline.",
+      "prompt": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network. We want to find which infected mice have regulatory networks most unlike the uninfected baseline.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "One spleen per mouse, so mouse-level networks require per-sample estimation",
+        "Compares each infected mouse's network with the uninfected group"
+      ],
+      "red_flags": [
+        "Builds only two group networks and claims mouse-level answers",
+        "Runs an aggregate network per mouse from a single sample"
+      ]
+    },
+    {
+      "id": "F5b",
+      "family": "F5",
+      "data_sentence": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network.",
+      "purpose_sentence": "Does infection rewire splenic gene regulation at the group level?",
+      "prompt": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network. Does infection rewire splenic gene regulation at the group level?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Group-level comparison of infected versus uninfected networks (16 versus 16 mice)",
+        "The mouse is the replicate and the two groups are independent"
+      ],
+      "red_flags": [
+        "Treats the design as paired",
+        "Delivers per-mouse rankings instead of a group answer"
+      ]
+    },
+    {
+      "id": "F5c",
+      "family": "F5",
+      "data_sentence": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network.",
+      "purpose_sentence": "For now we only need a reference regulatory network of the mouse spleen.",
+      "prompt": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network. For now we only need a reference regulatory network of the mouse spleen.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "one",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "A single aggregate TF-gene network answers this",
+        "No comparison or per-sample networks are needed"
+      ],
+      "red_flags": [
+        "Insists on per-mouse networks",
+        "Adds an infection comparison the user did not request"
+      ]
+    },
+    {
+      "id": "F5d",
+      "family": "F5",
+      "data_sentence": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network.",
+      "purpose_sentence": "Individual mice do not interest us; which transcription factors change their targeting most with infection?",
+      "prompt": "We have spleen RNA-seq from 16 Plasmodium chabaudi-infected and 16 uninfected C57BL/6 mice, one spleen per mouse, plus mouse TF motif priors and a protein interaction network. Individual mice do not interest us; which transcription factors change their targeting most with infection?",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Answers at the TF level: differential targeting between infected and uninfected groups",
+        "Does not rank or report individual mice"
+      ],
+      "red_flags": [
+        "Reports per-mouse results as the answer",
+        "Uses differential expression of TF mRNAs in place of targeting"
+      ]
+    },
+    {
+      "id": "F6a",
+      "family": "F6",
+      "data_sentence": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded.",
+      "purpose_sentence": "We want to know which individual fish have liver co-expression networks unlike the rest of the population.",
+      "prompt": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded. We want to know which individual fish have liver co-expression networks unlike the rest of the population.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "One liver sample per fish, so fish-level networks require per-sample estimation",
+        "Uses expression-only workflows because no motif or PPI data are stated"
+      ],
+      "red_flags": [
+        "Recommends workflows that need TF motif or PPI priors",
+        "Answers from one population network that cannot single out fish"
+      ]
+    },
+    {
+      "id": "F6b",
+      "family": "F6",
+      "data_sentence": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded.",
+      "purpose_sentence": "Does liver co-expression differ between males and females once length and catch site are accounted for?",
+      "prompt": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded. Does liver co-expression differ between males and females once length and catch site are accounted for?",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Cohort-level male versus female comparison adjusted for length and catch site (e.g. COBRA with a design matrix)",
+        "Stays with expression-only workflows"
+      ],
+      "red_flags": [
+        "Ignores the covariates the user asked to adjust for",
+        "Recommends workflows that need TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "F6c",
+      "family": "F6",
+      "data_sentence": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded.",
+      "purpose_sentence": "For now we would like a description of liver co-expression across the whole collection.",
+      "prompt": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded. For now we would like a description of liver co-expression across the whole collection.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "samples_per_individual": "one",
+      "is_control": true,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "A single cohort-wide co-expression description answers this",
+        "No comparison or per-fish networks are needed"
+      ],
+      "red_flags": [
+        "Insists on per-sample networks",
+        "Requires TF motif or PPI priors that were not stated",
+        "Offers community detection on a bipartite network that does not exist"
+      ]
+    },
+    {
+      "id": "F6d",
+      "family": "F6",
+      "data_sentence": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded.",
+      "purpose_sentence": "Fishers suspect a few cod belong to another stock; could their gene coordination give them away?",
+      "prompt": "We have liver RNA-seq counts from 160 wild Atlantic cod caught along the Norwegian coast, one fish per sample, with sex, length and catch site recorded. Fishers suspect a few cod belong to another stock; could their gene coordination give them away?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Reads this as spotting outlying individual fish",
+        "One sample per fish, so per-sample co-expression networks are needed"
+      ],
+      "red_flags": [
+        "Answers with a cohort-level comparison between catch sites",
+        "Recommends workflows that need TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T",
+      "data_sentence": "Ten multiple myeloma patients gave bone marrow at diagnosis and at four later time points during treatment, five samples each; we have RNA-seq plus TF motif priors and a PPI network.",
+      "purpose_sentence": "We want to see how each patient's regulatory network evolves through treatment.",
+      "prompt": "Ten multiple myeloma patients gave bone marrow at diagnosis and at four later time points during treatment, five samples each; we have RNA-seq plus TF motif priors and a PPI network. We want to see how each patient's regulatory network evolves through treatment.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Five samples per patient are too few to estimate a network from one patient alone",
+        "Builds per-sample networks and follows each patient across their five time points"
+      ],
+      "red_flags": [
+        "Builds an aggregate network per patient from five samples",
+        "Pools patients into one network per time point and calls it a patient trajectory"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T",
+      "data_sentence": "We sequenced RNA from six to eight separate regions of each of 14 Wilms tumours, and that is all the data we have.",
+      "purpose_sentence": "We want to know which tumours show the most region-to-region variation in their co-expression networks.",
+      "prompt": "We sequenced RNA from six to eight separate regions of each of 14 Wilms tumours, and that is all the data we have. We want to know which tumours show the most region-to-region variation in their co-expression networks.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Six to eight regions per tumour are too few for a reliable per-tumour network",
+        "Builds per-region networks and measures their spread within each tumour",
+        "Stays with expression-only workflows"
+      ],
+      "red_flags": [
+        "Estimates one co-expression network per tumour from 6-8 regions as if reliable",
+        "Asks for or assumes TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T",
+      "data_sentence": "Each of 40 patients with idiopathic pulmonary fibrosis contributed a lung biopsy at diagnosis; we have RNA-seq, TF motif priors and a protein interaction network.",
+      "purpose_sentence": "We want to know which patients' regulatory networks look most unusual.",
+      "prompt": "Each of 40 patients with idiopathic pulmonary fibrosis contributed a lung biopsy at diagnosis; we have RNA-seq, TF motif priors and a protein interaction network. We want to know which patients' regulatory networks look most unusual.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Forty patients with one biopsy each: per-patient networks need per-sample estimation",
+        "Ranks patients by how far their sample-specific network deviates from the rest"
+      ],
+      "red_flags": [
+        "Reads 40 as the number of samples per patient",
+        "Runs an aggregate network per patient, or answers from one cohort network"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T",
+      "data_sentence": "One healthy volunteer has given venous blood every week for three years; we have RNA-seq for all 150 draws, human TF motif priors and a PPI network.",
+      "purpose_sentence": "We want this person's regulatory network and which transcription factors shift targeting most between winter and summer.",
+      "prompt": "One healthy volunteer has given venous blood every week for three years; we have RNA-seq for all 150 draws, human TF motif priors and a PPI network. We want this person's regulatory network and which transcription factors shift targeting most between winter and summer.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "One person with about 150 weekly samples supports aggregate networks from this person alone, e.g. one per season",
+        "Compares TF targeting between winter and summer",
+        "States the results describe this one person, not a population"
+      ],
+      "red_flags": [
+        "Says per-sample networks are required because there is only one individual",
+        "Generalises the seasonal shift to people in general"
+      ]
+    },
+    {
+      "id": "T5",
+      "family": "T",
+      "data_sentence": "From each of 11 familial adenomatous polyposis colectomies we sequenced 20 to 30 adenomas plus five normal mucosa samples, with TF motif priors and a PPI network.",
+      "purpose_sentence": "Across the cohort, does gene regulation in adenomas differ from that in normal mucosa?",
+      "prompt": "From each of 11 familial adenomatous polyposis colectomies we sequenced 20 to 30 adenomas plus five normal mucosa samples, with TF motif priors and a PPI network. Across the cohort, does gene regulation in adenomas differ from that in normal mucosa?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "Answers at the cohort level with the patient as the replicate (11 patients, matched tissues)",
+        "Per-patient adenoma networks are possible but serve only as an intermediate step"
+      ],
+      "red_flags": [
+        "Treats the roughly 280 adenomas as independent replicates",
+        "Turns the answer into per-patient rankings"
+      ]
+    },
+    {
+      "id": "T6",
+      "family": "T",
+      "data_sentence": "From each of 8 laying hens we sequenced about 30 ovarian follicles of varying size, with only RNA-seq data and the diameter of every follicle.",
+      "purpose_sentence": "We are not interested in hen-to-hen differences; does co-expression differ between small and large follicles?",
+      "prompt": "From each of 8 laying hens we sequenced about 30 ovarian follicles of varying size, with only RNA-seq data and the diameter of every follicle. We are not interested in hen-to-hen differences; does co-expression differ between small and large follicles?",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "samples_per_individual": "many",
+      "is_control": false,
+      "is_negation_trap": true,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "must_include": [
+        "Does not report per-hen differences",
+        "Accounts for hen (paired design, e.g. hen as a covariate) while comparing small and large follicles",
+        "Stays with expression-only workflows; follicle diameter can enter as a covariate"
+      ],
+      "red_flags": [
+        "Ranks hens or builds per-hen comparisons as the answer",
+        "Treats the roughly 240 follicles as independent samples",
+        "Requires TF motif or PPI priors"
+      ]
+    },
+    {
+      "id": "T7",
+      "family": "T",
+      "data_sentence": "We have kidney biopsy RNA-seq from 130 patients with IgA nephropathy, TF motif priors, a PPI network, and five-year follow-up of kidney function.",
+      "purpose_sentence": "We want to predict, from regulatory features of each patient's biopsy, who will progress to kidney failure.",
+      "prompt": "We have kidney biopsy RNA-seq from 130 patients with IgA nephropathy, TF motif priors, a PPI network, and five-year follow-up of kidney function. We want to predict, from regulatory features of each patient's biopsy, who will progress to kidney failure.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "One biopsy per patient, so patient-level features need per-sample estimation (sample networks or TF activity)",
+        "Network outputs are features; prediction needs a separate model with held-out validation"
+      ],
+      "red_flags": [
+        "Uses one aggregate network, or two outcome-group networks, as the predictor",
+        "Presents network edges as causal drivers of progression"
+      ]
+    },
+    {
+      "id": "T8",
+      "family": "T",
+      "data_sentence": "We sequenced liver, kidney, heart and lung from 80 laboratory rats, but each rat gave only one of the four tissues; TF motif priors and a PPI network are available.",
+      "purpose_sentence": "Which rats have unusual regulatory networks compared with others of the same tissue?",
+      "prompt": "We sequenced liver, kidney, heart and lung from 80 laboratory rats, but each rat gave only one of the four tissues; TF motif priors and a PPI network are available. Which rats have unusual regulatory networks compared with others of the same tissue?",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "samples_per_individual": "one",
+      "is_control": false,
+      "is_negation_trap": false,
+      "is_precision_trap": true,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "Each rat gave one sample, so per-rat networks require per-sample estimation",
+        "Compares rats within a tissue (about 20 per tissue), not across tissues"
+      ],
+      "red_flags": [
+        "Assumes four tissues per rat and builds per-rat aggregate networks",
+        "Compares rats across tissues, confounding tissue with individual"
+      ]
+    }
+  ]
+}
