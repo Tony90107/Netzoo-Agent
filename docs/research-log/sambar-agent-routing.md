@@ -19176,3 +19176,74 @@ live（主要判定成立才跑；gpt-4o-mini，預先授權）：
   - A2 的平手問的是與目的無關的軸，而且那一軸需要使用者沒有的資料（miRNA）。
 - Log 341 的「沒有型別欄位能承接研究目的」已解決一半：型別有了，**決策順序仍是先選工具、後讀目的**。這就是 Codex 計畫第 3 項要處理的缺口。
 - 另見 B3-1：明說沒有其他資料，仍問 motif／PPI。屬於輸入可用性（第 4 項），本輪只記錄。
+
+## Log 379｜事前宣告：研究目的在選工具之前讀取，並由宣告的證據格子在平手中選出一個工具，以第十九組保留集評估
+
+日期：2026-10-06，Asia/Taipei。本條目寫於第十九組任何 live 呼叫之前。
+
+**候選與凍結：**
+- 候選 `80c837a`。其差異 sha256 `7a3fccc68099`，與 `purpose-first-2026-10-05/FREEZE19.md` 凍結的 `pf_frozen.patch` 相同。
+- 凍結在第十九組寫成之前完成（`9eb9a83`）。內容見 FREEZE19。
+- 一句話：研究目的改在 routing 之前讀取。之後在一個讀法、說得出結論的方法平手中，由型別化的 `CLAIM_SUPPORT` 格子選出唯一最適合的工具。
+  - 比較順序：同量優先，其次證據強度，依序為 direct > tested > descriptive > one result。
+  - 候選範圍包含格子點名的 per-sample 版本。
+  - 只有在所需輸入已說出時才可選，TF prior 由 Log 376 的 data-facts 呼叫讀取。
+  - 不移除任何候選。
+  - 回覆依 Log 370 的規則，只說「為什麼適合你的問題」。
+
+**基準：** `9f95e14`，在 `.worktrees/netzoo-item3-base` 執行，沒有這項改動。候選在 `.worktrees/netzoo-item3-cand` 的 `80c837a` 執行。兩者都是乾淨 worktree。
+
+**保留集：** `purpose-first-2026-10-05/heldout19/`。
+- 由隔離的 subagent 只依任務說明撰寫，沒有讀取任何 repository 檔案或先前的集合。
+- 共 32 題：7 個家族各 4 題，同一家族的資料句逐字相同，只換目的句；另有 4 個陷阱題。
+- 各家族的設計與 prior：
+
+  | 家族 | 設計 | prior |
+  |---|---|---|
+  | A | paired | 說出 |
+  | B | groups | 說出，但不用 motif、prior、PPI 等字 |
+  | C | 單一 cohort | 說出，含 miRNA |
+  | D | groups，只有表現量 | 否定 |
+  | E | paired，只有表現量 | 不帶否定詞的排除 |
+  | F | groups | 沒提 |
+  | G | 兩種 omics | — |
+
+- 陷阱題：
+  - T1：同一句否定 miRNA、卻說出 TF prior。
+  - T2：轉述指導教授的指令。
+  - T3：統計意義的「testing」。
+  - T4：兩層資料來自不同樣本。
+
+**執行：** 每臂 32 題 × 3 次，共 192 個 session。兩臂交錯，gpt-4o-mini（預先授權）。runner 為 `pf_run.py`。
+
+**分析：** `pf_analyze.py`，不呼叫任何模型。
+- 執行前已在 Log 340 的 A0、A1、B1、B2 上以兩臂 live 自我測試（`live/selftest-analysis.txt`，US$0.016）。所有判定都算得出，且 H2 = 0。
+- 一個 session 的「推薦」定義為：advisory 推薦；沒有時取唯一的 exact match；兩者都沒有則為 none。
+
+**判定（全部成立才保留；任一不成立就撤回 `80c837a`）：**
+
+| 判定 | 內容 |
+|---|---|
+| V1 | 每臂 96/96 個 session。逾時或 provider 錯誤的 session 最多重跑一次，並記錄 |
+| S1 | 候選的 PF 選擇至少 1 個，且 ≥ 90% 在 `acceptable_candidates` 內 |
+| S3 | 對照題、causal、prediction 的 PF 選擇為 0 |
+| S4 | 被移除的候選為 0：purpose_selection 事件中標為候選的工具，都仍在最終的 `hypothesis_actions` 中 |
+| P1（第 3 項驗收） | 「不同目的得到不同且合理的推薦」的家族數，候選 ≥ 基準 + 2 |
+| H2 | 候選的 respond_only 回覆與離線渲染相同的次數，差異為 0 |
+| H3 | 候選比基準多出的呼叫角色只有 `data_facts` |
+
+P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不同值，且每個非 none 的值都在該題的 acceptable 內。
+
+**只報告：**
+- S2：選擇落在 `recommended_subset` 的比例。
+- PF 適用、選出與不選的理由。
+- data-facts 讀取與標註的對照，含誤讀成「有」的次數。
+- 兩臂所有推薦的精確度、成本。
+
+**事前公開的風險（讀過標註後、執行前寫下）：**
+1. B2「compare group against group」：標註的首選是每組一個整體網路（PANDA、OTTER）。PF 會選 LIONESS-PANDA，在 acceptable 內，但不在 subset 內，只影響 S2。
+2. A3、T1、C2 等 regulator 問題：GIRAFFE 與 LIONESS-PANDA 在格子中同分，不會選。T1 的標註不接受 GIRAFFE。
+3. 家族 E（paired、只有表現量）：COBRA 沒有 paired 格子，屬於未宣告，不比較，因此不會選。
+4. 家族 G：DRAGON 系列需要說出兩層檔案才可選，不會選。
+5. C3 的 LIONESS-PUMA 需要被引用的 miRNA 讀法。
+6. PF 只在平手時作用。若 live 的路由給出 exact 或兩個讀法，PF 不適用，P1 的增量可能因此不足 2。

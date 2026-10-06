@@ -1,0 +1,827 @@
+{
+  "authored_by": "isolated subagent (Claude Opus 5.5), 2026-10-06, written from the task brief only; no repository files, prior sets or assistant runs were consulted",
+  "items": [
+    {
+      "id": "A1",
+      "family": "A",
+      "data_sentence": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network.",
+      "purpose_sentence": "We want one regulatory network summarizing all 44 samples to describe typical gene regulation in this muscle.",
+      "prompt": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network. We want one regulatory network summarizing all 44 samples to describe typical gene regulation in this muscle.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one aggregate network for all 44 samples",
+        "describes shared regulation, no before/after comparison"
+      ],
+      "red_flags": [
+        "claims a before/after training effect"
+      ]
+    },
+    {
+      "id": "A2",
+      "family": "A",
+      "data_sentence": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network.",
+      "purpose_sentence": "We want to see how each participant's own regulatory network changed after training, person by person.",
+      "prompt": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network. We want to see how each participant's own regulatory network changed after training, person by person.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "one network per sample",
+        "each participant's after-minus-before difference",
+        "per-sample networks are not independent"
+      ],
+      "red_flags": [
+        "one network per time point answers it",
+        "per-sample networks are independent"
+      ]
+    },
+    {
+      "id": "A3",
+      "family": "A",
+      "data_sentence": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network.",
+      "purpose_sentence": "We want to know which transcription factors change in activity after training, using a paired test.",
+      "prompt": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network. We want to know which transcription factors change in activity after training, using a paired test.",
+      "comparison_design": "paired",
+      "claim_kind": "regulator_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "TF activity per sample",
+        "paired test across participants"
+      ],
+      "red_flags": [
+        "compares two pooled networks without a paired test",
+        "treats the 44 samples as independent"
+      ]
+    },
+    {
+      "id": "A4",
+      "family": "A",
+      "data_sentence": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network.",
+      "purpose_sentence": "We want to prove that training-induced regulator changes cause the improvement in insulin sensitivity.",
+      "prompt": "We have skeletal muscle RNA-seq from 22 adults with type 2 diabetes, before and after 12 weeks of exercise training, plus a TF motif prior and a protein-protein interaction network. We want to prove that training-induced regulator changes cause the improvement in insulin sensitivity.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow can establish causation",
+        "regulator results show association only"
+      ],
+      "red_flags": [
+        "proves the regulators cause the improvement"
+      ]
+    },
+    {
+      "id": "B1",
+      "family": "B",
+      "data_sentence": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins.",
+      "purpose_sentence": "We want one network describing how transcription factors regulate genes across all 70 lungs, without comparing groups.",
+      "prompt": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins. We want one network describing how transcription factors regulate genes across all 70 lungs, without comparing groups.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one aggregate network for all 70 lungs",
+        "JASPAR scans act as the TF binding prior and STRING as the PPI network"
+      ],
+      "red_flags": [
+        "claims a fibrosis difference",
+        "says a TF binding prior or PPI network is missing"
+      ]
+    },
+    {
+      "id": "B2",
+      "family": "B",
+      "data_sentence": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins.",
+      "purpose_sentence": "We want to compare the regulatory network of fibrotic lungs with that of donor lungs, group against group.",
+      "prompt": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins. We want to compare the regulatory network of fibrotic lungs with that of donor lungs, group against group.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "PANDA",
+        "OTTER",
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "PANDA",
+        "OTTER"
+      ],
+      "must_include": [
+        "one aggregate network per group",
+        "compare the two group networks"
+      ],
+      "red_flags": [
+        "says a TF binding prior or PPI network is missing",
+        "co-expression-only comparison"
+      ]
+    },
+    {
+      "id": "B3",
+      "family": "B",
+      "data_sentence": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins.",
+      "purpose_sentence": "We want to find which transcription factors are more active in fibrotic lungs than in donor lungs.",
+      "prompt": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins. We want to find which transcription factors are more active in fibrotic lungs than in donor lungs.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "TF activity per sample",
+        "compare TF activity between fibrotic and donor lungs"
+      ],
+      "red_flags": [
+        "equates edge-weight changes with TF activity",
+        "says a TF binding prior or PPI network is missing"
+      ]
+    },
+    {
+      "id": "B4",
+      "family": "B",
+      "data_sentence": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins.",
+      "purpose_sentence": "We want to see which individual patients' regulatory networks deviate most from those of donor lungs.",
+      "prompt": "We have lung RNA-seq from 35 idiopathic pulmonary fibrosis patients and 35 donor lungs, plus JASPAR transcription-factor binding-site scans of gene promoters and the STRING interaction database for human proteins. We want to see which individual patients' regulatory networks deviate most from those of donor lungs.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "one network per lung",
+        "each patient's deviation from the donor lungs",
+        "per-sample networks are not independent"
+      ],
+      "red_flags": [
+        "one network per group answers it"
+      ]
+    },
+    {
+      "id": "C1",
+      "family": "C",
+      "data_sentence": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs.",
+      "purpose_sentence": "We want one regulatory network for the whole cohort that includes both transcription factor and miRNA regulators.",
+      "prompt": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs. We want one regulatory network for the whole cohort that includes both transcription factor and miRNA regulators.",
+      "comparison_design": "none",
+      "claim_kind": "none",
+      "priors_stated": "stated",
+      "mirna_stated": true,
+      "is_control": true,
+      "acceptable_candidates": [
+        "PUMA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one aggregate network with TF and miRNA regulators"
+      ],
+      "red_flags": [
+        "claims an association with birth weight",
+        "drops the miRNA regulators"
+      ]
+    },
+    {
+      "id": "C2",
+      "family": "C",
+      "data_sentence": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs.",
+      "purpose_sentence": "We want to know which transcription factors become more active as birth weight increases.",
+      "prompt": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs. We want to know which transcription factors become more active as birth weight increases.",
+      "comparison_design": "none",
+      "claim_kind": "regulator_change",
+      "priors_stated": "stated",
+      "mirna_stated": true,
+      "is_control": false,
+      "acceptable_candidates": [
+        "GIRAFFE",
+        "LIONESS-PANDA",
+        "LIONESS-PUMA"
+      ],
+      "recommended_subset": [
+        "GIRAFFE"
+      ],
+      "must_include": [
+        "TF activity per placenta",
+        "relate TF activity to birth weight"
+      ],
+      "red_flags": [
+        "one pooled network answers it",
+        "TF activity causes birth weight changes"
+      ]
+    },
+    {
+      "id": "C3",
+      "family": "C",
+      "data_sentence": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs.",
+      "purpose_sentence": "We want each placenta's own network of transcription factor and miRNA regulators, to flag unusual individual pregnancies.",
+      "prompt": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs. We want each placenta's own network of transcription factor and miRNA regulators, to flag unusual individual pregnancies.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "priors_stated": "stated",
+      "mirna_stated": true,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PUMA"
+      ],
+      "must_include": [
+        "one network per placenta",
+        "includes miRNA regulators",
+        "per-sample networks are not independent"
+      ],
+      "red_flags": [
+        "one cohort network answers it",
+        "drops the miRNA regulators"
+      ]
+    },
+    {
+      "id": "C4",
+      "family": "C",
+      "data_sentence": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs.",
+      "purpose_sentence": "We want a classifier that predicts birth weight for new placentas from their regulatory networks.",
+      "prompt": "We have placental RNA-seq from 60 term pregnancies with birth weight recorded, plus a ChIP-seq-derived TF binding prior, a PPI network and TargetScan predictions for placental miRNAs. We want a classifier that predicts birth weight for new placentas from their regulatory networks.",
+      "comparison_design": "none",
+      "claim_kind": "prediction",
+      "priors_stated": "stated",
+      "mirna_stated": true,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PUMA",
+        "LIONESS-PANDA",
+        "GIRAFFE"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow builds a predictive model",
+        "per-sample outputs could only be features for an external model"
+      ],
+      "red_flags": [
+        "presents a workflow as the birth-weight predictor"
+      ]
+    },
+    {
+      "id": "D1",
+      "family": "D",
+      "data_sentence": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it.",
+      "purpose_sentence": "We want one overall summary of gene co-expression across all twelve plants, with no group comparison.",
+      "prompt": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it. We want one overall summary of gene co-expression across all twelve plants, with no group comparison.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "COBRA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one cohort-level co-expression summary"
+      ],
+      "red_flags": [
+        "recommends a tool that needs TF motif or PPI data",
+        "claims a drought effect"
+      ]
+    },
+    {
+      "id": "D2",
+      "family": "D",
+      "data_sentence": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it.",
+      "purpose_sentence": "We want to test whether gene co-expression differs between drought-stressed and well-watered plants.",
+      "prompt": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it. We want to test whether gene co-expression differs between drought-stressed and well-watered plants.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "COBRA",
+        "BONOBO"
+      ],
+      "must_include": [
+        "statistical comparison of co-expression between the two groups",
+        "small cohort of 6 plants per group"
+      ],
+      "red_flags": [
+        "recommends a tool that needs TF motif or PPI data"
+      ]
+    },
+    {
+      "id": "D3",
+      "family": "D",
+      "data_sentence": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it.",
+      "purpose_sentence": "We want to see how each individual plant's co-expression network differs from the other plants.",
+      "prompt": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it. We want to see how each individual plant's co-expression network differs from the other plants.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "BONOBO"
+      ],
+      "must_include": [
+        "one co-expression network per plant",
+        "suited to a small cohort"
+      ],
+      "red_flags": [
+        "a cohort-level result answers individual plants",
+        "recommends a tool that needs TF motif or PPI data"
+      ]
+    },
+    {
+      "id": "D4",
+      "family": "D",
+      "data_sentence": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it.",
+      "purpose_sentence": "We want to predict the drought tolerance of untested plants from their co-expression networks.",
+      "prompt": "We have leaf RNA-seq from 6 drought-stressed and 6 well-watered plants of a wild millet species, and there are no TF motif or protein interaction resources for it. We want to predict the drought tolerance of untested plants from their co-expression networks.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow builds a predictive model",
+        "per-plant networks could only be features for an external model"
+      ],
+      "red_flags": [
+        "presents a workflow as the drought-tolerance predictor"
+      ]
+    },
+    {
+      "id": "E1",
+      "family": "E",
+      "data_sentence": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input.",
+      "purpose_sentence": "We want a single overall picture of gene co-expression across all 20 samples, pooling both time points.",
+      "prompt": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input. We want a single overall picture of gene co-expression across all 20 samples, pooling both time points.",
+      "comparison_design": "paired",
+      "claim_kind": "none",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "COBRA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one cohort-level co-expression summary",
+        "uses expression data alone"
+      ],
+      "red_flags": [
+        "recommends a tool that needs TF binding or interaction data",
+        "claims a race effect"
+      ]
+    },
+    {
+      "id": "E2",
+      "family": "E",
+      "data_sentence": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input.",
+      "purpose_sentence": "We want to test whether gene co-expression differs between pre-race and post-race samples, respecting that each horse was sampled twice.",
+      "prompt": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input. We want to test whether gene co-expression differs between pre-race and post-race samples, respecting that each horse was sampled twice.",
+      "comparison_design": "paired",
+      "claim_kind": "group_difference",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "BONOBO"
+      ],
+      "must_include": [
+        "per-sample co-expression networks",
+        "paired test within each horse"
+      ],
+      "red_flags": [
+        "treats the 20 samples as independent",
+        "recommends a tool that needs TF binding or interaction data"
+      ]
+    },
+    {
+      "id": "E3",
+      "family": "E",
+      "data_sentence": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input.",
+      "purpose_sentence": "We want to see how each horse's own co-expression network changed after the race.",
+      "prompt": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input. We want to see how each horse's own co-expression network changed after the race.",
+      "comparison_design": "paired",
+      "claim_kind": "individual_change",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [
+        "BONOBO"
+      ],
+      "must_include": [
+        "one co-expression network per sample",
+        "each horse's post-minus-pre difference"
+      ],
+      "red_flags": [
+        "a cohort-level result answers individual horses",
+        "recommends a tool that needs TF binding or interaction data"
+      ]
+    },
+    {
+      "id": "E4",
+      "family": "E",
+      "data_sentence": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input.",
+      "purpose_sentence": "We want to show that race-induced co-expression changes cause the inflammation we see after the race.",
+      "prompt": "We have whole-blood RNA-seq from 10 endurance horses before and after a 120-km race; TF binding-site and protein-interaction resources are unavailable for horses, so expression is our sole input. We want to show that race-induced co-expression changes cause the inflammation we see after the race.",
+      "comparison_design": "paired",
+      "claim_kind": "causal",
+      "priors_stated": "ruled_out",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "BONOBO",
+        "LIONESS-COEXPRESSION"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow can establish causation",
+        "co-expression changes show association only"
+      ],
+      "red_flags": [
+        "proves the changes cause the inflammation"
+      ]
+    },
+    {
+      "id": "F1",
+      "family": "F",
+      "data_sentence": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit.",
+      "purpose_sentence": "We want one overall gene network describing the nasal epithelium of all 80 children, without comparing the groups.",
+      "prompt": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit. We want one overall gene network describing the nasal epithelium of all 80 children, without comparing the groups.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "COBRA"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "a single summary result for all 80 children",
+        "asks whether TF binding and PPI data exist before offering a regulatory network"
+      ],
+      "red_flags": [
+        "assumes a TF motif prior and PPI network are available",
+        "claims an asthma difference"
+      ]
+    },
+    {
+      "id": "F2",
+      "family": "F",
+      "data_sentence": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit.",
+      "purpose_sentence": "We want to test whether gene co-expression patterns differ between asthmatic and healthy children.",
+      "prompt": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit. We want to test whether gene co-expression patterns differ between asthmatic and healthy children.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [
+        "COBRA",
+        "LIONESS-COEXPRESSION"
+      ],
+      "must_include": [
+        "test co-expression differences using the asthma label",
+        "statistical comparison between the two groups"
+      ],
+      "red_flags": [
+        "assumes a TF motif prior and PPI network are available"
+      ]
+    },
+    {
+      "id": "F3",
+      "family": "F",
+      "data_sentence": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit.",
+      "purpose_sentence": "We want to find which transcription factors are more active in asthmatic airways than in healthy ones.",
+      "prompt": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit. We want to find which transcription factors are more active in asthmatic airways than in healthy ones.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [],
+      "recommended_subset": [],
+      "must_include": [
+        "TF activity needs TF binding and PPI data",
+        "asks whether those resources are available"
+      ],
+      "red_flags": [
+        "recommends a TF tool as if binding data were given",
+        "co-expression alone shows TF activity"
+      ]
+    },
+    {
+      "id": "F4",
+      "family": "F",
+      "data_sentence": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit.",
+      "purpose_sentence": "We want to predict, from each child's gene network, who will have a severe asthma attack in the next year.",
+      "prompt": "We have bulk RNA-seq of nasal epithelial brushings from 40 children with asthma and 40 healthy children, all collected during a single clinic visit. We want to predict, from each child's gene network, who will have a severe asthma attack in the next year.",
+      "comparison_design": "groups",
+      "claim_kind": "prediction",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow builds a predictive model",
+        "per-child networks could only be features for an external model"
+      ],
+      "red_flags": [
+        "presents a workflow as the attack predictor",
+        "assumes a TF motif prior and PPI network are available"
+      ]
+    },
+    {
+      "id": "G1",
+      "family": "G",
+      "data_sentence": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis.",
+      "purpose_sentence": "We want one network linking genes and lipids across all 48 biopsies, with no comparison between the groups.",
+      "prompt": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis. We want one network linking genes and lipids across all 48 biopsies, with no comparison between the groups.",
+      "comparison_design": "groups",
+      "claim_kind": "none",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": true,
+      "acceptable_candidates": [
+        "DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "one two-layer gene-lipid network for all 48 biopsies"
+      ],
+      "red_flags": [
+        "claims a steatohepatitis difference",
+        "uses the RNA-seq alone"
+      ]
+    },
+    {
+      "id": "G2",
+      "family": "G",
+      "data_sentence": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis.",
+      "purpose_sentence": "We want to compare the gene-lipid network of steatohepatitis biopsies with that of simple steatosis biopsies.",
+      "prompt": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis. We want to compare the gene-lipid network of steatohepatitis biopsies with that of simple steatosis biopsies.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [
+        "DRAGON"
+      ],
+      "must_include": [
+        "one gene-lipid network per group",
+        "compare the two group networks"
+      ],
+      "red_flags": [
+        "gene co-expression alone",
+        "says TF binding data are required"
+      ]
+    },
+    {
+      "id": "G3",
+      "family": "G",
+      "data_sentence": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis.",
+      "purpose_sentence": "We want each patient's own gene-lipid network so we can find individuals whose wiring is unusual.",
+      "prompt": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis. We want each patient's own gene-lipid network so we can find individuals whose wiring is unusual.",
+      "comparison_design": "groups",
+      "claim_kind": "individual_change",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [
+        "LIONESS-DRAGON"
+      ],
+      "must_include": [
+        "one gene-lipid network per biopsy",
+        "per-sample networks are not independent"
+      ],
+      "red_flags": [
+        "one network per group answers it",
+        "uses the RNA-seq alone"
+      ]
+    },
+    {
+      "id": "G4",
+      "family": "G",
+      "data_sentence": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis.",
+      "purpose_sentence": "We want to establish that specific hepatic lipids cause the inflammatory gene programme seen in steatohepatitis.",
+      "prompt": "We measured liver RNA-seq and lipidomics on the same 48 biopsies, 24 from patients with steatohepatitis and 24 from patients with simple steatosis. We want to establish that specific hepatic lipids cause the inflammatory gene programme seen in steatohepatitis.",
+      "comparison_design": "groups",
+      "claim_kind": "causal",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "DRAGON",
+        "LIONESS-DRAGON"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "no registered workflow can establish causation",
+        "partial correlations show association only"
+      ],
+      "red_flags": [
+        "shows the lipids cause the inflammation"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T",
+      "data_sentence": "We have hippocampal RNA-seq from 15 aged and 15 young mice, and we have a mouse TF motif prior and a PPI network but no miRNA target data.",
+      "purpose_sentence": "We want to identify which transcription factors change their gene targeting with age.",
+      "prompt": "We have hippocampal RNA-seq from 15 aged and 15 young mice, and we have a mouse TF motif prior and a PPI network but no miRNA target data. We want to identify which transcription factors change their gene targeting with age.",
+      "comparison_design": "groups",
+      "claim_kind": "regulator_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA",
+        "PANDA",
+        "OTTER"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA",
+        "PANDA"
+      ],
+      "must_include": [
+        "TF-only network with no miRNA regulators",
+        "compare TF targeting between aged and young mice"
+      ],
+      "red_flags": [
+        "adds miRNA regulators",
+        "says the TF motif prior is missing"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T",
+      "data_sentence": "We have kidney biopsy RNA-seq from 50 transplant recipients, plus a TF motif prior and a PPI network.",
+      "purpose_sentence": "My supervisor said to \"build one network for the whole cohort,\" but I need to see how each recipient's regulatory network differs from the others.",
+      "prompt": "We have kidney biopsy RNA-seq from 50 transplant recipients, plus a TF motif prior and a PPI network. My supervisor said to \"build one network for the whole cohort,\" but I need to see how each recipient's regulatory network differs from the others.",
+      "comparison_design": "none",
+      "claim_kind": "individual_change",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "one network per recipient",
+        "the supervisor's aggregate network comes from the same run"
+      ],
+      "red_flags": [
+        "a single cohort network answers the user's question"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T",
+      "data_sentence": "We have subcutaneous adipose RNA-seq from 30 women with polycystic ovary syndrome and 30 controls, plus a TF motif prior and a PPI network.",
+      "purpose_sentence": "We are testing the hypothesis that regulatory edges around insulin-signalling genes differ significantly between the two groups.",
+      "prompt": "We have subcutaneous adipose RNA-seq from 30 women with polycystic ovary syndrome and 30 controls, plus a TF motif prior and a PPI network. We are testing the hypothesis that regulatory edges around insulin-signalling genes differ significantly between the two groups.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "stated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "LIONESS-PANDA"
+      ],
+      "recommended_subset": [
+        "LIONESS-PANDA"
+      ],
+      "must_include": [
+        "statistical test of edges between the two groups",
+        "per-sample networks are not independent"
+      ],
+      "red_flags": [
+        "treats testing as a trial or preview run",
+        "two pooled networks compared without a test"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T",
+      "data_sentence": "We have muscle RNA-seq from 30 ALS patients and 30 controls, and plasma metabolomics from a separate cohort of 40 ALS patients and 40 controls.",
+      "purpose_sentence": "We want to find gene-metabolite associations that differ between ALS patients and controls.",
+      "prompt": "We have muscle RNA-seq from 30 ALS patients and 30 controls, and plasma metabolomics from a separate cohort of 40 ALS patients and 40 controls. We want to find gene-metabolite associations that differ between ALS patients and controls.",
+      "comparison_design": "groups",
+      "claim_kind": "group_difference",
+      "priors_stated": "unstated",
+      "mirna_stated": false,
+      "is_control": false,
+      "acceptable_candidates": [
+        "COBRA",
+        "LIONESS-COEXPRESSION",
+        "BONOBO"
+      ],
+      "recommended_subset": [],
+      "must_include": [
+        "the two layers come from different people",
+        "a joint two-layer network needs the same samples"
+      ],
+      "red_flags": [
+        "builds a gene-metabolite network from these data",
+        "pairs samples across the two cohorts"
+      ]
+    }
+  ]
+}

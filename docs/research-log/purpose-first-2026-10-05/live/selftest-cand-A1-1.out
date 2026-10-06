@@ -1,0 +1,19 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.98s)
+● Matching registered workflows…
+✓ Guidance prepared
+Based on what you said — "whether the regulatory network changes after treatment across the cohort" — **LIONESS-PANDA** fits better: it gives a result for each sample, so the difference you ask about can be tested, keeping each individual's samples paired.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("whether the regulatory network changes after treatment across the cohort"):
+- **LIONESS-PANDA** — Each sample gets its own network, so each individual's networks from the different time points can be compared directly: test the within-individual differences of edge weights or targeting scores, for example with a paired test or a linear model with an individual term.
+- **PANDA**, **PUMA** — Build one network for each time point on the same genes and priors, then compare edge weights or targeting scores between them. This compares the time points across all individuals but does not use the pairing: each individual's samples from the different time points are pooled into separate networks. To keep the pairing, use the per-sample (LIONESS) version and compare each individual's samples.
+- **OTTER** — Build one network for each time point on the same genes and priors, then compare edge weights or targeting scores between them. This compares the time points across all individuals but does not use the pairing: each individual's samples from the different time points are pooled into separate networks. To keep the pairing, use a per-sample method such as LIONESS-PANDA and compare each individual's samples.
+- **GIRAFFE** — The activity matrix compares TF activity, not network wiring, between the conditions; test each TF's activity between them (paired when the same individuals give both).
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+Should I use LIONESS-PANDA, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.
