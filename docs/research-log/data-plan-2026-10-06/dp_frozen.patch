@@ -1,0 +1,1916 @@
+diff --git a/scripts/netzoo_agent_core/contracts/applicability.py b/scripts/netzoo_agent_core/contracts/applicability.py
+new file mode 100644
+index 0000000..c8d09d3
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/applicability.py
+@@ -0,0 +1,39 @@
++"""Whether a listed workflow can be applied to the data the request has (plan item 4, Log 380)."""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, Field
++
++from workflow_registry import ActionName
++
++DataKind = Literal["tf_priors", "mirna", "covariates", "second_omics", "mutations", "network"]
++DataState = Literal["stated", "ruled_out", "unstated"]
++
++__all__ = ["CandidateApplicability", "DataFact", "DataKind", "DataState"]
++
++
++class DataFact(BaseModel):
++    """One kind of data a workflow needs beyond expression, as the request states it."""
++
++    kind: DataKind
++    state: DataState
++    quote: str = ""
++    source: Literal["model", "binding", "purpose", "routing", "words"] = Field(
++        description="Who established the state: the data-facts call, a bound file, the verified design, "
++                    "a quoted routing reading, or the request's wording (when nothing else read it).",
++    )
++
++
++class CandidateApplicability(BaseModel):
++    """A listed workflow judged against the request's data: never execution authority.
++
++    ``applicable``: every needed kind is stated. ``not_applicable``: a needed
++    kind is ruled out. ``insufficient_information``: none is ruled out but one
++    is unstated -- the reply asks rather than recommends.
++    """
++
++    action: ActionName
++    status: Literal["applicable", "not_applicable", "insufficient_information"]
++    basis: list[DataFact] = Field(default_factory=list)
+diff --git a/scripts/netzoo_agent_core/contracts/data_facts.py b/scripts/netzoo_agent_core/contracts/data_facts.py
+new file mode 100644
+index 0000000..f0e231c
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/data_facts.py
+@@ -0,0 +1,40 @@
++"""What the request says about the data it has, as a model proposes it (Logs 376, 380).
++
++Logs 371 and 373 read whether a request has a TF motif prior and a PPI network
++with word lists and failed both ways. Logs 374-375 read it in the
++study-purpose call: the reading was right (no false "stated"), but sharing
++that prompt cost the conclusions it reads. It is now its own small call,
++asked only on a tie with a verified question, and its quote is checked only
++for provenance.
++"""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, ConfigDict, Field
++
++from .strict_schema import strict_json_schema
++
++__all__ = ["DataFactsProposal"]
++
++
++class DataFactsProposal(BaseModel):
++    """Whether the request says it has TF priors, and miRNA data (Logs 376, 380)."""
++
++    model_config = ConfigDict(extra="forbid")
++    priors: Literal["stated", "ruled_out", "unstated"]
++    priors_span: str = Field(description=(
++        "Exact contiguous quote saying the request has, or does not have, a TF motif or binding prior or a "
++        "protein-interaction network; empty when unstated."))
++    # Log 380 (plan item 4): miRNA was the last data fact still read by a word
++    # list ("we did not profile microRNAs" counted as having them, Log 377 T4-1).
++    mirna: Literal["stated", "ruled_out", "unstated"]
++    mirna_span: str = Field(description=(
++        "Exact contiguous quote saying the request has, or does not have, microRNA data (a miRNA list, miRNA "
++        "expression or miRNA-target predictions); empty when unstated."))
++
++    @classmethod
++    def model_json_schema(cls, *args, **kwargs):
++        """The provider sees the strict-mode form; validation is unchanged (Log 208)."""
++        return strict_json_schema(super().model_json_schema(*args, **kwargs))
+diff --git a/scripts/netzoo_agent_core/contracts/data_plan.py b/scripts/netzoo_agent_core/contracts/data_plan.py
+new file mode 100644
+index 0000000..d31e7f8
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/data_plan.py
+@@ -0,0 +1,46 @@
++"""The turn's data-needs plan: what the question needs, what the request has, what the reply asks and says.
++
++Plan item 5 (Log 383). Code-owned; never execution authority.
++"""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, Field
++
++__all__ = ["DataNeed", "DataPlan", "NeedKind"]
++
++NeedKind = Literal["tf_priors", "mirna"]
++
++
++class DataNeed(BaseModel):
++    """One kind of data the question needs, as the request states it, and what the reply does about it."""
++
++    kind: NeedKind
++    state: Literal["stated", "ruled_out", "unstated"]
++    source: Literal["binding", "model", "words"] = Field(
++        description="A file the request binds, the data-facts reading (quote verified), or the request's words "
++                    "when nothing read it.")
++    quote: str = ""
++    action: Literal["none", "ask", "say_ruled_out"]
++
++
++class DataPlan(BaseModel):
++    """What this turn's question needs and what the reply must do about it.
++
++    ``answerable``: False when the question asks only for conclusions no
++    registered workflow supports (prediction, causation): nothing is asked.
++    ``basis``: where the need was read -- the study purpose's quoted
++    questions, the routing reading when no question was quoted, or neither.
++    """
++
++    answerable: bool
++    basis: Literal["claims", "question", "reading", "none", "unanswerable"]
++    needs: list[DataNeed] = Field(default_factory=list)
++
++    def asks(self) -> list[NeedKind]:
++        return [need.kind for need in self.needs if need.action == "ask"]
++
++    def ruled_out(self) -> list[DataNeed]:
++        return [need for need in self.needs if need.action == "say_ruled_out"]
+diff --git a/scripts/netzoo_agent_core/contracts/decisions.py b/scripts/netzoo_agent_core/contracts/decisions.py
+index d9786a7..c2348fe 100644
+--- a/scripts/netzoo_agent_core/contracts/decisions.py
++++ b/scripts/netzoo_agent_core/contracts/decisions.py
+@@ -7,7 +7,9 @@ from typing import Literal
+ from pydantic import BaseModel, Field
+ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKey, RecommendedAction
+ 
++from .applicability import CandidateApplicability
+ from .authorization import OperationAuthorization
++from .data_plan import DataPlan
+ from .outcomes import (
+     RUNNABLE_CAPABILITY_COUNT,
+     AddressedConcern,
+@@ -162,6 +164,16 @@ class TaskDecision(BaseModel):
+     operation_authorization: OperationAuthorization | None = Field(
+         default=None, exclude_if=lambda value: value is None,
+     )
++    # Plan item 4 (Log 380): what the request says about its TF priors and
++    # miRNA data (the data-facts call, quotes verified), and each listed
++    # workflow judged against it. Code-owned, advisory, omitted while unset.
++    data_facts: dict[str, str] | None = Field(default=None, exclude_if=lambda value: value is None)
++    applicability: list[CandidateApplicability] = Field(
++        default_factory=list, exclude_if=lambda value: not value,
++    )
++    # Plan item 5 (Log 383): what the question needs and what the reply asks and
++    # says about it, decided once for every renderer. Code-owned; omitted while unset.
++    data_plan: DataPlan | None = Field(default=None, exclude_if=lambda value: value is None)
+     missing_inputs: list[str] = Field(default_factory=list)
+     expression_file: str | None = None
+     design_file: str | None = None
+diff --git a/scripts/netzoo_agent_core/contracts/requirements.py b/scripts/netzoo_agent_core/contracts/requirements.py
+index d718633..45f6da1 100644
+--- a/scripts/netzoo_agent_core/contracts/requirements.py
++++ b/scripts/netzoo_agent_core/contracts/requirements.py
+@@ -44,6 +44,12 @@ class RequestRequirements(BaseModel):
+     # Filled after routing; a reading of the request, not the user's words.
+     goal: str | None = None
+     open_conditions: list[str] = Field(default_factory=list)
++    # Plan item 4 (Log 380): the data-facts reading and each listed workflow's
++    # applicability to it (applicable / not applicable / insufficient information).
++    data_facts: dict[str, str] | None = None
++    applicability: list[dict[str, Any]] = Field(default_factory=list)
++    # Plan item 5 (Log 383): the turn's data-needs plan.
++    data_plan: dict[str, Any] | None = None
+ 
+     def stated_value(self, field: str) -> Any:
+         """The value the user stated for *field*, this turn first."""
+diff --git a/scripts/netzoo_agent_core/contracts/state.py b/scripts/netzoo_agent_core/contracts/state.py
+index e51641c..98800e2 100644
+--- a/scripts/netzoo_agent_core/contracts/state.py
++++ b/scripts/netzoo_agent_core/contracts/state.py
+@@ -41,6 +41,8 @@ class AgentState(TypedDict):
+     reply_kind: NotRequired[str]
+     # Log 355: the verified study purpose of this turn's request (design, claims, source).
+     study_purpose: NotRequired[dict | None]
++    # Log 380 (plan item 4): what the request says about its TF priors and miRNA data.
++    data_facts: NotRequired[dict | None]
+ 
+ class AgentTurnInterrupted(Exception):
+     """Raised when the user interrupts an in-flight graph turn."""
+diff --git a/scripts/netzoo_agent_core/graph/condition_recommender.py b/scripts/netzoo_agent_core/graph/condition_recommender.py
+index f2e5c94..133c2ac 100644
+--- a/scripts/netzoo_agent_core/graph/condition_recommender.py
++++ b/scripts/netzoo_agent_core/graph/condition_recommender.py
+@@ -64,6 +64,7 @@ __all__ = [
+     "is_method_tie",
+     "recommend_from_claims",
+     "separating_question",
++    "unrecommended_question",
+ ]
+ 
+ _MAX_QUESTIONS = 2
+@@ -255,6 +256,21 @@ def separating_question(
+     return text
+ 
+ 
++def unrecommended_question(decision: TaskDecision) -> str:
++    """A tie's question once its recommendation is withdrawn (Log 380: it needed ruled-out data).
++
++    A method tie asks the facts that separate it, as when nothing is
++    recommended; any other tie asks which listed option fits. Never None: the
++    reply's clarification renderer needs a question, and without one a tie fell
++    to the response model (Log 380 self-test, s18 D2: the budget fallback).
++    """
++    candidates = list(decision.hypothesis_actions)
++    options = condition_options(candidates) if is_method_tie(decision) else []
++    if options:
++        return separating_question(options, candidates)
++    return "Which of the listed options fits your study?"
++
++
+ def recommendation_question(recommendation: AdvisoryRecommendation) -> str:
+     return (
+         f"Should I use {_workflow_name(recommendation.action)}, or does another "
+diff --git a/scripts/netzoo_agent_core/graph/data_facts_call.py b/scripts/netzoo_agent_core/graph/data_facts_call.py
+new file mode 100644
+index 0000000..394ba5b
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/data_facts_call.py
+@@ -0,0 +1,156 @@
++"""The data-facts call: what the request says about its TF priors and miRNA data (Logs 376, 380).
++
++Log 380 (plan item 4): asked after routing when a listed workflow needs a TF
++motif prior and a PPI network, or miRNA data, that the request does not bind
++as files. The model reads what the words mean; each quote is checked only for
++being in the request (Logs 373-374: word lists judging meaning failed both
++ways). When the call is not configured, blocked by the budget or fails,
++nothing is read and every reader keeps the request's own words.
++"""
++
++from __future__ import annotations
++
++import re
++import time
++
++from pydantic import BaseModel
++
++from ..contracts import AgentState, LLMUsage
++from ..contracts.data_facts import DataFactsProposal
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_repair import semantic_payload
++from ..contracts import HumanMessage, SystemMessage
++from ..llm import append_llm_usage
++from ..settings import ROUTER_CONTEXT_MAX_CHARS
++from ..routing.study_purpose_verify import _locate
++from .context import _GraphContext, preflight_budget, record_event
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++
++__all__ = ["DATA_FACTS_SYSTEM", "build_data_facts_messages", "invoke_data_facts", "verify_data_facts"]
++
++
++# Log 376: its own small call, so the study-purpose prompt stays as it is. Log 380 adds miRNA;
++# the prompt lives beside its call (llm.py reached its size bound).
++DATA_FACTS_SYSTEM = (
++    "Return only the DataFactsProposal structure for the user's request.\n\n"
++    "priors -- whether the request says it has prior knowledge of transcription-factor binding (a motif or "
++    "binding-site prior, a TF-target list) or of protein-protein interactions:\n"
++    "- stated: it says it has them, or one of them.\n"
++    "- ruled_out: it says it does not have them, or that it has only expression data.\n"
++    "- unstated: it says neither.\n"
++    "priors_span -- the words that say so, copied exactly from the request without translation; empty when "
++    "unstated.\n\n"
++    "mirna -- whether the request says it has microRNA data (a miRNA list, miRNA expression or miRNA-target "
++    "predictions):\n"
++    "- stated: it says it has them.\n"
++    "- ruled_out: it says it does not have them, or that it has only other data.\n"
++    "- unstated: it says neither.\n"
++    "mirna_span -- the words that say so, copied exactly from the request without translation; empty when "
++    "unstated."
++)
++
++
++def build_data_facts_messages(user_task: str) -> list:
++    """Ask what the request says about its TF priors, with a quote (Log 376)."""
++    return [
++        SystemMessage(content=DATA_FACTS_SYSTEM),
++        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
++    ]
++
++
++def _in_own_current_words(task: str, span: str) -> bool:
++    """Whether the quote lies in the user's own, current statement (Log 381).
++
++    The authority-bearing text of plan item 1 (`admissible_request_text`)
++    leaves out reported speech, quotations and what happened before. Log 380
++    read a supervisor's "we need a motif prior" (T1) and another cohort's
++    "JASPAR motifs and a STRING network" from last year (T2) as data the user
++    has: the quote was in the request, but not in the user's own account of
++    this data. Punctuation is ignored, because that text is split at commas.
++    """
++    from ..routing.request_scope import admissible_request_text
++
++    words = re.findall(r"\w+", span)
++    pattern = r"\W+".join(re.escape(word) for word in words)
++    return bool(words) and re.search(pattern, admissible_request_text(task), re.IGNORECASE) is not None
++
++
++def verify_data_facts(task: str, proposal: DataFactsProposal) -> tuple[dict, list[dict]]:
++    """The state entry for a proposal: each reading stands when its quote is in the request, else unstated.
++
++    A "stated" reading also needs its quote in the user's own, current words (Log 381).
++    """
++    entry, rejected = {"source": "model"}, []
++    for field in ("priors", "mirna"):
++        value, span = getattr(proposal, field), getattr(proposal, f"{field}_span")
++        if value != "unstated" and _locate(task, span) is None:
++            rejected.append({"field": field, "value": value, "reason": "quote_not_in_request"})
++            value = "unstated"
++        elif value == "stated" and not _in_own_current_words(task, span):
++            rejected.append({"field": field, "value": value, "reason": "not_in_own_current_words"})
++            value = "unstated"
++        entry[field] = value
++        entry[f"{field}_quote"] = span.strip() if value != "unstated" else ""
++    return entry, rejected
++
++
++def invoke_data_facts(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    usage: LLMUsage,
++    budget_warnings: list[str],
++) -> tuple[dict | None, LLMUsage, list[str]]:
++    """The verified data facts of the request, or None when nothing read them."""
++    # The same model as the study-purpose call, which the graph binds (`study_purpose_llm`).
++    llm = getattr(context, "study_purpose_llm", None)
++    if llm is None:
++        return None, usage, budget_warnings
++    messages = build_data_facts_messages(user_task)
++    input_text = _serialized_structured_input(messages, DataFactsProposal)
++    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
++    budget, budget_warnings = preflight_budget(
++        context, call_state, role="data_facts",
++        model=context.semantic_model_name, input_text=input_text,
++        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
++    )
++    if budget.status == "blocked":
++        usage.budget_exhausted = True
++        return None, usage, budget_warnings
++    started_ns = time.monotonic_ns()
++    raw = None
++    payload = None
++    output_text = ""
++    call_status = "failed"
++    result = None
++    try:
++        adapter = llm.with_structured_output(
++            DataFactsProposal, method="function_calling", include_raw=True, strict=True,
++        )
++        payload, raw = semantic_payload(adapter.invoke(messages))
++        if isinstance(payload, BaseModel):
++            payload = payload.model_dump()
++        proposal = DataFactsProposal.model_validate(payload)
++        output_text = proposal.model_dump_json()
++        call_status = "success"
++        result, rejected = verify_data_facts(user_task, proposal)
++        record_event(context, state, "routing.data_facts_detected", "classify", {
++            "proposal": proposal.model_dump(), "rejected": rejected, **result,
++        })
++    except BaseException as error:
++        if _is_fatal_exception(error):
++            raise
++        record_event(context, state, "routing.data_facts_failed", "classify", {
++            "error_type": type(error).__name__,
++            "error_message": str(error)[:2000],
++            "validation_issues": _validation_issue_types(error),
++            "provider_payload": payload,
++        })
++    usage = append_llm_usage(
++        usage, role="data_facts", model=context.semantic_model_name,
++        response=raw, input_text=input_text, output_text=output_text,
++        budget_tokens=context.task_token_budget,
++        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++        status=call_status, price_catalog=context.price_catalog,
++    )
++    return result, usage, budget_warnings
+diff --git a/scripts/netzoo_agent_core/graph/response.py b/scripts/netzoo_agent_core/graph/response.py
+index a4c1ec8..a07588b 100644
+--- a/scripts/netzoo_agent_core/graph/response.py
++++ b/scripts/netzoo_agent_core/graph/response.py
+@@ -47,6 +47,7 @@ from .context import _GraphContext, preflight_budget, record_event
+ from .response_context import validated_workflow_context
+ from .response_payload import trusted_response_context
+ from ..interpretation.verified_guidance import render_verified_guidance
++from ..interpretation.data_plan import with_data_plan_reply
+ from ..interpretation.unresolved_router_fallback import (
+     render_unresolved_router_fallback as _render_unresolved_router_fallback,
+ )
+@@ -82,7 +83,9 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
+     result = _respond(context, state)
+     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
+     result = with_outside_steps_reply(result, state, _reply)
+-    return with_study_purpose_reply(result, state, _reply)
++    result = with_study_purpose_reply(result, state, _reply)
++    # Log 383: the turn's data-needs plan, shown whichever renderer answered.
++    return with_data_plan_reply(result, state, _reply)
+ 
+ 
+ def _respond(context: _GraphContext, state: AgentState) -> dict:
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 72ba244..b192d3d 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -28,9 +28,13 @@ from .context import _GraphContext, record_event
+ from .continuation_invocation import compare_workflows, continue_workflow
+ from .intent_invocation import _invoke_intent_router
+ from .invocation_types import RouterInvocation as _RouterInvocation
+-from .condition_recommender import invoke_condition_recommender
++from .condition_recommender import invoke_condition_recommender, unrecommended_question
+ from .request_concerns import invoke_concern_matcher
+ from .study_purpose_call import invoke_study_purpose
++from .data_facts_call import invoke_data_facts
++from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
++from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
++from ..interpretation.request_requirements import stated_in_text
+ from .hypothesis_bases import (
+     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
+ )
+@@ -145,6 +149,7 @@ def invoke_router(
+         )
+         result = replace(result, usage=usage, budget_warnings=warnings,
+                          routing_state={**result.routing_state, "study_purpose": purpose})
++        result = _with_applicability(context, state, user_task, result)
+     decision = note_unstated_scale(user_task, result.decision)
+     if decision is result.decision:
+         return result
+@@ -159,6 +164,65 @@ def invoke_router(
+     })
+ 
+ 
++def _with_applicability(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:
++    """Plan items 4-5 (Logs 380, 383): the turn's data-needs plan, and each listed workflow judged by it.
++
++    What the question needs is read from the question (`plan_needs`), not
++    inferred from the workflows routing listed; the data-facts call reads what
++    the request has whenever the question or a listed workflow needs TF priors
++    or miRNA data the request does not bind as files. The plan and the
++    per-workflow judgement go on the decision for every renderer; no workflow is
++    selected, ranked or removed here.
++    """
++    decision = result.decision
++    if decision.action != "no_tool":
++        return result
++    listed = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
++    claims = (result.routing_state.get("study_purpose") or {}).get("claims") or ()
++    answerable, _basis, kinds = plan_needs(claims, decision, user_task)
++    bound = set(stated_in_text(user_task))
++    question_reads = answerable and any(not set(KIND_FIELDS[kind]) <= bound for kind in kinds)
++    facts, usage, warnings = None, result.usage, result.budget_warnings
++    if question_reads or needs_data_facts(listed, bound):
++        facts, usage, warnings = invoke_data_facts(context, state, user_task, usage, warnings)
++    words = _stated_artifacts(user_task, decision)
++    plan = build_data_plan(claims, decision, facts, words, user_task, bound)
++    update = {"data_plan": plan}
++    dropped = None
++    if facts is not None:
++        present = merge_inputs(words, facts)
++        advice = decision.advisory_recommendation
++        listed_with_advice = [*listed, *([advice.action] if advice is not None else [])]
++        update["data_facts"] = {key: str(value) for key, value in facts.items()}
++        update["applicability"] = assess_applicability(listed_with_advice, present, user_task)
++        status = {item.action: item.status for item in update["applicability"]}
++        if advice is not None and status.get(advice.action) == "not_applicable":
++            # A recommendation needing data the request rules out is not one (plan item 4);
++            # the tie keeps a question of its own, never the dropped one's.
++            dropped = advice.action
++    decision = decision.model_copy(update=update)
++    if dropped is not None:
++        decision = decision.model_copy(update={
++            "advisory_recommendation": None, "clarification_question": unrecommended_question(decision)})
++    record_event(context, state, "routing.data_plan_built", "classify", {
++        "data_plan": plan.model_dump(),
++        "data_facts": decision.data_facts,
++        "applicability": [item.model_dump() for item in decision.applicability],
++        "recommendation_dropped": dropped,
++    })
++    return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
++                   routing_state={**result.routing_state, "data_facts": decision.data_facts})
++
++
++def _stated_artifacts(user_task: str, decision: TaskDecision) -> set[str]:
++    from ..routing.capability_compatibility import input_availability
++
++    present = set(input_availability(user_task).present)
++    for item in decision.outcome_hypotheses:
++        present.update(value for value in item.outcome.input_artifacts if value != "unknown")
++    return present
++
++
+ def _route_request(
+     context: _GraphContext,
+     state: AgentState,
+diff --git a/scripts/netzoo_agent_core/interpretation/applicability.py b/scripts/netzoo_agent_core/interpretation/applicability.py
+new file mode 100644
+index 0000000..adc8a53
+--- /dev/null
++++ b/scripts/netzoo_agent_core/interpretation/applicability.py
+@@ -0,0 +1,153 @@
++"""Whether each listed workflow can be applied to the request's data (plan item 4, Log 380).
++
++The registry says what each workflow needs; until now the request's side was
++read by word lists, which failed both ways: "no transcription factor motifs"
++counted as having them (Log 373) and "no other data" still drew "Do you also
++have a motif prior and a PPI network?" (Log 378 B3-1). The data-facts call
++(Logs 376, 380) reads TF priors and miRNA with quotes; where it has read a
++kind, its reading replaces the wording for that kind everywhere the reply
++judges inputs. Where it has not, nothing changes.
++
++A workflow is applicable when every input it needs is stated, not applicable
++when one is ruled out, and short of information when one is unstated. Only
++the reply and card read this: nothing here selects, ranks or removes a
++workflow, and no execution depends on it.
++"""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Mapping
++from typing import Any
++
++from workflow_registry import RUN_ACTIONS
++
++from ..contracts.applicability import CandidateApplicability, DataFact
++
++__all__ = [
++    "PresentInputs", "assess_applicability", "conditioned_lead", "data_condition", "facts_artifacts",
++    "merge_inputs", "needs_data_facts",
++]
++
++# The input roles the data-facts call reads, as the reply's input ontology names them.
++_FACT_ARTIFACTS = {"tf_priors": ("motif_prior", "ppi_prior"), "mirna": ("mirna_prior",)}
++_FACT_FIELDS = {"tf_priors": ("motif_file", "ppi_file"), "mirna": ("mirna_file",)}
++
++
++class PresentInputs(frozenset):
++    """The input artifacts a request states, with the ones a model reading has judged.
++
++    ``judged``: artifacts whose presence the data-facts call decided, so no
++    word list may overrule it. ``absent``: the judged ones the request rules out.
++    """
++
++    judged: frozenset[str]
++    absent: frozenset[str]
++    quotes: Mapping[str, str]
++
++    def __new__(cls, present: Iterable[str], judged: Iterable[str] = (), absent: Iterable[str] = (),
++                quotes: Mapping[str, str] | None = None):
++        instance = super().__new__(cls, present)
++        instance.judged = frozenset(judged)
++        instance.absent = frozenset(absent)
++        instance.quotes = dict(quotes or {})
++        return instance
++
++
++def facts_artifacts(facts: Mapping[str, Any] | None) -> tuple[set[str], set[str], set[str], dict[str, str]]:
++    """(stated, ruled out, judged, quote by artifact) from a verified data-facts entry."""
++    stated, ruled_out, judged, quotes = set(), set(), set(), {}
++    for kind, artifacts in _FACT_ARTIFACTS.items():
++        state = (facts or {}).get("priors" if kind == "tf_priors" else kind)
++        if state not in {"stated", "ruled_out", "unstated"}:
++            continue
++        judged.update(artifacts)
++        quote = (facts or {}).get(("priors" if kind == "tf_priors" else kind) + "_quote") or ""
++        for artifact in artifacts:
++            quotes[artifact] = quote
++        if state == "stated":
++            stated.update(artifacts)
++        elif state == "ruled_out":
++            ruled_out.update(artifacts)
++    return stated, ruled_out, judged, quotes
++
++
++def merge_inputs(present: Iterable[str], facts: Mapping[str, Any] | None) -> PresentInputs:
++    """The wording's present inputs, with every kind the data-facts call judged replaced by its reading."""
++    stated, ruled_out, judged, quotes = facts_artifacts(facts)
++    return PresentInputs((set(present) - judged) | stated, judged=judged, absent=ruled_out, quotes=quotes)
++
++
++def needs_data_facts(actions: Iterable[str], bound: Iterable[str]) -> bool:
++    """Whether a listed workflow needs TF priors or miRNA data the request does not bind as files."""
++    from workflow_registry import REQUIRED_INPUTS
++
++    bound = set(bound)
++    for action in actions:
++        needed = set(REQUIRED_INPUTS.get(action, ()))
++        for fields in _FACT_FIELDS.values():
++            if needed & set(fields) and not set(fields) <= bound:
++                return True
++    return False
++
++
++def assess_applicability(actions: Iterable[str], present: PresentInputs, task: str) -> list[CandidateApplicability]:
++    """Each listed run workflow's status against the request's data, with the basis for each kind."""
++    from ..reply_cards.method_notes import input_fields, missing_input_labels
++
++    assessed = []
++    for action in dict.fromkeys(actions):
++        if action not in RUN_ACTIONS:
++            continue
++        required, _groups = input_fields(action)
++        basis = []
++        for kind, fields in _FACT_FIELDS.items():
++            if not set(fields) & set(required):
++                continue
++            artifacts = _FACT_ARTIFACTS[kind]
++            source = "model" if set(artifacts) <= present.judged else "words"
++            if set(artifacts) & present.absent:
++                state = "ruled_out"
++            else:
++                state = "stated" if set(artifacts) <= present else "unstated"
++            basis.append(DataFact(kind=kind, state=state, quote=present.quotes.get(artifacts[0], ""), source=source))
++        if any(fact.state == "ruled_out" for fact in basis):
++            status = "not_applicable"
++        elif missing_input_labels(action, present, task) or any(fact.state == "unstated" for fact in basis):
++            status = "insufficient_information"
++        else:
++            status = "applicable"
++        assessed.append(CandidateApplicability(action=action, status=status, basis=basis))
++    return assessed
++
++
++_KIND_LABELS = {"tf_priors": "a motif prior and a PPI network", "mirna": "a miRNA list"}
++
++
++def data_condition(decision, action: str) -> tuple[str, str] | None:
++    """("ruled_out" | "unstated", what it needs) when the reading judged *action* short of data.
++
++    Only kinds the data-facts call read count: a workflow is never called
++    unusable on the wording alone. The reply and card then present it under
++    that condition instead of as the selected answer (plan item 4: a workflow
++    is not chosen just because the inputs it reads are compatible).
++    """
++    item = next((entry for entry in decision.applicability if entry.action == action), None)
++    if item is None:
++        return None
++    for state in ("ruled_out", "unstated"):
++        kinds = [fact.kind for fact in item.basis if fact.state == state and fact.source == "model"]
++        if kinds:
++            text = " and ".join(_KIND_LABELS[kind] for kind in kinds)
++            return state, text
++    return None
++
++
++def conditioned_lead(decision, action: str, names: str) -> str | None:
++    """The reply's first line for a workflow the reading judged short of data, else None."""
++    condition = data_condition(decision, action)
++    if condition is None:
++        return None
++    state, needs = condition
++    if state == "ruled_out":
++        return f"**{names}** fits the result you describe, but it needs {needs}, which you said you do not have."
++    return f"**{names}** fits the result you describe if you have {needs}."
+diff --git a/scripts/netzoo_agent_core/interpretation/data_plan.py b/scripts/netzoo_agent_core/interpretation/data_plan.py
+new file mode 100644
+index 0000000..77791c9
+--- /dev/null
++++ b/scripts/netzoo_agent_core/interpretation/data_plan.py
+@@ -0,0 +1,177 @@
++"""The turn's data-needs plan (plan item 5, Log 383).
++
++Log 382 traced the user-visible failures of Logs 379-381 to shared causes.
++Two of them are here:
++- Whether to ask about data was decided by each renderer under its own
++  preconditions: network results only, a reply-kind whitelist, an
++  alternative must exist, no listed workflow may run on the stated data. In
++  the current system that accounted for 46 of 89 failures, and each round's
++  fix moved them to the next unguarded path.
++- What data the question needs was inferred from the workflows routing
++  listed, so a routing miss carried straight into the reply (16 of 89).
++
++The plan reads the need from the question itself: the study purpose's quoted
++questions, and the routing reading only when no question was quoted. It
++reads the possession from the data-facts reading (Logs 376, 380, 381), or the
++request's words when nothing read it. It decides once what the reply asks and
++says. Every reply renders the plan; `with_data_plan` adds whatever a
++renderer left out.
++"""
++
++from __future__ import annotations
++
++import re
++from collections.abc import Mapping
++from typing import Any
++
++from workflow_registry import UNSUPPORTED_CLAIMS
++
++from ..contracts.data_plan import DataNeed, DataPlan
++
++__all__ = [
++    "KIND_FIELDS", "KIND_LABELS", "build_data_plan", "plan_needs", "render_plan_block", "with_data_plan",
++    "with_data_plan_reply",
++]
++
++# A question about regulators needs the regulator prior: every TF workflow needs a
++# motif prior and a PPI network, and every miRNA workflow needs them too (PUMA).
++_TF_ROLE = re.compile(r"transcription[- ]factors?|\bTFs?\b|\bregulators?\b|\bregulatory\b", re.I)
++_MIRNA_ROLE = re.compile(r"\bmi(?:cro)?[- ]?RNAs?\b|\bmiRs?\b", re.I)
++_TF_ARTIFACTS = frozenset({"tf_activity_matrix", "signed_regulatory_effect_network"})
++KIND_LABELS = {"tf_priors": "a motif prior and a PPI network", "mirna": "a miRNA list"}
++_FACT_KEYS = {"tf_priors": "priors", "mirna": "mirna"}
++_WORD_ARTIFACTS = {"tf_priors": ("motif_prior", "ppi_prior"), "mirna": ("mirna_prior",)}
++
++
++_QUOTED = re.compile(r'"[^"]*"|“[^”]*”')
++
++
++def _questions(task: str) -> list[str]:
++    """The request's own questions: sentences ending in "?", quoted text left out."""
++    unquoted = _QUOTED.sub(" ", task or "")
++    return [part.strip() for part in re.split(r"(?<=[.?!])\s+", unquoted) if part.strip().endswith("?")]
++
++
++def plan_needs(claims, decision, task: str = "") -> tuple[bool, str, tuple[str, ...]]:
++    """(answerable, basis, kinds) for the question this turn asks.
++
++    *claims*: the study purpose's (claim, quote) pairs. A claim no registered
++    workflow supports (prediction, causation) asks for nothing; with only such
++    claims nothing is needed. Otherwise the quoted questions, and the request's
++    own questions, name the regulators they are about -- never the sentences that
++    describe the data ("maps of where transcription factors bind" is not a TF
++    question). Only when neither exists do the routing reading's regulator roles.
++    """
++    claims = [(claim, quote) for claim, quote in claims or ()]
++    asked = [quote for claim, quote in claims if claim not in UNSUPPORTED_CLAIMS]
++    if claims and not asked:
++        return False, "unanswerable", ()
++    text = " ".join([*asked, *_questions(task)])
++    if text:
++        tf, mirna = bool(_TF_ROLE.search(text)), bool(_MIRNA_ROLE.search(text))
++        basis = "claims" if asked else "question"
++    else:
++        readings = [item.outcome for item in decision.outcome_hypotheses]
++        tf = any("tf" in outcome.regulator_types or outcome.artifact_type in _TF_ARTIFACTS for outcome in readings)
++        mirna = any("mirna" in outcome.regulator_types for outcome in readings)
++        basis = "reading" if readings else "none"
++    kinds = (("tf_priors",) if tf or mirna else ()) + (("mirna",) if mirna else ())
++    return True, basis, kinds
++
++
++KIND_FIELDS = {"tf_priors": ("motif_file", "ppi_file"), "mirna": ("mirna_file",)}
++
++
++def build_data_plan(claims, decision, facts: Mapping[str, Any] | None, words: set[str], task: str = "",
++                    bound: set[str] = frozenset()) -> DataPlan:
++    """The plan for this turn: each needed kind's state, and the reply's action for it.
++
++    *bound*: the input fields the request binds as files; *words*: the input
++    artifacts its wording names, used only when no reading exists.
++    """
++    answerable, basis, kinds = plan_needs(claims, decision, task)
++    needs = []
++    for kind in kinds:
++        state = (facts or {}).get(_FACT_KEYS[kind])
++        if set(KIND_FIELDS[kind]) <= set(bound):
++            state, source, quote = "stated", "binding", ""
++        elif state in {"stated", "ruled_out", "unstated"}:
++            source, quote = "model", (facts or {}).get(f"{_FACT_KEYS[kind]}_quote") or ""
++        else:
++            source, quote = "words", ""
++            state = "stated" if set(_WORD_ARTIFACTS[kind]) <= words else "unstated"
++        action = {"stated": "none", "ruled_out": "say_ruled_out", "unstated": "ask"}[state]
++        if kind == "mirna" and action == "ask" and any(need.state == "ruled_out" for need in needs):
++            # Every miRNA workflow also needs the TF priors the request rules out:
++            # a miRNA list cannot make one runnable (Log 380's rule, s20 C3).
++            action = "none"
++        needs.append(DataNeed(kind=kind, state=state, source=source, quote=quote if state != "unstated" else "",
++                              action=action))
++    return DataPlan(answerable=answerable, basis=basis, needs=needs)
++
++
++def _labels(kinds) -> str:
++    parts = [KIND_LABELS[kind] for kind in kinds]
++    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]).replace(" and ", ", ") + " and " + parts[-1]
++
++
++_POSSESSION = re.compile(r"\bdo you (?:also |already )?have\b", re.I)
++_KIND_WORDS = {"tf_priors": re.compile(r"motif|\bPPI\b|protein[- ]protein|protein interaction", re.I),
++               "mirna": re.compile(r"\bmi(?:cro)?[- ]?RNA", re.I)}
++
++
++def _asks(text: str, kind: str) -> bool:
++    return any(_POSSESSION.search(part) and _KIND_WORDS[kind].search(part)
++               for part in re.split(r"(?<=[.?!])\s+|\n+", text) if part.rstrip('")\'*').endswith("?"))
++
++
++def _says_ruled_out(text: str, kind: str) -> bool:
++    return any("which you said you do not have" in part and _KIND_WORDS[kind].search(part)
++               for part in re.split(r"(?<=[.?!])\s+|\n+", text))
++
++
++def render_plan_block(plan: DataPlan, text: str) -> str | None:
++    """What the reply still lacks from the plan, as one paragraph, or None."""
++    missing_says = [need for need in plan.ruled_out() if not _says_ruled_out(text, need.kind)]
++    missing_asks = [kind for kind in plan.asks() if not _asks(text, kind)]
++    if not missing_says and not missing_asks:
++        return None
++    parts = ["**Data your question needs.**"]
++    for need in missing_says:
++        said = f' ("{need.quote}")' if need.quote else ""
++        parts.append(f"A {('TF-level' if need.kind == 'tf_priors' else 'miRNA-level')} answer needs "
++                     f"{KIND_LABELS[need.kind]}, which you said you do not have{said}.")
++    if missing_asks:
++        parts.append(f"Your question needs {_labels(missing_asks)}, which your request does not mention. "
++                     f"Do you have {_labels(missing_asks)}?")
++    return " ".join(parts)
++
++
++def with_data_plan(text: str, plan: DataPlan | None) -> str:
++    """The reply with the plan's missing asks and statements above its closing line."""
++    from .inspected_answers import above_closing
++
++    if plan is None or not text:
++        return text
++    block = render_plan_block(plan, text)
++    return text if block is None else above_closing(text, block)
++
++
++def with_data_plan_reply(result: dict, state, reply) -> dict:
++    """`respond()`'s last step: every guidance reply shows the plan's questions and statements.
++
++    Guidance replies (the outside-step kinds, which include the per-reading
++    replies) and the routing-failure reply. A routing failure still has a
++    question: the study purpose names what it needs even when no workflow was
++    validated (Log 382: 7 of 10 such sessions).
++    """
++    from ..contracts import TaskDecision
++    from .outside_steps import _REPLY_KINDS
++
++    kind = result.get("reply_kind")
++    if kind not in _REPLY_KINDS | {"unresolved"}:
++        return result
++    plan = TaskDecision.model_validate(state["decision"]).data_plan
++    text = str(result["messages"][-1].content)
++    updated = with_data_plan(text, plan)
++    return result if updated == text else reply(updated, kind)
+diff --git a/scripts/netzoo_agent_core/interpretation/input_alternatives.py b/scripts/netzoo_agent_core/interpretation/input_alternatives.py
+index ff3274c..d50a79f 100644
+--- a/scripts/netzoo_agent_core/interpretation/input_alternatives.py
++++ b/scripts/netzoo_agent_core/interpretation/input_alternatives.py
+@@ -39,10 +39,11 @@ from ..reply_cards.method_notes import INPUT_ARTIFACTS, SHORT_INPUT_LABELS, inpu
+ from ..routing.capability_compatibility import input_availability
+ from .inspected_answers import above_closing
+ from .outside_steps import outside_steps
++from .data_plan import KIND_FIELDS
+ from .request_integrity import regulatory_role_mentions
+ 
+ __all__ = [
+-    "InputAlternative", "alternative_phrases", "input_alternative", "render_input_alternative",
++    "InputAlternative", "alternative_phrases", "asks_for_data", "input_alternative", "render_input_alternative",
+     "with_input_alternative", "with_input_alternative_reply",
+ ]
+ 
+@@ -85,13 +86,20 @@ class InputAlternative:
+     asked: tuple[str, ...]
+     alternatives: tuple[str, ...]
+     granularity: str
++    # Log 380: inputs the request rules out (the data-facts reading), with its words.
++    # They are said, never asked about.
++    ruled_out: tuple[str, ...] = ()
++    ruled_out_quote: str = ""
+ 
+ 
+ def _present(task: str, decision) -> frozenset[str]:
++    from .applicability import merge_inputs
++
+     present = set(input_availability(task).present)
+     for item in decision.outcome_hypotheses:
+         present.update(value for value in item.outcome.input_artifacts if value != "unknown")
+-    return frozenset(present)
++    # Log 380: kinds the data-facts call read are decided by that reading.
++    return merge_inputs(present, decision.data_facts) if decision.data_facts else frozenset(present)
+ 
+ 
+ def _runs_on(action: str, present: frozenset[str], task: str) -> bool:
+@@ -115,18 +123,26 @@ def _primary(decision):
+     return decision.outcome_hypotheses[0].outcome if decision.outcome_hypotheses else None
+ 
+ 
+-def input_alternative(decision, task: str) -> InputAlternative | None:
+-    """The workflows the request's named data runs, when none of the decision's does."""
++def input_alternative(decision, task: str, *, ask: bool = True) -> InputAlternative | None:
++    """The workflows the request's named data runs, when none of the decision's does.
++
++    ``ask=False`` (Log 381): the request asks only for a conclusion no registered
++    workflow supports, so no input is asked about; ruled-out data is still said.
++    """
+     candidates = [
+         action for action in dict.fromkeys(
+             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions])
+         if action in OUTPUT_CAPABILITIES and action in RUN_ACTIONS
+     ]
+     outcome = _primary(decision)
+-    stated = input_availability(task).present
+-    if not candidates or outcome is None or outcome.artifact_type not in _NETWORKS or not stated:
+-        return None
+     present = _present(task, decision)
++    judged = getattr(present, "judged", frozenset())
++    # Log 380: with the data-facts reading, the stated data is that reading's, not the wording's.
++    stated = (set(input_availability(task).present) - judged) | (set(present) & judged)
++    if not candidates or outcome is None or not (stated or judged):
++        return None
++    if outcome.artifact_type not in _NETWORKS and not judged:
++        return None
+     if any(_runs_on(action, present, task) for action in candidates):
+         return None
+     scale = outcome.granularity
+@@ -135,25 +151,60 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
+     alternatives = tuple(
+         action for action, capability in OUTPUT_CAPABILITIES.items()
+         if action in RUN_ACTIONS and action not in candidates and action not in advised_against
+-        and capability.artifact_type in _NETWORKS
++        and outcome.artifact_type in _NETWORKS and capability.artifact_type in _NETWORKS
+         and (scale not in _SCALES or scale in capability.granularities)
+         and roles <= set(capability.regulator_types)
+         and _runs_on(action, present, task)
+     )
+-    if not alternatives:
++    # Log 380: a reading of the request's data lets the reply speak without an
++    # alternative -- ask about what it left unstated (F3, Log 379: priors never
++    # mentioned, GIRAFFE given as the answer), say what it ruled out.
++    if not alternatives and not judged:
+         return None
++    absent = getattr(present, "absent", frozenset())
++    ruled_out_fields = {field for field, artifact in INPUT_ARTIFACTS.items() if artifact in absent}
++    ruled_out = tuple(dict.fromkeys(
++        SHORT_INPUT_LABELS[field] for action in candidates for field in input_fields(action)[0]
++        if field in ruled_out_fields))
+     lacking = tuple(
+         (action, tuple(labels), True) if (labels := missing_input_labels(action, present, task)) else
+         (action, tuple(SHORT_INPUT_LABELS[field] for field in input_fields(action)[0]), False)
+         for action in candidates
+     )
+-    asked = next((tuple(missing_input_labels(action, present, task)) for action in candidates
+-                  if missing_input_labels(action, present, task)), ())
+-    if not asked:
++    plan = getattr(decision, "data_plan", None)
++    planned = {SHORT_INPUT_LABELS[field]: kind for kind, fields in KIND_FIELDS.items() for field in fields}
++
++    def askable(label: str) -> bool:
++        # With a data-facts reading, only what it read as unstated is asked about:
++        # a role only the wording judged ("mRNA plus small RNA" is expression) is not.
++        if label in ruled_out:
++            return False
++        if plan is not None and label in planned:
++            # Log 383: the turn's plan decides the priors and miRNA questions for every renderer.
++            return plan.answerable and planned[label] in plan.asks()
++        if not judged:
++            return True
++        return any(SHORT_INPUT_LABELS[field] == label and INPUT_ARTIFACTS.get(field) in judged
++                   for field in INPUT_ARTIFACTS)
++
++    # A workflow whose input is ruled out cannot be rescued by another one (Log 380):
++    # PUMA with the priors ruled out is not worth a question about its miRNA list.
++    open_candidates = [action for action in candidates
++                       if not any(field in ruled_out_fields for field in input_fields(action)[0])]
++    asked = next((tuple(label for label in missing_input_labels(action, present, task) if askable(label))
++                  for action in open_candidates
++                  if [label for label in missing_input_labels(action, present, task) if askable(label)]), ())
++    if not ask:
++        asked = ()
++    if not asked and not (ruled_out and judged):
+         return None
++    # A fixed order (Log 381 H2: iterating the set quoted the miRNA sentence for the priors, by hash order).
++    quote = next((present.quotes.get(INPUT_ARTIFACTS[field], "") for field in ("motif_file", "ppi_file", "mirna_file")
++                  if field in ruled_out_fields and getattr(present, "quotes", {}).get(INPUT_ARTIFACTS[field])), "")
+     return InputAlternative(
+         stated=tuple(_DATA.get(artifact, artifact.replace("_", " ")) for artifact in sorted(stated)),
+         lacking=lacking, asked=asked, alternatives=alternatives, granularity=scale,
++        ruled_out=ruled_out, ruled_out_quote=quote,
+     )
+ 
+ 
+@@ -174,6 +225,8 @@ def _result(found: InputAlternative) -> str:
+ 
+ 
+ def alternative_names(policy, found: InputAlternative) -> str:
++    if not found.alternatives:
++        return ""
+     return _join([policy.workflows[action].workflow if action in policy.workflows else action
+                   for action in found.alternatives], "or")
+ 
+@@ -184,11 +237,12 @@ def alternative_phrases(found: InputAlternative, policy) -> dict[str, str]:
+     keeps = [policy.workflows[action].workflow if action in policy.workflows else action
+              for action, labels, judged in found.lacking if judged and set(labels) <= asked]
+     return {
+-        "stated": _join(found.stated),
+-        "asked": _join([_article(label) for label in found.asked]),
++        "stated": _join(found.stated) if found.stated else "the data I described",
++        "asked": _join([_article(label) for label in found.asked]) if found.asked else "",
+         "alternatives": alternative_names(policy, found),
+-        "result": _result(found),
++        "result": _result(found) if found.alternatives else "",
+         "keeps": _join(keeps, "or") if keeps else "",
++        "ruled_out": _join([_article(label) for label in found.ruled_out]) if found.ruled_out else "",
+     }
+ 
+ 
+@@ -196,24 +250,54 @@ def render_input_alternative(found: InputAlternative, policy) -> str:
+     def name(action):
+         return policy.workflows[action].workflow if action in policy.workflows else action
+ 
++    ruled_out = set(found.ruled_out)
+     groups: dict[tuple[tuple[str, ...], bool], list[str]] = {}
+     for action, labels, judged in found.lacking:
+-        groups.setdefault((labels, judged), []).append(name(action))
++        # Log 380: what the request rules out is said once below, not as "also needs".
++        kept = tuple(label for label in labels if label not in ruled_out)
++        if kept:
++            groups.setdefault((kept, judged), []).append(name(action))
+     needs = "; ".join(
+         f"{_join(names)} {'also ' if judged else ''}{'needs' if len(names) == 1 else 'need'} "
+         + _join([_article(label) if judged else label for label in labels])
+         for (labels, judged), names in groups.items()
+     )
+-    return (
+-        f"**What your data allows.** Your request names only {_join(found.stated)}. {needs}. "
+-        f"With {_join(found.stated)} alone, {alternative_names(policy, found)} builds {_result(found)} instead. "
+-        f"Do you also have {_join([_article(label) for label in found.asked])}?"
+-    )
+-
+-
+-def with_input_alternative(text: str, decision, task: str, policy) -> str:
++    parts = [f"**What your data allows.** Your request names only {_join(found.stated)}." if found.stated
++             else "**What your data allows.**"]
++    if needs:
++        parts.append(f"{needs}.")
++    if found.ruled_out:
++        users = _join([name(action) for action, labels, _ in found.lacking if ruled_out & set(labels)])
++        said = f' ("{found.ruled_out_quote}")' if found.ruled_out_quote else ""
++        parts.append(f"{users} {'needs' if ' and ' not in users else 'need'} "
++                     f"{_join([_article(label) for label in found.ruled_out])}, which you said you do not have{said}.")
++    data = _join(found.stated) if found.stated else "the data you describe"
++    if found.alternatives:
++        parts.append(f"With {data} alone, {alternative_names(policy, found)} builds {_result(found)} instead.")
++    # Without an alternative nothing is claimed about "every registered workflow":
++    # that would rest on routing's reading of the result (Log 380 dev, s18 T5).
++    if found.asked:
++        parts.append(f"Do you also have {_join([_article(label) for label in found.asked])}?")
++    return " ".join(parts)
++
++
++def asks_for_data(state, task: str) -> bool:
++    """False when the request asks only for conclusions no registered workflow supports (Log 381).
++
++    Log 380 F4 ("Could these profiles predict which patients will relapse?")
++    was asked for a motif prior and a PPI network to run workflows that cannot
++    answer it. The study purpose's claims decide: a prediction or causal claim
++    with no claim a workflow works toward needs no input question.
++    """
++    from .study_purpose_notes import gap_claims, purpose_from_state, question_claim
++
++    purpose = purpose_from_state(state, task)
++    return not (gap_claims(purpose) and question_claim(purpose) is None)
++
++
++def with_input_alternative(text: str, decision, task: str, policy, *, ask: bool = True) -> str:
+     """Add the paragraph above the reply's closing line, when it applies."""
+-    found = input_alternative(decision, task)
++    found = input_alternative(decision, task, ask=ask)
+     if found is None or not text:
+         return text
+     return above_closing(text, render_input_alternative(found, policy))
+@@ -224,9 +308,13 @@ def with_input_alternative_reply(result: dict, state, policy, reply) -> dict:
+     from ..contracts import TaskDecision
+     from ..llm import latest_user_task
+ 
+-    if policy is None or result.get("reply_kind") not in _REPLY_KINDS:
++    decision = TaskDecision.model_validate(state["decision"])
++    # Log 381: with a data-facts reading, the per-reading reply (Log 248) gets the
++    # paragraph too (Log 380 G1: PANDA and OTTER with the priors unstated, never asked).
++    kinds = _REPLY_KINDS | ({"hypothesis_routes"} if decision.data_facts else set())
++    if policy is None or result.get("reply_kind") not in kinds:
+         return result
++    task = latest_user_task(state["messages"])
+     text = str(result["messages"][-1].content)
+-    updated = with_input_alternative(
+-        text, TaskDecision.model_validate(state["decision"]), latest_user_task(state["messages"]), policy)
++    updated = with_input_alternative(text, decision, task, policy, ask=asks_for_data(state, task))
+     return result if updated == text else reply(updated, result["reply_kind"])
+diff --git a/scripts/netzoo_agent_core/interpretation/request_requirements.py b/scripts/netzoo_agent_core/interpretation/request_requirements.py
+index f89ea26..0f38431 100644
+--- a/scripts/netzoo_agent_core/interpretation/request_requirements.py
++++ b/scripts/netzoo_agent_core/interpretation/request_requirements.py
+@@ -94,7 +94,12 @@ def with_routing(
+         *(f"unresolved:{dimension}" for dimension in (outcome.unresolved_dimensions if outcome else [])),
+         *([f"question:{decision.clarification_question}"] if decision.clarification_question else []),
+     ]
+-    return requirements.model_copy(update={"goal": goal, "open_conditions": open_conditions})
++    return requirements.model_copy(update={
++        "goal": goal, "open_conditions": open_conditions,
++        "data_facts": decision.data_facts,
++        "applicability": [item.model_dump() for item in decision.applicability],
++        "data_plan": decision.data_plan.model_dump() if decision.data_plan is not None else None,
++    })
+ 
+ 
+ def carried_parameters(requirements: Mapping[str, Any] | None) -> dict[str, Any]:
+diff --git a/scripts/netzoo_agent_core/interpretation/verified_guidance.py b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+index a9347cc..6995582 100644
+--- a/scripts/netzoo_agent_core/interpretation/verified_guidance.py
++++ b/scripts/netzoo_agent_core/interpretation/verified_guidance.py
+@@ -168,9 +168,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
+         names = " → ".join(workflows[action]["workflow"] for action in selected)
+         if decision.capability_match_status == "fallback":
+             interaction = guidance_interaction(decision)
+-            lines.append(f"Fallback recommendation: **{names}**. {interaction.explanation}")
++            lines.append(f"{_fallback_line(decision, selected, names)} {interaction.explanation}")
+         else:
+-            lines.append(f"Selected path: **{names}**.")
++            lines.append(_selected_line(decision, selected, names))
+         if len(selected) == 1:
+             action = selected[0]
+             fit = question_fit_for(
+@@ -298,13 +298,34 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
+     return "\n\n".join(lines)
+ 
+ 
++def _selected_line(decision, selected, names: str) -> str:
++    """Log 380 (plan item 4): a workflow short of data the reading judged is a condition, not the pick."""
++    from .applicability import conditioned_lead
++
++    lead = conditioned_lead(decision, selected[0], names) if len(selected) == 1 else None
++    return lead or f"Selected path: **{names}**."
++
++
++def _fallback_line(decision, selected, names: str) -> str:
++    """Log 381: a fallback short of data the reading judged carries the condition (Log 380 T3-3: PUMA, miRNA ruled out)."""
++    from .applicability import data_condition
++
++    condition = data_condition(decision, selected[0]) if len(selected) == 1 else None
++    if condition is None:
++        return f"Fallback recommendation: **{names}**."
++    state, needs = condition
++    if state == "ruled_out":
++        return f"Fallback candidate: **{names}**, but it needs {needs}, which you said you do not have."
++    return f"Fallback candidate: **{names}**, if you have {needs}."
++
++
+ def _render_compact(lines, decision, selected, workflows, facts, concerns) -> None:
+     """The workflow in prose: why it fits, how it works, what it needs and gives."""
+     names = " → ".join(workflows[action]["workflow"] for action in selected)
+     if decision.capability_match_status == "fallback":
+-        lines.append(f"Fallback recommendation: **{names}**. {guidance_interaction(decision).explanation}")
++        lines.append(f"{_fallback_line(decision, selected, names)} {guidance_interaction(decision).explanation}")
+     else:
+-        lines.append(f"Selected path: **{names}**.")
++        lines.append(_selected_line(decision, selected, names))
+     if len(selected) == 1:
+         action = selected[0]
+         fit = question_fit_for(
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 4444112..27ca4bc 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -11,6 +11,7 @@ from __future__ import annotations
+ 
+ from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
+ 
++from ..interpretation.applicability import data_condition
+ from ..contracts import ProjectPolicySnapshot, TaskDecision, ToolExecutionResult, WorkflowPlan
+ from ..contracts.state import NextTurnPrompt
+ from ..outcomes import effective_results
+@@ -146,6 +147,10 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance",
+     outcome = primary_outcome(decision)
+     if decision.capability_match_status == "fallback":
+         headline = f"{name} is the closest registered match, but it is not a verified match for your request."
++    elif (condition := data_condition(decision, action)) is not None:
++        # Log 380 (plan item 4): not "fits your goal" while the data it needs is missing.
++        headline = (f"{name} needs {condition[1]}, which you said you do not have."
++                    if condition[0] == "ruled_out" else f"{name} fits your goal if you have {condition[1]}.")
+     elif outcome is not None and outcome.artifact_type != "unknown":
+         headline = f"{name} fits your goal: {result_phrase(outcome, article=False)}."
+     elif _produces(action):
+@@ -456,20 +461,27 @@ _INPUT_ALTERNATIVE_CARDS = frozenset({"clarification", "method_choice", "workflo
+ _UNMENTIONED_POINTS = ("Not mentioned in your request:", "Every option also needs ")
+ 
+ 
+-def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> ReplyCard:
++def _with_input_alternative(card: ReplyCard, decision, policy, task: str, result: dict) -> ReplyCard:
+     """Ask first whether the inputs exist when no option runs on the data the request names (Log 312)."""
+-    from ..interpretation.input_alternatives import alternative_phrases, input_alternative
++    from ..interpretation.input_alternatives import alternative_phrases, asks_for_data, input_alternative
+ 
+-    found = input_alternative(decision, task)
++    found = input_alternative(decision, task, ask=asks_for_data(result, task))
+     if found is None:
+         return card
+     words = alternative_phrases(found, policy)
+-    result = words["result"][:1].upper() + words["result"][1:]
++    if not found.asked:
++        # Log 380: everything missing is ruled out -- nothing to ask; say it.
++        return card.model_copy(update={"points": [
++            *(point for point in card.points if not point.startswith(_UNMENTIONED_POINTS)),
++            clip(f"Needs {words['ruled_out']}, which you said you do not have.", 300)]})
++    result = words["result"][:1].upper() + words["result"][1:] if words["result"] else ""
+     options = [
+         ReplyOption(
+             key="inputs-named", label=clip(f"Only {words['stated']}", 80),
+-            description=describe([f"Leads to {words['alternatives']}", result]),
+-            answer=clip(f"I only have {words['stated']}. {result} is fine.", 600),
++            description=describe([f"Leads to {words['alternatives']}", result] if words["alternatives"] else
++                                 ["Ask what the data you named can give instead"]),
++            answer=clip(f"I only have {words['stated']}. {result} is fine." if result else
++                        f"I only have {words['stated']}.", 600),
+             resolution="follow_up",
+         ),
+         ReplyOption(
+@@ -484,7 +496,8 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> Rep
+     kept = card.points[:1] if card.kind in {"method_choice", "clarification"} else card.points
+     points = [point for point in kept if not point.startswith(_UNMENTIONED_POINTS)]
+     points.append(clip(f"Your request names only {words['stated']}; the matched workflows need more inputs, "
+-                       f"while {words['alternatives']} works from it alone.", 300))
++                       + (f"while {words['alternatives']} works from it alone." if words["alternatives"] else
++                          "which the request does not mention."), 300))
+     return card.model_copy(update={
+         "points": points,
+         "choices": ReplyChoices(header="Inputs", question=clip(f"Do you also have {words['asked']}?", 400),
+@@ -583,7 +596,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
+     if card is None:
+         card = _core_card(kind, decision, policy, task)
+     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
+-        card = _with_input_alternative(card, decision, policy, task)
++        card = _with_input_alternative(card, decision, policy, task, result)
+     if card is not None and kind != "execution":
+         card = _with_outside_steps(card, decision, task)
+         card = _with_study_purpose(card, kind, decision, policy, task, result)
+diff --git a/scripts/netzoo_agent_core/reply_cards/choices.py b/scripts/netzoo_agent_core/reply_cards/choices.py
+index dfffded..157c7e1 100644
+--- a/scripts/netzoo_agent_core/reply_cards/choices.py
++++ b/scripts/netzoo_agent_core/reply_cards/choices.py
+@@ -50,11 +50,17 @@ _DESCRIPTION_LIMIT = 200
+ 
+ 
+ def present_inputs(task: str, decision: TaskDecision) -> frozenset[str]:
+-    """Inputs the request says it has, from its wording and the typed readings."""
++    """Inputs the request says it has, from its wording and the typed readings.
++
++    Log 380: a kind the data-facts call read (TF priors, miRNA) is decided by
++    that reading, not the wording.
++    """
++    from ..interpretation.applicability import merge_inputs
++
+     present = set(input_availability(task).present)
+     for item in decision.outcome_hypotheses:
+         present.update(value for value in item.outcome.input_artifacts if value != "unknown")
+-    return frozenset(present)
++    return merge_inputs(present, decision.data_facts) if decision.data_facts else frozenset(present)
+ 
+ 
+ def describe(parts, ranks=None) -> str:
+diff --git a/scripts/netzoo_agent_core/reply_cards/method_notes.py b/scripts/netzoo_agent_core/reply_cards/method_notes.py
+index b6309d9..6779234 100644
+--- a/scripts/netzoo_agent_core/reply_cards/method_notes.py
++++ b/scripts/netzoo_agent_core/reply_cards/method_notes.py
+@@ -221,13 +221,19 @@ def missing_input_labels(action: str, present: frozenset[str] | set[str], task:
+     names no input says nothing about which ones it lacks. Given the request,
+     a role it describes in any words (`_LOOSE_MENTIONS`) is not missing either.
+     """
+-    if not present:
++    judged = getattr(present, "judged", frozenset())
++    # A request naming no input says nothing about what it lacks -- unless the
++    # data-facts reading judged a kind (Log 380): "these expression counts are
++    # everything we have" names no input to the word list, yet rules out priors.
++    if not present and not judged:
+         return []
+ 
+     def missing(field: str) -> bool:
+         artifact = INPUT_ARTIFACTS.get(field)
+         if artifact is None or artifact in present:
+             return False
++        if artifact in judged:  # Log 380: the data-facts reading decided it; no word list may overrule it
++            return True
+         pattern = _LOOSE_MENTIONS.get(artifact)
+         return not (task and pattern is not None and pattern.search(task))
+ 
+diff --git a/tests/test_applicability.py b/tests/test_applicability.py
+new file mode 100644
+index 0000000..f5e75ae
+--- /dev/null
++++ b/tests/test_applicability.py
+@@ -0,0 +1,360 @@
++"""Each listed workflow judged against the request's data (plan item 4, Log 380).
++
++The registry says what a workflow needs; the request's side is the data-facts
++reading (a model call whose quotes are verified). Where it has read a kind,
++no word list may overrule it: Log 373 read "no transcription factor motifs"
++as having them, and Log 378 B3-1 asked about priors after "no other data".
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++from unittest.mock import patch
++
++import pytest
++
++sys.path[:0] = [str(Path(__file__).parents[1] / "scripts"), str(Path(__file__).parent)]
++
++from netzoo_agent_core.contracts import LLMUsage  # noqa: E402
++from netzoo_agent_core.contracts.data_facts import DataFactsProposal  # noqa: E402
++from netzoo_agent_core.graph import router_invocation  # noqa: E402
++from netzoo_agent_core.graph.data_facts_call import verify_data_facts  # noqa: E402
++from netzoo_agent_core.interpretation.applicability import (  # noqa: E402
++    assess_applicability, merge_inputs, needs_data_facts,
++)
++from netzoo_agent_core.reply_cards.method_notes import missing_input_labels  # noqa: E402
++from netzoo_agent_core.routing.capability_compatibility import input_availability  # noqa: E402
++from test_reply_cards import HEART_FAILURE, _heart_failure_tie, decision, reading, respond_and_card  # noqa: E402
++
++NO_MOTIFS = ("We profiled 72 maize inbred lines by RNA-seq, but no transcription factor motifs or protein "
++             "interaction network exist for this species. We want one TF network per line.")
++NO_OTHER = ("We have bulk RNA-seq from 60 tumors, 30 responders and 30 non-responders, and no other data. "
++            "We want each tumor's regulatory network.")
++F3 = ("We have nasal brushing RNA-seq from 40 asthmatic and 40 healthy children. We want to know which "
++      "transcription factors change their regulatory activity between the groups.")
++DATABASES = ("We have lung RNA-seq from 35 patients plus JASPAR binding-site scans of promoters and the STRING "
++             "database for human proteins. We want each patient's TF-gene network.")
++
++
++def facts(priors, mirna="unstated", priors_quote="", mirna_quote=""):
++    return {"source": "model", "priors": priors, "priors_quote": priors_quote,
++            "mirna": mirna, "mirna_quote": mirna_quote}
++
++
++def judged(made, task, reading_):
++    listed = [*made.matched_actions, *made.hypothesis_actions, *made.recommended_actions]
++    present = set(input_availability(task).present) | {
++        v for h in made.outcome_hypotheses for v in h.outcome.input_artifacts if v != "unknown"}
++    return made.model_copy(update={
++        "data_facts": reading_, "applicability": assess_applicability(listed, merge_inputs(present, reading_), task),
++    })
++
++
++def lioness_panda():
++    return decision([reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="sample_specific")],
++                    capability_match_status="exact", matched_actions=["run_lioness_panda"],
++                    recommended_actions=["run_lioness_panda"])
++
++
++def giraffe():
++    return decision([reading("tf_activity_matrix", ["expression_matrix"], ["tf"], granularity="sample_specific")],
++                    capability_match_status="exact", matched_actions=["run_giraffe"], recommended_actions=["run_giraffe"])
++
++
++def statuses(made):
++    return {item.action: item.status for item in made.applicability}
++
++
++# --- the reading replaces the wording, for the kinds it read ---------------------
++
++def test_a_ruled_out_reading_is_not_overruled_by_the_words_it_contains():
++    """Log 373 C: "no transcription factor motifs" matched the motif word list."""
++    present = merge_inputs(input_availability(NO_MOTIFS).present, facts("ruled_out"))
++
++    assert "motif_prior" not in present and {"motif_prior", "ppi_prior"} <= present.absent
++    assert missing_input_labels("run_lioness_panda", present, NO_MOTIFS) == ["motif prior", "PPI network"]
++    # Without the reading, the loose wording rescues both roles, as before.
++    assert missing_input_labels("run_lioness_panda", frozenset({"expression_matrix"}), NO_MOTIFS) == []
++
++
++def test_a_stated_reading_counts_data_the_word_list_misses():
++    present = merge_inputs({"expression_matrix"}, facts("stated", priors_quote="JASPAR binding-site scans"))
++
++    assert {"motif_prior", "ppi_prior"} <= present
++    assert missing_input_labels("run_lioness_panda", present, DATABASES) == []
++
++
++@pytest.mark.parametrize(("reading_", "expected"), [
++    (facts("stated"), "applicable"),
++    (facts("ruled_out"), "not_applicable"),
++    (facts("unstated"), "insufficient_information"),
++])
++def test_each_workflow_gets_a_status_from_the_reading(reading_, expected):
++    made = judged(lioness_panda(), NO_OTHER, reading_)
++
++    assert statuses(made) == {"run_lioness_panda": expected}
++    basis = made.applicability[0].basis
++    assert [(fact.kind, fact.source) for fact in basis] == [("tf_priors", "model")]
++
++
++def test_mirna_is_judged_separately_from_tf_priors():
++    tie = _heart_failure_tie()
++    made = judged(tie, HEART_FAILURE, facts("stated", mirna="ruled_out", mirna_quote="we did not profile microRNAs"))
++
++    assert statuses(made) == {"run_lioness_panda": "applicable", "run_lioness_puma": "not_applicable"}
++
++
++def test_the_reading_is_asked_only_when_a_listed_workflow_needs_unbound_priors_or_mirna():
++    assert needs_data_facts(["run_lioness_panda"], bound=())
++    assert needs_data_facts(["run_puma"], bound=("motif_file", "ppi_file"))  # still needs miRNA
++    assert not needs_data_facts(["run_lioness_panda"], bound=("motif_file", "ppi_file"))
++    assert not needs_data_facts(["run_cobra", "run_bonobo", "run_lioness_coexpression"], bound=())
++
++
++def test_a_reading_whose_quote_is_not_in_the_request_is_unstated():
++    proposal = DataFactsProposal(priors="ruled_out", priors_span="does not have them, or that it has only other data",
++                                 mirna="ruled_out", mirna_span="")
++    entry, rejected = verify_data_facts(NO_OTHER, proposal)
++
++    assert (entry["priors"], entry["mirna"]) == ("unstated", "unstated")
++    assert {item["field"] for item in rejected} == {"priors", "mirna"}
++
++
++# --- what the user sees ----------------------------------------------------------
++
++def _paragraph(text):
++    return next((p for p in text.split("\n\n") if p.startswith("**What your data allows.**")), None)
++
++
++def test_missing_data_with_no_alternative_is_asked_about_not_assumed():
++    """Log 379 F3: priors never mentioned, GIRAFFE given as the answer."""
++    text, _, card = respond_and_card(F3, judged(giraffe(), F3, facts("unstated")))
++
++    assert _paragraph(text) == (
++        "**What your data allows.** Your request names only expression data. GIRAFFE also needs a motif prior "
++        "and a PPI network. Do you also have a motif prior and a PPI network?")
++    assert card.choices.question == "Do you also have a motif prior and a PPI network?"
++    # Nothing is claimed about every registered workflow: that would rest on routing's reading.
++    assert "No registered workflow" not in text
++    assert card.choices.options[0].description == "Ask what the data you named can give instead"
++
++
++@pytest.mark.parametrize(("task", "quote"), [
++    (NO_OTHER, "no other data"),
++    (NO_MOTIFS, "no transcription factor motifs or protein interaction network exist for this species"),
++])
++def test_ruled_out_data_is_said_with_the_users_words_and_never_asked_about(task, quote):
++    text, _, card = respond_and_card(task, judged(lioness_panda(), task, facts("ruled_out", priors_quote=quote)))
++
++    paragraph = _paragraph(text)
++    assert f'LIONESS-PANDA needs a motif prior and a PPI network, which you said you do not have ("{quote}").' \
++        in paragraph
++    assert "Do you also have" not in text
++    assert card.choices is None or card.choices.header != "Inputs"
++    assert "Needs a motif prior and a PPI network, which you said you do not have." in card.points
++    assert not any(point.startswith("Not mentioned") for point in card.points)
++
++
++def test_stated_data_needs_no_paragraph_and_no_note():
++    text, _, card = respond_and_card(DATABASES, judged(lioness_panda(), DATABASES, facts("stated", priors_quote="JASPAR")))
++
++    assert _paragraph(text) is None
++    assert not any("Not mentioned" in point for point in card.points)
++
++
++def test_with_unstated_priors_and_an_alternative_the_reply_is_unchanged():
++    """Log 312's Test 2 text and card, now from the reading instead of the wording."""
++    before = respond_and_card(HEART_FAILURE, _heart_failure_tie())
++    after = respond_and_card(HEART_FAILURE, judged(_heart_failure_tie(), HEART_FAILURE, facts("unstated")))
++
++    assert _paragraph(after[0]) == _paragraph(before[0])
++    assert after[2].choices.question == before[2].choices.question
++
++
++# --- routing asks once, after routing, and only when it can matter ---------------
++
++def _quiet():
++    return SimpleNamespace(recorder=SimpleNamespace(append=lambda *args: None))
++
++
++def _result(made):
++    return router_invocation._RouterInvocation(decision=made, routing_state={}, usage=LLMUsage(budget_tokens=1000),
++                                               budget_warnings=[], reason_code="semantic_registry_intent")
++
++
++def test_routing_reads_the_data_facts_and_records_each_workflows_status():
++    events = []
++    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append(kind)))
++    with patch.object(router_invocation, "invoke_data_facts",
++                      return_value=(facts("ruled_out", priors_quote="no other data"), LLMUsage(budget_tokens=1000), [])) as call:
++        result = router_invocation._with_applicability(context, {}, NO_OTHER, _result(lioness_panda()))
++
++    call.assert_called_once()
++    assert result.decision.data_facts["priors"] == "ruled_out"
++    assert statuses(result.decision) == {"run_lioness_panda": "not_applicable"}
++    assert result.routing_state["data_facts"]["priors"] == "ruled_out"
++    assert events == ["routing.data_plan_built"]
++    assert result.decision.data_plan.ruled_out()[0].kind == "tf_priors"
++
++
++@pytest.mark.parametrize("task", [
++    "Run nothing. Explain LIONESS-PANDA with motif_file=m.tsv ppi_file=p.tsv expression_file=e.tsv.",
++])
++def test_bound_files_need_no_reading(task):
++    with patch.object(router_invocation, "invoke_data_facts") as call:
++        result = router_invocation._with_applicability(_quiet(), {}, task, _result(lioness_panda()))
++
++    call.assert_not_called()
++    assert result.decision.data_facts is None and result.decision.data_plan.asks() == []
++
++
++def test_a_failed_reading_changes_nothing():
++    with patch.object(router_invocation, "invoke_data_facts", return_value=(None, LLMUsage(budget_tokens=1000), [])):
++        result = router_invocation._with_applicability(_quiet(), {}, NO_OTHER, _result(lioness_panda()))
++
++    assert result.decision.data_facts is None and result.decision.applicability == []
++    # The plan falls back to the request's words: nothing rules the priors out, so it asks.
++    assert result.decision.data_plan.needs[0].source == "words"
++
++
++# --- the pick follows the data, not just the input format ------------------------
++
++def test_a_ruled_out_workflow_is_not_presented_as_the_selected_path():
++    text, _, card = respond_and_card(NO_OTHER, judged(lioness_panda(), NO_OTHER, facts("ruled_out", priors_quote="no other data")))
++
++    assert text.startswith("**LIONESS-PANDA** fits the result you describe, but it needs a motif prior and a PPI "
++                           "network, which you said you do not have.")
++    assert "Selected path" not in text
++    assert card.headline == "LIONESS-PANDA needs a motif prior and a PPI network, which you said you do not have."
++
++
++def test_a_workflow_short_of_unstated_data_is_offered_on_that_condition():
++    text, _, card = respond_and_card(F3, judged(giraffe(), F3, facts("unstated")))
++
++    assert text.startswith("**GIRAFFE** fits the result you describe if you have a motif prior and a PPI network.")
++    assert card.headline == "GIRAFFE fits your goal if you have a motif prior and a PPI network."
++
++
++def test_stated_data_keeps_the_selected_path():
++    text, _, card = respond_and_card(DATABASES, judged(lioness_panda(), DATABASES, facts("stated", priors_quote="JASPAR")))
++
++    assert text.startswith("Selected path: **LIONESS-PANDA**.")
++    assert card.headline.startswith("LIONESS-PANDA fits your goal:")
++
++
++def test_a_recommendation_needing_ruled_out_data_is_dropped():
++    from netzoo_agent_core.contracts.outcomes import AdvisoryCondition, AdvisoryRecommendation
++
++    tie = decision([reading("regulatory_network", ["expression_matrix"], ["tf"], granularity="sample_specific")],
++                   capability_match_status="ambiguous",
++                   hypothesis_actions=["run_lioness_panda", "run_lioness_coexpression"],
++                   advisory_recommendation=AdvisoryRecommendation(
++                       action="run_lioness_panda",
++                       conditions=[AdvisoryCondition(axis="sample_size", value="many", text_span="60 tumors")]),
++                   clarification_question="Should I use LIONESS-PANDA, or does another listed option fit your study better?")
++    with patch.object(router_invocation, "invoke_data_facts",
++                      return_value=(facts("ruled_out", priors_quote="no other data"), LLMUsage(budget_tokens=1000), [])):
++        result = router_invocation._with_applicability(
++            SimpleNamespace(recorder=SimpleNamespace(append=lambda *a: None)), {}, NO_OTHER, _result(tie))
++
++    assert result.decision.advisory_recommendation is None
++    assert result.decision.clarification_question and "LIONESS-PANDA, or" not in result.decision.clarification_question
++    assert statuses(result.decision)["run_lioness_coexpression"] == "applicable"
++    # The tie still renders without the response model (Log 380 self-test, s18 D2:
++    # with no question it fell to the model, whose budget preflight refused).
++    text, _, _ = respond_and_card(NO_OTHER, result.decision)
++    assert "Which of the listed options fits your study?" in text and "fits better" not in text
++
++
++# --- Log 381: mentioned data, per-reading replies, unanswerable questions, fallbacks ---
++
++ADVISOR = ("My advisor says we will need a TF motif prior; we have RNA-seq from 30 sheep livers, fed or fasted. "
++           "Which transcription factors change their targets with fasting?")
++
++
++def test_a_stated_reading_needs_the_users_own_current_words():
++    # Log 380 T1/T2: the quote was in the request, but someone else's words or another cohort's data.
++    said_by_advisor = DataFactsProposal(priors="stated", priors_span="we will need a TF motif prior",
++                                        mirna="unstated", mirna_span="")
++    entry, rejected = verify_data_facts(ADVISOR, said_by_advisor)
++
++    assert entry["priors"] == "unstated" and rejected[0]["reason"] == "not_in_own_current_words"
++    assert statuses(judged(_panda_tie(), ADVISOR, entry)) == {
++        "run_panda": "insufficient_information", "run_otter": "insufficient_information"}
++    other_cohort = ("Last year we used JASPAR motifs and a STRING network on a different cohort; this year we have "
++                    "RNA-seq from 40 sheep livers. Which transcription factors change their targets with fasting?")
++    entry, _ = verify_data_facts(other_cohort, DataFactsProposal(
++        priors="stated", priors_span="we used JASPAR motifs and a STRING network", mirna="unstated", mirna_span=""))
++    assert entry["priors"] == "unstated"
++    # The user's own statement stands, commas and all.
++    entry, rejected = verify_data_facts(DATABASES, DataFactsProposal(
++        priors="stated", priors_span="JASPAR binding-site scans of promoters and the STRING database",
++        mirna="unstated", mirna_span=""))
++    assert entry["priors"] == "stated" and rejected == []
++
++
++def _panda_tie():
++    return decision([reading("regulatory_network", ["expression_matrix"], ["tf"])],
++                    capability_match_status="ambiguous", hypothesis_actions=["run_panda", "run_otter"])
++
++
++def _finish(kind, made, task, purpose=None):
++    from netzoo_agent_core.contracts import AIMessage, HumanMessage
++    from netzoo_agent_core.interpretation.input_alternatives import with_input_alternative_reply
++    from test_reply_cards import POLICY
++
++    text = "PANDA and OTTER fit.\n\nNo files were inspected and no analysis ran."
++    state = {"decision": made.model_dump(), "messages": [HumanMessage(content=task)], "study_purpose": purpose}
++    result = {"messages": [AIMessage(content=text)], "reply_kind": kind}
++    out = with_input_alternative_reply(result, state, POLICY,
++                                       lambda new, k: {"messages": [AIMessage(content=new)], "reply_kind": k})
++    return str(out["messages"][-1].content)
++
++
++def test_a_per_reading_reply_asks_about_unstated_data_once_it_was_read():
++    made = judged(_panda_tie(), F3, facts("unstated"))
++
++    assert "Do you also have a motif prior and a PPI network?" in _finish("hypothesis_routes", made, F3)
++    # Without a reading the per-reading reply is left as it was.
++    assert "What your data allows" not in _finish("hypothesis_routes", _panda_tie(), F3)
++
++
++PREDICT = ("We have bulk RNA-seq of 60 colon biopsies. Could these profiles predict which patients relapse?")
++PREDICTION_ONLY = {"design": None, "design_quote": "",
++                   "claims": [("prediction", "predict which patients relapse")]}
++
++
++def test_a_question_no_workflow_answers_is_not_asked_for_data():
++    made = judged(_panda_tie(), PREDICT, facts("unstated"))
++
++    assert "Do you also have" not in _finish("hypothesis_routes", made, PREDICT, PREDICTION_ONLY)
++    # A question a workflow works toward, beside the prediction, still needs the data.
++    both = {**PREDICTION_ONLY, "claims": [("regulator_change", "which regulators change"),
++                                          *PREDICTION_ONLY["claims"]]}
++    assert "Do you also have" in _finish("hypothesis_routes", made, PREDICT, both)
++
++
++def test_ruled_out_data_is_still_said_when_nothing_is_asked():
++    task = PREDICT.replace("We have bulk", "We only have bulk")
++    made = judged(_panda_tie(), task, facts("ruled_out", priors_quote="We only have bulk RNA-seq"))
++    text = _finish("hypothesis_routes", made, task, PREDICTION_ONLY)
++
++    assert "which you said you do not have" in text and "Do you also have" not in text
++
++
++def test_a_fallback_short_of_ruled_out_data_carries_the_condition():
++    from netzoo_agent_core.interpretation.verified_guidance import _fallback_line
++
++    task = ("We have RNA-seq of 34 monocyte samples plus CIS-BP motifs and a BioGRID network, but no microRNA "
++            "measurements. Which regulators control the inflammatory genes?")
++    fallback = decision([reading("regulatory_network", ["expression_matrix"], ["tf", "mirna"])],
++                        capability_match_status="fallback", matched_actions=["run_puma"],
++                        recommended_actions=["run_puma"])
++    made = judged(fallback, task, facts("stated", "ruled_out", priors_quote="CIS-BP motifs and a BioGRID network",
++                                        mirna_quote="no microRNA measurements"))
++
++    assert _fallback_line(made, ["run_puma"], "PUMA") == (
++        "Fallback candidate: **PUMA**, but it needs a miRNA list, which you said you do not have.")
++    assert _fallback_line(fallback, ["run_puma"], "PUMA") == "Fallback recommendation: **PUMA**."
+diff --git a/tests/test_contracts_package.py b/tests/test_contracts_package.py
+index 9ead4f9..3400081 100644
+--- a/tests/test_contracts_package.py
++++ b/tests/test_contracts_package.py
+@@ -165,7 +165,9 @@ SCHEMA_DIGESTS = {
+     # 2026-09-29: optional quoted research hypotheses; no execution authority.
+     # 2026-10-05: optional code-owned operation_authorization (requested and
+     # forbidden operations read from the request); it can only refuse execution.
+-    "TaskDecision": "e0d6f8efe006735bc976474ee776a57efc65705958f07ac502767a5542995d26",
++    # 2026-10-06 (Log 380): optional code-owned data_facts and applicability; advisory only.
++    # 2026-10-06 (Log 383): optional code-owned data_plan (the turn's data-needs plan); reply only.
++    "TaskDecision": "d9d6559a72bbc4f11e834fbe0c665899d2bb62b9cd3672c9950a532249941c76",
+     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
+     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
+     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
+diff --git a/tests/test_data_plan.py b/tests/test_data_plan.py
+new file mode 100644
+index 0000000..b751aa0
+--- /dev/null
++++ b/tests/test_data_plan.py
+@@ -0,0 +1,152 @@
++"""The turn's data-needs plan (plan item 5, Log 383).
++
++Log 382 traced the reply failures of Logs 379-381 to whether-to-ask being
++decided by each renderer under its own preconditions, and to the question's
++data needs being inferred from the workflows routing listed. The plan reads
++the need from the question, decides once, and every reply shows it.
++"""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++from unittest.mock import patch
++
++sys.path[:0] = [str(Path(__file__).parents[1] / "scripts"), str(Path(__file__).parent)]
++
++from netzoo_agent_core.contracts import AIMessage, HumanMessage, LLMUsage  # noqa: E402
++from netzoo_agent_core.graph import router_invocation  # noqa: E402
++from netzoo_agent_core.interpretation.data_plan import (  # noqa: E402
++    build_data_plan, plan_needs, render_plan_block, with_data_plan_reply,
++)
++from test_reply_cards import decision, reading  # noqa: E402
++
++DATA_SENTENCE = ("We have RNA-seq from 48 airway cultures, plus maps of where transcription factors bind and of which "
++                 "proteins physically contact each other.")
++
++
++def facts(priors="unstated", mirna="unstated", priors_quote="", mirna_quote=""):
++    return {"source": "model", "priors": priors, "priors_quote": priors_quote, "mirna": mirna, "mirna_quote": mirna_quote}
++
++
++def coexpression():
++    return decision([reading("coexpression_network", ["expression_matrix"])], capability_match_status="exact",
++                    matched_actions=["run_cobra"], recommended_actions=["run_cobra"])
++
++
++def tf_tie():
++    return decision([reading("regulatory_network", ["expression_matrix"], ["tf"])], capability_match_status="ambiguous",
++                    hypothesis_actions=["run_panda", "run_otter"])
++
++
++# --- the need is read from the question, not from the workflows routing listed ----
++
++def test_a_tf_question_needs_the_priors_and_a_coexpression_question_does_not():
++    assert plan_needs([("regulator_change", "Which transcription factors steer the program?")], tf_tie()) == (
++        True, "claims", ("tf_priors",))
++    # Routing listed TF workflows; the question asks about co-expression (Log 382: R2).
++    assert plan_needs([("group_difference", "Which genes are co-expressed?")], tf_tie()) == (True, "claims", ())
++
++
++def test_a_data_sentence_naming_tfs_is_not_a_tf_question():
++    task = f"{DATA_SENTENCE} How does co-expression among matrix genes differ between groups?"
++    assert plan_needs((), coexpression(), task) == (True, "question", ())
++
++
++def test_a_mirna_question_needs_mirna_and_the_priors():
++    assert plan_needs([("regulator_change", "Are microRNAs part of the regulation?")], tf_tie())[2] == (
++        "tf_priors", "mirna")
++
++
++def test_a_question_no_workflow_answers_needs_nothing():
++    assert plan_needs([("prediction", "Could these profiles predict relapse?")], tf_tie()) == (False, "unanswerable", ())
++
++
++def test_without_a_quoted_question_the_requests_own_question_decides_then_the_routing_reading():
++    assert plan_needs((), coexpression(), "We have RNA-seq. Which transcription factors drive the genes?")[2] == (
++        "tf_priors",)
++    assert plan_needs((), tf_tie(), "We have RNA-seq from 30 livers.") == (True, "reading", ("tf_priors",))
++    assert plan_needs((), decision([]), "We have RNA-seq.") == (True, "none", ())
++
++
++def test_a_quoted_question_from_someone_else_is_not_the_users():
++    task = 'A reviewer asked "Did you use a TF motif prior?" Which genes are co-expressed in our samples?'
++    assert plan_needs((), coexpression(), task)[2] == ()
++
++
++# --- what the plan does with each need ---------------------------------------------
++
++def test_each_need_gets_one_action_from_the_reading():
++    claims = [("regulator_change", "Which transcription factors steer the program?")]
++    assert build_data_plan(claims, tf_tie(), facts("unstated"), set()).asks() == ["tf_priors"]
++    plan = build_data_plan(claims, tf_tie(), facts("ruled_out", priors_quote="no binding-site data"), set())
++    assert plan.asks() == [] and plan.ruled_out()[0].quote == "no binding-site data"
++    assert build_data_plan(claims, tf_tie(), facts("stated", priors_quote="JASPAR"), set()).asks() == []
++
++
++def test_without_a_reading_the_words_decide_and_bound_files_count_as_stated():
++    claims = [("regulator_change", "Which transcription factors steer the program?")]
++    assert build_data_plan(claims, tf_tie(), None, {"motif_prior", "ppi_prior"}).needs[0].source == "words"
++    assert build_data_plan(claims, tf_tie(), None, set()).asks() == ["tf_priors"]
++    bound = build_data_plan(claims, tf_tie(), None, set(), bound={"motif_file", "ppi_file"})
++    assert bound.needs[0].source == "binding" and bound.asks() == []
++
++
++def test_mirna_is_not_asked_once_the_priors_are_ruled_out():
++    claims = [("regulator_change", "Are microRNAs part of the regulation?")]
++    plan = build_data_plan(claims, tf_tie(), facts("ruled_out", priors_quote="no binding-site data"), set())
++    assert plan.asks() == [] and [need.kind for need in plan.ruled_out()] == ["tf_priors"]
++
++
++# --- every reply shows the plan ------------------------------------------------------
++
++def _plan(state="unstated", quote=""):
++    return build_data_plan([("regulator_change", "Which transcription factors steer the program?")], tf_tie(),
++                           facts(state, priors_quote=quote), set())
++
++
++def test_a_reply_missing_the_plans_question_gets_it_named():
++    block = render_plan_block(_plan(), "PANDA fits.")
++    assert block.endswith("Do you have a motif prior and a PPI network?")
++
++
++def test_a_reply_that_already_asks_or_says_it_gets_nothing():
++    assert render_plan_block(_plan(), "PANDA fits. Do you also have a motif prior and a PPI network?") is None
++    said = "PANDA needs a motif prior and a PPI network, which you said you do not have."
++    assert render_plan_block(_plan("ruled_out", "no binding-site data"), said) is None
++
++
++def _respond(kind, made, text="PANDA and OTTER fit.\n\nNo files were inspected and no analysis ran."):
++    state = {"decision": made.model_dump(), "messages": [HumanMessage(content="task")]}
++    result = {"messages": [AIMessage(content=text)], "reply_kind": kind}
++    out = with_data_plan_reply(result, state, lambda new, k: {"messages": [AIMessage(content=new)], "reply_kind": k})
++    return str(out["messages"][-1].content)
++
++
++def test_the_plan_is_shown_whichever_guidance_renderer_answered():
++    made = tf_tie().model_copy(update={"data_plan": _plan()})
++    for kind in ("verified_guidance", "hypothesis_routes", "outcome_clarification", "unresolved"):
++        text = _respond(kind, made)
++        assert "Do you have a motif prior and a PPI network?" in text
++        assert text.endswith("No files were inspected and no analysis ran.")
++    # Not an execution report, and nothing without a plan.
++    assert "Do you have" not in _respond("execution", made)
++    assert "Do you have" not in _respond("verified_guidance", tf_tie())
++
++
++def test_routing_builds_the_plan_and_reads_the_data_for_a_tf_question_routing_did_not_list():
++    # Log 382 C: routing listed only COBRA; the question is about TFs.
++    task = "We ran RNA-seq on 30 sheep. Which transcription factors regulate different targets on each diet?"
++    result = router_invocation._RouterInvocation(
++        decision=coexpression(), routing_state={"study_purpose": {"claims": [
++            ["regulator_change", "Which transcription factors regulate different targets on each diet?"]]}},
++        usage=LLMUsage(budget_tokens=1000), budget_warnings=[], reason_code="semantic_registry_intent")
++    events = []
++    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append(kind)))
++    with patch.object(router_invocation, "invoke_data_facts",
++                      return_value=(facts("unstated"), LLMUsage(budget_tokens=1000), [])) as call:
++        made = router_invocation._with_applicability(context, {}, task, result).decision
++
++    call.assert_called_once()
++    assert made.data_plan.asks() == ["tf_priors"] and events == ["routing.data_plan_built"]
+diff --git a/tests/test_graph_tracing.py b/tests/test_graph_tracing.py
+index aa9436f..ac30045 100644
+--- a/tests/test_graph_tracing.py
++++ b/tests/test_graph_tracing.py
+@@ -1086,6 +1086,7 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+         "intent_router",
+         "request_concerns",
+         "study_purpose",  # Log 355
++        "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     event_types = [event.event_type for event in store.read_events(run_id)]
+@@ -1140,7 +1141,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+     )
+     events = store.read_events(run_id)
+ 
+-    assert router.calls == 4  # Log 355: + the study-purpose call
++    assert router.calls == 5  # Log 355: + the study-purpose call; Log 380: + data facts
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+@@ -1154,6 +1155,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+         "semantic_reviewer",
+         "intent_router",
+         "study_purpose",  # Log 355
++        "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
+         result["messages"][-1].content
+@@ -1212,7 +1214,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+     events = store.read_events(run_id)
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 5  # Log 355: + the study-purpose call
++    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1231,6 +1233,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+         "intent_router",
+         "request_concerns",
+         "study_purpose",  # Log 355
++        "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     assert any(
+@@ -1285,7 +1288,7 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 5  # Log 355: + the study-purpose call
++    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1345,7 +1348,7 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 5  # Log 355: + the study-purpose call
++    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+     proposed = next(
+diff --git a/tests/test_semantic_claims.py b/tests/test_semantic_claims.py
+index 1413467..5ce38cc 100644
+--- a/tests/test_semantic_claims.py
++++ b/tests/test_semantic_claims.py
+@@ -762,7 +762,9 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
+     result = app.invoke({"messages": [HumanMessage(content=TASK)]})
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+     # Log 355: the study-purpose call comes after routing.
+-    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal"]
++    # Log 380: + the data-facts call, since a listed workflow needs TF priors.
++    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal",
++                      "DataFactsProposal"]
+     assert result["decision"]["should_execute"] is False
+     assert result["decision"]["action"] == "no_tool"
+     assert result["plan"]["status"] == "respond_only"
