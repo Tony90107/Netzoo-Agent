@@ -7,7 +7,7 @@ from collections import Counter
 
 from workflow_registry import (
     EXTERNAL_REFERENCES, OTHER_READING_NOTES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY,
-    STATED_TAG_PHRASES, purpose_reason,
+    STATED_TAG_PHRASES,
 )
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
@@ -53,8 +53,6 @@ def _condition_label(condition: str) -> str:
     axis, _, value = condition.partition(":")
     if axis == "selection_tag":  # a stated method signal (Log 318)
         return STATED_TAG_PHRASES.get(value, value.replace("_", " "))
-    if axis == "study_purpose":  # the stated conclusion's pick (Log 379)
-        return purpose_reason(*value.split(":", 2)) or value
     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
 
 
@@ -116,31 +114,6 @@ def _alternative_lines(recommended, listed, policy, shared, family_label) -> lis
     return lines
 
 
-def _render_purpose_recommendation(decision: TaskDecision, policy: ProjectPolicySnapshot, spec) -> str:
-    """Log 379: a pick by the stated conclusion says why it fits that question.
-
-    The user's Log 370 rule: why for your question, not how the algorithm
-    works. So no method block and no "approach" lines here; the study-purpose
-    lines added after this reply say what each listed workflow gives toward
-    the question, in the registry's words.
-    """
-    recommendation = decision.advisory_recommendation
-    spans = [item.text_span for item in recommendation.conditions if item.text_span.isascii()]
-    quotes = "; ".join(f'"{user_data_token(index)}"' for index in range(len(spans)))
-    reasons = "; ".join(_condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions)
-    lead = (f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}."
-            if quotes else f"For the conclusion you describe, **{spec.workflow}** fits better: {reasons}.")
-    lines = [lead]
-    if other_reading := OTHER_READING_NOTES.get(recommendation.action):
-        lines.append(other_reading)
-    if concerns := concern_section_for_workflow(decision, policy, recommendation.action):
-        lines.append(concerns)
-    if decision.clarification_question:
-        lines.append(decision.clarification_question)
-    lines.append("No files were inspected and no analysis ran.")
-    return _ui_text_with_user_data("\n\n".join(lines), spans)
-
-
 def render_advisory_recommendation(
     decision: TaskDecision,
     policy: ProjectPolicySnapshot,
@@ -159,8 +132,6 @@ def render_advisory_recommendation(
             decision, policy, spec, candidate_details(recommendation.action, spec, policy, recommended=True),
             "\n\n".join(note for note in notes if note),
         )
-    if recommendation.conditions and all(item.axis == "study_purpose" for item in recommendation.conditions):
-        return _render_purpose_recommendation(decision, policy, spec)
     # Quotes remain in the validated decision for audit. Echoing a Chinese
     # excerpt in the answer breaks the project's fixed English output policy.
     evidence = [item.text_span for item in recommendation.conditions] or recommendation.supporting_spans

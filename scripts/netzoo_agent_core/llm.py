@@ -664,27 +664,6 @@ STUDY_PURPOSE_SYSTEM = (
 )
 
 
-# Log 376: its own small call, so the study-purpose prompt above stays as it is.
-DATA_FACTS_SYSTEM = (
-    "Return only the DataFactsProposal structure for the user's request.\n\n"
-    "priors -- whether the request says it has prior knowledge of transcription-factor binding (a motif or "
-    "binding-site prior, a TF-target list) or of protein-protein interactions:\n"
-    "- stated: it says it has them, or one of them.\n"
-    "- ruled_out: it says it does not have them, or that it has only expression data.\n"
-    "- unstated: it says neither.\n"
-    "priors_span -- the words that say so, copied exactly from the request without translation; empty when "
-    "unstated."
-)
-
-
-def build_data_facts_messages(user_task: str) -> list:
-    """Ask what the request says about its TF priors, with a quote (Log 376)."""
-    return [
-        SystemMessage(content=DATA_FACTS_SYSTEM),
-        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
-    ]
-
-
 def build_study_purpose_messages(user_task: str) -> list:
     """Ask for the comparison design and the conclusions the request states, with quotes (Log 355)."""
     return [
