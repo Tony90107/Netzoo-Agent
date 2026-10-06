@@ -50,17 +50,11 @@ _DESCRIPTION_LIMIT = 200
 
 
 def present_inputs(task: str, decision: TaskDecision) -> frozenset[str]:
-    """Inputs the request says it has, from its wording and the typed readings.
-
-    Log 380: a kind the data-facts call read (TF priors, miRNA) is decided by
-    that reading, not the wording.
-    """
-    from ..interpretation.applicability import merge_inputs
-
+    """Inputs the request says it has, from its wording and the typed readings."""
     present = set(input_availability(task).present)
     for item in decision.outcome_hypotheses:
         present.update(value for value in item.outcome.input_artifacts if value != "unknown")
-    return merge_inputs(present, decision.data_facts) if decision.data_facts else frozenset(present)
+    return frozenset(present)
 
 
 def describe(parts, ranks=None) -> str:
