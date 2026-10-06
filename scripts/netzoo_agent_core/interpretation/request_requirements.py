@@ -94,7 +94,12 @@ def with_routing(
         *(f"unresolved:{dimension}" for dimension in (outcome.unresolved_dimensions if outcome else [])),
         *([f"question:{decision.clarification_question}"] if decision.clarification_question else []),
     ]
-    return requirements.model_copy(update={"goal": goal, "open_conditions": open_conditions})
+    return requirements.model_copy(update={
+        "goal": goal, "open_conditions": open_conditions,
+        "data_facts": decision.data_facts,
+        "applicability": [item.model_dump() for item in decision.applicability],
+        "data_plan": decision.data_plan.model_dump() if decision.data_plan is not None else None,
+    })
 
 
 def carried_parameters(requirements: Mapping[str, Any] | None) -> dict[str, Any]:
