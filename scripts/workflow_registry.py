@@ -847,6 +847,17 @@ class ClaimSupport(NamedTuple):
     text: str
     caveats: tuple[str, ...] = ()
     instead: tuple[str, ...] = ()
+    # Log 379 (plan item 3): the cell typed for selection, never shown. What the
+    # evidence is -- ``direct``: the output is the answer; ``tested``: a value
+    # per sample, so the comparison can be tested; ``descriptive``: one result
+    # per group or time point, which shows a difference without testing it (or
+    # without the pairing); ``one_result``: one result for all the samples.
+    # ``quantity`` is ``other`` when it measures something else than the
+    # question names (GIRAFFE: TF activity, not network wiring). ``stronger``
+    # names the registered per-sample workflow the cell's own text points to.
+    evidence: Literal["direct", "tested", "descriptive", "one_result"] = "descriptive"
+    quantity: Literal["same", "other"] = "same"
+    stronger: tuple[str, ...] = ()
 
 
 # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
@@ -870,7 +881,10 @@ _OTTER_SCALE = (
 )
 
 
-def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = ()) -> dict:
+def _aggregate_claims(
+    action: str, per_sample: str, caveats: tuple[str, ...] = (), stronger: tuple[str, ...] = (),
+) -> dict:
+    typed = {"evidence": "descriptive", "stronger": stronger}
     return {
         (action, "group_difference", "groups"): ClaimSupport("with_step", (
             "Build one network per group on the same genes and priors, then compare edge weights or "
@@ -878,20 +892,20 @@ def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = (
             "networks give one value per edge per group: they show where the groups differ, but give "
             f"no per-sample spread to test it. For a statistical test, use {per_sample} and test "
             "between the groups."
-        ), caveats),
+        ), caveats, **typed),
         (action, "group_difference", "paired"): ClaimSupport("with_step", (
             "Build one network for each time point on the same genes and priors, then compare edge "
             "weights or targeting scores between them. This compares the time points across all "
             "individuals but does not use the pairing: each individual's samples from the different "
             f"time points are pooled into separate networks. To keep the pairing, use {per_sample} "
             "and compare each individual's samples."
-        ), caveats),
+        ), caveats, **typed),
         (action, "regulator_change", "*"): ClaimSupport("with_step", (
             "Comparing each regulator's targeting score (out-degree) between networks built "
             "separately for each condition shows regulators whose targeting changes. Without "
             "per-sample networks this ranks regulators by the size of the change, with no test of "
             "whether it exceeds chance."
-        ), caveats),
+        ), caveats, **typed),
     }
 
 
@@ -901,33 +915,35 @@ def _per_sample_claims(action: str) -> dict:
         (action, "group_difference", "groups"): ClaimSupport("with_step", (
             "Each sample gets its own network, so each edge weight or targeting score can be tested "
             "between the groups across samples -- for example with a linear model such as limma."
-        ), caveats),
+        ), caveats, evidence="tested"),
         (action, "group_difference", "paired"): ClaimSupport("with_step", (
             "Each sample gets its own network, so each individual's networks from the different time "
             "points can be compared directly: test the within-individual differences of edge weights "
             "or targeting scores, for example with a paired test or a linear model with an "
             "individual term."
-        ), caveats),
+        ), caveats, evidence="tested"),
         (action, "individual_change", "paired"): ClaimSupport("with_step", (
             "Each individual has a network for each time point; the difference between an "
             "individual's own networks (or their regulators' targeting scores) measures how much "
             "that individual changed, and ranks individuals by it."
-        ), caveats),
+        ), caveats, evidence="tested"),
         (action, "individual_change", "*"): ClaimSupport("with_step", (
             "Each sample gets its own network; comparing each sample's network or targeting scores "
             "with the rest of the cohort shows which individuals stand out."
-        ), caveats),
+        ), caveats, evidence="tested"),
         (action, "regulator_change", "*"): ClaimSupport("with_step", (
             "Per-sample targeting scores (out-degree) give a regulator-by-sample matrix; test each "
             "regulator between the conditions (paired when the same individuals give both), with "
             "multiple-testing correction across regulators."
-        ), caveats),
+        ), caveats, evidence="tested"),
     }
 
 
 def _one_result_claims(action: str, gives: str, instead: tuple[str, ...]) -> dict:
     """Log 368: a workflow with one result for all its samples, asked which individuals change."""
-    return {(action, "individual_change", "*"): ClaimSupport("one_result", gives, instead=instead)}
+    return {(action, "individual_change", "*"): ClaimSupport(
+        "one_result", gives, instead=instead, evidence="one_result", stronger=instead,
+    )}
 
 
 def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
@@ -935,35 +951,36 @@ def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
         (action, "group_difference", "*"): ClaimSupport("with_step", (
             "Per-sample gene degree or edge weights can be compared between the groups or time "
             "points (paired when the same individuals give both)."
-        ), caveats),
+        ), caveats, evidence="tested"),
         (action, "individual_change", "*"): ClaimSupport("with_step", (
             "Comparing each sample's network with the rest of the cohort -- or, with repeated "
             "samples, with the same individual's other sample -- shows which individuals change or "
             "stand out."
-        ), caveats),
+        ), caveats, evidence="tested"),
     }
 
 
 CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
-    **_aggregate_claims("run_panda", "the per-sample (LIONESS) version"),
-    **_aggregate_claims("run_puma", "the per-sample (LIONESS) version"),
+    **_aggregate_claims("run_panda", "the per-sample (LIONESS) version", stronger=("run_lioness_panda",)),
+    **_aggregate_claims("run_puma", "the per-sample (LIONESS) version", stronger=("run_lioness_puma",)),
     # OTTER has no per-sample version registered.
-    **_aggregate_claims("run_otter", "a per-sample method such as LIONESS-PANDA", (_OTTER_SCALE,)),
+    **_aggregate_claims("run_otter", "a per-sample method such as LIONESS-PANDA", (_OTTER_SCALE,),
+                        stronger=("run_lioness_panda",)),
     **_per_sample_claims("run_lioness_panda"),
     **_per_sample_claims("run_lioness_puma"),
     ("run_giraffe", "regulator_change", "*"): ClaimSupport("with_step", (
         "GIRAFFE's TF-by-sample activity matrix gives each TF's activity in each sample; test each "
         "TF's activity between the conditions (paired when the same individuals give both), with "
         "multiple-testing correction."
-    )),
+    ), evidence="tested"),
     ("run_giraffe", "individual_change", "paired"): ClaimSupport("with_step", (
         "The difference between an individual's activity profiles at the time points measures how "
         "much that individual's TF activity changed."
-    )),
+    ), evidence="tested", quantity="other"),
     ("run_giraffe", "group_difference", "*"): ClaimSupport("with_step", (
         "The activity matrix compares TF activity, not network wiring, between the conditions; test "
         "each TF's activity between them (paired when the same individuals give both)."
-    )),
+    ), evidence="tested", quantity="other"),
     # The COBRA paper does not describe an individual term in the design
     # matrix, so a paired design is not declared.
     ("run_cobra", "group_difference", "groups"): ClaimSupport("direct", (
@@ -973,7 +990,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     ), (
         "Some component values fall outside -1 to 1; read them as contributions, not correlations. "
         "Deciding which gene pairs differ beyond chance is a separate analysis.",
-    )),
+    ), evidence="direct"),
     **_coexpression_claims("run_lioness_coexpression", (_LIONESS_DEPENDENCE,)),
     **_coexpression_claims("run_bonobo", (
         "With p-value output, edges can be filtered per sample at a chosen confidence.",
@@ -989,7 +1006,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     ), (
         "Partial correlations are conditional on every other feature in both layers, so use the same "
         "feature set in every network you compare.",
-    )),
+    ), stronger=("run_lioness_dragon",)),
     ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
         "Build one network per time point or condition on the same features and compare the cross-layer "
         "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
@@ -997,7 +1014,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
     ), (
         "Partial correlations are conditional on every other feature in both layers, so use the same "
         "feature set in every network you compare.",
-    )),
+    ), stronger=("run_lioness_dragon",)),
     ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
         "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
         "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
@@ -1006,7 +1023,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
         "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
         "to the cohort the network was built from.",
         _LIONESS_DEPENDENCE,
-    )),
+    ), evidence="tested"),
     ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
         "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
         "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
@@ -1015,7 +1032,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
         "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
         "to the cohort the network was built from.",
         _LIONESS_DEPENDENCE,
-    )),
+    ), evidence="tested"),
     # Logs 365/368: one result for all the samples. Each method's own output, and the
     # registered per-sample workflow that takes the same data. COBRA's design
     # matrix holds covariates, not individuals (Micheletti et al. 2024).
@@ -1028,6 +1045,34 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
         ("run_lioness_coexpression", "run_bonobo")),
     **_one_result_claims("run_dragon", "one two-layer network from all the samples", ("run_lioness_dragon",)),
 }
+
+# Log 379 (plan item 3): why the workflow a stated conclusion picks fits it,
+# in the question's terms -- the user's Log 370 rule: say why for your
+# question, not how the algorithm works. Keyed by (claim, evidence); the
+# paired clause is added when the verified design is paired.
+PURPOSE_REASONS: Mapping[tuple[str, str], str] = {
+    ("group_difference", "direct"): "its own output is the difference between the groups that you ask about",
+    ("group_difference", "tested"): "it gives a result for each sample, so the difference you ask about can be tested",
+    ("group_difference", "descriptive"): (
+        "it builds one result per group or time point, which shows the difference you ask about without testing it"),
+    ("individual_change", "tested"): "it gives each sample its own result, so each individual's change can be measured",
+    ("regulator_change", "tested"): (
+        "it gives each regulator a value in each sample, so the change you ask about can be tested regulator by "
+        "regulator"),
+    ("regulator_change", "descriptive"): (
+        "it builds one result per group or time point, which ranks regulators by how much they change without "
+        "testing it"),
+}
+PURPOSE_PAIRED_CLAUSE = ", keeping each individual's samples paired"
+
+
+def purpose_reason(claim: str, evidence: str, design: str) -> str:
+    """The registry's reason a workflow fits a stated conclusion ("" when undeclared)."""
+    reason = PURPOSE_REASONS.get((claim, evidence), "")
+    if reason and design == "paired" and evidence in {"tested", "direct"}:
+        reason += PURPOSE_PAIRED_CLAUSE
+    return reason
+
 
 # Conclusions no registered workflow can support, said once for the whole
 # reply: (the text, an addition for a stated paired design, the card row).

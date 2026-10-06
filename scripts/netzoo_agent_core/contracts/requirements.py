@@ -44,6 +44,9 @@ class RequestRequirements(BaseModel):
     # Filled after routing; a reading of the request, not the user's words.
     goal: str | None = None
     open_conditions: list[str] = Field(default_factory=list)
+    # Plan item 3 (Log 379): the verified purpose, read before routing, and the
+    # chain it drove -- conclusion -> each candidate's evidence -> the pick.
+    purpose: dict[str, Any] | None = None
 
     def stated_value(self, field: str) -> Any:
         """The value the user stated for *field*, this turn first."""

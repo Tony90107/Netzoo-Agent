@@ -762,7 +762,8 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
     result = app.invoke({"messages": [HumanMessage(content=TASK)]})
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
     # Log 355: the study-purpose call comes after routing.
-    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal"]
+    # Log 379: the study purpose is read before routing.
+    assert called == ["StudyPurposeProposal", "SemanticInterpretation", "IntentDecision", "StatedConcernClaims"]
     assert result["decision"]["should_execute"] is False
     assert result["decision"]["action"] == "no_tool"
     assert result["plan"]["status"] == "respond_only"

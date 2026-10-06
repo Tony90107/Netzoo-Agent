@@ -3870,7 +3870,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         self.assertEqual(len(result["token_usage"]["calls"]), 4)
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
-            ["semantic_interpreter", "semantic_reviewer", "intent_router", "study_purpose"],
+            # Log 379: the study purpose is read before routing.
+            ["study_purpose", "semantic_interpreter", "semantic_reviewer", "intent_router"],
         )
         self.assertLessEqual(
             result["token_usage"]["total_tokens"],

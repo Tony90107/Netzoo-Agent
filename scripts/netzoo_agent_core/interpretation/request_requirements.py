@@ -94,7 +94,20 @@ def with_routing(
         *(f"unresolved:{dimension}" for dimension in (outcome.unresolved_dimensions if outcome else [])),
         *([f"question:{decision.clarification_question}"] if decision.clarification_question else []),
     ]
-    return requirements.model_copy(update={"goal": goal, "open_conditions": open_conditions})
+    study = routing_state.get("study_purpose")
+    purpose = None
+    if study:
+        purpose = {
+            "design": study.get("design"),
+            "design_quote": study.get("design_quote") or "",
+            "claims": [list(item) for item in study.get("claims") or ()],
+            "source": study.get("source"),
+            "selection": routing_state.get("purpose_selection"),
+            "tf_priors": (routing_state.get("data_facts") or {}).get("priors"),
+        }
+    return requirements.model_copy(update={
+        "goal": goal, "open_conditions": open_conditions, "purpose": purpose,
+    })
 
 
 def carried_parameters(requirements: Mapping[str, Any] | None) -> dict[str, Any]:
