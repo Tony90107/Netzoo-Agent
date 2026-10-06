@@ -1,0 +1,313 @@
+{
+ "authored_by": "Log 383 analyzer self-test: SEEN heldout21/heldout20 items, labels unchanged",
+ "items": [
+  {
+   "id": "s21E1",
+   "family": "S",
+   "data_sentence": "We ran bulk RNA-seq on rumen epithelium biopsies from 30 sheep, ten on each of three diets, taken after eight weeks of feeding.",
+   "purpose_sentence": "Which transcription factors regulate different target genes on the high-grain diet than on the hay diet?",
+   "prompt": "We ran bulk RNA-seq on rumen epithelium biopsies from 30 sheep, ten on each of three diets, taken after eight weeks of feeding. Which transcription factors regulate different target genes on the high-grain diet than on the hay diet?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors",
+   "data_question": "priors",
+   "purpose_kind": "tf_group_difference",
+   "acceptable_candidates": [
+    "COBRA"
+   ],
+   "conditional_candidates": [
+    "PANDA",
+    "LIONESS-PANDA",
+    "GIRAFFE",
+    "OTTER"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [],
+   "must_include": [
+    "asks whether they have a sheep TF motif prior and protein interaction network",
+    "explains that comparing TF targeting between diets needs them"
+   ],
+   "red_flags": [
+    "recommends a TF network as ready to run on expression alone",
+    "assumes the priors exist"
+   ]
+  },
+  {
+   "id": "s21E4",
+   "family": "S",
+   "data_sentence": "We ran bulk RNA-seq on rumen epithelium biopsies from 30 sheep, ten on each of three diets, taken after eight weeks of feeding.",
+   "purpose_sentence": "For each sheep, which transcription factors are most active, and how does its gene co-expression network differ from the others?",
+   "prompt": "We ran bulk RNA-seq on rumen epithelium biopsies from 30 sheep, ten on each of three diets, taken after eight weeks of feeding. For each sheep, which transcription factors are most active, and how does its gene co-expression network differ from the others?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors",
+   "data_question": "priors",
+   "purpose_kind": "tf_per_sample+coexpression_per_sample",
+   "acceptable_candidates": [
+    "LIONESS-COEXPRESSION",
+    "BONOBO"
+   ],
+   "conditional_candidates": [
+    "GIRAFFE",
+    "LIONESS-PANDA"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [
+    "LIONESS-COEXPRESSION",
+    "BONOBO"
+   ],
+   "must_include": [
+    "answers the per-sheep co-expression part with their RNA-seq",
+    "asks whether they have a motif prior and interaction network before the TF-activity part"
+   ],
+   "red_flags": [
+    "presents per-sample TF activity as runnable from expression alone",
+    "answers only one of the two questions"
+   ]
+  },
+  {
+   "id": "s21F4",
+   "family": "S",
+   "data_sentence": "We have RNA-seq from 40 human Achilles tendon biopsies, half from ruptured tendons, and my advisor says any regulatory analysis will need a TF motif prior and a protein interaction network.",
+   "purpose_sentence": "Which transcription factors change their targets in ruptured versus intact tendons, and how does collagen gene co-expression differ between them?",
+   "prompt": "We have RNA-seq from 40 human Achilles tendon biopsies, half from ruptured tendons, and my advisor says any regulatory analysis will need a TF motif prior and a protein interaction network. Which transcription factors change their targets in ruptured versus intact tendons, and how does collagen gene co-expression differ between them?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors",
+   "data_question": "priors",
+   "purpose_kind": "tf_group_difference+coexpression_group_difference",
+   "acceptable_candidates": [
+    "COBRA",
+    "LIONESS-COEXPRESSION",
+    "BONOBO"
+   ],
+   "conditional_candidates": [
+    "PANDA",
+    "LIONESS-PANDA",
+    "GIRAFFE",
+    "OTTER"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [
+    "COBRA"
+   ],
+   "must_include": [
+    "answers the collagen co-expression part with rupture status as a covariate",
+    "asks whether they have the motif prior and interaction network before the TF part"
+   ],
+   "red_flags": [
+    "assumes the priors are in hand because the advisor mentioned them",
+    "answers only one of the two questions"
+   ]
+  },
+  {
+   "id": "s21F2",
+   "family": "S",
+   "data_sentence": "We have RNA-seq from 40 human Achilles tendon biopsies, half from ruptured tendons, and my advisor says any regulatory analysis will need a TF motif prior and a protein interaction network.",
+   "purpose_sentence": "Does loss of one particular transcription factor cause the collagen changes we see in ruptured tendons?",
+   "prompt": "We have RNA-seq from 40 human Achilles tendon biopsies, half from ruptured tendons, and my advisor says any regulatory analysis will need a TF motif prior and a protein interaction network. Does loss of one particular transcription factor cause the collagen changes we see in ruptured tendons?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "none",
+   "data_question": "none",
+   "purpose_kind": "causal",
+   "acceptable_candidates": [],
+   "conditional_candidates": [],
+   "inapplicable": [],
+   "recommended_subset": [],
+   "must_include": [
+    "says network inference cannot show that losing the TF causes the collagen change",
+    "points to perturbation in tendon cells or other causal designs"
+   ],
+   "red_flags": [
+    "asks for the motif prior or interaction network",
+    "claims a network workflow proves causation"
+   ]
+  },
+  {
+   "id": "s21A2",
+   "family": "S",
+   "data_sentence": "We have RNA-seq from 45 zebrafish hearts five days after cryoinjury or sham surgery, plus a table of which transcription factors are predicted to regulate each gene and a list of physically interacting protein pairs.",
+   "purpose_sentence": "How does co-expression among extracellular matrix genes differ between injured and sham hearts?",
+   "prompt": "We have RNA-seq from 45 zebrafish hearts five days after cryoinjury or sham surgery, plus a table of which transcription factors are predicted to regulate each gene and a list of physically interacting protein pairs. How does co-expression among extracellular matrix genes differ between injured and sham hearts?",
+   "priors_label": "stated",
+   "mirna_label": "unstated",
+   "question_needs": "none",
+   "data_question": "none",
+   "purpose_kind": "coexpression_group_difference",
+   "acceptable_candidates": [
+    "COBRA",
+    "LIONESS-COEXPRESSION",
+    "BONOBO"
+   ],
+   "conditional_candidates": [],
+   "inapplicable": [],
+   "recommended_subset": [
+    "COBRA"
+   ],
+   "must_include": [
+    "models gene co-expression with injury status as a covariate"
+   ],
+   "red_flags": [
+    "steers to a TF network because the TF table is available",
+    "asks about miRNA data"
+   ]
+  },
+  {
+   "id": "s21C1",
+   "family": "S",
+   "data_sentence": "We have bulk RNA-seq from 48 chicken embryo limb buds at three developmental stages, but we have no transcription factor motif data, no protein interaction network and no small RNA data for these embryos.",
+   "purpose_sentence": "Which transcription factors control the genes that switch on as the digits begin to form?",
+   "prompt": "We have bulk RNA-seq from 48 chicken embryo limb buds at three developmental stages, but we have no transcription factor motif data, no protein interaction network and no small RNA data for these embryos. Which transcription factors control the genes that switch on as the digits begin to form?",
+   "priors_label": "ruled_out",
+   "mirna_label": "ruled_out",
+   "question_needs": "tf_priors",
+   "data_question": "none",
+   "purpose_kind": "tf_network",
+   "acceptable_candidates": [
+    "COBRA"
+   ],
+   "conditional_candidates": [],
+   "inapplicable": [
+    "PANDA",
+    "OTTER",
+    "GIRAFFE",
+    "LIONESS-PANDA"
+   ],
+   "recommended_subset": [
+    "COBRA"
+   ],
+   "must_include": [
+    "says TF-network methods need the motif and interaction data they do not have",
+    "offers stage-wise co-expression of TF genes with digit genes as a weaker substitute"
+   ],
+   "red_flags": [
+    "asks whether they have a motif prior or interaction network",
+    "recommends a TF-network workflow as if it could run"
+   ]
+  },
+  {
+   "id": "s21T1",
+   "family": "S",
+   "data_sentence": "Our RNA-seq covers 26 human gingival biopsies from periodontitis and healthy sites, and a reviewer asked us, \"Did you use a TF motif prior and a protein interaction network?\"",
+   "purpose_sentence": "Which transcription factors drive the inflammatory genes in diseased gingiva?",
+   "prompt": "Our RNA-seq covers 26 human gingival biopsies from periodontitis and healthy sites, and a reviewer asked us, \"Did you use a TF motif prior and a protein interaction network?\" Which transcription factors drive the inflammatory genes in diseased gingiva?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors",
+   "data_question": "priors",
+   "purpose_kind": "tf_network",
+   "acceptable_candidates": [
+    "COBRA"
+   ],
+   "conditional_candidates": [
+    "PANDA",
+    "OTTER",
+    "GIRAFFE"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [],
+   "must_include": [
+    "reads the quoted reviewer question as a mention, not as data they have",
+    "asks whether they have a motif prior and interaction network"
+   ],
+   "red_flags": [
+    "assumes the priors exist because the reviewer named them",
+    "reads the reviewer's question as saying they lack them and stops asking"
+   ]
+  },
+  {
+   "id": "s21T4",
+   "family": "S",
+   "data_sentence": "For 44 human endometrial biopsies across the menstrual cycle we have RNA-seq, a JASPAR motif prior and a STRING protein network, but no miRNA measurements.",
+   "purpose_sentence": "Are the shifts between cycle phases driven more by transcription factors or by miRNAs?",
+   "prompt": "For 44 human endometrial biopsies across the menstrual cycle we have RNA-seq, a JASPAR motif prior and a STRING protein network, but no miRNA measurements. Are the shifts between cycle phases driven more by transcription factors or by miRNAs?",
+   "priors_label": "stated",
+   "mirna_label": "ruled_out",
+   "question_needs": "tf_priors_and_mirna",
+   "data_question": "none",
+   "purpose_kind": "mirna_vs_tf",
+   "acceptable_candidates": [
+    "PANDA",
+    "LIONESS-PANDA",
+    "GIRAFFE",
+    "OTTER"
+   ],
+   "conditional_candidates": [],
+   "inapplicable": [
+    "PUMA",
+    "LIONESS-PUMA"
+   ],
+   "recommended_subset": [
+    "PANDA",
+    "LIONESS-PANDA"
+   ],
+   "must_include": [
+    "answers the TF side with phase-wise TF networks",
+    "says the miRNA side cannot be assessed without miRNA data and does not ask for it"
+   ],
+   "red_flags": [
+    "recommends a miRNA-aware workflow",
+    "asks whether they have miRNA data",
+    "asks for the motif prior or protein network"
+   ]
+  },
+  {
+   "id": "s21G1",
+   "family": "S",
+   "data_sentence": "We have RNA-seq from 32 soybean root samples, nematode-infected or mock-inoculated, and a collaborator has assembled a soybean TF motif prior and protein interaction network but has not shared them with us yet.",
+   "purpose_sentence": "Which transcription factors are most active in each root sample?",
+   "prompt": "We have RNA-seq from 32 soybean root samples, nematode-infected or mock-inoculated, and a collaborator has assembled a soybean TF motif prior and protein interaction network but has not shared them with us yet. Which transcription factors are most active in each root sample?",
+   "priors_label": "unstated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors",
+   "data_question": "priors",
+   "purpose_kind": "tf_per_sample",
+   "acceptable_candidates": [
+    "LIONESS-COEXPRESSION",
+    "BONOBO"
+   ],
+   "conditional_candidates": [
+    "GIRAFFE",
+    "LIONESS-PANDA"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [],
+   "must_include": [
+    "treats the collaborator's unshared prior and network as not yet available",
+    "asks whether they can obtain them, since per-sample TF activity needs them"
+   ],
+   "red_flags": [
+    "runs per-sample TF activity as if the collaborator's files were in hand"
+   ]
+  },
+  {
+   "id": "s20A3",
+   "family": "S",
+   "purpose_kind": "mirna",
+   "data_sentence": "We have RNA-seq from 48 human airway epithelial cultures infected with rhinovirus or mock-treated, plus maps of where transcription factors bind in the human genome and of which proteins physically contact each other.",
+   "purpose_sentence": "Could microRNAs be shaping which genes switch on after infection?",
+   "prompt": "We have RNA-seq from 48 human airway epithelial cultures infected with rhinovirus or mock-treated, plus maps of where transcription factors bind in the human genome and of which proteins physically contact each other. Could microRNAs be shaping which genes switch on after infection?",
+   "priors_label": "stated",
+   "mirna_label": "unstated",
+   "question_needs": "tf_priors_and_mirna",
+   "data_question": "mirna",
+   "acceptable_candidates": [],
+   "conditional_candidates": [
+    "PUMA",
+    "LIONESS-PUMA"
+   ],
+   "inapplicable": [],
+   "recommended_subset": [],
+   "must_include": [
+    "asks whether they have miRNA measurements or miRNA-target predictions",
+    "uses the stated binding maps and protein contacts without asking for them"
+   ],
+   "red_flags": [
+    "asks again about TF binding or protein-contact data",
+    "claims miRNA regulation can be read from the mRNA data alone",
+    "recommends a TF-only network as the answer"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,750 @@
+{
+  "authored_by": "isolated subagent (Claude Opus 5.5), 2026-10-06, heldout22; written only from the task brief, no repository files read",
+  "items": [
+    {
+      "id": "A1",
+      "family": "A",
+      "data_sentence": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact.",
+      "purpose_sentence": "We want to find which transcription factors regulate different targets in the pain donors, and whether gene co-expression differs as well.",
+      "prompt": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact. We want to find which transcription factors regulate different targets in the pain donors, and whether gene co-expression differs as well.",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_group_difference+coexpression_group_difference",
+      "acceptable_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE", "COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["PANDA", "LIONESS-PANDA", "COBRA"],
+      "must_include": [
+        "treats the promoter table and the interacting-factor list as the motif and PPI inputs it needs",
+        "answers both parts: TF targeting differences and co-expression differences between pain and no-pain donors"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "answers only one of the two parts"
+      ]
+    },
+    {
+      "id": "A2",
+      "family": "A",
+      "data_sentence": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact.",
+      "purpose_sentence": "Does gene co-expression differ between the donors with neuropathic pain and those without?",
+      "prompt": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact. Does gene co-expression differ between the donors with neuropathic pain and those without?",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "a co-expression comparison between pain and no-pain donors from expression plus group labels"
+      ],
+      "red_flags": [
+        "asks about motif, PPI or miRNA data",
+        "recommends a TF network method as the answer because the data sentence mentions transcription factors"
+      ]
+    },
+    {
+      "id": "A3",
+      "family": "A",
+      "data_sentence": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact.",
+      "purpose_sentence": "Which microRNAs might be driving the expression changes we see in the pain donors?",
+      "prompt": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact. Which microRNAs might be driving the expression changes we see in the pain donors?",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors_and_mirna",
+      "data_question": "mirna",
+      "purpose_kind": "mirna",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["PUMA", "LIONESS-PUMA"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they have a miRNA list or miRNA-target predictions for these samples",
+        "acknowledges the TF promoter table and interaction list are already in hand"
+      ],
+      "red_flags": [
+        "asks again whether they have motif or PPI data",
+        "presents a miRNA-aware network as ready to run without miRNA data"
+      ]
+    },
+    {
+      "id": "A4",
+      "family": "A",
+      "data_sentence": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact.",
+      "purpose_sentence": "We want a model that predicts which donors have neuropathic pain from their ganglion expression profiles.",
+      "prompt": "We have RNA-seq from 32 human dorsal root ganglia, half from donors with neuropathic pain, plus our own table of which transcription factors recognise which gene promoters and a list of which factors physically interact. We want a model that predicts which donors have neuropathic pain from their ganglion expression profiles.",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "prediction",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no registered workflow builds a predictive model"
+      ],
+      "red_flags": [
+        "offers a network workflow as the predictive model",
+        "asks about miRNA data"
+      ]
+    },
+    {
+      "id": "B1",
+      "family": "B",
+      "data_sentence": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected.",
+      "purpose_sentence": "Our aim is one regulatory network for the whole cohort that includes both transcription factors and microRNAs.",
+      "prompt": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected. Our aim is one regulatory network for the whole cohort that includes both transcription factors and microRNAs.",
+      "priors_label": "stated",
+      "mirna_label": "stated",
+      "question_needs": "tf_priors_and_mirna",
+      "data_question": "none",
+      "purpose_kind": "mirna",
+      "acceptable_candidates": ["PUMA"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["PUMA"],
+      "must_include": [
+        "treats JASPAR, STRING and TargetScan as the motif, PPI and miRNA-target inputs",
+        "one cohort-level network with both TF and miRNA regulators"
+      ],
+      "red_flags": [
+        "asks whether they have motif, PPI or miRNA data",
+        "offers a TF-only network that drops the microRNAs"
+      ]
+    },
+    {
+      "id": "B2",
+      "family": "B",
+      "data_sentence": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected.",
+      "purpose_sentence": "Can we get a gene co-expression network for each individual patient?",
+      "prompt": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected. Can we get a gene co-expression network for each individual patient?",
+      "priors_label": "stated",
+      "mirna_label": "stated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_per_sample",
+      "acceptable_candidates": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "must_include": [
+        "per-patient co-expression networks from the mRNA expression"
+      ],
+      "red_flags": [
+        "asks about motif, PPI or miRNA data",
+        "recommends a TF or miRNA regulatory network instead of co-expression"
+      ]
+    },
+    {
+      "id": "B3",
+      "family": "B",
+      "data_sentence": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected.",
+      "purpose_sentence": "Can our data prove which transcription factors or microRNAs cause the cartilage to break down?",
+      "prompt": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected. Can our data prove which transcription factors or microRNAs cause the cartilage to break down?",
+      "priors_label": "stated",
+      "mirna_label": "stated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "causal",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no network workflow can prove causation from these observational data"
+      ],
+      "red_flags": [
+        "claims a regulatory network proves which regulators cause cartilage breakdown",
+        "asks for data they already listed"
+      ]
+    },
+    {
+      "id": "B4",
+      "family": "B",
+      "data_sentence": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected.",
+      "purpose_sentence": "Which transcription factors regulate genes in each patient's cartilage, and can that predict who will need a second operation?",
+      "prompt": "From 48 knee cartilage samples taken at joint replacement we have mRNA-seq and small RNA-seq, plus JASPAR scans of every promoter, STRING interactions among the regulators, and TargetScan predictions for the microRNAs we detected. Which transcription factors regulate genes in each patient's cartilage, and can that predict who will need a second operation?",
+      "priors_label": "stated",
+      "mirna_label": "stated",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_per_sample+prediction",
+      "acceptable_candidates": ["LIONESS-PANDA", "GIRAFFE", "LIONESS-PUMA"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["LIONESS-PANDA", "GIRAFFE"],
+      "must_include": [
+        "per-patient TF networks or TF activities using the stated JASPAR and STRING inputs",
+        "says the reoperation prediction needs a separate predictive model"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "claims a network workflow itself predicts reoperation"
+      ]
+    },
+    {
+      "id": "C1",
+      "family": "C",
+      "data_sentence": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements.",
+      "purpose_sentence": "Which regulators rewire the regulatory network of Duchenne muscle compared with controls?",
+      "prompt": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements. Which regulators rewire the regulatory network of Duchenne muscle compared with controls?",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_group_difference",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "recommended_subset": [],
+      "must_include": [
+        "says a regulator network needs TF binding (motif) and protein interaction data, which they said they lack"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "offers a TF regulatory network method as the answer"
+      ]
+    },
+    {
+      "id": "C2",
+      "family": "C",
+      "data_sentence": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements.",
+      "purpose_sentence": "Our aim is to map how gene co-expression differs between the Duchenne boys and the controls.",
+      "prompt": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements. Our aim is to map how gene co-expression differs between the Duchenne boys and the controls.",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "a co-expression comparison between Duchenne and control muscle from expression plus group labels"
+      ],
+      "red_flags": [
+        "says the missing binding or interaction data blocks this co-expression question",
+        "asks about motif, PPI or miRNA data"
+      ]
+    },
+    {
+      "id": "C3",
+      "family": "C",
+      "data_sentence": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements.",
+      "purpose_sentence": "Which microRNAs regulate the genes that change in Duchenne muscle?",
+      "prompt": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements. Which microRNAs regulate the genes that change in Duchenne muscle?",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "tf_priors_and_mirna",
+      "data_question": "none",
+      "purpose_kind": "mirna",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": ["PUMA", "LIONESS-PUMA"],
+      "recommended_subset": [],
+      "must_include": [
+        "says a miRNA regulatory network needs miRNA data and TF/PPI inputs that they said they lack"
+      ],
+      "red_flags": [
+        "asks whether they have miRNA, motif or PPI data",
+        "offers a miRNA-aware network method as the answer"
+      ]
+    },
+    {
+      "id": "C4",
+      "family": "C",
+      "data_sentence": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements.",
+      "purpose_sentence": "Can we build a co-expression network for each boy and use it to predict who will lose walking ability first?",
+      "prompt": "We have RNA-seq of skeletal muscle biopsies from 26 boys with Duchenne muscular dystrophy and 20 controls, but we have no transcription factor binding data, no protein interaction network and no microRNA measurements. Can we build a co-expression network for each boy and use it to predict who will lose walking ability first?",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_per_sample+prediction",
+      "acceptable_candidates": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "must_include": [
+        "per-boy co-expression networks from expression alone",
+        "says the prediction of walking loss needs a separate model and outcome data"
+      ],
+      "red_flags": [
+        "claims a network workflow itself predicts loss of ambulation",
+        "asks about motif, PPI or miRNA data"
+      ]
+    },
+    {
+      "id": "D1",
+      "family": "D",
+      "data_sentence": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study.",
+      "purpose_sentence": "We want a regulatory network showing which regulators control the genes switched on in keloid scars.",
+      "prompt": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study. We want a regulatory network showing which regulators control the genes switched on in keloid scars.",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_network",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "recommended_subset": [],
+      "must_include": [
+        "says a regulator network needs motif and PPI inputs beyond the expression matrix they described as their whole dataset"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "offers a TF regulatory network method as the answer"
+      ]
+    },
+    {
+      "id": "D2",
+      "family": "D",
+      "data_sentence": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study.",
+      "purpose_sentence": "Can we get a co-expression network for each of these 22 biopsies, with a confidence value for every edge?",
+      "prompt": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study. Can we get a co-expression network for each of these 22 biopsies, with a confidence value for every edge?",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_per_sample",
+      "acceptable_candidates": ["BONOBO", "LIONESS-COEXPRESSION"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["BONOBO"],
+      "must_include": [
+        "per-sample co-expression with per-edge confidence, suited to a small cohort"
+      ],
+      "red_flags": [
+        "asks about motif, PPI or miRNA data",
+        "says the small cohort rules out per-sample networks"
+      ]
+    },
+    {
+      "id": "D3",
+      "family": "D",
+      "data_sentence": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study.",
+      "purpose_sentence": "Our goal is to see how gene co-expression differs between keloid and normal skin.",
+      "prompt": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study. Our goal is to see how gene co-expression differs between keloid and normal skin.",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA", "BONOBO"],
+      "must_include": [
+        "a co-expression comparison between keloid and normal skin from the expression matrix and group labels"
+      ],
+      "red_flags": [
+        "asks about motif, PPI or miRNA data",
+        "says more data are needed for this co-expression question"
+      ]
+    },
+    {
+      "id": "D4",
+      "family": "D",
+      "data_sentence": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study.",
+      "purpose_sentence": "Which transcription factors are rewired in keloids, and does gene co-expression change as well?",
+      "prompt": "Our complete dataset is RNA-seq counts from 12 keloid scar biopsies and 10 matched normal skin samples; that matrix is everything we have for this study. Which transcription factors are rewired in keloids, and does gene co-expression change as well?",
+      "priors_label": "ruled_out",
+      "mirna_label": "ruled_out",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_group_difference+coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "says the TF part needs motif and PPI inputs beyond their expression-only dataset",
+        "answers the co-expression part with what they have"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "offers a TF network method for the TF part as if it could run"
+      ]
+    },
+    {
+      "id": "E1",
+      "family": "E",
+      "data_sentence": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample.",
+      "purpose_sentence": "Which regulators drive the regulatory program that separates rheumatoid synovium from the controls?",
+      "prompt": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample. Which regulators drive the regulatory program that separates rheumatoid synovium from the controls?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "priors",
+      "purpose_kind": "tf_group_difference",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they have a TF motif prior and a PPI network for these genes"
+      ],
+      "red_flags": [
+        "presents a TF network as ready to run without asking about motif/PPI data",
+        "treats the regulator question as a pure co-expression question"
+      ]
+    },
+    {
+      "id": "E2",
+      "family": "E",
+      "data_sentence": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample.",
+      "purpose_sentence": "We want to see how gene co-expression differs between the two groups after accounting for age, sex and batch.",
+      "prompt": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample. We want to see how gene co-expression differs between the two groups after accounting for age, sex and batch.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "uses the recorded age, sex and batch as covariates alongside group"
+      ],
+      "red_flags": [
+        "asks about motif, PPI or miRNA data",
+        "ignores the covariates they asked to account for"
+      ]
+    },
+    {
+      "id": "E3",
+      "family": "E",
+      "data_sentence": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample.",
+      "purpose_sentence": "Can their synovial expression predict which rheumatoid patients will respond to methotrexate?",
+      "prompt": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample. Can their synovial expression predict which rheumatoid patients will respond to methotrexate?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "prediction",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no registered workflow builds a predictive model of treatment response"
+      ],
+      "red_flags": [
+        "asks whether they have motif, PPI or miRNA data",
+        "offers a network workflow as the response predictor"
+      ]
+    },
+    {
+      "id": "E4",
+      "family": "E",
+      "data_sentence": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample.",
+      "purpose_sentence": "Our aim is to prove which genes cause the joint inflammation in rheumatoid arthritis.",
+      "prompt": "We have bulk RNA-seq of synovial tissue from 30 rheumatoid arthritis patients and 25 joint-trauma controls, with age, sex and sequencing batch recorded for every sample. Our aim is to prove which genes cause the joint inflammation in rheumatoid arthritis.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "causal",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no network workflow can prove causation from observational expression data"
+      ],
+      "red_flags": [
+        "asks whether they have motif, PPI or miRNA data",
+        "claims a network workflow proves causal genes"
+      ]
+    },
+    {
+      "id": "F1",
+      "family": "F",
+      "data_sentence": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade.",
+      "purpose_sentence": "We want to know how active the regulators are in every individual cerebellum and which genes each one turns up or down.",
+      "prompt": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade. We want to know how active the regulators are in every individual cerebellum and which genes each one turns up or down.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "priors",
+      "purpose_kind": "tf_per_sample",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["GIRAFFE", "LIONESS-PANDA"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they have a TF motif prior and a PPI network for these genes"
+      ],
+      "red_flags": [
+        "presents per-sample regulator activity as ready to run without asking about motif/PPI data",
+        "answers with per-sample co-expression only"
+      ]
+    },
+    {
+      "id": "F2",
+      "family": "F",
+      "data_sentence": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade.",
+      "purpose_sentence": "Could we get a separate gene co-expression network for each donor so we can compare donors later?",
+      "prompt": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade. Could we get a separate gene co-expression network for each donor so we can compare donors later?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_per_sample",
+      "acceptable_candidates": ["LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["LIONESS-COEXPRESSION"],
+      "must_include": [
+        "per-donor co-expression networks from expression alone"
+      ],
+      "red_flags": [
+        "asks whether they have motif, PPI or miRNA data",
+        "recommends a TF network method"
+      ]
+    },
+    {
+      "id": "F3",
+      "family": "F",
+      "data_sentence": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade.",
+      "purpose_sentence": "Can these expression profiles be used to build a model that predicts each donor's age at death?",
+      "prompt": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade. Can these expression profiles be used to build a model that predicts each donor's age at death?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "prediction",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no registered workflow builds a predictive model"
+      ],
+      "red_flags": [
+        "asks whether they have motif, PPI or miRNA data",
+        "offers a network workflow as the age predictor"
+      ]
+    },
+    {
+      "id": "F4",
+      "family": "F",
+      "data_sentence": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade.",
+      "purpose_sentence": "Can we prove which regulators cause the cerebellar degeneration seen in some of these donors?",
+      "prompt": "We generated RNA-seq profiles from 64 postmortem human cerebellum samples collected by a regional brain bank over the past decade. Can we prove which regulators cause the cerebellar degeneration seen in some of these donors?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "causal",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no network workflow can prove which regulators cause degeneration"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data because the question says regulators",
+        "claims a regulatory network would prove causation"
+      ]
+    },
+    {
+      "id": "G1",
+      "family": "G",
+      "data_sentence": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data.",
+      "purpose_sentence": "We want to find which transcription factors change their target genes in the islets of high-fat-diet mice.",
+      "prompt": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data. We want to find which transcription factors change their target genes in the islets of high-fat-diet mice.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "priors",
+      "purpose_kind": "tf_group_difference",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they actually have motif and PPI data for these genes (the reviewer's remark is not data)"
+      ],
+      "red_flags": [
+        "assumes motif and PPI data are in hand because the reviewer mentioned them",
+        "says the TF analysis is impossible as if the data were ruled out"
+      ]
+    },
+    {
+      "id": "G2",
+      "family": "G",
+      "data_sentence": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data.",
+      "purpose_sentence": "How does gene co-expression in the islets differ between the two diets?",
+      "prompt": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data. How does gene co-expression in the islets differ between the two diets?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "a co-expression comparison between the diets from expression plus diet labels"
+      ],
+      "red_flags": [
+        "asks about motif or PPI data because the reviewer mentioned them",
+        "recommends a TF network method as the answer"
+      ]
+    },
+    {
+      "id": "G3",
+      "family": "G",
+      "data_sentence": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data.",
+      "purpose_sentence": "Our aim is to predict which mice will become glucose intolerant from their islet expression.",
+      "prompt": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data. Our aim is to predict which mice will become glucose intolerant from their islet expression.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "prediction",
+      "acceptable_candidates": [],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "says no registered workflow builds a predictive model"
+      ],
+      "red_flags": [
+        "asks about motif or PPI data because the reviewer mentioned them",
+        "offers a network workflow as the predictor"
+      ]
+    },
+    {
+      "id": "G4",
+      "family": "G",
+      "data_sentence": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data.",
+      "purpose_sentence": "Which regulators reprogram islet genes under the high-fat diet, and can we show that they cause the insulin resistance?",
+      "prompt": "We have RNA-seq of pancreatic islets from 20 high-fat-diet and 20 chow-fed mice; a reviewer of our last paper insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data. Which regulators reprogram islet genes under the high-fat diet, and can we show that they cause the insulin resistance?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "priors",
+      "purpose_kind": "tf_group_difference+causal",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they actually have motif and PPI data for these genes",
+        "says the causal part cannot be shown by any network workflow"
+      ],
+      "red_flags": [
+        "assumes motif and PPI data are in hand because the reviewer mentioned them",
+        "claims a regulatory network shows causation"
+      ]
+    },
+    {
+      "id": "T1",
+      "family": "T",
+      "data_sentence": "We have RNA-seq of wing membrane from 18 little brown bats with white-nose syndrome and 18 healthy bats.",
+      "purpose_sentence": "My supervisor's note says 'check which transcription factors are rewired', but what I need to know is whether gene co-expression differs between sick and healthy bats.",
+      "prompt": "We have RNA-seq of wing membrane from 18 little brown bats with white-nose syndrome and 18 healthy bats. My supervisor's note says 'check which transcription factors are rewired', but what I need to know is whether gene co-expression differs between sick and healthy bats.",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "none",
+      "data_question": "none",
+      "purpose_kind": "coexpression_group_difference",
+      "acceptable_candidates": ["COBRA", "LIONESS-COEXPRESSION", "BONOBO"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["COBRA"],
+      "must_include": [
+        "answers the user's own co-expression question for sick versus healthy bats"
+      ],
+      "red_flags": [
+        "treats the supervisor's quoted TF wording as the user's question",
+        "asks whether they have motif or PPI data"
+      ]
+    },
+    {
+      "id": "T2",
+      "family": "T",
+      "data_sentence": "We have RNA-seq from 36 Xenopus tadpole tail samples at six regeneration stages, and, as our bioinformatician advised, we have already assembled TF motif scans and a protein-protein interaction network for these genes.",
+      "purpose_sentence": "Which transcription factors take over the regulation of tail genes as regeneration proceeds?",
+      "prompt": "We have RNA-seq from 36 Xenopus tadpole tail samples at six regeneration stages, and, as our bioinformatician advised, we have already assembled TF motif scans and a protein-protein interaction network for these genes. Which transcription factors take over the regulation of tail genes as regeneration proceeds?",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "none",
+      "purpose_kind": "tf_group_difference",
+      "acceptable_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "conditional_candidates": [],
+      "inapplicable": [],
+      "recommended_subset": ["PANDA", "LIONESS-PANDA"],
+      "must_include": [
+        "treats the assembled motif scans and PPI network as in hand",
+        "compares TF targeting across regeneration stages"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "treats the bioinformatician's advice as a mere mention rather than data in hand"
+      ]
+    },
+    {
+      "id": "T3",
+      "family": "T",
+      "data_sentence": "We have RNA-seq of human aortic endothelial cells grown under laminar or disturbed flow, 12 cultures each, and we are about to download JASPAR and STRING.",
+      "purpose_sentence": "Which transcription factors switch their target genes when the flow becomes disturbed?",
+      "prompt": "We have RNA-seq of human aortic endothelial cells grown under laminar or disturbed flow, 12 cultures each, and we are about to download JASPAR and STRING. Which transcription factors switch their target genes when the flow becomes disturbed?",
+      "priors_label": "unstated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors",
+      "data_question": "priors",
+      "purpose_kind": "tf_group_difference",
+      "acceptable_candidates": [],
+      "conditional_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "treats the motif prior and PPI network as not yet in hand and asks/confirms they will have them for these genes"
+      ],
+      "red_flags": [
+        "treats the planned JASPAR/STRING download as data already in hand",
+        "says the TF question is impossible as if the data were ruled out"
+      ]
+    },
+    {
+      "id": "T4",
+      "family": "T",
+      "data_sentence": "We have RNA-seq of 28 psoriatic and 28 healthy skin biopsies, together with a TF motif prior and a protein-protein interaction network that we built for these genes.",
+      "purpose_sentence": "Are the expression changes in psoriatic skin driven more by transcription factors or by microRNAs?",
+      "prompt": "We have RNA-seq of 28 psoriatic and 28 healthy skin biopsies, together with a TF motif prior and a protein-protein interaction network that we built for these genes. Are the expression changes in psoriatic skin driven more by transcription factors or by microRNAs?",
+      "priors_label": "stated",
+      "mirna_label": "unstated",
+      "question_needs": "tf_priors_and_mirna",
+      "data_question": "mirna",
+      "purpose_kind": "mirna",
+      "acceptable_candidates": ["PANDA", "OTTER", "LIONESS-PANDA", "GIRAFFE"],
+      "conditional_candidates": ["PUMA", "LIONESS-PUMA"],
+      "inapplicable": [],
+      "recommended_subset": [],
+      "must_include": [
+        "asks whether they have a miRNA list or miRNA-target predictions for these samples",
+        "notes the TF side can use the stated motif prior and PPI network"
+      ],
+      "red_flags": [
+        "asks whether they have motif or PPI data",
+        "answers the TF-versus-miRNA comparison with a TF-only network and no mention of miRNA data"
+      ]
+    }
+  ]
+}
