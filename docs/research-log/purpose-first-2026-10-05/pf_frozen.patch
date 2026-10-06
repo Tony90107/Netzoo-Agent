@@ -1,0 +1,1316 @@
+diff --git a/scripts/netzoo_agent_core/contracts/data_facts.py b/scripts/netzoo_agent_core/contracts/data_facts.py
+new file mode 100644
+index 0000000..b0aa20a
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/data_facts.py
+@@ -0,0 +1,34 @@
++"""What the request says about the data it has, as a model proposes it (Log 376).
++
++Logs 371 and 373 read whether a request has a TF motif prior and a PPI network
++with word lists and failed both ways. Logs 374-375 read it in the
++study-purpose call: the reading was right (no false "stated"), but sharing
++that prompt cost the conclusions it reads. It is now its own small call,
++asked only on a tie with a verified question, and its quote is checked only
++for provenance.
++"""
++
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, ConfigDict, Field
++
++from .strict_schema import strict_json_schema
++
++__all__ = ["DataFactsProposal"]
++
++
++class DataFactsProposal(BaseModel):
++    """Whether the request says it has prior knowledge of TF binding or protein interactions."""
++
++    model_config = ConfigDict(extra="forbid")
++    priors: Literal["stated", "ruled_out", "unstated"]
++    priors_span: str = Field(description=(
++        "Exact contiguous quote saying the request has, or does not have, a TF motif or binding prior or a "
++        "protein-interaction network; empty when unstated."))
++
++    @classmethod
++    def model_json_schema(cls, *args, **kwargs):
++        """The provider sees the strict-mode form; validation is unchanged (Log 208)."""
++        return strict_json_schema(super().model_json_schema(*args, **kwargs))
+diff --git a/scripts/netzoo_agent_core/contracts/requirements.py b/scripts/netzoo_agent_core/contracts/requirements.py
+index d718633..b04d2f0 100644
+--- a/scripts/netzoo_agent_core/contracts/requirements.py
++++ b/scripts/netzoo_agent_core/contracts/requirements.py
+@@ -44,6 +44,9 @@ class RequestRequirements(BaseModel):
+     # Filled after routing; a reading of the request, not the user's words.
+     goal: str | None = None
+     open_conditions: list[str] = Field(default_factory=list)
++    # Plan item 3 (Log 379): the verified purpose, read before routing, and the
++    # chain it drove -- conclusion -> each candidate's evidence -> the pick.
++    purpose: dict[str, Any] | None = None
+ 
+     def stated_value(self, field: str) -> Any:
+         """The value the user stated for *field*, this turn first."""
+diff --git a/scripts/netzoo_agent_core/contracts/state.py b/scripts/netzoo_agent_core/contracts/state.py
+index e51641c..92d8eb6 100644
+--- a/scripts/netzoo_agent_core/contracts/state.py
++++ b/scripts/netzoo_agent_core/contracts/state.py
+@@ -41,6 +41,10 @@ class AgentState(TypedDict):
+     reply_kind: NotRequired[str]
+     # Log 355: the verified study purpose of this turn's request (design, claims, source).
+     study_purpose: NotRequired[dict | None]
++    # Log 379 (plan item 3): the stated conclusion's pick among tied tools, and
++    # the TF-prior reading it used (Log 376's call).
++    purpose_selection: NotRequired[dict | None]
++    data_facts: NotRequired[dict | None]
+ 
+ class AgentTurnInterrupted(Exception):
+     """Raised when the user interrupts an in-flight graph turn."""
+diff --git a/scripts/netzoo_agent_core/graph/data_facts_call.py b/scripts/netzoo_agent_core/graph/data_facts_call.py
+new file mode 100644
+index 0000000..61abdd6
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/data_facts_call.py
+@@ -0,0 +1,101 @@
++"""The data-facts call: what the request says about its TF priors (Log 376).
++
++Log 379 (plan item 3): asked only when the stated conclusion could pick a
++workflow that needs a TF motif prior and a PPI network
++(`routing.purpose_selection`); only a "stated" reading lets it be picked, so
++"unstated" and "ruled_out" both withhold the pick (Log 377's never-ask bug was
++"unstated" read as known).
++The model reads what the words mean; the quote is checked only for being in
++the request (Logs 373-374: word lists judging meaning failed both ways). When
++the call is not configured, blocked by the budget or fails, nothing is read
++and the reply falls back to its word lists.
++"""
++
++from __future__ import annotations
++
++import time
++
++from pydantic import BaseModel
++
++from ..contracts import AgentState, LLMUsage
++from ..contracts.data_facts import DataFactsProposal
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_repair import semantic_payload
++from ..llm import append_llm_usage, build_data_facts_messages
++from ..routing.study_purpose_verify import _locate
++from .context import _GraphContext, preflight_budget, record_event
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++
++__all__ = ["invoke_data_facts", "verify_data_facts"]
++
++
++def verify_data_facts(task: str, proposal: DataFactsProposal) -> tuple[dict, list[dict]]:
++    """The state entry for a proposal: its reading when the quote is in the request, else unstated."""
++    if proposal.priors != "unstated":
++        if _locate(task, proposal.priors_span) is not None:
++            return {"source": "model", "priors": proposal.priors, "priors_quote": proposal.priors_span.strip()}, []
++        return ({"source": "model", "priors": "unstated", "priors_quote": ""},
++                [{"field": "priors", "value": proposal.priors, "reason": "quote_not_in_request"}])
++    return {"source": "model", "priors": "unstated", "priors_quote": ""}, []
++
++
++def invoke_data_facts(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    usage: LLMUsage,
++    budget_warnings: list[str],
++) -> tuple[dict | None, LLMUsage, list[str]]:
++    """The verified data facts of the request, or None when nothing read them."""
++    # The same model as the study-purpose call, which the graph binds (`study_purpose_llm`).
++    llm = getattr(context, "study_purpose_llm", None)
++    if llm is None:
++        return None, usage, budget_warnings
++    messages = build_data_facts_messages(user_task)
++    input_text = _serialized_structured_input(messages, DataFactsProposal)
++    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
++    budget, budget_warnings = preflight_budget(
++        context, call_state, role="data_facts",
++        model=context.semantic_model_name, input_text=input_text,
++        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
++    )
++    if budget.status == "blocked":
++        usage.budget_exhausted = True
++        return None, usage, budget_warnings
++    started_ns = time.monotonic_ns()
++    raw = None
++    payload = None
++    output_text = ""
++    call_status = "failed"
++    result = None
++    try:
++        adapter = llm.with_structured_output(
++            DataFactsProposal, method="function_calling", include_raw=True, strict=True,
++        )
++        payload, raw = semantic_payload(adapter.invoke(messages))
++        if isinstance(payload, BaseModel):
++            payload = payload.model_dump()
++        proposal = DataFactsProposal.model_validate(payload)
++        output_text = proposal.model_dump_json()
++        call_status = "success"
++        result, rejected = verify_data_facts(user_task, proposal)
++        record_event(context, state, "routing.data_facts_detected", "classify", {
++            "proposal": proposal.model_dump(), "rejected": rejected, **result,
++        })
++    except BaseException as error:
++        if _is_fatal_exception(error):
++            raise
++        record_event(context, state, "routing.data_facts_failed", "classify", {
++            "error_type": type(error).__name__,
++            "error_message": str(error)[:2000],
++            "validation_issues": _validation_issue_types(error),
++            "provider_payload": payload,
++        })
++    usage = append_llm_usage(
++        usage, role="data_facts", model=context.semantic_model_name,
++        response=raw, input_text=input_text, output_text=output_text,
++        budget_tokens=context.task_token_budget,
++        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++        status=call_status, price_catalog=context.price_catalog,
++    )
++    return result, usage, budget_warnings
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 72ba244..f5aefd2 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -31,6 +31,13 @@ from .invocation_types import RouterInvocation as _RouterInvocation
+ from .condition_recommender import invoke_condition_recommender
+ from .request_concerns import invoke_concern_matcher
+ from .study_purpose_call import invoke_study_purpose
++from .data_facts_call import invoke_data_facts
++from .condition_recommender import recommendation_question
++from ..interpretation.request_requirements import stated_in_text
++from ..routing.purpose_selection import (
++    needs_tf_priors, purpose_applies, select_by_purpose, with_purpose_selection,
++)
++from ..routing.study_purpose import StudyPurpose
+ from .hypothesis_bases import (
+     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
+ )
+@@ -131,20 +138,25 @@ def invoke_router(
+ ) -> _RouterInvocation:
+     """Route, then keep an unstated scale out of the reply on every path (Log 281).
+ 
+-    Log 355: a new request's study purpose is read once, after routing; a
+-    follow-up turn (a continuation, a method comparison, a choice) is not a
+-    new purpose, so it carries none and the reply reads its own words.
++    Log 355: a new request's study purpose is read once; a follow-up turn (a
++    continuation, a method comparison, a choice) is not a new purpose, so it
++    carries none and the reply reads its own words. Log 379 (plan item 3): it
++    is read before routing, so the decision can use it, not only the reply.
+     """
+     follow_up = (state.get("method_comparison") is not None or state.get("workflow_continuation") is not None)
+-    result = _route_request(context, state, user_task)
+-    if follow_up or result.reason_code == "string_download_continuation":
+-        result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
+-    else:
++    purpose = None
++    if not follow_up and not continued_string_download_decision(user_task):
+         purpose, usage, warnings = invoke_study_purpose(
+-            context, state, user_task, result.usage, result.budget_warnings,
++            context, state, user_task, _current_usage(context, state), list(state.get("budget_warnings", [])),
+         )
+-        result = replace(result, usage=usage, budget_warnings=warnings,
+-                         routing_state={**result.routing_state, "study_purpose": purpose})
++        state = {**state, "token_usage": usage.model_dump(), "budget_warnings": warnings}
++    result = _route_request(context, state, user_task, purpose=purpose)
++    result = replace(result, budget_warnings=list(dict.fromkeys([
++        *state.get("budget_warnings", []), *result.budget_warnings,
++    ])), routing_state={
++        "purpose_selection": None, "data_facts": None,
++        **result.routing_state, "study_purpose": purpose,
++    })
+     decision = note_unstated_scale(user_task, result.decision)
+     if decision is result.decision:
+         return result
+@@ -159,10 +171,42 @@ def invoke_router(
+     })
+ 
+ 
++def _purpose_from_state(entry: dict | None) -> StudyPurpose | None:
++    if not entry:
++        return None
++    return StudyPurpose(entry.get("design"), entry.get("design_quote") or "",
++                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()))
++
++
++def _select_by_purpose(context, state, user_task, decision, purpose, usage, budget_warnings):
++    """Plan item 3 (Log 379): the stated conclusion picks among the tied tools.
++
++    The TF-prior reading (Log 376's call) is asked only when a tool that needs
++    the priors could be picked.
++    """
++    study = _purpose_from_state(purpose)
++    if purpose_applies(decision, study) is None:
++        return decision, usage, budget_warnings, None, None
++    facts = None
++    if needs_tf_priors(decision, study):
++        facts, usage, budget_warnings = invoke_data_facts(context, state, user_task, usage, budget_warnings)
++    selection = select_by_purpose(
++        decision, study, priors=(facts or {}).get("priors"), stated=stated_in_text(user_task),
++    )
++    record_event(context, state, "routing.purpose_selection", "classify", selection.record())
++    picked = with_purpose_selection(decision, selection)
++    if picked.advisory_recommendation is not None and picked is not decision:
++        picked = picked.model_copy(update={
++            "clarification_question": recommendation_question(picked.advisory_recommendation),
++        })
++    return picked, usage, budget_warnings, selection.record(), facts
++
++
+ def _route_request(
+     context: _GraphContext,
+     state: AgentState,
+     user_task: str,
++    purpose: dict | None = None,
+ ) -> _RouterInvocation:
+     """Run the ordered semantic, validation, registry, and intent pipeline."""
+     usage = _current_usage(context, state)
+@@ -403,7 +447,10 @@ def _route_request(
+     decision, usage, budget_warnings = invoke_hypothesis_matcher(
+         context, state, user_task, decision, usage, budget_warnings,
+     )
+-    if framing_yielded(decision, usage) and not any(
++    decision, usage, budget_warnings, purpose_record, data_facts = _select_by_purpose(
++        context, state, user_task, decision, purpose, usage, budget_warnings,
++    )
++    if (purpose_record or {}).get("recommended") is None and framing_yielded(decision, usage) and not any(
+         call.role in ADVISORY_ROLES - {"hypothesis_bases"} for call in usage.calls
+     ):
+         decision, usage, budget_warnings = invoke_condition_recommender(
+@@ -429,11 +476,11 @@ def _route_request(
+     )
+     return _RouterInvocation(
+         decision=decision,
+-        routing_state=outcome_routing_state(
++        routing_state={**outcome_routing_state(
+             decision,
+             interpretation.semantic_goal,
+             interpretation.request_mode,
+-        ),
++        ), "purpose_selection": purpose_record, "data_facts": data_facts},
+         usage=usage,
+         budget_warnings=budget_warnings,
+         reason_code=("intent_fallback" if intent_fallback else
+diff --git a/scripts/netzoo_agent_core/interpretation/advisory_answers.py b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+index 03b57da..e6c8e27 100644
+--- a/scripts/netzoo_agent_core/interpretation/advisory_answers.py
++++ b/scripts/netzoo_agent_core/interpretation/advisory_answers.py
+@@ -7,7 +7,7 @@ from collections import Counter
+ 
+ from workflow_registry import (
+     EXTERNAL_REFERENCES, OTHER_READING_NOTES, OUTPUT_CAPABILITIES, SELECTION_AXES, SELECTION_TAG_GLOSSARY,
+-    STATED_TAG_PHRASES,
++    STATED_TAG_PHRASES, purpose_reason,
+ )
+ 
+ from ..contracts import ProjectPolicySnapshot, TaskDecision
+@@ -53,6 +53,8 @@ def _condition_label(condition: str) -> str:
+     axis, _, value = condition.partition(":")
+     if axis == "selection_tag":  # a stated method signal (Log 318)
+         return STATED_TAG_PHRASES.get(value, value.replace("_", " "))
++    if axis == "study_purpose":  # the stated conclusion's pick (Log 379)
++        return purpose_reason(*value.split(":", 2)) or value
+     return SELECTION_AXES.get(axis, {}).get("values", {}).get(value, condition)
+ 
+ 
+@@ -114,6 +116,31 @@ def _alternative_lines(recommended, listed, policy, shared, family_label) -> lis
+     return lines
+ 
+ 
++def _render_purpose_recommendation(decision: TaskDecision, policy: ProjectPolicySnapshot, spec) -> str:
++    """Log 379: a pick by the stated conclusion says why it fits that question.
++
++    The user's Log 370 rule: why for your question, not how the algorithm
++    works. So no method block and no "approach" lines here; the study-purpose
++    lines added after this reply say what each listed workflow gives toward
++    the question, in the registry's words.
++    """
++    recommendation = decision.advisory_recommendation
++    spans = [item.text_span for item in recommendation.conditions if item.text_span.isascii()]
++    quotes = "; ".join(f'"{user_data_token(index)}"' for index in range(len(spans)))
++    reasons = "; ".join(_condition_label(f"{item.axis}:{item.value}") for item in recommendation.conditions)
++    lead = (f"Based on what you said — {quotes} — **{spec.workflow}** fits better: {reasons}."
++            if quotes else f"For the conclusion you describe, **{spec.workflow}** fits better: {reasons}.")
++    lines = [lead]
++    if other_reading := OTHER_READING_NOTES.get(recommendation.action):
++        lines.append(other_reading)
++    if concerns := concern_section_for_workflow(decision, policy, recommendation.action):
++        lines.append(concerns)
++    if decision.clarification_question:
++        lines.append(decision.clarification_question)
++    lines.append("No files were inspected and no analysis ran.")
++    return _ui_text_with_user_data("\n\n".join(lines), spans)
++
++
+ def render_advisory_recommendation(
+     decision: TaskDecision,
+     policy: ProjectPolicySnapshot,
+@@ -132,6 +159,8 @@ def render_advisory_recommendation(
+             decision, policy, spec, candidate_details(recommendation.action, spec, policy, recommended=True),
+             "\n\n".join(note for note in notes if note),
+         )
++    if recommendation.conditions and all(item.axis == "study_purpose" for item in recommendation.conditions):
++        return _render_purpose_recommendation(decision, policy, spec)
+     # Quotes remain in the validated decision for audit. Echoing a Chinese
+     # excerpt in the answer breaks the project's fixed English output policy.
+     evidence = [item.text_span for item in recommendation.conditions] or recommendation.supporting_spans
+diff --git a/scripts/netzoo_agent_core/interpretation/request_requirements.py b/scripts/netzoo_agent_core/interpretation/request_requirements.py
+index f89ea26..abe8802 100644
+--- a/scripts/netzoo_agent_core/interpretation/request_requirements.py
++++ b/scripts/netzoo_agent_core/interpretation/request_requirements.py
+@@ -94,7 +94,20 @@ def with_routing(
+         *(f"unresolved:{dimension}" for dimension in (outcome.unresolved_dimensions if outcome else [])),
+         *([f"question:{decision.clarification_question}"] if decision.clarification_question else []),
+     ]
+-    return requirements.model_copy(update={"goal": goal, "open_conditions": open_conditions})
++    study = routing_state.get("study_purpose")
++    purpose = None
++    if study:
++        purpose = {
++            "design": study.get("design"),
++            "design_quote": study.get("design_quote") or "",
++            "claims": [list(item) for item in study.get("claims") or ()],
++            "source": study.get("source"),
++            "selection": routing_state.get("purpose_selection"),
++            "tf_priors": (routing_state.get("data_facts") or {}).get("priors"),
++        }
++    return requirements.model_copy(update={
++        "goal": goal, "open_conditions": open_conditions, "purpose": purpose,
++    })
+ 
+ 
+ def carried_parameters(requirements: Mapping[str, Any] | None) -> dict[str, Any]:
+diff --git a/scripts/netzoo_agent_core/llm.py b/scripts/netzoo_agent_core/llm.py
+index efed40e..3ea05a8 100644
+--- a/scripts/netzoo_agent_core/llm.py
++++ b/scripts/netzoo_agent_core/llm.py
+@@ -664,6 +664,27 @@ STUDY_PURPOSE_SYSTEM = (
+ )
+ 
+ 
++# Log 376: its own small call, so the study-purpose prompt above stays as it is.
++DATA_FACTS_SYSTEM = (
++    "Return only the DataFactsProposal structure for the user's request.\n\n"
++    "priors -- whether the request says it has prior knowledge of transcription-factor binding (a motif or "
++    "binding-site prior, a TF-target list) or of protein-protein interactions:\n"
++    "- stated: it says it has them, or one of them.\n"
++    "- ruled_out: it says it does not have them, or that it has only expression data.\n"
++    "- unstated: it says neither.\n"
++    "priors_span -- the words that say so, copied exactly from the request without translation; empty when "
++    "unstated."
++)
++
++
++def build_data_facts_messages(user_task: str) -> list:
++    """Ask what the request says about its TF priors, with a quote (Log 376)."""
++    return [
++        SystemMessage(content=DATA_FACTS_SYSTEM),
++        HumanMessage(content=user_task[-ROUTER_CONTEXT_MAX_CHARS:]),
++    ]
++
++
+ def build_study_purpose_messages(user_task: str) -> list:
+     """Ask for the comparison design and the conclusions the request states, with quotes (Log 355)."""
+     return [
+diff --git a/scripts/netzoo_agent_core/reply_cards/choices.py b/scripts/netzoo_agent_core/reply_cards/choices.py
+index dfffded..c111f5f 100644
+--- a/scripts/netzoo_agent_core/reply_cards/choices.py
++++ b/scripts/netzoo_agent_core/reply_cards/choices.py
+@@ -22,7 +22,7 @@ import re
+ 
+ from workflow_registry import (
+     EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES,
+-    STATED_TAG_PHRASES,
++    STATED_TAG_PHRASES, purpose_reason,
+ )
+ 
+ from ..contracts import ProjectPolicySnapshot, TaskDecision
+@@ -95,6 +95,8 @@ def _stated_reasons(advice) -> list[str]:
+             reasons.append(condition_phrase(condition) or SELECTION_AXES[item.axis]["values"].get(item.value, condition))
+         elif item.axis == "selection_tag" and item.value in STATED_TAG_PHRASES:
+             reasons.append(STATED_TAG_PHRASES[item.value])
++        elif item.axis == "study_purpose" and (reason := purpose_reason(*item.value.split(":", 2))):
++            reasons.append(reason)  # the stated conclusion's pick (Log 379)
+         elif item.axis == "inspected_inputs" and item.text_span:
+             folders.append(item.text_span)
+     if folders:
+diff --git a/scripts/netzoo_agent_core/routing/purpose_selection.py b/scripts/netzoo_agent_core/routing/purpose_selection.py
+new file mode 100644
+index 0000000..cfef518
+--- /dev/null
++++ b/scripts/netzoo_agent_core/routing/purpose_selection.py
+@@ -0,0 +1,195 @@
++"""The research purpose decides among the tools that fit (plan item 3, Log 379).
++
++Log 378: the study purpose was read correctly in 27 of 27 sessions and used by
++the decision in none -- routing chose the tools first and read the purpose
++afterwards, for the reply only. This module puts the chain the registry
++already declares into the decision:
++
++    question (the verified quote) -> conclusion (claim, design)
++      -> evidence each workflow gives toward it (CLAIM_SUPPORT, typed)
++      -> the workflow whose evidence fits best.
++
++The rules, each from a withdrawn round:
++- Only a method tie with one reading and a conclusion a registered workflow
++  can support; causation and prediction keep their gap (Log 342).
++- Every candidate must have a declared cell: an undeclared one is not worse,
++  it is unknown (CC1, Logs 288-289), so nothing is compared.
++- Same quantity first (GIRAFFE's TF activity is not network wiring), then
++  evidence: direct > tested > descriptive > one result.
++- The pool adds only the per-sample workflow a candidate's own cell names as
++  stronger; no candidate is removed.
++- A workflow is recommended only when the inputs it needs beyond expression
++  are stated (Log 371 B4): TF priors by the data-facts call or a binding,
++  miRNA by a quoted regulator reading or a binding, a design matrix by a
++  verified two-group design or a binding.
++- It must be the single best, and better than at least one candidate:
++  otherwise the purpose does not separate them and nothing changes.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Any
++
++from workflow_registry import CLAIM_SUPPORT, REQUIRED_INPUTS, UNSUPPORTED_CLAIMS, ClaimSupport
++
++from ..contracts import TaskDecision
++from ..contracts.outcomes import AdvisoryCondition, AdvisoryRecommendation
++
++__all__ = [
++    "EVIDENCE_RANK", "PurposeSelection", "purpose_applies", "select_by_purpose", "with_purpose_selection",
++]
++
++EVIDENCE_RANK = {"direct": 4, "tested": 3, "descriptive": 2, "one_result": 1}
++_TF_PRIORS = frozenset({"motif_file", "ppi_file"})
++# Expression is what every listed workflow reads; outputs are written, not needed.
++_ALWAYS = frozenset({"expression_file", "output_file", "lioness_output", "output_dir"})
++
++
++@dataclass(frozen=True)
++class PurposeSelection:
++    """The chain for one request: its conclusion, each workflow's fit, the pick."""
++
++    claim: str
++    design: str
++    quote: str
++    fits: tuple[dict[str, Any], ...]
++    recommended: str | None
++    reason: str
++
++    def record(self) -> dict[str, Any]:
++        return {
++            "claim": self.claim, "design": self.design, "quote": self.quote,
++            "fits": list(self.fits), "recommended": self.recommended, "reason": self.reason,
++        }
++
++
++def _cell(action: str, claim: str, design: str) -> ClaimSupport | None:
++    return CLAIM_SUPPORT.get((action, claim, design)) or CLAIM_SUPPORT.get((action, claim, "*"))
++
++
++def purpose_applies(decision: TaskDecision, purpose) -> tuple[str, str] | None:
++    """(claim, quote) when the purpose may decide this decision, else None."""
++    if purpose is None or decision.action != "no_tool":
++        return None
++    if decision.capability_match_status != "ambiguous" or len(decision.outcome_hypotheses) > 1:
++        return None
++    if len(set(decision.hypothesis_actions)) < 2:
++        return None
++    if decision.stated_hypotheses or decision.advisory_recommendation is not None:
++        return None
++    claims = list(purpose.claims)
++    if not claims or any(claim in UNSUPPORTED_CLAIMS for claim, _ in claims):
++        return None
++    return claims[0]
++
++
++def _needs(action: str) -> frozenset[str]:
++    return frozenset(REQUIRED_INPUTS.get(action, ())) - _ALWAYS
++
++
++def _mirna_read(decision: TaskDecision) -> bool:
++    """A regulator reading of miRNA that the request quotes."""
++    return any(
++        item.dimension == "regulator_type" and item.value == "mirna" and item.source == "explicit"
++        for hypothesis in decision.outcome_hypotheses for item in hypothesis.evidence
++    )
++
++
++def _available(action: str, *, decision, purpose, priors: str | None, stated: dict) -> bool:
++    for field in _needs(action):
++        if stated.get(field):
++            continue
++        if field in _TF_PRIORS and priors == "stated":
++            continue
++        if field == "mirna_file" and _mirna_read(decision):
++            continue
++        if field == "design_file" and purpose.design == "groups":
++            continue
++        return False
++    return True
++
++
++def needs_tf_priors(decision: TaskDecision, purpose) -> bool:
++    """Whether reading the request's TF priors could change the selection."""
++    question = purpose_applies(decision, purpose)
++    if question is None:
++        return False
++    claim, design = question[0], purpose.design or "*"
++    pool = _pool(decision, claim, design)
++    return any(_needs(action) & _TF_PRIORS for action in pool)
++
++
++def _pool(decision: TaskDecision, claim: str, design: str) -> list[str]:
++    candidates = list(dict.fromkeys(decision.hypothesis_actions))
++    stronger = [
++        other for action in candidates
++        if (cell := _cell(action, claim, design)) is not None
++        for other in cell.stronger
++    ]
++    return list(dict.fromkeys([*candidates, *stronger]))
++
++
++def select_by_purpose(
++    decision: TaskDecision, purpose, *, priors: str | None, stated: dict | None = None,
++) -> PurposeSelection | None:
++    """The purpose's pick among the tied workflows, with every workflow's fit."""
++    question = purpose_applies(decision, purpose)
++    if question is None:
++        return None
++    claim, quote = question
++    design = purpose.design or "*"
++    candidates = list(dict.fromkeys(decision.hypothesis_actions))
++    pool = _pool(decision, claim, design)
++    cells = {action: _cell(action, claim, design) for action in pool}
++    fits = tuple(
++        {
++            "action": action,
++            "candidate": action in candidates,
++            "evidence": cell.evidence if cell else None,
++            "quantity": cell.quantity if cell else None,
++            "available": _available(action, decision=decision, purpose=purpose,
++                                    priors=priors, stated=stated or {}),
++        }
++        for action, cell in cells.items()
++    )
++
++    def score(action: str) -> tuple[bool, int]:
++        cell = cells[action]
++        return cell.quantity == "same", EVIDENCE_RANK[cell.evidence]
++
++    def chosen(recommended, reason):
++        return PurposeSelection(claim, design, quote, fits, recommended, reason)
++
++    if any(cells[action] is None for action in candidates):
++        return chosen(None, "a candidate has no declared cell for this conclusion")
++    usable = [fit["action"] for fit in fits if fit["available"] and cells[fit["action"]] is not None]
++    if not usable:
++        return chosen(None, "no workflow's needed inputs are stated")
++    best_score = max(score(action) for action in usable)
++    best = [action for action in usable if score(action) == best_score]
++    if len(best) != 1:
++        return chosen(None, "more than one workflow fits the conclusion best")
++    if not any(score(action) < best_score for action in candidates):
++        return chosen(None, "the conclusion does not separate the candidates")
++    return chosen(best[0], "fits the stated conclusion best")
++
++
++def with_purpose_selection(decision: TaskDecision, selection: PurposeSelection | None) -> TaskDecision:
++    """Recommend the purpose's pick; add it to the options when a cell named it."""
++    if selection is None or selection.recommended is None:
++        return decision
++    action = selection.recommended
++    evidence = next(fit["evidence"] for fit in selection.fits if fit["action"] == action)
++    advice = AdvisoryRecommendation(
++        action=action,
++        conditions=[AdvisoryCondition(
++            axis="study_purpose", value=f"{selection.claim}:{evidence}:{selection.design}",
++            text_span=selection.quote,
++        )],
++        supporting_spans=[selection.quote],
++    )
++    return decision.model_copy(update={
++        "advisory_recommendation": advice,
++        "hypothesis_actions": list(dict.fromkeys([*decision.hypothesis_actions, action])),
++    })
+diff --git a/scripts/workflow_registry.py b/scripts/workflow_registry.py
+index 1ab5fa8..23093c1 100644
+--- a/scripts/workflow_registry.py
++++ b/scripts/workflow_registry.py
+@@ -847,6 +847,17 @@ class ClaimSupport(NamedTuple):
+     text: str
+     caveats: tuple[str, ...] = ()
+     instead: tuple[str, ...] = ()
++    # Log 379 (plan item 3): the cell typed for selection, never shown. What the
++    # evidence is -- ``direct``: the output is the answer; ``tested``: a value
++    # per sample, so the comparison can be tested; ``descriptive``: one result
++    # per group or time point, which shows a difference without testing it (or
++    # without the pairing); ``one_result``: one result for all the samples.
++    # ``quantity`` is ``other`` when it measures something else than the
++    # question names (GIRAFFE: TF activity, not network wiring). ``stronger``
++    # names the registered per-sample workflow the cell's own text points to.
++    evidence: Literal["direct", "tested", "descriptive", "one_result"] = "descriptive"
++    quantity: Literal["same", "other"] = "same"
++    stronger: tuple[str, ...] = ()
+ 
+ 
+ # Log 342 (Log 341's minimal pairs): the purpose a request states -- a
+@@ -870,7 +881,10 @@ _OTTER_SCALE = (
+ )
+ 
+ 
+-def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = ()) -> dict:
++def _aggregate_claims(
++    action: str, per_sample: str, caveats: tuple[str, ...] = (), stronger: tuple[str, ...] = (),
++) -> dict:
++    typed = {"evidence": "descriptive", "stronger": stronger}
+     return {
+         (action, "group_difference", "groups"): ClaimSupport("with_step", (
+             "Build one network per group on the same genes and priors, then compare edge weights or "
+@@ -878,20 +892,20 @@ def _aggregate_claims(action: str, per_sample: str, caveats: tuple[str, ...] = (
+             "networks give one value per edge per group: they show where the groups differ, but give "
+             f"no per-sample spread to test it. For a statistical test, use {per_sample} and test "
+             "between the groups."
+-        ), caveats),
++        ), caveats, **typed),
+         (action, "group_difference", "paired"): ClaimSupport("with_step", (
+             "Build one network for each time point on the same genes and priors, then compare edge "
+             "weights or targeting scores between them. This compares the time points across all "
+             "individuals but does not use the pairing: each individual's samples from the different "
+             f"time points are pooled into separate networks. To keep the pairing, use {per_sample} "
+             "and compare each individual's samples."
+-        ), caveats),
++        ), caveats, **typed),
+         (action, "regulator_change", "*"): ClaimSupport("with_step", (
+             "Comparing each regulator's targeting score (out-degree) between networks built "
+             "separately for each condition shows regulators whose targeting changes. Without "
+             "per-sample networks this ranks regulators by the size of the change, with no test of "
+             "whether it exceeds chance."
+-        ), caveats),
++        ), caveats, **typed),
+     }
+ 
+ 
+@@ -901,33 +915,35 @@ def _per_sample_claims(action: str) -> dict:
+         (action, "group_difference", "groups"): ClaimSupport("with_step", (
+             "Each sample gets its own network, so each edge weight or targeting score can be tested "
+             "between the groups across samples -- for example with a linear model such as limma."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+         (action, "group_difference", "paired"): ClaimSupport("with_step", (
+             "Each sample gets its own network, so each individual's networks from the different time "
+             "points can be compared directly: test the within-individual differences of edge weights "
+             "or targeting scores, for example with a paired test or a linear model with an "
+             "individual term."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+         (action, "individual_change", "paired"): ClaimSupport("with_step", (
+             "Each individual has a network for each time point; the difference between an "
+             "individual's own networks (or their regulators' targeting scores) measures how much "
+             "that individual changed, and ranks individuals by it."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+         (action, "individual_change", "*"): ClaimSupport("with_step", (
+             "Each sample gets its own network; comparing each sample's network or targeting scores "
+             "with the rest of the cohort shows which individuals stand out."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+         (action, "regulator_change", "*"): ClaimSupport("with_step", (
+             "Per-sample targeting scores (out-degree) give a regulator-by-sample matrix; test each "
+             "regulator between the conditions (paired when the same individuals give both), with "
+             "multiple-testing correction across regulators."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+     }
+ 
+ 
+ def _one_result_claims(action: str, gives: str, instead: tuple[str, ...]) -> dict:
+     """Log 368: a workflow with one result for all its samples, asked which individuals change."""
+-    return {(action, "individual_change", "*"): ClaimSupport("one_result", gives, instead=instead)}
++    return {(action, "individual_change", "*"): ClaimSupport(
++        "one_result", gives, instead=instead, evidence="one_result", stronger=instead,
++    )}
+ 
+ 
+ def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
+@@ -935,35 +951,36 @@ def _coexpression_claims(action: str, caveats: tuple[str, ...]) -> dict:
+         (action, "group_difference", "*"): ClaimSupport("with_step", (
+             "Per-sample gene degree or edge weights can be compared between the groups or time "
+             "points (paired when the same individuals give both)."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+         (action, "individual_change", "*"): ClaimSupport("with_step", (
+             "Comparing each sample's network with the rest of the cohort -- or, with repeated "
+             "samples, with the same individual's other sample -- shows which individuals change or "
+             "stand out."
+-        ), caveats),
++        ), caveats, evidence="tested"),
+     }
+ 
+ 
+ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+-    **_aggregate_claims("run_panda", "the per-sample (LIONESS) version"),
+-    **_aggregate_claims("run_puma", "the per-sample (LIONESS) version"),
++    **_aggregate_claims("run_panda", "the per-sample (LIONESS) version", stronger=("run_lioness_panda",)),
++    **_aggregate_claims("run_puma", "the per-sample (LIONESS) version", stronger=("run_lioness_puma",)),
+     # OTTER has no per-sample version registered.
+-    **_aggregate_claims("run_otter", "a per-sample method such as LIONESS-PANDA", (_OTTER_SCALE,)),
++    **_aggregate_claims("run_otter", "a per-sample method such as LIONESS-PANDA", (_OTTER_SCALE,),
++                        stronger=("run_lioness_panda",)),
+     **_per_sample_claims("run_lioness_panda"),
+     **_per_sample_claims("run_lioness_puma"),
+     ("run_giraffe", "regulator_change", "*"): ClaimSupport("with_step", (
+         "GIRAFFE's TF-by-sample activity matrix gives each TF's activity in each sample; test each "
+         "TF's activity between the conditions (paired when the same individuals give both), with "
+         "multiple-testing correction."
+-    )),
++    ), evidence="tested"),
+     ("run_giraffe", "individual_change", "paired"): ClaimSupport("with_step", (
+         "The difference between an individual's activity profiles at the time points measures how "
+         "much that individual's TF activity changed."
+-    )),
++    ), evidence="tested", quantity="other"),
+     ("run_giraffe", "group_difference", "*"): ClaimSupport("with_step", (
+         "The activity matrix compares TF activity, not network wiring, between the conditions; test "
+         "each TF's activity between them (paired when the same individuals give both)."
+-    )),
++    ), evidence="tested", quantity="other"),
+     # The COBRA paper does not describe an individual term in the design
+     # matrix, so a paired design is not declared.
+     ("run_cobra", "group_difference", "groups"): ClaimSupport("direct", (
+@@ -973,7 +990,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     ), (
+         "Some component values fall outside -1 to 1; read them as contributions, not correlations. "
+         "Deciding which gene pairs differ beyond chance is a separate analysis.",
+-    )),
++    ), evidence="direct"),
+     **_coexpression_claims("run_lioness_coexpression", (_LIONESS_DEPENDENCE,)),
+     **_coexpression_claims("run_bonobo", (
+         "With p-value output, edges can be filtered per sample at a chosen confidence.",
+@@ -989,7 +1006,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     ), (
+         "Partial correlations are conditional on every other feature in both layers, so use the same "
+         "feature set in every network you compare.",
+-    )),
++    ), stronger=("run_lioness_dragon",)),
+     ("run_dragon", "group_difference", "paired"): ClaimSupport("with_step", (
+         "Build one network per time point or condition on the same features and compare the cross-layer "
+         "edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each "
+@@ -997,7 +1014,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     ), (
+         "Partial correlations are conditional on every other feature in both layers, so use the same "
+         "feature set in every network you compare.",
+-    )),
++    ), stronger=("run_lioness_dragon",)),
+     ("run_lioness_dragon", "group_difference", "*"): ClaimSupport("with_step", (
+         "Each sample gets its own two-layer network; comparing the samples' edge weights between the groups "
+         "or conditions (paired when the same individuals give both) shows which within- and cross-layer "
+@@ -1006,7 +1023,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+         "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+         "to the cohort the network was built from.",
+         _LIONESS_DEPENDENCE,
+-    )),
++    ), evidence="tested"),
+     ("run_lioness_dragon", "individual_change", "*"): ClaimSupport("with_step", (
+         "Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort "
+         "-- or, with repeated samples, with the same individual's other sample -- shows which individuals "
+@@ -1015,7 +1032,7 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+         "A sample's edges are estimated from how removing it changes the cohort network, so they are relative "
+         "to the cohort the network was built from.",
+         _LIONESS_DEPENDENCE,
+-    )),
++    ), evidence="tested"),
+     # Logs 365/368: one result for all the samples. Each method's own output, and the
+     # registered per-sample workflow that takes the same data. COBRA's design
+     # matrix holds covariates, not individuals (Micheletti et al. 2024).
+@@ -1029,6 +1046,34 @@ CLAIM_SUPPORT: Mapping[tuple[str, str, str], ClaimSupport] = {
+     **_one_result_claims("run_dragon", "one two-layer network from all the samples", ("run_lioness_dragon",)),
+ }
+ 
++# Log 379 (plan item 3): why the workflow a stated conclusion picks fits it,
++# in the question's terms -- the user's Log 370 rule: say why for your
++# question, not how the algorithm works. Keyed by (claim, evidence); the
++# paired clause is added when the verified design is paired.
++PURPOSE_REASONS: Mapping[tuple[str, str], str] = {
++    ("group_difference", "direct"): "its own output is the difference between the groups that you ask about",
++    ("group_difference", "tested"): "it gives a result for each sample, so the difference you ask about can be tested",
++    ("group_difference", "descriptive"): (
++        "it builds one result per group or time point, which shows the difference you ask about without testing it"),
++    ("individual_change", "tested"): "it gives each sample its own result, so each individual's change can be measured",
++    ("regulator_change", "tested"): (
++        "it gives each regulator a value in each sample, so the change you ask about can be tested regulator by "
++        "regulator"),
++    ("regulator_change", "descriptive"): (
++        "it builds one result per group or time point, which ranks regulators by how much they change without "
++        "testing it"),
++}
++PURPOSE_PAIRED_CLAUSE = ", keeping each individual's samples paired"
++
++
++def purpose_reason(claim: str, evidence: str, design: str) -> str:
++    """The registry's reason a workflow fits a stated conclusion ("" when undeclared)."""
++    reason = PURPOSE_REASONS.get((claim, evidence), "")
++    if reason and design == "paired" and evidence in {"tested", "direct"}:
++        reason += PURPOSE_PAIRED_CLAUSE
++    return reason
++
++
+ # Conclusions no registered workflow can support, said once for the whole
+ # reply: (the text, an addition for a stated paired design, the card row).
+ UNSUPPORTED_CLAIMS: Mapping[str, tuple[str, str, str, str]] = {
+diff --git a/tests/test_agent_gate.py b/tests/test_agent_gate.py
+index 24b6dfc..8d373bc 100644
+--- a/tests/test_agent_gate.py
++++ b/tests/test_agent_gate.py
+@@ -3870,7 +3870,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
+         self.assertEqual(len(result["token_usage"]["calls"]), 4)
+         self.assertEqual(
+             [call["role"] for call in result["token_usage"]["calls"]],
+-            ["semantic_interpreter", "semantic_reviewer", "intent_router", "study_purpose"],
++            # Log 379: the study purpose is read before routing.
++            ["study_purpose", "semantic_interpreter", "semantic_reviewer", "intent_router"],
+         )
+         self.assertLessEqual(
+             result["token_usage"]["total_tokens"],
+diff --git a/tests/test_graph_tracing.py b/tests/test_graph_tracing.py
+index aa9436f..3fa0aa4 100644
+--- a/tests/test_graph_tracing.py
++++ b/tests/test_graph_tracing.py
+@@ -20,6 +20,7 @@ from netzoo_agent_core.contracts import (  # noqa: E402
+     OutcomeHypothesis,
+     RequestedOutcome,
+ )
++from netzoo_agent_core.contracts.study_purpose import StudyPurposeProposal  # noqa: E402
+ from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
+     SemanticDiscriminator,
+     SemanticInterpretation,
+@@ -342,6 +343,7 @@ class EvidenceGuidedSemanticRetryRouter:
+ 
+     def __init__(self):
+         self.calls = 0
++        self.step = 0
+ 
+     def with_structured_output(self, schema, **_kwargs):
+         return SimpleNamespace(
+@@ -350,7 +352,13 @@ class EvidenceGuidedSemanticRetryRouter:
+ 
+     def invoke(self, schema, messages):
+         self.calls += 1
+-        if self.calls == 1:
++        if schema is StudyPurposeProposal:
++            # Log 379: the purpose is read before routing. It is not scripted
++            # here, so it fails as it did when it came last, and the reply
++            # reads the request's own words.
++            raise AssertionError("no study purpose is scripted")
++        self.step += 1
++        if self.step == 1:
+             return SemanticInterpretation(
+                 request_mode="guidance",
+                 semantic_goal="tools for a sample-specific miRNA regulator network",
+@@ -385,12 +393,12 @@ class EvidenceGuidedSemanticRetryRouter:
+                     )
+                 ],
+             )
+-        if self.calls == 2:
++        if self.step == 2:
+             rendered = "\n".join(str(message.content) for message in messages)
+             assert "inconsistent_not_applicable_outcome" in rendered
+             corrected = EmptyOutcomeRouter()
+             return corrected.invoke(schema, messages)
+-        if self.calls == 3:
++        if self.step == 3:
+             return IntentDecision(
+                 mode="answer",
+                 confidence=0.99,
+@@ -404,6 +412,7 @@ class AmbiguousRoleSemanticReviewRouter:
+ 
+     def __init__(self):
+         self.calls = 0
++        self.step = 0
+ 
+     def with_structured_output(self, schema, **_kwargs):
+         return SimpleNamespace(
+@@ -412,7 +421,13 @@ class AmbiguousRoleSemanticReviewRouter:
+ 
+     def invoke(self, schema, messages):
+         self.calls += 1
+-        if self.calls == 1:
++        if schema is StudyPurposeProposal:
++            # Log 379: the purpose is read before routing. It is not scripted
++            # here, so it fails as it did when it came last, and the reply
++            # reads the request's own words.
++            raise AssertionError("no study purpose is scripted")
++        self.step += 1
++        if self.step == 1:
+             return SemanticInterpretation(
+                 request_mode="guidance",
+                 semantic_goal="tools for a sample-specific regulator network",
+@@ -453,7 +468,7 @@ class AmbiguousRoleSemanticReviewRouter:
+                     )
+                 ],
+             )
+-        if self.calls == 2:
++        if self.step == 2:
+             rendered = "\n".join(str(message.content) for message in messages)
+             assert "registry_ambiguity" in rendered
+             corrected = StrictRoutingPipelineLLM()
+@@ -469,7 +484,7 @@ class AmbiguousRoleSemanticReviewRouter:
+                 for item in review.outcome_hypothesis.evidence
+             ]
+             return review
+-        if self.calls == 3:
++        if self.step == 3:
+             return IntentDecision(
+                 mode="answer",
+                 confidence=0.99,
+@@ -1081,11 +1096,11 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+     # asked to rewrite a validated recommendation.
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+     assert [call["role"] for call in result["token_usage"]["calls"]] == [
++        "study_purpose",  # Log 355; read before routing since Log 379
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
+-        "study_purpose",  # Log 355
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     event_types = [event.event_type for event in store.read_events(run_id)]
+@@ -1150,10 +1165,10 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+     # deterministic and the response model is not called.
+     assert response_llm.calls == 0
+     assert [call["role"] for call in result["token_usage"]["calls"]] == [
++        "study_purpose",  # Log 355; read before routing since Log 379
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
+-        "study_purpose",  # Log 355
+     ]
+     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
+         result["messages"][-1].content
+@@ -1226,11 +1241,11 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+     # Verified capability guidance is code-owned: the response model is never
+     # asked to rewrite a validated recommendation.
+     assert [call["role"] for call in result["token_usage"]["calls"]] == [
++        "study_purpose",  # Log 355; read before routing since Log 379
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
+-        "study_purpose",  # Log 355
+     ]
+     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
+     assert any(
+@@ -1412,12 +1427,13 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
+     assert result["tool_results"] == []
+     calls = result["token_usage"]["calls"]
+     assert [call["role"] for call in calls] == [
++        "study_purpose",  # Log 355; read before routing since Log 379
+         "semantic_interpreter",
+         "semantic_reviewer",
+-        "study_purpose",  # Log 355
+     ]
+-    assert calls[0]["status"] == "failed"
+-    assert calls[1]["status"] == "failed"
++    status = {call["role"]: call["status"] for call in calls}
++    assert status["semantic_interpreter"] == "failed"
++    assert status["semantic_reviewer"] == "failed"
+     assert any(
+         event.event_type == "routing.semantic_interpreter_failed"
+         for event in store.read_events(run_id)
+diff --git a/tests/test_purpose_selection.py b/tests/test_purpose_selection.py
+new file mode 100644
+index 0000000..34e31c5
+--- /dev/null
++++ b/tests/test_purpose_selection.py
+@@ -0,0 +1,268 @@
++"""The research purpose decides among the tools that fit (plan item 3, Log 379).
++
++Log 378: the study purpose was read correctly in 27 of 27 baseline sessions and
++used by the decision in none. These tests pin the chain the registry declares
++-- conclusion -> each workflow's evidence -> the pick -- and the guards each
++withdrawn round taught.
++"""
++
++from __future__ import annotations
++
++import json
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++from unittest.mock import patch
++
++import pytest
++
++sys.path[:0] = [str(Path(__file__).parents[1] / "scripts"), str(Path(__file__).parent)]
++
++from workflow_registry import CLAIM_SUPPORT, OUTPUT_CAPABILITIES, PURPOSE_REASONS, purpose_reason  # noqa: E402
++from netzoo_agent_core.contracts import HumanMessage, LLMUsage, TaskDecision, WorkflowPlan  # noqa: E402
++from netzoo_agent_core.contracts.data_facts import DataFactsProposal  # noqa: E402
++from netzoo_agent_core.graph import router_invocation  # noqa: E402
++from netzoo_agent_core.graph import response as response_module  # noqa: E402
++from netzoo_agent_core.graph.data_facts_call import verify_data_facts  # noqa: E402
++from netzoo_agent_core.routing.purpose_selection import (  # noqa: E402
++    needs_tf_priors, purpose_applies, select_by_purpose, with_purpose_selection,
++)
++from netzoo_agent_core.routing.study_purpose import StudyPurpose  # noqa: E402
++from netzoo_agent_core.tracing import NullTraceRecorder  # noqa: E402
++from test_reply_cards import POLICY, build_next_turn_prompt, build_reply_card  # noqa: E402
++
++DECISIONS = json.loads((Path(__file__).parents[1] / "docs/research-log/minimal-pairs-2026-10-04/out/b0-decisions.json")
++                       .read_text())
++A1_QUOTE = "whether the regulatory network changes after treatment across the cohort"
++B1_QUOTE = "whether gene co-expression differs between responders and non-responders"
++
++
++def recorded(key: str) -> TaskDecision:
++    """A live baseline decision (Log 378, `9f95e14`): the tie routing produced."""
++    return TaskDecision.model_validate(DECISIONS[key]["decision"])
++
++
++def purpose(design, *claims) -> StudyPurpose:
++    return StudyPurpose(design, "", tuple(claims))
++
++
++A1 = purpose("paired", ("group_difference", A1_QUOTE))
++B1 = purpose("groups", ("group_difference", B1_QUOTE))
++
++
++# --- the registry, typed ----------------------------------------------------
++
++def test_every_cell_is_typed_consistently_with_its_level():
++    for key, cell in CLAIM_SUPPORT.items():
++        expected = {"direct": {"direct"}, "one_result": {"one_result"},
++                    "with_step": {"tested", "descriptive"}}[cell.level]
++        assert cell.evidence in expected, key
++        for other in cell.stronger:
++            assert other in OUTPUT_CAPABILITIES, key
++            # A stronger workflow is one the registry declares testable for the same conclusion.
++            assert any(CLAIM_SUPPORT.get((other, key[1], design)) and
++                       CLAIM_SUPPORT[(other, key[1], design)].evidence == "tested"
++                       for design in (key[2], "*", "paired", "groups")), key
++
++
++def test_only_giraffe_measures_another_quantity():
++    other = {key for key, cell in CLAIM_SUPPORT.items() if cell.quantity == "other"}
++    assert other == {("run_giraffe", "group_difference", "*"), ("run_giraffe", "individual_change", "paired")}
++
++
++def test_reasons_say_why_for_the_question_not_how_the_method_works():
++    for reason in PURPOSE_REASONS.values():
++        assert not any(word in reason.casefold() for word in ("lioness", "panda", "algorithm", "message passing"))
++    assert purpose_reason("group_difference", "tested", "paired").endswith("keeping each individual's samples paired")
++    assert purpose_reason("causal", "tested", "paired") == ""
++
++
++# --- the pick -----------------------------------------------------------------
++
++def test_a_paired_group_question_brings_in_the_per_sample_tool_its_cells_name():
++    """A1 tied PANDA/OTTER/GIRAFFE/PUMA; LIONESS-PANDA keeps the pairing and allows a test."""
++    decision = recorded("A1-1")
++    selection = select_by_purpose(decision, A1, priors="stated")
++    picked = with_purpose_selection(decision, selection)
++
++    assert selection.recommended == "run_lioness_panda"
++    assert picked.advisory_recommendation.action == "run_lioness_panda"
++    assert picked.advisory_recommendation.conditions[0].text_span == A1_QUOTE
++    # Nothing is removed; the pick is added to the options.
++    assert set(decision.hypothesis_actions) < set(picked.hypothesis_actions)
++    assert picked.hypothesis_actions[:len(decision.hypothesis_actions)] == decision.hypothesis_actions
++
++
++@pytest.mark.parametrize("priors", ["unstated", "ruled_out", None])
++def test_a_tool_needing_priors_is_never_picked_unless_the_priors_are_stated(priors):
++    """Log 371 B4 and Log 377's bug: "unstated" must not count as having them."""
++    selection = select_by_purpose(recorded("A1-1"), A1, priors=priors)
++
++    assert selection.recommended is None
++    assert selection.reason == "no workflow's needed inputs are stated"
++
++
++def test_bound_prior_files_count_as_stated():
++    selection = select_by_purpose(recorded("A1-1"), A1, priors=None,
++                                  stated={"motif_file": "m.tsv", "ppi_file": "p.tsv"})
++
++    assert selection.recommended == "run_lioness_panda"
++
++
++def test_a_two_group_coexpression_question_picks_the_tool_whose_output_answers_it():
++    """B1 tied COBRA/LIONESS-COEXPRESSION with no other data; COBRA's group component answers it."""
++    selection = select_by_purpose(recorded("B1-1"), B1, priors="ruled_out")
++
++    assert selection.recommended == "run_cobra"
++
++
++def test_cobra_needs_a_verified_two_group_design_for_its_design_matrix():
++    selection = select_by_purpose(recorded("B1-1"), purpose(None, ("group_difference", B1_QUOTE)),
++                                  priors="ruled_out")
++
++    assert selection is None or selection.recommended != "run_cobra"
++
++
++def test_equal_best_tools_are_not_separated():
++    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=1, reason="tie",
++                            capability_match_status="ambiguous",
++                            hypothesis_actions=["run_lioness_coexpression", "run_bonobo"])
++    selection = select_by_purpose(decision, purpose("paired", ("individual_change", "which donors change most")),
++                                  priors="ruled_out")
++
++    assert selection.recommended is None
++    assert selection.reason == "more than one workflow fits the conclusion best"
++
++
++def test_an_undeclared_candidate_is_unknown_not_worse():
++    """CC1: a missing declaration is never a gap, so nothing is compared."""
++    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=1, reason="tie",
++                            capability_match_status="ambiguous",
++                            hypothesis_actions=["run_lioness_coexpression", "run_cobra"])
++    selection = select_by_purpose(decision, purpose("paired", ("group_difference", "does it change")),
++                                  priors="ruled_out")
++
++    assert selection.recommended is None
++    assert selection.reason == "a candidate has no declared cell for this conclusion"
++
++
++def test_mirna_tools_need_a_quoted_mirna_reading():
++    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=1, reason="tie",
++                            capability_match_status="ambiguous",
++                            hypothesis_actions=["run_puma", "run_lioness_puma"])
++    claim = purpose("paired", ("individual_change", "which patients change most"))
++
++    assert select_by_purpose(decision, claim, priors="stated").recommended is None
++
++
++@pytest.mark.parametrize(("key", "study"), [
++    ("A0-1", purpose("paired")),                                        # no conclusion: control
++    ("A4-1", purpose("paired", ("causal", "the treatment itself causes changes"))),
++    ("B3-2", purpose("groups", ("prediction", "predicts whether a new patient will respond"))),
++    ("A3-1", purpose("paired", ("regulator_change", "which transcription factors change"))),  # exact
++])
++def test_no_pick_without_a_supported_conclusion_on_a_tie(key, study):
++    decision = recorded(key)
++
++    assert purpose_applies(decision, study) is None
++    assert select_by_purpose(decision, study, priors="stated") is None
++
++
++def test_the_prior_reading_is_asked_only_when_a_prior_tool_could_be_picked():
++    assert needs_tf_priors(recorded("A1-1"), A1)
++    assert not needs_tf_priors(recorded("B1-1"), B1)
++    assert not needs_tf_priors(recorded("A0-1"), purpose("paired"))
++
++
++def test_a_prior_quote_absent_from_the_request_reads_as_unstated():
++    proposal = DataFactsProposal(priors="stated", priors_span="we have JASPAR motifs")
++
++    assert verify_data_facts("RNA-seq from 24 patients.", proposal)[0]["priors"] == "unstated"
++    assert verify_data_facts("RNA-seq plus we have JASPAR motifs.", proposal)[0]["priors"] == "stated"
++
++
++# --- routing reads the purpose first ----------------------------------------
++
++def test_the_purpose_is_read_before_routing_and_reaches_the_decision():
++    order = []
++    purpose_state = {"source": "model", "design": "paired", "design_quote": "", "claims": [["group_difference", A1_QUOTE]]}
++
++    def study(context, state, task, usage, warnings):
++        order.append("study_purpose")
++        return purpose_state, usage, warnings
++
++    def route(context, state, task, purpose=None):
++        order.append("route")
++        assert purpose == purpose_state
++        return router_invocation._RouterInvocation(
++            decision=recorded("A0-1"), routing_state={}, usage=LLMUsage(budget_tokens=1000),
++            budget_warnings=[], reason_code="semantic_registry_intent")
++
++    context = SimpleNamespace(task_token_budget=1000, recorder=NullTraceRecorder())
++    with patch.object(router_invocation, "invoke_study_purpose", side_effect=study), \
++         patch.object(router_invocation, "_route_request", side_effect=route):
++        result = router_invocation.invoke_router(context, {}, DECISIONS["A0-1"]["prompt"])
++
++    assert order == ["study_purpose", "route"]
++    assert result.routing_state["study_purpose"] == purpose_state
++
++
++def test_a_pick_skips_nothing_but_the_condition_question_and_is_recorded():
++    events = []
++    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append((kind, payload))))
++    purpose_state = {"source": "model", "design": "paired", "design_quote": "", "claims": [["group_difference", A1_QUOTE]]}
++    usage = LLMUsage(budget_tokens=1000)
++    with patch.object(router_invocation, "invoke_data_facts",
++                      return_value=({"source": "model", "priors": "stated", "priors_quote": "TF motif"}, usage, [])) as facts:
++        decision, _, _, record, data = router_invocation._select_by_purpose(
++            context, {}, DECISIONS["A1-1"]["prompt"], recorded("A1-1"), purpose_state, usage, [])
++
++    facts.assert_called_once()
++    assert decision.advisory_recommendation.action == "run_lioness_panda"
++    assert decision.clarification_question.startswith("Should I use LIONESS-PANDA")
++    assert record["recommended"] == "run_lioness_panda" and data["priors"] == "stated"
++    assert [kind for kind, _ in events] == ["routing.purpose_selection"]
++
++
++# --- what the user sees ---------------------------------------------------------
++
++def _reply_and_card(key, study, priors):
++    task = DECISIONS[key]["prompt"]
++    decision = with_purpose_selection(recorded(key), select_by_purpose(recorded(key), study, priors=priors))
++    plan = WorkflowPlan(workflow="NO-TOOL", objective=task, decision=decision.model_dump(), status="respond_only")
++    state = {"decision": decision.model_dump(), "plan": plan.model_dump(), "messages": [HumanMessage(content=task)],
++             "tool_results": [], "evaluation": None,
++             "study_purpose": {"source": "model", "design": study.design, "design_quote": "",
++                               "claims": [list(c) for c in study.claims]}}
++    out = response_module.respond(SimpleNamespace(project_policy=POLICY), state)
++    result = {**state, "messages": [HumanMessage(content=task), out["messages"][-1]], "reply_kind": out["reply_kind"]}
++    return out["messages"][-1].content, build_reply_card(result, build_next_turn_prompt(result), POLICY, task=task)
++
++
++def test_the_reply_says_why_the_pick_fits_the_question_without_method_text():
++    text, card = _reply_and_card("A1-1", A1, "stated")
++
++    assert text.startswith(f'Based on what you said — "{A1_QUOTE}" — **LIONESS-PANDA** fits better: '
++                           "it gives a result for each sample, so the difference you ask about can be tested, "
++                           "keeping each individual's samples paired.")
++    assert "approach:" not in text and "W_q" not in text
++    assert f'For your question ("{A1_QUOTE}")' in text  # every listed workflow, in the question's terms
++    option = card.choices.options[0]
++    assert (option.label, option.badge) == ("LIONESS-PANDA", "Recommended")
++    assert option.description.startswith("Fits what you said: it gives a result for each sample")
++    assert {o.label for o in card.choices.options} >= {"PANDA", "OTTER", "GIRAFFE", "PUMA"}
++
++
++def test_without_a_pick_the_reply_is_the_baseline_reply():
++    """Log 378's live A1 decision rendered as is: the purpose reading alone changes nothing."""
++    task = DECISIONS["A1-1"]["prompt"]
++    decision = recorded("A1-1")
++    plan = WorkflowPlan(workflow="NO-TOOL", objective=task, decision=decision.model_dump(), status="respond_only")
++    state = {"decision": decision.model_dump(), "plan": plan.model_dump(), "messages": [HumanMessage(content=task)],
++             "tool_results": [], "evaluation": None,
++             "study_purpose": {"source": "model", "design": "paired", "design_quote": "",
++                               "claims": [["group_difference", A1_QUOTE]]}}
++    text = response_module.respond(SimpleNamespace(project_policy=POLICY), state)["messages"][-1].content
++
++    assert not text.startswith("Based on what you said")
++    assert "**LIONESS-PANDA** fits better" not in text
+diff --git a/tests/test_semantic_claims.py b/tests/test_semantic_claims.py
+index 1413467..26d7acd 100644
+--- a/tests/test_semantic_claims.py
++++ b/tests/test_semantic_claims.py
+@@ -762,7 +762,8 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
+     result = app.invoke({"messages": [HumanMessage(content=TASK)]})
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+     # Log 355: the study-purpose call comes after routing.
+-    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal"]
++    # Log 379: the study purpose is read before routing.
++    assert called == ["StudyPurposeProposal", "SemanticInterpretation", "IntentDecision", "StatedConcernClaims"]
+     assert result["decision"]["should_execute"] is False
+     assert result["decision"]["action"] == "no_tool"
+     assert result["plan"]["status"] == "respond_only"
