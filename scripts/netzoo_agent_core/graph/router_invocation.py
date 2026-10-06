@@ -31,6 +31,9 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
+from .data_facts_call import invoke_data_facts
+from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
+from ..interpretation.request_requirements import stated_in_text
 from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
@@ -145,6 +148,7 @@ def invoke_router(
         )
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
+        result = _with_applicability(context, state, user_task, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -157,6 +161,52 @@ def invoke_router(
         "requested_outcome": decision.requested_outcome.model_dump(),
         "outcome_hypotheses": [item.model_dump() for item in decision.outcome_hypotheses],
     })
+
+
+def _with_applicability(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:
+    """Plan item 4 (Log 380): judge each listed workflow against the request's data.
+
+    Only a guidance decision that lists a workflow needing TF priors or miRNA
+    data the request does not bind asks the data-facts call. The reading and
+    the per-workflow judgement go on the decision for the reply and card; no
+    workflow is selected, ranked or removed here.
+    """
+    decision = result.decision
+    listed = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
+    if decision.action != "no_tool" or not needs_data_facts(listed, stated_in_text(user_task)):
+        return result
+    facts, usage, warnings = invoke_data_facts(context, state, user_task, result.usage, result.budget_warnings)
+    if facts is None:
+        return replace(result, usage=usage, budget_warnings=warnings)
+    present = merge_inputs(_stated_artifacts(user_task, decision), facts)
+    advice = decision.advisory_recommendation
+    listed_with_advice = [*listed, *([advice.action] if advice is not None else [])]
+    decision = decision.model_copy(update={
+        "data_facts": {key: str(value) for key, value in facts.items()},
+        "applicability": assess_applicability(listed_with_advice, present, user_task),
+    })
+    status = {item.action: item.status for item in decision.applicability}
+    dropped = None
+    if advice is not None and status.get(advice.action) == "not_applicable":
+        # A recommendation needing data the request rules out is not one (plan item 4).
+        dropped = advice.action
+        decision = decision.model_copy(update={"advisory_recommendation": None, "clarification_question": None})
+    record_event(context, state, "routing.applicability_assessed", "classify", {
+        "data_facts": decision.data_facts,
+        "applicability": [item.model_dump() for item in decision.applicability],
+        "recommendation_dropped": dropped,
+    })
+    return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
+                   routing_state={**result.routing_state, "data_facts": decision.data_facts})
+
+
+def _stated_artifacts(user_task: str, decision: TaskDecision) -> set[str]:
+    from ..routing.capability_compatibility import input_availability
+
+    present = set(input_availability(user_task).present)
+    for item in decision.outcome_hypotheses:
+        present.update(value for value in item.outcome.input_artifacts if value != "unknown")
+    return present
 
 
 def _route_request(
