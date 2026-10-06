@@ -42,7 +42,7 @@ from .outside_steps import outside_steps
 from .request_integrity import regulatory_role_mentions
 
 __all__ = [
-    "InputAlternative", "alternative_phrases", "input_alternative", "render_input_alternative",
+    "InputAlternative", "alternative_phrases", "asks_for_data", "input_alternative", "render_input_alternative",
     "with_input_alternative", "with_input_alternative_reply",
 ]
 
@@ -122,8 +122,12 @@ def _primary(decision):
     return decision.outcome_hypotheses[0].outcome if decision.outcome_hypotheses else None
 
 
-def input_alternative(decision, task: str) -> InputAlternative | None:
-    """The workflows the request's named data runs, when none of the decision's does."""
+def input_alternative(decision, task: str, *, ask: bool = True) -> InputAlternative | None:
+    """The workflows the request's named data runs, when none of the decision's does.
+
+    ``ask=False`` (Log 381): the request asks only for a conclusion no registered
+    workflow supports, so no input is asked about; ruled-out data is still said.
+    """
     candidates = [
         action for action in dict.fromkeys(
             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions])
@@ -183,6 +187,8 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
     asked = next((tuple(label for label in missing_input_labels(action, present, task) if askable(label))
                   for action in open_candidates
                   if [label for label in missing_input_labels(action, present, task) if askable(label)]), ())
+    if not ask:
+        asked = ()
     if not asked and not (ruled_out and judged):
         return None
     quote = next((present.quotes.get(INPUT_ARTIFACTS[field], "") for field in ruled_out_fields
@@ -267,9 +273,23 @@ def render_input_alternative(found: InputAlternative, policy) -> str:
     return " ".join(parts)
 
 
-def with_input_alternative(text: str, decision, task: str, policy) -> str:
+def asks_for_data(state, task: str) -> bool:
+    """False when the request asks only for conclusions no registered workflow supports (Log 381).
+
+    Log 380 F4 ("Could these profiles predict which patients will relapse?")
+    was asked for a motif prior and a PPI network to run workflows that cannot
+    answer it. The study purpose's claims decide: a prediction or causal claim
+    with no claim a workflow works toward needs no input question.
+    """
+    from .study_purpose_notes import gap_claims, purpose_from_state, question_claim
+
+    purpose = purpose_from_state(state, task)
+    return not (gap_claims(purpose) and question_claim(purpose) is None)
+
+
+def with_input_alternative(text: str, decision, task: str, policy, *, ask: bool = True) -> str:
     """Add the paragraph above the reply's closing line, when it applies."""
-    found = input_alternative(decision, task)
+    found = input_alternative(decision, task, ask=ask)
     if found is None or not text:
         return text
     return above_closing(text, render_input_alternative(found, policy))
@@ -280,9 +300,13 @@ def with_input_alternative_reply(result: dict, state, policy, reply) -> dict:
     from ..contracts import TaskDecision
     from ..llm import latest_user_task
 
-    if policy is None or result.get("reply_kind") not in _REPLY_KINDS:
+    decision = TaskDecision.model_validate(state["decision"])
+    # Log 381: with a data-facts reading, the per-reading reply (Log 248) gets the
+    # paragraph too (Log 380 G1: PANDA and OTTER with the priors unstated, never asked).
+    kinds = _REPLY_KINDS | ({"hypothesis_routes"} if decision.data_facts else set())
+    if policy is None or result.get("reply_kind") not in kinds:
         return result
+    task = latest_user_task(state["messages"])
     text = str(result["messages"][-1].content)
-    updated = with_input_alternative(
-        text, TaskDecision.model_validate(state["decision"]), latest_user_task(state["messages"]), policy)
+    updated = with_input_alternative(text, decision, task, policy, ask=asks_for_data(state, task))
     return result if updated == text else reply(updated, result["reply_kind"])

@@ -259,3 +259,95 @@ def test_a_recommendation_needing_ruled_out_data_is_dropped():
     # with no question it fell to the model, whose budget preflight refused).
     text, _, _ = respond_and_card(NO_OTHER, result.decision)
     assert "Which of the listed options fits your study?" in text and "fits better" not in text
+
+
+# --- Log 381: mentioned data, per-reading replies, unanswerable questions, fallbacks ---
+
+ADVISOR = ("My advisor says we will need a TF motif prior; we have RNA-seq from 30 sheep livers, fed or fasted. "
+           "Which transcription factors change their targets with fasting?")
+
+
+def test_a_stated_reading_needs_the_users_own_current_words():
+    # Log 380 T1/T2: the quote was in the request, but someone else's words or another cohort's data.
+    said_by_advisor = DataFactsProposal(priors="stated", priors_span="we will need a TF motif prior",
+                                        mirna="unstated", mirna_span="")
+    entry, rejected = verify_data_facts(ADVISOR, said_by_advisor)
+
+    assert entry["priors"] == "unstated" and rejected[0]["reason"] == "not_in_own_current_words"
+    assert statuses(judged(_panda_tie(), ADVISOR, entry)) == {
+        "run_panda": "insufficient_information", "run_otter": "insufficient_information"}
+    other_cohort = ("Last year we used JASPAR motifs and a STRING network on a different cohort; this year we have "
+                    "RNA-seq from 40 sheep livers. Which transcription factors change their targets with fasting?")
+    entry, _ = verify_data_facts(other_cohort, DataFactsProposal(
+        priors="stated", priors_span="we used JASPAR motifs and a STRING network", mirna="unstated", mirna_span=""))
+    assert entry["priors"] == "unstated"
+    # The user's own statement stands, commas and all.
+    entry, rejected = verify_data_facts(DATABASES, DataFactsProposal(
+        priors="stated", priors_span="JASPAR binding-site scans of promoters and the STRING database",
+        mirna="unstated", mirna_span=""))
+    assert entry["priors"] == "stated" and rejected == []
+
+
+def _panda_tie():
+    return decision([reading("regulatory_network", ["expression_matrix"], ["tf"])],
+                    capability_match_status="ambiguous", hypothesis_actions=["run_panda", "run_otter"])
+
+
+def _finish(kind, made, task, purpose=None):
+    from netzoo_agent_core.contracts import AIMessage, HumanMessage
+    from netzoo_agent_core.interpretation.input_alternatives import with_input_alternative_reply
+    from test_reply_cards import POLICY
+
+    text = "PANDA and OTTER fit.\n\nNo files were inspected and no analysis ran."
+    state = {"decision": made.model_dump(), "messages": [HumanMessage(content=task)], "study_purpose": purpose}
+    result = {"messages": [AIMessage(content=text)], "reply_kind": kind}
+    out = with_input_alternative_reply(result, state, POLICY,
+                                       lambda new, k: {"messages": [AIMessage(content=new)], "reply_kind": k})
+    return str(out["messages"][-1].content)
+
+
+def test_a_per_reading_reply_asks_about_unstated_data_once_it_was_read():
+    made = judged(_panda_tie(), F3, facts("unstated"))
+
+    assert "Do you also have a motif prior and a PPI network?" in _finish("hypothesis_routes", made, F3)
+    # Without a reading the per-reading reply is left as it was.
+    assert "What your data allows" not in _finish("hypothesis_routes", _panda_tie(), F3)
+
+
+PREDICT = ("We have bulk RNA-seq of 60 colon biopsies. Could these profiles predict which patients relapse?")
+PREDICTION_ONLY = {"design": None, "design_quote": "",
+                   "claims": [("prediction", "predict which patients relapse")]}
+
+
+def test_a_question_no_workflow_answers_is_not_asked_for_data():
+    made = judged(_panda_tie(), PREDICT, facts("unstated"))
+
+    assert "Do you also have" not in _finish("hypothesis_routes", made, PREDICT, PREDICTION_ONLY)
+    # A question a workflow works toward, beside the prediction, still needs the data.
+    both = {**PREDICTION_ONLY, "claims": [("regulator_change", "which regulators change"),
+                                          *PREDICTION_ONLY["claims"]]}
+    assert "Do you also have" in _finish("hypothesis_routes", made, PREDICT, both)
+
+
+def test_ruled_out_data_is_still_said_when_nothing_is_asked():
+    task = PREDICT.replace("We have bulk", "We only have bulk")
+    made = judged(_panda_tie(), task, facts("ruled_out", priors_quote="We only have bulk RNA-seq"))
+    text = _finish("hypothesis_routes", made, task, PREDICTION_ONLY)
+
+    assert "which you said you do not have" in text and "Do you also have" not in text
+
+
+def test_a_fallback_short_of_ruled_out_data_carries_the_condition():
+    from netzoo_agent_core.interpretation.verified_guidance import _fallback_line
+
+    task = ("We have RNA-seq of 34 monocyte samples plus CIS-BP motifs and a BioGRID network, but no microRNA "
+            "measurements. Which regulators control the inflammatory genes?")
+    fallback = decision([reading("regulatory_network", ["expression_matrix"], ["tf", "mirna"])],
+                        capability_match_status="fallback", matched_actions=["run_puma"],
+                        recommended_actions=["run_puma"])
+    made = judged(fallback, task, facts("stated", "ruled_out", priors_quote="CIS-BP motifs and a BioGRID network",
+                                        mirna_quote="no microRNA measurements"))
+
+    assert _fallback_line(made, ["run_puma"], "PUMA") == (
+        "Fallback candidate: **PUMA**, but it needs a miRNA list, which you said you do not have.")
+    assert _fallback_line(fallback, ["run_puma"], "PUMA") == "Fallback recommendation: **PUMA**."
