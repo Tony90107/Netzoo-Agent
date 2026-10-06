@@ -44,6 +44,12 @@ class RequestRequirements(BaseModel):
     # Filled after routing; a reading of the request, not the user's words.
     goal: str | None = None
     open_conditions: list[str] = Field(default_factory=list)
+    # Plan item 4 (Log 380): the data-facts reading and each listed workflow's
+    # applicability to it (applicable / not applicable / insufficient information).
+    data_facts: dict[str, str] | None = None
+    applicability: list[dict[str, Any]] = Field(default_factory=list)
+    # Plan item 5 (Log 383): the turn's data-needs plan.
+    data_plan: dict[str, Any] | None = None
 
     def stated_value(self, field: str) -> Any:
         """The value the user stated for *field*, this turn first."""
