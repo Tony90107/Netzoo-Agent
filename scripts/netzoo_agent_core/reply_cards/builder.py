@@ -461,11 +461,11 @@ _INPUT_ALTERNATIVE_CARDS = frozenset({"clarification", "method_choice", "workflo
 _UNMENTIONED_POINTS = ("Not mentioned in your request:", "Every option also needs ")
 
 
-def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> ReplyCard:
+def _with_input_alternative(card: ReplyCard, decision, policy, task: str, result: dict) -> ReplyCard:
     """Ask first whether the inputs exist when no option runs on the data the request names (Log 312)."""
-    from ..interpretation.input_alternatives import alternative_phrases, input_alternative
+    from ..interpretation.input_alternatives import alternative_phrases, asks_for_data, input_alternative
 
-    found = input_alternative(decision, task)
+    found = input_alternative(decision, task, ask=asks_for_data(result, task))
     if found is None:
         return card
     words = alternative_phrases(found, policy)
@@ -596,7 +596,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
     if card is None:
         card = _core_card(kind, decision, policy, task)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
-        card = _with_input_alternative(card, decision, policy, task)
+        card = _with_input_alternative(card, decision, policy, task, result)
     if card is not None and kind != "execution":
         card = _with_outside_steps(card, decision, task)
         card = _with_study_purpose(card, kind, decision, policy, task, result)

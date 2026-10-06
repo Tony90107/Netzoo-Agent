@@ -10,6 +10,7 @@ nothing is read and every reader keeps the request's own words.
 
 from __future__ import annotations
 
+import re
 import time
 
 from pydantic import BaseModel
@@ -57,13 +58,36 @@ def build_data_facts_messages(user_task: str) -> list:
     ]
 
 
+def _in_own_current_words(task: str, span: str) -> bool:
+    """Whether the quote lies in the user's own, current statement (Log 381).
+
+    The authority-bearing text of plan item 1 (`admissible_request_text`)
+    leaves out reported speech, quotations and what happened before. Log 380
+    read a supervisor's "we need a motif prior" (T1) and another cohort's
+    "JASPAR motifs and a STRING network" from last year (T2) as data the user
+    has: the quote was in the request, but not in the user's own account of
+    this data. Punctuation is ignored, because that text is split at commas.
+    """
+    from ..routing.request_scope import admissible_request_text
+
+    words = re.findall(r"\w+", span)
+    pattern = r"\W+".join(re.escape(word) for word in words)
+    return bool(words) and re.search(pattern, admissible_request_text(task), re.IGNORECASE) is not None
+
+
 def verify_data_facts(task: str, proposal: DataFactsProposal) -> tuple[dict, list[dict]]:
-    """The state entry for a proposal: each reading stands when its quote is in the request, else unstated."""
+    """The state entry for a proposal: each reading stands when its quote is in the request, else unstated.
+
+    A "stated" reading also needs its quote in the user's own, current words (Log 381).
+    """
     entry, rejected = {"source": "model"}, []
     for field in ("priors", "mirna"):
         value, span = getattr(proposal, field), getattr(proposal, f"{field}_span")
         if value != "unstated" and _locate(task, span) is None:
             rejected.append({"field": field, "value": value, "reason": "quote_not_in_request"})
+            value = "unstated"
+        elif value == "stated" and not _in_own_current_words(task, span):
+            rejected.append({"field": field, "value": value, "reason": "not_in_own_current_words"})
             value = "unstated"
         entry[field] = value
         entry[f"{field}_quote"] = span.strip() if value != "unstated" else ""
