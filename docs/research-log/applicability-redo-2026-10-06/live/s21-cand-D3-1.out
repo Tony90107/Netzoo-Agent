@@ -1,0 +1,30 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (11.90s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, OTTER, COBRA
+✓ Guidance prepared
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “transcription factors rewire their targets in warm water”:
+
+**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.
+
+For “transcription factors rewire their targets in warm water”:
+
+**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+You would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.
+
+For “gene pairs gain co-expression”:
+
+**COBRA**. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.
+
+You would need expression matrix, sample covariate design matrix. The analysis would provide inferred gene-to-gene associations.
+
+**What your data allows.** COBRA needs expression matrix and covariate design matrix. PANDA and OTTER need a motif prior and a PPI network, which you said you do not have ("everything we produced for this Atlantic salmon gill study is one RNA-seq count matrix from 60 fish plus a spreadsheet giving each fish's water temperature group and sequencing lane"). With the data you describe alone, LIONESS-COEXPRESSION or BONOBO builds a gene-gene co-expression network (genes only, no regulator roles) instead.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.

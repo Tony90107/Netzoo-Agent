@@ -1,0 +1,22 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.46s)
+● Matching registered workflows…
+✓ Guidance prepared
+Based on what you said — "any regulatory analysis will need a TF motif prior and a protein interaction network." — **BONOBO** fits better: a confidence value (p-value) is needed for each connection in each sample.
+
+Your question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.
+
+**BONOBO** (recommend) — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable. Needs expression matrix. Produces inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result (one result per sample).
+
+Conditional assumptions to confirm:
+- The user is aware that additional methods may be needed to incorporate TF motif priors and protein interaction networks.
+
+Other compatible option(s):
+- **LIONESS-COEXPRESSION** — preferred when: dozens of samples or more; no sample covariates need to be separated or adjusted; approach: derive each sample network from all-sample and leave-one-out networks.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **BONOBO** — Per-sample gene degree or edge weights can be compared across samples or groups; with p-value output, edges can be filtered per sample at a chosen confidence. Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied separately. These are co-expression networks, not TF-gene regulation; turning them into regulatory networks needs a separate, validated conversion before PANDA.
+
+Should I use BONOBO, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.

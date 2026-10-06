@@ -1,0 +1,20 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (7.39s)
+● Matching registered workflows…
+✓ Guidance prepared
+I can map this to more than one compatible network result:
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Needs expression matrix, motif/prior and PPI network.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Which of the listed options fits your study?
+
+**What your data allows.** LIONESS-PUMA also needs a miRNA list. GIRAFFE, LIONESS-PANDA and LIONESS-PUMA need a motif prior and a PPI network, which you said you do not have ("everything we produced for this Atlantic salmon gill study is one RNA-seq count matrix from 60 fish plus a spreadsheet giving each fish's water temperature group and sequencing lane"). With the data you describe alone, LIONESS-COEXPRESSION or BONOBO builds one gene-gene co-expression network per sample (genes only, no regulator roles) instead.
+
+No files were inspected and no analysis ran.

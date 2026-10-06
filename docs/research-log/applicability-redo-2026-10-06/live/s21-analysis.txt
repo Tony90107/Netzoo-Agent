@@ -1,0 +1,70 @@
+# Log 381 live analysis `s21` (3 repeats, 32 items)
+
+V1 base: sessions 96/96, missing [], provider errors {}, all errors {'ValidationError': 25, 'ValueError': 8}, cost $0.1957
+V1 cand: sessions 96/96, missing [], provider errors {}, all errors {'ValidationError': 29, 'ValueError': 8}, cost $0.1975
+
+A1 asks about priors where data_question=priors: base 2/24 (8%), cand 9/24 (38%) -> FAIL (cand >= 75% and >= base + 25 points)
+   (report) base: where it lists a workflow needing priors 2/19 (11%); elsewhere 0/5 (0%)
+   (report) cand: where it lists a workflow needing priors 9/20 (45%); elsewhere 0/4 (0%)
+A2 priors questions where priors stated or ruled out: base 5 ['A1-1', 'A1-2', 'A1-3', 'A3-1', 'A3-3'], cand 0 [] -> PASS (cand <= 2)
+A3 cand priors questions on data_question=priors: 9/9 (100%); elsewhere on [] -> PASS (>= 75%)
+R1 cand says the priors were ruled out, where it lists a workflow needing them: 9/9 (100%) -> PASS (>= 60%)
+R2 base: offered though ruled out 2 ['D1-1:priors', 'D1-2:priors']; selected though unstated 5 ['E4-2:priors', 'E4-3:priors', 'G1-1:priors', 'G1-2:priors', 'G1-3:priors']
+R2 cand: offered though ruled out 0 []; selected though unstated 0 []
+R2 total base 7, cand 0 -> PASS (cand <= base // 3 when base >= 3, else cand <= base)
+M1 miRNA questions where miRNA stated or ruled out: base 0 [], cand 0 [] -> PASS (cand <= max(1, base))
+B1 base: model-written replies 0 []; of them the budget fallback []
+B1 cand: model-written replies 0 []; of them the budget fallback []
+B1 -> PASS (cand <= base + 1)
+H2 cand respond-only replies differing from the offline render: 1 ['C1-1'] -> FAIL
+H3 roles cand - base: ['data_facts']; base - cand: [] -> PASS
+V1 every session present: PASS
+ALL GATES: FAIL ['A1', 'H2']
+
+(report) per label, arm: sessions | priors asks | miRNA asks | says ruled out | lists a priors workflow
+  base priors=ruled_out data_question=none  :  24 |   0 |   0 |   0 |   9
+  base priors=stated    data_question=none  :  30 |   5 |   0 |   0 |  14
+  base priors=unstated  data_question=none  :  18 |   2 |   0 |   0 |   9
+  base priors=unstated  data_question=priors:  24 |   2 |   0 |   0 |  19
+  cand priors=ruled_out data_question=none  :  24 |   0 |   0 |   9 |   9
+  cand priors=stated    data_question=none  :  30 |   0 |   0 |   0 |  16
+  cand priors=unstated  data_question=none  :  18 |   0 |   0 |   2 |  10
+  cand priors=unstated  data_question=priors:  24 |   9 |   0 |   6 |  20
+(report) data-facts reading (kind, annotated -> read): {('mirna', 'ruled_out', 'ruled_out'): 3, ('mirna', 'ruled_out', 'unstated'): 6, ('mirna', 'stated', 'stated'): 8, ('mirna', 'unstated', 'unstated'): 37, ('priors', 'ruled_out', 'ruled_out'): 9, ('priors', 'stated', 'stated'): 16, ('priors', 'unstated', 'ruled_out'): 8, ('priors', 'unstated', 'stated'): 2, ('priors', 'unstated', 'unstated'): 19}
+(report) stated readings downgraded as not the user's own current words (item, kind, annotated): {('F1', 'priors', 'unstated'): 3, ('F2', 'priors', 'unstated'): 3, ('F3', 'priors', 'unstated'): 1, ('F4', 'priors', 'unstated'): 2}
+(report) applicability assessed in 54 cand sessions; recommendations dropped ['D1-1:run_giraffe']
+(report) base: offered an answer in 16/96, all acceptable in 9
+(report) cand: offered an answer in 9/96, all acceptable in 8
+(report) per item: priors asks base/cand, says ruled out cand
+  A1  priors=stated    needs=tf_priors            dq=none   asks 3/0 ruled 0
+  A2  priors=stated    needs=none                 dq=none   asks 0/0 ruled 0
+  A3  priors=stated    needs=none                 dq=none   asks 2/0 ruled 0
+  A4  priors=stated    needs=tf_priors            dq=none   asks 0/0 ruled 0
+  B1  priors=stated    needs=tf_priors_and_mirna  dq=none   asks 0/0 ruled 0
+  B2  priors=stated    needs=none                 dq=none   asks 0/0 ruled 0
+  B3  priors=stated    needs=none                 dq=none   asks 0/0 ruled 0
+  B4  priors=stated    needs=tf_priors_and_mirna  dq=none   asks 0/0 ruled 0
+  C1  priors=ruled_out needs=tf_priors            dq=none   asks 0/0 ruled 3
+  C2  priors=ruled_out needs=tf_priors_and_mirna  dq=none   asks 0/0 ruled 0
+  C3  priors=ruled_out needs=none                 dq=none   asks 0/0 ruled 0
+  C4  priors=ruled_out needs=none                 dq=none   asks 0/0 ruled 0
+  D1  priors=ruled_out needs=tf_priors            dq=none   asks 0/0 ruled 3
+  D2  priors=ruled_out needs=none                 dq=none   asks 0/0 ruled 0
+  D3  priors=ruled_out needs=tf_priors            dq=none   asks 0/0 ruled 3
+  D4  priors=ruled_out needs=none                 dq=none   asks 0/0 ruled 0
+  E1  priors=unstated  needs=tf_priors            dq=priors asks 0/2 ruled 0
+  E2  priors=unstated  needs=none                 dq=none   asks 0/0 ruled 0
+  E3  priors=unstated  needs=none                 dq=none   asks 2/0 ruled 0
+  E4  priors=unstated  needs=tf_priors            dq=priors asks 0/1 ruled 0
+  F1  priors=unstated  needs=tf_priors            dq=priors asks 0/3 ruled 0
+  F2  priors=unstated  needs=none                 dq=none   asks 0/0 ruled 0
+  F3  priors=unstated  needs=none                 dq=none   asks 0/0 ruled 0
+  F4  priors=unstated  needs=tf_priors            dq=priors asks 0/0 ruled 0
+  G1  priors=unstated  needs=tf_priors            dq=priors asks 0/0 ruled 3
+  G2  priors=unstated  needs=none                 dq=none   asks 0/0 ruled 0
+  G3  priors=unstated  needs=none                 dq=none   asks 0/0 ruled 2
+  G4  priors=unstated  needs=tf_priors            dq=priors asks 0/0 ruled 3
+  T1  priors=unstated  needs=tf_priors            dq=priors asks 0/3 ruled 0
+  T2  priors=stated    needs=tf_priors            dq=none   asks 0/0 ruled 0
+  T3  priors=unstated  needs=tf_priors            dq=priors asks 2/0 ruled 0
+  T4  priors=stated    needs=tf_priors_and_mirna  dq=none   asks 0/0 ruled 0

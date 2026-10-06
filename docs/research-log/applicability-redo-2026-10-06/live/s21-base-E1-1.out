@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.23s)
+● Matching registered workflows…
+✓ Matched workflows — PANDA, OTTER
+✓ Guidance prepared
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “transcription factors regulate different target genes” and “high-grain diet than on the hay diet”:
+
+**PANDA**. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations.
+
+For “transcription factors regulate different target genes” and “high-grain diet than on the hay diet”:
+
+**OTTER**. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+You would need motif/prior, PPI network, either expression matrix or adjusted co-expression matrix. The analysis would provide inferred regulator-to-target associations.
+
+For your question ("Which transcription factors regulate different target genes on the high-grain diet than on the hay diet?"):
+- **PANDA**, **OTTER** — Comparing each regulator's targeting score (out-degree) between networks built separately for each condition shows regulators whose targeting changes. Without per-sample networks this ranks regulators by the size of the change, with no test of whether it exceeds chance.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.

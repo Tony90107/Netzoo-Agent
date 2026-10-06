@@ -1,0 +1,17 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (6.44s)
+● Matching registered workflows…
+✓ Guidance prepared
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **LIONESS-COEXPRESSION** — Per-sample gene degree or edge weights can be compared across samples or groups. All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+- **LIONESS-COEXPRESSION**, **BONOBO** — Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied separately.
+- **BONOBO** — Per-sample gene degree or edge weights can be compared across samples or groups; with p-value output, edges can be filtered per sample at a chosen confidence. These are co-expression networks, not TF-gene regulation; turning them into regulatory networks needs a separate, validated conversion before PANDA.
+
+Both fit; to choose, tell me: (1) About how many samples do you have? (only a handful of samples → BONOBO; dozens of samples or more → LIONESS-COEXPRESSION) (2) Do you need a confidence value for each connection in each sample? (yes → BONOBO)
+
+No files were inspected and no analysis ran.
