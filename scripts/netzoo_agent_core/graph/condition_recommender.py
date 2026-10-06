@@ -64,6 +64,7 @@ __all__ = [
     "is_method_tie",
     "recommend_from_claims",
     "separating_question",
+    "unrecommended_question",
 ]
 
 _MAX_QUESTIONS = 2
@@ -253,6 +254,21 @@ def separating_question(
     if uncovered:
         text += " If none of these applies: " + ", ".join(_workflow_name(a) for a in uncovered) + "."
     return text
+
+
+def unrecommended_question(decision: TaskDecision) -> str:
+    """A tie's question once its recommendation is withdrawn (Log 380: it needed ruled-out data).
+
+    A method tie asks the facts that separate it, as when nothing is
+    recommended; any other tie asks which listed option fits. Never None: the
+    reply's clarification renderer needs a question, and without one a tie fell
+    to the response model (Log 380 self-test, s18 D2: the budget fallback).
+    """
+    candidates = list(decision.hypothesis_actions)
+    options = condition_options(candidates) if is_method_tie(decision) else []
+    if options:
+        return separating_question(options, candidates)
+    return "Which of the listed options fits your study?"
 
 
 def recommendation_question(recommendation: AdvisoryRecommendation) -> str:
