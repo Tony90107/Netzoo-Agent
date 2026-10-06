@@ -19247,3 +19247,50 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 4. 家族 G：DRAGON 系列需要說出兩層檔案才可選，不會選。
 5. C3 的 LIONESS-PUMA 需要被引用的 miRNA 讀法。
 6. PF 只在平手時作用。若 live 的路由給出 exact 或兩個讀法，PF 不適用，P1 的增量可能因此不足 2。
+
+## Log 379（結果）｜精確度與安全判定全部成立；P1（家族數 +2）只達 +1，依宣告撤回
+
+依 Log 379 執行。候選 `80c837a`，基準 `9f95e14`，兩者都在乾淨 worktree。共 192 個 session，花費 US$0.372（含重跑）。
+證據在 `purpose-first-2026-10-05/live/`：`s19-analysis.txt`（宣告的判定）、`s19-decisions.json`（兩臂每個 session 的決策、研究目的、data facts、PF 紀錄）、`s19-run.log`、`s19-rerun.log`、`s19-*.out/.err`。
+
+**V1 的重跑：**
+- 第一輪 rep 1 的前 10 題，兩臂各有 10 個 session 遇到 `OpenAIConnectionError`（同一段時間的 provider 連線錯誤）。
+- 依宣告，這 20 個 session 各重跑一次。原檔、原 trace 移到各 worktree 的 `.netzoo/s19-provider-error-archive/`，避免同名續接與 trace 混用。
+- 重跑後兩臂都是 96/96，provider 錯誤 0。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| V1 | 兩臂 96/96；provider 錯誤 0（重跑後） | 是 |
+| S1 | PF 選擇 7/7 在 acceptable 內（100%） | 是 |
+| S3 | 對照、causal、prediction 上的選擇 0 | 是 |
+| S4 | 被移除的候選 0 | 是 |
+| P1 | 分開的家族：基準 4（A、B、C、G），候選 5（A、B、C、D、G）；+1，門檻 +2 | **否** |
+| H2 | 候選 respond_only 回覆與離線渲染的差異 0 | 是 |
+| H3 | 多出的角色只有 `data_facts` | 是 |
+
+**PF 實際做了什麼（逐題，只報告）：**
+- D2「drought vs watered 是否顯著不同」（只有表現量）：基準 0/3 推薦，候選 COBRA 3/3，在 subset 內。
+- F2（prior 沒提，兩組顯著差異）：基準 0/3，候選 COBRA 3/3，在 subset 內。
+- B2：候選 1/3 選 LIONESS-PANDA，在 acceptable 內，但不在 subset（PANDA、OTTER）內。這是事前公開的風險 1。
+- 所有選擇 S2 為 6/7，沒有任何有害的改變。
+- data-facts 呼叫 9 次，都在 prior 說出的題目上，9/9 讀成 stated。
+- PF 適用 21 次、沒有選 14 次：
+  - 「目的分不開候選」5 次：A2、B4 的 LIONESS-PANDA 對 LIONESS-PUMA，差別只在 miRNA 輸入。
+  - 「不只一個最佳」6 次：T1、C2 等的 GIRAFFE 對 LIONESS-PANDA，以及 E 家族。
+  - 「候選沒有宣告格子」3 次：E2 的 COBRA 在 paired 下。
+
+**P1 為什麼只有 +1（事後只報告，不改判）：**
+1. **飽和**：A、B、C、G 在基準就已「分開」。原因是 exact match 本身因目的不同而不同（A3、B3、C2 是 GIRAFFE；C1 是 PUMA；G2、G4 是 DRAGON），PF 不會、也不需要動這些題。
+2. **F 被另一個錯誤遮住**：F2 的增益（COBRA 3/3）沒有計入，因為兩臂的 F3 都 exact 推薦 GIRAFFE。F3 的 prior 沒提，標註沒有任何可接受工具。這是輸入可用性（計畫第 4 項）的錯誤，與 PF 無關。
+3. **E 依設計不會選**：這是事前公開的風險 3。
+4. 實際能增加的只有 D、F 兩家；其中 F 被 2 擋下，所以結果是 +1。宣告時沒有估到第 1、2 點，這是門檻設計的缺口，不是在看到結果後才發現的行為。
+
+**決定：** 撤回。`80c837a` 已以 `445df9d` revert。
+- 程式碼與 `9f95e14` 相同（`git diff 9f95e14 HEAD -- scripts tests` 為空）。
+- 全套件 3367 passed／35 skipped（含 regex session 未提交的 8 個測試）。指紋不變。
+
+**若要重來（尚未宣告，等使用者決定）：**
+1. P1 改以題為單位：基準沒有推薦、候選有推薦、且在 acceptable 內的題數，以及有害改變的題數。家族層級的判定會被 exact match 先填滿。
+2. 同等適合的工具，讓輸入可用性決定（A2、B4：沒說 miRNA，就選 LIONESS-PANDA）。
+3. F3 這類「prior 沒提卻 exact 推薦需要 prior 的工具」：由第 4 項的方法適用性處理，與第 3 項分開宣告。
+4. 第十九組已看過，下一輪要用第二十組。

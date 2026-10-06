@@ -1,0 +1,37 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (11.03s)
+● Matching registered workflows…
+✓ Guidance prepared
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "compare the regulatory network of fibrotic lungs with that of donor lungs"**
+Result: regulatory networks (aggregate), from expression matrix.
+- **TF-only regulatory network — PANDA**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with PANDA.
+  - Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only regulatory network — OTTER**
+  - Registered purpose: Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints.
+  - Method premise: continuous relaxed graph-matching; explicit objective/loss, gradient descent, convergence; not heuristic message passing
+  - Mathematical interpretation: OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+  - Required inputs: all of: motif/prior, PPI network; and one of: expression matrix or adjusted co-expression matrix.
+  - Declared output: regulatory networks (cohort-level aggregate).
+- **TF-only signed regulatory-effect network — GIRAFFE**
+  - Registered purpose: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.
+  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix
+  - Mathematical interpretation: GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks, TF activity matrices (cohort-level aggregate).
+
+**Reading 2 -- aggregate community assignments**
+Result: community assignments (aggregate), from inputs the request does not state.
+No single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:
+- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+  - Method premise: find communities in a two-mode network; return network modules or community membership
+
+Which reading should we start with: 1 (PANDA or OTTER or GIRAFFE), 2 (PANDA → CONDOR or OTTER → CONDOR)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.

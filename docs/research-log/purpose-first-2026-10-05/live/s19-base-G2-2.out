@@ -1,0 +1,33 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.66s)
+● Matching registered workflows…
+✓ Workflow — DRAGON
+✓ Guidance prepared
+Selected path: **DRAGON**.
+
+Your question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale.
+
+**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+
+Required workflow inputs:
+
+- `omics_layer_1`: DRAGON omics layer 1
+- `omics_layer_2`: DRAGON omics layer 2
+
+Outputs:
+
+- `multi_omic_network`: Inferred associations between omics features.
+
+Workflow-specific scientific notes:
+
+- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.
+- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+For your question ("compare the gene-lipid network of steatohepatitis biopsies with that of simple steatosis biopsies"):
+- **DRAGON** — Build one network per time point or condition on the same features and compare the cross-layer edges; this does not use the pairing -- to keep it, use LIONESS-DRAGON and compare each individual's samples.
+Note: Partial correlations are conditional on every other feature in both layers, so use the same feature set in every network you compare.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

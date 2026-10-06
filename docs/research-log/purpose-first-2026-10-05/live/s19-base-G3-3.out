@@ -1,0 +1,50 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.98s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+Fallback recommendation: **DRAGON → LIONESS-DRAGON**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+
+Required workflow inputs:
+
+- `omics_layer_1`: DRAGON omics layer 1
+- `omics_layer_2`: DRAGON omics layer 2
+
+Outputs:
+
+- `multi_omic_network`: Inferred associations between omics features.
+
+Workflow-specific scientific notes:
+
+- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.
+- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.
+- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.
+
+**LIONESS-DRAGON** — Infer one sample-specific two-layer multi-omic partial-correlation network per sample with LIONESS-DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+
+Required workflow inputs:
+
+- `omics_layer_1`: DRAGON omics layer 1
+- `omics_layer_2`: DRAGON omics layer 2
+
+Cost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Outputs:
+
+- `multi_omic_network`: Inferred associations between omics features.
+
+Workflow-specific scientific notes:
+
+- LIONESS-DRAGON estimates DRAGON's two shrinkage values once on all samples, then derives each sample's network from the all-sample network and the network refitted without that sample.
+- Each sample's network is an undirected partial-correlation graph across both layers; like DRAGON's, it is an association graph, not a causal one.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+For your question ("find individuals whose wiring is unusual"):
+- **LIONESS-DRAGON** — Each sample gets its own two-layer network; comparing each sample's edges with the rest of the cohort -- or, with repeated samples, with the same individual's other sample -- shows which individuals change or stand out.
+Note: A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

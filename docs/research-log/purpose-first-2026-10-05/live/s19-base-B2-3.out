@@ -1,0 +1,23 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+● Preparing next step…
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "RNA-seq"**
+Result: regulatory networks, from expression matrix.
+- TF-only regulatory network:
+  - **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.
+  - **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+- TF-only signed regulatory-effect network:
+  - **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+**Reading 2 -- aggregate community assignments**
+Result: community assignments (aggregate), from inputs the request does not state.
+No single registered workflow produces this from the stated inputs; a registered handoff does, in two steps:
+- **PANDA → CONDOR** — PANDA infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+- **OTTER → CONDOR** — OTTER infers a regulatory network from the expression matrix; CONDOR then takes that network and returns its communities (modules).
+  - Method premise: find communities in a two-mode network; return network modules or community membership
+
+Which reading should we start with: 1 (PANDA or LIONESS-PANDA or OTTER or GIRAFFE), 2 (PANDA → CONDOR or OTTER → CONDOR)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.

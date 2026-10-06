@@ -1,0 +1,19 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.71s)
+● Matching registered workflows…
+✓ Guidance prepared
+Based on what you said — "compare the regulatory network of fibrotic lungs with that of donor lungs" — **LIONESS-PANDA** fits better: it gives a result for each sample, so the difference you ask about can be tested.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("compare the regulatory network of fibrotic lungs with that of donor lungs"):
+- **LIONESS-PANDA** — Each sample gets its own network, so each edge weight or targeting score can be tested between the groups across samples -- for example with a linear model such as limma.
+- **PANDA**, **PUMA** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use the per-sample (LIONESS) version and test between the groups.
+- **OTTER** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use a per-sample method such as LIONESS-PANDA and test between the groups.
+- **GIRAFFE** — The activity matrix compares TF activity, not network wiring, between the conditions; test each TF's activity between them (paired when the same individuals give both).
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+Should I use LIONESS-PANDA, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.

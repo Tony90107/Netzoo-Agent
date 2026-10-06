@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.46s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PANDA
+✓ Guidance prepared
+For the sample-specific output you described, use **LIONESS-PANDA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 35 donor, 36 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("which individual patients' regulatory networks deviate most from those of donor lungs"):
+- **LIONESS-PANDA** — Each sample gets its own network; comparing each sample's network or targeting scores with the rest of the cohort shows which individuals stand out.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.

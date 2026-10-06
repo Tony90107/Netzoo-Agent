@@ -1,0 +1,14 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.58s)
+● Matching registered workflows…
+✓ Guidance prepared
+About "predict the drought tolerance of untested plants from their co-expression networks": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.
+
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+
+These fit the result you described, but none can predict outcomes for new samples; to choose among them, tell me: (1) Do you need to separate or adjust co-expression for batch, site or other sample covariates? (co-expression must be separated or adjusted for batch, site or other covariates → COBRA; no sample covariates need to be separated or adjusted → LIONESS-COEXPRESSION)
+
+No files were inspected and no analysis ran.

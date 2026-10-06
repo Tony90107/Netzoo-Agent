@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.72s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PANDA
+✓ Guidance prepared
+For the sample-specific output you described, use **LIONESS-PANDA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("how each participant's own regulatory network changed after training, person by person"):
+- **LIONESS-PANDA** — Each individual has a network for each time point; the difference between an individual's own networks (or their regulators' targeting scores) measures how much that individual changed, and ranks individuals by it.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.
