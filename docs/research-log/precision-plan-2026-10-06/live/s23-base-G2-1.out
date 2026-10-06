@@ -1,0 +1,22 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.91s)
+● Matching registered workflows…
+✓ Guidance prepared
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **LIONESS-COEXPRESSION** — Per-sample gene degree or edge weights can be compared across samples or groups. All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+- **LIONESS-COEXPRESSION**, **BONOBO** — Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied separately.
+- **COBRA** — Each covariate's component is a gene-by-gene co-expression attributable to that covariate; the adjusted co-expression can be passed to PANDA, PUMA or OTTER as coexpression_file after its identifiers and order are revalidated. Interpret each component relative to how the design matrix codes that covariate (for example, which level is the reference).
+- **BONOBO** — Per-sample gene degree or edge weights can be compared across samples or groups; with p-value output, edges can be filtered per sample at a chosen confidence. These are co-expression networks, not TF-gene regulation; turning them into regulatory networks needs a separate, validated conversion before PANDA.
+
+Unconfirmed assumptions in these interpretations (please correct me if needed):
+- The analysis will compare gene expression data from low-grade and high-grade prostate biopsies.
+
+Should the result be aggregate or sample-specific?
+
+No files were inspected and no analysis ran.

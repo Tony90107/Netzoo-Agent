@@ -1,0 +1,31 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.76s)
+● Matching registered workflows…
+✓ Workflow — COBRA
+✓ Guidance prepared
+Selected path: **COBRA**.
+
+Your question asks for a cohort-level co-expression network. **COBRA** fits that result and scale. COBRA models co-expression as a function of sample covariates through conditional covariance estimation.
+
+**COBRA**: Model covariate-associated gene co-expression with COBRA.
+
+Routing-level input modality: expression matrix.
+
+Method premise: remove or adjust technical batch effects; estimate how sample covariates change co-expression; model higher-order covariance or correlation structure; assess or remove hospital or site effects; assess or remove sequencing-batch effects.
+
+COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `design_file`: sample covariate design matrix
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `coexpression_network`: Inferred gene-to-gene associations.
+
+For your question ("How does gene co-expression differ between heat-stressed and control panicles once batch is accounted for?"):
+- **COBRA** — Put the group label in COBRA's design matrix: it returns a co-expression component for that variable -- the part of each gene pair's co-expression associated with the group -- alongside components for any other covariates you include, such as batch.
+Note: Some component values fall outside -1 to 1; read them as contributions, not correlations. Deciding which gene pairs differ beyond chance is a separate analysis.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
