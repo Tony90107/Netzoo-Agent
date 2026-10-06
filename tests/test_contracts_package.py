@@ -165,7 +165,8 @@ SCHEMA_DIGESTS = {
     # 2026-09-29: optional quoted research hypotheses; no execution authority.
     # 2026-10-05: optional code-owned operation_authorization (requested and
     # forbidden operations read from the request); it can only refuse execution.
-    "TaskDecision": "e0d6f8efe006735bc976474ee776a57efc65705958f07ac502767a5542995d26",
+    # 2026-10-06 (Log 380): optional code-owned data_facts and applicability; advisory only.
+    "TaskDecision": "433c1319ad473d1ab74ad750fde888db353c947cbe09381faa82d1e540e5baea",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

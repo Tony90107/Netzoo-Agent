@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from workflow_registry import OUTPUT_CAPABILITIES, RUN_ACTIONS
 
+from ..interpretation.applicability import data_condition
 from ..contracts import ProjectPolicySnapshot, TaskDecision, ToolExecutionResult, WorkflowPlan
 from ..contracts.state import NextTurnPrompt
 from ..outcomes import effective_results
@@ -146,6 +147,10 @@ def _workflow_card(decision, policy, task, action, *, kind="workflow_guidance", 
     outcome = primary_outcome(decision)
     if decision.capability_match_status == "fallback":
         headline = f"{name} is the closest registered match, but it is not a verified match for your request."
+    elif (condition := data_condition(decision, action)) is not None:
+        # Log 380 (plan item 4): not "fits your goal" while the data it needs is missing.
+        headline = (f"{name} needs {condition[1]}, which you said you do not have."
+                    if condition[0] == "ruled_out" else f"{name} fits your goal if you have {condition[1]}.")
     elif outcome is not None and outcome.artifact_type != "unknown":
         headline = f"{name} fits your goal: {result_phrase(outcome, article=False)}."
     elif _produces(action):
@@ -464,12 +469,19 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> Rep
     if found is None:
         return card
     words = alternative_phrases(found, policy)
-    result = words["result"][:1].upper() + words["result"][1:]
+    if not found.asked:
+        # Log 380: everything missing is ruled out -- nothing to ask; say it.
+        return card.model_copy(update={"points": [
+            *(point for point in card.points if not point.startswith(_UNMENTIONED_POINTS)),
+            clip(f"Needs {words['ruled_out']}, which you said you do not have.", 300)]})
+    result = words["result"][:1].upper() + words["result"][1:] if words["result"] else ""
     options = [
         ReplyOption(
             key="inputs-named", label=clip(f"Only {words['stated']}", 80),
-            description=describe([f"Leads to {words['alternatives']}", result]),
-            answer=clip(f"I only have {words['stated']}. {result} is fine.", 600),
+            description=describe([f"Leads to {words['alternatives']}", result] if words["alternatives"] else
+                                 ["Ask what the data you named can give instead"]),
+            answer=clip(f"I only have {words['stated']}. {result} is fine." if result else
+                        f"I only have {words['stated']}.", 600),
             resolution="follow_up",
         ),
         ReplyOption(
@@ -484,7 +496,8 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str) -> Rep
     kept = card.points[:1] if card.kind in {"method_choice", "clarification"} else card.points
     points = [point for point in kept if not point.startswith(_UNMENTIONED_POINTS)]
     points.append(clip(f"Your request names only {words['stated']}; the matched workflows need more inputs, "
-                       f"while {words['alternatives']} works from it alone.", 300))
+                       + (f"while {words['alternatives']} works from it alone." if words["alternatives"] else
+                          "which the request does not mention."), 300))
     return card.model_copy(update={
         "points": points,
         "choices": ReplyChoices(header="Inputs", question=clip(f"Do you also have {words['asked']}?", 400),
