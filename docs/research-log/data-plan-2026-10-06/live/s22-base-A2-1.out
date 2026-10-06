@@ -1,0 +1,45 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (8.35s)
+● Matching registered workflows…
+● Preparing next step…
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "RNA-seq"**
+Result: co-expression networks, from expression matrix.
+- **Gene co-expression network — LIONESS-COEXPRESSION**
+  - Registered purpose: Infer aggregate and sample-specific co-expression networks with LIONESS.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Required inputs: all of: expression matrix.
+  - Declared output: co-expression networks (cohort-level aggregate; sample-specific, one network per sample).
+- **Gene co-expression network — COBRA**
+  - Registered purpose: Model covariate-associated gene co-expression with COBRA.
+  - Method premise: remove or adjust technical batch effects; estimate how sample covariates change co-expression
+  - Mathematical interpretation: COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.
+  - Required inputs: all of: expression matrix, sample covariate design matrix.
+  - Declared output: co-expression networks (cohort-level aggregate).
+- **Gene co-expression network — BONOBO**
+  - Registered purpose: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.
+  - Method premise: Bayesian shrinkage estimation of sample-specific co-expression; sparsify sample-specific co-expression and return matching p-value matrices
+  - Mathematical interpretation: BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.
+  - Required inputs: all of: expression matrix.
+  - Declared output: co-expression networks, matching p-value matrices (sample-specific, one network per sample).
+
+**Reading 2 -- aggregate co-expression networks**
+Result: co-expression networks (aggregate), from inputs the request does not state.
+- **Gene co-expression network — LIONESS-COEXPRESSION**
+  - Registered purpose: Infer aggregate and sample-specific co-expression networks with LIONESS.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Required inputs: all of: expression matrix.
+  - Declared output: co-expression networks (cohort-level aggregate; sample-specific, one network per sample).
+- **Gene co-expression network — COBRA**
+  - Registered purpose: Model covariate-associated gene co-expression with COBRA.
+  - Method premise: remove or adjust technical batch effects; estimate how sample covariates change co-expression
+  - Mathematical interpretation: COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.
+  - Required inputs: all of: expression matrix, sample covariate design matrix.
+  - Declared output: co-expression networks (cohort-level aggregate).
+
+Which reading should we start with: 1 (LIONESS-COEXPRESSION or COBRA or BONOBO), 2 (LIONESS-COEXPRESSION or COBRA)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.

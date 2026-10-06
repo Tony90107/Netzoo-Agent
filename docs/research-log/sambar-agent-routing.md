@@ -19725,3 +19725,62 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 3. **G 家族**（「a reviewer … insisted … must use …」）：讀取可能判為說出；規則 1 去不去掉這種轉述，取決於轉述偵測。G1、G4 佔 6/15。
 4. **T1**：指導教授的話放在**單引號**內，而計畫的問句只去掉雙引號與彎引號。若研究目的把那段話讀成 claim，計畫就會多問，影響 L1 與 A3。
 5. 若風險 1–3 同時發生，A1 與 L2 會低於 70%。
+
+## Log 383（結果）｜計畫的呈現層完全成立（L3 12/12、L4 12/12、L5 0），但計畫的輸入在新題目上漏讀；A1、L2 只有 3/15，L1、A3 因 T1 不成立，依宣告撤回
+
+依 Log 383 執行。候選 `2f3f2cf`，基準 `9f95e14`，兩者都在乾淨 worktree。共 192 個 session，花費 US$0.369。
+證據在 `data-plan-2026-10-06/live/`：`s22-analysis.txt`（宣告的判定）、`s22-decisions.json`（兩臂每個 session 的決策、回覆、研究目的、讀取與計畫事件）、`s22-run.log`、`s22-rerun.log`、`s22-*.out/.err`。
+
+**V1 的重跑：**
+- 基準 D1-2 遇到 `OpenAITimeoutError`。依宣告，原 session 與 trace 移到基準 worktree 的 `.netzoo/s22-provider-error-archive/`，重跑一次。重跑後兩臂都是 96/96，provider 錯誤 0。
+- T3 的 6 個 session（兩臂各 3 個）以 exit 2 結束，但不是錯誤：routing 把「we are about to download JASPAR and STRING」讀成下載 STRING 的請求，於是停在「Which STRING network type?」等待輸入。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| V1 | 兩臂 96/96；provider 錯誤 0（重跑後） | 是 |
+| L1 | 計畫在不該問的題目要問 prior：3（T1 ×3） | **否**（≤ 2） |
+| L2 | 計畫在該問的題目要問 prior：3/15 | **否**（≥ 70%） |
+| L3 | 計畫要問的，回覆有問：12/12 | 是 |
+| L4 | 計畫要說排除的，回覆有說：12/12 | 是 |
+| L5 | 回覆問到計畫以外：0 | 是 |
+| A1 | 該問 prior 時有問：基準 3/15，候選 3/15 | **否** |
+| A2 | prior 說出或排除時的追問：基準 9，候選 0 | 是 |
+| A3 | 候選 prior 問題的精確度：3/6（另 3 次在 T1） | **否** |
+| R1 | 排除時說出「你說你沒有」：10/10 | 是 |
+| R2 | 跑不了的工具被當成答案：基準 7，候選 0 | 是 |
+| M1 | miRNA 說出或排除時的 miRNA 問題：兩臂 0 | 是 |
+| B1、H2、H3 | 模型撰寫的回覆 0、差異 0、多出的角色只有 `data_facts` | 是 |
+
+只報告：
+- miRNA 在 `data_question = mirna` 時的追問：基準 0/6，候選 6/6。
+- 計畫的 basis 分布：claims 38、question 19、unanswerable 30、reading 6。
+
+**12 次漏問與 3 次多問，全在計畫的「輸入」：**
+
+| 題目 | 次數 | 原因 | 屬於哪個讀取 | 事前公開 |
+|---|---|---|---|---|
+| F1 | 漏問 3 | 目的是陳述句（「We want to know how active the regulators are …」），研究目的沒有讀到 claim。計畫只補讀「?」結尾的問句，於是退回 routing 的讀法；routing 的結果類型是 `regulatory_network_and_tf_activity`，不在計畫認得的 TF 類型清單中。回覆仍說了「GIRAFFE fits … if you have a motif prior and a PPI network」，只是沒有問句 | 問題讀取 | **否**，新缺口 |
+| G1 | 漏問 3 | 「a reviewer … insisted that any regulatory analysis must use transcription factor motif and protein-protein interaction data」被讀成說出。轉述偵測不認得「insisted」，所以規則 1 沒有降級 | 擁有讀取 | 風險 3 |
+| G4 | 漏問 3 | 研究目的只讀到「can we show that they cause …」，判為不需要。第 21 組 G4 也是這樣 | 問題讀取 | 風險 1 |
+| T3 | 漏問 3 | routing 與操作授權把「we are about to download JASPAR and STRING」讀成下載請求，兩臂都停在 needs_input，計畫沒有機會作用 | routing／授權 | 風險 2 的變形 |
+| T1 | 多問 3 | 研究目的把指導教授單引號內的「check which transcription factors are rewired」讀成使用者的 claim，計畫因此追問 prior | 問題讀取 | 風險 4 |
+
+**計畫本身做到的（只報告）：**
+- **呈現層完全成立：**
+  - 計畫要問的，每一次都問了（12/12）；
+  - 要說排除的，每一次都說了（12/12）；
+  - 沒有多問任何計畫以外的東西；
+  - 不受回覆類型、結果類型、工具組合影響。這正是 Log 382 的 A 類原因，這一輪已不再出現。
+- **精確的一半第四度成立：** 多問 9 → 0，說出排除 10/10，不給跑不了的工具 7 → 0。
+- **miRNA 追問：** 0/6 → 6/6。
+
+**決定：** 撤回。`2f3f2cf` 已以 `a95c389` revert，程式碼與 `161f33d` 相同。全套件 3367 passed／35 skipped，含 regex session 未提交的 8 個測試，與前兩次撤回後相同。
+
+**這四輪（Logs 380、381、383 與 Log 382 的歸類）合起來的結論（只報告）：**
+- Log 382 的 A 類（回覆路徑各自決定）已由計畫解決，呈現層的三項判定全部滿分。
+- 剩下的失敗全在計畫的三個輸入讀取，而且每一組新題目都在不同的邊界說法上漏讀：
+  - **問題讀取（研究目的）：** 兩問合一只讀一半（第 21、22 組 G4）；陳述句沒讀到（F1）；第三人的引述被當成使用者的問題（T1）。
+  - **擁有讀取：** 別人說要、還沒分享、資料庫涵蓋、審稿人堅持。
+  - **routing／授權：** 「打算下載」被當成下載請求。
+- 用規則逐一修補這些讀取，就是 Logs 345–353 已證明不泛化的字詞表路線；在 prompt 加狀態則會傷到其他讀取（Log 381）。
+- 若要繼續，需要在讀取層做結構性的改變，例如一個統一的請求讀取：對每個問題片段與每次資料提及，都回傳有型別的「誰的、何時、問什麼、需要什麼」，並驗證引文。這是比第 5 項更大的改動，等使用者決定。
