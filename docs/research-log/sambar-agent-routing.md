@@ -19385,3 +19385,75 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 4. D1（只有表現量，問 TF 在每個樣本的活性）：Log 312 的規則不會以共表現網路回答 TF-to-gene 的結果，因此標註可接受的 LIONESS-COEXPRESSION 不會出現在段落中。只影響報告。
 5. A3（prior 說出、miRNA 沒提，問 miRNA）：應追問 miRNA list，但沒有設判定，只報告。
 6. R2 可能未受考驗：若基準在這組上很少把需要 prior 的工具寫成「Selected path」或推薦，就無法達到 ≥ 3。
+
+## Log 380（結果）｜prior 不再亂問、排除會說出、不再把不能跑的工具當答案；但 A1、A3、M1 不成立，依宣告撤回
+
+依 Log 380 執行。候選 `b536b95`，基準 `9f95e14`，兩者都在乾淨 worktree。共 192 個 session，沒有重跑，花費 US$0.384。
+證據在 `applicability-2026-10-06/live/`：
+- `s20-analysis.txt`：宣告的判定。
+- `s20-decisions.json`：兩臂每個 session 的決策、回覆、角色、研究目的、data-facts 與適用性事件。
+- `s20-run.log`、`s20-*.out/.err`。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| V1 | 兩臂 96/96；provider 錯誤 0 | 是 |
+| A1 | `data_question = priors` 的追問：基準 6/15，候選 6/15 | **否** |
+| A2 | prior 說出或排除時的追問：基準 10，候選 0 | 是 |
+| A3 | 候選的 prior 問題落在該問的題上：6/9（67%），其餘都在 F4 | **否** |
+| R1 | 排除、且列出需要 prior 的工具時，說出「which you said you do not have」：17/17 | 是 |
+| R2 | 不能跑或可能不能跑的工具被當成答案：基準 8，候選 1 | 是 |
+| M1 | miRNA 說出或排除時的 miRNA 問題：基準 10，候選 11 | **否** |
+| B1 | 模型撰寫的回覆：兩臂都是 0 | 是 |
+| H2 | 候選回覆與離線渲染的差異 0 | 是 |
+| H3 | 多出的角色只有 `data_facts` | 是 |
+
+**候選實際做到的（逐題，只報告）：**
+- A2，不再亂問：基準的 10 次都是不該問的追問，候選全部消失。
+  - A1、A4：使用者用白話說出 prior（「maps of where transcription factors bind … which proteins physically contact each other」），基準仍問「Do you also have a motif prior?」，共 6 次。
+  - D3、D4：「We only have RNA-seq counts」，基準仍問「Do you also have a motif prior and a PPI network?」，共 4 次。
+- R1：使用者排除 prior、而回覆列出需要 prior 的工具時，候選 17/17 都用使用者的話說出「你說你沒有」。基準一次都沒有。
+- R2：
+  - 基準有 8 次：
+    - F3 三次「Selected path: **GIRAFFE**」，prior 沒提。
+    - D1 兩次「Selected path: **GIRAFFE**」，使用者說只有 counts。
+    - C1-2 推薦 PUMA，prior 與 miRNA 都被否定。
+    - C1-2、T3-2 各一次 miRNA 被排除仍被提出。
+  - 候選只剩 T3-3 一次：「Fallback recommendation: **PUMA**」，miRNA 被排除。fallback 這條路沒有套上條件開頭，這是實作的缺口。
+  - 例：D1 候選的開頭是「**GIRAFFE** fits the result you describe, but it needs a motif prior and a PPI network, which you said you do not have.」
+- F3（prior 沒提，問每份切片哪些 TF 活躍）：基準 0/3 追問，並直接給 GIRAFFE；候選 3/3 改成條件開頭並追問。
+
+**A1 為什麼沒有提高（6/15 對 6/15）：**
+- F1：兩臂都 3/3。
+- F3：候選 +3。
+- T1：候選 −3。事前公開的風險 1 發生了。
+  - 讀取把指導教授說的「we need a motif prior」讀成 stated，3/3。
+  - 驗證只查引文在不在請求中，不查那是不是使用者這份資料。
+  - 基準的字詞表反而只算到 motif prior，於是問「Do you also have a PPI network?」，被計為追問。
+- T2：兩臂都 0。
+  - 候選讀取把「去年在另一群豬用過的 JASPAR motifs and a STRING network」讀成 stated，2/2，同一個風險。
+  - T2-1 在兩臂都沒有任何讀法。
+- G1：兩臂都 0。
+  - 回覆是逐讀法的形式（「There are different analyses to consider here…」）。這種回覆類型不在 Log 312 段落的類型清單中，因此段落不出現。
+  - 兩臂都以「…which of these inputs do you have?」結尾，不含 motif 或 PPI 字樣，所以不計為追問。
+
+**A3：** F4（prior 沒提，問能否預測復發）。routing 列出 TF 工具，兩臂都各追問 3 次。這是事前公開的風險 3。
+
+**M1：** 兩臂所有 miRNA 問題都不是候選加的。
+- 基準 8、候選 9：都是平手原有的分辨問題「Do the regulators include miRNAs…?」。
+- 兩臂各 2：T3 回覆引用使用者自己的問句。
+- 候選在 miRNA 說出或排除時，從未問過「Do you also have a miRNA list?」。
+- 宣告的定義把一個第 4 項不產生的問題也算進去了；自我測試的 9 題中沒有這類平手。依宣告判為不成立，不改判。
+
+**data-facts 讀取對照（只報告）：**
+- prior：說出 19/19，排除 17/17（含 E 的「the entirety of what we produced」），沒提 12/17。另外 5 次誤讀成 stated，全在 T1、T2。
+- miRNA：說出 7/7，明確否定 6/6。D、E 的隱含排除 14 次都讀成 unstated；這兩家沒有 miRNA 問題，不影響追問。
+
+**決定：** 撤回。`0a70c15` 與 `b536b95` 已以 `395be40` revert。程式碼與 `161f33d` 相同（`git diff 161f33d HEAD -- scripts tests` 為空）。全套件 3367 passed／35 skipped，含 regex session 未提交的 8 個測試，與 Log 379 撤回後相同。
+
+**若要重來（尚未宣告，等使用者決定）：**
+1. **是誰的資料**：讀取的契約要分出「這份資料的」與「別人說的或別的研究的」（T1、T2）。依「不以 prompt 文字修正」的原則，這要改契約形狀，例如加一個有型別的欄位，不能只改 prompt 文字。
+2. 讓段落也作用在逐讀法的回覆（G1），並讓 fallback 推薦也套上條件開頭（T3-3）。
+3. 量測：
+   - M1 只計「Do you (also) have …」這類問有沒有資料的問題，與平手的分辨問題分開。
+   - A1 的分母依 routing 是否列出需要 prior 的工具，分開報告。
+4. A2、R1、R2 的增益很明確，值得保留到重做中。下一輪要用第二十一組保留集，第二十組已看過。

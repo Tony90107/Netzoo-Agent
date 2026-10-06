@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (20.29s)
+● Matching registered workflows…
+✓ Matched workflows — LIONESS-COEXPRESSION, CONDOR
+✓ Guidance prepared
+There are different analyses to consider here. The useful distinction is what each method assumes and what you want to learn from the data.
+
+For “genes form co-expressed modules”:
+
+**LIONESS-COEXPRESSION**. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+
+You would need expression matrix. The analysis would provide inferred gene-to-gene associations.
+
+For “modules differ between foragers and nurses”:
+
+**CONDOR**. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.
+
+You would need bipartite network. The analysis would provide network-node community memberships, not patient subtype labels.
+
+For your question ("do those modules differ between foragers and nurses?"):
+- **LIONESS-COEXPRESSION** — Per-sample gene degree or edge weights can be compared between the groups or time points (paired when the same individuals give both).
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.
+
+Which scientific question should we start with, and which of these inputs do you have? We can also investigate the hypotheses in parallel.
