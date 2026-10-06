@@ -221,19 +221,13 @@ def missing_input_labels(action: str, present: frozenset[str] | set[str], task: 
     names no input says nothing about which ones it lacks. Given the request,
     a role it describes in any words (`_LOOSE_MENTIONS`) is not missing either.
     """
-    judged = getattr(present, "judged", frozenset())
-    # A request naming no input says nothing about what it lacks -- unless the
-    # data-facts reading judged a kind (Log 380): "these expression counts are
-    # everything we have" names no input to the word list, yet rules out priors.
-    if not present and not judged:
+    if not present:
         return []
 
     def missing(field: str) -> bool:
         artifact = INPUT_ARTIFACTS.get(field)
         if artifact is None or artifact in present:
             return False
-        if artifact in judged:  # Log 380: the data-facts reading decided it; no word list may overrule it
-            return True
         pattern = _LOOSE_MENTIONS.get(artifact)
         return not (task and pattern is not None and pattern.search(task))
 
