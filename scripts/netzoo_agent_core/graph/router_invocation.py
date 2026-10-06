@@ -28,7 +28,7 @@ from .context import _GraphContext, record_event
 from .continuation_invocation import compare_workflows, continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
-from .condition_recommender import invoke_condition_recommender
+from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
 from .data_facts_call import invoke_data_facts
@@ -188,9 +188,11 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
     status = {item.action: item.status for item in decision.applicability}
     dropped = None
     if advice is not None and status.get(advice.action) == "not_applicable":
-        # A recommendation needing data the request rules out is not one (plan item 4).
+        # A recommendation needing data the request rules out is not one (plan item 4);
+        # the tie keeps a question of its own, never the dropped one's.
         dropped = advice.action
-        decision = decision.model_copy(update={"advisory_recommendation": None, "clarification_question": None})
+        decision = decision.model_copy(update={
+            "advisory_recommendation": None, "clarification_question": unrecommended_question(decision)})
     record_event(context, state, "routing.applicability_assessed", "classify", {
         "data_facts": decision.data_facts,
         "applicability": [item.model_dump() for item in decision.applicability],
