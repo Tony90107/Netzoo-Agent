@@ -7,7 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKey, RecommendedAction
 
+from .applicability import CandidateApplicability
 from .authorization import OperationAuthorization
+from .data_plan import DataPlan
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
     AddressedConcern,
@@ -162,6 +164,16 @@ class TaskDecision(BaseModel):
     operation_authorization: OperationAuthorization | None = Field(
         default=None, exclude_if=lambda value: value is None,
     )
+    # Plan item 4 (Log 380): what the request says about its TF priors and
+    # miRNA data (the data-facts call, quotes verified), and each listed
+    # workflow judged against it. Code-owned, advisory, omitted while unset.
+    data_facts: dict[str, str] | None = Field(default=None, exclude_if=lambda value: value is None)
+    applicability: list[CandidateApplicability] = Field(
+        default_factory=list, exclude_if=lambda value: not value,
+    )
+    # Plan item 5 (Log 383): what the question needs and what the reply asks and
+    # says about it, decided once for every renderer. Code-owned; omitted while unset.
+    data_plan: DataPlan | None = Field(default=None, exclude_if=lambda value: value is None)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None
