@@ -85,20 +85,13 @@ class InputAlternative:
     asked: tuple[str, ...]
     alternatives: tuple[str, ...]
     granularity: str
-    # Log 380: inputs the request rules out (the data-facts reading), with its words.
-    # They are said, never asked about.
-    ruled_out: tuple[str, ...] = ()
-    ruled_out_quote: str = ""
 
 
 def _present(task: str, decision) -> frozenset[str]:
-    from .applicability import merge_inputs
-
     present = set(input_availability(task).present)
     for item in decision.outcome_hypotheses:
         present.update(value for value in item.outcome.input_artifacts if value != "unknown")
-    # Log 380: kinds the data-facts call read are decided by that reading.
-    return merge_inputs(present, decision.data_facts) if decision.data_facts else frozenset(present)
+    return frozenset(present)
 
 
 def _runs_on(action: str, present: frozenset[str], task: str) -> bool:
@@ -130,14 +123,10 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
         if action in OUTPUT_CAPABILITIES and action in RUN_ACTIONS
     ]
     outcome = _primary(decision)
+    stated = input_availability(task).present
+    if not candidates or outcome is None or outcome.artifact_type not in _NETWORKS or not stated:
+        return None
     present = _present(task, decision)
-    judged = getattr(present, "judged", frozenset())
-    # Log 380: with the data-facts reading, the stated data is that reading's, not the wording's.
-    stated = (set(input_availability(task).present) - judged) | (set(present) & judged)
-    if not candidates or outcome is None or not (stated or judged):
-        return None
-    if outcome.artifact_type not in _NETWORKS and not judged:
-        return None
     if any(_runs_on(action, present, task) for action in candidates):
         return None
     scale = outcome.granularity
@@ -146,51 +135,25 @@ def input_alternative(decision, task: str) -> InputAlternative | None:
     alternatives = tuple(
         action for action, capability in OUTPUT_CAPABILITIES.items()
         if action in RUN_ACTIONS and action not in candidates and action not in advised_against
-        and outcome.artifact_type in _NETWORKS and capability.artifact_type in _NETWORKS
+        and capability.artifact_type in _NETWORKS
         and (scale not in _SCALES or scale in capability.granularities)
         and roles <= set(capability.regulator_types)
         and _runs_on(action, present, task)
     )
-    # Log 380: a reading of the request's data lets the reply speak without an
-    # alternative -- ask about what it left unstated (F3, Log 379: priors never
-    # mentioned, GIRAFFE given as the answer), say what it ruled out.
-    if not alternatives and not judged:
+    if not alternatives:
         return None
-    absent = getattr(present, "absent", frozenset())
-    ruled_out_fields = {field for field, artifact in INPUT_ARTIFACTS.items() if artifact in absent}
-    ruled_out = tuple(dict.fromkeys(
-        SHORT_INPUT_LABELS[field] for action in candidates for field in input_fields(action)[0]
-        if field in ruled_out_fields))
     lacking = tuple(
         (action, tuple(labels), True) if (labels := missing_input_labels(action, present, task)) else
         (action, tuple(SHORT_INPUT_LABELS[field] for field in input_fields(action)[0]), False)
         for action in candidates
     )
-    def askable(label: str) -> bool:
-        # With a data-facts reading, only what it read as unstated is asked about:
-        # a role only the wording judged ("mRNA plus small RNA" is expression) is not.
-        if label in ruled_out:
-            return False
-        if not judged:
-            return True
-        return any(SHORT_INPUT_LABELS[field] == label and INPUT_ARTIFACTS.get(field) in judged
-                   for field in INPUT_ARTIFACTS)
-
-    # A workflow whose input is ruled out cannot be rescued by another one (Log 380):
-    # PUMA with the priors ruled out is not worth a question about its miRNA list.
-    open_candidates = [action for action in candidates
-                       if not any(field in ruled_out_fields for field in input_fields(action)[0])]
-    asked = next((tuple(label for label in missing_input_labels(action, present, task) if askable(label))
-                  for action in open_candidates
-                  if [label for label in missing_input_labels(action, present, task) if askable(label)]), ())
-    if not asked and not (ruled_out and judged):
+    asked = next((tuple(missing_input_labels(action, present, task)) for action in candidates
+                  if missing_input_labels(action, present, task)), ())
+    if not asked:
         return None
-    quote = next((present.quotes.get(INPUT_ARTIFACTS[field], "") for field in ruled_out_fields
-                  if getattr(present, "quotes", {}).get(INPUT_ARTIFACTS[field])), "")
     return InputAlternative(
         stated=tuple(_DATA.get(artifact, artifact.replace("_", " ")) for artifact in sorted(stated)),
         lacking=lacking, asked=asked, alternatives=alternatives, granularity=scale,
-        ruled_out=ruled_out, ruled_out_quote=quote,
     )
 
 
@@ -211,8 +174,6 @@ def _result(found: InputAlternative) -> str:
 
 
 def alternative_names(policy, found: InputAlternative) -> str:
-    if not found.alternatives:
-        return ""
     return _join([policy.workflows[action].workflow if action in policy.workflows else action
                   for action in found.alternatives], "or")
 
@@ -223,12 +184,11 @@ def alternative_phrases(found: InputAlternative, policy) -> dict[str, str]:
     keeps = [policy.workflows[action].workflow if action in policy.workflows else action
              for action, labels, judged in found.lacking if judged and set(labels) <= asked]
     return {
-        "stated": _join(found.stated) if found.stated else "the data I described",
-        "asked": _join([_article(label) for label in found.asked]) if found.asked else "",
+        "stated": _join(found.stated),
+        "asked": _join([_article(label) for label in found.asked]),
         "alternatives": alternative_names(policy, found),
-        "result": _result(found) if found.alternatives else "",
+        "result": _result(found),
         "keeps": _join(keeps, "or") if keeps else "",
-        "ruled_out": _join([_article(label) for label in found.ruled_out]) if found.ruled_out else "",
     }
 
 
@@ -236,35 +196,19 @@ def render_input_alternative(found: InputAlternative, policy) -> str:
     def name(action):
         return policy.workflows[action].workflow if action in policy.workflows else action
 
-    ruled_out = set(found.ruled_out)
     groups: dict[tuple[tuple[str, ...], bool], list[str]] = {}
     for action, labels, judged in found.lacking:
-        # Log 380: what the request rules out is said once below, not as "also needs".
-        kept = tuple(label for label in labels if label not in ruled_out)
-        if kept:
-            groups.setdefault((kept, judged), []).append(name(action))
+        groups.setdefault((labels, judged), []).append(name(action))
     needs = "; ".join(
         f"{_join(names)} {'also ' if judged else ''}{'needs' if len(names) == 1 else 'need'} "
         + _join([_article(label) if judged else label for label in labels])
         for (labels, judged), names in groups.items()
     )
-    parts = [f"**What your data allows.** Your request names only {_join(found.stated)}." if found.stated
-             else "**What your data allows.**"]
-    if needs:
-        parts.append(f"{needs}.")
-    if found.ruled_out:
-        users = _join([name(action) for action, labels, _ in found.lacking if ruled_out & set(labels)])
-        said = f' ("{found.ruled_out_quote}")' if found.ruled_out_quote else ""
-        parts.append(f"{users} {'needs' if ' and ' not in users else 'need'} "
-                     f"{_join([_article(label) for label in found.ruled_out])}, which you said you do not have{said}.")
-    data = _join(found.stated) if found.stated else "the data you describe"
-    if found.alternatives:
-        parts.append(f"With {data} alone, {alternative_names(policy, found)} builds {_result(found)} instead.")
-    # Without an alternative nothing is claimed about "every registered workflow":
-    # that would rest on routing's reading of the result (Log 380 dev, s18 T5).
-    if found.asked:
-        parts.append(f"Do you also have {_join([_article(label) for label in found.asked])}?")
-    return " ".join(parts)
+    return (
+        f"**What your data allows.** Your request names only {_join(found.stated)}. {needs}. "
+        f"With {_join(found.stated)} alone, {alternative_names(policy, found)} builds {_result(found)} instead. "
+        f"Do you also have {_join([_article(label) for label in found.asked])}?"
+    )
 
 
 def with_input_alternative(text: str, decision, task: str, policy) -> str:
