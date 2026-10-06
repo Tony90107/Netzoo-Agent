@@ -41,6 +41,10 @@ class AgentState(TypedDict):
     reply_kind: NotRequired[str]
     # Log 355: the verified study purpose of this turn's request (design, claims, source).
     study_purpose: NotRequired[dict | None]
+    # Log 379 (plan item 3): the stated conclusion's pick among tied tools, and
+    # the TF-prior reading it used (Log 376's call).
+    purpose_selection: NotRequired[dict | None]
+    data_facts: NotRequired[dict | None]
 
 class AgentTurnInterrupted(Exception):
     """Raised when the user interrupts an in-flight graph turn."""

@@ -22,7 +22,7 @@ import re
 
 from workflow_registry import (
     EXTERNAL_REFERENCES, GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES, REQUIRED_INPUTS, SELECTION_AXES,
-    STATED_TAG_PHRASES,
+    STATED_TAG_PHRASES, purpose_reason,
 )
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
@@ -95,6 +95,8 @@ def _stated_reasons(advice) -> list[str]:
             reasons.append(condition_phrase(condition) or SELECTION_AXES[item.axis]["values"].get(item.value, condition))
         elif item.axis == "selection_tag" and item.value in STATED_TAG_PHRASES:
             reasons.append(STATED_TAG_PHRASES[item.value])
+        elif item.axis == "study_purpose" and (reason := purpose_reason(*item.value.split(":", 2))):
+            reasons.append(reason)  # the stated conclusion's pick (Log 379)
         elif item.axis == "inspected_inputs" and item.text_span:
             folders.append(item.text_span)
     if folders:
