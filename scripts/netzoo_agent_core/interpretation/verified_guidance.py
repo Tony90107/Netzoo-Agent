@@ -168,9 +168,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
         names = " → ".join(workflows[action]["workflow"] for action in selected)
         if decision.capability_match_status == "fallback":
             interaction = guidance_interaction(decision)
-            lines.append(f"Fallback recommendation: **{names}**. {interaction.explanation}")
+            lines.append(f"{_fallback_line(decision, selected, names)} {interaction.explanation}")
         else:
-            lines.append(f"Selected path: **{names}**.")
+            lines.append(_selected_line(decision, selected, names))
         if len(selected) == 1:
             action = selected[0]
             fit = question_fit_for(
@@ -298,13 +298,34 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
     return "\n\n".join(lines)
 
 
+def _selected_line(decision, selected, names: str) -> str:
+    """Log 380 (plan item 4): a workflow short of data the reading judged is a condition, not the pick."""
+    from .applicability import conditioned_lead
+
+    lead = conditioned_lead(decision, selected[0], names) if len(selected) == 1 else None
+    return lead or f"Selected path: **{names}**."
+
+
+def _fallback_line(decision, selected, names: str) -> str:
+    """Log 381: a fallback short of data the reading judged carries the condition (Log 380 T3-3: PUMA, miRNA ruled out)."""
+    from .applicability import data_condition
+
+    condition = data_condition(decision, selected[0]) if len(selected) == 1 else None
+    if condition is None:
+        return f"Fallback recommendation: **{names}**."
+    state, needs = condition
+    if state == "ruled_out":
+        return f"Fallback candidate: **{names}**, but it needs {needs}, which you said you do not have."
+    return f"Fallback candidate: **{names}**, if you have {needs}."
+
+
 def _render_compact(lines, decision, selected, workflows, facts, concerns) -> None:
     """The workflow in prose: why it fits, how it works, what it needs and gives."""
     names = " → ".join(workflows[action]["workflow"] for action in selected)
     if decision.capability_match_status == "fallback":
-        lines.append(f"Fallback recommendation: **{names}**. {guidance_interaction(decision).explanation}")
+        lines.append(f"{_fallback_line(decision, selected, names)} {guidance_interaction(decision).explanation}")
     else:
-        lines.append(f"Selected path: **{names}**.")
+        lines.append(_selected_line(decision, selected, names))
     if len(selected) == 1:
         action = selected[0]
         fit = question_fit_for(
