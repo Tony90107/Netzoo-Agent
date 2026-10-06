@@ -20,7 +20,6 @@ from netzoo_agent_core.contracts import (  # noqa: E402
     OutcomeHypothesis,
     RequestedOutcome,
 )
-from netzoo_agent_core.contracts.study_purpose import StudyPurposeProposal  # noqa: E402
 from netzoo_agent_core.contracts.outcomes import (  # noqa: E402
     SemanticDiscriminator,
     SemanticInterpretation,
@@ -343,7 +342,6 @@ class EvidenceGuidedSemanticRetryRouter:
 
     def __init__(self):
         self.calls = 0
-        self.step = 0
 
     def with_structured_output(self, schema, **_kwargs):
         return SimpleNamespace(
@@ -352,13 +350,7 @@ class EvidenceGuidedSemanticRetryRouter:
 
     def invoke(self, schema, messages):
         self.calls += 1
-        if schema is StudyPurposeProposal:
-            # Log 379: the purpose is read before routing. It is not scripted
-            # here, so it fails as it did when it came last, and the reply
-            # reads the request's own words.
-            raise AssertionError("no study purpose is scripted")
-        self.step += 1
-        if self.step == 1:
+        if self.calls == 1:
             return SemanticInterpretation(
                 request_mode="guidance",
                 semantic_goal="tools for a sample-specific miRNA regulator network",
@@ -393,12 +385,12 @@ class EvidenceGuidedSemanticRetryRouter:
                     )
                 ],
             )
-        if self.step == 2:
+        if self.calls == 2:
             rendered = "\n".join(str(message.content) for message in messages)
             assert "inconsistent_not_applicable_outcome" in rendered
             corrected = EmptyOutcomeRouter()
             return corrected.invoke(schema, messages)
-        if self.step == 3:
+        if self.calls == 3:
             return IntentDecision(
                 mode="answer",
                 confidence=0.99,
@@ -412,7 +404,6 @@ class AmbiguousRoleSemanticReviewRouter:
 
     def __init__(self):
         self.calls = 0
-        self.step = 0
 
     def with_structured_output(self, schema, **_kwargs):
         return SimpleNamespace(
@@ -421,13 +412,7 @@ class AmbiguousRoleSemanticReviewRouter:
 
     def invoke(self, schema, messages):
         self.calls += 1
-        if schema is StudyPurposeProposal:
-            # Log 379: the purpose is read before routing. It is not scripted
-            # here, so it fails as it did when it came last, and the reply
-            # reads the request's own words.
-            raise AssertionError("no study purpose is scripted")
-        self.step += 1
-        if self.step == 1:
+        if self.calls == 1:
             return SemanticInterpretation(
                 request_mode="guidance",
                 semantic_goal="tools for a sample-specific regulator network",
@@ -468,7 +453,7 @@ class AmbiguousRoleSemanticReviewRouter:
                     )
                 ],
             )
-        if self.step == 2:
+        if self.calls == 2:
             rendered = "\n".join(str(message.content) for message in messages)
             assert "registry_ambiguity" in rendered
             corrected = StrictRoutingPipelineLLM()
@@ -484,7 +469,7 @@ class AmbiguousRoleSemanticReviewRouter:
                 for item in review.outcome_hypothesis.evidence
             ]
             return review
-        if self.step == 3:
+        if self.calls == 3:
             return IntentDecision(
                 mode="answer",
                 confidence=0.99,
@@ -1096,11 +1081,11 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
     # asked to rewrite a validated recommendation.
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
-        "study_purpose",  # Log 355; read before routing since Log 379
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
+        "study_purpose",  # Log 355
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     event_types = [event.event_type for event in store.read_events(run_id)]
@@ -1165,10 +1150,10 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     # deterministic and the response model is not called.
     assert response_llm.calls == 0
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
-        "study_purpose",  # Log 355; read before routing since Log 379
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
+        "study_purpose",  # Log 355
     ]
     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
         result["messages"][-1].content
@@ -1241,11 +1226,11 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     # Verified capability guidance is code-owned: the response model is never
     # asked to rewrite a validated recommendation.
     assert [call["role"] for call in result["token_usage"]["calls"]] == [
-        "study_purpose",  # Log 355; read before routing since Log 379
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
+        "study_purpose",  # Log 355
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
@@ -1427,13 +1412,12 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
     assert result["tool_results"] == []
     calls = result["token_usage"]["calls"]
     assert [call["role"] for call in calls] == [
-        "study_purpose",  # Log 355; read before routing since Log 379
         "semantic_interpreter",
         "semantic_reviewer",
+        "study_purpose",  # Log 355
     ]
-    status = {call["role"]: call["status"] for call in calls}
-    assert status["semantic_interpreter"] == "failed"
-    assert status["semantic_reviewer"] == "failed"
+    assert calls[0]["status"] == "failed"
+    assert calls[1]["status"] == "failed"
     assert any(
         event.event_type == "routing.semantic_interpreter_failed"
         for event in store.read_events(run_id)

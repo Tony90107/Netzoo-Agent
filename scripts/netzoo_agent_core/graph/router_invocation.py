@@ -31,13 +31,6 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
-from .data_facts_call import invoke_data_facts
-from .condition_recommender import recommendation_question
-from ..interpretation.request_requirements import stated_in_text
-from ..routing.purpose_selection import (
-    needs_tf_priors, purpose_applies, select_by_purpose, with_purpose_selection,
-)
-from ..routing.study_purpose import StudyPurpose
 from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
 )
@@ -138,25 +131,20 @@ def invoke_router(
 ) -> _RouterInvocation:
     """Route, then keep an unstated scale out of the reply on every path (Log 281).
 
-    Log 355: a new request's study purpose is read once; a follow-up turn (a
-    continuation, a method comparison, a choice) is not a new purpose, so it
-    carries none and the reply reads its own words. Log 379 (plan item 3): it
-    is read before routing, so the decision can use it, not only the reply.
+    Log 355: a new request's study purpose is read once, after routing; a
+    follow-up turn (a continuation, a method comparison, a choice) is not a
+    new purpose, so it carries none and the reply reads its own words.
     """
     follow_up = (state.get("method_comparison") is not None or state.get("workflow_continuation") is not None)
-    purpose = None
-    if not follow_up and not continued_string_download_decision(user_task):
+    result = _route_request(context, state, user_task)
+    if follow_up or result.reason_code == "string_download_continuation":
+        result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
+    else:
         purpose, usage, warnings = invoke_study_purpose(
-            context, state, user_task, _current_usage(context, state), list(state.get("budget_warnings", [])),
+            context, state, user_task, result.usage, result.budget_warnings,
         )
-        state = {**state, "token_usage": usage.model_dump(), "budget_warnings": warnings}
-    result = _route_request(context, state, user_task, purpose=purpose)
-    result = replace(result, budget_warnings=list(dict.fromkeys([
-        *state.get("budget_warnings", []), *result.budget_warnings,
-    ])), routing_state={
-        "purpose_selection": None, "data_facts": None,
-        **result.routing_state, "study_purpose": purpose,
-    })
+        result = replace(result, usage=usage, budget_warnings=warnings,
+                         routing_state={**result.routing_state, "study_purpose": purpose})
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -171,42 +159,10 @@ def invoke_router(
     })
 
 
-def _purpose_from_state(entry: dict | None) -> StudyPurpose | None:
-    if not entry:
-        return None
-    return StudyPurpose(entry.get("design"), entry.get("design_quote") or "",
-                        tuple((claim, quote) for claim, quote in entry.get("claims") or ()))
-
-
-def _select_by_purpose(context, state, user_task, decision, purpose, usage, budget_warnings):
-    """Plan item 3 (Log 379): the stated conclusion picks among the tied tools.
-
-    The TF-prior reading (Log 376's call) is asked only when a tool that needs
-    the priors could be picked.
-    """
-    study = _purpose_from_state(purpose)
-    if purpose_applies(decision, study) is None:
-        return decision, usage, budget_warnings, None, None
-    facts = None
-    if needs_tf_priors(decision, study):
-        facts, usage, budget_warnings = invoke_data_facts(context, state, user_task, usage, budget_warnings)
-    selection = select_by_purpose(
-        decision, study, priors=(facts or {}).get("priors"), stated=stated_in_text(user_task),
-    )
-    record_event(context, state, "routing.purpose_selection", "classify", selection.record())
-    picked = with_purpose_selection(decision, selection)
-    if picked.advisory_recommendation is not None and picked is not decision:
-        picked = picked.model_copy(update={
-            "clarification_question": recommendation_question(picked.advisory_recommendation),
-        })
-    return picked, usage, budget_warnings, selection.record(), facts
-
-
 def _route_request(
     context: _GraphContext,
     state: AgentState,
     user_task: str,
-    purpose: dict | None = None,
 ) -> _RouterInvocation:
     """Run the ordered semantic, validation, registry, and intent pipeline."""
     usage = _current_usage(context, state)
@@ -447,10 +403,7 @@ def _route_request(
     decision, usage, budget_warnings = invoke_hypothesis_matcher(
         context, state, user_task, decision, usage, budget_warnings,
     )
-    decision, usage, budget_warnings, purpose_record, data_facts = _select_by_purpose(
-        context, state, user_task, decision, purpose, usage, budget_warnings,
-    )
-    if (purpose_record or {}).get("recommended") is None and framing_yielded(decision, usage) and not any(
+    if framing_yielded(decision, usage) and not any(
         call.role in ADVISORY_ROLES - {"hypothesis_bases"} for call in usage.calls
     ):
         decision, usage, budget_warnings = invoke_condition_recommender(
@@ -476,11 +429,11 @@ def _route_request(
     )
     return _RouterInvocation(
         decision=decision,
-        routing_state={**outcome_routing_state(
+        routing_state=outcome_routing_state(
             decision,
             interpretation.semantic_goal,
             interpretation.request_mode,
-        ), "purpose_selection": purpose_record, "data_facts": data_facts},
+        ),
         usage=usage,
         budget_warnings=budget_warnings,
         reason_code=("intent_fallback" if intent_fallback else
