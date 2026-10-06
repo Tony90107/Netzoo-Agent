@@ -1,0 +1,76 @@
+diff --git a/scripts/netzoo_agent_core/graph/condition_recommender.py b/scripts/netzoo_agent_core/graph/condition_recommender.py
+index f2e5c94..133c2ac 100644
+--- a/scripts/netzoo_agent_core/graph/condition_recommender.py
++++ b/scripts/netzoo_agent_core/graph/condition_recommender.py
+@@ -64,6 +64,7 @@ __all__ = [
+     "is_method_tie",
+     "recommend_from_claims",
+     "separating_question",
++    "unrecommended_question",
+ ]
+ 
+ _MAX_QUESTIONS = 2
+@@ -255,6 +256,21 @@ def separating_question(
+     return text
+ 
+ 
++def unrecommended_question(decision: TaskDecision) -> str:
++    """A tie's question once its recommendation is withdrawn (Log 380: it needed ruled-out data).
++
++    A method tie asks the facts that separate it, as when nothing is
++    recommended; any other tie asks which listed option fits. Never None: the
++    reply's clarification renderer needs a question, and without one a tie fell
++    to the response model (Log 380 self-test, s18 D2: the budget fallback).
++    """
++    candidates = list(decision.hypothesis_actions)
++    options = condition_options(candidates) if is_method_tie(decision) else []
++    if options:
++        return separating_question(options, candidates)
++    return "Which of the listed options fits your study?"
++
++
+ def recommendation_question(recommendation: AdvisoryRecommendation) -> str:
+     return (
+         f"Should I use {_workflow_name(recommendation.action)}, or does another "
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 6844fdb..306e855 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -28,7 +28,7 @@ from .context import _GraphContext, record_event
+ from .continuation_invocation import compare_workflows, continue_workflow
+ from .intent_invocation import _invoke_intent_router
+ from .invocation_types import RouterInvocation as _RouterInvocation
+-from .condition_recommender import invoke_condition_recommender
++from .condition_recommender import invoke_condition_recommender, unrecommended_question
+ from .request_concerns import invoke_concern_matcher
+ from .study_purpose_call import invoke_study_purpose
+ from .data_facts_call import invoke_data_facts
+@@ -188,9 +188,11 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
+     status = {item.action: item.status for item in decision.applicability}
+     dropped = None
+     if advice is not None and status.get(advice.action) == "not_applicable":
+-        # A recommendation needing data the request rules out is not one (plan item 4).
++        # A recommendation needing data the request rules out is not one (plan item 4);
++        # the tie keeps a question of its own, never the dropped one's.
+         dropped = advice.action
+-        decision = decision.model_copy(update={"advisory_recommendation": None, "clarification_question": None})
++        decision = decision.model_copy(update={
++            "advisory_recommendation": None, "clarification_question": unrecommended_question(decision)})
+     record_event(context, state, "routing.applicability_assessed", "classify", {
+         "data_facts": decision.data_facts,
+         "applicability": [item.model_dump() for item in decision.applicability],
+diff --git a/tests/test_applicability.py b/tests/test_applicability.py
+index 04d5ea0..f185b1b 100644
+--- a/tests/test_applicability.py
++++ b/tests/test_applicability.py
+@@ -253,5 +253,9 @@ def test_a_recommendation_needing_ruled_out_data_is_dropped():
+             SimpleNamespace(recorder=SimpleNamespace(append=lambda *a: None)), {}, NO_OTHER, _result(tie))
+ 
+     assert result.decision.advisory_recommendation is None
+-    assert result.decision.clarification_question is None
++    assert result.decision.clarification_question and "LIONESS-PANDA, or" not in result.decision.clarification_question
+     assert statuses(result.decision)["run_lioness_coexpression"] == "applicable"
++    # The tie still renders without the response model (Log 380 self-test, s18 D2:
++    # with no question it fell to the model, whose budget preflight refused).
++    text, _, _ = respond_and_card(NO_OTHER, result.decision)
++    assert "Which of the listed options fits your study?" in text and "fits better" not in text

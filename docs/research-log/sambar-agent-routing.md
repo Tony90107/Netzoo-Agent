@@ -19294,3 +19294,94 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 2. 同等適合的工具，讓輸入可用性決定（A2、B4：沒說 miRNA，就選 LIONESS-PANDA）。
 3. F3 這類「prior 沒提卻 exact 推薦需要 prior 的工具」：由第 4 項的方法適用性處理，與第 3 項分開宣告。
 4. 第十九組已看過，下一輪要用第二十組。
+
+## Log 380｜事前宣告：每個列出的工具依使用者實際的資料判斷能不能用（計畫第 4 項），以第二十組保留集評估
+
+日期：2026-10-06，Asia/Taipei。本條目寫於第二十組任何 live 呼叫之前。
+
+**候選與凍結：**
+- 候選 `b536b95`：
+  - `0a70c15`：差異 sha256 `913c84f2acc6`，與 `applicability-2026-10-06/FREEZE20.md` 凍結的 `ap_frozen.patch` 相同。
+  - 加上修正 1（`ap_amend1.patch`，`a0865dd2d579`）。
+  - 兩者合併對 `161f33d` 的差異：`bf9029626534`，19 個檔案。
+- 凍結在第二十組寫成之前完成（`b03c054`）。
+- 修正 1 的來源：看過的資料上的分析自我測試找到一個錯誤，在實作端讀第二十組之前修好。紀錄見 FREEZE20 的 Amendment 1。
+  - 第二十組的撰寫者是隔離的，不讀 repository，因此兩者互不影響。
+  - 錯誤內容：撤掉推薦時連同平手的問題一起清掉，回覆落到 response model，被預算預檢擋下。
+- 一句話：
+  - Log 376 的 data-facts 呼叫（加上 miRNA 欄位）讀出請求對 TF prior 與 miRNA 的說法：說出、排除或沒提。引文必須在請求中找得到。
+  - 每個列出的工具依此判為 applicable、not_applicable 或 insufficient_information。
+  - 只改回覆與卡片：
+    - 資料不足的工具不再寫成「Selected path」，改以條件開頭。
+    - 使用者排除的資料，用他的原話說出來，不再追問。
+    - 只追問讀成「沒提」的資料。
+    - 平手推薦若需要被排除的資料，就撤掉。
+  - 不選、不排序、不移除任何工具，也不執行任何東西。
+
+**基準：** `9f95e14`，在 `.worktrees/netzoo-item3-base` 執行，程式碼與 `161f33d` 相同。候選在 `.worktrees/netzoo-ap-cand` 的 `b536b95` 執行。兩者都是乾淨 worktree。全套件 3379 passed／35 skipped。
+
+**保留集：** `applicability-2026-10-06/heldout20/`。
+- 由隔離的 subagent 只依任務說明撰寫，沒有讀取任何 repository 檔案或先前的集合；它自己的驗證腳本全部通過。第一次撰寫的 subagent 停滯，沒有留下任何檔案，因此重寫。
+- 共 32 題：7 個家族各 4 題，同一家族的資料句逐字相同，只換目的句；另有 4 個陷阱題。
+- 各家族的資料：
+
+  | 家族 | 資料 | prior | miRNA |
+  |---|---|---|---|
+  | A | 人類呼吸道培養，用白話描述 TF 結合與蛋白接觸 | 說出 | 沒提 |
+  | B | 小鼠視網膜，RNA-seq 加 small-RNA-seq，以及 JASPAR、STRING、TargetScan | 說出 | 說出 |
+  | C | 蜜蜂腦，「no binding-site, protein-interaction or microRNA data」 | 否定 | 否定 |
+  | D | 阿拉伯芥，「We only have RNA-seq counts」 | 「only」 | 隱含排除 |
+  | E | 蠑螈，「the entirety of what we produced」，不含否定詞 | 不帶否定詞的排除 | 隱含排除 |
+  | F | 潰瘍性結腸炎切片，只說表現量 | 沒提 | 沒提 |
+  | G | 葡萄果粒，只說表現量 | 沒提 | 沒提 |
+
+- 陷阱題：
+  - T1：轉述指導教授「we need a motif prior」，自己的資料只有表現量。標為沒提。
+  - T2：去年在另一群豬用過 JASPAR、STRING。標為沒提。
+  - T3：同一句說出 CIS-BP、BioGRID，否定 miRNA。
+  - T4：狗的樣本，配人類的 JASPAR、STRING。標為說出。
+- 必須追問的題：prior 有 F1、F3、G1、T1、T2；miRNA 有 A3。其餘 26 題不應追問。causal 有 4 題，prediction 有 4 題。
+
+**執行：** 每臂 32 題 × 3 次，共 192 個 session。兩臂交錯，gpt-4o-mini（預先授權）。runner 為 `ap_run.py`，tag `s20`。
+
+**分析：** `ap_analyze.py`，不呼叫任何模型。從回覆文字讀取，兩臂用同一套規則：
+- prior 問題：以「?」結尾、提到 motif、binding、PPI 或 protein interaction 的句子。
+- miRNA 問題：以「?」結尾、提到 miRNA、microRNA 或 small RNA 的句子。
+- 「說出被排除」：候選的句子「… which you said you do not have」。
+- 「當成答案提出」：「Selected path: **X**」、「Fallback recommendation: **X**」，或決策中的 advisory 推薦。
+- 「模型撰寫的回覆」：有 `response` 呼叫，或是預算後備文字。
+
+自我測試：在看過的 9 題上，兩臂 live 各跑一次。
+- `st20`（舊候選 `0a70c15`，US$0.042）：找到修正 1 的錯誤，並因此新增 B1、調整 H2。
+- `st20b`（`b536b95`）：所有判定都算得出，且全部成立（US$0.039）：A1 3/3（基準 0/3），A2 0，A3 3/4，R1 2/2，R2 基準 3、候選 0，M1 0，B1 0，H2 0，H3 只有 data_facts。s18 D2 改說「… which you said you do not have」。
+
+**判定（全部成立才保留；任一不成立就撤回 `0a70c15` 與 `b536b95`）：**
+
+| 判定 | 內容 |
+|---|---|
+| V1 | 每臂 96/96 個 session。逾時或 provider 錯誤的 session 最多重跑一次，原檔與 trace 先移到 archive |
+| A1 | `data_question = priors` 的 session（5 題 × 3）：候選追問 prior 的比例 ≥ 75%，且比基準多至少 25 個百分點 |
+| A2 | prior 標為說出或排除的 session（22 題 × 3）：候選的 prior 問題 ≤ 2 次 |
+| A3 | 候選所有 prior 問題中，落在 `data_question = priors` 題目上的比例 ≥ 75% |
+| R1 | prior 標為排除、且候選列出需要 prior 的工具的 session：候選說出「which you said you do not have」的比例 ≥ 60% |
+| R2 | 需要被排除資料的工具被當成答案提出，加上需要沒提資料的工具被寫成「Selected path」，兩者合計：基準 ≥ 3 時，候選 ≤ 基準 // 3；否則候選 ≤ 基準，並註明未受考驗 |
+| M1 | miRNA 標為說出或排除的 session：候選的 miRNA 問題 ≤ max(1, 基準) |
+| B1 | 模型撰寫的回覆：候選 ≤ 基準 + 1 |
+| H2 | 候選非模型撰寫的 respond_only 回覆與離線渲染相同，差異為 0 |
+| H3 | 候選比基準多出的呼叫角色只有 `data_facts` |
+
+**只報告：**
+- 依標註分組的追問、說出排除、列出 prior 工具的次數。
+- A3 的 miRNA 追問。
+- data-facts 讀取與標註的對照，prior 與 miRNA 分開。
+- 被撤掉的推薦。
+- 兩臂「當成答案提出」的工具是否在 acceptable 內。
+- 逐題的追問次數、成本。
+
+**事前公開的風險（讀過標註後、執行前寫下）：**
+1. T1（轉述指導教授的「we need a motif prior」）與 T2（去年在另一群豬用過 JASPAR）：讀取可能判為說出。驗證只查引文是否在請求中，不查是誰的資料，因此可能不追問。這兩題佔 A1 的 6/15。
+2. A1 依賴 routing 列出需要 prior 的工具。「What your data allows」段落只在沒有任何列出的工具能用已說出的資料執行時才出現。若 F1、G1（兩組差異）的平手同時列出 COBRA，就不會追問。條件開頭只作用在單一 exact 的工具。
+3. F4、G3（prior 沒提的 prediction 與 causal 題）：若 routing 列出 TF 工具，候選會追問 prior，降低 A3。
+4. D1（只有表現量，問 TF 在每個樣本的活性）：Log 312 的規則不會以共表現網路回答 TF-to-gene 的結果，因此標註可接受的 LIONESS-COEXPRESSION 不會出現在段落中。只影響報告。
+5. A3（prior 說出、miRNA 沒提，問 miRNA）：應追問 miRNA list，但沒有設判定，只報告。
+6. R2 可能未受考驗：若基準在這組上很少把需要 prior 的工具寫成「Selected path」或推薦，就無法達到 ≥ 3。

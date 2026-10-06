@@ -1,0 +1,44 @@
+# Log 380 live analysis `st20b` (1 repeats, 9 items)
+
+V1 base: sessions 9/9, missing [], provider errors {}, all errors {'ValidationError': 4}, cost $0.0194
+V1 cand: sessions 9/9, missing [], provider errors {}, all errors {'ValidationError': 2}, cost $0.0191
+
+A1 asks about priors where data_question=priors: base 0/3 (0%), cand 3/3 (100%) -> PASS (cand >= 75% and >= base + 25 points)
+A2 priors questions where priors stated or ruled out: base 0 [], cand 0 [] -> PASS (cand <= 2)
+A3 cand priors questions on data_question=priors: 3/4 (75%); elsewhere on ['s18T5'] -> PASS (>= 75%)
+R1 cand says the priors were ruled out, where it lists a workflow needing them: 2/2 (100%) -> PASS (>= 60%)
+R2 base: offered though ruled out 1 ['s18D2-1:priors']; selected though unstated 2 ['s18E4-1:priors', 's19F3-1:priors']
+R2 cand: offered though ruled out 0 []; selected though unstated 0 []
+R2 total base 3, cand 0 -> PASS (cand <= base // 3 when base >= 3, else cand <= base)
+M1 miRNA questions where miRNA stated or ruled out: base 0 [], cand 0 [] -> PASS (cand <= max(1, base))
+B1 base: model-written replies 0 []; of them the budget fallback []
+B1 cand: model-written replies 0 []; of them the budget fallback []
+B1 -> PASS (cand <= base + 1)
+H2 cand respond-only replies differing from the offline render: 0 [] -> PASS
+H3 roles cand - base: ['data_facts']; base - cand: [] -> PASS
+V1 every session present: PASS
+ALL GATES: HOLD
+
+(report) per label, arm: sessions | priors asks | miRNA asks | says ruled out | lists a priors workflow
+  base priors=ruled_out data_question=none  :   2 |   0 |   0 |   0 |   2
+  base priors=stated    data_question=none  :   3 |   0 |   0 |   0 |   3
+  base priors=unstated  data_question=none  :   1 |   0 |   0 |   0 |   1
+  base priors=unstated  data_question=priors:   3 |   0 |   1 |   0 |   3
+  cand priors=ruled_out data_question=none  :   2 |   0 |   1 |   2 |   2
+  cand priors=stated    data_question=none  :   3 |   0 |   0 |   0 |   3
+  cand priors=unstated  data_question=none  :   1 |   1 |   0 |   0 |   1
+  cand priors=unstated  data_question=priors:   3 |   3 |   1 |   0 |   3
+(report) data-facts reading (kind, annotated -> read): {('mirna', 'ruled_out', 'ruled_out'): 1, ('mirna', 'stated', 'stated'): 1, ('mirna', 'unstated', 'unstated'): 7, ('priors', 'ruled_out', 'ruled_out'): 2, ('priors', 'stated', 'stated'): 3, ('priors', 'unstated', 'unstated'): 4}
+(report) applicability assessed in 9 cand sessions; recommendations dropped ['s18D2-1:run_panda']
+(report) base: offered an answer in 4/9, all acceptable in 2
+(report) cand: offered an answer in 0/9, all acceptable in 0
+(report) per item: priors asks base/cand, says ruled out cand
+  s18A4 priors=stated    needs=tf_priors            dq=none   asks 0/0 ruled 0
+  s18C4 priors=ruled_out needs=tf_priors            dq=none   asks 0/0 ruled 1
+  s18D2 priors=ruled_out needs=none                 dq=none   asks 0/0 ruled 1
+  s18E4 priors=unstated  needs=tf_priors            dq=priors asks 0/1 ruled 0
+  s18F3 priors=unstated  needs=tf_priors            dq=priors asks 0/1 ruled 0
+  s18T5 priors=unstated  needs=none                 dq=none   asks 0/1 ruled 0
+  s18T4 priors=stated    needs=tf_priors            dq=none   asks 0/0 ruled 0
+  s19C2 priors=stated    needs=tf_priors            dq=none   asks 0/0 ruled 0
+  s19F3 priors=unstated  needs=tf_priors            dq=priors asks 0/1 ruled 0

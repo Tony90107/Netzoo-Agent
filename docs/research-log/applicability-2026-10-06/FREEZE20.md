@@ -61,3 +61,33 @@ subagent writes that set after this freeze.
 - Clean worktree: 3379 passed / 35 skipped. Base `161f33d` has 3359; 20 tests are new in `test_applicability.py`. Updated tests pin the new data-facts role and the TaskDecision schema digest.
 - Fingerprints: legacy `e920bf3b5d57`, claims `743b2dd0d73a`, unchanged.
 - One deliberate behaviour change against an existing test's spirit: a workflow that needs priors the request never mentions now draws a question (F3), not only a "Not mentioned" note. The note's old test still passes, because it carries no reading.
+
+## Amendment 1 (2026-10-06, before anyone on the implementing side read `heldout20/`)
+
+The live analyzer self-test on SEEN items (`selftest20.json`: nine heldout18/19 prompts, labels
+converted by the implementing side; tag `st20`, one repeat per arm, US$0.042) found a defect in
+the frozen change:
+- s18 D2 ("these expression counts are everything we have"): the reading ruled out the priors,
+  so the tie's PANDA recommendation was dropped, and the tie's question went with it
+  (`clarification_question: None`).
+- With no question, no deterministic renderer applied. The reply fell to the response model, whose
+  budget preflight refused: "No additional response-model call was made because the configured
+  task token budget was reached." Base gave a full reply (with the PANDA recommendation).
+- It was not total tokens: cand 26,151 vs base 26,160 of 30,000.
+
+Fix (`b536b95`, `ap_amend1.patch`, sha256 `a0865dd2d579`): a dropped recommendation's tie keeps a
+question of its own (`unrecommended_question`): a method tie's separating question, as when nothing
+is recommended, else "Which of the listed options fits your study?". A test pins that the dropped
+tie renders without the response model. Replayed offline, s18 D2 now renders the tie plus
+"... which you said you do not have ("everything we have")".
+
+**Candidate for the live round:** `b536b95` (= `0a70c15` + amendment). Combined diff against
+`161f33d`, `scripts/` and `tests/`: sha256 `bf9029626534`, 19 files.
+
+The heldout20 writer is isolated (it reads no repository file), so the amendment cannot have
+shaped the set, and the set cannot have shaped the amendment. Its files had not been opened when
+this was written.
+
+The analyzer gained a gate from the same finding: **B1**, model-written replies (a `response`
+call or the budget fallback) per arm. H2 now covers only the other replies, because those cannot
+be re-rendered offline.
