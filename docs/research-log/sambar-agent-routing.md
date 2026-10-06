@@ -19457,3 +19457,83 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
    - M1 只計「Do you (also) have …」這類問有沒有資料的問題，與平手的分辨問題分開。
    - A1 的分母依 routing 是否列出需要 prior 的工具，分開報告。
 4. A2、R1、R2 的增益很明確，值得保留到重做中。下一輪要用第二十一組保留集，第二十組已看過。
+
+## Log 381｜事前宣告：方法適用性重做（計畫第 4 項第二輪），以第二十一組保留集評估
+
+日期：2026-10-06，Asia/Taipei。本條目寫於第二十一組任何 live 呼叫之前；第二十一組也沒有在任何程式上離線跑過。
+
+**候選與凍結：**
+- 候選 `2015646`。其差異 sha256 `3214de009912`，與 `applicability-redo-2026-10-06/FREEZE21.md` 凍結的 `ar_frozen.patch` 相同。
+- 凍結在第二十一組寫成之前完成（`b81c584`）。
+- 內容：Log 380 的候選，加上針對它四個失敗原因的四處修改：
+  1. **是誰的資料**（T1、T2）：讀成「有」時，引文還必須落在使用者自己、現在的陳述裡，否則降為「沒提」。
+     - 「自己、現在的陳述」即第 1 項的 `admissible_request_text`，會去掉轉述、引號與過去的事。
+     - 只改程式驗證，prompt 與 schema 不變。
+  2. **逐讀法回覆**（G1）：有讀取時，「What your data allows」段落也套用到 `hypothesis_routes` 回覆。
+  3. **沒有工具能回答的問題**（F4）：研究目的只有預測或因果時，不追問資料，但仍說出被排除的資料。
+  4. **fallback**（T3-3）：資料不足時也改為條件開頭。
+- 凍結前試過並放棄的做法：在 schema 加一個「只提到」狀態。它讓排除的召回大跌（第 18 組 27/27 → 13/27），屬於改 prompt 文字的脆弱性。詳見 FREEZE21。
+
+**基準：** `9f95e14`，在 `.worktrees/netzoo-item3-base` 執行，程式碼與 `161f33d` 相同。候選在 `.worktrees/netzoo-ar-cand` 的 `2015646` 執行。全套件 3384 passed／35 skipped。
+
+**保留集：** `applicability-redo-2026-10-06/heldout21/`。
+- 由隔離的 subagent 只依任務說明撰寫，不讀 repository，自帶驗證全部通過。
+- 共 32 題：7 家族各 4 題，加上 4 個陷阱題。
+
+  | 家族 | 資料 | prior | miRNA |
+  |---|---|---|---|
+  | A | 斑馬魚心臟，白話說出 TF-target 表與蛋白互作清單 | 說出 | 沒提 |
+  | B | 扁桃腺類器官，JASPAR、STRING、miRTarBase，以及同樣本的 small RNA-seq | 說出 | 說出 |
+  | C | 雞胚肢芽，明確否定 | 排除 | 排除 |
+  | D | 鮭魚鰓，「Everything we produced … is one RNA-seq count matrix … plus a spreadsheet」 | 不帶否定詞的排除 | 排除 |
+  | E | 綿羊瘤胃，只說表現量 | 沒提 | 沒提 |
+  | F | 阿基里斯腱，「my advisor says … will need a TF motif prior and a protein interaction network」 | 只提到（標為沒提） | 沒提 |
+  | G | 大豆根，「a collaborator has assembled … but has not shared them with us yet」 | 只提到（標為沒提） | 沒提 |
+
+- 陷阱題：
+  - T1：審稿人的提問放在引號內，標為沒提。
+  - T2：「As my PI insisted, we assembled a TF motif prior and a protein interaction network for this cohort」，標為說出。
+  - T3：「PlantTFDB and STRING cover tomato」，標為沒提。
+  - T4：prior 說出、miRNA 否定，問 TF 或 miRNA。
+- 必須追問 prior 的題：E1、E4、F1、F4、G1、G4、T1、T3，共 8 題、24 個 session。
+- prediction 4 題，causal 3 題（另有 G4 混合 TF 問題與因果問題），兩問合一 6 題。
+
+**執行：** 每臂 32 題 × 3 次，共 192 個 session。兩臂交錯，gpt-4o-mini（預先授權）。runner 為 `ar_run.py`，tag `s21`。
+
+**分析：** `ar_analyze.py`，不呼叫任何模型。定義與 Log 380 相同，只有一處修正：
+- 「資料問題」只計問使用者有沒有東西的問句（「do you (also/already) have」、「have you got/built/obtained/assembled」）。
+- prior 問題與 miRNA 問題，分別是提到 prior 或 miRNA 的資料問題。
+- Log 380 的 M1 把平手原有的「Do the regulators include miRNAs …?」也算進去，這是當時定義的錯誤；這一輪改正，prior 也一致改用同一個定義。
+- 自我測試在看過的第二十組 10 題上兩臂各跑一次（`st21`，US$0.045）。
+  - 所有判定都算得出，且全部成立：A1 4/4（基準 1/4），A2 0（基準 2），A3 4/4，R1 2/2，M1 兩臂都是 0，B1 0，H2 0，H3 只有 data_facts。
+  - T1、T2 被降級後會追問，G1 會追問，F4 不再追問。
+
+**判定（全部成立才保留；任一不成立就撤回 `2015646`）：** 門檻與 Log 380 相同。
+
+| 判定 | 內容 |
+|---|---|
+| V1 | 每臂 96/96 個 session。逾時或 provider 錯誤的 session 最多重跑一次，原檔與 trace 先移到 archive |
+| A1 | `data_question = priors` 的 session（8 題 × 3）：候選追問 prior 的比例 ≥ 75%，且比基準多至少 25 個百分點 |
+| A2 | prior 標為說出或排除的 session（14 題 × 3）：候選的 prior 問題 ≤ 2 次 |
+| A3 | 候選所有 prior 問題中，落在 `data_question = priors` 題目上的比例 ≥ 75% |
+| R1 | prior 標為排除、且候選列出需要 prior 的工具的 session：說出「which you said you do not have」的比例 ≥ 60% |
+| R2 | 需要被排除資料的工具被當成答案提出，加上需要沒提資料的工具被寫成「Selected path」，兩者合計：基準 ≥ 3 時，候選 ≤ 基準 // 3；否則候選 ≤ 基準，並註明未受考驗 |
+| M1 | miRNA 標為說出或排除的 session：候選的 miRNA 資料問題 ≤ max(1, 基準) |
+| B1 | 模型撰寫的回覆：候選 ≤ 基準 + 1 |
+| H2 | 候選非模型撰寫的 respond_only 回覆與離線渲染相同，差異為 0 |
+| H3 | 候選比基準多出的呼叫角色只有 `data_facts` |
+
+**只報告：**
+- A1 依「候選是否列出需要 prior 的工具」拆開。
+- 「有」被降級為不是使用者自己的話的次數，逐題、依標註。
+- 依標註分組的追問與說出排除。
+- data-facts 讀取與標註的對照。
+- 「當成答案提出」的工具是否在 acceptable 內、成本。
+
+**事前公開的風險（讀過標註後、執行前，只靠推理寫下）：**
+1. **G 家族**（「a collaborator has assembled … but has not shared them with us yet」）：這句不是轉述，也不是過去的事，規則 1 不會降級。若讀取判為說出或排除，G1、G4 就不會追問，佔 A1 的 6/24。
+2. **T2**（「As my PI insisted, we assembled …」）：轉述偵測可能把使用者自己的 prior 一起去掉，造成不該問的追問，影響 A2 與 A3。
+3. **T3**（「PlantTFDB and STRING cover tomato」）：讀取可能判為說出，規則 1 不會降級，佔 A1 的 3/24。
+4. **E4、F4、D3、A4（兩問合一）**：若 routing 同時列出只需表現量的工具，段落不會出現，也就不會追問（Log 380 的風險 2，這一輪沒有處理）。E4、F4 佔 A1 的 6/24。
+5. **F2（causal）、G3（prediction）**：靠研究目的讀出 gap claim 才不追問；若目的讀取漏掉，就會追問，影響 A3。
+6. **B4**：同樣本 small RNA-seq 的「兩層」問題，可能被路由到 DRAGON；這不在 prior 判定內，只報告。
