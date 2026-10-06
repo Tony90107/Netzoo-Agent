@@ -253,5 +253,9 @@ def test_a_recommendation_needing_ruled_out_data_is_dropped():
             SimpleNamespace(recorder=SimpleNamespace(append=lambda *a: None)), {}, NO_OTHER, _result(tie))
 
     assert result.decision.advisory_recommendation is None
-    assert result.decision.clarification_question is None
+    assert result.decision.clarification_question and "LIONESS-PANDA, or" not in result.decision.clarification_question
     assert statuses(result.decision)["run_lioness_coexpression"] == "applicable"
+    # The tie still renders without the response model (Log 380 self-test, s18 D2:
+    # with no question it fell to the model, whose budget preflight refused).
+    text, _, _ = respond_and_card(NO_OTHER, result.decision)
+    assert "Which of the listed options fits your study?" in text and "fits better" not in text
