@@ -20175,3 +20175,7 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
   - 比 gpt-4o 多出的失誤：JN4 ×2（enhancer 與基因的連結被給了 DRAGON）、JN8 ×2（重疊社群被給了 CONDOR）、U7 一次。
   - 與 gpt-4o 相同、可以成立的：N4、JN6。
 - **小結**：在已看過的題目上，nemotron 對照題的表現與 gpt-4o 相同；做不到的題目多錯約 5 次。資料在 `replay/r-nemo.json`。
+
+## Log 389｜事前宣告：能力檢查第三個候選（型別欄位＋免費 nemotron 檢查），以第三組陷阱保留集評估
+
+候選 `f0983ee`，判定凍結在 `capability-traps-2026-10-08/FREEZE389.md`，執行前寫下。題組為 `heldout3.json`，共 35 題。

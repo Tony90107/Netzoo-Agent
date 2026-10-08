@@ -17,6 +17,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 WORKTREES = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees")
 ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / "netzoo-cc-cand"}
+# Log 389: CAND_CAPABILITY_MODEL sets the candidate arm's OPENROUTER_CAPABILITY_MODEL only.
+ENV = {"base": dict(os.environ), "cand": dict(os.environ)}
+if os.environ.get("CAND_CAPABILITY_MODEL"):
+    ENV["cand"]["OPENROUTER_CAPABILITY_MODEL"] = os.environ["CAND_CAPABILITY_MODEL"]
 ITEMS = {item["id"]: item for item in json.loads((HERE / os.environ.get("HELDOUT", "heldout1.json")).read_text())["items"]}
 
 
@@ -27,7 +31,8 @@ def run(tag, arm, key, rep):
             code = subprocess.call(
                 [sys.executable, "scripts/netzoo_agent.py", "--session", f"ce-{tag}-{arm}-{key}-{rep}",
                  "--task", ITEMS[key]["prompt"]],
-                cwd=ARMS[arm], stdout=stdout, stderr=stderr, stdin=subprocess.DEVNULL, timeout=600)
+                cwd=ARMS[arm], stdout=stdout, stderr=stderr, stdin=subprocess.DEVNULL, timeout=900,
+                env=ENV[arm])
         except subprocess.TimeoutExpired:
             code = "timeout"
     return f"{arm}:{key}:{rep}", code
