@@ -20111,3 +20111,46 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - (a) 檢查呼叫改用較強的模型。gpt-4o 需要使用者授權。可以先只重播檢查呼叫做便宜的對照，不必跑整個 session。
 - (b) 把對照變成型別欄位，由 code 比對：資料單位（bulk 或 single-cell）、調控者種類（TF、miRNA、lncRNA）、是否需要正負號，就像層數與粒度的做法。再加上「routing exact 而且型別相容才算可交付」。
 - (c) 放寬判定。這需要使用者重新權衡「瞎掰」和「誤說做不到」的代價。
+
+## Log 389（開發）｜型別欄位＋檢查模型對照：gpt-4o 在已看過的 94 題上沒有假缺口，對照題 60/60 正確
+
+使用者 2026-10-08 選擇 (a)＋(b)，並授權用 gpt-4o 只重播檢查呼叫做對照。
+
+**型別欄位 (b)**
+- 每個 ask 都帶 `data_unit`、`regulator_kinds`、`needs_sign`。
+- 能力表條目帶 `regulators`（共表現條目為 `[]`）、`signed`，全表註明 `data_units: [bulk_samples]`。
+- 由 code 排除不相容的條目，包括：單細胞、lncRNA 調控者、要正負號卻給無號網路、共表現被當作調控結果。
+
+**對照 (a)**
+- 腳本：`replay_models.py`。只呼叫檢查，不跑完整 session。
+- 題目：已看過的 traps、heldout1、heldout2，共 94 題，每題 2 次。
+- routing 的 exact match 取自 Log 387/388 候選的紀錄。
+- 計分只依題目標註自動算，結果存在 `replay/r-mini.json`、`replay/r-4o.json`。
+
+| | gpt-4o-mini | gpt-4o |
+|---|---|---|
+| U+N 完全缺口（誠實） | 92/102 | 94/102 |
+| U+N 過度給分 | 8 | 8 |
+| C 假缺口 | 4/60 | **0/60** |
+| C 正確 workflow | 56/60 | **60/60** |
+| C 過度給分 | 6/60 | 2/60 |
+| P 兩半都對 | 23/26 | **26/26** |
+
+**gpt-4o 剩下的 U+N 失誤**
+- N4：「find its target genes」由 PANDA 給，可以成立。
+- JN6：每邊檢定交給 NetZoo 外的步驟，可以成立。
+- JN1、HN8：都來自 Log 388 的「近似條目替代 workflow」規則（routing exact＋模型點到某近似條目），而且繞過了型別欄位。
+
+拿掉這條規則後重算 gpt-4o：U+N 98/102、C 假缺口 0、C 60/60、P 26/26。mini 拿掉這條規則則是 C 假缺口 6。
+
+**候選 `bc031ed`**
+- 型別欄位。
+- 以 `OPENROUTER_CAPABILITY_MODEL` 指定檢查專用的模型，須通過 allowlist。
+- 拿掉替代規則。
+
+全套件 3438 passed。
+
+**注意**
+- gpt-4o 有 20 次呼叫遇到 OpenRouter 402（額度不足），已降低平行數重跑補齊。
+- 帳戶剩餘額度約 US$1.66。正式的 heldout3 回合（兩臂、每題 3 次、檢查用 gpt-4o）估計約 US$1.7，需要使用者決定。
+- 這些都是已看過的題目，不能據此宣稱什麼；正式判定要用全新的 heldout3。
