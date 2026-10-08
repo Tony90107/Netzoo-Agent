@@ -11,6 +11,8 @@ import pandas as pd
 from .paths import _resolve_user_path
 
 DRAGON_OUTPUT_FORMATS = ("matrix", "edge_list")
+EDGE_COLUMNS = ["source", "target", "partial_correlation", "precision"]
+PVALUE_COLUMNS = ["p_value", "adj_p_value"]
 
 
 def _delimiter(path: Path) -> str:
@@ -141,27 +143,103 @@ def write_dragon_matrix(output_path: str, matrix: np.ndarray, node_ids: list[str
     return str(path)
 
 
+def dragon_pvalue_paths(output_path: str) -> tuple[Path, Path]:
+    """Where a matrix-format run writes its raw and adjusted p-value matrices (Log 386)."""
+    path = _resolve_user_path(output_path)
+    return (path.with_name(f"{path.stem}.pvalues{path.suffix}"),
+            path.with_name(f"{path.stem}.adj_pvalues{path.suffix}"))
+
+
+def estimate_dragon_pvalues(api, partial, x1, x2, lambdas):
+    """Edge p-values and BH-adjusted p-values, or why there are none (Log 386).
+
+    netZooPy estimates the null's degrees of freedom (kappa) from simulated data,
+    which fails when the features far outnumber the samples; the network is still
+    written then, and the run says why it has no p-values.
+    """
+    try:
+        adjusted, pvalues = api.estimate_p_values_dragon(
+            partial, x1.shape[0], x1.shape[1], x2.shape[1], lambdas
+        )
+    except Exception as error:  # noqa: BLE001 - p-values are optional; the network stands.
+        return None, None, f"p-values: not estimated ({type(error).__name__}: {error})"
+    return pvalues, adjusted, (
+        "p-values: written; adjusted with Benjamini-Hochberg separately within layer 1, "
+        "within layer 2 and across the layers"
+    )
+
+
+def write_dragon_pvalue_matrices(
+    output_path: str, pvalues: np.ndarray, adjusted: np.ndarray, node_ids: list[str]
+) -> list[str]:
+    """Labeled p-value matrices beside the network; the diagonal is not an edge and is left empty."""
+    written = []
+    for path, matrix in zip(dragon_pvalue_paths(output_path), (pvalues, adjusted)):
+        values = np.array(matrix, dtype=float)
+        np.fill_diagonal(values, np.nan)
+        frame = pd.DataFrame(values, index=node_ids, columns=node_ids)
+        frame.index.name = "node_id"
+        frame.to_csv(path, sep=_output_separator(path), float_format="%.12g")
+        written.append(str(path))
+    return written
+
+
 def write_dragon_edge_list(
     output_path: str,
     partial: np.ndarray,
     precision: np.ndarray,
     node_ids: list[str],
+    pvalues: np.ndarray | None = None,
+    adjusted: np.ndarray | None = None,
 ) -> str:
     path = _resolve_user_path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    with_p = pvalues is not None and adjusted is not None
+    columns = EDGE_COLUMNS + (PVALUE_COLUMNS if with_p else [])
     rows = [
         {
             "source": node_ids[left],
             "target": node_ids[right],
             "partial_correlation": float(partial[left, right]),
             "precision": float(precision[left, right]),
+            **({"p_value": float(pvalues[left, right]),
+                "adj_p_value": float(adjusted[left, right])} if with_p else {}),
         }
         for left, right in combinations(range(len(node_ids)), 2)
     ]
-    pd.DataFrame(rows, columns=["source", "target", "partial_correlation", "precision"]).to_csv(
+    pd.DataFrame(rows, columns=columns).to_csv(
         path, sep=_output_separator(path), index=False, float_format="%.12g"
     )
     return str(path)
+
+
+def write_dragon_outputs(output_path, output_format, partial, precision, node_ids, pvalues, adjusted) -> str:
+    """The network in the requested format, with its p-values when they were estimated (Log 386)."""
+    if output_format != "matrix":
+        return write_dragon_edge_list(output_path, partial, precision, node_ids, pvalues, adjusted)
+    written = [write_dragon_matrix(output_path, partial, node_ids)]
+    if pvalues is not None:
+        written += write_dragon_pvalue_matrices(output_path, pvalues, adjusted, node_ids)
+    return ", ".join(written)
+
+
+def _pvalues_in_range(values: np.ndarray) -> bool:
+    return bool(np.isfinite(values).all() and (values >= 0).all() and (values <= 1).all())
+
+
+def validate_dragon_pvalue_matrix(path: Path, nodes: int) -> list[str]:
+    """A labeled square p-value matrix: empty diagonal, symmetric off-diagonal values in [0, 1]."""
+    try:
+        frame = pd.read_csv(path, sep=_delimiter(path), header=0)
+    except Exception as error:  # noqa: BLE001 - malformed output is a typed result.
+        return [f"DRAGON p-value matrix could not be parsed: {path.name}: {error}"]
+    values = frame.iloc[:, 1:].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    if values.shape != (nodes, nodes):
+        return [f"DRAGON p-value matrix {path.name} must match the {nodes}-node network."]
+    off = ~np.eye(nodes, dtype=bool)
+    if not _pvalues_in_range(values[off]) or not np.allclose(values[off], values.T[off]):
+        return [f"DRAGON p-value matrix {path.name} must hold symmetric values in [0, 1] off the diagonal."]
+    return []
 
 
 def validate_dragon_output(path_value: str, output_format: str) -> tuple[bool, list[str], dict[str, int | str]]:
@@ -189,11 +267,25 @@ def validate_dragon_output(path_value: str, output_format: str) -> tuple[bool, l
         elif not np.allclose(numeric.to_numpy(dtype=float), numeric.to_numpy(dtype=float).T):
             errors.append("DRAGON partial-correlation matrix must be symmetric.")
         metrics["nodes"] = int(max(frame.shape[1] - 1, 0))
+        pvalue_files = [p for p in dragon_pvalue_paths(path_value) if p.is_file()]
+        metrics["p_values"] = "written" if len(pvalue_files) == 2 else "absent"
+        if len(pvalue_files) == 1:
+            errors.append("DRAGON wrote only one of its two p-value matrices.")
+        for pvalue_path in pvalue_files if not errors else ():
+            errors.extend(validate_dragon_pvalue_matrix(pvalue_path, int(metrics["nodes"])))
     elif output_format == "edge_list":
-        expected = ["source", "target", "partial_correlation", "precision"]
-        if list(frame.columns) != expected:
-            errors.append(f"DRAGON edge list columns must be exactly: {', '.join(expected)}.")
+        with_p = list(frame.columns) == EDGE_COLUMNS + PVALUE_COLUMNS
+        if list(frame.columns) != EDGE_COLUMNS and not with_p:
+            errors.append(
+                f"DRAGON edge list columns must be exactly: {', '.join(EDGE_COLUMNS)}"
+                f" (optionally followed by {', '.join(PVALUE_COLUMNS)})."
+            )
         else:
+            if with_p and not _pvalues_in_range(
+                frame[PVALUE_COLUMNS].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+            ):
+                errors.append("DRAGON edge p-values must be in [0, 1].")
+            metrics["p_values"] = "written" if with_p else "absent"
             if frame[["source", "target"]].isna().any().any():
                 errors.append("DRAGON edge list source and target IDs must be non-empty.")
             numeric = frame[["partial_correlation", "precision"]].apply(pd.to_numeric, errors="coerce")
@@ -218,6 +310,10 @@ def validate_dragon_output(path_value: str, output_format: str) -> tuple[bool, l
 
 __all__ = [
     "DRAGON_OUTPUT_FORMATS",
+    "dragon_pvalue_paths",
+    "estimate_dragon_pvalues",
+    "write_dragon_outputs",
+    "write_dragon_pvalue_matrices",
     "inspect_dragon_inputs_impl",
     "load_and_align_dragon_layers",
     "validate_dragon_output",

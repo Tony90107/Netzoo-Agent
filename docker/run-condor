@@ -8,6 +8,7 @@ import inspect
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -117,6 +118,56 @@ def run_condor(obj) -> tuple[str, str]:
     return initialization_method, optimization_method
 
 
+def final_scores(obj) -> dict | None:
+    """Regulator memberships and core scores from BRIM's final target assignment.
+
+    netZooPy 0.11.0 (60bcaf5, also upstream HEAD on 2026-10-08) has two defects here:
+    `brim()` writes `reg_memb` from the initial assignment R0 instead of its final
+    sweep, and `qscores()` reads a "com" column that `brim()` names "community" and
+    calls `matrices(c)` without its `resolution` argument. So the regulators are
+    reassigned with one right sweep against the final targets (which can only keep
+    or raise the bipartite modularity), and the core scores are computed as in
+    `qscores()` (Platig et al. 2016): a node's share of its community's modularity,
+    target j: (B R)[j, k] / 2m / Q_k, regulator i: (T' B)[k, i] / 2m / Q_k, so each
+    community's scores sum to 1. A community with Q_k <= 0 gets no score (NaN).
+
+    Returns None when the object has no `matrices` method (a stand-in object).
+    """
+    if not callable(getattr(obj, "matrices", None)):
+        return None
+    reg, tar = required_memberships(obj)
+    slots = 1 + int(max(reg.iloc[:, 1].max(), tar.iloc[:, 1].max()))
+    B, m, T, _, gn, rg = obj.matrices(slots, 1)
+    B = np.asarray(B, dtype=float)
+    TtB = T.transpose() @ B  # communities x regulators
+    reg_comm = TtB.argmax(axis=0)
+    R = np.zeros((len(rg), slots))
+    R[np.arange(len(rg)), reg_comm] = 1
+    q_coms = np.diagonal(T.transpose() @ B @ R) / m
+    BR = B @ R  # targets x communities
+    tar_comm = T.argmax(axis=1)
+
+    def score(raw: np.ndarray, communities: np.ndarray) -> list[float]:
+        shares = q_coms[communities]
+        return [float(value / (2 * m) / share) if share > 0 else float("nan")
+                for value, share in zip(raw, shares)]
+
+    reg_names = list(rg)
+    tar_names = list(gn)
+    reg_memb = pd.DataFrame({"reg": reg_names, "community": reg_comm})
+    reg_q = reg_memb.assign(qscore=score(TtB[reg_comm, np.arange(len(rg))], reg_comm))
+    tar_q = pd.DataFrame({"tar": tar_names, "community": tar_comm}).assign(
+        qscore=score(BR[np.arange(len(gn)), tar_comm], tar_comm))
+    return {
+        "reg_memb": reg_memb,
+        "reg_qscores": reg_q,
+        "tar_qscores": tar_q,
+        "modularity": float(q_coms.sum()),
+        "reassigned_regulators": int((reg.set_index(reg.columns[0]).iloc[:, 0]
+                                      .reindex(reg_names).to_numpy() != reg_comm).sum()),
+    }
+
+
 def required_memberships(obj) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return both required membership tables or fail the run."""
     memberships = []
@@ -143,12 +194,20 @@ def write_outputs(
     optimization_method: str,
 ) -> list[Path]:
     reg_memb, tar_memb = required_memberships(obj)
+    scores = final_scores(obj)
+    if scores is None:
+        raise CondorExecutionError(
+            "CONDOR object has no matrices(); core scores cannot be computed."
+        )
+    reg_memb = scores["reg_memb"]
     output_dir = artifact_paths["edges.tsv"].parent
     output_dir.mkdir(parents=True, exist_ok=True)
     edge_path = artifact_paths["edges.tsv"]
     edges.to_csv(edge_path, sep="\t", index=False)
     reg_memb.to_csv(artifact_paths["reg_memb.tsv"], sep="\t", index=False)
     tar_memb.to_csv(artifact_paths["tar_memb.tsv"], sep="\t", index=False)
+    scores["reg_qscores"].to_csv(artifact_paths["reg_qscores.tsv"], sep="\t", index=False)
+    scores["tar_qscores"].to_csv(artifact_paths["tar_qscores.tsv"], sep="\t", index=False)
 
     summary_path = artifact_paths["summary.txt"]
     with summary_path.open("w", encoding="utf-8") as handle:
@@ -158,9 +217,16 @@ def write_outputs(
         handle.write(f"targets: {edges['target'].nunique()}\n")
         handle.write(f"initialization_method: {initialization_method}\n")
         handle.write(f"optimization_method: {optimization_method}\n")
-        for attr_name in ("modularity", "Q", "Qcoms"):
-            if hasattr(obj, attr_name):
-                handle.write(f"{attr_name}: {getattr(obj, attr_name)}\n")
+        handle.write(f"modularity: {scores['modularity']}\n")
+        handle.write(
+            "regulator memberships: one right sweep against the final targets "
+            f"(netZooPy brim keeps the initial regulator assignment); "
+            f"{scores['reassigned_regulators']} regulator(s) changed community\n"
+        )
+        handle.write(
+            "core scores: each node's share of its community's modularity "
+            "(Platig et al. 2016); NaN where a community's modularity is not positive\n"
+        )
 
     written = [artifact_paths[suffix] for suffix in artifact_paths]
     for path in written:

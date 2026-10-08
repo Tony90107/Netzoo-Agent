@@ -145,6 +145,9 @@ class ArtifactValidationTests(unittest.TestCase):
         self.write("trial-edges.tsv", "source\ttarget\tweight\nTF1\tGene1\t1\n")
         self.write("trial-reg_memb.tsv", "node\tcommunity\nTF1\t0\n")
         self.write("trial-tar_memb.tsv", "node\tcommunity\nGene1\t0\n")
+        # netZooPy names the membership columns reg/tar (Log 386: these headers failed before).
+        self.write("trial-reg_qscores.tsv", "reg\tcommunity\tqscore\nreg_TF1\t0\t0.5\n")
+        self.write("trial-tar_qscores.tsv", "tar\tcommunity\tqscore\ntar_Gene1\t0\t\n")
         self.write("trial-summary.txt", "CONDOR trial summary\n")
 
         result = agent.validate_output_artifacts(
@@ -157,7 +160,23 @@ class ArtifactValidationTests(unittest.TestCase):
         )
 
         self.assertTrue(result.ok, result.errors)
-        self.assertEqual(len(result.artifacts), 4)
+        self.assertEqual(len(result.artifacts), 6)
+
+    def test_condor_core_scores_are_required(self):
+        self.write("trial-edges.tsv", "source\ttarget\tweight\nTF1\tGene1\t1\n")
+        self.write("trial-reg_memb.tsv", "reg\tcommunity\nreg_TF1\t0\n")
+        self.write("trial-tar_memb.tsv", "tar\tcommunity\ntar_Gene1\t0\n")
+        self.write("trial-reg_qscores.tsv", "reg\tcommunity\nreg_TF1\t0\n")
+        self.write("trial-summary.txt", "CONDOR trial summary\n")
+
+        result = agent.validate_output_artifacts(
+            "run_condor",
+            self.decision("run_condor", output_dir=str(self.root), prefix="trial"),
+        )
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("reg_qscores must have a qscore column" in e for e in result.errors), result.errors)
+        self.assertTrue(any("tar_qscores" in e for e in result.errors), result.errors)
 
     def test_cobra_requires_and_accepts_adjusted_coexpression_artifacts(self):
         output_dir = self.root / "cobra"

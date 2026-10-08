@@ -524,7 +524,8 @@ DOWNSTREAM_ANALYSES: Mapping[str, tuple[str, tuple[str, ...]]] = {
     )),
     "run_dragon": ("Downstream use of the partial-correlation network:", (
         "The cross-layer block holds direct associations between features of the two "
-        "omics layers; filter edges by the adjusted p-values before interpreting them.",
+        "omics layers; filter edges by the adjusted p-values written with the network "
+        "(Benjamini-Hochberg within each layer and across the layers) before interpreting them.",
         "Partial correlations are conditional on every other feature in both layers, so "
         "adding or removing features changes them.",
     )),
