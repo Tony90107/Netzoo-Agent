@@ -20267,3 +20267,32 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - 供應商可能記錄 prompt。
 - LN8 型（第二意見誤答「是」）仍有約 1/3 的機率。
 - heldout1-4 都已看過。
+
+## Log 391｜TEST_PROMPTS r9：能力檢查上線後的實際回覆，發現兩個可用性退步
+
+使用者 2026-10-09 要求用 TEST_PROMPTS 跑一輪看實際效果。
+
+- **執行**：在 main（`5be4093`，`.env` 已設 nemotron 檢查）上跑 10 題英文情境各 1 次，全部 exit 0，總成本約 US$0.02。
+- **輸出**：`test10-2026-10-03/out/r9-*`。
+- **檢查呼叫**：9/10 成功。test9 跑了 64 秒後失敗，該輪沒有檢查，回覆與先前相同。
+- **耗時**：檢查每次 11–44 秒。
+- **第二意見**：只有 test8 觸發 1 次，答「否」。
+
+**正常**
+- test1、test3、test5、test10 的「我理解你要」都正確。
+- test10 正確說明「存活／分期關聯要在 NetZoo 外做」。
+- test7 的 SPIDER 說明照常出現。
+
+**退步 1：完全缺口會吞掉已驗證的 outside-step 說明**
+- 完全缺口的回覆跳過所有 renderer，也跳過了 Log 320 起的 `OUTSIDE_STEPS` 段落。
+- test4（單細胞，6 個狀態的網路重組）：r8 的回覆有 SCORPION 說明，並給出已登錄的作法（每個狀態做 pseudo-bulk 再跑 PANDA）；r9 只剩「沒有已登錄 workflow 產出」。
+- test8（兩張網路的模組重組）：r8 有 CONDOR 加 ALPACA 說明；r9 只剩缺口。
+- 另一個問題：ALPACA 段落要求 CONDOR 在列出的候選中，但完全缺口已把候選清空，所以就算不跳過 renderer 也不會出現。
+
+**退步 2：背景句被標成「Not checked」**
+- 出現在 test3（1 句）、test6（2 句）、test7（1 句）。
+- 原因：模型把這些句子的 role 標為 background，卻沒有抄出 `has` 引文，覆蓋檢查就把它們算成沒讀到。
+
+**提案（交由使用者決定，改動會影響已上線的行為，需要量測）**
+- (A) 完全缺口的回覆保留 `OUTSIDE_STEPS` 段落；ALPACA 這類段落的 workflow 條件，改用清空之前的 routing 候選來判斷。
+- (B) 某一句若模型給了 background 或 methods_question 的 role，就算已讀；只有 role 是 asks 或 mixed、卻沒有任何驗證過的引文的句子，才列為未檢查。
