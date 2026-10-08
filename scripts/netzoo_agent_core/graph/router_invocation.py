@@ -31,8 +31,9 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
-from .capability_check_call import request_capability_check
-from ..interpretation.capability_check import build_capability_check
+from .capability_check_call import request_capability_check, request_second_opinion
+from ..capability_sheet import entry
+from ..interpretation.capability_check import apply_second_opinion, build_capability_check, second_opinion_pairs
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
@@ -239,6 +240,19 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     record_event(context, state, "routing.capability_checked", "classify", {
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
+    usage, warnings = result.usage, result.budget_warnings
+    if check.full_gap and decision.capability_match_status == "exact" and decision.matched_actions:
+        # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
+        # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
+        pairs = second_opinion_pairs(check, list(decision.matched_actions))
+        shown = [(check.requirements[index].quote, entry(key).workflow, entry(key).text) for index, key in pairs]
+        answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings)
+        if answers is not None:
+            check = apply_second_opinion(check, pairs, answers)
+        record_event(context, state, "routing.capability_second_opinion", "classify", {
+            "pairs": [list(pair) for pair in pairs], "answers": answers, "full_gap": check.full_gap,
+        })
+    result = replace(result, usage=usage, budget_warnings=warnings)
     update: dict = {"capability_check": check}
     if check.full_gap:
         update.update({
