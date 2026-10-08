@@ -28,11 +28,16 @@ PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein i
 
 
 def _proposal(*sentences):
-    return proposal_model(len(sentences)).model_validate({
-        f"s{index}": [
-            {"quote": quote, "kind": kind, "delivered_by": list(delivered), "not_by": list(not_by)}
-            for quote, kind, delivered, not_by in items]
-        for index, (_text, items) in enumerate(sentences, 1)})
+    """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
+    def reading(items):
+        return {
+            "has": [quote for quote, kind, _, _ in items if kind == "context"],
+            "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
+            "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by)}
+                     for quote, kind, delivered, not_by in items if kind == "result"],
+        }
+    return proposal_model(len(sentences)).model_validate(
+        {f"s{index}": reading(items) for index, (_text, items) in enumerate(sentences, 1)})
 
 
 def _splicing_check(delivered=()):
@@ -103,6 +108,16 @@ def test_a_near_verbatim_quote_stands_for_the_request_words():
     assert check.results()[0].quote == "a classifier to predict survival"
 
 
+def test_one_passage_read_as_two_asks_with_and_without_an_entry_is_partial():
+    task = "We want an integrated network for each patient and then a forecast of each network."
+    quote = "an integrated network for each patient and then a forecast of each network"
+    check, _ = build_capability_check(task, _proposal(("s1", [
+        (quote, "result", ("lioness_dragon.per_sample_networks",), ()), (quote, "result", (), ())])))
+    assert [item.status for item in check.results()] == ["partial"]
+    assert "partly available: LIONESS-DRAGON gives part of it" in understanding_paragraph(check)
+    assert not check.full_gap
+
+
 def test_near_misses_never_decide_support():
     """A produces entry delivers it even when a near miss is also named."""
     check = _splicing_check(delivered=("panda.tf_gene_network",))
@@ -146,6 +161,9 @@ def test_methods_questions_and_context_are_not_checked():
 def test_schema_requires_one_field_per_sentence():
     schema = proposal_model(3).model_json_schema()
     assert schema["required"] == ["s1", "s2", "s3"] and schema["additionalProperties"] is False
+    sentence = schema["$defs"]["SentenceReading"]
+    assert sentence["required"] == ["has", "about_methods", "asks"]
+    assert "not_by" not in str(sentence["properties"]["has"])  # only an ask can name entries
 
 
 def test_messages_number_the_sentences_the_schema_names():
