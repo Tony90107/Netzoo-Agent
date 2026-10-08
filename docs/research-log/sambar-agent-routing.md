@@ -19925,3 +19925,47 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
   - C1-C6：對照題。
 - 標註規則（HONEST／FAB／HEDGE／ASK、BOTH／HALF_FAB／HALF_SILENT／FALSE_GAP、OK／FALSE_GAP／WRONG）、要報告的數字、來源歸因 (a) routing 投影與 (b) 回覆文字，以及事前預測，都在 `capability-traps-2026-10-08/FREEZE.md`，執行前凍結。
 - 這一輪的結果決定下一步要改的是 routing 的輸出形狀（能表達「這部分做不到」），還是回覆層的功能描述。
+
+## Log 385（結果）｜做不到的題目 45 次中只有 9 次誠實說做不到，而且 9 次全是「因果」模板；其餘靠 routing 投影給出 workflow
+
+依 Log 385 執行。共 72 個 session，全部 exit 0，provider 錯誤 0，沒有重跑；model-written 回覆 0，所以全部回覆都是模板渲染。
+證據在 `capability-traps-2026-10-08/live/`：`b0-report.md`、`b0-structure.json`、`b0-blinded.md`、`b0-blind-key.json`、`b0-labels.json`（子代理盲標）、`b0-labels-final.json`（複核後）。
+
+**標註結果：**
+
+| 家族 | 結果 |
+|---|---|
+| U+N（45） | HONEST 9、FAB 14、HEDGE 11、ASK 4、VALIDATION_FAIL 7 |
+| P（9） | BOTH 8、GAP_ONLY 1 |
+| C（18） | OK 18、FALSE_GAP 0 |
+
+**偏離凍結的地方：**
+- 多了 `VALIDATION_FAIL` 標籤：回覆是系統自己的「無法驗證解讀」訊息，凍結時沒預見。
+- 多了 `GAP_ONLY` 標籤（P1-3）：拒絕了 core，卻沒提出可做那一半的 workflow，沒有凍結標籤適用。
+- 子代理看得到 kind，因為規則依 kind 而不同；session 編號已打亂。
+- 複核改了 7 個標註：
+  - U2、N2 共 6 次由 HONEST 改為 HEDGE。拒絕句講的是另一個功能（「為新樣本建預測模型」），接著卻說「These fit the result you described」。
+  - P1-3 由 BOTH 改為 GAP_ONLY。
+
+**逐題：**
+
+| 題目 | 結果 |
+|---|---|
+| U3 擬時序、U6 空間反摺積、U7 剪接因子、N4 de novo motif | 12/12 FAB。狀態都是 ambiguous，回覆列出 PANDA、OTTER、GIRAFFE，甚至 13 個 workflow，並說「These all fit」或「different analyses to consider」。 |
+| U8 代謝通量、N7 甲基化因果 | 狀態都是 fallback，matched 為 DRAGON。U8 說「Your question asks for a multi-omic network」（HEDGE）；N7 有因果拒絕句，所以算 HONEST。 |
+| N1 複合體化學計量 | 2 次 ASK、1 次 FAB（DRAGON 被說成「the only registered workflow compatible」）。 |
+| N5 fine-mapping | 1 次 FAB、2 次 HEDGE。只拒絕因果，沒說 fine-mapping 做不到；其中一次還因為「regulators include miRNAs」推薦 PUMA。 |
+| U4 分類器 | 3/3 VALIDATION_FAIL。 |
+| N6 ceRNA | 3/3 VALIDATION_FAIL。trace 顯示模型已把 ceRNA 寫成「a type of regulatory network」，只是驗證在別處失敗；若通過，可能也是投影。 |
+| U1、N3、N7 因果題 | 9/9 HONEST。全部來自同一個因果模板句。 |
+
+**來源歸因：**
+- FAB 和 HEDGE 共 25 次，全部是 (a) routing 投影。router 把做不到的結果寫成最近的 artifact（regulatory_network、multi_omic_network），或寫成 unknown，matcher 就照 registry 列出候選。
+- 沒有任何一次是模板把方法描述成具有它沒有的功能，也就是 (b) 0 次。
+- 不過 U1 與 U8 卡片上由模型寫的「Unconfirmed assumptions」有錯誤的句子，例如「Causal inference methods will be applied」「support flux estimation」，屬於模型文字。
+
+**結論：**
+- 現有的誠實拒絕只有三種：因果、為新樣本預測、P2 的「no registered workflow meets the stated requirement」。
+- 對其他做不到的結果，`RequestedOutcome` 沒有任何形狀能說「這個結果不在 registry 的詞彙裡」：artifact_type 不是被塞進最近的值，就是 unknown，而 unknown 會讓 matcher 列出全部候選。
+- 對照題 18/18 OK，所以修正的同時要守住「假的做不到」= 0。
+- 下一步的方向是 routing 的輸出形狀（可表達「requested result outside the vocabulary」，並逐項對照能力表），不是回覆層。具體設計交由使用者決定。
