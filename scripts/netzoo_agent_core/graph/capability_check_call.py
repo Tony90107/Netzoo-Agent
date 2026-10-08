@@ -17,8 +17,8 @@ from pydantic import BaseModel
 
 from ..capability_sheet import sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
-from ..contracts.capability_check import MAX_SENTENCES, CapabilityCheck, proposal_model
-from ..interpretation.capability_check import build_capability_check, request_sentences
+from ..contracts.capability_check import MAX_SENTENCES, proposal_model
+from ..interpretation.capability_check import request_sentences
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage
@@ -26,7 +26,7 @@ from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
-__all__ = ["capability_check_system", "build_capability_check_messages", "invoke_capability_check"]
+__all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check"]
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
@@ -68,15 +68,20 @@ def build_capability_check_messages(user_task: str) -> tuple[list, int]:
     ], max(1, len(sentences))
 
 
-def invoke_capability_check(
+def request_capability_check(
     context: _GraphContext,
     state: AgentState,
     user_task: str,
     usage: LLMUsage,
     budget_warnings: list[str],
-    verified_claims: frozenset[str] = frozenset(),
-) -> tuple[CapabilityCheck | None, LLMUsage, list[str]]:
-    """The verified capability check of the request, or None when nothing read it."""
+) -> tuple[BaseModel | None, LLMUsage, list[str]]:
+    """The model's proposal for the request, or None when nothing read it.
+
+    Called right after routing, before the advisory reads (Log 387 dev round 3: a
+    routing-heavy turn spent 25k of its 30k tokens and the check was the call the
+    budget blocked). Verification waits for the study-purpose claims
+    (`interpretation.capability_check.build_capability_check`).
+    """
     # The same model as the study-purpose call, which the graph binds (`study_purpose_llm`).
     llm = getattr(context, "study_purpose_llm", None)
     if llm is None:
@@ -94,8 +99,8 @@ def invoke_capability_check(
         usage.budget_exhausted = True
         return None, usage, budget_warnings
     started_ns = time.monotonic_ns()
-    raw = payload = None
-    output_text, call_status, result = "", "failed", None
+    raw = payload = proposal = None
+    output_text, call_status = "", "failed"
     try:
         adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
         payload, raw = semantic_payload(adapter.invoke(messages))
@@ -104,10 +109,6 @@ def invoke_capability_check(
         proposal = schema.model_validate(payload)
         output_text = proposal.model_dump_json()
         call_status = "success"
-        result, rejected = build_capability_check(user_task, proposal, verified_claims)
-        record_event(context, state, "routing.capability_checked", "classify", {
-            "proposal": proposal.model_dump(), "rejected": rejected, "check": result.model_dump(),
-        })
     except BaseException as error:
         if _is_fatal_exception(error):
             raise
@@ -124,4 +125,4 @@ def invoke_capability_check(
         duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
         status=call_status, price_catalog=context.price_catalog,
     )
-    return result, usage, budget_warnings
+    return proposal, usage, budget_warnings

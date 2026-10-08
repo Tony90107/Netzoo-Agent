@@ -120,8 +120,10 @@ def build_capability_check(
         for item in sentence.asks:
             if (span := place(item.quote)) is None:
                 continue
-            if sentence.role in ("background", "methods_question"):
-                # The model's own role rules the ask out; the words still count as read.
+            if sentence.role in ("background", "methods_question") and not (item.delivered_by or item.not_by):
+                # The model's own role rules out an ask it matched to nothing (Log 387 dev round 3:
+                # "We have expression from 50 kidney samples ..." filed as an ask); an ask it
+                # matched to an entry stands. The words still count as read.
                 other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
             else:
                 asks.setdefault(span, []).append(item)
