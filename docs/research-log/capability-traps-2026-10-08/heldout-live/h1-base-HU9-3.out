@@ -1,0 +1,32 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.67s)
+● Matching registered workflows…
+✓ Guidance prepared
+Here is how registered workflows can reach this result, with their algorithmic premises and inputs:
+
+Result: sample cluster assignment (aggregate), from expression matrix.
+No registered workflow assigns samples to clusters from expression. A registered workflow can give each sample a feature profile to cluster on:
+- **LIONESS-PANDA** gives a TF-by-sample out-degree matrix -- each TF's summed edge weights to its targets in each sample's network (how strongly the TF is wired).
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+- **LIONESS-PUMA** gives the same out-degree matrix with miRNAs among the regulators (needs a miRNA list).
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.
+- **GIRAFFE** gives its TF-by-sample activity matrix -- how active each TF is apart from its own mRNA level, a different reading from wiring.
+  - Method premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+- **BONOBO** gives one gene co-expression network per sample; with about genes-squared edges each, summarize them first (for example per-gene degree).
+  - Method premise: Bayesian shrinkage estimation of sample-specific co-expression; sparsify sample-specific co-expression and return matching p-value matrices
+  - Required inputs: all of: expression matrix.
+- **LIONESS-COEXPRESSION** gives one gene co-expression network per sample, summarized the same way.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks
+  - Required inputs: all of: expression matrix.
+Clustering the samples on that matrix (for example hierarchical clustering or k-means) is not a NetZoo workflow; run it separately.
+Per-sample networks from LIONESS are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Clusters are unsupervised: whether they predict an outcome such as treatment response has to be tested against that outcome, keyed by the same sample IDs.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+Which per-sample profile should we start with: LIONESS-PANDA, LIONESS-PUMA, GIRAFFE, BONOBO or LIONESS-COEXPRESSION?
+
+No files were inspected and no analysis ran.

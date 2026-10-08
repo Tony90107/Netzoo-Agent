@@ -1,0 +1,35 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.29s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+What I understood you are asking for:
+1. "each patient's TF targeting scores" -- available from LIONESS-PANDA, LIONESS-PUMA or OTTER's output plus a step you run outside NetZoo: Sum edge weights per TF per sample from the edge-by-sample table; NetZoo does not compute it.
+2. "to test which are associated with survival" -- available from LIONESS-PANDA, LIONESS-PUMA or GIRAFFE's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+
+Fallback recommendation: **GIRAFFE**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+Your question asks for a cohort-level TF activity matrix. **GIRAFFE** is related to that result and scale.
+
+What you asked about:
+
+- "test which are associated with survival" — The TF-by-sample activity matrix (TFA) can serve as predictors in association tests with sample-level variables -- survival, for example, with a Cox model. Relating per-sample results to sample-level variables needs an annotation or clinical table keyed by the same sample IDs, supplied separately. Signs in the regulatory matrix are partial linear effects (positive for activation, negative for repression); read them as model coefficients, not as proof of direct binding.
+
+**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.
+
+TF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

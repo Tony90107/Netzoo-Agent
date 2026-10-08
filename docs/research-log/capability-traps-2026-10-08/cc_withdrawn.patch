@@ -1,0 +1,1266 @@
+diff --git a/docs/capability-sheet/capability_sheet.draft.yaml b/scripts/capability_sheet.yaml
+similarity index 94%
+rename from docs/capability-sheet/capability_sheet.draft.yaml
+rename to scripts/capability_sheet.yaml
+index b5c124b..9a49c66 100644
+--- a/docs/capability-sheet/capability_sheet.draft.yaml
++++ b/scripts/capability_sheet.yaml
+@@ -1,29 +1,29 @@
+-# NetZoo capability sheet -- DRAFT 1 for the user's review (2026-10-08, Log 386 prep).
++# NetZoo capability sheet (Logs 385-387). Reviewed with the user from draft 1 (2026-10-08);
++# review notes: docs/capability-sheet/審閱說明.zh-TW.md. Loaded by
++# netzoo_agent_core/capability_sheet.py, which fails closed on a malformed entry.
+ #
+-# Rules this sheet is written for (see 審閱說明.zh-TW.md):
+ # - CLOSED WORLD ON `produces`. A requested result is supported only when a
+ #   `produces` entry delivers it. Nothing is ever decided from `near_misses`;
+-#   they exist so the reply can say precisely why a tempting workflow does not
+-#   give the result. An incomplete near-miss list therefore cannot create a
+-#   false "yes" or a false "no".
+-# - `produces` lists what the executor writes (files checked 2026-10-08,
+-#   `files`), plus `with_step` results: the workflow gives the material and a
+-#   named step the user runs outside NetZoo gives the result. A with_step
+-#   result is supported, and the reply must name the step.
+-# - Every entry carries `source`. [EXEC] = the executor code that writes it;
+-#   [REG] = a registry sentence already checked in an earlier Log; papers are
+-#   cited. Text here is what replies may say about a method's function.
+-#
+-# Not in this draft (needs the user's decision): wiring into routing, the
+-# requirement-check contract, outside-registry tool suggestions.
++#   they let the reply say precisely why a tempting workflow does not give the
++#   result, so an incomplete near-miss list cannot create a false yes or no.
++# - `produces` lists what the executor writes (`files`, checked 2026-10-08),
++#   plus `with_step` results: the workflow gives the material and a named step
++#   the user runs outside NetZoo gives the result. A with_step result is
++#   supported, and the reply names the step.
++# - Every entry carries `source`: [EXEC] the executor code that writes it,
++#   [REG] a registry sentence checked in an earlier Log, or the paper.
++# - `see: <id>` copies the referenced entry's text; the entry keeps its own id.
+ 
+ registry_wide_not_produced:
+   # Already live as UNSUPPORTED_CLAIMS; repeated so the sheet is complete.
++  # `claim`: shown only when the study-purpose reader verified that claim (its cue-word witnesses).
+   - id: causal_proof
++    claim: causal
+     result_asked: Proof that one thing causes another (causal drivers, causal direction of an edge, ruling out confounding).
+     why_not: Every registered workflow estimates associations or model coefficients from observational data.
+     source: "[REG] UNSUPPORTED_CLAIMS['causal']"
+   - id: outcome_prediction
++    claim: prediction
+     result_asked: A trained model that predicts an outcome, a future state or a perturbation effect, with its accuracy.
+     why_not: No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere.
+     source: "[REG] UNSUPPORTED_CLAIMS['prediction'] (wording widened from 'for new samples' to future states and perturbations: Log 385 U2/N2)"
+@@ -328,7 +328,7 @@ workflows:
+     produces:
+       - id: sambar.subtypes
+         level: direct
+-        result: Patient subtypes from somatic mutations summarized into pathway mutation scores, with gene and pathway scores and a sample distance matrix.
++        result: Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix.
+         granularity: aggregate
+         inputs: [mutation matrix, exon sizes, cancer genes, pathway sets]
+         source: "Kuijjer et al. 2018 Br J Cancer 118:1492; [EXEC] scripts/run_sambar.py:43-90"
+diff --git a/scripts/netzoo_agent_core/capability_sheet.py b/scripts/netzoo_agent_core/capability_sheet.py
+new file mode 100644
+index 0000000..6b92e37
+--- /dev/null
++++ b/scripts/netzoo_agent_core/capability_sheet.py
+@@ -0,0 +1,129 @@
++"""The code-owned capability sheet: what each registered workflow produces (Logs 385-387).
++
++Log 385 measured that a request no registered workflow can answer was given
++one 25 times in 45: routing projects every request onto the nearest artifact
++in its vocabulary, which has no "none of these". The sheet is the closed list
++the capability check reads instead (`scripts/capability_sheet.yaml`):
++
++- a `produces` entry is a result a workflow's executor writes (`direct`), or a
++  result its output gives after a named step outside NetZoo (`with_step`);
++- a `near_miss` entry is a result someone may expect from that workflow and
++  does not get; a `registry_wide` entry is one no workflow gives. Neither ever
++  decides support -- they only let a reply say why.
++
++Loading fails closed: an unknown action, a duplicate id, a dangling `see`, a
++produces entry without a result or source, or a run action with no produces
++entry raises at import time.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from functools import lru_cache
++from pathlib import Path
++from typing import Literal
++
++import yaml
++
++from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
++
++__all__ = ["SheetEntry", "SHEET_PATH", "load_sheet", "sheet_entries", "entry", "produces_ids", "not_produced_ids"]
++
++SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
++
++
++@dataclass(frozen=True, slots=True)
++class SheetEntry:
++    id: str
++    kind: Literal["produces", "near_miss", "registry_wide"]
++    action: str | None
++    workflow: str | None
++    text: str
++    """`result` for a produces entry, `result_asked` for the others."""
++    level: Literal["direct", "with_step"] | None = None
++    step: str = ""
++    why_not: str = ""
++    reading: str = ""
++    instead_registered: str | None = None
++    source: str = ""
++    claim: str | None = None
++    """A registry-wide entry's study-purpose claim (causal, prediction); see `capability_check`."""
++
++
++def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
++    target = raw.get("see")
++    if target is None:
++        return raw
++    if target not in by_id:
++        raise ValueError(f"capability sheet: {raw.get('id')!r} refers to unknown entry {target!r}")
++    base = _resolve(by_id[target], by_id)
++    return {**base, **{key: value for key, value in raw.items() if key != "see"}}
++
++
++def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
++    """Every entry by id, validated; raises ValueError on any malformed entry."""
++    data = yaml.safe_load(path.read_text(encoding="utf-8"))
++    raw_items: list[tuple[str, str | None, str | None, dict]] = []
++    for item in data.get("registry_wide_not_produced") or []:
++        raw_items.append(("registry_wide", None, None, item))
++    for workflow, spec in (data.get("workflows") or {}).items():
++        action = spec.get("action")
++        if action not in ACTION_DEFINITIONS:
++            raise ValueError(f"capability sheet: {workflow} names unknown action {action!r}")
++        for item in spec.get("produces") or []:
++            raw_items.append(("produces", action, workflow, item))
++        for item in spec.get("near_misses") or []:
++            raw_items.append(("near_miss", action, workflow, item))
++    by_id: dict[str, dict] = {}
++    for _, _, _, item in raw_items:
++        key = item.get("id")
++        if not key or key in by_id:
++            raise ValueError(f"capability sheet: missing or duplicate id {key!r}")
++        by_id[key] = item
++    entries: dict[str, SheetEntry] = {}
++    for kind, action, workflow, item in raw_items:
++        resolved = _resolve(item, by_id)
++        text = resolved.get("result") if kind == "produces" else resolved.get("result_asked")
++        level = resolved.get("level", "direct") if kind == "produces" else None
++        if not text or not resolved.get("source"):
++            raise ValueError(f"capability sheet: {item['id']} needs its text and a source")
++        if kind == "produces" and level not in ("direct", "with_step"):
++            raise ValueError(f"capability sheet: {item['id']} has unknown level {level!r}")
++        if level == "with_step" and not resolved.get("step"):
++            raise ValueError(f"capability sheet: with_step entry {item['id']} must name its step")
++        if kind != "produces" and not resolved.get("why_not"):
++            raise ValueError(f"capability sheet: {item['id']} must say why it is not produced")
++        instead = resolved.get("instead_registered")
++        if instead is not None and instead not in ACTION_DEFINITIONS:
++            raise ValueError(f"capability sheet: {item['id']} names unknown action {instead!r}")
++        entries[item["id"]] = SheetEntry(
++            id=item["id"], kind=kind, action=action, workflow=workflow, text=" ".join(str(text).split()),
++            level=level, step=" ".join(str(resolved.get("step", "")).split()),
++            why_not=" ".join(str(resolved.get("why_not", "")).split()),
++            reading=" ".join(str(resolved.get("reading", "")).split()),
++            instead_registered=instead, source=str(resolved.get("source")), claim=resolved.get("claim"),
++        )
++        if kind == "registry_wide" and not entries[item["id"]].claim:
++            raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")
++    covered = {item.action for item in entries.values() if item.kind == "produces"}
++    missing = sorted(set(RUN_ACTIONS) - covered)
++    if missing:
++        raise ValueError(f"capability sheet: run actions without a produces entry: {missing}")
++    return entries
++
++
++@lru_cache(maxsize=1)
++def sheet_entries() -> dict[str, SheetEntry]:
++    return load_sheet()
++
++
++def entry(key: str) -> SheetEntry:
++    return sheet_entries()[key]
++
++
++def produces_ids() -> tuple[str, ...]:
++    return tuple(key for key, item in sheet_entries().items() if item.kind == "produces")
++
++
++def not_produced_ids() -> tuple[str, ...]:
++    return tuple(key for key, item in sheet_entries().items() if item.kind != "produces")
+diff --git a/scripts/netzoo_agent_core/contracts/capability_check.py b/scripts/netzoo_agent_core/contracts/capability_check.py
+new file mode 100644
+index 0000000..9ecd90b
+--- /dev/null
++++ b/scripts/netzoo_agent_core/contracts/capability_check.py
+@@ -0,0 +1,109 @@
++"""The capability check: what the request asks for, and which sheet entry gives it (Log 387).
++
++Log 385: routing quoted the wanted result correctly 42 times in 45, then had
++to name it with the nearest artifact of a vocabulary that has no "none of
++these", so pseudotime, splicing and spatial deconvolution became TF networks.
++Here the model reads the request sentence by sentence, quotes each thing it
++asks for, and lists the capability-sheet entries that give it -- an empty list
++is a normal answer. Entry ids are enums of the sheet, so none can be invented;
++quotes and sentence coverage are checked in code
++(`interpretation.capability_check`).
++"""
++
++from __future__ import annotations
++
++from functools import lru_cache
++from typing import Literal
++
++from pydantic import BaseModel, ConfigDict, Field, create_model
++
++from ..capability_sheet import not_produced_ids, produces_ids
++from .strict_schema import strict_json_schema
++
++__all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "proposal_model",
++           "proposal_sentences"]
++
++RequirementKind = Literal["result", "about_methods", "context"]
++SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
++
++
++MAX_SENTENCES = 12
++"""Sentences after the twelfth are not read; the coverage check lists them as not checked."""
++
++
++@lru_cache(maxsize=MAX_SENTENCES + 1)
++def proposal_model(sentences: int = 1) -> type[BaseModel]:
++    """The provider-facing schema: one required field per request sentence, sheet ids as enums.
++
++    Log 387 smoke run: with one free-length list of sentences gpt-4o-mini returned
++    only the first (the data sentence) 3 times in 4, so the goal was never read.
++    Strict mode requires every property, so a field per sentence cannot be skipped.
++    """
++    produces = Literal[produces_ids()]  # type: ignore[valid-type]
++    not_produced = Literal[not_produced_ids()]  # type: ignore[valid-type]
++    ask = create_model(
++        "Ask",
++        __config__=ConfigDict(extra="forbid"),
++        quote=(str, Field(description="Exact contiguous words from the sentence, copied without translation.")),
++        delivered_by=(list[produces], Field(description=(
++            "The PRODUCES entries whose result gives what the quote asks for, as asked; empty when none does."))),
++        not_by=(list[not_produced], Field(description=(
++            "NOT PRODUCED entries that describe what the quote asks for; may be empty."))),
++    )
++    # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
++    # 16 not-produced entries. Only an ask can name entries now.
++    # Log 387 dev round 2: data sentences ("We have expression from 50 kidney samples ...")
++    # were filed as asks. The sentence's role comes first; code drops asks the role rules out.
++    sentence = create_model(
++        "SentenceReading",
++        __config__=ConfigDict(extra="forbid"),
++        role=(SentenceRole, Field(description=(
++            "background: it only says what the user has, did or must respect. asks: it asks for results. "
++            "methods_question: it only asks about the methods. mixed: more than one of these."))),
++        has=(list[str], Field(description=(
++            "Exact quotes of what the user has, did or must respect (data, samples, constraints)."))),
++        about_methods=(list[str], Field(description=(
++            "Exact quotes of questions about the methods themselves: which to use, how one works, what it needs."))),
++        asks=(list[ask], Field(description=(
++            "Each thing the user wants produced or answered about their data or biology, one item per thing."))),
++    )
++    fields = {
++        f"s{index}": (sentence, Field(description=f"Sentence {index} of the request."))
++        for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
++    }
++    model = create_model("CapabilityCheckProposal", __config__=ConfigDict(extra="forbid"), **fields)
++    model.model_json_schema = classmethod(  # type: ignore[method-assign]
++        lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
++    return model
++
++
++def proposal_sentences(proposal) -> list:
++    """The sentence readings of a proposal, in order."""
++    return [getattr(proposal, f"s{index}") for index in range(1, len(type(proposal).model_fields) + 1)]
++
++
++class CheckedRequirement(BaseModel):
++    """One verified requirement and what the sheet says about it."""
++
++    model_config = ConfigDict(extra="forbid")
++    quote: str
++    kind: RequirementKind
++    status: Literal["available", "with_step", "partial", "not_available", "not_checked"]
++    """`not_checked` for about_methods and context; `not_available` when no produces entry gives it;
++    `partial` when one reading of the passage names an entry and another names none."""
++    delivered_by: list[str] = Field(default_factory=list)
++    not_by: list[str] = Field(default_factory=list)
++
++
++class CapabilityCheck(BaseModel):
++    """The turn's capability check, as the reply and the card read it."""
++
++    model_config = ConfigDict(extra="forbid")
++    requirements: list[CheckedRequirement] = Field(default_factory=list)
++    unchecked: list[str] = Field(default_factory=list)
++    """Request sentences no verified requirement covers (the coverage check)."""
++    full_gap: bool = False
++    """Every result is not available and every sentence was read: no workflow is the answer."""
++
++    def results(self) -> list[CheckedRequirement]:
++        return [item for item in self.requirements if item.kind == "result"]
+diff --git a/scripts/netzoo_agent_core/contracts/decisions.py b/scripts/netzoo_agent_core/contracts/decisions.py
+index c2348fe..1d4b70f 100644
+--- a/scripts/netzoo_agent_core/contracts/decisions.py
++++ b/scripts/netzoo_agent_core/contracts/decisions.py
+@@ -9,6 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
+ 
+ from .applicability import CandidateApplicability
+ from .authorization import OperationAuthorization
++from .capability_check import CapabilityCheck
+ from .data_plan import DataPlan
+ from .outcomes import (
+     RUNNABLE_CAPABILITY_COUNT,
+@@ -174,6 +175,9 @@ class TaskDecision(BaseModel):
+     # Plan item 5 (Log 383): what the question needs and what the reply asks and
+     # says about it, decided once for every renderer. Code-owned; omitted while unset.
+     data_plan: DataPlan | None = Field(default=None, exclude_if=lambda value: value is None)
++    # Log 387: each thing the request asks for, checked against the capability
++    # sheet, with the sentences no check covered. Code-owned; omitted while unset.
++    capability_check: CapabilityCheck | None = Field(default=None, exclude_if=lambda value: value is None)
+     missing_inputs: list[str] = Field(default_factory=list)
+     expression_file: str | None = None
+     design_file: str | None = None
+diff --git a/scripts/netzoo_agent_core/graph/capability_check_call.py b/scripts/netzoo_agent_core/graph/capability_check_call.py
+new file mode 100644
+index 0000000..8f63c6f
+--- /dev/null
++++ b/scripts/netzoo_agent_core/graph/capability_check_call.py
+@@ -0,0 +1,128 @@
++"""The capability-check call: what the request asks for, against the capability sheet (Log 387).
++
++Its own small call after routing, like the data-facts call (Log 376): routing
++keeps its prompt, and this one sees only the request and the sheet. The model
++reads meaning; code checks every quote, decides support from the sheet's
++produces entries alone, and covers every sentence
++(`interpretation.capability_check`). When the call is not configured, blocked by
++the budget or fails, nothing is checked and the turn is answered as before.
++"""
++
++from __future__ import annotations
++
++import time
++from functools import lru_cache
++
++from pydantic import BaseModel
++
++from ..capability_sheet import sheet_entries
++from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
++from ..contracts.capability_check import MAX_SENTENCES, proposal_model
++from ..interpretation.capability_check import request_sentences
++from ..interpretation.provider_fallback import _is_fatal_exception
++from ..interpretation.semantic_repair import semantic_payload
++from ..llm import append_llm_usage
++from ..settings import ROUTER_CONTEXT_MAX_CHARS
++from .context import _GraphContext, preflight_budget, record_event
++from .structured_calls import _serialized_structured_input, _validation_issue_types
++
++__all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check"]
++
++_INSTRUCTIONS = (
++    "Return only the CapabilityCheckProposal for the user's request.\n\n"
++    "The request's sentences are numbered after it. For each sentence, first give its role, then quote its "
++    "exact words into:\n"
++    "- has: what the user has, did, or must respect (data, samples, constraints);\n"
++    "- about_methods: questions about the methods themselves -- which to use, how one works, what it needs;\n"
++    "- asks: each thing the user wants produced or answered about their data or biology, one item per thing.\n"
++    "If one sentence asks for two things, make two asks.\n\n"
++    "For each ask, delivered_by lists the PRODUCES entries below whose result gives what the quote asks for, "
++    "as it is asked. An entry that gives a related result, or only an ingredient of it, does not deliver it. "
++    "When no entry gives it, delivered_by is empty -- a normal answer, not a failure. not_by lists the NOT "
++    "PRODUCED entries that describe what the quote asks for."
++)
++
++
++@lru_cache(maxsize=1)
++def capability_check_system() -> str:
++    """The instructions plus the sheet, one line per entry."""
++    produces, not_produced = [], []
++    for key, item in sheet_entries().items():
++        if item.kind == "produces":
++            produces.append(f"- {key} [{item.workflow}]: {item.text}")
++        else:
++            owner = f" [{item.workflow}]" if item.workflow else ""
++            not_produced.append(f"- {key}{owner}: {item.text}")
++    return "\n\n".join([_INSTRUCTIONS, "PRODUCES:\n" + "\n".join(produces),
++                        "NOT PRODUCED:\n" + "\n".join(not_produced)])
++
++
++def build_capability_check_messages(user_task: str) -> tuple[list, int]:
++    """The request, then its sentences numbered as the schema's fields are (s1, s2, ...)."""
++    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
++    sentences = [task[start:end].strip() for start, end in request_sentences(task)][:MAX_SENTENCES]
++    numbered = "\n".join(f"{index}. {text}" for index, text in enumerate(sentences, 1))
++    return [
++        SystemMessage(content=capability_check_system()),
++        HumanMessage(content=f"Request:\n{task}\n\nSentences:\n{numbered}"),
++    ], max(1, len(sentences))
++
++
++def request_capability_check(
++    context: _GraphContext,
++    state: AgentState,
++    user_task: str,
++    usage: LLMUsage,
++    budget_warnings: list[str],
++) -> tuple[BaseModel | None, LLMUsage, list[str]]:
++    """The model's proposal for the request, or None when nothing read it.
++
++    Called right after routing, before the advisory reads (Log 387 dev round 3: a
++    routing-heavy turn spent 25k of its 30k tokens and the check was the call the
++    budget blocked). Verification waits for the study-purpose claims
++    (`interpretation.capability_check.build_capability_check`).
++    """
++    # The same model as the study-purpose call, which the graph binds (`study_purpose_llm`).
++    llm = getattr(context, "study_purpose_llm", None)
++    if llm is None:
++        return None, usage, budget_warnings
++    messages, count = build_capability_check_messages(user_task)
++    schema = proposal_model(count)
++    input_text = _serialized_structured_input(messages, schema)
++    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
++    budget, budget_warnings = preflight_budget(
++        context, call_state, role="capability_check",
++        model=context.semantic_model_name, input_text=input_text,
++        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
++    )
++    if budget.status == "blocked":
++        usage.budget_exhausted = True
++        return None, usage, budget_warnings
++    started_ns = time.monotonic_ns()
++    raw = payload = proposal = None
++    output_text, call_status = "", "failed"
++    try:
++        adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
++        payload, raw = semantic_payload(adapter.invoke(messages))
++        if isinstance(payload, BaseModel):
++            payload = payload.model_dump()
++        proposal = schema.model_validate(payload)
++        output_text = proposal.model_dump_json()
++        call_status = "success"
++    except BaseException as error:
++        if _is_fatal_exception(error):
++            raise
++        record_event(context, state, "routing.capability_check_failed", "classify", {
++            "error_type": type(error).__name__,
++            "error_message": str(error)[:2000],
++            "validation_issues": _validation_issue_types(error),
++            "provider_payload": payload,
++        })
++    usage = append_llm_usage(
++        usage, role="capability_check", model=context.semantic_model_name,
++        response=raw, input_text=input_text, output_text=output_text,
++        budget_tokens=context.task_token_budget,
++        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
++        status=call_status, price_catalog=context.price_catalog,
++    )
++    return proposal, usage, budget_warnings
+diff --git a/scripts/netzoo_agent_core/graph/response.py b/scripts/netzoo_agent_core/graph/response.py
+index a07588b..d319802 100644
+--- a/scripts/netzoo_agent_core/graph/response.py
++++ b/scripts/netzoo_agent_core/graph/response.py
+@@ -48,6 +48,7 @@ from .response_context import validated_workflow_context
+ from .response_payload import trusted_response_context
+ from ..interpretation.verified_guidance import render_verified_guidance
+ from ..interpretation.data_plan import with_data_plan_reply
++from ..interpretation.capability_check import full_gap_result, with_capability_check_reply
+ from ..interpretation.unresolved_router_fallback import (
+     render_unresolved_router_fallback as _render_unresolved_router_fallback,
+ )
+@@ -80,12 +81,13 @@ def _reply(content: str, kind: str) -> dict:
+ 
+ 
+ def respond(context: _GraphContext, state: AgentState) -> dict:
++    if (gap := full_gap_result(state, _reply)) is not None:  # Log 387: no renderer may offer a workflow
++        return gap
+     result = _respond(context, state)
+     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
+-    result = with_outside_steps_reply(result, state, _reply)
+-    result = with_study_purpose_reply(result, state, _reply)
+-    # Log 383: the turn's data-needs plan, shown whichever renderer answered.
+-    return with_data_plan_reply(result, state, _reply)
++    result = with_study_purpose_reply(with_outside_steps_reply(result, state, _reply), state, _reply)
++    # Logs 383, 387: the data-needs plan, then what was understood to be asked for.
++    return with_capability_check_reply(with_data_plan_reply(result, state, _reply), state, _reply)
+ 
+ 
+ def _respond(context: _GraphContext, state: AgentState) -> dict:
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index b192d3d..2b7ff21 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -31,6 +31,8 @@ from .invocation_types import RouterInvocation as _RouterInvocation
+ from .condition_recommender import invoke_condition_recommender, unrecommended_question
+ from .request_concerns import invoke_concern_matcher
+ from .study_purpose_call import invoke_study_purpose
++from .capability_check_call import request_capability_check
++from ..interpretation.capability_check import build_capability_check
+ from .data_facts_call import invoke_data_facts
+ from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
+ from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
+@@ -144,12 +146,18 @@ def invoke_router(
+     if follow_up or result.reason_code == "string_download_continuation":
+         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
+     else:
++        proposal = None
++        if result.decision.action == "no_tool":  # Log 387: the safety check is asked before the advisory reads
++            proposal, usage, warnings = request_capability_check(
++                context, state, user_task, result.usage, result.budget_warnings)
++            result = replace(result, usage=usage, budget_warnings=warnings)
+         purpose, usage, warnings = invoke_study_purpose(
+             context, state, user_task, result.usage, result.budget_warnings,
+         )
+         result = replace(result, usage=usage, budget_warnings=warnings,
+                          routing_state={**result.routing_state, "study_purpose": purpose})
+         result = _with_applicability(context, state, user_task, result)
++        result = _with_capability_check(context, state, user_task, result, proposal)
+     decision = note_unstated_scale(user_task, result.decision)
+     if decision is result.decision:
+         return result
+@@ -214,6 +222,39 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
+                    routing_state={**result.routing_state, "data_facts": decision.data_facts})
+ 
+ 
++def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal) -> _RouterInvocation:
++    """Log 387: each thing a guidance request asks for, checked against the capability sheet.
++
++    When every result it asks for is one no registered workflow produces, and
++    every sentence was read, no workflow is offered as the answer: the routing
++    candidates are cleared and the turn is marked unsupported, so no renderer,
++    card or next step can present one (Log 385: 25 of 45 such requests were
++    given a workflow). Otherwise the check only adds what was understood.
++    """
++    decision = result.decision
++    if proposal is None or decision.action != "no_tool":
++        return result
++    claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
++    check, rejected = build_capability_check(user_task, proposal, claims)
++    record_event(context, state, "routing.capability_checked", "classify", {
++        "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
++    })
++    update: dict = {"capability_check": check}
++    if check.full_gap:
++        update.update({
++            "matched_actions": [], "hypothesis_actions": [], "recommended_actions": [],
++            "alternative_actions": [], "advisory_recommendation": None, "clarification_question": None,
++            "capability_match_status": "unsupported",
++        })
++        record_event(context, state, "routing.capability_full_gap", "classify", {
++            "cleared": [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions],
++        })
++    decision = decision.model_copy(update=update)
++    return replace(result, decision=decision,
++                   routing_state={**result.routing_state, **outcome_routing_state(decision)}
++                   if check.full_gap else result.routing_state)
++
++
+ def _stated_artifacts(user_task: str, decision: TaskDecision) -> set[str]:
+     from ..routing.capability_compatibility import input_availability
+ 
+diff --git a/scripts/netzoo_agent_core/interpretation/capability_check.py b/scripts/netzoo_agent_core/interpretation/capability_check.py
+new file mode 100644
+index 0000000..2cf17a8
+--- /dev/null
++++ b/scripts/netzoo_agent_core/interpretation/capability_check.py
+@@ -0,0 +1,239 @@
++"""Verify the capability check, cover every sentence, and say what was understood (Log 387).
++
++The model proposes, sentence by sentence, what the request asks for and which
++capability-sheet entries give it (`graph.capability_check_call`). Code then:
++
++- keeps a requirement only when its quote is in the request (`_locate`);
++- decides each result's status from the sheet alone: `available` when a direct
++  produces entry gives it, `with_step` when only a with-step entry does,
++  `not_available` when none does -- near misses never decide anything;
++- covers every request sentence: one that no kept quote overlaps is listed as
++  not checked, never silently dropped (the user's Q3, 2026-10-08: an omitted
++  requirement that cannot be done turns the rest back into a false yes);
++- calls a full gap only when there is at least one result, every result is
++  not available, and no sentence was left unchecked.
++
++The reply always opens with what was understood, so a misreading is visible.
++"""
++
++from __future__ import annotations
++
++import re
++
++from ..capability_sheet import entry, sheet_entries
++from ..contracts.capability_check import CapabilityCheck, CheckedRequirement, proposal_sentences
++from ..routing.study_purpose_verify import _locate
++
++__all__ = [
++    "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
++    "with_capability_check_reply", "unavailable_rows",
++]
++
++_SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
++
++
++def request_sentences(task: str) -> list[tuple[int, int]]:
++    """(start, end) of each sentence with words in it."""
++    spans, start = [], 0
++    for match in _SENTENCE_END.finditer(task):
++        spans.append((start, match.start()))
++        start = match.end()
++    spans.append((start, len(task)))
++    return [(s, e) for s, e in spans if re.search(r"\w{2,}", task[s:e])]
++
++
++def _status(delivered: list[str]) -> str:
++    levels = {entry(key).level for key in delivered}
++    if "direct" in levels:
++        return "available"
++    return "with_step" if levels else "not_available"
++
++
++_TOKEN = re.compile(r"\w+")
++
++
++def _locate_tokens(task: str, quote: str) -> tuple[int, int] | None:
++    """The request passage a near-verbatim quote copies, or None.
++
++    Log 387 smoke run: the model copies the words but trims or rejoins them
++    ("We want a classifier using those networks ..." for "then a classifier
++    using those networks ..."). A quote stands for the densest passage holding
++    at least 70% of its words (and three) in order (difflib blocks, at most 1.5x its length);
++    the reply always shows the request's own words.
++    """
++    from difflib import SequenceMatcher
++
++    wanted = [word.casefold() for word in _TOKEN.findall(quote)]
++    if len(wanted) < 3:
++        return None
++    found = list(_TOKEN.finditer(task))
++    words = [match.group().casefold() for match in found]
++    blocks = [block for block in SequenceMatcher(None, words, wanted, autojunk=False).get_matching_blocks()
++              if block.size]
++    best, best_score = None, None
++    for first in range(len(blocks)):
++        matched = 0
++        for last in range(first, len(blocks)):
++            start, end = blocks[first].a, blocks[last].a + blocks[last].size
++            if end - start > 1.5 * len(wanted):
++                break
++            matched += blocks[last].size
++            score = matched - 0.5 * ((end - start) - matched)
++            if matched >= max(3, 0.7 * len(wanted)) and (best_score is None or score > best_score):
++                best, best_score = (found[start].start(), found[end - 1].end()), score
++    return best
++
++
++def _span(task: str, quote: str) -> tuple[int, int] | None:
++    return _locate(task, quote) or _locate_tokens(task, quote)
++
++
++def build_capability_check(
++    task: str, proposal, verified_claims: frozenset[str] = frozenset(),
++) -> tuple[CapabilityCheck, list[dict]]:
++    """The verified check for one proposal, and what was rejected.
++
++    A registry-wide reason (no causal proof, no prediction) is kept only when the
++    study-purpose reader verified that claim with its cue words: the smoke run cited
++    both for a splicing request.
++
++    A passage asked for several times is one requirement; when one reading names an
++    entry and another names none (Log 387 dev round: a network and a forecast quoted as
++    one sentence twice) it is `partial`, never `available`.
++    """
++    known = sheet_entries()
++    rejected, spans, asks, other = [], [], {}, {}
++
++    def place(quote: str):
++        span = _span(task, quote)
++        if span is None:
++            rejected.append({"quote": quote, "reason": "quote_not_in_request"})
++        else:
++            spans.append(span)
++        return span
++
++    for sentence in proposal_sentences(proposal):
++        for kind, quotes in (("context", sentence.has), ("about_methods", sentence.about_methods)):
++            for quote in quotes:
++                if (span := place(quote)) is not None:
++                    other.setdefault(span, kind)
++        for item in sentence.asks:
++            if (span := place(item.quote)) is None:
++                continue
++            if sentence.role in ("background", "methods_question") and not (item.delivered_by or item.not_by):
++                # The model's own role rules out an ask it matched to nothing (Log 387 dev round 3:
++                # "We have expression from 50 kidney samples ..." filed as an ask); an ask it
++                # matched to an entry stands. The words still count as read.
++                other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
++            else:
++                asks.setdefault(span, []).append(item)
++    requirements = []
++    for span, items in asks.items():
++        readings = [[k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"] for item in items]
++        delivered = list(dict.fromkeys(k for keys in readings for k in keys))
++        not_by = list(dict.fromkeys(
++            k for item in items for k in item.not_by
++            if known.get(k) and (known[k].kind == "near_miss"
++                                 or (known[k].kind == "registry_wide" and known[k].claim in verified_claims))))
++        status = "partial" if delivered and not all(readings) else _status(delivered)
++        requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
++                                               delivered_by=delivered, not_by=not_by))
++    requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
++                     for span, kind in other.items() if span not in asks]
++    unchecked = [task[s:e].strip() for s, e in request_sentences(task)
++                 if not any(a < e and s < b for a, b in spans)]
++    results = [item for item in requirements if item.kind == "result"]
++    full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
++    return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap), rejected
++
++
++def _workflows(keys: list[str]) -> str:
++    names = list(dict.fromkeys(entry(key).workflow for key in keys))
++    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " or " + names[-1]
++
++
++def _lower_first(text: str) -> str:
++    """"The motif prior ..." -> "the motif prior ...", but "DRAGON returns ..." stays."""
++    return text[:1].lower() + text[1:] if text[1:2].islower() else text
++
++
++def _why_not(item: CheckedRequirement) -> list[str]:
++    reasons = []
++    for key in item.not_by:
++        found = entry(key)
++        reasons.append(found.why_not if found.kind == "registry_wide"
++                       else f"{found.workflow} does not give it: {_lower_first(found.why_not)}")
++    return list(dict.fromkeys(reasons))[:1]
++
++
++def _line(item: CheckedRequirement) -> str:
++    quote = f'"{item.quote}"'
++    if item.status == "available":
++        return f"{quote} -- available from {_workflows([k for k in item.delivered_by if entry(k).level == 'direct'])}."
++    if item.status == "partial":
++        return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; no registered "
++                "workflow produces the rest.")
++    if item.status == "with_step":
++        first = entry(item.delivered_by[0])
++        return (f"{quote} -- available from {_workflows(item.delivered_by)}'s output plus a step you run "
++                f"outside NetZoo: {first.step}")
++    reasons = _why_not(item)
++    if not reasons:
++        return f"{quote} -- not matched to any registered workflow."
++    return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
++
++
++def understanding_paragraph(check: CapabilityCheck) -> str | None:
++    """What the request was understood to ask for, one line per result, plus the unchecked sentences."""
++    results = check.results()
++    if not results and not check.unchecked:
++        return None
++    lines = ["What I understood you are asking for:"] if results else []
++    lines += [f"{index}. {_line(item)}" for index, item in enumerate(results, 1)]
++    lines += [f'Not checked against the registered workflows: "{sentence}"' for sentence in check.unchecked]
++    return "\n".join(lines)
++
++
++def full_gap_reply(check: CapabilityCheck) -> str:
++    many = len(check.results()) > 1
++    return "\n\n".join([
++        understanding_paragraph(check) or "",
++        (f"No registered workflow produces {'these' if many else 'this'}, so none is offered as the way to get "
++         f"{'them' if many else 'it'}."),
++        "No files were inspected and no analysis ran.",
++    ])
++
++
++def full_gap_result(state, reply) -> dict | None:
++    """The whole reply when nothing registered produces what was asked, else None."""
++    from ..contracts import TaskDecision
++
++    check = TaskDecision.model_validate(state["decision"]).capability_check
++    return reply(full_gap_reply(check), "capability_check_gap") if check is not None and check.full_gap else None
++
++
++def with_capability_check_reply(result: dict, state, reply) -> dict:
++    """Open any other reply with what was understood (the full gap has its own reply)."""
++    from ..contracts import TaskDecision
++
++    decision = TaskDecision.model_validate(state["decision"])
++    check = decision.capability_check
++    if check is None or check.full_gap or result.get("reply_kind") in (None, "execution"):
++        return result
++    paragraph = understanding_paragraph(check)
++    if paragraph is None:
++        return result
++    text = str(result["messages"][-1].content)
++    return {**reply(f"{paragraph}\n\n{text}", result["reply_kind"]),
++            **{key: value for key, value in result.items() if key not in ("messages", "reply_kind")}}
++
++
++def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
++    """(label, reason) for each result not available here and each unchecked sentence."""
++    rows = []
++    for item in check.results():
++        if item.status == "not_available":
++            reasons = _why_not(item)
++            rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
++    rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
++    return rows
+diff --git a/scripts/netzoo_agent_core/reply_cards/builder.py b/scripts/netzoo_agent_core/reply_cards/builder.py
+index 27ca4bc..c9b047d 100644
+--- a/scripts/netzoo_agent_core/reply_cards/builder.py
++++ b/scripts/netzoo_agent_core/reply_cards/builder.py
+@@ -432,6 +432,15 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
+         return None
+     if kind == "capability_gap":
+         return _gap_card(decision, policy, task)
++    if kind == "capability_check_gap" and decision.capability_check is not None:
++        many = len(decision.capability_check.results()) > 1
++        return ReplyCard(
++            kind="capability_gap",
++            headline=f"No registered workflow produces what you asked for, so none is offered.",
++            points=[clip(f'Understood: "{item.quote}"', 300) for item in decision.capability_check.results()][:4]
++            if many else [],
++            unavailable=_capability_rows(decision),
++        )
+     if kind == "outcome_clarification":
+         if decision.advisory_capability_gap is not None:
+             return _method_gap_card(decision, policy, task)
+@@ -505,6 +514,17 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str, result
+     })
+ 
+ 
++def _capability_rows(decision) -> list[ReplyOption]:
++    """Log 387: each asked-for result no registered workflow produces, and each unchecked sentence."""
++    from ..interpretation.capability_check import unavailable_rows
++
++    if decision.capability_check is None:
++        return []
++    return [ReplyOption(key=f"capability-{index}", label=clip(f"“{label}”", 80), available=False,
++                        resolution="none", reason=clip(reason, 260))
++            for index, (label, reason) in enumerate(unavailable_rows(decision.capability_check), 1)]
++
++
+ def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
+     """A step no registered workflow performs, as a "not available here" row (Log 320)."""
+     from ..interpretation.outside_steps import outside_steps
+@@ -597,9 +617,10 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
+         card = _core_card(kind, decision, policy, task)
+     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
+         card = _with_input_alternative(card, decision, policy, task, result)
+-    if card is not None and kind != "execution":
++    if card is not None and kind not in {"execution", "capability_check_gap"}:
+         card = _with_outside_steps(card, decision, task)
+         card = _with_study_purpose(card, kind, decision, policy, task, result)
++        card = card.model_copy(update={"unavailable": [*_capability_rows(decision), *card.unavailable][:8]})
+     outputs = [
+         path.removeprefix("/work/")
+         for item in results if item.action.startswith("run_") and item.status == "success"
+diff --git a/tests/test_capability_check.py b/tests/test_capability_check.py
+new file mode 100644
+index 0000000..f04228b
+--- /dev/null
++++ b/tests/test_capability_check.py
+@@ -0,0 +1,286 @@
++"""Log 387: the capability sheet, the verified capability check, and how replies and cards use it."""
++
++from __future__ import annotations
++
++import sys
++from pathlib import Path
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
++
++from netzoo_agent_core.capability_sheet import load_sheet, sheet_entries  # noqa: E402
++from netzoo_agent_core.contracts import AIMessage, TaskDecision  # noqa: E402
++from netzoo_agent_core.contracts.capability_check import proposal_model  # noqa: E402
++from netzoo_agent_core.graph import router_invocation  # noqa: E402
++from netzoo_agent_core.graph.response import respond  # noqa: E402
++from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
++    build_capability_check, full_gap_reply, request_sentences, understanding_paragraph,
++    with_capability_check_reply,
++)
++from workflow_registry import RUN_ACTIONS  # noqa: E402
++
++SPLICING = ("We have isoform-level quantifications from 80 brain samples. We want to find which splicing "
++            "factors control inclusion of each alternative exon.")
++PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein interaction data. We want a "
++             "separate TF-gene regulatory network for every tumor so we can relate it to survival.")
++
++
++def _proposal(*sentences):
++    """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
++    def reading(items):
++        kinds = {kind for _, kind, _, _ in items}
++        role = ("background" if kinds == {"context"} else "methods_question" if kinds == {"about_methods"}
++                else "asks" if kinds == {"result"} else "mixed")
++        return {
++            "role": role,
++            "has": [quote for quote, kind, _, _ in items if kind == "context"],
++            "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
++            "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by)}
++                     for quote, kind, delivered, not_by in items if kind == "result"],
++        }
++    return proposal_model(len(sentences)).model_validate(
++        {f"s{index}": reading(items) for index, (_text, items) in enumerate(sentences, 1)})
++
++
++def _splicing_proposal(delivered=()):
++    return _proposal(
++        ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
++        ("s2", [("find which splicing factors control inclusion of each alternative exon", "result",
++                 delivered, ("panda.no_motif_discovery",))]),
++    )
++
++
++def _splicing_check(delivered=()):
++    return build_capability_check(SPLICING, _splicing_proposal(delivered))[0]
++
++
++def test_sheet_covers_every_run_action_and_resolves_references():
++    entries = sheet_entries()
++    assert {item.action for item in entries.values() if item.kind == "produces"} >= set(RUN_ACTIONS)
++    shared = entries["otter.no_complexes"]
++    assert shared.workflow == "OTTER" and shared.text == entries["panda.no_complexes"].text
++    assert entries["lioness_puma.per_sample_targeting"].level == "with_step"
++    assert entries["dragon.edge_pvalues"].kind == "produces"  # Log 386
++    assert entries["condor.core_scores"].kind == "produces"  # Log 386
++
++
++def test_sheet_fails_closed_on_a_produces_entry_without_a_source(tmp_path):
++    bad = tmp_path / "sheet.yaml"
++    bad.write_text(
++        "workflows:\n  PANDA:\n    action: run_panda\n    produces:\n"
++        "      - {id: p.x, result: A network.}\n", encoding="utf-8")
++    with pytest.raises(ValueError, match="source"):
++        load_sheet(bad)
++
++
++def test_sheet_fails_closed_on_a_run_action_without_produces(tmp_path):
++    partial = tmp_path / "sheet.yaml"
++    partial.write_text(
++        "workflows:\n  PANDA:\n    action: run_panda\n    produces:\n"
++        "      - {id: p.x, result: A network., source: paper}\n", encoding="utf-8")
++    with pytest.raises(ValueError, match="without a produces entry"):
++        load_sheet(partial)
++
++
++def test_proposal_ids_are_enums_of_the_sheet():
++    with pytest.raises(Exception):
++        _proposal(("s", [("x", "result", ("panda.invented_capability",), ())]))
++
++
++def test_no_produces_entry_is_a_full_gap_with_the_near_miss_reason():
++    check = _splicing_check()
++    assert check.full_gap and not check.unchecked
++    text = full_gap_reply(check)
++    assert "not available here: no registered workflow produces this" in text
++    assert "PANDA does not give it: the motif prior is an input" in text
++    assert "none is offered" in text
++
++
++def test_an_ask_without_a_reason_says_it_was_not_matched():
++    check = build_capability_check(SPLICING, _proposal(
++        ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
++        ("s2", [("find which splicing factors control inclusion of each alternative exon", "result", (), ())]),
++    ))[0]
++    assert '-- not matched to any registered workflow.' in understanding_paragraph(check)
++    assert check.full_gap  # still nothing registered produces it
++
++
++def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
++    proposal = proposal_model(2).model_validate({
++        "s1": {"role": "background", "has": [], "about_methods": [],
++               "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
++                         "not_by": []}]},
++        "s2": {"role": "asks", "has": [], "about_methods": [],
++               "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
++                         "delivered_by": ["panda.tf_gene_network"], "not_by": []}]},
++    })
++    check, _ = build_capability_check(SPLICING, proposal)
++    assert [item.kind for item in check.requirements] == ["result", "context"]
++    assert not check.unchecked
++    matched = proposal_model(1).model_validate({"s1": {
++        "role": "background", "has": [], "about_methods": [],
++        "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
++                  "delivered_by": [], "not_by": ["panda.no_motif_discovery"]}]}})
++    assert build_capability_check(SPLICING, matched)[0].results()[0].status == "not_available"
++
++
++def test_registry_wide_reasons_need_the_verified_claim():
++    proposal = _proposal(("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
++                         ("s2", [("find which splicing factors control inclusion of each alternative exon",
++                                  "result", (), ("causal_proof",))]))
++    unverified, _ = build_capability_check(SPLICING, proposal)
++    assert unverified.results()[0].not_by == []
++    verified, _ = build_capability_check(SPLICING, proposal, frozenset({"causal"}))
++    assert verified.results()[0].not_by == ["causal_proof"]
++
++
++def test_a_near_verbatim_quote_stands_for_the_request_words():
++    task = "We want a regulatory network for each patient, then a classifier to predict survival."
++    check, rejected = build_capability_check(task, _proposal(
++        ("s1", [("We want a classifier to predict survival.", "result", (), ())])))
++    assert not rejected
++    assert check.results()[0].quote == "a classifier to predict survival"
++
++
++def test_one_passage_read_as_two_asks_with_and_without_an_entry_is_partial():
++    task = "We want an integrated network for each patient and then a forecast of each network."
++    quote = "an integrated network for each patient and then a forecast of each network"
++    check, _ = build_capability_check(task, _proposal(("s1", [
++        (quote, "result", ("lioness_dragon.per_sample_networks",), ()), (quote, "result", (), ())])))
++    assert [item.status for item in check.results()] == ["partial"]
++    assert "partly available: LIONESS-DRAGON gives part of it" in understanding_paragraph(check)
++    assert not check.full_gap
++
++
++def test_near_misses_never_decide_support():
++    """A produces entry delivers it even when a near miss is also named."""
++    check = _splicing_check(delivered=("panda.tf_gene_network",))
++    assert check.results()[0].status == "available"
++    assert not check.full_gap
++
++
++def test_a_quote_not_in_the_request_is_dropped_and_its_sentence_is_unchecked():
++    check, rejected = build_capability_check(SPLICING, _proposal(
++        ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
++        ("s2", [("discover splicing regulators genome-wide", "result", (), ())]),
++    ))
++    assert rejected == [{"quote": "discover splicing regulators genome-wide", "reason": "quote_not_in_request"}]
++    assert check.unchecked == ["We want to find which splicing factors control inclusion of each alternative exon."]
++    assert not check.full_gap  # an unchecked sentence may hold something that is available
++
++
++def test_with_step_and_unchecked_sentence_are_said():
++    check, _ = build_capability_check(PER_TUMOR, _proposal(
++        ("s2", [("a separate TF-gene regulatory network for every tumor", "result",
++                 ("lioness_panda.per_sample_networks", "lioness_puma.per_sample_networks"), ()),
++                ("relate it to survival", "result", ("lioness_panda.association_tests",), ())]),
++    ))
++    assert [item.status for item in check.results()] == ["available", "with_step"]
++    text = understanding_paragraph(check)
++    assert "available from LIONESS-PANDA or LIONESS-PUMA." in text
++    assert "plus a step you run outside NetZoo" in text
++    assert 'Not checked against the registered workflows: "We have RNA-seq from 90 ovarian tumors' in text
++    assert not check.full_gap
++
++
++def test_methods_questions_and_context_are_not_checked():
++    task = "We have RNA-seq. Which method should we use?"
++    check, _ = build_capability_check(task, _proposal(
++        ("s", [("We have RNA-seq", "context", (), ()), ("Which method should we use?", "about_methods", (), ())]),
++    ))
++    assert check.results() == [] and not check.full_gap
++    assert understanding_paragraph(check) is None
++
++
++def test_schema_requires_one_field_per_sentence():
++    schema = proposal_model(3).model_json_schema()
++    assert schema["required"] == ["s1", "s2", "s3"] and schema["additionalProperties"] is False
++    sentence = schema["$defs"]["SentenceReading"]
++    assert sentence["required"] == ["role", "has", "about_methods", "asks"]
++    assert "not_by" not in str(sentence["properties"]["has"])  # only an ask can name entries
++
++
++def test_messages_number_the_sentences_the_schema_names():
++    from netzoo_agent_core.graph.capability_check_call import build_capability_check_messages
++
++    messages, count = build_capability_check_messages(SPLICING)
++    assert count == 2
++    assert messages[1].content.endswith(
++        "Sentences:\n1. We have isoform-level quantifications from 80 brain samples.\n"
++        "2. We want to find which splicing factors control inclusion of each alternative exon.")
++
++
++def test_request_sentences_split_on_end_marks_and_lines():
++    assert [SPLICING[s:e] for s, e in request_sentences(SPLICING)] == [
++        "We have isoform-level quantifications from 80 brain samples.",
++        "We want to find which splicing factors control inclusion of each alternative exon.",
++    ]
++
++
++def _state(check, **decision):
++    payload = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
++                           capability_check=check, **decision).model_dump()
++    return {"decision": payload, "messages": []}
++
++
++def test_respond_answers_a_full_gap_without_any_renderer():
++    result = respond(None, _state(_splicing_check()))
++    assert result["reply_kind"] == "capability_check_gap"
++    assert "none is offered" in result["messages"][-1].content
++
++
++def test_other_replies_open_with_what_was_understood():
++    check = _splicing_check(delivered=("panda.tf_gene_network",))
++    result = {"messages": [AIMessage(content="PANDA builds the network.")], "reply_kind": "verified_guidance"}
++    updated = with_capability_check_reply(result, _state(check), lambda text, kind: {
++        "messages": [AIMessage(content=text)], "reply_kind": kind})
++    content = updated["messages"][-1].content
++    assert content.startswith("What I understood you are asking for:")
++    assert content.endswith("PANDA builds the network.")
++
++
++def _invocation(decision):
++    return router_invocation._RouterInvocation(
++        decision=decision, routing_state={}, usage=None, budget_warnings=[], reason_code=None)
++
++
++def test_router_clears_every_candidate_on_a_full_gap(monkeypatch):
++    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
++                            capability_match_status="ambiguous",
++                            hypothesis_actions=["run_panda", "run_otter"])
++    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
++    updated = router_invocation._with_capability_check(
++        None, {}, SPLICING, _invocation(decision), _splicing_proposal()).decision
++    assert updated.hypothesis_actions == [] and updated.capability_match_status == "unsupported"
++    assert updated.capability_check.full_gap
++
++
++def test_router_keeps_candidates_when_something_is_available(monkeypatch):
++    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
++                            hypothesis_actions=["run_panda"])
++    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
++    updated = router_invocation._with_capability_check(
++        None, {}, SPLICING, _invocation(decision), _splicing_proposal(("panda.tf_gene_network",))).decision
++    assert updated.hypothesis_actions == ["run_panda"]
++    assert updated.capability_check.results()[0].status == "available"
++
++
++def test_router_skips_a_run_request_and_a_turn_nothing_read():
++    run = _invocation(TaskDecision(action="run_panda", in_scope=True, should_execute=True, confidence=0.9,
++                                   reason="r"))
++    assert router_invocation._with_capability_check(None, {}, SPLICING, run, _splicing_proposal()) is run
++    guidance = _invocation(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9,
++                                        reason="r"))
++    assert router_invocation._with_capability_check(None, {}, SPLICING, guidance, None) is guidance
++
++
++def test_full_gap_card_lists_each_unavailable_result_and_offers_no_workflow():
++    from netzoo_agent_core.reply_cards import builder
++
++    decision = TaskDecision.model_validate(_state(_splicing_check())["decision"])
++    card = builder._core_card("capability_check_gap", decision, None, SPLICING)
++    assert card.kind == "capability_gap" and card.choices is None
++    assert card.headline.startswith("No registered workflow produces what you asked for")
++    assert [row.available for row in card.unavailable] == [False]
++    assert "motif prior is an input" in card.unavailable[0].reason
+diff --git a/tests/test_contracts_package.py b/tests/test_contracts_package.py
+index 3400081..73958be 100644
+--- a/tests/test_contracts_package.py
++++ b/tests/test_contracts_package.py
+@@ -167,7 +167,7 @@ SCHEMA_DIGESTS = {
+     # forbidden operations read from the request); it can only refuse execution.
+     # 2026-10-06 (Log 380): optional code-owned data_facts and applicability; advisory only.
+     # 2026-10-06 (Log 383): optional code-owned data_plan (the turn's data-needs plan); reply only.
+-    "TaskDecision": "d9d6559a72bbc4f11e834fbe0c665899d2bb62b9cd3672c9950a532249941c76",
++    "TaskDecision": "9d75094604da815a3261e4d4f47e6c965fe936e9b2fe47f3d4c313308f3fe668",
+     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
+     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
+     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
+diff --git a/tests/test_graph_tracing.py b/tests/test_graph_tracing.py
+index ac30045..4acc2f0 100644
+--- a/tests/test_graph_tracing.py
++++ b/tests/test_graph_tracing.py
+@@ -1085,6 +1085,7 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
++        "capability_check",  # Log 387: asked right after routing
+         "study_purpose",  # Log 355
+         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+@@ -1141,7 +1142,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+     )
+     events = store.read_events(run_id)
+ 
+-    assert router.calls == 5  # Log 355: + the study-purpose call; Log 380: + data facts
++    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
+@@ -1154,6 +1155,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
+         "semantic_interpreter",
+         "semantic_reviewer",
+         "intent_router",
++        "capability_check",  # Log 387: asked right after routing
+         "study_purpose",  # Log 355
+         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+@@ -1214,7 +1216,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+     events = store.read_events(run_id)
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
++    assert router.calls == 7  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1232,6 +1234,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
+         "semantic_reviewer",
+         "intent_router",
+         "request_concerns",
++        "capability_check",  # Log 387: asked right after routing
+         "study_purpose",  # Log 355
+         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
+     ]
+@@ -1288,7 +1291,7 @@ def test_graph_retries_a_schema_valid_but_inconsistent_semantic_outcome(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
++    assert router.calls == 7  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+@@ -1348,7 +1351,7 @@ def test_graph_reviews_registry_ambiguous_biological_roles(
+     )
+ 
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+-    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts
++    assert router.calls == 7  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+     assert result["decision"]["capability_match_status"] == "exact"
+     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
+     proposed = next(
+@@ -1402,7 +1405,7 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
+         }
+     )
+ 
+-    assert router.calls == 3  # Log 355: + the study-purpose call
++    assert router.calls == 4  # Log 355: + the study-purpose call; Log 387: + capability check
+     assert result["decision"]["action"] == "no_tool"
+     assert result["decision"]["matched_actions"] == []
+     assert result["decision"]["recommended_actions"] == []
+@@ -1417,6 +1420,7 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
+     assert [call["role"] for call in calls] == [
+         "semantic_interpreter",
+         "semantic_reviewer",
++        "capability_check",  # Log 387: asked right after routing
+         "study_purpose",  # Log 355
+     ]
+     assert calls[0]["status"] == "failed"
+diff --git a/tests/test_semantic_claims.py b/tests/test_semantic_claims.py
+index 5ce38cc..fd354ba 100644
+--- a/tests/test_semantic_claims.py
++++ b/tests/test_semantic_claims.py
+@@ -763,8 +763,9 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
+     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
+     # Log 355: the study-purpose call comes after routing.
+     # Log 380: + the data-facts call, since a listed workflow needs TF priors.
+-    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal",
+-                      "DataFactsProposal"]
++    # Log 387: + the capability check.
++    assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "CapabilityCheckProposal",
++                      "StudyPurposeProposal", "DataFactsProposal"]
+     assert result["decision"]["should_execute"] is False
+     assert result["decision"]["action"] == "no_tool"
+     assert result["plan"]["status"] == "respond_only"

@@ -1,0 +1,33 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Workflow — LIONESS-DRAGON
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a two-layer methylation-expression network for each patient" -- available from DRAGON or LIONESS-DRAGON.
+2. "compare the networks between responders and non-responders" -- available from DRAGON or LIONESS-DRAGON's output plus a step you run outside NetZoo: One network per group on the same features, then compare; no per-sample spread for a test.
+
+For the sample-specific output you described, use **LIONESS-DRAGON**.
+
+Required inputs:
+   - `omics_layer_1`: Omics layer 1 (samples x features)
+   - `omics_layer_2`: Omics layer 2 (the same samples)
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **DRAGON** separately; **LIONESS-DRAGON** also produces the aggregate output. Use **DRAGON** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files (for your 100 patients, 101 DRAGON runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **LIONESS-DRAGON** — Each sample column holds that sample's edge weights; comparing the columns between groups of samples shows which within- and cross-layer associations differ. A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from, not absolute values.
+
+For your question ("compare the networks between responders and non-responders."):
+- **DRAGON** — Build one network per group on the same features of both layers, then compare the cross-layer edges (the partial correlations between the two omics layers) between the group networks; two aggregate networks show where the groups differ but give no per-sample spread to test it.
+- **LIONESS-DRAGON** — Each sample gets its own two-layer network; comparing the samples' edge weights between the groups or conditions (paired when the same individuals give both) shows which within- and cross-layer associations differ.
+Note: Partial correlations are conditional on every other feature in both layers, so use the same feature set in every network you compare.
+Note: A sample's edges are estimated from how removing it changes the cohort network, so they are relative to the cohort the network was built from.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.
