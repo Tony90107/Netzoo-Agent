@@ -31,6 +31,7 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
+from .capability_check_call import invoke_capability_check
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
@@ -150,6 +151,7 @@ def invoke_router(
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
         result = _with_applicability(context, state, user_task, result)
+        result = _with_capability_check(context, state, user_task, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -212,6 +214,40 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
     })
     return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
                    routing_state={**result.routing_state, "data_facts": decision.data_facts})
+
+
+def _with_capability_check(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:
+    """Log 387: each thing a guidance request asks for, checked against the capability sheet.
+
+    When every result it asks for is one no registered workflow produces, and
+    every sentence was read, no workflow is offered as the answer: the routing
+    candidates are cleared and the turn is marked unsupported, so no renderer,
+    card or next step can present one (Log 385: 25 of 45 such requests were
+    given a workflow). Otherwise the check only adds what was understood.
+    """
+    decision = result.decision
+    if decision.action != "no_tool":
+        return result
+    claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
+    check, usage, warnings = invoke_capability_check(
+        context, state, user_task, result.usage, result.budget_warnings, claims,
+    )
+    if check is None:
+        return replace(result, usage=usage, budget_warnings=warnings)
+    update: dict = {"capability_check": check}
+    if check.full_gap:
+        update.update({
+            "matched_actions": [], "hypothesis_actions": [], "recommended_actions": [],
+            "alternative_actions": [], "advisory_recommendation": None, "clarification_question": None,
+            "capability_match_status": "unsupported",
+        })
+        record_event(context, state, "routing.capability_full_gap", "classify", {
+            "cleared": [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions],
+        })
+    decision = decision.model_copy(update=update)
+    return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
+                   routing_state={**result.routing_state, **outcome_routing_state(decision)}
+                   if check.full_gap else result.routing_state)
 
 
 def _stated_artifacts(user_task: str, decision: TaskDecision) -> set[str]:

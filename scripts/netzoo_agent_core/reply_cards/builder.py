@@ -432,6 +432,15 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return None
     if kind == "capability_gap":
         return _gap_card(decision, policy, task)
+    if kind == "capability_check_gap" and decision.capability_check is not None:
+        many = len(decision.capability_check.results()) > 1
+        return ReplyCard(
+            kind="capability_gap",
+            headline=f"No registered workflow produces what you asked for, so none is offered.",
+            points=[clip(f'Understood: "{item.quote}"', 300) for item in decision.capability_check.results()][:4]
+            if many else [],
+            unavailable=_capability_rows(decision),
+        )
     if kind == "outcome_clarification":
         if decision.advisory_capability_gap is not None:
             return _method_gap_card(decision, policy, task)
@@ -503,6 +512,17 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str, result
         "choices": ReplyChoices(header="Inputs", question=clip(f"Do you also have {words['asked']}?", 400),
                                 options=options, ordering="The option that uses only the data you named comes first."),
     })
+
+
+def _capability_rows(decision) -> list[ReplyOption]:
+    """Log 387: each asked-for result no registered workflow produces, and each unchecked sentence."""
+    from ..interpretation.capability_check import unavailable_rows
+
+    if decision.capability_check is None:
+        return []
+    return [ReplyOption(key=f"capability-{index}", label=clip(f"“{label}”", 80), available=False,
+                        resolution="none", reason=clip(reason, 260))
+            for index, (label, reason) in enumerate(unavailable_rows(decision.capability_check), 1)]
 
 
 def _with_outside_steps(card: ReplyCard, decision, task: str) -> ReplyCard:
@@ -597,9 +617,10 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _core_card(kind, decision, policy, task)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
         card = _with_input_alternative(card, decision, policy, task, result)
-    if card is not None and kind != "execution":
+    if card is not None and kind not in {"execution", "capability_check_gap"}:
         card = _with_outside_steps(card, decision, task)
         card = _with_study_purpose(card, kind, decision, policy, task, result)
+        card = card.model_copy(update={"unavailable": [*_capability_rows(decision), *card.unavailable][:8]})
     outputs = [
         path.removeprefix("/work/")
         for item in results if item.action.startswith("run_") and item.status == "success"
