@@ -763,8 +763,9 @@ def test_default_graph_skips_review_but_keeps_guidance_out_of_executor(
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
     # Log 355: the study-purpose call comes after routing.
     # Log 380: + the data-facts call, since a listed workflow needs TF priors.
+    # Log 387: + the capability check.
     assert called == ["SemanticInterpretation", "IntentDecision", "StatedConcernClaims", "StudyPurposeProposal",
-                      "DataFactsProposal"]
+                      "DataFactsProposal", "CapabilityCheckProposal"]
     assert result["decision"]["should_execute"] is False
     assert result["decision"]["action"] == "no_tool"
     assert result["plan"]["status"] == "respond_only"

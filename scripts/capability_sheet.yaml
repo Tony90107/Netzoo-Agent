@@ -1,29 +1,29 @@
-# NetZoo capability sheet -- DRAFT 1 for the user's review (2026-10-08, Log 386 prep).
+# NetZoo capability sheet (Logs 385-387). Reviewed with the user from draft 1 (2026-10-08);
+# review notes: docs/capability-sheet/審閱說明.zh-TW.md. Loaded by
+# netzoo_agent_core/capability_sheet.py, which fails closed on a malformed entry.
 #
-# Rules this sheet is written for (see 審閱說明.zh-TW.md):
 # - CLOSED WORLD ON `produces`. A requested result is supported only when a
 #   `produces` entry delivers it. Nothing is ever decided from `near_misses`;
-#   they exist so the reply can say precisely why a tempting workflow does not
-#   give the result. An incomplete near-miss list therefore cannot create a
-#   false "yes" or a false "no".
-# - `produces` lists what the executor writes (files checked 2026-10-08,
-#   `files`), plus `with_step` results: the workflow gives the material and a
-#   named step the user runs outside NetZoo gives the result. A with_step
-#   result is supported, and the reply must name the step.
-# - Every entry carries `source`. [EXEC] = the executor code that writes it;
-#   [REG] = a registry sentence already checked in an earlier Log; papers are
-#   cited. Text here is what replies may say about a method's function.
-#
-# Not in this draft (needs the user's decision): wiring into routing, the
-# requirement-check contract, outside-registry tool suggestions.
+#   they let the reply say precisely why a tempting workflow does not give the
+#   result, so an incomplete near-miss list cannot create a false yes or no.
+# - `produces` lists what the executor writes (`files`, checked 2026-10-08),
+#   plus `with_step` results: the workflow gives the material and a named step
+#   the user runs outside NetZoo gives the result. A with_step result is
+#   supported, and the reply names the step.
+# - Every entry carries `source`: [EXEC] the executor code that writes it,
+#   [REG] a registry sentence checked in an earlier Log, or the paper.
+# - `see: <id>` copies the referenced entry's text; the entry keeps its own id.
 
 registry_wide_not_produced:
   # Already live as UNSUPPORTED_CLAIMS; repeated so the sheet is complete.
+  # `claim`: shown only when the study-purpose reader verified that claim (its cue-word witnesses).
   - id: causal_proof
+    claim: causal
     result_asked: Proof that one thing causes another (causal drivers, causal direction of an edge, ruling out confounding).
     why_not: Every registered workflow estimates associations or model coefficients from observational data.
     source: "[REG] UNSUPPORTED_CLAIMS['causal']"
   - id: outcome_prediction
+    claim: prediction
     result_asked: A trained model that predicts an outcome, a future state or a perturbation effect, with its accuracy.
     why_not: No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere.
     source: "[REG] UNSUPPORTED_CLAIMS['prediction'] (wording widened from 'for new samples' to future states and perturbations: Log 385 U2/N2)"
