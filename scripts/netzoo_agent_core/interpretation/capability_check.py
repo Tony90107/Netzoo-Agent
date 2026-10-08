@@ -26,7 +26,7 @@ from ..routing.study_purpose_verify import _locate
 
 __all__ = [
     "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
-    "with_capability_check_reply", "unavailable_rows",
+    "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "apply_second_opinion",
 ]
 
 _SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -86,6 +86,9 @@ def _locate_tokens(task: str, quote: str) -> tuple[int, int] | None:
 
 def _span(task: str, quote: str) -> tuple[int, int] | None:
     return _locate(task, quote) or _locate_tokens(task, quote)
+
+
+_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign")
 
 
 def _fitting(keys: list[str], item) -> list[str]:
@@ -158,8 +161,9 @@ def build_capability_check(
             if known.get(k) and (known[k].kind == "near_miss"
                                  or (known[k].kind == "registry_wide" and known[k].claim in verified_claims))))
         status = "partial" if delivered and not all(readings) else _status(delivered)
+        attrs = {key: getattr(items[0], key) for key in _TYPED}
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
-                                               delivered_by=delivered, not_by=not_by))
+                                               delivered_by=delivered, not_by=not_by, attrs=attrs))
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     unchecked = [task[s:e].strip() for s, e in request_sentences(task)
@@ -263,3 +267,37 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
             rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows
+
+
+def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tuple[int, str]]:
+    """(requirement index, entry id) to ask about when a full gap would clear an exact routing match (Log 390).
+
+    Every not-available result is paired with each produces entry of the matched
+    workflows that fits its typed attributes; an entry the attributes rule out
+    (single cells, lncRNA regulators, a sign, too many layers) is never asked about.
+    """
+    from types import SimpleNamespace
+
+    if not check.full_gap:
+        return []
+    produces = [key for key, item in sheet_entries().items() if item.kind == "produces" and item.action in actions]
+    pairs = []
+    for index, requirement in enumerate(check.requirements):
+        if requirement.kind == "result" and requirement.status == "not_available" and requirement.attrs:
+            fitting = _fitting(produces, SimpleNamespace(**requirement.attrs))
+            pairs += [(index, key) for key in fitting]
+    return pairs
+
+
+def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str]], answers: list[bool]) -> CapabilityCheck:
+    """Credit every pair answered yes; the full gap stands only if no result became available."""
+    requirements = [item.model_copy() for item in check.requirements]
+    for (index, key), yes in zip(pairs, answers):
+        if yes:
+            item = requirements[index]
+            delivered = list(dict.fromkeys([*item.delivered_by, key]))
+            requirements[index] = item.model_copy(update={
+                "delivered_by": delivered, "status": _status(delivered), "second_opinion": True})
+    results = [item for item in requirements if item.kind == "result"]
+    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})

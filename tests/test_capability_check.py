@@ -380,3 +380,50 @@ def test_the_check_uses_its_own_model_when_configured(monkeypatch):
     monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "openai/gpt-4o")
     call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
     assert seen == ["semantic", "openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4o"]
+
+
+DRAGON_ASK = "We want one network of direct associations between the two layers, with significance for each edge."
+
+
+def test_second_opinion_pairs_only_fitting_entries_of_the_exact_workflows():
+    from netzoo_agent_core.interpretation.capability_check import second_opinion_pairs
+
+    quote = "one network of direct associations between the two layers, with significance for each edge"
+    check, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=2, scale="whole_cohort"))
+    assert check.full_gap
+    pairs = second_opinion_pairs(check, ["run_dragon"])
+    assert [key for _, key in pairs] == ["dragon.two_layer_network", "dragon.edge_pvalues", "dragon.group_comparison"]
+    three, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=3))
+    assert second_opinion_pairs(three, ["run_dragon"]) == []  # too many layers: nothing to ask
+
+
+def test_a_yes_rescues_the_result_and_a_no_keeps_the_gap():
+    from netzoo_agent_core.interpretation.capability_check import apply_second_opinion, second_opinion_pairs
+
+    quote = "one network of direct associations between the two layers, with significance for each edge"
+    check, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=2))
+    pairs = second_opinion_pairs(check, ["run_dragon"])
+    rescued = apply_second_opinion(check, pairs, [True, True, False])
+    assert not rescued.full_gap and rescued.results()[0].status == "available"
+    assert rescued.results()[0].second_opinion
+    assert apply_second_opinion(check, pairs, [False, False, False]).full_gap
+
+
+def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monkeypatch):
+    quote = "one network of direct associations between the two layers, with significance for each edge"
+    asked = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, pairs, usage, warnings: (asked.append(pairs) or [True] * len(pairs),
+                                                                        usage, warnings))
+    exact = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                         capability_match_status="exact", matched_actions=["run_dragon"])
+    kept = router_invocation._with_capability_check(
+        None, {}, DRAGON_ASK, _invocation(exact), _ask(DRAGON_ASK, quote, layers=2)).decision
+    assert asked and kept.matched_actions == ["run_dragon"] and not kept.capability_check.full_gap
+    asked.clear()
+    ambiguous = exact.model_copy(update={"capability_match_status": "ambiguous", "matched_actions": [],
+                                         "hypothesis_actions": ["run_dragon"]})
+    cleared = router_invocation._with_capability_check(
+        None, {}, DRAGON_ASK, _invocation(ambiguous), _ask(DRAGON_ASK, quote, layers=2)).decision
+    assert not asked and cleared.capability_check.full_gap and cleared.hypothesis_actions == []

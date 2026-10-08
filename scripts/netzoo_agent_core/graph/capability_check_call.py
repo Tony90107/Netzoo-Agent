@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from ..capability_sheet import sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
-from ..contracts.capability_check import MAX_SENTENCES, proposal_model
+from ..contracts.capability_check import MAX_SENTENCES, proposal_model, second_opinion_model
 from ..interpretation.capability_check import request_sentences
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
@@ -27,7 +27,8 @@ from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
-__all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check"]
+__all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check",
+           "request_second_opinion"]
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
@@ -82,6 +83,75 @@ def _own_llm(model: str, max_tokens: int):
     return build_llm(validate_router_model(model), 0.0, max_output_tokens=max_tokens)
 
 
+_SECOND_OPINION = (
+    "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and one "
+    "result a registered workflow produces. Answer true only if that result gives what the words ask for, as "
+    "they ask it -- not a related result, and not only an ingredient of it."
+)
+
+
+def _check_model(context):
+    """The check's model and LLM: its own (OPENROUTER_CAPABILITY_MODEL, Log 389) or the study-purpose call's."""
+    llm = getattr(context, "study_purpose_llm", None)
+    model = getattr(context, "semantic_model_name", None)
+    own = os.environ.get("OPENROUTER_CAPABILITY_MODEL")
+    if llm is not None and own and own != model:
+        # Reasoning models spend output tokens before the answer (nemotron ~1.7k a call on the
+        # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
+        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "6000")))
+    return model, llm
+
+
+def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings):
+    """Log 390: yes/no per (request words, workflow, registered result), or None when nothing answered.
+
+    Asked only when a full gap would clear an exact routing match: on heldouts 1-3 every false
+    gap (HC7, JC6, KC8) had routing exact and an empty `delivered_by`.
+    """
+    model, llm = _check_model(context)
+    if llm is None or not pairs:
+        return None, usage, budget_warnings
+    schema = second_opinion_model(len(pairs))
+    listed = "\n".join(f'{index}. Request words: "{quote}" | Registered result ({workflow}): {result}'
+                        for index, (quote, workflow, result) in enumerate(pairs, 1))
+    messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=listed)]
+    input_text = _serialized_structured_input(messages, schema)
+    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+    budget, budget_warnings = preflight_budget(
+        context, call_state, role="capability_second_opinion", model=model, input_text=input_text,
+        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+    )
+    if budget.status == "blocked":
+        usage.budget_exhausted = True
+        return None, usage, budget_warnings
+    started_ns = time.monotonic_ns()
+    raw = payload = answers = None
+    output_text, call_status = "", "failed"
+    try:
+        adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
+        payload, raw = semantic_payload(adapter.invoke(messages))
+        if isinstance(payload, BaseModel):
+            payload = payload.model_dump()
+        parsed = schema.model_validate(payload)
+        output_text = parsed.model_dump_json()
+        answers = [getattr(parsed, f"a{index}") for index in range(1, len(pairs) + 1)]
+        call_status = "success"
+    except BaseException as error:
+        if _is_fatal_exception(error):
+            raise
+        record_event(context, state, "routing.capability_second_opinion_failed", "classify", {
+            "error_type": type(error).__name__, "error_message": str(error)[:2000], "provider_payload": payload,
+        })
+    usage = append_llm_usage(
+        usage, role="capability_second_opinion", model=model,
+        response=raw, input_text=input_text, output_text=output_text,
+        budget_tokens=context.task_token_budget,
+        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+        status=call_status, price_catalog=context.price_catalog,
+    )
+    return answers, usage, budget_warnings
+
+
 def request_capability_check(
     context: _GraphContext,
     state: AgentState,
@@ -96,16 +166,9 @@ def request_capability_check(
     budget blocked). Verification waits for the study-purpose claims
     (`interpretation.capability_check.build_capability_check`).
     """
-    # The study-purpose call's model, or the check's own (OPENROUTER_CAPABILITY_MODEL, Log 389).
-    llm = getattr(context, "study_purpose_llm", None)
-    model = getattr(context, "semantic_model_name", None)
+    model, llm = _check_model(context)
     if llm is None:
         return None, usage, budget_warnings
-    own = os.environ.get("OPENROUTER_CAPABILITY_MODEL")
-    if own and own != model:
-        # Reasoning models spend output tokens before the answer (nemotron ~1.7k a call on the
-        # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
-        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "6000")))
     messages, count = build_capability_check_messages(user_task)
     schema = proposal_model(count)
     input_text = _serialized_structured_input(messages, schema)

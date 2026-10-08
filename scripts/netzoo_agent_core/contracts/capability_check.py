@@ -13,7 +13,7 @@ quotes and sentence coverage are checked in code
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -21,7 +21,7 @@ from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
 __all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "proposal_model",
-           "proposal_sentences"]
+           "proposal_sentences", "second_opinion_model"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -94,6 +94,20 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     return model
 
 
+@lru_cache(maxsize=32)
+def second_opinion_model(pairs: int) -> type[BaseModel]:
+    """Log 390: one required yes/no per (request words, registered result) pair."""
+    fields = {
+        f"a{index}": (bool, Field(description=(
+            f"Pair {index}: true only if the registered result gives what the request words ask for, as asked.")))
+        for index in range(1, pairs + 1)
+    }
+    model = create_model("SecondOpinion", __config__=ConfigDict(extra="forbid"), **fields)
+    model.model_json_schema = classmethod(  # type: ignore[method-assign]
+        lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
+    return model
+
+
 def proposal_sentences(proposal) -> list:
     """The sentence readings of a proposal, in order."""
     return [getattr(proposal, f"s{index}") for index in range(1, len(type(proposal).model_fields) + 1)]
@@ -110,6 +124,10 @@ class CheckedRequirement(BaseModel):
     `partial` when one reading of the passage names an entry and another names none."""
     delivered_by: list[str] = Field(default_factory=list)
     not_by: list[str] = Field(default_factory=list)
+    attrs: dict[str, Any] = Field(default_factory=dict)
+    """The ask's typed attributes (scale, layers, data unit, regulators, sign), for the second opinion."""
+    second_opinion: bool = False
+    """Log 390: credited by the second opinion on a conflict with an exact routing match."""
 
 
 class CapabilityCheck(BaseModel):
