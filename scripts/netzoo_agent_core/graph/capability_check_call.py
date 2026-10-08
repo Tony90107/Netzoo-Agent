@@ -103,7 +103,9 @@ def request_capability_check(
         return None, usage, budget_warnings
     own = os.environ.get("OPENROUTER_CAPABILITY_MODEL")
     if own and own != model:
-        model, llm = own, _own_llm(own, getattr(context, "router_max_tokens", 4000))
+        # Reasoning models spend output tokens before the answer (nemotron ~1.7k a call on the
+        # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
+        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "6000")))
     messages, count = build_capability_check_messages(user_task)
     schema = proposal_model(count)
     input_text = _serialized_structured_input(messages, schema)
