@@ -8,13 +8,14 @@ session per job (`ct-<tag>-<id>-<rep>`), repeats interleaved, five in parallel; 
 recorded as a timeout and the rest continue. Output goes to live/<tag>-<id>-<rep>.out/.err.
 """
 import json
+import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ARM = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-trap-base")
+ARM = Path(os.environ.get("ARM", "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-trap-base"))
 ITEMS = {item["id"]: item for item in json.loads((HERE / "traps.json").read_text())["items"]}
 
 

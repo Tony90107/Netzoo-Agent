@@ -9,11 +9,12 @@ against its `core` alone) and live/<tag>-structure.json. Nothing calls a model.
 A model-written reply is a session with a `response` call (as in Log 384's B1).
 """
 import json
+import os
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ARM = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-trap-base")
+ARM = Path(os.environ.get("ARM", "/Users/chenzhonghan/Documents/LLM AGENT/.worktrees/netzoo-trap-base"))
 sys.path.insert(0, str(ARM / "scripts"))
 from netzoo_agent_core.cli import terminal_cards  # noqa: E402
 
