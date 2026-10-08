@@ -118,7 +118,12 @@ def build_capability_check(
                 if (span := place(quote)) is not None:
                     other.setdefault(span, kind)
         for item in sentence.asks:
-            if (span := place(item.quote)) is not None:
+            if (span := place(item.quote)) is None:
+                continue
+            if sentence.role in ("background", "methods_question"):
+                # The model's own role rules the ask out; the words still count as read.
+                other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
+            else:
                 asks.setdefault(span, []).append(item)
     requirements = []
     for span, items in asks.items():
@@ -170,7 +175,10 @@ def _line(item: CheckedRequirement) -> str:
         first = entry(item.delivered_by[0])
         return (f"{quote} -- available from {_workflows(item.delivered_by)}'s output plus a step you run "
                 f"outside NetZoo: {first.step}")
-    return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *_why_not(item)])
+    reasons = _why_not(item)
+    if not reasons:
+        return f"{quote} -- not matched to any registered workflow."
+    return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
 
 
 def understanding_paragraph(check: CapabilityCheck) -> str | None:
@@ -224,6 +232,6 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
     for item in check.results():
         if item.status == "not_available":
             reasons = _why_not(item)
-            rows.append((item.quote, reasons[0] if reasons else "No registered workflow produces this."))
+            rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows

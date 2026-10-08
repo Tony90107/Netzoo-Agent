@@ -30,7 +30,11 @@ PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein i
 def _proposal(*sentences):
     """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
     def reading(items):
+        kinds = {kind for _, kind, _, _ in items}
+        role = ("background" if kinds == {"context"} else "methods_question" if kinds == {"about_methods"}
+                else "asks" if kinds == {"result"} else "mixed")
         return {
+            "role": role,
             "has": [quote for quote, kind, _, _ in items if kind == "context"],
             "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
             "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by)}
@@ -88,6 +92,29 @@ def test_no_produces_entry_is_a_full_gap_with_the_near_miss_reason():
     assert "not available here: no registered workflow produces this" in text
     assert "PANDA does not give it: the motif prior is an input" in text
     assert "none is offered" in text
+
+
+def test_an_ask_without_a_reason_says_it_was_not_matched():
+    check = build_capability_check(SPLICING, _proposal(
+        ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
+        ("s2", [("find which splicing factors control inclusion of each alternative exon", "result", (), ())]),
+    ))[0]
+    assert '-- not matched to any registered workflow.' in understanding_paragraph(check)
+    assert check.full_gap  # still nothing registered produces it
+
+
+def test_an_ask_in_a_background_sentence_is_read_as_background():
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [],
+               "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
+                         "not_by": []}]},
+        "s2": {"role": "asks", "has": [], "about_methods": [],
+               "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
+                         "delivered_by": ["panda.tf_gene_network"], "not_by": []}]},
+    })
+    check, _ = build_capability_check(SPLICING, proposal)
+    assert [item.kind for item in check.requirements] == ["result", "context"]
+    assert not check.unchecked
 
 
 def test_registry_wide_reasons_need_the_verified_claim():
@@ -162,7 +189,7 @@ def test_schema_requires_one_field_per_sentence():
     schema = proposal_model(3).model_json_schema()
     assert schema["required"] == ["s1", "s2", "s3"] and schema["additionalProperties"] is False
     sentence = schema["$defs"]["SentenceReading"]
-    assert sentence["required"] == ["has", "about_methods", "asks"]
+    assert sentence["required"] == ["role", "has", "about_methods", "asks"]
     assert "not_by" not in str(sentence["properties"]["has"])  # only an ask can name entries
 
 

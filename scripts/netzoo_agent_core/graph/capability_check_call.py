@@ -30,7 +30,8 @@ __all__ = ["capability_check_system", "build_capability_check_messages", "invoke
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
-    "The request's sentences are numbered after it. For each sentence, quote its exact words into:\n"
+    "The request's sentences are numbered after it. For each sentence, first give its role, then quote its "
+    "exact words into:\n"
     "- has: what the user has, did, or must respect (data, samples, constraints);\n"
     "- about_methods: questions about the methods themselves -- which to use, how one works, what it needs;\n"
     "- asks: each thing the user wants produced or answered about their data or biology, one item per thing.\n"

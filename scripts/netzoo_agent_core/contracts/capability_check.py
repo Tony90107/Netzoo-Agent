@@ -24,6 +24,7 @@ __all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "Requiremen
            "proposal_sentences"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
+SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
 
 
 MAX_SENTENCES = 12
@@ -51,9 +52,14 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     )
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
+    # Log 387 dev round 2: data sentences ("We have expression from 50 kidney samples ...")
+    # were filed as asks. The sentence's role comes first; code drops asks the role rules out.
     sentence = create_model(
         "SentenceReading",
         __config__=ConfigDict(extra="forbid"),
+        role=(SentenceRole, Field(description=(
+            "background: it only says what the user has, did or must respect. asks: it asks for results. "
+            "methods_question: it only asks about the methods. mixed: more than one of these."))),
         has=(list[str], Field(description=(
             "Exact quotes of what the user has, did or must respect (data, samples, constraints)."))),
         about_methods=(list[str], Field(description=(
