@@ -97,36 +97,42 @@ def build_capability_check(
     study-purpose reader verified that claim with its cue words: the smoke run cited
     both for a splicing request.
 
-    A passage read several ways (Log 387 smoke run: one quote as context, result and
-    methods question at once) is a result when a reading names a sheet entry, or when
-    every reading calls it a result; otherwise it is what the readings say it is.
+    A passage asked for several times is one requirement; when one reading names an
+    entry and another names none (Log 387 dev round: a network and a forecast quoted as
+    one sentence twice) it is `partial`, never `available`.
     """
     known = sheet_entries()
-    rejected, spans, readings = [], [], {}
-    for items in proposal_sentences(proposal):
-        for item in items:
-            span = _span(task, item.quote)
-            if span is None:
-                rejected.append({"quote": item.quote, "reason": "quote_not_in_request"})
-                continue
+    rejected, spans, asks, other = [], [], {}, {}
+
+    def place(quote: str):
+        span = _span(task, quote)
+        if span is None:
+            rejected.append({"quote": quote, "reason": "quote_not_in_request"})
+        else:
             spans.append(span)
-            readings.setdefault(span, []).append(item)
+        return span
+
+    for sentence in proposal_sentences(proposal):
+        for kind, quotes in (("context", sentence.has), ("about_methods", sentence.about_methods)):
+            for quote in quotes:
+                if (span := place(quote)) is not None:
+                    other.setdefault(span, kind)
+        for item in sentence.asks:
+            if (span := place(item.quote)) is not None:
+                asks.setdefault(span, []).append(item)
     requirements = []
-    for span, items in readings.items():
-        delivered = list(dict.fromkeys(k for item in items for k in item.delivered_by
-                                       if known.get(k) and known[k].kind == "produces"))
+    for span, items in asks.items():
+        readings = [[k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"] for item in items]
+        delivered = list(dict.fromkeys(k for keys in readings for k in keys))
         not_by = list(dict.fromkeys(
             k for item in items for k in item.not_by
             if known.get(k) and (known[k].kind == "near_miss"
                                  or (known[k].kind == "registry_wide" and known[k].claim in verified_claims))))
-        quote = task[span[0]:span[1]]
-        named = any(item.delivered_by or item.not_by for item in items)  # as the model read it, before filtering
-        if named or all(item.kind == "result" for item in items):
-            requirements.append(CheckedRequirement(quote=quote, kind="result", status=_status(delivered),
-                                                   delivered_by=delivered, not_by=not_by))
-        else:
-            kind = "context" if any(item.kind == "context" for item in items) else "about_methods"
-            requirements.append(CheckedRequirement(quote=quote, kind=kind, status="not_checked"))
+        status = "partial" if delivered and not all(readings) else _status(delivered)
+        requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
+                                               delivered_by=delivered, not_by=not_by))
+    requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
+                     for span, kind in other.items() if span not in asks]
     unchecked = [task[s:e].strip() for s, e in request_sentences(task)
                  if not any(a < e and s < b for a, b in spans)]
     results = [item for item in requirements if item.kind == "result"]
@@ -157,6 +163,9 @@ def _line(item: CheckedRequirement) -> str:
     quote = f'"{item.quote}"'
     if item.status == "available":
         return f"{quote} -- available from {_workflows([k for k in item.delivered_by if entry(k).level == 'direct'])}."
+    if item.status == "partial":
+        return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; no registered "
+                "workflow produces the rest.")
     if item.status == "with_step":
         first = entry(item.delivered_by[0])
         return (f"{quote} -- available from {_workflows(item.delivered_by)}'s output plus a step you run "

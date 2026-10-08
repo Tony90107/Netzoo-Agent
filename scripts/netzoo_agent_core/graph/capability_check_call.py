@@ -30,15 +30,14 @@ __all__ = ["capability_check_system", "build_capability_check_messages", "invoke
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
-    "The request's sentences are numbered after it. For each sentence, list the things it says. Each thing "
-    "quotes the sentence's exact words and has a kind:\n"
-    "- result: something the user wants produced or answered about their data or biology.\n"
-    "- about_methods: a question about the methods themselves -- which to use, how one works, what it needs.\n"
-    "- context: what the user has, did, or must respect.\n"
-    "If one sentence asks for two results, make two items.\n\n"
-    "For each result, delivered_by lists the PRODUCES entries below whose result gives what the quote asks "
-    "for, as it is asked. An entry that gives a related result, or only an ingredient of it, does not deliver "
-    "it. When no entry gives it, delivered_by is empty -- a normal answer, not a failure. not_by lists the NOT "
+    "The request's sentences are numbered after it. For each sentence, quote its exact words into:\n"
+    "- has: what the user has, did, or must respect (data, samples, constraints);\n"
+    "- about_methods: questions about the methods themselves -- which to use, how one works, what it needs;\n"
+    "- asks: each thing the user wants produced or answered about their data or biology, one item per thing.\n"
+    "If one sentence asks for two things, make two asks.\n\n"
+    "For each ask, delivered_by lists the PRODUCES entries below whose result gives what the quote asks for, "
+    "as it is asked. An entry that gives a related result, or only an ingredient of it, does not deliver it. "
+    "When no entry gives it, delivered_by is empty -- a normal answer, not a failure. not_by lists the NOT "
     "PRODUCED entries that describe what the quote asks for."
 )
 

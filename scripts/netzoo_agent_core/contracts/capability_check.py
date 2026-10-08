@@ -40,23 +40,29 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     """
     produces = Literal[produces_ids()]  # type: ignore[valid-type]
     not_produced = Literal[not_produced_ids()]  # type: ignore[valid-type]
-    requirement = create_model(
-        "RequirementReading",
+    ask = create_model(
+        "Ask",
         __config__=ConfigDict(extra="forbid"),
         quote=(str, Field(description="Exact contiguous words from the sentence, copied without translation.")),
-        kind=(RequirementKind, Field(description=(
-            "result: something the user wants produced or answered about their data or biology. "
-            "about_methods: a question about the methods themselves (which to use, how one works, what it "
-            "needs). context: what the user has, did or must respect."))),
         delivered_by=(list[produces], Field(description=(
-            "For a result: the PRODUCES entries whose result gives what the quote asks for, as asked. Empty "
-            "when none does; empty for about_methods and context."))),
+            "The PRODUCES entries whose result gives what the quote asks for, as asked; empty when none does."))),
         not_by=(list[not_produced], Field(description=(
-            "For a result: NOT PRODUCED entries that describe what the quote asks for; may be empty."))),
+            "NOT PRODUCED entries that describe what the quote asks for; may be empty."))),
+    )
+    # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
+    # 16 not-produced entries. Only an ask can name entries now.
+    sentence = create_model(
+        "SentenceReading",
+        __config__=ConfigDict(extra="forbid"),
+        has=(list[str], Field(description=(
+            "Exact quotes of what the user has, did or must respect (data, samples, constraints)."))),
+        about_methods=(list[str], Field(description=(
+            "Exact quotes of questions about the methods themselves: which to use, how one works, what it needs."))),
+        asks=(list[ask], Field(description=(
+            "Each thing the user wants produced or answered about their data or biology, one item per thing."))),
     )
     fields = {
-        f"s{index}": (list[requirement], Field(description=(
-            f"Everything sentence {index} of the request says, one item per thing.")))
+        f"s{index}": (sentence, Field(description=f"Sentence {index} of the request."))
         for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
     }
     model = create_model("CapabilityCheckProposal", __config__=ConfigDict(extra="forbid"), **fields)
@@ -65,8 +71,8 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     return model
 
 
-def proposal_sentences(proposal) -> list[list]:
-    """The requirement lists of a proposal, sentence by sentence."""
+def proposal_sentences(proposal) -> list:
+    """The sentence readings of a proposal, in order."""
     return [getattr(proposal, f"s{index}") for index in range(1, len(type(proposal).model_fields) + 1)]
 
 
@@ -76,8 +82,9 @@ class CheckedRequirement(BaseModel):
     model_config = ConfigDict(extra="forbid")
     quote: str
     kind: RequirementKind
-    status: Literal["available", "with_step", "not_available", "not_checked"]
-    """`not_checked` for about_methods and context; `not_available` when no produces entry gives it."""
+    status: Literal["available", "with_step", "partial", "not_available", "not_checked"]
+    """`not_checked` for about_methods and context; `not_available` when no produces entry gives it;
+    `partial` when one reading of the passage names an entry and another names none."""
     delivered_by: list[str] = Field(default_factory=list)
     not_by: list[str] = Field(default_factory=list)
 
