@@ -15,7 +15,7 @@ from ..contracts.results import ArtifactValidationResult
 from .paths import condor_artifact_paths
 from .paths import _resolve_user_path
 from .coexpression import read_coexpression_matrix
-from .dragon import validate_dragon_output
+from .dragon import dragon_pvalue_paths, validate_dragon_output
 from .lioness_dragon import validate_lioness_dragon_output
 from .giraffe import giraffe_output_paths, load_giraffe_inputs, validate_giraffe_output
 from .bonobo import load_bonobo_inputs, validate_bonobo_output
@@ -82,7 +82,8 @@ def _drop_text_header(frame: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame
     first = frame.iloc[0].astype(str).str.casefold().tolist()
-    header_tokens = {"gene", "genes", "tf", "source", "node", "regulator"}
+    # "reg"/"tar": netZooPy CONDOR names its membership columns so (Log 386).
+    header_tokens = {"gene", "genes", "tf", "source", "node", "regulator", "reg", "tar"}
     if first and first[0].strip() in header_tokens:
         return frame.iloc[1:].reset_index(drop=True)
     return frame
@@ -172,6 +173,22 @@ def _validate_membership(path: Path, label: str, errors: list[str]) -> int:
         errors.append(f"{label} community values must be numeric")
         return 0
     return int(frame.shape[0])
+
+
+def _validate_qscores(path: Path, label: str, errors: list[str]) -> int:
+    """A membership table with a third, core-score column; NaN marks a community without positive modularity."""
+    frame = _table(path, label, errors)
+    if frame is None:
+        return 0
+    if frame.shape[1] < 3 or str(frame.iloc[0, 2]).strip().casefold() != "qscore":
+        errors.append(f"{label} must have a qscore column")
+        return 0
+    rows = _validate_membership(path, label, errors)
+    scores = pd.to_numeric(_drop_text_header(frame).iloc[:, 2].replace("", "nan"), errors="coerce")
+    if np.isinf(scores).any():
+        errors.append(f"{label} core scores must be finite or NaN")
+        return 0
+    return rows
 
 
 def _validate_sambar_matrix(path: Path, label: str, errors: list[str]) -> tuple[int, int]:
@@ -389,6 +406,10 @@ def validate_output_artifacts(
                 metrics["condor_tar_memberships"] = _validate_membership(
                     paths["tar_memb.tsv"], "CONDOR tar_memb", errors
                 )
+                for side in ("reg", "tar"):
+                    metrics[f"condor_{side}_qscores"] = _validate_qscores(
+                        paths[f"{side}_qscores.tsv"], f"CONDOR {side}_qscores", errors
+                    )
                 _readable_nonempty_file(paths["summary.txt"], "CONDOR summary", errors)
     elif action == "run_dragon":
         if not decision.output_file:
@@ -396,6 +417,7 @@ def validate_output_artifacts(
         else:
             output = _resolve_user_path(decision.output_file)
             artifacts.append(str(output))
+            artifacts.extend(str(path) for path in dragon_pvalue_paths(decision.output_file) if path.is_file())
             ok, dragon_errors, dragon_metrics = validate_dragon_output(
                 decision.output_file,
                 decision.output_format,

@@ -155,3 +155,55 @@ def test_dragon_has_no_direct_handoff_to_other_net_zoo_workflows():
     assert capability.handoff_targets == ()
     assert "not a causal" in capability.handoff_contract
     assert "measurement_dataset" in capability.input_artifacts
+
+
+def test_dragon_writes_and_validates_edge_p_values(tmp_path):
+    """Log 386: DRAGON's edge p-values are written beside the network, and their absence is said."""
+    first = _layer(tmp_path / "layer1.tsv")
+    second = _layer(tmp_path / "layer2.tsv", features=("m1",))
+    size = 3
+
+    class FakeDragon:
+        @staticmethod
+        def estimate_penalty_parameters_dragon(x1, x2):
+            return [0.2, 0.3], np.zeros((2, 2))
+
+        @staticmethod
+        def get_precision_matrix_dragon(x1, x2, lambdas):
+            return np.eye(size), np.zeros(size)
+
+        @staticmethod
+        def get_partial_correlation_dragon(x1, x2, lambdas):
+            return np.zeros((size, size))
+
+        @staticmethod
+        def estimate_p_values_dragon(r, n, p1, p2, lambdas):
+            assert (n, p1, p2) == (4, 2, 1)
+            p = np.full((size, size), 0.2)
+            return p * 2, p
+
+    for output_format in ("matrix", "edge_list"):
+        output = tmp_path / f"{output_format}.tsv"
+        decision = _decision(first, second, output, output_format=output_format)
+        with patch("netzoo_agent_core.execution.settings.EXECUTE_TOOLS", True), patch(
+            "netzoo_agent_core.execution._load_dragon_api", return_value=FakeDragon
+        ):
+            result = execute_selected_tool(decision)
+        assert "p-values: written" in result
+        ok, errors, metrics = validate_dragon_output(str(output), output_format)
+        assert ok, errors
+        assert metrics["p_values"] == "written"
+    assert (tmp_path / "matrix.pvalues.tsv").is_file() and (tmp_path / "matrix.adj_pvalues.tsv").is_file()
+    assert list(pd.read_csv(tmp_path / "edge_list.tsv", sep="\t").columns)[-2:] == ["p_value", "adj_p_value"]
+
+    def failing(*args):
+        raise Exception("Unable to optimize kappa11")
+
+    FakeDragon.estimate_p_values_dragon = staticmethod(failing)
+    output = tmp_path / "no-p.tsv"
+    with patch("netzoo_agent_core.execution.settings.EXECUTE_TOOLS", True), patch(
+        "netzoo_agent_core.execution._load_dragon_api", return_value=FakeDragon
+    ):
+        result = execute_selected_tool(_decision(first, second, output))
+    assert "p-values: not estimated (Exception: Unable to optimize kappa11)" in result
+    assert validate_dragon_output(str(output), "matrix")[2]["p_values"] == "absent"

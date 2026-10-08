@@ -33,8 +33,9 @@ from .data.dragon import (
     DRAGON_OUTPUT_FORMATS,
     inspect_dragon_inputs_impl,
     load_and_align_dragon_layers,
-    write_dragon_edge_list,
-    write_dragon_matrix,
+    dragon_pvalue_paths,
+    estimate_dragon_pvalues,
+    write_dragon_outputs,
 )
 from .data.giraffe import (
     GiraffeInputError,
@@ -759,7 +760,7 @@ def run_dragon(
         )
         if errors or layer1 is None or layer2 is None:
             return "DRAGON input validation failed; no API call was made.\n\n" + input_report
-        if _resolve_user_path(output_file) in {
+        if {_resolve_user_path(output_file), *dragon_pvalue_paths(output_file)} & {
             _resolve_user_path(omics_layer_1),
             _resolve_user_path(omics_layer_2),
         }:
@@ -774,7 +775,8 @@ def run_dragon(
             "- import: netZooPy.dragon\n"
             "- calls: estimate_penalty_parameters_dragon(X1, X2) -> "
             "get_precision_matrix_dragon(X1, X2, lambdas) and "
-            "get_partial_correlation_dragon(X1, X2, lambdas)\n"
+            "get_partial_correlation_dragon(X1, X2, lambdas) and "
+            "estimate_p_values_dragon(r, n, p1, p2, lambdas)\n"
             f"- {lambda_text}\n"
             f"- output: {output_format} at {_resolve_user_path(output_file)}\n"
             "- no analysis was executed and no artifact was written (dry-run)."
@@ -794,15 +796,14 @@ def run_dragon(
         node_ids = [f"layer1::{value}" for value in layer1.columns] + [
             f"layer2::{value}" for value in layer2.columns
         ]
-        if output_format == "matrix":
-            written = write_dragon_matrix(output_file, partial, node_ids)
-        else:
-            written = write_dragon_edge_list(output_file, partial, precision, node_ids)
+        pvalues, adjusted, pvalue_text = estimate_dragon_pvalues(api, partial, x1, x2, lambdas)
+        written = write_dragon_outputs(output_file, output_format, partial, precision, node_ids, pvalues, adjusted)
         return (
             input_report
             + "\n\nDRAGON API execution completed.\n"
             f"- lambdas: {list(map(float, lambdas))}\n"
             f"- output: {written}\n"
+            f"- {pvalue_text}\n"
             "- interpretation: undirected aggregate association network; "
             "partial correlation is not a causal effect."
         )

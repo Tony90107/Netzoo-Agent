@@ -122,7 +122,8 @@ class PathAndOutputSafetyTests(unittest.TestCase):
 
         self.assertEqual(
             set(paths),
-            {"edges.tsv", "reg_memb.tsv", "tar_memb.tsv", "summary.txt"},
+            {"edges.tsv", "reg_memb.tsv", "tar_memb.tsv", "reg_qscores.tsv", "tar_qscores.tsv",
+             "summary.txt"},
         )
         self.assertTrue(all(path.is_relative_to(root) for path in paths.values()))
 

@@ -50,7 +50,9 @@ def condor_artifact_paths(
     """Resolve every required CONDOR artifact beneath one output directory."""
     root = _resolve_user_path(str(output_dir))
     safe_prefix = validate_output_basename(prefix or "condor", "prefix")
-    suffixes = ("edges.tsv", "reg_memb.tsv", "tar_memb.tsv", "summary.txt")
+    suffixes = (
+        "edges.tsv", "reg_memb.tsv", "tar_memb.tsv", "reg_qscores.tsv", "tar_qscores.tsv", "summary.txt",
+    )
     paths = {
         suffix: (root / f"{safe_prefix}-{suffix}").resolve() for suffix in suffixes
     }

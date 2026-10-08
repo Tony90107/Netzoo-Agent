@@ -195,7 +195,7 @@ workflows:
 
   DRAGON:
     action: run_dragon
-    files: ["one file: node-by-node partial-correlation matrix (layer1::/layer2::), or edge list with partial_correlation and precision"]
+    files: ["node-by-node partial-correlation matrix plus <stem>.pvalues and <stem>.adj_pvalues, or one edge list with partial_correlation, precision, p_value, adj_p_value"]
     produces:
       - id: dragon.two_layer_network
         level: direct
@@ -204,16 +204,17 @@ workflows:
         inputs: [omics layer 1, omics layer 2, same samples]
         reading: Associations conditional on every other feature in both layers; adding or removing features changes them. Not directed, not causal.
         source: "Shutta et al. 2023 NAR 51:e15; [EXEC] execution.py:792-800"
+      - id: dragon.edge_pvalues
+        level: direct
+        result: A p-value and a Benjamini-Hochberg adjusted p-value for every edge (adjusted within each layer and across the layers), to filter edges by significance.
+        reading: Not estimated when the features far outnumber the samples; the run then says so and writes the network alone.
+        source: "Shutta et al. 2023; netZooPy dragon.estimate_p_values_dragon; [EXEC] execution.py run_dragon (Log 386: <stem>.pvalues / .adj_pvalues, or p_value / adj_p_value columns)"
       - id: dragon.group_comparison
         level: with_step
         result: Cross-layer edges compared between groups.
         step: One network per group on the same features, then compare; no per-sample spread for a test.
         source: "[REG] CLAIM_SUPPORT run_dragon"
     near_misses:
-      - id: dragon.no_pvalues
-        result_asked: Edge p-values or significance filtering.
-        why_not: The executor writes partial correlations and precision only; it never calls DRAGON's p-value estimation.
-        source: "[EXEC] execution.py:792-800 (no estimate_p_values call). NOTE: DOWNSTREAM_ANALYSES run_dragon currently tells users to 'filter edges by the adjusted p-values' -- to fix."
       - id: dragon.no_flux_or_pathway_activity
         result_asked: Metabolic flux, pathway activity or quantities derived from a biochemical model.
         why_not: DRAGON returns associations between measured features; it has no stoichiometric or kinetic model.
@@ -237,7 +238,10 @@ workflows:
         step: A statistical test outside NetZoo.
         source: "[REG] CLAIM_SUPPORT run_lioness_dragon"
     near_misses:
-      - {id: lioness_dragon.no_pvalues, see: dragon.no_pvalues}
+      - id: lioness_dragon.no_pvalues
+        result_asked: Per-sample edge p-values.
+        why_not: LIONESS-DRAGON writes per-sample edge weights only; DRAGON's p-values are for the aggregate network.
+        source: "[EXEC] execution_lioness_dragon.py:104-107"
       - {id: lioness_dragon.no_flux_or_pathway_activity, see: dragon.no_flux_or_pathway_activity}
       - {id: lioness_dragon.no_single_cell, see: lioness.no_single_cell}
 
@@ -298,7 +302,7 @@ workflows:
 
   CONDOR:
     action: run_condor
-    files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-summary.txt (modularity when available)"]
+    files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-reg_qscores.tsv and -tar_qscores.tsv: core scores", "<prefix>-summary.txt (modularity)"]
     produces:
       - id: condor.communities
         level: direct
@@ -306,12 +310,12 @@ workflows:
         granularity: aggregate
         inputs: [a regulator-gene (source-target-weight) network]
         source: "Platig et al. 2016 PLoS Comput Biol 12:e1005033; [EXEC] docker/run-condor:137-163"
+      - id: condor.core_scores
+        level: direct
+        result: Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
+        source: "Platig et al. 2016; [EXEC] docker/run-condor final_scores (Log 386: <prefix>-reg_qscores.tsv, -tar_qscores.tsv)"
       - {id: condor.enrichment, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
     near_misses:
-      - id: condor.no_core_scores
-        result_asked: Each node's core score (contribution to its community's modularity).
-        why_not: The executor does not call condorQscore and writes no core scores.
-        source: "[EXEC] docker/run-condor:137-163. NOTE: DOWNSTREAM_ANALYSES and WORKFLOW_PRACTICAL_NOTES run_condor currently promise core scores -- to fix or to add the call."
       - {id: condor.no_two_network_comparison, result_asked: Differential module structure between two networks., why_not: One network at a time., source: "[REG] OUTSIDE_STEPS differential_modules (ALPACA)"}
       - id: condor.no_variant_mapping
         result_asked: Fine-mapping causal variants, or variant effects on binding.

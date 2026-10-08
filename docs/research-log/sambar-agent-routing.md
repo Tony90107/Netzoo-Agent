@@ -19969,3 +19969,31 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - 對其他做不到的結果，`RequestedOutcome` 沒有任何形狀能說「這個結果不在 registry 的詞彙裡」：artifact_type 不是被塞進最近的值，就是 unknown，而 unknown 會讓 matcher 列出全部候選。
 - 對照題 18/18 OK，所以修正的同時要守住「假的做不到」= 0。
 - 下一步的方向是 routing 的輸出形狀（可表達「requested result outside the vocabulary」，並逐項對照能力表），不是回覆層。具體設計交由使用者決定。
+
+## Log 386｜補執行器：DRAGON 寫出邊的 p-value，CONDOR 寫出 core score（並修正兩個上游錯誤）
+
+能力表草稿 1 的盤點找到兩處模板說了執行器不會產出的東西：DRAGON 的「filter edges by the adjusted p-values」、CONDOR 的「core score」。使用者 2026-10-08 選擇補執行器。
+
+**DRAGON（`execution.run_dragon`，`data/dragon.py`）**
+- 新增 `estimate_p_values_dragon(r, n, p1, p2, lambdas)`。這是 netZooPy 0.11.0（60bcaf5）的公開 API。
+- 輸出位置依格式而定：
+  - matrix 格式：寫 `<stem>.pvalues<ext>` 和 `<stem>.adj_pvalues<ext>`，對角線留空。
+  - edge_list 格式：加 `p_value`、`adj_p_value` 兩欄。
+- 校正方式是 Benjamini-Hochberg，在 layer 1 內、layer 2 內、跨層三塊分開做，與上游一致。
+- 特徵遠多於樣本時，上游的 kappa 估計會失敗。此時仍寫出網路，結果說明「p-values: not estimated (原因)」。
+- 驗證器檢查 p-value 檔：大小與網路相符、對稱、介於 [0, 1]。
+- 輸入覆寫保護擴及 p-value 檔名。
+
+**CONDOR（`docker/run-condor`）**
+- 上游 `brim()` 的 `reg_memb` 寫的是初始分配 R0，不是最終一輪的 R。上游 HEAD（2026-10-08）仍是如此。
+- 上游 `qscores()` 讀不存在的 "com" 欄，而且呼叫 `matrices(c)` 時少了 resolution 參數，直接呼叫必定失敗。
+- 修法：依最終的 target 分配做一次 right sweep，重新指派 regulator。這樣做只會保持或提高 modularity。core score 依 `qscores()` 的公式計算（Platig et al. 2016），每個社群的分數總和為 1；社群 modularity 不大於 0 時記 NaN。
+- 新增輸出 `-reg_qscores.tsv`、`-tar_qscores.tsv`。summary 寫出 modularity 和被重新指派的 regulator 數。
+- 另修一個既有錯誤：真實 CONDOR 的成員檔表頭是 `reg`/`tar`，驗證器不認得，所以真實執行一定被判失敗。
+
+**驗證**
+- 以釘選版 netZooPy 原始碼在 scratch venv 實跑（Docker daemon 未啟動）：
+  - CONDOR：三模組玩具網路，modularity 與上游相同（0.6557），每社群 core score 總和為 1，社群純度 100%。
+  - DRAGON：植入的 g1–m1 關聯得到 adj p ≈ 8e-35；kappa 失敗的路徑會寫出網路並說明原因。
+- 全套件 3409 passed／35 skipped。
+- 能力表草稿把 `dragon.edge_pvalues` 與 `condor.core_scores` 移到 produces（31 produces／32 near_misses）。
