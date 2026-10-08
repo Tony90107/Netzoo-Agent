@@ -9,6 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 
 from .applicability import CandidateApplicability
 from .authorization import OperationAuthorization
+from .capability_check import CapabilityCheck
 from .data_plan import DataPlan
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
@@ -174,6 +175,9 @@ class TaskDecision(BaseModel):
     # Plan item 5 (Log 383): what the question needs and what the reply asks and
     # says about it, decided once for every renderer. Code-owned; omitted while unset.
     data_plan: DataPlan | None = Field(default=None, exclude_if=lambda value: value is None)
+    # Log 387: each thing the request asks for, checked against the capability
+    # sheet, with the sentences no check covered. Code-owned; omitted while unset.
+    capability_check: CapabilityCheck | None = Field(default=None, exclude_if=lambda value: value is None)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None
