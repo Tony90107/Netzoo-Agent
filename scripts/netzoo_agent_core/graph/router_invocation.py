@@ -31,7 +31,8 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
-from .capability_check_call import invoke_capability_check
+from .capability_check_call import request_capability_check
+from ..interpretation.capability_check import build_capability_check
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
@@ -145,13 +146,18 @@ def invoke_router(
     if follow_up or result.reason_code == "string_download_continuation":
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
+        proposal = None
+        if result.decision.action == "no_tool":  # Log 387: the safety check is asked before the advisory reads
+            proposal, usage, warnings = request_capability_check(
+                context, state, user_task, result.usage, result.budget_warnings)
+            result = replace(result, usage=usage, budget_warnings=warnings)
         purpose, usage, warnings = invoke_study_purpose(
             context, state, user_task, result.usage, result.budget_warnings,
         )
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
         result = _with_applicability(context, state, user_task, result)
-        result = _with_capability_check(context, state, user_task, result)
+        result = _with_capability_check(context, state, user_task, result, proposal)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -216,7 +222,7 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
                    routing_state={**result.routing_state, "data_facts": decision.data_facts})
 
 
-def _with_capability_check(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:
+def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal) -> _RouterInvocation:
     """Log 387: each thing a guidance request asks for, checked against the capability sheet.
 
     When every result it asks for is one no registered workflow produces, and
@@ -226,14 +232,13 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     given a workflow). Otherwise the check only adds what was understood.
     """
     decision = result.decision
-    if decision.action != "no_tool":
+    if proposal is None or decision.action != "no_tool":
         return result
     claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
-    check, usage, warnings = invoke_capability_check(
-        context, state, user_task, result.usage, result.budget_warnings, claims,
-    )
-    if check is None:
-        return replace(result, usage=usage, budget_warnings=warnings)
+    check, rejected = build_capability_check(user_task, proposal, claims)
+    record_event(context, state, "routing.capability_checked", "classify", {
+        "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
+    })
     update: dict = {"capability_check": check}
     if check.full_gap:
         update.update({
@@ -245,7 +250,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             "cleared": [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions],
         })
     decision = decision.model_copy(update=update)
-    return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
+    return replace(result, decision=decision,
                    routing_state={**result.routing_state, **outcome_routing_state(decision)}
                    if check.full_gap else result.routing_state)
 

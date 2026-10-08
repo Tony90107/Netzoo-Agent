@@ -1085,9 +1085,9 @@ def test_graph_routes_semantics_before_intent_and_registry_owns_workflow(
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
+        "capability_check",  # Log 387: asked right after routing
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
-        "capability_check",  # Log 387
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     event_types = [event.event_type for event in store.read_events(run_id)]
@@ -1155,9 +1155,9 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
         "semantic_interpreter",
         "semantic_reviewer",
         "intent_router",
+        "capability_check",  # Log 387: asked right after routing
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
-        "capability_check",  # Log 387
     ]
     assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
         result["messages"][-1].content
@@ -1234,9 +1234,9 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
         "semantic_reviewer",
         "intent_router",
         "request_concerns",
+        "capability_check",  # Log 387: asked right after routing
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
-        "capability_check",  # Log 387
     ]
     assert "LIONESS-PUMA" in str(result["messages"][-1].content)
     assert any(
@@ -1420,8 +1420,8 @@ def test_graph_rejects_an_empty_semantic_interpretation_without_calling_intent(
     assert [call["role"] for call in calls] == [
         "semantic_interpreter",
         "semantic_reviewer",
+        "capability_check",  # Log 387: asked right after routing
         "study_purpose",  # Log 355
-        "capability_check",  # Log 387
     ]
     assert calls[0]["status"] == "failed"
     assert calls[1]["status"] == "failed"

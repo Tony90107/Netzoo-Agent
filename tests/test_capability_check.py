@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -44,12 +43,16 @@ def _proposal(*sentences):
         {f"s{index}": reading(items) for index, (_text, items) in enumerate(sentences, 1)})
 
 
-def _splicing_check(delivered=()):
-    return build_capability_check(SPLICING, _proposal(
+def _splicing_proposal(delivered=()):
+    return _proposal(
         ("s1", [("isoform-level quantifications from 80 brain samples", "context", (), ())]),
         ("s2", [("find which splicing factors control inclusion of each alternative exon", "result",
                  delivered, ("panda.no_motif_discovery",))]),
-    ))[0]
+    )
+
+
+def _splicing_check(delivered=()):
+    return build_capability_check(SPLICING, _splicing_proposal(delivered))[0]
 
 
 def test_sheet_covers_every_run_action_and_resolves_references():
@@ -103,7 +106,7 @@ def test_an_ask_without_a_reason_says_it_was_not_matched():
     assert check.full_gap  # still nothing registered produces it
 
 
-def test_an_ask_in_a_background_sentence_is_read_as_background():
+def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
     proposal = proposal_model(2).model_validate({
         "s1": {"role": "background", "has": [], "about_methods": [],
                "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
@@ -115,6 +118,11 @@ def test_an_ask_in_a_background_sentence_is_read_as_background():
     check, _ = build_capability_check(SPLICING, proposal)
     assert [item.kind for item in check.requirements] == ["result", "context"]
     assert not check.unchecked
+    matched = proposal_model(1).model_validate({"s1": {
+        "role": "background", "has": [], "about_methods": [],
+        "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
+                  "delivered_by": [], "not_by": ["panda.no_motif_discovery"]}]}})
+    assert build_capability_check(SPLICING, matched)[0].results()[0].status == "not_available"
 
 
 def test_registry_wide_reasons_need_the_verified_claim():
@@ -232,16 +240,18 @@ def test_other_replies_open_with_what_was_understood():
     assert content.endswith("PANDA builds the network.")
 
 
+def _invocation(decision):
+    return router_invocation._RouterInvocation(
+        decision=decision, routing_state={}, usage=None, budget_warnings=[], reason_code=None)
+
+
 def test_router_clears_every_candidate_on_a_full_gap(monkeypatch):
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                             capability_match_status="ambiguous",
                             hypothesis_actions=["run_panda", "run_otter"])
-    monkeypatch.setattr(router_invocation, "invoke_capability_check",
-                        lambda context, state, task, usage, warnings, claims: (_splicing_check(), usage, warnings))
     monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
-    invocation = router_invocation._RouterInvocation(
-        decision=decision, routing_state={}, usage=None, budget_warnings=[], reason_code=None)
-    updated = router_invocation._with_capability_check(None, {}, SPLICING, invocation).decision
+    updated = router_invocation._with_capability_check(
+        None, {}, SPLICING, _invocation(decision), _splicing_proposal()).decision
     assert updated.hypothesis_actions == [] and updated.capability_match_status == "unsupported"
     assert updated.capability_check.full_gap
 
@@ -249,23 +259,20 @@ def test_router_clears_every_candidate_on_a_full_gap(monkeypatch):
 def test_router_keeps_candidates_when_something_is_available(monkeypatch):
     decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                             hypothesis_actions=["run_panda"])
-    check = _splicing_check(delivered=("panda.tf_gene_network",))
-    monkeypatch.setattr(router_invocation, "invoke_capability_check",
-                        lambda context, state, task, usage, warnings, claims: (check, usage, warnings))
-    invocation = router_invocation._RouterInvocation(
-        decision=decision, routing_state={}, usage=None, budget_warnings=[], reason_code=None)
-    updated = router_invocation._with_capability_check(None, {}, SPLICING, invocation).decision
-    assert updated.hypothesis_actions == ["run_panda"] and updated.capability_check is check
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    updated = router_invocation._with_capability_check(
+        None, {}, SPLICING, _invocation(decision), _splicing_proposal(("panda.tf_gene_network",))).decision
+    assert updated.hypothesis_actions == ["run_panda"]
+    assert updated.capability_check.results()[0].status == "available"
 
 
-def test_router_skips_a_run_request(monkeypatch):
-    monkeypatch.setattr(router_invocation, "invoke_capability_check",
-                        lambda *args: pytest.fail("a run request is not checked"))
-    decision = TaskDecision(action="run_panda", in_scope=True, should_execute=True, confidence=0.9, reason="r")
-    invocation = router_invocation._RouterInvocation(
-        decision=decision, routing_state={}, usage=None, budget_warnings=[], reason_code=None)
-    assert router_invocation._with_capability_check(None, {}, SPLICING, invocation) is invocation
-    assert replace  # dataclasses.replace stays importable for the module under test
+def test_router_skips_a_run_request_and_a_turn_nothing_read():
+    run = _invocation(TaskDecision(action="run_panda", in_scope=True, should_execute=True, confidence=0.9,
+                                   reason="r"))
+    assert router_invocation._with_capability_check(None, {}, SPLICING, run, _splicing_proposal()) is run
+    guidance = _invocation(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9,
+                                        reason="r"))
+    assert router_invocation._with_capability_check(None, {}, SPLICING, guidance, None) is guidance
 
 
 def test_full_gap_card_lists_each_unavailable_result_and_offers_no_workflow():
