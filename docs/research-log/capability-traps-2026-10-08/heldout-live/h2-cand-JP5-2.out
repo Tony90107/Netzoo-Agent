@@ -1,0 +1,22 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a regulatory network per cell line" -- available from LIONESS-PANDA or LIONESS-PUMA.
+2. "to predict drug response for cell lines we have not profiled" -- not available here: no registered workflow produces this. No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere.
+
+About "to predict drug response for cell lines we have not profiled.": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.
+
+I can map this to more than one compatible network result:
+
+All of them derive each sample network from all-sample and leave-one-out networks, and iteratively exchange information across biological evidence networks.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Which regulator type should the network model: transcription factors, miRNA regulators, or both?
+
+No files were inspected and no analysis ran.
