@@ -392,7 +392,7 @@ def test_second_opinion_pairs_only_fitting_entries_of_the_exact_workflows():
     check, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=2, scale="whole_cohort"))
     assert check.full_gap
     pairs = second_opinion_pairs(check, ["run_dragon"])
-    assert [key for _, key in pairs] == ["dragon.two_layer_network", "dragon.edge_pvalues", "dragon.group_comparison"]
+    assert pairs == [(0, "run_dragon", ["dragon.two_layer_network", "dragon.edge_pvalues", "dragon.group_comparison"])]
     three, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=3))
     assert second_opinion_pairs(three, ["run_dragon"]) == []  # too many layers: nothing to ask
 
@@ -403,10 +403,10 @@ def test_a_yes_rescues_the_result_and_a_no_keeps_the_gap():
     quote = "one network of direct associations between the two layers, with significance for each edge"
     check, _ = build_capability_check(DRAGON_ASK, _ask(DRAGON_ASK, quote, layers=2))
     pairs = second_opinion_pairs(check, ["run_dragon"])
-    rescued = apply_second_opinion(check, pairs, [True, True, False])
+    rescued = apply_second_opinion(check, pairs, [True])
     assert not rescued.full_gap and rescued.results()[0].status == "available"
     assert rescued.results()[0].second_opinion
-    assert apply_second_opinion(check, pairs, [False, False, False]).full_gap
+    assert apply_second_opinion(check, pairs, [False]).full_gap
 
 
 def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monkeypatch):

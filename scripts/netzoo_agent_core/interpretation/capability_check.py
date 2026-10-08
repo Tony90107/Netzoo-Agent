@@ -269,33 +269,41 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
     return rows
 
 
-def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tuple[int, str]]:
-    """(requirement index, entry id) to ask about when a full gap would clear an exact routing match (Log 390).
+def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tuple[int, str, list[str]]]:
+    """(requirement index, workflow action, its fitting entry ids) to ask about (Log 390).
 
-    Every not-available result is paired with each produces entry of the matched
-    workflows that fits its typed attributes; an entry the attributes rule out
-    (single cells, lncRNA regulators, a sign, too many layers) is never asked about.
+    Asked when a full gap would clear an exact routing match. Each not-available
+    result is paired with each matched workflow, shown with all of its produces
+    entries that fit the ask's typed attributes, because a request can need two
+    of one workflow's outputs together (dev smoke: KC8's network with per-edge
+    significance is DRAGON's network plus its p-values, and each alone was "no").
+    A workflow the attributes rule out entirely is never asked about.
     """
     from types import SimpleNamespace
 
     if not check.full_gap:
         return []
-    produces = [key for key, item in sheet_entries().items() if item.kind == "produces" and item.action in actions]
+    known = sheet_entries()
     pairs = []
     for index, requirement in enumerate(check.requirements):
-        if requirement.kind == "result" and requirement.status == "not_available" and requirement.attrs:
+        if requirement.kind != "result" or requirement.status != "not_available" or not requirement.attrs:
+            continue
+        for action in actions:
+            produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
             fitting = _fitting(produces, SimpleNamespace(**requirement.attrs))
-            pairs += [(index, key) for key in fitting]
+            if fitting:
+                pairs.append((index, action, fitting))
     return pairs
 
 
-def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str]], answers: list[bool]) -> CapabilityCheck:
-    """Credit every pair answered yes; the full gap stands only if no result became available."""
+def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, list[str]]],
+                         answers: list[bool]) -> CapabilityCheck:
+    """Credit a workflow's fitting entries for every pair answered yes; the gap stands only if none was."""
     requirements = [item.model_copy() for item in check.requirements]
-    for (index, key), yes in zip(pairs, answers):
+    for (index, _action, keys), yes in zip(pairs, answers):
         if yes:
             item = requirements[index]
-            delivered = list(dict.fromkeys([*item.delivered_by, key]))
+            delivered = list(dict.fromkeys([*item.delivered_by, *keys]))
             requirements[index] = item.model_copy(update={
                 "delivered_by": delivered, "status": _status(delivered), "second_opinion": True})
     results = [item for item in requirements if item.kind == "result"]

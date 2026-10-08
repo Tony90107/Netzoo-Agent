@@ -245,12 +245,14 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
         pairs = second_opinion_pairs(check, list(decision.matched_actions))
-        shown = [(check.requirements[index].quote, entry(key).workflow, entry(key).text) for index, key in pairs]
+        shown = [(check.requirements[index].quote, entry(keys[0]).workflow, " ".join(entry(k).text for k in keys))
+                 for index, _action, keys in pairs]
         answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings)
         if answers is not None:
             check = apply_second_opinion(check, pairs, answers)
         record_event(context, state, "routing.capability_second_opinion", "classify", {
-            "pairs": [list(pair) for pair in pairs], "answers": answers, "full_gap": check.full_gap,
+            "pairs": [[index, action, keys] for index, action, keys in pairs], "answers": answers,
+            "full_gap": check.full_gap,
         })
     result = replace(result, usage=usage, budget_warnings=warnings)
     update: dict = {"capability_check": check}

@@ -99,7 +99,7 @@ def second_opinion_model(pairs: int) -> type[BaseModel]:
     """Log 390: one required yes/no per (request words, registered result) pair."""
     fields = {
         f"a{index}": (bool, Field(description=(
-            f"Pair {index}: true only if the registered result gives what the request words ask for, as asked.")))
+            f"Pair {index}: true only if the workflow's results, together, give what the request words ask for.")))
         for index in range(1, pairs + 1)
     }
     model = create_model("SecondOpinion", __config__=ConfigDict(extra="forbid"), **fields)

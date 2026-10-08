@@ -84,9 +84,9 @@ def _own_llm(model: str, max_tokens: int):
 
 
 _SECOND_OPINION = (
-    "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and one "
-    "result a registered workflow produces. Answer true only if that result gives what the words ask for, as "
-    "they ask it -- not a related result, and not only an ingredient of it."
+    "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and the "
+    "results one registered workflow produces. Answer true only if those results, together, give what the words "
+    "ask for, as they ask it -- not a related result, and not only an ingredient of it."
 )
 
 
@@ -103,7 +103,7 @@ def _check_model(context):
 
 
 def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings):
-    """Log 390: yes/no per (request words, workflow, registered result), or None when nothing answered.
+    """Log 390: yes/no per (request words, workflow, its results), or None when nothing answered.
 
     Asked only when a full gap would clear an exact routing match: on heldouts 1-3 every false
     gap (HC7, JC6, KC8) had routing exact and an empty `delivered_by`.
@@ -112,7 +112,7 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     if llm is None or not pairs:
         return None, usage, budget_warnings
     schema = second_opinion_model(len(pairs))
-    listed = "\n".join(f'{index}. Request words: "{quote}" | Registered result ({workflow}): {result}'
+    listed = "\n".join(f'{index}. Request words: "{quote}" | {workflow} produces: {result}'
                         for index, (quote, workflow, result) in enumerate(pairs, 1))
     messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=listed)]
     input_text = _serialized_structured_input(messages, schema)
