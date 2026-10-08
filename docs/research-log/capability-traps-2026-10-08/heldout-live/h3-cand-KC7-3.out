@@ -1,0 +1,50 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.05s)
+● Matching registered workflows…
+✓ Workflow — OTTER → CONDOR
+✓ Guidance prepared
+What I understood you are asking for:
+1. "its communities" -- available from CONDOR.
+2. "for each community, the regulators that contribute most to it" -- available from CONDOR.
+
+Selected path: **OTTER → CONDOR**.
+
+**OTTER** — Infer an aggregate TF-to-gene regulatory network with OTTER by solving a continuous-relaxation graph-matching optimization with an explicit objective and gamma regularization that balances motif/PPI priors with co-expression constraints. OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+Required workflow inputs:
+
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Required alternative (provide one):
+
+- `expression_file`: expression matrix
+- `coexpression_file`: adjusted co-expression matrix
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Runtime limits:
+
+- `computing`: current runtime unavailable: gpu; use `computing=cpu`.
+
+**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.
+
+Required workflow inputs:
+
+- `network_file`: bipartite network
+
+Before CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.
+
+Outputs:
+
+- `community_assignment`: Network-node community memberships, not patient subtype labels.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+For your question ("for each community, the regulators that contribute most to it."):
+- **OTTER** — Comparing each regulator's targeting score (out-degree) between networks built separately for each condition shows regulators whose targeting changes. Without per-sample networks this ranks regulators by the size of the change, with no test of whether it exceeds chance.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

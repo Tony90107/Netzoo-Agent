@@ -20179,3 +20179,39 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 ## Log 389｜事前宣告：能力檢查第三個候選（型別欄位＋免費 nemotron 檢查），以第三組陷阱保留集評估
 
 候選 `f0983ee`，判定凍結在 `capability-traps-2026-10-08/FREEZE389.md`，執行前寫下。題組為 `heldout3.json`，共 35 題。
+
+## Log 389（結果）｜做不到的題目不誠實 39/54 降到 2/54，其餘判定全部成立；只有 G2 在 KC8 有 2/3 假缺口，依宣告撤回
+
+依 Log 389 執行，兩臂共 210 個 session，全部 exit 0，provider 錯誤 0。候選臂的檢查呼叫 103/105 成功，沒有 429。成本：基準 US$0.163，候選 US$0.151（候選的檢查用免費的 nemotron，花費更低）。
+證據在 `heldout-live/h3-*`。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| V1 | provider 錯誤 0 | 是 |
+| G1 | U+N 的 FAB+HEDGE：基準 39/54，候選 **2/54**（KU9 eQTL ×2） | 是 |
+| G2 | C 的 FALSE_GAP：候選 2（KC8 ×2） | **否** |
+| G3 | C 的 OK：基準 34，候選 32 | 是 |
+| G4 | P 的 BOTH：基準 10，候選 14 | 是 |
+| G5 | 有過度給分行的 session：1 | 是 |
+| G6 | C 中有 false_negative 行的 session：2（KC8） | 是 |
+| S1 | 檢查呼叫沒成功：2/105 | 是 |
+
+**逐題觀察**
+- KU1-10、KN1-8 這 18 題，候選幾乎全部誠實，基準幾乎全部 FAB 或 ASK。
+- 事前預測的風險題 KN6（每位病人各一張帶正負號的網路）、KN1（WGCNA）、KN8（bootstrap）實際上都沒有出問題，三題皆 3/3 HONEST。
+
+**G2 的機制（KC8 ×2）**
+- routing 已 exact 對到 DRAGON。
+- nemotron 對「one network of direct associations between the two layers, with significance for each edge」交出 `delivered_by=[]`、`not_by=[]`，沒有點任何條目，也沒有給任何理由。同一題的第 2 次則正確點到 `dragon.two_layer_network` 和 `dragon.edge_pvalues`。
+- 三輪的假缺口（HC7、JC6、KC8）都是同一型：routing exact 與檢查器給的完全缺口互相衝突。
+
+**離線評估過、但沒有採用的規則**：「routing exact 且沒有理由就不判缺口」。在 h3 上它會救回 KC8 ×2，卻會讓 KN7 ×3（巢狀社群，routing exact 到 CONDOR）的正確缺口失效，在 h1 上也會影響 HU1、HU4、HU6 共 6 次。這不是淨改善。
+
+**決定：撤回。**
+- main 上本來就沒有這個候選（`5a36f50` 已 revert）。
+- 候選 `f0983ee` 保存成 `cc3_withdrawn.patch`。
+- heldout3 視為已看過。
+
+**下一步交由使用者決定**
+- (1) 只在衝突時做針對性的第二意見：完全缺口會清掉一個 routing exact 的 workflow 時，再問一次檢查模型一個二選一問題——「這個 workflow 的這些條目是否交付這句話」。
+- (2) 接受目前的版本，並重新權衡 G2 的門檻。

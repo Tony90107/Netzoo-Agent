@@ -1,0 +1,28 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (7.43s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PANDA
+✓ Guidance prepared
+For the sample-specific output you described, use **LIONESS-PANDA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 60 tumor, 61 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("compare tumor with normal"):
+- **PANDA** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use the per-sample (LIONESS) version and test between the groups.
+- **LIONESS-PANDA** — Each sample gets its own network, so each edge weight or targeting score can be tested between the groups across samples -- for example with a linear model such as limma.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.
