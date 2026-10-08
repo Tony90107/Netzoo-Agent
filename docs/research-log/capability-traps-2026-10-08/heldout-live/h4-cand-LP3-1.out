@@ -1,0 +1,35 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.93s)
+● Matching registered workflows…
+✓ Workflow — PUMA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one TF and miRNA network" -- available from PUMA.
+2. "to prove the miRNAs drive the aggressive subtype" -- not available here: no registered workflow produces this. Every registered workflow estimates associations or model coefficients from observational data.
+
+About "to prove the miRNAs drive the aggressive subtype.": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why.
+
+Selected path: **PUMA**.
+
+Your question asks for a cohort-level regulatory network. **PUMA** fits that result and scale.
+
+**PUMA** — Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA. PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+- `mirna_file`: miRNA list
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Workflow-specific scientific notes:
+
+- PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
