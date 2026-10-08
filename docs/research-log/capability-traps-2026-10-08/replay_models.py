@@ -22,7 +22,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
+# CODE_ROOT: the checkout whose capability-check code is replayed (a candidate worktree).
+ROOT = Path(os.environ.get("CODE_ROOT", HERE.parents[2]))
 sys.path.insert(0, str(ROOT / "scripts"))
 from netzoo_agent_core.capability_sheet import entry  # noqa: E402
 from netzoo_agent_core.contracts.capability_check import proposal_model  # noqa: E402
@@ -50,7 +51,7 @@ def routing_exact():
 def credited(check):
     actions = set()
     for item in check.results():
-        actions |= {entry(k).action for k in item.delivered_by} | set(item.instead)
+        actions |= {entry(k).action for k in item.delivered_by} | set(getattr(item, "instead", []))
     return actions
 
 
