@@ -6,6 +6,7 @@ check ran, its full_gap and lines), <tag>-blinded.md (arms and ids shuffled; the
 accept/nearest shown, as in Log 385) and <tag>-blind-key.json. Nothing calls a model.
 """
 import json
+import os
 import random
 import re
 import sys
@@ -14,7 +15,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 WORKTREES = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees")
 ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / "netzoo-cc-cand"}
-ITEMS = {item["id"]: item for item in json.loads((HERE / "heldout1.json").read_text())["items"]}
+ITEMS = {item["id"]: item for item in json.loads((HERE / os.environ.get("HELDOUT", "heldout1.json")).read_text())["items"]}
 KIND = {"U": "UNSUPPORTED_CORE", "N": "UNSUPPORTED_CORE", "P": "HALF", "C": "SUPPORTED"}
 
 

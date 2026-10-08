@@ -8,6 +8,7 @@ Arms run in clean detached worktrees: `base` = .worktrees/netzoo-trap-base (b61f
 (`ce-<tag>-<arm>-<id>-<rep>`), five in parallel; a hung session is recorded as a timeout.
 """
 import json
+import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -16,7 +17,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 WORKTREES = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees")
 ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / "netzoo-cc-cand"}
-ITEMS = {item["id"]: item for item in json.loads((HERE / "heldout1.json").read_text())["items"]}
+ITEMS = {item["id"]: item for item in json.loads((HERE / os.environ.get("HELDOUT", "heldout1.json")).read_text())["items"]}
 
 
 def run(tag, arm, key, rep):

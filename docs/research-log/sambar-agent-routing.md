@@ -20055,3 +20055,12 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 1. 點到的近似條目若有 `instead_registered`，就不能判為缺口：能力表本身寫明那個 workflow 給得出結果。這修的是 G2。
 2. 過度給分：每樣本或整體的粒度，以及層數，需要由 code 比對。可以在 produces 條目加 granularity，ask 帶上它要的粒度，再由 code 檢查。這修的是 G5 和 HN4。
 3. 必須用全新的 heldout2 重新量測。
+
+## Log 388｜事前宣告：能力檢查第二個候選（近似條目的替代 workflow 需 routing 同意、粒度與層數由 code 比對），以第二組陷阱保留集評估
+
+使用者 2026-10-08 選擇照 Log 387 結果中提出的三點做下一輪。
+
+- 候選：`15a6e87`。
+- 保留集：`heldout2.json`，共 35 題。
+- 判定與 Log 387 相同，凍結在 `capability-traps-2026-10-08/FREEZE388.md`，執行前寫下。
+- 第 1 點加了「routing 也 exact match 該 workflow」的條件，理由寫在凍結檔：heldout1 重放顯示，沒有這個條件會失去 6 次正確的完全缺口。
