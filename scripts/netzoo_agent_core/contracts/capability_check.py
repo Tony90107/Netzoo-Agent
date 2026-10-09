@@ -148,6 +148,10 @@ class CapabilityCheck(BaseModel):
     """Every result is not available and every sentence was read: no workflow is the answer."""
     unavailable: bool = False
     """Log 394: the check could not run this turn (its budget spent, or the model failed twice)."""
+    provisional: bool = False
+    """Log 401: only the backup model read the request (the check's own model failed), so what it
+    found is reported but never acted on -- a gap it finds does not clear routing (Log 400: all three
+    false gaps of heldout9 came from the backup model)."""
     cleared: list[str] = Field(default_factory=list)
     """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
     of them (ALPACA beside CONDOR) is still said."""

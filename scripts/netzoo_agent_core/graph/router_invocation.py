@@ -161,7 +161,8 @@ def invoke_router(
         result = replace(result, usage=usage, budget_warnings=warnings,
                          routing_state={**result.routing_state, "study_purpose": purpose})
         result = _with_applicability(context, state, user_task, result)
-        result = _with_capability_check(context, state, user_task, result, proposal)
+        result = _with_capability_check(context, state, user_task, result, proposal,
+                                        provisional=check_status == "fallback")
         if check_status in ("blocked", "failed") and result.decision.action == "no_tool":
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
@@ -230,7 +231,8 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
                    routing_state={**result.routing_state, "data_facts": decision.data_facts})
 
 
-def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal) -> _RouterInvocation:
+def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal, *,
+                           provisional: bool = False) -> _RouterInvocation:
     """Log 387: each thing a guidance request asks for, checked against the capability sheet.
 
     When every result it asks for is one no registered workflow produces, and
@@ -273,6 +275,11 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             "full_gap": check.full_gap,
         })
     result = replace(result, usage=usage, budget_warnings=warnings)
+    if provisional:
+        # Log 401: the backup model's reading is reported, never acted on; a gap it finds leaves
+        # routing's offer in place (Log 400: its three false gaps on heldout9 cleared real workflows).
+        record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
+        check = check.model_copy(update={"full_gap": False, "provisional": True})
     if check.full_gap:
         check = check.model_copy(update={"cleared": list(dict.fromkeys(
             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]))})
