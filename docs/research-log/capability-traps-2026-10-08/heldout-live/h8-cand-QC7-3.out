@@ -1,0 +1,31 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.54s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PANDA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Which method gives each tumor its own TF-gene network so we can compare networks between patients?" -- available from LIONESS-PANDA.
+
+For the sample-specific output you described, use **LIONESS-PANDA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 75 tumors, 76 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **LIONESS-PANDA** — Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights to its targets) or a gene's indegree, computed in each sample's network, gives a regulator-by-sample (or gene-by-sample) matrix you can relate to sample-level variables -- survival, for example, with a Cox model. An ordered variable such as disease stage can be tested for a trend, for example with ordinal or linear regression on stage; testing every regulator or edge needs multiple-testing correction (for example Benjamini-Hochberg). Stages seen in different patients are cross-sectional, so a trend across them is not one patient's progression. That association needs a clinical table (for survival: follow-up time and event status) keyed by the same sample IDs as the expression matrix; it is not a workflow input, so supply it separately. All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in the association test, which is a later analysis step rather than part of this workflow.
+
+**Data your question needs.** Your question needs a motif prior and a PPI network, which your request does not mention. Do you have a motif prior and a PPI network?
+
+No files were inspected and no analysis ran.

@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (7.47s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "brings predicted miRNA binding sites into regulatory network inference alongside TF motifs" -- available from PUMA.
+
+Based on what you said — "Is there a method that brings predicted miRNA binding sites into regulatory network inference alongside TF motifs?" — **PUMA** fits better: the regulators include miRNAs or similar short non-coding RNAs that repress or degrade target transcripts after transcription.
+
+Your question asks for a cohort-level regulatory network. **PUMA** fits that result and scale.
+
+**PUMA** (recommend) — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability. Needs expression matrix, motif/prior, PPI network and miRNA list. Produces inferred regulator-to-target associations (one cohort-level result).
+
+Conditional assumptions to confirm:
+- This reads the molecules you describe as miRNAs. Confirm that, and that you have a miRNA-target prior and a list of the miRNAs, before analysis.
+- It also needs an expression matrix and TF-motif prior and protein-interaction prior and miRNA list, which the request does not mention.
+
+Other compatible option(s):
+- **DRAGON** — approach: infer conditional associations using partial correlation.
+
+Should I use PUMA, or does another listed option fit your study better?
+
+**Data your question needs.** Your question needs a motif prior, a PPI network and a miRNA list, which your request does not mention. Do you have a motif prior, a PPI network and a miRNA list?
+
+No files were inspected and no analysis ran.

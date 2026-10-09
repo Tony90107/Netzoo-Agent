@@ -1,0 +1,24 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.54s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "builds a TF-gene network for each tumor" -- available from LIONESS-PANDA or LIONESS-PUMA.
+2. "predicts each patient's drug response from those networks" -- not available here: no registered workflow produces this. No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere.
+
+About "predicts each patient's drug response from those networks": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.
+
+It sounds like you want sample-specific TF/gene regulatory networks.
+
+Registered method and input/output fit:
+- **TF-only regulatory network — PANDA → LIONESS-PANDA**
+  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+
+The only registered workflow compatible with this request is **LIONESS-PANDA**, but your request does not settle the kind of result. Is LIONESS-PANDA the analysis you want? If so, say so and name its inputs; otherwise describe the result you need.
+
+No files were inspected and no analysis ran.
