@@ -57,6 +57,8 @@ class SheetEntry:
     """Regulator kinds the result contains (tf, mirna); empty for co-expression; None when not applicable."""
     signed: bool | None = None
     """Whether the result says activation versus repression; None when not applicable (Log 389)."""
+    input_network: str | None = None
+    """The kind of existing network the result is computed from (regulator_gene); None when none (Log 394)."""
 
 
 def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
@@ -109,6 +111,8 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
         regulators = resolved.get("regulators")
         if regulators is not None and not set(regulators) <= {"tf", "mirna"}:
             raise ValueError(f"capability sheet: {item['id']} has unknown regulators {regulators!r}")
+        if resolved.get("input_network") not in (None, "regulator_gene", "gene_gene"):
+            raise ValueError(f"capability sheet: {item['id']} has unknown input_network {resolved['input_network']!r}")
         instead = resolved.get("instead_registered")
         if instead is not None and instead not in ACTION_DEFINITIONS:
             raise ValueError(f"capability sheet: {item['id']} names unknown action {instead!r}")
@@ -120,6 +124,7 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             instead_registered=instead, source=str(resolved.get("source")), claim=resolved.get("claim"),
             granularity=granularity if kind == "produces" else frozenset(), layers=resolved.get("layers"),
             regulators=None if regulators is None else frozenset(regulators), signed=resolved.get("signed"),
+            input_network=resolved.get("input_network"),
         )
         if kind == "registry_wide" and not entries[item["id"]].claim:
             raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")

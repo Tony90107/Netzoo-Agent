@@ -18,6 +18,8 @@
 # - Typed attributes code compares with each ask (Log 389): `regulators`, the regulator
 #   kinds an entry's result contains ([] for co-expression); `signed`, whether it says
 #   activation versus repression. Every workflow takes bulk samples (`data_units`).
+#   `input_network` (Log 394): the kind of existing network an entry's result is computed
+#   from -- CONDOR partitions a bipartite regulator-gene network, never a gene-gene one.
 
 data_units: [bulk_samples]
 
@@ -355,17 +357,19 @@ workflows:
     files: ["<prefix>-edges.tsv", "<prefix>-reg_memb.tsv and -tar_memb.tsv: community memberships", "<prefix>-reg_qscores.tsv and -tar_qscores.tsv: core scores", "<prefix>-summary.txt (modularity)"]
     produces:
       - id: condor.communities
+        input_network: regulator_gene
         level: direct
         result: Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity.
         granularity: aggregate
         inputs: [a regulator-gene (source-target-weight) network]
         source: "Platig et al. 2016 PLoS Comput Biol 12:e1005033; [EXEC] docker/run-condor:137-163"
       - id: condor.core_scores
+        input_network: regulator_gene
         granularity: aggregate
         level: direct
         result: Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
         source: "Platig et al. 2016; [EXEC] docker/run-condor final_scores (Log 386: <prefix>-reg_qscores.tsv, -tar_qscores.tsv)"
-      - {id: condor.enrichment, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
+      - {id: condor.enrichment, input_network: regulator_gene, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
     near_misses:
       - {id: condor.no_two_network_comparison, result_asked: Differential module structure between two networks., why_not: One network at a time., source: "[REG] OUTSIDE_STEPS differential_modules (ALPACA)"}
       - id: condor.no_variant_mapping
