@@ -1,0 +1,12 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.26s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "filter the TF-gene prior so that only binding sites in accessible chromatin are kept" -- not matched to any registered workflow.
+
+No registered workflow produces this, so none is offered as the way to get it.
+
+**Building the prior from chromatin accessibility.** Keeping only motif sites in open chromatin is a step before network inference, and no registered workflow performs it. SPIDER (Sonawane et al. 2021; netZooR and netZooM, not registered here) does this and then runs PANDA's message passing. A manual route: scan TF motifs (for example FIMO or HOMER), keep the sites inside your ATAC-seq peaks (for example bedtools intersect), assign the kept sites to genes with a stated promoter window (for example TSS -750/+250 bp or +/-1 kb), and write the TF-gene pairs as a binary motif prior. Then run PANDA or OTTER (registered) with that prior and the expression matrix from the same tissues. A promoter window misses distal enhancers unless enhancer-gene links are added.
+
+No files were inspected and no analysis ran.

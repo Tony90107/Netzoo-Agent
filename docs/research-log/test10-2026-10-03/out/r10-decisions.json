@@ -1,0 +1,2358 @@
+{
+ "test1": {
+  "prompt": "We just finished RNA-seq on a batch of lung cancer tissues, and we also have standard transcription factor motif binding data and known protein-protein interaction data. We want to estimate how strongly each transcription factor regulates its target genes across these tissues, while also accounting for TFs that cooperate in complexes. What method should we use to build this network?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on methods to estimate transcription factor regulation, which falls under answer requests rather than execution.",
+   "candidate_actions": [
+    "run_panda",
+    "run_lioness_panda",
+    "run_otter",
+    "run_giraffe",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [],
+    "granularity": "unknown",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "unknown",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "text_span": "estimate how strongly each transcription factor regulates its target genes across these tissues",
+       "rationale": "The user wants to estimate regulatory relationships between transcription factors and target genes."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "build this network",
+       "rationale": "The user is seeking to build a network of regulatory interactions."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "explicit",
+       "text_span": "transcription factor motif binding data",
+       "rationale": "The user specifies transcription factors as the regulators of interest."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "explicit",
+       "text_span": "target genes across these tissues",
+       "rationale": "The user is interested in the target genes regulated by transcription factors."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_panda",
+    "run_lioness_panda",
+    "run_otter",
+    "run_giraffe"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.",
+   "data_facts": {
+    "source": "model",
+    "priors": "stated",
+    "priors_quote": "standard transcription factor motif binding data and known protein-protein interaction data",
+    "mirna": "unstated",
+    "mirna_quote": ""
+   },
+   "applicability": [
+    {
+     "action": "run_panda",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "standard transcription factor motif binding data and known protein-protein interaction data",
+       "source": "model"
+      }
+     ]
+    },
+    {
+     "action": "run_lioness_panda",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "standard transcription factor motif binding data and known protein-protein interaction data",
+       "source": "model"
+      }
+     ]
+    },
+    {
+     "action": "run_otter",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "standard transcription factor motif binding data and known protein-protein interaction data",
+       "source": "model"
+      }
+     ]
+    },
+    {
+     "action": "run_giraffe",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "standard transcription factor motif binding data and known protein-protein interaction data",
+       "source": "model"
+      }
+     ]
+    }
+   ],
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "estimate how strongly each transcription factor regulates its target genes across these tissues, while also accounting for TFs that cooperate in complexes.",
+      "kind": "result",
+      "status": "with_step",
+      "delivered_by": [
+       "otter.targeting_scores"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "RNA-seq on a batch of lung cancer tissues",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "standard transcription factor motif binding data",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "known protein-protein interaction data",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "What method should we use to build this network?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test2": {
+  "prompt": "We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations. A single population-level network would average away individual differences, but each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed. How can we reconstruct a separate regulatory network for each patient from this cohort?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on methods to reconstruct separate regulatory networks for each patient, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [
+     "expression_matrix"
+    ],
+    "artifact_type": "regulatory_network",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [
+       "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "reconstruct a separate regulatory network for each patient",
+       "rationale": "The user is interested in reconstructing regulatory networks for each patient."
+      },
+      {
+       "dimension": "input_artifact",
+       "value": "expression_matrix",
+       "source": "explicit",
+       "text_span": "expression profiles",
+       "rationale": "The user provided expression profiles as the current input for analysis."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The request indicates a need for separate regulatory networks for each patient, implying sample-specific granularity."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "Which regulator type should the network model: transcription factors, miRNA regulators, or both?",
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": [
+     {
+      "kind": "tf_priors",
+      "state": "unstated",
+      "source": "words",
+      "quote": "",
+      "action": "ask"
+     }
+    ]
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "reconstruct a separate regulatory network for each patient",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks",
+       "lioness_puma.per_sample_networks"
+      ],
+      "not_by": [
+       "otter.no_per_sample"
+      ],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We have microarray expression profiles from 40 heart failure patients with highly heterogeneous clinical presentations.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "A single population-level network would average away individual differences",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "each patient contributed only one tissue biopsy, so a per-patient correlation cannot be computed.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "How can we reconstruct a separate regulatory network for each patient from this cohort?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test3": {
+  "prompt": "We have finished computing the TF-to-target regulatory edge weights. We now want to partition this network into tightly connected regulatory modules to see which groups of TFs jointly control which sets of target genes. Standard community detection treats all nodes as the same type and ignores that this is a bipartite network. What method properly detects communities across two distinct node types?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on a method for community detection in a bipartite regulatory network, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_condor",
+    "no_tool"
+   ],
+   "recommended_actions": [
+    "run_condor"
+   ],
+   "requested_outcome": {
+    "operation": "explain",
+    "input_artifacts": [],
+    "artifact_type": "community_assignment",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "aggregate",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "explain",
+      "input_artifacts": [],
+      "artifact_type": "community_assignment",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "aggregate",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "explain",
+       "source": "explicit",
+       "text_span": "What method properly detects communities across two distinct node types?",
+       "rationale": "The user is seeking an explanation of a method for community detection in a bipartite network."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "community_assignment",
+       "source": "explicit",
+       "text_span": "partition this network into tightly connected regulatory modules",
+       "rationale": "The user is interested in partitioning the network into communities, which corresponds to community assignments."
+      },
+      {
+       "dimension": "granularity",
+       "value": "aggregate",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The community assignment is based on the entire bipartite network, which implies an aggregate result across the two node types."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "exact",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [
+    "run_condor"
+   ],
+   "hypothesis_actions": [],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": null,
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "partition this network into tightly connected regulatory modules to see which groups of TFs jointly control which sets of target genes.",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "condor.communities"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 0,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We have finished computing the TF-to-target regulatory edge weights.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "Standard community detection treats all nodes as the same type and ignores that this is a bipartite network.",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "What method properly detects communities across two distinct node types?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test4": {
+  "prompt": "We have single-cell RNA-seq data from tumor-infiltrating immune cells, annotated into 6 cell states. The matrix is extremely sparse, with heavy dropout and variable library sizes across cells. We want to compare how regulatory networks are rewired across these 6 states, while still being able to examine heterogeneity within rare states. How should we approach this?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The request is for guidance on how to approach comparing regulatory networks across different cell states, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_panda",
+    "run_puma",
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_otter",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [
+     "expression_matrix"
+    ],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [],
+    "granularity": "unknown",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [
+       "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "unknown",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "text_span": "compare how regulatory networks are rewired across these 6 states",
+       "rationale": "The user wants to compare regulatory networks, which requires inferring these networks from the data."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "regulatory networks are rewired across these 6 states",
+       "rationale": "The user specifically mentions regulatory networks as the focus of their analysis."
+      },
+      {
+       "dimension": "input_artifact",
+       "value": "expression_matrix",
+       "source": "explicit",
+       "text_span": "RNA-seq",
+       "rationale": "The user explicitly states they have single-cell RNA-seq data, which is represented as an expression matrix."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The analysis of regulatory networks typically involves transcription factors as regulators."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "Regulatory networks generally target genes, which is consistent with the user's focus on gene regulation."
+      }
+     ],
+     "assumptions": [
+      "The analysis will require methods that can handle sparse data and account for variability in library sizes."
+     ]
+    }
+   ],
+   "capability_match_status": "unsupported",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": null,
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "compare how regulatory networks are rewired across these 6 states",
+      "kind": "result",
+      "status": "not_available",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 1,
+       "data_unit": "single_cells",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "examine heterogeneity within rare states",
+      "kind": "result",
+      "status": "not_available",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 1,
+       "data_unit": "single_cells",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We have single-cell RNA-seq data from tumor-infiltrating immune cells, annotated into 6 cell states.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "The matrix is extremely sparse, with heavy dropout and variable library sizes across cells.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "How should we approach this?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": true,
+    "cleared": [
+     "run_panda",
+     "run_puma",
+     "run_lioness_panda",
+     "run_lioness_puma",
+     "run_otter",
+     "run_giraffe"
+    ]
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test5": {
+  "prompt": "We have binary (0/1) somatic mutation calls from tumor exome sequencing of 200 patients. The data are extremely sparse with a long tail: thousands of genes are mutated in only one or two patients, and hierarchical clustering or NMF fails to find meaningful subtypes. We want to summarize these scattered gene-level mutations into pathway-level scores for each patient using known pathway annotations, and then subtype patients on those scores. Which approach fits this?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on summarizing gene-level mutations into pathway-level scores and subtyping patients, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_sambar",
+    "no_tool"
+   ],
+   "recommended_actions": [
+    "run_sambar"
+   ],
+   "requested_outcome": {
+    "operation": "analyze",
+    "input_artifacts": [
+     "mutation_matrix"
+    ],
+    "artifact_type": "sample_cluster_assignment",
+    "entity_types": [
+     "sample"
+    ],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "aggregate",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "analyze",
+      "input_artifacts": [
+       "mutation_matrix"
+      ],
+      "artifact_type": "sample_cluster_assignment",
+      "entity_types": [
+       "sample"
+      ],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "aggregate",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "entity_type",
+       "value": "sample",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user mentions subtyping patients, indicating that samples are the entities being analyzed."
+      },
+      {
+       "dimension": "input_artifact",
+       "value": "mutation_matrix",
+       "source": "explicit",
+       "text_span": "somatic mutation",
+       "rationale": "The user provides somatic mutation calls as current input for analysis."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "sample_cluster_assignment",
+       "source": "explicit",
+       "text_span": "subtype patients on those scores",
+       "rationale": "The user aims to subtype patients based on pathway-level scores, which aligns with sample cluster assignment as the terminal goal."
+      },
+      {
+       "dimension": "granularity",
+       "value": "aggregate",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The goal is to summarize pathway-level scores across all patients, indicating an aggregate output."
+      },
+      {
+       "dimension": "operation",
+       "value": "analyze",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "exact",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [
+    "run_sambar"
+   ],
+   "hypothesis_actions": [],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": null,
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "summarize these scattered gene-level mutations into pathway-level scores for each patient using known pathway annotations",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "sambar.subtypes"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 0,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "subtype patients on those scores",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "sambar.subtypes"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 0,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "binary (0/1) somatic mutation calls from tumor exome sequencing of 200 patients.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "The data are extremely sparse with a long tail: thousands of genes are mutated in only one or two patients, and hierarchical clustering or NMF fails to find meaningful subtypes.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "Which approach fits this?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test6": {
+  "prompt": "In our study of cell differentiation during development, we sequenced both mRNA and small RNA, so we also have miRNA expression data. Several key genes are regulated by transcription factors at the transcriptional level and by microRNAs post-transcriptionally. A TF-gene network alone misses the post-transcriptional layer. Is there a method that incorporates miRNA target predictions into regulatory network inference?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on methods for incorporating miRNA target predictions into regulatory network inference, which qualifies as an answer request.",
+   "candidate_actions": [
+    "run_puma",
+    "no_tool"
+   ],
+   "recommended_actions": [
+    "run_puma"
+   ],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [
+     "expression_matrix"
+    ],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "gene",
+     "tf",
+     "mirna"
+    ],
+    "display_entities": [],
+    "regulator_types": [
+     "tf",
+     "mirna"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [],
+    "granularity": "aggregate",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [
+       "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "gene",
+       "tf",
+       "mirna"
+      ],
+      "display_entities": [],
+      "regulator_types": [
+       "tf",
+       "mirna"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "aggregate",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "text_span": "Is there a method that incorporates miRNA target predictions into regulatory network inference?",
+       "rationale": "The user is asking about a method that incorporates miRNA target predictions into regulatory network inference, which implies a need for inference of a regulatory network."
+      },
+      {
+       "dimension": "granularity",
+       "value": "aggregate",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The context suggests a population-level analysis rather than individual patient-specific networks."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user mentions transcription factors, indicating their role in the regulatory network."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user refers to key genes that are regulated, indicating their presence in the network."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "mirna",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user specifically mentions miRNAs and their regulatory role, indicating their inclusion in the network."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user discusses genes being regulated, which are the targets of the regulatory network."
+      },
+      {
+       "dimension": "input_artifact",
+       "value": "expression_matrix",
+       "source": "explicit",
+       "text_span": "expression data",
+       "rationale": "The user explicitly mentions having expression data, which is necessary for inferring the regulatory network."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user discusses transcription factors, indicating their role in the regulatory network."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The reading's regulators include miRNAs, and the request states no TF-only result such as TF activity, so the result is the regulatory network."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "exact",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [
+    "run_puma"
+   ],
+   "hypothesis_actions": [
+    "run_puma"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": null,
+   "data_facts": {
+    "source": "model",
+    "priors": "stated",
+    "priors_quote": "Several key genes are regulated by transcription factors at the transcriptional level",
+    "mirna": "stated",
+    "mirna_quote": "we also have miRNA expression data"
+   },
+   "applicability": [
+    {
+     "action": "run_puma",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "Several key genes are regulated by transcription factors at the transcriptional level",
+       "source": "model"
+      },
+      {
+       "kind": "mirna",
+       "state": "stated",
+       "quote": "we also have miRNA expression data",
+       "source": "model"
+      }
+     ]
+    }
+   ],
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": [
+     {
+      "kind": "tf_priors",
+      "state": "stated",
+      "source": "model",
+      "quote": "Several key genes are regulated by transcription factors at the transcriptional level",
+      "action": "none"
+     },
+     {
+      "kind": "mirna",
+      "state": "stated",
+      "source": "model",
+      "quote": "we also have miRNA expression data",
+      "action": "none"
+     }
+    ]
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "we sequenced both mRNA and small RNA",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "we also have miRNA expression data",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "Several key genes are regulated by transcription factors at the transcriptional level and by microRNAs post-transcriptionally.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "A TF-gene network alone misses the post-transcriptional layer.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "Is there a method that incorporates miRNA target predictions into regulatory network inference?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test7": {
+  "prompt": "Conventional motif scanning yields many false positives because many predicted binding sites fall in closed chromatin. We have matched ATAC-seq peaks and RNA-seq expression data from the same tissues. Before network inference, we want to filter the TF-gene prior so that only binding sites in accessible chromatin are kept. How should this upstream integration be set up?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": false,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is requesting guidance on setting up upstream integration to filter TF-gene prior based on accessible chromatin data, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_panda",
+    "run_puma",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "prepare",
+    "input_artifacts": [
+     "expression_matrix"
+    ],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [],
+    "granularity": "unknown",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "prepare",
+      "input_artifacts": [
+       "expression_matrix"
+      ],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "unknown",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "prepare",
+       "source": "explicit",
+       "text_span": "Before network inference, we want to filter the TF-gene prior so that only binding sites in accessible chromatin are kept.",
+       "rationale": "The user is looking to filter the TF-gene prior before network inference."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "filter the TF-gene prior",
+       "rationale": "The user is interested in filtering a TF-gene prior, which relates to regulatory networks."
+      },
+      {
+       "dimension": "input_artifact",
+       "value": "expression_matrix",
+       "source": "explicit",
+       "text_span": "RNA-seq",
+       "rationale": "The user explicitly mentions RNA-seq expression data, which corresponds to an expression matrix."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "explicit",
+       "text_span": "TF-gene",
+       "rationale": "The request explicitly states the bounded regulator-to-target role."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "explicit",
+       "text_span": "TF-gene",
+       "rationale": "The request explicitly states the bounded regulator-to-target role."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "unsupported",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [],
+   "alternative_actions": [],
+   "mismatch_dimensions": [
+    "operation",
+    "granularity"
+   ],
+   "clarification_question": null,
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "filter the TF-gene prior so that only binding sites in accessible chromatin are kept",
+      "kind": "result",
+      "status": "not_available",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {
+       "scale": "unstated",
+       "omics_layers": 2,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We have matched ATAC-seq peaks and RNA-seq expression data from the same tissues.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "How should this upstream integration be set up?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": true,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test8": {
+  "prompt": "We have built two brain regulatory networks, one for Alzheimer's disease patients and one for healthy controls. Listing which individual TF-gene edges go up or down produces an overwhelming list and little system-level insight. We want to know how module boundaries reorganize in disease: did groups of genes that form one module in controls split apart, or merge into inflammation-related modules? How can we directly quantify this differential modular structure between the two networks?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on how to quantify differential modular structure between two brain regulatory networks, which falls under the category of an answer request.",
+   "candidate_actions": [
+    "run_condor",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "analyze",
+    "input_artifacts": [],
+    "artifact_type": "community_assignment",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "aggregate",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "analyze",
+      "input_artifacts": [],
+      "artifact_type": "community_assignment",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "aggregate",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "analyze",
+       "source": "explicit",
+       "text_span": "How can we directly quantify this differential modular structure between the two networks?",
+       "rationale": "The user seeks to quantify the differential modular structure between two networks."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "community_assignment",
+       "source": "explicit",
+       "text_span": "did groups of genes that form one module in controls split apart, or merge into inflammation-related modules?",
+       "rationale": "The user is interested in understanding how module boundaries reorganize in disease."
+      },
+      {
+       "dimension": "granularity",
+       "value": "aggregate",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The analysis is likely to provide a summary of modular changes across the entire dataset rather than per individual sample."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "unsupported",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": null,
+   "addressed_concerns": [
+    {
+     "action": "run_condor",
+     "concern": "downstream_use",
+     "text_span": "how can we directly quantify this differential modular structure between the two networks?"
+    }
+   ],
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "We want to know how module boundaries reorganize in disease: did groups of genes that form one module in controls split apart, or merge into inflammation-related modules?",
+      "kind": "result",
+      "status": "not_available",
+      "delivered_by": [],
+      "not_by": [
+       "condor.no_two_network_comparison"
+      ],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We have built two brain regulatory networks, one for Alzheimer's disease patients and one for healthy controls.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "How can we directly quantify this differential modular structure between the two networks?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": true,
+    "cleared": [
+     "run_condor"
+    ]
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test9": {
+  "prompt": "We want to infer a gene regulatory network for a rare tissue, but only a few microarray samples are available; we also have generic, tissue-agnostic PPI and TF motif data from public databases. We would rather formulate the problem as an optimization with an explicit objective than use an iterative heuristic update scheme, ideally with a convex, globally optimal guarantee. Which tool meets these criteria?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on identifying a tool for inferring a gene regulatory network, which falls under the category of answer requests rather than execution.",
+   "candidate_actions": [
+    "run_panda",
+    "run_puma",
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_otter",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [],
+    "display_entities": [],
+    "regulator_types": [],
+    "target_types": [],
+    "selection_tags": [],
+    "granularity": "unknown",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "unknown",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "infer a gene regulatory network",
+       "rationale": "The user is seeking to infer a gene regulatory network."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_panda",
+    "run_puma",
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_otter",
+    "run_giraffe"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "These all fit; to choose, tell me: (1) Do the regulators include miRNAs, short non-coding RNAs that repress or degrade their target transcripts after transcription? (yes → PUMA, LIONESS-PUMA) (2) Is the network large enough that memory or runtime is a concern? (yes → OTTER) If none of these applies: PANDA, LIONESS-PANDA, GIRAFFE.",
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "infer a gene regulatory network",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "panda.tf_gene_network"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 0,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "Which tool meets these criteria?",
+      "kind": "result",
+      "status": "not_available",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {
+       "scale": "unstated",
+       "omics_layers": 0,
+       "data_unit": "not_stated",
+       "regulator_kinds": [],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "rare tissue",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "only a few microarray samples are available",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "generic, tissue-agnostic PPI and TF motif data from public databases",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "We would rather formulate the problem as an optimization with an explicit objective than use an iterative heuristic update scheme, ideally with a convex, globally optimal guarantee.",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ },
+ "test10": {
+  "prompt": "We collected liver tissue from 90 patients across three disease stages (cirrhosis, early HCC, and advanced HCC), with one sample per patient and follow-up survival data. We want to find regulatory circuits that become progressively dysregulated with disease severity. Pairwise group comparisons are not enough; we want a network for each patient so we can model associations with disease stage and survival. What workflow would you recommend?",
+  "decision": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The user is seeking guidance on a workflow to model regulatory circuits and associations with disease stage and survival, which falls under the category of answer requests.",
+   "candidate_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [
+     "tf",
+     "gene"
+    ],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [
+     "sample_specific",
+     "tf_gene_regulation"
+    ],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [
+       "tf",
+       "gene"
+      ],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [
+       "sample_specific",
+       "tf_gene_regulation"
+      ],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "explicit",
+       "text_span": "we want a network for each patient",
+       "rationale": "The user wants to find regulatory circuits for each patient."
+      },
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "find regulatory circuits that become progressively dysregulated",
+       "rationale": "The user is interested in regulatory circuits."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "we want a network for each patient",
+       "rationale": "The user specifies that they want a network for each patient."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The analysis involves transcription factors as regulators in the regulatory network."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The analysis involves genes as targets in the regulatory network."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user is interested in modeling transcription-factor-to-gene regulation."
+      },
+      {
+       "dimension": "selection_tag",
+       "value": "tf_gene_regulation",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The user is looking to find regulatory circuits involving transcription factors and genes."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "Which regulator type should the network model: transcription factors, miRNA regulators, or both?",
+   "addressed_concerns": [
+    {
+     "action": "run_lioness_panda",
+     "concern": "downstream_use",
+     "text_span": "we want a network for each patient so we can model associations with disease stage and survival."
+    },
+    {
+     "action": "run_lioness_puma",
+     "concern": "downstream_use",
+     "text_span": "we want a network for each patient so we can model associations with disease stage and survival."
+    }
+   ],
+   "data_plan": {
+    "answerable": true,
+    "basis": "question",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "We want to find regulatory circuits that become progressively dysregulated with disease severity.",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "we want a network for each patient so we can model associations with disease stage and survival.",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false
+      },
+      "second_opinion": false
+     },
+     {
+      "quote": "We collected liver tissue from 90 patients across three disease stages (cirrhosis, early HCC, and advanced HCC), with one sample per patient and follow-up survival data.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     },
+     {
+      "quote": "What workflow would you recommend?",
+      "kind": "about_methods",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ }
+}
