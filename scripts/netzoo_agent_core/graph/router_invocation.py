@@ -260,7 +260,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
                  for index, _action, keys in pairs]
         answers = None
         if pairs:  # typed attributes may leave nothing to ask
-            answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings)
+            situation = tuple(item.quote for item in check.requirements if item.kind == "context")
+            answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             check = apply_second_opinion(check, pairs, answers)
         record_event(context, state, "routing.capability_second_opinion", "classify", {
