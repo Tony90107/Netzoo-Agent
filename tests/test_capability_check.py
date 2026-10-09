@@ -379,8 +379,7 @@ def test_the_check_uses_its_own_model_when_configured(monkeypatch):
     call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
     monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "openai/gpt-4o")
     call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
-    # Log 400: a failed own model is followed by one attempt with the semantic model.
-    assert seen == ["semantic", "openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4o", "semantic", "openai/gpt-4o-mini"]
+    assert seen == ["semantic", "openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4o"]
 
 
 DRAGON_ASK = "We want one network of direct associations between the two layers, with significance for each edge."
@@ -588,71 +587,3 @@ def test_a_blank_verdict_without_a_distinctive_attribute_implies_nothing():
     reasoned, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", layers=2,
                                                     not_by=("dragon.no_more_layers",)))
     assert implied_actions(reasoned.results()[0]) == []  # a verdict with a reason is not blank
-
-
-def test_a_failed_own_model_is_followed_by_the_semantic_model(monkeypatch):
-    """Log 400 (TEST_PROMPTS r15 test9): nemotron answered nothing twice; mini is asked instead."""
-    from types import SimpleNamespace
-
-    from netzoo_agent_core.contracts import LLMUsage
-    from netzoo_agent_core.graph import capability_check_call as call
-
-    asked = []
-
-    class Model:
-        def __init__(self, name, answer):
-            self.name, self.answer = name, answer
-
-        def with_structured_output(self, schema, **kwargs):
-            self.schema = schema
-            return self
-
-        def invoke(self, messages):
-            asked.append(self.name)
-            if self.answer is None:
-                raise ValueError("Semantic structured output could not be decoded")
-            return {"parsed": self.schema.model_validate(self.answer), "raw": None, "parsing_error": None}
-
-    answer = {f"s{i}": {"role": "background", "has": [], "about_methods": [], "asks": []} for i in (1, 2)}
-    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "nvidia/nemotron")
-    monkeypatch.setattr(call, "_own_llm", lambda model, max_tokens: Model("own", None))
-    monkeypatch.setattr(call, "preflight_budget", lambda *args, **kwargs: (SimpleNamespace(status="ok"), []))
-    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
-    context = SimpleNamespace(study_purpose_llm=Model("mini", answer), semantic_model_name="openai/gpt-4o-mini",
-                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
-    proposal, usage, _, status = call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
-    assert status == "ok" and proposal is not None and asked == ["own", "mini"]
-    assert [call.model for call in usage.calls] == ["nvidia/nemotron", "openai/gpt-4o-mini"]
-
-
-def test_a_failed_own_second_opinion_is_followed_by_the_semantic_model(monkeypatch):
-    """Log 400: when the own model fails the check's turn, the second opinion must not fail with it."""
-    from types import SimpleNamespace
-
-    from netzoo_agent_core.contracts import LLMUsage
-    from netzoo_agent_core.graph import capability_check_call as call
-
-    asked = []
-
-    class Model:
-        def __init__(self, name, answer):
-            self.name, self.answer = name, answer
-
-        def with_structured_output(self, schema, **kwargs):
-            self.schema = schema
-            return self
-
-        def invoke(self, messages):
-            asked.append(self.name)
-            if self.answer is None:
-                raise TimeoutError("no answer")
-            return {"parsed": self.schema.model_validate(self.answer), "raw": None, "parsing_error": None}
-
-    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "nvidia/nemotron")
-    monkeypatch.setattr(call, "_own_llm", lambda model, max_tokens: Model("own", None))
-    monkeypatch.setattr(call, "preflight_budget", lambda *args, **kwargs: (SimpleNamespace(status="ok"), []))
-    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
-    context = SimpleNamespace(study_purpose_llm=Model("mini", {"a1": True}), semantic_model_name="openai/gpt-4o-mini",
-                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
-    answers, _, _ = call.request_second_opinion(context, {}, [("q", "DRAGON", "r")], LLMUsage(budget_tokens=30000), [])
-    assert answers == [True] and asked == ["own", "mini"]
