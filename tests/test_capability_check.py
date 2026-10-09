@@ -26,6 +26,12 @@ PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein i
              "separate TF-gene regulatory network for every tumor so we can relate it to survival.")
 
 
+def _item(quote, delivered=(), not_by=(), **attrs):
+    return {"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by), "scale": "unstated",
+            "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False,
+            "input_network": "none", **attrs}
+
+
 def _proposal(*sentences):
     """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
     def reading(items):
@@ -35,10 +41,9 @@ def _proposal(*sentences):
         return {
             "role": role,
             "has": [quote for quote, kind, _, _ in items if kind == "context"],
-            "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
-            "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by),
-                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}
-                     for quote, kind, delivered, not_by in items if kind == "result"],
+            "about_methods": [_item(quote, delivered, not_by)
+                              for quote, kind, delivered, not_by in items if kind == "about_methods"],
+            "asks": [_item(quote, delivered, not_by) for quote, kind, delivered, not_by in items if kind == "result"],
         }
     return proposal_model(len(sentences)).model_validate(
         {f"s{index}": reading(items) for index, (_text, items) in enumerate(sentences, 1)})
@@ -379,7 +384,8 @@ def test_the_check_uses_its_own_model_when_configured(monkeypatch):
     call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
     monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "openai/gpt-4o")
     call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
-    assert seen == ["semantic", "openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4o"]
+    # Log 399: a failed own model is followed by one attempt with the semantic model.
+    assert seen == ["semantic", "openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4o", "semantic", "openai/gpt-4o-mini"]
 
 
 DRAGON_ASK = "We want one network of direct associations between the two layers, with significance for each edge."
@@ -587,3 +593,143 @@ def test_a_blank_verdict_without_a_distinctive_attribute_implies_nothing():
     reasoned, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", layers=2,
                                                     not_by=("dragon.no_more_layers",)))
     assert implied_actions(reasoned.results()[0]) == []  # a verdict with a reason is not blank
+
+
+MIRNA_QUESTION = ("We also have miRNA expression data. Is there a method that incorporates miRNA target predictions "
+                  "into regulatory network inference?")
+MIRNA_QUOTE = "Is there a method that incorporates miRNA target predictions into regulatory network inference?"
+
+
+def _methods_question(task, quote, delivered=(), **attrs):
+    return proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s2": {"role": "methods_question", "has": [], "asks": [],
+               "about_methods": [_item(quote, delivered, **attrs)]}})
+
+
+def test_a_methods_question_naming_what_it_needs_is_checked():
+    """Log 399 (TEST_PROMPTS r15 test6): the miRNA question was a bare methods quote, so nothing checked GIRAFFE."""
+    check, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, regulator_kinds=["tf", "mirna"]))
+    assert [(item.kind, item.status, item.blank) for item in check.results()] == [("result", "not_available", True)]
+    credited, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, ("puma.regulator_gene_network", "giraffe.signed_regulation"),
+        regulator_kinds=["tf", "mirna"]))
+    assert credited.results()[0].delivered_by == ["puma.regulator_gene_network"]
+    bare, _ = build_capability_check(MIRNA_QUESTION, _methods_question(MIRNA_QUESTION, MIRNA_QUOTE))
+    assert bare.results() == [] and [item.kind for item in bare.requirements] == ["about_methods"]
+    # An entry alone does not make it an ask (dev run test7: a "how to set it up" question credited to PANDA).
+    entry_only, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, ("panda.tf_gene_network",)))
+    assert entry_only.results() == []
+    near_miss, _ = build_capability_check(MIRNA_QUESTION, proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s2": {"role": "methods_question", "has": [], "asks": [],
+               "about_methods": [_item(MIRNA_QUOTE, (), ("panda.no_sign",))]}}))
+    assert [item.status for item in near_miss.results()] == ["not_available"]
+
+
+def test_routing_offers_ruled_out_by_the_check_are_redirected():
+    from netzoo_agent_core.interpretation.capability_check import redirected_actions
+
+    check, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, ("puma.regulator_gene_network",), regulator_kinds=["tf", "mirna"]))
+    assert redirected_actions(check, ["run_giraffe"]) == ["run_puma"]
+    assert redirected_actions(check, ["run_giraffe", "run_puma"]) == []  # one offer fits: routing stands
+    blank, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, regulator_kinds=["mirna"]))
+    assert redirected_actions(blank, ["run_giraffe"]) == ["run_puma", "run_lioness_puma"]
+    cohort, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, regulator_kinds=["mirna"], scale="per_sample"))
+    assert redirected_actions(cohort, ["run_giraffe"]) == ["run_lioness_puma"]
+    plain, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, ("panda.tf_gene_network",)))
+    assert redirected_actions(plain, ["run_giraffe"]) == []  # nothing distinctive rules GIRAFFE out
+    cells, _ = build_capability_check(MIRNA_QUESTION, _methods_question(
+        MIRNA_QUESTION, MIRNA_QUOTE, data_unit="single_cells"))
+    assert redirected_actions(cells, ["run_panda"]) == []  # nothing meets it: the gap logic decides
+
+
+def test_router_redirects_an_exact_match_the_check_rules_out(monkeypatch):
+    events = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda context, state, kind, node, payload: events.append(kind))
+    monkeypatch.setattr(router_invocation, "_with_applicability", lambda context, state, task, result: result)
+    exact = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                         capability_match_status="exact", matched_actions=["run_giraffe"],
+                         recommended_actions=["run_giraffe"])
+    proposal = _methods_question(MIRNA_QUESTION, MIRNA_QUOTE, ("puma.regulator_gene_network",),
+                                 regulator_kinds=["tf", "mirna"])
+    decision = router_invocation._with_capability_check(
+        None, {}, MIRNA_QUESTION, _invocation(exact), proposal).decision
+    assert decision.capability_match_status == "exact" and decision.matched_actions == ["run_puma"]
+    assert decision.requested_outcome.regulator_types == ["mirna", "tf"]
+    assert decision.capability_check.results()[0].status == "available"
+    assert "routing.capability_redirected" in events
+
+
+def test_a_failed_own_model_is_followed_by_the_semantic_model(monkeypatch):
+    """Log 399 (TEST_PROMPTS r15 test9): nemotron answered nothing twice; mini is asked instead."""
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import LLMUsage
+    from netzoo_agent_core.graph import capability_check_call as call
+
+    asked = []
+
+    class Model:
+        def __init__(self, name, answer):
+            self.name, self.answer = name, answer
+
+        def with_structured_output(self, schema, **kwargs):
+            self.schema = schema
+            return self
+
+        def invoke(self, messages):
+            asked.append(self.name)
+            if self.answer is None:
+                raise ValueError("Semantic structured output could not be decoded")
+            return {"parsed": self.schema.model_validate(self.answer), "raw": None, "parsing_error": None}
+
+    answer = {f"s{i}": {"role": "background", "has": [], "about_methods": [], "asks": []} for i in (1, 2)}
+    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "nvidia/nemotron")
+    monkeypatch.setattr(call, "_own_llm", lambda model, max_tokens: Model("own", None))
+    monkeypatch.setattr(call, "preflight_budget", lambda *args, **kwargs: (SimpleNamespace(status="ok"), []))
+    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
+    context = SimpleNamespace(study_purpose_llm=Model("mini", answer), semantic_model_name="openai/gpt-4o-mini",
+                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
+    proposal, usage, _, status = call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
+    assert status == "ok" and proposal is not None and asked == ["own", "mini"]
+    assert [call.model for call in usage.calls] == ["nvidia/nemotron", "openai/gpt-4o-mini"]
+
+
+def test_a_failed_own_second_opinion_is_followed_by_the_semantic_model(monkeypatch):
+    """Log 399: when the own model fails the check's turn, the second opinion must not fail with it."""
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import LLMUsage
+    from netzoo_agent_core.graph import capability_check_call as call
+
+    asked = []
+
+    class Model:
+        def __init__(self, name, answer):
+            self.name, self.answer = name, answer
+
+        def with_structured_output(self, schema, **kwargs):
+            self.schema = schema
+            return self
+
+        def invoke(self, messages):
+            asked.append(self.name)
+            if self.answer is None:
+                raise TimeoutError("no answer")
+            return {"parsed": self.schema.model_validate(self.answer), "raw": None, "parsing_error": None}
+
+    monkeypatch.setenv("OPENROUTER_CAPABILITY_MODEL", "nvidia/nemotron")
+    monkeypatch.setattr(call, "_own_llm", lambda model, max_tokens: Model("own", None))
+    monkeypatch.setattr(call, "preflight_budget", lambda *args, **kwargs: (SimpleNamespace(status="ok"), []))
+    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
+    context = SimpleNamespace(study_purpose_llm=Model("mini", {"a1": True}), semantic_model_name="openai/gpt-4o-mini",
+                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
+    answers, _, _ = call.request_second_opinion(context, {}, [("q", "DRAGON", "r")], LLMUsage(budget_tokens=30000), [])
+    assert answers == [True] and asked == ["own", "mini"]
