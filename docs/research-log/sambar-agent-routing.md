@@ -20334,3 +20334,19 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 
 **已知的措辭張力**
 - test4 先寫「none is offered」，接著 SCORPION 段落又給出已登錄的 pseudo-bulk 作法。兩者在邏輯上並不矛盾：前者說單細胞層級做不到，後者說彙總後的 bulk 作法可行。但讀起來有落差，留待使用者決定是否處理。
+
+## Log 393｜完全缺口的回覆後面接 outside-step 說明時，改用「照你問的方式做不到，下方說明最接近的作法」
+
+使用者 2026-10-09 同意修改 Log 392 留下的措辭張力。
+
+**問題**：test4 的回覆先寫「none is offered」，接著說明段落又寫「a registered route: pseudo-bulk … then PANDA」，兩句讀起來互相衝突。
+
+**修改**：`full_gap_reply(check, with_note=...)`。
+- 有說明段落時，結尾句改為：「No registered workflow produces this as you asked it, so none is offered for it as asked. The note below describes the closest route.」
+- 沒有說明段落時，結尾句維持原樣。
+- 只改顯示文字，不影響 routing、檢查或 full_gap 的判定。
+
+**驗證**
+- 以 r10 的 test4、test7、test8 決策重新產生回覆：三題的結尾句都已換成新句，後面接 SCORPION、SPIDER、ALPACA 段落。
+- 新增的單元測試涵蓋有、無說明段落兩種情況。
+- 全套件通過。
