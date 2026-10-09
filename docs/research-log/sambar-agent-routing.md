@@ -20350,3 +20350,12 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - 以 r10 的 test4、test7、test8 決策重新產生回覆：三題的結尾句都已換成新句，後面接 SCORPION、SPIDER、ALPACA 段落。
 - 新增的單元測試涵蓋有、無說明段落兩種情況。
 - 全套件通過。
+
+## Log 393（確認）｜TEST_PROMPTS r11
+
+- 10 題全部 exit 0，檢查呼叫 10/10 成功，每次 7–40 秒；第二意見只在 test8 觸發 1 次。
+- 結果與 r10 一致：
+  - test4、test7、test8 為完全缺口，分別附上 SCORPION、SPIDER、ALPACA 說明，並使用 Log 393 的「as you asked … closest route」結尾句。
+  - 其餘 7 題照常給出 workflow。
+  - 未檢查句 0。
+- 輸出在 `test10-2026-10-03/out/r11-*`。

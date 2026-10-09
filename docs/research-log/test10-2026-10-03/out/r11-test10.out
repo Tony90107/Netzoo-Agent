@@ -1,0 +1,24 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.22s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "find regulatory circuits that become progressively dysregulated with disease severity" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+2. "we want a network for each patient" -- available from LIONESS-PANDA.
+
+I can map this to more than one compatible network result:
+
+All of them derive each sample network from all-sample and leave-one-out networks, and iteratively exchange information across biological evidence networks.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+About your concern that what to do with the result afterwards, for example comparing conditions or relating it to clinical variables:
+- **LIONESS-PANDA**, **LIONESS-PUMA** — Per-sample targeting scores: a regulator's outdegree (the sum of its edge weights to its targets) or a gene's indegree, computed in each sample's network, gives a regulator-by-sample (or gene-by-sample) matrix you can relate to sample-level variables -- survival, for example, with a Cox model. An ordered variable such as disease stage can be tested for a trend, for example with ordinal or linear regression on stage; testing every regulator or edge needs multiple-testing correction (for example Benjamini-Hochberg). Stages seen in different patients are cross-sectional, so a trend across them is not one patient's progression. That association needs a clinical table (for survival: follow-up time and event status) keyed by the same sample IDs as the expression matrix; it is not a workflow input, so supply it separately. All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in the association test, which is a later analysis step rather than part of this workflow.
+
+Which regulator type should the network model: transcription factors, miRNA regulators, or both?
+
+No files were inspected and no analysis ran.
