@@ -529,3 +529,25 @@ def test_a_turn_the_check_could_not_read_says_so():
     updated = with_capability_check_reply(result, _state(CapabilityCheck(unavailable=True)), lambda text, kind: {
         "messages": [AIMessage(content=text)], "reply_kind": kind})
     assert updated["messages"][-1].content.startswith("This turn could not be checked")
+
+
+def test_a_cited_near_miss_asks_its_workflow_even_when_routing_failed(monkeypatch):
+    """Log 396: TEST_PROMPTS r12 test9 refused "infer a network" over OTTER's convexity near miss."""
+    task = "We want to infer a gene regulatory network for a rare tissue, with a convex guarantee."
+    quote = "infer a gene regulatory network for a rare tissue"
+    asked = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, pairs, usage, warnings: (asked.append(pairs) or [True] * len(pairs),
+                                                                        usage, warnings))
+    failed = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.0, reason="r",
+                          capability_match_status="fallback")
+    proposal = _ask(task, quote, not_by=("otter.no_global_optimum",), kinds=("tf",))
+    decision = router_invocation._with_capability_check(None, {}, task, _invocation(failed), proposal).decision
+    assert [workflow for _, workflow, _ in asked[0]] == ["OTTER"]
+    assert not decision.capability_check.full_gap
+    assert decision.capability_check.results()[0].delivered_by[0] == "otter.tf_gene_network"
+    asked.clear()
+    lnc = _ask(task, quote, not_by=("puma.no_lncrna_cerna",), kinds=("lncrna",))
+    gap = router_invocation._with_capability_check(None, {}, task, _invocation(failed), lnc).decision
+    assert asked == [] and gap.capability_check.full_gap  # typed attributes leave PUMA nothing to be asked
