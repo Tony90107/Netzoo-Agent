@@ -467,8 +467,11 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
     text = full_gap_result(state, lambda content, kind: {"messages": [AIMessage(content=content)],
                                                          "reply_kind": kind})["messages"][-1].content
     assert "ALPACA" in text and text.rstrip().endswith("No files were inspected and no analysis ran.")
+    # Log 393: the closing sentence points to the note instead of reading against its route.
+    assert "so none is offered for it as asked. The note below describes the closest route." in text
     state = _state(check)
     state["messages"] = [HumanMessage(content=task)]
     without = full_gap_result(state, lambda content, kind: {"messages": [AIMessage(content=content)],
                                                             "reply_kind": kind})["messages"][-1].content
     assert "ALPACA" not in without  # the ALPACA note is tied to CONDOR being a candidate
+    assert "so none is offered as the way to get it." in without

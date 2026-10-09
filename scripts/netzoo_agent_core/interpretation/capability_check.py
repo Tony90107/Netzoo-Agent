@@ -229,12 +229,21 @@ def understanding_paragraph(check: CapabilityCheck) -> str | None:
     return "\n".join(lines)
 
 
-def full_gap_reply(check: CapabilityCheck) -> str:
+def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
+    """The full-gap reply; `with_note` when an outside-step note follows (Log 393).
+
+    TEST_PROMPTS r10 test4: "none is offered" read against the note's own "a registered
+    route: pseudo-bulk ... then PANDA". The note's route is a different request (bulk, or a
+    method not registered here), so the sentence says "as you asked" and points to it.
+    """
     many = len(check.results()) > 1
+    them, it = ("these", "them") if many else ("this", "it")
+    closing = (f"No registered workflow produces {them} as you asked {it}, so none is offered for {it} as asked. "
+               "The note below describes the closest route." if with_note else
+               f"No registered workflow produces {them}, so none is offered as the way to get {it}.")
     return "\n\n".join([
         understanding_paragraph(check) or "",
-        (f"No registered workflow produces {'these' if many else 'this'}, so none is offered as the way to get "
-         f"{'them' if many else 'it'}."),
+        closing,
         "No files were inspected and no analysis ran.",
     ])
 
@@ -252,8 +261,11 @@ def full_gap_result(state, reply) -> dict | None:
         return None
     # Log 392 (A): the verified outside-step notes (Log 320: SCORPION's pseudo-bulk route,
     # SPIDER, ALPACA) stay; TEST_PROMPTS r9 tests 4 and 8 lost them to the full gap.
-    text = with_outside_steps(full_gap_reply(check), decision, latest_user_task(state.get("messages") or []))
-    return reply(text, "capability_check_gap")
+    task = latest_user_task(state.get("messages") or [])
+    plain = full_gap_reply(check)
+    if with_outside_steps(plain, decision, task) != plain:
+        return reply(with_outside_steps(full_gap_reply(check, with_note=True), decision, task), "capability_check_gap")
+    return reply(plain, "capability_check_gap")
 
 
 def with_capability_check_reply(result: dict, state, reply) -> dict:
