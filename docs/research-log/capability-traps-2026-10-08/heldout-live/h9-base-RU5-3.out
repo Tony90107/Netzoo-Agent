@@ -1,0 +1,32 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.84s)
+● Matching registered workflows…
+✓ Workflow — SAMBAR
+✓ Guidance prepared
+This turn could not be checked against what the registered workflows produce, so the methods below have not been confirmed to give what you asked for.
+
+Selected path: **SAMBAR**.
+
+Your question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.
+
+**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+Required workflow inputs:
+
+- `mutation_file`: somatic mutation matrix
+- `exon_size_file`: gene/exon-size CSV
+- `cancer_gene_file`: cancer-gene list
+- `pathway_file`: GMT pathway file
+
+Outputs:
+
+- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.
+- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.
+- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.
+- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
