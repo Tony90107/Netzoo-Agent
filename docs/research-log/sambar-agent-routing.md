@@ -20409,3 +20409,36 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - commit 後的程式碼與量測過的 `a38356c` 完全相同。
 - 全套件通過。
 - heldout5 列為已看過。
+
+## Log 395｜TEST_PROMPTS r12：所有角色都用免費 nemotron，發現一個假缺口和兩個免費模型的弱點
+
+使用者 2026-10-09 要求用免費模型跑 TEST_PROMPTS，必要時才用 mini 或 4o。
+
+- **設定**：以環境變數把 `OPENROUTER_MODEL`、`OPENROUTER_ROUTER_MODEL`、`OPENROUTER_SEMANTIC_MODEL` 都覆寫成 nemotron（`.env` 未改）。之前的量測都是「routing 用 mini，檢查用 nemotron」，所以這是全免費設定第一次實跑。
+- **結果概況**：10 題全部 exit 0，花費 US$0，每題的呼叫總耗時 43–232 秒。輸出在 `test10-2026-10-03/out/r12-*`。
+
+**正常的題目**
+- test4、test8：完全缺口，附 SCORPION／ALPACA 說明。
+- test2、test3、test6、test10：照常給出 workflow。
+- test5：routing 變成 fallback，但仍給出 SAMBAR。
+
+**問題 1：test9 出現假缺口，而且是錯誤的方向**
+- routing 的 semantic interpreter（nemotron）驗證失敗，走 semantic_fallback，沒有任何 exact match。
+- 能力檢查把「infer a gene regulatory network for a rare tissue」判為不可交付。它引用了 OTTER 的近似條目 `otter.no_global_optimum`，因為使用者要求凸最佳化保證，而條目把這個要求混進了結果。
+- 檢查也把「Which tool meets these criteria?」當成 ask。
+- 回覆因此說「沒有已登錄的 workflow 產出」。但 PANDA 和 OTTER 都能推論調控網路，只有「凸最佳化的全域最佳保證」做不到。
+- 同一題在 r11（mini routing）時不是缺口。
+- **機制上的漏洞**：第二意見只在 routing 為 exact 時觸發。routing 失敗時，沒有任何機制能複查檢查器給出的完全缺口。
+
+**問題 2：test1 的 routing 失敗**
+- routing 驗證失敗。能力檢查正確判定「available from PANDA」，但 routing 的失敗訊息仍然說沒有選出 workflow。
+- 回覆因此互相矛盾，但至少沒有瞎掰。
+
+**問題 3：test7 撞到免費模型的速率上限**
+- 所有角色都用免費模型、5 個 session 並行時，每分鐘 20 次的上限被用完。檢查呼叫拿到 429，回覆照設計明說「這一輪無法檢查」，並保留了 SPIDER 說明。
+- 429 不屬於重試條件（只有 ValueError 會重試）。
+
+**結論**
+- 全免費設定下，routing 驗證失敗 2/10，並且會撞速率上限。
+- 已量測過的設定（routing 用 mini、檢查用 nemotron）在 r11 中沒有這些問題。
+- 問題 1 暴露的漏洞，在 mini routing 偶爾驗證失敗時也可能出現。下一步交由使用者決定。
