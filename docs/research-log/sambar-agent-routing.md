@@ -20487,3 +20487,11 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 空白判定（沒有任何條目、也沒有任何理由）不能算作「做不到」的證據。
 
 可以改用型別欄位自己指向的 workflow：ask 啟動了某個型別欄位時（例如 omics_layers ≥ 2 只對應 DRAGON 系列、needs_sign 只對應 GIRAFFE、regulator_kinds 含 mirna 只對應 PUMA 系列、input_network=regulator_gene 只對應 CONDOR），就針對這些「型別上合得來」的 workflow 問第二意見。沒有啟動任何欄位時，候選集就是空的，缺口照舊成立。
+
+## Log 397｜事前宣告：白卷判定依型別欄位問第二意見，以 heldout7 評估
+
+使用者 2026-10-09 同意這個方向。
+
+- 候選：`fb01338`（Log 396 的兩項修改，加上 implied_actions）
+- 判定：已凍結在 `capability-traps-2026-10-08/FREEZE397.md`，執行前寫下
+- 題組：`heldout7.json`
