@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.03s)
+● Matching registered workflows…
+✓ Guidance prepared
+About "to identify the genes that causally drive their disease": None of the registered workflows can show that one thing causes another: they estimate associations or model coefficients from the expression data, so the networks can describe what differs or changes but not show why.
+
+I can map this to more than one compatible network result:
+
+**Gene co-expression network**
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability. Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Unconfirmed assumptions in these interpretations (please correct me if needed):
+- The expression data for the 36 patients is suitable for constructing co-expression networks.
+- The user is interested in identifying genes that have a causal role in the disease process.
+- The user is interested in understanding the regulatory mechanisms driving the disease in each patient.
+- The expression data can be used to infer regulatory interactions.
+
+Which result do you mean: inferred gene-to-gene associations, one result per sample (LIONESS-COEXPRESSION or BONOBO); or inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA)?
+
+No files were inspected and no analysis ran.

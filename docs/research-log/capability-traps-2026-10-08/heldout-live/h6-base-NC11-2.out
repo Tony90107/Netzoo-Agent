@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.25s)
+● Matching registered workflows…
+✓ Workflow — DRAGON → LIONESS-DRAGON
+✓ Guidance prepared
+I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:
+
+1. **DRAGON**
+   - **Inputs**:
+   - `omics_layer_1`: Omics layer 1 (samples x features)
+   - `omics_layer_2`: Omics layer 2 (the same samples)
+   - **Output**: Aggregate workflow output (`output_file`).
+
+2. **LIONESS-DRAGON**
+   - **Inputs**:
+   - `omics_layer_1`: Omics layer 1 (samples x features)
+   - `omics_layer_2`: Omics layer 2 (the same samples)
+   - **Outputs**:
+     - Aggregate workflow output (`output_file`).
+     - Sample-specific LIONESS output (`lioness_output`).
+
+Use DRAGON when you only need the aggregate result. Use LIONESS-DRAGON directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary.
+
+Cost: LIONESS runs DRAGON once on all samples and once more without each sample, so N samples take N+1 DRAGON runs and give N network files (for your 40 patients, 41 DRAGON runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+No files were inspected and no analysis ran.

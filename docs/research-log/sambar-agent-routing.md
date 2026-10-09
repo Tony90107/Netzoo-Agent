@@ -20452,3 +20452,38 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - 題組：`heldout6.json`
 - 新增：模擬 routing 失敗的判定（SF1、SF2）
 - OpenRouter 額度：加值已入帳（總額 25 → 30），剩約 US$5.3
+
+## Log 396（結果）｜U+N 0/54、P 15/15、模擬中近似題零錯放，但 NC6 假缺口 3/3（G2）與模擬 2/2（SF1）不成立，依宣告撤回
+
+依 Log 396 執行。完整回合共 210 個 session，全部 exit 0，provider 錯誤 0；候選的檢查呼叫 105/105 成功。模擬 routing 失敗共跑 70 次，檢查全部成功。證據：`heldout-live/h6-*`、`replay/sim6.json`。
+
+| 判定 | 結果 | 成立 |
+|---|---|---|
+| V1 | provider 錯誤 0 | 是 |
+| G1 | U+N 的 FAB+HEDGE：基準 30/54，候選 **0/54** | 是 |
+| G2 | C 的 FALSE_GAP：候選 3（NC6 ×3） | **否** |
+| G3 | C 的 OK：基準 33，候選 32 | 是 |
+| G4 | P 的 BOTH：基準 7，候選 15/15 | 是 |
+| G5 | 有 over_credit 行的 session：0 | 是 |
+| G6 | C 中有 false_negative 行的 session：3（NC6） | 是（≤ 4） |
+| S1 | 檢查呼叫沒成功：0/105 | 是 |
+| SF1 | 模擬：C 的完全缺口 2/24（NC6 ×2） | **否** |
+| SF2 | 模擬：U+N 的完全缺口 36/36 | 是 |
+
+**NC6 的機制**
+- 題目：「metabolites and lipids … one network of direct associations … with edge p-values」，正是 DRAGON 的功能。
+- 兩臂的 routing（mini）都驗證失敗。基準因此只回系統錯誤訊息（VALIDATION_FAIL ×3）。
+- 候選的檢查器對這項 ask 交出空白：delivered_by 和 not_by 都是空的，只有型別欄位填了 omics_layers=2、whole_cohort。
+- 沒有 exact routing，也沒有引用任何近似條目，所以第二意見沒有可以問的對象，完全缺口就此成立。
+- 候選說「沒有已登錄的 workflow 產出」，這是錯誤的斷言，比基準的「無法判斷」更糟。
+
+**決定：撤回**
+- 以 `d3e0b53` revert `713e253` 和 `7c7d1b3`。程式碼回到已上線的 `a38356c`，全套件 3446 passed。
+- 撤回的 diff 保存為 `cc396_withdrawn.patch`，sha256 前綴 `fbe6323dbcb8`。
+- heldout6 已用過，不再當保留集。
+
+**下一步（交由使用者決定）**
+
+空白判定（沒有任何條目、也沒有任何理由）不能算作「做不到」的證據。
+
+可以改用型別欄位自己指向的 workflow：ask 啟動了某個型別欄位時（例如 omics_layers ≥ 2 只對應 DRAGON 系列、needs_sign 只對應 GIRAFFE、regulator_kinds 含 mirna 只對應 PUMA 系列、input_network=regulator_gene 只對應 CONDOR），就針對這些「型別上合得來」的 workflow 問第二意見。沒有啟動任何欄位時，候選集就是空的，缺口照舊成立。

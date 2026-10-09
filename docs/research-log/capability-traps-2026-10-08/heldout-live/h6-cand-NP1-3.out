@@ -1,0 +1,36 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.01s)
+● Matching registered workflows…
+✓ Workflow — PANDA → LIONESS-PANDA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one TF-gene network" -- available from PANDA.
+2. "forecast each patient's progression" -- not available here: no registered workflow produces this. No registered workflow fits a predictive or generative model; per-sample results can only be features for one built elsewhere.
+
+About "to forecast each patient's progression": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.
+
+I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:
+
+1. **PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Output**: Aggregate workflow output (`output_file`).
+
+2. **LIONESS-PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Outputs**:
+     - Aggregate workflow output (`output_file`).
+     - Sample-specific LIONESS output (`lioness_output`).
+
+Use PANDA when you only need the aggregate result. Use LIONESS-PANDA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 18 patients, 19 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+No files were inspected and no analysis ran.

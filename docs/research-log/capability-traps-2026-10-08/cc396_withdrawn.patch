@@ -1,0 +1,105 @@
+diff --git a/scripts/netzoo_agent_core/graph/capability_check_call.py b/scripts/netzoo_agent_core/graph/capability_check_call.py
+index fc093eb..6336b8c 100644
+--- a/scripts/netzoo_agent_core/graph/capability_check_call.py
++++ b/scripts/netzoo_agent_core/graph/capability_check_call.py
+@@ -88,7 +88,8 @@ def _own_llm(model: str, max_tokens: int):
+ _SECOND_OPINION = (
+     "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and the "
+     "results one registered workflow produces. Answer true only if those results, together, give what the words "
+-    "ask for, as they ask it -- not a related result, and not only an ingredient of it."
++    "ask for, as they ask it -- not a related result, and not only an ingredient of it. The user's own data and "
++    "situation are listed first; read the request words in that light."
+ )
+ 
+ 
+@@ -104,7 +105,8 @@ def _check_model(context):
+     return model, llm
+ 
+ 
+-def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings):
++def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings,
++                           situation: tuple[str, ...] = ()):
+     """Log 390: yes/no per (request words, workflow, its results), or None when nothing answered.
+ 
+     Asked only when a full gap would clear an exact routing match: on heldouts 1-3 every false
+@@ -116,7 +118,10 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
+     schema = second_opinion_model(len(pairs))
+     listed = "\n".join(f'{index}. Request words: "{quote}" | {workflow} produces: {result}'
+                         for index, (quote, workflow, result) in enumerate(pairs, 1))
+-    messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=listed)]
++    # Log 396: without the user's own data beside them, "for a rare tissue" read as a demand on the
++    # method and "infer a network" was refused 2/2; with it, 2/2 accepted and two near misses kept.
++    shown = f"The user has: {'; '.join(situation)}.\n{listed}" if situation else listed
++    messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=shown)]
+     input_text = _serialized_structured_input(messages, schema)
+     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+     budget, budget_warnings = preflight_budget(
+diff --git a/scripts/netzoo_agent_core/graph/router_invocation.py b/scripts/netzoo_agent_core/graph/router_invocation.py
+index 68dcf4d..a775b8d 100644
+--- a/scripts/netzoo_agent_core/graph/router_invocation.py
++++ b/scripts/netzoo_agent_core/graph/router_invocation.py
+@@ -246,13 +246,22 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
+         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
+     })
+     usage, warnings = result.usage, result.budget_warnings
+-    if check.full_gap and decision.capability_match_status == "exact" and decision.matched_actions:
++    exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
++    cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
++    asked = list(dict.fromkeys([*exact, *cited]))
++    if check.full_gap and asked:
+         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
+         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
+-        pairs = second_opinion_pairs(check, list(decision.matched_actions))
++        # Log 396: also about every workflow whose near miss the check cited, so a gap stands
++        # only after the workflows it weighed were asked as a whole (TEST_PROMPTS r12 test9:
++        # routing failed and "infer a network" was refused over OTTER's convexity near miss).
++        pairs = second_opinion_pairs(check, asked)
+         shown = [(check.requirements[index].quote, entry(keys[0]).workflow, " ".join(entry(k).text for k in keys))
+                  for index, _action, keys in pairs]
+-        answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings)
++        answers = None
++        if pairs:  # typed attributes may leave nothing to ask
++            situation = tuple(item.quote for item in check.requirements if item.kind == "context")
++            answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
+         if answers is not None:
+             check = apply_second_opinion(check, pairs, answers)
+         record_event(context, state, "routing.capability_second_opinion", "classify", {
+diff --git a/tests/test_capability_check.py b/tests/test_capability_check.py
+index 76e48fb..50d9d0a 100644
+--- a/tests/test_capability_check.py
++++ b/tests/test_capability_check.py
+@@ -414,7 +414,7 @@ def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monk
+     asked = []
+     monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+     monkeypatch.setattr(router_invocation, "request_second_opinion",
+-                        lambda context, state, pairs, usage, warnings: (asked.append(pairs) or [True] * len(pairs),
++                        lambda context, state, pairs, usage, warnings, situation=(): (asked.append(pairs) or [True] * len(pairs),
+                                                                         usage, warnings))
+     exact = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                          capability_match_status="exact", matched_actions=["run_dragon"])
+@@ -529,3 +529,25 @@ def test_a_turn_the_check_could_not_read_says_so():
+     updated = with_capability_check_reply(result, _state(CapabilityCheck(unavailable=True)), lambda text, kind: {
+         "messages": [AIMessage(content=text)], "reply_kind": kind})
+     assert updated["messages"][-1].content.startswith("This turn could not be checked")
++
++
++def test_a_cited_near_miss_asks_its_workflow_even_when_routing_failed(monkeypatch):
++    """Log 396: TEST_PROMPTS r12 test9 refused "infer a network" over OTTER's convexity near miss."""
++    task = "We want to infer a gene regulatory network for a rare tissue, with a convex guarantee."
++    quote = "infer a gene regulatory network for a rare tissue"
++    asked = []
++    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
++    monkeypatch.setattr(router_invocation, "request_second_opinion",
++                        lambda context, state, pairs, usage, warnings, situation=(): (asked.append(pairs) or [True] * len(pairs),
++                                                                        usage, warnings))
++    failed = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.0, reason="r",
++                          capability_match_status="fallback")
++    proposal = _ask(task, quote, not_by=("otter.no_global_optimum",), kinds=("tf",))
++    decision = router_invocation._with_capability_check(None, {}, task, _invocation(failed), proposal).decision
++    assert [workflow for _, workflow, _ in asked[0]] == ["OTTER"]
++    assert not decision.capability_check.full_gap
++    assert decision.capability_check.results()[0].delivered_by[0] == "otter.tf_gene_network"
++    asked.clear()
++    lnc = _ask(task, quote, not_by=("puma.no_lncrna_cerna",), kinds=("lncrna",))
++    gap = router_invocation._with_capability_check(None, {}, task, _invocation(failed), lnc).decision
++    assert asked == [] and gap.capability_check.full_gap  # typed attributes leave PUMA nothing to be asked
