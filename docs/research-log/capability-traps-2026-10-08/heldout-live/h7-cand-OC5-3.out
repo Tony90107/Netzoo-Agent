@@ -1,0 +1,38 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (5.33s)
+● Matching registered workflows…
+✓ Workflow — PUMA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one network of which TFs and which microRNAs control which genes." -- available from PUMA.
+
+Selected path: **PUMA**.
+
+Your question asks for a cohort-level regulatory network. **PUMA** fits that result and scale. PUMA extends PANDA's message passing to miRNA regulators.
+
+**PUMA**: Infer an aggregate TF/miRNA-to-gene regulatory network with PUMA.
+
+Routing-level input modality: gene expression, coexpression.
+
+Method premise: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow.
+
+PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.
+
+Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+Workflow-specific scientific notes:
+
+- PUMA uses message passing to integrate miRNA-target predictions with target-gene co-expression alongside TF motif and PPI evidence.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+- `mirna_file`: miRNA list
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
