@@ -115,18 +115,6 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     model, llm = _check_model(context)
     if llm is None or not pairs:
         return None, usage, budget_warnings
-    answers, usage, budget_warnings = _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnings,
-                                                           situation)
-    fallback = getattr(context, "study_purpose_llm", None)
-    if answers is None and fallback is not None and llm is not fallback and not usage.budget_exhausted:
-        # Log 400: a failed own model is followed by the semantic model, as for the check itself.
-        answers, usage, budget_warnings = _second_opinion_call(
-            context, state, getattr(context, "semantic_model_name", None), fallback, pairs, usage, budget_warnings,
-            situation)
-    return answers, usage, budget_warnings
-
-
-def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnings, situation):
     schema = second_opinion_model(len(pairs))
     listed = "\n".join(f'{index}. Request words: "{quote}" | {workflow} produces: {result}'
                         for index, (quote, workflow, result) in enumerate(pairs, 1))
@@ -191,9 +179,7 @@ def request_capability_check(
     before the advisory reads; verification waits for the study-purpose claims
     (`interpretation.capability_check.build_capability_check`). A reply the model sent
     that could not be decoded or validated is asked once more (TEST_PROMPTS r9 test9);
-    a timeout is not, since the free model already took a minute. When the check has its
-    own model, the second attempt is the study-purpose model's, after any failure (Log 400,
-    TEST_PROMPTS r15 test9: nemotron answered nothing twice, about a minute each).
+    a timeout is not, since the free model already took a minute.
     """
     model, llm = _check_model(context)
     if llm is None:
@@ -248,9 +234,6 @@ def request_capability_check(
         )
         if proposal is not None:
             return proposal, usage, budget_warnings, "ok"
-        fallback = getattr(context, "study_purpose_llm", None)
-        if llm is not fallback and fallback is not None:
-            model, llm = getattr(context, "semantic_model_name", None), fallback
-        elif not retry:
+        if not retry:
             break
     return None, usage, budget_warnings, "failed"
