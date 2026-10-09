@@ -131,6 +131,8 @@ class CheckedRequirement(BaseModel):
     not_by: list[str] = Field(default_factory=list)
     attrs: dict[str, Any] = Field(default_factory=dict)
     """The ask's typed attributes (scale, layers, data unit, regulators, sign), for the second opinion."""
+    blank: bool = False
+    """Log 397: no reading named any sheet entry, delivering or not -- a verdict with no reason."""
     second_opinion: bool = False
     """Log 390: credited by the second opinion on a conflict with an exact routing match."""
 

@@ -424,8 +424,9 @@ def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monk
     asked.clear()
     ambiguous = exact.model_copy(update={"capability_match_status": "ambiguous", "matched_actions": [],
                                          "hypothesis_actions": ["run_dragon"]})
+    # Not exact, nothing cited, and no distinctive typed attribute (Log 397): nobody to ask.
     cleared = router_invocation._with_capability_check(
-        None, {}, DRAGON_ASK, _invocation(ambiguous), _ask(DRAGON_ASK, quote, layers=2)).decision
+        None, {}, DRAGON_ASK, _invocation(ambiguous), _ask(DRAGON_ASK, quote)).decision
     assert not asked and cleared.capability_check.full_gap and cleared.hypothesis_actions == []
 
 
@@ -551,3 +552,38 @@ def test_a_cited_near_miss_asks_its_workflow_even_when_routing_failed(monkeypatc
     lnc = _ask(task, quote, not_by=("puma.no_lncrna_cerna",), kinds=("lncrna",))
     gap = router_invocation._with_capability_check(None, {}, task, _invocation(failed), lnc).decision
     assert asked == [] and gap.capability_check.full_gap  # typed attributes leave PUMA nothing to be asked
+
+
+def test_a_blank_verdict_asks_the_workflows_its_typed_attributes_point_to(monkeypatch):
+    """Log 397 (heldout6 NC6): routing failed and the check named nothing for a two-layer network."""
+    from netzoo_agent_core.interpretation.capability_check import implied_actions
+
+    task = "We want one network of direct associations between metabolites and lipids with edge p-values."
+    quote = "one network of direct associations between metabolites and lipids with edge p-values"
+    check, _ = build_capability_check(task, _ask(task, quote, layers=2, scale="whole_cohort"))
+    # LIONESS-DRAGON writes the aggregate network too, so a cohort-level ask fits both.
+    assert check.results()[0].blank and implied_actions(check.results()[0]) == ["run_dragon", "run_lioness_dragon"]
+    asked = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, pairs, usage, warnings, situation=(): (
+                            asked.append(pairs) or [True] * len(pairs), usage, warnings))
+    failed = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.0, reason="r",
+                          capability_match_status="fallback")
+    decision = router_invocation._with_capability_check(
+        None, {}, task, _invocation(failed), _ask(task, quote, layers=2, scale="whole_cohort")).decision
+    assert [workflow for _, workflow, _ in asked[0]] == ["DRAGON", "LIONESS-DRAGON"]
+    assert not decision.capability_check.full_gap
+
+
+def test_a_blank_verdict_without_a_distinctive_attribute_implies_nothing():
+    from netzoo_agent_core.interpretation.capability_check import implied_actions
+
+    task = "We want copy-number segments for each tumor."
+    plain, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", kinds=("tf",)))
+    assert implied_actions(plain.results()[0]) == []
+    three, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", layers=3))
+    assert implied_actions(three.results()[0]) == []  # too many layers: the DRAGON family does not fit
+    reasoned, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", layers=2,
+                                                    not_by=("dragon.no_more_layers",)))
+    assert implied_actions(reasoned.results()[0]) == []  # a verdict with a reason is not blank
