@@ -414,7 +414,7 @@ def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monk
     asked = []
     monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
     monkeypatch.setattr(router_invocation, "request_second_opinion",
-                        lambda context, state, pairs, usage, warnings: (asked.append(pairs) or [True] * len(pairs),
+                        lambda context, state, pairs, usage, warnings, situation=(): (asked.append(pairs) or [True] * len(pairs),
                                                                         usage, warnings))
     exact = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
                          capability_match_status="exact", matched_actions=["run_dragon"])
@@ -538,7 +538,7 @@ def test_a_cited_near_miss_asks_its_workflow_even_when_routing_failed(monkeypatc
     asked = []
     monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
     monkeypatch.setattr(router_invocation, "request_second_opinion",
-                        lambda context, state, pairs, usage, warnings: (asked.append(pairs) or [True] * len(pairs),
+                        lambda context, state, pairs, usage, warnings, situation=(): (asked.append(pairs) or [True] * len(pairs),
                                                                         usage, warnings))
     failed = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.0, reason="r",
                           capability_match_status="fallback")
