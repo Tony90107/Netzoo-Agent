@@ -88,8 +88,7 @@ def _own_llm(model: str, max_tokens: int):
 _SECOND_OPINION = (
     "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and the "
     "results one registered workflow produces. Answer true only if those results, together, give what the words "
-    "ask for, as they ask it -- not a related result, and not only an ingredient of it. The user's own data and "
-    "situation are listed first; read the request words in that light."
+    "ask for, as they ask it -- not a related result, and not only an ingredient of it."
 )
 
 
@@ -105,8 +104,7 @@ def _check_model(context):
     return model, llm
 
 
-def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings,
-                           situation: tuple[str, ...] = ()):
+def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings):
     """Log 390: yes/no per (request words, workflow, its results), or None when nothing answered.
 
     Asked only when a full gap would clear an exact routing match: on heldouts 1-3 every false
@@ -118,10 +116,7 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     schema = second_opinion_model(len(pairs))
     listed = "\n".join(f'{index}. Request words: "{quote}" | {workflow} produces: {result}'
                         for index, (quote, workflow, result) in enumerate(pairs, 1))
-    # Log 396: without the user's own data beside them, "for a rare tissue" read as a demand on the
-    # method and "infer a network" was refused 2/2; with it, 2/2 accepted and two near misses kept.
-    shown = f"The user has: {'; '.join(situation)}.\n{listed}" if situation else listed
-    messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=shown)]
+    messages = [SystemMessage(content=_SECOND_OPINION), HumanMessage(content=listed)]
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
