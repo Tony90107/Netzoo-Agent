@@ -37,7 +37,7 @@ def _proposal(*sentences):
             "has": [quote for quote, kind, _, _ in items if kind == "context"],
             "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
             "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by),
-                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False}
+                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}
                      for quote, kind, delivered, not_by in items if kind == "result"],
         }
     return proposal_model(len(sentences)).model_validate(
@@ -120,11 +120,11 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
     proposal = proposal_model(2).model_validate({
         "s1": {"role": "background", "has": [], "about_methods": [],
                "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
-                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False}]},
+                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
         "s2": {"role": "asks", "has": [], "about_methods": [],
                "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
                          "delivered_by": ["panda.tf_gene_network"], "not_by": [], "scale": "unstated",
-                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False}]},
+                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
     })
     check, _ = build_capability_check(SPLICING, proposal)
     assert [item.kind for item in check.requirements] == ["result", "context"]
@@ -133,7 +133,7 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
         "role": "background", "has": [], "about_methods": [],
         "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
                   "delivered_by": [], "not_by": ["panda.no_motif_discovery"], "scale": "unstated",
-                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False}]}})
+                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]}})
     assert build_capability_check(SPLICING, matched)[0].results()[0].status == "not_available"
 
 
@@ -299,10 +299,10 @@ def test_full_gap_card_lists_each_unavailable_result_and_offers_no_workflow():
 
 
 def _ask(task, quote, delivered=(), not_by=(), scale="unstated", layers=0, unit="not_stated", kinds=(),
-         sign=False):
+         sign=False, network="none"):
     return proposal_model(1).model_validate({"s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
         {"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by), "scale": scale,
-         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign}]}})
+         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign, "input_network": network}]}})
 
 
 SIGNS = "With liver expression and priors, we want to know whether each TF activates or represses its targets."
@@ -436,7 +436,7 @@ def test_a_background_sentence_without_quotes_counts_as_read():
         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
             {"quote": "find which splicing factors control inclusion of each alternative exon", "delivered_by": [],
              "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated",
-             "regulator_kinds": [], "needs_sign": False}]},
+             "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
     })
     check, _ = build_capability_check(SPLICING, proposal)
     assert check.unchecked == [] and check.full_gap
@@ -460,7 +460,7 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
             {"quote": quote, "delivered_by": [], "not_by": ["condor.no_two_network_comparison"],
              "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [],
-             "needs_sign": False}]}}))
+             "needs_sign": False, "input_network": "none"}]}}))
     assert check.full_gap
     state = _state(check.model_copy(update={"cleared": ["run_condor"]}))
     state["messages"] = [HumanMessage(content=task)]
@@ -475,3 +475,57 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
                                                             "reply_kind": kind})["messages"][-1].content
     assert "ALPACA" not in without  # the ALPACA note is tied to CONDOR being a candidate
     assert "so none is offered as the way to get it." in without
+
+
+def test_a_gene_gene_network_rules_condor_out():
+    """Log 394 (Log 390 LN8): communities of a co-expression network went to CONDOR."""
+    task = "We built a gene-gene co-expression network. We want to partition it into communities of genes."
+    quote = "partition it into communities of genes"
+    check, _ = build_capability_check(task, _ask(task, quote, ("condor.communities",), network="gene_gene"))
+    assert check.results()[0].status == "not_available"
+    tf, _ = build_capability_check(task, _ask(task, quote, ("condor.communities",), network="regulator_gene"))
+    assert tf.results()[0].status == "available"
+    from netzoo_agent_core.interpretation.capability_check import second_opinion_pairs
+    assert second_opinion_pairs(check, ["run_condor"]) == []  # nothing left for the second opinion to credit
+
+
+def test_the_check_has_its_own_allowance_but_never_reopens_a_spent_turn(monkeypatch):
+    """Log 394: heldout3 KU9 x2 -- routing spent 26.6k of 30k and the budget skipped the check."""
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import LLMUsage
+    from netzoo_agent_core.graph import capability_check_call as call
+
+    budgets = []
+
+    def fake_preflight(context, state, **kwargs):
+        budgets.append(context.task_token_budget)
+        return SimpleNamespace(status="ok"), []
+
+    class Undecodable:
+        def with_structured_output(self, schema, **kwargs):
+            return self
+
+        def invoke(self, messages):
+            raise ValueError("Semantic structured output could not be decoded")
+
+    monkeypatch.delenv("OPENROUTER_CAPABILITY_MODEL", raising=False)
+    monkeypatch.setattr(call, "preflight_budget", fake_preflight)
+    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
+    context = SimpleNamespace(study_purpose_llm=Undecodable(), semantic_model_name="openai/gpt-4o-mini",
+                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
+    proposal, usage, _, status = call.request_capability_check(context, {}, SPLICING, LLMUsage(budget_tokens=30000), [])
+    assert proposal is None and status == "failed"
+    assert budgets == [38000, 38000]  # the allowance, and one retry after an undecodable reply
+    spent = LLMUsage(budget_tokens=30000)
+    spent.budget_exhausted = True
+    assert call.request_capability_check(context, {}, SPLICING, spent, [])[3] == "blocked"
+
+
+def test_a_turn_the_check_could_not_read_says_so():
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+
+    result = {"messages": [AIMessage(content="PANDA builds the network.")], "reply_kind": "verified_guidance"}
+    updated = with_capability_check_reply(result, _state(CapabilityCheck(unavailable=True)), lambda text, kind: {
+        "messages": [AIMessage(content=text)], "reply_kind": kind})
+    assert updated["messages"][-1].content.startswith("This turn could not be checked")

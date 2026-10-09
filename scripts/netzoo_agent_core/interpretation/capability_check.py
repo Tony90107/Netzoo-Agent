@@ -88,15 +88,15 @@ def _span(task: str, quote: str) -> tuple[int, int] | None:
     return _locate(task, quote) or _locate_tokens(task, quote)
 
 
-_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign")
+_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network")
 
 
 def _fitting(keys: list[str], item) -> list[str]:
     """The delivered entries that fit the ask's typed attributes (Logs 388-389).
 
-    Data unit, regulator kinds, sign and layers can rule every entry out -- no
-    registered workflow takes single cells, models lncRNA regulators, signs PANDA's
-    edges or joins three omics layers. A scale only narrows the list and never
+    Data unit, regulator kinds, sign, layers and input network can rule every entry
+    out -- no registered workflow takes single cells, models lncRNA regulators, signs
+    PANDA's edges, joins three omics layers, or partitions a gene-gene network. A scale only narrows the list and never
     empties it, because a misread scale must not turn a deliverable result into a gap.
     """
     known = sheet_entries()
@@ -106,7 +106,8 @@ def _fitting(keys: list[str], item) -> list[str]:
     keys = [k for k in keys
             if (known[k].layers is None or item.omics_layers <= known[k].layers)
             and (known[k].regulators is None or wanted <= known[k].regulators)
-            and not (item.needs_sign and known[k].signed is False)]
+            and not (item.needs_sign and known[k].signed is False)
+            and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
     want = {"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(item.scale)
     narrowed = [k for k in keys if want is None or want in known[k].granularity]
     return narrowed or keys
@@ -248,6 +249,12 @@ def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
     ])
 
 
+UNAVAILABLE_NOTE = (
+    "This turn could not be checked against what the registered workflows produce, so the methods "
+    "below have not been confirmed to give what you asked for."
+)
+
+
 def full_gap_result(state, reply) -> dict | None:
     """The whole reply when nothing registered produces what was asked, else None."""
     from ..contracts import TaskDecision
@@ -276,7 +283,7 @@ def with_capability_check_reply(result: dict, state, reply) -> dict:
     check = decision.capability_check
     if check is None or check.full_gap or result.get("reply_kind") in (None, "execution"):
         return result
-    paragraph = understanding_paragraph(check)
+    paragraph = UNAVAILABLE_NOTE if check.unavailable else understanding_paragraph(check)
     if paragraph is None:
         return result
     text = str(result["messages"][-1].content)

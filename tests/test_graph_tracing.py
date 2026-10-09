@@ -1142,7 +1142,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
     )
     events = store.read_events(run_id)
 
-    assert router.calls == 6  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+    assert router.calls == 7  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check; Log 394: + its one retry
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["matched_actions"] == []
     assert result["decision"]["hypothesis_actions"] == ["run_lioness_puma"]
@@ -1156,6 +1156,7 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
         "semantic_reviewer",
         "intent_router",
         "capability_check",  # Log 387: asked right after routing
+        "capability_check",  # Log 394: retried once after an undecodable reply
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
     ]
@@ -1216,7 +1217,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
     events = store.read_events(run_id)
 
     # Log 265 (user decision A): PANDA-family guidance offers the unreliable_prior concern.
-    assert router.calls == 7  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check
+    assert router.calls == 8  # Log 355: + the study-purpose call; Log 380: + data facts; Log 387: + capability check; Log 394: + its one retry
     assert result["decision"]["action"] == "no_tool"
     assert result["decision"]["capability_match_status"] == "exact"
     assert result["decision"]["matched_actions"] == ["run_lioness_puma"]
@@ -1235,6 +1236,7 @@ def test_graph_recovers_explicit_typed_outcome_with_semantic_interpreter(
         "intent_router",
         "request_concerns",
         "capability_check",  # Log 387: asked right after routing
+        "capability_check",  # Log 394: retried once after an undecodable reply
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
     ]

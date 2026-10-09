@@ -66,6 +66,11 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
             "The kinds of regulators the asked-for result must contain; empty when it is not about regulators."))),
         needs_sign=(bool, Field(description=(
             "Whether the asked-for result must say if a regulator activates or represses its targets."))),
+        # Log 394 (Log 390 LN8: communities of a gene-gene co-expression network went to CONDOR).
+        input_network=(Literal["regulator_gene", "gene_gene", "other", "none"], Field(description=(
+            "The kind of existing network the asked-for result is computed from: regulator_gene (regulators "
+            "linked to target genes), gene_gene (e.g. co-expression), other (e.g. protein interactions), "
+            "or none when it is not computed from an existing network."))),
     )
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
@@ -139,6 +144,8 @@ class CapabilityCheck(BaseModel):
     """Request sentences no verified requirement covers (the coverage check)."""
     full_gap: bool = False
     """Every result is not available and every sentence was read: no workflow is the answer."""
+    unavailable: bool = False
+    """Log 394: the check could not run this turn (its budget spent, or the model failed twice)."""
     cleared: list[str] = Field(default_factory=list)
     """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
     of them (ALPACA beside CONDOR) is still said."""

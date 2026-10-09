@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import is_dataclass, replace
+from types import SimpleNamespace
 from functools import lru_cache
 
 from pydantic import BaseModel
@@ -152,60 +154,81 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     return answers, usage, budget_warnings
 
 
+# Log 394: the safety check gets its own allowance on top of the turn's token budget, because
+# routing-heavy turns (retries, sibling repairs, a review) spent 26.6k of 30k tokens before it and
+# the budget skipped exactly the check (heldout3 KU9 x2: both answered with a workflow menu).
+CHECK_EXTRA_TOKENS = 8_000
+
+
 def request_capability_check(
     context: _GraphContext,
     state: AgentState,
     user_task: str,
     usage: LLMUsage,
     budget_warnings: list[str],
-) -> tuple[BaseModel | None, LLMUsage, list[str]]:
-    """The model's proposal for the request, or None when nothing read it.
+) -> tuple[BaseModel | None, LLMUsage, list[str], str]:
+    """The model's proposal for the request, its usage, and why it is missing.
 
-    Called right after routing, before the advisory reads (Log 387 dev round 3: a
-    routing-heavy turn spent 25k of its 30k tokens and the check was the call the
-    budget blocked). Verification waits for the study-purpose claims
-    (`interpretation.capability_check.build_capability_check`).
+    The status is "ok", "no_model" (nothing is configured to read it: tests, the harness),
+    "blocked" (even the extra allowance is spent) or "failed". Called right after routing,
+    before the advisory reads; verification waits for the study-purpose claims
+    (`interpretation.capability_check.build_capability_check`). A reply the model sent
+    that could not be decoded or validated is asked once more (TEST_PROMPTS r9 test9);
+    a timeout is not, since the free model already took a minute.
     """
     model, llm = _check_model(context)
     if llm is None:
-        return None, usage, budget_warnings
+        return None, usage, budget_warnings, "no_model"
+    if usage.budget_exhausted:
+        # The allowance tops up a turn whose routing left too little; it never reopens a spent turn.
+        return None, usage, budget_warnings, "blocked"
     messages, count = build_capability_check_messages(user_task)
     schema = proposal_model(count)
     input_text = _serialized_structured_input(messages, schema)
-    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
-    budget, budget_warnings = preflight_budget(
-        context, call_state, role="capability_check",
-        model=model, input_text=input_text,
-        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
-    )
-    if budget.status == "blocked":
-        usage.budget_exhausted = True
-        return None, usage, budget_warnings
-    started_ns = time.monotonic_ns()
-    raw = payload = proposal = None
-    output_text, call_status = "", "failed"
-    try:
-        adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
-        payload, raw = semantic_payload(adapter.invoke(messages))
-        if isinstance(payload, BaseModel):
-            payload = payload.model_dump()
-        proposal = schema.model_validate(payload)
-        output_text = proposal.model_dump_json()
-        call_status = "success"
-    except BaseException as error:
-        if _is_fatal_exception(error):
-            raise
-        record_event(context, state, "routing.capability_check_failed", "classify", {
-            "error_type": type(error).__name__,
-            "error_message": str(error)[:2000],
-            "validation_issues": _validation_issue_types(error),
-            "provider_payload": payload,
-        })
-    usage = append_llm_usage(
-        usage, role="capability_check", model=model,
-        response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=context.task_token_budget,
-        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
-        status=call_status, price_catalog=context.price_catalog,
-    )
-    return proposal, usage, budget_warnings
+    extra = int(os.environ.get("OPENROUTER_CAPABILITY_EXTRA_TOKENS", CHECK_EXTRA_TOKENS))
+    budget = context.task_token_budget + extra
+    budget_context = (replace(context, task_token_budget=budget) if is_dataclass(context)
+                      else SimpleNamespace(**{**vars(context), "task_token_budget": budget}))
+    for attempt in (1, 2):
+        call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+        budget, budget_warnings = preflight_budget(
+            budget_context, call_state, role="capability_check",
+            model=model, input_text=input_text,
+            reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        )
+        if budget.status == "blocked":
+            return None, usage, budget_warnings, "blocked"
+        started_ns = time.monotonic_ns()
+        raw = payload = proposal = None
+        output_text, call_status, retry = "", "failed", False
+        try:
+            adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
+            payload, raw = semantic_payload(adapter.invoke(messages))
+            if isinstance(payload, BaseModel):
+                payload = payload.model_dump()
+            proposal = schema.model_validate(payload)
+            output_text = proposal.model_dump_json()
+            call_status = "success"
+        except BaseException as error:
+            if _is_fatal_exception(error):
+                raise
+            retry = isinstance(error, ValueError)  # undecodable or invalid; pydantic errors are ValueErrors
+            record_event(context, state, "routing.capability_check_failed", "classify", {
+                "attempt": attempt,
+                "error_type": type(error).__name__,
+                "error_message": str(error)[:2000],
+                "validation_issues": _validation_issue_types(error),
+                "provider_payload": payload,
+            })
+        usage = append_llm_usage(
+            usage, role="capability_check", model=model,
+            response=raw, input_text=input_text, output_text=output_text,
+            budget_tokens=context.task_token_budget,
+            duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+            status=call_status, price_catalog=context.price_catalog,
+        )
+        if proposal is not None:
+            return proposal, usage, budget_warnings, "ok"
+        if not retry:
+            break
+    return None, usage, budget_warnings, "failed"

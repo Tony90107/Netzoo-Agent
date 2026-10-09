@@ -33,6 +33,7 @@ from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import request_capability_check, request_second_opinion
 from ..capability_sheet import entry
+from ..contracts.capability_check import CapabilityCheck
 from ..interpretation.capability_check import apply_second_opinion, build_capability_check, second_opinion_pairs
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
@@ -147,9 +148,9 @@ def invoke_router(
     if follow_up or result.reason_code == "string_download_continuation":
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
-        proposal = None
+        proposal, check_status = None, "no_model"
         if result.decision.action == "no_tool":  # Log 387: the safety check is asked before the advisory reads
-            proposal, usage, warnings = request_capability_check(
+            proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
             result = replace(result, usage=usage, budget_warnings=warnings)
         purpose, usage, warnings = invoke_study_purpose(
@@ -159,6 +160,10 @@ def invoke_router(
                          routing_state={**result.routing_state, "study_purpose": purpose})
         result = _with_applicability(context, state, user_task, result)
         result = _with_capability_check(context, state, user_task, result, proposal)
+        if check_status in ("blocked", "failed") and result.decision.action == "no_tool":
+            # Log 394: a turn the check could not read says so, rather than answering as if it had.
+            result = replace(result, decision=result.decision.model_copy(
+                update={"capability_check": CapabilityCheck(unavailable=True)}))
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
