@@ -29,8 +29,11 @@ _REPLY_KINDS = frozenset({
 
 def _listed(decision) -> set[str]:
     advice = decision.advisory_recommendation
+    check = decision.capability_check
     return {*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions,
-            *([advice.action] if advice is not None else [])}
+            *([advice.action] if advice is not None else []),
+            # Log 392: candidates a full gap cleared still tie their notes (ALPACA beside CONDOR).
+            *(check.cleared if check is not None else [])}
 
 
 def outside_steps(decision, task: str) -> list[OutsideStep]:

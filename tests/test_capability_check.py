@@ -427,3 +427,48 @@ def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monk
     cleared = router_invocation._with_capability_check(
         None, {}, DRAGON_ASK, _invocation(ambiguous), _ask(DRAGON_ASK, quote, layers=2)).decision
     assert not asked and cleared.capability_check.full_gap and cleared.hypothesis_actions == []
+
+
+def test_a_background_sentence_without_quotes_counts_as_read():
+    """Log 392 (B): TEST_PROMPTS r9 listed background sentences as "Not checked"."""
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            {"quote": "find which splicing factors control inclusion of each alternative exon", "delivered_by": [],
+             "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated",
+             "regulator_kinds": [], "needs_sign": False}]},
+    })
+    check, _ = build_capability_check(SPLICING, proposal)
+    assert check.unchecked == [] and check.full_gap
+    asks_without_quote = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": []},
+        "s2": proposal.s2.model_dump(),
+    })
+    assert build_capability_check(SPLICING, asks_without_quote)[0].unchecked  # an ask sentence still must be quoted
+
+
+def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
+    """Log 392 (A): TEST_PROMPTS r9 tests 4 and 8 lost SCORPION's and ALPACA's notes."""
+    from netzoo_agent_core.contracts import HumanMessage
+    from netzoo_agent_core.interpretation.capability_check import full_gap_result
+
+    task = ("We built networks for controls and patients. How can we directly quantify the differential modular "
+            "structure between the two networks?")
+    quote = "directly quantify the differential modular structure between the two networks"
+    check, _ = build_capability_check(task, proposal_model(2).model_validate({
+        "s1": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            {"quote": quote, "delivered_by": [], "not_by": ["condor.no_two_network_comparison"],
+             "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [],
+             "needs_sign": False}]}}))
+    assert check.full_gap
+    state = _state(check.model_copy(update={"cleared": ["run_condor"]}))
+    state["messages"] = [HumanMessage(content=task)]
+    text = full_gap_result(state, lambda content, kind: {"messages": [AIMessage(content=content)],
+                                                         "reply_kind": kind})["messages"][-1].content
+    assert "ALPACA" in text and text.rstrip().endswith("No files were inspected and no analysis ran.")
+    state = _state(check)
+    state["messages"] = [HumanMessage(content=task)]
+    without = full_gap_result(state, lambda content, kind: {"messages": [AIMessage(content=content)],
+                                                            "reply_kind": kind})["messages"][-1].content
+    assert "ALPACA" not in without  # the ALPACA note is tied to CONDOR being a candidate
