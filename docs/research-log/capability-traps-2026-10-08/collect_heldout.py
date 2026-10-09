@@ -14,7 +14,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 WORKTREES = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees")
-ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / "netzoo-cc-cand"}
+# Log 402: CAND_WORKTREE names another candidate worktree (default netzoo-cc-cand).
+ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / os.environ.get("CAND_WORKTREE", "netzoo-cc-cand")}
 ITEMS = {item["id"]: item for item in json.loads((HERE / os.environ.get("HELDOUT", "heldout1.json")).read_text())["items"]}
 KIND = {"U": "UNSUPPORTED_CORE", "N": "UNSUPPORTED_CORE", "P": "HALF", "C": "SUPPORTED"}
 

@@ -16,7 +16,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 WORKTREES = Path("/Users/chenzhonghan/Documents/LLM AGENT/.worktrees")
-ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / "netzoo-cc-cand"}
+# Log 402: CAND_WORKTREE names another candidate worktree (default netzoo-cc-cand).
+ARMS = {"base": WORKTREES / "netzoo-trap-base", "cand": WORKTREES / os.environ.get("CAND_WORKTREE", "netzoo-cc-cand")}
 # Log 389: CAND_CAPABILITY_MODEL sets the candidate arm's OPENROUTER_CAPABILITY_MODEL only.
 ENV = {"base": dict(os.environ), "cand": dict(os.environ)}
 if os.environ.get("CAND_CAPABILITY_MODEL"):
