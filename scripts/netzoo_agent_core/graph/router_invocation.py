@@ -246,13 +246,22 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
     usage, warnings = result.usage, result.budget_warnings
-    if check.full_gap and decision.capability_match_status == "exact" and decision.matched_actions:
+    exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
+    cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
+    asked = list(dict.fromkeys([*exact, *cited]))
+    if check.full_gap and asked:
         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
-        pairs = second_opinion_pairs(check, list(decision.matched_actions))
+        # Log 396: also about every workflow whose near miss the check cited, so a gap stands
+        # only after the workflows it weighed were asked as a whole (TEST_PROMPTS r12 test9:
+        # routing failed and "infer a network" was refused over OTTER's convexity near miss).
+        pairs = second_opinion_pairs(check, asked)
         shown = [(check.requirements[index].quote, entry(keys[0]).workflow, " ".join(entry(k).text for k in keys))
                  for index, _action, keys in pairs]
-        answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings)
+        answers = None
+        if pairs:  # typed attributes may leave nothing to ask
+            situation = tuple(item.quote for item in check.requirements if item.kind == "context")
+            answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             check = apply_second_opinion(check, pairs, answers)
         record_event(context, state, "routing.capability_second_opinion", "classify", {
