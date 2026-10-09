@@ -19,6 +19,15 @@ ITEMS = {item["id"]: item for item in json.loads((HERE / os.environ.get("HELDOUT
 KIND = {"U": "UNSUPPORTED_CORE", "N": "UNSUPPORTED_CORE", "P": "HALF", "C": "SUPPORTED"}
 
 
+def _redirects(root, run_id):
+    """Log 399: the routing.capability_redirected events of the session's trace."""
+    path = root / ".netzoo" / "traces" / str(run_id) / "events.jsonl"
+    if not run_id or not path.exists():
+        return []
+    events = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    return [event.get("payload") for event in events if event.get("event_type") == "routing.capability_redirected"]
+
+
 def main(tag, repeats):
     rows, blocks = {}, []
     for arm, root in ARMS.items():
@@ -45,6 +54,9 @@ def main(tag, repeats):
                     "budget_exhausted": (session.get("token_usage") or {}).get("budget_exhausted"),
                     "model_written": any(c.get("role") == "response" for c in calls),
                     "errors": [c.get("exception") for c in calls if c.get("exception")],
+                    "check_ok": any(c.get("role") == "capability_check" and c.get("status") == "success" for c in calls),
+                    "check_models": [c.get("model") for c in calls if c.get("role") == "capability_check"],
+                    "redirected": _redirects(root, session.get("run_id")),
                     "full_gap": check.get("full_gap"),
                     "requirements": check.get("requirements"), "unchecked": check.get("unchecked"),
                     "cost": sum((c.get("cost_micro_usd") or 0) for c in calls) / 1e6,
