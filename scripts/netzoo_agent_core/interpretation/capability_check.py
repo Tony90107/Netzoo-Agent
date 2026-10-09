@@ -27,6 +27,7 @@ from ..routing.study_purpose_verify import _locate
 __all__ = [
     "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "apply_second_opinion",
+    "implied_actions",
 ]
 
 _SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -163,8 +164,9 @@ def build_capability_check(
                                  or (known[k].kind == "registry_wide" and known[k].claim in verified_claims))))
         status = "partial" if delivered and not all(readings) else _status(delivered)
         attrs = {key: getattr(items[0], key) for key in _TYPED}
+        blank = not any(item.delivered_by or item.not_by for item in items)
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
-                                               delivered_by=delivered, not_by=not_by, attrs=attrs))
+                                               delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank))
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model
@@ -300,6 +302,32 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
             rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows
+
+
+def implied_actions(requirement: CheckedRequirement) -> list[str]:
+    """The workflows a blank verdict's own typed attributes point to (Log 397).
+
+    Only attributes that single out a few workflows count: two or more omics layers
+    (the DRAGON family), a sign (GIRAFFE), miRNA regulators (the PUMA family) and a
+    regulator-gene input network (CONDOR). TF regulators or a scale point to most of
+    the registry and imply nothing, so a blank verdict on, say, copy-number calling has
+    no workflow to ask and its gap stands. heldout6 NC6: a metabolite-lipid network
+    came back blank with routing failed, omics_layers=2, and was gapped 3/3.
+    """
+    from types import SimpleNamespace
+
+    attrs = SimpleNamespace(**requirement.attrs) if requirement.attrs else None
+    if attrs is None or requirement.status != "not_available" or not requirement.blank:
+        return []
+    known = sheet_entries()
+    def picks(item) -> bool:
+        return ((attrs.omics_layers >= 2 and item.layers is not None)
+                or (attrs.needs_sign and item.signed is True)
+                or ("mirna" in attrs.regulator_kinds and item.regulators is not None and "mirna" in item.regulators)
+                or (getattr(attrs, "input_network", "none") == "regulator_gene"
+                    and item.input_network == "regulator_gene"))
+    keys = [key for key, item in known.items() if item.kind == "produces" and picks(item)]
+    return list(dict.fromkeys(known[key].action for key in _fitting(keys, attrs)))
 
 
 def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tuple[int, str, list[str]]]:

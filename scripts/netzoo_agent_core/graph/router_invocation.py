@@ -34,7 +34,9 @@ from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import request_capability_check, request_second_opinion
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
-from ..interpretation.capability_check import apply_second_opinion, build_capability_check, second_opinion_pairs
+from ..interpretation.capability_check import (
+    apply_second_opinion, build_capability_check, implied_actions, second_opinion_pairs,
+)
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
@@ -248,13 +250,15 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     usage, warnings = result.usage, result.budget_warnings
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
     cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
-    asked = list(dict.fromkeys([*exact, *cited]))
+    implied = [action for item in check.results() for action in implied_actions(item)]
+    asked = list(dict.fromkeys([*exact, *cited, *implied]))
     if check.full_gap and asked:
         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
         # Log 396: also about every workflow whose near miss the check cited, so a gap stands
         # only after the workflows it weighed were asked as a whole (TEST_PROMPTS r12 test9:
         # routing failed and "infer a network" was refused over OTTER's convexity near miss).
+        # Log 397: and about the workflows a blank verdict's own typed attributes point to.
         pairs = second_opinion_pairs(check, asked)
         shown = [(check.requirements[index].quote, entry(keys[0]).workflow, " ".join(entry(k).text for k in keys))
                  for index, _action, keys in pairs]
