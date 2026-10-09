@@ -27,7 +27,7 @@ from ..routing.study_purpose_verify import _locate
 __all__ = [
     "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "apply_second_opinion",
-    "implied_actions", "redirected_actions",
+    "implied_actions",
 ]
 
 _SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -92,42 +92,26 @@ def _span(task: str, quote: str) -> tuple[int, int] | None:
 _TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network")
 
 
-def _hard_fit(keys: list[str], item) -> list[str]:
-    """The entries the ask's typed attributes leave, scale aside (Logs 388-389).
+def _fitting(keys: list[str], item) -> list[str]:
+    """The delivered entries that fit the ask's typed attributes (Logs 388-389).
 
     Data unit, regulator kinds, sign, layers and input network can rule every entry
     out -- no registered workflow takes single cells, models lncRNA regulators, signs
-    PANDA's edges, joins three omics layers, or partitions a gene-gene network.
+    PANDA's edges, joins three omics layers, or partitions a gene-gene network. A scale only narrows the list and never
+    empties it, because a misread scale must not turn a deliverable result into a gap.
     """
     known = sheet_entries()
     if item.data_unit != "not_stated" and item.data_unit not in data_units():
         return []
     wanted = set(item.regulator_kinds)
-    return [k for k in keys
+    keys = [k for k in keys
             if (known[k].layers is None or item.omics_layers <= known[k].layers)
             and (known[k].regulators is None or wanted <= known[k].regulators)
             and not (item.needs_sign and known[k].signed is False)
             and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
-
-
-def _fitting(keys: list[str], item) -> list[str]:
-    """The delivered entries that fit the ask's typed attributes; a scale only narrows.
-
-    A scale never empties the list, because a misread scale must not turn a
-    deliverable result into a gap.
-    """
-    known = sheet_entries()
-    keys = _hard_fit(keys, item)
     want = {"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(item.scale)
     narrowed = [k for k in keys if want is None or want in known[k].granularity]
     return narrowed or keys
-
-
-def _distinctive(item) -> bool:
-    """Typed attributes that single out a few workflows or none (Log 399)."""
-    return (item.omics_layers >= 2 or item.needs_sign or item.data_unit == "single_cells"
-            or bool({"mirna", "lncrna"} & set(item.regulator_kinds))
-            or getattr(item, "input_network", "none") in ("regulator_gene", "gene_gene"))
 
 
 def build_capability_check(
@@ -155,20 +139,10 @@ def build_capability_check(
         return span
 
     for sentence in proposal_sentences(proposal):
-        for quote in sentence.has:
-            if (span := place(quote)) is not None:
-                other.setdefault(span, "context")
-        for item in sentence.about_methods:
-            # Log 399: a methods question that names what the method must have -- an attribute that
-            # singles out a few workflows (miRNA regulators, two omics layers) or a cited near miss --
-            # is checked like an ask. A produces entry alone does not make it one (TEST_PROMPTS dev
-            # run, test7: "How should this upstream integration be set up?" was credited to PANDA).
-            if (span := place(item.quote)) is None:
-                continue
-            if item.not_by or _distinctive(item):
-                asks.setdefault(span, []).append(item)
-            else:
-                other.setdefault(span, "about_methods")
+        for kind, quotes in (("context", sentence.has), ("about_methods", sentence.about_methods)):
+            for quote in quotes:
+                if (span := place(quote)) is not None:
+                    other.setdefault(span, kind)
         for item in sentence.asks:
             if (span := place(item.quote)) is None:
                 continue
@@ -346,58 +320,14 @@ def implied_actions(requirement: CheckedRequirement) -> list[str]:
     if attrs is None or requirement.status != "not_available" or not requirement.blank:
         return []
     known = sheet_entries()
-    return list(dict.fromkeys(known[key].action for key in _fitting(_pointed(attrs), attrs)))
-
-
-def _pointed(attrs) -> list[str]:
-    """The produces entries a few distinctive attributes point to (Log 397)."""
     def picks(item) -> bool:
         return ((attrs.omics_layers >= 2 and item.layers is not None)
                 or (attrs.needs_sign and item.signed is True)
                 or ("mirna" in attrs.regulator_kinds and item.regulators is not None and "mirna" in item.regulators)
                 or (getattr(attrs, "input_network", "none") == "regulator_gene"
                     and item.input_network == "regulator_gene"))
-    return [key for key, item in sheet_entries().items() if item.kind == "produces" and picks(item)]
-
-
-def redirected_actions(check: CapabilityCheck, offered: list[str]) -> list[str]:
-    """The workflows to offer instead when the check rules out every one routing offered (Log 399).
-
-    TEST_PROMPTS r15 test6: routing read "incorporates miRNA target predictions" as a TF
-    network with TF activities and matched GIRAFFE exactly; the check's own reading needs
-    miRNA regulators, which no GIRAFFE result has. Only distinctive attributes rule a
-    workflow out (`_distinctive`), and only when every offered workflow fails one, so a
-    reading that fits any offer leaves routing alone. The workflows offered instead are
-    the ones the check credited that meet every such attribute, else the ones those
-    attributes point to; a stated scale narrows them. Empty when nothing is ruled out or
-    nothing meets them -- whether that is a gap stays the gap logic's call.
-    """
-    from types import SimpleNamespace
-
-    demands = [SimpleNamespace(**item.attrs) for item in check.results() if item.attrs]
-    demands = [attrs for attrs in demands if _distinctive(attrs)]
-    if not offered or not demands:
-        return []
-    known = sheet_entries()
-
-    def fitting(action: str, attrs) -> list[str]:
-        return _hard_fit([k for k, item in known.items() if item.kind == "produces" and item.action == action], attrs)
-
-    def meets(action: str) -> bool:
-        return all(fitting(action, attrs) for attrs in demands)
-
-    if any(meets(action) for action in offered):
-        return []
-    credited = [known[k].action for item in check.results() for k in item.delivered_by if k in known]
-    pointed = [known[k].action for attrs in demands for k in _pointed(attrs)]
-    actions = ([a for a in dict.fromkeys(credited) if meets(a)]
-               or [a for a in dict.fromkeys(pointed) if meets(a)])
-    wants = {{"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(attrs.scale) for attrs in demands} - {None}
-    if len(wants) == 1:
-        want = wants.pop()
-        narrowed = [a for a in actions if any(want in known[k].granularity for k in fitting(a, demands[0]))]
-        actions = narrowed or actions
-    return actions
+    keys = [key for key, item in known.items() if item.kind == "produces" and picks(item)]
+    return list(dict.fromkeys(known[key].action for key in _fitting(keys, attrs)))
 
 
 def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tuple[int, str, list[str]]]:
@@ -440,32 +370,3 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
-
-
-def redirected_decision(decision, actions: list[str]):
-    """The guidance decision offering `actions` in place of routing's ruled-out ones (Log 399).
-
-    Each offered workflow's outcome is its registered one (`_confirmed_outcome`, as for a
-    confirmed choice), so the reply describes what the workflow gives rather than routing's
-    misreading. One workflow is an exact match, several a choice among them.
-    """
-    from ..contracts.outcomes import OutcomeHypothesis
-    from ..routing.outcome_matching import guidance_actions_for
-    from .repair import _confirmed_outcome
-
-    actions = list(actions)[:5]  # candidate_actions holds six, "no_tool" included
-    outcomes = [_confirmed_outcome("", action) for action in actions]
-    single = len(actions) == 1
-    return decision.model_copy(update={
-        "requested_outcome": outcomes[0] if single else outcomes[0].model_copy(
-            update={"granularity": "unknown", "unresolved_dimensions": ["granularity"]}),
-        "outcome_hypotheses": [OutcomeHypothesis(outcome=outcome, confidence=decision.confidence)
-                               for outcome in outcomes],
-        "capability_match_status": "exact" if single else "ambiguous",
-        "matched_actions": list(actions) if single else [],
-        "hypothesis_actions": list(actions),
-        "recommended_actions": guidance_actions_for(actions[0]) if single else [],
-        "candidate_actions": [*actions, "no_tool"],
-        "alternative_actions": [], "mismatch_dimensions": [], "advisory_recommendation": None,
-        "clarification_question": None, "applicability": [],
-    })

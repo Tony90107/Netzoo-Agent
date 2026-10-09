@@ -84,13 +84,8 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
             "methods_question: it only asks about the methods. mixed: more than one of these."))),
         has=(list[str], Field(description=(
             "Exact quotes of what the user has, did or must respect (data, samples, constraints)."))),
-        # Log 399 (TEST_PROMPTS r13/r15 test6): "Is there a method that incorporates miRNA target
-        # predictions ...?" was a bare methods quote, so nothing checked the GIRAFFE routing picked.
-        # A methods question now carries the result and attributes the asked-about method must give.
-        about_methods=(list[ask], Field(description=(
-            "Questions about the methods themselves: which to use, how one works, what it needs. Each carries "
-            "what the asked-about method must produce or handle, as an ask does; delivered_by and not_by are "
-            "empty when the question says nothing about that."))),
+        about_methods=(list[str], Field(description=(
+            "Exact quotes of questions about the methods themselves: which to use, how one works, what it needs."))),
         asks=(list[ask], Field(description=(
             "Each thing the user wants produced or answered about their data or biology, one item per thing."))),
     )

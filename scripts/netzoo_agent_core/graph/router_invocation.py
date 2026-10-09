@@ -35,8 +35,7 @@ from .capability_check_call import request_capability_check, request_second_opin
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
 from ..interpretation.capability_check import (
-    apply_second_opinion, build_capability_check, implied_actions, redirected_actions, redirected_decision,
-    second_opinion_pairs,
+    apply_second_opinion, build_capability_check, implied_actions, second_opinion_pairs,
 )
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
@@ -287,23 +286,10 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "routing.capability_full_gap", "classify", {
             "cleared": [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions],
         })
-    redirect = [] if check.full_gap else redirected_actions(
-        check, list(dict.fromkeys([*decision.matched_actions, *decision.hypothesis_actions])))
-    if redirect:
-        # Log 399: the check's own reading rules out every workflow routing offered (r15 test6:
-        # miRNA regulators against GIRAFFE), so the workflows that meet it are offered instead.
-        record_event(context, state, "routing.capability_redirected", "classify", {
-            "ruled_out": list(dict.fromkeys([*decision.matched_actions, *decision.hypothesis_actions])),
-            "offered": redirect,
-        })
-        decision = redirected_decision(decision, redirect)
     decision = decision.model_copy(update=update)
-    if redirect:
-        result = _with_applicability(context, state, user_task, replace(result, decision=decision))
-        decision = result.decision
     return replace(result, decision=decision,
                    routing_state={**result.routing_state, **outcome_routing_state(decision)}
-                   if check.full_gap or redirect else result.routing_state)
+                   if check.full_gap else result.routing_state)
 
 
 def _stated_artifacts(user_task: str, decision: TaskDecision) -> set[str]:
