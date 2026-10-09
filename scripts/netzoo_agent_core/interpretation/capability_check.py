@@ -166,8 +166,13 @@ def build_capability_check(
                                                delivered_by=delivered, not_by=not_by, attrs=attrs))
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
-    unchecked = [task[s:e].strip() for s, e in request_sentences(task)
-                 if not any(a < e and s < b for a, b in spans)]
+    # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model
+    # gave a background or methods-question role was read even when it quoted nothing
+    # (TEST_PROMPTS r9: such background sentences were listed as "Not checked").
+    read = {index for index, sentence in enumerate(proposal_sentences(proposal))
+            if sentence.role in ("background", "methods_question")}
+    unchecked = [task[s:e].strip() for index, (s, e) in enumerate(request_sentences(task))
+                 if index not in read and not any(a < e and s < b for a, b in spans)]
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap), rejected
@@ -238,8 +243,17 @@ def full_gap_result(state, reply) -> dict | None:
     """The whole reply when nothing registered produces what was asked, else None."""
     from ..contracts import TaskDecision
 
-    check = TaskDecision.model_validate(state["decision"]).capability_check
-    return reply(full_gap_reply(check), "capability_check_gap") if check is not None and check.full_gap else None
+    from ..llm import latest_user_task
+    from .outside_steps import with_outside_steps
+
+    decision = TaskDecision.model_validate(state["decision"])
+    check = decision.capability_check
+    if check is None or not check.full_gap:
+        return None
+    # Log 392 (A): the verified outside-step notes (Log 320: SCORPION's pseudo-bulk route,
+    # SPIDER, ALPACA) stay; TEST_PROMPTS r9 tests 4 and 8 lost them to the full gap.
+    text = with_outside_steps(full_gap_reply(check), decision, latest_user_task(state.get("messages") or []))
+    return reply(text, "capability_check_gap")
 
 
 def with_capability_check_reply(result: dict, state, reply) -> dict:

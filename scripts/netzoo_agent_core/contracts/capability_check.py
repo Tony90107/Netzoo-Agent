@@ -139,6 +139,9 @@ class CapabilityCheck(BaseModel):
     """Request sentences no verified requirement covers (the coverage check)."""
     full_gap: bool = False
     """Every result is not available and every sentence was read: no workflow is the answer."""
+    cleared: list[str] = Field(default_factory=list)
+    """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
+    of them (ALPACA beside CONDOR) is still said."""
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]

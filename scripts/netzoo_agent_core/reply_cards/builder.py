@@ -434,13 +434,15 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return _gap_card(decision, policy, task)
     if kind == "capability_check_gap" and decision.capability_check is not None:
         many = len(decision.capability_check.results()) > 1
-        return ReplyCard(
+        card = ReplyCard(
             kind="capability_gap",
-            headline=f"No registered workflow produces what you asked for, so none is offered.",
+            headline="No registered workflow produces what you asked for, so none is offered.",
             points=[clip(f'Understood: "{item.quote}"', 300) for item in decision.capability_check.results()][:4]
             if many else [],
             unavailable=_capability_rows(decision),
         )
+        # Log 392: the outside-step rows (SCORPION, SPIDER, ALPACA) stay on a full gap.
+        return _with_outside_steps(card, decision, task)
     if kind == "outcome_clarification":
         if decision.advisory_capability_gap is not None:
             return _method_gap_card(decision, policy, task)

@@ -255,6 +255,9 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             "full_gap": check.full_gap,
         })
     result = replace(result, usage=usage, budget_warnings=warnings)
+    if check.full_gap:
+        check = check.model_copy(update={"cleared": list(dict.fromkeys(
+            [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]))})
     update: dict = {"capability_check": check}
     if check.full_gap:
         update.update({

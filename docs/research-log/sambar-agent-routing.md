@@ -20296,3 +20296,17 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 **提案（交由使用者決定，改動會影響已上線的行為，需要量測）**
 - (A) 完全缺口的回覆保留 `OUTSIDE_STEPS` 段落；ALPACA 這類段落的 workflow 條件，改用清空之前的 routing 候選來判斷。
 - (B) 某一句若模型給了 background 或 methods_question 的 role，就算已讀；只有 role 是 asks 或 mixed、卻沒有任何驗證過的引文的句子，才列為未檢查。
+
+## Log 392｜事前宣告：(A) 完全缺口保留 outside-step 說明、(B) background／methods_question 的句子算已讀
+
+使用者 2026-10-09 決定照 (A)+(B) 修正。下列判定在計算之前寫下。
+
+**離線判定**（不呼叫模型）
+- **B1**：用 h3、h4 候選臂已記錄的 proposal 重算，C 家族新出現的完全缺口必須為 0。
+- **B2**：報告未檢查句數和完全缺口數的變化。因為第二意見無法離線重放，新增的完全缺口中若 routing 為 exact，要分開標出。
+- **A1**：用 r9 的 test4、test8 決策重新產生完全缺口回覆，必須含有 SCORPION 段落（test4）和 ALPACA 段落（test8）。
+
+**實跑判定**
+- **R1**：TEST_PROMPTS r10 跑一輪。test4 若再次是完全缺口，回覆要含 SCORPION 段落；test8 若再次是完全缺口，回覆要含 ALPACA 段落。其他題不得出現新的 FALSE_GAP。
+
+任何一項不成立就撤回。
