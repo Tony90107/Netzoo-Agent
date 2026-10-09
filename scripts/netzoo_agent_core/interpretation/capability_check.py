@@ -204,7 +204,7 @@ def _why_not(item: CheckedRequirement) -> list[str]:
     return list(dict.fromkeys(reasons))[:1]
 
 
-def _line(item: CheckedRequirement) -> str:
+def _line(item: CheckedRequirement, provisional: bool = False) -> str:
     quote = f'"{item.quote}"'
     if item.status == "available":
         return f"{quote} -- available from {_workflows([k for k in item.delivered_by if entry(k).level == 'direct'])}."
@@ -215,6 +215,8 @@ def _line(item: CheckedRequirement) -> str:
         first = entry(item.delivered_by[0])
         return (f"{quote} -- available from {_workflows(item.delivered_by)}'s output plus a step you run "
                 f"outside NetZoo: {first.step}")
+    if provisional and item.status == "not_available":
+        return f"{quote} -- {PROVISIONAL_NOT_MATCHED[0].lower()}{PROVISIONAL_NOT_MATCHED[1:]}"
     reasons = _why_not(item)
     if not reasons:
         return f"{quote} -- not matched to any registered workflow."
@@ -227,8 +229,10 @@ def understanding_paragraph(check: CapabilityCheck) -> str | None:
     if not results and not check.unchecked:
         return None
     lines = ["What I understood you are asking for:"] if results else []
-    lines += [f"{index}. {_line(item)}" for index, item in enumerate(results, 1)]
+    lines += [f"{index}. {_line(item, check.provisional)}" for index, item in enumerate(results, 1)]
     lines += [f'Not checked against the registered workflows: "{sentence}"' for sentence in check.unchecked]
+    if check.provisional:
+        lines.append(PROVISIONAL_NOTE)
     return "\n".join(lines)
 
 
@@ -250,6 +254,13 @@ def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
         "No files were inspected and no analysis ran.",
     ])
 
+
+# Log 401: what the backup model found is said as unconfirmed, and nothing is withdrawn for it.
+PROVISIONAL_NOT_MATCHED = "The backup check matched no registered workflow to this (not confirmed)."
+PROVISIONAL_NOTE = (
+    "The usual capability check could not run this turn, so a backup model read the request; the lines above "
+    "are not confirmed, and the methods below were not removed for them."
+)
 
 UNAVAILABLE_NOTE = (
     "This turn could not be checked against what the registered workflows produce, so the methods "
@@ -298,7 +309,7 @@ def unavailable_rows(check: CapabilityCheck) -> list[tuple[str, str]]:
     rows = []
     for item in check.results():
         if item.status == "not_available":
-            reasons = _why_not(item)
+            reasons = [PROVISIONAL_NOT_MATCHED] if check.provisional else _why_not(item)
             rows.append((item.quote, reasons[0] if reasons else "Not matched to any registered workflow."))
     rows += [(sentence, "Not checked against the registered workflows.") for sentence in check.unchecked]
     return rows

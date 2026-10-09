@@ -115,6 +115,18 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
     model, llm = _check_model(context)
     if llm is None or not pairs:
         return None, usage, budget_warnings
+    answers, usage, budget_warnings = _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnings,
+                                                           situation)
+    fallback = getattr(context, "study_purpose_llm", None)
+    if answers is None and fallback is not None and llm is not fallback and not usage.budget_exhausted:
+        # Log 401: a failed own model is followed by the semantic model, as for the check itself.
+        answers, usage, budget_warnings = _second_opinion_call(
+            context, state, getattr(context, "semantic_model_name", None), fallback, pairs, usage, budget_warnings,
+            situation)
+    return answers, usage, budget_warnings
+
+
+def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnings, situation):
     schema = second_opinion_model(len(pairs))
     listed = "\n".join(f'{index}. Request words: "{quote}" | {workflow} produces: {result}'
                         for index, (quote, workflow, result) in enumerate(pairs, 1))
@@ -174,16 +186,21 @@ def request_capability_check(
 ) -> tuple[BaseModel | None, LLMUsage, list[str], str]:
     """The model's proposal for the request, its usage, and why it is missing.
 
-    The status is "ok", "no_model" (nothing is configured to read it: tests, the harness),
+    The status is "ok", "fallback" (the semantic model answered after the own model failed,
+    Log 401), "no_model" (nothing is configured to read it: tests, the harness),
     "blocked" (even the extra allowance is spent) or "failed". Called right after routing,
     before the advisory reads; verification waits for the study-purpose claims
     (`interpretation.capability_check.build_capability_check`). A reply the model sent
     that could not be decoded or validated is asked once more (TEST_PROMPTS r9 test9);
-    a timeout is not, since the free model already took a minute.
+    a timeout is not, since the free model already took a minute. When the check has its
+    own model, the second attempt is the study-purpose model's, after any failure (Log 401,
+    TEST_PROMPTS r15 test9: nemotron answered nothing twice, about a minute each).
     """
     model, llm = _check_model(context)
     if llm is None:
         return None, usage, budget_warnings, "no_model"
+    fallback_llm = getattr(context, "study_purpose_llm", None)
+    own = llm is not fallback_llm
     if usage.budget_exhausted:
         # The allowance tops up a turn whose routing left too little; it never reopens a spent turn.
         return None, usage, budget_warnings, "blocked"
@@ -233,7 +250,10 @@ def request_capability_check(
             status=call_status, price_catalog=context.price_catalog,
         )
         if proposal is not None:
-            return proposal, usage, budget_warnings, "ok"
-        if not retry:
+            return proposal, usage, budget_warnings, ("fallback" if own and llm is fallback_llm else "ok")
+        fallback = getattr(context, "study_purpose_llm", None)
+        if llm is not fallback and fallback is not None:
+            model, llm = getattr(context, "semantic_model_name", None), fallback
+        elif not retry:
             break
     return None, usage, budget_warnings, "failed"
