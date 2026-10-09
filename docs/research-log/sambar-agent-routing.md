@@ -20522,3 +20522,13 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - 已 commit 的程式碼與量測時的 `fb01338` 完全相同，全套件通過。
 - 上線內容包含：`7c7d1b3`（第二意見也問引用到的近似條目）、`713e253`（附上使用者的資料）、`fb01338`（白卷判定改用型別欄位指向的 workflow）。
 - heldout7 視為已用過。
+
+## Log 397（確認）｜TEST_PROMPTS r13
+
+- 執行設定：main `9b69344`，routing 用 mini，檢查用 nemotron。10 題全部 exit 0。
+- 檢查呼叫：10/10 成功，耗時 16–125 秒；test9 最慢，125 秒。
+- 第二意見：只在 test8 觸發 1 次，回答「否」。
+- 結果與 r11 一致：
+  - test4、test7、test8 為完全缺口，分別附上 SCORPION、SPIDER、ALPACA 說明。
+  - 其餘 7 題照常提供 workflow。test10 這次由 routing exact 配到 LIONESS-PANDA（r11 為 ambiguous，候選是 LIONESS-PANDA 與 LIONESS-PUMA）。
+- 輸出在 `out/r13-*`。
