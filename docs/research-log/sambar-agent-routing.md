@@ -20532,3 +20532,29 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
   - test4、test7、test8 為完全缺口，分別附上 SCORPION、SPIDER、ALPACA 說明。
   - 其餘 7 題照常提供 workflow。test10 這次由 routing exact 配到 LIONESS-PANDA（r11 為 ambiguous，候選是 LIONESS-PANDA 與 LIONESS-PUMA）。
 - 輸出在 `out/r13-*`。
+
+## Log 398｜撤銷 Codex 架構改動，TEST_PROMPTS r15 確認
+
+- **撤銷**：Codex 在 2026-10-09 傍晚改寫了 capability check，改動都沒有提交。
+  - 新增的部分：意圖稽核（intent audit）。
+  - 拿掉的部分：`_locate_tokens` 近似比對。
+  - 變更的部分：覆蓋檢查改為逐字嚴格比對；第二意見改用 mini。
+  - 用它的版本跑 TEST_PROMPTS（r14），10 題全部只回「無法驗證」，另有 4 個測試失敗。
+  - 依使用者指示，工作區已還原到 `9b69344`，測試結果 3449 passed / 35 skipped。
+  - 完整備份在 repo 外的 `LLM AGENT/tmp/codex-2026-10-09-backup/`，內容包括 patch、新檔案、Codex 報告與 r14 輸出。
+- **r15 設定**：main `856a2c7`；routing 用 mini，檢查用 nemotron；10 題全部 exit 0，花費約 US$0.02。
+- **與 r13 相同的部分**：
+  - test4、test7、test8 為完全缺口，分別附上 SCORPION、SPIDER、ALPACA 說明。
+  - test1、test2、test3、test5、test9 的 routing 結果相同。
+  - test10 為 ambiguous（LIONESS-PANDA／LIONESS-PUMA），與 r11 相同。
+- **新發現 1：test6（miRNA）**：
+  - routing 配到 GIRAFFE（exact）。GIRAFFE 不處理 miRNA；r13 配到的是 PUMA。
+  - 兩輪的檢查都把整題讀成 context 加 about_methods，沒有任何 result，所以 routing 的選擇沒有被檢查。
+  - 這不是新退步，而是設計上的漏洞：問句形式的需求（"Is there a method that incorporates miRNA target predictions…"）不被視為要產出的結果。r13 碰巧答對，是因為 routing 本身選對了。
+- **新發現 2：test9 檢查無法執行**：
+  - nemotron 兩次嘗試都在約 57–60 秒後回傳 0 token，無法解析。
+  - 回覆照設計開頭標示 "This turn could not be checked…"，並列出所有候選；沒有假稱已確認。
+- **待決定**：
+  - 方法問句裡點名的功能（例如 miRNA）是否也要當作需求來檢查。
+  - 免費模型回傳空內容時，是否改用 mini 重試。
+- 輸出在 `out/r15-*`。

@@ -1,0 +1,35 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (8.06s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "We want to find regulatory circuits that become progressively dysregulated with disease severity." -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+2. "we want a network for each patient so we can model associations with disease stage and survival." -- available from LIONESS-PANDA.
+
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "find regulatory circuits that become progressively dysregulated with disease severity."**
+Result: regulatory networks (sample-specific), from inputs the request does not state.
+- **TF-only regulatory network — PANDA → LIONESS-PANDA**
+  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+- **TF/miRNA regulatory network — PUMA → LIONESS-PUMA**
+  - Registered purpose: Infer aggregate PUMA and sample-specific LIONESS-PUMA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network, miRNA list.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+
+**Reading 2 -- "model associations with disease stage and survival."**
+Result: signed regulatory-effect networks (sample-specific), from inputs the request does not state.
+No registered workflow produces sample-specific signed regulatory-effect networks; GIRAFFE produces them for the whole cohort.
+
+Which reading should we start with: 1 (LIONESS-PANDA or LIONESS-PUMA), 2 (no registered workflow)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.
