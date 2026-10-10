@@ -394,7 +394,8 @@ def _run_card(plan: WorkflowPlan, results: list[ToolExecutionResult], evaluation
 
 def _unconfirmed_card(decision, policy) -> ReplyCard | None:
     """Log 403: routing's workflows when the check confirmed nothing -- none badged or recommended."""
-    from ..interpretation.unconfirmed_routes import _produces, unconfirmed_actions
+    from ..capability_sheet import produced_text as _produces
+    from ..interpretation.unconfirmed_routes import unconfirmed_actions
     from .contracts import MAX_OPTIONS
 
     actions = unconfirmed_actions(decision, policy)[:MAX_OPTIONS]
@@ -415,9 +416,39 @@ def _unconfirmed_card(decision, policy) -> ReplyCard | None:
     )
 
 
+def _unmapped_card(decision, policy) -> ReplyCard:
+    """Log 403 part D: only the workflows the check found for a part; never the registry."""
+    from ..capability_sheet import produced_text as _produces
+    from ..interpretation.unmapped_routes import credited_actions
+    from .contracts import MAX_OPTIONS
+
+    check = decision.capability_check
+    credited = credited_actions(check, policy)[:MAX_OPTIONS]
+    points = [clip(f'Understood: "{item.quote}"', 300) for item in (check.results() if check else [])][:4]
+    if not credited:
+        return ReplyCard(kind="clarification", points=points,
+                         headline="Your request was not mapped to a result any registered workflow produces, so no "
+                                  "workflow is offered.")
+    prefix = "Not confirmed. " if check.unconfirmed() else ""
+    options = [ReplyOption(
+        key=action, label=clip(workflow_name(policy, action), 80),
+        description=clip(f'{prefix}For "{words}": {_produces(action)}', 260),
+        answer=f"Use {workflow_name(policy, action)} for {clip(words, 200)}", action=action,
+        resolution="confirm_workflow",
+    ) for action, words in credited]
+    return ReplyCard(
+        kind="method_choice", points=points,
+        headline="Only part of your request maps to a registered workflow; nothing is offered for the rest.",
+        choices=ReplyChoices(header="Workflow", question="Which part do you want to start with?", options=options,
+                             ordering="In the order of the parts of your request."),
+    )
+
+
 def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCard | None:
     if kind == "capability_unconfirmed":
         return _unconfirmed_card(decision, policy)
+    if kind == "unmapped_request":
+        return _unmapped_card(decision, policy)
     if kind in {"hypothesis_routes", "research_choices"}:
         choices, unavailable, stated = hypothesis_parts(decision, policy, task=task)
         if choices is not None:

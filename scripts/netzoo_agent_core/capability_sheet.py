@@ -28,7 +28,7 @@ import yaml
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 __all__ = ["SheetEntry", "SHEET_PATH", "data_units", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
-           "entry", "produces_ids", "not_produced_ids"]
+           "entry", "produced_text", "produces_ids", "not_produced_ids"]
 
 SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
 
@@ -160,6 +160,13 @@ def result_forms() -> dict[str, frozenset[str]]:
     if set(forms) != set(RESULT_FORMS) or any(not set(values) <= RESULT_FORMS[key] for key, values in forms.items()):
         raise ValueError(f"capability sheet: result_forms must give allowed forms for {sorted(RESULT_FORMS)}")
     return {key: frozenset(values) for key, values in forms.items()}
+
+
+def produced_text(action: str) -> str:
+    """What a workflow's executor writes, from its direct produces entries (Log 403)."""
+    texts = [item.text for item in sheet_entries().values()
+             if item.kind == "produces" and item.action == action and item.level == "direct"]
+    return " ".join(texts[:2])
 
 
 def entry(key: str) -> SheetEntry:

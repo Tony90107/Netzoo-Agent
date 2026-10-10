@@ -23,12 +23,12 @@ import re
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from ..contracts.capability_check import CapabilityCheck, CheckedRequirement, proposal_sentences
 from ..routing.study_purpose_verify import _locate
-from .unconfirmed_routes import unconfirmed_result
+from .unconfirmed_routes import checked_body_result
 
 __all__ = [
     "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "apply_second_opinion",
-    "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "unconfirmed_result",
+    "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
 ]
 
 _SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -236,8 +236,12 @@ def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: 
     return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
 
 
-def understanding_paragraph(check: CapabilityCheck) -> str | None:
-    """What the request was understood to ask for, one line per result, plus the unchecked sentences."""
+def understanding_paragraph(check: CapabilityCheck, offers_methods: bool = True) -> str | None:
+    """What the request was understood to ask for, one line per result, plus the unchecked sentences.
+
+    `offers_methods`: False when the reply below lists no method (Log 403 part D), so the
+    unconfirmed note does not point to methods that are not there.
+    """
     results = check.results()
     if not results and not check.unchecked and not check.provisional:
         return None
@@ -248,9 +252,9 @@ def understanding_paragraph(check: CapabilityCheck) -> str | None:
     if check.provisional:
         # Log 403 (o10 SN6): a backup reading with no result in it said nothing at all, and the
         # reply below read as checked.
-        lines.append(PROVISIONAL_NOTE)
+        lines.append(PROVISIONAL_NOTE if offers_methods else PROVISIONAL_NOTE_SHORT)
     elif check.gap_unconfirmed:
-        lines.append(GAP_UNCONFIRMED_NOTE)
+        lines.append(GAP_UNCONFIRMED_NOTE if offers_methods else GAP_UNCONFIRMED_NOTE_SHORT)
     return "\n".join(lines)
 
 
@@ -288,6 +292,13 @@ GAP_UNCONFIRMED_NOTE = (
     "the methods below were not removed for them."
 )
 
+# Log 403 part D: the same notes when the reply below lists no method.
+PROVISIONAL_NOTE_SHORT = ("The usual capability check could not run this turn, so a backup model read the request; "
+                          "nothing it found is confirmed.")
+GAP_UNCONFIRMED_NOTE_SHORT = ("The second check that confirms a gap could not run this turn, so the lines above are "
+                              "not confirmed.")
+UNAVAILABLE_NOTE_SHORT = "This turn could not be checked against what the registered workflows produce."
+
 UNAVAILABLE_NOTE = (
     "This turn could not be checked against what the registered workflows produce, so the methods "
     "below have not been confirmed to give what you asked for."
@@ -322,7 +333,9 @@ def with_capability_check_reply(result: dict, state, reply) -> dict:
     check = decision.capability_check
     if check is None or check.full_gap or result.get("reply_kind") in (None, "execution"):
         return result
-    paragraph = UNAVAILABLE_NOTE if check.unavailable else understanding_paragraph(check)
+    listed = result.get("reply_kind") != "unmapped_request"
+    paragraph = ((UNAVAILABLE_NOTE if listed else UNAVAILABLE_NOTE_SHORT) if check.unavailable
+                 else understanding_paragraph(check, offers_methods=listed))
     if paragraph is None:
         return result
     text = str(result["messages"][-1].content)
