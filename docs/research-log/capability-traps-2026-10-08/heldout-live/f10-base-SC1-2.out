@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.95s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a network for each patient" -- available from LIONESS-PANDA.
+2. "a test of which edges differ with the time point" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+
+Your request describes more than one scientific reading. Each is listed with the registered workflows that fit it, their algorithmic premises and inputs:
+
+**Reading 1 -- "We want a network for each patient"**
+Result: regulatory networks (sample-specific), from inputs the request does not state.
+- **TF-only regulatory network — PANDA → LIONESS-PANDA**
+  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.
+  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow
+  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+  - Required inputs: all of: expression matrix, motif/prior, PPI network.
+  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).
+
+**Reading 2 -- "test of which edges differ with the time point."**
+Result: matching p-value matrices (sample-specific), from inputs the request does not state.
+No registered workflow produces this result from these inputs.
+
+Which reading should we start with: 1 (LIONESS-PANDA), 2 (no registered workflow)? If a reading should use different data, say which.
+
+No files were inspected and no analysis ran.

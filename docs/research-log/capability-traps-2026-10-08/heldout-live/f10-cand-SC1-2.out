@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.65s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a network for each patient" -- available from LIONESS-PANDA.
+2. "a test of which edges differ with the time point" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+
+I can map this to more than one compatible network result:
+
+**Gene co-expression network**
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability. Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA); or inferred gene-to-gene associations, one result per sample (LIONESS-COEXPRESSION or BONOBO)?
+
+**Data your question needs.** Your question needs a motif prior and a PPI network, which your request does not mention. Do you have a motif prior and a PPI network?
+
+No files were inspected and no analysis ran.

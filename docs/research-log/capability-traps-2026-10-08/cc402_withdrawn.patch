@@ -1,0 +1,227 @@
+diff --git a/scripts/capability_sheet.yaml b/scripts/capability_sheet.yaml
+index cc93ee1..c6b697a 100644
+--- a/scripts/capability_sheet.yaml
++++ b/scripts/capability_sheet.yaml
+@@ -23,6 +23,19 @@
+ 
+ data_units: [bulk_samples]
+ 
++# Log 402: the forms every registered result takes, compared with each ask like data_units
++# (heldout7 ON5 and heldout8 QN5/QN8/QN10: overlapping communities credited to CONDOR, miRNA
++# dynamics to LIONESS-PUMA, neighbour-borrowing spot networks to LIONESS-PANDA). An ask in a
++# form not listed here is given by no registered workflow.
++result_forms:
++  # CONDOR assigns each node to exactly one community; nothing else groups nodes.
++  group_membership: [one_group, not_about_groups]
++  # No workflow models change from one time point to the next; relating per-sample results to
++  # time points, stages or follow-up is not dynamic.
++  time_model: [not_dynamic]
++  # No workflow uses where samples sit in space or which are neighbours.
++  spatial: [not_spatial]
++
+ registry_wide_not_produced:
+   # Already live as UNSUPPORTED_CLAIMS; repeated so the sheet is complete.
+   # `claim`: shown only when the study-purpose reader verified that claim (its cue-word witnesses).
+diff --git a/scripts/netzoo_agent_core/capability_sheet.py b/scripts/netzoo_agent_core/capability_sheet.py
+index e3f1268..21d72de 100644
+--- a/scripts/netzoo_agent_core/capability_sheet.py
++++ b/scripts/netzoo_agent_core/capability_sheet.py
+@@ -27,7 +27,7 @@ import yaml
+ 
+ from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
+ 
+-__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "load_sheet", "sheet_entries", "entry", "produces_ids",
++__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries", "entry", "produces_ids",
+            "not_produced_ids"]
+ 
+ SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
+@@ -146,6 +146,22 @@ def data_units() -> frozenset[str]:
+     return frozenset(yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8")).get("data_units") or ())
+ 
+ 
++RESULT_FORMS = {
++    "group_membership": {"one_group", "several_groups", "not_about_groups"},
++    "time_model": {"dynamic", "not_dynamic"},
++    "spatial": {"uses_neighbors", "not_spatial"},
++}
++
++
++@lru_cache(maxsize=1)
++def result_forms() -> dict[str, frozenset[str]]:
++    """The forms every registered result takes (Log 402); fails closed on an unknown field or form."""
++    forms = yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8")).get("result_forms") or {}
++    if set(forms) != set(RESULT_FORMS) or any(not set(values) <= RESULT_FORMS[key] for key, values in forms.items()):
++        raise ValueError(f"capability sheet: result_forms must give allowed forms for {sorted(RESULT_FORMS)}")
++    return {key: frozenset(values) for key, values in forms.items()}
++
++
+ def entry(key: str) -> SheetEntry:
+     return sheet_entries()[key]
+ 
+diff --git a/scripts/netzoo_agent_core/contracts/capability_check.py b/scripts/netzoo_agent_core/contracts/capability_check.py
+index fab8787..e38221e 100644
+--- a/scripts/netzoo_agent_core/contracts/capability_check.py
++++ b/scripts/netzoo_agent_core/contracts/capability_check.py
+@@ -71,6 +71,16 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
+             "The kind of existing network the asked-for result is computed from: regulator_gene (regulators "
+             "linked to target genes), gene_gene (e.g. co-expression), other (e.g. protein interactions), "
+             "or none when it is not computed from an existing network."))),
++        # Log 402: result forms no registered workflow gives (heldout7 ON5, heldout8 QN5/QN8/QN10).
++        group_membership=(Literal["one_group", "several_groups", "not_about_groups"], Field(description=(
++            "When the asked-for result groups genes, regulators or samples: whether each may belong to only one "
++            "group or to several groups at once; not_about_groups otherwise."))),
++        time_model=(Literal["dynamic", "not_dynamic"], Field(description=(
++            "dynamic: the asked-for result must model how the system changes from one time point to the next "
++            "(time lags, transitions, trajectories). not_dynamic otherwise, including results compared between or "
++            "related to time points, stages or follow-up."))),
++        spatial=(Literal["uses_neighbors", "not_spatial"], Field(description=(
++            "uses_neighbors: the asked-for result must use where samples sit in space or which are neighbours."))),
+     )
+     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
+     # 16 not-produced entries. Only an ask can name entries now.
+diff --git a/scripts/netzoo_agent_core/interpretation/capability_check.py b/scripts/netzoo_agent_core/interpretation/capability_check.py
+index 25d8094..5a31f83 100644
+--- a/scripts/netzoo_agent_core/interpretation/capability_check.py
++++ b/scripts/netzoo_agent_core/interpretation/capability_check.py
+@@ -20,7 +20,7 @@ from __future__ import annotations
+ 
+ import re
+ 
+-from ..capability_sheet import data_units, entry, sheet_entries
++from ..capability_sheet import data_units, entry, result_forms, sheet_entries
+ from ..contracts.capability_check import CapabilityCheck, CheckedRequirement, proposal_sentences
+ from ..routing.study_purpose_verify import _locate
+ 
+@@ -89,7 +89,8 @@ def _span(task: str, quote: str) -> tuple[int, int] | None:
+     return _locate(task, quote) or _locate_tokens(task, quote)
+ 
+ 
+-_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network")
++_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
++          "group_membership", "time_model", "spatial")
+ 
+ 
+ def _fitting(keys: list[str], item) -> list[str]:
+@@ -103,6 +104,8 @@ def _fitting(keys: list[str], item) -> list[str]:
+     known = sheet_entries()
+     if item.data_unit != "not_stated" and item.data_unit not in data_units():
+         return []
++    if any(getattr(item, form, None) not in (None, *allowed) for form, allowed in result_forms().items()):
++        return []  # Log 402: overlapping groups, dynamics or spatial neighbours
+     wanted = set(item.regulator_kinds)
+     keys = [k for k in keys
+             if (known[k].layers is None or item.omics_layers <= known[k].layers)
+diff --git a/tests/test_capability_check.py b/tests/test_capability_check.py
+index 55c79e7..7f0f560 100644
+--- a/tests/test_capability_check.py
++++ b/tests/test_capability_check.py
+@@ -26,6 +26,9 @@ PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein i
+              "separate TF-gene regulatory network for every tumor so we can relate it to survival.")
+ 
+ 
++FORMS = {"group_membership": "not_about_groups", "time_model": "not_dynamic", "spatial": "not_spatial"}
++
++
+ def _proposal(*sentences):
+     """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
+     def reading(items):
+@@ -37,7 +40,7 @@ def _proposal(*sentences):
+             "has": [quote for quote, kind, _, _ in items if kind == "context"],
+             "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
+             "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by),
+-                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}
++                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}
+                      for quote, kind, delivered, not_by in items if kind == "result"],
+         }
+     return proposal_model(len(sentences)).model_validate(
+@@ -120,11 +123,11 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
+     proposal = proposal_model(2).model_validate({
+         "s1": {"role": "background", "has": [], "about_methods": [],
+                "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
+-                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
++                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
+         "s2": {"role": "asks", "has": [], "about_methods": [],
+                "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
+                          "delivered_by": ["panda.tf_gene_network"], "not_by": [], "scale": "unstated",
+-                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
++                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
+     })
+     check, _ = build_capability_check(SPLICING, proposal)
+     assert [item.kind for item in check.requirements] == ["result", "context"]
+@@ -133,7 +136,7 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
+         "role": "background", "has": [], "about_methods": [],
+         "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
+                   "delivered_by": [], "not_by": ["panda.no_motif_discovery"], "scale": "unstated",
+-                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]}})
++                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]}})
+     assert build_capability_check(SPLICING, matched)[0].results()[0].status == "not_available"
+ 
+ 
+@@ -302,7 +305,7 @@ def _ask(task, quote, delivered=(), not_by=(), scale="unstated", layers=0, unit=
+          sign=False, network="none"):
+     return proposal_model(1).model_validate({"s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+         {"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by), "scale": scale,
+-         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign, "input_network": network}]}})
++         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign, "input_network": network, **FORMS}]}})
+ 
+ 
+ SIGNS = "With liver expression and priors, we want to know whether each TF activates or represses its targets."
+@@ -437,7 +440,7 @@ def test_a_background_sentence_without_quotes_counts_as_read():
+         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
+             {"quote": "find which splicing factors control inclusion of each alternative exon", "delivered_by": [],
+              "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated",
+-             "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
++             "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
+     })
+     check, _ = build_capability_check(SPLICING, proposal)
+     assert check.unchecked == [] and check.full_gap
+@@ -461,7 +464,7 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
+         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
+             {"quote": quote, "delivered_by": [], "not_by": ["condor.no_two_network_comparison"],
+              "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [],
+-             "needs_sign": False, "input_network": "none"}]}}))
++             "needs_sign": False, "input_network": "none", **FORMS}]}}))
+     assert check.full_gap
+     state = _state(check.model_copy(update={"cleared": ["run_condor"]}))
+     state["messages"] = [HumanMessage(content=task)]
+@@ -587,3 +590,40 @@ def test_a_blank_verdict_without_a_distinctive_attribute_implies_nothing():
+     reasoned, _ = build_capability_check(task, _ask(task, "copy-number segments for each tumor", layers=2,
+                                                     not_by=("dragon.no_more_layers",)))
+     assert implied_actions(reasoned.results()[0]) == []  # a verdict with a reason is not blank
++
++
++def test_overlapping_groups_dynamics_and_spatial_neighbours_rule_every_entry_out():
++    """Log 402: heldout7 ON5 and heldout8 QN5/QN8/QN10 were credited to CONDOR, LIONESS-PUMA, LIONESS-PANDA."""
++    from netzoo_agent_core.interpretation.capability_check import second_opinion_pairs
++
++    task = "We want communities of our TF-gene network where one gene can belong to several communities."
++    quote = "communities of our TF-gene network where one gene can belong to several communities"
++
++    def check(**form):
++        proposal = proposal_model(1).model_validate({"s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
++            {"quote": quote, "delivered_by": ["condor.communities"], "not_by": [], "scale": "unstated",
++             "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False,
++             "input_network": "regulator_gene", **{**FORMS, **form}}]}})
++        return build_capability_check(task, proposal)[0]
++
++    assert check().results()[0].status == "available"
++    for form in ({"group_membership": "several_groups"}, {"time_model": "dynamic"}, {"spatial": "uses_neighbors"}):
++        gapped = check(**form)
++        assert gapped.full_gap and gapped.results()[0].delivered_by == []
++        assert second_opinion_pairs(gapped, ["run_condor"]) == []  # nothing left to ask about
++    assert check(group_membership="one_group").results()[0].status == "available"
++
++
++def test_the_sheet_fails_closed_on_an_unknown_result_form(tmp_path, monkeypatch):
++    import netzoo_agent_core.capability_sheet as sheet
++
++    text = sheet.SHEET_PATH.read_text(encoding="utf-8").replace("spatial: [not_spatial]", "spatial: [anywhere]")
++    path = tmp_path / "sheet.yaml"
++    path.write_text(text, encoding="utf-8")
++    monkeypatch.setattr(sheet, "SHEET_PATH", path)
++    sheet.result_forms.cache_clear()
++    try:
++        with pytest.raises(ValueError, match="result_forms"):
++            sheet.result_forms()
++    finally:
++        sheet.result_forms.cache_clear()

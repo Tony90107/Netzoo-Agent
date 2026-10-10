@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a network for each patient" -- available from LIONESS-PANDA or LIONESS-PUMA.
+2. "a test of which edges differ with the time point" -- available from LIONESS-PANDA, LIONESS-PUMA or GIRAFFE's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+The usual capability check could not run this turn, so a backup model read the request; the lines above are not confirmed, and the methods below were not removed for them.
+
+I can map this to more than one compatible network result:
+
+All of them derive each sample network from all-sample and leave-one-out networks, and iteratively exchange information across biological evidence networks.
+
+**TF-only regulatory network**
+- **LIONESS-PANDA** — Needs expression matrix, motif/prior and PPI network.
+
+**TF/miRNA regulatory network**
+- **LIONESS-PUMA** — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list.
+
+For your question ("a test of which edges differ with the time point"):
+- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample gets its own network, so each individual's networks from the different time points can be compared directly: test the within-individual differences of edge weights or targeting scores, for example with a paired test or a linear model with an individual term.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+Which regulator type should the network model: transcription factors, miRNA regulators, or both?
+
+No files were inspected and no analysis ran.

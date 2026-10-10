@@ -20640,3 +20640,65 @@ P1 的「分開」定義：一個家族 4 題的眾數推薦至少有 2 種不�
 - (a) 備援加上安全條件：mini 接手時判出的完全缺口，不直接清空 routing，改說「無法確認」。
 - (b) 改用穩定的付費檢查模型，例如 nemotron 付費版或 gpt-4o，就不受免費每日上限影響。需要使用者同意費用。
 - (c) 接受這個取捨，放寬 G2。
+
+## Log 401｜mini 備援的發現只報告、不清空 routing：模擬斷線下各判定都通過，保留並上線
+
+事前凍結在 `FREEZE401.md`，候選 `efe3d02`，基準是上線版本 `856a2c7`。題組 `heldout10.json` 現已看過。這一輪讓兩臂都處在模擬斷線狀態：檢查模型設成不存在的 ID，這是 2026-10-10 08:05 額度重置後跑的。
+
+- 基準：105 次都沒有檢查。
+- 候選：105 次都由 mini 接手，provisional 0 次清空 routing。
+- 兩個子代理各盲標一半，結果在 `heldout-live/o10-analysis.txt`。
+
+| 判定 | 基準 | 候選 | 結果 |
+|---|---|---|---|
+| V1 provider 錯誤 | 0 | 0 | 通過 |
+| G1 U+N FAB＋HEDGE（≤ 基準） | 31 | 31 | 通過 |
+| G2 C FALSE_GAP（≤ 基準） | 1 | 0 | 通過 |
+| G3 C OK（≥ 基準 − 2） | 35 | 36 | 通過 |
+| G4 P BOTH（≥ 基準 − 1）且 P FALSE_GAP（≤ 基準） | 3／0 | 7／0 | 通過 |
+| S1 備援完成檢查 | — | 105／105 | 通過 |
+| S3 備援清空 routing | — | 0 | 通過 |
+
+**細節**
+- U+N 的組成：基準是 HONEST 3、FAB 17、HEDGE 14；候選是 HONEST 9、FAB 11、HEDGE 20。不誠實的總數相同，但候選有更多回覆說出「未確認的缺口」。
+- 兩位標註者對開頭那句「could not be checked／not confirmed」的看法不同：A 半判成 HEDGE，B 半判成 FAB。兩臂的 session 都是隨機分到兩半，所以兩臂受到的影響相同，但 HEDGE 與 FAB 的分界只能參考。
+- 只報告的逐行判斷：
+  - 候選 over_credit 8 個 session：SN1 模糊社群 → CONDOR、SN7 空間加權 → LIONESS-coexpression，各 3 次；這正是 Log 402 要處理的形式。
+  - 候選 false_negative 3 個 session：SC7 COBRA，mini 的弱點，但只是「未確認」的行，COBRA 仍有提供。
+- 自己的模型正常時，程式路徑與上線版本相同。
+
+**保留**：`efe3d02` 已在 main，連同結果推送。
+
+## Log 402｜重疊、動態、空間結果形式：T1 通過，但 G2 未通過，撤回
+
+事前凍結在 `FREEZE402.md`，候選 `75b45ed`，放在 `.worktrees/netzoo-forms-cand`，從未進入 main，patch 存在 `cc402_withdrawn.patch`。題組是 `heldout10.json`。一般情況下兩臂都用 nemotron 檢查，105／105 成功。兩個子代理各盲標一半，結果在 `heldout-live/f10-analysis.txt`。
+
+| 判定 | 基準 | 候選 | 結果 |
+|---|---|---|---|
+| T1 SN1-8 HONEST（≥ 基準 + 6） | 6 | 12 | 通過 |
+| G1 U+N FAB＋HEDGE（≤ 基準） | 22 | 15 | 通過 |
+| G2 C FALSE_GAP（≤ 基準） | 1 | 2 | **未通過** |
+| G3 C OK | 35 | 34 | 通過 |
+| G4 P BOTH | 10 | 11 | 通過 |
+| G5 over_credit session（≤ 基準） | 7 | 2 | 通過 |
+| G6 C false_negative | 0 | 0 | 通過 |
+| S1 | 0 | 0 | 通過 |
+| SF1 模擬 C 完全缺口（`sf10`） | 0 | 0 | 通過 |
+| SF2 模擬 U+N 完全缺口 | 15 | 20 | 通過 |
+
+**G2 的歸因**：3 個 FALSE_GAP 都在 SC1，基準 1 個、候選 2 個，內容是「每位病人一張網路，並檢驗哪些邊隨時間點不同」。
+- 這 6 個 session 的能力檢查在兩臂完全相同：每樣本網路 available，邊的檢驗是 with_step。新欄位都讀對了：not_dynamic、not_spatial。
+- FALSE_GAP 來自 routing 偶爾多出的 BONOBO 讀法。`interpretation/hypothesis_routes.py` 對那個讀法寫出 "No registered workflow produces this result"。
+- 兩臂都有這個情況，是 routing 的隨機差異，不是這次修改造成的。但事前規則是全部通過才保留，所以撤回。
+
+**新形式有效的地方**：SN1 模糊成員從 FAB 3 → HONEST 3；SN5 訪視間動態從 FAB 3 → HONEST 3。
+
+**新形式仍漏掉的地方**：
+- SN2 兩個模組、SN6 每個 spot 的平滑、SN8 空間連續社群：候選仍是 FAB 或 HEDGE。檢查把它們讀成 one_group 或 not_spatial，或者整題被當成單純問方法的句子。
+- SN4 領先落後：兩臂都是 ASK。
+
+**另外發現的既有問題**：SC1 的 per-reading 回覆會對不存在的讀法說「沒有 workflow」，而且是把整個請求都說成沒有。這和本次修改無關。
+
+**下一步可選**（由使用者決定）
+- 同一個候選換一組新題組重新量測。
+- 先修 hypothesis_routes 的這個 false gap，再重新量測。

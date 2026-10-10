@@ -1,0 +1,34 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.03s)
+● Matching registered workflows…
+✓ Workflow — LIONESS-PUMA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a network for each patient" -- available from LIONESS-PANDA.
+2. "a test of which edges differ with the time point" -- available from LIONESS-PANDA's output plus a step you run outside NetZoo: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
+The usual capability check could not run this turn, so a backup model read the request; the lines above are not confirmed, and the methods below were not removed for them.
+
+For the sample-specific output you described, use **LIONESS-PUMA**.
+
+Required inputs:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - `mirna_file`: miRNA list
+
+Outputs:
+   - Aggregate network (`output_file`).
+   - Sample-specific network for each patient/sample (`lioness_output`).
+
+You do not need to run **PUMA** separately; **LIONESS-PUMA** also produces the aggregate output. Use **PUMA** alone only when a cohort-level aggregate result is sufficient.
+
+Cost: LIONESS runs PUMA once on all samples and once more without each sample, so N samples take N+1 PUMA runs and give N network files (for your 90 patients, 91 PUMA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+For your question ("a test of which edges differ with the time point"):
+- **PUMA** — Build one network for each time point on the same genes and priors, then compare edge weights or targeting scores between them. This compares the time points across all individuals but does not use the pairing: each individual's samples from the different time points are pooled into separate networks. To keep the pairing, use the per-sample (LIONESS) version and compare each individual's samples.
+- **LIONESS-PUMA** — Each sample gets its own network, so each individual's networks from the different time points can be compared directly: test the within-individual differences of edge weights or targeting scores, for example with a paired test or a linear model with an individual term.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+
+No files were inspected and no analysis ran.

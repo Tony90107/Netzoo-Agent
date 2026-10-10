@@ -1,0 +1,38 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.06s)
+● Matching registered workflows…
+✓ Workflow — SAMBAR
+✓ Guidance prepared
+This turn could not be checked against what the registered workflows produce, so the methods below have not been confirmed to give what you asked for.
+
+Selected path: **SAMBAR**.
+
+Your question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.
+
+Why this recommendation:
+
+Pathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.
+
+What you asked about:
+
+- "compares survival between the subtypes" — Subtype labels can be compared with clinical variables -- survival between subtypes, for example; that needs a clinical table keyed by the same sample IDs. The pathway mutation scores show which pathways separate the subtypes.
+
+**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.
+
+Required workflow inputs:
+
+- `mutation_file`: somatic mutation matrix
+- `exon_size_file`: gene/exon-size CSV
+- `cancer_gene_file`: cancer-gene list
+- `pathway_file`: GMT pathway file
+
+Outputs:
+
+- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.
+- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.
+- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.
+- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.44s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one TF-gene network for 30,000 genes from 400 samples" -- available from PANDA, OTTER or LIONESS-PANDA.
+
+Based on what you said — "our machine has little memory." — **OTTER** fits better: the network is large and memory or runtime is a concern.
+
+Your question asks for a cohort-level regulatory network. **OTTER** fits that result and scale.
+
+**OTTER** (recommend) — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix. Produces inferred regulator-to-target associations (one cohort-level result).
+
+Conditional assumptions to confirm:
+- It also needs a TF-motif prior and protein-interaction prior, which the request does not mention.
+
+Other compatible option(s):
+- **PANDA** — preferred when: results must be comparable with the widely published approach, or serve as a base network for later per-sample analysis; approach: iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow.
+- **GIRAFFE** — preferred when: a regulator's activity may differ from its own expression, or activating versus repressing effects are needed; each sample's regulator activity level is needed, apart from the regulator's own expression; approach: factor gene expression using motif and TF-protein interaction priors.
+
+About your concern that memory is a limiting factor (for example, an earlier run ran out of memory):
+- **OTTER** — `precision=single` keeps OTTER's largest array, the gene-by-gene co-expression matrix, in single precision during the optimization. The loader first computes that matrix in double precision, so peak memory while loading is not reduced, and the optimization and the output network stay in double precision.
+
+Should I use OTTER, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.

@@ -1,0 +1,21 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.12s)
+● Matching registered workflows…
+✓ Guidance prepared
+This turn could not be checked against what the registered workflows produce, so the methods below have not been confirmed to give what you asked for.
+
+I can map this to more than one compatible network result:
+
+**TF-only regulatory network**
+- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.
+- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+About your concern that memory is a limiting factor (for example, an earlier run ran out of memory):
+- **OTTER** — `precision=single` keeps OTTER's largest array, the gene-by-gene co-expression matrix, in single precision during the optimization. The loader first computes that matrix in double precision, so peak memory while loading is not reduced, and the optimization and the output network stay in double precision.
+
+These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.
+
+No files were inspected and no analysis ran.
