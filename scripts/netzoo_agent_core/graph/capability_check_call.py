@@ -30,18 +30,20 @@ from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check",
-           "request_second_opinion"]
+           "with_reading_allowance", "has_check_model", "request_second_opinion"]
 
 _INSTRUCTIONS = (
     "Return only the CapabilityCheckProposal for the user's request.\n\n"
     "The request's sentences are numbered after it. For each sentence, first give its role, then quote its "
     "exact words into:\n"
     "- has: what the user has, did, or must respect (data, samples, constraints);\n"
-    "- about_methods: questions about the methods themselves -- which to use, how one works, what it needs;\n"
-    "- asks: each thing the user wants produced or answered about their data or biology, one item per thing.\n"
-    "If one sentence asks for two things, make two asks. For each ask, also give its scale, how many omics data "
-    "types it must model together, what each unit is computed from, the regulator kinds it must contain, and "
-    "whether it must say activation versus repression.\n\n"
+    "- about_methods: questions about how a method works or what it needs, naming no result;\n"
+    "- asks: each result the user wants produced, or asks whether or which method produces, about their data "
+    "or biology, one item per result.\n"
+    "If one sentence asks for two results, make two asks. For each ask, also give how it was asked (a request "
+    "or a question), its scale, how many omics data types it must model together, what each unit is computed "
+    "from, the regulator kinds it must contain, whether it must say activation versus repression, and its form "
+    "(group membership, time model, use of space).\n\n"
     "For each ask, delivered_by lists the PRODUCES entries below whose result gives what the quote asks for, "
     "as it is asked. An entry that gives a related result, or only an ingredient of it, does not deliver it. "
     "When no entry gives it, delivered_by is empty -- a normal answer, not a failure. not_by lists the NOT "
@@ -87,9 +89,10 @@ def _own_llm(model: str, max_tokens: int):
 
 _SECOND_OPINION = (
     "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and the "
-    "results one registered workflow produces. Answer true only if those results, together, give what the words "
-    "ask for, as they ask it -- not a related result, and not only an ingredient of it. The user's own data and "
-    "situation are listed first; read the request words in that light."
+    "results one registered workflow produces. Answer all only if those results, together, give what the words "
+    "ask for, as they ask it -- not a related result, and not only an ingredient of it; part if the words ask "
+    "for more than one result and the workflow's results give some of them; none otherwise. The user's own data "
+    "and situation are listed first; read the request words in that light."
 )
 
 
@@ -103,6 +106,11 @@ def _check_model(context):
         # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
         model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "6000")))
     return model, llm
+
+
+def has_check_model(context) -> bool:
+    """Whether any model is configured to read the check (none in tests and the routing harness)."""
+    return _check_model(context)[1] is not None
 
 
 def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], usage, budget_warnings,
@@ -137,8 +145,8 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
-        context, call_state, role="capability_second_opinion", model=model, input_text=input_text,
-        reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+        with_reading_allowance(context, usage), call_state, role="capability_second_opinion", model=model,
+        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
     if budget.status == "blocked":
         usage.budget_exhausted = True
@@ -177,6 +185,26 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
 CHECK_EXTRA_TOKENS = 8_000
 
 
+def with_reading_allowance(context, usage=None):
+    """The context with the check's allowance added to the turn budget (Logs 394, 403).
+
+    The allowance tops up a turn whose routing left too little; it never reopens a
+    turn already marked spent (`usage.budget_exhausted`), which keeps its own budget.
+
+    Log 403: the calls that read the request after routing -- the check, its second
+    opinion, the study purpose and the data facts -- share it. Traces of h8-h9, o10 and
+    f10: with the turn budget alone the data-facts call was blocked in 2-17% of turns and
+    the reply then asked for a motif prior and PPI the request had named, and 11 second
+    opinions were blocked, leaving their gaps unasked.
+    """
+    if usage is not None and usage.budget_exhausted:
+        return context
+    extra = int(os.environ.get("OPENROUTER_CAPABILITY_EXTRA_TOKENS", CHECK_EXTRA_TOKENS))
+    budget = context.task_token_budget + extra
+    return (replace(context, task_token_budget=budget) if is_dataclass(context)
+            else SimpleNamespace(**{**vars(context), "task_token_budget": budget}))
+
+
 def request_capability_check(
     context: _GraphContext,
     state: AgentState,
@@ -207,10 +235,7 @@ def request_capability_check(
     messages, count = build_capability_check_messages(user_task)
     schema = proposal_model(count)
     input_text = _serialized_structured_input(messages, schema)
-    extra = int(os.environ.get("OPENROUTER_CAPABILITY_EXTRA_TOKENS", CHECK_EXTRA_TOKENS))
-    budget = context.task_token_budget + extra
-    budget_context = (replace(context, task_token_budget=budget) if is_dataclass(context)
-                      else SimpleNamespace(**{**vars(context), "task_token_budget": budget}))
+    budget_context = with_reading_allowance(context)
     for attempt in (1, 2):
         call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
         budget, budget_warnings = preflight_budget(

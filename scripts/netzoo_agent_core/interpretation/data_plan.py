@@ -98,8 +98,16 @@ def build_data_plan(claims, decision, facts: Mapping[str, Any] | None, words: se
         elif state in {"stated", "ruled_out", "unstated"}:
             source, quote = "model", (facts or {}).get(f"{_FACT_KEYS[kind]}_quote") or ""
         else:
+            # Nothing read the request (no data-facts reading this turn): only words decide. Log 403
+            # replay: 25 replies said "Your question needs a motif prior and a PPI network, which your
+            # request does not mention" to "We have expression, motifs and PPI" -- the reading was
+            # budget-blocked and the input words missed "motifs". A request that names the kind is
+            # never told it does not mention it; each part of the kind must be named ("plus TF motifs"
+            # names no PPI network).
             source, quote = "words", ""
-            state = "stated" if set(_WORD_ARTIFACTS[kind]) <= words else "unstated"
+            named = set(_WORD_ARTIFACTS[kind]) <= words or all(
+                pattern.search(task or "") for pattern in _PART_WORDS[kind])
+            state = "stated" if named else "unstated"
         action = {"stated": "none", "ruled_out": "say_ruled_out", "unstated": "ask"}[state]
         if kind == "mirna" and action == "ask" and any(need.state == "ruled_out" for need in needs):
             # Every miRNA workflow also needs the TF priors the request rules out:
@@ -118,6 +126,10 @@ def _labels(kinds) -> str:
 _POSSESSION = re.compile(r"\bdo you (?:also |already )?have\b", re.I)
 _KIND_WORDS = {"tf_priors": re.compile(r"motif|\bPPI\b|protein[- ]protein|protein interaction", re.I),
                "mirna": re.compile(r"\bmi(?:cro)?[- ]?RNA", re.I)}
+# Each part of a kind, named in the request's words (the words fallback, Log 403).
+_PART_WORDS = {"tf_priors": (re.compile(r"motif", re.I),
+                             re.compile(r"\bPPI\b|protein[- ]protein|protein interaction", re.I)),
+               "mirna": (_KIND_WORDS["mirna"],)}
 
 
 def _asks(text: str, kind: str) -> bool:

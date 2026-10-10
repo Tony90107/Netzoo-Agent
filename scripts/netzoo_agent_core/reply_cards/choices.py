@@ -29,7 +29,7 @@ from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..interpretation.outside_steps import outside_steps
 from ..routing.capability_compatibility import input_availability
 from ..routing.clarification_planner import plan_clarification
-from .contracts import ReplyChoices, ReplyOption
+from .contracts import MAX_OPTIONS, ReplyChoices, ReplyOption
 from .method_notes import condition_phrase, fit_notes, gives, highlight, missing_input_labels, needs_line
 from .option_reasons import option_parts, per_sample_use
 from .phrases import clip, join_names, primary_outcome, quote, result_phrase, workflow_name
@@ -121,9 +121,14 @@ def _separating_conditions(candidates: list[str]) -> dict[str, list[str]]:
 
 
 def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task: str) -> ReplyChoices | None:
-    """Tied workflows for one request, best-supported first."""
+    """Tied workflows for one request, best-supported first; None for more than a card holds.
+
+    Log 403 replay: 21 recorded turns tied 11-13 workflows (an unchecked request
+    projected onto every method), the options overflowed `ReplyChoices` and the
+    whole card was dropped; the reply text still lists them.
+    """
     candidates = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
-    if len(candidates) < 2:
+    if not 2 <= len(candidates) <= MAX_OPTIONS:
         return None
     outcome = primary_outcome(decision)
     present = present_inputs(task, decision)
@@ -335,8 +340,8 @@ def _reading_option(number, label, actions, policy, result, answer, scale=None) 
 def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task: str):
     """(choices, unavailable) for the per-reading and per-input replies (Logs 248, 250)."""
     from ..interpretation.hypothesis_routes import (
-        _candidates, _composition, _handoff_routes, _quote, _readings, _splits, _stated_inputs, scale_gap_note,
-        step_order,
+        _candidates, _composition, _handoff_routes, _quote, _readings, _splits, _stated_inputs, checked_actions,
+        checked_route, scale_gap_note, step_order,
     )
 
     readings = _readings(decision, policy)
@@ -399,6 +404,18 @@ def reading_parts(decision: TaskDecision, policy: ProjectPolicySnapshot, *, task
                     action=producer,
                     resolution="confirm_workflow",
                 ))
+            continue
+        # Log 403: the same verdict the reply text reads -- the check's workflows, or their
+        # output plus the outside step -- so the card never calls this part unavailable.
+        if found := [a for a in checked_actions(decision, reading, task, policy) if a in policy.workflows]:
+            options.append(_reading_option(number, label, found, policy, result, answer,
+                                           reading.outcome.granularity))
+            continue
+        if (stepped := checked_route(decision, reading, task)) is not None:
+            options.append(ReplyOption(
+                key=f"reading-{number}", label=clip(label, 80),
+                description=describe([stepped[1][:1].upper() + stepped[1][1:]]), answer=clip(answer, 300),
+            ))
             continue
         unavailable.append(ReplyOption(
             key=f"reading-{number}", label=clip(label, 80), description=describe([f"Asks for {result}"]),

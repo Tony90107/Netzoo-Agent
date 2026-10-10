@@ -21,6 +21,7 @@ from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage, build_study_purpose_messages
 from ..routing.study_purpose import StudyPurpose, study_purpose
 from ..routing.study_purpose_verify import verify_proposal
+from .capability_check_call import with_reading_allowance
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
@@ -60,8 +61,9 @@ def invoke_study_purpose(
     messages = build_study_purpose_messages(user_task)
     input_text = _serialized_structured_input(messages, StudyPurposeProposal)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+    # Log 403: the reading allowance the check has (`with_reading_allowance`).
     budget, budget_warnings = preflight_budget(
-        context, call_state, role="study_purpose",
+        with_reading_allowance(context, usage), call_state, role="study_purpose",
         model=context.semantic_model_name, input_text=input_text,
         reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
