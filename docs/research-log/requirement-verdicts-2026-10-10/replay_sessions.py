@@ -64,8 +64,16 @@ def study_purpose(arm: str, run_id: str | None) -> dict | None:
     return None
 
 
+try:  # Log 403 part D: the routing-time step that runs after the check, when the code under test has it.
+    from netzoo_agent_core.interpretation.unmapped_routes import without_unmapped_candidates  # noqa: E402
+except ImportError:
+    without_unmapped_candidates = None
+
+
 def render(task: str, decision: dict, plan: dict, purpose: dict | None = None) -> dict:
     made = TaskDecision.model_validate(decision)
+    if without_unmapped_candidates is not None:
+        made = without_unmapped_candidates(made)
     plan = {**plan, "decision": made.model_dump()}
     state = {"decision": made.model_dump(), "plan": plan, "messages": [HumanMessage(content=task)],
              "tool_results": [], "evaluation": None, "study_purpose": purpose}

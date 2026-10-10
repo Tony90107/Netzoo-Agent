@@ -12,9 +12,9 @@ presented as fitting, selected or recommended.
 
 from __future__ import annotations
 
-from ..capability_sheet import sheet_entries
+from ..capability_sheet import produced_text, sheet_entries
 
-__all__ = ["UNCONFIRMED_KIND", "unconfirmed_actions", "unconfirmed_reply", "unconfirmed_result"]
+__all__ = ["UNCONFIRMED_KIND", "checked_body_result", "unconfirmed_actions", "unconfirmed_reply", "unconfirmed_result"]
 
 UNCONFIRMED_KIND = "capability_unconfirmed"
 _NOT_INSPECTED = "No files were inspected and no analysis ran."
@@ -37,10 +37,7 @@ def unconfirmed_actions(decision, policy) -> list[str]:
             *[action for action in listed if action not in credited]]
 
 
-def _produces(action: str) -> str:
-    texts = [item.text for item in sheet_entries().values()
-             if item.kind == "produces" and item.action == action and item.level == "direct"]
-    return " ".join(texts[:2])
+_produces = produced_text
 
 
 def unconfirmed_reply(decision, policy) -> str | None:
@@ -71,3 +68,14 @@ def unconfirmed_result(context, state, reply) -> dict | None:
         return None
     text = unconfirmed_reply(TaskDecision.model_validate(state["decision"]), policy)
     return None if text is None else reply(text, UNCONFIRMED_KIND)
+
+
+def checked_body_result(context, state, reply) -> dict | None:
+    """The reply body the check's verdicts decide on their own, else None (Log 403).
+
+    A request routing could not map to any registered result comes first (part D,
+    `unmapped_routes`); then a turn the check confirmed nothing for.
+    """
+    from .unmapped_routes import unmapped_result
+
+    return unmapped_result(context, state, reply) or unconfirmed_result(context, state, reply)

@@ -269,3 +269,93 @@ def test_a_part_answer_makes_the_result_partly_available_and_keeps_routing(monke
     assert not check.full_gap and decision.matched_actions == ["run_condor"]
     assert check.results()[0].status == "partial" and check.results()[0].second_opinion
     assert "partly available: CONDOR gives part of it" in understanding_paragraph(check)
+
+
+# -- Log 403, part D: a reading routing left `unknown` is not a tie of every workflow -------------
+
+FUSIONS = "We have RNA-seq from 60 sarcomas. We want to detect gene fusions and report which fusions recur."
+
+
+def _unknown_tie(check=None, **fields):
+    reading = {"outcome": {"operation": "unknown", "input_artifacts": ["expression_matrix"], "artifact_type": "unknown",
+                           "entity_types": [], "regulator_types": [], "target_types": [], "granularity": "unknown"},
+               "confidence": 0.5, "evidence": []}
+    every = [action for action in POLICY.workflows if action.startswith("run_")]
+    return TaskDecision.model_validate({
+        "action": "no_tool", "in_scope": True, "should_execute": False, "confidence": 0.5, "reason": "r",
+        "capability_match_status": "ambiguous", "hypothesis_actions": every, "outcome_hypotheses": [reading],
+        "requested_outcome": reading["outcome"], "capability_check": check, **fields})
+
+
+def _fusion_check(**extra):
+    return CapabilityCheck(requirements=[CheckedRequirement(
+        quote="detect gene fusions and report which fusions recur", kind="result", status="not_available")],
+        unchecked=["one more sentence"], **extra)
+
+
+def test_an_unknown_reading_offers_no_workflow_and_never_the_registry():
+    for check in (_fusion_check(), _fusion_check(provisional=True), CapabilityCheck(unavailable=True), None):
+        text, kind, card = _replay(FUSIONS, _unknown_tie(check))
+        assert kind == "unmapped_request", check
+        assert "I could not tell which registered result you are asking for, so no workflow is offered" in text
+        assert not any(f"**{spec.workflow}**" in text for spec in POLICY.workflows.values())
+        assert card.choices is None and "no workflow is offered" in card.headline
+    text, _, _ = _replay(FUSIONS, _unknown_tie(CapabilityCheck(unavailable=True)))
+    assert text.startswith("This turn could not be checked against what the registered workflows produce.\n")
+    assert "asking again re-runs it" in text
+
+
+def test_an_unknown_reading_offers_only_what_the_check_found_for_a_part():
+    task = "We want each TF's activity per sample, and each TF's protein amount from our raw mass spectra."
+    check = CapabilityCheck(requirements=[
+        CheckedRequirement(quote="each TF's activity per sample", kind="result", status="available",
+                           delivered_by=["giraffe.tf_activity"]),
+        CheckedRequirement(quote="each TF's protein amount from our raw mass spectra", kind="result",
+                           status="not_available")])
+    text, kind, card = _replay(task, _unknown_tie(check))
+    assert kind == "unmapped_request"
+    assert "- **GIRAFFE** — for \"each TF's activity per sample\"" in text
+    assert [spec.workflow for action, spec in POLICY.workflows.items() if f"**{spec.workflow}**" in text] == ["GIRAFFE"]
+    assert [option.action for option in card.choices.options] == ["run_giraffe"]
+
+
+def test_a_confirmed_question_about_the_methods_alone_keeps_the_listing():
+    check = CapabilityCheck(requirements=[CheckedRequirement(
+        quote="Which methods are there?", kind="about_methods", status="not_checked")])
+    from netzoo_agent_core.interpretation.unmapped_routes import unmapped_reply
+
+    assert unmapped_reply(_unknown_tie(check), POLICY) is None
+    assert unmapped_reply(_unknown_tie(check.model_copy(update={"provisional": True})), POLICY) is not None
+
+
+def test_an_unknown_reading_is_not_a_tie_to_ask_a_second_opinion_about(monkeypatch):
+    from netzoo_agent_core.graph import router_invocation
+
+    asked = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, pairs, usage, warnings, situation=(): (asked.append(pairs) or
+                                                                                       ["all"] * len(pairs),
+                                                                                       usage, warnings))
+    invocation = router_invocation._RouterInvocation(decision=_unknown_tie(), routing_state={}, usage=None,
+                                                     budget_warnings=[], reason_code=None)
+    task = "We want to detect gene fusions and report which fusions recur."
+    decision = router_invocation._with_capability_check(
+        None, {}, task, invocation, _one_sentence(task, "asks", "detect gene fusions and report which fusions recur")
+    ).decision
+    assert decision.capability_check.full_gap and not asked
+
+
+def test_the_unconstrained_tie_is_removed_from_the_decision_for_every_reader():
+    from netzoo_agent_core.interpretation.unmapped_routes import without_unmapped_candidates
+
+    tied = _unknown_tie(_fusion_check())
+    cleared = without_unmapped_candidates(tied)
+    assert cleared.hypothesis_actions == [] and cleared.matched_actions == [] and cleared.recommended_actions == []
+    # A workflow the user named, a confirmed context, a gap or a question about the methods keep theirs.
+    for kept in (tied.model_copy(update={"match_basis": "workflow_name"}),
+                 tied.model_copy(update={"match_basis": "confirmed_context"}),
+                 _unknown_tie(_fusion_check().model_copy(update={"full_gap": True, "unchecked": []})),
+                 _unknown_tie(CapabilityCheck(requirements=[CheckedRequirement(
+                     quote="Which methods are there?", kind="about_methods", status="not_checked")]))):
+        assert without_unmapped_candidates(kept) is kept

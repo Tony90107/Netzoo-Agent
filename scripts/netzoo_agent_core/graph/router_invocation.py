@@ -34,6 +34,7 @@ from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import has_check_model, request_capability_check, request_second_opinion
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
+from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_second_opinion, build_capability_check, implied_actions, second_opinion_pairs,
 )
@@ -167,6 +168,12 @@ def invoke_router(
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
                 update={"capability_check": CapabilityCheck(unavailable=True)}))
+        if (unmapped := without_unmapped_candidates(result.decision)) is not result.decision:
+            # Log 403 part D: an `unknown` reading tied every workflow; it claims none of them.
+            record_event(context, state, "routing.unmapped_candidates_cleared", "classify", {
+                "cleared": list(dict.fromkeys([*result.decision.matched_actions, *result.decision.hypothesis_actions,
+                                               *result.decision.recommended_actions]))})
+            result = replace(result, decision=unmapped)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -253,7 +260,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
     # Log 403: a routing tie is a claim too -- methods questions are now checked, and "which method
     # gives X" usually ties -- so a gap that would clear it asks about up to four of its workflows.
-    tied = [] if exact else list(dict.fromkeys(decision.hypothesis_actions))[:4]
+    # A reading routing left `unknown` ties every workflow and claims none (part D): nothing to ask.
+    tied = [] if exact or is_unmapped(decision) else list(dict.fromkeys(decision.hypothesis_actions))[:4]
     cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
     implied = [action for item in check.results() for action in implied_actions(item)]
     asked = list(dict.fromkeys([*exact, *tied, *cited, *implied]))
