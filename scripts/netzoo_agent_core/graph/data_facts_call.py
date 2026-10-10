@@ -23,6 +23,7 @@ from ..contracts import HumanMessage, SystemMessage
 from ..llm import append_llm_usage
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from ..routing.study_purpose_verify import _locate
+from .capability_check_call import with_reading_allowance
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
@@ -109,8 +110,9 @@ def invoke_data_facts(
     messages = build_data_facts_messages(user_task)
     input_text = _serialized_structured_input(messages, DataFactsProposal)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+    # Log 403: the reading allowance the check has (`with_reading_allowance`).
     budget, budget_warnings = preflight_budget(
-        context, call_state, role="data_facts",
+        with_reading_allowance(context, usage), call_state, role="data_facts",
         model=context.semantic_model_name, input_text=input_text,
         reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )

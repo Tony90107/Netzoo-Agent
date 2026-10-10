@@ -31,7 +31,7 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
-from .capability_check_call import request_capability_check, request_second_opinion
+from .capability_check_call import has_check_model, request_capability_check, request_second_opinion
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
 from ..interpretation.capability_check import (
@@ -251,9 +251,12 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     })
     usage, warnings = result.usage, result.budget_warnings
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
+    # Log 403: a routing tie is a claim too -- methods questions are now checked, and "which method
+    # gives X" usually ties -- so a gap that would clear it asks about up to four of its workflows.
+    tied = [] if exact else list(dict.fromkeys(decision.hypothesis_actions))[:4]
     cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
     implied = [action for item in check.results() for action in implied_actions(item)]
-    asked = list(dict.fromkeys([*exact, *cited, *implied]))
+    asked = list(dict.fromkeys([*exact, *tied, *cited, *implied]))
     if check.full_gap and asked:
         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
@@ -270,9 +273,13 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             check = apply_second_opinion(check, pairs, answers)
+        elif pairs and has_check_model(context):
+            # Log 403: the second opinion was owed and could not answer (budget, provider), so the
+            # gap is unconfirmed: said as such, and routing's offer stays (as for Log 401's backup).
+            check = check.model_copy(update={"full_gap": False, "gap_unconfirmed": True})
         record_event(context, state, "routing.capability_second_opinion", "classify", {
             "pairs": [[index, action, keys] for index, action, keys in pairs], "answers": answers,
-            "full_gap": check.full_gap,
+            "full_gap": check.full_gap, "gap_unconfirmed": check.gap_unconfirmed,
         })
     result = replace(result, usage=usage, budget_warnings=warnings)
     if provisional:

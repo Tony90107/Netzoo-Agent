@@ -27,8 +27,8 @@ import yaml
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
-__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "load_sheet", "sheet_entries", "entry", "produces_ids",
-           "not_produced_ids"]
+__all__ = ["SheetEntry", "SHEET_PATH", "data_units", "result_forms", "RESULT_FORMS", "load_sheet", "sheet_entries",
+           "entry", "produces_ids", "not_produced_ids"]
 
 SHEET_PATH = Path(__file__).resolve().parents[1] / "capability_sheet.yaml"
 
@@ -144,6 +144,22 @@ def sheet_entries() -> dict[str, SheetEntry]:
 def data_units() -> frozenset[str]:
     """The data units every registered workflow takes (Log 389: bulk samples, never single cells)."""
     return frozenset(yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8")).get("data_units") or ())
+
+
+RESULT_FORMS = {
+    "group_membership": {"one_group", "several_groups", "not_about_groups"},
+    "time_model": {"dynamic", "not_dynamic"},
+    "spatial": {"uses_neighbors", "not_spatial"},
+}
+
+
+@lru_cache(maxsize=1)
+def result_forms() -> dict[str, frozenset[str]]:
+    """The forms every registered result takes (Log 402); fails closed on an unknown field or form."""
+    forms = yaml.safe_load(SHEET_PATH.read_text(encoding="utf-8")).get("result_forms") or {}
+    if set(forms) != set(RESULT_FORMS) or any(not set(values) <= RESULT_FORMS[key] for key, values in forms.items()):
+        raise ValueError(f"capability sheet: result_forms must give allowed forms for {sorted(RESULT_FORMS)}")
+    return {key: frozenset(values) for key, values in forms.items()}
 
 
 def entry(key: str) -> SheetEntry:

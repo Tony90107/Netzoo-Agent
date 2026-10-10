@@ -3672,7 +3672,9 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
             )
 
         response = result["messages"][-1].content
-        self.assertIn("Required inputs", response)
+        # Log 403: the fake model cannot answer the capability check, so the workflows are
+        # listed as unconfirmed; the CLI-owned follow-up question is still never repeated.
+        self.assertIn("**LIONESS-PUMA** — produces:", response)
         self.assertNotIn("Would you like", response)
 
     @patch("netzoo_agent.build_llm")

@@ -20,8 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
-__all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "proposal_model",
-           "proposal_sentences", "second_opinion_model"]
+__all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "SecondOpinionAnswer",
+           "proposal_model", "proposal_sentences", "second_opinion_model"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -71,6 +71,22 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
             "The kind of existing network the asked-for result is computed from: regulator_gene (regulators "
             "linked to target genes), gene_gene (e.g. co-expression), other (e.g. protein interactions), "
             "or none when it is not computed from an existing network."))),
+        # Log 402, re-applied in Log 403: result forms no registered workflow gives (heldout7 ON5,
+        # heldout8 QN5/QN8/QN10, heldout10 SN1/SN5).
+        group_membership=(Literal["one_group", "several_groups", "not_about_groups"], Field(description=(
+            "When the asked-for result groups genes, regulators or samples: whether each may belong to only one "
+            "group or to several groups at once; not_about_groups otherwise."))),
+        time_model=(Literal["dynamic", "not_dynamic"], Field(description=(
+            "dynamic: the asked-for result must model how the system changes from one time point to the next "
+            "(time lags, transitions, trajectories). not_dynamic otherwise, including results compared between or "
+            "related to time points, stages or follow-up."))),
+        spatial=(Literal["uses_neighbors", "not_spatial"], Field(description=(
+            "uses_neighbors: the asked-for result must use where samples sit in space or which are neighbours."))),
+        # Log 403 (plan item 2): asking whether a method gives a result is still asking for that result;
+        # how it was asked is kept apart from what is asked for.
+        asked_as=(Literal["request", "question"], Field(description=(
+            "request: the user wants the result produced. question: the user asks whether, or which, method "
+            "produces it."))),
     )
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
@@ -80,14 +96,16 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
         "SentenceReading",
         __config__=ConfigDict(extra="forbid"),
         role=(SentenceRole, Field(description=(
-            "background: it only says what the user has, did or must respect. asks: it asks for results. "
-            "methods_question: it only asks about the methods. mixed: more than one of these."))),
+            "background: it only says what the user has, did or must respect. asks: it asks for results, as a "
+            "request or as a question about which method gives them. methods_question: it only asks how a method "
+            "works or what it needs, naming no result. mixed: more than one of these."))),
         has=(list[str], Field(description=(
             "Exact quotes of what the user has, did or must respect (data, samples, constraints)."))),
         about_methods=(list[str], Field(description=(
-            "Exact quotes of questions about the methods themselves: which to use, how one works, what it needs."))),
+            "Exact quotes of questions about how a method works or what it needs, naming no result."))),
         asks=(list[ask], Field(description=(
-            "Each thing the user wants produced or answered about their data or biology, one item per thing."))),
+            "Each result the user wants produced, or asks whether or which method produces, about their data or "
+            "biology; one item per result."))),
     )
     fields = {
         f"s{index}": (sentence, Field(description=f"Sentence {index} of the request."))
@@ -99,12 +117,23 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     return model
 
 
+SecondOpinionAnswer = Literal["all", "part", "none"]
+
+
 @lru_cache(maxsize=32)
 def second_opinion_model(pairs: int) -> type[BaseModel]:
-    """Log 390: one required yes/no per (request words, registered result) pair."""
+    """Log 390: one required answer per (request words, registered result) pair.
+
+    Log 403 (plan items 2 and 5): "part" -- the words ask for more than one result and the
+    workflow gives some of them -- so a request that mixes a doable and an undoable result
+    in one quote (heldout8 QP2-QP4: communities, then an interactive 3D view) is partly
+    available, not a full gap that drops the doable half.
+    """
     fields = {
-        f"a{index}": (bool, Field(description=(
-            f"Pair {index}: true only if the workflow's results, together, give what the request words ask for.")))
+        f"a{index}": (SecondOpinionAnswer, Field(description=(
+            f"Pair {index}: all -- the workflow's results, together, give everything the request words ask for; "
+            "part -- the words ask for more than one result and the workflow's results give some of them; "
+            "none -- they give none of it.")))
         for index in range(1, pairs + 1)
     }
     model = create_model("SecondOpinion", __config__=ConfigDict(extra="forbid"), **fields)
@@ -135,6 +164,8 @@ class CheckedRequirement(BaseModel):
     """Log 397: no reading named any sheet entry, delivering or not -- a verdict with no reason."""
     second_opinion: bool = False
     """Log 390: credited by the second opinion on a conflict with an exact routing match."""
+    asked_as: Literal["request", "question"] = "request"
+    """Log 403: whether the user wants it produced or asks whether/which method produces it."""
 
 
 class CapabilityCheck(BaseModel):
@@ -155,6 +186,14 @@ class CapabilityCheck(BaseModel):
     cleared: list[str] = Field(default_factory=list)
     """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
     of them (ALPACA beside CONDOR) is still said."""
+    gap_unconfirmed: bool = False
+    """Log 403: a full gap the second opinion was owed but could not give (its budget spent, or the
+    model failed), so, as for the backup model, the gap is reported unconfirmed and clears nothing
+    (traces: 11 second opinions blocked by the turn budget on h8-h9, o10, f10)."""
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]
+
+    def unconfirmed(self) -> bool:
+        """Log 403: nothing this turn's check says was confirmed by the check's own model."""
+        return self.unavailable or self.provisional or self.gap_unconfirmed

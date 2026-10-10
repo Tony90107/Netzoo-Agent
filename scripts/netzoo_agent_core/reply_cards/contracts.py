@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from workflow_registry import RecommendedAction
 
 __all__ = [
+    "MAX_OPTIONS",
     "CardKind",
     "OptionResolution",
     "ReplyCard",
@@ -84,6 +85,10 @@ class ReplyOption(BaseModel):
     """The workflows a `compare_workflows` option compares, in card order."""
 
 
+MAX_OPTIONS = 8
+"""The most answers one card question lists."""
+
+
 class ReplyChoices(BaseModel):
     """A question with ordered answers, the best-supported first."""
 
@@ -91,7 +96,7 @@ class ReplyChoices(BaseModel):
 
     header: str = Field(min_length=1, max_length=24)
     question: str = Field(min_length=1, max_length=400)
-    options: list[ReplyOption] = Field(min_length=1, max_length=8)
+    options: list[ReplyOption] = Field(min_length=1, max_length=MAX_OPTIONS)
     allow_other: bool = True
     ordering: str = Field(default="", max_length=200)
     """How the options were ordered, said plainly, so the order is never a hidden claim."""

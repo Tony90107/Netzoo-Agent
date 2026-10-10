@@ -26,6 +26,11 @@ PER_TUMOR = ("We have RNA-seq from 90 ovarian tumors plus TF motif and protein i
              "separate TF-gene regulatory network for every tumor so we can relate it to survival.")
 
 
+# Log 403: the result forms (Log 402) and how each ask was asked, at their plain values.
+FORMS = {"group_membership": "not_about_groups", "time_model": "not_dynamic", "spatial": "not_spatial",
+         "asked_as": "request"}
+
+
 def _proposal(*sentences):
     """Each sentence as (text, items); an item is (quote, kind, delivered_by, not_by)."""
     def reading(items):
@@ -37,7 +42,7 @@ def _proposal(*sentences):
             "has": [quote for quote, kind, _, _ in items if kind == "context"],
             "about_methods": [quote for quote, kind, _, _ in items if kind == "about_methods"],
             "asks": [{"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by),
-                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}
+                      "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}
                      for quote, kind, delivered, not_by in items if kind == "result"],
         }
     return proposal_model(len(sentences)).model_validate(
@@ -120,11 +125,11 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
     proposal = proposal_model(2).model_validate({
         "s1": {"role": "background", "has": [], "about_methods": [],
                "asks": [{"quote": "isoform-level quantifications from 80 brain samples", "delivered_by": [],
-                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
+                         "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
         "s2": {"role": "asks", "has": [], "about_methods": [],
                "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
                          "delivered_by": ["panda.tf_gene_network"], "not_by": [], "scale": "unstated",
-                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
+                         "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
     })
     check, _ = build_capability_check(SPLICING, proposal)
     assert [item.kind for item in check.requirements] == ["result", "context"]
@@ -133,7 +138,7 @@ def test_an_unmatched_ask_in_a_background_sentence_is_read_as_background():
         "role": "background", "has": [], "about_methods": [],
         "asks": [{"quote": "find which splicing factors control inclusion of each alternative exon",
                   "delivered_by": [], "not_by": ["panda.no_motif_discovery"], "scale": "unstated",
-                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]}})
+                  "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]}})
     assert build_capability_check(SPLICING, matched)[0].results()[0].status == "not_available"
 
 
@@ -302,7 +307,7 @@ def _ask(task, quote, delivered=(), not_by=(), scale="unstated", layers=0, unit=
          sign=False, network="none"):
     return proposal_model(1).model_validate({"s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
         {"quote": quote, "delivered_by": list(delivered), "not_by": list(not_by), "scale": scale,
-         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign, "input_network": network}]}})
+         "omics_layers": layers, "data_unit": unit, "regulator_kinds": list(kinds), "needs_sign": sign, "input_network": network, **FORMS}]}})
 
 
 SIGNS = "With liver expression and priors, we want to know whether each TF activates or represses its targets."
@@ -425,10 +430,16 @@ def test_router_asks_a_second_opinion_only_when_a_gap_clears_an_exact_match(monk
     asked.clear()
     ambiguous = exact.model_copy(update={"capability_match_status": "ambiguous", "matched_actions": [],
                                          "hypothesis_actions": ["run_dragon"]})
-    # Not exact, nothing cited, and no distinctive typed attribute (Log 397): nobody to ask.
-    cleared = router_invocation._with_capability_check(
+    # Log 403: a routing tie is asked about too.
+    tied = router_invocation._with_capability_check(
         None, {}, DRAGON_ASK, _invocation(ambiguous), _ask(DRAGON_ASK, quote)).decision
-    assert not asked and cleared.capability_check.full_gap and cleared.hypothesis_actions == []
+    assert asked and tied.hypothesis_actions == ["run_dragon"]
+    asked.clear()
+    unmatched = ambiguous.model_copy(update={"capability_match_status": "unsupported", "hypothesis_actions": []})
+    # No routing candidate, nothing cited, and no distinctive typed attribute (Log 397): nobody to ask.
+    cleared = router_invocation._with_capability_check(
+        None, {}, DRAGON_ASK, _invocation(unmatched), _ask(DRAGON_ASK, quote)).decision
+    assert not asked and cleared.capability_check.full_gap
 
 
 def test_a_background_sentence_without_quotes_counts_as_read():
@@ -438,7 +449,7 @@ def test_a_background_sentence_without_quotes_counts_as_read():
         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
             {"quote": "find which splicing factors control inclusion of each alternative exon", "delivered_by": [],
              "not_by": [], "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated",
-             "regulator_kinds": [], "needs_sign": False, "input_network": "none"}]},
+             "regulator_kinds": [], "needs_sign": False, "input_network": "none", **FORMS}]},
     })
     check, _ = build_capability_check(SPLICING, proposal)
     assert check.unchecked == [] and check.full_gap
@@ -462,7 +473,7 @@ def test_a_full_gap_keeps_the_outside_step_notes_of_cleared_candidates():
         "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [
             {"quote": quote, "delivered_by": [], "not_by": ["condor.no_two_network_comparison"],
              "scale": "unstated", "omics_layers": 0, "data_unit": "not_stated", "regulator_kinds": [],
-             "needs_sign": False, "input_network": "none"}]}}))
+             "needs_sign": False, "input_network": "none", **FORMS}]}}))
     assert check.full_gap
     state = _state(check.model_copy(update={"cleared": ["run_condor"]}))
     state["messages"] = [HumanMessage(content=task)]
@@ -652,10 +663,10 @@ def test_a_failed_own_second_opinion_is_followed_by_the_semantic_model(monkeypat
     monkeypatch.setattr(call, "_own_llm", lambda model, max_tokens: Model("own", None))
     monkeypatch.setattr(call, "preflight_budget", lambda *args, **kwargs: (SimpleNamespace(status="ok"), []))
     monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
-    context = SimpleNamespace(study_purpose_llm=Model("mini", {"a1": True}), semantic_model_name="openai/gpt-4o-mini",
+    context = SimpleNamespace(study_purpose_llm=Model("mini", {"a1": "all"}), semantic_model_name="openai/gpt-4o-mini",
                               router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
     answers, _, _ = call.request_second_opinion(context, {}, [("q", "DRAGON", "r")], LLMUsage(budget_tokens=30000), [])
-    assert answers == [True] and asked == ["own", "mini"]
+    assert answers == ["all"] and asked == ["own", "mini"]
 
 
 

@@ -392,7 +392,32 @@ def _run_card(plan: WorkflowPlan, results: list[ToolExecutionResult], evaluation
                      points=points[:5], ran_nothing=False)
 
 
+def _unconfirmed_card(decision, policy) -> ReplyCard | None:
+    """Log 403: routing's workflows when the check confirmed nothing -- none badged or recommended."""
+    from ..interpretation.unconfirmed_routes import _produces, unconfirmed_actions
+    from .contracts import MAX_OPTIONS
+
+    actions = unconfirmed_actions(decision, policy)[:MAX_OPTIONS]
+    if not actions:
+        return None
+    options = [ReplyOption(
+        key=action, label=clip(workflow_name(policy, action), 80),
+        description=clip("Not confirmed. Produces: " + (_produces(action) or "see its description"), 260),
+        answer=f"Use {workflow_name(policy, action)}", action=action, resolution="confirm_workflow",
+    ) for action in actions]
+    return ReplyCard(
+        kind="method_choice",
+        headline="Not confirmed: routing matched these workflows to your words, but the check did not confirm "
+                 "that any of them gives what you asked for.",
+        points=["Compare what each produces with what you asked for; asking again re-runs the check."],
+        choices=ReplyChoices(header="Workflow", question="Which one do you want to look at?", options=options,
+                             ordering="In routing's order; none is confirmed or recommended."),
+    )
+
+
 def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCard | None:
+    if kind == "capability_unconfirmed":
+        return _unconfirmed_card(decision, policy)
     if kind in {"hypothesis_routes", "research_choices"}:
         choices, unavailable, stated = hypothesis_parts(decision, policy, task=task)
         if choices is not None:

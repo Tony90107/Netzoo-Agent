@@ -16,6 +16,7 @@ import re
 
 from workflow_registry import GUIDANCE_COMPOSITIONS, OUTPUT_CAPABILITIES
 
+from ..capability_sheet import entry
 from ..contracts.artifact_semantics import ARTIFACT_SEMANTICS
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
@@ -27,8 +28,9 @@ from .research_choices import render_research_choices
 from .scientific_guidance import method_paragraphs
 from .inspected_answers import with_inspection_footer
 from .tie_guidance import method_families
+from .capability_check import checked_route_lines, delivering_actions, requirement_for
 
-__all__ = ["render_hypothesis_routes"]
+__all__ = ["render_hypothesis_routes", "reading_verdict", "checked_actions", "checked_route"]
 
 _NOT_INSPECTED = "No files were inspected and no analysis ran."
 # Evidence that says what a reading is about, in the order it is quoted.
@@ -177,6 +179,33 @@ def _accepting_workflows(outcome, policy: ProjectPolicySnapshot) -> list[str]:
             outputs = ", ".join(sorted(_artifact_label(a) for a in produced))
             found.append(f"**{spec.workflow}** ({outputs})")
     return sorted(set(found))
+
+
+def reading_verdict(decision: TaskDecision, reading, task: str):
+    """The capability check's verdict on the words this reading quotes, or None (Log 403)."""
+    return requirement_for(decision.capability_check, task, _spans(reading, task))
+
+
+def checked_actions(decision: TaskDecision, reading, task: str, policy: ProjectPolicySnapshot) -> list[str]:
+    """Workflows the check found directly available for a reading routing gave none (Log 403).
+
+    heldout10 SC1: routing read "a test of which edges differ" as a p-value matrix no
+    workflow produces; the check, the turn's verified per-requirement source, said
+    otherwise. A reading routing matched is never changed here.
+    """
+    verdict = reading_verdict(decision, reading, task)
+    if verdict is None or verdict.status != "available":
+        return []
+    direct = {entry(key).action for key in verdict.delivered_by if entry(key).level == "direct"}
+    return [action for action in delivering_actions(verdict) if action in policy.workflows and action in direct]
+
+
+def checked_route(decision: TaskDecision, reading, task: str) -> tuple[list[str], str] | None:
+    """(lines, names) for a reading the check found reachable only with an outside step or in part."""
+    verdict = reading_verdict(decision, reading, task)
+    if verdict is None or verdict.status == "available":
+        return None
+    return checked_route_lines(verdict, provisional=decision.capability_check.provisional)
 
 
 def _covered(decision: TaskDecision, routes: list[tuple]) -> bool:
@@ -431,6 +460,14 @@ def render_hypothesis_routes(
     stated = _stated_inputs(readings, task)
     handoffs = [_handoff_routes(reading, stated, policy) if not actions and not split else []
                 for (reading, actions), split in zip(routes, splits)]
+    # Log 403: a reading routing gave no workflow takes the capability check's verdict on its
+    # words -- the workflows the check found, or their output plus the named outside step.
+    checked = [None if actions or split or handoff or _composition(reading.outcome) else
+               (checked_actions(decision, reading, task, policy) or checked_route(decision, reading, task))
+               for (reading, actions), split, handoff in zip(routes, splits, handoffs)]
+    routes = [(reading, actions or (found if isinstance(found, list) else []))
+              for (reading, actions), found in zip(routes, checked)]
+    stepped = [found if isinstance(found, tuple) else None for found in checked]
     several = len(readings) >= 2 and not _covered(decision, routes)
     # Log 252: one reading with no workflow of its own but a registered composition.
     composed = any(not actions and _composition(reading.outcome) for reading, actions in routes)
@@ -461,7 +498,8 @@ def render_hypothesis_routes(
         "premises and inputs:"
     ]
     choices = []
-    for number, ((reading, actions), split, handoff) in enumerate(zip(routes, splits, handoffs), start=1):
+    for number, ((reading, actions), split, handoff, step_route) in enumerate(
+            zip(routes, splits, handoffs, stepped), start=1):
         noun = "Step" if steps else "Reading"
         lines = [f"**{_title(number, reading, readings, task, user_data, noun)}**"] if len(readings) >= 2 else []
         lines.append(_result_line(reading.outcome, after=readings[number - 2] if steps and number > 1 else None))
@@ -474,6 +512,10 @@ def render_hypothesis_routes(
                 lines.append(f"- From the {_input_label(value)}:")
                 lines.extend("  " + line for line in option)
                 choices.append(f"{prefix}the {_input_label(value)} ({names})")
+        elif step_route is not None:
+            option, names = step_route
+            lines.extend(option)
+            choices.append(f"{number} ({names})")
         else:
             option, names = _option_lines(reading.outcome, actions, policy, single_input=False,
                                           routes=handoff, stated=stated)
@@ -481,7 +523,8 @@ def render_hypothesis_routes(
             choices.append(f"{number} ({names})")
         sections.append("\n".join(lines))
     if steps:
-        missing = [str(number) for number, (_, actions) in enumerate(routes, start=1) if not actions]
+        missing = [str(number) for number, ((_, actions), step_route) in enumerate(zip(routes, stepped), start=1)
+                   if not actions and step_route is None]
         first = choices[0].split(" (", 1)[1].rstrip(")")
         question = ((f"Should we start with step 1 ({first})? Each step is planned and approved on its own."
                      if routes[0][1] else "")

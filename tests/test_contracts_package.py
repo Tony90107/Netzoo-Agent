@@ -168,7 +168,9 @@ SCHEMA_DIGESTS = {
     # 2026-10-06 (Log 380): optional code-owned data_facts and applicability; advisory only.
     # 2026-10-06 (Log 383): optional code-owned data_plan (the turn's data-needs plan); reply only.
     # 2026-10-10 (Log 401): optional code-owned capability_check.provisional; reply only.
-    "TaskDecision": "fd0747dbf39a7324a2934c11516aca8c879389695b533379cbc33960c429130f",
+    # 2026-10-10 (Log 403): optional code-owned capability_check.gap_unconfirmed and each checked
+    # requirement's asked_as (request or question); reply only.
+    "TaskDecision": "bbdafafab17f15a9bad07adfae3a069205a303353d3ed5e4771d6cec2bf7d636",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

@@ -1,0 +1,913 @@
+{
+ "about": "Log 403: the three recorded heldout10 SC1 decisions whose per-reading reply said no workflow produces the edge test the capability check found available (f10 base-2, cand-1, cand-3). Task and decision exactly as the sessions stored them.",
+ "task": "We have expression, motifs and PPI from 90 patients, each sampled at one of three time points. We want a network for each patient and a test of which edges differ with the time point.",
+ "decisions": {
+  "ce-f10-base-SC1-2": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The request involves guidance on which method to use for obtaining regulatory networks and testing edge differences, rather than an explicit execution of a task.",
+   "candidate_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.9,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The user requests a network for each patient, indicating a regulatory network is needed."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The request specifies a network for each patient, implying sample-specific granularity."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The user requests a regulatory network, which involves transcription factors as regulators."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The user specifies a network for each patient, indicating that genes are the targets in the regulatory network."
+      }
+     ],
+     "assumptions": []
+    },
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "pvalue_matrix",
+      "entity_types": [
+       "gene",
+       "sample"
+      ],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 0.8,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "pvalue_matrix",
+       "source": "explicit",
+       "text_span": "test of which edges differ with the time point.",
+       "rationale": "The user wants to test which edges differ, which suggests a statistical analysis of edges."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "test of which edges differ with the time point.",
+       "rationale": "The analysis is to be performed for each patient, indicating sample-specific granularity."
+      },
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA); or p-value matrix paired with a sample-specific gene-gene co-expression result (BONOBO)?",
+   "data_facts": {
+    "source": "model",
+    "priors": "stated",
+    "priors_quote": "motifs and PPI",
+    "mirna": "unstated",
+    "mirna_quote": ""
+   },
+   "applicability": [
+    {
+     "action": "run_lioness_panda",
+     "status": "applicable",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "motifs and PPI",
+       "source": "model"
+      }
+     ]
+    },
+    {
+     "action": "run_lioness_puma",
+     "status": "insufficient_information",
+     "basis": [
+      {
+       "kind": "tf_priors",
+       "state": "stated",
+       "quote": "motifs and PPI",
+       "source": "model"
+      },
+      {
+       "kind": "mirna",
+       "state": "unstated",
+       "quote": "",
+       "source": "model"
+      }
+     ]
+    },
+    {
+     "action": "run_bonobo",
+     "status": "applicable",
+     "basis": []
+    }
+   ],
+   "data_plan": {
+    "answerable": true,
+    "basis": "claims",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "a network for each patient",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks"
+      ],
+      "not_by": [
+       "otter.no_per_sample"
+      ],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 2,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "regulator_gene"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "a test of which edges differ with the time point",
+      "kind": "result",
+      "status": "with_step",
+      "delivered_by": [
+       "lioness_panda.association_tests"
+      ],
+      "not_by": [
+       "cobra.no_pair_significance"
+      ],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 2,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "regulator_gene"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "We have expression, motifs and PPI from 90 patients, each sampled at one of three time points.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "blank": false,
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "unavailable": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  },
+  "ce-f10-cand-SC1-1": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The request involves guidance on which method to use for obtaining regulatory networks and testing edge differences, rather than an explicit execution of a task.",
+   "candidate_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [
+     "patient"
+    ],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [
+     "sample_specific"
+    ],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [
+       "patient"
+      ],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [
+       "sample_specific"
+      ],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 1.0,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The user is seeking a network for each patient, indicating a regulatory network is the desired output."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The request specifies that the network should be inferred for each patient, indicating sample-specific granularity."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network typically involves transcription factors as regulators."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network typically involves genes as targets."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network typically involves transcription factors as regulators."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network typically involves genes as targets."
+      }
+     ],
+     "assumptions": []
+    },
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "pvalue_matrix",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 1.0,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "pvalue_matrix",
+       "source": "explicit",
+       "text_span": "test of which edges differ with the time point.",
+       "rationale": "The user wants to test which edges differ, which implies a statistical analysis resulting in a p-value matrix."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "a network for each patient",
+       "rationale": "The request explicitly states the output granularity."
+      },
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA); or p-value matrix paired with a sample-specific gene-gene co-expression result (BONOBO)?",
+   "data_plan": {
+    "answerable": true,
+    "basis": "reading",
+    "needs": [
+     {
+      "kind": "tf_priors",
+      "state": "unstated",
+      "source": "words",
+      "quote": "",
+      "action": "ask"
+     }
+    ]
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "a network for each patient",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks"
+      ],
+      "not_by": [
+       "otter.no_per_sample"
+      ],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "none",
+       "group_membership": "not_about_groups",
+       "time_model": "not_dynamic",
+       "spatial": "not_spatial"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "a test of which edges differ with the time point",
+      "kind": "result",
+      "status": "with_step",
+      "delivered_by": [
+       "lioness_panda.association_tests"
+      ],
+      "not_by": [
+       "cobra.no_pair_significance"
+      ],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 1,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "none",
+       "group_membership": "not_about_groups",
+       "time_model": "not_dynamic",
+       "spatial": "not_spatial"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "We have expression, motifs and PPI from 90 patients, each sampled at one of three time points.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "blank": false,
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "unavailable": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  },
+  "ce-f10-cand-SC1-3": {
+   "action": "no_tool",
+   "in_scope": true,
+   "should_execute": false,
+   "intent_type": "answer_question",
+   "confidence": 0.9,
+   "reason": "The request involves planning a workflow to obtain regulatory networks and test edge differences, which falls under the category of guidance rather than execution.",
+   "candidate_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo",
+    "no_tool"
+   ],
+   "recommended_actions": [],
+   "requested_outcome": {
+    "operation": "infer",
+    "input_artifacts": [],
+    "artifact_type": "regulatory_network",
+    "entity_types": [
+     "tf",
+     "gene"
+    ],
+    "display_entities": [
+     "patient"
+    ],
+    "regulator_types": [
+     "tf"
+    ],
+    "target_types": [
+     "gene"
+    ],
+    "selection_tags": [
+     "sample_specific",
+     "tf_gene_regulation"
+    ],
+    "granularity": "sample_specific",
+    "unresolved_dimensions": []
+   },
+   "guidance_input_artifacts": [],
+   "outcome_hypotheses": [
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "regulatory_network",
+      "entity_types": [
+       "tf",
+       "gene"
+      ],
+      "display_entities": [
+       "patient"
+      ],
+      "regulator_types": [
+       "tf"
+      ],
+      "target_types": [
+       "gene"
+      ],
+      "selection_tags": [
+       "sample_specific",
+       "tf_gene_regulation"
+      ],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 1.0,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "regulatory_network",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The user requests a network for each patient, indicating a regulatory network is needed."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "We want a network for each patient.",
+       "rationale": "The request specifies that the network should be patient-specific, indicating sample-specific granularity."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The request implies the involvement of transcription factors in the regulatory network."
+      },
+      {
+       "dimension": "entity_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network will involve genes as targets."
+      },
+      {
+       "dimension": "regulator_type",
+       "value": "tf",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The regulatory network is expected to model transcription factor regulation."
+      },
+      {
+       "dimension": "selection_tag",
+       "value": "tf_gene_regulation",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The request indicates a focus on regulatory interactions between transcription factors and genes."
+      },
+      {
+       "dimension": "target_type",
+       "value": "gene",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The role is inferred from the structured TF-gene outcome; it is not a quoted user claim."
+      }
+     ],
+     "assumptions": []
+    },
+    {
+     "outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "pvalue_matrix",
+      "entity_types": [],
+      "display_entities": [],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+     },
+     "confidence": 1.0,
+     "evidence": [
+      {
+       "dimension": "artifact_type",
+       "value": "pvalue_matrix",
+       "source": "explicit",
+       "text_span": "test of which edges differ with the time point.",
+       "rationale": "The user wants to test which edges differ with the time point, which implies a statistical analysis of edge differences."
+      },
+      {
+       "dimension": "granularity",
+       "value": "sample_specific",
+       "source": "explicit",
+       "text_span": "test of which edges differ with the time point.",
+       "rationale": "The analysis is to be performed for each patient, indicating sample-specific granularity."
+      },
+      {
+       "dimension": "operation",
+       "value": "infer",
+       "source": "inferred",
+       "text_span": null,
+       "rationale": "The selected artifact ontology uniquely defines the canonical scientific operation."
+      }
+     ],
+     "assumptions": []
+    }
+   ],
+   "capability_match_status": "ambiguous",
+   "match_basis": "semantic",
+   "rejected_methods": [],
+   "matched_actions": [],
+   "hypothesis_actions": [
+    "run_lioness_panda",
+    "run_lioness_puma",
+    "run_bonobo"
+   ],
+   "alternative_actions": [],
+   "mismatch_dimensions": [],
+   "clarification_question": "Which result do you mean: inferred regulator-to-target associations, one result per sample (LIONESS-PANDA or LIONESS-PUMA); or p-value matrix paired with a sample-specific gene-gene co-expression result (BONOBO)?",
+   "data_plan": {
+    "answerable": true,
+    "basis": "claims",
+    "needs": []
+   },
+   "capability_check": {
+    "requirements": [
+     {
+      "quote": "a network for each patient",
+      "kind": "result",
+      "status": "available",
+      "delivered_by": [
+       "lioness_panda.per_sample_networks"
+      ],
+      "not_by": [
+       "otter.no_per_sample"
+      ],
+      "attrs": {
+       "scale": "per_sample",
+       "omics_layers": 3,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "none",
+       "group_membership": "not_about_groups",
+       "time_model": "not_dynamic",
+       "spatial": "not_spatial"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "a test of which edges differ with the time point",
+      "kind": "result",
+      "status": "with_step",
+      "delivered_by": [
+       "lioness_panda.association_tests"
+      ],
+      "not_by": [],
+      "attrs": {
+       "scale": "whole_cohort",
+       "omics_layers": 3,
+       "data_unit": "bulk_samples",
+       "regulator_kinds": [
+        "tf"
+       ],
+       "needs_sign": false,
+       "input_network": "regulator_gene",
+       "group_membership": "one_group",
+       "time_model": "not_dynamic",
+       "spatial": "not_spatial"
+      },
+      "blank": false,
+      "second_opinion": false
+     },
+     {
+      "quote": "We have expression, motifs and PPI from 90 patients, each sampled at one of three time points.",
+      "kind": "context",
+      "status": "not_checked",
+      "delivered_by": [],
+      "not_by": [],
+      "attrs": {},
+      "blank": false,
+      "second_opinion": false
+     }
+    ],
+    "unchecked": [],
+    "full_gap": false,
+    "unavailable": false,
+    "cleared": []
+   },
+   "missing_inputs": [],
+   "expression_file": null,
+   "design_file": null,
+   "motif_file": null,
+   "ppi_file": null,
+   "mirna_file": null,
+   "coexpression_file": null,
+   "taxon": null,
+   "output_file": null,
+   "lioness_output": null,
+   "network_file": null,
+   "mutation_file": null,
+   "exon_size_file": null,
+   "cancer_gene_file": null,
+   "pathway_file": null,
+   "omics_layer_1": null,
+   "omics_layer_2": null,
+   "output_dir": null,
+   "prefix": null,
+   "norm_patient": true,
+   "kmin": 2,
+   "kmax": 4,
+   "gmt_msigdb": true,
+   "subset_cancer_genes": true,
+   "distance": "binomial",
+   "linkage": "complete",
+   "cluster": true,
+   "with_header": false,
+   "bonobo_output_format": ".h5",
+   "sample_names": [],
+   "sparsify": false,
+   "bonobo_confidence": 0.05,
+   "save_pvals": false,
+   "keep_in_memory": false,
+   "delta": null,
+   "log_transformed": null,
+   "centered": null,
+   "genes_axis": "auto",
+   "output_format": "matrix",
+   "computing": "cpu",
+   "precision": "double",
+   "lam": 0.035,
+   "gamma": 0.335,
+   "iterations": 60,
+   "eta": 1e-05,
+   "bexp": 1.0,
+   "lambda1": null,
+   "lambda2": null,
+   "library_name": null,
+   "library_id": null,
+   "docs_query": null,
+   "web_query": null,
+   "preference_updates": []
+  }
+ }
+}

@@ -23,6 +23,20 @@
 
 data_units: [bulk_samples]
 
+# Log 402 (re-applied in Log 403): the forms every registered result takes, compared with each ask
+# like data_units (heldout7 ON5 and heldout8 QN5/QN8/QN10: overlapping communities credited to CONDOR,
+# miRNA dynamics to LIONESS-PUMA, neighbour-borrowing spot networks to LIONESS-PANDA). An ask in a
+# form not listed here is given by no registered workflow.
+result_forms:
+  # CONDOR assigns each node to exactly one community (docker/run-condor writes reg_memb/tar_memb
+  # with one community per regulator or gene); nothing else groups nodes.
+  group_membership: [one_group, not_about_groups]
+  # No workflow models change from one time point to the next; relating per-sample results to
+  # time points, stages or follow-up is not dynamic.
+  time_model: [not_dynamic]
+  # No workflow uses where samples sit in space or which are neighbours.
+  spatial: [not_spatial]
+
 registry_wide_not_produced:
   # Already live as UNSUPPORTED_CLAIMS; repeated so the sheet is complete.
   # `claim`: shown only when the study-purpose reader verified that claim (its cue-word witnesses).

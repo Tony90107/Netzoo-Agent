@@ -24,6 +24,7 @@ __all__ = ["outside_concern_answer", "outside_steps", "with_outside_steps", "wit
 _REPLY_KINDS = frozenset({
     "outcome_clarification", "research_choices", "verified_guidance", "scientific_guidance",
     "workflow_contract", "composition", "capability_gap", "hypothesis_routes",
+    "capability_unconfirmed",  # Log 403
 })
 
 

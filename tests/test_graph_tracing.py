@@ -1160,9 +1160,12 @@ def test_graph_matches_one_valid_partial_semantic_interpretation(
         "study_purpose",  # Log 355
         "data_facts",  # Log 380: a listed workflow needs TF priors the request does not bind
     ]
-    assert "The only registered workflow compatible with this request is **LIONESS-PUMA**" in str(
-        result["messages"][-1].content
-    )
+    # Log 403: the check could not read the request (both attempts undecodable), so the one
+    # candidate is listed as unconfirmed rather than as the only compatible workflow.
+    reply = str(result["messages"][-1].content)
+    assert "- **LIONESS-PUMA** — produces:" in reply
+    assert "did not confirm that any of them gives what you asked for" in reply
+    assert "The only registered workflow compatible" not in reply
     assert any(
         event.event_type == "routing.semantic_interpretation_accepted"
         for event in events
