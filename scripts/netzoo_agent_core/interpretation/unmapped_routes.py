@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from ..capability_sheet import entry, produced_text
 
-__all__ = ["UNMAPPED_KIND", "credited_actions", "is_unmapped", "offers_nothing", "unmapped_reply", "unmapped_result",
+__all__ = ["UNMAPPED_KIND", "credited_actions", "fully_credited", "is_unmapped", "offers_nothing", "unmapped_reply", "unmapped_result",
            "without_unmapped_candidates"]
 
 UNMAPPED_KIND = "unmapped_request"
@@ -78,6 +78,12 @@ def credited_actions(check, policy) -> list[tuple[str, str]]:
     return found
 
 
+def fully_credited(check) -> bool:
+    """The check confirmed every requested result, with no unchecked sentences."""
+    return bool(check is not None and not check.unconfirmed() and not check.unchecked and check.results()
+                and all(item.status in ("available", "with_step") and item.delivered_by for item in check.results()))
+
+
 def unmapped_reply(decision, policy) -> str | None:
     # A turn without a check (a follow-up, or no check model configured) is read the same way:
     # an `unknown` reading still claims no workflow.
@@ -87,11 +93,14 @@ def unmapped_reply(decision, policy) -> str | None:
     credited = credited_actions(check, policy)
     if credited:
         unconfirmed = " They were not confirmed." if check.unconfirmed() else ""  # credited implies a check
-        lines = ["I could not tell which registered result your request as a whole asks for, so no workflow is "
+        lines = (["The capability check identified workflows for every result you asked for:"]
+                 if fully_credited(check) else ["I could not tell which registered result your request as a whole asks for, so no workflow is "
                  "offered for all of it. These apply only to the part they were found for:" + unconfirmed]
+                 )
         lines += [f'- **{policy.workflows[action].workflow}** — for "{words}"; produces: {produced_text(action)}'
                   for action, words in credited]
-        closing = "Say which part to start with, or describe the rest as the result you want from your data."
+        closing = ("Choose a result to discuss with its workflow." if fully_credited(check) else
+                   "Say which part to start with, or describe the rest as the result you want from your data.")
     else:
         lines = ["I could not tell which registered result you are asking for, so no workflow is offered for it."]
         if check is not None and check.unavailable:

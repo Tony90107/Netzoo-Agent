@@ -83,6 +83,47 @@ def test_a_passage_stands_for_the_result_whose_words_it_shares():
     assert requirement_for(CapabilityCheck(unavailable=True), TASK, ["a test of which edges"]) is None
 
 
+def test_the_result_quote_wins_over_a_longer_quote_for_another_requests_scale():
+    decision = TaskDecision.model_validate(SC1["decisions"]["ce-f10-cand-SC1-1"])
+    old = decision.capability_check.requirements
+    unsupported = old[1].model_copy(update={
+        "quote": "which edges differ", "status": "not_available", "delivered_by": []})
+    decision = decision.model_copy(update={"capability_check": decision.capability_check.model_copy(update={
+        "requirements": [old[0], unsupported, old[2]],
+    })})
+    from netzoo_agent_core.interpretation.hypothesis_routes import _readings, checked_actions, reading_verdict
+
+    edge_reading = _readings(decision, POLICY)[1]
+    assert reading_verdict(decision, edge_reading, SC1["task"]) is unsupported
+    assert checked_actions(decision, edge_reading, SC1["task"], POLICY) == []
+    text, kind, card = _replay(SC1["task"], decision)
+    assert kind == "hypothesis_routes"
+    assert "No registered workflow produces this result" in text
+    assert any(option.key == "reading-2" for option in card.unavailable)
+
+
+def test_a_passage_covering_two_requirements_does_not_choose_one_as_the_whole():
+    task = "Infer a network and predict survival."
+    check = CapabilityCheck(requirements=[
+        CheckedRequirement(quote="Infer a network", kind="result", status="available",
+                           delivered_by=["panda.tf_gene_network"]),
+        CheckedRequirement(quote="predict survival", kind="result", status="not_available"),
+    ])
+    assert requirement_for(check, task, [task]) is None
+
+
+def test_an_unchecked_result_does_not_borrow_a_verdict_from_its_scale_quote():
+    from netzoo_agent_core.interpretation.hypothesis_routes import _readings, reading_verdict
+
+    decision = TaskDecision.model_validate(SC1["decisions"]["ce-f10-cand-SC1-1"])
+    check = decision.capability_check
+    decision = decision.model_copy(update={"capability_check": check.model_copy(update={
+        "requirements": [check.requirements[0], check.requirements[2]],
+        "unchecked": ["a test of which edges differ with the time point"],
+    })})
+    assert reading_verdict(decision, _readings(decision, POLICY)[1], SC1["task"]) is None
+
+
 def test_only_a_delivering_verdict_gives_a_route():
     assert checked_route_lines(_check("not_available").requirements[0]) is None
     lines, names = checked_route_lines(_check("with_step").requirements[0])
@@ -179,6 +220,33 @@ def test_the_body_lists_routings_workflows_as_unconfirmed_never_as_the_answer():
     assert unconfirmed_reply(confirmed, POLICY) is None
 
 
+def _next_prompt_and_selected_task(task, decision, card):
+    from netzoo_agent_core.cli.follow_up import build_follow_up_context
+    from netzoo_agent_core.engine.machine import ConversationMachine
+
+    plan = WorkflowPlan(workflow="NO-TOOL", objective=task, decision=decision.model_dump(), status="respond_only")
+    result = {"plan": plan.model_dump(), "tool_results": [], "evaluation": None}
+    prompt = build_next_turn_prompt(result)
+    context = build_follow_up_context(result, prompt, task)
+    state = SimpleNamespace(reply_card=card.model_dump(), next_prompt=prompt, follow_up_context=context)
+    machine = SimpleNamespace(state=state, _accept_task=lambda value: value)
+    selected = ConversationMachine._submit_option(machine, card.choices.options[0].model_dump())
+    return prompt, selected
+
+
+def test_looking_at_an_unconfirmed_workflow_keeps_the_original_requirement():
+    check = CapabilityCheck(provisional=True, requirements=[CheckedRequirement(
+        quote="find which splicing factors control inclusion of each alternative exon", kind="result",
+        status="not_available")])
+    decision = _exact_panda().model_copy(update={"capability_check": check, "recommended_actions": ["run_panda"]})
+    _, _, card = _replay(SPLICING, decision)
+    prompt, selected = _next_prompt_and_selected_task(SPLICING, decision, card)
+    assert not prompt.allow_workflow_continuation and prompt.continuation_action is None
+    assert not any(option.resolution in {"confirm_workflow", "plan_workflow"} for option in card.next_steps)
+    assert SPLICING in selected and "PANDA" in selected
+    assert "CONFIRMED_OUTCOME_ACTION" not in selected
+
+
 def test_a_backup_reading_with_no_result_still_says_it_is_not_confirmed():
     """o10 SN6: only a methods question was read, and the reply below looked checked."""
     from netzoo_agent_core.interpretation.capability_check import PROVISIONAL_NOTE, understanding_paragraph
@@ -271,6 +339,26 @@ def test_a_part_answer_makes_the_result_partly_available_and_keeps_routing(monke
     assert "partly available: CONDOR gives part of it" in understanding_paragraph(check)
 
 
+@pytest.mark.parametrize("actions,answers", [
+    (["run_giraffe", "run_panda"], ["all", "part"]),
+    (["run_panda", "run_giraffe"], ["part", "all"]),
+])
+def test_a_partly_delivering_workflow_is_not_an_alternative_to_a_full_delivery(actions, answers):
+    from netzoo_agent_core.capability_sheet import entry
+    from netzoo_agent_core.interpretation.capability_check import apply_second_opinion, second_opinion_pairs
+
+    attrs = {key: value for key, value in PLAIN.items() if key != "asked_as"}
+    attrs["regulator_kinds"] = ["tf"]
+    check = CapabilityCheck(full_gap=True, requirements=[CheckedRequirement(
+        quote="Infer a regulatory network and estimate each TF activity per sample.",
+        kind="result", status="not_available", attrs=attrs)])
+    pairs = second_opinion_pairs(check, actions)
+    assert [action for _, action, _ in pairs] == actions
+    item = apply_second_opinion(check, pairs, answers).results()[0]
+    assert item.status == "available"
+    assert {entry(key).action for key in item.delivered_by} == {"run_giraffe"}
+
+
 # -- Log 403, part D: a reading routing left `unknown` is not a tie of every workflow -------------
 
 FUSIONS = "We have RNA-seq from 60 sarcomas. We want to detect gene fusions and report which fusions recur."
@@ -317,6 +405,45 @@ def test_an_unknown_reading_offers_only_what_the_check_found_for_a_part():
     assert "- **GIRAFFE** — for \"each TF's activity per sample\"" in text
     assert [spec.workflow for action, spec in POLICY.workflows.items() if f"**{spec.workflow}**" in text] == ["GIRAFFE"]
     assert [option.action for option in card.choices.options] == ["run_giraffe"]
+
+
+@pytest.mark.parametrize("extra", [{}, {"provisional": True}])
+def test_selecting_a_credited_part_keeps_its_result_and_original_scope(extra):
+    task = "We want each TF's activity per sample, and each TF's protein amount from our raw mass spectra."
+    check = CapabilityCheck(requirements=[
+        CheckedRequirement(quote="each TF's activity per sample", kind="result", status="available",
+                           delivered_by=["giraffe.tf_activity"]),
+        CheckedRequirement(quote="each TF's protein amount from our raw mass spectra", kind="result",
+                           status="not_available")], **extra)
+    decision = _unknown_tie(check)
+    _, _, card = _replay(task, decision)
+    prompt, selected = _next_prompt_and_selected_task(task, decision, card)
+    assert task in selected and "GIRAFFE" in selected and "each TF's activity per sample" in selected
+    assert "CONFIRMED_OUTCOME_ACTION" not in selected
+    assert not prompt.allow_workflow_continuation
+
+
+def test_unknown_routing_does_not_call_a_wholly_confirmed_request_partial():
+    task = "We want each TF's activity per sample."
+    check = CapabilityCheck(requirements=[CheckedRequirement(
+        quote="each TF's activity per sample", kind="result", status="available",
+        delivered_by=["giraffe.tf_activity"])])
+    text, kind, card = _replay(task, _unknown_tie(check))
+    assert kind == "unmapped_request"
+    assert "no workflow is offered for all of it" not in text
+    assert "Only part" not in card.headline and "the rest" not in card.headline
+    assert "GIRAFFE" in text
+
+
+def test_a_long_credited_requirement_still_has_a_selectable_card():
+    words = ("each TF activity per sample " + "with matched samples and common TF identifiers, " * 11).rstrip(", ")
+    task = "We want " + words + "."
+    check = CapabilityCheck(requirements=[CheckedRequirement(
+        quote=words, kind="result", status="available", delivered_by=["giraffe.tf_activity"])])
+    decision = _unknown_tie(check)
+    _, _, card = _replay(task, decision)
+    _, selected = _next_prompt_and_selected_task(task, decision, card)
+    assert len(card.choices.options[0].answer) <= 600 and task in selected
 
 
 def test_a_confirmed_question_about_the_methods_alone_keeps_the_listing():

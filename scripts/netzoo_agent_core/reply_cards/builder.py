@@ -404,7 +404,8 @@ def _unconfirmed_card(decision, policy) -> ReplyCard | None:
     options = [ReplyOption(
         key=action, label=clip(workflow_name(policy, action), 80),
         description=clip("Not confirmed. Produces: " + (_produces(action) or "see its description"), 260),
-        answer=f"Use {workflow_name(policy, action)}", action=action, resolution="confirm_workflow",
+        answer=f"Explain what {workflow_name(policy, action)} produces and check whether it meets my original request; "
+               "do not assume it does.", action=action, resolution="follow_up",
     ) for action in actions]
     return ReplyCard(
         kind="method_choice",
@@ -419,7 +420,7 @@ def _unconfirmed_card(decision, policy) -> ReplyCard | None:
 def _unmapped_card(decision, policy) -> ReplyCard:
     """Log 403 part D: only the workflows the check found for a part; never the registry."""
     from ..capability_sheet import produced_text as _produces
-    from ..interpretation.unmapped_routes import credited_actions
+    from ..interpretation.unmapped_routes import credited_actions, fully_credited
     from .contracts import MAX_OPTIONS
 
     check = decision.capability_check
@@ -433,13 +434,15 @@ def _unmapped_card(decision, policy) -> ReplyCard:
     options = [ReplyOption(
         key=action, label=clip(workflow_name(policy, action), 80),
         description=clip(f'{prefix}For "{words}": {_produces(action)}', 260),
-        answer=f"Use {workflow_name(policy, action)} for {clip(words, 200)}", action=action,
-        resolution="confirm_workflow",
+        answer=f"Explain how {workflow_name(policy, action)} addresses this result: {clip(words, 380)}. "
+               "Keep the other requirements separate and do not execute it yet.", action=action,
+        resolution="follow_up",
     ) for action, words in credited]
     return ReplyCard(
         kind="method_choice", points=points,
-        headline="Only part of your request maps to a registered workflow; nothing is offered for the rest.",
-        choices=ReplyChoices(header="Workflow", question="Which part do you want to start with?", options=options,
+        headline=("The capability check identified workflows for every result you asked for." if fully_credited(check)
+                  else "Only part of your request maps to a registered workflow; nothing is offered for the rest."),
+        choices=ReplyChoices(header="Workflow", question="Which result do you want to discuss?", options=options,
                              ordering="In the order of the parts of your request."),
     )
 
@@ -696,6 +699,8 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         steps.insert(len(card.next_steps), plan_step(policy, action))
     if card is not None and kind not in {"execution", "unresolved"}:
         steps = _one_result_steps(decision, policy, task, result, steps)
+    if kind in {"capability_unconfirmed", "unmapped_request"}:
+        steps = [step for step in steps if step.resolution not in {"confirm_workflow", "plan_workflow"}]
     chosen = {option.action for option in (card.choices.options if card and card.choices else []) if option.action}
     steps = [step for step in steps if not (step.resolution == "confirm_workflow" and step.action in chosen)]
     if card is None:
