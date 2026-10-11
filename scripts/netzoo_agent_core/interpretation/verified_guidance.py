@@ -198,7 +198,9 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
         for action in selected:
             item = workflows[action]
             capability = item["output_capability"]
-            modalities = capability["accepted_input_modalities"] or capability["input_artifacts"]
+            # An `unknown` reading gets the compact catalog (guidance_catalog), which keeps only the
+            # capability keys a conceptual comparison needs (heldout12 b12 cand MN3-3: KeyError).
+            modalities = capability.get("accepted_input_modalities") or capability.get("input_artifacts") or []
             lines.append(f"**{item['workflow']}**: {item['description']}\n\n"
                          f"Routing-level input modality: {', '.join(value.replace('_', ' ') for value in modalities)}.")
             premises = algorithmic_assumptions_for(capability["selection_tags"])
@@ -273,7 +275,7 @@ def render_verified_guidance(decision: TaskDecision, facts: dict) -> str | None:
                 lines.append(
                     f"When {conditions}: {conditional['semantics']}."
                 )
-            transformations = capability["transformations"]
+            transformations = capability.get("transformations", [])
             if transformations and not explanations:
                 lines.append("Declared transformations:\n\n" + "\n".join(
                     f"- {value.replace('_', ' ')}" for value in transformations
