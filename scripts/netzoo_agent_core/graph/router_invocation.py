@@ -244,9 +244,9 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
 
 
 def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInvocation:
-    """Log 405: routing made no claim (it fell back, or its output failed validation) and the confirmed
-    check credited one workflow for every result -- that workflow is the match, so the reply, the card
-    and the next step read the same verdict."""
+    """Logs 405, 409: the confirmed check credited one workflow for every result a workflow gives, and routing
+    made no claim or claimed only other workflows -- that workflow is the match, so the reply, the card and
+    the next step read the same verdict."""
     policy = getattr(context, "project_policy", None)
     if policy is None or (matched := checked_match(result.decision, policy.workflows)) is result.decision:
         return result

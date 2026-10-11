@@ -1,5 +1,6 @@
-"""Log 405: when routing made no claim and the confirmed check credited one workflow for every result,
-that workflow is the match, so the understanding lines, the body and the card say the same thing.
+"""Logs 405, 409: when the confirmed check credited one workflow for every result a workflow gives and routing
+made no claim or claimed only other workflows, that workflow is the match, so the understanding lines, the body
+and the card say the same thing.
 
 heldout12 b12 KP2 (6 of 6 sessions): "available from DRAGON" above "Fallback recommendation: BONOBO";
 BP1: "available from CONDOR" above "Semantic routing output failed validation, so no workflow was
@@ -84,13 +85,47 @@ def test_one_workflow_for_every_result_is_adopted_and_a_step_outside_counts():
 
 
 @pytest.mark.parametrize("decision", [
-    # routing's own exact match or tie is never replaced (n11 VT1-2: routing right, the check wrong)
+    # Log 409: routing's exact match or tie names only other workflows (disjoint claims over five
+    # labelled rounds: the check right 17 times, routing 2)
     _decision(_check(*DRAGON_BOTH), capability_match_status="exact"),
     _decision(_check(*DRAGON_BOTH), capability_match_status="ambiguous", hypothesis_actions=["run_bonobo", "run_cobra"]),
+    # Log 409: a result no workflow gives stays a gap and does not block the rest (heldout15 MX2)
+    _decision(_check(DRAGON_BOTH[0], ("the causal direction of each link", "not_available", []))),
+])
+def test_the_checks_workflow_replaces_a_disjoint_claim_and_a_gap_does_not_block_it(decision):
+    adopted = checked_match(decision, POLICY.workflows)
+    assert adopted.matched_actions == ["run_dragon"] and adopted.capability_match_status == "exact"
+    assert adopted.hypothesis_actions == [] and adopted.match_basis == CHECK_MATCH_BASIS
+    assert checked_match(adopted, POLICY.workflows) is adopted
+
+
+def test_a_reading_the_adopted_workflow_does_not_produce_is_dropped():
+    """heldout15 PS1: "Your question asks for a cohort-level TF activity matrix. **LIONESS-PANDA** fits"."""
+    outcome = {"operation": "unknown", "artifact_type": "tf_activity_matrix", "granularity": "aggregate"}
+    stored = _decision(_check(("per-patient TF targeting scores", "with_step", ["lioness_panda.association_tests"])),
+                       capability_match_status="exact", matched_actions=["run_giraffe"], requested_outcome=outcome)
+    adopted = checked_match(stored, POLICY.workflows)
+    assert adopted.matched_actions == ["run_lioness_panda"] and adopted.requested_outcome is None
+    network = {"operation": "unknown", "artifact_type": "multi_omic_network", "granularity": "aggregate"}
+    kept = checked_match(_decision(_check(*DRAGON_BOTH), requested_outcome=network), POLICY.workflows)
+    assert kept.matched_actions == ["run_dragon"] and kept.requested_outcome.artifact_type == "multi_omic_network"
+
+
+PANDA_ONLY = _check(("one TF-gene network", "available", ["panda.tf_gene_network"]))
+
+
+@pytest.mark.parametrize("decision", [
+    # routing's claim shares the credited workflow
+    _decision(PANDA_ONLY, capability_match_status="ambiguous", hypothesis_actions=["run_panda", "run_otter"]),
+    # routing offers the upstream step of the credited workflow (heldout11 VM4s: PANDA, then CONDOR)
+    _decision(_check(("its modules", "available", ["condor.communities"])), capability_match_status="ambiguous",
+              hypothesis_actions=["run_panda", "run_otter"]),
+    # the user named the workflow
+    _decision(PANDA_ONLY, capability_match_status="exact", matched_actions=["run_otter"], match_basis="workflow_name"),
     # two workflows deliver every result: no single verdict to adopt
     _decision(_check(("one TF-gene network", "available", ["panda.tf_gene_network", "otter.tf_gene_network"]))),
-    # a result the check did not credit
-    _decision(_check(DRAGON_BOTH[0], ("the causal direction of each link", "not_available", []))),
+    # no result a workflow gives
+    _decision(_check(("the causal direction of each link", "not_available", []))),
     # different workflows for different results
     _decision(_check(DRAGON_BOTH[0], ("subtypes", "available", ["sambar.subtypes"]))),
     # the check did not confirm it, or left a sentence unread
