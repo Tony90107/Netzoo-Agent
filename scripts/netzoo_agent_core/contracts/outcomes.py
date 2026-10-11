@@ -39,7 +39,8 @@ CapabilityMatchStatus = Literal["exact", "fallback", "ambiguous", "unsupported",
 # about how well the request matched a capability but about how far the reading
 # itself is trusted, and `invoke_router` holds anything carrying it below
 # `exact` and away from execution.
-MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome", "unverified_evidence"]
+MatchBasis = Literal["semantic", "partial_evidence", "registry_features", "workflow_name", "semantic_validation_recovery", "provider_unavailable", "confirmed_context", "assumed_outcome", "unverified_evidence",
+                     "capability_check"]
 EvidenceDimension = Literal[
     "operation",
     "input_artifact",

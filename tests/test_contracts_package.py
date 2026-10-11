@@ -170,12 +170,12 @@ SCHEMA_DIGESTS = {
     # 2026-10-10 (Log 401): optional code-owned capability_check.provisional; reply only.
     # 2026-10-10 (Log 403): optional code-owned capability_check.gap_unconfirmed and each checked
     # requirement's asked_as (request or question); reply only.
-    "TaskDecision": "bbdafafab17f15a9bad07adfae3a069205a303353d3ed5e4771d6cec2bf7d636",
+    "TaskDecision": "d78820252c54a237e8aa86f21cb6c8368c91c14049814c3e17130b8fe9170194",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
     "OutcomeHypothesis": "90cdc308da7a0c3fb3099f7cdd31e8823668e1beb22925d1137df156272dbf9f",
-    "CapabilityMatch": "15d1c70f2929d7e220b694d8080934185877dcf21c1ec735c1653029a530638e",
+    "CapabilityMatch": "f0ca634c91295fe69ee5200701a7b8c86490714a7b0f458f43870e6f8d51dc69",
     "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
