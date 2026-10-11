@@ -98,12 +98,11 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
+    from ..interpretation.unconfirmed_routes import confirms_nothing
     from ..interpretation.unmapped_routes import offers_nothing
 
     check = decision.capability_check
-    if decision.action == "no_tool" and not results and (
-        (check is not None and check.unconfirmed()) or offers_nothing(decision)
-    ):
+    if decision.action == "no_tool" and not results and (confirms_nothing(check) or offers_nothing(decision)):
         return NextTurnPrompt(
             kind="clarify_outcome",
             question=_ui_text("Ask about a workflow's outputs or clarify the result you want; "
