@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from ..capability_sheet import sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
-from ..contracts.capability_check import MAX_SENTENCES, proposal_model, second_opinion_model
+from ..contracts.capability_check import MAX_SENTENCES, proposal_model, reread_model, second_opinion_model
 from ..interpretation.capability_check import request_sentences
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
@@ -29,7 +29,8 @@ from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
-__all__ = ["capability_check_system", "build_capability_check_messages", "request_capability_check",
+__all__ = ["capability_check_system", "build_capability_check_messages", "build_reread_messages",
+           "request_capability_reread", "request_capability_check",
            "with_reading_allowance", "has_check_model", "request_second_opinion"]
 
 _INSTRUCTIONS = (
@@ -282,3 +283,57 @@ def request_capability_check(
         elif not retry:
             break
     return None, usage, budget_warnings, "failed"
+
+
+def build_reread_messages(user_task: str, passages: list[str]) -> list:
+    """The whole request for context, then only the passages to read, numbered as the schema's fields."""
+    task = user_task[-ROUTER_CONTEXT_MAX_CHARS:]
+    numbered = "\n".join(f"{index}. {text}" for index, text in enumerate(passages[:MAX_SENTENCES], 1))
+    return [SystemMessage(content=capability_check_system()),
+            HumanMessage(content=f"Request:\n{task}\n\nPassages to read:\n{numbered}")]
+
+
+def request_capability_reread(context, state, user_task: str, passages: list[str], usage, budget_warnings):
+    """Log 406: the check's own model reads the passages it left unread once more, asks only.
+
+    Returns (re-read or None, usage, warnings). Only the check's own model is asked: the
+    backup reading is never acted on (Log 401), and a failure leaves the first reading as it was.
+    """
+    model, llm = _check_model(context)
+    if llm is None or not passages or usage.budget_exhausted:
+        return None, usage, budget_warnings
+    messages = build_reread_messages(user_task, passages)
+    schema = reread_model(min(len(passages), MAX_SENTENCES))
+    input_text = _serialized_structured_input(messages, schema)
+    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+    budget, budget_warnings = preflight_budget(
+        with_reading_allowance(context, usage), call_state, role="capability_reread", model=model,
+        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+    )
+    if budget.status == "blocked":
+        return None, usage, budget_warnings
+    started_ns = time.monotonic_ns()
+    raw = payload = reread = None
+    output_text, call_status = "", "failed"
+    try:
+        adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
+        payload, raw = semantic_payload(adapter.invoke(messages))
+        if isinstance(payload, BaseModel):
+            payload = payload.model_dump()
+        reread = schema.model_validate(payload)
+        output_text = reread.model_dump_json()
+        call_status = "success"
+    except BaseException as error:
+        if _is_fatal_exception(error):
+            raise
+        record_event(context, state, "routing.capability_reread_failed", "classify", {
+            "error_type": type(error).__name__, "error_message": str(error)[:2000], "provider_payload": payload,
+        })
+    usage = append_llm_usage(
+        usage, role="capability_reread", model=model,
+        response=raw, input_text=input_text, output_text=output_text,
+        budget_tokens=context.task_token_budget,
+        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+        status=call_status, price_catalog=context.price_catalog,
+    )
+    return reread, usage, budget_warnings

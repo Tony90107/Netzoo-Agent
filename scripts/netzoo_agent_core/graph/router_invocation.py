@@ -31,10 +31,13 @@ from .invocation_types import RouterInvocation as _RouterInvocation
 from .condition_recommender import invoke_condition_recommender, unrecommended_question
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
-from .capability_check_call import has_check_model, request_capability_check, request_second_opinion
+from .capability_check_call import (
+    has_check_model, request_capability_check, request_capability_reread, request_second_opinion,
+)
 from ..capability_sheet import entry
-from ..contracts.capability_check import CapabilityCheck
+from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
 from ..interpretation.checked_match import checked_match
+from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_second_opinion, blank_requirement_pairs, build_capability_check, implied_actions, second_opinion_pairs,
@@ -277,6 +280,17 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         "proposal": proposal.model_dump(), "rejected": rejected, "check": check.model_dump(),
     })
     usage, warnings = result.usage, result.budget_warnings
+    passages = [] if provisional else reread_passages(user_task, decision.model_copy(update={"capability_check": check}))
+    if passages:
+        # Log 406: words the check left unread -- no result in the whole request while routing offered
+        # workflows, or a long unquoted stretch beside a quoted result -- are read once more, asks only.
+        reread, usage, warnings = request_capability_reread(context, state, user_task, passages, usage, warnings)
+        if reread is not None:
+            reread_check, _ = build_capability_check(user_task, reread_as_proposal(reread), claims)
+            check = merge_reread(user_task, check, reread_check)
+        record_event(context, state, "routing.capability_reread", "classify", {
+            "passages": passages, "reread": reread.model_dump() if reread is not None else None,
+            "check": check.model_dump()})
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
     # Log 403: a routing tie is a claim too -- methods questions are now checked, and "which method
     # gives X" usually ties -- so a gap that would clear it asks about up to four of its workflows.
