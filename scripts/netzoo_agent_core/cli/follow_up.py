@@ -98,9 +98,15 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
-    from ..interpretation.unmapped_routes import offers_nothing
+    from ..interpretation.unmapped_routes import confirmed_partial_tie, offers_nothing
 
     check = decision.capability_check
+    if confirmed_partial_tie(decision) and not results:
+        return NextTurnPrompt(
+            kind="completed",
+            question="Ask about the supported part, or describe a different result for the unavailable part.",
+            allow_workflow_continuation=False,
+        )
     if decision.action == "no_tool" and not results and (
         (check is not None and check.unconfirmed()) or offers_nothing(decision)
     ):

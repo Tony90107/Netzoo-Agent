@@ -25,6 +25,7 @@ _REPLY_KINDS = frozenset({
     "outcome_clarification", "research_choices", "verified_guidance", "scientific_guidance",
     "workflow_contract", "composition", "capability_gap", "hypothesis_routes",
     "capability_unconfirmed", "unmapped_request",  # Log 403
+    "capability_partial",  # a confirmed partial tie lists the supported parts, like unmapped_request
 })
 
 

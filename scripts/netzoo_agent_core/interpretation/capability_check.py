@@ -334,7 +334,7 @@ def with_capability_check_reply(result: dict, state, reply) -> dict:
     check = decision.capability_check
     if check is None or check.full_gap or result.get("reply_kind") in (None, "execution"):
         return result
-    listed = result.get("reply_kind") != "unmapped_request"
+    listed = result.get("reply_kind") not in ("unmapped_request", "capability_partial")
     paragraph = ((UNAVAILABLE_NOTE if listed else UNAVAILABLE_NOTE_SHORT) if check.unavailable
                  else understanding_paragraph(check, offers_methods=listed))
     if paragraph is None:

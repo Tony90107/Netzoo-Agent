@@ -1,0 +1,301 @@
+{
+  "task": "We have matched expression and methylation for 90 patients. We want an individual two-layer partial-correlation network for every patient and a statistically calibrated p-value for every edge in each individual patient's network; aggregate network p-values are not acceptable.",
+  "decision": {
+    "action": "no_tool",
+    "in_scope": true,
+    "should_execute": false,
+    "intent_type": "answer_question",
+    "confidence": 0.9,
+    "reason": "The request is for guidance on obtaining individual two-layer partial-correlation networks with p-values for each patient, which falls under the category of answer requests rather than execution.",
+    "candidate_actions": [
+      "run_lioness_dragon",
+      "run_bonobo",
+      "no_tool"
+    ],
+    "recommended_actions": [],
+    "requested_outcome": {
+      "operation": "infer",
+      "input_artifacts": [],
+      "artifact_type": "multi_omic_network",
+      "entity_types": [
+        "omics_layer_1_feature",
+        "omics_layer_2_feature"
+      ],
+      "display_entities": [
+        "expression",
+        "methylation"
+      ],
+      "regulator_types": [],
+      "target_types": [],
+      "selection_tags": [
+        "partial_correlation",
+        "sample_specific"
+      ],
+      "granularity": "sample_specific",
+      "unresolved_dimensions": []
+    },
+    "guidance_input_artifacts": [],
+    "outcome_hypotheses": [
+      {
+        "outcome": {
+          "operation": "infer",
+          "input_artifacts": [],
+          "artifact_type": "multi_omic_network",
+          "entity_types": [
+            "omics_layer_1_feature",
+            "omics_layer_2_feature"
+          ],
+          "display_entities": [
+            "expression",
+            "methylation"
+          ],
+          "regulator_types": [],
+          "target_types": [],
+          "selection_tags": [
+            "partial_correlation",
+            "sample_specific"
+          ],
+          "granularity": "sample_specific",
+          "unresolved_dimensions": []
+        },
+        "confidence": 0.9,
+        "evidence": [
+          {
+            "dimension": "operation",
+            "value": "infer",
+            "source": "explicit",
+            "text_span": "individual two-layer partial-correlation network for every patient",
+            "rationale": "The user requests to construct individual networks for each patient."
+          },
+          {
+            "dimension": "artifact_type",
+            "value": "multi_omic_network",
+            "source": "explicit",
+            "text_span": "expression and methylation for 90 patients",
+            "rationale": "The user specifies a two-layer network involving expression and methylation data."
+          },
+          {
+            "dimension": "granularity",
+            "value": "sample_specific",
+            "source": "explicit",
+            "text_span": "individual two-layer partial-correlation network for every patient",
+            "rationale": "The user explicitly states that they want a network for each individual patient."
+          },
+          {
+            "dimension": "entity_type",
+            "value": "omics_layer_1_feature",
+            "source": "inferred",
+            "text_span": null,
+            "rationale": "The two layers of the network involve expression and methylation features."
+          },
+          {
+            "dimension": "entity_type",
+            "value": "omics_layer_2_feature",
+            "source": "inferred",
+            "text_span": null,
+            "rationale": "The two layers of the network involve expression and methylation features."
+          },
+          {
+            "dimension": "selection_tag",
+            "value": "partial_correlation",
+            "source": "explicit",
+            "text_span": "individual two-layer partial-correlation network for every patient",
+            "rationale": "The user specifies a partial-correlation network."
+          },
+          {
+            "dimension": "selection_tag",
+            "value": "sample_specific",
+            "source": "explicit",
+            "text_span": "individual two-layer partial-correlation network for every patient",
+            "rationale": "The user explicitly states that they want a network for each individual patient."
+          }
+        ],
+        "assumptions": []
+      },
+      {
+        "outcome": {
+          "operation": "infer",
+          "input_artifacts": [],
+          "artifact_type": "pvalue_matrix",
+          "entity_types": [
+            "unknown"
+          ],
+          "display_entities": [],
+          "regulator_types": [],
+          "target_types": [],
+          "selection_tags": [],
+          "granularity": "sample_specific",
+          "unresolved_dimensions": []
+        },
+        "confidence": 0.9,
+        "evidence": [
+          {
+            "dimension": "operation",
+            "value": "infer",
+            "source": "explicit",
+            "text_span": "statistically calibrated p-value for every edge in each individual patient's network",
+            "rationale": "The user requests to compute p-values for edges in the networks."
+          },
+          {
+            "dimension": "artifact_type",
+            "value": "pvalue_matrix",
+            "source": "explicit",
+            "text_span": "statistically calibrated p-value for every edge in each individual patient's network",
+            "rationale": "The user specifies the need for p-values associated with the individual networks."
+          },
+          {
+            "dimension": "granularity",
+            "value": "sample_specific",
+            "source": "explicit",
+            "text_span": "aggregate network p-values are not acceptable",
+            "rationale": "The user requires p-values for each patient's network, not an aggregate."
+          }
+        ],
+        "assumptions": []
+      }
+    ],
+    "capability_match_status": "ambiguous",
+    "match_basis": "semantic",
+    "rejected_methods": [],
+    "matched_actions": [],
+    "hypothesis_actions": [
+      "run_lioness_dragon",
+      "run_bonobo"
+    ],
+    "alternative_actions": [],
+    "mismatch_dimensions": [],
+    "clarification_question": "Which result do you mean: inferred associations between omics features, one result per sample (LIONESS-DRAGON); or p-value matrix paired with a sample-specific gene-gene co-expression result (BONOBO)?",
+    "addressed_concerns": [
+      {
+        "action": "run_bonobo",
+        "concern": "per_edge_confidence",
+        "text_span": "a statistically calibrated p-value for every edge in each individual patient's network; aggregate network p-values are not acceptable."
+      }
+    ],
+    "data_plan": {
+      "answerable": true,
+      "basis": "reading",
+      "needs": []
+    },
+    "capability_check": {
+      "requirements": [
+        {
+          "quote": "an individual two-layer partial-correlation network for every patient",
+          "kind": "result",
+          "status": "available",
+          "delivered_by": [
+            "lioness_dragon.per_sample_networks"
+          ],
+          "not_by": [],
+          "attrs": {
+            "scale": "per_sample",
+            "omics_layers": 2,
+            "data_unit": "bulk_samples",
+            "regulator_kinds": [],
+            "needs_sign": false,
+            "input_network": "none",
+            "group_membership": "not_about_groups",
+            "time_model": "not_dynamic",
+            "spatial": "not_spatial"
+          },
+          "blank": false,
+          "second_opinion": false,
+          "asked_as": "request"
+        },
+        {
+          "quote": "a statistically calibrated p-value for every edge in each individual patient's network",
+          "kind": "result",
+          "status": "not_available",
+          "delivered_by": [],
+          "not_by": [
+            "lioness_dragon.no_pvalues"
+          ],
+          "attrs": {
+            "scale": "per_sample",
+            "omics_layers": 2,
+            "data_unit": "bulk_samples",
+            "regulator_kinds": [],
+            "needs_sign": false,
+            "input_network": "none",
+            "group_membership": "not_about_groups",
+            "time_model": "not_dynamic",
+            "spatial": "not_spatial"
+          },
+          "blank": false,
+          "second_opinion": false,
+          "asked_as": "request"
+        },
+        {
+          "quote": "We have matched expression and methylation for 90 patients.",
+          "kind": "context",
+          "status": "not_checked",
+          "delivered_by": [],
+          "not_by": [],
+          "attrs": {},
+          "blank": false,
+          "second_opinion": false,
+          "asked_as": "request"
+        }
+      ],
+      "unchecked": [],
+      "full_gap": false,
+      "unavailable": false,
+      "provisional": false,
+      "cleared": [],
+      "gap_unconfirmed": false
+    },
+    "missing_inputs": [],
+    "expression_file": null,
+    "design_file": null,
+    "motif_file": null,
+    "ppi_file": null,
+    "mirna_file": null,
+    "coexpression_file": null,
+    "taxon": null,
+    "output_file": null,
+    "lioness_output": null,
+    "network_file": null,
+    "mutation_file": null,
+    "exon_size_file": null,
+    "cancer_gene_file": null,
+    "pathway_file": null,
+    "omics_layer_1": null,
+    "omics_layer_2": null,
+    "output_dir": null,
+    "prefix": null,
+    "norm_patient": true,
+    "kmin": 2,
+    "kmax": 4,
+    "gmt_msigdb": true,
+    "subset_cancer_genes": true,
+    "distance": "binomial",
+    "linkage": "complete",
+    "cluster": true,
+    "with_header": false,
+    "bonobo_output_format": ".h5",
+    "sample_names": [],
+    "sparsify": false,
+    "bonobo_confidence": 0.05,
+    "save_pvals": false,
+    "keep_in_memory": false,
+    "delta": null,
+    "log_transformed": null,
+    "centered": null,
+    "genes_axis": "auto",
+    "output_format": "matrix",
+    "computing": "cpu",
+    "precision": "double",
+    "lam": 0.035,
+    "gamma": 0.335,
+    "iterations": 60,
+    "eta": 1e-05,
+    "bexp": 1.0,
+    "lambda1": null,
+    "lambda2": null,
+    "library_name": null,
+    "library_id": null,
+    "docs_query": null,
+    "web_query": null,
+    "preference_updates": []
+  }
+}
