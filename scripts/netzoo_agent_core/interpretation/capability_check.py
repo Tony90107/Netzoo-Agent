@@ -497,29 +497,27 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
 
 def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, list[str]]],
                          answers: list) -> CapabilityCheck:
-    """Credit a workflow's fitting entries for every pair answered all or part; the gap stands only if none was.
+    """Credit a workflow's fitting entries for every pair answered all; the gap stands only if none was.
 
-    Log 403: "part" makes the result partly available -- the workflow gives some of what the
-    words ask for, and no registered workflow the rest -- never available.
+    Log 407: "part" no longer credits anything. Log 403 added it for one quote holding two results
+    (heldout8 QP2-QP4: communities, then an interactive 3D view), but on the heldout11-14 recordings
+    the check never quoted a supported and an unsupported result together (0 of 178 two-requirement
+    sessions), while "part" was answered for single results only partly met -- each TF's sign in each
+    tumor from GIRAFFE's cohort-level signs, enhancer-promoter loops from DRAGON -- 13 times on
+    unsupported requests; the 4 times on supported ones another workflow was answered "all".
     """
     requirements = [item.model_copy() for item in check.requirements]
-    full, partial = {}, {}
+    full = {}
     for (index, _action, keys), answer in zip(pairs, answers):
-        answer = {True: "all", False: "none"}.get(answer, answer)
-        if answer in ("all", "part"):
-            target = full if answer == "all" else partial
-            target.setdefault(index, []).extend(keys)
-    for index in full.keys() | partial.keys():
+        if {True: "all", False: "none"}.get(answer, answer) == "all":
+            full.setdefault(index, []).extend(keys)
+    for index, keys in full.items():
         item = requirements[index]
-        # A partial answer is not an alternative to a workflow that delivers
-        # this whole requirement. Preserve that distinction regardless of order.
-        complete = index in full or item.status in ("available", "with_step")
-        keys = full.get(index, []) if complete else partial[index]
-        previous = item.delivered_by if item.status != "partial" or not complete else []
+        # A workflow that delivers the whole requirement replaces a partial reading of it.
+        previous = item.delivered_by if item.status != "partial" else []
         delivered = list(dict.fromkeys([*previous, *keys]))
         requirements[index] = item.model_copy(update={
-            "delivered_by": delivered, "status": _status(delivered) if complete else "partial",
-            "second_opinion": True})
+            "delivered_by": delivered, "status": _status(delivered), "second_opinion": True})
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
