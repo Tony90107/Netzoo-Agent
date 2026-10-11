@@ -21,7 +21,7 @@ from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
 __all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "SecondOpinionAnswer",
-           "proposal_model", "proposal_sentences", "second_opinion_model"]
+           "proposal_model", "proposal_sentences", "reread_as_proposal", "reread_model", "second_opinion_model"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -31,17 +31,12 @@ MAX_SENTENCES = 12
 """Sentences after the twelfth are not read; the coverage check lists them as not checked."""
 
 
-@lru_cache(maxsize=MAX_SENTENCES + 1)
-def proposal_model(sentences: int = 1) -> type[BaseModel]:
-    """The provider-facing schema: one required field per request sentence, sheet ids as enums.
-
-    Log 387 smoke run: with one free-length list of sentences gpt-4o-mini returned
-    only the first (the data sentence) 3 times in 4, so the goal was never read.
-    Strict mode requires every property, so a field per sentence cannot be skipped.
-    """
+@lru_cache(maxsize=1)
+def _ask_model() -> type[BaseModel]:
+    """One asked-for result and the sheet entries that give it (shared by the check and its re-read)."""
     produces = Literal[produces_ids()]  # type: ignore[valid-type]
     not_produced = Literal[not_produced_ids()]  # type: ignore[valid-type]
-    ask = create_model(
+    return create_model(
         "Ask",
         __config__=ConfigDict(extra="forbid"),
         quote=(str, Field(description="Exact contiguous words from the sentence, copied without translation.")),
@@ -88,6 +83,17 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
             "request: the user wants the result produced. question: the user asks whether, or which, method "
             "produces it."))),
     )
+
+
+@lru_cache(maxsize=MAX_SENTENCES + 1)
+def proposal_model(sentences: int = 1) -> type[BaseModel]:
+    """The provider-facing schema: one required field per request sentence, sheet ids as enums.
+
+    Log 387 smoke run: with one free-length list of sentences gpt-4o-mini returned
+    only the first (the data sentence) 3 times in 4, so the goal was never read.
+    Strict mode requires every property, so a field per sentence cannot be skipped.
+    """
+    ask = _ask_model()
     # Log 387 dev round: with a kind beside the entry lists, a data sentence was given
     # 16 not-produced entries. Only an ask can name entries now.
     # Log 387 dev round 2: data sentences ("We have expression from 50 kidney samples ...")
@@ -115,6 +121,44 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
     model.model_json_schema = classmethod(  # type: ignore[method-assign]
         lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
     return model
+
+
+@lru_cache(maxsize=MAX_SENTENCES + 1)
+def reread_model(sentences: int = 1) -> type[BaseModel]:
+    """Log 406: a second reading of words the check left unread, with only one thing to say about them.
+
+    The check's sentence reading can file a sentence as background or as a question about methods
+    (heldout11 VN5q: "Is there a method that models how each TF-gene edge at one time point depends
+    on the edges at the previous time point?", 3 of 3), or quote one result of a sentence and
+    nothing of the next one in it (heldout13 P1: "uploaded automatically to a public database").
+    Asked again with the same choices it chooses the same; here the only field is what results
+    the words ask for -- an empty list is a normal answer.
+    """
+    ask = _ask_model()
+    sentence = create_model(
+        "SentenceAsks",
+        __config__=ConfigDict(extra="forbid"),
+        asks=(list[ask], Field(description=(
+            "Each result these words ask to be produced, or ask whether or which method produces, about the "
+            "user's data or biology; one item per result; empty when they ask for none."))),
+    )
+    fields = {
+        f"s{index}": (sentence, Field(description=f"Passage {index}."))
+        for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
+    }
+    model = create_model("CapabilityReread", __config__=ConfigDict(extra="forbid"), **fields)
+    model.model_json_schema = classmethod(  # type: ignore[method-assign]
+        lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
+    return model
+
+
+def reread_as_proposal(reread) -> BaseModel:
+    """The re-read in the check's own proposal shape, every passage an `asks` sentence."""
+    count = len(type(reread).model_fields)
+    return proposal_model(count).model_validate({
+        f"s{index}": {"role": "asks", "has": [], "about_methods": [],
+                      "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
+        for index in range(1, count + 1)})
 
 
 SecondOpinionAnswer = Literal["all", "part", "none"]
