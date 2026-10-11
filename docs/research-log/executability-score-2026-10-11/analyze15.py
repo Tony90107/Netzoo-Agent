@@ -44,7 +44,7 @@ def misjudged(layer, label):
 
 def novel(row, index):
     item = ITEMS[row["item"]]
-    return item["family"] == "NV" or (item.get("novel") and negative(row["layers"][index]))
+    return bool(item["family"] == "NV" or (item.get("novel") and negative(row["layers"][index])))
 
 
 def contradiction(label):
