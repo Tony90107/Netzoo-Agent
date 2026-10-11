@@ -1,0 +1,673 @@
+{
+ "about": "Log 408 executability score set, written 2026-10-11 before any run of it. Gold verdicts follow scripts/capability_sheet.yaml (closed world on produces; with_step results are supported). Families: PL a supported result stated plainly; PS a supported result that needs a named outside step; PI a supported result whose inputs are not all stated; PQ a supported result asked as a question; NM an unsupported result next to a registered one (a near miss in the sheet or outside result_forms); NF an unsupported request far from any network method; NV an unsupported result of a kind no earlier held-out set asked for and the sheet does not list as a near miss (also MX6, marked novel); MX one supported and one unsupported result; K a second turn that adds only a constraint (KN unsupported, KP supported; sent with --resume).",
+ "items": [
+  {
+   "id": "PL1",
+   "family": "PL",
+   "prompt": "We have RNA-seq from 140 liver biopsies, a TF motif prior and a PPI network. We want a single TF-gene regulatory network for the whole cohort.",
+   "requirements": [
+    {
+     "words": "a single TF-gene regulatory network for the whole cohort",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL2",
+   "family": "PL",
+   "prompt": "We have expression for 95 kidney samples, TF motifs, PPI and predicted miRNA target sites. We want one network of how TFs and miRNAs regulate genes across the cohort.",
+   "requirements": [
+    {
+     "words": "one network of how TFs and miRNAs regulate genes across the cohort",
+     "expect": "supported",
+     "by": [
+      "PUMA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL3",
+   "family": "PL",
+   "prompt": "We have expression, TF motifs, PPI and miRNA target predictions for 60 patients. We want a separate TF and miRNA regulatory network for each patient.",
+   "requirements": [
+    {
+     "words": "a separate TF and miRNA regulatory network for each patient",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PUMA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL4",
+   "family": "PL",
+   "prompt": "We have expression, motifs and PPI from 88 samples. We want each TF's activity in every sample, estimated apart from the TF's own mRNA level.",
+   "requirements": [
+    {
+     "words": "each TF's activity in every sample, estimated apart from the TF's own mRNA level",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL6",
+   "family": "PL",
+   "prompt": "We have proteomics and RNA-seq from 120 matched plasma samples. We want a partial-correlation network between proteins and transcripts, keeping only edges with adjusted p below 0.05.",
+   "requirements": [
+    {
+     "words": "a partial-correlation network between proteins and transcripts, keeping only edges with adjusted p below 0.05",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL9",
+   "family": "PL",
+   "prompt": "We have expression from 200 samples processed in 4 batches. We want gene co-expression with the batch-associated part separated out.",
+   "requirements": [
+    {
+     "words": "gene co-expression with the batch-associated part separated out",
+     "expect": "supported",
+     "by": [
+      "COBRA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL10",
+   "family": "PL",
+   "prompt": "We have a regulator-gene network from PANDA. We want its modules and the core regulators of each module.",
+   "requirements": [
+    {
+     "words": "its modules and the core regulators of each module",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL11",
+   "family": "PL",
+   "prompt": "We have somatic mutation calls for 310 tumors. We want to group the patients into subtypes using pathway-level mutation scores.",
+   "requirements": [
+    {
+     "words": "group the patients into subtypes using pathway-level mutation scores",
+     "expect": "supported",
+     "by": [
+      "SAMBAR"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PL12",
+   "family": "PL",
+   "prompt": "We have proteomics and phosphoproteomics for 75 matched samples. We want a two-layer network of direct associations between them.",
+   "requirements": [
+    {
+     "words": "a two-layer network of direct associations between them",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PS1",
+   "family": "PS",
+   "prompt": "We have expression, motifs, PPI and survival data for 180 patients. We want per-patient TF targeting scores tested against survival.",
+   "requirements": [
+    {
+     "words": "per-patient TF targeting scores tested against survival",
+     "expect": "with_step",
+     "by": [
+      "LIONESS-PANDA",
+      "LIONESS-PUMA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PS2",
+   "family": "PS",
+   "prompt": "We have expression, motifs and PPI for 60 tumor and 60 normal samples. We want to know which TF-gene edges differ between tumor and normal.",
+   "requirements": [
+    {
+     "words": "which TF-gene edges differ between tumor and normal",
+     "expect": "with_step",
+     "by": [
+      "PANDA",
+      "LIONESS-PANDA",
+      "OTTER"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PS3",
+   "family": "PS",
+   "prompt": "We have expression, motifs and PPI from 85 samples. We want to rank the TFs by how strongly they target genes in each sample.",
+   "requirements": [
+    {
+     "words": "rank the TFs by how strongly they target genes in each sample",
+     "expect": "with_step",
+     "by": [
+      "LIONESS-PANDA",
+      "LIONESS-PUMA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PI1",
+   "family": "PI",
+   "prompt": "We have expression from 90 samples and want one TF-gene regulatory network for them.",
+   "requirements": [
+    {
+     "words": "one TF-gene regulatory network",
+     "expect": "needs_input",
+     "by": [
+      "PANDA",
+      "OTTER"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PQ1",
+   "family": "PQ",
+   "prompt": "We have methylation and expression for 72 tumors. Is there a method that gives each tumor its own methylation-expression network?",
+   "requirements": [
+    {
+     "words": "gives each tumor its own methylation-expression network",
+     "expect": "supported",
+     "by": [
+      "LIONESS-DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PQ2",
+   "family": "PQ",
+   "prompt": "We have motifs, PPI and expression from 50 samples. Is there a method that fits one TF-gene network to agree with both the PPI and the co-expression?",
+   "requirements": [
+    {
+     "words": "fits one TF-gene network to agree with both the PPI and the co-expression",
+     "expect": "supported",
+     "by": [
+      "OTTER",
+      "PANDA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "PQ3",
+   "family": "PQ",
+   "prompt": "We have microbiome abundances and metabolomics from 100 stool samples. Which method gives conditional associations between taxa and metabolites?",
+   "requirements": [
+    {
+     "words": "conditional associations between taxa and metabolites",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "NM1",
+   "family": "NM",
+   "prompt": "We have Smart-seq2 profiles of 600 single cells, with motifs and PPI. We want a TF-gene network for each cell.",
+   "requirements": [
+    {
+     "words": "a TF-gene network for each cell",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM2",
+   "family": "NM",
+   "prompt": "We have a TF-gene network. We want gene modules in which one gene can belong to several modules at once.",
+   "requirements": [
+    {
+     "words": "gene modules in which one gene can belong to several modules at once",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM3",
+   "family": "NM",
+   "prompt": "We have expression, methylation and proteomics for 85 matched samples. We want one partial-correlation network that models all three layers jointly.",
+   "requirements": [
+    {
+     "words": "one partial-correlation network that models all three layers jointly",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM4",
+   "family": "NM",
+   "prompt": "We have expression at 10 time points after drug treatment, with motifs and PPI. We want a model that simulates how the regulatory network evolves between time points.",
+   "requirements": [
+    {
+     "words": "a model that simulates how the regulatory network evolves between time points",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM5",
+   "family": "NM",
+   "prompt": "We have Visium spatial transcriptomics of 3,000 spots. We want TF-gene networks that borrow information from each spot's neighbouring spots.",
+   "requirements": [
+    {
+     "words": "TF-gene networks that borrow information from each spot's neighbouring spots",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM6",
+   "family": "NM",
+   "prompt": "We have lncRNA, miRNA and mRNA expression for 110 samples. We want a ceRNA network of lncRNAs sponging miRNAs.",
+   "requirements": [
+    {
+     "words": "a ceRNA network of lncRNAs sponging miRNAs",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM7",
+   "family": "NM",
+   "prompt": "We have ATAC-seq peaks and expression from 40 samples. We want to discover new TF binding motifs de novo.",
+   "requirements": [
+    {
+     "words": "discover new TF binding motifs de novo",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM8",
+   "family": "NM",
+   "prompt": "We have somatic mutations for 250 tumors. We want to know which of the mutations are drivers.",
+   "requirements": [
+    {
+     "words": "which of the mutations are drivers",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM9",
+   "family": "NM",
+   "prompt": "We have expression from 90 treated and 90 control samples. We want differentially expressed genes with fold changes and p-values.",
+   "requirements": [
+    {
+     "words": "differentially expressed genes with fold changes and p-values",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM10",
+   "family": "NM",
+   "prompt": "We have expression, motifs and PPI for 100 samples. We want to know which TFs physically form complexes and in what stoichiometry.",
+   "requirements": [
+    {
+     "words": "which TFs physically form complexes and in what stoichiometry",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM11",
+   "family": "NM",
+   "prompt": "We have expression, motifs and PPI from 80 patients. We want to prove which TFs causally drive the disease state.",
+   "requirements": [
+    {
+     "words": "prove which TFs causally drive the disease state",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM12",
+   "family": "NM",
+   "prompt": "We have expression, motifs, PPI and drug response labels for 200 patients. We want a trained model that predicts each new patient's response, with its accuracy.",
+   "requirements": [
+    {
+     "words": "a trained model that predicts each new patient's response, with its accuracy",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM13",
+   "family": "NM",
+   "prompt": "We have RNA-seq of 300 tumors and no mutation data. We want patient subtypes from the expression profiles.",
+   "requirements": [
+    {
+     "words": "patient subtypes from the expression profiles",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NM14",
+   "family": "NM",
+   "prompt": "We have matched miRNA and mRNA expression for 80 samples. We want miRNA-gene edges estimated from the anti-correlation of their expression.",
+   "requirements": [
+    {
+     "words": "miRNA-gene edges estimated from the anti-correlation of their expression",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NF1",
+   "family": "NF",
+   "prompt": "We have raw FASTQ files from 30 exomes. We want germline variant calls in VCF format.",
+   "requirements": [
+    {
+     "words": "germline variant calls in VCF format",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NF2",
+   "family": "NF",
+   "prompt": "We want 3D structures predicted for 12 TF proteins from their amino-acid sequences.",
+   "requirements": [
+    {
+     "words": "3D structures predicted for 12 TF proteins",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NF3",
+   "family": "NF",
+   "prompt": "We want CRISPR guide RNAs designed to knock out the 20 hub TFs of our network.",
+   "requirements": [
+    {
+     "words": "CRISPR guide RNAs designed to knock out the 20 hub TFs",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NF4",
+   "family": "NF",
+   "prompt": "We have expression from 100 samples. We want a simulation of every gene's expression after knocking out STAT3.",
+   "requirements": [
+    {
+     "words": "a simulation of every gene's expression after knocking out STAT3",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV1",
+   "family": "NV",
+   "prompt": "We have expression from 80 samples. We want a directed acyclic graph of which genes regulate which other genes.",
+   "requirements": [
+    {
+     "words": "a directed acyclic graph of which genes regulate which other genes",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV2",
+   "family": "NV",
+   "prompt": "We have bulk RNA-seq of 90 samples. We want a separate regulatory network for each of the 8 cell types deconvolved from the bulk.",
+   "requirements": [
+    {
+     "words": "a separate regulatory network for each of the 8 cell types deconvolved from the bulk",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV3",
+   "family": "NV",
+   "prompt": "We have expression, motifs and PPI for 70 samples. We want TF-gene edges that are confirmed physical binding events, not predictions.",
+   "requirements": [
+    {
+     "words": "TF-gene edges that are confirmed physical binding events",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV4",
+   "family": "NV",
+   "prompt": "We have RNA-seq for 60 samples but proteomics for only 40 of them. We want the missing proteomics values imputed from the RNA-seq.",
+   "requirements": [
+    {
+     "words": "the missing proteomics values imputed from the RNA-seq",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV5",
+   "family": "NV",
+   "prompt": "We have a TF-gene network. We want the shortest regulatory path from TP53 to MYC and how significant it is.",
+   "requirements": [
+    {
+     "words": "the shortest regulatory path from TP53 to MYC and how significant it is",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "NV6",
+   "family": "NV",
+   "prompt": "We have a bipartite TF-gene network. We want a hierarchy of small modules nested inside larger modules.",
+   "requirements": [
+    {
+     "words": "a hierarchy of small modules nested inside larger modules",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX1",
+   "family": "MX",
+   "prompt": "We want one TF-gene network per patient from expression, motifs and PPI of 66 patients, plus a dashboard that updates live as new patients are added.",
+   "requirements": [
+    {
+     "words": "one TF-gene network per patient",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ]
+    },
+    {
+     "words": "a dashboard that updates live as new patients are added",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX2",
+   "family": "MX",
+   "prompt": "We have expression and metabolomics for 70 matched samples and want each sample's own two-layer network, with a p-value for every edge in every sample.",
+   "requirements": [
+    {
+     "words": "each sample's own two-layer network",
+     "expect": "supported",
+     "by": [
+      "LIONESS-DRAGON"
+     ]
+    },
+    {
+     "words": "a p-value for every edge in every sample",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX3",
+   "family": "MX",
+   "prompt": "We want the communities of our bipartite TF-gene network, and then to fine-map the causal GWAS variants inside each community.",
+   "requirements": [
+    {
+     "words": "the communities of our bipartite TF-gene network",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ]
+    },
+    {
+     "words": "fine-map the causal GWAS variants inside each community",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX4",
+   "family": "MX",
+   "prompt": "We want a signed TF-gene regulatory matrix from expression, motifs and PPI of 90 samples, and the measured TF protein level in each sample.",
+   "requirements": [
+    {
+     "words": "a signed TF-gene regulatory matrix",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ]
+    },
+    {
+     "words": "the measured TF protein level in each sample",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX5",
+   "family": "MX",
+   "prompt": "We want batch-adjusted co-expression for 150 samples, and then a list of genes differentially expressed between cases and controls.",
+   "requirements": [
+    {
+     "words": "batch-adjusted co-expression",
+     "expect": "supported",
+     "by": [
+      "COBRA"
+     ]
+    },
+    {
+     "words": "a list of genes differentially expressed between cases and controls",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "MX6",
+   "family": "MX",
+   "novel": true,
+   "prompt": "We have expression, motifs and PPI from 100 samples. We want the TF-gene network and also the refined TF-TF cooperation network the method estimates along the way.",
+   "requirements": [
+    {
+     "words": "the TF-gene network",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER"
+     ]
+    },
+    {
+     "words": "the refined TF-TF cooperation network the method estimates along the way",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "KN1",
+   "family": "K",
+   "turns": [
+    "We want per-sample TF-gene networks from expression, motifs and PPI of 50 samples.",
+    "Those samples are 50 spatial spots from one tissue section, and neighbouring spots should share information."
+   ],
+   "requirements": [
+    {
+     "words": "neighbouring spots should share information",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "KN2",
+   "family": "K",
+   "turns": [
+    "We want the communities of our TF-gene network from PANDA.",
+    "We need its community structure compared against our second network, from the treated group."
+   ],
+   "requirements": [
+    {
+     "words": "its community structure compared against our second network",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "KP1",
+   "family": "K",
+   "turns": [
+    "We want one gene co-expression network across our 120 samples.",
+    "Actually we need one for each sample."
+   ],
+   "requirements": [
+    {
+     "words": "one for each sample",
+     "expect": "supported",
+     "by": [
+      "BONOBO",
+      "LIONESS-COEXPRESSION"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "KP2",
+   "family": "K",
+   "turns": [
+    "We want a TF-gene network from expression, motifs and PPI of 75 samples.",
+    "We also need to know whether each TF activates or represses its targets."
+   ],
+   "requirements": [
+    {
+     "words": "whether each TF activates or represses its targets",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ]
+    }
+   ]
+  }
+ ]
+}
