@@ -1,0 +1,27 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.40s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "compare regulatory networks between our responders and non-responders" -- available from DRAGON's output plus a step you run outside NetZoo: One network per group on the same features, then compare; no per-sample spread for a test.
+The usual capability check could not run this turn, so a backup model read the request; the lines above are not confirmed, and the methods below were not removed for them.
+
+Routing matched these registered workflows to your words, but the capability check did not confirm that any of them gives what you asked for:
+- **PANDA** — produces: One weighted TF-to-gene regulatory network across all the samples given.
+- **PUMA** — produces: One weighted network of how TFs and miRNAs regulate genes, across all samples.
+- **LIONESS-PANDA** — produces: One TF-gene network per sample, plus the aggregate network.
+- **LIONESS-PUMA** — produces: One TF/miRNA-gene network per sample, plus the aggregate network.
+- **OTTER** — produces: One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression.
+- **GIRAFFE** — produces: A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples. Each TF's activity in each sample, estimated apart from its own mRNA level.
+
+Compare what each produces with what you asked for. Ask again to re-run the check, or say which result you want and from which workflow.
+
+For your question ("compare regulatory networks between our responders and non-responders"):
+- **PANDA**, **PUMA** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use the per-sample (LIONESS) version and test between the groups.
+- **LIONESS-PANDA**, **LIONESS-PUMA** — Each sample gets its own network, so each edge weight or targeting score can be tested between the groups across samples -- for example with a linear model such as limma.
+- **OTTER** — Build one network per group on the same genes and priors, then compare edge weights or each regulator's targeting score (out-degree) between the group networks. Two aggregate networks give one value per edge per group: they show where the groups differ, but give no per-sample spread to test it. For a statistical test, use a per-sample method such as LIONESS-PANDA and test between the groups.
+- **GIRAFFE** — The activity matrix compares TF activity, not network wiring, between the conditions; test each TF's activity between them (paired when the same individuals give both).
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: OTTER weights are on a different scale from PANDA's; compare OTTER networks only with other OTTER networks built with the same parameters.
+
+No files were inspected and no analysis ran.

@@ -1,0 +1,19 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.49s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "want a TF-gene network for each cell." -- the backup check matched no registered workflow to this (not confirmed).
+The usual capability check could not run this turn, so a backup model read the request; the lines above are not confirmed, and the methods below were not removed for them.
+
+Routing matched these registered workflows to your words, but the capability check did not confirm that any of them gives what you asked for:
+- **PANDA** — produces: One weighted TF-to-gene regulatory network across all the samples given.
+- **LIONESS-PANDA** — produces: One TF-gene network per sample, plus the aggregate network.
+- **OTTER** — produces: One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression.
+- **GIRAFFE** — produces: A signed TF-to-gene regulatory matrix (positive activating, negative repressing), across all samples. Each TF's activity in each sample, estimated apart from its own mRNA level.
+
+Compare what each produces with what you asked for. Ask again to re-run the check, or say which result you want and from which workflow.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+No files were inspected and no analysis ran.

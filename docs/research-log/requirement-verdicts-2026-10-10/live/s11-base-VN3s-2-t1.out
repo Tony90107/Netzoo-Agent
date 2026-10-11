@@ -1,0 +1,24 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.06s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one regulatory network in which long non-coding RNAs, not TFs, are the regulators of each gene" -- the backup check matched no registered workflow to this (not confirmed).
+The usual capability check could not run this turn, so a backup model read the request; the lines above are not confirmed, and the methods below were not removed for them.
+
+Based on what you said — "We want one regulatory network in which long non-coding RNAs, not TFs, are the regulators of each gene." — **PUMA** fits better: the regulators include miRNAs or similar short non-coding RNAs that repress or degrade target transcripts after transcription.
+
+Your question asks for a cohort-level regulatory network. **PUMA** fits that result and scale.
+
+**PUMA** (recommend) — PUMA extends PANDA's message passing to miRNA regulators. Their prior edges usually come from sequence-based target prediction such as TargetScan or miRanda, and can sit in the same prior as TF motif edges. Because miRNAs do not form the protein complexes that the cooperativity network represents, PUMA keeps each miRNA's cooperativity with other regulators at its initial value instead of updating it. Evidence for a miRNA-gene edge therefore comes from agreement between the predicted targets and target-gene co-expression; the miRNA's own expression is not used, and anti-correlation receives no special weight for repression. Needs expression matrix, motif/prior, PPI network and miRNA list. Produces inferred regulator-to-target associations (one cohort-level result).
+
+Conditional assumptions to confirm:
+- This reads the molecules you describe as miRNAs. Confirm that, and that you have a miRNA-target prior and a list of the miRNAs, before analysis.
+
+Other compatible option(s):
+- If you need a TF-only regulatory network instead: **PANDA**, **OTTER**.
+- **GIRAFFE** — preferred when: a regulator's activity may differ from its own expression, or activating versus repressing effects are needed; each sample's regulator activity level is needed, apart from the regulator's own expression; approach: factor gene expression using motif and TF-protein interaction priors.
+
+Should I use PUMA, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.

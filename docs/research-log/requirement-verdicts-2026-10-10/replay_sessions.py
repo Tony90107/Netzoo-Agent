@@ -80,9 +80,14 @@ def render(task: str, decision: dict, plan: dict, purpose: dict | None = None) -
     out = respond(SimpleNamespace(project_policy=POLICY), state)
     result = {**state, "messages": [HumanMessage(content=task), out["messages"][-1]],
               "reply_kind": out.get("reply_kind")}
-    card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=task)
+    card_error = None
+    try:
+        card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=task)
+    except Exception as error:  # the runtime skips invalid cards without discarding the reply
+        card = None
+        card_error = f"{type(error).__name__}: {str(error)[:200]}"
     return {"reply": str(out["messages"][-1].content), "reply_kind": out.get("reply_kind"),
-            "card": card.model_dump() if card is not None else None}
+            "card": card.model_dump() if card is not None else None, "card_error": card_error}
 
 
 def main() -> None:

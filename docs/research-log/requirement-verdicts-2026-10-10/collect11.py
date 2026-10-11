@@ -142,6 +142,7 @@ def main(tag: str, repeats: int) -> None:
                     "status": decision.get("capability_match_status"),
                     "candidates": [*decision.get("matched_actions", []), *decision.get("hypothesis_actions", [])],
                     "reply_kind": again.get("reply_kind"), "replay_equal": again.get("reply") == reply,
+                    "card_error": again.get("card_error"),
                     "check": {k: check.get(k) for k in ("full_gap", "unavailable", "provisional", "gap_unconfirmed",
                                                          "unchecked")},
                     "check_calls": [(c.get("model"), c.get("status")) for c in calls if c.get("role") == "capability_check"],

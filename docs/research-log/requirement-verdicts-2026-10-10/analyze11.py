@@ -17,6 +17,11 @@ from pathlib import Path
 LIVE = Path(__file__).resolve().parent / "live"
 POSITIVE = {"supported", "with_step", "needs_input"}
 SAYS_GIVEN = {"GIVEN", "GIVEN_WITH_STEP", "GIVEN_IF_INPUT"}
+LABELS = SAYS_GIVEN | {"PARTLY", "NOT_GIVEN", "UNCONFIRMED", "ASKED", "OMITTED"}
+AMBIGUITY_LABELS = {"OPTIONS", "DISCRIMINATING_QUESTION", "VAGUE_QUESTION", "SINGLE", "REFUSED"}
+FROZEN_RUNS = {"n11": ("normal", 3), "s11": ("outage", 2)}
+FROZEN_ITEMS = {item["id"]: len(item["requirements"]) for item in
+                json.loads((Path(__file__).parent / "heldout11.json").read_text())["items"]}
 
 
 def load(tag, name):
@@ -54,6 +59,57 @@ def final_labels(tag):
     return final, unresolved, split
 
 
+def validate_evidence(tag, mode, rows, key):
+    """Require complete independent labels and identical replay before reporting any gate.
+
+    Missing labels used to contribute zero errors, and zip() silently dropped an
+    unlabelled requirement. An unfinished outage round could therefore pass all
+    four promotion gates. Validation is separate from the frozen metric thresholds.
+    """
+    recipe = FROZEN_RUNS.get(tag)
+    if recipe is None or recipe[0] != mode:
+        raise ValueError("Unknown experiment or mode differs from the frozen round")
+    expected = Counter((arm, item, rep) for arm in ("base", "cand") for item in FROZEN_ITEMS
+                       for rep in range(1, recipe[1] + 1))
+    observed = Counter((row.get("arm"), row.get("item"), row.get("rep")) for row in rows.values())
+    if observed != expected:
+        raise ValueError("Incomplete or duplicate frozen round coverage")
+    if (not rows or set(key.values()) != set(rows) or len(key) != len(rows)
+            or {row.get("arm") for row in rows.values()} != {"base", "cand"}):
+        raise ValueError("Incomplete or duplicate session coverage in the blinding map")
+    for sid, row in rows.items():
+        if row.get("missing") or not row.get("replay_equal"):
+            raise ValueError(f"Missing session or unequal replay: {sid}")
+        if len(row["layers"]) != FROZEN_ITEMS[row["item"]]:
+            raise ValueError(f"Incomplete requirement coverage: {sid}")
+
+    def validate_label(code, label, role):
+        row = rows[key[code]]
+        values = label.get("R") if isinstance(label, dict) else None
+        if (not isinstance(values, list) or len(values) != len(row["layers"])
+                or any(not isinstance(value, str) or value not in LABELS for value in values)):
+            raise ValueError(f"Invalid requirement labels: {role} {code}")
+        contradiction = label.get("contradiction")
+        if not (contradiction == "no" or isinstance(contradiction, str)
+                and contradiction.startswith("yes:") and contradiction[4:].strip()):
+            raise ValueError(f"Invalid contradiction label: {role} {code}")
+        if row["family"] == "A" and label.get("ambiguity") not in AMBIGUITY_LABELS:
+            raise ValueError(f"Invalid ambiguity label: {role} {code}")
+
+    for role in ("A", "B"):
+        labels = load(tag, f"labels-{role}")
+        if set(labels) != set(key):
+            raise ValueError(f"Incomplete label coverage: labeller {role}")
+        for code, label in labels.items():
+            validate_label(code, label, role)
+    split = disagreements(tag)
+    resolved = load(tag, "labels-resolved")
+    if set(resolved) != set(split):
+        raise ValueError("There are unresolved or stale labeller disagreements")
+    for code, label in resolved.items():
+        validate_label(code, label, "resolved")
+
+
 def main(tag, mode):
     if mode == "disagreements":
         split = disagreements(tag)
@@ -62,6 +118,7 @@ def main(tag, mode):
         return
     rows = json.loads((LIVE / f"{tag}-structure.json").read_text())
     key = load(tag, "blind-key")
+    validate_evidence(tag, mode, rows, key)
     final, unresolved, split = final_labels(tag)
     by_sid = {key[code]: value for code, value in final.items()}
     out = []
