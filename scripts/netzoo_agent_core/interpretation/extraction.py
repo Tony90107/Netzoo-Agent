@@ -52,18 +52,18 @@ def _has_explicit_file_binding(task: str, aliases: tuple[str, ...]) -> bool:
 
 
 def _reverse_named_path(task: str, aliases: tuple[str, ...]) -> str | None:
-    names = _alias_pattern(aliases)
-    match = re.search(
-        rf"(?:(?P<quote>['\"])(?P<quoted>.*?)(?P=quote)|"
-        rf"(?P<plain>[^{PROSE_PATH_TERMINATORS}]+))\s+(?:as|for)\s+(?:the\s+)?(?:{names})",
-        task,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return None
-    value = match.group("quoted") or match.group("plain")
-    cleaned = value.strip().rstrip(".。")
-    return cleaned if match.group("quote") or _looks_like_path(cleaned) else None
+    # One search re-scanned a long token from each offset and a line from each quote
+    # mark (~15 s a turn on a 6 KB message); this finds the same leftmost match linearly.
+    role = rf"\s+(?:as|for)\s+(?:the\s+)?(?:{_alias_pattern(aliases)})"
+    plain = re.search(rf"(?<![^{PROSE_PATH_TERMINATORS}])[^{PROSE_PATH_TERMINATORS}]+(?={role})", task, re.IGNORECASE)  # a whole token
+    closings = [m.start() for m in re.finditer(rf"['\"](?={role})", task, re.IGNORECASE)]  # a quote closes only before the role
+    openings = [i for j in closings if (i := task.find(task[j], task.rfind("\n", 0, j) + 1, j)) >= 0]  # first same mark on its line
+    if openings and (plain is None or min(openings) <= plain.start()):  # the quoted alternative wins a tie
+        start = min(openings)
+        close = next(j for j in closings if j > start and task[j] == task[start])  # where the lazy body stops
+        return task[start + 1:close].strip().rstrip(".。")
+    cleaned = plain.group().strip().rstrip(".。") if plain else ""
+    return cleaned if _looks_like_path(cleaned) else None
 
 
 def _task_path(task: str, field_name: str) -> str | None:
