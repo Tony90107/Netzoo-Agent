@@ -395,11 +395,10 @@ def _run_card(plan: WorkflowPlan, results: list[ToolExecutionResult], evaluation
 def _unconfirmed_card(decision, policy) -> ReplyCard | None:
     """Log 403: routing's workflows when the check confirmed nothing -- none badged or recommended."""
     from ..capability_sheet import produced_text as _produces
-    from ..interpretation.unconfirmed_routes import checked_no_result, unconfirmed_actions
+    from ..interpretation.unconfirmed_routes import unconfirmed_actions
     from .contracts import MAX_OPTIONS
 
     actions = unconfirmed_actions(decision, policy)[:MAX_OPTIONS]
-    no_result = checked_no_result(decision.capability_check)
     if not actions:
         return None
     options = [ReplyOption(
@@ -410,12 +409,9 @@ def _unconfirmed_card(decision, policy) -> ReplyCard | None:
     ) for action in actions]
     return ReplyCard(
         kind="method_choice",
-        headline=("Not confirmed: routing matched these workflows to your words, but the check found no result in "
-                  "your request to check them against." if no_result else
-                  "Not confirmed: routing matched these workflows to your words, but the check did not confirm "
-                  "that any of them gives what you asked for."),
-        points=["Compare what each produces with what you asked for; describing the result you want has it checked."
-                if no_result else "Compare what each produces with what you asked for; asking again re-runs the check."],
+        headline="Not confirmed: routing matched these workflows to your words, but the check did not confirm "
+                 "that any of them gives what you asked for.",
+        points=["Compare what each produces with what you asked for; asking again re-runs the check."],
         choices=ReplyChoices(header="Workflow", question="Which one do you want to look at?", options=options,
                              ordering="In routing's order; none is confirmed or recommended."),
     )
