@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.71s)
+● Matching registered workflows…
+✓ Guidance prepared
+Partial correlation asks whether two features stay associated after conditioning on every other measured feature. Under a Gaussian graphical model this separates direct links from associations mediated by other variables; with more features than samples it needs shrinkage or another regularized estimate, and it still does not give causal direction.
+
+No qualified registered workflow fully matches the requested modeling philosophy.
+
+Registered methods with that philosophy estimate different results:
+- **DRAGON** — declared output: multi omic network. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+- **LIONESS-DRAGON** — declared output: multi omic network (one per sample). DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.
+
+Conditional alternatives, ordered by the stated output and scope if you relax that requirement:
+
+PANDA and OTTER tie on the stated output and scope. This does not establish equal accuracy or interchangeable mathematical assumptions.
+
+1. **PANDA** — Iterative message passing reconciles the motif seed with TF-TF interactions and gene co-expression, repeatedly revising TF-gene edge support across those networks. The edge weights summarize integrated evidence, not a posterior probability that the motif prior is reliable.
+
+2. **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Its lambda balances those two fit terms and gamma regularizes W; a PPI-transformed motif matrix initializes W rather than contributing a motif-fidelity term to that loss. Neither parameter estimates motif-prior reliability, and optimized edge scores are not posterior probabilities.
+
+These alternatives do not fulfill the requested modeling requirement.
+
+If you can relax the unavailable requirement, which better fits your study: PANDA for iterative reconciliation of motif, PPI, and co-expression evidence; or OTTER for an explicit projection-matching objective and regularization?
+
+No files were inspected and no analysis ran.
