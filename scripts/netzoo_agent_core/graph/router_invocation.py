@@ -34,6 +34,7 @@ from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import has_check_model, request_capability_check, request_second_opinion
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
+from ..interpretation.checked_match import checked_match
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_second_opinion, blank_requirement_pairs, build_capability_check, implied_actions, second_opinion_pairs,
@@ -174,6 +175,7 @@ def invoke_router(
                 "cleared": list(dict.fromkeys([*result.decision.matched_actions, *result.decision.hypothesis_actions,
                                                *result.decision.recommended_actions]))})
             result = replace(result, decision=unmapped)
+        result = _with_checked_match(context, state, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -236,6 +238,24 @@ def _with_applicability(context, state, user_task: str, result: _RouterInvocatio
     })
     return replace(result, decision=decision, usage=usage, budget_warnings=warnings,
                    routing_state={**result.routing_state, "data_facts": decision.data_facts})
+
+
+def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInvocation:
+    """Log 405: routing made no claim (it fell back, or its output failed validation) and the confirmed
+    check credited one workflow for every result -- that workflow is the match, so the reply, the card
+    and the next step read the same verdict."""
+    policy = getattr(context, "project_policy", None)
+    if policy is None or (matched := checked_match(result.decision, policy.workflows)) is result.decision:
+        return result
+    record_event(context, state, "routing.check_match_adopted", "classify", {
+        "action": matched.matched_actions[0], "routing_status": result.decision.capability_match_status,
+        "routing_basis": result.decision.match_basis,
+        "routing_actions": list(dict.fromkeys([*result.decision.matched_actions, *result.decision.recommended_actions]))})
+    goal = outcome_routing_state(matched)["semantic_goal"]
+    return replace(result, decision=matched, routing_state={
+        **result.routing_state,
+        "semantic_goal": {**(result.routing_state.get("semantic_goal") or {}),
+                          **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
 
 
 def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal, *,
