@@ -36,7 +36,7 @@ from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
-    apply_second_opinion, build_capability_check, implied_actions, second_opinion_pairs,
+    apply_second_opinion, blank_requirement_pairs, build_capability_check, implied_actions, second_opinion_pairs,
 )
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
@@ -265,14 +265,17 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     cited = [entry(key).action for item in check.results() for key in item.not_by if entry(key).action]
     implied = [action for item in check.results() for action in implied_actions(item)]
     asked = list(dict.fromkeys([*exact, *tied, *cited, *implied]))
-    if check.full_gap and asked:
+    # Log 404: a blank verdict beside results the check did find is asked about the workflows its
+    # own attributes point to, as Log 397 asks for a whole-request gap (heldout11 VC4s-2).
+    blank_pairs = [] if provisional or check.full_gap else blank_requirement_pairs(check)
+    if (check.full_gap and asked) or blank_pairs:
         # Log 390: the two readers disagree -- routing matched a workflow exactly, the check found
         # nothing -- so the check is asked once more, pair by pair, about that workflow's results.
         # Log 396: also about every workflow whose near miss the check cited, so a gap stands
         # only after the workflows it weighed were asked as a whole (TEST_PROMPTS r12 test9:
         # routing failed and "infer a network" was refused over OTTER's convexity near miss).
         # Log 397: and about the workflows a blank verdict's own typed attributes point to.
-        pairs = second_opinion_pairs(check, asked)
+        pairs = second_opinion_pairs(check, asked) if check.full_gap else blank_pairs
         shown = [(check.requirements[index].quote, entry(keys[0]).workflow, " ".join(entry(k).text for k in keys))
                  for index, _action, keys in pairs]
         answers = None
@@ -281,7 +284,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             check = apply_second_opinion(check, pairs, answers)
-        elif pairs and has_check_model(context):
+        elif pairs and check.full_gap and has_check_model(context):
             # Log 403: the second opinion was owed and could not answer (budget, provider), so the
             # gap is unconfirmed: said as such, and routing's offer stays (as for Log 401's backup).
             check = check.model_copy(update={"full_gap": False, "gap_unconfirmed": True})

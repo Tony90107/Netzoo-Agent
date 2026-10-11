@@ -27,7 +27,8 @@ from .unconfirmed_routes import checked_body_result
 
 __all__ = [
     "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
-    "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "apply_second_opinion",
+    "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
+    "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
 ]
 
@@ -457,16 +458,36 @@ def second_opinion_pairs(check: CapabilityCheck, actions: list[str]) -> list[tup
     significance is DRAGON's network plus its p-values, and each alone was "no").
     A workflow the attributes rule out entirely is never asked about.
     """
-    from types import SimpleNamespace
-
     if not check.full_gap:
         return []
+    return _pairs(check, lambda requirement: actions)
+
+
+def blank_requirement_pairs(check: CapabilityCheck) -> list[tuple[int, str, list[str]]]:
+    """Pairs for blank verdicts beside results the check did find (Log 404).
+
+    Log 397 asks about the workflows a blank verdict's own typed attributes point to, but
+    only when the whole request was a gap. heldout11 VC4s-2: communities were credited to
+    CONDOR, "find each community's core genes" came back blank with a regulator-gene input
+    network, and the reply said no workflow gives core genes while describing CONDOR's core
+    score. A verdict with a reason (a cited near miss) is not asked again, nor a sibling's
+    workflow: on heldout11 that would have asked about a dashboard, a narrative report and a
+    differential expression table, all rightly refused.
+    """
+    if check.full_gap or check.unconfirmed():
+        return []
+    return _pairs(check, implied_actions)
+
+
+def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str]]]:
+    from types import SimpleNamespace
+
     known = sheet_entries()
     pairs = []
     for index, requirement in enumerate(check.requirements):
         if requirement.kind != "result" or requirement.status != "not_available" or not requirement.attrs:
             continue
-        for action in actions:
+        for action in actions_for(requirement):
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
             fitting = _fitting(produces, SimpleNamespace(**requirement.attrs))
             if fitting:
