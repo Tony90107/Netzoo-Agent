@@ -37,9 +37,19 @@ ITEMS = {item["id"]: item for item in json.loads((HERE / "heldout12.json").read_
 PACKET = 34
 sys.path.insert(0, str(ROOT / "scripts"))
 from netzoo_agent_core.contracts.capability_check import CapabilityCheck  # noqa: E402
-from netzoo_agent_core.interpretation.unconfirmed_routes import checked_no_result  # noqa: E402
 PROMISES = ("Selected path", "These all fit", "fits that result", "fits your goal", "is the registered workflow for",
             "The only registered workflow compatible")
+
+
+def checked_no_result(check) -> bool:
+    """Log 404 part 1's rule (withdrawn from the product in bb9fecd), kept here so this collector reruns."""
+    import re as _re
+    from netzoo_agent_core.capability_sheet import sheet_entries
+    if check is None or check.unconfirmed() or check.full_gap or check.results():
+        return False
+    parts = {part for item in sheet_entries().values() if item.workflow for part in item.workflow.split("-")}
+    names = _re.compile(r"\b(?:" + "|".join(sorted(map(_re.escape, parts), key=len, reverse=True)) + r")\b", _re.I)
+    return not any(names.search(item.quote) for item in check.requirements if item.kind == "about_methods")
 
 
 def replay(tag: str, arm: str) -> dict[str, dict]:
