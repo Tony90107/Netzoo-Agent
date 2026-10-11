@@ -363,7 +363,9 @@ def requirement_for(check: CapabilityCheck | None, task: str, passages) -> Check
     available is never answered "no registered workflow" (heldout10 SC1: the check
     said the edge test is LIONESS-PANDA's output plus a step outside NetZoo, and the
     per-reading reply said no workflow produces it). A passage stands for the result
-    whose words it shares most, at least half of the shorter of the two.
+    whose words it shares, at least half of the shorter of the two. Passages are
+    ordered by the caller: result evidence takes precedence over scale or input
+    evidence. A passage spanning several results cannot stand for just one.
     """
     if check is None or check.unavailable:
         return None
@@ -374,19 +376,21 @@ def requirement_for(check: CapabilityCheck | None, task: str, passages) -> Check
         start = folded.find(text.casefold()) if text else -1
         return None if start < 0 else (start, start + len(text))
 
-    best, best_shared = None, 0
-    for item in check.results():
-        wanted = where(item.quote)
-        if wanted is None:
+    for passage in passages:
+        said = where(passage)
+        if said is None:
             continue
-        for passage in passages:
-            said = where(passage)
-            if said is None:
+        matches = []
+        for item in check.results():
+            wanted = where(item.quote)
+            if wanted is None:
                 continue
             shared = min(wanted[1], said[1]) - max(wanted[0], said[0])
-            if shared > best_shared and shared >= 0.5 * min(wanted[1] - wanted[0], said[1] - said[0]):
-                best, best_shared = item, shared
-    return best
+            if shared > 0 and shared >= 0.5 * min(wanted[1] - wanted[0], said[1] - said[0]):
+                matches.append(item)
+        if matches:
+            return matches[0] if len(matches) == 1 else None
+    return None
 
 
 def delivering_actions(item: CheckedRequirement) -> list[str]:
@@ -478,15 +482,23 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
     words ask for, and no registered workflow the rest -- never available.
     """
     requirements = [item.model_copy() for item in check.requirements]
+    full, partial = {}, {}
     for (index, _action, keys), answer in zip(pairs, answers):
         answer = {True: "all", False: "none"}.get(answer, answer)
         if answer in ("all", "part"):
-            item = requirements[index]
-            delivered = list(dict.fromkeys([*item.delivered_by, *keys]))
-            status = ("partial" if answer == "part" and item.status in ("not_available", "partial")
-                      else _status(delivered))
-            requirements[index] = item.model_copy(update={
-                "delivered_by": delivered, "status": status, "second_opinion": True})
+            target = full if answer == "all" else partial
+            target.setdefault(index, []).extend(keys)
+    for index in full.keys() | partial.keys():
+        item = requirements[index]
+        # A partial answer is not an alternative to a workflow that delivers
+        # this whole requirement. Preserve that distinction regardless of order.
+        complete = index in full or item.status in ("available", "with_step")
+        keys = full.get(index, []) if complete else partial[index]
+        previous = item.delivered_by if item.status != "partial" or not complete else []
+        delivered = list(dict.fromkeys([*previous, *keys]))
+        requirements[index] = item.model_copy(update={
+            "delivered_by": delivered, "status": _status(delivered) if complete else "partial",
+            "second_opinion": True})
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})

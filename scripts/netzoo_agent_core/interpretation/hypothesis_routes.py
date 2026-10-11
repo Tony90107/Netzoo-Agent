@@ -86,7 +86,7 @@ def _candidates(task: str, reading, request_mode: str) -> list[str]:
     return []
 
 
-def _spans(reading, task: str) -> list[str]:
+def _spans(reading, task: str, dimensions=_QUOTED_DIMENSIONS) -> list[str]:
     """The reading's explicit quotes that the request really contains, in order.
 
     A quote may end in a period where the request goes on after a comma; Test 4
@@ -94,7 +94,7 @@ def _spans(reading, task: str) -> list[str]:
     """
     folded = task.casefold()
     spans = []
-    for dimension in _QUOTED_DIMENSIONS:
+    for dimension in dimensions:
         for item in reading.evidence:
             if item.dimension != dimension or item.source != "explicit":
                 continue
@@ -183,7 +183,13 @@ def _accepting_workflows(outcome, policy: ProjectPolicySnapshot) -> list[str]:
 
 def reading_verdict(decision: TaskDecision, reading, task: str):
     """The capability check's verdict on the words this reading quotes, or None (Log 403)."""
-    return requirement_for(decision.capability_check, task, _spans(reading, task))
+    # Scale, regulator and input evidence can belong to a different requested
+    # result. They cannot supply a verdict when this result was not checked.
+    for dimension in ("artifact_type", "operation"):
+        spans = _spans(reading, task, dimensions=(dimension,))
+        if spans:
+            return requirement_for(decision.capability_check, task, spans)
+    return None
 
 
 def checked_actions(decision: TaskDecision, reading, task: str, policy: ProjectPolicySnapshot) -> list[str]:
