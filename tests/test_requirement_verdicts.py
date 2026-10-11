@@ -33,6 +33,7 @@ from netzoo_agent_core.reply_cards import build_reply_card  # noqa: E402
 
 POLICY = ProjectPolicyLoader(ROOT).load()
 SC1 = json.loads((ROOT / "tests" / "log403_sc1_decisions.json").read_text())
+LIVE_C10 = json.loads((ROOT / "tests" / "partial_tie_c10_decision.json").read_text())
 
 
 def _replay(task: str, decision: TaskDecision):
@@ -43,6 +44,37 @@ def _replay(task: str, decision: TaskDecision):
     result = {**state, "messages": [HumanMessage(content=task), out["messages"][-1]], "reply_kind": out["reply_kind"]}
     card = build_reply_card(result, build_next_turn_prompt(result), POLICY, task=task)
     return str(out["messages"][-1].content), out["reply_kind"], card
+
+
+def test_a_confirmed_partial_request_does_not_offer_an_incompatible_confidence_method():
+    decision = TaskDecision.model_validate(LIVE_C10["decision"])
+    text, kind, card = _replay(LIVE_C10["task"], decision)
+    assert "LIONESS-DRAGON" in text
+    assert "not available here" in text
+    assert "BONOBO" not in text
+    assert "Which result do you mean" not in text
+    assert kind == "capability_partial"
+    assert [option.action for option in card.choices.options] == ["run_lioness_dragon"]
+    assert any("p-value" in option.label for option in card.unavailable)
+
+
+@pytest.mark.parametrize("uncertain", ["provisional", "gap_unconfirmed", "unavailable"])
+def test_an_unconfirmed_partial_check_does_not_replace_a_routing_tie(uncertain):
+    from netzoo_agent_core.interpretation.unmapped_routes import confirmed_partial_tie
+
+    decision = TaskDecision.model_validate(LIVE_C10["decision"])
+    decision.capability_check = decision.capability_check.model_copy(update={uncertain: True})
+    assert not confirmed_partial_tie(decision)
+
+
+def test_a_partial_reply_does_not_repeat_the_incompatible_next_turn_question():
+    decision = TaskDecision.model_validate(LIVE_C10["decision"])
+    plan = WorkflowPlan(workflow="NO-TOOL", objective=LIVE_C10["task"],
+                        decision=decision.model_dump(), status="respond_only")
+    prompt = build_next_turn_prompt({"plan": plan.model_dump(), "tool_results": []})
+    assert prompt.kind == "completed"
+    assert "BONOBO" not in prompt.question and "Which result" not in prompt.question
+    assert not prompt.allow_workflow_continuation
 
 
 @pytest.mark.parametrize("session", sorted(SC1["decisions"]))

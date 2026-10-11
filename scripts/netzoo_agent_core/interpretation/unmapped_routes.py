@@ -21,7 +21,7 @@ from __future__ import annotations
 from ..capability_sheet import entry, produced_text
 
 __all__ = ["UNMAPPED_KIND", "credited_actions", "fully_credited", "is_unmapped", "offers_nothing", "unmapped_reply", "unmapped_result",
-           "without_unmapped_candidates"]
+           "without_unmapped_candidates", "confirmed_partial_tie"]
 
 UNMAPPED_KIND = "unmapped_request"
 _NOT_INSPECTED = "No files were inspected and no analysis ran."
@@ -84,22 +84,50 @@ def fully_credited(check) -> bool:
                 and all(item.status in ("available", "with_step") and item.delivered_by for item in check.results()))
 
 
+def confirmed_partial_tie(decision) -> bool:
+    """A confirmed supported result beside a gap is not a choice of interchangeable outputs.
+
+    A live run (tests/partial_tie_c10_decision.json): routing offered BONOBO's
+    gene-gene p-values as an alternative to per-patient two-layer partial
+    correlations, after the check correctly refused p-values for those
+    two-layer networks. Report
+    the confirmed parts without changing routing or selecting an execution.
+    Explicit method comparisons and uncertain readings keep their own advice.
+    """
+    check = decision.capability_check
+    if check is None:
+        return False
+    supported = {entry(key).action for item in check.results()
+                 if item.status in ("available", "with_step") for key in item.delivered_by}
+    refused = {entry(key).action for item in check.results()
+               if item.status == "not_available" for key in item.not_by}
+    return bool(decision.action == "no_tool" and not decision.should_execute
+                and decision.capability_match_status == "ambiguous" and decision.match_basis == "semantic"
+                and len(set(decision.hypothesis_actions)) > 1 and not decision.stated_hypotheses
+                and not is_unmapped(decision) and not check.unconfirmed() and not check.unchecked
+                and (supported & refused) - {None})
+
+
 def unmapped_reply(decision, policy) -> str | None:
     # A turn without a check (a follow-up, or no check model configured) is read the same way:
     # an `unknown` reading still claims no workflow.
     check = decision.capability_check
-    if not offers_nothing(decision):
+    partial_tie = confirmed_partial_tie(decision)
+    if not offers_nothing(decision) and not partial_tie:
         return None
     credited = credited_actions(check, policy)
     if credited:
         unconfirmed = " They were not confirmed." if check.unconfirmed() else ""  # credited implies a check
-        lines = (["The capability check identified workflows for every result you asked for:"]
+        lines = (["Only part of your request is supported. These workflows provide the confirmed part; "
+                  "no registered workflow supplies the whole request:"] if partial_tie else
+                 ["The capability check identified workflows for every result you asked for:"]
                  if fully_credited(check) else ["I could not tell which registered result your request as a whole asks for, so no workflow is "
                  "offered for all of it. These apply only to the part they were found for:" + unconfirmed]
                  )
         lines += [f'- **{policy.workflows[action].workflow}** — for "{words}"; produces: {produced_text(action)}'
                   for action, words in credited]
-        closing = ("Choose a result to discuss with its workflow." if fully_credited(check) else
+        closing = ("Ask about the supported part, or describe a different result for the unavailable part." if partial_tie else
+                   "Choose a result to discuss with its workflow." if fully_credited(check) else
                    "Say which part to start with, or describe the rest as the result you want from your data.")
     else:
         lines = ["I could not tell which registered result you are asking for, so no workflow is offered for it."]
@@ -116,5 +144,7 @@ def unmapped_result(context, state, reply) -> dict | None:
     policy = getattr(context, "project_policy", None)
     if policy is None or state.get("tool_results"):
         return None
-    text = unmapped_reply(TaskDecision.model_validate(state["decision"]), policy)
-    return None if text is None else reply(text, UNMAPPED_KIND)
+    decision = TaskDecision.model_validate(state["decision"])
+    text = unmapped_reply(decision, policy)
+    kind = "capability_partial" if confirmed_partial_tie(decision) else UNMAPPED_KIND
+    return None if text is None else reply(text, kind)

@@ -450,7 +450,7 @@ def _unmapped_card(decision, policy) -> ReplyCard:
 def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCard | None:
     if kind == "capability_unconfirmed":
         return _unconfirmed_card(decision, policy)
-    if kind == "unmapped_request":
+    if kind in {"unmapped_request", "capability_partial"}:
         return _unmapped_card(decision, policy)
     if kind in {"hypothesis_routes", "research_choices"}:
         choices, unavailable, stated = hypothesis_parts(decision, policy, task=task)
@@ -699,7 +699,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         steps.insert(len(card.next_steps), plan_step(policy, action))
     if card is not None and kind not in {"execution", "unresolved"}:
         steps = _one_result_steps(decision, policy, task, result, steps)
-    if kind in {"capability_unconfirmed", "unmapped_request"}:
+    if kind in {"capability_unconfirmed", "unmapped_request", "capability_partial"}:
         steps = [step for step in steps if step.resolution not in {"confirm_workflow", "plan_workflow"}]
     chosen = {option.action for option in (card.choices.options if card and card.choices else []) if option.action}
     steps = [step for step in steps if not (step.resolution == "confirm_workflow" and step.action in chosen)]
