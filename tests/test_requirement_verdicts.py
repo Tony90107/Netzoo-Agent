@@ -316,27 +316,28 @@ def test_result_forms_no_workflow_gives_rule_every_entry_out():
     assert plain.results()[0].status == "available"
 
 
-def test_a_part_answer_makes_the_result_partly_available_and_keeps_routing(monkeypatch):
-    """heldout8 QP2-QP4: communities, then an interactive 3D view, in one quote, were gapped whole."""
+def test_a_part_answer_credits_nothing_and_the_gap_stands(monkeypatch):
+    """Log 407: "part" was answered for single results only partly met (heldout14 QN5: each TF's sign
+    in each tumor, from GIRAFFE's cohort-level signs) 13 times on unsupported requests, never alone on a
+    supported one; it no longer makes a result partly available."""
     from netzoo_agent_core.graph import router_invocation
-    from netzoo_agent_core.interpretation.capability_check import understanding_paragraph
 
-    task = "We want to find the communities of our TF-gene network and then render them as an interactive 3D view."
-    quote = "find the communities of our TF-gene network and then render them as an interactive 3D view"
+    task = "From expression, motifs and PPI of 100 tumors we want whether each TF activates or represses each target separately in every tumor."
+    quote = "whether each TF activates or represses each target separately in every tumor"
     monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
     monkeypatch.setattr(router_invocation, "request_second_opinion",
                         lambda context, state, pairs, usage, warnings, situation=(): (["part"] * len(pairs),
                                                                                        usage, warnings))
     exact = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
-                         capability_match_status="exact", matched_actions=["run_condor"])
+                         capability_match_status="exact", matched_actions=["run_giraffe"])
     invocation = router_invocation._RouterInvocation(decision=exact, routing_state={}, usage=None,
                                                      budget_warnings=[], reason_code=None)
     decision = router_invocation._with_capability_check(
-        None, {}, task, invocation, _one_sentence(task, "asks", quote, input_network="regulator_gene")).decision
+        None, {}, task, invocation, _one_sentence(task, "asks", quote, scale="per_sample", needs_sign=True,
+                                                   regulator_kinds=["tf"])).decision
     check = decision.capability_check
-    assert not check.full_gap and decision.matched_actions == ["run_condor"]
-    assert check.results()[0].status == "partial" and check.results()[0].second_opinion
-    assert "partly available: CONDOR gives part of it" in understanding_paragraph(check)
+    assert check.full_gap and check.results()[0].status == "not_available"
+    assert decision.capability_match_status == "unsupported" and not decision.matched_actions
 
 
 @pytest.mark.parametrize("actions,answers", [
