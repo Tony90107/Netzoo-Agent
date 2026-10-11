@@ -1,0 +1,54 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (4.37s)
+● Matching registered workflows…
+! Fallback recommendation — not an exact semantic match
+✓ Guidance prepared
+What I understood you are asking for:
+1. "a p-value for each edge" -- available from DRAGON.
+
+Fallback recommendation: **BONOBO**. This is registry-based guidance, not an exact semantic match. The system could not verify a complete goal-to-workflow match; this does not mean your question is unclear. No clarification is required to read this recommendation, and no executable plan has been selected.
+
+Your question asks for a p-value matrix. **BONOBO** is related to that result. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression.
+
+What you asked about:
+
+- "We also need a p-value for each edge." — With `sparsify=true` BONOBO computes a p-value for every connection in every sample and keeps those with a two-sided p-value below `bonobo_confidence` (default 0.05), without multiple-testing correction. With `save_pvals=true` as well, the full network is kept and the p-values are saved beside it instead.
+
+**BONOBO**: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.
+
+Routing-level input modality: expression matrix.
+
+Method premise: Bayesian shrinkage estimation of sample-specific co-expression; sparsify sample-specific co-expression and return matching p-value matrices.
+
+BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+
+Controls matching this request:
+
+- `sparsify` (type=boolean; default=False)
+- `bonobo_confidence` (type=number; default=0.05; range=0.0..1.0)
+- `save_pvals` (type=boolean; default=False)
+
+Other declared controls (not matched to this request; defaults apply unless you set them): `bonobo_output_format`=.h5, `sample_names`=[], `precision`=single, `keep_in_memory`=False, `delta`, `genes_axis`=auto, `log_transformed`, `centered`.
+
+When `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.
+
+When `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.
+
+Distinct declared output artifacts (availability depends on workflow options):
+
+- `coexpression_network`: Inferred gene-to-gene associations.
+- `pvalue_matrix`: P-value matrix paired with a sample-specific gene-gene co-expression result.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Ask a follow-up question, or explicitly request a plan with your intended deliverable and inputs. A new request will be validated before planning; this candidate is not ready to start.
+Enter/back: start a new task | exit: close
+> 
