@@ -145,6 +145,24 @@ def load_project_policy() -> ProjectPolicySnapshot:
         raise SystemExit(f"Project policy validation failed: {error}") from error
 
 
+def resumed_run_id(trace_store, recorder, run_id, *, session_id: str, profile_id: str) -> tuple[str, bool]:
+    """The trace run a resumed session's turns are recorded in, and whether it continues a paused turn.
+
+    A paused run (a turn that ended on a question) continues, with that turn's token usage. A
+    one-shot --task run seals its trace when it ends, and continuing that session with --resume
+    -- the non-interactive way to go on -- crashed appending to the sealed run; it now starts a
+    new run that names the sealed one, and, as after a finished turn in the interactive loop,
+    a new turn budget (the finished turn's usage was carried over and blocked routing).
+    """
+    if run_id and not trace_store.verify_run(run_id).sealed:
+        recorder.append(run_id, "run.resumed", "cli", {"session_id": session_id})
+        return str(run_id), True
+    new_run = str(recorder.start_run(session_id=session_id, profile_id=profile_id))
+    if run_id:
+        recorder.append(new_run, "run.resumed", "cli", {"session_id": session_id, "previous_run_id": str(run_id)})
+    return new_run, False
+
+
 def bootstrap_runtime(
     args,
     memory_runtime: MemoryRuntime,
@@ -233,24 +251,11 @@ def bootstrap_runtime(
             resume_id,
             include_usage=True,
         )
-        run_id = saved_payload.get("run_id")
-        if run_id:
-            trace_store.verify_run(run_id)
-            recorder.append(
-                run_id,
-                "run.resumed",
-                "cli",
-                {"session_id": session_id},
-            )
-            ensure_trace_sync(str(run_id))
-        else:
-            run_id = str(
-                recorder.start_run(
-                    session_id=session_id,
-                    profile_id=memory_runtime.profile_id,
-                )
-            )
-            ensure_trace_sync(run_id)
+        run_id, paused = resumed_run_id(trace_store, recorder, saved_payload.get("run_id"),
+                                        session_id=session_id, profile_id=memory_runtime.profile_id)
+        if not paused:
+            active_usage = None
+        ensure_trace_sync(run_id)
         if saved_plan:
             candidate = WorkflowPlan.model_validate(saved_plan)
             if candidate.status in {"needs_input", "needs_confirmation"}:
