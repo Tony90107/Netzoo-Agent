@@ -131,29 +131,6 @@ class ConversationMachine:
         self._stopped = False
         self._exit_code = 0
         self._awaiting: Prompt | None = None
-        if (turn := getattr(runtime, "resumed_turn", None)) and self.state.pending_plan is None:
-            self._restore_follow_up(turn)
-
-    def _restore_follow_up(self, turn: dict) -> None:
-        """Log 410: a resumed session answers its last turn, as the loop that ran it would have.
-
-        Without this, the first message after a resume -- `--resume --task`, or a session reopened in
-        the desktop app -- was routed and checked alone, without the request it continues (heldout15
-        KN1: "Those samples are 50 spatial spots ..." read alone was matched to SAMBAR).
-        """
-        conversation = self.state.conversation
-        prior = next((str(message.content) for message in reversed(conversation)
-                      if getattr(message, "type", "") in {"human", "user"}), None)
-        if not prior:
-            return
-        result = {**turn, "messages": conversation}
-        try:
-            prompt = build_next_turn_prompt(result)
-            context = build_follow_up_context(result, prompt, prior)
-        except Exception:  # noqa: BLE001 - an older or partial checkpoint starts from the main prompt, as before
-            return
-        self.state.next_prompt = prompt
-        self.state.follow_up_context = context
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -187,10 +164,7 @@ class ConversationMachine:
             if state.queued_task is not None:
                 task = state.queued_task.strip()
                 state.queued_task = None
-                if state.follow_up_context is not None and state.next_prompt.kind != "initial":
-                    self._submit_main_text(task)  # a resumed session's message answers its last turn
-                else:
-                    self._accept_task(task)
+                self._accept_task(task)
                 continue
             if state.pending_plan is not None:
                 return self._remember(self._pending_plan_prompt())

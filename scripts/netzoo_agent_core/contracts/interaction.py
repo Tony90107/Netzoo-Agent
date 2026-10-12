@@ -12,7 +12,6 @@ from .decisions import TaskDecision
 
 ReplyIntent = Literal[
     "follow_up",
-    "adds_condition",
     "new_goal",
     "accept_workflow",
     "needs_detail",

@@ -59,9 +59,6 @@ class CliRuntime:
     reply_resolver: ContextualReplyResolver
     # The models this session runs under, recorded in its sidecar (session_meta).
     session_models: dict = field(default_factory=dict)
-    # Log 410: a resumed session's finished last turn (plan, tool results, evaluation), from which
-    # the machine rebuilds the follow-up context its next message is resolved against.
-    resumed_turn: dict | None = None
 
 
 def _keep_session_models(args, resume_id: str) -> None:
@@ -220,7 +217,6 @@ def bootstrap_runtime(
     session_id = _safe_session_id(args.session or resume_id or uuid.uuid4().hex[:8])
     conversation = []
     pending_plan = None
-    resumed_turn = None
     active_usage = None
     trace_store = LocalTraceStore(TRACE_ROOT)
     trace_store.preflight()
@@ -264,9 +260,6 @@ def bootstrap_runtime(
             candidate = WorkflowPlan.model_validate(saved_plan)
             if candidate.status in {"needs_input", "needs_confirmation"}:
                 pending_plan = candidate
-            else:
-                resumed_turn = {"plan": saved_plan, "tool_results": saved_payload.get("tool_results") or [],
-                                "evaluation": saved_payload.get("evaluation")}
         _trace("done", f"Resumed session {session_id}")
     else:
         _trace("done", f"Session: {session_id}")
@@ -326,5 +319,4 @@ def bootstrap_runtime(
         input_func=input,
         invoke_graph_turn_func=invoke_graph_turn,
         reply_resolver=reply_resolver,
-        resumed_turn=resumed_turn,
     )

@@ -434,27 +434,3 @@ def test_an_action_outside_a_populated_trusted_set_is_still_refused():
 
     assert result.resolution.kind == "needs_detail"
     assert result.resolution.resolved_task is None
-
-
-def test_a_condition_added_to_the_prior_goal_is_read_with_that_goal():
-    """Log 410: "But TFs need to be allowed in more than one module." was needs_detail (gpt-4o-mini 0.75)
-    and "Actually we need one for each sample." a new goal, read without the request it changes."""
-    model = Mock()
-    model.invoke.return_value = _decision("adds_condition")
-    resolver = ContextualReplyResolver.for_test(model)
-
-    result = resolver.resolve(_context(), "Our regulators include lncRNAs too.", None, "run-1")
-
-    assert result.resolution.kind == "follow_up"
-    assert result.resolution.resolved_task == (
-        "Previous NetZoo goal: Which tools produce sample-specific miRNA networks?\n"
-        "User follow-up: Our regulators include lncRNAs too.")
-    prompt = NextTurnPrompt(kind="completed", question="Enter a follow-up question.")
-    assert resolve_next_turn_input(prompt, result.resolution, "x") == result.resolution.resolved_task
-
-
-def test_an_uncertain_added_condition_still_needs_detail():
-    model = Mock()
-    model.invoke.return_value = _decision("adds_condition", confidence=0.6)
-    result = ContextualReplyResolver.for_test(model).resolve(_context(), "maybe more samples", None, "run-1")
-    assert result.resolution.kind == "needs_detail" and result.resolution.resolved_task is None
