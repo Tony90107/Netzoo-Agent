@@ -42,8 +42,7 @@ from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
     apply_condition_answers, apply_redirect_answers, apply_second_opinion, blank_requirement_pairs,
-    build_capability_check, condition_pairs, implied_actions, open_choice_groups, redirect_pairs, second_opinion_pairs,
-    stated_requirements,
+    build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
     workflow_description,
 )
 from .data_facts_call import invoke_data_facts
@@ -183,7 +182,6 @@ def invoke_router(
                                                *result.decision.recommended_actions]))})
             result = replace(result, decision=unmapped)
         result = _with_checked_match(context, state, result)
-        result = _with_open_choice(context, state, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -264,28 +262,6 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
         **result.routing_state,
         "semantic_goal": {**(result.routing_state.get("semantic_goal") or {}),
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
-
-
-def _with_open_choice(context, state, result: _RouterInvocation) -> _RouterInvocation:
-    """G2 (feasibility eval F37, F43): a choice of result the user left open keeps every workflow unselected.
-
-    The options and the workflows each leads to are offered; none is matched or recommended until the user
-    picks one (F37: routing chose LIONESS-PANDA for "TF regulation or gene-gene coexpression").
-    """
-    decision = result.decision
-    if decision.action != "no_tool" or not (groups := open_choice_groups(decision.capability_check)):
-        return result
-    options = list(dict.fromkeys(entry(key).action for group in groups for item in group
-                                 for key in item.delivered_by if entry(key).action))
-    record_event(context, state, "routing.open_choice_kept", "classify", {
-        "options": [[item.quote for item in group] for group in groups], "offered": options,
-        "cleared": list(dict.fromkeys([*decision.matched_actions, *decision.recommended_actions]))})
-    decision = decision.model_copy(update={
-        "matched_actions": [], "recommended_actions": [], "hypothesis_actions": options, "alternative_actions": [],
-        "advisory_recommendation": None, "capability_match_status": "ambiguous",
-        "clarification_question": "Which option do you want?",
-    })
-    return replace(result, decision=decision, routing_state={**result.routing_state, **outcome_routing_state(decision)})
 
 
 def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
