@@ -170,7 +170,8 @@ SCHEMA_DIGESTS = {
     # 2026-10-10 (Log 401): optional code-owned capability_check.provisional; reply only.
     # 2026-10-10 (Log 403): optional code-owned capability_check.gap_unconfirmed and each checked
     # requirement's asked_as (request or question); reply only.
-    "TaskDecision": "d78820252c54a237e8aa86f21cb6c8368c91c14049814c3e17130b8fe9170194",
+    # 2026-10-12 (Log 412): optional code-owned capability_check.conditions (verified request conditions).
+    "TaskDecision": "9056d32cb7eabb094a4ae0fdee6691d478e8fa78be47b9f7c64c3a22e2ba143f",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.capability_sheet import load_sheet, sheet_entries  # noqa: E402
 from netzoo_agent_core.contracts import AIMessage, TaskDecision  # noqa: E402
-from netzoo_agent_core.contracts.capability_check import proposal_model  # noqa: E402
+from netzoo_agent_core.contracts.capability_check import proposal_model, proposal_sentences  # noqa: E402
 from netzoo_agent_core.graph import router_invocation  # noqa: E402
 from netzoo_agent_core.graph.response import respond  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
@@ -212,7 +212,8 @@ def test_methods_questions_and_context_are_not_checked():
 
 def test_schema_requires_one_field_per_sentence():
     schema = proposal_model(3).model_json_schema()
-    assert schema["required"] == ["s1", "s2", "s3"] and schema["additionalProperties"] is False
+    # Log 412: the request's conditions follow the sentences, required too.
+    assert schema["required"] == ["s1", "s2", "s3", "conditions"] and schema["additionalProperties"] is False
     sentence = schema["$defs"]["SentenceReading"]
     assert sentence["required"] == ["role", "has", "about_methods", "asks"]
     assert "not_by" not in str(sentence["properties"]["has"])  # only an ask can name entries
@@ -692,3 +693,89 @@ def test_a_gap_found_by_the_backup_model_is_reported_but_never_clears_routing(mo
     state = {"decision": kept.model_dump(), "messages": [HumanMessage(content=SPLICING)]}
     from netzoo_agent_core.interpretation.capability_check import full_gap_result
     assert full_gap_result(state, lambda text, kind: {"text": text}) is None
+
+
+def _stated(**stated) -> dict:
+    from netzoo_agent_core.contracts.capability_check import unstated_conditions
+    return {**unstated_conditions(), **stated}
+
+
+def _ask_in(quote, keys, **attrs) -> dict:
+    return {"quote": quote, "delivered_by": keys, "not_by": [], "scale": "per_sample", "omics_layers": 0,
+            "data_unit": "not_stated", "regulator_kinds": [], "needs_sign": False, "input_network": "none",
+            "group_membership": "not_about_groups", "time_model": "not_dynamic", "spatial": "not_spatial",
+            "asked_as": "request", **attrs}
+
+
+COEXPRESSION_ENTRIES = ["lioness_coexpression.per_sample_networks", "bonobo.per_sample_networks"]
+CELLS_FOLLOW_UP = ("Previous NetZoo goal: We want a co-expression network per sample for our 80 samples.\n"
+             "User follow-up: The 80 samples are cells from a single 10x run.")
+
+
+def _checked(task, asks_sentence, conditions, background="The 80 samples are cells from a single 10x run."):
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": asks_sentence},
+        "s2": {"role": "background", "has": [background], "about_methods": [], "asks": []},
+        "conditions": conditions})
+    return build_capability_check(task, proposal)[0]
+
+
+def test_a_condition_stated_in_another_sentence_rules_the_ask_out():
+    """Log 412, heldout17 KN1: the cells were named in the follow-up, the ask in the first turn."""
+    check = _checked(CELLS_FOLLOW_UP, [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)],
+                   _stated(data_unit="single_cells", data_unit_quote="cells from a single 10x run"))
+    assert check.conditions == {"data_unit": "single_cells"}
+    assert check.results()[0].status == "not_available" and check.full_gap
+    assert check.results()[0].attrs["data_unit"] == "single_cells"
+
+
+def test_a_condition_whose_words_are_not_in_the_request_is_ignored():
+    check = _checked(CELLS_FOLLOW_UP, [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)],
+                   _stated(data_unit="single_cells", data_unit_quote="neurons grown in a dish"))
+    assert check.conditions == {} and check.results()[0].status == "available"
+
+
+def test_an_ask_that_states_its_own_unit_keeps_it():
+    """Pseudo-bulk profiles of single cells are bulk samples; the data's cells do not overrule that."""
+    check = _checked(CELLS_FOLLOW_UP, [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES, data_unit="bulk_samples")],
+                   _stated(data_unit="single_cells", data_unit_quote="cells from a single 10x run"))
+    assert check.results()[0].status == "available"
+
+
+def test_layers_from_different_samples_rule_out_the_dragon_family():
+    """heldout17 KN3: "The two layers were not measured on the same samples." DRAGON takes the same samples."""
+    task = ("We want a partial-correlation network between expression and metabolites in 75 samples. "
+            "The two layers were not measured on the same samples.")
+    asks = [_ask_in("a partial-correlation network between expression and metabolites", ["dragon.two_layer_network"],
+                 omics_layers=2, scale="whole_cohort")]
+    gap = _checked(task, asks, _stated(samples_matched="different_samples",
+                                         samples_matched_quote="not measured on the same samples"),
+                 background="The two layers were not measured on the same samples.")
+    assert gap.results()[0].status == "not_available"
+    same = _checked(task, asks, _stated(samples_matched="same_samples",
+                                          samples_matched_quote="not measured on the same samples"),
+                  background="The two layers were not measured on the same samples.")
+    assert same.results()[0].status == "available" and same.conditions == {}
+
+
+def test_overlapping_membership_concerns_only_an_ask_about_groups():
+    task = ("We want the communities of our bipartite TF-gene network. "
+            "Regulators must be able to belong to more than one community.")
+    conditions = _stated(group_membership="several_groups",
+                             group_membership_quote="Regulators must be able to belong to more than one community")
+    communities = _checked(task, [_ask_in("the communities of our bipartite TF-gene network", ["condor.communities"],
+                                     group_membership="one_group", scale="whole_cohort")], conditions,
+                         background="Regulators must be able to belong to more than one community.")
+    assert communities.results()[0].status == "not_available"
+    network = _checked(task, [_ask_in("the communities of our bipartite TF-gene network", ["condor.communities"],
+                                 scale="whole_cohort")], conditions,
+                     background="Regulators must be able to belong to more than one community.")
+    assert network.results()[0].status == "available"
+
+
+def test_a_reread_states_no_condition():
+    from netzoo_agent_core.contracts.capability_check import reread_as_proposal, reread_model
+
+    reread = reread_model(1).model_validate({"s1": {"asks": [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)]}})
+    proposal = reread_as_proposal(reread)
+    assert proposal.conditions.data_unit == "not_stated" and len(proposal_sentences(proposal)) == 1

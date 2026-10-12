@@ -20,8 +20,9 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
-__all__ = ["CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind", "SecondOpinionAnswer",
-           "proposal_model", "proposal_sentences", "reread_as_proposal", "reread_model", "second_opinion_model"]
+__all__ = ["CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind",
+           "SecondOpinionAnswer", "conditions_model", "proposal_model", "proposal_sentences", "reread_as_proposal",
+           "reread_model", "second_opinion_model", "unstated_conditions"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -85,6 +86,47 @@ def _ask_model() -> type[BaseModel]:
     )
 
 
+CONDITIONS = {
+    # field: (values, the value that rules results out, description)
+    "data_unit": (("bulk_samples", "single_cells", "not_stated"), "single_cells",
+                  "What each sample or profile of the user's data is: bulk samples (tissues, patients, cell lines, or "
+                  "cells summed into pseudo-bulk profiles), or single cells."),
+    "samples_matched": (("same_samples", "different_samples", "not_stated"), "different_samples",
+                        "Whether the user's different omics data types were measured on the same samples."),
+    "spatial": (("uses_neighbors", "not_spatial"), "uses_neighbors",
+                "uses_neighbors: the results must use where samples sit in space or which are neighbours."),
+    "time_model": (("dynamic", "not_dynamic"), "dynamic",
+                   "dynamic: the results must model how the system changes from one time point to the next."),
+    "group_membership": (("several_groups", "one_group", "not_stated"), "several_groups",
+                         "several_groups: a gene, regulator or sample must be allowed in more than one group."),
+}
+"""Log 412: the conditions a request states outside the sentence of an ask, as typed values.
+
+heldout17 KN1 ("The 80 samples are cells from a single 10x run.") and KN3 ("The two layers were not
+measured on the same samples."): the check filed each condition as something the user has, and judged
+the ask from its own sentence (data_unit not_stated), so a per-sample co-expression network and a
+DRAGON network were credited 4 times in 4. Each condition comes with the words that state it; code
+keeps one only when those words are in the request, and applies it to the asks
+(`interpretation.capability_check`).
+"""
+
+
+@lru_cache(maxsize=1)
+def conditions_model() -> type[BaseModel]:
+    fields = {}
+    for name, (values, _rules_out, description) in CONDITIONS.items():
+        fields[name] = (Literal[values], Field(description=description))  # type: ignore[valid-type]
+        fields[f"{name}_quote"] = (str, Field(description=(
+            f"The exact words of the request that state {name}; empty when it is not stated.")))
+    return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
+
+
+def unstated_conditions() -> dict:
+    """The conditions of a reading that states none (a re-read reads asks only)."""
+    return {key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
+            for key, value in ((name, values[-1]), (f"{name}_quote", ""))}
+
+
 @lru_cache(maxsize=MAX_SENTENCES + 1)
 def proposal_model(sentences: int = 1) -> type[BaseModel]:
     """The provider-facing schema: one required field per request sentence, sheet ids as enums.
@@ -117,6 +159,11 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
         f"s{index}": (sentence, Field(description=f"Sentence {index} of the request."))
         for index in range(1, max(1, min(sentences, MAX_SENTENCES)) + 1)
     }
+    # The provider's strict schema still requires it; the default reads recordings and fixtures from before Log 412.
+    fields["conditions"] = (conditions_model(), Field(
+        default_factory=lambda: conditions_model()(**unstated_conditions()), description=(
+        "Conditions the request states anywhere -- in another sentence, or a follow-up to an earlier request -- "
+        "about the user's data or about what every asked-for result must satisfy.")))
     model = create_model("CapabilityCheckProposal", __config__=ConfigDict(extra="forbid"), **fields)
     model.model_json_schema = classmethod(  # type: ignore[method-assign]
         lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
@@ -153,12 +200,13 @@ def reread_model(sentences: int = 1) -> type[BaseModel]:
 
 
 def reread_as_proposal(reread) -> BaseModel:
-    """The re-read in the check's own proposal shape, every passage an `asks` sentence."""
+    """The re-read in the check's own proposal shape, every passage an `asks` sentence, stating no condition."""
     count = len(type(reread).model_fields)
     return proposal_model(count).model_validate({
-        f"s{index}": {"role": "asks", "has": [], "about_methods": [],
-                      "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
-        for index in range(1, count + 1)})
+        **{f"s{index}": {"role": "asks", "has": [], "about_methods": [],
+                         "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
+           for index in range(1, count + 1)},
+        "conditions": unstated_conditions()})
 
 
 SecondOpinionAnswer = Literal["all", "part", "none"]
@@ -188,7 +236,8 @@ def second_opinion_model(pairs: int) -> type[BaseModel]:
 
 def proposal_sentences(proposal) -> list:
     """The sentence readings of a proposal, in order."""
-    return [getattr(proposal, f"s{index}") for index in range(1, len(type(proposal).model_fields) + 1)]
+    count = sum(1 for name in type(proposal).model_fields if name[1:].isdigit())
+    return [getattr(proposal, f"s{index}") for index in range(1, count + 1)]
 
 
 class CheckedRequirement(BaseModel):
@@ -230,6 +279,9 @@ class CapabilityCheck(BaseModel):
     cleared: list[str] = Field(default_factory=list)
     """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
     of them (ALPACA beside CONDOR) is still said."""
+    conditions: dict[str, str] = Field(default_factory=dict)
+    """Log 412: the request-level conditions whose words were found in the request and that rule results out
+    (e.g. data_unit single_cells), applied to every ask they concern."""
     gap_unconfirmed: bool = False
     """Log 403: a full gap the second opinion was owed but could not give (its budget spent, or the
     model failed), so, as for the backup model, the gap is reported unconfirmed and clears nothing
