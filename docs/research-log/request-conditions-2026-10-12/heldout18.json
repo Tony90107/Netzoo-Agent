@@ -1,0 +1,399 @@
+{
+ "about": "Log 412 held-out set, written 2026-10-12 before any run of it. Gold follows scripts/capability_sheet.yaml. CS: a condition in another sentence makes the asked result unsupported (single cells, layers from different samples, spatial neighbours, dynamics, overlapping groups); CK: the same as a follow-up turn (--resume); CP: a condition is stated that does not rule the result out (pseudo-bulk, same samples, one group, compared time points, bulk biopsies); XP, XN: plain controls.",
+ "items": [
+  {
+   "id": "CS1",
+   "family": "CS",
+   "prompt": "We have expression, motifs and PPI for 64 profiles. Each profile is one cell from a Smart-seq3 plate. We want a TF-gene network for each profile.",
+   "requirements": [
+    {
+     "words": "We want a TF-gene network for each profile",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS2",
+   "family": "CS",
+   "prompt": "We have expression for 3,000 profiles. All of them are single nuclei from one brain. We want a co-expression network per profile.",
+   "requirements": [
+    {
+     "words": "We want a co-expression network per profile",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS3",
+   "family": "CS",
+   "prompt": "We have proteomics for 50 patients and RNA-seq for a different set of 60 patients. We want a partial-correlation network linking proteins and transcripts.",
+   "requirements": [
+    {
+     "words": "a partial-correlation network linking proteins and transcripts",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS4",
+   "family": "CS",
+   "prompt": "We have methylation and expression data. The two were collected from different cohorts. We want one network that links CpGs to genes by partial correlation.",
+   "requirements": [
+    {
+     "words": "one network that links CpGs to genes by partial correlation",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS5",
+   "family": "CS",
+   "prompt": "We have Visium data for 4,000 spots with motifs and PPI. Each spot's network has to take its neighbouring spots into account. We want TF-gene networks per spot.",
+   "requirements": [
+    {
+     "words": "We want TF-gene networks per spot",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS6",
+   "family": "CS",
+   "prompt": "We have expression at 8 time points, with motifs and PPI. The model must describe how each time point's regulation leads to the next. We want a TF-gene network.",
+   "requirements": [
+    {
+     "words": "We want a TF-gene network",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS7",
+   "family": "CS",
+   "prompt": "We have a bipartite TF-gene network. Each TF may belong to several modules at once. We want its modules.",
+   "requirements": [
+    {
+     "words": "We want its modules",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CS8",
+   "family": "CS",
+   "prompt": "We have somatic mutations for 150 tumors. A patient may belong to more than one subtype. We want subtypes from pathway mutation scores.",
+   "requirements": [
+    {
+     "words": "We want subtypes from pathway mutation scores",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK1",
+   "family": "CK",
+   "turns": [
+    "We want a TF-gene network for each of our 70 samples, from expression, motifs and PPI.",
+    "Those 70 samples are single cells from one patient."
+   ],
+   "requirements": [
+    {
+     "words": "Those 70 samples are single cells from one patient",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK2",
+   "family": "CK",
+   "turns": [
+    "We want a network linking expression and proteomics in 60 samples.",
+    "The proteomics came from a separate group of 60 donors."
+   ],
+   "requirements": [
+    {
+     "words": "The proteomics came from a separate group of 60 donors",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK3",
+   "family": "CK",
+   "turns": [
+    "We want per-sample co-expression networks for 120 spots.",
+    "The spots are on a tissue slide, and each network should use the neighbouring spots."
+   ],
+   "requirements": [
+    {
+     "words": "each network should use the neighbouring spots",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK4",
+   "family": "CK",
+   "turns": [
+    "We want the communities of our bipartite TF-gene network.",
+    "Genes should be allowed in several communities at the same time."
+   ],
+   "requirements": [
+    {
+     "words": "Genes should be allowed in several communities at the same time",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK5",
+   "family": "CK",
+   "turns": [
+    "We want a TF-gene network from expression, motifs and PPI at 9 time points.",
+    "It has to capture how regulation at one time point drives the next one."
+   ],
+   "requirements": [
+    {
+     "words": "It has to capture how regulation at one time point drives the next one",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CK6",
+   "family": "CK",
+   "turns": [
+    "We want patient subtypes from somatic mutations of 140 tumors.",
+    "A patient should be able to belong to two subtypes."
+   ],
+   "requirements": [
+    {
+     "words": "A patient should be able to belong to two subtypes",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "CP1",
+   "family": "CP",
+   "prompt": "We have 10x data from 25 donors, already summed into one pseudo-bulk profile per donor. We want a TF-gene network for each donor, with motifs and PPI.",
+   "requirements": [
+    {
+     "words": "a TF-gene network for each donor",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP2",
+   "family": "CP",
+   "prompt": "We have single-cell data that we aggregated into pseudo-bulk profiles for 30 samples. We want one co-expression network per sample.",
+   "requirements": [
+    {
+     "words": "one co-expression network per sample",
+     "expect": "supported",
+     "by": [
+      "LIONESS-COEXPRESSION",
+      "BONOBO"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP3",
+   "family": "CP",
+   "prompt": "We have expression and methylation from the same 85 tumors. We want a partial-correlation network linking them.",
+   "requirements": [
+    {
+     "words": "a partial-correlation network linking them",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP4",
+   "family": "CP",
+   "prompt": "Proteomics and RNA-seq were measured on the same 70 patients. We want each patient's two-layer network.",
+   "requirements": [
+    {
+     "words": "each patient's two-layer network",
+     "expect": "supported",
+     "by": [
+      "LIONESS-DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP5",
+   "family": "CP",
+   "prompt": "We have a bipartite TF-gene network. Each gene should belong to exactly one module. We want its modules.",
+   "requirements": [
+    {
+     "words": "We want its modules",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP6",
+   "family": "CP",
+   "prompt": "We have expression, motifs and PPI at 4 time points, 20 samples each. We want one network per time point to compare them.",
+   "requirements": [
+    {
+     "words": "one network per time point to compare them",
+     "expect": "with_step",
+     "by": [
+      "PANDA",
+      "LIONESS-PANDA",
+      "OTTER"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP7",
+   "family": "CP",
+   "turns": [
+    "We want per-sample TF-gene networks from expression, motifs and PPI of 48 samples.",
+    "The 48 samples are bulk tumor biopsies."
+   ],
+   "requirements": [
+    {
+     "words": "The 48 samples are bulk tumor biopsies",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "CP8",
+   "family": "CP",
+   "turns": [
+    "We want a network linking expression and metabolites in 90 samples.",
+    "Both layers come from the same 90 samples."
+   ],
+   "requirements": [
+    {
+     "words": "Both layers come from the same 90 samples",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "XP1",
+   "family": "XP",
+   "prompt": "We have expression, motifs and PPI for 110 samples. We want one TF-gene network.",
+   "requirements": [
+    {
+     "words": "We want one TF-gene network",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "XP2",
+   "family": "XP",
+   "prompt": "We have somatic mutation calls for 160 tumors. We want subtypes from pathway mutation scores.",
+   "requirements": [
+    {
+     "words": "We want subtypes from pathway mutation scores",
+     "expect": "supported",
+     "by": [
+      "SAMBAR"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "XP3",
+   "family": "XP",
+   "prompt": "We have expression for 140 samples with a batch covariate. We want the co-expression with the batch part separated.",
+   "requirements": [
+    {
+     "words": "the co-expression with the batch part separated",
+     "expect": "supported",
+     "by": [
+      "COBRA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "XP4",
+   "family": "XP",
+   "prompt": "We have expression, motifs and PPI for 75 samples. We want each TF's activity per sample.",
+   "requirements": [
+    {
+     "words": "each TF's activity per sample",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "XN1",
+   "family": "XN",
+   "prompt": "We have expression for 300 patients. We want a model that predicts each patient's survival.",
+   "requirements": [
+    {
+     "words": "a model that predicts each patient's survival",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "XN2",
+   "family": "XN",
+   "prompt": "We have expression for two groups of 50 samples. We want the differentially expressed genes between them.",
+   "requirements": [
+    {
+     "words": "the differentially expressed genes between them",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "XN3",
+   "family": "XN",
+   "prompt": "We have lncRNA, miRNA and mRNA expression for 90 samples. We want the lncRNAs that sponge miRNAs.",
+   "requirements": [
+    {
+     "words": "the lncRNAs that sponge miRNAs",
+     "expect": "not_supported"
+    }
+   ]
+  },
+  {
+   "id": "XN4",
+   "family": "XN",
+   "prompt": "We have ATAC-seq peaks for 40 samples. We want TF binding motifs discovered de novo.",
+   "requirements": [
+    {
+     "words": "TF binding motifs discovered de novo",
+     "expect": "not_supported"
+    }
+   ]
+  }
+ ]
+}
