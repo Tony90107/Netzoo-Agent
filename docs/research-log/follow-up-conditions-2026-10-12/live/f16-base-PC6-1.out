@@ -1,0 +1,58 @@
+NetZoo agent started in Planning mode. Enter /help for controls, or exit or quit to stop.
+
+What would you like to accomplish with NetZoo?
+> ● Classifying requested outcome…
+✓ Interpreted requested outcome (2.89s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "gene-gene co-expression" -- available from LIONESS-COEXPRESSION.
+
+Several registered methods fit this result; they differ in their modeling assumptions:
+
+- **LIONESS-COEXPRESSION** — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. Needs expression matrix.
+- **COBRA** — COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Needs expression matrix and sample covariate design matrix.
+- **BONOBO** — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. Needs expression matrix.
+
+Should the result be aggregate or sample-specific?
+
+No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Should the result be aggregate or sample-specific?
+Answer this clarification or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> ● Classifying requested outcome…
+✓ Interpreted requested outcome (2.81s)
+● Matching registered workflows…
+✓ Workflow — COBRA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "gene-gene co-expression for 180 samples" -- available from LIONESS-COEXPRESSION.
+2. "the batch-related part of the co-expression should be pulled apart" -- available from COBRA.
+
+Selected path: **COBRA**.
+
+Your question asks for a co-expression network. **COBRA** fits that result.
+
+**COBRA** — Model covariate-associated gene co-expression with COBRA. COBRA models co-expression as a function of sample covariates through conditional covariance estimation. Correcting gene means alone may leave covariance confounding. Covariate-associated components are not TF-to-gene regulatory edges or proof that a covariate causes the expression pattern.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `design_file`: sample covariate design matrix
+
+Outputs:
+
+- `coexpression_network`: Inferred gene-to-gene associations.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 

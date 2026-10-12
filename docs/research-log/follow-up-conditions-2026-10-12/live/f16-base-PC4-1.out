@@ -1,0 +1,65 @@
+NetZoo agent started in Planning mode. Enter /help for controls, or exit or quit to stop.
+
+What would you like to accomplish with NetZoo?
+> ● Classifying requested outcome…
+✓ Interpreted requested outcome (2.67s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "We want a TF-gene network from expression, motifs and PPI of 77 samples." -- available from PANDA.
+
+I can map this to more than one compatible network result:
+
+**TF-only regulatory network**
+- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.
+- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.
+
+**TF-only signed regulatory-effect network**
+- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.
+
+These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.
+
+No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+These all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.
+Answer this clarification or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> ● Classifying requested outcome…
+✓ Interpreted requested outcome (1.88s)
+● Matching registered workflows…
+✓ Workflow — GIRAFFE
+✓ Guidance prepared
+What I understood you are asking for:
+1. "We want a TF-gene network from expression, motifs and PPI of 77 samples." -- available from PANDA.
+2. "For each TF we need to see whether it switches its targets on or off." -- available from GIRAFFE.
+
+Selected path: **GIRAFFE**.
+
+Your question asks for a cohort-level signed regulatory-effect network. **GIRAFFE** fits that result and scale.
+
+**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.
+
+TF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 
