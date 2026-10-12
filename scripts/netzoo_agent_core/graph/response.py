@@ -48,7 +48,7 @@ from .response_context import validated_workflow_context
 from .response_payload import trusted_response_context
 from ..interpretation.verified_guidance import render_verified_guidance
 from ..interpretation.data_plan import with_data_plan_reply
-from ..interpretation.capability_check import checked_body_result, full_gap_result, with_capability_check_reply
+from ..interpretation.capability_check import checked_body_result, whole_check_result, with_capability_check_reply
 from ..interpretation.unresolved_router_fallback import (
     render_unresolved_router_fallback as _render_unresolved_router_fallback,
 )
@@ -81,8 +81,8 @@ def _reply(content: str, kind: str) -> dict:
 
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
-    if (gap := full_gap_result(state, _reply)) is not None:  # Log 387: no renderer may offer a workflow
-        return gap
+    if (whole := whole_check_result(state, _reply)) is not None:  # Logs 387, G2: no renderer may offer a workflow
+        return whole
     result = checked_body_result(context, state, _reply) or _respond(context, state)  # Log 403: the check decides
     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
     result = with_study_purpose_reply(with_outside_steps_reply(result, state, _reply), state, _reply)
