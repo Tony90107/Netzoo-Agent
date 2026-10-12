@@ -20,6 +20,8 @@
 #   activation versus repression. Every workflow takes bulk samples (`data_units`).
 #   `input_network` (Log 394): the kind of existing network an entry's result is computed
 #   from -- CONDOR partitions a bipartite regulator-gene network, never a gene-gene one.
+#   `groups: one_group` (Log 413): the result puts each node or sample in exactly one group
+#   (CONDOR communities, SAMBAR subtypes), so a request that items may sit in several rules it out.
 
 data_units: [bulk_samples]
 
@@ -372,6 +374,7 @@ workflows:
     produces:
       - id: condor.communities
         input_network: regulator_gene
+        groups: one_group
         level: direct
         result: Communities in one bipartite network, with regulator-side and gene-side memberships, by bipartite modularity.
         granularity: aggregate
@@ -379,11 +382,12 @@ workflows:
         source: "Platig et al. 2016 PLoS Comput Biol 12:e1005033; [EXEC] docker/run-condor:137-163"
       - id: condor.core_scores
         input_network: regulator_gene
+        groups: one_group
         granularity: aggregate
         level: direct
         result: Each regulator's and gene's core score -- its share of its community's modularity -- to pick out each community's core nodes.
         source: "Platig et al. 2016; [EXEC] docker/run-condor final_scores (Log 386: <prefix>-reg_qscores.tsv, -tar_qscores.tsv)"
-      - {id: condor.enrichment, input_network: regulator_gene, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
+      - {id: condor.enrichment, input_network: regulator_gene, groups: one_group, granularity: aggregate, level: with_step, result: Pathway enrichment of each community's genes., step: A gene-set tool outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_condor"}
     near_misses:
       - {id: condor.no_two_network_comparison, result_asked: Differential module structure between two networks., why_not: One network at a time., source: "[REG] OUTSIDE_STEPS differential_modules (ALPACA)"}
       - id: condor.no_variant_mapping
@@ -396,12 +400,13 @@ workflows:
     files: ["mt_out.csv: gene mutation scores", "pt_out.csv: pathway mutation scores", "clustergroups.csv and dist_matrix.csv (clustering on)", "manifest.json"]
     produces:
       - id: sambar.subtypes
+        groups: one_group
         level: direct
         result: Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix.
         granularity: aggregate
         inputs: [mutation matrix, exon sizes, cancer genes, pathway sets]
         source: "Kuijjer et al. 2018 Br J Cancer 118:1492; [EXEC] scripts/run_sambar.py:43-90"
-      - {id: sambar.clinical_comparison, granularity: aggregate, level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
+      - {id: sambar.clinical_comparison, groups: one_group, granularity: aggregate, level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
     near_misses:
       - id: sambar.no_expression_subtypes
         result_asked: Subtypes from expression, methylation or other non-mutation data.
