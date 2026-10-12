@@ -199,14 +199,19 @@ def reread_model(sentences: int = 1) -> type[BaseModel]:
     return model
 
 
-def reread_as_proposal(reread) -> BaseModel:
-    """The re-read in the check's own proposal shape, every passage an `asks` sentence, stating no condition."""
+def reread_as_proposal(reread, conditions=None) -> BaseModel:
+    """The re-read in the check's own proposal shape, every passage an `asks` sentence.
+
+    Log 413: it carries the request's conditions as the check read them, so a result the re-read finds is
+    held to them too (heldout18 CK6-2: "patient subtypes" re-read beside "A patient should be able to
+    belong to two subtypes").
+    """
     count = len(type(reread).model_fields)
     return proposal_model(count).model_validate({
         **{f"s{index}": {"role": "asks", "has": [], "about_methods": [],
                          "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
            for index in range(1, count + 1)},
-        "conditions": unstated_conditions()})
+        "conditions": conditions.model_dump() if conditions is not None else unstated_conditions()})
 
 
 SecondOpinionAnswer = Literal["all", "part", "none"]

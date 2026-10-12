@@ -111,13 +111,18 @@ def _with_conditions(item, conditions: dict[str, str]):
     """The ask with each request-level condition it does not state itself (Log 412).
 
     A condition never overrides what the ask's own words say: a data unit the ask states (pseudo-bulk
-    profiles are bulk samples) stands, and overlapping membership concerns only an ask about groups,
-    matched samples only an ask over two or more omics layers.
+    profiles are bulk samples) stands, and overlapping membership concerns only an ask about groups (by
+    its own form or the grouping entries it was credited to), matched samples only an ask over two or
+    more omics layers.
     """
     update = {}
     if conditions.get("data_unit") and item.data_unit == "not_stated":
         update["data_unit"] = conditions["data_unit"]
-    if conditions.get("group_membership") and getattr(item, "group_membership", None) == "one_group":
+    known = sheet_entries()
+    # Log 413 (heldout18 CK4, CK6): "communities" and "patient subtypes" were read as not about groups, so
+    # the ask's own form missed them; a result the sheet says puts each item in one group is about groups.
+    grouping = any(known[key].groups for key in item.delivered_by if key in known)
+    if conditions.get("group_membership") and (getattr(item, "group_membership", None) == "one_group" or grouping):
         update["group_membership"] = conditions["group_membership"]
     for name in ("spatial", "time_model"):
         if conditions.get(name):

@@ -737,7 +737,8 @@ def test_a_condition_whose_words_are_not_in_the_request_is_ignored():
 
 def test_an_ask_that_states_its_own_unit_keeps_it():
     """Pseudo-bulk profiles of single cells are bulk samples; the data's cells do not overrule that."""
-    check = _checked(CELLS_FOLLOW_UP, [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES, data_unit="bulk_samples")],
+    check = _checked(CELLS_FOLLOW_UP,
+                     [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES, data_unit="bulk_samples")],
                    _stated(data_unit="single_cells", data_unit_quote="cells from a single 10x run"))
     assert check.results()[0].status == "available"
 
@@ -767,15 +768,46 @@ def test_overlapping_membership_concerns_only_an_ask_about_groups():
                                      group_membership="one_group", scale="whole_cohort")], conditions,
                          background="Regulators must be able to belong to more than one community.")
     assert communities.results()[0].status == "not_available"
-    network = _checked(task, [_ask_in("the communities of our bipartite TF-gene network", ["condor.communities"],
-                                 scale="whole_cohort")], conditions,
-                     background="Regulators must be able to belong to more than one community.")
+    # Log 413: an ask credited only to entries that group nothing is not about groups.
+    task_network = ("We want one TF-gene network for our 80 samples. "
+                    "Regulators must be able to belong to more than one community.")
+    network = _checked(task_network, [_ask_in("one TF-gene network for our 80 samples", ["panda.tf_gene_network"],
+                                              scale="whole_cohort")], conditions,
+                       background="Regulators must be able to belong to more than one community.")
     assert network.results()[0].status == "available"
 
 
 def test_a_reread_states_no_condition():
     from netzoo_agent_core.contracts.capability_check import reread_as_proposal, reread_model
 
-    reread = reread_model(1).model_validate({"s1": {"asks": [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)]}})
+    reread = reread_model(1).model_validate(
+        {"s1": {"asks": [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)]}})
     proposal = reread_as_proposal(reread)
     assert proposal.conditions.data_unit == "not_stated" and len(proposal_sentences(proposal)) == 1
+
+
+def test_overlapping_membership_rules_out_a_grouping_entry_whatever_the_ask_form_says():
+    """Log 413, heldout18 CK4/CK6: "communities" and "patient subtypes" were read as not about groups."""
+    task = ("We want patient subtypes from somatic mutations of 140 tumors. "
+            "A patient should be able to belong to two subtypes.")
+    conditions = _stated(group_membership="several_groups",
+                         group_membership_quote="A patient should be able to belong to two subtypes")
+    check = _checked(task, [_ask_in("patient subtypes", ["sambar.subtypes"], scale="whole_cohort")], conditions,
+                     background="A patient should be able to belong to two subtypes.")
+    assert check.results()[0].status == "not_available" and check.full_gap
+    one = _stated(group_membership="one_group",
+                  group_membership_quote="A patient should be able to belong to two subtypes")
+    kept = _checked(task, [_ask_in("patient subtypes", ["sambar.subtypes"], scale="whole_cohort")], one,
+                    background="A patient should be able to belong to two subtypes.")
+    assert kept.results()[0].status == "available"
+
+
+def test_a_reread_carries_the_requests_conditions():
+    from netzoo_agent_core.contracts.capability_check import conditions_model, reread_as_proposal, reread_model
+
+    reread = reread_model(1).model_validate(
+        {"s1": {"asks": [_ask_in("a co-expression network per sample", COEXPRESSION_ENTRIES)]}})
+    stated = conditions_model()(**_stated(data_unit="single_cells", data_unit_quote="cells from a single 10x run"))
+    proposal = reread_as_proposal(reread, stated)
+    check = build_capability_check(CELLS_FOLLOW_UP, proposal)[0]
+    assert proposal.conditions.data_unit == "single_cells" and check.results()[0].status == "not_available"
