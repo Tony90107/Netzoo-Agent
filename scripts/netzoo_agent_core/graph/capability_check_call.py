@@ -48,7 +48,10 @@ _INSTRUCTIONS = (
     "For each ask, delivered_by lists the PRODUCES entries below whose result gives what the quote asks for, "
     "as it is asked. An entry that gives a related result, or only an ingredient of it, does not deliver it. "
     "When no entry gives it, delivered_by is empty -- a normal answer, not a failure. not_by lists the NOT "
-    "PRODUCED entries that describe what the quote asks for."
+    "PRODUCED entries that describe what the quote asks for.\n\n"
+    "Then give the request's conditions: what any sentence says about the user's data, or about what every "
+    "asked-for result must satisfy, each with the exact words that say it; not_stated, with an empty quote, "
+    "when nothing says it."
 )
 
 

@@ -21,12 +21,13 @@ from __future__ import annotations
 import re
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
-from ..contracts.capability_check import CapabilityCheck, CheckedRequirement, proposal_sentences
+from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from ..routing.study_purpose_verify import _locate
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
-    "build_capability_check", "request_sentences", "understanding_paragraph", "full_gap_reply", "full_gap_result",
+    "build_capability_check", "verified_conditions", "request_sentences", "understanding_paragraph", "full_gap_reply",
+    "full_gap_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
     "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
@@ -92,7 +93,38 @@ def _span(task: str, quote: str) -> tuple[int, int] | None:
 
 
 _TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
-          "group_membership", "time_model", "spatial")
+          "group_membership", "time_model", "spatial", "samples_matched")
+
+
+def verified_conditions(task: str, proposal) -> dict[str, str]:
+    """Log 412: the request-level conditions that rule results out and whose words are in the request."""
+    conditions = getattr(proposal, "conditions", None)
+    found = {}
+    for name, (_values, rules_out, _description) in CONDITIONS.items():
+        quote = (getattr(conditions, f"{name}_quote", "") or "").strip()
+        if getattr(conditions, name, None) == rules_out and quote and _span(task, quote) is not None:
+            found[name] = rules_out
+    return found
+
+
+def _with_conditions(item, conditions: dict[str, str]):
+    """The ask with each request-level condition it does not state itself (Log 412).
+
+    A condition never overrides what the ask's own words say: a data unit the ask states (pseudo-bulk
+    profiles are bulk samples) stands, and overlapping membership concerns only an ask about groups,
+    matched samples only an ask over two or more omics layers.
+    """
+    update = {}
+    if conditions.get("data_unit") and item.data_unit == "not_stated":
+        update["data_unit"] = conditions["data_unit"]
+    if conditions.get("group_membership") and getattr(item, "group_membership", None) == "one_group":
+        update["group_membership"] = conditions["group_membership"]
+    for name in ("spatial", "time_model"):
+        if conditions.get(name):
+            update[name] = conditions[name]
+    if conditions.get("samples_matched") and item.omics_layers >= 2:
+        update["samples_matched"] = conditions["samples_matched"]
+    return item.model_copy(update=update) if update else item
 
 
 def _fitting(keys: list[str], item) -> list[str]:
@@ -109,8 +141,10 @@ def _fitting(keys: list[str], item) -> list[str]:
     if any(getattr(item, form, None) not in (None, *allowed) for form, allowed in result_forms().items()):
         return []  # Log 402: overlapping groups, dynamics or spatial neighbours
     wanted = set(item.regulator_kinds)
+    # Log 412: a multi-omic entry models layers measured on the same samples (its inputs: "same samples").
+    unmatched = getattr(item, "samples_matched", None) == "different_samples"
     keys = [k for k in keys
-            if (known[k].layers is None or item.omics_layers <= known[k].layers)
+            if (known[k].layers is None or (item.omics_layers <= known[k].layers and not unmatched))
             and (known[k].regulators is None or wanted <= known[k].regulators)
             and not (item.needs_sign and known[k].signed is False)
             and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
@@ -134,6 +168,7 @@ def build_capability_check(
     """
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
+    conditions = verified_conditions(task, proposal)
 
     def place(quote: str):
         span = _span(task, quote)
@@ -161,7 +196,7 @@ def build_capability_check(
                 # for, whatever the sentence's role (o10 SN6, heldout8 QU2-QU8: never checked).
                 other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
             else:
-                asks.setdefault(span, []).append(item)
+                asks.setdefault(span, []).append(_with_conditions(item, conditions))
     requirements = []
     for span, items in asks.items():
         readings = [_fitting([k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item)
@@ -173,6 +208,8 @@ def build_capability_check(
                                  or (known[k].kind == "registry_wide" and known[k].claim in verified_claims))))
         status = "partial" if delivered and not all(readings) else _status(delivered)
         attrs = {key: getattr(items[0], key) for key in _TYPED if hasattr(items[0], key)}
+        if "samples_matched" not in attrs and items[0].omics_layers >= 2:
+            attrs["samples_matched"] = "not_stated"
         blank = not any(item.delivered_by or item.not_by for item in items)
         asked_as = "question" if all(getattr(item, "asked_as", "request") == "question" for item in items) \
             else "request"
@@ -190,7 +227,8 @@ def build_capability_check(
                  if index not in read and not any(a < e and s < b for a, b in spans)]
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
-    return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap), rejected
+    return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
+                           conditions=conditions), rejected
 
 
 def _names(names: list[str]) -> str:
