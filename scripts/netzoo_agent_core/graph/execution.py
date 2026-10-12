@@ -89,7 +89,11 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
         },
     )
     execution_started_at = datetime.now().astimezone()
-    raw_result = execute_selected_tool(decision)
+    try:
+        raw_result = execute_selected_tool(decision)
+    except Exception as exc:
+        # An executor fault is a failed step with a reply, never an approved plan left hanging.
+        raw_result = f"Error: the {step.action} executor raised {type(exc).__name__}: {exc}"
     result = structure_tool_result(
         step.action,
         decision,

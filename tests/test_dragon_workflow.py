@@ -207,3 +207,41 @@ def test_dragon_writes_and_validates_edge_p_values(tmp_path):
         result = execute_selected_tool(_decision(first, second, output))
     assert "p-values: not estimated (Exception: Unable to optimize kappa11)" in result
     assert validate_dragon_output(str(output), "matrix")[2]["p_values"] == "absent"
+
+
+def test_dragon_inspection_dispatches_without_a_model(tmp_path):
+    """F14: the plan was approved, then dispatching inspect_dragon_inputs raised AttributeError."""
+    layer1 = _layer(tmp_path / "layer1.tsv")
+    layer2 = _layer(tmp_path / "layer2.tsv", ids=("s4", "s3", "s2", "s1"), features=("c", "d"))
+    decision = _decision(layer1, layer2, tmp_path / "dragon.tsv").model_copy(
+        update={"action": "inspect_dragon_inputs"}
+    )
+
+    report = execute_selected_tool(decision)
+
+    assert isinstance(report, str) and report
+
+
+def test_an_executor_fault_becomes_a_failed_step_not_an_exception(tmp_path):
+    """G8: an exception past plan approval must leave a failed tool result for the reply."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from netzoo_agent_core.graph import execution as graph_execution
+
+    layer1 = _layer(tmp_path / "layer1.tsv")
+    layer2 = _layer(tmp_path / "layer2.tsv", features=("c", "d"))
+    plan = build_workflow_plan(
+        _decision(layer1, layer2, tmp_path / "dragon.tsv"),
+        f"Run DRAGON with omics_layer_1={layer1} omics_layer_2={layer2}.",
+    )
+    context = SimpleNamespace(recorder=MagicMock())
+    fault = AttributeError("'function' object has no attribute 'invoke'")
+
+    with patch.object(graph_execution, "execute_selected_tool", side_effect=fault), \
+            patch("netzoo_agent_core.routing.results.TOOL_LOG_ROOT", tmp_path / "logs"):
+        update = graph_execution.execute_tool(context, {"plan": plan.model_dump(), "current_step": 0})
+
+    result = update["tool_result"]
+    assert result["status"] == "failed"
+    assert any("AttributeError" in error for error in result["errors"])
