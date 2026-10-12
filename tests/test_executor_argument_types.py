@@ -58,3 +58,27 @@ def test_every_executor_argument_satisfies_its_own_tool_schema(action):
     })
 
     tool.args_schema.model_validate(payload)
+
+
+def test_every_local_executor_is_a_tool_the_dispatcher_can_invoke():
+    """The dispatcher calls executor.invoke(); a bare function fails only at run time (F14)."""
+    from netzoo_agent_core.execution import LOCAL_TOOL_EXECUTORS
+
+    bare = sorted(
+        action for action, executor in LOCAL_TOOL_EXECUTORS.items()
+        if not (hasattr(executor, "invoke") and hasattr(executor, "args_schema"))
+    )
+    assert bare == []
+
+
+@pytest.mark.parametrize("action", sorted(ACTION_DEFINITIONS), ids=sorted(ACTION_DEFINITIONS))
+def test_every_inspection_argument_satisfies_its_own_tool_schema(action):
+    """Validation steps reach the dispatcher too, so their payloads must fit their tools."""
+    from netzoo_agent_core.execution import LOCAL_TOOL_EXECUTORS
+
+    if ACTION_DEFINITIONS[action].run or action not in LOCAL_TOOL_EXECUTORS:
+        pytest.skip("runnable actions are covered above; remote actions have no local tool")
+    tool = LOCAL_TOOL_EXECUTORS[action]
+    arguments = executor_arguments(action, unspecified_decision(action))
+    fields = tool.args_schema.model_fields
+    assert set(arguments) <= set(fields), f"{action} sends fields its tool does not declare"
