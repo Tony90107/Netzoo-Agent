@@ -545,3 +545,23 @@ def test_required_unavailable_philosophy_takes_priority_over_unrelated_condition
     assert updated.advisory_recommendation is None
     for field in AUTHORITY_FIELDS:
         assert getattr(updated, field) == getattr(decision, field)
+
+
+@pytest.mark.parametrize("task,quote,kept", [
+    # Log 415, heldout19 UP1: using the motif prior is no request for a Bayesian philosophy.
+    ("We have expression, motifs and PPI for 75 samples. We want one TF-gene network. "
+     "The motif prior we provide must be part of the estimate.",
+     "The motif prior we provide must be part of the estimate.", False),
+    ("How does PANDA combine the motif prior with the PPI network?",
+     "How does PANDA combine the motif prior with the PPI network?", False),
+    # A request that states it keeps the gap, through its quote or the quote's sentence.
+    ("Our motif prior is noisy. We need a model that quantifies, probabilistically, how unreliable the prior is.",
+     "We need a model that quantifies, probabilistically, how unreliable the prior is.", True),
+    ("有沒有一種分析哲學，是可以把這種『先驗不可靠的程度』透過機率的方式量化，讓數據自己去權衡。", "讓數據自己去權衡", True),
+])
+def test_a_required_philosophy_must_be_said_in_the_quote_or_its_sentence(task, quote, kept):
+    from netzoo_agent_core.contracts.outcomes import MethodCapabilityGap
+    from netzoo_agent_core.graph.condition_recommender import _unwitnessed
+
+    gap = MethodCapabilityGap(selection_tags=["bayesian"], text_spans=[quote], rationale="r")
+    assert _unwitnessed(task, gap) is not kept

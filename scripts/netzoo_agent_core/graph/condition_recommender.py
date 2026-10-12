@@ -480,6 +480,27 @@ def _quotes_the_result(gap, readings) -> bool:
     return any(q and s and (q in s or s in q) for q in quotes for s in spans)
 
 
+def _unwitnessed(task: str, gap) -> bool:
+    """Log 415: a required philosophy with witness words that neither a gap quote nor its sentence says.
+
+    heldout19 UP1 (4 of 4 runs, both arms): "The motif prior we provide must be part of the estimate." was read
+    as a required Bayesian philosophy, and the reply refused a request PANDA serves: "No qualified registered
+    workflow fully matches the requested modeling philosophy". The same rule already holds a preference to its
+    words (`PREFERENCE_TAG_WITNESSES`, Logs 300-307). The quote's whole sentence counts: one recorded request
+    for a probabilistic prior-reliability model was quoted only as 「讓數據自己去權衡」, its sentence says 機率.
+    """
+    from ..interpretation.capability_check import request_sentences
+
+    def said(span: str) -> list[str]:
+        start = task.casefold().find(span.casefold())
+        sentences = [task[a:b] for a, b in request_sentences(task) if start >= 0 and a < start + len(span) and start < b]
+        return [span, *sentences]
+
+    return any((witness := PREFERENCE_TAG_WITNESSES.get(tag)) is not None
+               and not any(re.search(witness, text, re.I) for span in gap.text_spans for text in said(span))
+               for tag in gap.selection_tags)
+
+
 def _validated_capability_gap(task, gap, candidate_facts, readings=()):
     if gap is None or not candidate_facts:
         return None
@@ -487,7 +508,8 @@ def _validated_capability_gap(task, gap, candidate_facts, readings=()):
     required = set(gap.selection_tags)
     if not required <= registered or any(
         required <= set(item["selection_tags"]) for item in candidate_facts
-    ) or any(not _quote_grounded(task, span) for span in gap.text_spans) or _quotes_the_result(gap, readings):
+    ) or any(not _quote_grounded(task, span) for span in gap.text_spans) or _quotes_the_result(gap, readings) \
+            or _unwitnessed(task, gap):
         return None
     if _NON_ENGLISH.search(gap.rationale):
         gap = gap.model_copy(update={"rationale":
