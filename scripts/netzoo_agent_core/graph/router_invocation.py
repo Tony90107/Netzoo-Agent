@@ -46,6 +46,7 @@ from ..interpretation.capability_check import (
     workflow_description,
 )
 from .data_facts_call import invoke_data_facts
+from ..interpretation.run_check import run_check_verdict, shadow_run_check_enabled
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
 from ..interpretation.request_requirements import stated_in_text
@@ -159,7 +160,8 @@ def invoke_router(
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
         proposal, check_status = None, "no_model"
-        if result.decision.action == "no_tool":  # Log 387: the safety check is asked before the advisory reads
+        if result.decision.action == "no_tool" or shadow_run_check_enabled():
+            # Log 387: the safety check is asked before the advisory reads; verdict layer step 1: a run too, in shadow.
             proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
             result = replace(result, usage=usage, budget_warnings=warnings)
@@ -171,6 +173,7 @@ def invoke_router(
         result = _with_applicability(context, state, user_task, result)
         result = _with_capability_check(context, state, user_task, result, proposal,
                                         provisional=check_status == "fallback")
+        _record_run_check_shadow(context, state, user_task, result, proposal, check_status)
         if check_status in ("blocked", "failed") and result.decision.action == "no_tool":
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
@@ -262,6 +265,22 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
         **result.routing_state,
         "semantic_goal": {**(result.routing_state.get("semantic_goal") or {}),
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
+
+
+def _record_run_check_shadow(context, state, user_task: str, result: _RouterInvocation, proposal,
+                             check_status: str) -> None:
+    """Verdict layer step 1: what the check says about the run routing selected -- recorded, never acted on."""
+    if result.decision.action == "no_tool" or not shadow_run_check_enabled():
+        return
+    check = None
+    if proposal is not None:
+        claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
+        check, _ = build_capability_check(user_task, proposal, claims)
+        if check_status == "fallback":
+            check = check.model_copy(update={"provisional": True})
+    record_event(context, state, "routing.run_check_shadow", "classify", {
+        "check_status": check_status, **run_check_verdict(check, result.decision.action),
+        "match_status": result.decision.capability_match_status, "match_basis": result.decision.match_basis})
 
 
 def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
