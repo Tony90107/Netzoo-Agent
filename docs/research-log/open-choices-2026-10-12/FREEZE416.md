@@ -83,3 +83,31 @@
 | G3 | OP 的 refused：cand ≤ base；OP1 問 STRING network type 的次數：cand ≥ base |
 
 全部成立才保留，否則撤回。OR 只報告。
+
+## 補充：盲測題組（2026-10-12，o16 進行中寫下，任何盲測回合之前）
+
+使用者要求（2026-10-12）：修正不能只針對特定題目改進。heldout416 是我在知道修法之後寫的，可能偏向這個機制。所以另外加一組盲測題：
+- `heldout416b.json`，30 題，由獨立子代理撰寫。
+- 撰寫者只拿到 G2 的問題定義和各 workflow 的產出說明，沒看過程式碼、這個候選或 heldout416。
+- 我讀過全部題目，一題都沒改。
+- B06（「either is fine by me, you pick and start」）等於把選擇權交出來，替使用者選也說得通。依出題者的預期保留 ASK，但結果另外註記。
+
+| 族 | 題數 | 預期 |
+|---|---:|---|
+| OPEN | 8 | ASK：使用者列出結果選項，各選項導向不同 workflow |
+| VAGUE | 3 | ASK：目標本身沒說 |
+| UNKNOWN_INPUT | 5 | ASK：結果明確，但決定 workflow 的資料性質使用者不知道 |
+| RUN_OPEN | 4 | ASK：以 run 措辭提出，帶著未決選擇或未知性質 |
+| DECIDED | 7 | ANSWER：其中 4 題以上帶有無關的不確定或假設字眼 |
+| IMPOSSIBLE | 3 | REFUSE |
+
+回合 `b16`：兩臂交錯，每題 2 次，共 120 個 session，執行 `run_heldout416b.py b16 2`，在 o16 結束後才跑。判讀用 `analyze416b.py`，判讀定義同 `analyze416.py`。
+
+| 判定 | 條件 |
+|---|---|
+| GB0（不傷做得到與做不到的判斷） | DECIDED answered：cand ≥ base；IMPOSSIBLE 說明做不到：cand ≥ base；兩族的 `open_choice` 觸發合計 ≤ 1 |
+| GB1（泛化） | OPEN 成功數（16 個 session）：cand ≥ base ＋ 5 |
+
+VAGUE、UNKNOWN_INPUT、RUN_OPEN 只報告。這三族不在這個候選的範圍內，用來量測 G2 還剩多少沒做。
+
+Log 416 要保留，o16 的判定（V1、G0–G3）和 GB0、GB1 必須全部成立。
