@@ -26,7 +26,9 @@ from ..routing.study_purpose_verify import _locate
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
-    "build_capability_check", "verified_conditions", "request_sentences", "understanding_paragraph", "full_gap_reply",
+    "build_capability_check", "verified_conditions", "stated_requirements", "condition_pairs",
+    "apply_condition_answers", "redirect_pairs", "apply_redirect_answers",
+    "workflow_description", "request_sentences", "understanding_paragraph", "full_gap_reply",
     "full_gap_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
     "apply_second_opinion",
@@ -105,6 +107,132 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
         if getattr(conditions, name, None) == rules_out and quote and _span(task, quote) is not None:
             found[name] = rules_out
     return found
+
+
+_CHECKED_ABOUT = ("how_computed", "what_it_contains")
+
+
+def stated_requirements(task: str, proposal, check: CapabilityCheck) -> list[str]:
+    """Log 414: the other requirements to check against credited workflows, as quoted in the request.
+
+    Kept only when they say how a result is computed or what it must contain (never a file format, a name,
+    or which samples to use), their words are in the request, and they lie outside every asked-for result's
+    own words -- an ask's own words were already read with it.
+    """
+    conditions = getattr(proposal, "conditions", None)
+    asked = [span for item in check.results() if (span := _span(task, item.quote)) is not None]
+    # Pre-measure (Log 414): "from expression, motifs and PPI", inside the sentence that asks for the network, was
+    # filed as how_computed and once answered "violates" for a supported result (heldout16 PC4). A requirement
+    # stated outside the asks is a sentence of its own: one that holds no asked-for result's words.
+    asking = [(s, e) for s, e in request_sentences(task) if any(a < e and s < b for a, b in asked)]
+    kept = []
+    for other in getattr(conditions, "other_requirements", None) or []:
+        span = _span(task, other.quote) if other.about in _CHECKED_ABOUT and other.quote.strip() else None
+        if span is None or any(s < span[1] and span[0] < e for s, e in asking):
+            continue
+        kept.append(task[span[0]:span[1]])
+    return list(dict.fromkeys(kept))
+
+
+def condition_pairs(check: CapabilityCheck, stated: list[str]) -> list[tuple[int, str, list[str], str]]:
+    """(requirement index, workflow action, its entries, stated requirement) for every workflow the check
+    credited a result to (Log 414).
+
+    The workflow is shown with all of its produces entries that fit the ask's typed attributes, not only the
+    credited one: a stated "each edge needs an adjusted p-value" beside a network credited to DRAGON's network
+    entry is met by DRAGON's p-value entry, and showing the network alone would invite a false "violates".
+    """
+    from types import SimpleNamespace
+
+    known = sheet_entries()
+    pairs = []
+    for index, item in enumerate(check.requirements):
+        if item.kind != "result" or item.status not in ("available", "with_step", "partial"):
+            continue
+        for action in dict.fromkeys(entry(key).action for key in item.delivered_by):
+            produces = [key for key, found in known.items() if found.kind == "produces" and found.action == action]
+            keys = (_fitting(produces, SimpleNamespace(**item.attrs)) if item.attrs else produces) or produces
+            pairs += [(index, action, keys, quote) for quote in stated]
+    return pairs
+
+
+def workflow_description(keys: list[str]) -> str:
+    """One workflow's results as the condition check reads them: each result, how to read it, what it needs."""
+    known = sheet_entries()
+    needs = next((known[key].inputs for key in keys if known[key].inputs), ())
+    if not needs:
+        action = known[keys[0]].action
+        needs = next((item.inputs for item in known.values() if item.action == action and item.inputs), ())
+    described = " ".join(" ".join(filter(None, (known[key].text, known[key].reading))) for key in keys)
+    return described + (f" Computed from: {'; '.join(needs)}." if needs else "")
+
+
+def redirect_pairs(check: CapabilityCheck, candidates: list[str]) -> list[tuple[int, str, list[str], str]]:
+    """Log 414: for a result every credited workflow was removed from, the other offered workflows to ask about.
+
+    Pre-measure, seen heldout17 KP3: "the hospital effect should be separated from the co-expression" removed
+    LIONESS-COEXPRESSION, rightly, while COBRA -- which routing offered -- gives exactly that. Without asking the
+    other offered workflows the supported request was refused.
+    """
+    from types import SimpleNamespace
+
+    known = sheet_entries()
+    pairs = []
+    for index, item in enumerate(check.requirements):
+        if item.kind != "result" or item.status != "not_available" or not item.violations:
+            continue
+        quotes = list(dict.fromkeys(reason.split(' does not meet "', 1)[1].rstrip('"') for reason in item.violations))
+        removed = {reason.split(" does not meet ", 1)[0] for reason in item.violations}
+        for action in candidates:
+            produces = [key for key, found in known.items() if found.kind == "produces" and found.action == action]
+            keys = _fitting(produces, SimpleNamespace(**item.attrs)) if item.attrs else produces
+            if keys and known[keys[0]].workflow not in removed:
+                pairs += [(index, action, keys, quote) for quote in quotes]
+    return pairs
+
+
+def apply_redirect_answers(check: CapabilityCheck, pairs: list[tuple[int, str, list[str], str]],
+                           answers: list) -> CapabilityCheck:
+    """Credit an offered workflow answered `satisfies` for every stated requirement it was asked about."""
+    verdicts: dict[tuple[int, str], list] = {}
+    for (index, action, keys, _quote), answer in zip(pairs, answers):
+        verdicts.setdefault((index, action), [keys, True])[1] &= answer == "satisfies"
+    requirements = [item.model_copy() for item in check.requirements]
+    for (index, _action), (keys, satisfied) in verdicts.items():
+        if satisfied:
+            item = requirements[index]
+            delivered = list(dict.fromkeys([*item.delivered_by, *keys]))
+            requirements[index] = item.model_copy(update={"delivered_by": delivered, "status": _status(delivered)})
+    results = [item for item in requirements if item.kind == "result"]
+    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
+
+
+def apply_condition_answers(check: CapabilityCheck, pairs: list[tuple[int, str, list[str], str]],
+                            answers: list) -> CapabilityCheck:
+    """Remove each credited workflow answered `violates`; satisfies and unrelated change nothing (Log 414).
+
+    Nothing is ever made unconfirmed here: a result keeps its verdict unless a workflow is found unable to meet
+    a stated requirement, and only that workflow is removed.
+    """
+    removed: dict[int, dict[str, list[str]]] = {}
+    for (index, action, keys, quote), answer in zip(pairs, answers):
+        if answer == "violates":
+            removed.setdefault(index, {}).setdefault(action, [])
+            if quote not in removed[index][action]:
+                removed[index][action].append(quote)
+    requirements = [item.model_copy() for item in check.requirements]
+    for index, actions in removed.items():
+        item = requirements[index]
+        delivered = [key for key in item.delivered_by if entry(key).action not in actions]
+        names = {action: entry(keys[0]).workflow for _index, action, keys, _quote in pairs}
+        reasons = [f'{names[action]} does not meet "{quote}"' for action, quotes in actions.items() for quote in quotes]
+        status = ("partial" if delivered else "not_available") if item.status == "partial" else _status(delivered)
+        requirements[index] = item.model_copy(update={
+            "delivered_by": delivered, "status": status, "violations": list(dict.fromkeys(reasons))})
+    results = [item for item in requirements if item.kind == "result"]
+    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
 
 
 def _with_conditions(item, conditions: dict[str, str]):
@@ -251,7 +379,7 @@ def _lower_first(text: str) -> str:
 
 
 def _why_not(item: CheckedRequirement) -> list[str]:
-    reasons = []
+    reasons = [f"{reason}." for reason in item.violations]
     for key in item.not_by:
         found = entry(key)
         reasons.append(found.why_not if found.kind == "registry_wide"
@@ -528,7 +656,9 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
     known = sheet_entries()
     pairs = []
     for index, requirement in enumerate(check.requirements):
-        if requirement.kind != "result" or requirement.status != "not_available" or not requirement.attrs:
+        # Log 414: a workflow removed for a stated requirement it cannot meet is not asked about again.
+        if (requirement.kind != "result" or requirement.status != "not_available" or not requirement.attrs
+                or requirement.violations):
             continue
         for action in actions_for(requirement):
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]

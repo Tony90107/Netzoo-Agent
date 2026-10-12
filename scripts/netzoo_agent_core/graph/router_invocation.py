@@ -32,7 +32,8 @@ from .condition_recommender import invoke_condition_recommender, unrecommended_q
 from .request_concerns import invoke_concern_matcher
 from .study_purpose_call import invoke_study_purpose
 from .capability_check_call import (
-    has_check_model, request_capability_check, request_capability_reread, request_second_opinion,
+    has_check_model, request_capability_check, request_capability_reread, request_condition_check,
+    request_second_opinion,
 )
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
@@ -40,7 +41,9 @@ from ..interpretation.checked_match import checked_match
 from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
-    apply_second_opinion, blank_requirement_pairs, build_capability_check, implied_actions, second_opinion_pairs,
+    apply_condition_answers, apply_redirect_answers, apply_second_opinion, blank_requirement_pairs,
+    build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
+    workflow_description,
 )
 from .data_facts_call import invoke_data_facts
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
@@ -261,6 +264,12 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
 
 
+def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
+    """(asked result, stated requirement, workflow, what it produces and needs) per condition-check pair."""
+    return [(check.requirements[index].quote, quote, entry(keys[0]).workflow, workflow_description(keys))
+            for index, _action, keys, quote in pairs]
+
+
 def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal, *,
                            provisional: bool = False) -> _RouterInvocation:
     """Log 387: each thing a guidance request asks for, checked against the capability sheet.
@@ -292,6 +301,27 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
             "check": check.model_dump()})
+    stated = [] if provisional else stated_requirements(user_task, proposal, check)
+    pairs_to_check = condition_pairs(check, stated)
+    if pairs_to_check:
+        # Log 414: a requirement the request states outside the asked result, of no typed kind, is checked against
+        # each credited workflow; only a workflow found unable to meet it is removed -- nothing turns unconfirmed.
+        answers, usage, warnings = request_condition_check(
+            context, state, _condition_shown(check, pairs_to_check), usage, warnings)
+        if answers is not None:
+            check = apply_condition_answers(check, pairs_to_check, answers)
+        offered = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
+        redirect = redirect_pairs(check, list(dict.fromkeys(offered))[:4]) if answers is not None else []
+        redirected = None
+        if redirect:
+            redirected, usage, warnings = request_condition_check(
+                context, state, _condition_shown(check, redirect), usage, warnings, redirect=True)
+            if redirected is not None:
+                check = apply_redirect_answers(check, redirect, redirected)
+        record_event(context, state, "routing.capability_condition_check", "classify", {
+            "stated": stated, "pairs": [[index, action, keys, quote] for index, action, keys, quote in pairs_to_check],
+            "answers": answers, "redirect": [[index, action, keys, quote] for index, action, keys, quote in redirect],
+            "redirected": redirected, "full_gap": check.full_gap})
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []
     # Log 403: a routing tie is a claim too -- methods questions are now checked, and "which method
     # gives X" usually ties -- so a gap that would clear it asks about up to four of its workflows.
