@@ -33,23 +33,6 @@ MAX_SENTENCES = 12
 
 
 @lru_cache(maxsize=1)
-def _choice_model() -> type[BaseModel]:
-    """G2 (feasibility eval F37, F43): a choice about the wanted result the user says is still open.
-
-    Each option is an ask of its own, checked against the sheet like any other; with no field for it the
-    options were filed as background ("I cannot tell if I mean their activity or their network wiring")
-    and the request was refused, or routing chose one option for the user.
-    """
-    return create_model(
-        "OpenChoice",
-        __config__=ConfigDict(extra="forbid"),
-        options=(list[_ask_model()], Field(description=(
-            "Each option the user names for this open choice, one ask per option, its quote the exact words "
-            "naming that option."))),
-    )
-
-
-@lru_cache(maxsize=1)
 def _ask_model() -> type[BaseModel]:
     """One asked-for result and the sheet entries that give it (shared by the check and its re-read)."""
     produces = Literal[produces_ids()]  # type: ignore[valid-type]
@@ -206,10 +189,6 @@ def proposal_model(sentences: int = 1) -> type[BaseModel]:
         asks=(list[ask], Field(description=(
             "Each result the user wants produced, or asks whether or which method produces, about their data or "
             "biology; one item per result."))),
-        # The default reads recordings and fixtures from before G2; the provider's strict schema still requires it.
-        open_choices=(list[_choice_model()], Field(default_factory=list, description=(
-            "Each choice about what result to get that the user says is still open -- not decided, cannot "
-            "tell, or wants help choosing -- with the options they name; empty when they name none."))),
     )
     fields = {
         f"s{index}": (sentence, Field(description=f"Sentence {index} of the request."))
@@ -264,7 +243,7 @@ def reread_as_proposal(reread, conditions=None) -> BaseModel:
     """
     count = len(type(reread).model_fields)
     return proposal_model(count).model_validate({
-        **{f"s{index}": {"role": "asks", "has": [], "about_methods": [], "open_choices": [],
+        **{f"s{index}": {"role": "asks", "has": [], "about_methods": [],
                          "asks": [item.model_dump() for item in getattr(reread, f"s{index}").asks]}
            for index in range(1, count + 1)},
         "conditions": conditions.model_dump() if conditions is not None else unstated_conditions()})
@@ -323,8 +302,6 @@ class CheckedRequirement(BaseModel):
     violations: list[str] = Field(default_factory=list)
     """Log 414: why a credited workflow was removed -- it cannot meet a requirement the request states
     elsewhere (code-rendered from the condition check's answer)."""
-    choice: int | None = None
-    """G2: the open choice this result is an option of (two or more options in the request), else None."""
 
 
 class CapabilityCheck(BaseModel):
@@ -355,14 +332,6 @@ class CapabilityCheck(BaseModel):
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]
-
-    def open_choices(self) -> list[list[CheckedRequirement]]:
-        """G2: the options of each open choice, in request order."""
-        groups: dict[int, list[CheckedRequirement]] = {}
-        for item in self.results():
-            if item.choice is not None:
-                groups.setdefault(item.choice, []).append(item)
-        return [group for group in groups.values() if len(group) >= 2]
 
     def unconfirmed(self) -> bool:
         """Log 403: nothing this turn's check says was confirmed by the check's own model."""

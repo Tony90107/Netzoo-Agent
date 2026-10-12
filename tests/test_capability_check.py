@@ -215,8 +215,7 @@ def test_schema_requires_one_field_per_sentence():
     # Log 412: the request's conditions follow the sentences, required too.
     assert schema["required"] == ["s1", "s2", "s3", "conditions"] and schema["additionalProperties"] is False
     sentence = schema["$defs"]["SentenceReading"]
-    # G2: the open choices are required of the provider too.
-    assert sentence["required"] == ["role", "has", "about_methods", "asks", "open_choices"]
+    assert sentence["required"] == ["role", "has", "about_methods", "asks"]
     assert "not_by" not in str(sentence["properties"]["has"])  # only an ask can name entries
 
 

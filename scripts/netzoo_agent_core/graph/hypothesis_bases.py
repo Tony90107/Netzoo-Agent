@@ -270,10 +270,7 @@ def invoke_hypothesis_matcher(context, state, task, decision, usage, budget_warn
                 capability_match_status=("ambiguous" if comparison else "unsupported" if gaps else "exact"),
                 clarification_question=("Which scientific question should we start with?" if comparison else None),
             )
-        elif claims.question_mode != "single_goal" and (
-                claims.question_mode != "unclear_goal" or framing.hypotheses):
-            # G2 (feasibility eval F37, F39): an unclear goal with no alternative named in result terms
-            # has nothing to validate -- it is left to routing and the capability check, not refused here.
+        elif claims.question_mode != "single_goal":
             # An invalid comparison is not evidence for the classifier's one
             # surviving method. Keep it out of single-path recommendation.
             updates.update(
