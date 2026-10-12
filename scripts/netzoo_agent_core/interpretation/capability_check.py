@@ -29,7 +29,7 @@ __all__ = [
     "build_capability_check", "verified_conditions", "stated_requirements", "condition_pairs",
     "apply_condition_answers", "redirect_pairs", "apply_redirect_answers",
     "workflow_description", "request_sentences", "understanding_paragraph", "full_gap_reply",
-    "full_gap_result",
+    "full_gap_result", "open_choice_groups", "open_choice_reply", "open_choice_result", "whole_check_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
     "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
@@ -286,6 +286,12 @@ def _fitting(keys: list[str], item) -> list[str]:
     return narrowed or keys
 
 
+def _names_workflow(words: str) -> bool:
+    """Whether the words name a registered workflow (PANDA, LIONESS-PANDA, ...)."""
+    names = {item.workflow for item in sheet_entries().values() if item.workflow}
+    return any(re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", words, re.I) for name in names)
+
+
 def build_capability_check(
     task: str, proposal, verified_claims: frozenset[str] = frozenset(),
 ) -> tuple[CapabilityCheck, list[dict]]:
@@ -300,7 +306,7 @@ def build_capability_check(
     one sentence twice) it is `partial`, never `available`.
     """
     known = sheet_entries()
-    rejected, spans, asks, other = [], [], {}, {}
+    rejected, spans, asks, other, choice_of = [], [], {}, {}, {}
     conditions = verified_conditions(task, proposal)
 
     def place(quote: str):
@@ -330,6 +336,20 @@ def build_capability_check(
                 other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
             else:
                 asks.setdefault(span, []).append(_with_conditions(item, conditions))
+        for choice in getattr(sentence, "open_choices", None) or ():
+            # G2: an open choice is two or more options found in the request; one found option is an ask.
+            placed = [(span, item) for item in choice.options if (span := place(item.quote)) is not None]
+            if placed and all(_names_workflow(task[a:b]) for (a, b), _item in placed):
+                # Pre-measure C1 ("LIONESS-PANDA or BONOBO?"): options that are method names are a methods
+                # question, which routing's tie answers; their words count as read.
+                continue
+            for span, item in placed:
+                asks.setdefault(span, []).append(_with_conditions(item, conditions))
+            placed = [span for span, _item in placed]
+            if len(set(placed)) >= 2:
+                group = len({*choice_of.values()})
+                for span in placed:
+                    choice_of.setdefault(span, group)
     requirements = []
     for span, items in asks.items():
         readings = [_fitting([k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item)
@@ -348,7 +368,7 @@ def build_capability_check(
             else "request"
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
-                                               asked_as=asked_as))
+                                               asked_as=asked_as, choice=choice_of.get(span)))
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model
@@ -495,6 +515,72 @@ def full_gap_result(state, reply) -> dict | None:
     if with_outside_steps(plain, decision, task) != plain:
         return reply(with_outside_steps(full_gap_reply(check, with_note=True), decision, task), "capability_check_gap")
     return reply(plain, "capability_check_gap")
+
+
+def open_choice_groups(check: CapabilityCheck | None) -> list[list[CheckedRequirement]]:
+    """G2: the open choices that keep the workflow unselected until the user picks an option.
+
+    A confirmed check, at least one option some workflow gives, and options that lead to different
+    workflows -- options one workflow covers alike (STRING's network kinds) are that workflow's input.
+    """
+    if check is None or check.full_gap or check.unconfirmed():
+        return []
+    groups = []
+    for group in check.open_choices():
+        led_to = {frozenset(entry(key).action for key in item.delivered_by) for item in group}
+        if any(item.status != "not_available" for item in group) and len(led_to) > 1:
+            groups.append(group)
+    return groups
+
+
+def _option_line(item: CheckedRequirement) -> str:
+    quote = f'"{item.quote}"'
+    if item.status == "not_available":
+        return f"- {quote}: " + (" ".join(_why_not(item)) or "no registered workflow produces this.")
+    keys = list(dict.fromkeys(item.delivered_by))
+    by_workflow = {}
+    for key in keys:
+        by_workflow.setdefault(entry(key).workflow, entry(key))
+    if len(by_workflow) > 3:
+        return f"- {quote}: {_workflows(keys)}."
+    parts = []
+    for workflow, found in by_workflow.items():
+        text = f"{workflow} gives {_lower_first(found.text).rstrip('.')}"
+        parts.append(text + (f", plus a step you run outside NetZoo: {_lower_first(found.step)}"
+                             if found.level == "with_step" and found.step else ""))
+    return f"- {quote}: " + "; ".join(parts) + "."
+
+
+def open_choice_reply(check: CapabilityCheck, groups: list[list[CheckedRequirement]]) -> str:
+    """G2: what was understood, each open choice's options and what each gives, then one question."""
+    others = [item for item in check.results() if item.choice is None]
+    lines = ["What I understood you are asking for:"] if others else []
+    lines += [f"{index}. {_line(item)}" for index, item in enumerate(others, 1)]
+    lines += [f'Not checked against the registered workflows: "{sentence}"' for sentence in check.unchecked]
+    blocks = ["\n".join(lines)] if lines else []
+    for group in groups:
+        blocks.append("\n".join(["You have left this choice open, and each option gives a different result:",
+                                  *(_option_line(item) for item in group)]))
+    which = ("Which option do you want?" if len(groups) == 1 else "Which option do you want for each choice?")
+    blocks.append(f"No workflow has been selected. {which} If you are unsure, tell me what you want to learn from "
+                  "your data, and I will say which option answers it.")
+    blocks.append("No files were inspected and no analysis ran.")
+    return "\n\n".join(blocks)
+
+
+def open_choice_result(state, reply) -> dict | None:
+    """The whole reply when the request leaves a choice of result open (G2), else None."""
+    from ..contracts import TaskDecision
+
+    decision = TaskDecision.model_validate(state["decision"])
+    if decision.action != "no_tool" or not (groups := open_choice_groups(decision.capability_check)):
+        return None
+    return reply(open_choice_reply(decision.capability_check, groups), "open_choice")
+
+
+def whole_check_result(state, reply) -> dict | None:
+    """The whole reply when the check alone answers the turn: a full gap (Log 387) or an open choice (G2)."""
+    return full_gap_result(state, reply) or open_choice_result(state, reply)
 
 
 def with_capability_check_reply(result: dict, state, reply) -> dict:

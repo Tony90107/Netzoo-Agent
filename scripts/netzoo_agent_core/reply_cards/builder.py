@@ -502,6 +502,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         )
         # Log 392: the outside-step rows (SCORPION, SPIDER, ALPACA) stay on a full gap.
         return _with_outside_steps(card, decision, task)
+    if kind == "open_choice" and decision.capability_check is not None:
+        # G2: the options of the choice the user left open; no workflow is planned before one is picked.
+        return ReplyCard(kind="clarification",
+                         headline="You have left a choice open; pick one option before a workflow is chosen.",
+                         points=[clip(f'Option: "{item.quote}"', 300) for group in
+                                 decision.capability_check.open_choices() for item in group][:6])
     if kind == "outcome_clarification":
         if decision.advisory_capability_gap is not None:
             return _method_gap_card(decision, policy, task)
