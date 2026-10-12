@@ -37,7 +37,7 @@ def shadow_event(run_id):
         return None
     for line in path.read_text().splitlines():
         event = json.loads(line)
-        if event.get("type") == "routing.run_check_shadow":
+        if event.get("event_type") == "routing.run_check_shadow":
             return event.get("payload")
     return None
 
