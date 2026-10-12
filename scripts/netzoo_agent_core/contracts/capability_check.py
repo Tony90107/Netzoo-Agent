@@ -21,8 +21,8 @@ from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
 __all__ = ["CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind",
-           "SecondOpinionAnswer", "conditions_model", "proposal_model", "proposal_sentences", "reread_as_proposal",
-           "reread_model", "second_opinion_model", "unstated_conditions"]
+           "SecondOpinionAnswer", "condition_check_model", "conditions_model", "proposal_model", "proposal_sentences",
+           "reread_as_proposal", "reread_model", "second_opinion_model", "unstated_conditions"]
 
 RequirementKind = Literal["result", "about_methods", "context"]
 SentenceRole = Literal["background", "asks", "methods_question", "mixed"]
@@ -111,6 +111,9 @@ keeps one only when those words are in the request, and applies it to the asks
 """
 
 
+OtherAbout = Literal["how_computed", "what_it_contains", "format_or_delivery", "which_data"]
+
+
 @lru_cache(maxsize=1)
 def conditions_model() -> type[BaseModel]:
     fields = {}
@@ -118,13 +121,45 @@ def conditions_model() -> type[BaseModel]:
         fields[name] = (Literal[values], Field(description=description))  # type: ignore[valid-type]
         fields[f"{name}_quote"] = (str, Field(description=(
             f"The exact words of the request that state {name}; empty when it is not stated.")))
+    # Log 414: a requirement on the results that none of the typed fields covers is kept with its words, so it
+    # can be checked against each workflow the check credits (heldout16 NC7: "The miRNA links should be
+    # estimated from negative correlation with the miRNA levels we measured." -- PUMA was offered as fitting).
+    other = create_model(
+        "OtherRequirement", __config__=ConfigDict(extra="forbid"),
+        quote=(str, Field(description="Exact words of the request that state it.")),
+        about=(OtherAbout, Field(description=(
+            "how_computed: how a result must be estimated or what it must be based on. what_it_contains: a "
+            "property or content a result must have. format_or_delivery: file format, names, where it goes. "
+            "which_data: which of the user's samples or files to use."))))
+    fields["other_requirements"] = (list[other], Field(description=(
+        "Every other requirement the request states about the asked-for results that none of the fields above "
+        "covers; empty when there is none.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
 def unstated_conditions() -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
-    return {key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
-            for key, value in ((name, values[-1]), (f"{name}_quote", ""))}
+    return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
+               for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
+            "other_requirements": []}
+
+
+ConditionAnswer = Literal["satisfies", "violates", "unrelated"]
+
+
+@lru_cache(maxsize=32)
+def condition_check_model(pairs: int) -> type[BaseModel]:
+    """Log 414: per (asked result, stated requirement, one workflow's result), whether that result can meet it."""
+    fields = {
+        f"a{index}": (ConditionAnswer, Field(description=(
+            f"Pair {index}: violates -- the workflow's result, as described, cannot meet the requirement; "
+            "satisfies -- it meets it; unrelated -- the requirement does not concern this result.")))
+        for index in range(1, pairs + 1)
+    }
+    model = create_model("ConditionCheck", __config__=ConfigDict(extra="forbid"), **fields)
+    model.model_json_schema = classmethod(  # type: ignore[method-assign]
+        lambda cls, *args, **kwargs: strict_json_schema(BaseModel.model_json_schema.__func__(cls, *args, **kwargs)))
+    return model
 
 
 @lru_cache(maxsize=MAX_SENTENCES + 1)
@@ -264,6 +299,9 @@ class CheckedRequirement(BaseModel):
     """Log 390: credited by the second opinion on a conflict with an exact routing match."""
     asked_as: Literal["request", "question"] = "request"
     """Log 403: whether the user wants it produced or asks whether/which method produces it."""
+    violations: list[str] = Field(default_factory=list)
+    """Log 414: why a credited workflow was removed -- it cannot meet a requirement the request states
+    elsewhere (code-rendered from the condition check's answer)."""
 
 
 class CapabilityCheck(BaseModel):

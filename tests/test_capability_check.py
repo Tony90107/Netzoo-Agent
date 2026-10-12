@@ -811,3 +811,127 @@ def test_a_reread_carries_the_requests_conditions():
     proposal = reread_as_proposal(reread, stated)
     check = build_capability_check(CELLS_FOLLOW_UP, proposal)[0]
     assert proposal.conditions.data_unit == "single_cells" and check.results()[0].status == "not_available"
+
+
+MIRNA_TASK = ("We want a network of how TFs and miRNAs regulate genes across 58 samples, with motifs, PPI and "
+              "predicted miRNA targets. The miRNA links should be estimated from negative correlation with the miRNA "
+              "levels we measured.")
+MIRNA_RULE = "The miRNA links should be estimated from negative correlation with the miRNA levels we measured"
+
+
+def _with_other(*others) -> dict:
+    return {**_stated(), "other_requirements": [{"quote": quote, "about": about} for quote, about in others]}
+
+
+def _puma_check(conditions):
+    from netzoo_agent_core.interpretation.capability_check import stated_requirements
+
+    ask = _ask_in("a network of how TFs and miRNAs regulate genes", ["puma.regulator_gene_network"],
+                  scale="whole_cohort", regulator_kinds=["tf", "mirna"])
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]},
+        "s2": {"role": "background", "has": [MIRNA_RULE + "."], "about_methods": [], "asks": []},
+        "conditions": conditions})
+    check = build_capability_check(MIRNA_TASK, proposal)[0]
+    return check, stated_requirements(MIRNA_TASK, proposal, check)
+
+
+def test_only_how_computed_or_content_requirements_outside_the_ask_are_checked():
+    """Log 414: a format, a name or the samples to use is never checked; nor words inside the ask itself."""
+    _check, stated = _puma_check(_with_other((MIRNA_RULE, "how_computed")))
+    assert stated == [MIRNA_RULE]
+    for others in ([(MIRNA_RULE, "format_or_delivery")], [(MIRNA_RULE, "which_data")],
+                   [("a network of how TFs and miRNAs regulate genes", "what_it_contains")],
+                   [("words the user never wrote", "how_computed")]):
+        assert _puma_check(_with_other(*others))[1] == []
+
+
+def test_a_violating_workflow_is_removed_and_satisfies_or_unrelated_change_nothing():
+    from netzoo_agent_core.interpretation.capability_check import (
+        apply_condition_answers, condition_pairs, second_opinion_pairs,
+    )
+
+    check, stated = _puma_check(_with_other((MIRNA_RULE, "how_computed")))
+    pairs = condition_pairs(check, stated)
+    assert [(index, action, quote) for index, action, _keys, quote in pairs] == [(0, "run_puma", MIRNA_RULE)]
+    assert "puma.regulator_gene_network" in pairs[0][2] and "puma.targeting_scores" in pairs[0][2]
+    for answer in ("satisfies", "unrelated"):
+        assert apply_condition_answers(check, pairs, [answer]).results()[0].status == "available"
+    gap = apply_condition_answers(check, pairs, ["violates"])
+    assert gap.results()[0].status == "not_available" and gap.full_gap
+    assert gap.results()[0].violations == [f'PUMA does not meet "{MIRNA_RULE}"']
+    assert f'PUMA does not meet "{MIRNA_RULE}".' in understanding_paragraph(gap)
+    assert second_opinion_pairs(gap, ["run_puma"]) == []  # never asked again
+
+
+def test_the_router_keeps_the_verdict_when_the_condition_check_cannot_answer(monkeypatch):
+    """A failed call changes nothing: a supported result never turns unconfirmed here."""
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts.capability_check import conditions_model
+
+    calls = []
+    def unanswered(context, state, shown, usage, warnings):
+        calls.append(shown)
+        return None, usage, warnings
+
+    monkeypatch.setattr(router_invocation, "request_condition_check", unanswered)
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args: None)
+    ask = _ask_in("a network of how TFs and miRNAs regulate genes", ["puma.regulator_gene_network"],
+                  scale="whole_cohort", regulator_kinds=["tf", "mirna"])
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]},
+        "s2": {"role": "background", "has": [MIRNA_RULE + "."], "about_methods": [], "asks": []},
+        "conditions": conditions_model()(**_with_other((MIRNA_RULE, "how_computed"))).model_dump()})
+    decision = TaskDecision.model_validate({"action": "no_tool", "in_scope": True, "should_execute": False,
+                                            "confidence": 0.9, "reason": "r", "capability_match_status": "exact",
+                                            "matched_actions": ["run_puma"]})
+    invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                     budget_warnings=[], reason_code=None)
+    result = router_invocation._with_capability_check(SimpleNamespace(project_policy=None), {}, MIRNA_TASK,
+                                                      invocation, proposal)
+    assert calls and result.decision.capability_check.results()[0].status == "available"
+    assert result.decision.matched_actions == ["run_puma"]
+
+
+def test_a_requirement_inside_a_sentence_that_asks_for_a_result_is_not_checked():
+    """Log 414 pre-measure, heldout16 PC4: the data named in the asking sentence were read as a requirement."""
+    from netzoo_agent_core.interpretation.capability_check import stated_requirements
+
+    task = "We want a TF-gene network from expression, motifs and PPI of 77 samples."
+    ask = _ask_in("a TF-gene network", ["panda.tf_gene_network"], scale="whole_cohort")
+    proposal = proposal_model(1).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]},
+        "conditions": _with_other(("from expression, motifs and PPI", "how_computed"))})
+    check = build_capability_check(task, proposal)[0]
+    assert stated_requirements(task, proposal, check) == []
+
+
+def test_a_result_whose_credited_workflows_all_violate_is_redirected_to_an_offered_one_that_satisfies():
+    """Log 414 pre-measure, seen heldout17 KP3: LIONESS-COEXPRESSION cannot separate a hospital effect, COBRA can."""
+    from netzoo_agent_core.interpretation.capability_check import (
+        apply_condition_answers, apply_redirect_answers, condition_pairs, redirect_pairs, workflow_description,
+    )
+
+    task = ("We want gene co-expression for our 150 samples. They come from three hospitals, and the hospital "
+            "effect should be separated from the co-expression.")
+    rule = "the hospital effect should be separated from the co-expression"
+    ask = _ask_in("gene co-expression for our 150 samples", ["lioness_coexpression.per_sample_networks"],
+                  scale="unstated")
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]},
+        "s2": {"role": "background", "has": ["They come from three hospitals"], "about_methods": [], "asks": []},
+        "conditions": _with_other((rule, "how_computed"))})
+    check = build_capability_check(task, proposal)[0]
+    pairs = condition_pairs(check, [rule])
+    removed = apply_condition_answers(check, pairs, ["violates"] * len(pairs))
+    assert removed.full_gap
+    redirect = redirect_pairs(removed, ["run_lioness_coexpression", "run_cobra", "run_bonobo"])
+    assert {action for _index, action, _keys, _quote in redirect} == {"run_cobra", "run_bonobo"}
+    answers = ["satisfies" if action == "run_cobra" else "violates" for _i, action, _k, _q in redirect]
+    redirected = apply_redirect_answers(removed, redirect, answers)
+    assert redirected.results()[0].status == "available" and not redirected.full_gap
+    assert {entry_key.split(".")[0] for entry_key in redirected.results()[0].delivered_by} == {"cobra"}
+    assert "Computed from: expression matrix; design matrix." in workflow_description(["cobra.covariate_components"])
+    unanswered = apply_redirect_answers(removed, redirect, ["unrelated"] * len(redirect))
+    assert unanswered.full_gap

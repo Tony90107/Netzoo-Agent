@@ -20,7 +20,9 @@ from pydantic import BaseModel
 
 from ..capability_sheet import sheet_entries
 from ..contracts import AgentState, HumanMessage, LLMUsage, SystemMessage
-from ..contracts.capability_check import MAX_SENTENCES, proposal_model, reread_model, second_opinion_model
+from ..contracts.capability_check import (
+    MAX_SENTENCES, condition_check_model, proposal_model, reread_model, second_opinion_model,
+)
 from ..interpretation.capability_check import request_sentences
 from ..interpretation.provider_fallback import _is_fatal_exception
 from ..interpretation.semantic_repair import semantic_payload
@@ -30,7 +32,7 @@ from .context import _GraphContext, preflight_budget, record_event
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = ["capability_check_system", "build_capability_check_messages", "build_reread_messages",
-           "request_capability_reread", "request_capability_check",
+           "request_capability_reread", "request_capability_check", "request_condition_check",
            "with_reading_allowance", "has_check_model", "request_second_opinion"]
 
 _INSTRUCTIONS = (
@@ -51,7 +53,7 @@ _INSTRUCTIONS = (
     "PRODUCED entries that describe what the quote asks for.\n\n"
     "Then give the request's conditions: what any sentence says about the user's data, or about what every "
     "asked-for result must satisfy, each with the exact words that say it; not_stated, with an empty quote, "
-    "when nothing says it."
+    "when nothing says it. List every other requirement on the results under other_requirements."
 )
 
 
@@ -100,6 +102,22 @@ _SECOND_OPINION = (
 )
 
 
+_CONDITION_CHECK = (
+    "Return only the ConditionCheck structure. Each numbered pair gives a result the user asked for, a requirement "
+    "the user stated about the results, and what one registered workflow produces and how. Answer violates only if "
+    "that workflow's result, as described, cannot meet the requirement; satisfies if it meets it; unrelated if the "
+    "requirement is not about this result."
+)
+
+
+_CONDITION_REDIRECT = (
+    "Return only the ConditionCheck structure. Each numbered pair gives a result the user asked for, a requirement "
+    "the user stated about the results, and what one registered workflow produces and how. Answer satisfies only if "
+    "that workflow's results give the asked result and meet the requirement; violates if they cannot meet the "
+    "requirement; unrelated if they do not give the asked result."
+)
+
+
 def _check_model(context):
     """The check's model and LLM: its own (OPENROUTER_CAPABILITY_MODEL, Log 389) or the study-purpose call's."""
     llm = getattr(context, "study_purpose_llm", None)
@@ -108,7 +126,9 @@ def _check_model(context):
     if llm is not None and own and own != model:
         # Reasoning models spend output tokens before the answer (nemotron ~1.7k a call on the
         # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
-        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "6000")))
+        # Log 414: on the 7 requests whose check came back undecodable, nemotron had spent the whole 6,000-token
+        # cap on reasoning (finish "length"); with 9,000 all 7 decoded (largest 6,749), the live schema too.
+        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "9000")))
     return model, llm
 
 
@@ -135,6 +155,57 @@ def request_second_opinion(context, state, pairs: list[tuple[str, str, str]], us
         answers, usage, budget_warnings = _second_opinion_call(
             context, state, getattr(context, "semantic_model_name", None), fallback, pairs, usage, budget_warnings,
             situation)
+    return answers, usage, budget_warnings
+
+
+def request_condition_check(context, state, pairs: list[tuple[str, str, str, str]], usage, budget_warnings,
+                            redirect: bool = False):
+    """Log 414: satisfies / violates / unrelated per (asked result, stated requirement, workflow, its results).
+
+    None when nothing answered (no model, budget, failure); the caller then changes nothing, so a failed call
+    never makes a supported result unconfirmed.
+    """
+    model, llm = _check_model(context)
+    if llm is None or not pairs:
+        return None, usage, budget_warnings
+    schema = condition_check_model(len(pairs))
+    listed = "\n".join(f'{index}. Asked result: "{asked}" | Stated requirement: "{stated}" | {workflow} produces: '
+                        f"{produced}" for index, (asked, stated, workflow, produced) in enumerate(pairs, 1))
+    system = _CONDITION_REDIRECT if redirect else _CONDITION_CHECK
+    messages = [SystemMessage(content=system), HumanMessage(content=listed)]
+    input_text = _serialized_structured_input(messages, schema)
+    call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
+    budget, budget_warnings = preflight_budget(
+        with_reading_allowance(context, usage), call_state, role="capability_condition_check", model=model,
+        input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
+    )
+    if budget.status == "blocked":
+        return None, usage, budget_warnings
+    started_ns = time.monotonic_ns()
+    raw = payload = answers = None
+    output_text, call_status = "", "failed"
+    try:
+        adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
+        payload, raw = semantic_payload(adapter.invoke(messages))
+        if isinstance(payload, BaseModel):
+            payload = payload.model_dump()
+        parsed = schema.model_validate(payload)
+        output_text = parsed.model_dump_json()
+        answers = [getattr(parsed, f"a{index}") for index in range(1, len(pairs) + 1)]
+        call_status = "success"
+    except BaseException as error:
+        if _is_fatal_exception(error):
+            raise
+        record_event(context, state, "routing.capability_condition_check_failed", "classify", {
+            "error_type": type(error).__name__, "error_message": str(error)[:2000], "provider_payload": payload,
+        })
+    usage = append_llm_usage(
+        usage, role="capability_condition_check", model=model,
+        response=raw, input_text=input_text, output_text=output_text,
+        budget_tokens=context.task_token_budget,
+        duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
+        status=call_status, price_catalog=context.price_catalog,
+    )
     return answers, usage, budget_warnings
 
 

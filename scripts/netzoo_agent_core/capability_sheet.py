@@ -61,6 +61,8 @@ class SheetEntry:
     """The kind of existing network the result is computed from (regulator_gene); None when none (Log 394)."""
     groups: str | None = None
     """one_group when the result puts each node or sample in exactly one group (Log 413); None otherwise."""
+    inputs: tuple[str, ...] = ()
+    """What the result is computed from, as the sheet lists it (Log 414: shown to the condition check)."""
 
 
 def _resolve(raw: dict, by_id: dict[str, dict]) -> dict:
@@ -129,6 +131,7 @@ def load_sheet(path: Path = SHEET_PATH) -> dict[str, SheetEntry]:
             granularity=granularity if kind == "produces" else frozenset(), layers=resolved.get("layers"),
             regulators=None if regulators is None else frozenset(regulators), signed=resolved.get("signed"),
             input_network=resolved.get("input_network"), groups=resolved.get("groups"),
+            inputs=tuple(str(value) for value in resolved.get("inputs") or ()),
         )
         if kind == "registry_wide" and not entries[item["id"]].claim:
             raise ValueError(f"capability sheet: registry-wide entry {item['id']} must name its claim")
