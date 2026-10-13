@@ -2,30 +2,25 @@
 
 Feasibility eval 2026-10-12: the check reads only guidance turns, so all 8 run-path turns went unchecked,
 and F32 ("only gene expression ... use SAMBAR for expression-based subtypes") was planned as an exact
-SAMBAR run. Of 6,295 recorded sessions only 29 took the run path, so no held-out set measured it. In shadow
-mode (`NETZOO_SHADOW_RUN_CHECK=1`) the check reads a run request too, and this verdict is recorded beside the
-run; nothing acts on it.
+SAMBAR run. Of 6,295 recorded sessions only 29 took the run path, so no held-out set measured it. Now
+the check reads a run request too, and this verdict is recorded beside the run; a confirmed `gap` is answered
+as a full gap instead of a planned run (`graph.router_invocation._with_run_check`).
 """
 
 from __future__ import annotations
 
-import os
 from typing import Literal
 
 from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CapabilityCheck
 
-__all__ = ["RunVerdict", "run_check_verdict", "shadow_run_check_enabled"]
+__all__ = ["RunVerdict", "run_check_verdict"]
 
 RunVerdict = Literal["agrees", "other_workflow", "partial_gap", "gap", "no_result", "not_on_sheet", "unconfirmed"]
 """agrees: the run's workflow gives every result some workflow gives; other_workflow: a result some workflow gives
 is not credited to the run's workflow; partial_gap: the run's workflow gives the results that are given, but some
 result no workflow gives; gap: no workflow gives any result; no_result: the check found nothing asked for;
 not_on_sheet: the run's action has no sheet entry (STRING download); unconfirmed: the check was not confirmed."""
-
-
-def shadow_run_check_enabled() -> bool:
-    return os.environ.get("NETZOO_SHADOW_RUN_CHECK", "").strip() == "1"
 
 
 def _actions(item) -> set[str]:
