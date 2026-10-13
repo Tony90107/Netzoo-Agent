@@ -323,7 +323,72 @@ def _as_semantic_patch(payload) -> tuple[SemanticPatch | None, list[dict]]:
         return None, ignored
 
 
-def _validated_review(payload, *, patching: bool) -> SemanticReview:
+_CONTENT_ERRORS = frozenset({"value_error", "string_too_long", "string_too_short"})
+_ROLE_LISTS = {"entity_types": "entity_type", "regulator_types": "regulator_type", "target_types": "target_type"}
+
+
+def _listed(field: str) -> set[str]:
+    from ..contracts.outcomes import RequestedOutcome
+
+    annotation = RequestedOutcome.model_fields[field].annotation
+    (item,) = get_args(annotation)
+    return {str(value) for value in get_args(item)}
+
+
+def salvage_review(payload, error: ValidationError) -> tuple[dict, list[dict]] | None:
+    """The review reply with only its faulty parts taken out, as the first pass is salvaged (Logs 213, 215).
+
+    Across 6,275 traced runs, 122 semantic interpretations were lost to a review reply that did not parse, every one
+    with the provider payload recorded: 84 for an evidence entry marked explicit with no quote, 64 for an entity type
+    outside the vocabulary ("lipid", "lncRNA", "transcript"; "miRNA" for "mirna"). The first pass already drops such
+    evidence; the review had no salvage. Here a faulty evidence entry is dropped and a role value is matched to the
+    vocabulary ignoring case ("miRNA" for "mirna"); a value outside it leaves the reply rejected, as does any other
+    error, and the reply is kept only if it then parses.
+    """
+    from copy import deepcopy
+
+    if not isinstance(payload, Mapping) or not isinstance(payload.get("outcome_hypothesis"), Mapping):
+        return None
+    cleaned = deepcopy(dict(payload))
+    hypothesis = cleaned["outcome_hypothesis"]
+    outcome = hypothesis.get("outcome") if isinstance(hypothesis.get("outcome"), Mapping) else {}
+    evidence = hypothesis.get("evidence") if isinstance(hypothesis.get("evidence"), list) else []
+    record, faulty = [], set()
+    for item in error.errors():
+        location = tuple(item["loc"])
+        if location[:2] == ("outcome_hypothesis", "evidence") and len(location) >= 3 and isinstance(location[2], int) \
+                and item["type"] in _CONTENT_ERRORS:
+            faulty.add(location[2])
+        elif (location[:2] == ("outcome_hypothesis", "outcome") and len(location) == 4 and location[2] in _ROLE_LISTS
+              and isinstance(location[3], int) and item["type"] == "literal_error"):
+            field, index = location[2], location[3]
+            value = outcome[field][index] if index < len(outcome.get(field) or []) else None
+            match = next((known for known in _listed(field) if str(value).casefold() == known.casefold()), None)
+            if match is None:
+                # An entity outside the vocabulary is never dropped: replayed over the recorded rejections, dropping
+                # "omics_layer_3_feature" made "all three layers ... in one network" an exact DRAGON match, and
+                # dropping "lncRNA" made a ceRNA network an exact PUMA one -- the value was the signal.
+                return None
+            outcome[field][index] = match
+            record.append({"field": field, "value": value, "kept_as": match})
+        else:
+            return None
+    kept = []
+    for index, entry in enumerate(evidence):
+        if index in faulty:
+            record.append({"evidence": index, "dimension": entry.get("dimension") if isinstance(entry, Mapping) else None,
+                           "dropped": True})
+        else:
+            kept.append(entry)
+    hypothesis["evidence"] = kept
+    try:
+        SemanticReview.model_validate(cleaned)
+    except ValidationError:
+        return None
+    return cleaned, record
+
+
+def _validated_review(payload, *, patching: bool, salvaged: list | None = None) -> SemanticReview:
     """Parse a whole-review reply, reporting against the contract we asked for.
 
     A reply that is neither shape must not be described by the review's missing
@@ -333,7 +398,11 @@ def _validated_review(payload, *, patching: bool) -> SemanticReview:
     """
     try:
         return SemanticReview.model_validate(payload)
-    except ValidationError:
+    except ValidationError as error:
+        if (found := salvage_review(payload, error)) is not None:
+            if salvaged is not None:
+                salvaged.extend(found[1])
+            return SemanticReview.model_validate(found[0])
         if patching:
             SemanticPatch.model_validate(payload)
         raise

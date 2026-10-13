@@ -323,7 +323,12 @@ def invoke_semantic_interpreter(
                     },
                 )
             else:
-                review = _validated_review(payload, patching=patching)
+                salvaged: list = []
+                review = _validated_review(payload, patching=patching, salvaged=salvaged)
+                if salvaged:
+                    # Only the faulty parts of the review were taken out (`salvage_review`); never silent.
+                    record_event(context, state, "routing.semantic_review_salvaged", "classify",
+                                 {"attempt": attempt + 1, "salvaged": salvaged})
                 output_text = review.model_dump_json()
                 # A whole review carries one hypothesis and no index, so it
                 # cannot say which of several it replaces -- and rebuilding the

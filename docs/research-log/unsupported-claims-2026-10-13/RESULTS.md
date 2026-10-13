@@ -32,3 +32,26 @@
 - 這次多出 4 個 C 類格式錯誤，以及 discriminator 失敗。
 
 A／B 的效果，主要以離線重放 219/240 作為證據。在 50 題的單次抽樣裡，A／B 類失敗只會出現一兩次。
+
+# C：審查回覆的格式錯誤（2026-10-13）
+
+- 錄下的 trace 中，有 122 次語意解讀失敗的原因是第二次（審查）回覆無法解析，每次都有記下模型原始輸出：
+  - evidence 標成 explicit 卻沒有附原文：84 次；
+  - entity_types 填了清單外的值：64 次。
+- 第一次讀取本來就有 salvage（Logs 213、215），審查回覆沒有。
+
+修正（`salvage_review`）：
+- 格式錯誤的 evidence 只丟掉那一筆；
+- 實體值大小寫不同時，對應回清單值（miRNA → mirna）；
+- 清單外的實體值不救援，整份照舊失敗；
+- 所有救援動作都記成事件 `routing.semantic_review_salvaged`。
+
+## 離線重放（`replay_review_salvage.py`）
+
+**第一版也把清單外的實體值丟掉**，重放時發現它會吃掉「做不到」的訊號：
+- 「三層資料都要放進同一個網路」：丟掉 `omics_layer_3_feature` 後，變成 DRAGON exact；
+- 「lncRNA 吸附 miRNA 的 ceRNA 網路」：丟掉 `lncRNA` 後，變成 PUMA exact（同 Log 408 的誤判）。
+
+所以改成只修正大小寫。
+
+**收緊後：** 113 個不重複的錯誤回覆中，救回 22 個（其中 20 個再經 A／B），全部是平手，沒有任何 exact。其餘照舊失敗，行為和原本相同。
