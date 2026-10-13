@@ -68,3 +68,10 @@ def test_any_other_fault_discards_the_reading_as_before():
     assert without_unsupported_claims(F36, reading, [
         "hypothesis[0].inconsistent_not_applicable_outcome", "hypothesis[0].artifact_granularity"]) is None
     assert without_unsupported_claims(F36, reading, []) is None
+
+
+def test_a_result_claimed_without_evidence_discards_the_reading_as_before():
+    """Live F44 (10-13b): keeping a reading stripped of its result took an explicit PANDA run off the semantic-failure
+    path that serves it."""
+    assert without_unsupported_claims(F36, _reading(), [
+        "hypothesis[0].missing_evidence:artifact_type=regulatory_network"]) is None

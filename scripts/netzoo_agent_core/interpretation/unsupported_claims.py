@@ -26,7 +26,7 @@ __all__ = ["without_unsupported_claims"]
 _ISSUE = re.compile(r"^hypothesis\[(\d+)\]\.(missing_evidence:(\w+)=(.+)|inconsistent_not_applicable_outcome)$")
 _LISTS = {"entity_type": "entity_types", "regulator_type": "regulator_types", "target_type": "target_types",
           "input_artifact": "input_artifacts", "selection_tag": "selection_tags"}
-_SINGLE = {"granularity", "artifact_type", "operation"}
+_SINGLE = {"granularity", "operation"}
 
 
 _ROUNDS = 4
@@ -63,6 +63,11 @@ def _taken_out(interpretation: SemanticInterpretation, issues) -> SemanticInterp
         index = int(found.group(1))
         if found.group(2) == "inconsistent_not_applicable_outcome":
             drops.setdefault(index, []).append(("granularity", "not_applicable"))
+        elif found.group(3) == "artifact_type":
+            # A reading without its result keeps nothing worth having, and it would take the turn away from the
+            # semantic-failure path, which still serves an explicit run of a named workflow (live F44 10-13b: a
+            # PANDA run with its three files became a guidance answer).
+            return None
         elif found.group(3) in _LISTS or found.group(3) in _SINGLE:
             drops.setdefault(index, []).append((found.group(3), found.group(4)))
         else:
