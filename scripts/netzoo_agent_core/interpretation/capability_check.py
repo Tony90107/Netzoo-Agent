@@ -110,12 +110,51 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
     return found
 
 
+def _open_choices(task: str, proposal, conditions, place) -> tuple[list[CheckedRequirement], set]:
+    """Verdict layer step 2b: each result choice whose options, fitted to the sheet, lead to different workflows.
+
+    Options are asks the model reads and credits like any other; a choice the model types a methods choice
+    (`differs_in` method) is left to routing's tie, and one whose options lead to the same workflows decides nothing.
+    """
+    known = sheet_entries()
+    found, option_spans = [], set()
+    for choice in getattr(getattr(proposal, "conditions", None), "open_choices", None) or ():
+        placed = [(span, option) for option in choice.options if (span := place(option.quote)) is not None]
+        if choice.differs_in != "result" or len({span for span, _ in placed}) < 2:
+            continue
+        outcomes = {task[a:b]: _fitting([k for k in option.delivered_by if known.get(k) and known[k].kind == "produces"],
+                                        _with_conditions(option, conditions))
+                    for (a, b), option in placed}
+        led_to = {frozenset(entry(key).action for key in keys) for keys in outcomes.values()}
+        if len(led_to) < 2 or not any(outcomes.values()):
+            continue
+        said = _span(task, choice.quote)
+        quote = task[said[0]:said[1]] if said else " or ".join(outcomes)
+        option_spans.update(span for span, _ in placed)
+        found.append(CheckedRequirement(
+            quote=quote, kind="result", status="needs_fact", depends_on="choice", outcomes=outcomes,
+            unknown_quote=quote, delivered_by=list(dict.fromkeys(k for keys in outcomes.values() for k in keys))))
+    return found, option_spans
+
+
 def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
-    """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request."""
+    """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request.
+
+    Words that also state a result choice are that choice (step 2b), not a second unknown: pre-measure F37 ("I have
+    not decided whether edges should mean TF regulation or gene-gene coexpression") was read as a choice and as an
+    unknown omics-layer count, which would have asked how many omics data types the user has.
+    """
+    conditions = getattr(proposal, "conditions", None)
+    chosen = [span for choice in getattr(conditions, "open_choices", None) or () if choice.differs_in == "result"
+              for words in (choice.quote, *(option.quote for option in choice.options))
+              if (span := _span(task, words)) is not None]
     found = []
-    for fact in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
-        if (span := _span(task, fact.quote)) is not None and fact.about not in {about for about, _ in found}:
-            found.append((fact.about, task[span[0]:span[1]]))
+    for fact in getattr(conditions, "unknown_facts", None) or ():
+        span = _span(task, fact.quote)
+        if (span is None or fact.about in {about for about, _ in found}
+                or any(span[0] < end and start < span[1] for start, end in chosen)):
+            continue
+        found.append((fact.about, task[span[0]:span[1]]))
     return found
 
 
@@ -371,6 +410,8 @@ def build_capability_check(
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, **waiting))
+    choices, option_spans = _open_choices(task, proposal, conditions, place)
+    requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model

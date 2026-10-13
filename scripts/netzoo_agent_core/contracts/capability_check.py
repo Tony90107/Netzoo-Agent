@@ -150,6 +150,18 @@ def conditions_model() -> type[BaseModel]:
     fields["unknown_facts"] = (list[unknown], Field(default_factory=list, description=(
         "Each property of the user's data or of the wanted result that the user says they do not know or have not "
         "decided; empty when there is none.")))
+    # Verdict layer step 2b: a choice among results the user names but has not made (feasibility eval F43: "I cannot
+    # tell if I mean their activity or their network wiring"). `differs_in` keeps it apart from a methods question
+    # (Log 416 G0: "should we use LIONESS or BONOBO?" read as a result choice).
+    choice = create_model(
+        "OpenChoice", __config__=ConfigDict(extra="forbid"),
+        quote=(str, Field(description="Exact words of the request saying the choice is not made.")),
+        differs_in=(Literal["result", "method"], Field(description=(
+            "result: the options give different results. method: the options are methods for the same result."))),
+        options=(list[_ask_model()], Field(description=(
+            "Each option the user names, one ask per option, its quote the exact words naming it."))))
+    fields["open_choices"] = (list[choice], Field(default_factory=list, description=(
+        "Each choice among options the user names but says they have not made; empty when there is none.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -157,7 +169,7 @@ def unstated_conditions() -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
-            "other_requirements": [], "unknown_facts": []}
+            "other_requirements": [], "unknown_facts": [], "open_choices": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated"]
