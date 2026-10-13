@@ -250,7 +250,9 @@ def _method_card(decision, policy, task, choices: ReplyChoices) -> ReplyCard:
         points.append("Your stated concern is answered per method in the full explanation.")
     points = [clip(p, 300) for p in points if p]
     # The generic note goes first when the shared points would pass the card's six.
-    picking = "Picking an option explains it for your data and what it needs; nothing runs."
+    picking = ("Picking an option finds your input files and shows a preview; nothing runs until you approve it."
+               if choices.question == "Which workflow should I run?" else
+               "Picking an option explains it for your data and what it needs; nothing runs.")
     if len(points) < 6:
         points.insert(len(points) - bool(decision.addressed_concerns), picking)
     return ReplyCard(kind="method_choice", headline=clip(headline, 300), points=points[:6], choices=choices)
