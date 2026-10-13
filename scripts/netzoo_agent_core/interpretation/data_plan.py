@@ -29,7 +29,7 @@ from workflow_registry import ACTION_DEFINITIONS, UNSUPPORTED_CLAIMS
 from ..contracts.data_plan import DataNeed, DataPlan
 
 __all__ = [
-    "plan_for_verdict",
+    "plan_for_verdict", "plan_with_unknowns",
     "KIND_FIELDS", "KIND_LABELS", "build_data_plan", "plan_needs", "render_plan_block", "with_data_plan",
     "with_data_plan_reply",
 ]
@@ -81,6 +81,33 @@ def plan_needs(claims, decision, task: str = "") -> tuple[bool, str, tuple[str, 
 
 
 KIND_FIELDS = {"tf_priors": ("motif_file", "ppi_file"), "mirna": ("mirna_file",)}
+
+
+def plan_with_unknowns(plan: DataPlan | None, decision) -> DataPlan | None:
+    """Verdict layer step 2: a miRNA input the user said they do not know they have is asked about, in their words.
+
+    Pre-measure (heldout416b B23 "The target prior I downloaded may include miRNA-target pairs or may only hold
+    TF-gene motif hits"): the check read the unknown, but PUMA gives the asked network either way, so no result waits
+    on it -- what waits is PUMA's input. Asked only when a workflow the check credits takes a miRNA list; a miRNA
+    input the request rules out is said as before.
+    """
+    from ..capability_sheet import entry
+
+    check = decision.capability_check
+    said = next((quote for about, quote in (check.unknowns if check is not None else []) if about == "regulator_kinds"),
+                None)
+    if said is None or check.unconfirmed():
+        return plan
+    credited = {entry(key).action for item in check.results()
+                if item.status in ("available", "with_step", "needs_fact")
+                for key in item.delivered_by if entry(key).action in ACTION_DEFINITIONS}
+    if not any(set(KIND_FIELDS["mirna"]) & set(ACTION_DEFINITIONS[action].required_inputs) for action in credited):
+        return plan
+    plan = plan or DataPlan(answerable=True, basis="reading", needs=[])
+    if any(need.kind == "mirna" and need.action != "ask" for need in plan.needs):
+        return plan
+    asked = DataNeed(kind="mirna", state="unstated", source="model", quote=said, action="ask")
+    return plan.model_copy(update={"needs": [*(need for need in plan.needs if need.kind != "mirna"), asked]})
 
 
 def plan_for_verdict(plan: DataPlan | None, decision) -> DataPlan | None:
@@ -181,6 +208,12 @@ def render_plan_block(plan: DataPlan, text: str) -> str | None:
         said = f' ("{need.quote}")' if need.quote else ""
         parts.append(f"A {('TF-level' if need.kind == 'tf_priors' else 'miRNA-level')} answer needs "
                      f"{KIND_LABELS[need.kind]}, which you said you do not have{said}.")
+    quoted = {need.kind: need.quote for need in plan.needs if need.action == "ask" and need.quote}
+    for kind in [kind for kind in missing_asks if kind in quoted]:
+        # Verdict layer step 2: the user said they do not know whether they have it.
+        parts.append(f"Your question needs {KIND_LABELS[kind]}, and you said you do not know whether your data has "
+                     f'it ("{quoted[kind]}"). Does it?')
+    missing_asks = [kind for kind in missing_asks if kind not in quoted]
     if missing_asks:
         parts.append(f"Your question needs {_labels(missing_asks)}, which your request does not mention. "
                      f"Do you have {_labels(missing_asks)}?")

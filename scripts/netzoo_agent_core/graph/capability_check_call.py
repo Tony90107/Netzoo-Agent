@@ -53,7 +53,9 @@ _INSTRUCTIONS = (
     "PRODUCED entries that describe what the quote asks for.\n\n"
     "Then give the request's conditions: what any sentence says about the user's data, or about what every "
     "asked-for result must satisfy, each with the exact words that say it; not_stated, with an empty quote, "
-    "when nothing says it. List every other requirement on the results under other_requirements."
+    "when nothing says it. List every other requirement on the results under other_requirements, and under "
+    "unknown_facts each property of the data or of the wanted result that the user says they do not know or have "
+    "not decided, with the words that say so."
 )
 
 

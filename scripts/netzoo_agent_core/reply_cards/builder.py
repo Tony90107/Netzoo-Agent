@@ -495,6 +495,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return None
     if kind == "capability_gap":
         return _gap_card(decision, policy, task)
+    if kind == "needs_fact" and decision.capability_check is not None:
+        # Verdict layer step 2: one fact about the user's data decides the workflow; nothing is planned before it.
+        from ..interpretation.needed_facts import fact_questions
+
+        return ReplyCard(kind="clarification", headline="One fact about your data decides which workflow applies.",
+                         points=[clip(question, 300) for question in fact_questions(decision.capability_check)][:4])
     if kind == "capability_check_gap" and decision.capability_check is not None:
         many = len(decision.capability_check.results()) > 1
         card = ReplyCard(

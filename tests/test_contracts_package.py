@@ -172,7 +172,7 @@ SCHEMA_DIGESTS = {
     # requirement's asked_as (request or question); reply only.
     # 2026-10-12 (Log 412): optional code-owned capability_check.conditions (verified request conditions).
     # 2026-10-12 (Log 414): optional code-owned violations on each checked requirement; reply only.
-    "TaskDecision": "235bae6be582b20bd40957176bae56047aea06e418758ac64ea04f5e921d6baf",
+    "TaskDecision": "378af5dbdc897e98ec3e03c61ea704b6a25018a8cfda9a350c7827916b6b93f0",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
