@@ -50,7 +50,7 @@ from ..interpretation.capability_check import (
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
-from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
+from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_for_verdict, plan_needs
 from ..interpretation.request_requirements import stated_in_text
 from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
@@ -188,6 +188,7 @@ def invoke_router(
             result = replace(result, decision=unmapped)
         result = _with_checked_match(context, state, result)
         result = _with_requested_run(context, state, user_task, result)
+        result = _with_verdict_plan(context, state, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -268,6 +269,17 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
         **result.routing_state,
         "semantic_goal": {**(result.routing_state.get("semantic_goal") or {}),
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
+
+
+def _with_verdict_plan(context, state, result: _RouterInvocation) -> _RouterInvocation:
+    """Verdict layer: the data-needs plan, when read from routing's reading, follows the final verdict (F46)."""
+    decision = result.decision
+    plan = plan_for_verdict(decision.data_plan, decision)
+    if plan is decision.data_plan:
+        return result
+    record_event(context, state, "routing.data_plan_followed_verdict", "classify", {
+        "dropped": [need.kind for need in decision.data_plan.needs if need not in plan.needs]})
+    return replace(result, decision=decision.model_copy(update={"data_plan": plan}))
 
 
 def _with_requested_run(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:

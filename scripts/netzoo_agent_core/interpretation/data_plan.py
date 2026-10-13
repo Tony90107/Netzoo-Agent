@@ -24,11 +24,12 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from workflow_registry import UNSUPPORTED_CLAIMS
+from workflow_registry import ACTION_DEFINITIONS, UNSUPPORTED_CLAIMS
 
 from ..contracts.data_plan import DataNeed, DataPlan
 
 __all__ = [
+    "plan_for_verdict",
     "KIND_FIELDS", "KIND_LABELS", "build_data_plan", "plan_needs", "render_plan_block", "with_data_plan",
     "with_data_plan_reply",
 ]
@@ -80,6 +81,33 @@ def plan_needs(claims, decision, task: str = "") -> tuple[bool, str, tuple[str, 
 
 
 KIND_FIELDS = {"tf_priors": ("motif_file", "ppi_file"), "mirna": ("mirna_file",)}
+
+
+def plan_for_verdict(plan: DataPlan | None, decision) -> DataPlan | None:
+    """A plan read from routing's reading keeps only the kinds the final verdict's workflows take.
+
+    Feasibility eval 2026-10-13 F46 ("Run CONDOR. My network.tsv may be gene-gene or TF-gene ..."): routing read a
+    TF-gene network, the plan asked for a motif prior and a PPI network from that reading, and the confirmed check
+    then credited CONDOR, which takes neither -- the reply asked for both (Log 382 cause C: needs read from routing's
+    list). When the verdict's workflows take no regulator prior at all, the reading's needs are dropped. A plan read
+    from the user's own questions or claims is left as it is.
+    """
+    from ..capability_sheet import entry
+
+    check = decision.capability_check
+    if plan is None or plan.basis != "reading" or not plan.needs or check is None or check.unconfirmed():
+        return plan
+    credited = {entry(key).action for item in check.results() if item.status in ("available", "with_step")
+                for key in item.delivered_by if entry(key).action in ACTION_DEFINITIONS}
+    if not credited:
+        return plan
+    taken = {field for action in credited for field in ACTION_DEFINITIONS[action].required_inputs}
+    # Only a verdict that left regulator inference altogether drops the reading's needs. When a credited workflow
+    # still takes regulator priors the reading stays whole: replayed over 880 recorded requests, a follow-up "Our
+    # regulators include miRNAs too" was credited to PANDA, and narrowing to PANDA's inputs dropped the miRNA ask.
+    if taken & {field for fields in KIND_FIELDS.values() for field in fields}:
+        return plan
+    return plan.model_copy(update={"needs": []})
 
 
 def build_data_plan(claims, decision, facts: Mapping[str, Any] | None, words: set[str], task: str = "",
