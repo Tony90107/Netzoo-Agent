@@ -50,3 +50,16 @@ shadow 把這 5 個都判為 gap（沒有任何 workflow 做得到），判斷�
 - 仍有一處漏讀：MX1-1 的「upload the networks to a public repository」。原因是 `reread_passages` 自己規定只重讀 `no_tool` 的 turn，所以 run turn 從來不會重讀。
 - 已拿掉這個條件，改由呼叫端決定哪些 turn 要檢查。用 MX1-1 錄下的檢查離線驗證：那一句現在會被重讀。
 - run turn 多了重讀，可能讓原本正確的 run 被多讀出需求，所以先在同一組題目上再量一次（r17c），再決定要不要做會實際作用的候選。
+
+## r17c（2026-10-13，88d820a）：無效，帳號付費額度用完
+
+- r17c 只有 1/90 走到 run 路徑。原因是 88/90 個 session 的語意路由（gpt-4o-mini）回傳 HTTP 402：OpenRouter 帳號的付費額度用完了。
+  - 錯誤訊息：「This request requires more credits ... You requested up to 1200 tokens, but can only afford 1087」。
+  - 路由失敗後一律退回 `semantic_fallback`，以詢問方式回答。
+- 第一次 402 出現在 2026-10-13 02:36 UTC（台灣時間 10:36），也就是 r17b 跑到一半時。
+- **r17b 受部分影響**：24/90 個 session 的語意路由失敗。
+  - 走到 run 路徑的 13 個 session，路由和 shadow 檢查都正常，所以 M2 3/3、M3 0/9 仍然有效。
+  - M0（多少 run 命令走到 run 路徑）在 r17b 被低估了。
+- **r17c 的量測全部無效**，包括 run turn 重讀這一項。重讀的修正目前只有離線證據：用 MX1-1 錄下的檢查驗證過，該句現在會被重讀。
+- 額度補足後，要在 run17 上重跑 r17c。
+- 往後每輪開跑前，除了免費額度，也要確認付費餘額。V 的判定也要計入語意路由失敗的次數。
