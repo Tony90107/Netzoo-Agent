@@ -173,7 +173,7 @@ def invoke_router(
         result = _with_applicability(context, state, user_task, result)
         result = _with_capability_check(context, state, user_task, result, proposal,
                                         provisional=check_status == "fallback")
-        _record_run_check_shadow(context, state, user_task, result, proposal, check_status)
+        result = _with_run_check_shadow(context, state, user_task, result, proposal, check_status)
         if check_status in ("blocked", "failed") and result.decision.action == "no_tool":
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
@@ -267,20 +267,27 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
 
 
-def _record_run_check_shadow(context, state, user_task: str, result: _RouterInvocation, proposal,
-                             check_status: str) -> None:
-    """Verdict layer step 1: what the check says about the run routing selected -- recorded, never acted on."""
+def _with_run_check_shadow(context, state, user_task: str, result: _RouterInvocation, proposal,
+                           check_status: str) -> _RouterInvocation:
+    """Verdict layer step 1: the guidance turn's whole check (re-read, condition check, second opinion) on the run
+    routing selected -- its verdict recorded, the decision never changed.
+
+    r17: with the first reading alone, a PUMA run was judged a gap (PQ3-2) that the second opinion owed to an exact
+    routing match exists to settle, and an unread "upload to a public repository" (MX1) was never re-read.
+    """
     if result.decision.action == "no_tool" or not shadow_run_check_enabled():
-        return
-    check = None
-    if proposal is not None:
-        claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
-        check, _ = build_capability_check(user_task, proposal, claims)
-        if check_status == "fallback":
-            check = check.model_copy(update={"provisional": True})
+        return result
+    if proposal is None:
+        _record_shadow(context, state, result.decision, None, check_status)
+        return result
+    return _with_capability_check(context, state, user_task, result, proposal,
+                                  provisional=check_status == "fallback", shadow_status=check_status)
+
+
+def _record_shadow(context, state, decision, check, check_status: str) -> None:
     record_event(context, state, "routing.run_check_shadow", "classify", {
-        "check_status": check_status, **run_check_verdict(check, result.decision.action),
-        "match_status": result.decision.capability_match_status, "match_basis": result.decision.match_basis})
+        "check_status": check_status, **run_check_verdict(check, decision.action),
+        "match_status": decision.capability_match_status, "match_basis": decision.match_basis})
 
 
 def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
@@ -290,7 +297,7 @@ def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
 
 
 def _with_capability_check(context, state, user_task: str, result: _RouterInvocation, proposal, *,
-                           provisional: bool = False) -> _RouterInvocation:
+                           provisional: bool = False, shadow_status: str | None = None) -> _RouterInvocation:
     """Log 387: each thing a guidance request asks for, checked against the capability sheet.
 
     When every result it asks for is one no registered workflow produces, and
@@ -300,7 +307,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     given a workflow). Otherwise the check only adds what was understood.
     """
     decision = result.decision
-    if proposal is None or decision.action != "no_tool":
+    # Verdict layer step 1: a run is checked only in shadow (`shadow_status`), and its decision is left as it is.
+    if proposal is None or (decision.action != "no_tool") != (shadow_status is not None):
         return result
     claims = frozenset(claim for claim, _ in (result.routing_state.get("study_purpose") or {}).get("claims") or ())
     check, rejected = build_capability_check(user_task, proposal, claims)
@@ -382,6 +390,9 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # routing's offer in place (Log 400: its three false gaps on heldout9 cleared real workflows).
         record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
         check = check.model_copy(update={"full_gap": False, "provisional": True})
+    if shadow_status is not None:
+        _record_shadow(context, state, decision, check, shadow_status)
+        return result
     if check.full_gap:
         check = check.model_copy(update={"cleared": list(dict.fromkeys(
             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]))})
