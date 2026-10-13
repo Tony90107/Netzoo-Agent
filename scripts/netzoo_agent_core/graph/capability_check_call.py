@@ -55,7 +55,8 @@ _INSTRUCTIONS = (
     "asked-for result must satisfy, each with the exact words that say it; not_stated, with an empty quote, "
     "when nothing says it. List every other requirement on the results under other_requirements, and under "
     "unknown_facts each property of the data or of the wanted result that the user says they do not know or have "
-    "not decided, with the words that say so."
+    "not decided, with the words that say so; under open_choices each choice among options the user names but has "
+    "not made, every option as an ask of its own."
 )
 
 

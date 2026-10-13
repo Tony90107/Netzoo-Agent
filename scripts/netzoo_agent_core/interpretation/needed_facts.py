@@ -77,6 +77,9 @@ def _workflows(keys: list[str]) -> str:
 
 def fact_line(item) -> str:
     """The understanding line of a result waiting on a fact."""
+    if item.depends_on == "choice":
+        answers = "; ".join(f'if "{option}": {_workflows(keys)}' for option, keys in item.outcomes.items())
+        return f'"{item.quote}" -- you have not chosen which result you want: {answers}.'
     about, _question, values = DIMENSIONS[item.depends_on]
     said = f' ("{item.unknown_quote}")' if item.unknown_quote else ""
     answers = "; ".join(f"if {label}: {_workflows(item.outcomes.get(value, []))}" for value, label in values)
@@ -84,7 +87,15 @@ def fact_line(item) -> str:
 
 
 def fact_questions(check) -> list[str]:
-    return list(dict.fromkeys(DIMENSIONS[item.depends_on][1] for item in check.needed_facts()))
+    return list(dict.fromkeys(_question(item) for item in check.needed_facts()))
+
+
+def _question(item) -> str:
+    if item.depends_on == "choice":
+        options = [f'"{option}"' for option in item.outcomes]
+        listed = options[0] if len(options) == 1 else ", ".join(options[:-1]) + " or " + options[-1]
+        return f"Which result do you want: {listed}?"
+    return DIMENSIONS[item.depends_on][1]
 
 
 def waiting_decision(decision, check):

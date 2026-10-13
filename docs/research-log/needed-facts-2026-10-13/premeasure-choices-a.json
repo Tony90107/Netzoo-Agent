@@ -1,0 +1,513 @@
+[
+ {
+  "name": "B02",
+  "expect": "wait",
+  "task": "For my T-cell expression matrix I keep going back and forth: either how active each TF is in every sample, or the wiring diagram of which TF controls which gene. Which of the two is better to chase?",
+  "read": [
+   [
+    "result",
+    "either how active each TF is in every sample, or the wiring diagram of which TF controls which gene",
+    [
+     "how active each TF is in every sample",
+     "the wiring diagram of which TF controls which gene"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "either how active each TF is in every sample, or the wiring diagram of which TF controls which gene",
+    "choice",
+    {
+     "how active each TF is in every sample": [
+      "giraffe.tf_activity"
+     ],
+     "the wiring diagram of which TF controls which gene": [
+      "panda.tf_gene_network"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "either how active each TF is in every sample, or the wiring diagram of which TF controls which gene",
+    "needs_fact",
+    [
+     "giraffe.tf_activity",
+     "panda.tf_gene_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B04",
+  "expect": "wait",
+  "task": "Should the network for my tumour samples carry miRNAs as regulators too, or stay with transcription factors only? Could go either way, the figure is for a talk.",
+  "read": [
+   [
+    "result",
+    "Could go either way",
+    [
+     "carry miRNAs as regulators too",
+     "stay with transcription factors only"
+    ]
+   ]
+  ],
+  "waiting": [],
+  "results": [],
+  "full_gap": false
+ },
+ {
+  "name": "B08",
+  "expect": "wait",
+  "task": "Two things the lab is tossing around for our kidney cohort: a partial-correlation network linking transcript and methylation levels over everyone, or that same network individually per patient. Opinions welcome.",
+  "read": [
+   [
+    "result",
+    "Two things the lab is tossing around for our kidney cohort: a partial-correlation network linking transcript and methylation levels over everyone, or that same network individually per patient.",
+    [
+     "a partial-correlation network linking transcript and methylation levels over everyone",
+     "that same network individually per patient"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "Two things the lab is tossing around for our kidney cohort: a partial-correlation network linking transcript and methylation levels over everyone, or that same network individually per patient.",
+    "choice",
+    {
+     "a partial-correlation network linking transcript and methylation levels over everyone": [
+      "dragon.two_layer_network"
+     ],
+     "that same network individually per patient": [
+      "lioness_dragon.per_sample_networks"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "Two things the lab is tossing around for our kidney cohort: a partial-correlation network linking transcript and methylation levels over everyone, or that same network individually per patient.",
+    "needs_fact",
+    [
+     "dragon.two_layer_network",
+     "lioness_dragon.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B11",
+  "expect": "wait",
+  "task": "Do I want a signed matrix showing activation versus repression, or just a plain weighted TF-gene network? Probably one of those, whichever turns out easier to interpret in the paper.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "a signed matrix showing activation versus repression",
+    "available",
+    [
+     "giraffe.signed_regulation"
+    ]
+   ],
+   [
+    "a plain weighted TF-gene network",
+    "available",
+    [
+     "panda.tf_gene_network",
+     "otter.tf_gene_network",
+     "lioness_panda.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B14",
+  "expect": "wait",
+  "task": "Our group is split on what to do first with the lung dataset: infer a regulatory network from the expression, or cluster the patients by which pathways are mutated. Which would you start with?",
+  "error": "ValueError: Semantic structured output could not be decoded"
+ },
+ {
+  "name": "B19",
+  "expect": "wait",
+  "task": "Perhaps co-expression for each sample with edge p-values, or perhaps a cohort-level TF-to-gene regulatory network from the same blood RNA-seq; it all depends on how the PI feels this week.",
+  "read": [
+   [
+    "result",
+    "Perhaps co-expression for each sample with edge p-values, or perhaps a cohort-level TF-to-gene regulatory network from the same blood RNA-seq; it all depends on how the PI feels this week.",
+    [
+     "co-expression for each sample with edge p-values",
+     "cohort-level TF-to-gene regulatory network from the same blood RNA-seq"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "Perhaps co-expression for each sample with edge p-values, or perhaps a cohort-level TF-to-gene regulatory network from the same blood RNA-seq; it all depends on how the PI feels this week.",
+    "choice",
+    {
+     "co-expression for each sample with edge p-values": [
+      "bonobo.per_sample_networks"
+     ],
+     "cohort-level TF-to-gene regulatory network from the same blood RNA-seq": [
+      "panda.tf_gene_network"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "Perhaps co-expression for each sample with edge p-values, or perhaps a cohort-level TF-to-gene regulatory network from the same blood RNA-seq; it all depends on how the PI feels this week.",
+    "needs_fact",
+    [
+     "bonobo.per_sample_networks",
+     "panda.tf_gene_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B22",
+  "expect": "wait",
+  "task": "With my 80 blood samples I could split co-expression into batch and disease contributions, or get a co-expression network for each individual sample. Not sure which suits the study better.",
+  "read": [
+   [
+    "result",
+    "Not sure which suits the study better.",
+    [
+     "split co-expression into batch and disease contributions",
+     "get a co-expression network for each individual sample"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "Not sure which suits the study better.",
+    "choice",
+    {
+     "split co-expression into batch and disease contributions": [
+      "cobra.covariate_components"
+     ],
+     "get a co-expression network for each individual sample": [
+      "lioness_coexpression.per_sample_networks"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "Not sure which suits the study better.",
+    "not_available",
+    []
+   ],
+   [
+    "Not sure which suits the study better.",
+    "needs_fact",
+    [
+     "cobra.covariate_components",
+     "lioness_coexpression.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B29",
+  "expect": "wait",
+  "task": "For my 45 lung samples, would a single aggregate TF-gene network be enough, or do I need a network for every sample so individuals can be compared? Torn between the two.",
+  "read": [
+   [
+    "result",
+    "a single aggregate TF-gene network",
+    [
+     "a single aggregate TF-gene network",
+     "a network for every sample"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "a single aggregate TF-gene network",
+    "choice",
+    {
+     "a single aggregate TF-gene network": [
+      "panda.tf_gene_network",
+      "otter.tf_gene_network"
+     ],
+     "a network for every sample": [
+      "lioness_panda.per_sample_networks"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "a single aggregate TF-gene network",
+    "needs_fact",
+    [
+     "panda.tf_gene_network",
+     "otter.tf_gene_network",
+     "lioness_panda.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "F37",
+  "expect": "wait",
+  "task": "I want a network for each sample, but I have not decided whether edges should mean TF regulation or gene-gene coexpression. What do you need to clarify before choosing a workflow?",
+  "read": [
+   [
+    "result",
+    "I have not decided whether edges should mean TF regulation or gene-gene coexpression.",
+    [
+     "TF regulation",
+     "gene-gene coexpression"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "I want a network for each sample",
+    "omics_layers",
+    {
+     "2": [
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "lioness_dragon.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "3": [
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks",
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ]
+    }
+   ],
+   [
+    "I have not decided whether edges should mean TF regulation or gene-gene coexpression.",
+    "choice",
+    {
+     "TF regulation": [
+      "lioness_panda.per_sample_networks",
+      "lioness_puma.per_sample_networks"
+     ],
+     "gene-gene coexpression": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "I want a network for each sample",
+    "needs_fact",
+    [
+     "lioness_panda.per_sample_networks",
+     "lioness_puma.per_sample_networks",
+     "lioness_dragon.per_sample_networks",
+     "lioness_coexpression.per_sample_networks",
+     "bonobo.per_sample_networks"
+    ]
+   ],
+   [
+    "I have not decided whether edges should mean TF regulation or gene-gene coexpression.",
+    "needs_fact",
+    [
+     "lioness_panda.per_sample_networks",
+     "lioness_puma.per_sample_networks",
+     "lioness_coexpression.per_sample_networks",
+     "bonobo.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "F43",
+  "expect": "wait",
+  "task": "Some regulators seem different between patients. I cannot tell if I mean their activity or their network wiring. Help me choose before planning anything.",
+  "read": [
+   [
+    "result",
+    "I cannot tell if I mean their activity or their network wiring.",
+    [
+     "their activity",
+     "their network wiring"
+    ]
+   ]
+  ],
+  "waiting": [
+   [
+    "I cannot tell if I mean their activity or their network wiring.",
+    "choice",
+    {
+     "their activity": [
+      "giraffe.tf_activity"
+     ],
+     "their network wiring": [
+      "lioness_panda.per_sample_networks"
+     ]
+    }
+   ]
+  ],
+  "results": [
+   [
+    "I cannot tell if I mean their activity or their network wiring.",
+    "needs_fact",
+    [
+     "giraffe.tf_activity",
+     "lioness_panda.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "XM1",
+  "expect": "none",
+  "task": "For per-sample co-expression networks of 50 samples, should we use LIONESS or BONOBO?",
+  "read": [
+   [
+    "method",
+    "LIONESS",
+    [
+     "LIONESS",
+     "BONOBO"
+    ]
+   ]
+  ],
+  "waiting": [],
+  "results": [
+   [
+    "For per-sample co-expression networks of 50 samples, should we use LIONESS or BONOBO?",
+    "available",
+    [
+     "lioness_coexpression.per_sample_networks",
+     "bonobo.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "XM2",
+  "expect": "none",
+  "task": "Is PANDA or OTTER better for one TF-gene network from 70 samples with expression, motifs and PPI?",
+  "read": [
+   [
+    "method",
+    "Is PANDA or OTTER better",
+    [
+     "PANDA",
+     "OTTER"
+    ]
+   ]
+  ],
+  "waiting": [],
+  "results": [
+   [
+    "Is PANDA or OTTER better for one TF-gene network from 70 samples with expression, motifs and PPI?",
+    "available",
+    [
+     "panda.tf_gene_network",
+     "otter.tf_gene_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "XC6",
+  "expect": "none",
+  "task": "We have two competing hypotheses for 45 tumors versus normals: TF activity changes, or TF targeting changes. We want to test both.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "TF activity changes",
+    "with_step",
+    [
+     "giraffe.activity_tests"
+    ]
+   ],
+   [
+    "TF targeting changes",
+    "with_step",
+    [
+     "panda.condition_comparison"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B12",
+  "expect": "none",
+  "task": "I need pathway-level mutation scores per patient and patient subtypes clustered on them, from my somatic mutation matrix of 300 cases. Whether subtypes track survival is a question for a later paper.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "pathway-level mutation scores per patient",
+    "available",
+    [
+     "sambar.subtypes"
+    ]
+   ],
+   [
+    "patient subtypes clustered on them",
+    "available",
+    [
+     "sambar.subtypes"
+    ]
+   ],
+   [
+    "Whether subtypes track survival",
+    "with_step",
+    [
+     "sambar.clinical_comparison"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B25",
+  "expect": "none",
+  "task": "Get communities and core scores from my existing TF-to-gene bipartite network, one community per node is fine. I wonder whether the modules will line up with known pathways, but that comes afterwards.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "communities",
+    "available",
+    [
+     "condor.communities"
+    ]
+   ],
+   [
+    "core scores",
+    "available",
+    [
+     "condor.core_scores"
+    ]
+   ],
+   [
+    "whether the modules will line up with known pathways",
+    "with_step",
+    [
+     "condor.enrichment"
+    ]
+   ]
+  ],
+  "full_gap": false
+ }
+]
