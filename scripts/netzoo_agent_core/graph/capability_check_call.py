@@ -100,7 +100,8 @@ _SECOND_OPINION = (
     "Return only the SecondOpinion structure. Each numbered pair gives words from a user's request and the "
     "results one registered workflow produces. Answer all only if those results, together, give what the words "
     "ask for, as they ask it -- not a related result, and not only an ingredient of it; part if the words ask "
-    "for more than one result and the workflow's results give some of them; none otherwise. The user's own data "
+    "for more than one result and the workflow's results give some of them; named if the words only ask to run or "
+    "use this very workflow and name no result; none otherwise. The user's own data "
     "and situation are listed first; read the request words in that light."
 )
 

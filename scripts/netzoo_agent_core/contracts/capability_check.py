@@ -277,7 +277,7 @@ def reread_as_proposal(reread, conditions=None) -> BaseModel:
         "conditions": conditions.model_dump() if conditions is not None else unstated_conditions()})
 
 
-SecondOpinionAnswer = Literal["all", "part", "none"]
+SecondOpinionAnswer = Literal["all", "part", "none", "named"]
 
 
 @lru_cache(maxsize=32)
@@ -293,7 +293,8 @@ def second_opinion_model(pairs: int) -> type[BaseModel]:
         f"a{index}": (SecondOpinionAnswer, Field(description=(
             f"Pair {index}: all -- the workflow's results, together, give everything the request words ask for; "
             "part -- the words ask for more than one result and the workflow's results give some of them; "
-            "none -- they give none of it.")))
+            "none -- they give none of it; named -- the words only ask to run or use this workflow itself and name no "
+            "result.")))
         for index in range(1, pairs + 1)
     }
     model = create_model("SecondOpinion", __config__=ConfigDict(extra="forbid"), **fields)
