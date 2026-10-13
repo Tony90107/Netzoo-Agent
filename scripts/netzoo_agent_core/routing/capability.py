@@ -21,7 +21,6 @@ from .request_scope import admissible_request_text, operation_scope
 __all__ = [
     "MIN_TOOL_CONFIDENCE",
     "CONTEXT7_LIBRARY_ALIASES",
-    "UNSUPPORTED_DELIVERABLE_PATTERNS",
     "WORKFLOW_INFORMATION_PATTERNS",
     "is_workflow_information_request",
     "is_workflow_selection_request",
@@ -64,16 +63,6 @@ CONTEXT7_LIBRARY_ALIASES = {
     "puma": "netZooPy",
     "pydantic": "pydantic",
 }
-
-
-UNSUPPORTED_DELIVERABLE_PATTERNS = (
-    r"(找|尋找|偵測|檢測|辨識|identify|find|detect|call).{0,24}"
-    r"(突變|變異|mutation|variant)",
-    r"(突變|變異|mutation|variant).{0,24}"
-    r"(找|尋找|偵測|檢測|辨識|identify|find|detect|call)",
-    r"(sequence alignment|序列比對|differential expression|差異表現"
-    r"|enrichment analysis|富集分析|protein structure|蛋白質結構)",
-)
 
 
 WORKFLOW_INFORMATION_PATTERNS = (
@@ -373,14 +362,18 @@ def validate_task_text(
     action: str,
     *,
     matched_actions: Sequence[ActionName] = (),
+    model_execution: bool = False,
 ) -> str | None:
-    """Return a rejection reason when user text cannot authorize the action."""
-    normalized = task.casefold()
-    from .request_scope import has_current_positive_mention
+    """Return a rejection reason when user text cannot authorize the action.
 
-    for pattern in UNSUPPORTED_DELIVERABLE_PATTERNS:
-        if has_current_positive_mention(task, pattern):
-            return "The requested deliverable is not supported by the NetZoo agent."
+    Verdict layer step 1: `model_execution` is set only after the final verdict, when both routing readings asked
+    for the work now and the capability check read every result as asked to be produced and credited this one
+    workflow (`graph.router_invocation._with_requested_run`); then no workflow name or command verb is required in
+    the text (r17: "Compute now: ... produce sample-specific gene co-expression networks" was refused BONOBO for
+    want of "bonobo" or "run"). What no registered workflow produces is the capability check's verdict, no longer a
+    word list here (r17 PL9: "the mutation calls for 190 ovarian tumors" read as a request to call variants).
+    """
+    normalized = task.casefold()
 
     if action in LOCAL_WORKFLOW_ACTIONS and is_workflow_information_request(task):
         return (
@@ -389,7 +382,7 @@ def validate_task_text(
         )
 
     semantic_execution = (
-        has_direct_execution_intent(task) and action in matched_actions
+        (model_execution or has_direct_execution_intent(task)) and action in matched_actions
     )
 
     if action == "run_panda" and "panda" not in normalized and not semantic_execution:

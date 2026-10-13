@@ -32,6 +32,7 @@ def assemble_task_decision(
         else None
     )
     semantic_execution_missing = interpretation.request_mode != "execute"
+    execution_requested = intent.mode == "execute" and not semantic_execution_missing
     execute = (
         intent.mode == "execute"
         and exact_action is not None
@@ -101,6 +102,7 @@ def assemble_task_decision(
         alternative_actions=match.alternative_actions,
         mismatch_dimensions=match.mismatch_dimensions,
         clarification_question=clarification,
+        execution_requested=execution_requested,
     )
     bonobo_handoff = build_bonobo_handoff(task, decision, ACTION_DEFINITIONS)
     if bonobo_handoff is not None:

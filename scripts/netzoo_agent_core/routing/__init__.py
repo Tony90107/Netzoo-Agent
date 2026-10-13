@@ -3,7 +3,6 @@
 from .capability import (
     CONTEXT7_LIBRARY_ALIASES,
     MIN_TOOL_CONFIDENCE,
-    UNSUPPORTED_DELIVERABLE_PATTERNS,
     WORKFLOW_INFORMATION_PATTERNS,
     enforce_capability_gate,
     has_direct_execution_intent,
@@ -66,7 +65,6 @@ __all__ = [
     "WEBSEARCH_URL",
     "WEBSEARCH_MAX_CHARS",
     "CONTEXT7_LIBRARY_ALIASES",
-    "UNSUPPORTED_DELIVERABLE_PATTERNS",
     "WORKFLOW_INFORMATION_PATTERNS",
     "is_workflow_information_request",
     "is_workflow_selection_request",
