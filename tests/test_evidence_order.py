@@ -87,7 +87,7 @@ def test_without_a_named_folder_the_preference_states_what_is_missing(tmp_path):
     assert recommendation.action == "run_panda"
     assert recommendation.assumptions[0].startswith("This starting choice assumes a regulator scope")
     assert recommendation.assumptions[1] == (
-        "It also needs a TF-motif prior and protein-interaction prior, which the request does not mention."
+        "It also needs a TF-motif prior and protein-interaction prior; no file for them is named yet."
     )
 
 
@@ -118,7 +118,7 @@ def test_an_unmentioned_expression_matrix_is_named_as_missing(tmp_path):
     updated, _, _ = invoke_condition_recommender(ctx, state, task, decision, LLMUsage(), [])
 
     assert updated.advisory_recommendation.assumptions == [
-        "It also needs an expression matrix, which the request does not mention.",
+        "It also needs an expression matrix; no file for it is named yet.",
     ]
 
 

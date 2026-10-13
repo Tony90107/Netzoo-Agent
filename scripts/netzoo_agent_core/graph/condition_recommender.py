@@ -374,7 +374,10 @@ def _recommend_from_preference(task, preference, candidate_facts, requested_outc
         if unsaid:
             needed = " and ".join(_ROLE_LABELS[role] for role in unsaid)
             article = "an" if needed[0] in "aeiou" else "a"
-            notes.append(f"It also needs {article} {needed}, which the request does not mention.")
+            # Feasibility eval F04/F07: the wording reader missed "I have bulk gene expression", so the
+            # reply said the request does not mention it. A reader that finds nothing is no evidence of absence.
+            notes.append(f"It also needs {article} {needed}; no file for {'them' if len(unsaid) > 1 else 'it'} "
+                         "is named yet.")
         if said:
             notes.append("It also needs files for the " + " and ".join(_ROLE_LABELS[role] for role in said)
                          + " you mention; no file is named yet.")

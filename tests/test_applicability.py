@@ -133,7 +133,7 @@ def test_missing_data_with_no_alternative_is_asked_about_not_assumed():
     text, _, card = respond_and_card(F3, judged(giraffe(), F3, facts("unstated")))
 
     assert _paragraph(text) == (
-        "**What your data allows.** Your request names only expression data. GIRAFFE also needs a motif prior "
+        "**What your data allows.** Your request names expression data. GIRAFFE also needs a motif prior "
         "and a PPI network. Do you also have a motif prior and a PPI network?")
     assert card.choices.question == "Do you also have a motif prior and a PPI network?"
     # Nothing is claimed about every registered workflow: that would rest on routing's reading.
