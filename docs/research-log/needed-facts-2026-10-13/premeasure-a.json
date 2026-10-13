@@ -1,0 +1,406 @@
+[
+ {
+  "name": "B03",
+  "expect": "wait",
+  "task": "Please cluster my network into communities with core scores. A collaborator sent it and I never checked whether its nodes are regulators plus genes, or genes only.",
+  "read": [
+   [
+    "input_network",
+    "I never checked whether its nodes are regulators plus genes, or genes only."
+   ]
+  ],
+  "waiting": [
+   [
+    "communities",
+    "input_network",
+    {
+     "regulator_gene": [
+      "condor.communities"
+     ],
+     "gene_gene": []
+    }
+   ],
+   [
+    "core scores",
+    "input_network",
+    {
+     "regulator_gene": [
+      "condor.core_scores"
+     ],
+     "gene_gene": []
+    }
+   ]
+  ],
+  "results": [
+   [
+    "communities",
+    "needs_fact",
+    [
+     "condor.communities"
+    ]
+   ],
+   [
+    "core scores",
+    "needs_fact",
+    [
+     "condor.core_scores"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B10",
+  "expect": "wait",
+  "task": "I want a per-sample co-expression network from my count matrix, but its columns could be individual cells from a 10x run or ordinary bulk libraries; the facility note is ambiguous.",
+  "read": [
+   [
+    "data_unit",
+    "but its columns could be individual cells from a 10x run or ordinary bulk libraries; the facility note is ambiguous."
+   ]
+  ],
+  "waiting": [
+   [
+    "I want a per-sample co-expression network",
+    "data_unit",
+    {
+     "bulk_samples": [
+      "lioness_coexpression.per_sample_networks",
+      "bonobo.per_sample_networks"
+     ],
+     "single_cells": []
+    }
+   ]
+  ],
+  "results": [
+   [
+    "I want a per-sample co-expression network",
+    "needs_fact",
+    [
+     "lioness_coexpression.per_sample_networks",
+     "bonobo.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B18",
+  "expect": "wait",
+  "task": "Build me a joint partial-correlation network of proteomics and transcriptomics for the cohort. The two tables came from different collaborators, so who knows whether they cover the same patients.",
+  "read": [
+   [
+    "samples_matched",
+    "who knows whether they cover the same patients."
+   ]
+  ],
+  "waiting": [
+   [
+    "Build me a joint partial-correlation network of proteomics and transcriptomics for the cohort.",
+    "samples_matched",
+    {
+     "same_samples": [
+      "dragon.two_layer_network"
+     ],
+     "different_samples": []
+    }
+   ]
+  ],
+  "results": [
+   [
+    "Build me a joint partial-correlation network of proteomics and transcriptomics for the cohort.",
+    "needs_fact",
+    [
+     "dragon.two_layer_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B23",
+  "expect": "wait",
+  "task": "Please build a TF and miRNA regulatory network for my samples. The target prior I downloaded may include miRNA-target pairs or may only hold TF-gene motif hits; I couldn't tell from the header.",
+  "read": [
+   [
+    "regulator_kinds",
+    "The target prior I downloaded may include miRNA-target pairs or may only hold TF-gene motif hits; I couldn't tell from the header."
+   ]
+  ],
+  "waiting": [],
+  "results": [
+   [
+    "Please build a TF and miRNA regulatory network for my samples.",
+    "available",
+    [
+     "puma.regulator_gene_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B30",
+  "expect": "wait",
+  "task": "I'd like partial-correlation networks linking my omics layers. The postdoc who left me the data never said whether there are two layers or more, and I haven't opened the folder yet.",
+  "read": [
+   [
+    "omics_layers",
+    "The postdoc who left me the data never said whether there are two layers or more"
+   ],
+   [
+    "data_unit",
+    "I haven't opened the folder yet."
+   ]
+  ],
+  "waiting": [],
+  "results": [
+   [
+    "partial-correlation networks linking my omics layers",
+    "not_available",
+    []
+   ]
+  ],
+  "full_gap": true
+ },
+ {
+  "name": "F41",
+  "expect": "wait",
+  "task": "Run DRAGON on my RNA and methylation tables. I do not know whether their columns are in the same sample order, and I have not supplied sample IDs or file paths.",
+  "read": [
+   [
+    "samples_matched",
+    "I do not know whether their columns are in the same sample order."
+   ]
+  ],
+  "waiting": [
+   [
+    "Run DRAGON on my RNA and methylation tables.",
+    "samples_matched",
+    {
+     "same_samples": [
+      "dragon.two_layer_network"
+     ],
+     "different_samples": []
+    }
+   ]
+  ],
+  "results": [
+   [
+    "Run DRAGON on my RNA and methylation tables.",
+    "needs_fact",
+    [
+     "dragon.two_layer_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "F46",
+  "expect": "wait",
+  "task": "請跑 CONDOR。不過我的 network.tsv 可能是 gene-gene，也可能是 TF-gene，我不確定節點角色，檔案尚未提供。",
+  "read": [
+   [
+    "input_network",
+    "我不確定節點角色"
+   ],
+   [
+    "regulator_kinds",
+    "我的 network.tsv 可能是 gene-gene，也可能是 TF-gene"
+   ]
+  ],
+  "waiting": [
+   [
+    "請跑 CONDOR",
+    "input_network",
+    {
+     "regulator_gene": [
+      "condor.communities",
+      "condor.core_scores",
+      "condor.enrichment"
+     ],
+     "gene_gene": []
+    }
+   ]
+  ],
+  "results": [
+   [
+    "請跑 CONDOR",
+    "needs_fact",
+    [
+     "condor.communities",
+     "condor.core_scores",
+     "condor.enrichment"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "F49",
+  "expect": "wait",
+  "task": "Plan a PUMA run, but I do not yet know which regulators in my combined prior are miRNAs; the miRNA list is missing. Is it ready to execute?",
+  "read": [
+   [
+    "regulator_kinds",
+    "I do not yet know which regulators in my combined prior are miRNAs"
+   ]
+  ],
+  "waiting": [],
+  "results": [],
+  "full_gap": false
+ },
+ {
+  "name": "B01",
+  "expect": "none",
+  "task": "Build one TF-to-gene regulatory network across all my 90 breast tumour samples from the expression matrix, motif prior and PPI. I suspect a batch effect from two sequencing runs, but I'll sort that out later.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "Build one TF-to-gene regulatory network across all my 90 breast tumour samples from the expression matrix, motif prior and PPI.",
+    "available",
+    [
+     "panda.tf_gene_network"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B09",
+  "expect": "none",
+  "task": "Compute per-sample TF-plus-miRNA-to-gene networks for my 35 glioma samples; I have the miRNA-target prior and miRNA list. My hunch is that miR-21 hubs differ by grade, to be tested afterwards.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "Compute per-sample TF-plus-miRNA-to-gene networks",
+    "available",
+    [
+     "lioness_puma.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B12",
+  "expect": "none",
+  "task": "I need pathway-level mutation scores per patient and patient subtypes clustered on them, from my somatic mutation matrix of 300 cases. Whether subtypes track survival is a question for a later paper.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "pathway-level mutation scores per patient",
+    "available",
+    [
+     "sambar.subtypes"
+    ]
+   ],
+   [
+    "patient subtypes clustered on them",
+    "available",
+    [
+     "sambar.subtypes"
+    ]
+   ],
+   [
+    "Whether subtypes track survival",
+    "with_step",
+    [
+     "sambar.clinical_comparison"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B17",
+  "expect": "none",
+  "task": "One Bayesian gene-gene co-expression network per sample, with per-edge p-values, for my 70 blood samples please. Maybe I'll add age as a covariate down the road, maybe not.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "One Bayesian gene-gene co-expression network per sample, with per-edge p-values",
+    "available",
+    [
+     "bonobo.per_sample_networks"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B21",
+  "expect": "none",
+  "task": "Download the physical STRING network for mouse. I might want human later, and I wonder if functional would have been richer, but physical is what I need now.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "Download the physical STRING network for mouse.",
+    "not_available",
+    []
+   ]
+  ],
+  "full_gap": true
+ },
+ {
+  "name": "B25",
+  "expect": "none",
+  "task": "Get communities and core scores from my existing TF-to-gene bipartite network, one community per node is fine. I wonder whether the modules will line up with known pathways, but that comes afterwards.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "Get communities",
+    "available",
+    [
+     "condor.communities"
+    ]
+   ],
+   [
+    "and core scores",
+    "available",
+    [
+     "condor.core_scores"
+    ]
+   ],
+   [
+    "I wonder whether the modules will line up with known pathways",
+    "with_step",
+    [
+     "condor.enrichment"
+    ]
+   ]
+  ],
+  "full_gap": false
+ },
+ {
+  "name": "B28",
+  "expect": "none",
+  "task": "Decompose gene-gene co-expression in my cohort into contributions from batch and disease status, and give me the covariate-adjusted co-expression too. I'm still undecided whether to include age in a follow-up.",
+  "read": [],
+  "waiting": [],
+  "results": [
+   [
+    "Decompose gene-gene co-expression in my cohort into contributions from batch and disease status",
+    "available",
+    [
+     "cobra.covariate_components"
+    ]
+   ],
+   [
+    "give me the covariate-adjusted co-expression too",
+    "available",
+    [
+     "cobra.covariate_components"
+    ]
+   ]
+  ],
+  "full_gap": false
+ }
+]

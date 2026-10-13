@@ -24,7 +24,8 @@ def run_choice_actions(decision: TaskDecision) -> list[str]:
     """The tied workflows of a guidance turn whose user asked for a run, or [] when there is no such choice."""
     if decision.action != "no_tool" or not decision.execution_requested:
         return []
-    if decision.capability_check is not None and decision.capability_check.full_gap:
+    if decision.capability_check is not None and (decision.capability_check.full_gap
+                                                  or decision.capability_check.needed_facts()):
         return []
     tied = [action for action in dict.fromkeys(decision.hypothesis_actions) if action in RUN_ACTIONS]
     return tied if 2 <= len(tied) <= MAX_OPTIONS else []

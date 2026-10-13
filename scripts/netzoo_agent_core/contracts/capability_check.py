@@ -112,6 +112,7 @@ keeps one only when those words are in the request, and applies it to the asks
 
 
 OtherAbout = Literal["how_computed", "what_it_contains", "format_or_delivery", "which_data"]
+UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "regulator_kinds", "omics_layers", "scale"]
 
 
 @lru_cache(maxsize=1)
@@ -134,6 +135,21 @@ def conditions_model() -> type[BaseModel]:
     fields["other_requirements"] = (list[other], Field(description=(
         "Every other requirement the request states about the asked-for results that none of the fields above "
         "covers; empty when there is none.")))
+    # Verdict layer step 2: what the user says they do not know or have not decided, typed to the dimensions code
+    # compares with the sheet (blind set heldout416b: "I never checked whether its nodes are regulators plus genes,
+    # or genes only" -- 0/10 such requests were asked about; most were given a workflow, some refused).
+    unknown = create_model(
+        "UnknownFact", __config__=ConfigDict(extra="forbid"),
+        quote=(str, Field(description="Exact words of the request saying the user does not know or has not decided it.")),
+        about=(UnknownAbout, Field(description=(
+            "data_unit: whether the data's units are single cells or bulk samples. input_network: whether an "
+            "existing network links regulators to genes or genes to genes. samples_matched: whether different omics "
+            "data types come from the same samples. regulator_kinds: whether the regulators or prior include "
+            "miRNAs. omics_layers: how many omics data types there are. scale: one result for all samples together "
+            "or one per sample."))))
+    fields["unknown_facts"] = (list[unknown], Field(default_factory=list, description=(
+        "Each property of the user's data or of the wanted result that the user says they do not know or have not "
+        "decided; empty when there is none.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -141,7 +157,7 @@ def unstated_conditions() -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
-            "other_requirements": []}
+            "other_requirements": [], "unknown_facts": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated"]
@@ -286,7 +302,7 @@ class CheckedRequirement(BaseModel):
     model_config = ConfigDict(extra="forbid")
     quote: str
     kind: RequirementKind
-    status: Literal["available", "with_step", "partial", "not_available", "not_checked"]
+    status: Literal["available", "with_step", "partial", "not_available", "not_checked", "needs_fact"]
     """`not_checked` for about_methods and context; `not_available` when no produces entry gives it;
     `partial` when one reading of the passage names an entry and another names none."""
     delivered_by: list[str] = Field(default_factory=list)
@@ -302,6 +318,13 @@ class CheckedRequirement(BaseModel):
     violations: list[str] = Field(default_factory=list)
     """Log 414: why a credited workflow was removed -- it cannot meet a requirement the request states
     elsewhere (code-rendered from the condition check's answer)."""
+    depends_on: str | None = None
+    """Verdict layer step 2 (status needs_fact): the dimension the user said they do not know, on which the result's
+    workflows differ."""
+    outcomes: dict[str, list[str]] = Field(default_factory=dict)
+    """Verdict layer step 2: for each value of `depends_on`, the produces entries that give the result."""
+    unknown_quote: str = ""
+    """Verdict layer step 2: the user's words saying they do not know it."""
 
 
 class CapabilityCheck(BaseModel):
@@ -325,6 +348,8 @@ class CapabilityCheck(BaseModel):
     conditions: dict[str, str] = Field(default_factory=dict)
     """Log 412: the request-level conditions whose words were found in the request and that rule results out
     (e.g. data_unit single_cells), applied to every ask they concern."""
+    unknowns: list[list[str]] = Field(default_factory=list)
+    """Verdict layer step 2: (dimension, the user's words) for each fact the user said they do not know."""
     gap_unconfirmed: bool = False
     """Log 403: a full gap the second opinion was owed but could not give (its budget spent, or the
     model failed), so, as for the backup model, the gap is reported unconfirmed and clears nothing
@@ -332,6 +357,10 @@ class CapabilityCheck(BaseModel):
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]
+
+    def needed_facts(self) -> list[CheckedRequirement]:
+        """Verdict layer step 2: results that wait on a fact the user said they do not know."""
+        return [item for item in self.results() if item.status == "needs_fact"]
 
     def unconfirmed(self) -> bool:
         """Log 403: nothing this turn's check says was confirmed by the check's own model."""

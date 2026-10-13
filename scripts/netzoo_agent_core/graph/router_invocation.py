@@ -49,8 +49,9 @@ from ..interpretation.capability_check import (
 )
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict
+from ..interpretation.needed_facts import waiting_decision
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
-from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_for_verdict, plan_needs
+from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_for_verdict, plan_needs, plan_with_unknowns
 from ..interpretation.request_requirements import stated_in_text
 from .hypothesis_bases import (
     ADVISORY_ROLES, explicit_research_choice, framing_yielded, invoke_hypothesis_matcher,
@@ -274,11 +275,13 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
 def _with_verdict_plan(context, state, result: _RouterInvocation) -> _RouterInvocation:
     """Verdict layer: the data-needs plan, when read from routing's reading, follows the final verdict (F46)."""
     decision = result.decision
-    plan = plan_for_verdict(decision.data_plan, decision)
+    plan = plan_with_unknowns(plan_for_verdict(decision.data_plan, decision), decision)
     if plan is decision.data_plan:
         return result
+    before = decision.data_plan.needs if decision.data_plan is not None else []
     record_event(context, state, "routing.data_plan_followed_verdict", "classify", {
-        "dropped": [need.kind for need in decision.data_plan.needs if need not in plan.needs]})
+        "dropped": [need.kind for need in before if need not in plan.needs],
+        "added": [need.kind for need in plan.needs if need not in before]})
     return replace(result, decision=decision.model_copy(update={"data_plan": plan}))
 
 
@@ -444,6 +447,17 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # routing's offer in place (Log 400: its three false gaps on heldout9 cleared real workflows).
         record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
         check = check.model_copy(update={"full_gap": False, "provisional": True})
+    if check.needed_facts() and not check.unconfirmed():
+        # Verdict layer step 2: a result waits on a fact the user said they do not know -- on a guidance turn or a
+        # run, nothing is selected, refused or run before it is known.
+        if shadow_status is not None:
+            _record_shadow(context, state, decision, check, shadow_status)
+        waiting = waiting_decision(decision, check)
+        record_event(context, state, "routing.waiting_on_facts", "classify", {
+            "facts": [[item.quote, item.depends_on] for item in check.needed_facts()],
+            "cleared": list(dict.fromkeys([decision.action, *decision.matched_actions, *decision.recommended_actions]))})
+        return replace(result, decision=waiting,
+                       routing_state={**result.routing_state, **outcome_routing_state(waiting)})
     if shadow_status is not None:
         _record_shadow(context, state, decision, check, shadow_status)
         if not check.full_gap:

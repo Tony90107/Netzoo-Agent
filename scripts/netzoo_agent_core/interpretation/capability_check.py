@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
+from .needed_facts import decisive_outcomes, fact_line, needed_fact_reply
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from ..routing.study_purpose_verify import _locate
 from .unconfirmed_routes import checked_body_result
@@ -29,7 +30,7 @@ __all__ = [
     "build_capability_check", "verified_conditions", "stated_requirements", "condition_pairs",
     "apply_condition_answers", "redirect_pairs", "apply_redirect_answers",
     "workflow_description", "request_sentences", "understanding_paragraph", "full_gap_reply",
-    "full_gap_result",
+    "full_gap_result", "whole_check_result",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
     "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
@@ -106,6 +107,15 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
         quote = (getattr(conditions, f"{name}_quote", "") or "").strip()
         if getattr(conditions, name, None) == rules_out and quote and _span(task, quote) is not None:
             found[name] = rules_out
+    return found
+
+
+def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
+    """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request."""
+    found = []
+    for fact in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
+        if (span := _span(task, fact.quote)) is not None and fact.about not in {about for about, _ in found}:
+            found.append((fact.about, task[span[0]:span[1]]))
     return found
 
 
@@ -302,6 +312,7 @@ def build_capability_check(
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
     conditions = verified_conditions(task, proposal)
+    unknowns = verified_unknowns(task, proposal)
 
     def place(quote: str):
         span = _span(task, quote)
@@ -346,9 +357,20 @@ def build_capability_check(
         blank = not any(item.delivered_by or item.not_by for item in items)
         asked_as = "question" if all(getattr(item, "asked_as", "request") == "question" for item in items) \
             else "request"
+        waiting = {}
+        # Verdict layer step 2: a fact the user said they do not know, on which this result's workflows differ.
+        read = list(dict.fromkeys(k for item in items for k in item.delivered_by
+                                  if known.get(k) and known[k].kind == "produces"))
+        fit_attrs = {name: getattr(items[0], name) for name in (*_TYPED, "samples_matched") if hasattr(items[0], name)}
+        for about, said in unknowns:
+            if (outcomes := decisive_outcomes(_fitting, read, fit_attrs, about)) is not None:
+                status = "needs_fact"
+                delivered = list(dict.fromkeys(k for keys in outcomes.values() for k in keys))
+                waiting = {"depends_on": about, "outcomes": outcomes, "unknown_quote": said}
+                break
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
-                                               asked_as=asked_as))
+                                               asked_as=asked_as, **waiting))
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model
@@ -361,7 +383,7 @@ def build_capability_check(
     results = [item for item in requirements if item.kind == "result"]
     full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
-                           conditions=conditions), rejected
+                           conditions=conditions, unknowns=[list(item) for item in unknowns]), rejected
 
 
 def _names(names: list[str]) -> str:
@@ -431,6 +453,8 @@ def _why_not(item: CheckedRequirement) -> list[str]:
 
 def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
     quote = f'"{item.quote}"'
+    if item.status == "needs_fact":
+        return fact_line(item)
     if item.status == "available":
         return f"{quote} -- available from {_workflows([k for k in item.delivered_by if entry(k).level == 'direct'])}."
     if item.status == "partial":
@@ -537,6 +561,20 @@ def full_gap_result(state, reply) -> dict | None:
     if with_outside_steps(plain, decision, task) != plain:
         return reply(with_outside_steps(full_gap_reply(check, with_note=True), decision, task), "capability_check_gap")
     return reply(plain, "capability_check_gap")
+
+
+def whole_check_result(state, reply) -> dict | None:
+    """The whole reply when the check alone answers the turn: a full gap (Log 387), or results waiting on facts the
+    user said they do not know (verdict layer step 2)."""
+    from ..contracts import TaskDecision
+
+    if (gap := full_gap_result(state, reply)) is not None:
+        return gap
+    decision = TaskDecision.model_validate(state["decision"])
+    check = decision.capability_check
+    if decision.action != "no_tool" or check is None or check.unconfirmed() or not check.needed_facts():
+        return None
+    return reply(needed_fact_reply(check, understanding_paragraph(check) or ""), "needs_fact")
 
 
 def with_capability_check_reply(result: dict, state, reply) -> dict:
