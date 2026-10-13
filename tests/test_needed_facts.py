@@ -137,3 +137,40 @@ def test_no_mirna_ask_when_no_credited_workflow_takes_it_or_the_request_rules_it
     ruled_out = DataPlan(answerable=True, basis="question", needs=[DataNeed(
         kind="mirna", state="ruled_out", source="model", quote="the miRNA list is missing", action="say_ruled_out")])
     assert plan_with_unknowns(ruled_out, _puma_decision(plan=ruled_out)) is ruled_out
+
+
+def _blank(quote, **attrs):
+    from netzoo_agent_core.contracts.capability_check import CheckedRequirement
+
+    base = {"scale": "unstated", "omics_layers": 2, "data_unit": "not_stated", "regulator_kinds": [],
+            "needs_sign": False, "input_network": "none", "group_membership": "not_about_groups",
+            "time_model": "not_dynamic", "spatial": "not_spatial"}
+    return CheckedRequirement(quote=quote, kind="result", status="not_available", blank=True, attrs={**base, **attrs})
+
+
+DRAGON_PAIRS = [(0, "run_dragon", ["dragon.two_layer_network", "dragon.edge_pvalues"]),
+                (0, "run_lioness_dragon", ["lioness_dragon.per_sample_networks"])]
+
+
+def test_an_unknown_fact_decides_among_the_workflows_the_second_opinion_weighed():
+    """Live B30: nothing credited, second opinion 'part' for DRAGON/LIONESS-DRAGON, layer count unknown -> wait."""
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+    from netzoo_agent_core.interpretation.capability_check import wait_on_asked
+
+    check = CapabilityCheck(requirements=[_blank("partial-correlation networks linking my omics layers")],
+                            full_gap=True, unknowns=[["omics_layers", "whether there are two layers or more"]])
+    updated = wait_on_asked(check, DRAGON_PAIRS)
+    (item,) = updated.needed_facts()
+    assert not updated.full_gap and item.depends_on == "omics_layers"
+    assert item.outcomes["3"] == [] and "dragon.two_layer_network" in item.outcomes["2"]
+
+
+def test_without_an_unknown_fact_or_a_deciding_one_the_gap_stands():
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+    from netzoo_agent_core.interpretation.capability_check import wait_on_asked
+
+    plain = CapabilityCheck(requirements=[_blank("a network")], full_gap=True)
+    assert wait_on_asked(plain, DRAGON_PAIRS) is plain
+    undecided = CapabilityCheck(requirements=[_blank("a network")], full_gap=True,
+                                unknowns=[["data_unit", "not sure"]])
+    assert wait_on_asked(undecided, [(0, "run_dragon", [])]) is undecided
