@@ -46,7 +46,7 @@ from ..interpretation.capability_check import (
     workflow_description,
 )
 from .data_facts_call import invoke_data_facts
-from ..interpretation.run_check import run_check_verdict, shadow_run_check_enabled
+from ..interpretation.run_check import run_check_verdict
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_needs
 from ..interpretation.request_requirements import stated_in_text
@@ -160,8 +160,8 @@ def invoke_router(
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
     else:
         proposal, check_status = None, "no_model"
-        if result.decision.action == "no_tool" or shadow_run_check_enabled():
-            # Log 387: the safety check is asked before the advisory reads; verdict layer step 1: a run too, in shadow.
+        if result.decision.action != "download_string":
+            # Log 387: the safety check is asked before the advisory reads; verdict layer step 1: a run too.
             proposal, usage, warnings, check_status = request_capability_check(
                 context, state, user_task, result.usage, result.budget_warnings)
             result = replace(result, usage=usage, budget_warnings=warnings)
@@ -173,7 +173,7 @@ def invoke_router(
         result = _with_applicability(context, state, user_task, result)
         result = _with_capability_check(context, state, user_task, result, proposal,
                                         provisional=check_status == "fallback")
-        result = _with_run_check_shadow(context, state, user_task, result, proposal, check_status)
+        result = _with_run_check(context, state, user_task, result, proposal, check_status)
         if check_status in ("blocked", "failed") and result.decision.action == "no_tool":
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
@@ -267,15 +267,17 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
 
 
-def _with_run_check_shadow(context, state, user_task: str, result: _RouterInvocation, proposal,
-                           check_status: str) -> _RouterInvocation:
+def _with_run_check(context, state, user_task: str, result: _RouterInvocation, proposal,
+                    check_status: str) -> _RouterInvocation:
     """Verdict layer step 1: the guidance turn's whole check (re-read, condition check, second opinion) on the run
-    routing selected -- its verdict recorded, the decision never changed.
+    routing selected. Its verdict is recorded; a confirmed full gap -- nothing registered gives any result the run
+    asks for -- is answered as one, and the run is not planned. Every other verdict leaves the run as it was.
 
-    r17: with the first reading alone, a PUMA run was judged a gap (PQ3-2) that the second opinion owed to an exact
-    routing match exists to settle, and an unread "upload to a public repository" (MX1) was never re-read.
+    r17/r17b (run17): the live run path planned 8 runs nothing registered gives (causal direction -> GIRAFFE,
+    methylation subtypes -> SAMBAR, gene embeddings -> PANDA); the check found all 8 a gap and, with the second
+    opinion, judged none of 9 correct runs one (r17 PQ3-2 had been, on the first reading alone).
     """
-    if result.decision.action == "no_tool" or not shadow_run_check_enabled():
+    if result.decision.action in ("no_tool", "download_string"):
         return result
     if proposal is None:
         _record_shadow(context, state, result.decision, None, check_status)
@@ -392,7 +394,11 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         check = check.model_copy(update={"full_gap": False, "provisional": True})
     if shadow_status is not None:
         _record_shadow(context, state, decision, check, shadow_status)
-        return result
+        if not check.full_gap:
+            return result
+        decision = decision.model_copy(update={
+            "action": "no_tool", "should_execute": False, "intent_type": "answer_question",
+            "reason": "No registered workflow produces what the run asks for; it is not planned."})
     if check.full_gap:
         check = check.model_copy(update={"cleared": list(dict.fromkeys(
             [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]))})
