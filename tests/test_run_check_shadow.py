@@ -81,20 +81,36 @@ def test_the_shadow_records_the_verdict_only_when_enabled(monkeypatch):
     monkeypatch.setattr(router_invocation, "record_event", lambda *args: events.append(args))
     invocation = _invocation("run_sambar")
     monkeypatch.delenv("NETZOO_SHADOW_RUN_CHECK", raising=False)
-    router_invocation._record_run_check_shadow(None, {}, F32, invocation, _proposal(), "ok")
+    router_invocation._with_run_check_shadow(None, {}, F32, invocation, _proposal(), "ok")
     assert events == []
     monkeypatch.setenv("NETZOO_SHADOW_RUN_CHECK", "1")
-    router_invocation._record_run_check_shadow(None, {}, F32, invocation, _proposal(), "ok")
-    (_, _, kind, _, payload), = events
-    assert kind == "routing.run_check_shadow"
+    updated = router_invocation._with_run_check_shadow(None, {}, F32, invocation, _proposal(), "ok")
+    (payload,) = [event[4] for event in events if event[2] == "routing.run_check_shadow"]
     assert payload["verdict"] == "gap" and payload["action"] == "run_sambar" and payload["check_status"] == "ok"
-    assert invocation.decision.action == "run_sambar"  # nothing acts on it
+    assert updated.decision == invocation.decision  # nothing acts on it
 
 
 def test_a_backup_reading_is_unconfirmed_and_a_guidance_turn_is_skipped(monkeypatch):
     events = []
     monkeypatch.setattr(router_invocation, "record_event", lambda *args: events.append(args))
     monkeypatch.setenv("NETZOO_SHADOW_RUN_CHECK", "1")
-    router_invocation._record_run_check_shadow(None, {}, F32, _invocation("run_sambar"), _proposal(), "fallback")
-    router_invocation._record_run_check_shadow(None, {}, F32, _invocation("no_tool"), _proposal(), "ok")
-    assert [event[4]["verdict"] for event in events] == ["unconfirmed"]
+    router_invocation._with_run_check_shadow(None, {}, F32, _invocation("run_sambar"), _proposal(), "fallback")
+    router_invocation._with_run_check_shadow(None, {}, F32, _invocation("no_tool"), _proposal(), "ok")
+    assert [event[4]["verdict"] for event in events if event[2] == "routing.run_check_shadow"] == ["unconfirmed"]
+
+
+def test_the_shadow_asks_the_second_opinion_an_exact_run_is_owed(monkeypatch):
+    """r17 PQ3-2: the first reading credited nothing to an exact PUMA run; the guidance turn's second opinion is asked."""
+    events, asked = [], []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args: events.append(args))
+    monkeypatch.setenv("NETZOO_SHADOW_RUN_CHECK", "1")
+
+    def second_opinion(context, state, shown, usage, warnings, situation):
+        asked.append([workflow for _quote, workflow, _text in shown])
+        return ["all"] * len(shown), usage, warnings
+
+    monkeypatch.setattr(router_invocation, "request_second_opinion", second_opinion)
+    router_invocation._with_run_check_shadow(None, {}, F32, _invocation("run_sambar"), _proposal(), "ok")
+    assert asked == [["SAMBAR"]]
+    (payload,) = [event[4] for event in events if event[2] == "routing.run_check_shadow"]
+    assert payload["verdict"] == "agrees"
