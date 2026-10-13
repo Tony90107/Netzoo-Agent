@@ -233,9 +233,9 @@ def test_when_no_option_runs_on_the_named_data_the_card_asks_for_the_inputs_firs
     assert first.resolution == second.resolution == "follow_up"
     assert second.description == "Leads to LIONESS-PANDA"
     assert not any(point.startswith(("Every option also needs", "Not mentioned")) for point in card.points)
-    assert ("Your request names only expression data; the matched workflows need more inputs, "
+    assert ("Your request names expression data; the matched workflows also need more inputs, "
             "while LIONESS-COEXPRESSION or BONOBO works from it alone.") in card.points
-    assert ("**What your data allows.** Your request names only expression data. LIONESS-PANDA also needs "
+    assert ("**What your data allows.** Your request names expression data. LIONESS-PANDA also needs "
             "a motif prior and a PPI network; LIONESS-PUMA also needs a motif prior, a PPI network and a miRNA "
             "list. With expression data alone, LIONESS-COEXPRESSION or BONOBO builds one gene-gene co-expression "
             "network per sample (genes only, no regulator roles) instead. Do you also have a motif prior and a "
@@ -249,7 +249,7 @@ def test_a_result_no_network_alternative_gives_keeps_the_unmentioned_input_note(
     made = decision([reading("tf_activity_matrix", ["expression_matrix"], ["tf"], granularity="sample_specific")],
                     capability_match_status="exact", matched_actions=["run_giraffe"], recommended_actions=["run_giraffe"])
     text, kind, card = respond_and_card(task, made)
-    assert "Not mentioned in your request: motif prior and PPI network." in card.points
+    assert "Also needs motif prior and PPI network; no file for them is named yet." in card.points
     assert card.choices is None and "What your data allows" not in text
 
 
@@ -464,7 +464,7 @@ def test_a_stated_regulator_role_is_not_offered_a_network_without_regulators():
                     recommended_actions=["run_lioness_panda"])
     text, kind, card = respond_and_card(task, made)
     assert "What your data allows" not in text and not (card.choices and card.choices.header == "Inputs")
-    assert "Not mentioned in your request: motif prior and PPI network." in card.points
+    assert "Also needs motif prior and PPI network; no file for them is named yet." in card.points
 
 
 # -- option lines from the user's side (2026-10-02 feedback on Test 1) -------------
@@ -589,7 +589,7 @@ def test_regulators_stated_in_the_passive_voice_are_not_offered_a_genes_only_net
     text, kind, card = respond_and_card(_prompt("test6"), made)
     assert "What your data allows" not in text and "LIONESS-COEXPRESSION" not in text
     assert card.choices is None or card.choices.header != "Inputs"
-    assert "Not mentioned in your request: motif prior and PPI network." in card.points
+    assert "Also needs motif prior and PPI network; no file for them is named yet." in card.points
 
 
 def test_an_added_paragraph_goes_above_the_whole_closing_paragraph():

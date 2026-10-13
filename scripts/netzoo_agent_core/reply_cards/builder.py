@@ -110,8 +110,10 @@ def _unmentioned(actions, task: str, decision: TaskDecision) -> str:
     if not shared:
         return ""
     names = join_names(shared, "and")
-    return (f"Not mentioned in your request: {names}." if len(lists) == 1 else
-            f"Every option also needs {names}, which your request does not mention.")
+    # Feasibility eval F04/F07: the wording reader finding no mention is no evidence the request lacks it.
+    them = "them" if len(shared) > 1 else "it"
+    return (f"Also needs {names}; no file for {them} is named yet." if len(lists) == 1 else
+            f"Every option also needs {names}; no file for {them} is named yet.")
 
 
 def _narrowed_from(decision, policy, task) -> tuple[str | None, list[str]]:
@@ -567,9 +569,9 @@ def _with_input_alternative(card: ReplyCard, decision, policy, task: str, result
     # A method or clarification card's other points describe the options this replaces.
     kept = card.points[:1] if card.kind in {"method_choice", "clarification"} else card.points
     points = [point for point in kept if not point.startswith(_UNMENTIONED_POINTS)]
-    points.append(clip(f"Your request names only {words['stated']}; the matched workflows need more inputs, "
-                       + (f"while {words['alternatives']} works from it alone." if words["alternatives"] else
-                          "which the request does not mention."), 300))
+    points.append(clip(f"Your request names {words['stated']}; the matched workflows also need more inputs"
+                       + (f", while {words['alternatives']} works from it alone." if words["alternatives"] else "."),
+                       300))
     return card.model_copy(update={
         "points": points,
         "choices": ReplyChoices(header="Inputs", question=clip(f"Do you also have {words['asked']}?", 400),

@@ -262,7 +262,7 @@ def render_input_alternative(found: InputAlternative, policy) -> str:
         + _join([_article(label) if judged else label for label in labels])
         for (labels, judged), names in groups.items()
     )
-    parts = [f"**What your data allows.** Your request names only {_join(found.stated)}." if found.stated
+    parts = [f"**What your data allows.** Your request names {_join(found.stated)}." if found.stated
              else "**What your data allows.**"]
     if needs:
         parts.append(f"{needs}.")
