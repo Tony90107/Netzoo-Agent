@@ -27,6 +27,7 @@ from workflow_registry import (
 
 from ..contracts import ProjectPolicySnapshot, TaskDecision
 from ..interpretation.outside_steps import outside_steps
+from ..interpretation.run_choice import run_choice_actions
 from ..routing.capability_compatibility import input_availability
 from ..routing.clarification_planner import plan_clarification
 from .contracts import MAX_OPTIONS, ReplyChoices, ReplyOption
@@ -130,6 +131,7 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
     candidates = [a for a in dict.fromkeys(decision.hypothesis_actions) if a in policy.workflows]
     if not 2 <= len(candidates) <= MAX_OPTIONS:
         return None
+    run = bool(run_choice_actions(decision))
     outcome = primary_outcome(decision)
     present = present_inputs(task, decision)
     advice = decision.advisory_recommendation
@@ -172,12 +174,13 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
             key=action,
             label=name,
             description=describe([part for _, part in ranked], [rank for rank, _ in ranked]),
-            answer=f"Use {name}",
+            # Verdict layer step 1: when the user asked for a run, picking an option plans it (r17 PL1, PQ1, PQ2).
+            answer=f"Start planning {name}" if run else f"Use {name}",
             recommended=action == recommended,
             badge=badge,
             action=action,
             granularity=option_scale(action, outcome.granularity if outcome else None),
-            resolution="confirm_workflow",
+            resolution="plan_workflow" if run else "confirm_workflow",
         ))
     if recommended:
         ordering = "Recommended first, from what you said."
@@ -187,7 +190,8 @@ def method_choices(decision: TaskDecision, policy: ProjectPolicySnapshot, *, tas
         ordering = "Options that match more of what you asked for, and use only data you mentioned, come first."
     else:
         ordering = "Nothing you said favours one of them; each line says when to pick it."
-    return ReplyChoices(header="Method", question="Which method fits your study?", options=options, ordering=ordering)
+    question = "Which workflow should I run?" if run else "Which method fits your study?"
+    return ReplyChoices(header="Method", question=question, options=options, ordering=ordering)
 
 
 def option_scale(action: str | None, requested: str | None = None) -> str | None:

@@ -109,3 +109,37 @@ def test_a_result_needing_an_outside_step_keeps_the_reply_that_names_it(monkeypa
                               ["lioness_coexpression.comparisons"]))
     assert check.results()[0].status == "with_step"
     assert _run(task, _decision(check, ["run_lioness_coexpression"]), monkeypatch)[0].action == "no_tool"
+
+
+def _reply(text, kind):
+    from netzoo_agent_core.contracts import AIMessage
+
+    return {"messages": [AIMessage(content=text)], "reply_kind": kind}
+
+
+def _tie(**update):
+    fields = {"capability_match_status": "ambiguous", "hypothesis_actions": ["run_lioness_coexpression", "run_bonobo"],
+              "execution_requested": True, **update}
+    return TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r", **fields)
+
+
+def test_a_tied_run_request_closes_with_which_one_to_run():
+    """r17 PQ2: "Execute now, with whatever method gives each sample its own Pearson co-expression network"."""
+    from netzoo_agent_core.interpretation.run_choice import with_run_choice_reply
+
+    body = "Both fit; to choose, tell me ...\n\nNo files were inspected and no analysis ran."
+    out = with_run_choice_reply(_reply(body, "tie_guidance"), {"decision": _tie().model_dump()}, _reply)
+    assert out["messages"][-1].content == (
+        "Both fit; to choose, tell me ...\n\nYou asked me to run this, and LIONESS-COEXPRESSION and BONOBO both fit "
+        "it. Tell me which one to run; I will then find your input files and show a preview, and nothing runs until "
+        "you approve it.\n\nNo files were inspected and no analysis ran.")
+
+
+def test_no_run_question_without_a_requested_run_a_tie_or_on_a_whole_turn_reply():
+    from netzoo_agent_core.interpretation.run_choice import with_run_choice_reply
+
+    for decision, kind in ((_tie(execution_requested=False), "tie_guidance"),
+                           (_tie(hypothesis_actions=["run_bonobo"]), "verified_guidance"),
+                           (_tie(), "needs_input"), (_tie(), "capability_check_gap")):
+        result = _reply("Body.", kind)
+        assert with_run_choice_reply(result, {"decision": decision.model_dump()}, _reply) is result

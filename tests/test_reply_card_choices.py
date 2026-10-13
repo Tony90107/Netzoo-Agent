@@ -41,8 +41,9 @@ def _planning_mode():
     configure_runtime(**previous)
 
 
-def _tie_result(task: str = TASK) -> dict:
+def _tie_result(task: str = TASK, **extra) -> dict:
     decision = TaskDecision.model_validate({
+        **extra,
         "action": "no_tool", "in_scope": True, "should_execute": False, "confidence": 0.9, "reason": "Scripted.",
         "capability_match_status": "ambiguous", "hypothesis_actions": TIE,
         "clarification_question": "Which modeling assumption best matches your experiment?",
@@ -110,6 +111,29 @@ def test_a_number_picks_the_option_shown_with_it(tmp_path, monkeypatch):
     _, machine, _, _ = _after_tie(tmp_path, monkeypatch)
     machine.submit("3")
     assert machine.state.pending_task.startswith("CONFIRMED_OUTCOME_ACTION=run_giraffe.")
+
+
+RUN_TASK = "Run the analysis now: build one TF-gene regulatory network for the whole cohort from our data."
+
+
+def test_a_tied_run_request_asks_which_to_run_and_a_pick_plans_it(tmp_path, monkeypatch):
+    """Verdict layer step 1 (r17 PL1, PQ1, PQ2): the user asked for a run; picking a tied workflow plans it."""
+    monkeypatch.setattr(session_module, "SESSION_ROOT", tmp_path / "sessions")
+    result = _tie_result(RUN_TASK, execution_requested=True)
+    runtime, machine = _machine([result, result])
+    _run_until_prompt(machine)
+    machine.submit(RUN_TASK)
+    prompt, events = _run_until_prompt(machine)
+    message = next(event for event in events if event.kind == "message")
+    assert "You asked me to run this, and PANDA, OTTER and GIRAFFE all fit it. Tell me which one to run" in message.text
+    choices = prompt.card["choices"]
+    assert choices["question"] == "Which workflow should I run?"
+    assert [(option["answer"], option["resolution"]) for option in choices["options"]] == [
+        ("Start planning PANDA", "plan_workflow"), ("Start planning OTTER", "plan_workflow"),
+        ("Start planning GIRAFFE", "plan_workflow")]
+    machine.submit("Start planning OTTER")
+    assert machine.state.pending_task and "run_otter" in str(machine.state.pending_continuation)
+    assert machine.state.pending_execute_once is False and settings.EXECUTE_TOOLS is False
 
 
 def test_start_a_new_task_returns_to_the_first_question(tmp_path, monkeypatch):

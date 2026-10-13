@@ -117,6 +117,16 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             allow_workflow_continuation=False,
         )
 
+    from ..interpretation.run_choice import run_choice_actions
+
+    if not results and run_choice_actions(decision):
+        # Verdict layer step 1 (r17 PL1, PQ1, PQ2): the user asked for a run and several workflows fit; the pick
+        # continues as an accepted workflow (planned, previewed, never run unasked), not as an explanation.
+        return NextTurnPrompt(
+            kind="recommended_workflow",
+            question=_ui_text("Pick the workflow to run, ask how they differ, or describe another NetZoo goal."),
+        )
+
     from ..interpretation.guidance_interaction import guidance_interaction
 
     interaction = guidance_interaction(decision)
