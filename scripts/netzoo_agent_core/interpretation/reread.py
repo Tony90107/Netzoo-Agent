@@ -51,9 +51,13 @@ def _covered(task: str, check) -> list[bool]:
 
 
 def reread_passages(task: str, decision) -> list[str]:
-    """The request sentences to read again, in order; [] when the check left nothing unread."""
+    """The request sentences to read again, in order; [] when the check left nothing unread.
+
+    Which turns are checked is the caller's choice (verdict layer step 1: a run too); r17b MX1-1 left "upload the
+    networks to a public repository" unread because a run turn was never re-read.
+    """
     check = decision.capability_check
-    if decision.action != "no_tool" or check is None or check.unconfirmed() or check.full_gap:
+    if check is None or check.unconfirmed() or check.full_gap:
         return []
     sentences = [(start, end) for start, end in request_sentences(task)]
     if not check.results():

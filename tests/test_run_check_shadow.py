@@ -114,3 +114,17 @@ def test_the_shadow_asks_the_second_opinion_an_exact_run_is_owed(monkeypatch):
     assert asked == [["SAMBAR"]]
     (payload,) = [event[4] for event in events if event[2] == "routing.run_check_shadow"]
     assert payload["verdict"] == "agrees"
+
+
+def test_a_run_turn_is_re_read_like_a_guidance_turn():
+    """r17b MX1-1: "and upload the networks to a public repository for us" beside a quoted result was never re-read."""
+    from netzoo_agent_core.interpretation.reread import reread_passages
+
+    task = ("Run it now: build TF-gene networks per sample from the expression, motifs and PPI of 44 samples, "
+            "and upload the networks to a public repository for us.")
+    proposal = proposal_model(1).model_validate({"s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+        _ask("build TF-gene networks per sample", ["lioness_panda.per_sample_networks"])]}})
+    check = build_capability_check(task, proposal)[0]
+    decision = TaskDecision(action="run_lioness_panda", in_scope=True, should_execute=True, confidence=1.0,
+                            reason="r", capability_check=check)
+    assert reread_passages(task, decision) == [task]
