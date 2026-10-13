@@ -836,7 +836,9 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
     requirements = [item.model_copy() for item in check.requirements]
     full = {}
     for (index, _action, keys), answer in zip(pairs, answers):
-        if {True: "all", False: "none"}.get(answer, answer) == "all":
+        # "named": the words only ask to run this workflow ("請跑 PANDA"), naming no result -- its own results are
+        # what is asked (10-13b F40, F46 were refused when the only choices were all/part/none).
+        if {True: "all", False: "none"}.get(answer, answer) in ("all", "named"):
             full.setdefault(index, []).extend(keys)
     for index, keys in full.items():
         item = requirements[index]
