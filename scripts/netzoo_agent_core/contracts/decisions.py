@@ -178,6 +178,10 @@ class TaskDecision(BaseModel):
     # Log 387: each thing the request asks for, checked against the capability
     # sheet, with the sentences no check covered. Code-owned; omitted while unset.
     capability_check: CapabilityCheck | None = Field(default=None, exclude_if=lambda value: value is None)
+    # Verdict layer step 1: both model readings (intent router, semantic interpreter) asked for the work to be done
+    # now, so a single workflow the final verdict credits is run (r17: 75/90 run commands were answered as guidance).
+    # Code-owned; omitted while False.
+    execution_requested: bool = Field(default=False, exclude_if=lambda value: not value)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None

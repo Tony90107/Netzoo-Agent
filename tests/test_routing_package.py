@@ -23,7 +23,6 @@ HISTORICAL_EXPORTS = [
     "WEBSEARCH_URL",
     "WEBSEARCH_MAX_CHARS",
     "CONTEXT7_LIBRARY_ALIASES",
-    "UNSUPPORTED_DELIVERABLE_PATTERNS",
     "WORKFLOW_INFORMATION_PATTERNS",
     "is_workflow_information_request",
     "is_workflow_selection_request",

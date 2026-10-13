@@ -37,7 +37,9 @@ from .capability_check_call import (
 )
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
-from ..interpretation.checked_match import checked_match
+from ..interpretation.checked_match import checked_match, credited_workflows
+from ..routing.capability import validate_task_text
+from workflow_registry import RUN_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
@@ -185,6 +187,7 @@ def invoke_router(
                                                *result.decision.recommended_actions]))})
             result = replace(result, decision=unmapped)
         result = _with_checked_match(context, state, result)
+        result = _with_requested_run(context, state, user_task, result)
     decision = note_unstated_scale(user_task, result.decision)
     if decision is result.decision:
         return result
@@ -265,6 +268,43 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
         **result.routing_state,
         "semantic_goal": {**(result.routing_state.get("semantic_goal") or {}),
                           **{key: goal[key] for key in ("candidates", "relationship", "match_status", "match_basis")}}})
+
+
+def _with_requested_run(context, state, user_task: str, result: _RouterInvocation) -> _RouterInvocation:
+    """Verdict layer step 1: a run both routing readings asked for, of the one workflow the final verdict credits.
+
+    The run was decided before the capability check, from routing's match and the task text alone. r17 (run17, 32
+    sessions of supported run commands): 23 were answered as guidance -- the text gate wanted the workflow's name or
+    a verb from its list ("Compute now: ... produce ..." -> BONOBO, DRAGON, SAMBAR), or routing fell back and the check
+    credited one workflow only afterwards (PI1 PUMA, PL5 LIONESS-DRAGON, PL7 COBRA).
+
+    Three readings must agree: the intent router and the semantic interpreter asked for execution
+    (`execution_requested`), and the confirmed check read every result as asked to be produced (`asked_as`
+    request, not a question about which method gives it) and credits this one workflow, which routing matched or
+    the check adopted. Every result must be one the workflow gives directly: a result nothing registered gives, or one
+    needing a step outside NetZoo, keeps the turn a reply that says so (r17 MX1: an upload beside the networks; NM14:
+    a significance test of differential co-expression after LIONESS-COEXPRESSION). The request's own operation bans still veto it afterwards (`graph.operation_authority`).
+    """
+    decision = result.decision
+    check = decision.capability_check
+    if (decision.action != "no_tool" or not decision.execution_requested
+            or check is None or check.unconfirmed() or check.full_gap or check.unchecked
+            or not check.results() or any(item.asked_as != "request" or item.status != "available"
+                                          for item in check.results())):
+        return result
+    credited = credited_workflows(check) or []
+    if len(credited) != 1 or credited[0] not in RUN_ACTIONS or decision.matched_actions != credited:
+        return result
+    action = credited[0]
+    if validate_task_text(user_task, action, matched_actions=decision.matched_actions,
+                          model_execution=True) is not None:
+        return result
+    record_event(context, state, "routing.requested_run_adopted", "classify", {"action": action})
+    run = hydrate_router_decision(decision.model_copy(update={
+        "action": action, "should_execute": True, "intent_type": "run_analysis",
+        "reason": "Run requested; the capability check credited this workflow for what the request asks for."}),
+        user_task)
+    return replace(result, decision=run)
 
 
 def _with_run_check(context, state, user_task: str, result: _RouterInvocation, proposal,
@@ -660,7 +700,7 @@ def _route_request(
         # something to show the user, never something to act on, whatever the
         # intent router concluded about the request's mood.
         decision = decision.model_copy(update={
-            "should_execute": False, "action": "no_tool",
+            "should_execute": False, "action": "no_tool", "execution_requested": False,
         })
     # Preserve research alternatives before ranking methods by study facts.
     # The goal review (hypotheses) and the method stage (conditions) resolve

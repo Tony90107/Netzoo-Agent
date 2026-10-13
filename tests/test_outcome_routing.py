@@ -352,6 +352,8 @@ def test_task_decision_is_assembled_from_registry_match_then_narrow_intent(
 
     assert decision.action == expected_action
     assert decision.should_execute is expected_execute
+    # Verdict layer step 1: both readings asked for execution; kept for the run decided after the final verdict.
+    assert decision.execution_requested is expected_execute
     assert decision.matched_actions == ["run_lioness_puma"]
     assert decision.recommended_actions == ["run_puma", "run_lioness_puma"]
 
@@ -1739,3 +1741,17 @@ def test_motivating_sentences_are_not_production_routing_rules():
 
     assert "if i want to get sample specific network data" not in production
     assert "if i want to get sample specific mi-rna network data" not in production
+
+
+def test_one_reading_of_execution_is_not_a_requested_run():
+    """Verdict layer step 1: the intent router alone (semantic reading guidance) never requests a run."""
+    interpretation = SemanticInterpretation(
+        request_mode="guidance", semantic_goal="sample-specific miRNA regulatory network",
+        outcome_hypotheses=[hypothesis()],
+    )
+    decision = assemble_task_decision(
+        interpretation, match_outcome_hypotheses(interpretation.outcome_hypotheses),
+        IntentDecision(mode="execute", confidence=0.97, reason="User intent fixture."),
+        task="Run a sample-specific miRNA regulatory network analysis.",
+    )
+    assert decision.action == "no_tool" and decision.execution_requested is False
