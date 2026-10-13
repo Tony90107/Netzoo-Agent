@@ -45,7 +45,7 @@ from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candi
 from ..interpretation.capability_check import (
     apply_condition_answers, apply_redirect_answers, apply_second_opinion, blank_requirement_pairs,
     build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
-    workflow_description,
+    wait_on_asked, workflow_description,
 )
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict
@@ -432,7 +432,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             situation = tuple(item.quote for item in check.requirements if item.kind == "context")
             answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
-            check = apply_second_opinion(check, pairs, answers)
+            # Verdict layer step 2: what the user said they do not know can decide among the workflows weighed here.
+            check = wait_on_asked(apply_second_opinion(check, pairs, answers), pairs)
         elif pairs and check.full_gap and has_check_model(context):
             # Log 403: the second opinion was owed and could not answer (budget, provider), so the
             # gap is unconfirmed: said as such, and routing's offer stays (as for Log 401's backup).

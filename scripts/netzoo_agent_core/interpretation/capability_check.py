@@ -30,7 +30,7 @@ __all__ = [
     "build_capability_check", "verified_conditions", "stated_requirements", "condition_pairs",
     "apply_condition_answers", "redirect_pairs", "apply_redirect_answers",
     "workflow_description", "request_sentences", "understanding_paragraph", "full_gap_reply",
-    "full_gap_result", "whole_check_result",
+    "full_gap_result", "whole_check_result", "wait_on_asked",
     "with_capability_check_reply", "unavailable_rows", "second_opinion_pairs", "blank_requirement_pairs",
     "apply_second_opinion",
     "implied_actions", "requirement_for", "delivering_actions", "checked_route_lines", "checked_body_result",
@@ -135,6 +135,39 @@ def _open_choices(task: str, proposal, conditions, place) -> tuple[list[CheckedR
             quote=quote, kind="result", status="needs_fact", depends_on="choice", outcomes=outcomes,
             unknown_quote=quote, delivered_by=list(dict.fromkeys(k for keys in outcomes.values() for k in keys))))
     return found, option_spans
+
+
+def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
+    """Verdict layer step 2: a fact the user said they do not know decides among the workflows the second opinion
+    weighed, when the first reading credited none.
+
+    Live check 2026-10-13: B30 ("partial-correlation networks linking my omics layers ... never said whether there
+    are two layers or more") and F46 ("請跑 CONDOR ... 我不確定節點角色") credited nothing; the second opinion was asked
+    about DRAGON/LIONESS-DRAGON and CONDOR, answered part/none, and the turn was refused -- though the unknown layer
+    count and node roles are exactly what decide those workflows.
+    """
+    if not check.unknowns:
+        return check
+    known = sheet_entries()
+    asked: dict[int, list[str]] = {}
+    for index, _action, keys in pairs:
+        asked.setdefault(index, []).extend(k for k in keys if known.get(k) and known[k].kind == "produces")
+    requirements = list(check.requirements)
+    for index, keys in asked.items():
+        item = requirements[index]
+        if item.status != "not_available":
+            continue
+        for about, said in check.unknowns:
+            if (outcomes := decisive_outcomes(_fitting, list(dict.fromkeys(keys)), dict(item.attrs), about)) is not None:
+                requirements[index] = item.model_copy(update={
+                    "status": "needs_fact", "depends_on": about, "outcomes": outcomes, "unknown_quote": said,
+                    "delivered_by": list(dict.fromkeys(k for found in outcomes.values() for k in found))})
+                break
+    if requirements == check.requirements:
+        return check
+    results = [item for item in requirements if item.kind == "result"]
+    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
 
 
 def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
