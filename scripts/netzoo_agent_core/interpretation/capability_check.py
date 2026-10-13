@@ -378,13 +378,55 @@ def _lower_first(text: str) -> str:
     return text[:1].lower() + text[1:] if text[1:2].islower() else text
 
 
+# G6 (feasibility eval F23, F25): a typed attribute the registry rules out was the whole reason a result is not
+# available, but only cited near misses were said, so "spatial ... borrowing signal from neighboring spots" and
+# "overlapping communities" read "not matched to any registered workflow". The reasons are the capability sheet's
+# own result_forms and data_units notes; each is said only when that attribute alone leaves no produces entry.
+_FORM_REASONS = {
+    ("spatial", "uses_neighbors"): (
+        "No registered workflow uses where samples sit in space or which samples are neighbours; each sample is "
+        "modelled on its own."),
+    ("group_membership", "several_groups"): (
+        "Registered grouping puts each item in exactly one group (CONDOR: one community per regulator or gene; "
+        "SAMBAR: one subtype per sample); none returns overlapping memberships."),
+    ("time_model", "dynamic"): (
+        "No registered workflow models how the system changes from one time point to the next; time points can "
+        "only be compared as separate results."),
+    ("data_unit", "single_cells"): (
+        "Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none "
+        "models single cells."),
+}
+_REGULATOR_LABELS = {"tf": "TF", "mirna": "miRNA", "lncrna": "lncRNA", "other": "other"}
+
+
+def _form_reasons(item: CheckedRequirement) -> list[str]:
+    """Why the result's own typed attributes leave no registered result, from the capability sheet."""
+    attrs, reasons = item.attrs, []
+    for (name, value), text in _FORM_REASONS.items():
+        allowed = data_units() if name == "data_unit" else result_forms().get(name, frozenset())
+        if attrs.get(name) == value and value not in allowed:
+            reasons.append(text)
+    # No layer-count reason: replayed over the recorded full gaps, 11 of 12 came from motif, PPI and expression
+    # read as three omics layers (binding affinity, edge conservation), so it named a reason the request never raised.
+    produces = [found for found in sheet_entries().values() if found.kind == "produces"]
+    offered = set().union(*(found.regulators for found in produces if found.regulators))
+    if extra := sorted(set(attrs.get("regulator_kinds") or ()) - offered):
+        reasons.append("Registered regulatory workflows contain "
+                       + " and ".join(_REGULATOR_LABELS.get(kind, kind) for kind in sorted(offered))
+                       + " regulators; none models " + ", ".join(_REGULATOR_LABELS.get(kind, kind) for kind in extra)
+                       + " regulators.")
+    return reasons
+
+
 def _why_not(item: CheckedRequirement) -> list[str]:
-    reasons = [f"{reason}." for reason in item.violations]
+    cited = []
     for key in item.not_by:
         found = entry(key)
-        reasons.append(found.why_not if found.kind == "registry_wide"
-                       else f"{found.workflow} does not give it: {_lower_first(found.why_not)}")
-    return list(dict.fromkeys(reasons))[:1]
+        cited.append(found.why_not if found.kind == "registry_wide"
+                     else f"{found.workflow} does not give it: {_lower_first(found.why_not)}")
+    forms = _form_reasons(item) if item.status == "not_available" else []
+    reasons = [*(f"{reason}." for reason in item.violations[:1]), *forms, *cited[:1]]
+    return list(dict.fromkeys(reasons))[:2]
 
 
 def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
