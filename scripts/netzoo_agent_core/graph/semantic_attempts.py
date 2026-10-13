@@ -30,6 +30,7 @@ from ..interpretation.semantic_patch import (
     apply_semantic_patch, patched_hypothesis_index,
 )
 from ..interpretation.semantic_repair import semantic_payload
+from ..interpretation.unsupported_claims import without_unsupported_claims
 from ..interpretation.unverified_evidence import with_reduced_confidence
 from ..interpretation.guidance_subject import (
     GuidanceSubjectReview, guidance_subject_review_issues,
@@ -682,6 +683,12 @@ def invoke_semantic_interpreter(
                     with_reduced_confidence(interpretation),
                     usage, budget_warnings, None, restored_tags,
                 )
+            if (kept := without_unsupported_claims(user_task, interpretation, validation.issues)) is not None:
+                # Only claims given no evidence (or a not_applicable scale of an unknown result) were wrong; they are
+                # taken out and the rest, every claim of it quoted, is kept (`interpretation.unsupported_claims`).
+                record_event(context, state, "routing.semantic_unsupported_claims_dropped", "classify", {
+                    "attempt": attempt + 1, "issues": list(validation.issues)})
+                return with_reduced_confidence(kept), usage, budget_warnings, None, restored_tags
             return None, usage, budget_warnings, last_error, restored_tags
 
         usage = append_llm_usage(
