@@ -34,3 +34,19 @@ shadow 把這 5 個都判為 gap（沒有任何 workflow 做得到），判斷�
 
 - 「幫我跑」的命令中，75/90 被 routing 當成詢問來回答。例如「Run the analysis now: build a cohort-wide TF-to-gene network ...」的回覆，只介紹了 PANDA 和 OTTER 兩個方法。
 - 這就是評測 G5 第 3 點說的「把執行請求轉成諮詢」，留到判定層第 2 步處理：verdict 要記住使用者要的是執行，不能把它弄丟。
+
+## r17b（2026-10-13，4ff43f1，完整檢查）
+
+90/90 個 session 都完成，檢查全部確認成功，共用 112 次免費呼叫。
+
+| 量測 | 結果 | 事前規則 |
+|---|---|---|
+| M0：走 run 路徑的 session | 13/90（neg 3、mixed 1、pos 9） | — |
+| M1：現行 run 路徑誤接受 | 3（NM13、NV2 ×2） | — |
+| M2：shadow 抓到的誤接受 | 3/3 | ≥ 60%，成立 |
+| M3：正確的 run 被 shadow 誤判 | 0/9 | ≤ 10%，成立 |
+
+- PQ3 兩次都由第二意見改判為 agrees。
+- 仍有一處漏讀：MX1-1 的「upload the networks to a public repository」。原因是 `reread_passages` 自己規定只重讀 `no_tool` 的 turn，所以 run turn 從來不會重讀。
+- 已拿掉這個條件，改由呼叫端決定哪些 turn 要檢查。用 MX1-1 錄下的檢查離線驗證：那一句現在會被重讀。
+- run turn 多了重讀，可能讓原本正確的 run 被多讀出需求，所以先在同一組題目上再量一次（r17c），再決定要不要做會實際作用的候選。
