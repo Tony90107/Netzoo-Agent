@@ -40,7 +40,9 @@ def run_check_verdict(check: CapabilityCheck | None, action: str) -> dict:
     """
     on_sheet = {item.action for item in sheet_entries().values() if item.action}
     results = check.results() if check is not None else []
-    rows = [{"quote": item.quote, "status": item.status, "credited": sorted(_actions(item))} for item in results]
+    # M1: `limited` -- the result is not given as asked because of its method, settings or data size.
+    rows = [{"quote": item.quote, "status": item.status, "credited": sorted(_actions(item)),
+             **({"limited": True} if item.limits and item.status == "not_available" else {})} for item in results]
     given = [item for item in results if item.status != "not_available"]
     if action not in on_sheet:
         verdict = "not_on_sheet"

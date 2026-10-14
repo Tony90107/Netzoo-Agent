@@ -13,12 +13,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
-from netzoo_agent_core.contracts.capability_check import proposal_model  # noqa: E402
+from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
+from netzoo_agent_core.contracts.capability_check import RunVerdict, proposal_model  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
     build_capability_check, full_gap_reply, method_fitting, redirect_pairs, request_sentences,
     second_opinion_pairs, understanding_paragraph, verified_method,
 )
 from netzoo_agent_core.interpretation.run_check import run_check_verdict  # noqa: E402
+from netzoo_agent_core.interpretation.run_hold import held_run_reply  # noqa: E402
 
 PLAIN = {"scale": "unstated", "omics_layers": 0, "data_unit": "bulk_samples", "regulator_kinds": [],
          "needs_sign": False, "input_network": "none", "group_membership": "not_about_groups",
@@ -76,7 +78,14 @@ def test_n11_a_penalty_otter_does_not_have_is_not_given_and_the_run_is_held():
     assert result.defaults == ["otter.tf_gene_network"]
     # OTTER itself is offered, as what it is: the run is held for the user, never planned as asked.
     assert not check.full_gap
-    assert run_check_verdict(check, "run_otter")["verdict"] == "gap"
+    verdict = run_check_verdict(check, "run_otter")
+    assert verdict["verdict"] == "gap" and verdict["results"][0]["limited"] is True
+    held = held_run_reply(TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=1.0,
+                                       reason="held", recommended_actions=["run_otter"],
+                                       run_verdict=RunVerdict(action="run_otter", verdict="gap", held=True,
+                                                              results=verdict["results"])),
+                          understanding_paragraph(check))
+    assert "it cannot run as you asked (above)" in held and "Tell me to run OTTER anyway" in held
     line = understanding_paragraph(check)
     assert "not available here as asked" in line and "OTTER itself can still run" in line
     assert "no registered workflow produces this" not in line
