@@ -17,7 +17,11 @@ from netzoo_table_io import read_table, table_read_info
 
 from .paths import _resolve_user_path
 
+#: Expression sample columns GIRAFFE needs.
+GIRAFFE_MIN_SAMPLES = 2
+
 __all__ = [
+    "GIRAFFE_MIN_SAMPLES",
     "GiraffeInputBundle",
     "GiraffeInputError",
     "giraffe_output_paths",
@@ -109,7 +113,7 @@ def _looks_like_header(frame: pd.DataFrame) -> bool:
 
 
 def _read_expression(path_value: str) -> tuple[np.ndarray, tuple[str, ...], tuple[str, ...]]:
-    frame = _read(path_value, "GIRAFFE expression", min_fields=3)
+    frame = _read(path_value, "GIRAFFE expression", min_fields=GIRAFFE_MIN_SAMPLES + 1)
     has_header = _looks_like_header(frame)
     if has_header:
         sample_ids = _clean_ids(list(frame.iloc[0, 1:]), "expression sample IDs")
@@ -118,7 +122,7 @@ def _read_expression(path_value: str) -> tuple[np.ndarray, tuple[str, ...], tupl
         sample_ids = tuple(f"sample_{index}" for index in range(1, frame.shape[1]))
         data = frame
     gene_ids = _clean_ids(data.iloc[:, 0], "expression gene IDs")
-    if len(sample_ids) < 2:
+    if len(sample_ids) < GIRAFFE_MIN_SAMPLES:
         raise GiraffeInputError("expression requires at least two sample columns.")
     values = _numeric(data.iloc[:, 1:], "expression matrix")
     if values.shape[0] < 2:

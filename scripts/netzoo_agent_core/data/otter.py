@@ -10,7 +10,11 @@ import pandas as pd
 
 from .paths import _resolve_user_path
 
+#: Expression sample columns OTTER needs when it derives co-expression itself (a co-expression file needs none).
+OTTER_MIN_EXPRESSION_SAMPLES = 2
+
 __all__ = [
+    "OTTER_MIN_EXPRESSION_SAMPLES",
     "OtterInputBundle",
     "inspect_otter_inputs_impl",
     "load_otter_inputs",
@@ -123,7 +127,7 @@ def _read_expression(path: str) -> tuple[pd.DataFrame, int]:
         frame = pd.read_csv(resolved, sep=None, engine="python", header=0, comment="#")
     except (OSError, ValueError, pd.errors.ParserError) as error:
         raise ValueError(f"expression could not be parsed as a delimited table: {error}") from error
-    if frame.empty or frame.shape[1] < 3:
+    if frame.empty or frame.shape[1] < OTTER_MIN_EXPRESSION_SAMPLES + 1:
         raise ValueError("expression must have a gene ID column and at least two sample columns")
     genes = _normalise_ids(frame.iloc[:, 0], "expression gene IDs")
     samples = _normalise_ids(frame.columns[1:], "expression sample IDs")
