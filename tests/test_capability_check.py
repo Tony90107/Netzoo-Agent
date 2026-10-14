@@ -814,14 +814,18 @@ def test_overlapping_membership_concerns_only_an_ask_about_groups():
     communities = _checked(task, [_ask_in("the communities of our bipartite TF-gene network", ["condor.communities"],
                                      group_membership="one_group", scale="whole_cohort")], conditions,
                          background="Regulators must be able to belong to more than one community.")
-    assert communities.results()[0].status == "not_available"
+    # M2 (a24b MX10): the overlap, stated outside the ask's words, is a requirement of its own; the communities stand.
+    assert [(item.quote, item.status) for item in communities.results()] == [
+        ("the communities of our bipartite TF-gene network", "available"),
+        ("Regulators must be able to belong to more than one community", "not_available")]
+    assert "none returns overlapping memberships" in understanding_paragraph(communities)
     # Log 413: an ask credited only to entries that group nothing is not about groups.
     task_network = ("We want one TF-gene network for our 80 samples. "
                     "Regulators must be able to belong to more than one community.")
     network = _checked(task_network, [_ask_in("one TF-gene network for our 80 samples", ["panda.tf_gene_network"],
                                               scale="whole_cohort")], conditions,
                        background="Regulators must be able to belong to more than one community.")
-    assert network.results()[0].status == "available"
+    assert network.results()[0].status == "available" and network.results()[1].status == "not_available"
 
 
 def test_a_reread_states_no_condition():
@@ -841,7 +845,9 @@ def test_overlapping_membership_rules_out_a_grouping_entry_whatever_the_ask_form
                          group_membership_quote="A patient should be able to belong to two subtypes")
     check = _checked(task, [_ask_in("patient subtypes", ["sambar.subtypes"], scale="whole_cohort")], conditions,
                      background="A patient should be able to belong to two subtypes.")
-    assert check.results()[0].status == "not_available" and check.full_gap
+    # M2: heldout18 CK6's gold judges the condition sentence alone; it is refused, the subtypes are not.
+    assert [item.status for item in check.results()] == ["available", "not_available"] and not check.full_gap
+    assert check.results()[1].quote == "A patient should be able to belong to two subtypes"
     one = _stated(group_membership="one_group",
                   group_membership_quote="A patient should be able to belong to two subtypes")
     kept = _checked(task, [_ask_in("patient subtypes", ["sambar.subtypes"], scale="whole_cohort")], one,

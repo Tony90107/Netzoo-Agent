@@ -18,14 +18,14 @@ from typing import Callable, Mapping
 
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
-from .data import bonobo, cobra, dragon, giraffe, inspection, lioness_dragon, otter
+from .data import bonobo, cobra, dragon, giraffe, inspection, lioness_dragon, otter, sambar
 from .method_names import LIONESS_FAMILY, UNREGISTERED, method_names, named_workflows, setting_names
 from .runtime_constraints import runtime_control_constraints
 
 __all__ = [
     "LIONESS_FAMILY", "UNREGISTERED", "SettingLimit", "StatedSetting", "WorkflowConditions", "all_conditions",
-    "conditions_for", "data_issue", "method_names", "named_workflows", "setting_issue", "setting_names",
-    "stated_numbers",
+    "combination_issues", "conditions_for", "data_issue", "method_names", "named_workflows", "setting_issue",
+    "setting_names", "stated_numbers",
 ]
 
 # The executor's or preflight's own constants, read when asked so a change to one is followed here.
@@ -53,6 +53,7 @@ class SettingLimit:
     name: str
     control_type: str
     allowed_values: tuple = ()
+    default: object = None
     minimum: float | None = None
     maximum: float | None = None
     wired: bool = True
@@ -84,6 +85,7 @@ def _settings(action: str) -> Mapping[str, SettingLimit]:
         blocked = runtime.get(control.name)
         limits[control.name] = SettingLimit(
             name=control.name, control_type=control.control_type, allowed_values=tuple(control.allowed_values),
+            default=control.default,
             minimum=control.minimum, maximum=control.maximum,
             wired=control.executor_argument in definition.executor_fields,
             unavailable_values=blocked.unavailable_values if blocked else frozenset(),
@@ -209,3 +211,37 @@ def data_issue(conditions: WorkflowConditions, samples: int | None, features: in
             return (f"{conditions.workflow} writes at most {conditions.max_values:,} values "
                     f"({conditions.size_formula}); {features:,} features and {samples:,} samples give {size:,}")
     return None
+
+
+def combination_issues(conditions: WorkflowConditions, settings: list[StatedSetting],
+                       samples: int | None = None) -> list[str]:
+    """Why the settings cannot be used together, from the rules the executors apply (M2; was M1's open item).
+
+    DRAGON and LIONESS-DRAGON take both lambdas or neither; SAMBAR needs kmin <= kmax and, clustering, at least
+    kmax samples; BONOBO with sparsify needs delta above 0 and below 1/3. A value the words do not state is never
+    judged; a setting the words name without a value is taken as stated (sparsify, a lambda).
+    """
+    stated = {item.name.split(".", 1)[1]: item for item in settings
+              if item.name != UNREGISTERED and item.name.split(".", 1)[1] in conditions.settings}
+
+    def number(name: str) -> float | None:
+        values = stated_numbers(stated[name].value) if name in stated else []
+        return values[0] if values else None
+
+    found = []
+    if {"lambda1", "lambda2"} <= set(conditions.settings) and stated.keys() & {"lambda1", "lambda2"}:
+        if error := dragon.lambda_pair_error(stated.get("lambda1"), stated.get("lambda2")):
+            found.append(f"{conditions.workflow}: {error.rstrip('.')}")
+    if conditions.action == "run_sambar":
+        kmin, kmax = number("kmin"), number("kmax")
+        if kmin is not None or kmax is not None:
+            chosen = {"kmin": int(kmin) if kmin is not None else conditions.settings["kmin"].default,
+                      "kmax": int(kmax) if kmax is not None else conditions.settings["kmax"].default}
+            found += [f"SAMBAR: {error}" for error in sambar._parameter_errors(chosen) if "greater than or equal" in error]
+        if kmax is not None and samples is not None and (error := sambar.kmax_sample_error(int(kmax), samples)):
+            found.append(f"SAMBAR: {error}")
+    if conditions.action == "run_bonobo" and "sparsify" in stated and (delta := number("delta")) is not None:
+        if error := bonobo.bonobo_delta(delta, True)[1]:
+            found.append(f"BONOBO: {error.split(':')[0]}")
+    return found
+

@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from . import settings
 from .contracts import tool
-from .data.dragon import inspect_dragon_inputs_impl, load_and_align_dragon_layers, write_dragon_matrix
+from .data.dragon import (
+    inspect_dragon_inputs_impl, lambda_pair_error, load_and_align_dragon_layers, write_dragon_matrix,
+)
 from .data.lioness_dragon import (
     LIONESS_DRAGON_MAX_VALUES,
     LIONESS_DRAGON_MIN_SAMPLES,
@@ -45,8 +47,8 @@ def run_lioness_dragon(
 ) -> str:
     """Run LIONESS-DRAGON: one partial-correlation network per sample across two omics layers."""
     try:
-        if (lambda1 is None) != (lambda2 is None):
-            return _refusal("lambda1 and lambda2 must be supplied together.")
+        if pair_error := lambda_pair_error(lambda1, lambda2):
+            return _refusal(pair_error)
         input_report, inputs_ok = inspect_dragon_inputs_impl(omics_layer_1, omics_layer_2)
         if not inputs_ok:
             return "LIONESS-DRAGON input validation failed; no API call was made.\n\n" + input_report

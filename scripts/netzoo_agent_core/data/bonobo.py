@@ -18,6 +18,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import math
+from numbers import Real
+
 from .paths import _resolve_user_path
 from workflow_registry import resolve_conditional_output
 
@@ -552,8 +555,34 @@ def bonobo_api_output_folder(output_dir: str) -> str:
     return str(root) + os.sep
 
 
+def bonobo_delta(delta, sparsify: bool) -> tuple[float | None, str | None]:
+    """The delta to pass upstream as a Python float, or why it cannot be used (Log 224).
+
+    netZooPy 0.11.0 asserts `type(delta) == float`. With sparsify its per-edge
+    variance uses d - g - 3 = 1/delta - 3: at delta >= 1/3 every variance is
+    negative or undefined, so every p-value is NaN and the thresholded network
+    silently loses every edge, and delta = 0 divides by zero. The estimated
+    delta, 1/(3 + 2*mean(sd)/var(diag)), is always below 1/3.
+    """
+    if delta is None:
+        return None, None
+    if isinstance(delta, bool) or not isinstance(delta, Real):
+        return None, f"delta must be a number, not {type(delta).__name__}"
+    value = float(delta)
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+        return None, f"delta must be between 0 and 1, got {delta!r}"
+    if sparsify and not 0.0 < value < 1.0 / 3.0:
+        return None, (
+            f"with sparsify, delta must be above 0 and below 1/3, got {delta!r}: at 1/3 or above "
+            "every per-edge p-value is NaN and the sparsified network loses every edge, and at 0 "
+            "the variance is undefined"
+        )
+    return value, None
+
+
 __all__ = [
     "BONOBO_MANIFEST",
+    "bonobo_delta",
     "BONOBO_MIN_SAMPLES",
     "BONOBO_OUTPUT_FORMATS",
     "BonoboInputBundle",

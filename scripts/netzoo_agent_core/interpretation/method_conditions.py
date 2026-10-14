@@ -13,11 +13,13 @@ from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
-    UNREGISTERED, StatedSetting, conditions_for, data_issue, named_workflows, setting_issue, stated_numbers,
+    UNREGISTERED, StatedSetting, combination_issues, conditions_for, data_issue, named_workflows, setting_issue,
+    stated_numbers,
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_limit", "verified_method", "with_request_method"]
+__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "verified_method",
+           "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -110,7 +112,8 @@ def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str],
             continue
         conditions = conditions_for(workflow) if workflow else None
         unset = [] if conditions is None else [
-            issue for setting in settings if (issue := setting_issue(conditions, setting))]
+            *(issue for setting in settings if (issue := setting_issue(conditions, setting))),
+            *combination_issues(conditions, settings, samples)]
         too_much = data_issue(conditions, samples, features) if conditions is not None else None
         limits.extend([*unset, *filter(None, [too_much])])
         if unset and not too_much:
@@ -140,6 +143,20 @@ def with_request_method(method: dict, whole: dict) -> dict:
     if settings := _latest([*merged.get("settings", []), *whole.get("settings", [])]):
         merged["settings"] = settings
     return merged
+
+
+def request_method_for(whole: dict, workflows: set[str]) -> dict:
+    """The request's method and settings that belong to one of several results (M2): its named method when that names
+    a workflow the result is credited to, and each registered setting of such a workflow. An unregistered setting
+    names no workflow, so with several results it is not given to any."""
+    found = {}
+    if whole.get("named") not in (None, UNREGISTERED) and named_workflows(whole["named"]) & workflows:
+        found.update(named=whole["named"], named_quote=whole["named_quote"])
+    settings = [item for item in whole.get("settings", [])
+                if item["name"] != UNREGISTERED and item["name"].split(".", 1)[0] in workflows]
+    if settings:
+        found["settings"] = settings
+    return found
 
 
 def _latest(settings: list[dict]) -> list[dict]:

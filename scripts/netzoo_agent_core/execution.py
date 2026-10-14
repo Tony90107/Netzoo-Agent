@@ -31,6 +31,7 @@ from .data.cobra import (
 )
 from .data.sambar import inspect_sambar_inputs_impl
 from .data.dragon import (
+    lambda_pair_error,
     DRAGON_OUTPUT_FORMATS,
     inspect_dragon_inputs_impl,
     load_and_align_dragon_layers,
@@ -747,8 +748,8 @@ def run_dragon(
     try:
         if output_format not in DRAGON_OUTPUT_FORMATS:
             return f"DRAGON execution failed; error: unsupported output_format: {output_format}."
-        if (lambda1 is None) != (lambda2 is None):
-            return "DRAGON execution failed; error: lambda1 and lambda2 must be supplied together."
+        if pair_error := lambda_pair_error(lambda1, lambda2):
+            return f"DRAGON execution failed; error: {pair_error}"
         input_report, inputs_ok = inspect_dragon_inputs_impl(
             omics_layer_1,
             omics_layer_2,
