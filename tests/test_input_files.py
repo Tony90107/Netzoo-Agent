@@ -117,3 +117,12 @@ def test_p19_endometrial_is_not_a_demo_but_a_demo_request_still_gets_the_demo_bu
     assert all(item.status != "demo_bundle" for item in evidence.values()) and _no_shipped_data(evidence)
     _plan_, evidence = _plan("run_dragon", "Run a demo of DRAGON on the toy layers.")
     assert any(is_shipped_data(item.value or "") for item in evidence.values())
+
+
+def test_p33_the_wizard_says_the_named_folder_does_not_exist():
+    from netzoo_agent_core.cli.clarification import clarification_prompt
+
+    plan, _evidence = _plan("run_lioness_panda", "Go ahead: LIONESS-PANDA on the 15 macaque PBMC samples with the motif "
+                            "and PPI priors in /proj/mac/priors.")
+    text = clarification_prompt(plan)
+    assert "/proj/mac/priors) does not exist" in text and "dragon-toy" not in text and "-toy/" not in text

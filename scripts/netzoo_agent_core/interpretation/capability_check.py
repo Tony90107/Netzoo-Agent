@@ -415,7 +415,7 @@ def build_capability_check(
             else:
                 kept, item = ask_conditions(item, conditions, form_spans, asked)
                 asks.setdefault(span, []).append(_with_conditions(item, kept))
-    asks, additions = split_additions(task, asks)  # M2: what an ask adds to a result it names on its own
+    asks, additions = split_additions(task, asks, request_sentences(task))  # M2: what an ask adds to a result
     requirements = []
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.

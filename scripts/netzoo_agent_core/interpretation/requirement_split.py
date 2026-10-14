@@ -121,7 +121,7 @@ def _core_span(task: str, span: tuple[int, int], added: list[tuple[int, int]]) -
     return (span[0], span[0] + len(head)) if len(head.split()) >= 3 else span
 
 
-def split_additions(task: str, asks: dict) -> tuple[dict, list[CheckedRequirement]]:
+def split_additions(task: str, asks: dict, sentences: list[tuple[int, int]] = ()) -> tuple[dict, list[CheckedRequirement]]:
     """Each ask that adds to a result it also names on its own, as that result and, apart, each addition (M2).
 
     a24b MX03 typed the two-layer network with the third layer as one ask of three layers, and MX09 the TF and miRNA
@@ -131,20 +131,29 @@ def split_additions(task: str, asks: dict) -> tuple[dict, list[CheckedRequiremen
     "DRAGON does not give three layers" names DRAGON), then fitted as any ask. Each addition is a result of its own
     with the whole ask's attributes and citations, so it is refused with the reason the whole was.
     """
+    from .method_conditions import verified_method
+    from ..method_names import UNREGISTERED, named_workflows
+
     known = sheet_entries()
     offered = set().union(*(item.regulators for item in known.values() if item.kind == "produces" and item.regulators))
     found, extra = {}, []
     for span, items in asks.items():
         first = items[0]
+        # live m2a G1: "add our lncRNAs as a further class of regulators" sat in the ask's sentence, beside the words
+        # "aggregate PANDA network" rather than inside them.
+        sentence = next((found_ for found_ in sentences if _within(span, found_)), span)
         added = [(item, where) for item in getattr(first, "adds", None) or []
                  if item.adds != "other" and item.quote.strip() and (where := _span(task, item.quote)) is not None
-                 and _within(where, span) and where != span]
+                 and _within(where, sentence) and where != span and not _within(span, where)]
         if not added:
             found.setdefault(span, []).extend(items)
             continue
         kinds = [item.adds for item, _where in added]
-        core = _core_span(task, span, [where for _item, where in added])
+        inside = [where for _item, where in added if _within(where, span)]
+        core = _core_span(task, span, inside) if inside else span
         owners = {known[key].workflow for key in first.not_by if key in known and known[key].kind == "near_miss"}
+        if (named := verified_method(task, first).get("named")) not in (None, UNREGISTERED):
+            owners |= set(named_workflows(named))  # a method the request names for this result
         update = {"quote": task[core[0]:core[1]], "adds": [], "delivered_by": list(dict.fromkeys([
             *first.delivered_by, *(key for key, entry in known.items()
                                    if entry.kind == "produces" and entry.level == "direct" and entry.workflow in owners)]))}

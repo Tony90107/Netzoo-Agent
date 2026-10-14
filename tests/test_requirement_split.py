@@ -249,3 +249,16 @@ def test_the_router_checks_the_asking_sentence_requirement_in_the_same_call(monk
                                                           proposal)
         assert len(calls) == 1 and [shown[1] for shown in calls[0]] == [quote]
         assert [item.status for item in result.decision.capability_check.results()] == statuses
+
+
+def test_g1_an_addition_beside_the_asks_words_and_a_blank_core_named_by_its_method():
+    # live m2a G1: the addition sat in the ask's sentence outside its words, and nothing was credited to the core.
+    task = ("Build an aggregate PANDA network for our 60 lung adenocarcinoma samples from expression, motifs and PPI, "
+            "and add our lncRNAs as a further class of regulators in the same network.")
+    ask = {**_ask("aggregate PANDA network", (), named="PANDA", named_quote="PANDA", omics_layers=1,
+                  regulator_kinds=["tf", "lncrna"], scale="whole_cohort"),
+           "adds": _adds(("add our lncRNAs as a further class of regulators", "regulator_class"))}
+    core, lncrna = _check(task, ask).results()
+    assert (core.quote, core.status) == ("aggregate PANDA network", "available")
+    assert "panda.tf_gene_network" in core.delivered_by
+    assert (lncrna.quote, lncrna.status) == ("add our lncRNAs as a further class of regulators", "not_available")

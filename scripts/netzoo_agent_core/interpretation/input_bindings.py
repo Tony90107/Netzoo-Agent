@@ -54,7 +54,7 @@ def _missing_directories(text: str, root: Path) -> tuple[str, ...]:
     """Folders the words name (absolute, home- or dot-relative, or two levels deep) that do not exist."""
     found = []
     for match in _DIRECTORY_TOKEN.finditer(text):
-        token = match.group(1)
+        token = match.group(1).rstrip(".")  # a folder at the end of a sentence
         if Path(token).suffix or _OUTPUT_LEAD.search(text[max(0, match.start() - 80):match.start()]):
             continue
         if not (token.startswith(("/", "~", ".")) or token.count("/") >= 2):
