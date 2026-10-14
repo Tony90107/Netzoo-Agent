@@ -29,3 +29,7 @@ N35 依使用者決定移到 M2，不在本輪。
 ## 第二輪 m1b（使用者決定：全部重跑，2026-10-14）
 
 m1a 後的修正（3feb464、3dee444）：未註冊的 LIONESS 版本、無法對應結果時提供 workflow 自己的設定、每個控制項的說明進契約、請求層的指定方法與設定、讀取類呼叫的預算計算。契約對每題都改了，所以 24 題全部重跑，另加兩題新措辭：F5（OTTER gamma 0.5、80 iterations，應維持可做）、F6（LIONESS-PANDA 方法內的稀疏門檻，應判不可做）。共 26 個 session、29 個回合，判準同上，分母 26 題扣掉 provisional／unavailable。
+
+## 確認輪 m1c（使用者決定，2026-10-14）
+
+驗證 m1b 後的修正（328cab4）：N12、MX05、K09（兩回合），加上受同一修正影響的 P17（第二意見）和 MX18（LIONESS 版本規則）。共 5 個 session、6 個回合。判準：N12 判為不可做，不判給 LIONESS-PANDA；MX05 R1 以「GIRAFFE itself can still run」提出、R2 判為不可做；K09 第 2 回合維持可做；P17、MX18 R1 維持可做；MX18 R2 判為不可做。
