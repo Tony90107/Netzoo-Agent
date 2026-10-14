@@ -110,7 +110,8 @@ _CONDITION_CHECK = (
     "Return only the ConditionCheck structure. Each numbered pair gives a result the user asked for, a requirement "
     "the user stated about the results, and what one registered workflow produces and how. Answer violates only if "
     "that workflow's result, as described, cannot meet the requirement; satisfies if it meets it; unrelated if the "
-    "requirement is not about this result."
+    "requirement is not about this result; not_about_results if it only sets the result files' names, format or "
+    "folder, or how the user runs the analysis."
 )
 
 
@@ -118,7 +119,8 @@ _CONDITION_REDIRECT = (
     "Return only the ConditionCheck structure. Each numbered pair gives a result the user asked for, a requirement "
     "the user stated about the results, and what one registered workflow produces and how. Answer satisfies only if "
     "that workflow's results give the asked result and meet the requirement; violates if they cannot meet the "
-    "requirement; unrelated if they do not give the asked result."
+    "requirement; unrelated if they do not give the asked result; not_about_results if the requirement only sets the "
+    "result files' names, format or folder, or how the user runs the analysis."
 )
 
 

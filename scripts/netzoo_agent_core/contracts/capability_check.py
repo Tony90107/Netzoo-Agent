@@ -184,7 +184,10 @@ def unstated_conditions() -> dict:
             "other_requirements": [], "unknown_facts": [], "open_choices": []}
 
 
-ConditionAnswer = Literal["satisfies", "violates", "unrelated"]
+ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
+"""Items 4-5 live check c2 (2026-10-14): "Name the output after our project, ZEBRA." was filed as what a result must
+contain, answered `violates` for DRAGON, and the supported network was refused. `not_about_results` -- the requirement
+sets the result files' names, format or folder, or how the user runs the analysis -- removes nothing, as `unrelated`."""
 
 
 @lru_cache(maxsize=32)
@@ -193,7 +196,9 @@ def condition_check_model(pairs: int) -> type[BaseModel]:
     fields = {
         f"a{index}": (ConditionAnswer, Field(description=(
             f"Pair {index}: violates -- the workflow's result, as described, cannot meet the requirement; "
-            "satisfies -- it meets it; unrelated -- the requirement does not concern this result.")))
+            "satisfies -- it meets it; unrelated -- the requirement does not concern this result; not_about_results -- "
+            "the requirement only sets the result files' names, format or folder, or how the user runs the "
+            "analysis.")))
         for index in range(1, pairs + 1)
     }
     model = create_model("ConditionCheck", __config__=ConfigDict(extra="forbid"), **fields)

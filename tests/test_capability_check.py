@@ -1023,3 +1023,20 @@ def test_recorded_format_or_delivery_readings_still_load_as_file_formats():
 
     other = conditions_model().model_fields["other_requirements"].annotation.__args__[0]
     assert other.model_validate({"quote": "x", "about": "format_or_delivery"}).about == "file_format"
+
+
+def test_a_requirement_on_the_output_files_never_removes_a_workflow():
+    """Items 4-5 live check c2: "Name the output after our project, ZEBRA." was filed as what the result must contain
+    and answered `violates` for DRAGON, refusing the supported network (heldout19 HP4)."""
+    from netzoo_agent_core.contracts.capability_check import condition_check_model
+    from netzoo_agent_core.interpretation.capability_check import apply_condition_answers, condition_pairs
+
+    task = ("We have expression and methylation for 70 matched samples. We want a partial-correlation network linking "
+            "them. Name the output after our project, ZEBRA.")
+    check, _ = build_capability_check(task, _ask(task, "We want a partial-correlation network linking them.",
+                                                  ("dragon.two_layer_network",), layers=2))
+    pairs = condition_pairs(check, ["Name the output after our project, ZEBRA."])
+    answers = condition_check_model(len(pairs)).model_validate(
+        {f"a{index}": "not_about_results" for index in range(1, len(pairs) + 1)})
+    kept = apply_condition_answers(check, pairs, [getattr(answers, f"a{i}") for i in range(1, len(pairs) + 1)])
+    assert kept.results()[0].status == "available" and not kept.results()[0].violations
