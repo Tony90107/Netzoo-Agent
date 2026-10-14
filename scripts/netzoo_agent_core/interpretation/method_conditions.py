@@ -39,11 +39,19 @@ def verified_method(task: str, item) -> dict:
     found: dict = {}
     named, said = getattr(item, "named_method", "none"), _stated(task, getattr(item, "named_method_quote", ""))
     if named not in (None, "none") and said and (named == UNREGISTERED or _folded(named) in _folded(said)):
-        found.update(named=_unregistered_lioness(said) or named, named_quote=said)
+        found.update(named=named, named_quote=said)
+        asked = _stated(task, getattr(item, "quote", "")) or ""
+        if _unregistered_lioness(said):
+            found["named"] = UNREGISTERED
+        elif asked and _unregistered_lioness(f"{said} {asked}"):  # m1b N12: "LIONESS-style", OTTER in the ask's words
+            found.update(named=UNREGISTERED, named_quote=asked)
     settings = []
     for setting in getattr(item, "settings", None) or []:
-        if (words := _stated(task, setting.quote)) is not None:
-            settings.append({"name": setting.name, "quote": words, "value": _stated(task, setting.value_quote) or ""})
+        if (span := _span(task, setting.quote) if setting.quote.strip() else None) is not None:
+            value = _span(task, setting.value_quote) if setting.value_quote.strip() else None
+            settings.append({"name": setting.name, "quote": task[span[0]:span[1]],
+                             "value": task[value[0]:value[1]] if value else "", "span": list(span),
+                             "at": (value or span)[0]})
     if settings:
         found["settings"] = settings
     count, words = getattr(item, "sample_count", None), _stated(task, getattr(item, "sample_count_quote", ""))
@@ -62,14 +70,19 @@ def _unregistered_lioness(said: str) -> str | None:
     """A LIONESS version of a registered workflow that has none here ("LIONESS-OTTER") names no registered method.
 
     m1a MX18: "the per-sample LIONESS-OTTER networks" was typed LIONESS, which stands for every LIONESS-X, so
-    LIONESS-PANDA could have been credited for it.
+    LIONESS-PANDA could have been credited for it; m1b N12: "one OTTER network per sample, LIONESS-style" likewise.
+    Only a workflow with no per-sample result can be the base ("LIONESS or BONOBO" names two methods), and every base
+    the words name must lack a LIONESS version.
     """
     folded, known = _folded(said), registered_workflows()
     if LIONESS_FAMILY.casefold() not in folded or any(
             _folded(name) in folded for name in known if name.startswith(f"{LIONESS_FAMILY}-")):
         return None
-    bases = [name for name in known if not name.startswith(f"{LIONESS_FAMILY}-") and _folded(name) in folded]
-    return UNREGISTERED if any(f"{LIONESS_FAMILY}-{name}" not in known for name in bases) else None
+    per_sample = {found.workflow for found in sheet_entries().values()
+                  if found.kind == "produces" and "sample_specific" in found.granularity}
+    bases = [name for name in known if not name.startswith(f"{LIONESS_FAMILY}-") and name not in per_sample
+             and _folded(name) in folded]
+    return UNREGISTERED if bases and all(f"{LIONESS_FAMILY}-{name}" not in known for name in bases) else None
 
 
 def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str], list[str], list[str]]:
@@ -124,9 +137,28 @@ def with_request_method(method: dict, whole: dict) -> dict:
     merged = dict(method)
     if "named" not in merged and "named" in whole:
         merged.update(named=whole["named"], named_quote=whole["named_quote"])
-    if "settings" not in merged and "settings" in whole:
-        merged["settings"] = whole["settings"]
+    if settings := _latest([*merged.get("settings", []), *whole.get("settings", [])]):
+        merged["settings"] = settings
     return merged
+
+
+def _latest(settings: list[dict]) -> list[dict]:
+    """One value per registered setting, the one the request states last; unregistered settings once per passage.
+
+    m1b K09 (turn 2, "Never mind the GPU - CPU is fine"): the ask was typed computing=GPU and the request both GPU and
+    CPU; what the user said last is what they want.
+    """
+    kept: dict = {}
+    for setting in settings:
+        if setting["name"] != UNREGISTERED:
+            if setting["name"] not in kept or setting.get("at", -1) > kept[setting["name"]].get("at", -1):
+                kept[setting["name"]] = setting
+            continue
+        span = setting.get("span") or [-1, -1]
+        if not any(other["name"] == UNREGISTERED and (other.get("span") or [-1, -1])[0] < span[1]
+                   and span[0] < (other.get("span") or [-1, -1])[1] for other in kept.values()):
+            kept[("unregistered", tuple(span), setting["quote"])] = setting
+    return list(kept.values())
 
 
 def request_method_limit(whole: dict) -> CheckedRequirement | None:
