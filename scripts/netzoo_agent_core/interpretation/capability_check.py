@@ -27,7 +27,9 @@ from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools
 from .method_conditions import (
     method_fitting, request_method, request_method_for, request_method_limit, verified_method, with_request_method,
 )
-from .requirement_split import ask_conditions, condition_requirements, delivery_requirements, form_condition_spans
+from .requirement_split import (
+    ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
+)
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
@@ -166,12 +168,17 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
 _CHECKED_ABOUT = ("how_computed", "what_it_contains")
 
 
-def stated_requirements(task: str, proposal, check: CapabilityCheck) -> list[str]:
+def stated_requirements(task: str, proposal, check: CapabilityCheck, own_sentence: bool = False) -> list[str]:
     """Log 414: the other requirements to check against credited workflows, as quoted in the request.
 
     Kept only when they say how a result is computed or what it must contain (never a file format, a name,
     or which samples to use), their words are in the request, and they lie outside every asked-for result's
     own words -- an ask's own words were already read with it.
+
+    `own_sentence` (M2, user decision): those in a sentence that asks for a result, outside its words, which were
+    dropped (a24b N35 "in which the miRNA-gene edge weights are driven by our ... miRNA expression levels", MX14 "set
+    it to re-run automatically every Monday"). They are checked too, and one no credited workflow meets is a
+    requirement of its own (`requirement_split.apply_own_sentence_answers`), so the result it sits beside stands.
     """
     conditions = getattr(proposal, "conditions", None)
     asked = [span for item in check.results() if (span := _span(task, item.quote)) is not None]
@@ -182,8 +189,10 @@ def stated_requirements(task: str, proposal, check: CapabilityCheck) -> list[str
     kept = []
     for other in getattr(conditions, "other_requirements", None) or []:
         span = _span(task, other.quote) if other.about in _CHECKED_ABOUT and other.quote.strip() else None
-        if span is None or any(s < span[1] and span[0] < e for s, e in asking):
+        if span is None or any(s < span[1] and span[0] < e for s, e in asking) != own_sentence:
             continue
+        if own_sentence and any(a <= span[0] and span[1] <= b for a, b in asked):
+            continue  # an ask's own words were read with it
         kept.append(task[span[0]:span[1]])
     return list(dict.fromkeys(kept))
 
@@ -406,6 +415,7 @@ def build_capability_check(
             else:
                 kept, item = ask_conditions(item, conditions, form_spans, asked)
                 asks.setdefault(span, []).append(_with_conditions(item, kept))
+    asks, additions = split_additions(task, asks)  # M2: what an ask adds to a result it names on its own
     requirements = []
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
@@ -460,7 +470,8 @@ def build_capability_check(
                      for span, kind in other.items() if span not in asks]
     if whole and not any(item.kind == "result" for item in requirements):
         requirements += [found] if (found := request_method_limit(whole)) is not None else []
-    requirements += condition_requirements(task, conditions, form_spans, list(asks))
+    covered = [*asks, *(found for item in additions if (found := _span(task, item.quote)) is not None)]
+    requirements += additions + condition_requirements(task, conditions, form_spans, covered)
     spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]
     deliveries = delivery_requirements(task, proposal, [item for item in requirements if item.kind == "result"])
     requirements += deliveries

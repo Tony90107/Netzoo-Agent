@@ -47,6 +47,7 @@ from ..interpretation.capability_check import (
     build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
     wait_on_asked, workflow_description,
 )
+from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict, run_verdict
 from ..interpretation.run_hold import hold_run
@@ -446,14 +447,21 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
             "check": check.model_dump()})
     stated = [] if provisional else stated_requirements(user_task, proposal, check)
+    own = [] if provisional else stated_requirements(user_task, proposal, check, own_sentence=True)
     pairs_to_check = condition_pairs(check, stated)
-    if pairs_to_check:
+    own_pairs = condition_pairs(check, own)
+    if pairs_to_check or own_pairs:
         # Log 414: a requirement the request states outside the asked result, of no typed kind, is checked against
         # each credited workflow; only a workflow found unable to meet it is removed -- nothing turns unconfirmed.
+        # M2: one in the asking sentence is checked in the same call and, unmet, becomes a result of its own.
         answers, usage, warnings = request_condition_check(
-            context, state, _condition_shown(check, pairs_to_check), usage, warnings)
+            context, state, _condition_shown(check, pairs_to_check + own_pairs), usage, warnings)
+        own_answers = answers[len(pairs_to_check):] if answers is not None else None
+        answers = answers[:len(pairs_to_check)] if answers is not None else None
         check = (apply_condition_answers(check, pairs_to_check, answers) if answers is not None
                  else _not_checked(check, pairs_to_check))
+        if own_answers is not None:
+            check = apply_own_sentence_answers(check, own_pairs, own_answers)
         offered = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
         redirect = redirect_pairs(check, list(dict.fromkeys(offered))[:4]) if answers is not None else []
         redirected = None
@@ -464,6 +472,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
                 check = apply_redirect_answers(check, redirect, redirected)
         record_event(context, state, "routing.capability_condition_check", "classify", {
             "stated": stated, "pairs": [[index, action, keys, quote] for index, action, keys, quote in pairs_to_check],
+            "own_sentence": [[index, action, keys, quote] for index, action, keys, quote in own_pairs],
+            "own_answers": own_answers,
             "answers": answers, "redirect": [[index, action, keys, quote] for index, action, keys, quote in redirect],
             "redirected": redirected, "full_gap": check.full_gap})
     exact = list(decision.matched_actions) if decision.capability_match_status == "exact" else []

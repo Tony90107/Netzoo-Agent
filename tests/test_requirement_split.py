@@ -122,3 +122,130 @@ def test_combination_rules_are_the_executors():
     assert combination_issues(conditions_for("BONOBO"), [StatedSetting("BONOBO.sparsify", "sparsify", ""),
                                                          StatedSetting("BONOBO.delta", "delta", "0.5")])
     assert not combination_issues(conditions_for("BONOBO"), [StatedSetting("BONOBO.delta", "delta", "0.5")])
+
+
+# --- a24b MX03 / MX09: what an ask adds to a result it also names on its own ---------------------------------------
+
+MX03 = ("We'd like a DRAGON network between the proteome and the transcriptome of our 64 matched tumours, and please "
+        "fold the metabolome from the same tumours into the same model as a third layer.")
+MX09 = ("We want a network of TFs and miRNAs regulating genes in our 72 hepatoblastoma samples (expression, motif prior "
+        "with miRNA edges, miRNA list and PPI are ready), with the lncRNAs added as a third regulator class in the same "
+        "network using our lncRNA-target predictions.")
+
+
+def _adds(*items):
+    return [{"quote": quote, "adds": kind} for quote, kind in items]
+
+
+def test_mx03_the_two_layer_network_stands_and_the_third_layer_is_refused():
+    # As recorded: one ask of three layers, nothing credited, DRAGON's near miss cited; plus the typed addition.
+    ask = {**_ask(MX03.rstrip("."), (), ["dragon.no_more_layers"], omics_layers=3, scale="whole_cohort"),
+           "adds": _adds(("fold the metabolome from the same tumours into the same model as a third layer",
+                          "omics_layer"))}
+    check = _check(MX03, ask)
+    core, third = check.results()
+    assert core.quote == ("We'd like a DRAGON network between the proteome and the transcriptome of our 64 matched "
+                          "tumours")
+    assert core.status == "available" and "dragon.two_layer_network" in core.delivered_by
+    assert third.status == "not_available" and "DRAGON does not give it: two layers only" in understanding_paragraph(check)
+    assert run_check_verdict(check, "run_dragon")["verdict"] == "partial_gap"
+
+
+def test_mx09_tf_and_mirna_stand_and_lncrna_is_refused():
+    ask = {**_ask(MX09.rstrip("."), (), ["puma.no_lncrna_cerna"], omics_layers=2,
+                  regulator_kinds=["tf", "mirna", "lncrna"], input_network="regulator_gene", scale="whole_cohort"),
+           "adds": _adds(("with the lncRNAs added as a third regulator class in the same network using our "
+                          "lncRNA-target predictions", "regulator_class"))}
+    check = _check(MX09, ask)
+    core, lncrna = check.results()
+    assert core.status == "available" and core.delivered_by == ["puma.regulator_gene_network"]
+    assert core.quote.endswith("are ready)")
+    assert lncrna.status == "not_available" and "none models lncRNA regulators" in understanding_paragraph(check)
+
+
+def test_a_result_named_as_a_whole_is_not_split():
+    # a24b U15 shape: four layers as one model, no addition typed -- refused whole, as before.
+    task = "We want one network that joins our genome, transcriptome, proteome and metabolome in a single model."
+    check = _check(task, _ask("one network that joins our genome, transcriptome, proteome and metabolome in a single "
+                              "model", (), ["dragon.no_more_layers"], omics_layers=4))
+    assert [item.status for item in check.results()] == ["not_available"]
+
+
+def test_an_overlap_typed_both_as_an_addition_and_a_condition_is_one_line():
+    ask = {**_ask("to get TF-gene communities, and allow genes to sit in more than one community",
+                  ["condor.communities"], group_membership="several_groups", input_network="regulator_gene"),
+           "adds": _adds(("allow genes to sit in more than one community", "group_overlap"))}
+    check = _check(MX10, ask, group_membership="several_groups",
+                   group_membership_quote="allow genes to sit in more than one community")
+    assert [(item.quote, item.status) for item in check.results()] == [
+        ("to get TF-gene communities", "available"), ("allow genes to sit in more than one community", "not_available")]
+
+
+# --- a24b N35 / MX14: a requirement in the asking sentence, outside the ask's words --------------------------------
+
+N35 = ("Build a PUMA network in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA "
+       "expression levels in the same 80 samples.")
+
+
+def test_n35_an_unmet_requirement_beside_the_ask_is_its_own_line():
+    from netzoo_agent_core.interpretation.capability_check import condition_pairs, stated_requirements
+    from netzoo_agent_core.interpretation.requirement_split import apply_own_sentence_answers
+
+    quote = ("in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels")
+    check = _check(N35, _ask("Build a PUMA network", ["puma.regulator_gene_network"], omics_layers=2,
+                             regulator_kinds=["tf", "mirna"], scale="whole_cohort"),
+                   other_requirements=[{"about": "how_computed", "quote": quote},
+                                       {"about": "how_computed", "quote": "Build a PUMA network"}])
+    proposal_free = stated_requirements(N35, _proposal_of(N35, quote), check)
+    own = stated_requirements(N35, _proposal_of(N35, quote), check, own_sentence=True)
+    assert proposal_free == [] and own == [quote]  # the ask's own words are never checked again
+    pairs = condition_pairs(check, own)
+    assert [action for _index, action, _keys, _quote in pairs] == ["run_puma"]
+    unmet = apply_own_sentence_answers(check, pairs, ["violates"])
+    assert [(item.quote[:20], item.status) for item in unmet.results()] == [
+        ("Build a PUMA network", "available"), ("in which the miRNA-g", "not_available")]
+    assert 'PUMA does not meet "in which the miRNA-gene' in understanding_paragraph(unmet)
+    assert run_check_verdict(unmet, "run_puma")["verdict"] == "partial_gap"
+    # Met, unrelated, or not answered: nothing is added (these words were dropped before M2).
+    assert apply_own_sentence_answers(check, pairs, ["satisfies"]).results() == check.results()
+    assert apply_own_sentence_answers(check, pairs, ["unrelated"]).results() == check.results()
+
+
+def _proposal_of(task, quote):
+    from netzoo_agent_core.contracts.capability_check import proposal_model, unstated_conditions
+
+    return proposal_model(1).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": []},
+        "conditions": {**unstated_conditions(), "other_requirements": [
+            {"about": "how_computed", "quote": quote}, {"about": "how_computed", "quote": "Build a PUMA network"}]}})
+
+
+def test_the_router_checks_the_asking_sentence_requirement_in_the_same_call(monkeypatch):
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.graph import router_invocation
+
+    quote = "in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels"
+    proposal = _proposal_of(N35, quote).model_copy(update={"s1": proposal_model(1).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [_ask(
+            "Build a PUMA network", ["puma.regulator_gene_network"], omics_layers=2, regulator_kinds=["tf", "mirna"],
+            scale="whole_cohort")]}}).s1})
+    decision = TaskDecision.model_validate({"action": "no_tool", "in_scope": True, "should_execute": False,
+                                            "confidence": 0.9, "reason": "r", "capability_match_status": "exact",
+                                            "matched_actions": ["run_puma"]})
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args: None)
+    for answer, statuses in (("violates", ["available", "not_available"]), ("satisfies", ["available"])):
+        calls = []
+
+        def condition_check(context, state, shown, usage, warnings, **kwargs):
+            calls.append(shown)
+            return [answer] * len(shown), usage, warnings
+
+        monkeypatch.setattr(router_invocation, "request_condition_check", condition_check)
+        invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                         budget_warnings=[], reason_code=None)
+        result = router_invocation._with_capability_check(SimpleNamespace(project_policy=None), {}, N35, invocation,
+                                                          proposal)
+        assert len(calls) == 1 and [shown[1] for shown in calls[0]] == [quote]
+        assert [item.status for item in result.decision.capability_check.results()] == statuses
