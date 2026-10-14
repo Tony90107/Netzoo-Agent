@@ -345,10 +345,18 @@ def _with_conditions(item, conditions: dict[str, str]):
 def _fitting(keys: list[str], item) -> list[str]:
     """The delivered entries that fit the ask's typed attributes (Logs 388-389).
 
-    Data unit, regulator kinds, sign, layers and input network can rule every entry
+    Data unit, regulator kinds, sign, layers, input network and a stated scale can rule every entry
     out -- no registered workflow takes single cells, models lncRNA regulators, signs
-    PANDA's edges, joins three omics layers, or partitions a gene-gene network. A scale only narrows the list and never
-    empties it, because a misread scale must not turn a deliverable result into a gap.
+    PANDA's edges, joins three omics layers, partitions a gene-gene network, or gives a per-patient network from
+    PANDA or OTTER. An unstated scale rules nothing out.
+
+    Item 3 (2026-10-14): until now a scale only narrowed the list and never emptied it (Log 388: a misread scale must
+    not turn a deliverable result into a gap), so a per-patient network credited to OTTER alone stayed OTTER's. On the
+    recorded checks the empties were not misreads of the request but sheet labels too narrow for a label or test read
+    per sample and reported for the cohort (33 of 35 distinct asks: "patient subtypes" typed per sample, "a test
+    between responders and non-responders" typed whole-cohort, all supported); those entries now carry both scales
+    (`capability_sheet.yaml`), and on the 654 recorded asks with a typed scale the hard rule changes 2, both already
+    misread as DRAGON (`docs/research-log/scale-hard-2026-10-14`).
     """
     known = sheet_entries()
     if item.data_unit != "not_stated" and item.data_unit not in data_units():
@@ -364,8 +372,7 @@ def _fitting(keys: list[str], item) -> list[str]:
             and not (item.needs_sign and known[k].signed is False)
             and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
     want = {"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(item.scale)
-    narrowed = [k for k in keys if want is None or want in known[k].granularity]
-    return narrowed or keys
+    return [k for k in keys if want is None or want in known[k].granularity]
 
 
 def build_capability_check(

@@ -321,14 +321,61 @@ def test_a_cited_near_miss_never_credits_its_alternative():
     assert check.full_gap and check.results()[0].delivered_by == []
 
 
-def test_a_scale_narrows_the_workflows_but_never_empties_them():
+def _credited(task, quote, delivered, **attrs):
+    check, _ = build_capability_check(task, _ask(task, quote, delivered, **attrs))
+    return check.results()[0].status, check.results()[0].delivered_by
+
+
+def test_a_stated_scale_rules_out_a_workflow_of_the_other_scale():
+    """Item 3 (2026-10-14): a per-patient network is never OTTER's; a compatible LIONESS still gives it."""
     task = "We want a TF-gene network for each patient."
     quote = "a TF-gene network for each patient"
     both = ("lioness_panda.per_sample_networks", "otter.tf_gene_network")
-    check, _ = build_capability_check(task, _ask(task, quote, both, scale="per_sample"))
-    assert check.results()[0].delivered_by == ["lioness_panda.per_sample_networks"]
-    only_aggregate, _ = build_capability_check(task, _ask(task, quote, ("otter.tf_gene_network",), scale="per_sample"))
-    assert only_aggregate.results()[0].status == "available"  # a misread scale never makes a gap
+    assert _credited(task, quote, both, scale="per_sample") == ("available", ["lioness_panda.per_sample_networks"])
+    assert _credited(task, quote, ("otter.tf_gene_network",), scale="per_sample") == ("not_available", [])
+    # Only the scale differs: one network for the whole cohort is OTTER's, and LIONESS-PANDA's aggregate too.
+    assert _credited(task, quote, both, scale="whole_cohort") == ("available", list(both))
+    # An unstated scale is never filled in: nothing is ruled out.
+    assert _credited(task, quote, ("otter.tf_gene_network",)) == ("available", ["otter.tf_gene_network"])
+
+
+def test_labels_and_tests_read_per_sample_and_reported_for_the_cohort_fit_either_scale():
+    """Item 3: 33 of 35 recorded asks a stated scale would have emptied were these, all supported."""
+    subtypes = "We have somatic mutations from 200 tumors. We want patient subtypes."
+    for scale in ("per_sample", "whole_cohort"):
+        assert _credited(subtypes, "patient subtypes", ("sambar.subtypes",), scale=scale)[0] == "available"
+    tests = "We want a test of which TF activities differ between responders and non-responders."
+    quote = "a test of which TF activities differ between responders and non-responders"
+    for scale in ("per_sample", "whole_cohort"):
+        assert _credited(tests, quote, ("giraffe.activity_tests",), scale=scale)[0] == "with_step"
+
+
+def test_a_workflow_of_the_other_scale_is_never_shown_to_the_second_opinion():
+    """Item 3 replay: "for each sample, which TFs activate and which repress each gene" (gold: not supported) was a
+    gap, routing matched GIRAFFE exactly, and the second opinion credited GIRAFFE's cohort-level signed matrix."""
+    from netzoo_agent_core.interpretation.capability_check import second_opinion_pairs
+
+    task = "We want, for each sample, which TFs activate and which repress each gene."
+    quote = "for each sample, which TFs activate and which repress each gene"
+    check, _ = build_capability_check(task, _ask(task, quote, (), scale="per_sample", sign=True))
+    assert check.full_gap
+    assert second_opinion_pairs(check, ["run_giraffe"]) == []
+    unstated, _ = build_capability_check(task, _ask(task, quote, (), sign=True))
+    assert [action for _index, action, _keys in second_opinion_pairs(unstated, ["run_giraffe"])] == ["run_giraffe"]
+
+
+def test_one_changed_condition_changes_the_fit():
+    """Item 3 acceptance: pairs that differ in one typed condition (bulk to single cell, two to three layers)."""
+    task = "We want one co-expression network per sample."
+    quote = "one co-expression network per sample"
+    entries = ("lioness_coexpression.per_sample_networks",)
+    assert _credited(task, quote, entries, scale="per_sample", unit="bulk_samples")[0] == "available"
+    assert _credited(task, quote, entries, scale="per_sample", unit="single_cells")[0] == "not_available"
+    joint = "We want one joint network of two omics layers."
+    assert _credited(joint, "one joint network of two omics layers", ("dragon.two_layer_network",), layers=2)[0] \
+        == "available"
+    assert _credited(joint, "one joint network of two omics layers", ("dragon.two_layer_network",), layers=3)[0] \
+        == "not_available"
 
 
 def test_too_many_omics_layers_rule_dragon_out():
