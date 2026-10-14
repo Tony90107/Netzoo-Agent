@@ -486,6 +486,18 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         if answers is not None:
             # Verdict layer step 2: what the user said they do not know can decide among the workflows weighed here.
             check = wait_on_asked(apply_second_opinion(check, pairs, answers), pairs)
+            late = [pair for pair in condition_pairs(check, stated) if check.requirements[pair[0]].second_opinion]
+            if late:
+                # Items 4-5 c3 (heldout19 UN3): the first reading credited nothing, the second opinion credited SAMBAR,
+                # and "the clustering has to be k-means" was never checked -- the condition check ran before it. A
+                # workflow the second opinion credits is held to the stated requirements like any other (Log 414).
+                late_answers, usage, warnings = request_condition_check(
+                    context, state, _condition_shown(check, late), usage, warnings)
+                if late_answers is not None:
+                    check = apply_condition_answers(check, late, late_answers)
+                record_event(context, state, "routing.capability_condition_check", "classify", {
+                    "stated": stated, "pairs": [[index, action, keys, quote] for index, action, keys, quote in late],
+                    "answers": late_answers, "after_second_opinion": True, "full_gap": check.full_gap})
         elif pairs and check.full_gap and has_check_model(context):
             # Log 403: the second opinion was owed and could not answer (budget, provider), so the
             # gap is unconfirmed: said as such, and routing's offer stays (as for Log 401's backup).

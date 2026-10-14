@@ -1011,7 +1011,7 @@ def test_a_stated_delivery_is_a_result_no_workflow_gives_and_a_file_format_is_no
         ("each patient's TF-gene network", "available"),
         ("emailed to each patient's doctor automatically", "not_available")]
     assert not check.full_gap and check.unchecked == []
-    assert "sending, uploading, publishing, showing or re-running them is done outside NetZoo" in \
+    assert "sending, uploading, publishing or showing them is done outside NetZoo" in \
         understanding_paragraph(check)
     # A delivery inside an asked-for result's own words was read with it.
     inside = _with_others(EMAILED, [{"about": "delivery", "quote": "each patient's TF-gene network"}], [network])
