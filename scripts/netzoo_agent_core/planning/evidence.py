@@ -178,6 +178,10 @@ def _search_root(task: str, selections) -> tuple[Path | None, bool]:
     return PROJECT_ROOT / "data", _is_demo_request(task)
 
 
+NOT_SEARCHED = ("The folder named in your request", "Your request names", "Give the path of")
+"""How `_not_searched_reason` begins, so the input wizard can show it (M2, live m2a P33)."""
+
+
 def _not_searched_reason(selections, named_unbound: list[str], field_name: str) -> str:
     """Why no other data was looked for: the request named its own files or folders (M2)."""
     if selections.missing_directories:

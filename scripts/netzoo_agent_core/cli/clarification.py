@@ -327,6 +327,10 @@ def _render_clarification_prompt(
         for candidate_index, candidate in enumerate(current.candidates, 1):
             lines.append(f"{candidate_index}. {candidate}")
     else:
+        from ..planning.evidence import NOT_SEARCHED
+
+        if (current.reason or "").startswith(NOT_SEARCHED):
+            lines.append(current.reason)  # M2 (live m2a P33): why no other data was offered
         lines.append(_ui_text("Enter the full path."))
     lines.append(_ui_text("Selection > "))
     return "\n".join(lines)
