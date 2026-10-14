@@ -128,18 +128,20 @@ EMAILED = ("We want each patient's TF-gene network from expression, motifs and P
            "patient's doctor automatically.")
 
 
-def test_a_short_tail_in_any_script_is_read_again_and_framing_is_not():
-    """Item 4 (2026-10-14): the English 4-letter-word count missed short tails and every unspaced script."""
+def test_a_short_tail_in_any_script_is_read_again_and_short_framing_is_not():
+    """Item 4 (2026-10-14): the English 4-letter-word count missed short tails and every unspaced script. Words before
+    a quote are read again on the same count (review of 474a83c): "We want" is not, "Which method gives" is."""
     from netzoo_agent_core.interpretation.reread import letter_runs
 
     task = "We want one TF-gene network per sample and upload them."
     found = CapabilityCheck(requirements=[_req("one TF-gene network per sample", "result", "available",
                                                ["lioness_panda.per_sample_networks"])])
     assert reread_passages(task, _decision(found)) == ["and upload them"]
-    framing = "Which method gives one TF-gene network per sample?"
     plain = CapabilityCheck(requirements=[_req("one TF-gene network per sample", "result", "available",
                                                ["lioness_panda.per_sample_networks"])])
-    assert reread_passages(framing, _decision(plain)) == []
+    assert reread_passages("We want one TF-gene network per sample.", _decision(plain)) == []
+    assert reread_passages("Which method gives one TF-gene network per sample?", _decision(plain)) == [
+        "Which method gives"]
     assert letter_runs("and upload them") == 3 and letter_runs("並上傳到公開資料庫") == 5
 
 
@@ -182,7 +184,7 @@ def test_stretches_a_context_quote_separates_are_read_as_one_passage():
         _req("each TF's activity per sample", "result", "available", ["giraffe.tf_activity"]),
         _req("our expression, motifs and PPI", "context"), _req("our raw reads", "context")])
     assert reread_passages(VP5Q, _decision(found)) == [
-        "from our expression, motifs and PPI, and also aligns our raw reads to the genome first"]
+        "Which method gives", "from our expression, motifs and PPI, and also aligns our raw reads to the genome first"]
     # A data clause alone after the result is one unread word: not read again.
     plain = "We want each patient's TF-gene network from expression, motifs and PPI of 50 patients."
     data = CapabilityCheck(requirements=[_req("each patient's TF-gene network", "result", "available",

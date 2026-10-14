@@ -31,10 +31,13 @@ from .capability_check import request_sentences
 __all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "unread_stretches"]
 
 MIN_UNREAD_WORDS = 3
-"""Unread words (`letter_runs`) a stretch after a quoted result must hold to be read again. On the 365 distinct
-recorded first checks of held-out items (2026-10-11 to 10-14) every gold requirement left unread there sat in a
-stretch of 8 or more unread words; 3 reaches all 11, and a short tail such as "and upload them", re-reading 21 checks
-of 365 (2 would re-read 55 and reach no more). `docs/research-log/coverage-2026-10-14/stretches.py`."""
+"""Unread words (`letter_runs`) a stretch beside a quoted result must hold to be read again, before or after it alike.
+On the 373 distinct recorded first checks of held-out items (2026-10-11 to 10-14) every gold requirement left unread
+sat in a stretch of 8 or more unread words; 3 reaches all 11 and a short ask such as "and upload them", re-reading 76
+checks of 373. Most of those are the words before a quote that only say how the sentence asks ("We want to know",
+"Is there a method that", 4-6 words): the re-read answers that they ask for nothing, at a median 29 s. Counting only
+after the first quote re-read 21, but missed an ask placed first (review of 474a83c).
+`docs/research-log/coverage-2026-10-14/stretches.py`."""
 
 
 @lru_cache(maxsize=1)
@@ -75,13 +78,12 @@ def letter_runs(text: str) -> int:
 
 
 def unread_stretches(task: str, check) -> list[tuple[int, int, int]]:
-    """Item 4 (2026-10-14): in each sentence where a result was quoted, the stretches no quote covers after its first
-    quote, trimmed of punctuation, as (start, end, unread words). What precedes a sentence's first quote is how the
-    sentence asks ("We want", "Which method"); what follows it, unquoted, is where a second ask goes unread
-    (heldout14 P1: "..., emailed to each patient's doctor automatically"). Stretches that only words read as context
-    or a methods question separate are one passage, whose unread words are counted (live check VP5q: "and also
-    aligns" and "to the genome first" around the context quote "our raw reads" were read as two meaningless
-    passages)."""
+    """Item 4 (2026-10-14): in each sentence where a result was quoted, the stretches no quote covers, before and after
+    its quotes, trimmed of punctuation, as (start, end, unread words). A second ask goes unread beside a quoted one
+    (heldout14 P1: "..., emailed to each patient's doctor automatically"), and as well before it as after it (review of
+    474a83c: "Align our raw reads to the genome and then build TF-gene networks per sample."). Stretches that only
+    words read as context or a methods question separate are one passage, whose unread words are counted (live check
+    VP5q: "and also aligns" and "to the genome first" around the context quote "our raw reads")."""
     covered = _covered(task, check)
     in_result = _mask(task, [item.quote for item in check.results()])
     results = [quote for item in check.results() if (quote := item.quote.strip().casefold())]
@@ -89,7 +91,7 @@ def unread_stretches(task: str, check) -> list[tuple[int, int, int]]:
     for start, end in request_sentences(task):
         if not any(quote in task[start:end].casefold() for quote in results):
             continue
-        index = next((index for index in range(start, end) if covered[index]), end)
+        index = start
         group = None
         while index < end:
             if covered[index]:

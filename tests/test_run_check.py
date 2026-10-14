@@ -170,4 +170,5 @@ def test_a_run_turn_is_re_read_like_a_guidance_turn():
                             reason="r", capability_check=check)
     # Item 4: the words no quote covers (this check quoted no context), not the whole sentence.
     assert reread_passages(task, decision) == [
+        "Run it now",
         "from the expression, motifs and PPI of 44 samples, and upload the networks to a public repository for us"]

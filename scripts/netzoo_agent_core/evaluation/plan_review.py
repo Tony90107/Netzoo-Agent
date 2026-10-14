@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 
 from workflow_registry import (
@@ -129,6 +130,11 @@ def _request_requirements_item(
     )
 
 
+def plan_digest(plan: WorkflowPlan) -> str:
+    """What an approval is for: the whole plan as evaluated (steps, arguments, decision, evidence)."""
+    return hashlib.sha256(json.dumps(plan.model_dump(mode="json"), sort_keys=True).encode("utf-8")).hexdigest()
+
+
 def evaluate_workflow_plan(
     plan: WorkflowPlan,
     user_task: str,
@@ -136,7 +142,18 @@ def evaluate_workflow_plan(
     *,
     requirements: RequestRequirements | dict | None = None,
 ) -> PlanEvaluationResult:
-    """Evaluate a structured plan before Executor receives any tool authority."""
+    """Evaluate a structured plan before Executor receives any tool authority; an approval names the plan it read."""
+    result = _evaluate_workflow_plan(plan, user_task, project_policy, requirements=requirements)
+    return result.model_copy(update={"plan_sha256": plan_digest(plan)}) if result.status == "approved" else result
+
+
+def _evaluate_workflow_plan(
+    plan: WorkflowPlan,
+    user_task: str,
+    project_policy: ProjectPolicySnapshot | dict | None = None,
+    *,
+    requirements: RequestRequirements | dict | None = None,
+) -> PlanEvaluationResult:
     if plan.status != "ready":
         return PlanEvaluationResult(
             status="deferred",

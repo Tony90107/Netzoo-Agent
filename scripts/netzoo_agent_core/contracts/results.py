@@ -32,6 +32,9 @@ class PlanEvaluationResult(BaseModel):
     score: int = Field(ge=0, le=100)
     summary: str
     rubric: list[PlanRubricItem] = Field(default_factory=list)
+    # Review of 474a83c: an approval is for the plan it read -- steps, arguments and decision -- so a plan changed after
+    # it (a step switched from PANDA to OTTER) is not approved. Code-owned; omitted while unset.
+    plan_sha256: str | None = Field(default=None, exclude_if=lambda value: value is None)
 
 class ArtifactValidationResult(BaseModel):
     """Structural verification outcome for files produced by one workflow."""
