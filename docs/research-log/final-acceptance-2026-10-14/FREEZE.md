@@ -4,13 +4,18 @@
 
 ## 受測版本
 
-- `7696e69`（netzoo-agent/main），worktree `.worktrees/netzoo-final-live`。
+- `3529927`（netzoo-agent/main），worktree `.worktrees/netzoo-final-live`。
 - **執行前修訂（2026-10-14）**：原定 `f1dd5bf`。在任何 session 執行前，工程審查（474a83c）重現了三個缺口：
   - 條件檢查失敗時，run 仍維持 `agrees`；
   - 批准沒有綁定計畫步驟；
   - 第一段引文之前的需求不會被重讀。
 
   三者已修正（7696e69），所以改測此版本。題組、標準答案、指標與門檻都沒有改動。
+- **作廢與再修訂（2026-10-14）**：
+  - 第一次執行（標籤 `a24`）的 150 個 session，全部在 CLI 載入時就失敗（`ModuleNotFoundError: graph.source_refs`），沒有產生任何 session，紀錄移到 `live/void-a24/`。
+  - 原因：7696e69 把 `graph/execution.py` 整個檔案提交，連同另一個 session 尚未完成的修改；那些修改依賴未提交的模組。
+  - 3529927 移除那段修改，只保留 7696e69 本身的改動，並在乾淨的 worktree 驗證可載入，3656 項測試通過。
+  - 受測版本改為 `3529927`，標籤改為 `a24b`。題組、標準答案、指標與門檻都沒有改動。
 - 模型設定與上線相同：routing 用 gpt-4o-mini；檢查、重讀、第二意見、條件檢查用 nemotron。
 
 ## 題組 `accept24.json`（英文，執行前從未跑過）
@@ -34,7 +39,7 @@
 
 ## 回合
 
-- `a24`：每題 1 次，另以 `random.seed(24)` 抽 30 題各重跑 1 次，用來看穩定性。共 150 個 session。
+- `a24b`（原 `a24` 作廢，見上）：每題 1 次，另以 `random.seed(24)` 抽 30 題各重跑 1 次，用來看穩定性。共 150 個 session。
 - K 題第二輪用 `--resume`。
 - 執行前確認 OpenRouter 付費餘額與 nemotron 當日額度（1000 次）。
 - 統計時，重複執行不算獨立題目：主指標只用第 1 次；第 2 次只用來報告兩次的一致率。
