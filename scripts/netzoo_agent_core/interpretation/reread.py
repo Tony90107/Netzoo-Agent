@@ -31,10 +31,10 @@ from .capability_check import request_sentences
 __all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "unread_stretches"]
 
 MIN_UNREAD_WORDS = 3
-"""Words (`letter_runs`) an unread stretch after a quoted result must hold to be read again. On the 361 distinct
-recorded first checks of held-out items (2026-10-11 to 10-13) every gold requirement left unread there sat in a
-stretch of 7 or more words; 3 reaches them all, and a short tail such as "and upload them", re-reading 16 checks of
-361 (2 would re-read 45 and reach no more). `docs/research-log/coverage-2026-10-14/stretches.py`."""
+"""Unread words (`letter_runs`) a stretch after a quoted result must hold to be read again. On the 365 distinct
+recorded first checks of held-out items (2026-10-11 to 10-14) every gold requirement left unread there sat in a
+stretch of 8 or more unread words; 3 reaches all 11, and a short tail such as "and upload them", re-reading 21 checks
+of 365 (2 would re-read 55 and reach no more). `docs/research-log/coverage-2026-10-14/stretches.py`."""
 
 
 @lru_cache(maxsize=1)
@@ -43,16 +43,20 @@ def _workflow_names() -> re.Pattern:
     return re.compile(r"\b(?:" + "|".join(sorted(map(re.escape, parts), key=len, reverse=True)) + r")\b", re.I)
 
 
-def _covered(task: str, check) -> list[bool]:
+def _mask(task: str, quotes) -> list[bool]:
     covered = [False] * len(task)
     folded = task.casefold()
-    for item in check.requirements:
-        quote = item.quote.strip()
+    for quote in quotes:
+        quote = quote.strip()
         start = folded.find(quote.casefold()) if quote else -1
         if start >= 0:
             for index in range(start, min(len(task), start + len(quote))):
                 covered[index] = True
     return covered
+
+
+def _covered(task: str, check) -> list[bool]:
+    return _mask(task, [item.quote for item in check.requirements])
 
 
 _LETTERS = re.compile(r"[^\W\d_]+")
@@ -70,19 +74,23 @@ def letter_runs(text: str) -> int:
     return count
 
 
-def unread_stretches(task: str, check) -> list[tuple[int, int]]:
+def unread_stretches(task: str, check) -> list[tuple[int, int, int]]:
     """Item 4 (2026-10-14): in each sentence where a result was quoted, the stretches no quote covers after its first
-    quote, trimmed of punctuation. What precedes a sentence's first quote is how the sentence asks ("We want",
-    "Which method"); what follows it, unquoted, is where a second ask goes unread (heldout14 P1: "..., emailed to each
-    patient's doctor automatically")."""
+    quote, trimmed of punctuation, as (start, end, unread words). What precedes a sentence's first quote is how the
+    sentence asks ("We want", "Which method"); what follows it, unquoted, is where a second ask goes unread
+    (heldout14 P1: "..., emailed to each patient's doctor automatically"). Stretches that only words read as context
+    or a methods question separate are one passage, whose unread words are counted (live check VP5q: "and also
+    aligns" and "to the genome first" around the context quote "our raw reads" were read as two meaningless
+    passages)."""
     covered = _covered(task, check)
+    in_result = _mask(task, [item.quote for item in check.results()])
     results = [quote for item in check.results() if (quote := item.quote.strip().casefold())]
     stretches = []
     for start, end in request_sentences(task):
         if not any(quote in task[start:end].casefold() for quote in results):
             continue
-        first = next((index for index in range(start, end) if covered[index]), end)
-        index = first
+        index = next((index for index in range(start, end) if covered[index]), end)
+        group = None
         while index < end:
             if covered[index]:
                 index += 1
@@ -93,8 +101,16 @@ def unread_stretches(task: str, check) -> list[tuple[int, int]]:
             text = task[index:run_end]
             left, right = len(text) - len(text.lstrip(_EDGES)), len(text.rstrip(_EDGES))
             if right > left:
-                stretches.append((index + left, index + right))
+                piece = (index + left, index + right, letter_runs(text))
+                if group is not None and not any(in_result[group[1]:piece[0]]):
+                    group = (group[0], piece[1], group[2] + piece[2])
+                else:
+                    if group is not None:
+                        stretches.append(group)
+                    group = piece
             index = run_end
+        if group is not None:
+            stretches.append(group)
     return stretches
 
 
@@ -116,8 +132,7 @@ def reread_passages(task: str, decision) -> list[str]:
         if not offered or named:
             return []
         return [task[start:end].strip() for start, end in sentences]
-    tails = [task[start:end] for start, end in unread_stretches(task, check)
-             if letter_runs(task[start:end]) >= MIN_UNREAD_WORDS]
+    tails = [task[start:end] for start, end, words in unread_stretches(task, check) if words >= MIN_UNREAD_WORDS]
     return list(dict.fromkeys([*tails, *check.unchecked]))[:MAX_SENTENCES]
 
 
@@ -139,14 +154,29 @@ def merge_reread(task: str, check, reread, passages=(), rejected=()):
     (heldout11 VP5q: the whole sentence re-read as one result would have hidden the TF activity
     already found), and a background or methods quote a new result now covers gives way to it.
 
-    Item 4: a new result must quote the words the re-read was given (`passages`); what it quotes elsewhere was the
-    first reading's. An unchecked sentence the re-read was given whole is read now -- an empty answer says it asks for
-    nothing ("Opinions welcome.") -- unless a quote of the re-read could not be found in the request (`rejected`).
+    Item 4: a new result must quote words the re-read was given (`passages`); what it quotes elsewhere was the first
+    reading's. Given a stretch after a quoted result, it must quote words the first reading left unread: a stretch
+    can hold a context quote (VP5q), and the data it names is not asked for. Given a whole sentence it may read anew
+    what the first reading filed as context or a methods question (Log 406, VN5q). An unchecked sentence the re-read
+    was given whole is read now -- an empty answer says it asks for nothing ("Opinions welcome.") -- unless a quote of
+    the re-read could not be found in the request (`rejected`).
     """
     found = [item.quote for item in check.results()]
-    given = [span for passage in passages if (span := _span(task, passage)) is not None]
+    sentences = {task[start:end].strip() for start, end in request_sentences(task)}
+    whole = [span for passage in passages if passage in sentences and (span := _span(task, passage)) is not None]
+    tails = [span for passage in passages if passage not in sentences and (span := _span(task, passage)) is not None]
+    read = _covered(task, check)
+
+    def given(quote: str) -> bool:
+        span = _span(task, quote)
+        if span is None:
+            return False
+        if any(min(span[1], b) > max(span[0], a) for a, b in whole):
+            return True
+        return any(min(span[1], b) > max(span[0], a) for a, b in tails) and not all(read[span[0]:span[1]])
+
     new = [item for item in reread.results() if not _overlaps(task, item.quote, found)
-           and (not given or _overlaps(task, item.quote, [task[a:b] for a, b in given]))]
+           and (not passages or given(item.quote))]
     unchecked = list(check.unchecked) if rejected else [item for item in check.unchecked if item not in passages]
     if not new and unchecked == check.unchecked:
         return check

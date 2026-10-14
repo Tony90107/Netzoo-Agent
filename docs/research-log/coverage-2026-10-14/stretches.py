@@ -21,7 +21,7 @@ from coverage import WORKTREES, gold_items, overlaps  # noqa: E402
 from recent_misses import SINCE  # noqa: E402
 from netzoo_agent_core.contracts.capability_check import CapabilityCheck  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import _span  # noqa: E402
-from netzoo_agent_core.interpretation.reread import unread_stretches, letter_runs  # noqa: E402
+from netzoo_agent_core.interpretation.reread import unread_stretches  # noqa: E402
 
 
 def main():
@@ -57,8 +57,7 @@ def main():
         missed = [_span(task, r["words"]) for r in item["requirements"]]
         missed = [span for span in missed if span and not any(overlaps(span, r) for r in results)]
         most = 0
-        for start, end in unread_stretches(task, check):
-            tokens = letter_runs(task[start:end])
+        for start, end, tokens in unread_stretches(task, check):
             most = max(most, tokens)
             hit = any(overlaps((start, end), span) for span in missed)
             by_count[min(tokens, 10)][0] += 1

@@ -200,6 +200,25 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
 _CHECKED_ABOUT = ("how_computed", "what_it_contains")
 
 
+def delivery_requirements(task: str, proposal, results: list[CheckedRequirement]) -> list[CheckedRequirement]:
+    """Items 4-5 (2026-10-14): each delivery the request states, as a result no registered workflow gives.
+
+    Every registered workflow writes result files and stops (`capability_sheet.yaml`, `delivery`), so a delivery is
+    never available -- it is not a property of the result to check against a workflow (Log 414's condition check
+    would wrongly remove the network that is to be e-mailed). Kept when its words are in the request and outside
+    every asked-for result's own words, which were read with it.
+    """
+    asked = [span for item in results if (span := _span(task, item.quote)) is not None]
+    found = []
+    for other in getattr(getattr(proposal, "conditions", None), "other_requirements", None) or []:
+        span = _span(task, other.quote) if other.about == "delivery" and other.quote.strip() else None
+        if span is None or any(a < span[1] and span[0] < b for a, b in asked):
+            continue
+        found.append(CheckedRequirement(quote=task[span[0]:span[1]].strip().rstrip(" .;,!?"), kind="result",
+                                        status="not_available", not_by=["delivery"]))
+    return list({item.quote: item for item in found}.values())
+
+
 def stated_requirements(task: str, proposal, check: CapabilityCheck) -> list[str]:
     """Log 414: the other requirements to check against credited workflows, as quoted in the request.
 
@@ -463,6 +482,9 @@ def build_capability_check(
     requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
+    deliveries = delivery_requirements(task, proposal, [item for item in requirements if item.kind == "result"])
+    requirements += deliveries
+    spans += [span for item in deliveries if (span := _span(task, item.quote)) is not None]
     # Log 392 (B): the schema has one field per numbered sentence, so a sentence the model
     # gave a background or methods-question role was read even when it quoted nothing
     # (TEST_PROMPTS r9: such background sentences were listed as "Not checked").
