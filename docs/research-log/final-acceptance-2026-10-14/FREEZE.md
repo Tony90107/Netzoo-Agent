@@ -4,7 +4,13 @@
 
 ## 受測版本
 
-- `f1dd5bf`（netzoo-agent/main），worktree `.worktrees/netzoo-final-live`。
+- `7696e69`（netzoo-agent/main），worktree `.worktrees/netzoo-final-live`。
+- **執行前修訂（2026-10-14）**：原定 `f1dd5bf`。在任何 session 執行前，工程審查（474a83c）重現了三個缺口：
+  - 條件檢查失敗時，run 仍維持 `agrees`；
+  - 批准沒有綁定計畫步驟；
+  - 第一段引文之前的需求不會被重讀。
+
+  三者已修正（7696e69），所以改測此版本。題組、標準答案、指標與門檻都沒有改動。
 - 模型設定與上線相同：routing 用 gpt-4o-mini；檢查、重讀、第二意見、條件檢查用 nemotron。
 
 ## 題組 `accept24.json`（英文，執行前從未跑過）

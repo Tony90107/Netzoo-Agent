@@ -2,7 +2,7 @@
 
 Usage (repository root): python docs/research-log/final-acceptance-2026-10-14/collect24.py <tag>
 
-Log 411's collect17.py on accept24 and the live code at f1dd5bf (.worktrees/netzoo-final-live), over the round plan of
+Log 411's collect17.py on accept24 and the live code at 7696e69 (.worktrees/netzoo-final-live), over the round plan of
 `plan24.jobs()` (every item once, 30 items twice). Each recorded session is re-rendered with the live code
 (`replay_sessions.py`); the replayed reply must equal the recorded one. Per session and gold requirement: L1
 (understood: a check result sharing the gold words), L2 (the check's status), CS (code-read contradictions), and for a
