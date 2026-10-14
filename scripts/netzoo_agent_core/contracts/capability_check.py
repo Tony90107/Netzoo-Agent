@@ -133,7 +133,9 @@ def conditions_model() -> type[BaseModel]:
     # estimated from negative correlation with the miRNA levels we measured." -- PUMA was offered as fitting).
     # Items 4-5 live check (2026-10-14): "format_or_delivery" held both a file format and a delivery; the check read
     # "uploaded automatically to a public database", "emailed to each patient's doctor automatically" and "a dashboard
-    # that updates live" 4 times in 4, and code dropped them all with "save it as a tab-separated file".
+    # that updates live" 4 times in 4, and code dropped them all with "save it as a tab-separated file". Live check c3:
+    # with "automatic or scheduled re-runs" in it, "We will run the analysis on our own server overnight" was read as a
+    # delivery once in 2; how the user runs the analysis is not one.
     other = create_model(
         "OtherRequirement", __config__=ConfigDict(extra="forbid"),
         __validators__={"_recorded": field_validator("about", mode="before")(_recorded_about)},
@@ -141,9 +143,9 @@ def conditions_model() -> type[BaseModel]:
         about=(OtherAbout, Field(description=(
             "how_computed: how a result must be estimated or what it must be based on. what_it_contains: a "
             "property or content a result must have. file_format: the file type, file or column names, or the "
-            "folder results are written to. delivery: results sent, uploaded, published, shown or kept updated "
-            "anywhere outside the analysis (e-mail, a database or repository, a website, a dashboard or app, "
-            "automatic or scheduled re-runs). which_data: which of the user's samples or files to use."))))
+            "folder results are written to. delivery: results sent, uploaded, published or shown to anyone outside "
+            "the analysis (e-mail, a database or repository, a website, a dashboard or app). which_data: which of "
+            "the user's samples or files to use."))))
     fields["other_requirements"] = (list[other], Field(description=(
         "Every other requirement the request states about the asked-for results that none of the fields above "
         "covers; empty when there is none.")))

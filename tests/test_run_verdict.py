@@ -247,3 +247,38 @@ def test_non_analysis_actions_keep_their_own_rules():
                                 reason="r")
         assert run_approval_failures(decision, "anything") == []
     assert approved(_panda(), PANDA_TASK).run_verdict.verdict == "agrees"
+
+
+UN3 = "We have mutation calls for 160 tumors. We want patient subtypes. The clustering has to be k-means with k chosen by silhouette."
+
+
+def test_a_workflow_the_second_opinion_credits_is_held_to_the_stated_requirements(monkeypatch):
+    """Items 4-5 live check c3 (heldout19 UN3): the first reading credited nothing, the second opinion credited SAMBAR,
+    and "the clustering has to be k-means" -- checked before the second opinion -- was never checked against it."""
+    from netzoo_agent_core.contracts.capability_check import unstated_conditions
+
+    proposal = proposal_model(3).model_validate({
+        "s1": {"role": "background", "has": ["mutation calls for 160 tumors"], "about_methods": [], "asks": []},
+        "s2": {"role": "asks", "has": [], "about_methods": [], "asks": [_ask("We want patient subtypes.", [])]},
+        "s3": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "conditions": {**unstated_conditions(), "other_requirements": [
+            {"about": "how_computed", "quote": "The clustering has to be k-means with k chosen by silhouette."}]}})
+    asked = []
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, shown, usage, warnings, situation: (["all"] * len(shown), usage, warnings))
+
+    def condition_check(context, state, shown, usage, warnings, redirect=False):
+        asked.append([(workflow, stated) for _asked, stated, workflow, _text in shown])
+        return ["violates"] * len(shown), usage, warnings
+
+    monkeypatch.setattr(router_invocation, "request_condition_check", condition_check)
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                            capability_match_status="exact", matched_actions=["run_sambar"])
+    invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                     budget_warnings=[], reason_code=None)
+    result = router_invocation._with_capability_check(SimpleNamespace(project_policy=POLICY), {}, UN3, invocation,
+                                                       proposal)
+    assert asked == [[("SAMBAR", "The clustering has to be k-means with k chosen by silhouette.")]]
+    check = result.decision.capability_check
+    assert check.full_gap and check.results()[0].violations

@@ -64,6 +64,8 @@ def analyse(tag, item):
         deliveries = [r["quote"] for r in final.get("requirements", []) if "delivery" in (r.get("not_by") or [])]
         ok = not deliveries and all(not hit or all(s != "not_available" for s in hit)
                                     for _w, expect, hit in gold if expect != "not_supported")
+    elif item["kind"] == "violation":  # c3: a stated requirement no workflow meets still refuses the result
+        ok = all(hit and all(s == "not_available" for s in hit) for _w, expect, hit in gold if expect == "not_supported")
     else:
         ok = all(status != "needs_fact" for _q, status, _f in results)
     reply = next((m["content"] for m in reversed(data["messages"]) if m["role"] == "assistant"), "")

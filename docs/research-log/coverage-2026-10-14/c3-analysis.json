@@ -1,0 +1,247 @@
+[
+ {
+  "id": "19-HP1-1",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want one TF-gene network.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want one TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want one TF-gene network.\" -- available from PANDA or OTTER.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-HP2-1",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want subtypes from pathway mutation scores.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want subtypes from pathway mutation scores",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want subtypes from pathway mutation scores.\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.\n\nWhy this recommendation:\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOutputs:\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-HP3-1",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "per-sample co-expression networks for 60 samples",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want per-sample co-expression networks for 60 samples",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"per-sample co-expression networks for 60 samples\" -- available from LIONESS-COEXPRESSION or BONOBO.\n\nBased on what you said — \"We want per-sample co-expression networks for 60 samples.\" — **BONOBO** fits better: a confidence value (p-value) is needed for each connection in each sample.\n\nYour question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.\n\n**BONOBO** (recommend) — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable. Needs expression matrix. Produces inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result (one result per sample).\n\nConditional assumptions to confirm:\n- It also needs an expression matrix; no file for it is named yet.\n\nOther compatible option(s):\n- **LIONESS-COEXPRESSION** — preferred when: dozens of samples or more; no sample covariates need to be separated or adjusted; approach: derive each sample network from all-sample and leave-one-out networks.\n\nAbout your concern that memory is a limiting factor (for example, an earlier run ran out of memory):\n- **BONOBO** — Each sample's network is written to its own file; `keep_in_memory=false` (the default) avoids also holding every network in memory. `precision` applies only to the input expression table: the networks are computed and saved in double precision either way.\n\nShould I use BONOBO, or does another listed option fit your study better?\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-HP3-2",
+  "kind": "format",
+  "verdict": "FAIL",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "per-sample co-expression networks for 60 samples",
+    "available",
+    null
+   ],
+   [
+    "We will run the analysis on our own server overnight",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want per-sample co-expression networks for 60 samples",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"per-sample co-expression networks for 60 samples\" -- available from LIONESS-COEXPRESSION or BONOBO.\n2. \"We will run the analysis on our own server overnight\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing, showing or re-running them is done outside NetZoo.\n\nBased on what you said — \"We want per-sample co-expression networks for 60 samples.\" — **BONOBO** fits better: a confidence value (p-value) is needed for each connection in each sample.\n\nYour question asks for a per-sample co-expression network. **BONOBO** fits that result and scale.\n\n**BONOBO** (recommend) — BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable. Needs expression matrix. Produces inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result (one result per sample).\n\nOther compatible option(s):\n- **LIONESS-COEXPRESSION** — preferred when: dozens of samples or more; no sample covariates need to be separated or adjusted; approach: derive each sample network from all-sample and leave-one-out networks.\n\nAbout your concern that memory is a limiting factor (for example, an earlier run ran out of memory):\n- **BONOBO** — Each sample's network is written to its own file; `keep_in_memory=false` (the default) avoids also holding every network in memory. `precision` applies only to the input expression table: the networks are computed and saved in double precision either way.\n\nShould I use BONOBO, or does another listed option fit your study better?\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-HP4-1",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want a partial-correlation network linking them.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want a partial-correlation network linking them",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want a partial-correlation network linking them.\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\nYour question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-HP4-2",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want a partial-correlation network linking them.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want a partial-correlation network linking them",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want a partial-correlation network linking them.\" -- available from DRAGON.\n\nSelected path: **DRAGON**.\n\nYour question asks for a cohort-level multi-omic network. **DRAGON** fits that result and scale.\n\n**DRAGON** — Infer an aggregate two-layer multi-omic Gaussian graphical model with DRAGON. DRAGON fits a two-layer Gaussian graphical model with layer-aware shrinkage. Partial correlations describe associations conditional on the other measured features under that model; they are not directed causal effects. The two omics layers must refer to matched samples.\n\nRequired workflow inputs:\n\n- `omics_layer_1`: DRAGON omics layer 1\n- `omics_layer_2`: DRAGON omics layer 2\n\nOutputs:\n\n- `multi_omic_network`: Inferred associations between omics features.\n\nWorkflow-specific scientific notes:\n\n- DRAGON uses two layer-specific shrinkage parameters, lambda1 and lambda2, rather than a generic Graphical Lasso penalty matrix.\n- DRAGON's precision-derived partial correlations estimate within-layer and cross-layer conditional associations after accounting for the other modeled features; this is an undirected association graph, not a causal guarantee or proof that every indirect effect is removed.\n- The declared DRAGON API does not expose a separately tunable third cross-layer penalty such as lambda_inter; three independently controlled intra/inter-omics penalties are outside this workflow contract.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-UN3-1",
+  "kind": "violation",
+  "verdict": "FAIL",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want patient subtypes.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want patient subtypes",
+    "not_supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want patient subtypes.\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level sample cluster assignment. **SAMBAR** fits that result and scale.\n\nWhy this recommendation:\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\n**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOutputs:\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "19-UN6-1",
+  "kind": "violation",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "a network linking them",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want a network linking them",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"a network linking them\" -- not available here: no registered workflow produces this. DRAGON does not meet \"Each link must come with a bootstrap confidence interval.\".\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran."
+ }
+]
