@@ -1,0 +1,292 @@
+{
+ "reviewed": 153,
+ "disagreements": [
+  {
+   "id": "P11",
+   "words": "a gene-gene network for each individual sample",
+   "gold": {
+    "expect": "supported",
+    "by": [
+     "LIONESS-COEXPRESSION",
+     "BONOBO"
+    ]
+   },
+   "proposed": {
+    "expect": "supported",
+    "by": [
+     "LIONESS-COEXPRESSION"
+    ]
+   },
+   "severity": "by_only",
+   "reason": "BONOBO hard-requires declared log-transformed AND centred input (data/bonobo.py:201-209; bonobo.yaml conventions); the prompt states neither (arrays are usually log2 but not centred), unlike P20/P29/P35 where the gold relies on that statement. The question also asks for one tool giving both the overall and per-sample networks, which only LIONESS-COEXPRESSION does (BONOBO has no aggregate output, bonobo.yaml:167). Accept BONOBO only with a centring caveat."
+  },
+  {
+   "id": "P13",
+   "words": "an aggregate TF-gene network by optimising an explicit objective",
+   "gold": {
+    "expect": "supported",
+    "by": [
+     "OTTER"
+    ]
+   },
+   "proposed": {
+    "expect": "supported",
+    "by": [
+     "OTTER",
+     "GIRAFFE"
+    ]
+   },
+   "severity": "by_only",
+   "reason": "GIRAFFE also infers an aggregate TF-gene matrix by minimising an explicit loss (expression reconstruction Y ~ R|TFA| plus PPI/co-expression consistency terms, fitted by gradient descent in netZooPy giraffe), not by message passing (giraffe.yaml:5 'jointly infer R and TFA by fitting'; granularities [aggregate]). OTTER is the canonical answer, but a GIRAFFE answer is not wrong."
+  },
+  {
+   "id": "P25",
+   "words": "its TF-gene modules",
+   "gold": {
+    "expect": "supported",
+    "by": [
+     "CONDOR"
+    ]
+   },
+   "proposed": {
+    "expect": "with_step",
+    "by": [
+     "CONDOR"
+    ]
+   },
+   "severity": "class",
+   "reason": "Borderline. PANDA/OTTER output is a dense TF-gene grid with negative weights; panda.yaml handoff_contract says 'Convert that network to a source-target-weight bipartite edge list before handing it to CONDOR', and workflow_registry.py WORKFLOW_PRACTICAL_NOTES['run_condor'] says the user must threshold it to non-negative weights first; no executor does that conversion/threshold (LOCAL_TOOL_EXECUTORS). Contrast P24/MX10, where the user already supplies a thresholded edge list. Accept supported or with_step, or drop."
+  },
+  {
+   "id": "P32",
+   "words": "a TF-gene network for each group",
+   "gold": {
+    "expect": "supported",
+    "by": [
+     "PANDA",
+     "OTTER"
+    ]
+   },
+   "proposed": {
+    "expect": "supported",
+    "by": [
+     "PANDA",
+     "OTTER",
+     "GIRAFFE"
+    ]
+   },
+   "severity": "by_only",
+   "reason": "The gold accepts GIRAFFE for an aggregate TF-gene network in P02/P25/P28/U09/U12 (giraffe.yaml: produced_artifacts regulatory_network, granularities [aggregate], tag tf_gene_regulation); one GIRAFFE run per group's expression file gives a TF-gene network per group just as well. Requirement 2 can keep [PANDA, OTTER] (separately fitted GIRAFFE R matrices are not on a shared scale)."
+  },
+  {
+   "id": "U04",
+   "words": "one regulators-to-genes network for 55 liver samples",
+   "gold": {
+    "expect": "needs_fact",
+    "by": [
+     "PANDA",
+     "PUMA"
+    ]
+   },
+   "proposed": {
+    "expect": "needs_fact",
+    "by": [
+     "PANDA",
+     "OTTER",
+     "GIRAFFE",
+     "PUMA"
+    ]
+   },
+   "severity": "by_only",
+   "reason": "Class is right (TF-only prior -> TF-gene aggregate; prior with miRNA edges -> PUMA, which then also needs a mirna_file). But the TF-only branch is the same aggregate TF-gene contract for which the gold accepts OTTER and GIRAFFE elsewhere (P02, U09, U12; otter.yaml, giraffe.yaml). Note the fact is file-checkable: the agent could inspect the prior's regulator column."
+  },
+  {
+   "id": "U09",
+   "words": "one network for the whole cohort or one per patient",
+   "gold": {
+    "expect": "needs_fact",
+    "by": [
+     "PANDA",
+     "OTTER",
+     "GIRAFFE",
+     "LIONESS-PANDA"
+    ]
+   },
+   "proposed": {
+    "expect": "supported",
+    "by": [
+     "LIONESS-PANDA"
+    ]
+   },
+   "severity": "class",
+   "reason": "The undecided fact does not change whether a workflow fits: LIONESS-PANDA writes both the aggregate PANDA network (output_file) and one network per patient (lioness-panda.yaml:5 'Infer aggregate PANDA and sample-specific LIONESS-PANDA networks', granularities [aggregate, sample_specific]; execution.py run_lioness_panda). It only changes cost (141 PANDA runs vs 1). Asking first is still reasonable, so this item is ambiguous: accept both or drop from scoring."
+  }
+ ],
+ "agreements_with_comment": [
+  {
+   "id": "P02",
+   "words": "a single TF-to-target-gene regulatory network for 48 bovine mammary samples",
+   "comment": "Agree. All three inputs for the aggregate TF-gene contract are stated; PANDA, OTTER (TF-TF PPI must share the motif TF ID set, otter.yaml) and GIRAFFE (produced_artifacts regulatory_network, aggregate) all fit. Non-model species is fine: taxon is free-form (gene_validation.py)."
+  },
+  {
+   "id": "P25",
+   "words": "the drought regulatory network",
+   "comment": "Agree with [PANDA, OTTER, GIRAFFE]. Note that only PANDA/OTTER declare a CONDOR handoff; GIRAFFE's signed R needs conversion plus user confirmation (giraffe.yaml handoff_contract), so for the follow-on module request PANDA/OTTER are the natural picks."
+  },
+  {
+   "id": "P28",
+   "words": "a single regulatory network that summarises how TFs target genes across all 44 biopsies",
+   "comment": "Agree. Expression, motif prior and STRING TF-TF PPI stated; aggregate request; later phase questions are explicitly the user's own."
+  },
+  {
+   "id": "P03",
+   "words": "a TF-gene regulatory network summarising all 30 of our zebrafish fin-regeneration RNA-seq samples",
+   "comment": "Agree. Motif prior is the decisive missing input; a STRING PPI could be fetched by the registered download_string tool (execution.py LOCAL_TOOL_EXECUTORS), but no tool builds a motif prior, so needs_input holds."
+  },
+  {
+   "id": "U01",
+   "words": "a network from our 80 maize leaf RNA-seq samples",
+   "comment": "Agree: genuine deciding fact. TF-gene -> PANDA/OTTER/GIRAFFE (and then motif+PPI become missing inputs); gene-gene -> LIONESS-COEXPRESSION's aggregate Pearson output (execution.py run_lioness_coexpression). No single workflow serves both readings."
+  },
+  {
+   "id": "U12",
+   "words": "the regulators of the EMT genes",
+   "comment": "Agree. TF reading -> aggregate TF-gene network from the stated expression+TF motif+PPI (GIRAFFE's R also gives signed regulators per gene); lncRNA reading -> nothing (regulator_types [tf] / [tf, mirna]). Fact genuinely changes supported vs not."
+  },
+  {
+   "id": "P20",
+   "words": "a co-expression network for each one",
+   "comment": "Agree. LIONESS-COEXPRESSION runs with >=3 samples (execution.py 'sample_count < 3' is the only gate), so it is a valid by entry, but registry prefer_when puts BONOBO at cohort_size:few and LIONESS at cohort_size:many, and only BONOBO also meets requirement 2. A scorer could reasonably require BONOBO as the lead."
+  },
+  {
+   "id": "P35",
+   "words": "gene-gene networks for each of 6 patient-derived organoid lines",
+   "comment": "Agree with the class; keeping LIONESS-COEXPRESSION in by is lenient. With n=6, each LIONESS network is 6*N_all - 5*N_without_k from 5-sample Pearson correlations, very noisy; BONOBO (Saha et al., built for small cohorts) is the expert answer. Executable either way (>=3 samples)."
+  },
+  {
+   "id": "U07",
+   "words": "a co-expression network for each biopsy",
+   "comment": "Agree: 2 samples -> nothing (BONOBO data/bonobo.py:196, LIONESS execution.py both need >=3); 20 log2-centred samples -> BONOBO or LIONESS-COEXPRESSION. Genuine deciding fact."
+  },
+  {
+   "id": "N14",
+   "words": "Run CONDOR on our WGCNA gene-gene adjacency (genes on both sides)",
+   "comment": "Agree on the contract (condor.yaml input_artifacts [regulatory_network], 'should be bipartite'; CONDOR is bipartite modularity, Platig et al. 2016). Note the executor itself only warns on source/target overlap (data/inspection.py:68-74) and a WGCNA adjacency is a matrix needing edge-list conversion, so refusal must come from the method contract, not from validation."
+  },
+  {
+   "id": "U08",
+   "words": "pathway mutation scores",
+   "comment": "Agree. sambar.yaml accepted_input_modalities [somatic_mutation]. Caveat: the validator only checks non-negative numeric counts, so germline counts would pass validation; the refusal rests on the contract and the method (somatic burden, cancer-gene subset)."
+  },
+  {
+   "id": "U08",
+   "words": "patient subgroups",
+   "comment": "Agree; same deciding fact as requirement 1."
+  },
+  {
+   "id": "U11",
+   "words": "a partial-correlation network between it and the matched expression",
+   "comment": "Agree. dragon.yaml requires continuous measurements (GGM). Caveat: binary 0/1 columns would pass data/dragon.py validation (finite numeric, non-zero variance), so 'not supported' for the binary branch rests on the contract, not the validator."
+  },
+  {
+   "id": "N35",
+   "words": "the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels",
+   "comment": "Agree. PUMA (Kuijjer et al. 2020) uses gene co-expression plus a miRNA-target prior; the mirna_file only marks which regulators are miRNAs; miRNA expression is not an input. The registered route for measured miRNA-mRNA associations is DRAGON (as in U16), which could be offered as the alternative."
+  },
+  {
+   "id": "N03",
+   "words": "a TF-gene network where each edge is labelled as activating or repressing in that patient",
+   "comment": "Agree. Minor wording issue: LIONESS-PANDA edge weights are signed z-score-like values, but their sign means more/less likely to be a targeting edge, not activation vs repression; GIRAFFE's signed R is aggregate only (giraffe.yaml granularities [aggregate])."
+  },
+  {
+   "id": "MX15",
+   "words": "each sample's TF activity",
+   "comment": "Agree: GIRAFFE TFA is TF-by-sample (execution.py run_giraffe, get_tfa)."
+  },
+  {
+   "id": "MX15",
+   "words": "for each sample, whether every TF-gene edge is activating or repressing",
+   "comment": "Agree; same reasoning as N03."
+  },
+  {
+   "id": "P07",
+   "words": "a list of edges that differ significantly between severe and mild",
+   "comment": "Agree with_step: registry CLAIM_SUPPORT for run_lioness_panda group_difference is 'with_step' (limma on LIONESS edges, Kuijjer et al. 2019)."
+  },
+  {
+   "id": "P15",
+   "words": "which TFs' activity is associated with overall survival",
+   "comment": "Agree with_step: registry DOWNSTREAM_ANALYSES run_giraffe names a Cox model on TFA as a later step; survival data are not a workflow input."
+  },
+  {
+   "id": "P29",
+   "words": "regress every edge weight on age",
+   "comment": "Agree with_step; both listed workflows give the per-sample edges (data stated log2 and centred, so BONOBO is valid here)."
+  },
+  {
+   "id": "P32",
+   "words": "rank genes by how much their targeting changes between them",
+   "comment": "Agree with_step: registry _aggregate_claims regulator_change/group_difference for run_panda/run_otter are 'with_step' (targeting scores compared between separately built networks)."
+  },
+  {
+   "id": "P17",
+   "words": "a p-value for every edge",
+   "comment": "Agree with caution. P-values are best-effort: data/dragon.py:153-165 says kappa estimation 'fails when the features far outnumber the samples' and the run then writes the network without p-values. Here 1,700 features vs 95 samples (~18:1) is in that regime, so the outcome is uncertain; consider dropping this requirement from scoring or accepting an answer that conditions on estimability."
+  },
+  {
+   "id": "MX13",
+   "words": "a methylation-expression partial-correlation network for each patient",
+   "comment": "Agree, but the 20,000,000-value cap (data/lioness_dragon.py:28) limits 48 samples to about 913 features in total; methylation+expression feature counts are unstated and commonly far larger, so 'supported' holds only for a modest feature set."
+  },
+  {
+   "id": "MX12",
+   "words": "draw a publication-quality figure of the 50 strongest differing edges",
+   "comment": "Agree, borderline: under the with_step definition the differing edges could be computed outside from the two PANDA networks (as in P32), and the figure drawn outside. Treating figures as a deliverable no workflow makes is defensible; accept with_step too if the scorer distinguishes."
+  },
+  {
+   "id": "U10",
+   "words": "find communities in it",
+   "comment": "Agree. Partly file-checkable: inspect_condor_inputs reports source/target ID overlap (data/inspection.py:68-74), so the agent could look before asking; the fact still changes CONDOR vs not supported."
+  },
+  {
+   "id": "U17",
+   "words": "the co-expression changes associated with age or just the overall co-expression network",
+   "comment": "Agree. COBRA gives covariate components (cobra.yaml); the overall network is LIONESS-COEXPRESSION's aggregate output. LIONESS per-sample networks plus a regression on age would also be a with_step route for the age reading, so asking is right but not the only reasonable reply."
+  },
+  {
+   "id": "U18",
+   "words": "one network per time point or the time delays between regulators and their targets",
+   "comment": "Agree. Per-time-point networks = LIONESS-PANDA on 10 samples (>=3); lags are not modelled by any workflow."
+  },
+  {
+   "id": "P22",
+   "words": "a gene co-expression matrix with the sequencing-centre effect taken out",
+   "comment": "Agree. Note run_cobra's adjusted co-expression is the intercept component (cobra.yaml:39), so with age and sex in design.tsv their effects are removed too, not only the centre effect."
+  },
+  {
+   "id": "P23",
+   "words": "which gene co-expression patterns are associated with smoking",
+   "comment": "Agree: smoking covariates are the missing design_file. LIONESS-COEXPRESSION plus an outside test would be a with_step alternative but still needs smoking status."
+  },
+  {
+   "id": "P27",
+   "words": "pathway-level mutation scores",
+   "comment": "Agree. SAMBAR's R package ships default exon sizes and cancer genes, but the registered executor requires them as explicit files (sambar.yaml required_inputs)."
+  },
+  {
+   "id": "U13",
+   "words": "per-sample co-expression networks with LIONESS for its 40 samples",
+   "comment": "Agree: with a header, format_expression's auto mode picks the genes axis from shape (data/transforms.py:79-93); genes in columns would require a header anyway."
+  },
+  {
+   "id": "U02",
+   "words": "a TF-gene network for each column",
+   "comment": "Agree; no single workflow fits both readings (single_cell OutsideStep in workflow_registry.py advises against per-cell LIONESS)."
+  },
+  {
+   "id": "U16",
+   "words": "miRNAs linked to the genes they affect",
+   "comment": "Agree; the PUMA branch would additionally be needs_input (TF motif prior, PPI, miRNA list)."
+  }
+ ]
+}
