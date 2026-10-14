@@ -399,6 +399,14 @@ def _record_shadow(context, state, decision, check, check_status: str) -> None:
         "match_status": decision.capability_match_status, "match_basis": decision.match_basis})
 
 
+def _not_checked(check: CapabilityCheck, pairs) -> CapabilityCheck:
+    """Review of 474a83c: a stated requirement the condition check could not answer (budget, provider) was never
+    checked, and a run of SAMBAR beside "the clustering has to be k-means" kept `agrees`. Its words are now unread, as
+    a sentence the check did not read: said as not checked, never a full gap, and a run is held (`unread`)."""
+    quotes = [quote for _index, _action, _keys, quote in pairs]
+    return check.model_copy(update={"unchecked": list(dict.fromkeys([*check.unchecked, *quotes])), "full_gap": False})
+
+
 def _condition_shown(check, pairs) -> list[tuple[str, str, str, str]]:
     """(asked result, stated requirement, workflow, what it produces and needs) per condition-check pair."""
     return [(check.requirements[index].quote, quote, entry(keys[0]).workflow, workflow_description(keys))
@@ -444,8 +452,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # each credited workflow; only a workflow found unable to meet it is removed -- nothing turns unconfirmed.
         answers, usage, warnings = request_condition_check(
             context, state, _condition_shown(check, pairs_to_check), usage, warnings)
-        if answers is not None:
-            check = apply_condition_answers(check, pairs_to_check, answers)
+        check = (apply_condition_answers(check, pairs_to_check, answers) if answers is not None
+                 else _not_checked(check, pairs_to_check))
         offered = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
         redirect = redirect_pairs(check, list(dict.fromkeys(offered))[:4]) if answers is not None else []
         redirected = None
@@ -493,8 +501,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
                 # workflow the second opinion credits is held to the stated requirements like any other (Log 414).
                 late_answers, usage, warnings = request_condition_check(
                     context, state, _condition_shown(check, late), usage, warnings)
-                if late_answers is not None:
-                    check = apply_condition_answers(check, late, late_answers)
+                check = (apply_condition_answers(check, late, late_answers) if late_answers is not None
+                         else _not_checked(check, late))
                 record_event(context, state, "routing.capability_condition_check", "classify", {
                     "stated": stated, "pairs": [[index, action, keys, quote] for index, action, keys, quote in late],
                     "answers": late_answers, "after_second_opinion": True, "full_gap": check.full_gap})

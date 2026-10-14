@@ -282,3 +282,65 @@ def test_a_workflow_the_second_opinion_credits_is_held_to_the_stated_requirement
     assert asked == [[("SAMBAR", "The clustering has to be k-means with k chosen by silhouette.")]]
     check = result.decision.capability_check
     assert check.full_gap and check.results()[0].violations
+
+
+# Engineering review of 474a83c (2026-10-14) ------------------------------------------------------------------------
+
+UN3_RUN = "Run SAMBAR to get patient subtypes. The clustering has to be k-means with k chosen by silhouette."
+
+
+def _un3_run(monkeypatch, answers):
+    from netzoo_agent_core.contracts.capability_check import unstated_conditions
+
+    proposal = proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [
+            _ask("Run SAMBAR to get patient subtypes.", ["sambar.subtypes"])]},
+        "s2": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "conditions": {**unstated_conditions(), "other_requirements": [
+            {"about": "how_computed", "quote": "The clustering has to be k-means with k chosen by silhouette."}]}})
+    monkeypatch.setattr(router_invocation, "request_condition_check",
+                        lambda context, state, shown, usage, warnings, redirect=False: (answers, usage, warnings))
+    decision, _ = _route(UN3_RUN, "run_sambar", proposal, monkeypatch, basis="workflow_name")
+    return decision
+
+
+def test_a_stated_requirement_the_condition_check_could_not_check_never_approves_a_run(monkeypatch):
+    """Review defect 1: the condition check failed (None) and the run kept `agrees`."""
+    refused = _un3_run(monkeypatch, ["violates"])
+    assert refused.action == "no_tool"
+    unchecked = _un3_run(monkeypatch, None)
+    assert unchecked.action == "no_tool" and unchecked.run_verdict.held
+    assert unchecked.run_verdict.verdict == "unread"
+    assert "The clustering has to be k-means with k chosen by silhouette." in unchecked.capability_check.unchecked
+
+
+def test_an_approval_is_for_the_plan_it_approved(monkeypatch):
+    """Review defect 2: a PANDA plan approved, its step then changed to OTTER, the old approval kept -- the executor
+    ran run_otter once."""
+    state = _evaluate(_ready_plan(_verdict()))
+    assert state["plan_evaluation"]["status"] == "approved"
+    plan = WorkflowPlan.model_validate(state["plan"])
+    steps = [step.model_copy(update={"action": "run_otter"}) if step.action == "run_panda" else step
+             for step in plan.steps]
+    forged = {**state, "plan": plan.model_copy(update={"steps": steps}).model_dump(),
+              "current_step": len(steps) - 1}
+    calls, update = _execute({**forged})
+    assert calls == [] and "no analysis was started" in update["tool_result"]["raw"]
+
+
+def test_an_ask_before_the_first_quote_is_read_again():
+    """Review defect 3: "Align our raw reads to the genome and then build TF-gene networks per sample." with only the
+    networks quoted left nothing unread and nothing to re-read."""
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck, CheckedRequirement
+    from netzoo_agent_core.interpretation.reread import reread_passages
+
+    for task, quote, passage in (
+            ("Align our raw reads to the genome and then build TF-gene networks per sample.",
+             "build TF-gene networks per sample", "Align our raw reads to the genome and then"),
+            ("Build TF-gene networks per sample and then align our raw reads to the genome.",
+             "Build TF-gene networks per sample", "and then align our raw reads to the genome")):
+        check = CapabilityCheck(requirements=[CheckedRequirement(
+            quote=quote, kind="result", status="available", delivered_by=["lioness_panda.per_sample_networks"])])
+        decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.5, reason="r",
+                                capability_check=check)
+        assert reread_passages(task, decision) == [passage]

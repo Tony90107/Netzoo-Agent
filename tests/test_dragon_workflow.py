@@ -230,6 +230,7 @@ def test_an_executor_fault_becomes_a_failed_step_not_an_exception(tmp_path):
     from netzoo_agent_core.graph import execution as graph_execution
 
     from netzoo_agent_core.contracts import HumanMessage
+    from netzoo_agent_core.evaluation.plan_review import plan_digest
     from run_approval import approved
 
     layer1 = _layer(tmp_path / "layer1.tsv")
@@ -243,7 +244,8 @@ def test_an_executor_fault_becomes_a_failed_step_not_an_exception(tmp_path):
             patch("netzoo_agent_core.routing.results.TOOL_LOG_ROOT", tmp_path / "logs"):
         update = graph_execution.execute_tool(context, {
             "plan": plan.model_dump(), "current_step": 0, "messages": [HumanMessage(content=task)],
-            "plan_evaluation": {"status": "approved", "score": 100, "summary": "approved", "rubric": []}})
+            "plan_evaluation": {"status": "approved", "score": 100, "summary": "approved", "rubric": [],
+                                "plan_sha256": plan_digest(plan)}})
 
     result = update["tool_result"]
     assert result["status"] == "failed"

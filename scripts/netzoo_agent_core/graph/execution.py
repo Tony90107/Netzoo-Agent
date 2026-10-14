@@ -23,12 +23,14 @@ from ..evaluation import (
     recover_workflow_plan,
     render_plan_evaluation,
 )
+from ..evaluation.plan_review import plan_digest
 from ..outcomes import supersede_triggering_failure
 from ..planning import render_plan
 from ..planning.step_decision import effective_step_decision
 from ..interpretation.run_check import run_approval_failures
 from ..routing import execute_selected_tool, structure_tool_result
 from .context import _GraphContext, record_event
+from .source_refs import web_source_refs
 
 __all__: list[str] = []
 
@@ -70,8 +72,11 @@ def _unapproved_run(state: AgentState, plan: WorkflowPlan) -> str | None:
     if decision.action not in RUN_ACTIONS and not runs:
         return None
     evaluation = state.get("plan_evaluation")
-    if not evaluation or PlanEvaluationResult.model_validate(evaluation).status != "approved":
+    approval = PlanEvaluationResult.model_validate(evaluation) if evaluation else None
+    if approval is None or approval.status != "approved":
         return "the plan was not approved by the Plan Evaluator; no analysis was started."
+    if approval.plan_sha256 != plan_digest(plan):
+        return "the plan changed after the Plan Evaluator approved it; no analysis was started."
     failures = (run_approval_failures(decision, latest_user_message(state["messages"]))
                 if decision.action in RUN_ACTIONS else [f"the plan runs {runs[0]}, not its action {decision.action}"])
     return "; ".join(failures) + "; no analysis was started." if failures else None
@@ -82,6 +87,13 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
     step_index = state.get("current_step", 0)
     step = plan.steps[step_index]
     decision = effective_step_decision(plan, step_index)
+    lookup = (
+        {"query": (decision.web_query or "")[:300]}
+        if step.action == "web_search" else
+        {"library": (decision.library_id or decision.library_name or "")[:160],
+         "query": (decision.docs_query or "")[:300]}
+        if step.action == "query_context7" else None
+    )
     _trace(
         "tool",
         f"Executor [{step_index + 1}/{len(plan.steps)}]: {step.action}",
@@ -107,6 +119,7 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
             "arguments": step.arguments,
             "execution_mode": "execute" if EXECUTE_TOOLS else "dry_run",
             "attempt_id": state.get("replan_count", 0),
+            **({"lookup": lookup} if lookup is not None else {}),
         },
     )
     execution_started_at = datetime.now().astimezone()
@@ -136,12 +149,13 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
         f"{step.action} → {result.status}",
         result.summary,
     )
+    source_refs = web_source_refs(raw_result) if step.action == "web_search" and result.status == "success" else []
     record_event(
         context,
         state,
         "tool.completed",
         "execute_tool",
-        result.model_dump(exclude={"raw_output"}),
+        {**result.model_dump(exclude={"raw_output"}), **({"source_refs": source_refs} if source_refs else {})},
     )
     return {
         "tool_result": result.model_dump(),
