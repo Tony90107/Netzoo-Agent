@@ -14,13 +14,16 @@ Final acceptance a24b, false refusals and silent omissions:
 
 from __future__ import annotations
 
+import re
+
+from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from .input_bindings import _DIRECTORY_TOKEN
 from .discovery import _UNLABELED_PATH_RE
 from .request_spans import _span
 
 __all__ = ["FORM_CONDITIONS", "ask_conditions", "condition_requirements", "delivery_requirements",
-           "form_condition_spans"]
+           "form_condition_spans", "split_additions", "apply_own_sentence_answers"]
 
 FORM_CONDITIONS = ("group_membership", "spatial", "time_model")
 """Conditions on the result's form; the others (data unit, matched samples) are facts about the user's data, and
@@ -99,3 +102,82 @@ def delivery_requirements(task: str, proposal, results: list[CheckedRequirement]
         found.append(CheckedRequirement(quote=task[span[0]:span[1]].strip().rstrip(" .;,!?"), kind="result",
                                         status="not_available", not_by=["delivery"]))
     return list({item.quote: item for item in found}.values())
+
+
+_TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
+          "group_membership", "time_model", "spatial")
+
+
+def _core_span(task: str, span: tuple[int, int], added: list[tuple[int, int]]) -> tuple[int, int]:
+    """The ask's words before what it adds, cut at the last comma or semicolon before it; the whole ask otherwise."""
+    end = min(start for start, _end in added)
+    if any(start < end for start, _end in added) or end <= span[0]:
+        return span
+    head = task[span[0]:end]
+    cut = max(head.rfind(","), head.rfind(";"))
+    if cut >= 0 and len(head[cut + 1:].split()) <= 4:
+        head = head[:cut]
+    head = head.rstrip(" ,;:-")
+    return (span[0], span[0] + len(head)) if len(head.split()) >= 3 else span
+
+
+def split_additions(task: str, asks: dict) -> tuple[dict, list[CheckedRequirement]]:
+    """Each ask that adds to a result it also names on its own, as that result and, apart, each addition (M2).
+
+    a24b MX03 typed the two-layer network with the third layer as one ask of three layers, and MX09 the TF and miRNA
+    network with lncRNAs; both were refused whole. The result without its additions has the ask's typed attributes
+    less what they add -- a layer each, the regulator classes no registered workflow models, overlapping groups --
+    and is credited to the entries the reading credited or to the workflows whose near miss it cited (the model's
+    "DRAGON does not give three layers" names DRAGON), then fitted as any ask. Each addition is a result of its own
+    with the whole ask's attributes and citations, so it is refused with the reason the whole was.
+    """
+    known = sheet_entries()
+    offered = set().union(*(item.regulators for item in known.values() if item.kind == "produces" and item.regulators))
+    found, extra = {}, []
+    for span, items in asks.items():
+        first = items[0]
+        added = [(item, where) for item in getattr(first, "adds", None) or []
+                 if item.adds != "other" and item.quote.strip() and (where := _span(task, item.quote)) is not None
+                 and _within(where, span) and where != span]
+        if not added:
+            found.setdefault(span, []).extend(items)
+            continue
+        kinds = [item.adds for item, _where in added]
+        core = _core_span(task, span, [where for _item, where in added])
+        owners = {known[key].workflow for key in first.not_by if key in known and known[key].kind == "near_miss"}
+        update = {"quote": task[core[0]:core[1]], "adds": [], "delivered_by": list(dict.fromkeys([
+            *first.delivered_by, *(key for key, entry in known.items()
+                                   if entry.kind == "produces" and entry.level == "direct" and entry.workflow in owners)]))}
+        if "omics_layer" in kinds:
+            update["omics_layers"] = max(1, first.omics_layers - kinds.count("omics_layer"))
+        if "regulator_class" in kinds:
+            update["regulator_kinds"] = [kind for kind in first.regulator_kinds if kind in offered]
+        if "group_overlap" in kinds:
+            update["group_membership"] = "one_group"
+        found.setdefault(core, []).extend(item.model_copy(update=update) for item in items)
+        attrs = {key: getattr(first, key) for key in _TYPED if hasattr(first, key)}
+        extra += [CheckedRequirement(quote=task[where[0]:where[1]].strip().rstrip(" .;,!?"), kind="result",
+                                     status="not_available", attrs=attrs,
+                                     not_by=[key for key in first.not_by if key in known and known[key].kind != "produces"])
+                  for _item, where in added]
+    return found, extra
+
+
+def apply_own_sentence_answers(check, pairs: list[tuple[int, str, list[str], str]], answers: list):
+    """Each requirement stated beside an ask in its sentence that a credited workflow cannot meet and none meets, as a
+    not-available result of its own; the result beside it keeps its verdict (M2).
+
+    A check that could not answer adds nothing: these words were dropped before M2, and a held run for every request
+    that names its inputs ("from expression, motifs and PPI") would be worse.
+    """
+    from ..capability_sheet import entry
+
+    verdicts: dict[str, dict[str, list[str]]] = {}
+    for (_index, _action, keys, quote), answer in zip(pairs, answers):
+        verdicts.setdefault(quote, {}).setdefault(answer, []).append(entry(keys[0]).workflow)
+    added = [CheckedRequirement(quote=quote.strip().rstrip(" .;,!?"), kind="result", status="not_available",
+                                limits=[f'{name} does not meet "{quote.strip().rstrip(" .;,!?")}"'
+                                        for name in dict.fromkeys(found["violates"])])
+             for quote, found in verdicts.items() if found.get("violates") and not found.get("satisfies")]
+    return check.model_copy(update={"requirements": [*check.requirements, *added]}) if added else check
+

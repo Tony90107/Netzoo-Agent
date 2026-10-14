@@ -59,7 +59,19 @@ def _method_fields() -> dict[str, Any]:
         "StatedCount", __config__=ConfigDict(extra="forbid"),
         count=(int, Field(description="The number the words state.")),
         quote=(str, Field(description="Exact words of the request stating it.")))
+    addition = create_model(
+        "Addition", __config__=ConfigDict(extra="forbid"),
+        quote=(str, Field(description="Exact words of the request that add it.")),
+        adds=(Literal["omics_layer", "regulator_class", "group_overlap", "other"], Field(description=(
+            "What it adds: a further omics layer, a further class of regulators, letting items belong to several "
+            "groups, or anything else."))))
     return {
+        # M2 (a24b MX03, MX09): "a DRAGON network between the proteome and the transcriptome ..., and please fold the
+        # metabolome ... into the same model as a third layer" was one ask of three layers, so the two-layer network
+        # was refused with the third; the additions are typed with their words, and code reads the result without them.
+        "adds": (list[addition], Field(default_factory=list, description=(
+            "Words in this ask that add something to a result the same ask also names on its own -- one item per "
+            "addition; empty when the ask names one result as a whole."))),
         "named_method": (method, Field(default="none", description=(
             "The method the request names for this result: a registered workflow, or LIONESS for any LIONESS "
             "version; unregistered when it names a method, model or variant not in this list (including a LIONESS "
