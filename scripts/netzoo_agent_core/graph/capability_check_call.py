@@ -29,6 +29,7 @@ from ..interpretation.semantic_repair import semantic_payload
 from ..llm import append_llm_usage
 from ..settings import ROUTER_CONTEXT_MAX_CHARS
 from .context import _GraphContext, preflight_budget, record_event
+from ..contracts.strict_schema import expanded_enum_values
 from .structured_calls import _serialized_structured_input, _validation_issue_types
 
 __all__ = ["capability_check_system", "build_capability_check_messages", "build_reread_messages",
@@ -260,6 +261,10 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
     return answers, usage, budget_warnings
 
 
+_ENUM_LIMIT = 1_000
+"""OpenAI strict mode: enum values per schema, references expanded (the backup model is gpt-4o-mini)."""
+
+
 # Log 394: the safety check gets its own allowance on top of the turn's token budget, because
 # routing-heavy turns (retries, sibling repairs, a review) spent 26.6k of 30k tokens before it and
 # the budget skipped exactly the check (heldout3 KU9 x2: both answered with a workflow menu).
@@ -340,6 +345,8 @@ def request_capability_check(
         started_ns = time.monotonic_ns()
         raw = payload = proposal = None
         output_text, call_status, retry = "", "failed", False
+        if llm is fallback_llm and expanded_enum_values(schema.model_json_schema()) > _ENUM_LIMIT:
+            schema = proposal_model(count, compact=True)  # M2 (live m2b P30): the backup provider's enum limit
         try:
             adapter = llm.with_structured_output(schema, method="function_calling", include_raw=True, strict=True)
             payload, raw = semantic_payload(adapter.invoke(messages))

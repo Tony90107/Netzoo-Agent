@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import copy
 
-__all__ = ["strict_json_schema"]
+__all__ = ["expanded_enum_values", "strict_json_schema"]
 
 _MISSING = object()
 
@@ -89,3 +89,24 @@ def strict_json_schema(schema: dict) -> dict:
     if evidence is not None:
         definitions["OutcomeEvidence"] = _evidence_variants(evidence)
     return schema
+
+
+def expanded_enum_values(schema: dict) -> int:
+    """Enum values in a schema with every reference expanded, as OpenAI's strict mode counts them (at most 1,000).
+
+    M2 (live m2b P30): a request of nine sentences repeats the ask's sheet ids, settings and methods nine times.
+    """
+    definitions = schema.get("$defs", {})
+
+    def count(node) -> int:
+        if isinstance(node, list):
+            return sum(count(item) for item in node)
+        if not isinstance(node, dict):
+            return 0
+        found = len(node.get("enum", ()))
+        if "$ref" in node:
+            found += count(definitions[node["$ref"].split("/")[-1]])
+        return found + sum(count(value) for key, value in node.items() if key not in ("$defs", "$ref", "enum"))
+
+    return count(schema)
+
