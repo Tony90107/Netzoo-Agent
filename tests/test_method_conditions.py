@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.capability_check import RunVerdict, proposal_model, unstated_conditions  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
-    build_capability_check, full_gap_reply, method_fitting, redirect_pairs, request_sentences,
+    apply_second_opinion, build_capability_check, full_gap_reply, method_fitting, redirect_pairs, request_sentences,
     second_opinion_pairs, understanding_paragraph, verified_method,
 )
 from netzoo_agent_core.interpretation.run_check import run_check_verdict  # noqa: E402
@@ -98,8 +98,13 @@ def test_n11_a_penalty_otter_does_not_have_is_not_given_and_the_run_is_held():
     line = understanding_paragraph(check)
     assert "not available here as asked" in line and "OTTER itself can still run" in line
     assert "no registered workflow produces this" not in line
-    # A second opinion is never asked to credit OTTER back with the penalty.
-    assert second_opinion_pairs(check.model_copy(update={"full_gap": True}), ["run_otter", "run_panda"]) == []
+    # A second opinion may credit OTTER only as itself, with its own settings -- never the result as asked (m1b MX05).
+    gap = check.model_copy(update={"full_gap": True})
+    pairs = second_opinion_pairs(gap, ["run_otter", "run_panda"])
+    assert [action for _index, action, _keys in pairs] == ["run_otter"]
+    credited = apply_second_opinion(gap, pairs, ["all"])
+    assert _result(credited).status == "not_available" and not _result(credited).delivered_by
+    assert _result(credited).defaults and not credited.full_gap
 
 
 K06_TURN2 = "Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6."
@@ -192,8 +197,13 @@ def test_n12_lioness_otter_is_never_credited_to_lioness_panda():
                              named="OTTER", named_quote="OTTER", **N12_ASK))
     result = _result(check)
     assert result.status == "not_available" and result.instead == ["lioness_panda.per_sample_networks"]
-    assert result.limits[0] == "NetZoo's OTTER does not give this result"
+    # m1b: the ask's own words name OTTER LIONESS-style, a LIONESS version NetZoo does not have.
+    assert result.limits[0] == 'NetZoo has no registered method or variant "one OTTER network per sample, LIONESS-style"'
     assert "LIONESS-PANDA gives this result with its own method instead" in understanding_paragraph(check)
+    # m1b N12 as recorded: typed LIONESS with "LIONESS-style" and credited to LIONESS-PANDA.
+    check = _check(N12, _ask("one OTTER network per sample, LIONESS-style", ["lioness_panda.per_sample_networks"],
+                             named="LIONESS", named_quote="LIONESS-style", **N12_ASK))
+    assert _result(check).status == "not_available" and _result(check).method["named"] == "unregistered"
 
 
 def test_mx18_r1_otters_aggregate_network_and_p09_lioness_puma_stay_available():
@@ -389,3 +399,23 @@ def test_the_schema_says_what_each_setting_does():
     schema = json.dumps(proposal_model(1).model_json_schema())
     assert "OTTER.lam: Weight of gene co-expression versus the TF-TF PPI network" in schema
     assert "OTTER.gamma: L2-style regularization" in schema and "not a sparsity penalty" in schema
+
+
+def test_k09_the_setting_stated_last_wins():
+    # m1b K09 turn 2: the ask typed computing=GPU from "Never mind the GPU"; the request also typed CPU after it.
+    task = "Never mind the GPU - CPU is fine, just use single precision."
+    check = _check(task, _ask("CPU is fine", ["otter.tf_gene_network"], named="none",
+                              settings=[("OTTER.computing", "GPU", "GPU")]),
+                   whole=("OTTER", "OTTER", [("OTTER.computing", "GPU", "GPU"), ("OTTER.computing", "CPU is fine", "CPU"),
+                                             ("OTTER.precision", "single precision", "single")]))
+    result = _result(check)
+    assert result.status == "available"
+    assert {item["name"]: item["value"] for item in result.method["settings"]} == {
+        "OTTER.computing": "CPU", "OTTER.precision": "single"}
+
+
+def test_lioness_with_a_per_sample_method_is_not_a_lioness_version():
+    task = "Should we use LIONESS or BONOBO for one co-expression network per sample?"
+    check = _check(task, _ask("one co-expression network per sample", ["lioness_coexpression.per_sample_networks"],
+                              named="LIONESS", named_quote="LIONESS", scale="per_sample", asked_as="question"))
+    assert _result(check).status == "available"

@@ -863,8 +863,11 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
             continue
         for action in actions_for(requirement):
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
-            # M1: never a workflow outside the named method, or one that cannot run with the stated settings or data.
-            fitting = method_fitting(requirement.method, _fitting(produces, SimpleNamespace(**requirement.attrs)))[0]
+            # M1: never a workflow outside the named method or one that cannot take the data; one that lacks only a
+            # stated setting is asked about, and credited as itself with its own settings (m1b MX05).
+            kept, _limits, _instead, own = method_fitting(
+                requirement.method, _fitting(produces, SimpleNamespace(**requirement.attrs)))
+            fitting = kept or own
             if fitting:
                 pairs.append((index, action, fitting))
     return pairs
@@ -892,9 +895,12 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
         item = requirements[index]
         # A workflow that delivers the whole requirement replaces a partial reading of it.
         previous = item.delivered_by if item.status != "partial" else []
-        delivered = list(dict.fromkeys([*previous, *keys]))
+        kept, limits, _instead, own = method_fitting(item.method, keys)
+        delivered = list(dict.fromkeys([*previous, *kept]))
         requirements[index] = item.model_copy(update={
-            "delivered_by": delivered, "status": _status(delivered), "second_opinion": True})
+            "delivered_by": delivered, "status": _status(delivered), "second_opinion": True,
+            "limits": list(dict.fromkeys([*item.limits, *limits])),
+            "defaults": list(dict.fromkeys([*item.defaults, *own]))})
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
