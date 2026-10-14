@@ -11,6 +11,8 @@ import pandas as pd
 from .paths import _resolve_user_path
 
 DRAGON_OUTPUT_FORMATS = ("matrix", "edge_list")
+#: Samples each omics layer needs for DRAGON's covariance estimation.
+DRAGON_MIN_SAMPLES = 3
 EDGE_COLUMNS = ["source", "target", "partial_correlation", "precision"]
 PVALUE_COLUMNS = ["p_value", "adj_p_value"]
 
@@ -70,7 +72,7 @@ def _read_layer(path_value: str, label: str) -> tuple[pd.DataFrame | None, list[
         errors.append(f"{label} contains non-finite values; use finite continuous measurements.")
     elif (values.var(axis=0, ddof=0) == 0).any():
         errors.append(f"{label} contains zero-variance features; remove them before DRAGON.")
-    if len(frame) < 3:
+    if len(frame) < DRAGON_MIN_SAMPLES:
         errors.append(f"{label} must contain at least three samples for covariance estimation.")
     if errors:
         return None, errors
@@ -309,6 +311,7 @@ def validate_dragon_output(path_value: str, output_format: str) -> tuple[bool, l
 
 
 __all__ = [
+    "DRAGON_MIN_SAMPLES",
     "DRAGON_OUTPUT_FORMATS",
     "dragon_pvalue_paths",
     "estimate_dragon_pvalues",

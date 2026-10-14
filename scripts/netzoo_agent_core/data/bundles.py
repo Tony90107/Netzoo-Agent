@@ -11,7 +11,7 @@ from workflow_registry import REQUIRED_INPUTS
 from ..presentation import _display_path
 from ..settings import INPUT_ROLE_FIELDS
 from .discovery import best_named_file, candidate_keywords
-from .inspection import expression_sample_count as _expression_sample_count
+from .inspection import LIONESS_MIN_SAMPLES, expression_sample_count as _expression_sample_count
 from .paths import _resolve_user_path
 from .otter import inspect_otter_inputs_impl
 from .giraffe import inspect_giraffe_inputs_impl
@@ -214,7 +214,7 @@ def _bundle_in_directory(
     if missing_fields:
         if "lioness" in action and values.get("expression_file"):
             sample_count, _ = _expression_sample_count(values["expression_file"])
-            if sample_count < 3:
+            if sample_count < LIONESS_MIN_SAMPLES:
                 return None
         return BundleDiscovery(
             values=values,
@@ -262,7 +262,7 @@ def _bundle_in_directory(
         return None
     if "lioness" in action:
         sample_count, _ = _expression_sample_count(values["expression_file"])
-        if sample_count < 3:
+        if sample_count < LIONESS_MIN_SAMPLES:
             return None
 
     return BundleDiscovery(

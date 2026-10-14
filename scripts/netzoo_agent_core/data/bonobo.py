@@ -23,6 +23,8 @@ from workflow_registry import resolve_conditional_output
 
 BONOBO_OUTPUT_FORMATS = frozenset({".h5", ".hdf", ".txt", ".csv"})
 BONOBO_MANIFEST = "manifest.json"
+#: Each sample-specific covariance is estimated against the other samples, so at least two must remain.
+BONOBO_MIN_SAMPLES = 3
 _SAFE_SAMPLE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._ -]*\Z")
 
 
@@ -193,7 +195,7 @@ def load_bonobo_inputs(
     values = numeric.to_numpy(dtype=float)
     if not np.isfinite(values).all():
         raise ValueError("BONOBO expression values must be finite")
-    if frame.shape[1] < 3:
+    if frame.shape[1] < BONOBO_MIN_SAMPLES:
         raise ValueError(
             "BONOBO requires at least three total samples so each sample-specific "
             "covariance has at least two background samples"
@@ -552,6 +554,7 @@ def bonobo_api_output_folder(output_dir: str) -> str:
 
 __all__ = [
     "BONOBO_MANIFEST",
+    "BONOBO_MIN_SAMPLES",
     "BONOBO_OUTPUT_FORMATS",
     "BonoboInputBundle",
     "bonobo_api_output_folder",

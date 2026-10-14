@@ -8,7 +8,11 @@ import pandas as pd
 
 from .paths import _resolve_user_path
 
+#: Samples COBRA needs; it also needs more genes than samples (`load_cobra_inputs`).
+COBRA_MIN_SAMPLES = 2
+
 __all__ = [
+    "COBRA_MIN_SAMPLES",
     "cobra_artifact_paths",
     "cobra_input_output_collisions",
     "inspect_cobra_inputs_impl",
@@ -83,7 +87,7 @@ def load_cobra_inputs(expression_file: str, design_file: str) -> tuple[pd.DataFr
         errors.append("design covariate values must all be numeric; encode categories first")
     if expression_values.shape[0] <= expression_values.shape[1]:
         errors.append("COBRA requires more genes than samples")
-    if expression_values.shape[1] < 2:
+    if expression_values.shape[1] < COBRA_MIN_SAMPLES:
         errors.append("COBRA requires at least two samples")
     if errors:
         raise ValueError("; ".join(errors))

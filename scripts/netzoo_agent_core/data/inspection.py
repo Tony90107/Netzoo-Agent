@@ -12,6 +12,10 @@ from .tables import (
 
 __all__: list[str] = []
 
+#: LIONESS-PANDA, LIONESS-PUMA and LIONESS-COEXPRESSION leave one sample out at a time, so every leave-one-out
+#: correlation still needs two samples (`workflow_conditions` reads it; preflight, bundles and the executor enforce it).
+LIONESS_MIN_SAMPLES = 3
+
 def expression_sample_count(expression_file: str) -> tuple[int, bool]:
     expression = _validate_expression(
         _read_checked_table("expression", expression_file)

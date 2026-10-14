@@ -20,7 +20,7 @@ from .gene_validation import (
 )
 from .coexpression import read_coexpression_matrix
 from .demo_provenance import is_verified_bundled_demo
-from .inspection import inspect_condor_inputs_impl
+from .inspection import LIONESS_MIN_SAMPLES, inspect_condor_inputs_impl
 from .otter import inspect_otter_inputs_impl, load_otter_inputs
 from .panda_preflight import inspect_panda_inputs_with_provenance
 from .tables import (
@@ -90,7 +90,7 @@ def _validate_lioness_sample_count(path: str) -> list[str]:
     if check.errors or check.frame is None:
         return []
     sample_count = max(check.frame.shape[1] - 1, 0)
-    if sample_count < 3:
+    if sample_count < LIONESS_MIN_SAMPLES:
         return [
             "expression: LIONESS requires at least three samples so each "
             "leave-one-out correlation still has at least two samples."

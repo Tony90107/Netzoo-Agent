@@ -20,6 +20,7 @@ from .command import (
 )
 
 from .data.inspection import (
+    LIONESS_MIN_SAMPLES,
     expression_sample_count as _expression_sample_count,
     inspect_condor_inputs_impl as _inspect_condor_inputs_impl,
 )
@@ -328,7 +329,7 @@ def _run_lioness_command(
             "LIONESS input validation failed; legacy PANDA/PUMA LIONESS requires "
             "a headerless expression matrix. Run format_expression with with_header=false."
         )
-    if sample_count < 3:
+    if sample_count < LIONESS_MIN_SAMPLES:
         return (
             "LIONESS input validation failed; at least three samples are required "
             "so each leave-one-out correlation still has at least two samples."
