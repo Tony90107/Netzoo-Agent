@@ -65,6 +65,13 @@ def _read_gmt(path: str) -> tuple[set[str], int, list[str]]:
     return genes, pathways, errors
 
 
+def kmax_sample_error(kmax, samples: int) -> str | None:
+    """Clustering tries up to kmax subtypes, so it needs at least kmax samples (M2: shared with the check)."""
+    if isinstance(kmax, int) and not isinstance(kmax, bool) and samples < kmax:
+        return "kmax cannot exceed the number of mutation samples when clustering is enabled"
+    return None
+
+
 def _parameter_errors(decision: Any) -> list[str]:
     def value(name: str, default: Any) -> Any:
         return (
@@ -141,8 +148,8 @@ def inspect_sambar_inputs_impl(
         ])
         if decision is not None and bool(decision.get("cluster", True) if isinstance(decision, dict) else getattr(decision, "cluster", True)):
             kmax = decision.get("kmax", 4) if isinstance(decision, dict) else getattr(decision, "kmax", 4)
-            if isinstance(kmax, int) and mutation.shape[0] < kmax:
-                errors.append("kmax cannot exceed the number of mutation samples when clustering is enabled")
+            if error := kmax_sample_error(kmax, mutation.shape[0]):
+                errors.append(error)
     if decision is not None:
         errors.extend(_parameter_errors(decision))
     for error in dict.fromkeys(errors):

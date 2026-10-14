@@ -13,6 +13,11 @@ from .paths import _resolve_user_path
 DRAGON_OUTPUT_FORMATS = ("matrix", "edge_list")
 #: Samples each omics layer needs for DRAGON's covariance estimation.
 DRAGON_MIN_SAMPLES = 3
+
+
+def lambda_pair_error(lambda1, lambda2) -> str | None:
+    """DRAGON and LIONESS-DRAGON take manual shrinkage only for both layers at once (M2: shared with the check)."""
+    return "lambda1 and lambda2 must be supplied together." if (lambda1 is None) != (lambda2 is None) else None
 EDGE_COLUMNS = ["source", "target", "partial_correlation", "precision"]
 PVALUE_COLUMNS = ["p_value", "adj_p_value"]
 
@@ -312,6 +317,7 @@ def validate_dragon_output(path_value: str, output_format: str) -> tuple[bool, l
 
 __all__ = [
     "DRAGON_MIN_SAMPLES",
+    "lambda_pair_error",
     "DRAGON_OUTPUT_FORMATS",
     "dragon_pvalue_paths",
     "estimate_dragon_pvalues",

@@ -24,7 +24,10 @@ from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from .needed_facts import FILE_CHECKED, decisive_outcomes, fact_line, file_checked, file_checked_note, needed_fact_reply
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
-from .method_conditions import method_fitting, request_method, request_method_limit, verified_method, with_request_method
+from .method_conditions import (
+    method_fitting, request_method, request_method_for, request_method_limit, verified_method, with_request_method,
+)
+from .requirement_split import ask_conditions, condition_requirements, delivery_requirements, form_condition_spans
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
@@ -161,25 +164,6 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
 
 
 _CHECKED_ABOUT = ("how_computed", "what_it_contains")
-
-
-def delivery_requirements(task: str, proposal, results: list[CheckedRequirement]) -> list[CheckedRequirement]:
-    """Items 4-5 (2026-10-14): each delivery the request states, as a result no registered workflow gives.
-
-    Every registered workflow writes result files and stops (`capability_sheet.yaml`, `delivery`), so a delivery is
-    never available -- it is not a property of the result to check against a workflow (Log 414's condition check
-    would wrongly remove the network that is to be e-mailed). Kept when its words are in the request and outside
-    every asked-for result's own words, which were read with it.
-    """
-    asked = [span for item in results if (span := _span(task, item.quote)) is not None]
-    found = []
-    for other in getattr(getattr(proposal, "conditions", None), "other_requirements", None) or []:
-        span = _span(task, other.quote) if other.about == "delivery" and other.quote.strip() else None
-        if span is None or any(a < span[1] and span[0] < b for a, b in asked):
-            continue
-        found.append(CheckedRequirement(quote=task[span[0]:span[1]].strip().rstrip(" .;,!?"), kind="result",
-                                        status="not_available", not_by=["delivery"]))
-    return list({item.quote: item for item in found}.values())
 
 
 def stated_requirements(task: str, proposal, check: CapabilityCheck) -> list[str]:
@@ -388,6 +372,7 @@ def build_capability_check(
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
     conditions = verified_conditions(task, proposal)
+    form_spans = form_condition_spans(task, proposal, conditions)  # M2: conditions on the result's form
     unknowns = verified_unknowns(task, proposal)
     whole = request_method(task, proposal)
 
@@ -399,6 +384,8 @@ def build_capability_check(
             spans.append(span)
         return span
 
+    asked = [found for sentence in proposal_sentences(proposal) for item in sentence.asks
+             if (found := _span(task, item.quote)) is not None]
     for sentence in proposal_sentences(proposal):
         for kind, quotes in (("context", sentence.has), ("about_methods", sentence.about_methods)):
             for quote in quotes:
@@ -417,13 +404,18 @@ def build_capability_check(
                 # for, whatever the sentence's role (o10 SN6, heldout8 QU2-QU8: never checked).
                 other.setdefault(span, "context" if sentence.role == "background" else "about_methods")
             else:
-                asks.setdefault(span, []).append(_with_conditions(item, conditions))
+                kept, item = ask_conditions(item, conditions, form_spans, asked)
+                asks.setdefault(span, []).append(_with_conditions(item, kept))
     requirements = []
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
         methods = [verified_method(task, item) for item in items]
         if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
             methods = [with_request_method(method, whole) for method in methods]
+        elif whole:  # M2: with several results, only what names a workflow a result is credited to
+            methods = [with_request_method(method, request_method_for(
+                whole, {known[k].workflow for k in item.delivered_by if known.get(k)})) for method, item in
+                zip(methods, items)]
         fitted = [method_fitting(method, _fitting(
             [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item))
             for item, method in zip(items, methods)]
@@ -468,6 +460,8 @@ def build_capability_check(
                      for span, kind in other.items() if span not in asks]
     if whole and not any(item.kind == "result" for item in requirements):
         requirements += [found] if (found := request_method_limit(whole)) is not None else []
+    requirements += condition_requirements(task, conditions, form_spans, list(asks))
+    spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]
     deliveries = delivery_requirements(task, proposal, [item for item in requirements if item.kind == "result"])
     requirements += deliveries
     spans += [span for item in deliveries if (span := _span(task, item.quote)) is not None]
