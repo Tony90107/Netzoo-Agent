@@ -469,7 +469,11 @@ def build_capability_check(
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
     if whole and not any(item.kind == "result" for item in requirements):
-        requirements += [found] if (found := request_method_limit(whole)) is not None else []
+        stated = getattr(proposal, "conditions", None)
+        said = {name: task[found[0]:found[1]] for name in conditions
+                if (quote := (getattr(stated, f"{name}_quote", "") or "").strip())
+                and (found := _span(task, quote)) is not None}
+        requirements += [found] if (found := request_method_limit(whole, conditions, said)) is not None else []
     covered = [*asks, *(found for item in additions if (found := _span(task, item.quote)) is not None)]
     requirements += additions + condition_requirements(task, conditions, form_spans, covered)
     spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]

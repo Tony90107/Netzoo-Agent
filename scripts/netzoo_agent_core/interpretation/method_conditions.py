@@ -18,8 +18,8 @@ from ..workflow_conditions import (
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "verified_method",
-           "with_request_method"]
+__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "verified_controls",
+           "verified_method", "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -178,7 +178,21 @@ def _latest(settings: list[dict]) -> list[dict]:
     return list(kept.values())
 
 
-def request_method_limit(whole: dict) -> CheckedRequirement | None:
+def _ruled_out_by_data(keys: list[str], conditions: dict[str, str], quotes: dict[str, str]) -> tuple[list[str], str]:
+    """The entries the user's data rules out -- single cells, layers not measured on the same samples (Log 412) --
+    and the words that say so (M2, a24b K02 asked to run DRAGON, then said the layers came from different mice)."""
+    from ..capability_sheet import data_units
+
+    known = sheet_entries()
+    if conditions.get("data_unit") and conditions["data_unit"] not in data_units():
+        return list(keys), quotes.get("data_unit", "")
+    if conditions.get("samples_matched") == "different_samples":
+        return [key for key in keys if known[key].layers], quotes.get("samples_matched", "")
+    return [], ""
+
+
+def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
+                         quotes: dict[str, str] | None = None) -> CheckedRequirement | None:
     """A result for a request that asks for none but names a method it cannot have as asked (live m1a F1).
 
     "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about the methods only, so
@@ -193,9 +207,55 @@ def request_method_limit(whole: dict) -> CheckedRequirement | None:
     keys = [key for key, found in sheet_entries().items()
             if found.kind == "produces" and found.level == "direct" and found.workflow in workflows]
     kept, limits, instead, defaults = method_fitting(whole, keys)
+    ruled, said = _ruled_out_by_data(kept, conditions or {}, quotes or {})
+    if ruled and said:
+        kept = [key for key in kept if key not in ruled]
+        names = list(dict.fromkeys(entry(key).workflow for key in ruled))
+        limits = [*limits, *(f'NetZoo\'s {name} cannot run on this data: "{said}"' for name in names)]
+        defaults = [key for key in defaults if key not in ruled]
     if not limits or kept:
         return None
-    quote = whole["settings"][0]["quote"] if whole.get("settings") and named != UNREGISTERED else whole["named_quote"]
+    quote = (whole["settings"][0]["quote"] if whole.get("settings") and named != UNREGISTERED and not ruled
+             else said if ruled and said else whole["named_quote"])
     return CheckedRequirement(quote=quote, kind="result", status="not_available", method=whole, limits=limits,
                               instead=instead, defaults=defaults)
+
+
+def _control_value(limit, words: str):
+    """A stated value as the control takes it: a number in range, or the one allowed choice the words name."""
+    if limit.control_type in ("number", "integer"):
+        numbers = stated_numbers(words)
+        if not numbers:
+            return None
+        number = numbers[0]
+        if limit.control_type == "integer":
+            return int(number) if number == int(number) else None
+        return number
+    if limit.control_type == "enum":
+        folded = _folded(words)
+        chosen = [item for item in limit.allowed_values if (key := _folded(str(item))) and key in folded]
+        return chosen[0] if len(chosen) == 1 else None
+    return None  # booleans, names and lists are not read from prose
+
+
+def verified_controls(check, action: str) -> dict[str, object]:
+    """The settings the check verified for a run's workflow, as its control values (M2).
+
+    a24b K06 "Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6" and K09 "just use single
+    precision" were checked but never reached the run: controls were bound only from name=value text, so DRAGON
+    would have estimated its own lambdas. Only numbers and allowed choices are taken; every value already passed the
+    control's range and the runtime's limits, or the check would not have approved the run.
+    """
+    conditions = conditions_for(action)
+    if check is None or conditions is None:
+        return {}
+    found: dict[str, object] = {}
+    for item in check.results():
+        if action not in {entry(key).action for key in item.delivered_by}:
+            continue
+        for setting in item.method.get("settings", []):
+            limit = conditions.settings.get(setting["name"].split(".", 1)[-1]) if setting["name"] != UNREGISTERED else None
+            if limit is not None and limit.wired and (value := _control_value(limit, setting.get("value", ""))) is not None:
+                found[limit.name] = value
+    return found
 

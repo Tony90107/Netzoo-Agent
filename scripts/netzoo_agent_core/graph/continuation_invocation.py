@@ -64,7 +64,8 @@ def continue_workflow(
                 capability_match_status="exact",
                 # Items 1-2 (2026-10-14): a workflow the user picked from what an earlier turn offered, or a plan the
                 # user continues; the Plan Evaluator still binds it to this turn's request and workflow.
-                run_verdict=RunVerdict(action=action, verdict="user_selected"),
+                # M2: a continuation the user changed is checked again (`router_invocation._with_run_check`).
+                run_verdict=None if continuation.recheck else RunVerdict(action=action, verdict="user_selected"),
                 requested_outcome=RequestedOutcome(
                     operation=capability.operation,
                     artifact_type=capability.artifact_type,

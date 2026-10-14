@@ -110,6 +110,7 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
                               if offers else "Describe the result you want, or ask a follow-up question."),
             continuation_action=offers[0] if offers else None,
             allow_workflow_continuation=bool(offers),
+            held_run=decision.run_verdict.action in offers,
         )
 
     from ..interpretation.unmapped_routes import confirmed_partial_tie, offers_nothing
