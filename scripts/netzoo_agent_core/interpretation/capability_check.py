@@ -23,11 +23,13 @@ import re
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from .needed_facts import FILE_CHECKED, decisive_outcomes, fact_line, file_checked, file_checked_note, needed_fact_reply
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
-from ..routing.study_purpose_verify import _locate
+from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
+from .method_conditions import method_fitting, verified_method
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
-    "build_capability_check", "verified_conditions", "stated_requirements", "condition_pairs",
+    "build_capability_check", "verified_conditions", "verified_method", "method_fitting", "stated_requirements",
+    "condition_pairs",
     "apply_condition_answers", "redirect_pairs", "apply_redirect_answers",
     "workflow_description", "request_sentences", "understanding_paragraph", "full_gap_reply",
     "full_gap_result", "whole_check_result", "wait_on_asked",
@@ -54,45 +56,6 @@ def _status(delivered: list[str]) -> str:
     if "direct" in levels:
         return "available"
     return "with_step" if levels else "not_available"
-
-
-_TOKEN = re.compile(r"\w+")
-
-
-def _locate_tokens(task: str, quote: str) -> tuple[int, int] | None:
-    """The request passage a near-verbatim quote copies, or None.
-
-    Log 387 smoke run: the model copies the words but trims or rejoins them
-    ("We want a classifier using those networks ..." for "then a classifier
-    using those networks ..."). A quote stands for the densest passage holding
-    at least 70% of its words (and three) in order (difflib blocks, at most 1.5x its length);
-    the reply always shows the request's own words.
-    """
-    from difflib import SequenceMatcher
-
-    wanted = [word.casefold() for word in _TOKEN.findall(quote)]
-    if len(wanted) < 3:
-        return None
-    found = list(_TOKEN.finditer(task))
-    words = [match.group().casefold() for match in found]
-    blocks = [block for block in SequenceMatcher(None, words, wanted, autojunk=False).get_matching_blocks()
-              if block.size]
-    best, best_score = None, None
-    for first in range(len(blocks)):
-        matched = 0
-        for last in range(first, len(blocks)):
-            start, end = blocks[first].a, blocks[last].a + blocks[last].size
-            if end - start > 1.5 * len(wanted):
-                break
-            matched += blocks[last].size
-            score = matched - 0.5 * ((end - start) - matched)
-            if matched >= max(3, 0.7 * len(wanted)) and (best_score is None or score > best_score):
-                best, best_score = (found[start].start(), found[end - 1].end()), score
-    return best
-
-
-def _span(task: str, quote: str) -> tuple[int, int] | None:
-    return _locate(task, quote) or _locate_tokens(task, quote)
 
 
 _TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
@@ -172,7 +135,7 @@ def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
     if requirements == check.requirements:
         return check
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
 
 
@@ -293,6 +256,7 @@ def redirect_pairs(check: CapabilityCheck, candidates: list[str]) -> list[tuple[
         for action in candidates:
             produces = [key for key, found in known.items() if found.kind == "produces" and found.action == action]
             keys = _fitting(produces, SimpleNamespace(**item.attrs)) if item.attrs else produces
+            keys = method_fitting(item.method, keys)[0]  # M1: the named method, its settings, the data size
             if keys and known[keys[0]].workflow not in removed:
                 pairs += [(index, action, keys, quote) for quote in quotes]
     return pairs
@@ -311,7 +275,7 @@ def apply_redirect_answers(check: CapabilityCheck, pairs: list[tuple[int, str, l
             delivered = list(dict.fromkeys([*item.delivered_by, *keys]))
             requirements[index] = item.model_copy(update={"delivered_by": delivered, "status": _status(delivered)})
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
 
 
@@ -339,7 +303,7 @@ def apply_condition_answers(check: CapabilityCheck, pairs: list[tuple[int, str, 
         requirements[index] = item.model_copy(update={
             "delivered_by": delivered, "status": status, "violations": list(dict.fromkeys(reasons))})
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
 
 
@@ -401,6 +365,13 @@ def _fitting(keys: list[str], item) -> list[str]:
     return [k for k in keys if want is None or want in known[k].granularity]
 
 
+def _full_gap(results: list[CheckedRequirement], unchecked: list[str]) -> bool:
+    """Every result is not available, every sentence was read, and no workflow could give a result with its own
+    settings in place of the stated ones (M1: that workflow is offered, and a run of it is held for the user)."""
+    return bool(results) and not unchecked and all(item.status == "not_available" and not item.defaults
+                                                   for item in results)
+
+
 def build_capability_check(
     task: str, proposal, verified_claims: frozenset[str] = frozenset(),
 ) -> tuple[CapabilityCheck, list[dict]]:
@@ -448,8 +419,16 @@ def build_capability_check(
                 asks.setdefault(span, []).append(_with_conditions(item, conditions))
     requirements = []
     for span, items in asks.items():
-        readings = [_fitting([k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item)
-                    for item in items]
+        # M1: each reading is held to the method, settings and data size it states.
+        methods = [verified_method(task, item) for item in items]
+        fitted = [method_fitting(method, _fitting(
+            [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item))
+            for item, method in zip(items, methods)]
+        readings = [keys for keys, *_rest in fitted]
+        limits = list(dict.fromkeys(reason for _keys, reasons, *_rest in fitted for reason in reasons))
+        instead = list(dict.fromkeys(key for _keys, _limits, others, _defaults in fitted for key in others))
+        defaults = list(dict.fromkeys(key for *_rest, own in fitted for key in own))
+        method = next((found for found in methods if found), {})
         delivered = list(dict.fromkeys(k for keys in readings for k in keys))
         not_by = list(dict.fromkeys(
             k for item in items for k in item.not_by
@@ -464,8 +443,8 @@ def build_capability_check(
             else "request"
         waiting = {}
         # Verdict layer step 2: a fact the user said they do not know, on which this result's workflows differ.
-        read = list(dict.fromkeys(k for item in items for k in item.delivered_by
-                                  if known.get(k) and known[k].kind == "produces"))
+        read = method_fitting(method, list(dict.fromkeys(k for item in items for k in item.delivered_by
+                                                         if known.get(k) and known[k].kind == "produces")))[0]
         fit_attrs = {name: getattr(items[0], name) for name in (*_TYPED, "samples_matched") if hasattr(items[0], name)}
         for about, said in unknowns:
             if (outcomes := decisive_outcomes(_fitting, read, fit_attrs, about)) is not None:
@@ -478,7 +457,8 @@ def build_capability_check(
                 break
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
-                                               asked_as=asked_as, **waiting))
+                                               asked_as=asked_as, method=method, limits=limits, instead=instead,
+                                               defaults=defaults, **waiting))
     choices, option_spans = _open_choices(task, proposal, conditions, place)
     requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
@@ -494,7 +474,7 @@ def build_capability_check(
     unchecked = [task[s:e].strip() for index, (s, e) in enumerate(request_sentences(task))
                  if index not in read and not any(a < e and s < b for a, b in spans)]
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, unchecked)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
                            conditions=conditions, unknowns=[list(item) for item in unknowns]), rejected
 
@@ -561,6 +541,14 @@ def _why_not(item: CheckedRequirement) -> list[str]:
                      else f"{found.workflow} does not give it: {_lower_first(found.why_not)}")
     forms = _form_reasons(item) if item.status == "not_available" else []
     reasons = [*(f"{reason}." for reason in item.violations[:1]), *forms, *cited[:1]]
+    if item.limits and item.status == "not_available":
+        # M1: the method, a setting or the data size is the reason; another method is offered only as one.
+        named = item.method.get("named_quote")
+        alternative = ([f"{_workflows(item.defaults)} itself can still run, with its own settings instead -- an "
+                        "alternative, not the setting you asked for."] if item.defaults else
+                       [f'{_workflows(item.instead)} gives this result with its own method instead -- an alternative, '
+                        f'not "{named}".'] if item.instead and named else [])
+        reasons = [f"{item.limits[0]}.", *alternative, *(f"{reason}." for reason in item.limits[1:]), *reasons]
     return list(dict.fromkeys(reasons))[:2]
 
 
@@ -591,6 +579,8 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
     reasons = _why_not(item)
     if not reasons:
         return f"{quote} -- not matched to any registered workflow."
+    if item.limits:
+        return " ".join([f"{quote} -- not available here as asked.", *reasons])
     return " ".join([f"{quote} -- not available here: no registered workflow produces this.", *reasons])
 
 
@@ -627,6 +617,9 @@ def full_gap_reply(check: CapabilityCheck, *, with_note: bool = False) -> str:
     them, it = ("these", "them") if many else ("this", "it")
     closing = (f"No registered workflow produces {them} as you asked {it}, so none is offered for {it} as asked. "
                "The note below describes the closest route." if with_note else
+               # M1: the result exists, but not by the method, settings or data size asked for.
+               f"No registered workflow can give {them} as you asked {it} (above), so none is offered as asked."
+               if any(item.limits for item in check.results()) else
                f"No registered workflow produces {them}, so none is offered as the way to get {it}.")
     return "\n\n".join([
         understanding_paragraph(check) or "",
@@ -865,7 +858,8 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
             continue
         for action in actions_for(requirement):
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
-            fitting = _fitting(produces, SimpleNamespace(**requirement.attrs))
+            # M1: never a workflow outside the named method, or one that cannot run with the stated settings or data.
+            fitting = method_fitting(requirement.method, _fitting(produces, SimpleNamespace(**requirement.attrs)))[0]
             if fitting:
                 pairs.append((index, action, fitting))
     return pairs
@@ -897,5 +891,5 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
         requirements[index] = item.model_copy(update={
             "delivered_by": delivered, "status": _status(delivered), "second_opinion": True})
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not check.unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
