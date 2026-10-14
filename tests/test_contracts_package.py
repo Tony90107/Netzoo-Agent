@@ -172,7 +172,9 @@ SCHEMA_DIGESTS = {
     # requirement's asked_as (request or question); reply only.
     # 2026-10-12 (Log 412): optional code-owned capability_check.conditions (verified request conditions).
     # 2026-10-12 (Log 414): optional code-owned violations on each checked requirement; reply only.
-    "TaskDecision": "378af5dbdc897e98ec3e03c61ea704b6a25018a8cfda9a350c7827916b6b93f0",
+    # 2026-10-14 (items 1-2): optional code-owned run_verdict; it can only refuse execution (the Plan Evaluator and
+    # the executor gate require an approving one for an analysis run).
+    "TaskDecision": "b1ae7519c8d9adaeb43536d28158c1031dcc0f7f2c8d40c7ffbddc8468ff0fd3",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

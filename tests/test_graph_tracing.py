@@ -50,6 +50,7 @@ from netzoo_agent_core.trace_store import LocalTraceStore  # noqa: E402
 from netzoo_agent_core.trace_contracts import LLMCallUsage  # noqa: E402
 from netzoo_agent_core.tracing import TraceRecorder  # noqa: E402
 import netzoo_agent as legacy_agent  # noqa: E402
+from run_approval import CheckingLLM  # noqa: E402
 
 
 def semantic_review(interpretation: SemanticInterpretation) -> SemanticReview:
@@ -969,10 +970,11 @@ def test_graph_records_ordered_plan_tool_and_evaluation_events(
 ):
     monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
     monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    # Items 1-2 (2026-10-14): the check credits the run; a failed check would hold it for confirmation.
     monkeypatch.setattr(
         graph_module,
         "build_llm",
-        lambda *_args, **_kwargs: DeterministicRouterLLM(),
+        lambda *_args, **_kwargs: CheckingLLM(DeterministicRouterLLM(), "PANDA", ["panda.tf_gene_network"]),
     )
     store = LocalTraceStore(tmp_path / "traces")
     recorder = TraceRecorder(store)
@@ -1448,7 +1450,8 @@ def test_explicit_panda_run_survives_semantic_validation_failure(
     monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
     monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
     router = InvalidPandaEvidenceRouter()
-    models = iter([router, GuidanceResponseLLM()])
+    # Items 1-2 (2026-10-14): the capability check is its own reading and credits the run.
+    models = iter([CheckingLLM(router, "Run PANDA", ["panda.tf_gene_network"]), GuidanceResponseLLM()])
     monkeypatch.setattr(
         graph_module,
         "build_llm",
@@ -1474,7 +1477,7 @@ ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/p
 
     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
 
-    assert router.calls == 4  # Log 355: + the study-purpose call; verdict layer step 1: + the run's capability check
+    assert router.calls == 3  # Log 355: + the study-purpose call (the capability check is answered beside it)
     assert result["decision"]["action"] == "run_panda"
     assert result["decision"]["match_basis"] == "workflow_name"
     assert result["decision"]["expression_file"].endswith("/expression.tsv")
@@ -1484,6 +1487,51 @@ ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/p
     assert result["plan"]["status"] == "needs_input"
     assert "preflight failed" in result["plan"]["question"].casefold()
     assert result["tool_results"] == []
+    # Items 1-2 (2026-10-14): the run is planned under the check's verdict, bound to this request.
+    import hashlib
+
+    assert result["decision"]["run_verdict"]["verdict"] == "agrees"
+    assert result["decision"]["run_verdict"]["request_sha256"] == hashlib.sha256(task.encode()).hexdigest()
+
+
+def _explicit_panda_turn(tmp_path, monkeypatch, router_llm):
+    monkeypatch.setenv("NETZOO_ROUTER_MODEL_ALLOWLIST", "fake")
+    monkeypatch.setenv("NETZOO_RESPONSE_MODEL_ALLOWLIST", "fake")
+    models = iter([router_llm, GuidanceResponseLLM()])
+    monkeypatch.setattr(graph_module, "build_llm", lambda *_args, **_kwargs: next(models))
+    executed = []
+    monkeypatch.setattr("netzoo_agent_core.graph.execution.execute_selected_tool",
+                        lambda decision: executed.append(decision) or "ok")
+    store = LocalTraceStore(tmp_path / "traces")
+    recorder = TraceRecorder(store)
+    run_id = recorder.start_run(session_id="run-verdict", profile_id="default")
+    app = build_graph("fake", 0.0, router_model_name="fake", profile_store=UserProfileStore(tmp_path / "profiles"),
+                      episode_store=EpisodeStore(tmp_path / "episodes"), trace_recorder=recorder,
+                      semantic_contract="legacy", review_policy="when_needed")
+    task = """Run PANDA using these local files:
+expression_file=/work/manual_tests/input_identification/correct_names_invalid_content/expression.tsv
+motif_file=/work/manual_tests/input_identification/correct_names_invalid_content/motif.tsv
+ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/ppi.tsv"""
+    result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
+    return result, executed, [event.event_type for event in store.read_events(run_id)]
+
+
+def test_an_explicit_run_whose_check_failed_is_held_for_confirmation(tmp_path, monkeypatch):
+    """Items 1-2 (2026-10-14): a check that could not run approves nothing; the run is offered, not planned."""
+    result, executed, events = _explicit_panda_turn(tmp_path, monkeypatch, InvalidPandaEvidenceRouter())
+    assert result["decision"]["action"] == "no_tool"
+    assert result["decision"]["run_verdict"]["verdict"] == "unconfirmed"
+    assert result["decision"]["recommended_actions"] == ["run_panda"]
+    assert result["reply_kind"] == "run_held" and "Tell me to run PANDA anyway" in result["messages"][-1].content
+    assert result["plan"]["status"] == "respond_only" and executed == [] and "routing.run_held" in events
+
+
+def test_a_named_run_the_check_credits_elsewhere_never_reaches_the_executor(tmp_path, monkeypatch):
+    router = CheckingLLM(InvalidPandaEvidenceRouter(), "Run PANDA", ["lioness_panda.per_sample_networks"])
+    result, executed, events = _explicit_panda_turn(tmp_path, monkeypatch, router)
+    assert result["decision"]["run_verdict"]["verdict"] == "other_workflow"
+    assert result["decision"]["recommended_actions"] == ["run_lioness_panda", "run_panda"]
+    assert executed == [] and "tool.started" not in events and "plan.approved" not in events
 
 
 def test_local_trace_status_and_export_need_no_model_provider(tmp_path: Path):

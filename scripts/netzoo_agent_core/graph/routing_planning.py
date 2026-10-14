@@ -40,6 +40,10 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
             carried=(state.get("workflow_continuation") or {}).get("parameters"),
         )
     decision = invocation.decision
+    if decision.run_verdict is not None:
+        # Items 1-2: the verdict holds for this request only; a plan evaluated against another one fails.
+        decision = decision.model_copy(update={"run_verdict": decision.run_verdict.model_copy(
+            update={"request_sha256": requirements.source_sha256})})
     usage = invocation.usage
     routing_state = invocation.routing_state
     previous_call_count = (

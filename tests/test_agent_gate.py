@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
+from run_approval import CheckingLLM, approved  # noqa: E402
 
 PANDA_INPUT_TASK = (
     "Run PANDA with expression_file=data/lioness-toy/expression.tsv "
@@ -1665,7 +1666,7 @@ class CapabilityGateTests(unittest.TestCase):
 
     def test_pre_execution_plan_evaluator_approves_valid_plan(self):
         task = PANDA_INPUT_TASK
-        plan = agent.build_workflow_plan(self.decision(), task)
+        plan = agent.build_workflow_plan(approved(self.decision(), task), task)
 
         evaluation = agent.evaluate_workflow_plan(plan, task)
 
@@ -1764,7 +1765,7 @@ class CapabilityGateTests(unittest.TestCase):
 
     def test_plan_evaluation_markdown_is_an_audit_view(self):
         task = PANDA_INPUT_TASK
-        plan = agent.build_workflow_plan(self.decision(), task)
+        plan = agent.build_workflow_plan(approved(self.decision(), task), task)
         evaluation = agent.evaluate_workflow_plan(plan, task)
 
         report = agent.render_plan_evaluation(evaluation)
@@ -1947,7 +1948,7 @@ class CapabilityGateTests(unittest.TestCase):
             mirna_file="mirna.txt",
             output_file="out.tsv",
         )
-        plan = agent.build_workflow_plan(decision, task)
+        plan = agent.build_workflow_plan(approved(decision, task), task)
         self.assertEqual(agent.evaluate_workflow_plan(plan, task).status, "approved")
 
         recovered, index = agent.recover_workflow_plan(
@@ -3830,7 +3831,8 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         agent.StateGraph is None, "LangGraph runtime is available in Docker"
     )
     def test_graph_runs_plan_execute_evaluate_loop(self, build_llm):
-        build_llm.return_value = self.FakeLLM()
+        # Items 1-2 (2026-10-14): the check credits the run; a failed check would hold it for confirmation.
+        build_llm.return_value = CheckingLLM(self.FakeLLM(), "LIONESS PANDA", ["lioness_panda.per_sample_networks"])
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             episode_store = agent.EpisodeStore(root / "episodes")

@@ -229,18 +229,21 @@ def test_an_executor_fault_becomes_a_failed_step_not_an_exception(tmp_path):
 
     from netzoo_agent_core.graph import execution as graph_execution
 
+    from netzoo_agent_core.contracts import HumanMessage
+    from run_approval import approved
+
     layer1 = _layer(tmp_path / "layer1.tsv")
     layer2 = _layer(tmp_path / "layer2.tsv", features=("c", "d"))
-    plan = build_workflow_plan(
-        _decision(layer1, layer2, tmp_path / "dragon.tsv"),
-        f"Run DRAGON with omics_layer_1={layer1} omics_layer_2={layer2}.",
-    )
+    task = f"Run DRAGON with omics_layer_1={layer1} omics_layer_2={layer2}."
+    plan = build_workflow_plan(approved(_decision(layer1, layer2, tmp_path / "dragon.tsv"), task), task)
     context = SimpleNamespace(recorder=MagicMock())
     fault = AttributeError("'function' object has no attribute 'invoke'")
 
     with patch.object(graph_execution, "execute_selected_tool", side_effect=fault), \
             patch("netzoo_agent_core.routing.results.TOOL_LOG_ROOT", tmp_path / "logs"):
-        update = graph_execution.execute_tool(context, {"plan": plan.model_dump(), "current_step": 0})
+        update = graph_execution.execute_tool(context, {
+            "plan": plan.model_dump(), "current_step": 0, "messages": [HumanMessage(content=task)],
+            "plan_evaluation": {"status": "approved", "score": 100, "summary": "approved", "rubric": []}})
 
     result = update["tool_result"]
     assert result["status"] == "failed"

@@ -98,6 +98,20 @@ def build_next_turn_prompt(state: dict) -> NextTurnPrompt:
             ),
         )
 
+    if decision.run_verdict is not None and decision.run_verdict.held and not results:
+        # Items 1-2 (2026-10-14): a held run is offered for the user to confirm; a pick continues as a selected
+        # workflow (planned, previewed, never run unasked).
+        offers = list(decision.recommended_actions)
+        return NextTurnPrompt(
+            kind="recommended_workflow",
+            question=_ui_text("Pick the workflow to run, ask a follow-up question, or describe another NetZoo goal."
+                              if len(offers) > 1 else
+                              "Confirm the run, ask a follow-up question, or describe another NetZoo goal."
+                              if offers else "Describe the result you want, or ask a follow-up question."),
+            continuation_action=offers[0] if offers else None,
+            allow_workflow_continuation=bool(offers),
+        )
+
     from ..interpretation.unmapped_routes import confirmed_partial_tie, offers_nothing
 
     check = decision.capability_check

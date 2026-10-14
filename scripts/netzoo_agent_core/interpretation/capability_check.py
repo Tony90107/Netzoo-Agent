@@ -638,12 +638,15 @@ def full_gap_result(state, reply) -> dict | None:
 
 
 def whole_check_result(state, reply) -> dict | None:
-    """The whole reply when the check alone answers the turn: a full gap (Log 387), or results waiting on facts the
-    user said they do not know (verdict layer step 2)."""
+    """The whole reply when the check alone answers the turn: a full gap (Log 387), a run it did not approve (items
+    1-2, `run_hold`), or results waiting on facts the user said they do not know (verdict layer step 2)."""
     from ..contracts import TaskDecision
+    from .run_hold import held_run_result
 
     if (gap := full_gap_result(state, reply)) is not None:
         return gap
+    if (held := held_run_result(state, reply, understanding_paragraph)) is not None:
+        return held
     decision = TaskDecision.model_validate(state["decision"])
     check = decision.capability_check
     if decision.action != "no_tool" or check is None or check.unconfirmed() or not check.needed_facts():

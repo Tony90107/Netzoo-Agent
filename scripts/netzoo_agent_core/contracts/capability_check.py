@@ -20,7 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
 
-__all__ = ["CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES", "RequirementKind",
+__all__ = ["APPROVING_RUN_VERDICTS", "CONDITIONS", "CapabilityCheck", "CheckedRequirement", "MAX_SENTENCES",
+           "RequirementKind", "RunVerdict", "RunVerdictName",
            "SecondOpinionAnswer", "condition_check_model", "conditions_model", "proposal_model", "proposal_sentences",
            "reread_as_proposal", "reread_model", "second_opinion_model", "unstated_conditions"]
 
@@ -378,3 +379,49 @@ class CapabilityCheck(BaseModel):
     def unconfirmed(self) -> bool:
         """Log 403: nothing this turn's check says was confirmed by the check's own model."""
         return self.unavailable or self.provisional or self.gap_unconfirmed
+
+
+RunVerdictName = Literal["agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected",
+                         "other_workflow", "partial_gap", "outside_step", "needs_fact", "unread", "gap", "unconfirmed"]
+
+APPROVING_RUN_VERDICTS = frozenset({"agrees", "no_result", "not_on_sheet", "no_check_model", "user_selected"})
+"""agrees: the run's workflow gives every result asked for, directly; no_result: the check found nothing asked for
+beyond running it; not_on_sheet: not an analysis workflow (STRING download, own rules); no_check_model: nothing is
+configured to read the check (tests, the routing harness -- never production); user_selected: the user picked the
+workflow from what an earlier turn offered, or continues a plan made under an approving verdict."""
+
+
+class RunVerdict(BaseModel):
+    """Verdict layer items 1-2 (2026-10-14): the capability verdict a run is planned under.
+
+    Until now only a full gap changed a run (3578b00); `other_workflow` and `partial_gap` were recorded beside a
+    run that went ahead. Routing, the reply, the Plan Evaluator and the executor gate read this one record, so a
+    run the check did not approve is never an approved plan.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    action: str
+    verdict: RunVerdictName
+    request_sha256: str = ""
+    """The full request message the verdict was given for (stamped by `classify_task`); a plan for another fails."""
+    held: bool = False
+    """The run was not planned: the reply says why and offers it for the user to confirm."""
+    named: bool = False
+    """The user named the run's workflow, so another workflow is offered beside it, never put in its place."""
+    credited: list[str] = Field(default_factory=list)
+    """The workflows the check credits for every result some workflow gives."""
+    results: list[dict[str, Any]] = Field(default_factory=list)
+    """Each result's quote, status and credited workflows."""
+    unchecked: list[str] = Field(default_factory=list)
+    """Request sentences the check did not read."""
+
+    def run_failures(self, action: str, request_sha256: str) -> list[str]:
+        """Why this verdict does not approve a run of `action` for the request hashed `request_sha256`."""
+        failures = []
+        if self.action != action:
+            failures.append(f"the capability verdict was given for {self.action}, not {action}")
+        if not self.request_sha256 or self.request_sha256 != request_sha256:
+            failures.append("the capability verdict was given for a different request")
+        if self.held or self.verdict not in APPROVING_RUN_VERDICTS:
+            failures.append(f"the capability check did not approve this run ({self.verdict})")
+        return failures

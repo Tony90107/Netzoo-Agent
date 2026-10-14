@@ -37,7 +37,7 @@ from .capability_check_call import (
 )
 from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
-from ..interpretation.checked_match import checked_match, credited_workflows
+from ..interpretation.checked_match import _USER_CHOSEN, checked_match, credited_workflows
 from ..routing.capability import validate_task_text
 from workflow_registry import RUN_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
@@ -48,7 +48,10 @@ from ..interpretation.capability_check import (
     wait_on_asked, workflow_description,
 )
 from .data_facts_call import invoke_data_facts
-from ..interpretation.run_check import run_check_verdict
+from ..interpretation.run_check import run_check_verdict, run_verdict
+from ..interpretation.run_hold import hold_run
+from ..contracts.capability_check import APPROVING_RUN_VERDICTS
+from ..routing.named_labels import named_workflow_action
 from ..interpretation.needed_facts import waiting_decision
 from ..interpretation.applicability import assess_applicability, merge_inputs, needs_data_facts
 from ..interpretation.data_plan import KIND_FIELDS, build_data_plan, plan_for_verdict, plan_needs, plan_with_unknowns
@@ -181,7 +184,8 @@ def invoke_router(
             # Log 394: a turn the check could not read says so, rather than answering as if it had.
             result = replace(result, decision=result.decision.model_copy(
                 update={"capability_check": CapabilityCheck(unavailable=True)}))
-        if (unmapped := without_unmapped_candidates(result.decision)) is not result.decision:
+        if not _held(result.decision) and (
+                unmapped := without_unmapped_candidates(result.decision)) is not result.decision:
             # Log 403 part D: an `unknown` reading tied every workflow; it claims none of them.
             record_event(context, state, "routing.unmapped_candidates_cleared", "classify", {
                 "cleared": list(dict.fromkeys([*result.decision.matched_actions, *result.decision.hypothesis_actions,
@@ -259,7 +263,8 @@ def _with_checked_match(context, state, result: _RouterInvocation) -> _RouterInv
     made no claim or claimed only other workflows -- that workflow is the match, so the reply, the card and
     the next step read the same verdict."""
     policy = getattr(context, "project_policy", None)
-    if policy is None or (matched := checked_match(result.decision, policy.workflows)) is result.decision:
+    if (policy is None or _held(result.decision)
+            or (matched := checked_match(result.decision, policy.workflows)) is result.decision):
         return result
     record_event(context, state, "routing.check_match_adopted", "classify", {
         "action": matched.matched_actions[0], "routing_status": result.decision.capability_match_status,
@@ -302,7 +307,7 @@ def _with_requested_run(context, state, user_task: str, result: _RouterInvocatio
     """
     decision = result.decision
     check = decision.capability_check
-    if (decision.action != "no_tool" or not decision.execution_requested
+    if (decision.action != "no_tool" or not decision.execution_requested or _held(decision)
             or check is None or check.unconfirmed() or check.full_gap or check.unchecked
             or not check.results() or any(item.asked_as != "request" or item.status != "available"
                                           for item in check.results())):
@@ -317,6 +322,7 @@ def _with_requested_run(context, state, user_task: str, result: _RouterInvocatio
     record_event(context, state, "routing.requested_run_adopted", "classify", {"action": action})
     run = hydrate_router_decision(decision.model_copy(update={
         "action": action, "should_execute": True, "intent_type": "run_analysis",
+        "run_verdict": run_verdict(check, action, named=named_workflow_action(user_task) == action),
         "reason": "Run requested; the capability check credited this workflow for what the request asks for."}),
         user_task)
     return replace(result, decision=run)
@@ -336,9 +342,55 @@ def _with_run_check(context, state, user_task: str, result: _RouterInvocation, p
         return result
     if proposal is None:
         _record_shadow(context, state, result.decision, None, check_status)
-        return result
+        return _on_run_verdict(context, state, user_task, result, None, check_status)
     return _with_capability_check(context, state, user_task, result, proposal,
                                   provisional=check_status == "fallback", shadow_status=check_status)
+
+
+def _held(decision) -> bool:
+    return decision.run_verdict is not None and decision.run_verdict.held
+
+
+def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, check,
+                    check_status: str) -> _RouterInvocation:
+    """Items 1-2 (2026-10-14): a run goes ahead only under a verdict that approves it.
+
+    Since 3578b00 every verdict but a full gap left the run as routing chose it, so a run of a workflow the check
+    credited nothing to (`other_workflow`), or of one giving only part of what was asked (`partial_gap`), was planned
+    as if it gave everything (engineering review of 923e493). Now:
+    - an approving verdict keeps the run and travels with it (`RunVerdict`, required by the Plan Evaluator);
+    - when the check credits another workflow than one the user did not name, routing's claim is dropped and the
+      guidance turn's own rules adopt the credited workflow and plan it as asked (`checked_match`,
+      `_with_requested_run`), the same as for the same words asked on a guidance turn;
+    - any other verdict, or a re-plan those rules do not make, holds the run: nothing is planned, the reply says why,
+      and the run is offered for the user to confirm (`interpretation.run_hold`).
+    """
+    decision = result.decision
+    named = decision.match_basis in _USER_CHOSEN or named_workflow_action(user_task) == decision.action
+    verdict = run_verdict(check, decision.action, check_status=check_status, named=named)
+    if verdict.verdict in APPROVING_RUN_VERDICTS:
+        return replace(result, decision=decision.model_copy(update={"run_verdict": verdict}))
+    guidance = decision.model_copy(update={
+        "action": "no_tool", "should_execute": False, "intent_type": "answer_question", "execution_requested": True,
+        "capability_check": check if check is not None else CapabilityCheck(unavailable=True), "run_verdict": verdict,
+    })
+    policy = getattr(context, "project_policy", None)
+    if verdict.verdict == "other_workflow" and not named and policy is not None:
+        cleared = guidance.model_copy(update={
+            "matched_actions": [], "hypothesis_actions": [], "recommended_actions": [], "alternative_actions": [],
+            "advisory_recommendation": None, "clarification_question": None})
+        replanned = _with_requested_run(context, state, user_task, replace(
+            result, decision=checked_match(cleared, policy.workflows)))
+        if replanned.decision.action != "no_tool":
+            record_event(context, state, "routing.run_replanned", "classify", {
+                "from": decision.action, "to": replanned.decision.action, "credited": verdict.credited})
+            return replanned
+    held = hold_run(guidance, verdict)
+    record_event(context, state, "routing.run_held", "classify", {
+        "action": decision.action, "verdict": verdict.verdict, "named": named,
+        "offered": held.recommended_actions, "check_status": check_status})
+    return replace(result, decision=held,
+                   routing_state={**result.routing_state, **outcome_routing_state(held)})
 
 
 def _record_shadow(context, state, decision, check, check_status: str) -> None:
@@ -462,7 +514,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
     if shadow_status is not None:
         _record_shadow(context, state, decision, check, shadow_status)
         if not check.full_gap:
-            return result
+            return _on_run_verdict(context, state, user_task, result, check, shadow_status)
         decision = decision.model_copy(update={
             "action": "no_tool", "should_execute": False, "intent_type": "answer_question",
             "reason": "No registered workflow produces what the run asks for; it is not planned."})

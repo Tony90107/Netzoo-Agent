@@ -7,6 +7,7 @@ from workflow_registry import OUTPUT_CAPABILITIES
 
 from ..contracts import AgentState, LLMUsage, TaskDecision
 from ..contracts.interaction import MethodComparison, WorkflowContinuation
+from ..contracts.capability_check import RunVerdict
 from ..contracts.outcomes import OutcomeHypothesis, RequestedOutcome
 from ..interpretation.hydration import hydrate_router_decision
 from ..interpretation.semantic_goal import outcome_routing_state
@@ -61,6 +62,9 @@ def continue_workflow(
                 matched_actions=[action],
                 recommended_actions=[action],
                 capability_match_status="exact",
+                # Items 1-2 (2026-10-14): a workflow the user picked from what an earlier turn offered, or a plan the
+                # user continues; the Plan Evaluator still binds it to this turn's request and workflow.
+                run_verdict=RunVerdict(action=action, verdict="user_selected"),
                 requested_outcome=RequestedOutcome(
                     operation=capability.operation,
                     artifact_type=capability.artifact_type,
