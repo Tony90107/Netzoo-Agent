@@ -174,7 +174,8 @@ SCHEMA_DIGESTS = {
     # 2026-10-12 (Log 414): optional code-owned violations on each checked requirement; reply only.
     # 2026-10-14 (items 1-2): optional code-owned run_verdict; it can only refuse execution (the Plan Evaluator and
     # the executor gate require an approving one for an analysis run).
-    "TaskDecision": "b1ae7519c8d9adaeb43536d28158c1031dcc0f7f2c8d40c7ffbddc8468ff0fd3",
+    # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
+    "TaskDecision": "ed731c98a49dd8ba611f074f0a652dbf575c365efc12c127c00fa1a32e0acd75",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

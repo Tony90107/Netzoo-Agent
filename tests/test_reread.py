@@ -54,7 +54,9 @@ def test_a_request_with_no_result_read_is_read_again_when_routing_offered_workfl
 def test_a_long_unquoted_stretch_beside_a_quoted_result_is_read_again():
     found = CapabilityCheck(requirements=[_req("the communities of our bipartite TF-gene network", "result", "available",
                                                ["condor.communities"])])
-    assert reread_passages(P1, _decision(found, capability_match_status="exact", matched_actions=["run_condor"])) == [P1]
+    # Item 4: only the words no quote covers are given, not the sentence whose result was already read.
+    assert reread_passages(P1, _decision(found, capability_match_status="exact", matched_actions=["run_condor"])) == [
+        "uploaded automatically to a public database when they are done"]
     framing = "We have RNA-seq from 64 kidney biopsies plus motifs. We want one TF-gene network for the cohort."
     plain = CapabilityCheck(requirements=[_req("RNA-seq from 64 kidney biopsies plus motifs", "context"),
                                           _req("one TF-gene network for the cohort", "result", "available",
@@ -120,3 +122,51 @@ def test_the_router_reads_again_before_the_second_opinion(monkeypatch):
 
     assert len(calls) == 1 and decision.capability_check.full_gap
     assert decision.capability_match_status == "unsupported" and not decision.hypothesis_actions
+
+
+EMAILED = ("We want each patient's TF-gene network from expression, motifs and PPI of 50 patients, emailed to each "
+           "patient's doctor automatically.")
+
+
+def test_a_short_tail_in_any_script_is_read_again_and_framing_is_not():
+    """Item 4 (2026-10-14): the English 4-letter-word count missed short tails and every unspaced script."""
+    from netzoo_agent_core.interpretation.reread import letter_runs
+
+    task = "We want one TF-gene network per sample and upload them."
+    found = CapabilityCheck(requirements=[_req("one TF-gene network per sample", "result", "available",
+                                               ["lioness_panda.per_sample_networks"])])
+    assert reread_passages(task, _decision(found)) == ["and upload them"]
+    framing = "Which method gives one TF-gene network per sample?"
+    plain = CapabilityCheck(requirements=[_req("one TF-gene network per sample", "result", "available",
+                                               ["lioness_panda.per_sample_networks"])])
+    assert reread_passages(framing, _decision(plain)) == []
+    assert letter_runs("and upload them") == 3 and letter_runs("並上傳到公開資料庫") == 5
+
+
+def test_the_reread_quotes_only_the_words_it_was_given():
+    """heldout14 P1 (rr-cand): given the whole sentence, the re-read quoted the network again and the e-mail stayed
+    unread; a result quoted outside the given words is the first reading's."""
+    found = CapabilityCheck(requirements=[_req("each patient's TF-gene network", "result", "available",
+                                               ["lioness_panda.per_sample_networks"]),
+                                          _req("expression, motifs and PPI of 50 patients", "context")])
+    passages = reread_passages(EMAILED, _decision(found))
+    assert passages == ["emailed to each patient's doctor automatically"]
+    elsewhere = _reread_check(EMAILED, "expression, motifs and PPI of 50 patients", ["panda.tf_gene_network"])
+    assert merge_reread(EMAILED, found, elsewhere, passages) is found
+    tail = merge_reread(EMAILED, found, _reread_check(EMAILED, "emailed to each patient's doctor automatically"),
+                        passages)
+    assert [(item.quote, item.status) for item in tail.results()][-1] == (
+        "emailed to each patient's doctor automatically", "not_available")
+
+
+def test_an_unchecked_sentence_is_read_again_and_an_empty_answer_reads_it():
+    """10-13 noise: "Not checked against the registered workflows: 'Opinions welcome.'" under every reply."""
+    task = "We want one TF-gene network for the cohort. Opinions welcome."
+    found = CapabilityCheck(requirements=[_req("one TF-gene network for the cohort", "result", "available",
+                                               ["panda.tf_gene_network"])], unchecked=["Opinions welcome."])
+    passages = reread_passages(task, _decision(found))
+    assert passages == ["Opinions welcome."]
+    nothing = build_capability_check(task, reread_as_proposal(reread_model(1).model_validate({"s1": {"asks": []}})))[0]
+    assert merge_reread(task, found, nothing, passages).unchecked == []
+    # A quote the re-read made up leaves the sentence unchecked.
+    assert merge_reread(task, found, nothing, passages, [{"quote": "x", "reason": "quote_not_in_request"}]) is found

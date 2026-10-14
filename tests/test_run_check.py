@@ -168,4 +168,6 @@ def test_a_run_turn_is_re_read_like_a_guidance_turn():
     check = build_capability_check(task, proposal)[0]
     decision = TaskDecision(action="run_lioness_panda", in_scope=True, should_execute=True, confidence=1.0,
                             reason="r", capability_check=check)
-    assert reread_passages(task, decision) == [task]
+    # Item 4: the words no quote covers (this check quoted no context), not the whole sentence.
+    assert reread_passages(task, decision) == [
+        "from the expression, motifs and PPI of 44 samples, and upload the networks to a public repository for us"]

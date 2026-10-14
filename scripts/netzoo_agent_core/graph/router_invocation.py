@@ -431,9 +431,9 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # workflows, or a long unquoted stretch beside a quoted result -- are read once more, asks only.
         reread, usage, warnings = request_capability_reread(context, state, user_task, passages, usage, warnings)
         if reread is not None:
-            reread_check, _ = build_capability_check(
+            reread_check, unplaced = build_capability_check(
                 user_task, reread_as_proposal(reread, getattr(proposal, "conditions", None)), claims)
-            check = merge_reread(user_task, check, reread_check)
+            check = merge_reread(user_task, check, reread_check, passages, unplaced)
         record_event(context, state, "routing.capability_reread", "classify", {
             "passages": passages, "reread": reread.model_dump() if reread is not None else None,
             "check": check.model_dump()})
