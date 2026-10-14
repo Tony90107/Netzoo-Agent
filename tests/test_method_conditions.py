@@ -296,3 +296,39 @@ def test_a_redirect_never_offers_a_workflow_outside_the_named_method():
     removed = check.model_copy(update={"requirements": [check.requirements[0].model_copy(update={
         "violations": ['OTTER does not meet "LIONESS-style"']})]})
     assert redirect_pairs(removed, ["run_lioness_panda", "run_lioness_coexpression"]) == []
+
+
+def test_a_lioness_version_the_registry_lacks_names_no_registered_method():
+    # m1a MX18: "LIONESS-OTTER" typed LIONESS, which stands for every LIONESS-X.
+    task = "Can you give us the per-sample LIONESS-OTTER networks too?"
+    check = _check(task, _ask("the per-sample LIONESS-OTTER networks", ["lioness_panda.per_sample_networks"],
+                              named="LIONESS", named_quote="LIONESS-OTTER", scale="per_sample", regulator_kinds=["tf"]))
+    result = _result(check)
+    assert result.method["named"] == "unregistered" and result.status == "not_available"
+    assert result.instead == ["lioness_panda.per_sample_networks"]
+    # A registered LIONESS version, or LIONESS alone, still stands for itself.
+    for said in ("LIONESS-PANDA", "LIONESS"):
+        task = f"We want a {said} network for each patient."
+        check = _check(task, _ask(f"a {said} network for each patient", ["lioness_panda.per_sample_networks"],
+                                  named="LIONESS", named_quote=said, scale="per_sample", regulator_kinds=["tf"]))
+        assert _result(check).status == "available", said
+
+
+def test_an_unmapped_request_offers_the_workflow_that_runs_with_its_own_settings():
+    # m1a MX04: "run OTTER ... on the GPU" read as artifact unknown; the reply said no workflow is offered.
+    from evaluate_routing import ProjectPolicyLoader
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.interpretation.unmapped_routes import unmapped_reply
+
+    task = "Go ahead and run OTTER on the 110 lung samples on the GPU so it finishes faster."
+    check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
+                              settings=[("OTTER.computing", "on the GPU", "GPU")]))
+    decision = TaskDecision.model_validate({
+        "action": "no_tool", "in_scope": True, "should_execute": False, "confidence": 1.0, "reason": "unmapped",
+        "match_basis": "semantic", "capability_check": check.model_dump(),
+        "requested_outcome": {"operation": "unknown", "input_artifacts": ["expression_matrix"],
+                              "artifact_type": "unknown", "entity_types": [], "regulator_types": [],
+                              "target_types": [], "granularity": "unknown"}})
+    reply = unmapped_reply(decision, ProjectPolicyLoader(Path(__file__).parents[1]).load())
+    assert "**OTTER**" in reply and "with its own settings instead" in reply
+    assert "no workflow is offered" not in reply

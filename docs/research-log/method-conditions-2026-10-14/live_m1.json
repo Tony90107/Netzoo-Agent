@@ -1,0 +1,467 @@
+{
+ "items": [
+  {
+   "id": "N11",
+   "family": "N",
+   "form": "run",
+   "prompt": "Run OTTER with an L1 sparsity penalty of 0.1 so that most TF-gene edges are exactly zero; motif, PPI and expression for 64 samples are attached.",
+   "requirements": [
+    {
+     "words": "OTTER with an L1 sparsity penalty of 0.1 so that most TF-gene edges are exactly zero",
+     "expect": "not_supported",
+     "nearest": "OTTER",
+     "note": "otter.yaml: no independent sparsity penalty exists; gamma is L2-style and 'an unknown sparsity argument is rejected'."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "a setting OTTER does not have (unregistered or not an OTTER control) for the L1 penalty"
+  },
+  {
+   "id": "MX05",
+   "family": "MX",
+   "form": "request",
+   "prompt": "Please fit GIRAFFE to our 45 pancreatic islet samples with the motif prior and PPI we sent, but set its regularisation lambda to 0.5 instead of the default.",
+   "requirements": [
+    {
+     "words": "fit GIRAFFE to our 45 pancreatic islet samples",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ],
+     "note": "giraffe.yaml inputs stated."
+    },
+    {
+     "words": "set its regularisation lambda to 0.5 instead of the default",
+     "expect": "not_supported",
+     "nearest": "GIRAFFE",
+     "note": "giraffe.yaml: the agent passes only the three required arrays and uses package defaults for all optional parameters; GIRAFFE has no controls."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "any setting on GIRAFFE (GIRAFFE has none) for the regularisation lambda"
+  },
+  {
+   "id": "N36",
+   "family": "N",
+   "form": "question",
+   "prompt": "Can you infer TF activities for our 70 samples with the TIGER Bayesian model specifically?",
+   "requirements": [
+    {
+     "words": "infer TF activities for our 70 samples with the TIGER Bayesian model",
+     "expect": "not_supported",
+     "nearest": "GIRAFFE",
+     "note": "TIGER is not registered; the only TF-activity executor is GIRAFFE's matrix factorisation (giraffe.yaml)."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "named_method unregistered quoting TIGER"
+  },
+  {
+   "id": "N12",
+   "family": "N",
+   "form": "question",
+   "prompt": "Can we get one OTTER network per sample, LIONESS-style, for our 50 kidney biopsies?",
+   "requirements": [
+    {
+     "words": "one OTTER network per sample, LIONESS-style",
+     "expect": "not_supported",
+     "nearest": "OTTER",
+     "note": "otter.yaml: the registered OTTER action is aggregate only; netZooPy's LionessOtter is not registered."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "named_method unregistered (LIONESS-OTTER) or OTTER; never credited to another workflow as the result"
+  },
+  {
+   "id": "N13",
+   "family": "N",
+   "form": "request",
+   "prompt": "We have exactly two RNA-seq samples, one per patient, and want a sample-specific co-expression network for each of the two.",
+   "requirements": [
+    {
+     "words": "a sample-specific co-expression network for each of the two",
+     "expect": "not_supported",
+     "nearest": "BONOBO",
+     "note": "BONOBO and every LIONESS executor require at least three samples (bonobo.yaml; execution.py sample_count < 3 check)."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "sample_count 2"
+  },
+  {
+   "id": "N22",
+   "family": "N",
+   "form": "run",
+   "prompt": "Run LIONESS-DRAGON on all 20,000 genes and 800 proteins for our 300 patients and keep every per-patient network.",
+   "requirements": [
+    {
+     "words": "LIONESS-DRAGON on all 20,000 genes and 800 proteins for our 300 patients",
+     "expect": "not_supported",
+     "nearest": "LIONESS-DRAGON",
+     "note": "20,800 features give ~2.2e8 pairs x 300 samples, far above the 20,000,000-value cap that lioness-dragon.yaml refuses before running."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "sample_count 300 and feature counts reaching the cap (20,000 alone exceeds it)"
+  },
+  {
+   "id": "K06",
+   "family": "K",
+   "form": "run",
+   "turns": [
+    "Run DRAGON on our methylation and expression matrices from the same 88 patients.",
+    "Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6."
+   ],
+   "requirements": [
+    {
+     "words": "give it to me as an edge list, with fixed lambdas of 0.2 and 0.6",
+     "expect": "supported",
+     "turn": 2,
+     "by": [
+      "DRAGON"
+     ],
+     "note": "dragon.yaml: output_format=edge_list and manual lambda1/lambda2 in [0,1] supplied together are valid controls."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "DRAGON.output_format / DRAGON.lambda1 / DRAGON.lambda2 within range, or no setting; stays available"
+  },
+  {
+   "id": "P19",
+   "family": "P",
+   "form": "run",
+   "prompt": "Run it now: LIONESS-DRAGON on the paired miRNA (300 features) and mRNA (600 features) tables from 30 endometrial tumours, with lambda1 0.3 and lambda2 0.4.",
+   "requirements": [
+    {
+     "words": "LIONESS-DRAGON on the paired miRNA (300 features) and mRNA (600 features) tables",
+     "expect": "supported",
+     "by": [
+      "LIONESS-DRAGON"
+     ],
+     "note": "Both lambdas supplied in [0,1] are accepted, and 900 features x 30 samples is about 12M values, under the 20M cap (lioness-dragon.yaml)."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "LIONESS-DRAGON lambdas in range, 30 samples, 900 features; stays available"
+  },
+  {
+   "id": "P20",
+   "family": "P",
+   "form": "request",
+   "prompt": "We have only 9 log-transformed, centred RNA-seq profiles from rare paediatric tumours and want a co-expression network for each one, with a p-value per edge so we can keep only confident edges.",
+   "requirements": [
+    {
+     "words": "a co-expression network for each one",
+     "expect": "supported",
+     "by": [
+      "BONOBO",
+      "LIONESS-COEXPRESSION"
+     ],
+     "note": "BONOBO (Saha et al. 2024) is built for few samples and needs log-transformed centred data (bonobo.yaml); LIONESS-COEXPRESSION also runs with >= 3 samples."
+    },
+    {
+     "words": "a p-value per edge",
+     "expect": "supported",
+     "by": [
+      "BONOBO"
+     ],
+     "note": "BONOBO with sparsify=true and save_pvals=true writes a matching p-value matrix per sample (bonobo.yaml conditional_outputs)."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "sample_count 9 or none; stays available"
+  },
+  {
+   "id": "P09",
+   "family": "P",
+   "form": "question",
+   "prompt": "How do we get a separate TF-and-miRNA-to-gene network for each of 75 ovarian cancer patients? Expression, the motif prior with miRNA edges, PPI and the miRNA list are all ready.",
+   "requirements": [
+    {
+     "words": "a separate TF-and-miRNA-to-gene network for each of 75 ovarian cancer patients",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PUMA"
+     ],
+     "note": "LIONESS-PUMA derives sample-specific TF/miRNA-to-gene networks (lioness-puma.yaml) and all its inputs are stated."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "no limit; stays available"
+  },
+  {
+   "id": "MX18",
+   "family": "MX",
+   "form": "question",
+   "prompt": "Can you give us OTTER's aggregate network for the 64 endometriosis samples (motif, PPI and expression supplied) and the per-sample LIONESS-OTTER networks too?",
+   "requirements": [
+    {
+     "words": "OTTER's aggregate network for the 64 endometriosis samples",
+     "expect": "supported",
+     "by": [
+      "OTTER"
+     ],
+     "note": "otter.yaml inputs stated."
+    },
+    {
+     "words": "the per-sample LIONESS-OTTER networks",
+     "expect": "not_supported",
+     "nearest": "OTTER",
+     "note": "otter.yaml: registered OTTER is aggregate only and is not relabelled LIONESS-OTTER."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "R1 named OTTER, available; R2 named unregistered (LIONESS-OTTER) or OTTER, not available"
+  },
+  {
+   "id": "N36P",
+   "family": "P",
+   "form": "question",
+   "prompt": "Can you infer TF activities for our 70 samples with GIRAFFE specifically?",
+   "requirements": [
+    {
+     "words": "infer TF activities for our 70 samples with GIRAFFE",
+     "expect": "supported",
+     "by": [
+      "GIRAFFE"
+     ],
+     "note": "giraffe.yaml: TF activity per sample (the plan's new pair for N36)."
+    }
+   ],
+   "source": "new (M1 plan)",
+   "m1_target": "named_method GIRAFFE or none; stays available"
+  },
+  {
+   "id": "P12",
+   "family": "P",
+   "form": "run",
+   "prompt": "Go ahead with OTTER on the 90 thyroid samples: seed prior thy_W.tsv, TF-TF PPI thy_P.tsv, expression thy_expr.tsv. Use lambda 0.05 and 100 iterations, and write the result as an edge list.",
+   "requirements": [
+    {
+     "words": "OTTER on the 90 thyroid samples",
+     "expect": "supported",
+     "by": [
+      "OTTER"
+     ],
+     "note": "otter.yaml exposes lam (0-1), iterations and output_format=edge_list as controls; all inputs given."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "OTTER.lam 0.05 and OTTER.iterations 100 in range; stays available"
+  },
+  {
+   "id": "P21",
+   "family": "P",
+   "form": "run",
+   "prompt": "Go ahead and run BONOBO on samples S03, S07 and S11 only from yeast_stress_logc.tsv (log2, centred, 14 samples in total); save the matrices as csv.",
+   "requirements": [
+    {
+     "words": "run BONOBO on samples S03, S07 and S11 only",
+     "expect": "supported",
+     "by": [
+      "BONOBO"
+     ],
+     "note": "bonobo.yaml sample_names takes explicit sample IDs and bonobo_output_format allows .csv."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "BONOBO with 3 named of 14 samples; stays available"
+  },
+  {
+   "id": "P33",
+   "family": "P",
+   "form": "run",
+   "prompt": "Go ahead: LIONESS-PANDA on the 15 macaque PBMC samples with the motif and PPI priors in /proj/mac/priors, but in the end I only need the network for animal M07 - keep the aggregate separate.",
+   "requirements": [
+    {
+     "words": "I only need the network for animal M07",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ],
+     "note": "lioness-panda.yaml: with a sample ID, build all sample networks, select the requested one afterwards and keep it separate from the aggregate."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "LIONESS-PANDA on 15 samples, one kept; a count of 1 would wrongly refuse"
+  },
+  {
+   "id": "K09",
+   "family": "K",
+   "form": "run",
+   "turns": [
+    "Run OTTER on the GPU for our 120 samples; motif prior, PPI and expression are attached.",
+    "Never mind the GPU - CPU is fine, just use single precision."
+   ],
+   "requirements": [
+    {
+     "words": "CPU is fine, just use single precision",
+     "expect": "supported",
+     "turn": 2,
+     "by": [
+      "OTTER"
+     ],
+     "note": "otter.yaml: computing=cpu and precision=single are validated controls."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "turn 2 withdraws the GPU: no gpu value; stays available"
+  },
+  {
+   "id": "K10",
+   "family": "K",
+   "form": "run",
+   "turns": [
+    "Run BONOBO on the 12 yeast heat-shock samples (log2, centred).",
+    "Also keep the per-edge p-values so we can threshold them ourselves."
+   ],
+   "requirements": [
+    {
+     "words": "keep the per-edge p-values",
+     "expect": "supported",
+     "turn": 2,
+     "by": [
+      "BONOBO"
+     ],
+     "note": "bonobo.yaml: sparsify=true with save_pvals=true keeps the full matrix and writes a p-value matrix per sample."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "BONOBO p-value settings on 12 samples; stays available"
+  },
+  {
+   "id": "P17",
+   "family": "P",
+   "form": "question",
+   "prompt": "Can I get a joint network of 200 serum metabolites and 1,500 transcripts measured on the same 95 volunteers, with a p-value for every edge, written as an edge list?",
+   "requirements": [
+    {
+     "words": "a joint network of 200 serum metabolites and 1,500 transcripts",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ],
+     "note": "Two paired continuous layers on the same samples is DRAGON's contract (dragon.yaml)."
+    },
+    {
+     "words": "a p-value for every edge",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ],
+     "note": "run_dragon calls estimate_p_values_dragon and the edge list carries p_value and adj_p_value columns (execution.py, data/dragon.py)."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "DRAGON with 200 + 1,500 features on 95 volunteers (no cap on DRAGON); stays available"
+  },
+  {
+   "id": "MX04",
+   "family": "MX",
+   "form": "run",
+   "prompt": "Go ahead and run OTTER on the 110 lung samples (motif, PPI and expression attached) on the GPU so it finishes faster.",
+   "requirements": [
+    {
+     "words": "run OTTER on the 110 lung samples",
+     "expect": "supported",
+     "by": [
+      "OTTER"
+     ],
+     "note": "otter.yaml inputs stated; CPU execution is available."
+    },
+    {
+     "words": "on the GPU so it finishes faster",
+     "expect": "not_supported",
+     "nearest": "OTTER",
+     "note": "otter.yaml: 'The current agent runtime does not enable OTTER GPU execution.'"
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "R1 OTTER available as itself; R2 OTTER.computing GPU not available"
+  },
+  {
+   "id": "P10",
+   "family": "P",
+   "form": "run",
+   "prompt": "Compute sample-specific co-expression networks with LIONESS for all 24 pig muscle samples in pig_muscle_tpm.tsv.",
+   "requirements": [
+    {
+     "words": "sample-specific co-expression networks with LIONESS for all 24 pig muscle samples",
+     "expect": "supported",
+     "by": [
+      "LIONESS-COEXPRESSION"
+     ],
+     "note": "lioness-coexpression.yaml needs only a gene-by-sample expression file and >= 3 samples."
+    }
+   ],
+   "source": "accept24",
+   "m1_target": "LIONESS 24 samples; stays available"
+  },
+  {
+   "id": "F1",
+   "family": "N",
+   "form": "question",
+   "prompt": "Can you run PANDA with its alpha update rate set to 0.25 on our 60 lung samples? Expression, motif prior and PPI are ready.",
+   "requirements": [
+    {
+     "words": "run PANDA with its alpha update rate set to 0.25",
+     "expect": "not_supported",
+     "nearest": "PANDA",
+     "note": "PANDA's only registered control is with_header; alpha is not passed (panda.yaml)."
+    }
+   ],
+   "m1_target": "a setting PANDA does not have (unregistered or another workflow's) for alpha",
+   "source": "new (fresh wording)"
+  },
+  {
+   "id": "F2",
+   "family": "N",
+   "form": "request",
+   "prompt": "Please infer one aggregate gene regulatory network for our 80 colon samples with GENIE3, using the expression matrix we uploaded.",
+   "requirements": [
+    {
+     "words": "infer one aggregate gene regulatory network for our 80 colon samples with GENIE3",
+     "expect": "not_supported",
+     "nearest": "PANDA",
+     "note": "GENIE3 is not registered; PANDA/OTTER are other methods."
+    }
+   ],
+   "m1_target": "named_method unregistered quoting GENIE3",
+   "source": "new (fresh wording)"
+  },
+  {
+   "id": "F3",
+   "family": "N",
+   "form": "request",
+   "prompt": "We only have 2 cell-line replicates, but we would like a LIONESS-PANDA network for each replicate; motif and PPI files are ready.",
+   "requirements": [
+    {
+     "words": "a LIONESS-PANDA network for each replicate",
+     "expect": "not_supported",
+     "nearest": "LIONESS-PANDA",
+     "note": "LIONESS needs at least 3 samples (preflight)."
+    }
+   ],
+   "m1_target": "sample_count 2",
+   "source": "new (fresh wording)"
+  },
+  {
+   "id": "F4",
+   "family": "P",
+   "form": "request",
+   "prompt": "Please run SAMBAR with kmax 6 on the somatic mutation matrix of our 200 tumours, with exon lengths, the cancer-gene list and the MSigDB GMT, to get pathway subtypes.",
+   "requirements": [
+    {
+     "words": "run SAMBAR with kmax 6 on the somatic mutation matrix of our 200 tumours",
+     "expect": "supported",
+     "by": [
+      "SAMBAR"
+     ],
+     "note": "kmax is a SAMBAR control (integer >= 2)."
+    }
+   ],
+   "m1_target": "SAMBAR.kmax 6 in range; stays available",
+   "source": "new (fresh wording)"
+  }
+ ]
+}

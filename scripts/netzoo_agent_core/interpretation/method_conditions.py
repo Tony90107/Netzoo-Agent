@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from ..capability_sheet import entry
+from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, conditions_for, data_issue, named_workflows, setting_issue, stated_numbers,
 )
@@ -37,7 +38,7 @@ def verified_method(task: str, item) -> dict:
     found: dict = {}
     named, said = getattr(item, "named_method", "none"), _stated(task, getattr(item, "named_method_quote", ""))
     if named not in (None, "none") and said and (named == UNREGISTERED or _folded(named) in _folded(said)):
-        found.update(named=named, named_quote=said)
+        found.update(named=_unregistered_lioness(said) or named, named_quote=said)
     settings = []
     for setting in getattr(item, "settings", None) or []:
         if (words := _stated(task, setting.quote)) is not None:
@@ -54,6 +55,20 @@ def verified_method(task: str, item) -> dict:
     if features:
         found["features"] = sum(features.values())
     return found
+
+
+def _unregistered_lioness(said: str) -> str | None:
+    """A LIONESS version of a registered workflow that has none here ("LIONESS-OTTER") names no registered method.
+
+    m1a MX18: "the per-sample LIONESS-OTTER networks" was typed LIONESS, which stands for every LIONESS-X, so
+    LIONESS-PANDA could have been credited for it.
+    """
+    folded, known = _folded(said), registered_workflows()
+    if LIONESS_FAMILY.casefold() not in folded or any(
+            _folded(name) in folded for name in known if name.startswith(f"{LIONESS_FAMILY}-")):
+        return None
+    bases = [name for name in known if not name.startswith(f"{LIONESS_FAMILY}-") and _folded(name) in folded]
+    return UNREGISTERED if any(f"{LIONESS_FAMILY}-{name}" not in known for name in bases) else None
 
 
 def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str], list[str], list[str]]:

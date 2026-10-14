@@ -78,6 +78,19 @@ def credited_actions(check, policy) -> list[tuple[str, str]]:
     return found
 
 
+def _with_own_settings(check, policy) -> list[tuple[str, str]]:
+    """(workflow action, the request words) for each result only a stated setting keeps from its workflow (M1)."""
+    if check is None or check.unconfirmed():
+        return []
+    found = []
+    for item in check.results():
+        for key in item.defaults if item.status == "not_available" else ():
+            action = entry(key).action
+            if action in policy.workflows and action not in {a for a, _ in found}:
+                found.append((action, item.quote))
+    return found
+
+
 def fully_credited(check) -> bool:
     """The check confirmed every requested result, with no unchecked sentences."""
     return bool(check is not None and not check.unconfirmed() and not check.unchecked and check.results()
@@ -129,6 +142,13 @@ def unmapped_reply(decision, policy) -> str | None:
         closing = ("Ask about the supported part, or describe a different result for the unavailable part." if partial_tie else
                    "Choose a result to discuss with its workflow." if fully_credited(check) else
                    "Say which part to start with, or describe the rest as the result you want from your data.")
+    elif own := _with_own_settings(check, policy):
+        # M1 (m1a MX04): "run OTTER ... on the GPU" -- the workflow is the one asked for, only not with that setting.
+        lines = ["No registered workflow can run this with the setting you asked for (above). This workflow can run "
+                 "it with its own settings instead:"]
+        lines += [f'- **{policy.workflows[action].workflow}** — for "{words}"; produces: {produced_text(action)}'
+                  for action, words in own]
+        closing = "Tell me to use it with its own settings, or ask about another setting."
     else:
         lines = ["I could not tell which registered result you are asking for, so no workflow is offered for it."]
         if check is not None and check.unavailable:
