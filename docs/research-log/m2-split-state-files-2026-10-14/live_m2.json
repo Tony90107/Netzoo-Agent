@@ -1,0 +1,496 @@
+{
+ "items": [
+  {
+   "id": "MX03",
+   "family": "MX",
+   "form": "request",
+   "prompt": "We'd like a DRAGON network between the proteome and the transcriptome of our 64 matched tumours, and please fold the metabolome from the same tumours into the same model as a third layer.",
+   "requirements": [
+    {
+     "words": "a DRAGON network between the proteome and the transcriptome of our 64 matched tumours",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ],
+     "note": "Two paired continuous layers (dragon.yaml)."
+    },
+    {
+     "words": "fold the metabolome from the same tumours into the same model as a third layer",
+     "expect": "not_supported",
+     "nearest": "DRAGON",
+     "note": "DRAGON has no three-layer argument (dragon.yaml)."
+    }
+   ],
+   "m2_group": "A2",
+   "m2_target": "two-layer DRAGON network available; the third layer refused on its own line",
+   "source": "accept24"
+  },
+  {
+   "id": "MX09",
+   "family": "MX",
+   "form": "request",
+   "prompt": "We want a network of TFs and miRNAs regulating genes in our 72 hepatoblastoma samples (expression, motif prior with miRNA edges, miRNA list and PPI are ready), with the lncRNAs added as a third regulator class in the same network using our lncRNA-target predictions.",
+   "requirements": [
+    {
+     "words": "a network of TFs and miRNAs regulating genes in our 72 hepatoblastoma samples",
+     "expect": "supported",
+     "by": [
+      "PUMA"
+     ],
+     "note": "PUMA's regulator types are TF and miRNA (puma.yaml) and all its inputs are stated."
+    },
+    {
+     "words": "the lncRNAs added as a third regulator class in the same network",
+     "expect": "not_supported",
+     "nearest": "PUMA",
+     "note": "No workflow has an lncRNA regulator class (puma.yaml regulator_types [tf, mirna])."
+    }
+   ],
+   "m2_group": "A2",
+   "m2_target": "TF+miRNA network available (PUMA); lncRNA class refused on its own line",
+   "source": "accept24"
+  },
+  {
+   "id": "U15",
+   "family": "U",
+   "form": "request",
+   "prompt": "We haven't decided whether we'll have four or five omics layers on our 100 donors, but we want all of them in one joint partial-correlation network.",
+   "requirements": [
+    {
+     "words": "all of them in one joint partial-correlation network",
+     "expect": "not_supported",
+     "nearest": "DRAGON",
+     "note": "No question needed: four and five layers both exceed DRAGON's two-layer limit (dragon.yaml)."
+    }
+   ],
+   "m2_group": "A2 guard",
+   "m2_target": "a single model of four to five layers is refused whole (no 'partly')",
+   "source": "accept24"
+  },
+  {
+   "id": "N35",
+   "family": "N",
+   "form": "request",
+   "prompt": "Build a PUMA network in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels in the same 80 samples.",
+   "requirements": [
+    {
+     "words": "the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels",
+     "expect": "not_supported",
+     "nearest": "PUMA",
+     "note": "PUMA uses gene co-expression plus a miRNA-target prior; miRNA expression is not an input (puma.yaml required_inputs; Kuijjer et al. 2020)."
+    }
+   ],
+   "m2_group": "A3",
+   "m2_target": "'driven by miRNA expression levels' refused on its own line (PUMA does not meet it); PUMA network itself may stand",
+   "source": "accept24"
+  },
+  {
+   "id": "MX14",
+   "family": "MX",
+   "form": "run",
+   "prompt": "Run PANDA on this month's 40 prostate samples with the usual motif and PPI files, and set it to re-run automatically every Monday as new samples arrive.",
+   "requirements": [
+    {
+     "words": "Run PANDA on this month's 40 prostate samples",
+     "expect": "supported",
+     "by": [
+      "PANDA"
+     ],
+     "note": "panda.yaml inputs stated."
+    },
+    {
+     "words": "re-run automatically every Monday as new samples arrive",
+     "expect": "not_supported",
+     "note": "No executor schedules recurring runs."
+    }
+   ],
+   "m2_group": "A3",
+   "m2_target": "weekly automatic re-run refused on its own line; the PANDA run is held, not run as part",
+   "source": "accept24"
+  },
+  {
+   "id": "P01",
+   "family": "P",
+   "form": "run",
+   "prompt": "Run it now: build one aggregate PANDA network for our 64 liver biopsies from expr_liver.tsv, motif prior motif_hs.txt and PPI ppi_hs.txt, and call the output liver_panda.txt.",
+   "requirements": [
+    {
+     "words": "build one aggregate PANDA network for our 64 liver biopsies",
+     "expect": "supported",
+     "by": [
+      "PANDA"
+     ],
+     "note": "panda.yaml requires expression, motif, PPI and output_file, all given; the output name is a harmless output_file choice."
+    }
+   ],
+   "m2_group": "A3 control",
+   "m2_target": "input description in the asking sentence adds no refused line; PANDA run planned",
+   "source": "accept24"
+  },
+  {
+   "id": "MX10",
+   "family": "MX",
+   "form": "run",
+   "prompt": "Run CONDOR on our thresholded OTTER edge list otter_edges.csv (positive weights only) to get TF-gene communities, and allow genes to sit in more than one community.",
+   "requirements": [
+    {
+     "words": "Run CONDOR on our thresholded OTTER edge list otter_edges.csv",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ],
+     "note": "A source-target-weight bipartite edge list is CONDOR's input (condor.yaml)."
+    },
+    {
+     "words": "allow genes to sit in more than one community",
+     "expect": "not_supported",
+     "nearest": "CONDOR",
+     "note": "CONDOR returns one community per node (Platig et al. 2016)."
+    }
+   ],
+   "m2_group": "A1",
+   "m2_target": "communities available from CONDOR; overlap refused on its own line; run held",
+   "source": "accept24"
+  },
+  {
+   "id": "MX02",
+   "family": "MX",
+   "form": "run",
+   "prompt": "Run LIONESS-PANDA on the 80 sarcoma samples with our motif and PPI priors, then put the per-sample networks into an interactive dashboard the clinicians can browse.",
+   "requirements": [
+    {
+     "words": "Run LIONESS-PANDA on the 80 sarcoma samples",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ],
+     "note": "lioness-panda.yaml inputs stated; 80 >= 3 samples."
+    },
+    {
+     "words": "an interactive dashboard the clinicians can browse",
+     "expect": "not_supported",
+     "note": "No workflow builds dashboards."
+    }
+   ],
+   "m2_group": "A4",
+   "m2_target": "dashboard refused on its own line; run held",
+   "source": "accept24"
+  },
+  {
+   "id": "P30",
+   "family": "P",
+   "form": "request",
+   "prompt": "I work in a clinical genomics unit that sequences tumours for a regional cancer registry. Over five years we have accumulated whole-exome somatic calls for 268 endometrial cancers. Mutation counts per gene are in a samples-by-genes CSV. We also have a CSV of exon lengths per gene, the cancer-gene list distributed with SAMBAR, and the MSigDB canonical pathways GMT. Gene-level analyses have been frustrating because the matrix is extremely sparse and hypermutated tumours dominate everything. I read that converting mutations to pathway-level scores, normalised for gene length and mutation burden, makes subtyping much more stable. We would like pathway mutation scores for every tumour and a clustering of the tumours into between three and five subgroups. Our clinicians will later check whether the subgroups line up with the molecular classification, but that is not something we need from you. Outputs can go to /registry/sambar_run1.",
+   "requirements": [
+    {
+     "words": "pathway mutation scores for every tumour",
+     "expect": "supported",
+     "by": [
+      "SAMBAR"
+     ],
+     "note": "All four SAMBAR inputs are stated; gene-length and burden normalisation are SAMBAR transformations (sambar.yaml; Kuijjer et al. 2018)."
+    },
+    {
+     "words": "a clustering of the tumours into between three and five subgroups",
+     "expect": "supported",
+     "by": [
+      "SAMBAR"
+     ],
+     "note": "cluster=true with kmin=3, kmax=5 is within sambar.yaml limits for 268 samples."
+    }
+   ],
+   "m2_group": "A5",
+   "m2_target": "no delivery line for the output folder; both SAMBAR results available",
+   "source": "accept24"
+  },
+  {
+   "id": "P21",
+   "family": "P",
+   "form": "run",
+   "prompt": "Go ahead and run BONOBO on samples S03, S07 and S11 only from yeast_stress_logc.tsv (log2, centred, 14 samples in total); save the matrices as csv.",
+   "requirements": [
+    {
+     "words": "run BONOBO on samples S03, S07 and S11 only",
+     "expect": "supported",
+     "by": [
+      "BONOBO"
+     ],
+     "note": "bonobo.yaml sample_names takes explicit sample IDs and bonobo_output_format allows .csv."
+    }
+   ],
+   "m2_group": "C1",
+   "m2_target": "run binds yeast_stress_logc.tsv as expression_file (missing file reported); no toy data listed",
+   "source": "accept24"
+  },
+  {
+   "id": "P16",
+   "family": "P",
+   "form": "run",
+   "prompt": "Run DRAGON on methylation_beta.csv and rnaseq_log.csv (the same 140 lung adenocarcinoma patients, patients as rows) and give me the partial-correlation network.",
+   "requirements": [
+    {
+     "words": "give me the partial-correlation network",
+     "expect": "supported",
+     "by": [
+      "DRAGON"
+     ],
+     "note": "dragon.yaml: two paired sample-by-feature continuous layers in, one aggregate partial-correlation GGM out."
+    }
+   ],
+   "m2_group": "C1",
+   "m2_target": "run binds methylation_beta.csv and rnaseq_log.csv as the two layers; no toy data listed",
+   "source": "accept24"
+  },
+  {
+   "id": "P24",
+   "family": "P",
+   "form": "run",
+   "prompt": "Run CONDOR community detection on panda_edges_thresholded.tsv (source, target, weight; TFs to genes) and report each node's core score.",
+   "requirements": [
+    {
+     "words": "Run CONDOR community detection on panda_edges_thresholded.tsv",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ],
+     "note": "CONDOR consumes a source-target-weight bipartite edge list (condor.yaml)."
+    },
+    {
+     "words": "each node's core score",
+     "expect": "supported",
+     "by": [
+      "CONDOR"
+     ],
+     "note": "CONDOR writes reg_qscores.tsv and tar_qscores.tsv core scores (data/paths.py condor_artifact_paths; Platig et al. 2016)."
+    }
+   ],
+   "m2_group": "C1",
+   "m2_target": "run binds panda_edges_thresholded.tsv; no teacher-demo network",
+   "source": "accept24"
+  },
+  {
+   "id": "P33",
+   "family": "P",
+   "form": "run",
+   "prompt": "Go ahead: LIONESS-PANDA on the 15 macaque PBMC samples with the motif and PPI priors in /proj/mac/priors, but in the end I only need the network for animal M07 - keep the aggregate separate.",
+   "requirements": [
+    {
+     "words": "I only need the network for animal M07",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ],
+     "note": "lioness-panda.yaml: with a sample ID, build all sample networks, select the requested one afterwards and keep it separate from the aggregate."
+    }
+   ],
+   "m2_group": "C1",
+   "m2_target": "missing /proj/mac/priors reported; no other data offered",
+   "source": "accept24"
+  },
+  {
+   "id": "P19",
+   "family": "P",
+   "form": "run",
+   "prompt": "Run it now: LIONESS-DRAGON on the paired miRNA (300 features) and mRNA (600 features) tables from 30 endometrial tumours, with lambda1 0.3 and lambda2 0.4.",
+   "requirements": [
+    {
+     "words": "LIONESS-DRAGON on the paired miRNA (300 features) and mRNA (600 features) tables",
+     "expect": "supported",
+     "by": [
+      "LIONESS-DRAGON"
+     ],
+     "note": "Both lambdas supplied in [0,1] are accepted, and 900 features x 30 samples is about 12M values, under the 20M cap (lioness-dragon.yaml)."
+    }
+   ],
+   "m2_group": "C2",
+   "m2_target": "endometrial is not a demo: no dragon-toy filled in",
+   "source": "accept24"
+  },
+  {
+   "id": "P02",
+   "family": "P",
+   "form": "question",
+   "prompt": "Which method gives me a single TF-to-target-gene regulatory network for 48 bovine mammary samples? I have the expression matrix, a TF motif prior scanned against bosTau9 promoters, and a TF-TF interaction list.",
+   "requirements": [
+    {
+     "words": "a single TF-to-target-gene regulatory network for 48 bovine mammary samples",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER",
+      "GIRAFFE"
+     ],
+     "note": "Aggregate TF-to-gene network from expression + motif + PPI is PANDA's output (panda.yaml); OTTER and GIRAFFE's regulation matrix take the same three inputs (otter.yaml, giraffe.yaml)."
+    }
+   ],
+   "m2_group": "C3",
+   "m2_target": "no 'Do you have a motif prior and PPI' question",
+   "source": "accept24"
+  },
+  {
+   "id": "P06",
+   "family": "P",
+   "form": "request",
+   "prompt": "We want one regulatory network per patient for our 212 colorectal tumours, TFs to genes, using the expression matrix and the motif and PPI priors from last month's aggregate run.",
+   "requirements": [
+    {
+     "words": "one regulatory network per patient for our 212 colorectal tumours",
+     "expect": "supported",
+     "by": [
+      "LIONESS-PANDA"
+     ],
+     "note": "LIONESS-PANDA gives sample-specific TF-to-gene networks from expression, motif and PPI (lioness-panda.yaml), and 212 >= 3 samples."
+    }
+   ],
+   "m2_group": "C3",
+   "m2_target": "no re-ask for the priors from last month's run",
+   "source": "accept24"
+  },
+  {
+   "id": "P28",
+   "family": "P",
+   "form": "request",
+   "prompt": "I'm a postdoc in a reproductive biology group and I'm new to network methods. Over the last two years we collected endometrial biopsies from 44 women at different points of the menstrual cycle. Our core processed the RNA-seq, and we have a gene-by-sample matrix of variance-stabilised counts. We already ran DESeq2 and found a few hundred genes that change between the proliferative and secretory phases. My PI suspects that a handful of transcription factors orchestrate these changes, but differential expression alone can't show that. A colleague pointed me to a human promoter motif prior, which I have downloaded, together with a TF-TF interaction file from STRING. What we would like first is a single regulatory network that summarises how TFs target genes across all 44 biopsies. We will look at phase-specific questions later ourselves. Please keep everything under results/endometrium/.",
+   "requirements": [
+    {
+     "words": "a single regulatory network that summarises how TFs target genes across all 44 biopsies",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER",
+      "GIRAFFE"
+     ],
+     "note": "Expression, motif prior and TF PPI are all stated, which is the aggregate TF-gene contract of PANDA (panda.yaml) and also OTTER/GIRAFFE; the output folder is a harmless choice."
+    }
+   ],
+   "m2_group": "C3",
+   "m2_target": "no 'Do you have ... PPI' question for the TF-TF interaction file",
+   "source": "accept24"
+  },
+  {
+   "id": "K02",
+   "family": "K",
+   "form": "question",
+   "turns": [
+    "Can you run DRAGON on our liver proteomics and phosphoproteomics tables?",
+    "I just checked: the phospho data come from a different set of 25 mice than the proteomics."
+   ],
+   "requirements": [
+    {
+     "words": "the phospho data come from a different set of 25 mice than the proteomics",
+     "expect": "not_supported",
+     "turn": 2,
+     "nearest": "DRAGON",
+     "note": "DRAGON needs the same samples in both layers (dragon.yaml exact sample-ID set equality)."
+    }
+   ],
+   "m2_group": "B1",
+   "m2_target": "turn 2 holds the DRAGON run (different mice); no wizard continuation",
+   "source": "accept24"
+  },
+  {
+   "id": "K09",
+   "family": "K",
+   "form": "run",
+   "turns": [
+    "Run OTTER on the GPU for our 120 samples; motif prior, PPI and expression are attached.",
+    "Never mind the GPU - CPU is fine, just use single precision."
+   ],
+   "requirements": [
+    {
+     "words": "CPU is fine, just use single precision",
+     "expect": "supported",
+     "turn": 2,
+     "by": [
+      "OTTER"
+     ],
+     "note": "otter.yaml: computing=cpu and precision=single are validated controls."
+    }
+   ],
+   "m2_group": "B2",
+   "m2_target": "turn 2 plans OTTER with CPU and single precision (preview), no GPU",
+   "source": "accept24"
+  },
+  {
+   "id": "K06",
+   "family": "K",
+   "form": "run",
+   "turns": [
+    "Run DRAGON on our methylation and expression matrices from the same 88 patients.",
+    "Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6."
+   ],
+   "requirements": [
+    {
+     "words": "give it to me as an edge list, with fixed lambdas of 0.2 and 0.6",
+     "expect": "supported",
+     "turn": 2,
+     "by": [
+      "DRAGON"
+     ],
+     "note": "dragon.yaml: output_format=edge_list and manual lambda1/lambda2 in [0,1] supplied together are valid controls."
+    }
+   ],
+   "m2_group": "B3",
+   "m2_target": "turn 2 DRAGON run carries lambda1 0.2, lambda2 0.6, edge_list",
+   "source": "accept24"
+  },
+  {
+   "id": "G1",
+   "family": "MX",
+   "form": "request",
+   "m2_group": "A2 fresh",
+   "source": "new (m2)",
+   "prompt": "Build an aggregate PANDA network for our 60 lung adenocarcinoma samples from expression, motifs and PPI, and add our lncRNAs as a further class of regulators in the same network.",
+   "requirements": [
+    {
+     "words": "an aggregate PANDA network for our 60 lung adenocarcinoma samples",
+     "expect": "supported",
+     "by": [
+      "PANDA"
+     ]
+    },
+    {
+     "words": "add our lncRNAs as a further class of regulators in the same network",
+     "expect": "not_supported",
+     "nearest": "PUMA"
+    }
+   ],
+   "m2_target": "PANDA network available; lncRNA class refused on its own line"
+  },
+  {
+   "id": "G2",
+   "family": "P",
+   "form": "request",
+   "m2_group": "A3 control",
+   "source": "new (m2)",
+   "prompt": "We want one TF-gene network for our 77 kidney samples from our expression matrix, the JASPAR motif prior and a STRING PPI network.",
+   "requirements": [
+    {
+     "words": "one TF-gene network for our 77 kidney samples",
+     "expect": "supported",
+     "by": [
+      "PANDA",
+      "OTTER"
+     ]
+    }
+   ],
+   "m2_target": "the input description adds no refused line"
+  },
+  {
+   "id": "G3",
+   "family": "N",
+   "form": "request",
+   "m2_group": "A3 fresh",
+   "source": "new (m2)",
+   "prompt": "Please compute an OTTER network for our 50 liver samples where every edge weight is the Spearman correlation between the TF's own mRNA and the target gene.",
+   "requirements": [
+    {
+     "words": "every edge weight is the Spearman correlation between the TF's own mRNA and the target gene",
+     "expect": "not_supported",
+     "nearest": "OTTER"
+    }
+   ],
+   "m2_target": "the Spearman-weight requirement is refused (OTTER does not meet it)"
+  }
+ ]
+}
