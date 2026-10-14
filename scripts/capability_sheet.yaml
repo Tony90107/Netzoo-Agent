@@ -15,6 +15,10 @@
 # - `see: <id>` copies the referenced entry's text; the entry keeps its own id.
 # - Every produces entry has `granularity` (aggregate, sample_specific or both); a
 #   multi-omic entry has `layers`, the most omics layers it models jointly (Log 388).
+#   A label or test read per sample and reported for the cohort is both (item 3, 2026-10-14): SAMBAR's subtype
+#   per patient from one clustering, and group tests on per-sample estimates. Recorded checks typed "patient
+#   subtypes" per sample and "a test between responders and non-responders" whole-cohort, 33 times in 35 asks whose
+#   stated scale ruled out every credited entry; now a stated scale rules entries out (`capability_check._fitting`).
 # - Typed attributes code compares with each ask (Log 389): `regulators`, the regulator
 #   kinds an entry's result contains ([] for co-expression); `signed`, whether it says
 #   activation versus repression. Every workflow takes bulk samples (`data_units`).
@@ -161,7 +165,7 @@ workflows:
       - id: lioness_panda.association_tests
         regulators: [tf]
         signed: false
-        granularity: sample_specific
+        granularity: [aggregate, sample_specific]
         level: with_step
         result: Edges or targeting scores tested between groups, paired time points, or against clinical variables (e.g. survival).
         step: A statistical model outside NetZoo (e.g. limma, Cox), with multiple-testing correction; needs a clinical table keyed by sample ID.
@@ -188,7 +192,7 @@ workflows:
         inputs: [expression matrix, TF motif prior, PPI network, miRNA-target prior and miRNA list]
         source: "Kuijjer et al. 2019 iScience; Kuijjer et al. 2020; [EXEC] docker/run-lioness:50-53"
       - {id: lioness_puma.per_sample_targeting, regulators: [tf, mirna], signed: false, granularity: sample_specific, level: with_step, see: lioness_panda.per_sample_targeting}
-      - {id: lioness_puma.association_tests, regulators: [tf, mirna], signed: false, granularity: sample_specific, level: with_step, see: lioness_panda.association_tests}
+      - {id: lioness_puma.association_tests, regulators: [tf, mirna], signed: false, granularity: [aggregate, sample_specific], level: with_step, see: lioness_panda.association_tests}
     near_misses:
       - {id: lioness_puma.no_single_cell, see: lioness.no_single_cell}
       - {id: lioness_puma.no_lncrna_cerna, see: puma.no_lncrna_cerna}
@@ -238,7 +242,7 @@ workflows:
       - id: giraffe.activity_tests
         regulators: [tf]
         signed: false
-        granularity: sample_specific
+        granularity: [aggregate, sample_specific]
         level: with_step
         result: TF activity tested between conditions or against clinical variables.
         step: A statistical test outside NetZoo on the activity matrix, with multiple-testing correction.
@@ -297,7 +301,7 @@ workflows:
         source: "Kuijjer et al. 2019 iScience; Shutta et al. 2023; [EXEC] execution_lioness_dragon.py:104-107"
       - id: lioness_dragon.association_tests
         layers: 2
-        granularity: sample_specific
+        granularity: [aggregate, sample_specific]
         level: with_step
         result: Per-sample edges compared between groups or individuals.
         step: A statistical test outside NetZoo.
@@ -321,7 +325,7 @@ workflows:
         granularity: [aggregate, sample_specific]
         inputs: [expression matrix]
         source: "Kuijjer et al. 2019 iScience; [EXEC] docker/run-lioness:55-57"
-      - {id: lioness_coexpression.comparisons, regulators: [], granularity: sample_specific, level: with_step, result: Per-sample gene degree or edge weights compared across samples or groups., step: A test outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_lioness_coexpression"}
+      - {id: lioness_coexpression.comparisons, regulators: [], granularity: [aggregate, sample_specific], level: with_step, result: Per-sample gene degree or edge weights compared across samples or groups., step: A test outside NetZoo., source: "[REG] DOWNSTREAM_ANALYSES run_lioness_coexpression"}
     near_misses:
       - id: coexpression.no_regulation
         result_asked: Which regulator controls which gene, or edge direction.
@@ -403,10 +407,10 @@ workflows:
         groups: one_group
         level: direct
         result: Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix.
-        granularity: aggregate
+        granularity: [aggregate, sample_specific]
         inputs: [mutation matrix, exon sizes, cancer genes, pathway sets]
         source: "Kuijjer et al. 2018 Br J Cancer 118:1492; [EXEC] scripts/run_sambar.py:43-90"
-      - {id: sambar.clinical_comparison, groups: one_group, granularity: aggregate, level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
+      - {id: sambar.clinical_comparison, groups: one_group, granularity: [aggregate, sample_specific], level: with_step, result: Subtypes compared with clinical variables such as survival., step: A test outside NetZoo with a clinical table keyed by sample ID., source: "[REG] DOWNSTREAM_ANALYSES run_sambar"}
     near_misses:
       - id: sambar.no_expression_subtypes
         result_asked: Subtypes from expression, methylation or other non-mutation data.
