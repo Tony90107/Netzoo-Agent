@@ -38,6 +38,9 @@ def run(tag, key, rep):
 
 def main():
     tag = sys.argv[1]
+    # Void run a24: every CLI start failed on an import; a broken checkout now stops the round before any session.
+    subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, 'scripts'); import netzoo_agent_core"],
+                   cwd=WORKTREE, check=True)
     todo = [(key, int(rep)) for key, rep in (job.split(":") for job in sys.argv[2:])] or jobs()
     with ThreadPoolExecutor(5) as pool:
         for name, codes in pool.map(lambda job: run(tag, *job), todo):
