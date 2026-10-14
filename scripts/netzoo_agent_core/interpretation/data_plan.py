@@ -182,8 +182,10 @@ _POSSESSION = re.compile(r"\bdo you (?:also |already )?have\b", re.I)
 _KIND_WORDS = {"tf_priors": re.compile(r"motif|\bPPI\b|protein[- ]protein|protein interaction", re.I),
                "mirna": re.compile(r"\bmi(?:cro)?[- ]?RNA", re.I)}
 # Each part of a kind, named in the request's words (the words fallback, Log 403).
+# M2 (a24b S001 "TF-TF interaction list", S116 "TF-TF interaction file from STRING": the reading was budget-blocked).
+# A database name alone is not one: Log 380 T2's "a STRING network on a different cohort" is not the user's.
 _PART_WORDS = {"tf_priors": (re.compile(r"motif", re.I),
-                             re.compile(r"\bPPI\b|protein[- ]protein|protein interaction", re.I)),
+                             re.compile(r"\bPPI\b|protein[- ]protein|protein interaction|\bTF[- ]TF\b", re.I)),
                "mirna": (_KIND_WORDS["mirna"],)}
 
 
