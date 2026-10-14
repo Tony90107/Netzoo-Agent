@@ -267,7 +267,10 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
 # estimated tokens to the check's input and 1.8k to its re-read (5.4k -> 7.4k for a two-sentence request); the
 # allowance grows by as much, so the calls after it keep the margin they had (a24b: study purpose blocked in 20 of 157
 # turns, data facts in 17).
-CHECK_EXTRA_TOKENS = 12_000
+# M2 live m2a (user decision 2026-10-14): the check now reads ~12.5k tokens and nemotron writes ~5-6k with its
+# reasoning, the re-read ~9k, so the condition check was blocked in 5 of 26 turns and the study purpose in 5. The
+# reading calls are mostly the free check model's; the allowance grows to 30k, the turn budget stays 30k.
+CHECK_EXTRA_TOKENS = 30_000
 
 
 def with_reading_allowance(context, usage=None):
