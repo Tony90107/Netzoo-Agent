@@ -2222,38 +2222,131 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
         _control("prefix", "string", "condor", description="Prefix for derived CONDOR artifacts."),
     ),
     "run_sambar": (
-        _control("norm_patient", "boolean", True),
-        _control("kmin", "integer", 2, minimum=2),
-        _control("kmax", "integer", 4, minimum=2),
-        _control("gmt_msigdb", "boolean", True),
-        _control("subset_cancer_genes", "boolean", True),
-        _control("distance", "string", "binomial"),
-        _control("linkage", "string", "complete"),
-        _control("cluster", "boolean", True),
+        _control(
+            "norm_patient", "boolean", True,
+            description="Normalize gene mutation scores by each patient's mutation burden.",
+        ),
+        _control(
+            "kmin", "integer", 2, minimum=2,
+            description="Smallest number of sample subtypes (clusters) tried; at least 2.",
+        ),
+        _control(
+            "kmax", "integer", 4, minimum=2,
+            description=(
+                "Largest number of sample subtypes (clusters) tried; at least kmin and at most the number of "
+                "samples."
+            ),
+        ),
+        _control(
+            "gmt_msigdb", "boolean", True,
+            description="The pathway GMT file is in MSigDB format.",
+        ),
+        _control(
+            "subset_cancer_genes", "boolean", True,
+            description="Score only the listed cancer-associated genes.",
+        ),
+        _control(
+            "distance", "string", "binomial",
+            description="Distance (a scipy metric name) between samples' pathway scores used for clustering.",
+        ),
+        _control(
+            "linkage", "string", "complete",
+            description="Hierarchical-clustering linkage method (a scipy name).",
+        ),
+        _control(
+            "cluster", "boolean", True,
+            description="Cluster samples into subtypes; false returns the mutation scores only.",
+        ),
     ),
     "run_dragon": (
-        _control("output_format", "enum", "matrix", allowed_values=("matrix", "edge_list")),
-        _control("lambda1", "number", None, minimum=0, maximum=1, nullable=True),
-        _control("lambda2", "number", None, minimum=0, maximum=1, nullable=True),
+        _control(
+            "output_format", "enum", "matrix", allowed_values=("matrix", "edge_list"),
+            description=(
+                "matrix: a labeled symmetric partial-correlation matrix; edge_list: one row per feature pair "
+                "(source, target, partial_correlation, precision)."
+            ),
+        ),
+        _control(
+            "lambda1", "number", None, minimum=0, maximum=1, nullable=True,
+            description=(
+                "Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or "
+                "sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both "
+                "in [0, 1]."
+            ),
+        ),
+        _control(
+            "lambda2", "number", None, minimum=0, maximum=1, nullable=True,
+            description=(
+                "Shrinkage of omics layer 2 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or "
+                "sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both "
+                "in [0, 1]."
+            ),
+        ),
     ),
     "run_lioness_dragon": (
-        _control("lambda1", "number", None, minimum=0, maximum=1, nullable=True),
-        _control("lambda2", "number", None, minimum=0, maximum=1, nullable=True),
+        _control(
+            "lambda1", "number", None, minimum=0, maximum=1, nullable=True,
+            description=(
+                "Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or "
+                "sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and "
+                "lambda2 together, both in [0, 1]."
+            ),
+        ),
+        _control(
+            "lambda2", "number", None, minimum=0, maximum=1, nullable=True,
+            description=(
+                "Shrinkage of omics layer 2 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or "
+                "sparsity penalty). Empty estimates it once on all samples; a manual value needs lambda1 and "
+                "lambda2 together, both in [0, 1]."
+            ),
+        ),
     ),
     "run_otter": (
-        _control("output_format", "enum", "matrix", allowed_values=("matrix", "edge_list")),
-        _control("computing", "enum", "cpu", allowed_values=("cpu", "gpu")),
-        _control("precision", "enum", "double", allowed_values=("single", "double")),
-        _control("lam", "number", 0.035, minimum=0, maximum=1),
-        _control("gamma", "number", 0.335, minimum=0),
-        _control("iterations", "integer", 60, minimum=1),
-        _control("eta", "number", 0.00001, minimum=0),
-        _control("bexp", "number", 1.0, minimum=0),
+        _control(
+            "output_format", "enum", "matrix", allowed_values=("matrix", "edge_list"),
+            description=(
+                "matrix: a labeled TF-by-gene matrix; edge_list: a complete source,target,weight TF-to-gene grid."
+            ),
+        ),
+        _control(
+            "computing", "enum", "cpu", allowed_values=("cpu", "gpu"),
+            description="Hardware the optimization runs on: cpu or gpu.",
+        ),
+        _control(
+            "precision", "enum", "double", allowed_values=("single", "double"),
+            description="Floating-point precision of the optimization: single or double.",
+        ),
+        _control(
+            "lam", "number", 0.035, minimum=0, maximum=1,
+            description=(
+                "Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not"
+                " a sparsity penalty."
+            ),
+        ),
+        _control(
+            "gamma", "number", 0.335, minimum=0,
+            description="L2-style regularization of the TF-gene matrix W; not a sparsity penalty or threshold.",
+        ),
+        _control(
+            "iterations", "integer", 60, minimum=1,
+            description="Number of optimization iterations.",
+        ),
+        _control(
+            "eta", "number", 0.00001, minimum=0,
+            description="Step size (learning rate) of OTTER's gradient optimization.",
+        ),
+        _control(
+            "bexp", "number", 1.0, minimum=0,
+            description=(
+                "Exponent used in OTTER's optimization updates; it controls the optimization, not regularization."
+            ),
+        ),
     ),
     "run_bonobo": (
         _control(
             "bonobo_output_format", "enum", ".h5",
             allowed_values=(".h5", ".hdf", ".txt", ".csv"),
+            description='File type of the per-sample matrices: .h5 or .hdf (HDF5), .txt or .csv.',
         ),
         _control(
             "sample_names", "string_list", [],
@@ -2263,17 +2356,29 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
         _control(
             "sparsify", "boolean", False,
             selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+            description=(
+                "Compute approximate edge p-values and threshold each sample's co-expression matrix at "
+                "bonobo_confidence (with save_pvals, the full matrix is kept and the p-values are written)."
+            ),
         ),
         _control(
             "bonobo_confidence", "number", 0.05, minimum=0, maximum=1,
             selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+            description='Significance level at which sparsify thresholds the edges.',
         ),
         _control(
             "save_pvals", "boolean", False,
             selection_tags=frozenset({"sparse_pvalue_coexpression"}),
+            description="Write each sample's edge p-value matrix; requires sparsify.",
         ),
-        _control("precision", "enum", "single", allowed_values=("single", "double")),
-        _control("keep_in_memory", "boolean", False),
+        _control(
+            "precision", "enum", "single", allowed_values=("single", "double"),
+            description="Floating-point precision: single or double.",
+        ),
+        _control(
+            "keep_in_memory", "boolean", False,
+            description="Keep the per-sample matrices in memory during the run (upstream run_bonobo option).",
+        ),
         _control(
             "delta", "number", None, minimum=0, maximum=1, nullable=True,
             description=(
@@ -2281,9 +2386,21 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
                 "With sparsify it must be above 0 and below 1/3 (Log 224)."
             ),
         ),
-        _control("genes_axis", "enum", "auto", allowed_values=("auto", "rows", "columns")),
-        _control("log_transformed", "boolean", None, nullable=True),
-        _control("centered", "boolean", None, nullable=True),
+        _control(
+            "genes_axis", "enum", "auto", allowed_values=("auto", "rows", "columns"),
+            description=(
+                "Where the gene IDs are in the expression table: auto, rows or columns (BONOBO needs them on "
+                "rows)."
+            ),
+        ),
+        _control(
+            "log_transformed", "boolean", None, nullable=True,
+            description="The expression is declared log-transformed; BONOBO requires it.",
+        ),
+        _control(
+            "centered", "boolean", None, nullable=True,
+            description="The expression is declared centered; BONOBO requires it.",
+        ),
     ),
 }
 

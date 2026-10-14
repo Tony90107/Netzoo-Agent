@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
-from netzoo_agent_core.contracts.capability_check import RunVerdict, proposal_model  # noqa: E402
+from netzoo_agent_core.contracts.capability_check import RunVerdict, proposal_model, unstated_conditions  # noqa: E402
 from netzoo_agent_core.interpretation.capability_check import (  # noqa: E402
     build_capability_check, full_gap_reply, method_fitting, redirect_pairs, request_sentences,
     second_opinion_pairs, understanding_paragraph, verified_method,
@@ -36,8 +36,9 @@ def _ask(quote, delivered=(), not_by=(), *, named="none", named_quote="", settin
             "feature_counts": [{"count": count, "quote": words} for count, words in features]}
 
 
-def _check(task, *asks, has=()):
-    """One proposal: every ask in the sentence it quotes, `has` quotes as context in theirs."""
+def _check(task, *asks, has=(), about=(), whole=None):
+    """One proposal: every ask in the sentence it quotes, `has` and `about` (methods questions) in theirs; `whole` the
+    request-level method fields."""
     sentences = [task[start:end] for start, end in request_sentences(task)]
     readings = {f"s{index}": {"role": "background", "has": [], "about_methods": [], "asks": []}
                 for index in range(1, len(sentences) + 1)}
@@ -50,6 +51,14 @@ def _check(task, *asks, has=()):
         readings[f"s{index}"]["has"].append(quote)
         if readings[f"s{index}"]["role"] == "asks":
             readings[f"s{index}"]["role"] = "mixed"
+    for quote in about:
+        index = next(i for i, text in enumerate(sentences, 1) if quote in text)
+        readings[f"s{index}"]["about_methods"].append(quote)
+        readings[f"s{index}"]["role"] = "methods_question"
+    if whole is not None:
+        named, said, settings = whole
+        readings["conditions"] = {**unstated_conditions(), "named_method": named, "named_method_quote": said,
+                                  "settings": [{"name": n, "quote": q, "value_quote": v} for n, q, v in settings]}
     check, rejected = build_capability_check(task, proposal_model(len(sentences)).model_validate(readings))
     assert not rejected, rejected
     return check
@@ -332,3 +341,51 @@ def test_an_unmapped_request_offers_the_workflow_that_runs_with_its_own_settings
     reply = unmapped_reply(decision, ProjectPolicyLoader(Path(__file__).parents[1]).load())
     assert "**OTTER**" in reply and "with its own settings instead" in reply
     assert "no workflow is offered" not in reply
+
+
+# --- live m1a: the request's own method and settings, and what each setting means ----------------------------------
+
+F1 = ("Can you run PANDA with its alpha update rate set to 0.25 on our 60 lung samples? Expression, motif prior and "
+      "PPI are ready.")
+
+
+def test_f1_a_setting_given_in_a_methods_question_holds_the_run():
+    # As recorded: the whole question filed as a methods question, no ask; the request names PANDA and the alpha.
+    check = _check(F1, about=["Can you run PANDA with its alpha update rate set to 0.25 on our 60 lung samples?"],
+                   has=["Expression, motif prior and PPI are ready."],
+                   whole=("PANDA", "PANDA", [("unregistered", "its alpha update rate", "0.25")]))
+    result = _result(check)
+    assert result.status == "not_available" and result.quote == "its alpha update rate"
+    assert "has no setting" in result.limits[0] and result.defaults == ["panda.tf_gene_network"]
+    assert not check.full_gap and run_check_verdict(check, "run_panda")["verdict"] == "gap"
+    # Without a failing setting nothing is added: "nothing asked beyond running it" stays as it was.
+    plain = _check("Can you run PANDA on our 60 lung samples?",
+                   about=["Can you run PANDA on our 60 lung samples?"], whole=("PANDA", "PANDA", []))
+    assert not plain.results() and run_check_verdict(plain, "run_panda")["verdict"] == "no_result"
+
+
+def test_an_unregistered_method_asked_to_run_is_not_given():
+    task = "Can you run GENIE3 on our 80 colon samples?"
+    check = _check(task, about=[task], whole=("unregistered", "GENIE3", []))
+    assert _result(check).status == "not_available" and check.full_gap
+    assert 'no registered method or variant "GENIE3"' in _result(check).limits[0]
+
+
+def test_the_request_method_applies_to_its_one_result_but_not_across_two():
+    task = "Run OTTER with an L1 sparsity penalty of 0.1 on our 64 samples."
+    one = _check(task, _ask("Run OTTER", ["otter.tf_gene_network"], scale="whole_cohort", regulator_kinds=["tf"]),
+                 whole=("OTTER", "OTTER", [("unregistered", "an L1 sparsity penalty of 0.1", "0.1")]))
+    assert _result(one).status == "not_available" and _result(one).defaults == ["otter.tf_gene_network"]
+    task = "Build a PANDA network with its alpha at 0.25, then find communities in it."
+    two = _check(task, _ask("Build a PANDA network", ["panda.tf_gene_network"], scale="whole_cohort",
+                            regulator_kinds=["tf"]),
+                 _ask("find communities in it", ["condor.communities"], input_network="regulator_gene"),
+                 whole=("PANDA", "PANDA", [("unregistered", "its alpha", "0.25")]))
+    assert [item.status for item in two.results()] == ["available", "available"]
+
+
+def test_the_schema_says_what_each_setting_does():
+    import json
+    schema = json.dumps(proposal_model(1).model_json_schema())
+    assert "OTTER.lam: Weight of gene co-expression versus the TF-TF PPI network" in schema
+    assert "OTTER.gamma: L2-style regularization" in schema and "not a sparsity penalty" in schema

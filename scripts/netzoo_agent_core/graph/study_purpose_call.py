@@ -63,7 +63,7 @@ def invoke_study_purpose(
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     # Log 403: the reading allowance the check has (`with_reading_allowance`).
     budget, budget_warnings = preflight_budget(
-        with_reading_allowance(context, usage), call_state, role="study_purpose",
+        (reading := with_reading_allowance(context, usage)), call_state, role="study_purpose",
         model=context.semantic_model_name, input_text=input_text,
         reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
@@ -104,7 +104,7 @@ def invoke_study_purpose(
     usage = append_llm_usage(
         usage, role="study_purpose", model=context.semantic_model_name,
         response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=context.task_token_budget,
+        budget_tokens=reading.task_token_budget,
         duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
         status=call_status, price_catalog=context.price_catalog,
     )

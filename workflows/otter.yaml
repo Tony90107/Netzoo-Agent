@@ -17,42 +17,53 @@ controls:
     default: matrix
     allowed_values: [matrix, edge_list]
     executor_argument: output_format
+    description: "matrix: a labeled TF-by-gene matrix; edge_list: a complete source,target,weight TF-to-gene grid."
   - name: computing
     type: enum
     default: cpu
     allowed_values: [cpu, gpu]
     executor_argument: computing
+    description: "Hardware the optimization runs on: cpu or gpu."
   - name: precision
     type: enum
     default: double
     allowed_values: [single, double]
     executor_argument: precision
+    description: "Floating-point precision of the optimization: single or double."
   - name: lam
     type: number
     default: 0.035
     minimum: 0
     maximum: 1
     executor_argument: lam
+    description: >-
+      Weight of gene co-expression versus the TF-TF PPI network in OTTER's fit, as (lam, 1 - lam); not a sparsity penalty.
   - name: gamma
     type: number
     default: 0.335
     minimum: 0
     executor_argument: gamma
+    description: "L2-style regularization of the TF-gene matrix W; not a sparsity penalty or threshold."
   - name: iterations
     type: integer
     default: 60
     minimum: 1
     executor_argument: iterations
+    description: "Number of optimization iterations."
   - name: eta
     type: number
     default: 0.00001
     minimum: 0
     executor_argument: eta
+    description: >-
+      Step size (learning rate) of OTTER's gradient optimization.
   - name: bexp
     type: number
     default: 1.0
     minimum: 0
     executor_argument: bexp
+    description: >-
+      Exponent used in OTTER's optimization updates; it controls the optimization, not regularization.
 execution_step: run_otter
 output_capability:
   operation: infer
