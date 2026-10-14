@@ -33,6 +33,15 @@ class DataFactsProposal(BaseModel):
     mirna_span: str = Field(description=(
         "Exact contiguous quote saying the request has, or does not have, microRNA data (a miRNA list, miRNA "
         "expression or miRNA-target predictions); empty when unstated."))
+    # M2 (a24b S046): "the motif and PPI priors from last month's aggregate run" are the user's own files, but the
+    # history words of Log 381 (written for another cohort's motifs from last year, T2) rejected the reading and the
+    # reply asked for them again. Whose files they are is typed; recordings without it keep Log 381's rule.
+    priors_holder: Literal["user_now", "other_or_past"] | None = Field(default=None, description=(
+        "When priors is stated: user_now -- the user has these files now for the data this request is about, even "
+        "if they were made in an earlier run; other_or_past -- they belong to someone else or to other data, or the "
+        "user only had or needed them before."))
+    mirna_holder: Literal["user_now", "other_or_past"] | None = Field(default=None, description=(
+        "When mirna is stated: the same, for the microRNA data."))
 
     @classmethod
     def model_json_schema(cls, *args, **kwargs):

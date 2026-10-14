@@ -288,6 +288,31 @@ def test_a_stated_reading_needs_the_users_own_current_words():
     entry, _ = verify_data_facts(other_cohort, DataFactsProposal(
         priors="stated", priors_span="we used JASPAR motifs and a STRING network", mirna="unstated", mirna_span=""))
     assert entry["priors"] == "unstated"
+
+
+def test_whose_files_they_are_is_typed():
+    # M2 (a24b S046): the user's own priors from an earlier run were refused by the history words and asked for again.
+    task = ("Build per-sample networks for our 40 samples using the expression matrix and the motif and PPI priors "
+            "from last month's aggregate run.")
+    span = "the motif and PPI priors from last month's aggregate run"
+    untyped = DataFactsProposal(priors="stated", priors_span=span, mirna="unstated", mirna_span="")
+    assert verify_data_facts(task, untyped)[0]["priors"] == "unstated"  # recordings: Log 381's rule unchanged
+    own = untyped.model_copy(update={"priors_holder": "user_now"})
+    assert verify_data_facts(task, own)[0]["priors"] == "stated"
+    # Log 380 T1/T2 typed as someone else's or past data stay unstated, even in the user's own words.
+    other = DataFactsProposal(priors="stated", priors_span="we will need a TF motif prior", mirna="unstated",
+                              mirna_span="", priors_holder="other_or_past")
+    entry, rejected = verify_data_facts(ADVISOR, other)
+    assert entry["priors"] == "unstated" and rejected[0]["reason"] == "not_the_users_now"
+
+
+def test_tf_tf_interaction_names_a_ppi_network_when_nothing_read_the_request():
+    from netzoo_agent_core.interpretation.data_plan import _PART_WORDS
+
+    assert all(pattern.search("expression, a motif prior and a TF-TF interaction list") for pattern in
+               _PART_WORDS["tf_priors"])
+    assert not all(pattern.search("Last year we used JASPAR motifs and a STRING network on another cohort")
+                   for pattern in _PART_WORDS["tf_priors"])
     # The user's own statement stands, commas and all.
     entry, rejected = verify_data_facts(DATABASES, DataFactsProposal(
         priors="stated", priors_span="JASPAR binding-site scans of promoters and the STRING database",

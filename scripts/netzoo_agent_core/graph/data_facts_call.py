@@ -79,7 +79,8 @@ def _in_own_current_words(task: str, span: str) -> bool:
 def verify_data_facts(task: str, proposal: DataFactsProposal) -> tuple[dict, list[dict]]:
     """The state entry for a proposal: each reading stands when its quote is in the request, else unstated.
 
-    A "stated" reading also needs its quote in the user's own, current words (Log 381).
+    A "stated" reading also needs the files to be the user's now: typed (M2), or, for readings without the type, its
+    quote in the user's own, current words (Log 381).
     """
     entry, rejected = {"source": "model"}, []
     for field in ("priors", "mirna"):
@@ -87,7 +88,11 @@ def verify_data_facts(task: str, proposal: DataFactsProposal) -> tuple[dict, lis
         if value != "unstated" and _locate(task, span) is None:
             rejected.append({"field": field, "value": value, "reason": "quote_not_in_request"})
             value = "unstated"
-        elif value == "stated" and not _in_own_current_words(task, span):
+        elif value == "stated" and getattr(proposal, f"{field}_holder", None) == "other_or_past":
+            rejected.append({"field": field, "value": value, "reason": "not_the_users_now"})
+            value = "unstated"
+        elif (value == "stated" and getattr(proposal, f"{field}_holder", None) != "user_now"
+              and not _in_own_current_words(task, span)):
             rejected.append({"field": field, "value": value, "reason": "not_in_own_current_words"})
             value = "unstated"
         entry[field] = value
