@@ -80,7 +80,7 @@ def validate(rows, key, labels, checked):
     if set(key.values()) != set(rows) or set(labels) != set(key):
         raise ValueError("Blinding map or labels do not cover every session once")
     for sid, row in rows.items():
-        if row.get("missing") or not row.get("replay_equal"):
+        if row.get("missing") or row.get("replay_equal") is False:  # None: a run turn, its recorded reply
             raise ValueError(f"Missing session or unequal replay: {sid}")
     for code, label in [*labels.items(), *checked.items()]:
         row = rows[key[code]]

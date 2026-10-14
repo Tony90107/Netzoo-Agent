@@ -1,0 +1,22 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.99s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "please compute per-sample co-expression networks with LIONESS for its 40 samples." -- available from LIONESS-COEXPRESSION.
+
+Based on what you said — "compute per-sample co-expression networks with LIONESS for its 40 samples." — **LIONESS-COEXPRESSION** fits better: you asked for leave-one-out (LIONESS) sample networks.
+
+Your question asks for a per-sample co-expression network. **LIONESS-COEXPRESSION** fits that result and scale.
+
+**LIONESS-COEXPRESSION** (recommend) — LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Needs expression matrix. Produces inferred gene-to-gene associations.
+
+Conditional assumptions to confirm:
+- The expression data in expr_40.tsv is formatted correctly as a gene-by-sample matrix.
+
+Other compatible option(s):
+- **BONOBO** — preferred when: only a handful of samples; a confidence value (p-value) is needed for each connection in each sample; approach: Bayesian shrinkage estimation of sample-specific co-expression.
+
+Should I use LIONESS-COEXPRESSION, or does another listed option fit your study better?
+
+No files were inspected and no analysis ran.

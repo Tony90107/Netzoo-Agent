@@ -1,0 +1,40 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (3.75s)
+● Matching registered workflows…
+✓ Workflow — PANDA → LIONESS-PANDA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Per-sample TF-gene networks for our 45 tumours" -- available from LIONESS-PANDA.
+2. "the networks for tumours T05 and T19" -- available from LIONESS-PANDA.
+
+I matched your goal to an aggregate and a sample-specific workflow. They use the same biological inputs:
+
+1. **PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Output**: Aggregate workflow output (`output_file`).
+
+2. **LIONESS-PANDA**
+   - **Inputs**:
+   - `expression_file`: Expression matrix
+   - `motif_file`: Motif/prior
+   - `ppi_file`: PPI network
+   - **Outputs**:
+     - Aggregate workflow output (`output_file`).
+     - Sample-specific LIONESS output (`lioness_output`).
+
+Use PANDA when you only need the aggregate result. Use LIONESS-PANDA directly when you need the sample-specific result; it also produces its aggregate output, so running the aggregate workflow first is unnecessary.
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 45 tumours, 46 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+No files were inspected and no analysis ran.
+
+----------------------------------------
+Next step
+Enter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.
+Enter/back: start a new task | exit: close
+> 

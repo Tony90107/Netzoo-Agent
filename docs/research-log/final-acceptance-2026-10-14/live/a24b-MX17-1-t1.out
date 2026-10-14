@@ -1,0 +1,20 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.01s)
+● Matching registered workflows…
+✓ Matched workflows — GIRAFFE
+✓ Guidance prepared
+What I understood you are asking for:
+1. "one aggregate TF-gene PANDA network from the 60 bulk biopsies" -- available from PANDA.
+2. "one network per individual cell from the 12,000-cell snRNA-seq" -- not available here: no registered workflow produces this. Every registered workflow takes bulk samples (tissues, patients, cell lines or pseudo-bulk profiles); none models single cells.
+
+**GIRAFFE**. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.
+
+You would need expression matrix, motif/prior, PPI network. The analysis would provide inferred regulator-to-target associations; inferred transcription-factor-by-sample activity values.
+
+For “one network per individual cell”, no registered workflow meets the stated requirement. That part needs a clearer measurement or an external method.
+
+**Single-cell data.** The registered workflows are built for bulk samples. Co-expression between individual cells is dominated by dropout, so per-cell LIONESS or BONOBO networks are not advised. A registered route: sum cells into pseudo-bulk profiles per donor and cell state, then run PANDA (or OTTER) once per state with the same genes and the same motif and PPI priors; this needs several donors per state to estimate co-expression. To look within a state, SCORPION (an R package from the Kuijjer lab, not registered here) first aggregates similar cells into metacells and then runs PANDA on them, giving comparable networks per sample or state.
+
+No files were inspected and no analysis ran.
+
+What measurement would let you distinguish the remaining explanation?

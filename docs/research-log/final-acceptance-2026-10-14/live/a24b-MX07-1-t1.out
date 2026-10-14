@@ -1,0 +1,25 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (2.36s)
+● Matching registered workflows…
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Please compute a BONOBO co-expression network for each of our 11 log2-transformed, centred rare-tumour profiles" -- available from BONOBO.
+2. "give us a differential expression table between the 5 relapsed and 6 non-relapsed cases" -- not available here: no registered workflow produces this. COBRA does not give it: COBRA decomposes gene-pair co-expression; it does not test single genes' expression.
+
+BONOBO: Infer sample-specific gene-gene co-expression networks with netZooPy BONOBO.
+Registered required inputs: expression_file, output_dir.
+Registered workflow controls: bonobo_output_format (type=enum, default='.h5'), sample_names (type=string_list, default=[]), sparsify (type=boolean, default=False), bonobo_confidence (type=number, default=0.05), save_pvals (type=boolean, default=False), precision (type=enum, default='single'), keep_in_memory (type=boolean, default=False), delta (type=number, default=None), genes_axis (type=enum, default='auto'), log_transformed (type=boolean, default=None), centered (type=boolean, default=None).
+Output: one gene-gene co-expression network per selected sample.
+This is a co-expression result, not a regulatory network (TF/miRNA) or a covariance-decomposition artifact.
+When `sparsify=False` and `save_pvals=False`: full sample-specific gene-gene co-expression matrices; no p-value artifact is written.
+When `sparsify=True` and `save_pvals=False`: upstream thresholds each sample-specific co-expression matrix; no p-value artifact is written.
+When `sparsify=True` and `save_pvals=True`: upstream retains the full co-expression matrix for each selected sample and writes a matching p-value matrix; threshold it from the saved p-value matrix; it does not also emit an already-thresholded network in this mode.
+
+For your question ("give us a differential expression table between the 5 relapsed and 6 non-relapsed cases"):
+- **LIONESS-COEXPRESSION**, **BONOBO** — Per-sample gene degree or edge weights can be compared between the groups or time points (paired when the same individuals give both).
+- **COBRA** — Put the group label in COBRA's design matrix: it returns a co-expression component for that variable -- the part of each gene pair's co-expression associated with the group -- alongside components for any other covariates you include, such as batch.
+Note: All LIONESS networks are derived from the same cohort, so they are not statistically independent; account for this in any test across samples.
+Note: Some component values fall outside -1 to 1; read them as contributions, not correlations. Deciding which gene pairs differ beyond chance is a separate analysis.
+Note: With p-value output, edges can be filtered per sample at a chosen confidence.
+
+No files were inspected and no analysis ran.

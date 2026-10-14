@@ -178,6 +178,15 @@ def run_events(worktree: str, run_id: str | None) -> dict:
     return found
 
 
+def verdict_check(decision: dict) -> dict:
+    """A run planned under an approving verdict carries no capability_check, only its `run_verdict` (items 1-2): the
+    verdict's result rows are the check's final statuses for that run."""
+    verdict = decision.get("run_verdict") or {}
+    return {"requirements": [{"kind": "result", "quote": row["quote"], "status": row["status"]}
+                             for row in verdict.get("results") or []],
+            "unchecked": verdict.get("unchecked") or []} if verdict else {}
+
+
 def action_of(name: str) -> str:
     return "run_" + name.lower().replace("-", "_")
 
@@ -229,15 +238,19 @@ def main(tag: str) -> None:
                     reply = (RETRY + ", provide the requested input path, or describe another NetZoo goal."
                              if RETRY in printed else "(no reply to the last turn)")
                 calls = (session.get("token_usage") or {}).get("calls", [])
-                check = decision.get("capability_check") or {}
+                check = decision.get("capability_check") or verdict_check(decision)
                 again = (rendered.get(sid) or {}) if ran else {"reply": reply, "reply_kind": "needs_detail", "card": None}
+                run_turn = ran and decision.get("action") not in (None, "no_tool")
+                if run_turn:  # replay_sessions re-renders guidance turns only; a run's reply is the recorded one
+                    again = {"reply": reply, "reply_kind": "run", "card": None, "not_replayed": True}
                 task = users[-1] if ran else turns[-1]
                 rows[sid] = {
                     "arm": arm, "item": key, "rep": rep, "family": item["family"], "form": item.get("form"),
                     "twin": item.get("twin"), "turns": len(users), "ran_last_turn": ran, "action": decision.get("action"),
                     "status": decision.get("capability_match_status"),
                     "candidates": [*decision.get("matched_actions", []), *decision.get("hypothesis_actions", [])],
-                    "reply_kind": again.get("reply_kind"), "replay_equal": again.get("reply") == reply,
+                    "reply_kind": again.get("reply_kind"),
+                    "replay_equal": None if again.get("not_replayed") else again.get("reply") == reply,
                     "card_error": again.get("card_error"),
                     "consult": item.get("consult"),
                     "check": {k: check.get(k) for k in ("full_gap", "unavailable", "provisional", "gap_unconfirmed",
@@ -274,6 +287,10 @@ def main(tag: str) -> None:
                     *card_text(again.get("card")), ""])))
     random.seed(24)
     random.shuffle(blocks)
+    if os.environ.get("STRUCTURE_ONLY"):  # packets already handed to labellers: rewrite the code-read layers only
+        (HERE / "live" / f"{tag}-structure.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+        print(f"structure only: {len(rows)} sessions")
+        return
     key_map = {}
     for start in range(0, len(blocks), PACKET):
         out = []
@@ -285,7 +302,8 @@ def main(tag: str) -> None:
     (HERE / "live" / f"{tag}-structure.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1))
     (HERE / "live" / f"{tag}-blind-key.json").write_text(json.dumps(key_map, indent=1))
     missing = sum(1 for row in rows.values() if row.get("missing"))
-    unequal = [sid for sid, row in rows.items() if not row.get("missing") and not row["replay_equal"]]
+    unequal = [sid for sid, row in rows.items() if not row.get("missing") and row["replay_equal"] is False]
+    print(f"run turns (recorded reply, not replayed): {sum(1 for r in rows.values() if r.get('replay_equal') is None)}")
     print(f"sessions {len(rows)}, missing {missing}, packets {(len(blocks) + PACKET - 1) // PACKET}, "
           f"replay differs from record: {len(unequal)} {unequal[:5]}")
 
