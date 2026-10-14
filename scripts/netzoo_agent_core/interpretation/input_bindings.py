@@ -13,8 +13,16 @@ import re
 from collections.abc import Iterable
 
 from ..settings import INPUT_ROLE_FIELDS, OUTPUT_ROLE_FIELDS, PROJECT_ROOT
-from .discovery import _unlabeled_input_bindings
+from .discovery import _UNLABELED_PATH_RE, _unlabeled_input_bindings
 from .extraction import _task_path
+
+# M2 (2026-10-14): where the words put a path as a result's destination ("write the networks to x.npy", "save it as
+# y.csv", "Outputs can go to /z"), it is not an input; `_task_path` recognises only labelled outputs.
+_OUTPUT_LEAD = re.compile(
+    r"(?:\b(?:write|writes|writing|written|save|saved|saving|store|stored|export|exported|put|output|outputs|"
+    r"call|name)\b[^.;!?\n]{0,48}\b(?:to|as|into|in|at|go\s+to)\s*|\boutputs?\s*[:=]?\s*)$",
+    re.I)
+_DIRECTORY_TOKEN = re.compile(r"(?<![\w.~/-])((?:~|\.{1,2})?/?[\w.~-]+(?:/[\w.~-]+)+)/?(?![\w.~/-])")
 
 
 @dataclass(frozen=True)
@@ -24,6 +32,37 @@ class RequestInputBindings:
     resolved_fields: frozenset[str]
     directory: Path | None
     issues: tuple[str, ...] = ()
+    named_paths: tuple[str, ...] = ()
+    """M2: every input file the request names, bound to a role or not, in the order named."""
+    missing_directories: tuple[str, ...] = ()
+    """M2: folders the request names that do not exist (a24b P33 "/proj/mac/priors")."""
+
+
+def _named_paths(text: str) -> tuple[str, ...]:
+    """The file paths the words name as inputs: not where a result is to be written."""
+    found = []
+    for match in _UNLABELED_PATH_RE.finditer(text):
+        token = match.group(1).strip().rstrip(".。")
+        if _OUTPUT_LEAD.search(text[max(0, match.start() - 80):match.start()]):
+            continue
+        if token not in found:
+            found.append(token)
+    return tuple(found)
+
+
+def _missing_directories(text: str, root: Path) -> tuple[str, ...]:
+    """Folders the words name (absolute, home- or dot-relative, or two levels deep) that do not exist."""
+    found = []
+    for match in _DIRECTORY_TOKEN.finditer(text):
+        token = match.group(1)
+        if Path(token).suffix or _OUTPUT_LEAD.search(text[max(0, match.start() - 80):match.start()]):
+            continue
+        if not (token.startswith(("/", "~", ".")) or token.count("/") >= 2):
+            continue
+        path = Path(token).expanduser()
+        if not (path if path.is_absolute() else root / path).exists() and token not in found:
+            found.append(token)
+    return tuple(found)
 
 
 def request_input_bindings(
@@ -63,6 +102,7 @@ def request_input_bindings(
         if candidate.is_dir() and not candidate.is_symlink():
             directories.add(candidate)
     directory = next(iter(directories)) if len(directories) == 1 else None
+    named, missing = _named_paths(input_text), _missing_directories(input_text, root)
     resolved = set()
     same_folder = re.search(
         r"\bsame\s+(?:folder|directory)\b|同(?:一個|一|個)?(?:資料夾|目錄)", task, re.I,
@@ -76,6 +116,7 @@ def request_input_bindings(
             values, frozenset(labelled).intersection(fields), frozenset(), None,
             ("Multiple input directories were named. Please specify which directory "
              "contains these same-folder inputs: " + ", ".join(sorted(sibling_fields)) + ".",),
+            named, missing,
         )
     if directory is not None and same_folder:
         for field, value in values.items():
@@ -87,4 +128,5 @@ def request_input_bindings(
                     if selected.is_relative_to(root.resolve()) else str(selected)
                 )
                 resolved.add(field)
-    return RequestInputBindings(values, frozenset(labelled).intersection(fields), frozenset(resolved), directory)
+    return RequestInputBindings(values, frozenset(labelled).intersection(fields), frozenset(resolved), directory,
+                                named_paths=named, missing_directories=missing)

@@ -6,7 +6,27 @@ from pathlib import Path
 
 from ..settings import PROJECT_ROOT
 
-__all__: list[str] = []
+__all__: list[str] = ["SHIPPED_DATA_DIRECTORIES", "is_shipped_data"]
+
+#: The demonstration, test and fixture datasets the repository ships under `data/` (M2, 2026-10-14). AGENTS.md: a
+#: real analysis never takes toy data because it is in the workspace; final acceptance a24b offered or filled them in
+#: 18 of 24 runs that reached the input gate. `tests/test_input_files.py` keeps this equal to the tracked folders.
+SHIPPED_DATA_DIRECTORIES = frozenset({
+    "auto-check-invalid", "auto-check-valid", "blind-neutral", "blind-tests", "bonobo-toy", "cobra-toy",
+    "condor-toy", "dragon-toy", "format-demo", "giraffe-toy", "lioness-toy", "manual-tests", "official-toy",
+    "otter-toy", "role-mapping-fixtures", "sambar-official-toy", "sambar-toy", "teacher-demo",
+})
+
+
+def is_shipped_data(path: str | Path) -> bool:
+    """Whether a path lies in one of the shipped demonstration or fixture datasets."""
+    candidate = Path(path).expanduser()
+    candidate = (candidate if candidate.is_absolute() else PROJECT_ROOT / candidate).resolve()
+    try:
+        parts = candidate.relative_to((PROJECT_ROOT / "data").resolve()).parts
+    except ValueError:
+        return False
+    return bool(parts) and parts[0] in SHIPPED_DATA_DIRECTORIES
 
 
 def candidate_keywords(action: str, field_name: str) -> tuple[str, ...]:
