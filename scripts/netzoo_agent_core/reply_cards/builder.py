@@ -501,6 +501,12 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
 
         return ReplyCard(kind="clarification", headline="One fact about your data decides which workflow applies.",
                          points=[clip(question, 300) for question in fact_questions(decision.capability_check)][:4])
+    if kind == "run_held" and decision.run_verdict is not None:
+        # Items 1-2 (2026-10-14): the run the check did not approve; each offered workflow is a planning step.
+        name = workflow_name(policy, decision.run_verdict.action)
+        return ReplyCard(kind="general", headline=f"{name} was not planned: confirm the run you want first.",
+                         points=[], next_steps=[plan_step(policy, action) for action in decision.recommended_actions
+                                                if action in policy.workflows][:3])
     if kind == "capability_check_gap" and decision.capability_check is not None:
         many = len(decision.capability_check.results()) > 1
         card = ReplyCard(
@@ -707,8 +713,10 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         # A verified single-workflow answer: planning it is the obvious next step,
         # through the same continuation the reply classifier would produce.
         steps.insert(len(card.next_steps), plan_step(policy, action))
-    if card is not None and kind not in {"execution", "unresolved"}:
+    if card is not None and kind not in {"execution", "unresolved", "run_held"}:
         steps = _one_result_steps(decision, policy, task, result, steps)
+    if kind == "run_held":
+        steps = list({step.key: step for step in steps}.values())  # the prompt's continuation is the card's first
     if kind in {"capability_unconfirmed", "unmapped_request", "capability_partial"}:
         steps = [step for step in steps if step.resolution not in {"confirm_workflow", "plan_workflow"}]
     chosen = {option.action for option in (card.choices.options if card and card.choices else []) if option.action}

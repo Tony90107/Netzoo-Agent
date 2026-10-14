@@ -37,6 +37,7 @@ from netzoo_agent_core.handoff import (  # noqa: E402
     build_bonobo_handoff,
     explicit_bonobo_handoff_requested,
 )
+from run_approval import approved  # noqa: E402
 from workflow_registry import (  # noqa: E402
     ACTION_DEFINITIONS,
     OUTPUT_CAPABILITIES,
@@ -298,12 +299,10 @@ def test_bonobo_plan_gate_and_no_direct_panda_puma_handoff(tmp_path, monkeypatch
     monkeypatch.setattr(settings, "TEST_DATA_MODE", True)
     expression = _expression(tmp_path)
     output = tmp_path / "planned"
-    decision = _decision(expression, output, sample_names=["s2"])
-    plan = build_workflow_plan(
-        decision,
-        f"Run BONOBO expression_file={expression} output_dir={output} "
-        "sample_names=s2 log_transformed=true centered=true",
-    )
+    task = (f"Run BONOBO expression_file={expression} output_dir={output} "
+            "sample_names=s2 log_transformed=true centered=true")
+    decision = approved(_decision(expression, output, sample_names=["s2"]), task)
+    plan = build_workflow_plan(decision, task)
     assert plan.status == "ready"
     assert [step.action for step in plan.steps] == [
         "inspect_bonobo_inputs",

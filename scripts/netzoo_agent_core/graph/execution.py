@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from workflow_registry import RUN_ACTIONS
+
 from ..contracts import (
     AgentState,
     EXECUTE_TOOLS,
     EvaluationResult,
     MAX_RECOVERY_ATTEMPTS,
+    PlanEvaluationResult,
+    TaskDecision,
     WorkflowPlan,
     _trace,
 )
@@ -22,6 +26,7 @@ from ..evaluation import (
 from ..outcomes import supersede_triggering_failure
 from ..planning import render_plan
 from ..planning.step_decision import effective_step_decision
+from ..interpretation.run_check import run_approval_failures
 from ..routing import execute_selected_tool, structure_tool_result
 from .context import _GraphContext, record_event
 
@@ -54,6 +59,22 @@ def evaluate_plan(context: _GraphContext, state: AgentState) -> dict:
         evaluation.model_dump(),
     )
     return {"plan_evaluation": evaluation.model_dump()}
+
+
+def _unapproved_run(state: AgentState, plan: WorkflowPlan) -> str | None:
+    """Why the plan's analysis may not start now, or None: its evaluation approved it, and its capability verdict
+    still approves this workflow for the current request (a recovered plan, a resumed state or a changed request is
+    caught here even if it reached the executor)."""
+    decision = TaskDecision.model_validate(plan.decision)
+    runs = [step.action for step in plan.steps if step.action in RUN_ACTIONS]
+    if decision.action not in RUN_ACTIONS and not runs:
+        return None
+    evaluation = state.get("plan_evaluation")
+    if not evaluation or PlanEvaluationResult.model_validate(evaluation).status != "approved":
+        return "the plan was not approved by the Plan Evaluator; no analysis was started."
+    failures = (run_approval_failures(decision, latest_user_message(state["messages"]))
+                if decision.action in RUN_ACTIONS else [f"the plan runs {runs[0]}, not its action {decision.action}"])
+    return "; ".join(failures) + "; no analysis was started." if failures else None
 
 
 def execute_tool(context: _GraphContext, state: AgentState) -> dict:
@@ -89,11 +110,18 @@ def execute_tool(context: _GraphContext, state: AgentState) -> dict:
         },
     )
     execution_started_at = datetime.now().astimezone()
-    try:
-        raw_result = execute_selected_tool(decision)
-    except Exception as exc:
-        # An executor fault is a failed step with a reply, never an approved plan left hanging.
-        raw_result = f"Error: the {step.action} executor raised {type(exc).__name__}: {exc}"
+    refusal = _unapproved_run(state, plan)
+    if refusal is not None:
+        # Items 1-2 (2026-10-14): the approval is checked once more right before an analysis starts.
+        record_event(context, state, "tool.refused", "execute_tool", {"step_index": step_index, "action": step.action,
+                                                                      "reason": refusal})
+        raw_result = f"Error: {refusal}"
+    else:
+        try:
+            raw_result = execute_selected_tool(decision)
+        except Exception as exc:
+            # An executor fault is a failed step with a reply, never an approved plan left hanging.
+            raw_result = f"Error: the {step.action} executor raised {type(exc).__name__}: {exc}"
     result = structure_tool_result(
         step.action,
         decision,

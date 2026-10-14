@@ -9,6 +9,7 @@ SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import netzoo_agent as agent  # noqa: E402
+from run_approval import approved  # noqa: E402
 
 
 class DatasetBundlePlanningTests(unittest.TestCase):
@@ -276,7 +277,7 @@ class DatasetBundlePlanningTests(unittest.TestCase):
             "netzoo_agent_core.planning.evidence.PROJECT_ROOT",
             self.root,
         ):
-            replanned = agent.build_workflow_plan(repaired, continuation)
+            replanned = agent.build_workflow_plan(approved(repaired, continuation, "user_selected"), continuation)
         self.assertEqual(replanned.status, "ready")
         selected_inputs = {
             item.field: item.status

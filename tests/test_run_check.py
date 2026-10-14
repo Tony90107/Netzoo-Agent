@@ -101,20 +101,37 @@ def test_a_confirmed_gap_is_answered_and_the_run_is_not_planned(monkeypatch):
     assert "No registered workflow produces this" in reply["messages"][-1].content
 
 
+def _unchanged_but_verdict(updated, invocation, verdict):
+    assert updated.decision.run_verdict.verdict == verdict and not updated.decision.run_verdict.held
+    assert updated.decision.model_copy(update={"run_verdict": None}) == invocation.decision
+
+
 def test_a_run_its_workflow_gives_is_left_as_it_was(monkeypatch):
     events = _events(monkeypatch)
     invocation = _invocation("run_sambar")
     updated = router_invocation._with_run_check(None, {}, F32, invocation, _proposal(["sambar.subtypes"]), "ok")
-    assert _verdicts(events) == ["agrees"] and updated.decision == invocation.decision
+    assert _verdicts(events) == ["agrees"]
+    _unchanged_but_verdict(updated, invocation, "agrees")
 
 
-def test_an_unconfirmed_or_missing_check_never_stops_a_run(monkeypatch):
+def test_an_unconfirmed_or_missing_check_holds_the_run(monkeypatch):
+    """Items 1-2 (2026-10-14): a check that failed or that only the backup model read approves nothing."""
     events = _events(monkeypatch)
     invocation = _invocation("run_sambar")
-    assert router_invocation._with_run_check(None, {}, F32, invocation, _proposal(), "fallback").decision \
-        == invocation.decision
-    assert router_invocation._with_run_check(None, {}, F32, invocation, None, "failed").decision == invocation.decision
-    assert _verdicts(events) == ["unconfirmed", "unconfirmed"]
+    for proposal, status in ((_proposal(), "fallback"), (None, "failed"), (None, "blocked")):
+        held = router_invocation._with_run_check(None, {}, F32, invocation, proposal, status).decision
+        assert held.action == "no_tool" and not held.should_execute and held.execution_requested
+        assert held.run_verdict.held and held.run_verdict.verdict == "unconfirmed"
+        assert held.recommended_actions == ["run_sambar"]
+    assert _verdicts(events) == ["unconfirmed"] * 3
+
+
+def test_with_no_check_model_configured_the_run_is_left_as_it_was(monkeypatch):
+    """Tests and the routing harness configure no check model; production always has one."""
+    _events(monkeypatch)
+    invocation = _invocation("run_sambar")
+    _unchanged_but_verdict(router_invocation._with_run_check(None, {}, F32, invocation, None, "no_model"),
+                           invocation, "no_check_model")
 
 
 def test_guidance_turns_and_downloads_are_not_run_checked(monkeypatch):
@@ -136,7 +153,8 @@ def test_the_second_opinion_an_exact_run_is_owed_can_clear_the_gap(monkeypatch):
     monkeypatch.setattr(router_invocation, "request_second_opinion", second_opinion)
     invocation = _invocation("run_sambar")
     updated = router_invocation._with_run_check(None, {}, F32, invocation, _proposal(), "ok")
-    assert asked == [["SAMBAR"]] and _verdicts(events) == ["agrees"] and updated.decision == invocation.decision
+    assert asked == [["SAMBAR"]] and _verdicts(events) == ["agrees"]
+    _unchanged_but_verdict(updated, invocation, "agrees")
 
 
 def test_a_run_turn_is_re_read_like_a_guidance_turn():

@@ -30,6 +30,7 @@ from ..policy import ProjectPolicyLoader
 from ..planning.step_decision import effective_step_decision
 from ..contracts.requirements import RequestRequirements
 from ..interpretation.request_requirements import stated_path
+from ..interpretation.run_check import run_approval_failures
 from ..routing.authorization import forbidding_reason, read_operation_authorization
 from ..data.paths import _resolve_user_path
 from ..string_download import requested_network_kind, requested_species
@@ -69,6 +70,24 @@ def _operation_authorization_item(
             if refusals
             else "The request does not forbid any planned operation."
         ),
+    )
+
+
+def _capability_verdict_item(decision: TaskDecision, user_task: str) -> PlanRubricItem:
+    """Items 1-2 (2026-10-14): an analysis run is approved only under the capability verdict it was routed with.
+
+    The verdict must approve the run (`RunVerdict`), be for this plan's workflow and for this request; a run the
+    check held, found another workflow for, or never read -- or a plan whose workflow or request changed since --
+    fails here, whatever upstream stage set `should_execute`.
+    """
+    if decision.action not in RUN_ACTIONS:
+        return PlanRubricItem(criterion="capability_verdict", required=False, result="not_applicable",
+                              detail="Not an analysis workflow; its own rules apply.")
+    failures = run_approval_failures(decision, user_task)
+    return PlanRubricItem(
+        criterion="capability_verdict", result="fail" if failures else "pass",
+        detail=("; ".join(failures) if failures else
+                f"The capability verdict ({decision.run_verdict.verdict}) approves this run for this request."),
     )
 
 
@@ -206,6 +225,7 @@ def evaluate_workflow_plan(
     )
     rubric.append(authority)
     rubric.append(stated)
+    rubric.append(_capability_verdict_item(decision, user_task))
     rubric.append(
         PlanRubricItem(
             criterion="intent_and_capability_alignment",

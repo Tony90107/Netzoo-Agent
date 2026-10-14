@@ -23,6 +23,7 @@ from netzoo_agent_core.evaluation.plan_review import evaluate_workflow_plan  # n
 from netzoo_agent_core.graph.continuation_invocation import continue_workflow  # noqa: E402
 from netzoo_agent_core.planning import build_workflow_plan  # noqa: E402
 from netzoo_agent_core.policy import ProjectPolicyLoader  # noqa: E402
+from run_approval import approved  # noqa: E402
 from netzoo_agent_core.routing.capability import validate_task_text  # noqa: E402
 from netzoo_agent_core.routing.method_rejections import unsupported_algorithm_request  # noqa: E402
 
@@ -70,7 +71,7 @@ def test_plan_review_rejects_step_argument_that_changes_approved_input(tmp_path)
         intent_type="run_analysis", confidence=1, reason="Explicit CONDOR run.",
         network_file=str(network_a), output_dir=str(output),
     )
-    plan = build_workflow_plan(decision, task)
+    plan = build_workflow_plan(approved(decision, task), task)
     assert plan.status == "ready"
     assert evaluate_workflow_plan(plan, task).status == "approved"
     plan.steps[-1].arguments["network_file"] = str(network_b)

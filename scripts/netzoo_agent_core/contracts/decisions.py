@@ -9,7 +9,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 
 from .applicability import CandidateApplicability
 from .authorization import OperationAuthorization
-from .capability_check import CapabilityCheck
+from .capability_check import CapabilityCheck, RunVerdict
 from .data_plan import DataPlan
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
@@ -182,6 +182,10 @@ class TaskDecision(BaseModel):
     # now, so a single workflow the final verdict credits is run (r17: 75/90 run commands were answered as guidance).
     # Code-owned; omitted while False.
     execution_requested: bool = Field(default=False, exclude_if=lambda value: not value)
+    # Verdict layer items 1-2 (2026-10-14): the capability verdict a run is planned under, bound to its workflow
+    # and request; the Plan Evaluator and the executor gate refuse a run it does not approve. Code-owned;
+    # omitted while unset.
+    run_verdict: RunVerdict | None = Field(default=None, exclude_if=lambda value: value is None)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None
