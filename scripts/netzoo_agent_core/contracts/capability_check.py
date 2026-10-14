@@ -15,7 +15,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 
 from ..capability_sheet import not_produced_ids, produces_ids
 from .strict_schema import strict_json_schema
@@ -112,7 +112,12 @@ keeps one only when those words are in the request, and applies it to the asks
 """
 
 
-OtherAbout = Literal["how_computed", "what_it_contains", "format_or_delivery", "which_data"]
+OtherAbout = Literal["how_computed", "what_it_contains", "file_format", "delivery", "which_data"]
+def _recorded_about(value):
+    """Recordings from before the split: "format_or_delivery" was never acted on, as "file_format" is not."""
+    return "file_format" if value == "format_or_delivery" else value
+
+
 UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "regulator_kinds", "omics_layers", "scale"]
 
 
@@ -126,13 +131,19 @@ def conditions_model() -> type[BaseModel]:
     # Log 414: a requirement on the results that none of the typed fields covers is kept with its words, so it
     # can be checked against each workflow the check credits (heldout16 NC7: "The miRNA links should be
     # estimated from negative correlation with the miRNA levels we measured." -- PUMA was offered as fitting).
+    # Items 4-5 live check (2026-10-14): "format_or_delivery" held both a file format and a delivery; the check read
+    # "uploaded automatically to a public database", "emailed to each patient's doctor automatically" and "a dashboard
+    # that updates live" 4 times in 4, and code dropped them all with "save it as a tab-separated file".
     other = create_model(
         "OtherRequirement", __config__=ConfigDict(extra="forbid"),
+        __validators__={"_recorded": field_validator("about", mode="before")(_recorded_about)},
         quote=(str, Field(description="Exact words of the request that state it.")),
         about=(OtherAbout, Field(description=(
             "how_computed: how a result must be estimated or what it must be based on. what_it_contains: a "
-            "property or content a result must have. format_or_delivery: file format, names, where it goes. "
-            "which_data: which of the user's samples or files to use."))))
+            "property or content a result must have. file_format: the file type, file or column names, or the "
+            "folder results are written to. delivery: results sent, uploaded, published, shown or kept updated "
+            "anywhere outside the analysis (e-mail, a database or repository, a website, a dashboard or app, "
+            "automatic or scheduled re-runs). which_data: which of the user's samples or files to use."))))
     fields["other_requirements"] = (list[other], Field(description=(
         "Every other requirement the request states about the asked-for results that none of the fields above "
         "covers; empty when there is none.")))

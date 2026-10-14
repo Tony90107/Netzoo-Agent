@@ -150,7 +150,7 @@ def test_the_reread_quotes_only_the_words_it_was_given():
                                                ["lioness_panda.per_sample_networks"]),
                                           _req("expression, motifs and PPI of 50 patients", "context")])
     passages = reread_passages(EMAILED, _decision(found))
-    assert passages == ["emailed to each patient's doctor automatically"]
+    assert passages == ["from expression, motifs and PPI of 50 patients, emailed to each patient's doctor automatically"]
     elsewhere = _reread_check(EMAILED, "expression, motifs and PPI of 50 patients", ["panda.tf_gene_network"])
     assert merge_reread(EMAILED, found, elsewhere, passages) is found
     tail = merge_reread(EMAILED, found, _reread_check(EMAILED, "emailed to each patient's doctor automatically"),
@@ -170,3 +170,22 @@ def test_an_unchecked_sentence_is_read_again_and_an_empty_answer_reads_it():
     assert merge_reread(task, found, nothing, passages).unchecked == []
     # A quote the re-read made up leaves the sentence unchecked.
     assert merge_reread(task, found, nothing, passages, [{"quote": "x", "reason": "quote_not_in_request"}]) is found
+
+
+VP5Q = ("Which method gives each TF's activity per sample from our expression, motifs and PPI, and also aligns our raw "
+        "reads to the genome first?")
+
+
+def test_stretches_a_context_quote_separates_are_read_as_one_passage():
+    """Live check VP5q: "and also aligns" and "to the genome first" around the context quote "our raw reads"."""
+    found = CapabilityCheck(requirements=[
+        _req("each TF's activity per sample", "result", "available", ["giraffe.tf_activity"]),
+        _req("our expression, motifs and PPI", "context"), _req("our raw reads", "context")])
+    assert reread_passages(VP5Q, _decision(found)) == [
+        "from our expression, motifs and PPI, and also aligns our raw reads to the genome first"]
+    # A data clause alone after the result is one unread word: not read again.
+    plain = "We want each patient's TF-gene network from expression, motifs and PPI of 50 patients."
+    data = CapabilityCheck(requirements=[_req("each patient's TF-gene network", "result", "available",
+                                              ["lioness_panda.per_sample_networks"]),
+                                         _req("expression, motifs and PPI of 50 patients", "context")])
+    assert reread_passages(plain, _decision(data)) == []

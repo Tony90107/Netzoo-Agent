@@ -982,3 +982,44 @@ def test_a_result_whose_credited_workflows_all_violate_is_redirected_to_an_offer
     assert "Computed from: expression matrix; design matrix." in workflow_description(["cobra.covariate_components"])
     unanswered = apply_redirect_answers(removed, redirect, ["unrelated"] * len(redirect))
     assert unanswered.full_gap
+
+
+EMAILED = ("We want each patient's TF-gene network from expression, motifs and PPI of 50 patients, emailed to each "
+           "patient's doctor automatically. Please save it as a tab-separated file.")
+
+
+def _with_others(task, others, asks):
+    from netzoo_agent_core.contracts.capability_check import unstated_conditions
+
+    return proposal_model(2).model_validate({
+        "s1": {"role": "asks", "has": ["expression, motifs and PPI of 50 patients"], "about_methods": [], "asks": asks},
+        "s2": {"role": "background", "has": [], "about_methods": [], "asks": []},
+        "conditions": {**unstated_conditions(), "other_requirements": others}})
+
+
+def test_a_stated_delivery_is_a_result_no_workflow_gives_and_a_file_format_is_not():
+    """Items 4-5 live check: the check read "emailed to each patient's doctor automatically" (and an upload and a live
+    dashboard) as format_or_delivery 4 times in 4, and code dropped it beside "save it as a tab-separated file"."""
+    network = {"quote": "each patient's TF-gene network", "delivered_by": ["lioness_panda.per_sample_networks"],
+               "not_by": [], "scale": "per_sample", "omics_layers": 0, "data_unit": "bulk_samples",
+               "regulator_kinds": ["tf"], "needs_sign": False, "input_network": "none", **FORMS}
+    proposal = _with_others(EMAILED, [
+        {"about": "delivery", "quote": "emailed to each patient's doctor automatically."},
+        {"about": "file_format", "quote": "Please save it as a tab-separated file."}], [network])
+    check, _ = build_capability_check(EMAILED, proposal)
+    assert [(item.quote, item.status) for item in check.results()] == [
+        ("each patient's TF-gene network", "available"),
+        ("emailed to each patient's doctor automatically", "not_available")]
+    assert not check.full_gap and check.unchecked == []
+    assert "sending, uploading, publishing, showing or re-running them is done outside NetZoo" in \
+        understanding_paragraph(check)
+    # A delivery inside an asked-for result's own words was read with it.
+    inside = _with_others(EMAILED, [{"about": "delivery", "quote": "each patient's TF-gene network"}], [network])
+    assert len(build_capability_check(EMAILED, inside)[0].results()) == 1
+
+
+def test_recorded_format_or_delivery_readings_still_load_as_file_formats():
+    from netzoo_agent_core.contracts.capability_check import conditions_model
+
+    other = conditions_model().model_fields["other_requirements"].annotation.__args__[0]
+    assert other.model_validate({"quote": "x", "about": "format_or_delivery"}).about == "file_format"
