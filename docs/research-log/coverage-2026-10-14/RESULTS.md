@@ -64,18 +64,20 @@ F41 的錄製讀取重算後：判為可做，回覆說明「DRAGON checks that 
   - F41、B18 不再追問；B03、B10 仍會追問。
 - 全部測試：3648 passed。
 
-## 尚未驗證（需要 live）
+## Live 驗證（2026-10-14，共 44 個 session，0 次供應商錯誤）
 
-第 4 項改變了模型「讀什麼」：送的是片段，不是整句。離線無法證明模型會把片段讀對，所以需要一輪小型 live。建議題目（每題 1 次）：
+執行腳本 `run_live17.py`，分析腳本 `analyze_live17.py`；題目檔為 `live17.json`、`live13.json`、`live8.json`、`live6.json`；worktree 在 `.worktrees/netzoo-cov-live`。
 
-- **漏讀題**：heldout13 P1、heldout14 P1/P2、heldout15 MX1、heldout17 MX1、heldout11 VP1s/VP2q/VP5q。
-- **對照題**：門檻 3 會額外觸發、但尾段沒有需求的題目，包括 CN4「we want to know」、BP1「and, for each community」、CP6「to compare them」、MX6「and also the」、UP2「should be produced as well」。另加 3 題有閒聊句的題目。
-- **F41**：一題。
+| 回合 | 程式 | 結果 | 發現與修正 |
+|---|---|---|---|
+| c1（17 題） | f0a0536 | 漏讀題 3/8、對照題 5/5、閒聊句 2/3（B14 為備援模型讀取，依 Log 401 不重讀）、F41 1/1 | 交付類 4 題：首次檢查**已讀到**，但被歸成 format_or_delivery 後遭程式丟棄；重讀拿到正確片段，模型也不把寄送算成結果。VP5q 被背景引文切成兩段。→ d806644：拆出 `delivery` 類、能力表新增 `delivery` 條目、片段合併 |
+| c2（13 題） | d806644 | 交付類 4/4、c1 已通過的 3 題 3/3、對照題 2/2、檔案格式題 2/3 | **退步**：HP4「Name the output after our project, ZEBRA」被歸成 what_it_contains，條件檢查判 DRAGON「違反」，整題被拒絕。→ e50cf50：條件檢查新增答案 `not_about_results` |
+| c3（8 題） | e50cf50 | HP4 2/2、HP1 與 HP2 通過、UN6 違反仍成立 | HP3「在自己的伺服器過夜執行」2 次中 1 次被歸成交付（定義含「排程重跑」）。UN3：首次讀取沒有判給 SAMBAR，第二意見補判可做，k-means 條件因此沒被檢查（既有的順序漏洞）。→ c4c5919：收窄交付定義；第二意見新判可做的 workflow 也要做條件檢查 |
+| c4（6 題） | c4c5919 | **6/6**：HP3 2/2 判可做；上傳、email、即時儀表板 3/3 判不可做；UN3 判不可做 | UN3 這次走一般路徑；「第二意見後的條件檢查」只有單元測試覆蓋 |
 
-約 17 個 session。每個 session 約 5 次 gpt-4o-mini 付費呼叫（約 $0.001）和 1–2 次 nemotron 免費呼叫。
+## 最終狀態與仍未解決的部分
 
-**判準**：
-
-- 漏讀題的尾段被讀成需求，且判為不可做；
-- 對照題沒有多出需求；
-- 可做的題目沒有變成部分可做或做不到。
+- **交付類需求**：上傳公開資料庫或 repository、寄 email、儀表板、網站呈現，在最後兩輪都讀成不可做，可做的部分維持可做。run 遇到這類需求會照第 1 項的規則擋下確認。
+- **仍漏讀：VP5q**。「aligns our raw reads to the genome」（比對讀序這類前處理）即使片段已經合併，重讀仍不把它當成需求。這需要另一個契約類別，例如「分析前的資料處理」，還沒做。
+- **輸出檔設定**（檔名、格式、資料夾、在哪裡執行）不會再成為拒絕的理由。
+- 中文未測，依使用者決定不納入驗收門檻。
