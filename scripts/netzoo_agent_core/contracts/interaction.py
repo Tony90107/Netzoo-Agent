@@ -76,6 +76,10 @@ class WorkflowContinuation(BaseModel):
     action: RecommendedAction
     task: str = Field(min_length=1, max_length=ROUTER_CONTEXT_MAX_CHARS)
     parameters: dict[str, object] = Field(default_factory=dict, max_length=40)
+    recheck: bool = False
+    """M2: the user changed the request this run was planned or held for (a24b K02: "the phospho data come from a
+    different set of 25 mice"; K09: "Never mind the GPU - CPU is fine"). The run is checked again against the whole
+    request, as a new run request is, instead of continuing as selected."""
 
     @field_validator("action")
     @classmethod

@@ -82,6 +82,7 @@ export type NextTurnPrompt = {
   required_fields: string[];
   alternative_action: "inspect_inputs" | "inspect_condor_inputs" | "format_expression" | "convert_expression" | "run_panda" | "run_puma" | "run_lioness_panda" | "run_lioness_puma" | "run_lioness_coexpression" | "run_condor" | "run_cobra" | "run_sambar" | "run_dragon" | "run_lioness_dragon" | "run_otter" | "run_giraffe" | "run_bonobo" | null;
   alternative_granularity: "aggregate" | "sample_specific" | "not_applicable" | "unknown" | null;
+  held_run: boolean;
 };
 
 /** Per-task token telemetry with explicit estimated/actual provenance. */

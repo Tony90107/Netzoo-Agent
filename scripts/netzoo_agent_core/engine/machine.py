@@ -72,6 +72,7 @@ from ..cli.follow_up import (
     resolve_next_turn_input,
 )
 from ..cli.slash_commands import handle_slash_command, render_mode_prompt
+from .recheck import _is_question, _wizard_answer, recheck_task
 from .choices import (
     accepted,
     chosen_option,
@@ -189,6 +190,8 @@ class ConversationMachine:
                 state.queued_task = None
                 if state.follow_up_context is not None and state.next_prompt.kind != "initial":
                     self._submit_main_text(task)  # a resumed session's message answers its last turn
+                elif state.pending_plan is not None and not _wizard_answer(task):
+                    self._recheck(task, state.pending_plan.decision["action"])  # M2: a24b K02
                 else:
                     self._accept_task(task)
                 continue
@@ -455,6 +458,8 @@ class ConversationMachine:
             return []
         if not answer:
             return []
+        if not _wizard_answer(answer) and plan.decision.get("action") in RUN_ACTIONS:
+            return self._recheck(answer, plan.decision["action"])  # M2 (a24b K02): a sentence is not a path
         try:
             if preflight_correction:
                 task = input_confirmation_continuation(plan, answer, approved=False)
@@ -641,6 +646,13 @@ class ConversationMachine:
                 state.next_prompt, state.follow_up_context, resolution, task,
                 requirements=state.follow_up_requirements,
             )
+            prompt = state.next_prompt
+            if (state.pending_continuation is None and prompt.held_run and resolution.kind == "follow_up"
+                    and prompt.continuation_action in RUN_ACTIONS and not _is_question(answer)):
+                # M2 (a24b K09: "Never mind the GPU - CPU is fine, just use single precision."): a reply that changes
+                # the held run is that run, checked again with the whole request; a question is answered as before.
+                state.pending_continuation = WorkflowContinuation(
+                    action=prompt.continuation_action, task=routing_window(task), recheck=True)
         except ValueError:
             state.pending_continuation = None
             return [_notice(
@@ -661,6 +673,19 @@ class ConversationMachine:
         )
         state.run_id = None
         state.active_usage = None
+
+    def _recheck(self, text: str, action: str) -> list[Event]:
+        """The planned run, checked again with what the user just added (M2).
+
+        The pending plan is dropped: the request it was planned for has changed, so it is planned or held again.
+        """
+        state = self.state
+        task = recheck_task(state.conversation, text)
+        state.pending_plan = None
+        state.clarification_selections = {}
+        state.pending_continuation = WorkflowContinuation(action=action, task=routing_window(task), recheck=True)
+        state.pending_task = task
+        return []
 
     def _accept_task(self, task: str) -> list[Event]:
         """The shared tail every input branch runs before a turn starts."""

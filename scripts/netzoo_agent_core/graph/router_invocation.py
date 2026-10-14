@@ -39,7 +39,7 @@ from ..capability_sheet import entry
 from ..contracts.capability_check import CapabilityCheck, reread_as_proposal
 from ..interpretation.checked_match import _USER_CHOSEN, checked_match, credited_workflows
 from ..routing.capability import validate_task_text
-from workflow_registry import RUN_ACTIONS
+from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 from ..interpretation.reread import merge_reread, reread_passages
 from ..interpretation.unmapped_routes import is_unmapped, without_unmapped_candidates
 from ..interpretation.capability_check import (
@@ -47,6 +47,7 @@ from ..interpretation.capability_check import (
     build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
     wait_on_asked, workflow_description,
 )
+from ..interpretation.method_conditions import verified_controls
 from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict, run_verdict
@@ -161,7 +162,10 @@ def invoke_router(
     follow-up turn (a continuation, a method comparison, a choice) is not a
     new purpose, so it carries none and the reply reads its own words.
     """
-    follow_up = (state.get("method_comparison") is not None or state.get("workflow_continuation") is not None)
+    continuation = state.get("workflow_continuation")
+    # M2: a continuation the user changed is read as a new run request is -- checked, then planned or held.
+    follow_up = (state.get("method_comparison") is not None
+                 or (continuation is not None and not continuation.get("recheck")))
     result = _route_request(context, state, user_task)
     if follow_up or result.reason_code == "string_download_continuation":
         result = replace(result, routing_state={**result.routing_state, "study_purpose": None})
@@ -348,6 +352,10 @@ def _with_run_check(context, state, user_task: str, result: _RouterInvocation, p
                                   provisional=check_status == "fallback", shadow_status=check_status)
 
 
+def _control_default(action: str, name: str):
+    return next((control.default for control in ACTION_DEFINITIONS[action].controls if control.name == name), None)
+
+
 def _held(decision) -> bool:
     return decision.run_verdict is not None and decision.run_verdict.held
 
@@ -370,7 +378,12 @@ def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, c
     named = decision.match_basis in _USER_CHOSEN or named_workflow_action(user_task) == decision.action
     verdict = run_verdict(check, decision.action, check_status=check_status, named=named)
     if verdict.verdict in APPROVING_RUN_VERDICTS:
-        return replace(result, decision=decision.model_copy(update={"run_verdict": verdict}))
+        # M2: the settings the check verified are the run's, unless the request set the control as name=value.
+        controls = {name: value for name, value in verified_controls(check, decision.action).items()
+                    if getattr(decision, name, None) in (None, _control_default(decision.action, name))}
+        if controls:
+            record_event(context, state, "routing.run_controls_bound", "classify", {"controls": controls})
+        return replace(result, decision=decision.model_copy(update={"run_verdict": verdict, **controls}))
     guidance = decision.model_copy(update={
         "action": "no_tool", "should_execute": False, "intent_type": "answer_question", "execution_requested": True,
         "capability_check": check if check is not None else CapabilityCheck(unavailable=True), "run_verdict": verdict,

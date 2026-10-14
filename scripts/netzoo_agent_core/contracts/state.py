@@ -82,5 +82,7 @@ class NextTurnPrompt(BaseModel):
     required_fields: list[str] = Field(default_factory=list, max_length=20)
     alternative_action: RecommendedAction | None = None
     alternative_granularity: Granularity | None = None
+    held_run: bool = False
+    """M2: the last turn held a run the user asked for; a reply that changes it is that run, checked again."""
 
 __all__ = ['AgentState', 'AgentTurnInterrupted', 'ClarificationInputError', 'LLMUsage', 'NextTurnPrompt']
