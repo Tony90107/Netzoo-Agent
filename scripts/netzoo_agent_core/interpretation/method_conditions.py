@@ -38,8 +38,12 @@ def verified_method(task: str, item) -> dict:
 
     Recordings from before M1 state none of these, so nothing is kept and no rule fires on them.
     """
+    from ..method_names import method_names, setting_names
+
     found: dict = {}
     named, said = getattr(item, "named_method", "none"), _stated(task, getattr(item, "named_method_quote", ""))
+    if named not in (None, "none", UNREGISTERED, *method_names()):
+        named = UNREGISTERED  # the compact schema's names are strings (M2, live m2b P30)
     if named not in (None, "none") and said and (named == UNREGISTERED or _folded(named) in _folded(said)):
         found.update(named=named, named_quote=said)
         asked = _stated(task, getattr(item, "quote", "")) or ""
@@ -51,7 +55,8 @@ def verified_method(task: str, item) -> dict:
     for setting in getattr(item, "settings", None) or []:
         if (span := _span(task, setting.quote) if setting.quote.strip() else None) is not None:
             value = _span(task, setting.value_quote) if setting.value_quote.strip() else None
-            settings.append({"name": setting.name, "quote": task[span[0]:span[1]],
+            name = setting.name if setting.name in setting_names() else UNREGISTERED
+            settings.append({"name": name, "quote": task[span[0]:span[1]],
                              "value": task[value[0]:value[1]] if value else "", "span": list(span),
                              "at": (value or span)[0]})
     if settings:

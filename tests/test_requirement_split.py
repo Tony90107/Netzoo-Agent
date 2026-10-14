@@ -262,3 +262,50 @@ def test_g1_an_addition_beside_the_asks_words_and_a_blank_core_named_by_its_meth
     assert (core.quote, core.status) == ("aggregate PANDA network", "available")
     assert "panda.tf_gene_network" in core.delivered_by
     assert (lncrna.quote, lncrna.status) == ("add our lncRNAs as a further class of regulators", "not_available")
+
+
+# --- live m2b P30: the backup model's provider takes at most 1,000 enum values per schema ----------------------------
+
+def test_the_compact_schema_stays_under_the_enum_limit_and_reads_the_same():
+    from netzoo_agent_core.contracts.capability_check import MAX_SENTENCES
+    from netzoo_agent_core.contracts.strict_schema import expanded_enum_values
+
+    assert expanded_enum_values(proposal_model(9).model_json_schema()) > 1000  # what m2b P30's backup call refused
+    assert expanded_enum_values(proposal_model(MAX_SENTENCES, compact=True).model_json_schema()) <= 1000
+    task = "Can you infer TF activities for our 70 samples with the TIGER Bayesian model and an L1 penalty of 0.1?"
+    ask = {**_ask("infer TF activities", ["giraffe.tf_activity", "made.up_entry"], named="TIGER",
+                  named_quote="TIGER Bayesian model", asked_as="question"),
+           "settings": [{"name": "GIRAFFE.l1_penalty", "quote": "an L1 penalty of 0.1", "value_quote": "0.1"}]}
+    proposal = proposal_model(1, compact=True).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [ask]}, "conditions": unstated_conditions()})
+    [result] = build_capability_check(task, proposal)[0].results()
+    # Names not registered are unregistered; ids not on the sheet are dropped.
+    assert result.method["named"] == "unregistered" and result.method["settings"][0]["name"] == "unregistered"
+    assert result.status == "not_available" and result.instead == ["giraffe.tf_activity"]
+
+
+def test_the_backup_call_takes_the_compact_schema_for_a_long_request(monkeypatch):
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import LLMUsage
+    from netzoo_agent_core.contracts.strict_schema import expanded_enum_values
+    from netzoo_agent_core.graph import capability_check_call as call
+
+    seen = []
+
+    class Recording:
+        def with_structured_output(self, schema, **kwargs):
+            seen.append(expanded_enum_values(schema.model_json_schema()))
+            return self
+
+        def invoke(self, messages):
+            raise ValueError("Semantic structured output could not be decoded")
+
+    monkeypatch.delenv("OPENROUTER_CAPABILITY_MODEL", raising=False)
+    monkeypatch.setattr(call, "preflight_budget", lambda context, state, **kwargs: (SimpleNamespace(status="ok"), []))
+    monkeypatch.setattr(call, "record_event", lambda *args, **kwargs: None)
+    context = SimpleNamespace(study_purpose_llm=Recording(), semantic_model_name="openai/gpt-4o-mini",
+                              router_max_tokens=1000, task_token_budget=30000, price_catalog=None)
+    long_request = " ".join(f"Sentence {index} asks for a TF-gene network." for index in range(1, 10))
+    call.request_capability_check(context, {}, long_request, LLMUsage(budget_tokens=30000), [])
+    assert seen and all(count <= 1000 for count in seen)
