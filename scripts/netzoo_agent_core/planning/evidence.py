@@ -11,6 +11,7 @@ from .context import _PlanningContext
 from ..data.bonobo import bonobo_artifact_paths, load_bonobo_inputs
 from ..data.bundles import MULTI_FILE_ACTIONS, discover_bundle_candidates
 from ..data.content_mapping import detect_role_mismatches, infer_input_roles
+from ..data.discovery import is_shipped_data
 from ..data.gene_repair_hints import suggest_gene_corrections
 from ..data.gene_validation import UNRECOGNIZED_PHRASE
 from ..data.preflight import validate_workflow_inputs
@@ -161,6 +162,44 @@ def _task_directory(task: str) -> Path | None:
     return found[0] if len(found) == 1 else None
 
 
+def _search_root(task: str, selections) -> tuple[Path | None, bool]:
+    """Where to look for inputs the request did not bind, and whether shipped demo data may be offered (M2).
+
+    A folder the user named is searched, and its own files may be offered even when it is a shipped dataset. A
+    request that names files or folders that are not there is never answered with other data: nothing is searched
+    (a24b P21, P16, P24, P33 were offered toy datasets). Only a request naming none searches `data/`, and leaves
+    the shipped demonstration and fixture datasets out unless it asks for a demo (AGENTS.md; a24b: 18 of 24).
+    """
+    named = selections.directory or _task_directory(task)
+    if named is not None:
+        return named, False
+    if selections.named_paths or selections.missing_directories:
+        return None, False
+    return PROJECT_ROOT / "data", _is_demo_request(task)
+
+
+def _not_searched_reason(selections, named_unbound: list[str], field_name: str) -> str:
+    """Why no other data was looked for: the request named its own files or folders (M2)."""
+    if selections.missing_directories:
+        folders = ", ".join(selections.missing_directories)
+        return (f"The folder named in your request ({folders}) does not exist, so no other data was used; "
+                f"give the path of {field_name}.")
+    if named_unbound:
+        return (f"Your request names {', '.join(named_unbound)}; say which one is {field_name}, or give its path. "
+                "No other data was searched.")
+    return f"Give the path of {field_name}; your request names its own files, so no other data was searched."
+
+
+def _offerable(path: object, root: Path | None, demo: bool) -> bool:
+    """A discovered file may be offered: demo data only when asked for or inside the folder the user named."""
+    if demo or not is_shipped_data(str(path)):
+        return True
+    if root is None or root == PROJECT_ROOT / "data":
+        return False
+    resolved = _resolve_user_path(str(path)).resolve()
+    return resolved.is_relative_to(root.resolve())
+
+
 def _stated(context: _PlanningContext, field_name: str, value: object) -> bool:
     """Whether the user stated *value* for *field_name* (turn requirements)."""
     stated = context.stated.get(field_name)
@@ -254,14 +293,16 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
     )
     # Only inspect a directory explicitly named by the user. Router-proposed paths
     # are untrusted and must not steer content discovery into an unrelated folder.
-    content_nearby = selections.directory or _task_directory(task) or PROJECT_ROOT / "data"
-    content_bindings = infer_input_roles(
+    search_root, demo_data = _search_root(task, selections)
+    content_bindings = {} if search_root is None else infer_input_roles(
         action,
         task,
         [field_name for field_name in input_fields if field_name not in protected_bindings],
-        content_nearby,
+        search_root,
         context.content_mapper,
     )
+    content_bindings = {field_name: assignment for field_name, assignment in content_bindings.items()
+                        if _offerable(assignment.path, search_root, demo_data)}
     inferred_input_values: set[str] = set()
     explicit_input_values: dict[str, str] = {}
     selected_fields = set(
@@ -320,6 +361,20 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             # continuation's own text does not repeat it.
             setattr(decision, field_name, None)
 
+    # M2 (a24b P21 "yeast_stress_logc.tsv", P16 "methylation_beta.csv and rnaseq_log.csv", P24): a file the request
+    # names that no role hint matched was dropped, and toy data offered in its place. One named file for the one
+    # unbound input -- or the two DRAGON layers in the order named -- is the user's; otherwise only the named files are
+    # offered for the unbound inputs. Preflight reports a named file that is not there.
+    bound_paths = {str(getattr(decision, name)) for name in input_fields if getattr(decision, name, None)}
+    named_unbound = [path for path in selections.named_paths if path not in bound_paths]
+    unbound_fields = [name for name in input_fields if not getattr(decision, name, None)]
+    if named_unbound and len(named_unbound) == len(unbound_fields) and (
+            len(unbound_fields) == 1 or set(unbound_fields) <= {"omics_layer_1", "omics_layer_2"}):
+        for field_name, path in zip(sorted(unbound_fields), named_unbound):
+            setattr(decision, field_name, path)
+            explicit_input_values[field_name] = path
+        named_unbound = []
+
     for field_name in evidence_fields:
         if field_name not in OUTPUT_ROLE_FIELDS:
             continue
@@ -352,7 +407,7 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
         )
     if profile_model.preferences.get("reuse_last_inputs") is True:
         reused = reusable_episode_inputs(action, episode_models)
-        if reused:
+        if reused and all(_offerable(value, search_root, demo_data) for value in reused[0].values()):
             reused_values, reason = reused
             for field_name, value in reused_values.items():
                 if (
@@ -391,9 +446,9 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 decision.log_transformed = True
                 decision.centered = True
     # Outputs are safe and reversible defaults; input datasets require evidence.
-    nearby = selections.directory or _task_directory(task) or PROJECT_ROOT / "data"
+    nearby = search_root
 
-    if action in MULTI_FILE_ACTIONS and not autonomous_values:
+    if action in MULTI_FILE_ACTIONS and not autonomous_values and nearby is not None:
         discovery_anchors = {
             **explicit_input_values,
             **natural_bindings,
@@ -402,7 +457,8 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
                 for field_name, assignment in content_bindings.items()
             },
         }
-        candidates = discover_bundle_candidates(action, nearby, discovery_anchors)
+        candidates = [item for item in discover_bundle_candidates(action, nearby, discovery_anchors)
+                      if all(_offerable(value, nearby, demo_data) for value in item.values.values())]
         bundles = [item for item in candidates if not item.missing_fields]
         bundle = bundles[0] if len(bundles) == 1 else None
         if bundle is not None:
@@ -542,12 +598,19 @@ def _build_evidence_ledger(context: _PlanningContext) -> list[InputEvidence]:
             continue
 
         keywords = _candidate_keywords(action, field_name)
-        candidates = _find_candidate_files(keywords, nearby) if keywords else []
+        candidates = [path for path in (_find_candidate_files(keywords, nearby) if keywords and nearby else [])
+                      if _offerable(path, nearby, demo_data)]
+        if nearby is None:
+            # M2: the request named its own files or folders; only those are offered, never other data.
+            candidates = list(named_unbound)
         if partial_bundle_selected:
             candidates = []
         if bundle_choices_by_field.get(field_name):
             candidates = bundle_choices_by_field[field_name]
-        if action in MULTI_FILE_ACTIONS:
+        if nearby is None:
+            selected = None
+            reason = _not_searched_reason(selections, named_unbound, field_name)
+        elif action in MULTI_FILE_ACTIONS:
             selected = None
             reason = (
                 "Multiple complete validated input bundles are available; "

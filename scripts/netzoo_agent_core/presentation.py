@@ -772,10 +772,12 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 def _is_demo_request(task: str) -> bool:
+    # M2 (a24b P19): "endometrial" held "trial" and filled a real run with toy data; English words need word
+    # boundaries, and "trial" alone also names clinical trials.
     return bool(
         re.search(
             r"(試跑|試試看|試一下|測一下|跑\s*一次|run\s*一次|測試|示範"
-            r"|demo|trial|toy|test run|run(?:\s+(?:it|this|the))?\s+once)",
+            r"|\b(?:demo|toy|test run|trial run|run(?:\s+(?:it|this|the))?\s+once)\b)",
             task,
             flags=re.IGNORECASE,
         )

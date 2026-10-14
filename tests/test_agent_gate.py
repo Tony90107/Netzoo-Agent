@@ -14,6 +14,7 @@ from unittest.mock import patch
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 from run_approval import CheckingLLM, approved  # noqa: E402
+from netzoo_agent_core.data.discovery import is_shipped_data as agent_shipped  # noqa: E402
 
 PANDA_INPUT_TASK = (
     "Run PANDA with expression_file=data/lioness-toy/expression.tsv "
@@ -3066,39 +3067,47 @@ class CapabilityGateTests(unittest.TestCase):
         self.assertEqual(len(payload["workflows"]), 13)
 
     def test_confirmed_reuse_preference_can_reuse_validated_successful_inputs(self):
-        episode = agent.Episode(
-            episode_id="abc123",
-            profile_id="alice",
-            task_summary="Run LIONESS PANDA",
-            workflow="LIONESS-PANDA",
-            status="completed",
-            inputs={
-                "expression_file": "data/lioness-toy/expression.tsv",
-                "motif_file": "data/lioness-toy/motif-panda.tsv",
-                "ppi_file": "data/lioness-toy/ppi.tsv",
-            },
-        )
-        profile = agent.UserProfile(
-            profile_id="alice", preferences={"reuse_last_inputs": True}
-        )
-        decision = agent.TaskDecision(
-            action="run_lioness_panda",
-            in_scope=True,
-            should_execute=True,
-            confidence=0.99,
-            reason="formal run",
-        )
-        plan = agent.build_workflow_plan(
-            decision,
-            "Run LIONESS PANDA analysis",
-            profile=profile,
-            retrieved_episodes=[episode],
-        )
-        self.assertEqual(plan.status, "needs_confirmation")
-        self.assertEqual(
-            plan.decision["expression_file"], "data/lioness-toy/expression.tsv"
-        )
-        self.assertTrue(any("episode abc123" in item.reason for item in plan.evidence))
+        # M2 (2026-10-14): a confirmed reuse preference reuses the user's own earlier inputs; the shipped toy
+        # datasets are not reused in a formal run (the toy files stand in for the user's own data in the first arm).
+        inputs = {
+            "expression_file": "data/lioness-toy/expression.tsv",
+            "motif_file": "data/lioness-toy/motif-panda.tsv",
+            "ppi_file": "data/lioness-toy/ppi.tsv",
+        }
+        for own_data in (True, False):
+            episode = agent.Episode(
+                episode_id="abc123",
+                profile_id="alice",
+                task_summary="Run LIONESS PANDA",
+                workflow="LIONESS-PANDA",
+                status="completed",
+                inputs=inputs,
+            )
+            profile = agent.UserProfile(
+                profile_id="alice", preferences={"reuse_last_inputs": True}
+            )
+            decision = agent.TaskDecision(
+                action="run_lioness_panda",
+                in_scope=True,
+                should_execute=True,
+                confidence=0.99,
+                reason="formal run",
+            )
+            with patch("netzoo_agent_core.planning.evidence.is_shipped_data",
+                       (lambda _path: False) if own_data else agent_shipped):
+                plan = agent.build_workflow_plan(
+                    decision,
+                    "Run LIONESS PANDA analysis",
+                    profile=profile,
+                    retrieved_episodes=[episode],
+                )
+            if own_data:
+                self.assertEqual(plan.status, "needs_confirmation")
+                self.assertEqual(plan.decision["expression_file"], "data/lioness-toy/expression.tsv")
+                self.assertTrue(any("episode abc123" in item.reason for item in plan.evidence))
+            else:
+                self.assertEqual(plan.status, "needs_input")
+                self.assertIsNone(plan.decision.get("expression_file"))
 
     def test_planner_records_validated_project_policy_hash(self):
         policy = agent.ProjectPolicyLoader(agent.PROJECT_ROOT).load()
