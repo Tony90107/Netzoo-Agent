@@ -339,6 +339,9 @@ class CheckedRequirement(BaseModel):
     """Verdict layer step 2: for each value of `depends_on`, the produces entries that give the result."""
     unknown_quote: str = ""
     """Verdict layer step 2: the user's words saying they do not know it."""
+    file_checked: str | None = None
+    """Item 5 (2026-10-14): a dimension the user said they do not know that the workflow's own input check settles from
+    the files before it runs (`needed_facts.FILE_CHECKED`); it is said with the result, never asked."""
 
 
 class CapabilityCheck(BaseModel):

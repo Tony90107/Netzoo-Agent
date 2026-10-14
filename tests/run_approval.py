@@ -39,6 +39,9 @@ class CheckingLLM:
         if schema.__name__ == "CapabilityCheckProposal":
             reply = check_reply(schema, self.quote, self.delivered)
             return type("CheckAdapter", (), {"invoke": lambda _self, _messages: reply})()
+        if schema.__name__ == "CapabilityReread":  # the unread words ask for nothing more
+            reply = schema.model_validate({name: {"asks": []} for name in schema.model_fields})
+            return type("RereadAdapter", (), {"invoke": lambda _self, _messages: reply})()
         return self.inner.with_structured_output(schema, **kwargs)
 
     def invoke(self, messages):

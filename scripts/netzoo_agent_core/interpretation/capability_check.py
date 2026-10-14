@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
-from .needed_facts import decisive_outcomes, fact_line, needed_fact_reply
+from .needed_facts import FILE_CHECKED, decisive_outcomes, fact_line, file_checked, file_checked_note, needed_fact_reply
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from ..routing.study_purpose_verify import _locate
 from .unconfirmed_routes import checked_body_result
@@ -159,6 +159,12 @@ def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
             continue
         for about, said in check.unknowns:
             if (outcomes := decisive_outcomes(_fitting, list(dict.fromkeys(keys)), dict(item.attrs), about)) is not None:
+                if file_checked(about, outcomes):  # item 5: credited as the input check will confirm it
+                    confirmed = outcomes[FILE_CHECKED[about][0]]
+                    requirements[index] = item.model_copy(update={
+                        "status": _status(confirmed), "delivered_by": confirmed, "file_checked": about,
+                        "unknown_quote": said})
+                    break
                 requirements[index] = item.model_copy(update={
                     "status": "needs_fact", "depends_on": about, "outcomes": outcomes, "unknown_quote": said,
                     "delivered_by": list(dict.fromkeys(k for found in outcomes.values() for k in found))})
@@ -443,6 +449,9 @@ def build_capability_check(
         fit_attrs = {name: getattr(items[0], name) for name in (*_TYPED, "samples_matched") if hasattr(items[0], name)}
         for about, said in unknowns:
             if (outcomes := decisive_outcomes(_fitting, read, fit_attrs, about)) is not None:
+                if file_checked(about, outcomes):  # item 5: the input check settles it from the files
+                    waiting = {"file_checked": about, "unknown_quote": said}
+                    continue
                 status = "needs_fact"
                 delivered = list(dict.fromkeys(k for keys in outcomes.values() for k in keys))
                 waiting = {"depends_on": about, "outcomes": outcomes, "unknown_quote": said}
@@ -533,6 +542,13 @@ def _why_not(item: CheckedRequirement) -> list[str]:
 
 
 def _line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
+    line = _status_line(item, provisional, gap_unconfirmed)
+    if item.file_checked and item.status in ("available", "with_step", "partial"):
+        return f"{line} {file_checked_note(item)}"
+    return line
+
+
+def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconfirmed: bool = False) -> str:
     quote = f'"{item.quote}"'
     if item.status == "needs_fact":
         return fact_line(item)

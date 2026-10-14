@@ -174,3 +174,44 @@ def test_without_an_unknown_fact_or_a_deciding_one_the_gap_stands():
     undecided = CapabilityCheck(requirements=[_blank("a network")], full_gap=True,
                                 unknowns=[["data_unit", "not sure"]])
     assert wait_on_asked(undecided, [(0, "run_dragon", [])]) is undecided
+
+
+F41 = ("Run DRAGON on my RNA and methylation tables. I do not know whether their columns are in the same sample order, "
+       "and I have not supplied sample IDs or file paths.")
+B18 = "We want a network linking our RNA and methylation tables. I am not sure they came from the same patients."
+
+
+def test_whether_layers_share_samples_is_settled_by_the_files_never_asked():
+    """Item 5 (2026-10-14): feasibility eval F41 was asked whether the tables share samples -- about a column order that
+    never matters; DRAGON's input check requires exactly the same sample IDs and pairs rows by ID before it runs."""
+    for task, quote, unknown in (
+            (F41, "Run DRAGON on my RNA and methylation tables.",
+             "I do not know whether their columns are in the same sample order"),
+            (B18, "a network linking our RNA and methylation tables", "I am not sure they came from the same patients")):
+        check = _check(task, _ask(quote, ["dragon.two_layer_network"], omics_layers=2), unknown, "samples_matched")
+        (item,) = check.results()
+        assert check.needed_facts() == [] and item.status == "available" and item.file_checked == "samples_matched"
+        from netzoo_agent_core.interpretation.capability_check import understanding_paragraph
+
+        assert "DRAGON checks that both tables list exactly the same sample IDs" in understanding_paragraph(check)
+
+
+def test_facts_the_files_do_not_settle_are_still_asked():
+    """CONDOR's input check only warns on overlapping node IDs, so node roles are asked (B03); so is the data unit."""
+    assert _condor_check().needed_facts()[0].file_checked is None
+    cells = "I want a per-sample co-expression network. Its columns could be single cells or bulk libraries."
+    check = _check(cells, _ask("a per-sample co-expression network", ["lioness_coexpression.per_sample_networks"],
+                               scale="per_sample"), "Its columns could be single cells or bulk libraries", "data_unit")
+    assert check.needed_facts()[0].depends_on == "data_unit"
+
+
+def test_a_second_opinion_gap_with_unknown_sample_matching_is_credited_as_the_files_will_confirm():
+    from netzoo_agent_core.contracts.capability_check import CapabilityCheck
+    from netzoo_agent_core.interpretation.capability_check import wait_on_asked
+
+    check = CapabilityCheck(requirements=[_blank("a network linking the two tables")], full_gap=True,
+                            unknowns=[["samples_matched", "not sure they are the same patients"]])
+    (item,) = wait_on_asked(check, DRAGON_PAIRS).results()
+    assert item.status == "available" and item.file_checked == "samples_matched"
+    assert set(item.delivered_by) == {"dragon.two_layer_network", "dragon.edge_pvalues",
+                                      "lioness_dragon.per_sample_networks"}

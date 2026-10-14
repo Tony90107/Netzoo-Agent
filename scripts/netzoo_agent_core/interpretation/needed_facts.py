@@ -18,7 +18,8 @@ from types import SimpleNamespace
 
 from ..capability_sheet import entry
 
-__all__ = ["DIMENSIONS", "decisive_outcomes", "fact_line", "fact_questions", "needed_fact_reply", "waiting_decision"]
+__all__ = ["DIMENSIONS", "FILE_CHECKED", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
+           "file_checked_note", "needed_fact_reply", "waiting_decision"]
 
 # dimension: (what it is about, the question, ((value, label), ...)); a value is set on the ask's typed attributes.
 DIMENSIONS = {
@@ -42,6 +43,39 @@ DIMENSIONS = {
               "Do you want one result for all your samples together, or one per sample?",
               (("whole_cohort", "one for all samples"), ("per_sample", "one per sample"))),
 }
+
+
+FILE_CHECKED = {
+    "samples_matched": ("same_samples", frozenset({"run_dragon", "run_lioness_dragon"}),
+                        "before it runs, {names} checks that both tables list exactly the same sample IDs and pairs their "
+                        "rows by ID, so their order does not matter; if they are not the same samples, that check stops "
+                        "it and lists the IDs that differ"),
+}
+"""Item 5 (2026-10-14): an unknown fact a workflow's own input check settles from the files is said, not asked.
+
+dimension: (the value the check confirms, the workflows whose input check settles it, what the reply says). Every
+multi-omic workflow loads its layers with `data.dragon.load_and_align_dragon_layers`, which requires exactly the same
+sample IDs and reorders layer 2 to layer 1 by ID. Feasibility eval F41 ("I do not know whether their columns are in the
+same sample order") was asked "Were the different omics tables measured on the same samples?" -- a question the
+files answer, about an order that never matters. Node roles (CONDOR) are not here: its input check only warns when
+source and target IDs overlap, so a gene-gene network would still run, and B03 is still asked.
+"""
+
+
+def file_checked(about: str, outcomes: dict[str, list[str]]) -> bool:
+    """Whether every workflow the confirmed value leads to settles `about` from the files before it runs."""
+    if about not in FILE_CHECKED:
+        return False
+    value, actions, _note = FILE_CHECKED[about]
+    keys = outcomes.get(value) or []
+    return bool(keys) and all(entry(key).action in actions for key in keys)
+
+
+def file_checked_note(item) -> str:
+    """The sentence a result with a file-checked unknown is said with."""
+    _value, _actions, note = FILE_CHECKED[item.file_checked]
+    names = list(dict.fromkeys(entry(key).workflow for key in item.delivered_by))
+    return f'You said "{item.unknown_quote}": ' + note.format(names=" or ".join(names) or "the workflow") + "."
 
 
 def _typed(about: str, value: str):
