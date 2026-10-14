@@ -12,6 +12,7 @@ controls:
     default: matrix
     allowed_values: [matrix, edge_list]
     executor_argument: output_format
+    description: "matrix: a labeled symmetric partial-correlation matrix; edge_list: one row per feature pair (source, target, partial_correlation, precision)."
   - name: lambda1
     type: number
     default: null
@@ -19,6 +20,8 @@ controls:
     maximum: 1
     nullable: true
     executor_argument: lambda1
+    description: >-
+      Shrinkage of omics layer 1 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].
   - name: lambda2
     type: number
     default: null
@@ -26,6 +29,8 @@ controls:
     maximum: 1
     nullable: true
     executor_argument: lambda2
+    description: >-
+      Shrinkage of omics layer 2 (DRAGON's layer-specific shrinkage, not a generic graphical-lasso or sparsity penalty). Empty estimates it; a manual value needs lambda1 and lambda2 together, both in [0, 1].
 execution_step: run_dragon
 output_capability:
   operation: infer

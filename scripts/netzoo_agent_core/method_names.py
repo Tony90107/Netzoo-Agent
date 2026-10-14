@@ -9,7 +9,7 @@ from __future__ import annotations
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 __all__ = ["LIONESS_FAMILY", "UNREGISTERED", "method_names", "named_workflows", "registered_workflows",
-           "setting_names"]
+           "setting_meanings", "setting_names"]
 
 LIONESS_FAMILY = "LIONESS"
 """A named method that stands for every registered LIONESS-X workflow."""
@@ -45,4 +45,12 @@ def named_workflows(method: str) -> frozenset[str]:
 def setting_names() -> tuple[str, ...]:
     """Every setting a request can give, as WORKFLOW.control."""
     return tuple(f"{workflow}.{control.name}" for workflow, action in sorted(registered_workflows().items())
+                 for control in ACTION_DEFINITIONS[action].controls)
+
+
+def setting_meanings() -> tuple[str, ...]:
+    """Each setting as WORKFLOW.control: what the registry says it does (m1a N11: "an L1 sparsity penalty" was
+    typed OTTER.lam, the co-expression-versus-PPI weight, when the schema showed only the name)."""
+    return tuple(f"{workflow}.{control.name}: {control.description}"
+                 for workflow, action in sorted(registered_workflows().items())
                  for control in ACTION_DEFINITIONS[action].controls)

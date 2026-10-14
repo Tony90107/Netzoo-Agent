@@ -14,6 +14,7 @@ controls:
     default: .h5
     allowed_values: [.h5, .hdf, .txt, .csv]
     executor_argument: bonobo_output_format
+    description: "File type of the per-sample matrices: .h5 or .hdf (HDF5), .txt or .csv."
   - name: sample_names
     type: string_list
     default: []
@@ -25,6 +26,8 @@ controls:
     default: false
     selection_tags: [sparse_pvalue_coexpression]
     executor_argument: sparsify
+    description: >-
+      Compute approximate edge p-values and threshold each sample's co-expression matrix at bonobo_confidence (with save_pvals, the full matrix is kept and the p-values are written).
   - name: bonobo_confidence
     type: number
     default: 0.05
@@ -32,20 +35,25 @@ controls:
     maximum: 1
     selection_tags: [sparse_pvalue_coexpression]
     executor_argument: bonobo_confidence
+    description: "Significance level at which sparsify thresholds the edges."
   - name: save_pvals
     type: boolean
     default: false
     selection_tags: [sparse_pvalue_coexpression]
     executor_argument: save_pvals
+    description: >-
+      Write each sample's edge p-value matrix; requires sparsify.
   - name: precision
     type: enum
     default: single
     allowed_values: [single, double]
     executor_argument: precision
+    description: "Floating-point precision: single or double."
   - name: keep_in_memory
     type: boolean
     default: false
     executor_argument: keep_in_memory
+    description: "Keep the per-sample matrices in memory during the run (upstream run_bonobo option)."
   - name: delta
     type: number
     default: null
@@ -61,16 +69,19 @@ controls:
     default: auto
     allowed_values: [auto, rows, columns]
     executor_argument: genes_axis
+    description: "Where the gene IDs are in the expression table: auto, rows or columns (BONOBO needs them on rows)."
   - name: log_transformed
     type: boolean
     default: null
     nullable: true
     executor_argument: log_transformed
+    description: "The expression is declared log-transformed; BONOBO requires it."
   - name: centered
     type: boolean
     default: null
     nullable: true
     executor_argument: centered
+    description: "The expression is declared centered; BONOBO requires it."
 execution_step: run_bonobo
 output_capability:
   operation: infer

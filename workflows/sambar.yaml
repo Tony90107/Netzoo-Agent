@@ -11,36 +11,46 @@ controls:
     type: boolean
     default: true
     executor_argument: norm_patient
+    description: >-
+      Normalize gene mutation scores by each patient's mutation burden.
   - name: kmin
     type: integer
     default: 2
     minimum: 2
     executor_argument: kmin
+    description: "Smallest number of sample subtypes (clusters) tried; at least 2."
   - name: kmax
     type: integer
     default: 4
     minimum: 2
     executor_argument: kmax
+    description: "Largest number of sample subtypes (clusters) tried; at least kmin and at most the number of samples."
   - name: gmt_msigdb
     type: boolean
     default: true
     executor_argument: gmt_msigdb
+    description: "The pathway GMT file is in MSigDB format."
   - name: subset_cancer_genes
     type: boolean
     default: true
     executor_argument: subset_cancer_genes
+    description: "Score only the listed cancer-associated genes."
   - name: distance
     type: string
     default: binomial
     executor_argument: distance
+    description: >-
+      Distance (a scipy metric name) between samples' pathway scores used for clustering.
   - name: linkage
     type: string
     default: complete
     executor_argument: linkage
+    description: "Hierarchical-clustering linkage method (a scipy name)."
   - name: cluster
     type: boolean
     default: true
     executor_argument: cluster
+    description: "Cluster samples into subtypes; false returns the mutation scores only."
 execution_step: run_sambar
 output_capability:
   operation: analyze

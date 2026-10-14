@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import re
 
-from ..capability_sheet import entry
+from ..capability_sheet import entry, sheet_entries
+from ..contracts.capability_check import CheckedRequirement
 from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
     UNREGISTERED, StatedSetting, conditions_for, data_issue, named_workflows, setting_issue, stated_numbers,
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "verified_method"]
+__all__ = ["method_fitting", "request_method", "request_method_limit", "verified_method", "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -106,3 +107,46 @@ def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str],
     if instead and not kept and named not in (None, UNREGISTERED):
         limits.insert(0, f"NetZoo's {named} does not give this result")
     return kept, list(dict.fromkeys(limits)), list(dict.fromkeys(instead)), list(dict.fromkeys(defaults))
+
+
+def request_method(task: str, proposal) -> dict:
+    """The method and settings the request names as a whole (live m1a F1), verified like an ask's."""
+    found = verified_method(task, getattr(proposal, "conditions", None))
+    return {key: value for key, value in found.items() if key in ("named", "named_quote", "settings")}
+
+
+def with_request_method(method: dict, whole: dict) -> dict:
+    """An ask's method with the request's named method and settings where it states none of its own.
+
+    Applied only when the request asks for one result: with two, a setting given for one workflow would hold the other
+    to it ("run PANDA ..., then CONDOR on it").
+    """
+    merged = dict(method)
+    if "named" not in merged and "named" in whole:
+        merged.update(named=whole["named"], named_quote=whole["named_quote"])
+    if "settings" not in merged and "settings" in whole:
+        merged["settings"] = whole["settings"]
+    return merged
+
+
+def request_method_limit(whole: dict) -> CheckedRequirement | None:
+    """A result for a request that asks for none but names a method it cannot have as asked (live m1a F1).
+
+    "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about the methods only, so
+    the run was approved with nothing asked. The named workflow's own results are held to the stated settings; an
+    unregistered method gives none. Nothing is added when the request names no method or the method can run as asked.
+    """
+    named = whole.get("named")
+    if not named:
+        return None
+    # No result says which scale, so the named workflow itself -- not its LIONESS version -- is what is asked to run.
+    workflows = {named} if named in registered_workflows() else named_workflows(named)
+    keys = [key for key, found in sheet_entries().items()
+            if found.kind == "produces" and found.level == "direct" and found.workflow in workflows]
+    kept, limits, instead, defaults = method_fitting(whole, keys)
+    if not limits or kept:
+        return None
+    quote = whole["settings"][0]["quote"] if whole.get("settings") and named != UNREGISTERED else whole["named_quote"]
+    return CheckedRequirement(quote=quote, kind="result", status="not_available", method=whole, limits=limits,
+                              instead=instead, defaults=defaults)
+

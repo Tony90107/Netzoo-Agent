@@ -24,7 +24,7 @@ from ..capability_sheet import data_units, entry, result_forms, sheet_entries
 from .needed_facts import FILE_CHECKED, decisive_outcomes, fact_line, file_checked, file_checked_note, needed_fact_reply
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
-from .method_conditions import method_fitting, verified_method
+from .method_conditions import method_fitting, request_method, request_method_limit, verified_method, with_request_method
 from .unconfirmed_routes import checked_body_result
 
 __all__ = [
@@ -389,6 +389,7 @@ def build_capability_check(
     rejected, spans, asks, other = [], [], {}, {}
     conditions = verified_conditions(task, proposal)
     unknowns = verified_unknowns(task, proposal)
+    whole = request_method(task, proposal)
 
     def place(quote: str):
         span = _span(task, quote)
@@ -421,6 +422,8 @@ def build_capability_check(
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
         methods = [verified_method(task, item) for item in items]
+        if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
+            methods = [with_request_method(method, whole) for method in methods]
         fitted = [method_fitting(method, _fitting(
             [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item))
             for item, method in zip(items, methods)]
@@ -463,6 +466,8 @@ def build_capability_check(
     requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
                      for span, kind in other.items() if span not in asks]
+    if whole and not any(item.kind == "result" for item in requirements):
+        requirements += [found] if (found := request_method_limit(whole)) is not None else []
     deliveries = delivery_requirements(task, proposal, [item for item in requirements if item.kind == "result"])
     requirements += deliveries
     spans += [span for item in deliveries if (span := _span(task, item.quote)) is not None]

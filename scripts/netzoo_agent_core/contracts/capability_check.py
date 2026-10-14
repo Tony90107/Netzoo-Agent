@@ -44,13 +44,15 @@ def _method_fields() -> dict[str, Any]:
     the registry (`workflow_conditions`); code keeps a value only when its words are in the request and judges it.
     The defaults read recordings from before M1, which state none of these.
     """
-    from ..method_names import UNREGISTERED, method_names, setting_names
+    from ..method_names import UNREGISTERED, method_names, setting_meanings, setting_names
 
     method = Literal[(*method_names(), UNREGISTERED, "none")]  # type: ignore[valid-type]
     setting = create_model(
         "StatedSetting", __config__=ConfigDict(extra="forbid"),
         name=(Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore[valid-type]
-            "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it."))),
+            "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it. "
+            "What each registered setting does (the registry's own description): "
+            + " | ".join(setting_meanings())))),
         quote=(str, Field(description="Exact words of the request naming the setting.")),
         value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")))
     count = create_model(
@@ -223,6 +225,19 @@ def conditions_model() -> type[BaseModel]:
             "Each option the user names, one ask per option, its quote the exact words naming it."))))
     fields["open_choices"] = (list[choice], Field(default_factory=list, description=(
         "Each choice among options the user names but says they have not made; empty when there is none.")))
+    # M1 (live m1a F1): "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about
+    # the methods with no ask, so its setting had nothing to attach to and the run went ahead. The method the request
+    # names and the settings it gives are read for the request too (`interpretation.method_conditions`).
+    method = _method_fields()
+    fields["named_method"] = (method["named_method"][0], Field(default="none", description=(
+        "The method the request names for what it asks, including a method it asks to run: a registered workflow, "
+        "or LIONESS for any LIONESS version; unregistered when it names a method, model or variant not in this list; "
+        "none when it names no method.")))
+    fields["named_method_quote"] = (str, Field(default="", description=(
+        "Exact words of the request naming that method; empty when none is named.")))
+    fields["settings"] = (method["settings"][0], Field(default_factory=list, description=(
+        "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, output "
+        "format or hardware -- one item per setting; empty when it gives none. Not the input data.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -230,7 +245,8 @@ def unstated_conditions() -> dict:
     """The conditions of a reading that states none (a re-read reads asks only)."""
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
-            "other_requirements": [], "unknown_facts": [], "open_choices": []}
+            "other_requirements": [], "unknown_facts": [], "open_choices": [],
+            "named_method": "none", "named_method_quote": "", "settings": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]

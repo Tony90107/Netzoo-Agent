@@ -182,7 +182,7 @@ def request_condition_check(context, state, pairs: list[tuple[str, str, str, str
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
-        with_reading_allowance(context, usage), call_state, role="capability_condition_check", model=model,
+        (reading := with_reading_allowance(context, usage)), call_state, role="capability_condition_check", model=model,
         input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
     if budget.status == "blocked":
@@ -208,7 +208,7 @@ def request_condition_check(context, state, pairs: list[tuple[str, str, str, str
     usage = append_llm_usage(
         usage, role="capability_condition_check", model=model,
         response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=context.task_token_budget,
+        budget_tokens=reading.task_token_budget,
         duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
         status=call_status, price_catalog=context.price_catalog,
     )
@@ -226,7 +226,7 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
-        with_reading_allowance(context, usage), call_state, role="capability_second_opinion", model=model,
+        (reading := with_reading_allowance(context, usage)), call_state, role="capability_second_opinion", model=model,
         input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
     if budget.status == "blocked":
@@ -253,7 +253,7 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
     usage = append_llm_usage(
         usage, role="capability_second_opinion", model=model,
         response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=context.task_token_budget,
+        budget_tokens=reading.task_token_budget,
         duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
         status=call_status, price_catalog=context.price_catalog,
     )
@@ -263,7 +263,11 @@ def _second_opinion_call(context, state, model, llm, pairs, usage, budget_warnin
 # Log 394: the safety check gets its own allowance on top of the turn's token budget, because
 # routing-heavy turns (retries, sibling repairs, a review) spent 26.6k of 30k tokens before it and
 # the budget skipped exactly the check (heldout3 KU9 x2: both answered with a workflow menu).
-CHECK_EXTRA_TOKENS = 8_000
+# M1 (2026-10-14): the method, settings and counts on every ask, and what each registered setting does, add about 2.0k
+# estimated tokens to the check's input and 1.8k to its re-read (5.4k -> 7.4k for a two-sentence request); the
+# allowance grows by as much, so the calls after it keep the margin they had (a24b: study purpose blocked in 20 of 157
+# turns, data facts in 17).
+CHECK_EXTRA_TOKENS = 12_000
 
 
 def with_reading_allowance(context, usage=None):
@@ -277,6 +281,10 @@ def with_reading_allowance(context, usage=None):
     f10: with the turn budget alone the data-facts call was blocked in 2-17% of turns and
     the reply then asked for a motif prior and PPI the request had named, and 11 second
     opinions were blocked, leaving their gaps unasked.
+
+    M1 (2026-10-14): each of these calls records its usage against the budget it was given, the allowance included.
+    Recorded against the turn budget alone, the check's own use of its allowance marked the turn spent, and the study
+    purpose and data facts after it lost the allowance they share (the larger M1 check made that more frequent).
     """
     if usage is not None and usage.budget_exhausted:
         return context
@@ -316,7 +324,7 @@ def request_capability_check(
     messages, count = build_capability_check_messages(user_task)
     schema = proposal_model(count)
     input_text = _serialized_structured_input(messages, schema)
-    budget_context = with_reading_allowance(context)
+    budget_context = reading = with_reading_allowance(context)
     for attempt in (1, 2):
         call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
         budget, budget_warnings = preflight_budget(
@@ -351,7 +359,7 @@ def request_capability_check(
         usage = append_llm_usage(
             usage, role="capability_check", model=model,
             response=raw, input_text=input_text, output_text=output_text,
-            budget_tokens=context.task_token_budget,
+            budget_tokens=reading.task_token_budget,
             duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
             status=call_status, price_catalog=context.price_catalog,
         )
@@ -387,7 +395,7 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
     input_text = _serialized_structured_input(messages, schema)
     call_state = dict(state, token_usage=usage.model_dump(), budget_warnings=budget_warnings)
     budget, budget_warnings = preflight_budget(
-        with_reading_allowance(context, usage), call_state, role="capability_reread", model=model,
+        (reading := with_reading_allowance(context, usage)), call_state, role="capability_reread", model=model,
         input_text=input_text, reserved_output_tokens=context.router_max_tokens, allow_reserve=False,
     )
     if budget.status == "blocked":
@@ -412,7 +420,7 @@ def request_capability_reread(context, state, user_task: str, passages: list[str
     usage = append_llm_usage(
         usage, role="capability_reread", model=model,
         response=raw, input_text=input_text, output_text=output_text,
-        budget_tokens=context.task_token_budget,
+        budget_tokens=reading.task_token_budget,
         duration_ms=max(0, (time.monotonic_ns() - started_ns) // 1_000_000),
         status=call_status, price_catalog=context.price_catalog,
     )
