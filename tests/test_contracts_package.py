@@ -175,7 +175,9 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (items 1-2): optional code-owned run_verdict; it can only refuse execution (the Plan Evaluator and
     # the executor gate require an approving one for an analysis run).
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
-    "TaskDecision": "ed731c98a49dd8ba611f074f0a652dbf575c365efc12c127c00fa1a32e0acd75",
+    # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
+    # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
+    "TaskDecision": "7bfa53404c7a4cf0274be69d833e4d43d81d6134c0bcef0bf619d8a1ccdf551a",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

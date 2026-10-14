@@ -1,0 +1,47 @@
+"""Where a quoted passage sits in the request (Log 387), shared by the capability check and its M1 method rules."""
+
+from __future__ import annotations
+
+import re
+
+from ..routing.study_purpose_verify import _locate
+
+__all__: list[str] = []
+
+_TOKEN = re.compile(r"\w+")
+
+
+def _locate_tokens(task: str, quote: str) -> tuple[int, int] | None:
+    """The request passage a near-verbatim quote copies, or None.
+
+    Log 387 smoke run: the model copies the words but trims or rejoins them
+    ("We want a classifier using those networks ..." for "then a classifier
+    using those networks ..."). A quote stands for the densest passage holding
+    at least 70% of its words (and three) in order (difflib blocks, at most 1.5x its length);
+    the reply always shows the request's own words.
+    """
+    from difflib import SequenceMatcher
+
+    wanted = [word.casefold() for word in _TOKEN.findall(quote)]
+    if len(wanted) < 3:
+        return None
+    found = list(_TOKEN.finditer(task))
+    words = [match.group().casefold() for match in found]
+    blocks = [block for block in SequenceMatcher(None, words, wanted, autojunk=False).get_matching_blocks()
+              if block.size]
+    best, best_score = None, None
+    for first in range(len(blocks)):
+        matched = 0
+        for last in range(first, len(blocks)):
+            start, end = blocks[first].a, blocks[last].a + blocks[last].size
+            if end - start > 1.5 * len(wanted):
+                break
+            matched += blocks[last].size
+            score = matched - 0.5 * ((end - start) - matched)
+            if matched >= max(3, 0.7 * len(wanted)) and (best_score is None or score > best_score):
+                best, best_score = (found[start].start(), found[end - 1].end()), score
+    return best
+
+
+def _span(task: str, quote: str) -> tuple[int, int] | None:
+    return _locate(task, quote) or _locate_tokens(task, quote)

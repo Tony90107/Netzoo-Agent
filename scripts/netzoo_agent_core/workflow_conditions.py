@@ -19,6 +19,7 @@ from typing import Callable, Mapping
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 from .data import bonobo, cobra, dragon, giraffe, inspection, lioness_dragon, otter
+from .method_names import LIONESS_FAMILY, UNREGISTERED, method_names, named_workflows, setting_names
 from .runtime_constraints import runtime_control_constraints
 
 __all__ = [
@@ -26,12 +27,6 @@ __all__ = [
     "conditions_for", "data_issue", "method_names", "named_workflows", "setting_issue", "setting_names",
     "stated_numbers",
 ]
-
-LIONESS_FAMILY = "LIONESS"
-"""A named method that stands for every registered LIONESS-X workflow."""
-
-UNREGISTERED = "unregistered"
-"""A named method or setting that no registered workflow has."""
 
 # The executor's or preflight's own constants, read when asked so a change to one is followed here.
 _MIN_SAMPLES: Mapping[str, Callable[[], int]] = MappingProxyType({
@@ -114,30 +109,6 @@ def conditions_for(name: str) -> WorkflowConditions | None:
     """One workflow's conditions, by workflow name (DRAGON) or action (run_dragon)."""
     found = all_conditions()
     return found.get(name) or next((item for item in found.values() if item.action == name), None)
-
-
-def method_names() -> tuple[str, ...]:
-    """The methods a request can name: each registered workflow, and the LIONESS family."""
-    return (*sorted(all_conditions()), LIONESS_FAMILY)
-
-
-def named_workflows(method: str) -> frozenset[str]:
-    """The registered workflows a named method stands for: itself and its LIONESS-X version, if registered.
-
-    LIONESS stands for every LIONESS-X. An unregistered name stands for none -- so a LIONESS version of a method
-    that has none here (LIONESS-OTTER) is never another workflow.
-    """
-    known = all_conditions()
-    if method == LIONESS_FAMILY:
-        return frozenset(name for name in known if name.startswith(f"{LIONESS_FAMILY}-"))
-    if method not in known:
-        return frozenset()
-    return frozenset(name for name in (method, f"{LIONESS_FAMILY}-{method}") if name in known)
-
-
-def setting_names() -> tuple[str, ...]:
-    """Every setting a request can give, as WORKFLOW.control."""
-    return tuple(f"{workflow}.{name}" for workflow, item in sorted(all_conditions().items()) for name in item.settings)
 
 
 @dataclass(frozen=True, slots=True)

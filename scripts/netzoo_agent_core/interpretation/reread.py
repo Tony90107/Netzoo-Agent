@@ -26,7 +26,7 @@ from functools import lru_cache
 
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import MAX_SENTENCES
-from .capability_check import request_sentences
+from .capability_check import _full_gap, request_sentences
 
 __all__ = ["MIN_UNREAD_WORDS", "letter_runs", "merge_reread", "reread_passages", "unread_stretches"]
 
@@ -186,5 +186,5 @@ def merge_reread(task: str, check, reread, passages=(), rejected=()):
             if item.kind == "result" or not _overlaps(task, item.quote, [result.quote for result in new])]
     requirements = [*kept, *new]
     results = [item for item in requirements if item.kind == "result"]
-    full_gap = bool(results) and not unchecked and all(item.status == "not_available" for item in results)
+    full_gap = _full_gap(results, unchecked)
     return check.model_copy(update={"requirements": requirements, "unchecked": unchecked, "full_gap": full_gap})

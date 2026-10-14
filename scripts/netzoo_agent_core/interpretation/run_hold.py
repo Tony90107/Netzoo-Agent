@@ -90,6 +90,10 @@ def _why(verdict: RunVerdict, offers: list[str]) -> str:
         steps = [row for row in rows if row["status"] == "with_step"]
         return (f"You asked me to run {name}. {name} covers {_quotes(steps)} only with a step you run outside "
                 "NetZoo afterwards (above), so the run alone would not do all of it. I have not planned it.")
+    if verdict.verdict == "gap":
+        # M1: the run's workflow gives the result, but not with the settings asked for (above).
+        return (f"You asked me to run {name}, but it cannot run as you asked (above), so the run would not do what "
+                "you asked. I have not planned it.")
     if verdict.verdict == "unread":
         return (f"You asked me to run {name}, but part of your request was not checked against what {name} gives "
                 "(above). I have not planned the run.")

@@ -34,6 +34,52 @@ MAX_SENTENCES = 12
 
 
 @lru_cache(maxsize=1)
+def _method_fields() -> dict[str, Any]:
+    """M1 (2026-10-14): the method, settings and data size an ask states, as typed values with their words.
+
+    Final acceptance a24b: OTTER "with an L1 sparsity penalty of 0.1", GIRAFFE with "its regularisation lambda",
+    "the TIGER Bayesian model", "one OTTER network per sample, LIONESS-style", "exactly two RNA-seq samples" and
+    "20,000 genes and 800 proteins for our 300 patients" were all read, but only as context or as a requirement
+    beside the ask, so the result was credited to the workflow that cannot run it that way. Names are enums of
+    the registry (`workflow_conditions`); code keeps a value only when its words are in the request and judges it.
+    The defaults read recordings from before M1, which state none of these.
+    """
+    from ..method_names import UNREGISTERED, method_names, setting_names
+
+    method = Literal[(*method_names(), UNREGISTERED, "none")]  # type: ignore[valid-type]
+    setting = create_model(
+        "StatedSetting", __config__=ConfigDict(extra="forbid"),
+        name=(Literal[(*setting_names(), UNREGISTERED)], Field(description=(  # type: ignore[valid-type]
+            "The registered setting the words set, as WORKFLOW.setting; unregistered when none of these is it."))),
+        quote=(str, Field(description="Exact words of the request naming the setting.")),
+        value_quote=(str, Field(description="Exact words of the request giving its value; empty when none is given.")))
+    count = create_model(
+        "StatedCount", __config__=ConfigDict(extra="forbid"),
+        count=(int, Field(description="The number the words state.")),
+        quote=(str, Field(description="Exact words of the request stating it.")))
+    return {
+        "named_method": (method, Field(default="none", description=(
+            "The method the request names for this result: a registered workflow, or LIONESS for any LIONESS "
+            "version; unregistered when it names a method, model or variant not in this list (including a LIONESS "
+            "version of a workflow that has none here); none when it names no method."))),
+        "named_method_quote": (str, Field(default="", description=(
+            "Exact words of the request naming the method; empty when none is named."))),
+        "settings": (list[setting], Field(default_factory=list, description=(
+            "Each setting of the method the request gives for this result -- a parameter, penalty, threshold, "
+            "precision, output format or hardware -- one item per setting; empty when it gives none. Not the input "
+            "data."))),
+        "sample_count": (int | None, Field(default=None, description=(
+            "How many samples, patients or profiles the request says the data for this result has; null when it "
+            "does not say."))),
+        "sample_count_quote": (str, Field(default="", description=(
+            "Exact words of the request stating that number; empty when it is null."))),
+        "feature_counts": (list[count], Field(default_factory=list, description=(
+            "Each number of genes, proteins or other features the request says the data for this result has, one "
+            "item per data type; empty when none is stated."))),
+    }
+
+
+@lru_cache(maxsize=1)
 def _ask_model() -> type[BaseModel]:
     """One asked-for result and the sheet entries that give it (shared by the check and its re-read)."""
     produces = Literal[produces_ids()]  # type: ignore[valid-type]
@@ -84,6 +130,7 @@ def _ask_model() -> type[BaseModel]:
         asked_as=(Literal["request", "question"], Field(description=(
             "request: the user wants the result produced. question: the user asks whether, or which, method "
             "produces it."))),
+        **_method_fields(),
     )
 
 
@@ -360,6 +407,18 @@ class CheckedRequirement(BaseModel):
     file_checked: str | None = None
     """Item 5 (2026-10-14): a dimension the user said they do not know that the workflow's own input check settles from
     the files before it runs (`needed_facts.FILE_CHECKED`); it is said with the result, never asked."""
+    method: dict[str, Any] = Field(default_factory=dict)
+    """M1 (2026-10-14): the ask's named method, settings and data size whose words are in the request
+    (`interpretation.capability_check.verified_method`); every later step that credits a workflow holds it to them."""
+    limits: list[str] = Field(default_factory=list)
+    """M1: why a credited workflow cannot run as asked -- not the named method, a setting it lacks or a value it does
+    not take, too few samples, too much data (code-rendered from `workflow_conditions`)."""
+    instead: list[str] = Field(default_factory=list)
+    """M1: produces entries of workflows that give the result by a method the request did not name; said as
+    alternatives, never as the result asked for."""
+    defaults: list[str] = Field(default_factory=list)
+    """M1: produces entries of workflows that give the result with their own settings, only not with the stated ones;
+    the workflow is offered as that (a run of it is held for the user), so the result is not a full gap."""
 
 
 class CapabilityCheck(BaseModel):
