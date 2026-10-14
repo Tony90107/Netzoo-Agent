@@ -2,9 +2,9 @@
 
 Usage (main repository root, provider key in .env, never printed):
   set -a; . ./.env; set +a
-  python3 docs/research-log/coverage-2026-10-14/run_live17.py <tag>
+  python3 docs/research-log/coverage-2026-10-14/run_live17.py <tag> [items.json]
 
-One arm: .worktrees/netzoo-cov-live (f0a0536). Sessions `cv-<tag>-<id>`.
+One arm: .worktrees/netzoo-cov-live (c1: f0a0536; c2: d806644, live13.json). Sessions `cv-<tag>-<id>`.
 """
 import json
 import subprocess
@@ -14,7 +14,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 TREE = Path(__file__).resolve().parents[4] / ".worktrees" / "netzoo-cov-live"
-ITEMS = json.loads((HERE / "live17.json").read_text())
+ITEMS = json.loads((HERE / (sys.argv[2] if len(sys.argv) > 2 else "live17.json")).read_text())
 
 
 def run(tag, item):

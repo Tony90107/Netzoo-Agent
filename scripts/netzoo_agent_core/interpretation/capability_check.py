@@ -317,7 +317,8 @@ def apply_redirect_answers(check: CapabilityCheck, pairs: list[tuple[int, str, l
 
 def apply_condition_answers(check: CapabilityCheck, pairs: list[tuple[int, str, list[str], str]],
                             answers: list) -> CapabilityCheck:
-    """Remove each credited workflow answered `violates`; satisfies and unrelated change nothing (Log 414).
+    """Remove each credited workflow answered `violates`; satisfies, unrelated and not_about_results change nothing
+    (Log 414; items 4-5 c2: a name for the output files is never a reason to remove a workflow).
 
     Nothing is ever made unconfirmed here: a result keeps its verdict unless a workflow is found unable to meet
     a stated requirement, and only that workflow is removed.

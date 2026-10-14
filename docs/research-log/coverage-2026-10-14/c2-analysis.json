@@ -1,0 +1,505 @@
+[
+ {
+  "id": "13-P1",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "the communities of our bipartite TF-gene network",
+    "available",
+    null
+   ],
+   [
+    "uploaded automatically to a public database when they are done",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "the communities of our bipartite TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "uploaded automatically to a public database",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"the communities of our bipartite TF-gene network\" -- available from CONDOR.\n2. \"uploaded automatically to a public database when they are done\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing, showing or re-running them is done outside NetZoo.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\nWhat you asked about:\n\n- \"uploaded automatically to a public database when they are done\" — Core scores rank each node's contribution to its community's modularity; the top-scoring regulators and genes are candidates for the community's function. Gene communities can be tested for pathway enrichment with standard gene-set tools, which is a separate analysis step.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "14-P1",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "each patient's TF-gene network",
+    "available",
+    null
+   ],
+   [
+    "emailed to each patient's doctor automatically",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "each patient's TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "emailed to each patient's doctor automatically",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"each patient's TF-gene network\" -- available from LIONESS-PANDA.\n2. \"emailed to each patient's doctor automatically\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing, showing or re-running them is done outside NetZoo.\n\nFor the sample-specific output you described, use **LIONESS-PANDA**.\n\nRequired inputs:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 50 patients, 51 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOut-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "15-MX1",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "one TF-gene network per patient",
+    "available",
+    null
+   ],
+   [
+    "a dashboard that updates live as new patients are added",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "one TF-gene network per patient",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "a dashboard that updates live as new patients are added",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"one TF-gene network per patient\" -- available from LIONESS-PANDA.\n2. \"a dashboard that updates live as new patients are added\" -- not matched to any registered workflow.\n\nAbout \"a dashboard that updates live as new patients are added.\": No registered workflow builds a model that predicts an outcome for new samples. Per-sample results -- targeting scores from per-sample networks, GIRAFFE's TF activities, or subtypes -- can serve as features for a classifier you build outside NetZoo, which then needs the outcome for each sample and testing on samples not used to build it.\n\nFor the sample-specific output you described, use **LIONESS-PANDA**.\n\nRequired inputs:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 66 patients, 67 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOut-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "17-MX1",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "TF-gene networks per sample",
+    "available",
+    null
+   ],
+   [
+    "the networks uploaded to a public repository for us",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "TF-gene networks per sample",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "the networks uploaded to a public repository for us",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"TF-gene networks per sample\" -- available from LIONESS-PANDA.\n2. \"the networks uploaded to a public repository for us\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing, showing or re-running them is done outside NetZoo.\n\nIt sounds like you want sample-specific TF/gene regulatory networks.\n\nRegistered method and input/output fit:\n- **TF-only regulatory network — PANDA → LIONESS-PANDA**\n  - Registered purpose: Infer aggregate PANDA and sample-specific LIONESS-PANDA networks.\n  - Method premise: derive each sample network from all-sample and leave-one-out networks; iteratively exchange information across biological evidence networks; the participating layers depend on the registered workflow\n  - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n  - Mathematical interpretation: Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.\n  - Required inputs: all of: expression matrix, motif/prior, PPI network.\n  - Declared output: regulatory networks (cohort-level aggregate; sample-specific, one network per sample).\n\nUnconfirmed assumptions in my current interpretation (please correct me if needed):\n- The user has the necessary data for expression, motifs, and PPI for the 44 samples.\n\nThe only registered workflow compatible with this request is **LIONESS-PANDA**. Is LIONESS-PANDA the analysis you want? If so, say so and name its inputs; otherwise describe the result you need.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "11-VP5q",
+  "kind": "miss",
+  "verdict": "FAIL",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [
+   [
+    "from our expression, motifs and PPI, and also aligns our raw reads to the genome first"
+   ]
+  ],
+  "reread_found": [
+   []
+  ],
+  "results": [
+   [
+    "each TF's activity per sample",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "each TF's activity per sample",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "aligns our raw reads to the genome",
+    "not_supported",
+    []
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"each TF's activity per sample\" -- available from GIRAFFE.\n\nSelected path: **GIRAFFE**.\n\nYour question asks for a cohort-level TF activity matrix. **GIRAFFE** fits that result and scale.\n\n**GIRAFFE** — Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nOutputs:\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nThis is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "14-P2",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "the communities of our bipartite TF-gene network",
+    "available",
+    null
+   ],
+   [
+    "an interactive 3D rendering of them for the lab website",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "the communities of our bipartite TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "an interactive 3D rendering of them for the lab website",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"the communities of our bipartite TF-gene network\" -- available from CONDOR.\n2. \"an interactive 3D rendering of them for the lab website\" -- not available here: no registered workflow produces this. Every registered workflow writes result files to the output folder you give; sending, uploading, publishing, showing or re-running them is done outside NetZoo.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "11-VP1s",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "each tumor's TF-gene network",
+    "available",
+    null
+   ],
+   [
+    "a web dashboard where clinicians can browse them interactively",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "each tumor's TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "a web dashboard where clinicians can browse them interactively",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"each tumor's TF-gene network\" -- available from LIONESS-PANDA.\n2. \"a web dashboard where clinicians can browse them interactively\" -- not matched to any registered workflow.\n\nFor the sample-specific output you described, use **LIONESS-PANDA**.\n\nRequired inputs:\n   - `expression_file`: Expression matrix\n   - `motif_file`: Motif/prior\n   - `ppi_file`: PPI network\n\nOutputs:\n   - Aggregate network (`output_file`).\n   - Sample-specific network for each patient/sample (`lioness_output`).\n\nYou do not need to run **PANDA** separately; **LIONESS-PANDA** also produces the aggregate output. Use **PANDA** alone only when a cohort-level aggregate result is sufficient.\n\nCost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files (for your 60 tumors, 61 PANDA runs). Plan the runtime and disk space, and filter edges before downstream statistics.\n\nOut-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "11-VP2q",
+  "kind": "miss",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "finds the communities in our bipartite TF-gene network",
+    "available",
+    null
+   ],
+   [
+    "writes a narrative report on their biology automatically",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "finds the communities in our bipartite TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "writes a narrative report on their biology automatically",
+    "not_supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": true,
+  "reply": "What I understood you are asking for:\n1. \"finds the communities in our bipartite TF-gene network\" -- available from CONDOR.\n2. \"writes a narrative report on their biology automatically\" -- not matched to any registered workflow.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\n**Data your question needs.** Your question needs a motif prior and a PPI network, which your request does not mention. Do you have a motif prior and a PPI network?\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "18-CP6",
+  "kind": "control",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [
+   [
+    "to compare them"
+   ]
+  ],
+  "reread_found": [
+   [
+    "one network per time point"
+   ]
+  ],
+  "results": [
+   [
+    "one network per time point",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "one network per time point to compare them",
+    "with_step",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"one network per time point\" -- available from PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Per-sample version: **LIONESS-PANDA**. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nUnconfirmed assumptions in these interpretations (please correct me if needed):\n- The expression data includes relevant gene and transcription factor information.\n- The motifs and PPI data are applicable for constructing regulatory networks.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA, LIONESS-PANDA.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "12-BP1",
+  "kind": "control",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [
+   [
+    "and, for each community"
+   ]
+  ],
+  "reread_found": [
+   []
+  ],
+  "results": [
+   [
+    "its communities",
+    "available",
+    null
+   ],
+   [
+    "the TFs that are most central to it",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "its communities",
+    "supported",
+    [
+     "available"
+    ]
+   ],
+   [
+    "for each community, the TFs that are most central to it",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"its communities\" -- available from CONDOR.\n2. \"the TFs that are most central to it\" -- available from CONDOR.\n\nSelected path: **CONDOR**.\n\nYour question asks for a cohort-level community assignment. **CONDOR** fits that result and scale.\n\n**CONDOR** — Detect communities in a validated bipartite network with CONDOR. CONDOR uses bipartite modularity and BRIM: regulator and target nodes remain separate partitions, and between-partition connectivity is compared with a degree/strength-preserving bipartite null model. A giant community can reflect an unsuitable null model, resolution or weight handling. Hubs alone do not prove every conventional algorithm fails, and bipartite modularity does not guarantee biologically meaningful modules. Verify the edge-weight conventions.\n\nRequired workflow inputs:\n\n- `network_file`: bipartite network\n\nBefore CONDOR: a PANDA or LIONESS network is dense and its edge weights can be negative. netZooR's pandaToCondorObject keeps only edges above a threshold (by default midway between the median weights of prior and non-prior edges) before CONDOR; threshold your network the same way, or otherwise make the weights non-negative, before running it here. CONDOR puts each node in one community and gives each node a core score, its share of its community's modularity, which picks out each module's core regulators.\n\nOutputs:\n\n- `community_assignment`: Network-node community memberships, not patient subtype labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran."
+ },
+ {
+  "id": "fmt-TSV",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want one TF-gene network.",
+    "available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want one TF-gene network",
+    "supported",
+    [
+     "available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want one TF-gene network.\" -- available from PANDA.\n\nI can map this to more than one compatible network result:\n\n**TF-only regulatory network**\n- **PANDA** — Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Needs expression matrix, motif/prior and PPI network.\n- **OTTER** — OTTER optimizes a TF-gene matrix W so that W W-transpose matches the TF-TF interaction network and W-transpose W matches gene co-expression. Needs motif/prior, PPI network and either expression matrix or adjusted co-expression matrix.\n\n**TF-only signed regulatory-effect network**\n- **GIRAFFE** — GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality. Needs expression matrix, motif/prior and PPI network.\n\nThese all fit; to choose, tell me: (1) Is the network large enough that memory or runtime is a concern? (yes → OTTER) (2) Do you suspect a regulator's activity differs across samples even when its own expression does not, or do you need activating versus repressing effects? (yes → GIRAFFE) If none of these applies: PANDA.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "fmt-ZEBRA",
+  "kind": "format",
+  "verdict": "FAIL",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "We want a partial-correlation network linking them.",
+    "not_available",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [
+   [
+    "We want a partial-correlation network linking them",
+    "supported",
+    [
+     "not_available"
+    ]
+   ]
+  ],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"We want a partial-correlation network linking them.\" -- not available here: no registered workflow produces this. DRAGON does not meet \"Name the output after our project, ZEBRA.\".\n\nNo registered workflow produces this, so none is offered as the way to get it.\n\nNo files were inspected and no analysis ran."
+ },
+ {
+  "id": "fmt-talk",
+  "kind": "format",
+  "verdict": "PASS",
+  "failures": [],
+  "action": "no_tool",
+  "first_unchecked": [],
+  "passages": [],
+  "reread_found": [],
+  "results": [
+   [
+    "Could go either way",
+    "needs_fact",
+    null
+   ]
+  ],
+  "added": [],
+  "unchecked": [],
+  "gold": [],
+  "semantic_failed": false,
+  "reply": "What I understood you are asking for:\n1. \"Could go either way\" -- you have not chosen which result you want: if \"carry miRNAs as regulators too\": PUMA; if \"stay with transcription factors only\": PANDA.\n\nBefore I choose a workflow, please tell me: Which result do you want: \"carry miRNAs as regulators too\" or \"stay with transcription factors only\"?\n\nNo workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran."
+ }
+]

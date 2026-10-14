@@ -1,6 +1,6 @@
 """Items 4-5 live check: what each live17 session read, re-read and answered. No model is called.
 
-Usage (repository root): python docs/research-log/coverage-2026-10-14/analyze_live17.py <tag>
+Usage (repository root): python docs/research-log/coverage-2026-10-14/analyze_live17.py <tag> [items.json]
 
 Per session: provider failures (a 402/429 voids it), the first check's results and unchecked sentences, the re-read's
 passages and what it found, the final check (on the routed decision), the action, and the reply. Verdicts:
@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from netzoo_agent_core.interpretation.capability_check import _span  # noqa: E402
 
-ITEMS = json.loads((HERE / "live17.json").read_text())
+ITEMS = json.loads((HERE / (sys.argv[2] if len(sys.argv) > 2 else "live17.json")).read_text())
 
 
 def overlaps(a, b):
@@ -60,6 +60,10 @@ def analyse(tag, item):
                                for _w, expect, hit in gold if expect != "not_supported")
     elif item["kind"] == "chitchat":
         ok = not final.get("unchecked") and not added
+    elif item["kind"] == "format":  # c2: a file format or a remark is never a delivery, nor any result unavailable
+        deliveries = [r["quote"] for r in final.get("requirements", []) if "delivery" in (r.get("not_by") or [])]
+        ok = not deliveries and all(not hit or all(s != "not_available" for s in hit)
+                                    for _w, expect, hit in gold if expect != "not_supported")
     else:
         ok = all(status != "needs_fact" for _q, status, _f in results)
     reply = next((m["content"] for m in reversed(data["messages"]) if m["role"] == "assistant"), "")
