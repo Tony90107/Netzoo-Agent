@@ -59,3 +59,29 @@ m1b 後的程式修正（328cab4，都用 m1b 自己錄下的讀取離線驗證�
 - **K09**：只有一項需求時，合併需求層與請求層的設定，同一個控制項以原文最後出現的值為準。重建後判為可做。
 - **MX05**：只因設定被排除的 workflow，仍交給第二意見問；若判為 all，以「它自己的設定」提出。
 - 離線重播：1,338 個舊錄製仍 0 差異；全部測試 3698 通過。
+
+### 確認輪 m1c（328cab4，5 題）
+
+| 題目 | 結果 |
+|---|---|
+| N12 | ✓ 判為不可做：「NetZoo has no registered method or variant "OTTER network per sample, LIONESS-style"」，第二意見不再判給 LIONESS-PANDA |
+| MX05 | ✓ R1「fit GIRAFFE」以「GIRAFFE itself can still run, with its own settings instead」提出，後面接 GIRAFFE 的說明；R2（lambda）判為不可做 |
+| K09 | ✓ 第 1 回合擋下 GPU，並提供「Tell me to run OTTER anyway」；第 2 回合判為可做。run 仍沒有接上，屬於 M2 |
+| P17、MX18 | ✓ P17 可做；MX18 R1 可做、R2 不可做 |
+
+## M1 完成判準
+
+| 判準 | 結果 |
+|---|---|
+| 6 類方法設定與上限案例及配對正例，在規則層全部正確 | ✓（`tests/test_method_conditions.py` 26 項，含 m1a／m1b 找到的案例） |
+| live 擷取正確率 ≥ 90% | ✓ m1b 24/26 = 92.3%；錯的 2 題已由程式修正，並在 m1c 確認 |
+| 沒有新增誤拒絕 | ✓ m1c 後，accept24 正例與對照題沒有因 M1 被拒絕。m1b 找到的 MX05 R1、K09 已修正並確認 |
+| 全部測試在乾淨 worktree 通過，推上 GitHub | 見提交紀錄 |
+
+## 留給 M2 以後
+
+- **N35**（PUMA 的 miRNA 邊由 miRNA 表現量決定）：同一句中的 how_computed 條件屬於條件歸屬問題（使用者決定）。
+- **K09**：run 被擋下並提出替代後，使用者在下一回合修正設定（「CPU is fine」），沒有被當成接受該 run 而排入。多輪 run 狀態屬於 M2。
+- **跨控制項規則**：DRAGON lambda1、lambda2 必須一起給；SAMBAR kmax ≥ kmin、分群時 kmax ≤ 樣本數；BONOBO 在 sparsify 時 delta < 1/3。目前只寫在執行器中，能力檢查還看不到。
+- **請求層的設定**只套用到只有一項需求的請求。兩項以上時，設定該歸屬哪一項需求，屬於 M2 的條件歸屬。
+- **P21**：gpt-4o-mini 路由把明確的 run 讀成 answer，兩輪結果不同，與 M1 無關。
