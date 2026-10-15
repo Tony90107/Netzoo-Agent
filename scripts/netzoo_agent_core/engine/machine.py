@@ -190,7 +190,7 @@ class ConversationMachine:
                 state.queued_task = None
                 if state.follow_up_context is not None and state.next_prompt.kind != "initial":
                     self._submit_main_text(task)  # a resumed session's message answers its last turn
-                elif state.pending_plan is not None and not _wizard_answer(task):
+                elif state.pending_plan is not None and not _wizard_answer(task, state.pending_plan):
                     self._recheck(task, state.pending_plan.decision["action"])  # M2: a24b K02
                 else:
                     self._accept_task(task)
@@ -458,7 +458,7 @@ class ConversationMachine:
             return []
         if not answer:
             return []
-        if not _wizard_answer(answer) and plan.decision.get("action") in RUN_ACTIONS:
+        if not _wizard_answer(answer, plan) and plan.decision.get("action") in RUN_ACTIONS:
             return self._recheck(answer, plan.decision["action"])  # M2 (a24b K02): a sentence is not a path
         try:
             if preflight_correction:

@@ -24,7 +24,8 @@ from .runtime_constraints import runtime_control_constraints
 
 __all__ = [
     "LIONESS_FAMILY", "UNREGISTERED", "SettingLimit", "StatedSetting", "WorkflowConditions", "all_conditions",
-    "combination_issues", "conditions_for", "data_issue", "method_names", "named_workflows", "setting_issue",
+    "boolean_value", "combination_issues", "conditions_for", "data_issue", "enum_value", "method_names",
+    "named_workflows", "setting_issue",
     "setting_names", "stated_numbers",
 ]
 
@@ -156,6 +157,42 @@ def _names(values) -> str:
     return values[0] if len(values) == 1 else ", ".join(values[:-1]) + " and " + values[-1]
 
 
+def enum_value(limit: SettingLimit, words: str):
+    """The single allowed choice named by the value, shared by validation and run binding."""
+    folded = _fold(words)
+    chosen = [item for item in limit.allowed_values
+              if (key := _fold(str(item))) and f"_{key}_" in f"_{folded}_"]
+    return chosen[0] if len(chosen) == 1 else None
+
+
+_NEGATIONS = frozenset({"no", "not", "without", "dont", "never", "off", "false", "disable", "disabled", "skip", "0"})
+_AFFIRMATIONS = frozenset({"yes", "true", "on", "enable", "enabled", "1"})
+
+
+def _tokens(words: str) -> set[str]:
+    return set(_fold(words).replace("don_t", "dont").split("_"))
+
+
+def boolean_value(words: str, quote: str = "") -> bool | None:
+    """A boolean setting's value: its value words, or, given none, the words naming it (a bare "sparsify" enables it,
+    "without sparsification" does not). Words both negating and affirming it, or neither, stay unresolved.
+
+    Review of the M3 fix: value words are the user's own ("without", "don't", "turned off"); reading only
+    true/false/off/"do not X" left each of them unresolved, which refuses the workflow for a plain no.
+    """
+    if not words.strip():
+        return not (_tokens(quote) & _NEGATIONS) if quote.strip() else None
+    if _fold(words) in ("y", "n"):
+        return _fold(words) == "y"
+    tokens = _tokens(words)
+    negated, affirmed = bool(tokens & _NEGATIONS), bool(tokens & _AFFIRMATIONS)
+    if negated and affirmed:
+        return None  # "yes, turn it off"
+    if negated:
+        return False  # "with no sparsification" is a no
+    return True if affirmed or "with" in tokens else None
+
+
 def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str | None:
     """Why the workflow cannot run with this setting, or None when it can or the words do not say.
 
@@ -189,11 +226,14 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
             return f'{conditions.workflow}\'s {limit.name} must be {bounds}; "{value}" is not'
         return None
     if limit.control_type == "enum":
-        folded = _fold(value)
-        chosen = [item for item in limit.allowed_values
-                  if (key := _fold(str(item))) and (folded == key or f"_{key}_" in f"_{folded}_")]
-        if len(chosen) == 1 and str(chosen[0]).casefold() in limit.unavailable_values:
+        chosen = enum_value(limit, value)
+        if value.strip() and chosen is None:
+            return (f'{conditions.workflow}\'s {limit.name} requires one of {_names(map(str, limit.allowed_values))}; '
+                    f'"{value}" does not identify one allowed choice')
+        if chosen is not None and str(chosen).casefold() in limit.unavailable_values:
             return limit.unavailable_message.rstrip(".")
+    if limit.control_type == "boolean" and value.strip() and boolean_value(value) is None:
+        return f'{conditions.workflow}\'s {limit.name} needs an explicit true or false value; "{value}" is unresolved'
     return None
 
 
@@ -228,6 +268,12 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
         values = stated_numbers(stated[name].value) if name in stated else []
         return values[0] if values else None
 
+    def enabled(name: str) -> bool | None:
+        if name not in stated:
+            return conditions.settings[name].default
+        # A bare request to sparsify/cluster enables it; an explicit false must not.
+        return boolean_value(stated[name].value, stated[name].quote)
+
     found = []
     if {"lambda1", "lambda2"} <= set(conditions.settings) and stated.keys() & {"lambda1", "lambda2"}:
         if error := dragon.lambda_pair_error(stated.get("lambda1"), stated.get("lambda2")):
@@ -238,9 +284,10 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
             chosen = {"kmin": int(kmin) if kmin is not None else conditions.settings["kmin"].default,
                       "kmax": int(kmax) if kmax is not None else conditions.settings["kmax"].default}
             found += [f"SAMBAR: {error}" for error in sambar._parameter_errors(chosen) if "greater than or equal" in error]
-        if kmax is not None and samples is not None and (error := sambar.kmax_sample_error(int(kmax), samples)):
+        if (enabled("cluster") is True and kmax is not None and samples is not None
+                and (error := sambar.kmax_sample_error(int(kmax), samples))):
             found.append(f"SAMBAR: {error}")
-    if conditions.action == "run_bonobo" and "sparsify" in stated and (delta := number("delta")) is not None:
+    if conditions.action == "run_bonobo" and enabled("sparsify") is True and (delta := number("delta")) is not None:
         if error := bonobo.bonobo_delta(delta, True)[1]:
             found.append(f"BONOBO: {error.split(':')[0]}")
     return found

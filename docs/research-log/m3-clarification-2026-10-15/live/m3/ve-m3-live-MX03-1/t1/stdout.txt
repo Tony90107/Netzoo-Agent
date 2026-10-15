@@ -1,0 +1,31 @@
+● Classifying requested outcome…
+● Matching registered workflows…
+✓ Workflow — PANDA → LIONESS-PANDA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "return individual regulatory networks" -- available from LIONESS-PANDA.
+2. "directly estimate TF activities from its edge table" -- not matched to any registered workflow.
+
+Selected path: **LIONESS-PANDA**.
+
+**LIONESS-PANDA** — Infer aggregate PANDA and sample-specific LIONESS-PANDA networks. LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring. Message passing iteratively reconciles a regulator-target prior with other biological evidence networks. Other evidence can revise the initial edge support, but the resulting weights are integrated network scores, not calibrated posterior probabilities of prior reliability.
+
+Required workflow inputs:
+
+- `expression_file`: expression matrix
+- `motif_file`: motif/prior
+- `ppi_file`: PPI network
+
+Cost: LIONESS runs PANDA once on all samples and once more without each sample, so N samples take N+1 PANDA runs and give N network files. Plan the runtime and disk space, and filter edges before downstream statistics.
+
+Outputs:
+
+- `regulatory_network`: Inferred regulator-to-target associations.
+
+Out-degree measures how strongly a TF is wired to its targets in each sample. If you mean TF activity instead -- how active a TF is apart from its own mRNA level -- GIRAFFE's TF-by-sample activity matrix is the other reading, from the expression, motif and PPI inputs.
+
+Ask for the workflow's controls and defaults if you want to set them.
+
+**Data your question needs.** Your question needs a motif prior and a PPI network, which your request does not mention. Do you have a motif prior and a PPI network?
+
+Input compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.

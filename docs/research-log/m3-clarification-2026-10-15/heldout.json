@@ -1,0 +1,2162 @@
+{
+  "items": [
+    {
+      "id": "P01",
+      "family": "P",
+      "form": "question",
+      "prompt": "Our group is preparing a methods section for a greenhouse experiment comparing several orchid accessions under gradual water restriction. The immediate deliverable is a single network representing the full cohort, which will later be discussed at a lab meeting. We have already separated the sample annotations from the expression measurements and verified that the accession names are not being used as gene identifiers. I am asking about the registered analysis capability here; I am not asking you to perform a new biological experiment, search for reference files, or interpret condition differences at this stage. Can PANDA make one cohort-wide TF-to-gene network for our orchid drought study using expression, motif edges and a matching TF interaction prior?",
+      "requirements": [
+        {
+          "words": "one cohort-wide TF-to-gene network",
+          "expect": "supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Aggregate TF-gene inference consumes expression/motif/PPI."
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "family": "P",
+      "form": "run",
+      "prompt": "請執行 PUMA，整合珊瑚壓力實驗的 expression.tsv、prior.tsv、ppi.tsv 與 mirna_ids.txt，輸出整批樣本的 TF/miRNA 調控網路到 coral.tsv。各檔案已驗證且識別碼相容。",
+      "requirements": [
+        {
+          "words": "整批樣本的 TF/miRNA 調控網路",
+          "expect": "supported",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: Aggregate TF/miRNA regulatory network with all four inputs."
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "family": "P",
+      "form": "run",
+      "prompt": "We have 18 validated gene-expression samples from kidney organoids and matching motif/PPI priors. Run LIONESS-PANDA, retaining the population network and one TF-gene network per sample in separate outputs.",
+      "requirements": [
+        {
+          "words": "population network and one TF-gene network per sample",
+          "expect": "supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: At least three samples; aggregate and sample-specific outputs."
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "family": "P",
+      "form": "question",
+      "prompt": "For the moth infection cohort, can LIONESS-PUMA derive sample-specific miRNA-to-gene wiring using expression, combined regulator priors, PPI and the one-ID-per-line miRNA list? There are 12 samples.",
+      "requirements": [
+        {
+          "words": "sample-specific miRNA-to-gene wiring",
+          "expect": "supported",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: Original expression and all priors produce per-sample regulator wiring."
+        }
+      ]
+    },
+    {
+      "id": "P05",
+      "family": "P",
+      "form": "run",
+      "prompt": "Run leave-one-out LIONESS co-expression for our eight validated yeast fermentation samples in yeast.tsv. Save aggregate.tsv and individual.tsv separately; no motif or PPI inputs are intended.",
+      "requirements": [
+        {
+          "words": "leave-one-out LIONESS co-expression",
+          "expect": "supported",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Expression-only coexpression with at least three samples."
+        }
+      ]
+    },
+    {
+      "id": "P06",
+      "family": "P",
+      "form": "question",
+      "prompt": "Our plant RNA table has 600 genes and 24 samples; the numeric design table has exactly those 24 sample IDs and an intercept. Can COBRA produce the adjusted gene-by-gene co-expression artifact?",
+      "requirements": [
+        {
+          "words": "adjusted gene-by-gene co-expression artifact",
+          "expect": "supported",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: More genes than samples and matched numeric design; adjusted coexpression output."
+        }
+      ]
+    },
+    {
+      "id": "P07",
+      "family": "P",
+      "form": "run",
+      "prompt": "Please run CONDOR on binding_edges.tsv, a validated source,target,weight bipartite TF-gene edge list with disjoint source and target identifiers, and save the separate memberships under out/beetle/.",
+      "requirements": [
+        {
+          "words": "run CONDOR on binding_edges.tsv",
+          "expect": "supported",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: Validated bipartite edge list is the required input."
+        }
+      ]
+    },
+    {
+      "id": "P08",
+      "family": "P",
+      "form": "question",
+      "prompt": "Can SAMBAR return pathway mutation scores without assigning tumor clusters? Our sarcoma mutation CSV, positive exon lengths, single-line cancer gene list and GMT have overlapping genes; set cluster=false.",
+      "requirements": [
+        {
+          "words": "pathway mutation scores without assigning tumor clusters",
+          "expect": "supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: cluster=false returns mutation scores only."
+        }
+      ]
+    },
+    {
+      "id": "P09",
+      "family": "P",
+      "form": "run",
+      "prompt": "This request belongs to a longitudinal nutrition project, but the current export contains only one selected visit from each participant. We deliberately selected complete cases so that every participant appears once in each assay and no visit-level averaging is necessary. The statistician has signed off on the continuous measurements and the identifier reconciliation. Please keep the interpretation at the level of conditional association across the selected subjects. The output is intended for a colleague who prefers a long table to a square matrix and will do the plotting independently after the computation has finished. Run DRAGON on serum_metabolites.tsv and serum_proteins.tsv. Both contain finite continuous sample-by-feature data from the same 30 people with unique identifiers. Use lambda1=0.2, lambda2=0.6 and edge_list output to serum_graph.tsv.",
+      "requirements": [
+        {
+          "words": "lambda1=0.2, lambda2=0.6 and edge_list output",
+          "expect": "supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Two paired continuous layers; paired shrinkage in [0,1]; edge_list supported."
+        }
+      ]
+    },
+    {
+      "id": "P10",
+      "family": "P",
+      "form": "question",
+      "prompt": "Our paired chromatin and RNA measurements are continuous and validated for nine samples. Does LIONESS-DRAGON output a source/target table with one network-value column for each sample, alongside the aggregate matrix?",
+      "requirements": [
+        {
+          "words": "one network-value column for each sample",
+          "expect": "supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Two layers, >=3 samples, aggregate matrix and edge-by-sample table."
+        }
+      ]
+    },
+    {
+      "id": "P11",
+      "family": "P",
+      "form": "run",
+      "prompt": "Run OTTER with seed.tsv, tf_edges.tsv and expression.tsv, all validated with exactly matching IDs. Use CPU, double precision, 75 iterations, lam=0.1, gamma=0.4, eta=0.00001 and save an edge list to otter_edges.tsv.",
+      "requirements": [
+        {
+          "words": "CPU, double precision, 75 iterations, lam=0.1, gamma=0.4, eta=0.00001",
+          "expect": "supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Declared CPU, precision and optimization controls."
+        }
+      ]
+    },
+    {
+      "id": "P12",
+      "family": "P",
+      "form": "question",
+      "prompt": "Can GIRAFFE jointly estimate the aggregate signed regulatory coefficient matrix and TF activities for our pancreatic differentiation samples? We will provide gene expression, motif priors and a TF interaction prior.",
+      "requirements": [
+        {
+          "words": "aggregate signed regulatory coefficient matrix and TF activities",
+          "expect": "supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Joint R and TFA using expression and both priors."
+        }
+      ]
+    },
+    {
+      "id": "P13",
+      "family": "P",
+      "form": "run",
+      "prompt": "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples. Select sample IDs H2 and H5, save CSV networks, and leave sparsify=false.",
+      "requirements": [
+        {
+          "words": "Select sample IDs H2 and H5, save CSV networks",
+          "expect": "supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Explicit sample IDs and CSV supported for validated log-centered expression."
+        }
+      ]
+    },
+    {
+      "id": "P14",
+      "family": "P",
+      "form": "request",
+      "prompt": "I want to run PANDA for a kelp heat experiment, but I have not uploaded the expression matrix or either prior yet. Please tell me which inputs to supply for the cohort regulatory network.",
+      "requirements": [
+        {
+          "words": "run PANDA for a kelp heat experiment",
+          "expect": "needs_input",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Method supported; required expression, motif and PPI files absent."
+        }
+      ]
+    },
+    {
+      "id": "P15",
+      "family": "P",
+      "form": "run",
+      "prompt": "請用 SAMBAR 算胃癌的途徑突變分數。現在只有 mutation.csv；exon-length CSV、癌症基因清單和 GMT 還沒提供。",
+      "requirements": [
+        {
+          "words": "用 SAMBAR 算胃癌的途徑突變分數",
+          "expect": "needs_input",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Supported objective requires remaining three reference inputs."
+        }
+      ]
+    },
+    {
+      "id": "P16",
+      "family": "P",
+      "form": "question",
+      "prompt": "We already produced a valid GIRAFFE R matrix. I want communities of its regulators and genes, and I authorize an explicit matrix-to-edge-list conversion followed by validation before CONDOR. Is that workable?",
+      "requirements": [
+        {
+          "words": "communities of its regulators and genes",
+          "expect": "with_step",
+          "by": [
+            "GIRAFFE",
+            "CONDOR"
+          ],
+          "note": "workflows/giraffe.yaml; workflows/condor.yaml: Matrix must be explicitly converted to validated bipartite edge list."
+        }
+      ]
+    },
+    {
+      "id": "P17",
+      "family": "P",
+      "form": "question",
+      "prompt": "The sequencing was performed on several plates over the course of a month. The experimental design includes biological groups on each plate, and the team has already checked that group and plate are not completely confounded. We want the analysis plan to make the adjustment explicit so that the downstream regulatory graph is based on the approved adjusted co-expression artifact. The manuscript will report which artifact is passed between steps, and the collaborator reviewing the plan will independently inspect the gene identifiers. We do not need you to interpret any disease association in this request. Can we use a COBRA adjusted co-expression matrix in aggregate PANDA for a coastal fish cohort? We retain the original expression table and priors and will revalidate filtered gene IDs before the handoff.",
+      "requirements": [
+        {
+          "words": "COBRA adjusted co-expression matrix in aggregate PANDA",
+          "expect": "with_step",
+          "by": [
+            "COBRA",
+            "PANDA"
+          ],
+          "note": "workflows/cobra.yaml; workflows/panda.yaml: Declared adjusted coexpression handoff with downstream validation and expression retained."
+        }
+      ]
+    },
+    {
+      "id": "P18",
+      "family": "P",
+      "form": "request",
+      "prompt": "Our regulatory analysis must use relaxed graph matching after adjustment for sequencing plate. We have 900 genes, 40 samples, an appropriate numeric COBRA design, and compatible OTTER priors. Plan COBRA then OTTER with explicit adjusted-matrix validation.",
+      "requirements": [
+        {
+          "words": "COBRA then OTTER with explicit adjusted-matrix validation",
+          "expect": "with_step",
+          "by": [
+            "COBRA",
+            "OTTER"
+          ],
+          "note": "workflows/cobra.yaml; workflows/otter.yaml: COBRA adjusted matrix is a registered OTTER input after exact validation."
+        }
+      ]
+    },
+    {
+      "id": "P19",
+      "family": "P",
+      "form": "question",
+      "prompt": "For a frog regeneration study, can BONOBO save full per-sample co-expression matrices and matching approximate p-value matrices together by using sparsify=true and save_pvals=true?",
+      "requirements": [
+        {
+          "words": "full per-sample co-expression matrices and matching approximate p-value matrices",
+          "expect": "supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Both flags retain full matrices plus p-values."
+        }
+      ]
+    },
+    {
+      "id": "P20",
+      "family": "P",
+      "form": "run",
+      "prompt": "Please run BONOBO on a validated log-centered 20-sample expression file, with sparsify=true, save_pvals=false and confidence=0.01. I want already-thresholded sample networks and do not need saved p-value files.",
+      "requirements": [
+        {
+          "words": "already-thresholded sample networks",
+          "expect": "supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: sparsify true/save_pvals false thresholds networks."
+        }
+      ]
+    },
+    {
+      "id": "P21",
+      "family": "P",
+      "form": "question",
+      "prompt": "We only need the activity of TFs across samples, together with the shared signed R coefficients. Can GIRAFFE use a labeled TF-by-gene prior matrix and a labeled square symmetric PPI matrix if their IDs match expression exactly?",
+      "requirements": [
+        {
+          "words": "labeled TF-by-gene prior matrix and a labeled square symmetric PPI matrix",
+          "expect": "supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Both labeled matrix prior formats are accepted."
+        }
+      ]
+    },
+    {
+      "id": "P22",
+      "family": "P",
+      "form": "question",
+      "prompt": "Can OTTER infer an aggregate regulatory network from a validated aggregate gene-by-gene co-expression matrix plus its motif seed and PPI edge list, without a raw expression file?",
+      "requirements": [
+        {
+          "words": "without a raw expression file",
+          "expect": "supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Required input group accepts expression_file OR coexpression_file."
+        }
+      ]
+    },
+    {
+      "id": "P23",
+      "family": "P",
+      "form": "run",
+      "prompt": "請跑 DRAGON：兩個連續數值表的樣本 ID 集合完全相同，只是第二個表的列順序不同。先依第一個表的 ID 重排第二個表，再輸出整體條件相關網路。",
+      "requirements": [
+        {
+          "words": "先依第一個表的 ID 重排第二個表",
+          "expect": "supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Reordering allowed after exact sample-ID set equality."
+        }
+      ]
+    },
+    {
+      "id": "P24",
+      "family": "P",
+      "form": "run",
+      "prompt": "Run LIONESS-DRAGON for ten paired samples with 12 total features and fixed lambda1=0.25, lambda2=0.3. Save aggregate_pc.tsv and per_sample_edges.tsv. All features are finite, continuous and variable.",
+      "requirements": [
+        {
+          "words": "fixed lambda1=0.25, lambda2=0.3",
+          "expect": "supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Paired manual shrinkage supported; tiny output under limit."
+        }
+      ]
+    },
+    {
+      "id": "P25",
+      "family": "P",
+      "form": "question",
+      "prompt": "My neuroblastoma cohort has 15 mutation samples. Can SAMBAR try 2 through 5 clusters using Euclidean distance and average linkage, with patient mutation-burden normalization disabled?",
+      "requirements": [
+        {
+          "words": "2 through 5 clusters using Euclidean distance and average linkage",
+          "expect": "supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Declared k bounds, distance/linkage and norm_patient controls."
+        }
+      ]
+    },
+    {
+      "id": "P26",
+      "family": "P",
+      "form": "question",
+      "prompt": "Can CONDOR analyze an unweighted two-column source,target edge list from a validated TF-target network, where all source IDs are disjoint from target IDs?",
+      "requirements": [
+        {
+          "words": "unweighted two-column source,target edge list",
+          "expect": "supported",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: Weight is optional."
+        }
+      ]
+    },
+    {
+      "id": "P27",
+      "family": "P",
+      "form": "request",
+      "prompt": "I need LIONESS-PUMA for the 36-sample gill response study, but the miRNA identifier list is still with my collaborator. Expression, motif and PPI files are ready. Please list the remaining input needed before execution.",
+      "requirements": [
+        {
+          "words": "LIONESS-PUMA for the 36-sample gill response study",
+          "expect": "needs_input",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: miRNA list is required and explicitly absent."
+        }
+      ]
+    },
+    {
+      "id": "P28",
+      "family": "P",
+      "form": "question",
+      "prompt": "Can I run aggregate PUMA on COBRA-adjusted co-expression after validating the gene axes, while keeping the original expression, combined regulator prior, PPI and miRNA list?",
+      "requirements": [
+        {
+          "words": "aggregate PUMA on COBRA-adjusted co-expression",
+          "expect": "with_step",
+          "by": [
+            "COBRA",
+            "PUMA"
+          ],
+          "note": "workflows/cobra.yaml; workflows/puma.yaml: Explicit validated adjusted coexpression is accepted; required priors/expression retained."
+        }
+      ]
+    },
+    {
+      "id": "P29",
+      "family": "P",
+      "form": "question",
+      "prompt": "The PI wants the leave-one-out co-expression network for sample R17 in a 45-sample root microbiome expression cohort. Can LIONESS-COEXPRESSION retain its sample identity and keep that result separate from the aggregate?",
+      "requirements": [
+        {
+          "words": "leave-one-out co-expression network for sample R17",
+          "expect": "supported",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Sample-specific identity and separation explicitly required."
+        }
+      ]
+    },
+    {
+      "id": "P30",
+      "family": "P",
+      "form": "run",
+      "prompt": "Use PANDA message passing for our pollen expression study. I have a valid expression table with a sample header plus compatible motif and PPI files. Please run with with_header=true and save pollen_network.tsv.",
+      "requirements": [
+        {
+          "words": "with_header=true",
+          "expect": "supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Declared boolean header control."
+        }
+      ]
+    },
+    {
+      "id": "N01",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can PANDA itself output TF-by-sample activity values as its primary artifact, without using GIRAFFE?",
+      "requirements": [
+        {
+          "words": "TF-by-sample activity values",
+          "expect": "not_supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: PANDA output is aggregate TF-gene network, not TFA."
+        }
+      ]
+    },
+    {
+      "id": "N02",
+      "family": "N",
+      "form": "run",
+      "prompt": "Run PUMA directly on our binary somatic mutation matrix as if it were gene expression; do not acquire RNA measurements.",
+      "requirements": [
+        {
+          "words": "directly on our binary somatic mutation matrix",
+          "expect": "not_supported",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: Mutation matrices explicitly incompatible."
+        }
+      ]
+    },
+    {
+      "id": "N03",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can LIONESS-PANDA run for exactly two expression samples if collecting more samples is prohibited?",
+      "requirements": [
+        {
+          "words": "exactly two expression samples",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: At least three expression samples required."
+        }
+      ]
+    },
+    {
+      "id": "N04",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can LIONESS-PUMA produce its networks without any miRNA list or miRNA identifiers in the regulator prior, while still claiming miRNA regulation?",
+      "requirements": [
+        {
+          "words": "without any miRNA list or miRNA identifiers",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: Requires validated miRNA list with IDs present in prior."
+        }
+      ]
+    },
+    {
+      "id": "N05",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can LIONESS-COEXPRESSION guarantee the direction of causal regulation between genes from expression alone?",
+      "requirements": [
+        {
+          "words": "guarantee the direction of causal regulation",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Only coexpression artifacts declared, not causal regulation."
+        }
+      ]
+    },
+    {
+      "id": "N06",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can COBRA run on 15 genes measured in 60 samples without changing the dimensions?",
+      "requirements": [
+        {
+          "words": "15 genes measured in 60 samples",
+          "expect": "not_supported",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: Requires more genes than samples."
+        }
+      ]
+    },
+    {
+      "id": "N07",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can CONDOR consume a raw expression matrix directly and discover regulator-gene communities without constructing a network?",
+      "requirements": [
+        {
+          "words": "consume a raw expression matrix directly",
+          "expect": "not_supported",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: Consumes bipartite network edge list, not raw expression."
+        }
+      ]
+    },
+    {
+      "id": "N08",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can SAMBAR use RNA expression in place of somatic mutations to calculate mutation-burden-normalized pathway scores?",
+      "requirements": [
+        {
+          "words": "RNA expression in place of somatic mutations",
+          "expect": "not_supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Expression is explicitly incompatible."
+        }
+      ]
+    },
+    {
+      "id": "N09",
+      "family": "N",
+      "form": "question",
+      "prompt": "The systems biology team has collected three assays from the same volunteers and has agreed that all three must remain distinct layers in the statistical model. The sponsor will not accept running several pairwise models, concatenating two assays into a single layer, or discarding the least complete assay. Sample matching and finite numeric measurements have already been checked, so the unresolved issue is specifically the number of independently modeled layers supported by this registered workflow. Please judge the exact requested model, because a different workflow or an approximate workaround would not meet the signed protocol. Can one DRAGON model use three independently modeled layers: RNA, protein and metabolite tables, without merging layers or omitting a modality?",
+      "requirements": [
+        {
+          "words": "three independently modeled layers",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Exactly two omics input layers."
+        }
+      ]
+    },
+    {
+      "id": "N10",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can DRAGON fit separately adjustable lambda1, lambda2 and lambda_inter shrinkage parameters?",
+      "requirements": [
+        {
+          "words": "separately adjustable lambda1, lambda2 and lambda_inter",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: No independent third cross-layer penalty."
+        }
+      ]
+    },
+    {
+      "id": "N11",
+      "family": "N",
+      "form": "run",
+      "prompt": "Run LIONESS-DRAGON with two paired samples only; I require a per-sample network for each and will not add samples.",
+      "requirements": [
+        {
+          "words": "two paired samples only",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Minimum three samples."
+        }
+      ]
+    },
+    {
+      "id": "N12",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can this agent run OTTER on the GPU when CPU execution is unacceptable and I need the current runtime to execute it?",
+      "requirements": [
+        {
+          "words": "OTTER on the GPU",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Current runtime explicitly does not enable GPU."
+        }
+      ]
+    },
+    {
+      "id": "N13",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can registered OTTER produce a separate optimized network per individual using LIONESS-OTTER?",
+      "requirements": [
+        {
+          "words": "separate optimized network per individual using LIONESS-OTTER",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Registered OTTER aggregate only; upstream class does not establish support."
+        }
+      ]
+    },
+    {
+      "id": "N14",
+      "family": "N",
+      "form": "question",
+      "prompt": "Does this agent expose GIRAFFE with a user-selected learning rate of 0.07 and exactly 11 optimization iterations?",
+      "requirements": [
+        {
+          "words": "user-selected learning rate of 0.07 and exactly 11 optimization iterations",
+          "expect": "not_supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Adapter only passes three required arrays and uses optional defaults."
+        }
+      ]
+    },
+    {
+      "id": "N15",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can BONOBO run on exactly two total samples when no background samples can be supplied?",
+      "requirements": [
+        {
+          "words": "exactly two total samples",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Requires at least three total samples."
+        }
+      ]
+    },
+    {
+      "id": "N16",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can BONOBO output a cohort-level aggregate prior network directly, instead of its per-sample matrices?",
+      "requirements": [
+        {
+          "words": "cohort-level aggregate prior network directly",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: No aggregate/prior output."
+        }
+      ]
+    },
+    {
+      "id": "N17",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can BONOBO run with sparsify=false and save_pvals=true if those exact flags must be preserved?",
+      "requirements": [
+        {
+          "words": "sparsify=false and save_pvals=true",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Invalid flag combination; save_pvals requires sparsify."
+        }
+      ]
+    },
+    {
+      "id": "N18",
+      "family": "N",
+      "form": "question",
+      "prompt": "For the archive, the analysis coordinator wants two products from a single call: an edge-filtered network that can be opened without further processing, and the complete p-value evidence used for that filtering. There is no downstream script in the approved pipeline, and the coordinator explicitly disallows a separate filtering pass after the tool returns. All expression input checks have passed, including the minimum sample count and preprocessing declarations. The question is about the exact artifact combination produced by the registered workflow, rather than whether a programmer could build a new wrapper to achieve the same goal. Can BONOBO write already-thresholded networks and saved p-value matrices in the same upstream run, with no downstream thresholding?",
+      "requirements": [
+        {
+          "words": "already-thresholded networks and saved p-value matrices",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Saving p-values preserves full networks, requires downstream thresholding."
+        }
+      ]
+    },
+    {
+      "id": "N19",
+      "family": "N",
+      "form": "run",
+      "prompt": "Feed BONOBO per-sample matrices straight into PANDA coexpression_file without selecting, aggregating, converting or validating them.",
+      "requirements": [
+        {
+          "words": "straight into PANDA coexpression_file",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Per-sample outputs not direct aggregate PANDA input."
+        }
+      ]
+    },
+    {
+      "id": "N20",
+      "family": "N",
+      "form": "question",
+      "prompt": "We deleted the expression file. Can aggregate PANDA execute solely from a co-expression matrix, motif and PPI without reconstructing expression?",
+      "requirements": [
+        {
+          "words": "solely from a co-expression matrix, motif and PPI",
+          "expect": "not_supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Expression remains required for gene/prior compatibility."
+        }
+      ]
+    },
+    {
+      "id": "N21",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can PUMA convert its signed edge weights into experimentally proven activation and repression labels as a guaranteed native output?",
+      "requirements": [
+        {
+          "words": "experimentally proven activation and repression labels",
+          "expect": "not_supported",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: Declared regulatory scores do not establish experimental causal proof."
+        }
+      ]
+    },
+    {
+      "id": "N22",
+      "family": "N",
+      "form": "question",
+      "prompt": "I need DRAGON to return a directed causal graph proving which metabolite drives each transcript. Is that supported?",
+      "requirements": [
+        {
+          "words": "directed causal graph proving",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Undirected conditional associations, no causal guarantees."
+        }
+      ]
+    },
+    {
+      "id": "N23",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can OTTER run with an independent L1 sparsity penalty named sparsity_alpha=0.3 if substituting gamma or thresholding later is forbidden?",
+      "requirements": [
+        {
+          "words": "independent L1 sparsity penalty named sparsity_alpha=0.3",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: No independent sparsity parameter."
+        }
+      ]
+    },
+    {
+      "id": "N24",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can OTTER preserve the exact fractional PPI interaction confidence values inside P? I prohibit binarization.",
+      "requirements": [
+        {
+          "words": "preserve the exact fractional PPI interaction confidence values",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Adapter projects positive PPI weights to binary adjacency."
+        }
+      ]
+    },
+    {
+      "id": "N25",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can DRAGON run with lambda1=0.4 and leave lambda2 unspecified while keeping lambda1 fixed?",
+      "requirements": [
+        {
+          "words": "lambda1=0.4 and leave lambda2 unspecified",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Manual values must be supplied together."
+        }
+      ]
+    },
+    {
+      "id": "N26",
+      "family": "N",
+      "form": "run",
+      "prompt": "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run.",
+      "requirements": [
+        {
+          "words": "100 samples and 1000 total features",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: 49,950,000 edge-by-sample values exceed 20,000,000 cap."
+        }
+      ]
+    },
+    {
+      "id": "N27",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can COBRA adjusted aggregate co-expression be passed directly to LIONESS-PANDA in place of all leave-one-out recomputation?",
+      "requirements": [
+        {
+          "words": "directly to LIONESS-PANDA in place of all leave-one-out recomputation",
+          "expect": "not_supported",
+          "by": [
+            "COBRA",
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/cobra.yaml; workflows/lioness-panda.yaml: Aggregate adjusted matrix is not direct LIONESS input."
+        }
+      ]
+    },
+    {
+      "id": "N28",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can SAMBAR run with kmin=2 and kmax=9 on exactly six mutation samples while preserving kmax=9?",
+      "requirements": [
+        {
+          "words": "kmax=9 on exactly six mutation samples",
+          "expect": "not_supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: kmax cannot exceed number of samples."
+        }
+      ]
+    },
+    {
+      "id": "N29",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can GIRAFFE return independently fitted TF-gene wiring for each sample as its native R output?",
+      "requirements": [
+        {
+          "words": "independently fitted TF-gene wiring for each sample",
+          "expect": "not_supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: R is aggregate; TFA varies by sample."
+        }
+      ]
+    },
+    {
+      "id": "N30",
+      "family": "N",
+      "form": "question",
+      "prompt": "Can BONOBO accept positional sample indices 0 and 2 in sample_names without translating them into actual sample IDs?",
+      "requirements": [
+        {
+          "words": "positional sample indices 0 and 2 in sample_names",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: sample_names are explicit IDs, never positional indices."
+        }
+      ]
+    },
+    {
+      "id": "MX01",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can PANDA infer our population TF-gene network and also give a TF-by-sample activity matrix from the same native output?",
+      "requirements": [
+        {
+          "words": "population TF-gene network",
+          "expect": "supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Aggregate network supported."
+        },
+        {
+          "words": "TF-by-sample activity matrix",
+          "expect": "not_supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: No activity output."
+        }
+      ]
+    },
+    {
+      "id": "MX02",
+      "family": "MX",
+      "form": "run",
+      "prompt": "Run PUMA for aggregate TF/miRNA wiring with all validated inputs, then report guaranteed causal drug targets from those weights.",
+      "requirements": [
+        {
+          "words": "aggregate TF/miRNA wiring",
+          "expect": "supported",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: Declared aggregate regulatory network."
+        },
+        {
+          "words": "guaranteed causal drug targets",
+          "expect": "not_supported",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: No causal drug target guarantee."
+        }
+      ]
+    },
+    {
+      "id": "MX03",
+      "family": "MX",
+      "form": "question",
+      "prompt": "For our 14 valid samples, can LIONESS-PANDA return individual regulatory networks and directly estimate TF activities from its edge table?",
+      "requirements": [
+        {
+          "words": "individual regulatory networks",
+          "expect": "supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Per-sample wiring supported."
+        },
+        {
+          "words": "directly estimate TF activities from its edge table",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Wiring is not TFA."
+        }
+      ]
+    },
+    {
+      "id": "MX04",
+      "family": "MX",
+      "form": "run",
+      "prompt": "請跑 LIONESS-PUMA，使用 18 個樣本及完整相容先驗產生每個樣本的調控網路，同時不用其他分析就證明 miRNA 的因果作用。",
+      "requirements": [
+        {
+          "words": "每個樣本的調控網路",
+          "expect": "supported",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: Per-sample regulatory output."
+        },
+        {
+          "words": "證明 miRNA 的因果作用",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: No causal proof."
+        }
+      ]
+    },
+    {
+      "id": "MX05",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can LIONESS-COEXPRESSION generate per-sample gene-gene networks for our 25 samples and label the resulting edges as TF binding probabilities?",
+      "requirements": [
+        {
+          "words": "per-sample gene-gene networks",
+          "expect": "supported",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Per-sample coexpression supported."
+        },
+        {
+          "words": "TF binding probabilities",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Coexpression not binding probabilities."
+        }
+      ]
+    },
+    {
+      "id": "MX06",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can COBRA return adjusted co-expression for 700 genes and 28 samples with a valid numeric design, and natively return a separate TF-gene regulatory network per sample?",
+      "requirements": [
+        {
+          "words": "adjusted co-expression",
+          "expect": "supported",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: Adjusted coexpression output."
+        },
+        {
+          "words": "separate TF-gene regulatory network per sample",
+          "expect": "not_supported",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: No sample-specific regulatory artifact."
+        }
+      ]
+    },
+    {
+      "id": "MX07",
+      "family": "MX",
+      "form": "run",
+      "prompt": "Run CONDOR on our validated bipartite network to obtain community assignments, then infer TF activity from those assignments without another method.",
+      "requirements": [
+        {
+          "words": "community assignments",
+          "expect": "supported",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: Declared output."
+        },
+        {
+          "words": "infer TF activity from those assignments",
+          "expect": "not_supported",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: No TFA inference."
+        }
+      ]
+    },
+    {
+      "id": "MX08",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can SAMBAR produce pathway mutation scores from valid inputs and directly emit a motif-compatible prior for PANDA?",
+      "requirements": [
+        {
+          "words": "pathway mutation scores",
+          "expect": "supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Declared scores."
+        },
+        {
+          "words": "directly emit a motif-compatible prior for PANDA",
+          "expect": "not_supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: No direct PANDA handoff or motif prior output."
+        }
+      ]
+    },
+    {
+      "id": "MX09",
+      "family": "MX",
+      "form": "run",
+      "prompt": "Our consortium is writing two deliverable descriptions for a project on metabolite and transcript measurements. Both assays were collected from the same independent participants, have unique sample and feature identifiers, and contain complete continuous numeric values. One analyst is responsible for the statistical graph and another is preparing a mechanistic story for the proposal. Please assess the two deliverables separately so that a feasible computational output is not confused with a stronger interpretation of that output. We are only asking about the tools that are already registered in this agent, without adding a new causal-discovery package. Run DRAGON on two valid continuous paired layers, output conditional associations, and certify every retained edge as a causal effect.",
+      "requirements": [
+        {
+          "words": "output conditional associations",
+          "expect": "supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Partial correlations are conditional associations."
+        },
+        {
+          "words": "certify every retained edge as a causal effect",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: No causal guarantee."
+        }
+      ]
+    },
+    {
+      "id": "MX10",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can LIONESS-DRAGON make networks for each of our 16 paired samples while exposing a third independent cross-layer shrinkage knob?",
+      "requirements": [
+        {
+          "words": "networks for each of our 16 paired samples",
+          "expect": "supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Sample-specific paired inference supported."
+        },
+        {
+          "words": "third independent cross-layer shrinkage knob",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Only lambda1/lambda2."
+        }
+      ]
+    },
+    {
+      "id": "MX11",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can OTTER optimize an aggregate TF-gene matrix on CPU and use gamma as an exact L1 sparsity penalty?",
+      "requirements": [
+        {
+          "words": "optimize an aggregate TF-gene matrix on CPU",
+          "expect": "supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: CPU aggregate optimization supported."
+        },
+        {
+          "words": "gamma as an exact L1 sparsity penalty",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: gamma is L2-style regularization."
+        }
+      ]
+    },
+    {
+      "id": "MX12",
+      "family": "MX",
+      "form": "run",
+      "prompt": "Run GIRAFFE with all validated priors to produce signed R and sample-varying TFA, and use an exposed custom optimizer learning rate of 0.009.",
+      "requirements": [
+        {
+          "words": "signed R and sample-varying TFA",
+          "expect": "supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Joint artifacts supported."
+        },
+        {
+          "words": "exposed custom optimizer learning rate of 0.009",
+          "expect": "not_supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Only required array arguments exposed."
+        }
+      ]
+    },
+    {
+      "id": "MX13",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can BONOBO save full networks plus p-value matrices with sparsify=true/save_pvals=true and also return already-thresholded networks without postprocessing?",
+      "requirements": [
+        {
+          "words": "save full networks plus p-value matrices",
+          "expect": "supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Valid both-true output semantics."
+        },
+        {
+          "words": "already-thresholded networks without postprocessing",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Both true retains full network."
+        }
+      ]
+    },
+    {
+      "id": "MX14",
+      "family": "MX",
+      "form": "question",
+      "prompt": "I have not supplied any files yet. Please prepare to run SAMBAR pathway scoring, and promise it will also infer directed miRNA regulation from the mutation table.",
+      "requirements": [
+        {
+          "words": "run SAMBAR pathway scoring",
+          "expect": "needs_input",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: All required files absent; scoring supported."
+        },
+        {
+          "words": "infer directed miRNA regulation from the mutation table",
+          "expect": "not_supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Mutation scoring does not infer regulatory network."
+        }
+      ]
+    },
+    {
+      "id": "MX15",
+      "family": "MX",
+      "form": "question",
+      "prompt": "We have a valid GIRAFFE R matrix. Can we convert it to a validated edge list for CONDOR communities, and use GIRAFFE itself for native per-patient wiring?",
+      "requirements": [
+        {
+          "words": "convert it to a validated edge list for CONDOR communities",
+          "expect": "with_step",
+          "by": [
+            "GIRAFFE",
+            "CONDOR"
+          ],
+          "note": "workflows/giraffe.yaml; workflows/condor.yaml: Explicit matrix conversion required."
+        },
+        {
+          "words": "GIRAFFE itself for native per-patient wiring",
+          "expect": "not_supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: R aggregate only."
+        }
+      ]
+    },
+    {
+      "id": "MX16",
+      "family": "MX",
+      "form": "run",
+      "prompt": "請用 COBRA 調整後的共表現矩陣接 OTTER，會重新驗證基因順序；另請 OTTER 在內部自動補值所有缺失數據。",
+      "requirements": [
+        {
+          "words": "COBRA 調整後的共表現矩陣接 OTTER",
+          "expect": "with_step",
+          "by": [
+            "COBRA",
+            "OTTER"
+          ],
+          "note": "workflows/cobra.yaml; workflows/otter.yaml: Adjusted coexpression accepted after validation."
+        },
+        {
+          "words": "OTTER 在內部自動補值所有缺失數據",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Missing/nonfinite values rejected; no imputation."
+        }
+      ]
+    },
+    {
+      "id": "MX17",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can aggregate PANDA consume the validated adjusted matrix while retaining expression and priors, and can the same aggregate matrix directly replace original expression in LIONESS-PANDA?",
+      "requirements": [
+        {
+          "words": "aggregate PANDA consume the validated adjusted matrix",
+          "expect": "supported",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: Optional coexpression replacement with expression retained."
+        },
+        {
+          "words": "same aggregate matrix directly replace original expression in LIONESS-PANDA",
+          "expect": "not_supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Not a direct aggregate handoff."
+        }
+      ]
+    },
+    {
+      "id": "MX18",
+      "family": "MX",
+      "form": "run",
+      "prompt": "Run SAMBAR on our 12-sample valid mutation inputs with cluster=false for scores only, and still write clustering assignments for k=3 as part of that exact run.",
+      "requirements": [
+        {
+          "words": "cluster=false for scores only",
+          "expect": "supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Scoring-only control supported."
+        },
+        {
+          "words": "still write clustering assignments for k=3",
+          "expect": "not_supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: cluster=false means no cluster assignment."
+        }
+      ]
+    },
+    {
+      "id": "MX19",
+      "family": "MX",
+      "form": "question",
+      "prompt": "Can DRAGON export its aggregate edge list with partial_correlation and precision columns, and directly feed this multi-omic graph to PUMA without a conversion?",
+      "requirements": [
+        {
+          "words": "edge list with partial_correlation and precision columns",
+          "expect": "supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Declared edge-list schema."
+        },
+        {
+          "words": "directly feed this multi-omic graph to PUMA without a conversion",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON",
+            "PUMA"
+          ],
+          "note": "workflows/dragon.yaml; workflows/puma.yaml: No direct handoff; distinct artifact contracts."
+        }
+      ]
+    },
+    {
+      "id": "MX20",
+      "family": "MX",
+      "form": "question",
+      "prompt": "For the eight validated expression samples, can BONOBO compute Bayesian sample-specific co-expression, while the same run emits a TF-by-sample activity matrix?",
+      "requirements": [
+        {
+          "words": "Bayesian sample-specific co-expression",
+          "expect": "supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Declared method/output."
+        },
+        {
+          "words": "TF-by-sample activity matrix",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: No TFA output."
+        }
+      ]
+    },
+    {
+      "id": "U01",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run BONOBO on lunar.tsv for our lunar-cycle algae experiment. The expression table has a header and numeric values, but I do not know whether the upstream export was log-transformed and centered. Please establish that before proceeding.",
+      "requirements": [
+        {
+          "words": "Run BONOBO on lunar.tsv",
+          "expect": "needs_fact",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Log-transformed and centered declarations are required.",
+          "deciding_fact": "Was the expression log-transformed and centered?"
+        }
+      ]
+    },
+    {
+      "id": "U02",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can BONOBO analyze our archived salamander expression cohort? The archive catalog does not say whether it contains two total samples or six; all other format and preprocessing requirements are met.",
+      "requirements": [
+        {
+          "words": "BONOBO analyze our archived salamander expression cohort",
+          "expect": "needs_fact",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Requires at least three total samples.",
+          "deciding_fact": "How many total samples are present: two or six?"
+        }
+      ]
+    },
+    {
+      "id": "U03",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run LIONESS-PANDA for the validated acorn RNA panel with matching priors. I am waiting to learn whether the panel has two independent samples or five.",
+      "requirements": [
+        {
+          "words": "Run LIONESS-PANDA",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Minimum three samples.",
+          "deciding_fact": "Does the panel have at least three samples?"
+        }
+      ]
+    },
+    {
+      "id": "U04",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can LIONESS-PUMA handle the zebrafish injury panel? Every required input is available, but the lab has not confirmed whether there are two samples or twelve.",
+      "requirements": [
+        {
+          "words": "LIONESS-PUMA handle the zebrafish injury panel",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-PUMA"
+          ],
+          "note": "workflows/lioness-puma.yaml: At least three samples required.",
+          "deciding_fact": "How many expression samples are available?"
+        }
+      ]
+    },
+    {
+      "id": "U05",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run LIONESS-COEXPRESSION for the night-shift experiment. The table is valid expression, but the sample count might be two or twenty depending on which release was approved.",
+      "requirements": [
+        {
+          "words": "Run LIONESS-COEXPRESSION",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-COEXPRESSION"
+          ],
+          "note": "workflows/lioness-coexpression.yaml: Requires >=3 samples.",
+          "deciding_fact": "Which release and sample count is approved?"
+        }
+      ]
+    },
+    {
+      "id": "U06",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can COBRA analyze the midge experiment? The valid expression/design pair is ready, but after filtering I do not know whether 20 or 200 genes remain for the 40 samples.",
+      "requirements": [
+        {
+          "words": "COBRA analyze the midge experiment",
+          "expect": "needs_fact",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: Requires more genes than samples.",
+          "deciding_fact": "Are there more than 40 genes after filtering?"
+        }
+      ]
+    },
+    {
+      "id": "U07",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run COBRA for the wheat site-effect analysis. All sample IDs match, but I do not know whether the design columns encode sites numerically or still contain text labels.",
+      "requirements": [
+        {
+          "words": "Run COBRA for the wheat site-effect analysis",
+          "expect": "needs_fact",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: Design covariates must be numeric.",
+          "deciding_fact": "Are the design covariates numeric or unencoded text categories?"
+        }
+      ]
+    },
+    {
+      "id": "U08",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can CONDOR analyze edges_release.tsv? Its source and target sets are disjoint and the file has source,target,weight columns, but the provider has not confirmed whether weight contains numeric values or text confidence labels. No conversion is authorized.",
+      "requirements": [
+        {
+          "words": "CONDOR analyze edges_release.tsv",
+          "expect": "needs_fact",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: the optional weight column must be numeric.",
+          "deciding_fact": "Does weight contain numeric values or text confidence labels?"
+        }
+      ]
+    },
+    {
+      "id": "U09",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run DRAGON on the two stellar-radiation cell-culture tables. Their shapes and headers are correct, but it is unknown whether the sample ID sets match exactly.",
+      "requirements": [
+        {
+          "words": "Run DRAGON on the two stellar-radiation cell-culture tables",
+          "expect": "needs_fact",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Exact paired sample set required.",
+          "deciding_fact": "Do both layers contain exactly the same sample IDs?"
+        }
+      ]
+    },
+    {
+      "id": "U10",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can DRAGON combine the two assay exports for the marine parasite project? The second assay may contain continuous concentrations or categorical low/medium/high calls; the collaborator has not clarified which.",
+      "requirements": [
+        {
+          "words": "DRAGON combine the two assay exports",
+          "expect": "needs_fact",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Inputs require continuous numeric measurements.",
+          "deciding_fact": "Does the second layer contain continuous numeric measurements or category labels?"
+        }
+      ]
+    },
+    {
+      "id": "U11",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run LIONESS-DRAGON on two valid-format layers for the mosquito diapause study. They may contain two or ten paired samples; that count is not yet known.",
+      "requirements": [
+        {
+          "words": "Run LIONESS-DRAGON",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Requires at least three samples.",
+          "deciding_fact": "How many paired samples are available?"
+        }
+      ]
+    },
+    {
+      "id": "U12",
+      "family": "U",
+      "form": "question",
+      "prompt": "The data management team has not finished the export for this project, and I cannot infer the number of measured features from its working filename. There are two plausible releases: a compact targeted panel and a large untargeted panel. Both releases have the same participants and would otherwise satisfy the paired-table requirements. Our funding milestone requires retaining every pair of features and every participant in a single run. Reducing the panel, dropping people, or splitting the requested output into multiple independent runs has not been approved. I need a capability judgment that waits for the size fact rather than assuming the smaller release. Can LIONESS-DRAGON process all feature pairs for our 100 participants? There are either 100 or 1000 total features across the two layers; the export manifest has not arrived.",
+      "requirements": [
+        {
+          "words": "LIONESS-DRAGON process all feature pairs",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-DRAGON"
+          ],
+          "note": "workflows/lioness-dragon.yaml: Output cap 20,000,000; candidate sizes below vs above cap.",
+          "deciding_fact": "What is the total number of features across the two layers?"
+        }
+      ]
+    },
+    {
+      "id": "U13",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run OTTER for the conifer seed study using our validated expression, seed and PPI files. The grant requires a particular device, but I have not checked whether CPU is allowed or GPU is mandatory.",
+      "requirements": [
+        {
+          "words": "Run OTTER for the conifer seed study",
+          "expect": "needs_fact",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Current runtime CPU only.",
+          "deciding_fact": "Is CPU permitted, or is GPU execution mandatory?"
+        }
+      ]
+    },
+    {
+      "id": "U14",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can OTTER run with the value in our approved lam setting? The note is unreadable: it could be 0.3 or 3.0, and I cannot authorize changing it.",
+      "requirements": [
+        {
+          "words": "OTTER run with the value in our approved lam setting",
+          "expect": "needs_fact",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: lam range [0,1].",
+          "deciding_fact": "Is the required lam 0.3 or 3.0?"
+        }
+      ]
+    },
+    {
+      "id": "U15",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run GIRAFFE on the validated desert moss files. We need our published optimizer settings preserved, but I have not determined whether they are package defaults or customized values.",
+      "requirements": [
+        {
+          "words": "Run GIRAFFE on the validated desert moss files",
+          "expect": "needs_fact",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Adapter exposes only defaults for optional parameters.",
+          "deciding_fact": "Are the required optimizer settings package defaults or custom settings?"
+        }
+      ]
+    },
+    {
+      "id": "U16",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can SAMBAR subtype the leukemia panel into up to seven groups? The number of mutation samples is either five or fifteen; the final inclusion list is pending.",
+      "requirements": [
+        {
+          "words": "SAMBAR subtype the leukemia panel into up to seven groups",
+          "expect": "needs_fact",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: kmax cannot exceed sample count.",
+          "deciding_fact": "Are at least seven mutation samples included?"
+        }
+      ]
+    },
+    {
+      "id": "U17",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run SAMBAR using the provided four reference/data files. I do not yet know whether their gene identifier sets share any gene across all four files.",
+      "requirements": [
+        {
+          "words": "Run SAMBAR using the provided four reference/data files",
+          "expect": "needs_fact",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Requires nonempty four-way gene overlap.",
+          "deciding_fact": "Is there nonempty gene overlap across all four inputs?"
+        }
+      ]
+    },
+    {
+      "id": "U18",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can PANDA use covariance_bundle.tsv as coexpression_file alongside our valid expression, motif and PPI files? All gene IDs and dimensions match, but the analyst has not confirmed whether the square matrix is symmetric or asymmetric; no repair is authorized.",
+      "requirements": [
+        {
+          "words": "PANDA use covariance_bundle.tsv as coexpression_file",
+          "expect": "needs_fact",
+          "by": [
+            "PANDA"
+          ],
+          "note": "workflows/panda.yaml: precomputed coexpression must be labeled, square and symmetric with matching gene IDs.",
+          "deciding_fact": "Is the precomputed matrix symmetric?"
+        }
+      ]
+    },
+    {
+      "id": "U19",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run aggregate PUMA for the oyster infection analysis. The miRNA file exists and is well formatted, but it is unknown whether all listed miRNA IDs occur in column one of the regulator prior.",
+      "requirements": [
+        {
+          "words": "Run aggregate PUMA for the oyster infection analysis",
+          "expect": "needs_fact",
+          "by": [
+            "PUMA"
+          ],
+          "note": "workflows/puma.yaml: Every listed miRNA must occur in prior column one.",
+          "deciding_fact": "Are all listed miRNA IDs present in prior column one?"
+        }
+      ]
+    },
+    {
+      "id": "U20",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can BONOBO honor the approved sparsification setup? We know save_pvals=true, but the lab has not confirmed whether sparsify was set to true or false and we must preserve that setting.",
+      "requirements": [
+        {
+          "words": "BONOBO honor the approved sparsification setup",
+          "expect": "needs_fact",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: save_pvals true requires sparsify true.",
+          "deciding_fact": "Is the required sparsify flag true or false?"
+        }
+      ]
+    },
+    {
+      "id": "U21",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run BONOBO with sparsify=true using the fixed delta in our protocol. The protocol owner must confirm whether delta is 0.2 or 0.5; do not substitute another value.",
+      "requirements": [
+        {
+          "words": "Run BONOBO with sparsify=true",
+          "expect": "needs_fact",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: With sparsify, delta must lie strictly between 0 and 1/3.",
+          "deciding_fact": "Is the fixed delta 0.2 or 0.5?"
+        }
+      ]
+    },
+    {
+      "id": "U22",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can OTTER take network_input.tsv as coexpression_file? Its author has not confirmed whether it is an aggregate gene-by-gene matrix or a collection of per-sample networks.",
+      "requirements": [
+        {
+          "words": "OTTER take network_input.tsv as coexpression_file",
+          "expect": "needs_fact",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Coexpression input must be validated aggregate matrix.",
+          "deciding_fact": "Is this one aggregate gene-by-gene matrix or per-sample networks?"
+        }
+      ]
+    },
+    {
+      "id": "U23",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run DRAGON with lambda1=0.45. My collaborator is checking whether a lambda2 value was also fixed by the protocol or must remain absent; preserve that decision.",
+      "requirements": [
+        {
+          "words": "Run DRAGON with lambda1=0.45",
+          "expect": "needs_fact",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Manual shrinkage must provide both values.",
+          "deciding_fact": "Is a valid lambda2 also specified, or must it remain unspecified?"
+        }
+      ]
+    },
+    {
+      "id": "U24",
+      "family": "U",
+      "form": "question",
+      "prompt": "The study combines several seedling samples and asks for a result that differs between individuals. In discussions, the authors have used the words regulation, activity, and personalized network interchangeably, and that has made the planned deliverable unclear. The expression matrix and both biological priors have already passed the file checks, so requesting another file will not settle the issue. Before recommending an execution path, we need to identify what numerical object the authors intend to compare across the individual samples. Please keep the unresolved scientific endpoint visible rather than silently selecting one interpretation. Can GIRAFFE meet the requirement for an individual result in our beet-root paper? The authors have not decided whether individual means TF activity per sample or a different regulatory wiring matrix per sample.",
+      "requirements": [
+        {
+          "words": "GIRAFFE meet the requirement for an individual result",
+          "expect": "needs_fact",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Sample-varying TFA supported, sample-specific R not supported.",
+          "deciding_fact": "Does individual mean TF activity per sample or a separate wiring matrix per sample?"
+        }
+      ]
+    },
+    {
+      "id": "U25",
+      "family": "U",
+      "form": "run",
+      "prompt": "Run CONDOR using the file called network.tsv after we confirm its structure. I have not been told whether it is a source-target edge list or raw gene-by-sample expression.",
+      "requirements": [
+        {
+          "words": "Run CONDOR using the file called network.tsv",
+          "expect": "needs_fact",
+          "by": [
+            "CONDOR"
+          ],
+          "note": "workflows/condor.yaml: Network edge list required; raw expression cannot be consumed.",
+          "deciding_fact": "Is the file a bipartite edge list or raw expression?"
+        }
+      ]
+    },
+    {
+      "id": "U26",
+      "family": "U",
+      "form": "question",
+      "prompt": "能用 DRAGON 分析這兩份新生兒資料嗎？一份是連續數值；另一份是否含缺失值還沒確認，而且本研究禁止補值或刪除觀測。",
+      "requirements": [
+        {
+          "words": "用 DRAGON 分析這兩份新生兒資料",
+          "expect": "needs_fact",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Missing values rejected with no implicit imputation.",
+          "deciding_fact": "第二份資料是否含缺失值？"
+        }
+      ]
+    },
+    {
+      "id": "U27",
+      "family": "U",
+      "form": "run",
+      "prompt": "請執行 COBRA。表達資料確定有 500 個基因和 30 個樣本；但設計表的樣本 ID 是否與表達表完全一致尚待確認。",
+      "requirements": [
+        {
+          "words": "請執行 COBRA",
+          "expect": "needs_fact",
+          "by": [
+            "COBRA"
+          ],
+          "note": "workflows/cobra.yaml: Design rows must exactly match expression sample IDs.",
+          "deciding_fact": "設計表是否包含完全相同的樣本 ID？"
+        }
+      ]
+    },
+    {
+      "id": "U28",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can SAMBAR score this insect tumor dataset? The assay lead has not said whether the matrix records somatic mutation counts or RNA abundance; the filename does not resolve it.",
+      "requirements": [
+        {
+          "words": "SAMBAR score this insect tumor dataset",
+          "expect": "needs_fact",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Somatic mutation accepted, expression incompatible.",
+          "deciding_fact": "Does the matrix contain somatic mutations or expression abundance?"
+        }
+      ]
+    },
+    {
+      "id": "U29",
+      "family": "U",
+      "form": "run",
+      "prompt": "請跑 BONOBO，其他格式都已確認。匯出者還沒回答表中的數字樣本標籤是不是實際 sample ID，或只是我要選取的欄位位置編號。",
+      "requirements": [
+        {
+          "words": "請跑 BONOBO",
+          "expect": "needs_fact",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Selection requires actual IDs, not positional indices.",
+          "deciding_fact": "這些數字是實際樣本 ID 還是欄位位置？"
+        }
+      ]
+    },
+    {
+      "id": "U30",
+      "family": "U",
+      "form": "question",
+      "prompt": "Can LIONESS-PANDA fulfill our requirement for personalized regulation? We have adequate expression and priors, but the committee has not decided whether it needs network wiring for each sample or TF activity values for each sample.",
+      "requirements": [
+        {
+          "words": "LIONESS-PANDA fulfill our requirement for personalized regulation",
+          "expect": "needs_fact",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Per-sample wiring supported; TFA not native output.",
+          "deciding_fact": "Does the requirement mean per-sample wiring or per-sample TF activity?"
+        }
+      ]
+    },
+    {
+      "id": "K01",
+      "family": "K",
+      "form": "run",
+      "prompt": "Correction: only two total samples survived QC. Run BONOBO with exactly those two samples; do not add background data.",
+      "requirements": [
+        {
+          "words": "exactly those two samples",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Final correction violates three-sample minimum."
+        }
+      ],
+      "turns": [
+        "Can we run BONOBO for 12 log-centered expression samples?",
+        "Correction: only two total samples survived QC. Run BONOBO with exactly those two samples; do not add background data."
+      ]
+    },
+    {
+      "id": "K02",
+      "family": "K",
+      "form": "request",
+      "prompt": "The facility changed the requirement: use GPU only for OTTER. CPU is no longer acceptable.",
+      "requirements": [
+        {
+          "words": "GPU only for OTTER",
+          "expect": "not_supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Final hardware constraint unsupported by current runtime."
+        }
+      ],
+      "turns": [
+        "Plan aggregate OTTER on CPU from our valid priors and expression.",
+        "The facility changed the requirement: use GPU only for OTTER. CPU is no longer acceptable."
+      ]
+    },
+    {
+      "id": "K03",
+      "family": "K",
+      "form": "request",
+      "prompt": "Add a separately modeled metabolite layer. I now require one DRAGON model with three separate layers and no merging.",
+      "requirements": [
+        {
+          "words": "one DRAGON model with three separate layers",
+          "expect": "not_supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Final request requires unsupported third layer."
+        }
+      ],
+      "turns": [
+        "DRAGON should combine our RNA and protein tables with valid paired continuous measurements.",
+        "Add a separately modeled metabolite layer. I now require one DRAGON model with three separate layers and no merging."
+      ]
+    },
+    {
+      "id": "K04",
+      "family": "K",
+      "form": "request",
+      "prompt": "I used activity incorrectly. Replace that requirement with a distinct TF-gene wiring matrix for each sample from GIRAFFE itself.",
+      "requirements": [
+        {
+          "words": "distinct TF-gene wiring matrix for each sample",
+          "expect": "not_supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Correction changes supported TFA to unsupported per-sample R."
+        }
+      ],
+      "turns": [
+        "For GIRAFFE we want shared regulatory coefficients and per-sample TF activity.",
+        "I used activity incorrectly. Replace that requirement with a distinct TF-gene wiring matrix for each sample from GIRAFFE itself."
+      ]
+    },
+    {
+      "id": "K05",
+      "family": "K",
+      "form": "request",
+      "prompt": "Revision: keep save_pvals=true but set sparsify=false. Preserve that exact combination.",
+      "requirements": [
+        {
+          "words": "keep save_pvals=true but set sparsify=false",
+          "expect": "not_supported",
+          "by": [
+            "BONOBO"
+          ],
+          "note": "workflows/bonobo.yaml: Final flags are invalid."
+        }
+      ],
+      "turns": [
+        "Set BONOBO sparsify=true and save_pvals=true for valid expression inputs.",
+        "Revision: keep save_pvals=true but set sparsify=false. Preserve that exact combination."
+      ]
+    },
+    {
+      "id": "K06",
+      "family": "K",
+      "form": "run",
+      "prompt": "Correction: the final approved expression table contains eight samples, all validated with matching motif and PPI priors. Run LIONESS-PANDA for these eight samples.",
+      "requirements": [
+        {
+          "words": "Run LIONESS-PANDA for these eight samples",
+          "expect": "supported",
+          "by": [
+            "LIONESS-PANDA"
+          ],
+          "note": "workflows/lioness-panda.yaml: Final sample count satisfies minimum."
+        }
+      ],
+      "turns": [
+        "We have only two expression samples for LIONESS-PANDA.",
+        "Correction: the final approved expression table contains eight samples, all validated with matching motif and PPI priors. Run LIONESS-PANDA for these eight samples."
+      ]
+    },
+    {
+      "id": "K07",
+      "family": "K",
+      "form": "request",
+      "prompt": "Drop the independent cross-layer setting. Use only lambda1=0.3 and lambda2=0.7 with our two validated continuous paired layers.",
+      "requirements": [
+        {
+          "words": "Use only lambda1=0.3 and lambda2=0.7",
+          "expect": "supported",
+          "by": [
+            "DRAGON"
+          ],
+          "note": "workflows/dragon.yaml: Final controls are supported paired shrinkage."
+        }
+      ],
+      "turns": [
+        "Can DRAGON accept my required independent lambda_inter setting?",
+        "Drop the independent cross-layer setting. Use only lambda1=0.3 and lambda2=0.7 with our two validated continuous paired layers."
+      ]
+    },
+    {
+      "id": "K08",
+      "family": "K",
+      "form": "request",
+      "prompt": "We have corrected the endpoint: use GIRAFFE for one aggregate signed R matrix and a TF-by-sample activity matrix; all required input files are validated.",
+      "requirements": [
+        {
+          "words": "one aggregate signed R matrix and a TF-by-sample activity matrix",
+          "expect": "supported",
+          "by": [
+            "GIRAFFE"
+          ],
+          "note": "workflows/giraffe.yaml: Final objective matches registered R/TFA artifacts."
+        }
+      ],
+      "turns": [
+        "We wanted GIRAFFE to fit a wiring matrix for each patient.",
+        "We have corrected the endpoint: use GIRAFFE for one aggregate signed R matrix and a TF-by-sample activity matrix; all required input files are validated."
+      ]
+    },
+    {
+      "id": "K09",
+      "family": "K",
+      "form": "run",
+      "prompt": "CPU is now approved. Run aggregate OTTER on CPU in double precision, using the same validated inputs.",
+      "requirements": [
+        {
+          "words": "Run aggregate OTTER on CPU in double precision",
+          "expect": "supported",
+          "by": [
+            "OTTER"
+          ],
+          "note": "workflows/otter.yaml: Final hardware/precision supported; first-turn inputs persist."
+        }
+      ],
+      "turns": [
+        "I asked OTTER to run on a GPU with the validated motif, PPI and expression files.",
+        "CPU is now approved. Run aggregate OTTER on CPU in double precision, using the same validated inputs."
+      ]
+    },
+    {
+      "id": "K10",
+      "family": "K",
+      "form": "run",
+      "prompt": "Change to kmin=2 and kmax=4. Please run SAMBAR clustering on the six samples with the four already validated input files.",
+      "requirements": [
+        {
+          "words": "kmin=2 and kmax=4",
+          "expect": "supported",
+          "by": [
+            "SAMBAR"
+          ],
+          "note": "workflows/sambar.yaml: Final cluster range valid for six samples."
+        }
+      ],
+      "turns": [
+        "SAMBAR was to try kmax=10, but there are only six mutation samples.",
+        "Change to kmin=2 and kmax=4. Please run SAMBAR clustering on the six samples with the four already validated input files."
+      ]
+    }
+  ]
+}

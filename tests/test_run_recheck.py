@@ -81,6 +81,28 @@ def test_k02_a_condition_after_the_wizard_rechecks_the_run():
     assert machine.state.pending_plan is None
 
 
+def test_a_mixed_assignment_reply_rechecks_the_run_instead_of_reusing_approval():
+    for reply in ("Actually the samples come from different mice; lambda1=0.2.",
+                  "sample_count=2", "These are single cells, precision=single",
+                  "omics_layer_1=a.tsv; these samples come from different mice"):
+        machine = ConversationMachine(SimpleNamespace(task=reply), _runtime(
+            conversation=[HumanMessage(content=K02_GOAL)], pending_plan=_wizard_plan()))
+        action = machine.next_action()
+        assert isinstance(action, Turn)
+        assert machine.state.pending_continuation.recheck
+        assert K02_GOAL in action.task and reply in action.task
+        assert machine.state.pending_plan is None
+
+
+def test_only_complete_input_assignments_are_wizard_answers():
+    for reply in ("omics_layer_1=a.tsv omics_layer_2=b.tsv", 'omics_layer_1="/data/my cohort/a.tsv"',
+                  "omics_layer_1=a.tsv; omics_layer_2=b.tsv", "2", "custom", "yes", "/data/layer1.tsv"):
+        assert _wizard_answer(reply), reply
+    for reply in ("lambda1=0.2", "sample_count=2", "omics_layer_1=a.tsv and they are different mice",
+                  "single_cells", "omics_layer_1=a.tsv; lambda1=0.2"):
+        assert not _wizard_answer(reply), reply
+
+
 def test_a_path_after_the_wizard_still_answers_it():
     machine = ConversationMachine(SimpleNamespace(task="data/dragon-toy/layer1.tsv"), _runtime(
         conversation=[HumanMessage(content=K02_GOAL)], pending_plan=_wizard_plan()))
@@ -165,3 +187,64 @@ def test_k06_verified_settings_become_the_runs_controls():
                                   ("DRAGON.lambda1", "fixed lambdas", "0.2"), ("DRAGON.lambda2", "fixed lambdas", "0.6")]))
     assert verified_controls(check, "run_dragon") == {"output_format": "edge_list", "lambda1": 0.2, "lambda2": 0.6}
     assert verified_controls(check, "run_otter") == {}
+
+
+def test_boolean_settings_reach_the_approved_run_and_unknown_values_hold_it(monkeypatch):
+    from test_method_conditions import _ask, _check
+    from netzoo_agent_core.graph import router_invocation
+
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    for words, delta, expected in (("disabled", "0.5", False), ("enabled", "0.1", True), ("maybe", "0.1", None)):
+        task = f"Run BONOBO with sparsify {words} and delta {delta} for per-sample coexpression networks."
+        check = _check(task, _ask(task, ["bonobo.per_sample_networks"], named="BONOBO", named_quote="BONOBO",
+                                 scale="per_sample", settings=[("BONOBO.sparsify", "sparsify", words),
+                                                              ("BONOBO.delta", "delta", delta)]))
+        decision = TaskDecision(action="run_bonobo", in_scope=True, should_execute=True, confidence=0.9, reason="r")
+        invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                         budget_warnings=[], reason_code=None)
+        result = router_invocation._on_run_verdict(SimpleNamespace(project_policy=None), {}, task, invocation,
+                                                   check, "ok")
+        if expected is None:
+            assert not result.decision.should_execute
+            assert result.decision.run_verdict.held
+        else:
+            assert result.decision.should_execute
+            assert result.decision.sparsify is expected
+            assert result.decision.delta == float(delta)
+
+
+def test_paths_with_spaces_still_answer_the_wizard():
+    # M3 review: the project folder is "LLM AGENT"; a pasted or terminal-dropped path is one answer, not a new request.
+    for reply in ("/Users/me/Documents/LLM AGENT/data/expr.tsv", r"/Users/me/Documents/LLM\ AGENT/data/expr.tsv",
+                  "~/Desktop/my data/expr.csv",
+                  "omics_layer_1=/data/LLM AGENT/a.tsv omics_layer_2=/data/LLM AGENT/b.tsv"):
+        assert _wizard_answer(reply), reply
+    for reply in ("/data/a.tsv and the samples come from different mice",
+                  "omics_layer_1=/data/my cohort/a.tsv; these samples come from different mice"):
+        assert not _wizard_answer(reply), reply
+
+
+def test_a_stated_setting_the_run_cannot_carry_holds_the_run(monkeypatch):
+    # M3 review (user's gap 2: "precision=half" was accepted with no settings passed): every stated setting reaches
+    # the run, or the run waits.
+    from test_method_conditions import _ask, _check
+    from netzoo_agent_core.graph import router_invocation
+
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    for settings, bound in (
+            ([("SAMBAR.linkage", "ward linkage", "ward")], None),
+            ([("SAMBAR.kmax", "at most 6 subtypes", "6")], {"kmax": 6}),
+            ([("SAMBAR.cluster", "cluster the patients", "")], {"cluster": True})):
+        task = f"Run SAMBAR to {settings[0][1]} into mutation-based subtypes."
+        check = _check(task, _ask(task, ["sambar.subtypes"], named="SAMBAR", named_quote="SAMBAR", settings=settings))
+        decision = TaskDecision(action="run_sambar", in_scope=True, should_execute=True, confidence=0.9, reason="r")
+        invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                         budget_warnings=[], reason_code=None)
+        result = router_invocation._on_run_verdict(SimpleNamespace(project_policy=None), {}, task, invocation,
+                                                   check, "ok")
+        if bound is None:
+            assert result.decision.run_verdict.verdict == "unread" and not result.decision.should_execute
+            assert settings[0][1] in result.decision.run_verdict.unchecked
+        else:
+            assert result.decision.should_execute, settings
+            assert all(getattr(result.decision, name) == value for name, value in bound.items())

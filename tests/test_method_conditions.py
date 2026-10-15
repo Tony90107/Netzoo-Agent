@@ -120,6 +120,19 @@ def test_k06_settings_dragon_has_and_takes_stay_available():
     assert not result.limits and run_check_verdict(check, "run_dragon")["verdict"] == "agrees"
 
 
+def test_enum_settings_are_checked_and_bound_with_the_same_choices():
+    from netzoo_agent_core.interpretation.method_conditions import verified_controls
+
+    for words, allowed, bound in (("half", False, None), ("single or double", False, None),
+                                  ("single precision", True, "single"), ("double", True, "double")):
+        task = f"Run OTTER with precision set to {words} to build a TF-gene network."
+        check = _check(task, _ask(task, ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
+                                 scale="whole_cohort", regulator_kinds=["tf"],
+                                 settings=[("OTTER.precision", "precision", words)]))
+        assert (run_check_verdict(check, "run_otter")["verdict"] == "agrees") is allowed
+        assert verified_controls(check, "run_otter").get("precision") == bound
+
+
 def test_a_value_outside_the_controls_range_is_not_given():
     check = _check("Run DRAGON with lambda1 1.5 on our two layers.", _ask(
         "Run DRAGON with lambda1 1.5 on our two layers", ["dragon.two_layer_network"], omics_layers=2,
@@ -419,3 +432,24 @@ def test_lioness_with_a_per_sample_method_is_not_a_lioness_version():
     check = _check(task, _ask("one co-expression network per sample", ["lioness_coexpression.per_sample_networks"],
                               named="LIONESS", named_quote="LIONESS", scale="per_sample", asked_as="question"))
     assert _result(check).status == "available"
+
+
+def test_boolean_words_the_user_writes_are_read():
+    from netzoo_agent_core.workflow_conditions import boolean_value
+
+    for words, quote, expected in (("false", "", False), ("without", "without sparsification", False),
+                                   ("don't", "don't sparsify", False), ("turned off", "sparsify", False),
+                                   ("no thanks", "sparsify", False), ("with no", "with no sparsification", False),
+                                   ("yes", "", True), ("turned on", "", True), ("", "sparsify the networks", True),
+                                   ("", "without sparsification", False), ("", "do not save p-values", False),
+                                   ("yes, turn it off", "", None), ("sparse-ish", "", None), ("", "", None)):
+        assert boolean_value(words, quote) is expected, (words, quote)
+
+
+def test_a_negated_boolean_without_a_value_does_not_apply_its_combination_rule():
+    from netzoo_agent_core.workflow_conditions import StatedSetting, combination_issues, conditions_for
+
+    conditions = conditions_for("BONOBO")
+    for quote, issues in (("without sparsification", 0), ("sparsify", 1)):
+        assert len(combination_issues(conditions, [StatedSetting("BONOBO.sparsify", quote, ""),
+                                                   StatedSetting("BONOBO.delta", "delta", "0.5")])) == issues

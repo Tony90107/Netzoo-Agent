@@ -124,6 +124,19 @@ def test_combination_rules_are_the_executors():
     assert not combination_issues(conditions_for("BONOBO"), [StatedSetting("BONOBO.delta", "delta", "0.5")])
 
 
+def test_boolean_values_control_when_combination_limits_apply():
+    for words in ("false", "off", "disabled", "do not sparsify"):
+        assert not combination_issues(conditions_for("BONOBO"), [
+            StatedSetting("BONOBO.sparsify", "sparsify", words), StatedSetting("BONOBO.delta", "delta", "0.5")])
+        assert not combination_issues(conditions_for("SAMBAR"), [
+            StatedSetting("SAMBAR.cluster", "cluster", words), StatedSetting("SAMBAR.kmax", "kmax", "6")], samples=4)
+    for words in ("true", "on", "enabled"):
+        assert combination_issues(conditions_for("BONOBO"), [
+            StatedSetting("BONOBO.sparsify", "sparsify", words), StatedSetting("BONOBO.delta", "delta", "0.5")])
+        assert combination_issues(conditions_for("SAMBAR"), [
+            StatedSetting("SAMBAR.cluster", "cluster", words), StatedSetting("SAMBAR.kmax", "kmax", "6")], samples=4)
+
+
 # --- a24b MX03 / MX09: what an ask adds to a result it also names on its own ---------------------------------------
 
 MX03 = ("We'd like a DRAGON network between the proteome and the transcriptome of our 64 matched tumours, and please "
@@ -206,7 +219,7 @@ def test_n35_an_unmet_requirement_beside_the_ask_is_its_own_line():
         ("Build a PUMA network", "available"), ("in which the miRNA-g", "not_available")]
     assert 'PUMA does not meet "in which the miRNA-gene' in understanding_paragraph(unmet)
     assert run_check_verdict(unmet, "run_puma")["verdict"] == "partial_gap"
-    # Met, unrelated, or not answered: nothing is added (these words were dropped before M2).
+    # Met or unrelated: nothing is added. Unanswered checks are held by the router.
     assert apply_own_sentence_answers(check, pairs, ["satisfies"]).results() == check.results()
     assert apply_own_sentence_answers(check, pairs, ["unrelated"]).results() == check.results()
 
@@ -249,6 +262,33 @@ def test_the_router_checks_the_asking_sentence_requirement_in_the_same_call(monk
                                                           proposal)
         assert len(calls) == 1 and [shown[1] for shown in calls[0]] == [quote]
         assert [item.status for item in result.decision.capability_check.results()] == statuses
+
+
+def test_a_run_waits_when_its_own_sentence_condition_could_not_be_checked(monkeypatch):
+    from types import SimpleNamespace
+
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.graph import router_invocation
+
+    quote = "in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels"
+    proposal = _proposal_of(N35, quote).model_copy(update={"s1": proposal_model(1).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [_ask(
+            "Build a PUMA network", ["puma.regulator_gene_network"], omics_layers=2, regulator_kinds=["tf", "mirna"],
+            scale="whole_cohort")]}}).s1})
+    decision = TaskDecision(action="run_puma", in_scope=True, should_execute=True, confidence=0.9,
+                            reason="r", capability_match_status="exact", matched_actions=["run_puma"])
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args, **kwargs: None)
+    for answer, expected in ((None, "unread"), (["violates"], "partial_gap"), (["satisfies"], "agrees")):
+        monkeypatch.setattr(router_invocation, "request_condition_check",
+                            lambda context, state, shown, usage, warnings: (answer, usage, warnings))
+        invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                         budget_warnings=[], reason_code=None)
+        result = router_invocation._with_run_check(SimpleNamespace(project_policy=None), {}, N35, invocation,
+                                                   proposal, "ok")
+        assert result.decision.run_verdict.verdict == expected
+        assert result.decision.should_execute is (expected == "agrees")
+        if answer is None:
+            assert quote in result.decision.capability_check.unchecked
 
 
 def test_g1_an_addition_beside_the_asks_words_and_a_blank_core_named_by_its_method():
@@ -309,3 +349,30 @@ def test_the_backup_call_takes_the_compact_schema_for_a_long_request(monkeypatch
     long_request = " ".join(f"Sentence {index} asks for a TF-gene network." for index in range(1, 10))
     call.request_capability_check(context, {}, long_request, LLMUsage(budget_tokens=30000), [])
     assert seen and all(count <= 1000 for count in seen)
+
+
+def test_second_opinion_credit_rechecks_own_sentence_conditions(monkeypatch):
+    from types import SimpleNamespace
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.graph import router_invocation
+    quote = "in which the miRNA-gene edge weights are driven by our matched small-RNA-seq miRNA expression levels"
+    proposal = _proposal_of(N35, quote).model_copy(update={"s1": proposal_model(1).model_validate({
+        "s1": {"role": "asks", "has": [], "about_methods": [], "asks": [_ask(
+            "Build a PUMA network", [], regulator_kinds=["tf", "mirna"], scale="whole_cohort")]}}).s1})
+    decision = TaskDecision(action="run_puma", in_scope=True, should_execute=True, confidence=0.9,
+                            reason="r", capability_match_status="exact", matched_actions=["run_puma"])
+    monkeypatch.setattr(router_invocation, "record_event", lambda *args: None)
+    monkeypatch.setattr(router_invocation, "request_second_opinion",
+                        lambda context, state, shown, usage, warnings, situation: (["all"] * len(shown), usage, warnings))
+    monkeypatch.setattr(router_invocation, "reread_passages", lambda *args: [])
+    for answer, verdict in ((None, "unread"), ("violates", "partial_gap"), ("satisfies", "agrees")):
+        seen = []
+        def condition_check(context, state, shown, usage, warnings):
+            seen.extend(shown)
+            return ([answer] * len(shown) if answer else None), usage, warnings
+        monkeypatch.setattr(router_invocation, "request_condition_check", condition_check)
+        invocation = router_invocation._RouterInvocation(decision=decision, routing_state={}, usage=None,
+                                                         budget_warnings=[], reason_code=None)
+        result = router_invocation._with_run_check(SimpleNamespace(project_policy=None), {}, N35, invocation, proposal, "ok")
+        assert any(quote == row[1] for row in seen)
+        assert result.decision.run_verdict.verdict == verdict

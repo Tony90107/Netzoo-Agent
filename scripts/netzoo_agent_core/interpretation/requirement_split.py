@@ -14,8 +14,6 @@ Final acceptance a24b, false refusals and silent omissions:
 
 from __future__ import annotations
 
-import re
-
 from ..capability_sheet import sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from .input_bindings import _DIRECTORY_TOKEN
@@ -176,8 +174,8 @@ def apply_own_sentence_answers(check, pairs: list[tuple[int, str, list[str], str
     """Each requirement stated beside an ask in its sentence that a credited workflow cannot meet and none meets, as a
     not-available result of its own; the result beside it keeps its verdict (M2).
 
-    A check that could not answer adds nothing: these words were dropped before M2, and a held run for every request
-    that names its inputs ("from expression, motifs and PPI") would be worse.
+    Only an explicit violation adds a not-available result. The caller records unanswered pairs as unchecked,
+    holding a run until its stated requirements can be verified.
     """
     from ..capability_sheet import entry
 
