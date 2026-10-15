@@ -1,0 +1,272 @@
+{
+  "ve-m3f2-live-K02-1": {
+    "item": "K02",
+    "rep": 1,
+    "family": "K",
+    "form": "request",
+    "capture_verified": true,
+    "capture_turns": 2,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The user is requesting guidance on planning the aggregate OTTER using GPU, which falls under answer requests rather than execution.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "GPU only for OTTER",
+        "expect": "not_supported",
+        "by": [
+          "OTTER"
+        ],
+        "note": "workflows/otter.yaml: Final hardware constraint unsupported by current runtime.",
+        "understood": true,
+        "matched_quotes": [
+          "use GPU only for OTTER"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001802
+  },
+  "ve-m3f2-live-K05-1": {
+    "item": "K05",
+    "rep": 1,
+    "family": "K",
+    "form": "request",
+    "capture_verified": true,
+    "capture_turns": 2,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The user is requesting guidance on revising the previous NetZoo goal, which indicates they are looking for an explanation or planning rather than immediate execution.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "keep save_pvals=true but set sparsify=false",
+        "expect": "not_supported",
+        "by": [
+          "BONOBO"
+        ],
+        "note": "workflows/bonobo.yaml: Final flags are invalid.",
+        "understood": true,
+        "matched_quotes": [
+          "keep save_pvals=true but set sparsify=false"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.001903
+  },
+  "ve-m3f2-live-P24-1": {
+    "item": "P24",
+    "rep": 1,
+    "family": "P",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "run_lioness_dragon",
+    "workflow": "LIONESS-DRAGON",
+    "plan_status": "needs_input",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "omics_layer_1",
+            "reason": "Explicitly provided by the user or the intent parser.",
+            "status": "provided",
+            "value": "aggregate_pc.tsv"
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "omics_layer_2",
+            "reason": "Explicitly provided by the user or the intent parser.",
+            "status": "provided",
+            "value": "per_sample_edges.tsv"
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "output_file",
+            "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+            "status": "defaulted",
+            "value": "outputs/sessions/ve-m3f2-live-P24-1/dragon-aggregate.tsv"
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "lioness_output",
+            "reason": "The output location is reversible and does not overwrite an input, so the Planner used the project default.",
+            "status": "defaulted",
+            "value": "outputs/sessions/ve-m3f2-live-P24-1/lioness-dragon.tsv"
+          }
+        ],
+        "missing_inputs": [],
+        "objective": "Run requested; the capability check credited this workflow for what the request asks for.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "needs_input",
+        "steps": [],
+        "workflow": "LIONESS-DRAGON"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {
+      "action": "run_lioness_dragon",
+      "verdict": "agrees",
+      "request_sha256": "5155b9fbc5ea5e2593f0b302f73a205e984b08bd3fe29ecf7b2474010b7a5d2c",
+      "held": false,
+      "named": true,
+      "credited": [
+        "run_lioness_dragon"
+      ],
+      "results": [
+        {
+          "quote": "Run LIONESS-DRAGON for ten paired samples with 12 total features and fixed lambda1=0.25, lambda2=0.3.",
+          "status": "available",
+          "credited": [
+            "run_lioness_dragon"
+          ]
+        }
+      ],
+      "unchecked": []
+    },
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "fixed lambda1=0.25, lambda2=0.3",
+        "expect": "supported",
+        "by": [
+          "LIONESS-DRAGON"
+        ],
+        "note": "workflows/lioness-dragon.yaml: Paired manual shrinkage supported; tiny output under limit.",
+        "understood": true,
+        "matched_quotes": [
+          "Run LIONESS-DRAGON for ten paired samples with 12 total features and fixed lambda1=0.25, lambda2=0.3."
+        ],
+        "checked": [
+          "available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.001754
+  },
+  "ve-m3f2-live-P25-1": {
+    "item": "P25",
+    "rep": 1,
+    "family": "P",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "2 through 5 clusters using Euclidean distance and average linkage",
+        "expect": "supported",
+        "by": [
+          "SAMBAR"
+        ],
+        "note": "workflows/sambar.yaml: Declared k bounds, distance/linkage and norm_patient controls.",
+        "understood": true,
+        "matched_quotes": [
+          "Can SAMBAR try 2 through 5 clusters using Euclidean distance and average linkage, with patient mutation-burden normalization disabled?"
+        ],
+        "checked": [
+          "available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.00157
+  }
+}

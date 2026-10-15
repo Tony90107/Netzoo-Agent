@@ -4,7 +4,10 @@
 
 - 修正 919817c 先做離線驗證（下面「結論」到「重現方式」）。
 - 經使用者同意後，跑了 14 個 session 的精簡 live（round m3f，見「live m3f」）。
-- live 的 K05 又找到一個缺口，已離線修正，但**尚未重跑 live**。
+- live 的 K05 又找到一個缺口，在 6327c8f 修正。
+- 再經使用者同意，在 6327c8f 上重跑 4 個 session（round m3f2）。
+
+**合計：9 個誤承諾中有 6 個在 live 改成不可做**（N03、N15、N26、N28、K05、K02），原本未決定的 N17 也改成不可做；2 個設定相關的誤拒絕（P08、MX12）改成可做；5 個守門題都維持可做。N07、N08、N20 是輸入類型的問題，不在這次範圍內。這不是盲標，也不是正式驗收。
 
 ## 結論
 
@@ -147,13 +150,22 @@ K05 第 2 回合，模型這次把方法讀成 `none`：BONOBO 只出現在前�
 - round m3 的 162 個回合、較舊的 1,729 個檢查、以及 m3f 的其他 13 個檢查都沒有改變。
 - 新增測試 `test_m3f_k05_no_method_named_the_settings_name_the_workflow`。
 
-### 若要再跑 live
+## live m3f2（2026-10-15，經使用者同意，候選版本 6327c8f）
 
-4 個 session，都用新的 commit：
-- K05：驗證後續修正；
-- K02、P24、P25：補上這次因網路錯誤無法判斷的部分。
+在 6327c8f 的全新 clone 上重跑 4 題，其餘設定與 m3f 相同（`freeze-code-m3f2.json`）。4/4 的擷取驗證通過；P24 停在輸入精靈，退出碼 2。能力檢查 4/4 成功；失敗的呼叫只有路由的語意重試，不是服務錯誤。
 
-標記建議用 `m3f2`。
+| 題目 | 預期 | m3 | m3f2 | 模型讀到的請求層級欄位 |
+|---|---|---|---|---|
+| K05 | 不可做 | GIVEN_IF_INPUT | **不可做**：「keep save_pvals=true but set sparsify=false」，save_pvals requires sparsify | 方法 BONOBO；完整的 name=value 引文 |
+| K02 | 不可做 | GIVEN_IF_INPUT | **不可做**：「use GPU only for OTTER」，computing=gpu is not enabled by this Docker runtime | 方法 OTTER；`OTTER.computing`=GPU |
+| P24（守門） | 可做 | — | 可做，run 核准（agrees），停在輸入精靈 | lambda1、lambda2、samples 10、features 12 |
+| P25（守門） | 可做 | — | 可做（available from SAMBAR） | kmin、kmax、distance、linkage、norm_patient、samples 15 |
+
+需要注意的限制：
+
+- 這次的 K05 模型讀到了指定方法和完整引文，走的是 919817c 原本就有的路徑。6327c8f 的後續修正（方法 none、只有設定名稱）**沒有在 live 中被觸發**，只有 m3f 錄音的離線重播證據。
+- K02 這次模型讀到了 GPU 設定，m3 和 m3f 都沒有讀到。結果取決於模型是否讀到這個設定，每題只跑 1 次，無法估計比例。
+- 用 6327c8f 離線重播 m3f2 的錄音：6/6 重現。原始 trace 放在主 checkout 的同一路徑，不在 git 裡。
 
 ## 測試
 
