@@ -1,0 +1,707 @@
+{
+  "ve-m3f-live-K02-1": {
+    "item": "K02",
+    "codes": [
+      0,
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {},
+    "rows": [],
+    "gold": [
+      {
+        "words": "GPU only for OTTER",
+        "expect": "not_supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (3.15s)\n● Matching registered workflows…\n✓ Workflow — OTTER\n✓ Guidance prepared\nThis turn could not be checked against what the registered workflows produce, so the methods below have not been confirmed to give what you asked for.\n\nRouting matched these registered workflows to your words, but the capability check did not confirm that any of them gives what you asked for:\n- **OTTER** — produces: One weighted TF-to-gene regulatory network across all samples, fitted so that it agrees with the PPI network and gene co-expression.\n\nCompare what each produces with what you asked for. Ask again to re-run the check, or say which result you want and from which workflow.\n\nNo files were inspected and no analysis ran.\n\n----------------------------------------\nNext step\nAsk about a workflow's outputs or clarify the result you want; the next turn checks it against your original request.\nEnter/back: start a new task | exit: close\n> \n"
+  },
+  "ve-m3f-live-K05-1": {
+    "item": "K05",
+    "codes": [
+      0,
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "none",
+      "named_method_quote": "",
+      "settings": [
+        {
+          "name": "BONOBO.sparsify",
+          "quote": "sparsify",
+          "value_quote": "false"
+        },
+        {
+          "name": "BONOBO.save_pvals",
+          "quote": "save_pvals",
+          "value_quote": "true"
+        }
+      ],
+      "sample_count": null,
+      "sample_count_quote": "",
+      "feature_counts": []
+    },
+    "rows": [],
+    "gold": [
+      {
+        "words": "keep save_pvals=true but set sparsify=false",
+        "expect": "not_supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (3.17s)\n● Matching registered workflows…\n✓ Workflow — GIRAFFE\n✓ Guidance prepared\n**GIRAFFE** fits the result you describe if you have a motif prior and a PPI network.\n\nYour question asks for a cohort-level regulatory network with TF activities. **GIRAFFE** fits that result and scale. GIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors.\n\nCaptured request parameters:\n\n- `sparsify`: true\n- `save_pvals`: true\n\n**GIRAFFE**: Use biologically informed matrix factorization with netZooPy GIRAFFE to jointly infer R and TFA by fitting Y approximately R times absolute TFA; TFA provides the sample-varying predictors and R contains signed partial regulatory effects interpretable as linear-model coefficients, positive for activation and negative for repression.\n\nRouting-level input modality: expression matrix.\n\nMethod premise: factor gene expression using motif and TF-protein interaction priors; jointly infer a TF-gene regulatory matrix and a TF-by-sample activity matrix; interpret TF-gene regulatory weights as coefficients in a linear expression model; estimate positive activating and negative inhibitory partial regulatory effects; model gene expression with transcription factor activities as predictors.\n\nGIRAFFE jointly factors expression into a regulatory-effect matrix and sample-varying TF activities using biological priors. Signed effects describe the fitted activation/repression relationship, while activity differs from the TF's own expression. These fitted coefficients do not alone establish causality.\n\nRequired workflow inputs:\n\n- `expression_file`: expression matrix\n- `motif_file`: motif/prior\n- `ppi_file`: PPI network\n\nDistinct declared output artifacts (availability depends on workflow options):\n\n- `regulatory_network`: Inferred regulator-to-target associations.\n- `tf_activity_matrix`: Inferred transcription-factor-by-sample activity values.\n\nTF activity is how active a TF is in each sample, apart from its own mRNA level. If you mean how strongly each TF is wired to its targets in each sample, the out-degree in LIONESS-PANDA's per-sample networks is the other reading, from the same inputs.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.\n\n----------------------------------------\nNext step\nEnter a follow-up question, provide inputs only if you want to execute the complete recommended pipeline, or describe another NetZoo goal.\nEnter/back: start a new task | exit: close\n> \n"
+  },
+  "ve-m3f-live-K10-1": {
+    "item": "K10",
+    "codes": [
+      0,
+      2
+    ],
+    "action": "run_sambar",
+    "run_verdict": "agrees",
+    "full_gap": null,
+    "unchecked": null,
+    "request_reading": {
+      "named_method": "SAMBAR",
+      "named_method_quote": "SAMBAR",
+      "settings": [
+        {
+          "name": "SAMBAR.kmin",
+          "quote": "kmin=2",
+          "value_quote": "2"
+        },
+        {
+          "name": "SAMBAR.kmax",
+          "quote": "kmax=4",
+          "value_quote": "4"
+        }
+      ],
+      "sample_count": 6,
+      "sample_count_quote": "six",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "Please run SAMBAR clustering on the six samples with the four already validated input files.",
+        "available",
+        []
+      ]
+    ],
+    "gold": [
+      {
+        "words": "kmin=2 and kmax=4",
+        "expect": "supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.37s)\n● Matching registered workflows…\n✓ Workflow — SAMBAR\n● Preparing next step…\n? Clarification needed\n  Input required\n\nPlease provide the next missing input. The CLI wizard will ask for each unresolved field one at a time.\n\nSelect input 1 of 4: Somatic mutation matrix (mutation_file)\nEnter a candidate number or a full path.\nEnter the full path.\nSelection > \nRun the command again with --resume ve-m3f-live-K10-1 after preparing the answer.\n"
+  },
+  "ve-m3f-live-MX12-1": {
+    "item": "MX12",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": "partial_gap",
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "GIRAFFE",
+      "named_method_quote": "GIRAFFE",
+      "settings": [
+        {
+          "name": "unregistered",
+          "quote": "exposed custom optimizer learning rate",
+          "value_quote": "0.009"
+        }
+      ],
+      "sample_count": null,
+      "sample_count_quote": "",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "signed R",
+        "available",
+        []
+      ],
+      [
+        "sample-varying TFA",
+        "available",
+        []
+      ],
+      [
+        "exposed custom optimizer learning rate of 0.009",
+        "not_available",
+        [
+          "NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"exposed custom optimizer learning rate\" cannot be applied"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "signed R and sample-varying TFA",
+        "expect": "supported",
+        "rows": [
+          [
+            "sample-varying TFA",
+            "available"
+          ]
+        ]
+      },
+      {
+        "words": "exposed custom optimizer learning rate of 0.009",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "exposed custom optimizer learning rate of 0.009",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.18s)\n● Matching registered workflows…\n✓ Workflow — GIRAFFE\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"signed R\" -- available from GIRAFFE.\n2. \"sample-varying TFA\" -- available from GIRAFFE.\n3. \"exposed custom optimizer learning rate of 0.009\" -- not available here as asked. NetZoo runs GIRAFFE with its package defaults and passes no settings to it, so \"exposed custom optimizer learning rate\" cannot be applied.\n\nYou asked me to run GIRAFFE. It covers \"signed R\" and \"sample-varying TFA\", but no registered workflow covers \"exposed custom optimizer learning rate of 0.009\", so the run would do only part of what you asked. I have not planned it.\n\nTell me to run GIRAFFE for the part it gives, and I will then find your input files and show a preview; nothing runs until you approve it.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-N03-1": {
+    "item": "N03",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": true,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "LIONESS-PANDA",
+      "named_method_quote": "LIONESS-PANDA",
+      "settings": [],
+      "sample_count": 2,
+      "sample_count_quote": "exactly two expression samples",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "exactly two expression samples",
+        "not_available",
+        [
+          "LIONESS-PANDA needs at least 3 samples; the request has 2"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "exactly two expression samples",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "exactly two expression samples",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.54s)\n● Matching registered workflows…\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"exactly two expression samples\" -- not available here as asked. LIONESS-PANDA needs at least 3 samples; the request has 2.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-N15-1": {
+    "item": "N15",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": true,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "BONOBO",
+      "named_method_quote": "BONOBO",
+      "settings": [],
+      "sample_count": 2,
+      "sample_count_quote": "exactly two total samples",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "exactly two total samples",
+        "not_available",
+        [
+          "BONOBO needs at least 3 samples; the request has 2"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "exactly two total samples",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "exactly two total samples",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.56s)\n● Matching registered workflows…\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"exactly two total samples\" -- not available here as asked. BONOBO needs at least 3 samples; the request has 2.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-N17-1": {
+    "item": "N17",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "BONOBO",
+      "named_method_quote": "BONOBO",
+      "settings": [
+        {
+          "name": "BONOBO.sparsify",
+          "quote": "sparsify=false",
+          "value_quote": "false"
+        },
+        {
+          "name": "BONOBO.save_pvals",
+          "quote": "save_pvals=true",
+          "value_quote": "true"
+        }
+      ],
+      "sample_count": null,
+      "sample_count_quote": "",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "sparsify=false and save_pvals=true",
+        "not_available",
+        [
+          "BONOBO: save_pvals requires sparsify"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "sparsify=false and save_pvals=true",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "sparsify=false and save_pvals=true",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.62s)\n● Matching registered workflows…\n✓ Workflow — BONOBO\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"sparsify=false and save_pvals=true\" -- not available here as asked. BONOBO: save_pvals requires sparsify. BONOBO itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\n**BONOBO**. BONOBO applies Bayesian estimation and shrinkage to sample-specific gene-gene co-expression. It does not model uncertain TF-binding/motif priors or return TF-to-gene regulatory edges. A shared probabilistic philosophy does not make these scientific outputs interchangeable.\n\nYou would need expression matrix. The analysis would provide inferred gene-to-gene associations; p-value matrix paired with a sample-specific gene-gene co-expression result.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-N26-1": {
+    "item": "N26",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": true,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "LIONESS-DRAGON",
+      "named_method_quote": "LIONESS-DRAGON",
+      "settings": [],
+      "sample_count": 100,
+      "sample_count_quote": "100 samples",
+      "feature_counts": [
+        {
+          "count": 1000,
+          "quote": "1000 total features"
+        }
+      ]
+    },
+    "rows": [
+      [
+        "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run.",
+        "not_available",
+        [
+          "LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 1,000 features and 100 samples give 49,950,000"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "100 samples and 1000 total features",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run.",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.94s)\n● Matching registered workflows…\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run.\" -- not available here as asked. LIONESS-DRAGON writes at most 20,000,000 values (features x (features - 1) / 2 x samples); 1,000 features and 100 samples give 49,950,000.\n\nNo registered workflow can give this as you asked it (above), so none is offered as asked.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-N28-1": {
+    "item": "N28",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "SAMBAR",
+      "named_method_quote": "SAMBAR",
+      "settings": [
+        {
+          "name": "SAMBAR.kmin",
+          "quote": "kmin=2",
+          "value_quote": "2"
+        },
+        {
+          "name": "SAMBAR.kmax",
+          "quote": "kmax=9",
+          "value_quote": "9"
+        }
+      ],
+      "sample_count": 6,
+      "sample_count_quote": "exactly six mutation samples",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "kmin=2 and kmax=9 on exactly six mutation samples",
+        "not_available",
+        [
+          "SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled"
+        ]
+      ]
+    ],
+    "gold": [
+      {
+        "words": "kmax=9 on exactly six mutation samples",
+        "expect": "not_supported",
+        "rows": [
+          [
+            "kmin=2 and kmax=9 on exactly six mutation samples",
+            "not_available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.76s)\n● Matching registered workflows…\n✓ Workflow — SAMBAR\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"kmin=2 and kmax=9 on exactly six mutation samples\" -- not available here as asked. SAMBAR: kmax cannot exceed the number of mutation samples when clustering is enabled. SAMBAR itself can still run, with its own settings instead -- an alternative, not the setting you asked for.\n\n**SAMBAR**. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nYou would need somatic mutation matrix, gene/exon-size CSV, cancer-gene list, GMT pathway file. The analysis would provide sample-by-gene mutation scores, not pathway scores; pathway-by-sample mutation scores, not cluster labels; sample-to-cluster labels, separate from score and distance matrices; pairwise sample distances, not cluster labels.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-P06-1": {
+    "item": "P06",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "COBRA",
+      "named_method_quote": "COBRA",
+      "settings": [],
+      "sample_count": 24,
+      "sample_count_quote": "24 samples",
+      "feature_counts": [
+        {
+          "count": 600,
+          "quote": "600 genes"
+        }
+      ]
+    },
+    "rows": [
+      [
+        "Can COBRA produce the adjusted gene-by-gene co-expression artifact?",
+        "available",
+        []
+      ]
+    ],
+    "gold": [
+      {
+        "words": "adjusted gene-by-gene co-expression artifact",
+        "expect": "supported",
+        "rows": [
+          [
+            "Can COBRA produce the adjusted gene-by-gene co-expression artifact?",
+            "available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (1.25s)\n● Matching registered workflows…\n✓ Workflow — COBRA\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"Can COBRA produce the adjusted gene-by-gene co-expression artifact?\" -- available from COBRA.\n\nNo single registered workflow produces this result from all the stated inputs together. Each stated input is listed on its own, with the registered workflows that fit it, their algorithmic premises and inputs:\n\nResult: co-expression networks (aggregate), from expression matrix and measurement dataset.\nEach stated input on its own:\n- From the expression matrix:\n  - **Gene co-expression network — LIONESS-COEXPRESSION**\n    - Registered purpose: Infer aggregate and sample-specific co-expression networks with LIONESS.\n    - Method premise: derive each sample network from all-sample and leave-one-out networks\n    - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.\n    - Required inputs: all of: expression matrix.\n    - Declared output: co-expression networks (cohort-level aggregate; sample-specific, one network per sample).\n- From the measurement dataset:\n  No registered workflow produces this result from this input.\n  Registered workflows that accept it, and what they produce instead: **DRAGON** (multi omic network); **LIONESS-DRAGON** (multi omic network).\n\nWhich should we start with: the expression matrix (LIONESS-COEXPRESSION), the measurement dataset (no registered workflow)? If you meant a different result for one of the inputs, say which.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-P08-1": {
+    "item": "P08",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {
+      "named_method": "SAMBAR",
+      "named_method_quote": "SAMBAR",
+      "settings": [
+        {
+          "name": "SAMBAR.cluster",
+          "quote": "cluster=false.",
+          "value_quote": "false"
+        }
+      ],
+      "sample_count": null,
+      "sample_count_quote": "",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "Can SAMBAR return pathway mutation scores without assigning tumor clusters?",
+        "available",
+        []
+      ]
+    ],
+    "gold": [
+      {
+        "words": "pathway mutation scores without assigning tumor clusters",
+        "expect": "supported",
+        "rows": [
+          [
+            "Can SAMBAR return pathway mutation scores without assigning tumor clusters?",
+            "available"
+          ]
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (2.43s)\n● Matching registered workflows…\n✓ Workflow — SAMBAR\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"Can SAMBAR return pathway mutation scores without assigning tumor clusters?\" -- available from SAMBAR.\n\nSelected path: **SAMBAR**.\n\nYour question asks for a cohort-level pathway mutation matrix. **SAMBAR** fits that result and scale.\n\nWhy this recommendation:\n\nPathway aggregation turns gene mutation scores into pathway-by-sample scores; sample distances are then calculated from those profiles, and clustering assigns sample labels. These are separate artifacts, not patient-specific mutation networks.\n\nWhat you asked about:\n\n- \"Can SAMBAR return pathway mutation scores without assigning tumor clusters?\" — Subtype labels can be compared with clinical variables -- survival between subtypes, for example; that needs a clinical table keyed by the same sample IDs. The pathway mutation scores show which pathways separate the subtypes.\n\n**SAMBAR** — Subtype somatic-mutation samples through pathway mutation scores with SAMBAR. SAMBAR reduces sparse mutation data to pathway-level scores with gene-length and, when configured, patient mutation-burden normalization. Patient distances and subtype labels depend on the downstream clustering settings; they are distinct from gene communities in a regulatory network. This is pathway aggregation followed by distance-based clustering, not non-negative matrix factorization; a mutation score does not establish permanent functional loss or equivalence of every mutation in a pathway.\n\nRequired workflow inputs:\n\n- `mutation_file`: somatic mutation matrix\n- `exon_size_file`: gene/exon-size CSV\n- `cancer_gene_file`: cancer-gene list\n- `pathway_file`: GMT pathway file\n\nOutputs:\n\n- `gene_mutation_scores`: Sample-by-gene mutation scores, not pathway scores.\n- `pathway_mutation_matrix`: Pathway-by-sample mutation scores, not cluster labels.\n- `sample_cluster_assignment`: Sample-to-cluster labels, separate from score and distance matrices.\n- `sample_distance_matrix`: Pairwise sample distances, not cluster labels.\n\nAsk for the workflow's controls and defaults if you want to set them.\n\nInput compatibility has not been assessed: your data was not checked against the workflow's required inputs; name your input files to have them checked. This is workflow guidance only; no execution was authorized. No files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-P13-1": {
+    "item": "P13",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": "unread",
+    "full_gap": false,
+    "unchecked": [
+      "Select sample IDs H2 and H5"
+    ],
+    "request_reading": {
+      "named_method": "BONOBO",
+      "named_method_quote": "BONOBO",
+      "settings": [
+        {
+          "name": "BONOBO.sample_names",
+          "quote": "Select sample IDs H2 and H5",
+          "value_quote": "H2 and H5"
+        },
+        {
+          "name": "BONOBO.bonobo_output_format",
+          "quote": "save CSV networks",
+          "value_quote": "CSV"
+        },
+        {
+          "name": "BONOBO.sparsify",
+          "quote": "leave sparsify=false",
+          "value_quote": "false"
+        }
+      ],
+      "sample_count": 7,
+      "sample_count_quote": "seven samples",
+      "feature_counts": []
+    },
+    "rows": [
+      [
+        "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples.",
+        "available",
+        []
+      ]
+    ],
+    "gold": [
+      {
+        "words": "Select sample IDs H2 and H5, save CSV networks",
+        "expect": "supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (3.28s)\n● Matching registered workflows…\n✓ Workflow — BONOBO\n✓ Guidance prepared\nWhat I understood you are asking for:\n1. \"Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples.\" -- available from BONOBO.\nNot checked against the registered workflows: \"Select sample IDs H2 and H5\"\n\nYou asked me to run BONOBO, but part of your request was not checked against what BONOBO gives (above). I have not planned the run.\n\nTell me to run BONOBO anyway, and I will then find your input files and show a preview; nothing runs until you approve it.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-P24-1": {
+    "item": "P24",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": "unconfirmed",
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {},
+    "rows": [],
+    "gold": [
+      {
+        "words": "fixed lambda1=0.25, lambda2=0.3",
+        "expect": "supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (3.75s)\n● Matching registered workflows…\n✓ Workflow — DRAGON\n✓ Guidance prepared\nYou asked me to run DRAGON, but the capability check could not confirm this turn that DRAGON gives what you asked for. I have not planned the run.\n\nTell me to run DRAGON anyway, and I will then find your input files and show a preview; nothing runs until you approve it.\n\nNo files were inspected and no analysis ran.\n"
+  },
+  "ve-m3f-live-P25-1": {
+    "item": "P25",
+    "codes": [
+      0
+    ],
+    "action": "no_tool",
+    "run_verdict": null,
+    "full_gap": false,
+    "unchecked": [],
+    "request_reading": {},
+    "rows": [],
+    "gold": [
+      {
+        "words": "2 through 5 clusters using Euclidean distance and average linkage",
+        "expect": "supported",
+        "rows": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "reply": "● Classifying requested outcome…\n✓ Interpreted requested outcome (3.41s)\n● Matching registered workflows…\n✓ Workflow — SAMBAR\n✓ Guidance prepared\nThis turn could not be checked against what the registered workflows produce, so the methods below have not been confirmed to give what you asked for.\n\nRouting matched these registered workflows to your words, but the capability check did not confirm that any of them gives what you asked for:\n- **SAMBAR** — produces: Patient subtypes from somatic mutations -- gene mutation scores summarized into pathway mutation scores, then hierarchical clustering of the patients on them -- with the scores, the cluster labels and the sample distance matrix.\n\nCompare what each produces with what you asked for. Ask again to re-run the check, or say which result you want and from which workflow.\n\nNo files were inspected and no analysis ran.\n"
+  }
+}

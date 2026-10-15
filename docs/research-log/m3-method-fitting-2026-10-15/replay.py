@@ -54,7 +54,7 @@ def _recordings_root(given: str | None) -> Path:
     if given:
         return Path(given)
     for root in (REPO, REPO.parents[2]):  # this checkout, or the main checkout of a .claude/worktrees/<name> one
-        if any((root / LIVE).glob("ve-m3-live-*/t1/session.json")):
+        if any((root / LIVE).glob("ve-*-live-*/t1/session.json")):
             return root / LIVE
     raise SystemExit("no raw m3 traces found; pass --recordings")
 
@@ -213,7 +213,7 @@ def main():
     root = _recordings_root(args.recordings)
     inject = json.loads(Path(args.inject).read_text()) if args.inject else {}
     rows = {}
-    for turn in sorted(root.glob("ve-m3-live-*/t*")):
+    for turn in sorted(root.glob("ve-*-live-*/t*")):
         if not (turn / "events.jsonl").exists():
             continue
         session = json.loads((turn / "session.json").read_text())

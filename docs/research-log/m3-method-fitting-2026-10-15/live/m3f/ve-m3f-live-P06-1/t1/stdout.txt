@@ -1,0 +1,26 @@
+● Classifying requested outcome…
+✓ Interpreted requested outcome (1.25s)
+● Matching registered workflows…
+✓ Workflow — COBRA
+✓ Guidance prepared
+What I understood you are asking for:
+1. "Can COBRA produce the adjusted gene-by-gene co-expression artifact?" -- available from COBRA.
+
+No single registered workflow produces this result from all the stated inputs together. Each stated input is listed on its own, with the registered workflows that fit it, their algorithmic premises and inputs:
+
+Result: co-expression networks (aggregate), from expression matrix and measurement dataset.
+Each stated input on its own:
+- From the expression matrix:
+  - **Gene co-expression network — LIONESS-COEXPRESSION**
+    - Registered purpose: Infer aggregate and sample-specific co-expression networks with LIONESS.
+    - Method premise: derive each sample network from all-sample and leave-one-out networks
+    - Mathematical interpretation: LIONESS represents the cohort network through sample contributions: W_q = N*W_all - (N-1)*W_without_q, where N is the cohort size and the same base estimator is fitted with and without sample q. The leave-one-out network alone is not the patient's network. This borrows cohort information; it does not estimate a correlation from one isolated observation or prove causality. With PANDA, edge weights are inferred regulatory support, not measured binding strength. Cross-sectional networks do not establish temporal rewiring.
+    - Required inputs: all of: expression matrix.
+    - Declared output: co-expression networks (cohort-level aggregate; sample-specific, one network per sample).
+- From the measurement dataset:
+  No registered workflow produces this result from this input.
+  Registered workflows that accept it, and what they produce instead: **DRAGON** (multi omic network); **LIONESS-DRAGON** (multi omic network).
+
+Which should we start with: the expression matrix (LIONESS-COEXPRESSION), the measurement dataset (no registered workflow)? If you meant a different result for one of the inputs, say which.
+
+No files were inspected and no analysis ran.

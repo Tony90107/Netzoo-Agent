@@ -7,6 +7,7 @@ check, its second opinion and its redirect all hold a result to the same verdict
 
 from __future__ import annotations
 
+import itertools
 import re
 
 from ..capability_sheet import entry, sheet_entries
@@ -210,12 +211,16 @@ def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
     "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about the methods only, so
     the run was approved with nothing asked. The named workflow's own results are held to the stated settings, the
     rules they must meet together and the data size the request states (round m3: "Can LIONESS-PANDA run for exactly
-    two expression samples ...?" got the workflow's card); an unregistered method gives none. Nothing is added when
-    the request names no method or the method can run as asked.
+    two expression samples ...?" got the workflow's card); an unregistered method gives none. With no method named,
+    the one workflow the registered settings name stands for it (round m3f K05: "keep save_pvals=true but set
+    sparsify=false" typed BONOBO.save_pvals and BONOBO.sparsify, the method "none"). Nothing is added when no
+    workflow is named, or the method can run as asked.
     """
     named = whole.get("named")
     if not named:
-        return None
+        named = _setting_workflow(whole)
+        if named is None:
+            return None
     # No result says which scale, so the named workflow itself -- not its LIONESS version -- is what is asked to run.
     workflows = {named} if named in registered_workflows() else named_workflows(named)
     keys = [key for key, found in sheet_entries().items()
@@ -229,22 +234,57 @@ def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
         defaults = [key for key in defaults if key not in ruled]
     if not limits or kept:
         return None
+    first = whole.get("settings", [{}])[0].get("quote", "") if whole.get("settings") else ""
     quote = (said if ruled and said else whole["named_quote"] if named == UNREGISTERED
-             else _limit_words(task, whole, workflows) or whole["named_quote"])
+             else _limit_words(task, whole, workflows) or whole.get("named_quote") or first)
     return CheckedRequirement(quote=quote, kind="result", status="not_available", method=whole, limits=limits,
                               instead=instead, defaults=defaults)
 
 
+def _setting_workflow(whole: dict) -> str | None:
+    """The one workflow the request's registered settings name (WORKFLOW.setting), or None."""
+    named = {item["name"].split(".", 1)[0] for item in whole.get("settings", []) if item["name"] != UNREGISTERED}
+    return next(iter(named)) if len(named) == 1 else None
+
+
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)|\n")
+
+
+def _setting_places(task: str, setting: dict) -> list[tuple[int, int]]:
+    """Each place a setting's words are stated with its value -- the value within them, or after them in the same
+    sentence ("learning rate of 0.009"); every place of the words when none is. `verified_method` keeps the first
+    place of each, which in a follow-up can be the previous goal's (round m3f K05: "sparsify" and "save_pvals" first
+    stand in "Set BONOBO sparsify=true and save_pvals=true", superseded by "keep save_pvals=true but set
+    sparsify=false")."""
+    quote, value = (setting.get("quote") or "").strip(), (setting.get("value") or "").strip()
+    folded = task.casefold()
+    starts = [match.start() for match in re.finditer(re.escape(quote.casefold()), folded)] if quote else []
+    if not starts:
+        start, end = setting.get("span") or (setting.get("at", 0), setting.get("at", 0))
+        return [(start, end)]
+    found = []
+    for start in starts:
+        end = start + len(quote)
+        if not value or value.casefold() in quote.casefold():
+            found.append((start, end))
+        elif (at := folded.find(value.casefold(), end)) >= 0 and not _SENTENCE_END.search(task[end:at]):
+            found.append((start, at + len(value)))
+    return found or [(start, start + len(quote)) for start in starts]
+
+
 def _setting_words(task: str, setting: dict) -> tuple[int, int]:
-    """Where a verified setting's words are, with its value when the value is within them or follows them in the
-    same sentence ("learning rate of 0.009"). `verified_method` keeps the value's first place in the request, which
-    can be another turn's (round m3 K05: "true" of the previous goal's "sparsify=true")."""
-    start, end = setting.get("span") or (setting.get("at", 0), setting.get("at", 0))
-    value = setting.get("value", "")
-    at = task.find(value, start) if value else -1
-    if at < 0 or (at >= end and re.search(r"[.!?\n]", task[end:at])):
-        return start, end
-    return start, max(end, at + len(value))
+    """Where a verified setting's words are, with its value: its first place stated with that value."""
+    return _setting_places(task, setting)[0]
+
+
+def _closest(places: list[list[tuple[int, int]]]) -> tuple[int, int]:
+    """One place for each fact, chosen so that together they take the fewest characters."""
+    best = None
+    for chosen in itertools.islice(itertools.product(*places), 4096):
+        span = (min(a for a, _ in chosen), max(b for _, b in chosen))
+        if best is None or span[1] - span[0] < best[1] - best[0]:
+            best = span
+    return best
 
 
 def _limit_words(task: str, whole: dict, workflows: set[str]) -> str:
@@ -259,11 +299,12 @@ def _limit_words(task: str, whole: dict, workflows: set[str]) -> str:
             return item["quote"]
     samples, features = whole.get("samples"), whole.get("features")
     if any(combination_issues(conditions, stated, samples) for conditions in found):
-        spans = [_setting_words(task, item) for item in settings if item.get("span")]
+        places = [_setting_places(task, item) for item in settings if item.get("span")]
         if samples is not None and (counted := _span(task, whole.get("samples_quote", ""))) is not None:
-            spans.append(counted)
-        if task and spans:
-            return task[min(a for a, _ in spans):max(b for _, b in spans)]
+            places.append([counted])
+        if task and places:
+            start, end = _closest(places)
+            return task[start:end]
     if any(data_issue(conditions, samples, features) for conditions in found):
         return whole.get("samples_quote", "")
     return ""

@@ -1,6 +1,10 @@
 # M3 修正：方法提問走 method_fitting、已驗證設定不再送文字條件檢查（2026-10-15，離線）
 
-基底 63e98bf（round m3 的候選版本，未通過驗收）。round m3 的題組已經看過，這裡當開發集使用。**只做離線驗證，沒有呼叫任何模型，也沒有跑 live。**
+基底 63e98bf（round m3 的候選版本，未通過驗收）。round m3 的題組已經看過，這裡當開發集使用。
+
+- 修正 919817c 先做離線驗證（下面「結論」到「重現方式」）。
+- 經使用者同意後，跑了 14 個 session 的精簡 live（round m3f，見「live m3f」）。
+- live 的 K05 又找到一個缺口，已離線修正，但**尚未重跑 live**。
 
 ## 結論
 
@@ -93,20 +97,67 @@
 
 m1b F6 沒有改變（仍判不可做），這是加上子句邊界條件的原因。
 
-## live 的建議（尚未執行，需使用者同意）
+## live m3f（2026-10-15，經使用者同意，候選版本 919817c）
 
-1. **受影響的 8 題**：K05、N03、N15、N17、N26、N28、MX12、P08。
-2. **K02**：看模型是否會把 GPU 讀成請求層級的設定。
-3. **5 題守門**：K10、P06、P13、P24、P25。這些是陳述數量與設定的「可做」題，用來確認新欄位不會被模型填錯而造成拒絕。
+設定：
+- 用 round m3 自己的 harness（`run_live_m3f.py` 只把輸出改到這個資料夾）。
+- 候選版本是 919817c 的乾淨 clone，`freeze-code.json` 的白名單為空；每個 job 前後都核對 HEAD。
+- 模型與 m3 相同：路由用 gpt-4o-mini，能力檢查用 nemotron。每題跑 1 次。
+- `collect_m3f.py` 用 m3 的 `collect_session` 驗證擷取：14/14 通過。K10 第 2 回合停在輸入精靈，退出碼 2，m3 的規則接受。
 
-共 14 個 session，每題 1 次。需要 live 才知道的事：
+| 題目 | 預期 | m3 | m3f | 模型讀到的請求層級欄位 |
+|---|---|---|---|---|
+| N03 | 不可做 | GIVEN_IF_INPUT | **不可做**：LIONESS-PANDA needs at least 3 samples; the request has 2（full gap） | samples 2 |
+| N15 | 不可做 | GIVEN | **不可做**：BONOBO needs at least 3 samples（full gap） | samples 2 |
+| N26 | 不可做 | GIVEN_IF_INPUT | **不可做**：49,950,000 values 超過 20,000,000（full gap，沒有規劃 run） | samples 100、features 1000 |
+| N28 | 不可做 | GIVEN | **不可做**：「kmin=2 and kmax=9 on exactly six mutation samples」，kmax 超過樣本數 | kmin、kmax、samples 6 |
+| N17 | 不可做 | ASKED | **不可做**：save_pvals requires sparsify | sparsify、save_pvals |
+| K05 | 不可做 | GIVEN_IF_INPUT | **沒有改變**（見下方後續修正） | 方法 none；sparsify、save_pvals |
+| P08 | 可做 | NOT_GIVEN | **可做**：available from SAMBAR，沒有呼叫條件檢查 | cluster=false |
+| MX12 | 可做＋不可做 | NOT_GIVEN×2 | **signed R、TFA 可做；learning rate 不可做**；run 暫停，並說明 GIRAFFE 只涵蓋前兩項 | 未註冊的 learning rate |
+| K02 | 不可做 | GIVEN_IF_INPUT | **無法判斷**：能力檢查兩個模型都失敗（見下方） | — |
+| K10（守門） | 可做 | — | 可做，run 核准（agrees），停在輸入精靈 | kmin、kmax、samples 6 |
+| P06（守門） | 可做 | — | 可做（available from COBRA）；「沒有單一 workflow」的呈現問題仍在，與這次無關 | samples 24、features 600 |
+| P13（守門） | 可做 | UNCONFIRMED | 與 m3 相同：可做，但 run 因「H2 and H5」無法帶入而暫停 | samples 7 |
+| P24、P25（守門） | 可做 | — | **無法判斷**：能力檢查兩個模型都失敗 | — |
 
-- 模型是否填入新欄位（N03、N15、N26、N28）。
-- MX12 拆出結果後，同句的「all validated priors」第一次會送給條件檢查。錄音裡沒有這個答案，重播時當成未檢查；若模型回答 violates，會多一列不可做，但不會移除 GIRAFFE。
+- 能力檢查成功、而且請求陳述數量的 7 個 session，模型都填了新欄位，數字與引文都正確（N03、N15、N26、N28、K10、P06、P13）。守門題沒有因為新欄位被拒。
+- 可以判斷的 11 題中，**10 題與重播預測一致**：
+  - 7 題照預期改變：N03、N15、N17、N26、N28、P08、MX12；
+  - 守門題 K10、P06、P13 維持原判。
+
+  不一致的是 K05：沒有改變。
+- **服務錯誤 3/14（K02、P24、P25）**：
+  - nemotron 先逾時（72–118 秒），備援 gpt-4o-mini 在 36–51 毫秒內回傳 `OpenAIConnectionError`。
+  - 這是網路中斷，不是 schema 問題：同一批其他 11 個 session 的檢查都成功。
+  - harness 規定不覆寫既有 job，重跑要用新的 tag。
+- 用 919817c 的程式碼離線重播 m3f 的錄音：有檢查的 13 個回合全部重現。
+
+### live 之後的修正（離線驗證，尚未重跑 live）
+
+K05 第 2 回合，模型這次把方法讀成 `none`：BONOBO 只出現在前一個目標裡。兩個設定讀成 `BONOBO.sparsify`／`BONOBO.save_pvals`，引文只有「sparsify」「save_pvals」。這暴露兩個缺口：
+
+1. `request_method_limit` 只在有指定方法時執行。改為沒有指定方法時，由已註冊設定所指的**唯一** workflow 代替；設定指向兩個 workflow 時不判斷。
+2. 只有設定名稱的引文，第一次出現在前一個目標的「sparsify=true and save_pvals=true」（這是合法組合）。`verified_method` 取的是第一次出現的位置。改為：
+   - 在設定的字後面、同一句內找它陳述的值；
+   - 組合不成立時，選出所有事實合起來最短的位置。
+
+驗證：
+- m3f 的 K05 重播後是 `"save_pvals=true but set sparsify=false" -- not available here as asked. BONOBO: save_pvals requires sparsify`。
+- round m3 的 162 個回合、較舊的 1,729 個檢查、以及 m3f 的其他 13 個檢查都沒有改變。
+- 新增測試 `test_m3f_k05_no_method_named_the_settings_name_the_workflow`。
+
+### 若要再跑 live
+
+4 個 session，都用新的 commit：
+- K05：驗證後續修正；
+- K02、P24、P25：補上這次因網路錯誤無法判斷的部分。
+
+標記建議用 `m3f2`。
 
 ## 測試
 
-- 新增 `tests/test_m3_method_fitting.py`（12 個測試）。每題都用 round m3 錄下的讀法，以及修正所需的新欄位：
+- 新增 `tests/test_m3_method_fitting.py`（13 個測試，含 live 之後的 K05）。每題都用 round m3 錄下的讀法，以及修正所需的新欄位：
   - N03、N15、N28、K05、N26 的不可做；
   - registry 規則改變時檢查跟著變；
   - 兩個結果時不補數量，數量未知時也不補；
@@ -115,11 +166,13 @@ m1b F6 沒有改變（仍判不可做），這是加上子句邊界條件的原�
   - MX12 的拆分；
   - F6 不拆。
 - 更新 `tests/test_method_conditions.py` 的兩個 M1 測試，分別覆蓋「與 ask 相連」和「獨立子句」兩種情況（m1a MX04 與 request-method 的測試）。
-- 全部測試：`/opt/anaconda3/bin/python -m pytest tests -q` 結果為 3777 passed、51 skipped（基底是 3765 passed，加上 12 個新測試）。
+- 全部測試：`/opt/anaconda3/bin/python -m pytest tests -q` 結果為 3778 passed、51 skipped（基底是 3765 passed，加上 13 個新測試）。
 
 ## 重現方式
 
-在 repo 根目錄執行。原始 trace 只在主 checkout，不在 git 裡；腳本會自動找到它們。
+在 repo 根目錄執行。原始 trace（`session.json`、`events.jsonl`）不在 git 裡，與 round m3 的慣例相同：
+- m3 的放在主 checkout 的 `m3-clarification-2026-10-15/live/m3/`，腳本會自動找到；
+- m3f 的放在主 checkout 的 `m3-method-fitting-2026-10-15/live/m3f/`，用 `--recordings` 指定。
 
 ```sh
 git archive 63e98bf scripts workflows AGENTS.md | tar -x -C /tmp/base
@@ -127,6 +180,8 @@ REPLAY_CODE_ROOT=/tmp/base python docs/research-log/m3-method-fitting-2026-10-15
 python docs/research-log/m3-method-fitting-2026-10-15/replay.py new.json
 python docs/research-log/m3-method-fitting-2026-10-15/replay.py inject.json --inject docs/research-log/m3-method-fitting-2026-10-15/request-counts.json
 python docs/research-log/m3-method-fitting-2026-10-15/compare.py base.json new.json inject.json --out changes.json
+python docs/research-log/m3-method-fitting-2026-10-15/collect_m3f.py m3f --dotenv <main checkout>/.env
+python docs/research-log/m3-method-fitting-2026-10-15/replay.py m3f.json --recordings docs/research-log/m3-method-fitting-2026-10-15/live/m3f
 REPLAY_CODE_ROOT=/tmp/base python docs/research-log/m3-method-fitting-2026-10-15/replay_all.py all-base.json
 python docs/research-log/m3-method-fitting-2026-10-15/replay_all.py all-new.json
 ```

@@ -130,6 +130,19 @@ def test_k05_a_combination_the_registry_marks_invalid_is_not_available():
                                                                "true"))}).results()
 
 
+def test_m3f_k05_no_method_named_the_settings_name_the_workflow():
+    # Live m3f K05: the method typed "none" and each setting quoted by its name alone, which first stands in the
+    # previous goal ("sparsify=true and save_pvals=true", a valid combination the row must not quote).
+    check = _check(K05, settings=_settings(("BONOBO.sparsify", "sparsify", "false"),
+                                           ("BONOBO.save_pvals", "save_pvals", "true")))
+    [result] = check.results()
+    assert (result.quote, result.status) == ("save_pvals=true but set sparsify=false", "not_available")
+    assert result.limits == ["BONOBO: save_pvals requires sparsify"]
+    # Settings naming two workflows name no one method: nothing is judged.
+    assert not _check(K05, settings=_settings(("BONOBO.sparsify", "sparsify", "false"),
+                                              ("SAMBAR.cluster", "save_pvals", "true"))).results()
+
+
 def test_the_invalid_combination_rule_is_the_registrys(monkeypatch):
     conditions = conditions_for("BONOBO")
     stated = [StatedSetting("BONOBO.save_pvals", "save_pvals=true", "true")]  # sparsify keeps its default, false

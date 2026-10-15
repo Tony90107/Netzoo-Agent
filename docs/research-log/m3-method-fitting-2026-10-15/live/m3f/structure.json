@@ -1,0 +1,1086 @@
+{
+  "ve-m3f-live-K02-1": {
+    "item": "K02",
+    "rep": 1,
+    "family": "K",
+    "form": "request",
+    "capture_verified": true,
+    "capture_turns": 2,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The user is requesting guidance on planning the aggregate OTTER using GPU, which falls under the category of answer requests rather than execution.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "GPU only for OTTER",
+        "expect": "not_supported",
+        "by": [
+          "OTTER"
+        ],
+        "note": "workflows/otter.yaml: Final hardware constraint unsupported by current runtime.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "cost_usd": 0.001598
+  },
+  "ve-m3f-live-K05-1": {
+    "item": "K05",
+    "rep": 1,
+    "family": "K",
+    "form": "request",
+    "capture_verified": true,
+    "capture_turns": 2,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "keep save_pvals=true but set sparsify=false",
+        "expect": "not_supported",
+        "by": [
+          "BONOBO"
+        ],
+        "note": "workflows/bonobo.yaml: Final flags are invalid.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001788
+  },
+  "ve-m3f-live-K10-1": {
+    "item": "K10",
+    "rep": 1,
+    "family": "K",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 2,
+    "replayed": false,
+    "action": "run_sambar",
+    "workflow": "SAMBAR",
+    "plan_status": "needs_input",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "mutation_file",
+            "reason": "No single complete validated dataset bundle contains every remaining required input.",
+            "status": "missing",
+            "value": null
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "exon_size_file",
+            "reason": "No single complete validated dataset bundle contains every remaining required input.",
+            "status": "missing",
+            "value": null
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "cancer_gene_file",
+            "reason": "No single complete validated dataset bundle contains every remaining required input.",
+            "status": "missing",
+            "value": null
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "pathway_file",
+            "reason": "No single complete validated dataset bundle contains every remaining required input.",
+            "status": "missing",
+            "value": null
+          },
+          {
+            "bundle_id": null,
+            "candidate_bundle_ids": [],
+            "candidates": [],
+            "field": "output_dir",
+            "reason": "The Planner used the default SAMBAR output directory.",
+            "status": "defaulted",
+            "value": "outputs/sessions/ve-m3f-live-K10-1"
+          }
+        ],
+        "missing_inputs": [
+          "mutation_file",
+          "exon_size_file",
+          "cancer_gene_file",
+          "pathway_file"
+        ],
+        "objective": "The user has explicitly requested to run SAMBAR clustering with the specified parameters on the available samples.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "needs_input",
+        "steps": [],
+        "workflow": "SAMBAR"
+      }
+    ],
+    "gate_events": [
+      {
+        "event_hash": "f52fa83c28030897ec7b6fb0a801105271f885d09ecbc95a2d59d61488b8b867",
+        "event_id": "c6f6abf8-d28f-43e2-af04-c4c249aef0eb",
+        "event_type": "routing.run_check_shadow",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:06:12.130616Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_sambar",
+          "check_status": "ok",
+          "match_basis": "semantic",
+          "match_status": "exact",
+          "results": [
+            {
+              "credited": [
+                "run_sambar"
+              ],
+              "quote": "Please run SAMBAR clustering on the six samples with the four already validated input files.",
+              "status": "available"
+            }
+          ],
+          "unchecked": [],
+          "verdict": "agrees"
+        },
+        "previous_hash": "90f5e5997721819f3ab2a115f680d74bb51088a353b4c40e4579152cb19895b4",
+        "recorded_at": "2026-10-15T05:06:12.130616Z",
+        "run_id": "c26e522a-6ce1-4660-aab6-42a0ca611ca6",
+        "schema_version": 1,
+        "sequence": 17,
+        "visibility": "shareable"
+      }
+    ],
+    "run_verdict": {
+      "action": "run_sambar",
+      "verdict": "agrees",
+      "request_sha256": "4a0a9d550213867aa9f4034c271e4f1eb54bdff085a252d93e00758ca2a888b5",
+      "held": false,
+      "named": true,
+      "credited": [
+        "run_sambar"
+      ],
+      "results": [
+        {
+          "quote": "Please run SAMBAR clustering on the six samples with the four already validated input files.",
+          "status": "available",
+          "credited": [
+            "run_sambar"
+          ]
+        }
+      ],
+      "unchecked": []
+    },
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "kmin=2 and kmax=4",
+        "expect": "supported",
+        "by": [
+          "SAMBAR"
+        ],
+        "note": "workflows/sambar.yaml: Final cluster range valid for six samples.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001349
+  },
+  "ve-m3f-live-MX12-1": {
+    "item": "MX12",
+    "rep": 1,
+    "family": "MX",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The run of GIRAFFE was not planned: the capability check did not approve it (partial_gap).",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [
+      {
+        "event_hash": "39342abdeb5acbfe371d6bda1164ed8a84d7b05380d09dba3b9f5fad872fd887",
+        "event_id": "74ad08bf-7e5e-4f06-b159-5830c983fda0",
+        "event_type": "routing.run_check_shadow",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:04:46.051209Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_giraffe",
+          "check_status": "ok",
+          "match_basis": "semantic",
+          "match_status": "exact",
+          "results": [
+            {
+              "credited": [
+                "run_giraffe"
+              ],
+              "quote": "signed R",
+              "status": "available"
+            },
+            {
+              "credited": [
+                "run_giraffe"
+              ],
+              "quote": "sample-varying TFA",
+              "status": "available"
+            },
+            {
+              "credited": [],
+              "limited": true,
+              "quote": "exposed custom optimizer learning rate of 0.009",
+              "status": "not_available"
+            }
+          ],
+          "unchecked": [],
+          "verdict": "partial_gap"
+        },
+        "previous_hash": "c1eddf8555f1e15463db443de0e8bd66a0fb905989c902d47157ccaeecc4a59c",
+        "recorded_at": "2026-10-15T05:04:46.051209Z",
+        "run_id": "fcbb8d75-8d31-4153-9086-5be641f42c38",
+        "schema_version": 1,
+        "sequence": 19,
+        "visibility": "shareable"
+      },
+      {
+        "event_hash": "7dd479bb0d1f923026f058a350e687378fddaa224815c1bf515b77ce2978aa68",
+        "event_id": "c5422a5b-a01a-4ddd-85bd-bd2f63a2f2e9",
+        "event_type": "routing.run_held",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:04:46.056514Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_giraffe",
+          "check_status": "ok",
+          "named": true,
+          "offered": [
+            "run_giraffe"
+          ],
+          "verdict": "partial_gap"
+        },
+        "previous_hash": "39342abdeb5acbfe371d6bda1164ed8a84d7b05380d09dba3b9f5fad872fd887",
+        "recorded_at": "2026-10-15T05:04:46.056514Z",
+        "run_id": "fcbb8d75-8d31-4153-9086-5be641f42c38",
+        "schema_version": 1,
+        "sequence": 20,
+        "visibility": "shareable"
+      }
+    ],
+    "run_verdict": {
+      "action": "run_giraffe",
+      "verdict": "partial_gap",
+      "request_sha256": "4ba6aabf4f45942d84fe2e669e8ec96ee8da77ddd6ceadbbcfe13737ccbb0fa9",
+      "held": true,
+      "named": true,
+      "credited": [
+        "run_giraffe"
+      ],
+      "results": [
+        {
+          "quote": "signed R",
+          "status": "available",
+          "credited": [
+            "run_giraffe"
+          ]
+        },
+        {
+          "quote": "sample-varying TFA",
+          "status": "available",
+          "credited": [
+            "run_giraffe"
+          ]
+        },
+        {
+          "quote": "exposed custom optimizer learning rate of 0.009",
+          "status": "not_available",
+          "credited": [],
+          "limited": true
+        }
+      ],
+      "unchecked": []
+    },
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "signed R and sample-varying TFA",
+        "expect": "supported",
+        "by": [
+          "GIRAFFE"
+        ],
+        "note": "workflows/giraffe.yaml: Joint artifacts supported.",
+        "understood": true,
+        "matched_quotes": [
+          "sample-varying TFA"
+        ],
+        "checked": [
+          "available"
+        ]
+      },
+      {
+        "words": "exposed custom optimizer learning rate of 0.009",
+        "expect": "not_supported",
+        "by": [
+          "GIRAFFE"
+        ],
+        "note": "workflows/giraffe.yaml: Only required array arguments exposed.",
+        "understood": true,
+        "matched_quotes": [
+          "exposed custom optimizer learning rate of 0.009"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.001405
+  },
+  "ve-m3f-live-N03-1": {
+    "item": "N03",
+    "rep": 1,
+    "family": "N",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The request is seeking guidance on the execution capability of LIONESS-PANDA with specific sample constraints, which qualifies as an answer request.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "exactly two expression samples",
+        "expect": "not_supported",
+        "by": [
+          "LIONESS-PANDA"
+        ],
+        "note": "workflows/lioness-panda.yaml: At least three expression samples required.",
+        "understood": true,
+        "matched_quotes": [
+          "exactly two expression samples"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001164
+  },
+  "ve-m3f-live-N15-1": {
+    "item": "N15",
+    "rep": 1,
+    "family": "N",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The request is seeking guidance on whether BONOBO can operate with only two samples without background samples, which qualifies as an answer request.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "exactly two total samples",
+        "expect": "not_supported",
+        "by": [
+          "BONOBO"
+        ],
+        "note": "workflows/bonobo.yaml: Requires at least three total samples.",
+        "understood": true,
+        "matched_quotes": [
+          "exactly two total samples"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001236
+  },
+  "ve-m3f-live-N17-1": {
+    "item": "N17",
+    "rep": 1,
+    "family": "N",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The request is seeking guidance on whether BONOBO can run with specific flags, which falls under the category of an answer request.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "sparsify=false and save_pvals=true",
+        "expect": "not_supported",
+        "by": [
+          "BONOBO"
+        ],
+        "note": "workflows/bonobo.yaml: Invalid flag combination; save_pvals requires sparsify.",
+        "understood": true,
+        "matched_quotes": [
+          "sparsify=false and save_pvals=true"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001458
+  },
+  "ve-m3f-live-N26-1": {
+    "item": "N26",
+    "rep": 1,
+    "family": "N",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The user has explicitly requested to run LIONESS-DRAGON with specified parameters, and the capability match indicates that this execution is possible.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "100 samples and 1000 total features",
+        "expect": "not_supported",
+        "by": [
+          "LIONESS-DRAGON"
+        ],
+        "note": "workflows/lioness-dragon.yaml: 49,950,000 edge-by-sample values exceed 20,000,000 cap.",
+        "understood": true,
+        "matched_quotes": [
+          "Run LIONESS-DRAGON with 100 samples and 1000 total features, keeping every pair for every sample in one run."
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.002127
+  },
+  "ve-m3f-live-N28-1": {
+    "item": "N28",
+    "rep": 1,
+    "family": "N",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The request is seeking guidance on whether SAMBAR can be configured with specific parameters, which falls under the category of an answer request.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "kmax=9 on exactly six mutation samples",
+        "expect": "not_supported",
+        "by": [
+          "SAMBAR"
+        ],
+        "note": "workflows/sambar.yaml: kmax cannot exceed number of samples.",
+        "understood": true,
+        "matched_quotes": [
+          "kmin=2 and kmax=9 on exactly six mutation samples"
+        ],
+        "checked": [
+          "not_available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.001083
+  },
+  "ve-m3f-live-P06-1": {
+    "item": "P06",
+    "rep": 1,
+    "family": "P",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The capability check credited COBRA for every result the request asks for that a registered workflow gives.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "adjusted gene-by-gene co-expression artifact",
+        "expect": "supported",
+        "by": [
+          "COBRA"
+        ],
+        "note": "workflows/cobra.yaml: More genes than samples and matched numeric design; adjusted coexpression output.",
+        "understood": true,
+        "matched_quotes": [
+          "Can COBRA produce the adjusted gene-by-gene co-expression artifact?"
+        ],
+        "checked": [
+          "available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [
+      "failed"
+    ],
+    "cost_usd": 0.001124
+  },
+  "ve-m3f-live-P08-1": {
+    "item": "P08",
+    "rep": 1,
+    "family": "P",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The request is for guidance on whether SAMBAR can return pathway mutation scores without assigning tumor clusters, which falls under the category of an answer request.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "pathway mutation scores without assigning tumor clusters",
+        "expect": "supported",
+        "by": [
+          "SAMBAR"
+        ],
+        "note": "workflows/sambar.yaml: cluster=false returns mutation scores only.",
+        "understood": true,
+        "matched_quotes": [
+          "Can SAMBAR return pathway mutation scores without assigning tumor clusters?"
+        ],
+        "checked": [
+          "available"
+        ]
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.000699
+  },
+  "ve-m3f-live-P13-1": {
+    "item": "P13",
+    "rep": 1,
+    "family": "P",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The run of BONOBO was not planned: the capability check did not approve it (unread).",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [
+      {
+        "event_hash": "250b25ac6d64dbc949cc29e6bfd7c9d15087c83b2b4b3ace708e20928aa97586",
+        "event_id": "9ab07e22-fd25-4a64-a1d1-4e8b6e3571d9",
+        "event_type": "routing.run_check_shadow",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:06:04.740826Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_bonobo",
+          "check_status": "ok",
+          "match_basis": "workflow_name",
+          "match_status": "exact",
+          "results": [
+            {
+              "credited": [
+                "run_bonobo"
+              ],
+              "quote": "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples.",
+              "status": "available"
+            }
+          ],
+          "unchecked": [],
+          "verdict": "agrees"
+        },
+        "previous_hash": "cbd9ded55a08c98d798a14cbe6794a7903ed4c9746b05ef0c75a85538bff4422",
+        "recorded_at": "2026-10-15T05:06:04.740826Z",
+        "run_id": "666a953e-6952-49e2-994f-96fa72be821a",
+        "schema_version": 1,
+        "sequence": 12,
+        "visibility": "shareable"
+      },
+      {
+        "event_hash": "86f31665fd438c6ce95844b8365fac5fcb2019d0c92673a8450dc6a675bfc502",
+        "event_id": "88f6e1d8-46ab-447e-a60d-23b30bb64f41",
+        "event_type": "routing.run_held",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:06:04.743138Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_bonobo",
+          "check_status": "ok",
+          "named": true,
+          "offered": [
+            "run_bonobo"
+          ],
+          "verdict": "unread"
+        },
+        "previous_hash": "e3a70df766e9c58bfea2891e33c919318cfb6ff87163306c207ea5f7ecdd10d7",
+        "recorded_at": "2026-10-15T05:06:04.743138Z",
+        "run_id": "666a953e-6952-49e2-994f-96fa72be821a",
+        "schema_version": 1,
+        "sequence": 14,
+        "visibility": "shareable"
+      }
+    ],
+    "run_verdict": {
+      "action": "run_bonobo",
+      "verdict": "unread",
+      "request_sha256": "e12d9e1c2de6ba3ed9e094f6b3678b99588c59d43827ae9b22a6dd6baa2adfd7",
+      "held": true,
+      "named": true,
+      "credited": [
+        "run_bonobo"
+      ],
+      "results": [
+        {
+          "quote": "Run BONOBO on centered_log.tsv: a validated, labeled, log-transformed and centered gene-by-sample matrix with seven samples.",
+          "status": "available",
+          "credited": [
+            "run_bonobo"
+          ]
+        }
+      ],
+      "unchecked": [
+        "Select sample IDs H2 and H5"
+      ]
+    },
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "Select sample IDs H2 and H5, save CSV networks",
+        "expect": "supported",
+        "by": [
+          "BONOBO"
+        ],
+        "note": "workflows/bonobo.yaml: Explicit sample IDs and CSV supported for validated log-centered expression.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "success"
+      ]
+    ],
+    "errors": [],
+    "cost_usd": 0.000641
+  },
+  "ve-m3f-live-P24-1": {
+    "item": "P24",
+    "rep": 1,
+    "family": "P",
+    "form": "run",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "The run of DRAGON was not planned: the capability check did not approve it (unconfirmed).",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [
+      {
+        "event_hash": "86d831096dd2f89e7047b1ec893bd95181c84d8b7b4e917eaf5d9c8d8dbe3446",
+        "event_id": "6694e773-51b0-4ef9-8005-fd473088371a",
+        "event_type": "routing.run_check_shadow",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:38:13.384697Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_dragon",
+          "check_status": "failed",
+          "match_basis": "semantic",
+          "match_status": "exact",
+          "results": [],
+          "unchecked": [],
+          "verdict": "unconfirmed"
+        },
+        "previous_hash": "f27ddfaf226bbcaa80a8c220cf5140d415b5001814bf97963047c91ad9367b6a",
+        "recorded_at": "2026-10-15T05:38:13.384697Z",
+        "run_id": "014d8ae3-4fe1-4b74-abe4-78c94074cc91",
+        "schema_version": 1,
+        "sequence": 12,
+        "visibility": "shareable"
+      },
+      {
+        "event_hash": "a2d05cd3cec599453aa82e275792f56da8f30780f89a0a2927d35b00d6c79722",
+        "event_id": "55aa6f40-5600-42a8-9e0c-3e9b75e4eb13",
+        "event_type": "routing.run_held",
+        "node": "classify",
+        "occurred_at": "2026-10-15T05:38:13.386625Z",
+        "parent_event_id": null,
+        "payload": {
+          "action": "run_dragon",
+          "check_status": "failed",
+          "named": false,
+          "offered": [
+            "run_dragon"
+          ],
+          "verdict": "unconfirmed"
+        },
+        "previous_hash": "86d831096dd2f89e7047b1ec893bd95181c84d8b7b4e917eaf5d9c8d8dbe3446",
+        "recorded_at": "2026-10-15T05:38:13.386625Z",
+        "run_id": "014d8ae3-4fe1-4b74-abe4-78c94074cc91",
+        "schema_version": 1,
+        "sequence": 13,
+        "visibility": "shareable"
+      }
+    ],
+    "run_verdict": {
+      "action": "run_dragon",
+      "verdict": "unconfirmed",
+      "request_sha256": "5155b9fbc5ea5e2593f0b302f73a205e984b08bd3fe29ecf7b2474010b7a5d2c",
+      "held": true,
+      "named": false,
+      "credited": [],
+      "results": [],
+      "unchecked": []
+    },
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "fixed lambda1=0.25, lambda2=0.3",
+        "expect": "supported",
+        "by": [
+          "LIONESS-DRAGON"
+        ],
+        "note": "workflows/lioness-dragon.yaml: Paired manual shrinkage supported; tiny output under limit.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "cost_usd": 0.000567
+  },
+  "ve-m3f-live-P25-1": {
+    "item": "P25",
+    "rep": 1,
+    "family": "P",
+    "form": "question",
+    "capture_verified": true,
+    "capture_turns": 1,
+    "replayed": false,
+    "action": "no_tool",
+    "workflow": "NO-TOOL",
+    "plan_status": "respond_only",
+    "steps": [],
+    "trace_plans": [
+      {
+        "evidence": [],
+        "missing_inputs": [],
+        "objective": "Semantic interpretation did not classify this request as explicit execution; no analysis was authorized.",
+        "policy_hash": "d21a33277fd0bcde2debf85d06848702362ad2367716b89aa5b543db46957c34",
+        "status": "respond_only",
+        "steps": [],
+        "workflow": "NO-TOOL"
+      }
+    ],
+    "gate_events": [],
+    "run_verdict": {},
+    "bad_gate_candidate": false,
+    "layers": [
+      {
+        "words": "2 through 5 clusters using Euclidean distance and average linkage",
+        "expect": "supported",
+        "by": [
+          "SAMBAR"
+        ],
+        "note": "workflows/sambar.yaml: Declared k bounds, distance/linkage and norm_patient controls.",
+        "understood": false,
+        "matched_quotes": [],
+        "checked": []
+      }
+    ],
+    "check_calls": [
+      [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "failed"
+      ],
+      [
+        "openai/gpt-4o-mini",
+        "failed"
+      ]
+    ],
+    "errors": [
+      "failed",
+      "failed",
+      "failed"
+    ],
+    "cost_usd": 0.000613
+  }
+}
