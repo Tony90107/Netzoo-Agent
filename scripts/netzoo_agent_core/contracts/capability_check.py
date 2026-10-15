@@ -107,6 +107,12 @@ def _ask_model(compact: bool = False) -> type[BaseModel]:
     return create_model(
         "Ask",
         __config__=ConfigDict(extra="forbid"),
+        mutation_origin=(Literal["somatic", "germline", "not_stated"], Field(default="not_stated",
+            description="Origin of the mutation data for THIS result; somatic, germline, or not stated.")),
+        value_type=(Literal["continuous", "binary", "not_stated"], Field(default="not_stated",
+            description="Measurements for THIS result: continuous, binary, or not stated.")),
+        mirna_driver=(Literal["target_prior", "measured_expression", "not_stated"], Field(default="not_stated",
+            description="Required source driving miRNA links for THIS result; not merely data the user has.")),
         quote=(str, Field(description="Exact contiguous words from the sentence, copied without translation.")),
         delivered_by=(list[produces], Field(description=(
             "The PRODUCES entries whose result gives what the quote asks for, as asked; empty when none does."))),
@@ -156,6 +162,12 @@ def _ask_model(compact: bool = False) -> type[BaseModel]:
 
 CONDITIONS = {
     # field: (values, the value that rules results out, description)
+    "mutation_origin": (("somatic", "germline", "not_stated"), "germline",
+                        "Whether the mutations to be scored are acquired somatic mutations or inherited germline variants."),
+    "value_type": (("continuous", "binary", "not_stated"), "binary",
+                   "Whether the omics measurements to be modeled are continuous values or binary indicators."),
+    "mirna_driver": (("target_prior", "measured_expression", "not_stated"), "measured_expression",
+                     "What must drive miRNA-gene links: a target prior with a miRNA regulator list, or measured miRNA expression. Having miRNA expression without requiring its use does not set this."),
     "data_unit": (("bulk_samples", "single_cells", "not_stated"), "single_cells",
                   "What each sample or profile of the user's data is: bulk samples (tissues, patients, cell lines, or "
                   "cells summed into pseudo-bulk profiles), or single cells."),
@@ -185,16 +197,22 @@ def _recorded_about(value):
     return "file_format" if value == "format_or_delivery" else value
 
 
-UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "regulator_kinds", "omics_layers", "scale"]
+UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "sample_alignment", "regulator_kinds",
+                       "omics_layers", "scale", "sample_count", "mutation_origin", "value_type", "mirna_driver"]
 
 
 @lru_cache(maxsize=2)
 def conditions_model(compact: bool = False) -> type[BaseModel]:
     fields = {}
     for name, (values, _rules_out, description) in CONDITIONS.items():
-        fields[name] = (Literal[values], Field(description=description))  # type: ignore[valid-type]
-        fields[f"{name}_quote"] = (str, Field(description=(
+        fields[name] = (Literal[values], Field(default=values[-1], description=description))  # type: ignore[valid-type]
+        fields[f"{name}_quote"] = (str, Field(default="", description=(
             f"The exact words of the request that state {name}; empty when it is not stated.")))
+    fields["joint_layers"] = (int | None, Field(default=None, description=(
+        "Number of omics types that the request explicitly requires together in ONE joint result (minimum if a range or alternatives), including a count "
+        "stated in another sentence. Null for an inventory not all requested together or separate results.")))
+    fields["joint_layers_quote"] = (str, Field(default="", description=(
+        "Exact words stating that joint layer count; empty when null.")))
     # Log 414: a requirement on the results that none of the typed fields covers is kept with its words, so it
     # can be checked against each workflow the check credits (heldout16 NC7: "The miRNA links should be
     # estimated from negative correlation with the miRNA levels we measured." -- PUMA was offered as fitting).
@@ -221,13 +239,23 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
     # or genes only" -- 0/10 such requests were asked about; most were given a workflow, some refused).
     unknown = create_model(
         "UnknownFact", __config__=ConfigDict(extra="forbid"),
+        count_kind=(Literal["choices", "range", "unspecified"], Field(default="unspecified", description=(
+            "For an unknown sample/layer count: choices means only the listed discrete alternatives; range means "
+            "every integer between two bounds; unspecified means no bounds or alternatives are stated."))),
+        count_values=(list[int], Field(default_factory=list, description=(
+            "Only numeric alternatives or two range bounds stated in the unknown's quote; exclude unrelated counts. Empty if unspecified."))),
+        applies_to=(list[str] | None, Field(default=None, description=(
+            "Exact quoted results this unknown affects. [] if it concerns unrelated data or no requested result. "
+            "Null only when it applies to every requested result. Keep separate input datasets separate."))),
         quote=(str, Field(description="Exact words of the request saying the user does not know or has not decided it.")),
         about=(UnknownAbout, Field(description=(
             "data_unit: whether the data's units are single cells or bulk samples. input_network: whether an "
             "existing network links regulators to genes or genes to genes. samples_matched: whether different omics "
-            "data types come from the same samples. regulator_kinds: whether the regulators or prior include "
+            "data types come from the same biological subjects/samples (not file order or ID alignment). sample_alignment: whether file IDs or their order align. regulator_kinds: whether the regulators or prior include "
             "miRNAs. omics_layers: how many omics data types there are. scale: one result for all samples together "
-            "or one per sample."))))
+            "or one per sample. sample_count: how many independent samples there are. mutation_origin: somatic "
+            "or germline mutations. value_type: continuous measurements or binary indicators. mirna_driver: whether "
+            "miRNA links must use a target prior or measured miRNA expression."))))
     fields["unknown_facts"] = (list[unknown], Field(default_factory=list, description=(
         "Each property of the user's data or of the wanted result that the user says they do not know or have not "
         "decided; empty when there is none.")))
@@ -474,6 +502,9 @@ class CapabilityCheck(BaseModel):
     """Log 392: the routing candidates a full gap cleared, so an outside-step note tied to one
     of them (ALPACA beside CONDOR) is still said."""
     conditions: dict[str, str] = Field(default_factory=dict)
+    unknown_domains: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    unknown_scopes: dict[str, list[str]] = Field(default_factory=dict)
+    """Verified unknown-fact quote -> exact result quotes it affects; absent means shared (legacy compatible)."""
     """Log 412: the request-level conditions whose words were found in the request and that rule results out
     (e.g. data_unit single_cells), applied to every ask they concern."""
     unknowns: list[list[str]] = Field(default_factory=list)

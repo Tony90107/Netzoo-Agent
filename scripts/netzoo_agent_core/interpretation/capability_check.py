@@ -21,7 +21,10 @@ from __future__ import annotations
 import re
 
 from ..capability_sheet import data_units, entry, result_forms, sheet_entries
-from .needed_facts import FILE_CHECKED, decisive_outcomes, fact_line, file_checked, file_checked_note, needed_fact_reply
+from .needed_facts import (
+    applicable_unknowns, fact_line, fact_update, file_checked_note, needed_fact_reply, resolve_unknowns,
+    verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
+)
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .method_conditions import (
@@ -64,7 +67,7 @@ def _status(delivered: list[str]) -> str:
 
 
 _TYPED = ("scale", "omics_layers", "data_unit", "regulator_kinds", "needs_sign", "input_network",
-          "group_membership", "time_model", "spatial", "samples_matched")
+          "group_membership", "time_model", "spatial", "samples_matched", "mutation_origin", "value_type", "mirna_driver")
 
 
 def verified_conditions(task: str, proposal) -> dict[str, str]:
@@ -75,6 +78,11 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
         quote = (getattr(conditions, f"{name}_quote", "") or "").strip()
         if getattr(conditions, name, None) == rules_out and quote and _span(task, quote) is not None:
             found[name] = rules_out
+    count = getattr(conditions, "joint_layers", None)
+    quote = getattr(conditions, "joint_layers_quote", "")
+    from ..workflow_conditions import stated_numbers
+    if count is not None and count > 0 and quote and _span(task, quote) is not None and count in stated_numbers(quote):
+        found["joint_layers"] = str(count)
     return found
 
 
@@ -123,46 +131,21 @@ def wait_on_asked(check: CapabilityCheck, pairs) -> CapabilityCheck:
     requirements = list(check.requirements)
     for index, keys in asked.items():
         item = requirements[index]
-        if item.status != "not_available":
+        if item.status not in ("not_available", "available", "with_step"):
             continue
-        for about, said in check.unknowns:
-            if (outcomes := decisive_outcomes(_fitting, list(dict.fromkeys(keys)), dict(item.attrs), about)) is not None:
-                if file_checked(about, outcomes):  # item 5: credited as the input check will confirm it
-                    confirmed = outcomes[FILE_CHECKED[about][0]]
-                    requirements[index] = item.model_copy(update={
-                        "status": _status(confirmed), "delivered_by": confirmed, "file_checked": about,
-                        "unknown_quote": said})
-                    break
-                requirements[index] = item.model_copy(update={
-                    "status": "needs_fact", "depends_on": about, "outcomes": outcomes, "unknown_quote": said,
-                    "delivered_by": list(dict.fromkeys(k for found in outcomes.values() for k in found))})
-                break
+        unknowns = applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains, item.quote)
+        if not unknowns:
+            continue
+        possible, analyses = resolve_unknowns(_fitting, list(dict.fromkeys(keys)),
+                                             {**item.attrs, "_method": item.method}, unknowns)
+        update = fact_update(possible, analyses, _status)
+        if update is not None:
+            requirements[index] = item.model_copy(update=update)
     if requirements == check.requirements:
         return check
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, check.unchecked)
     return check.model_copy(update={"requirements": requirements, "full_gap": full_gap})
-
-
-def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
-    """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request.
-
-    Words that also state a result choice are that choice (step 2b), not a second unknown: pre-measure F37 ("I have
-    not decided whether edges should mean TF regulation or gene-gene coexpression") was read as a choice and as an
-    unknown omics-layer count, which would have asked how many omics data types the user has.
-    """
-    conditions = getattr(proposal, "conditions", None)
-    chosen = [span for choice in getattr(conditions, "open_choices", None) or () if choice.differs_in == "result"
-              for words in (choice.quote, *(option.quote for option in choice.options))
-              if (span := _span(task, words)) is not None]
-    found = []
-    for fact in getattr(conditions, "unknown_facts", None) or ():
-        span = _span(task, fact.quote)
-        if (span is None or fact.about in {about for about, _ in found}
-                or any(span[0] < end and start < span[1] for start, end in chosen)):
-            continue
-        found.append((fact.about, task[span[0]:span[1]]))
-    return found
 
 
 _CHECKED_ABOUT = ("how_computed", "what_it_contains")
@@ -320,7 +303,12 @@ def _with_conditions(item, conditions: dict[str, str]):
     for name in ("spatial", "time_model"):
         if conditions.get(name):
             update[name] = conditions[name]
-    if conditions.get("samples_matched") and item.omics_layers >= 2:
+    for name in ("mutation_origin", "value_type", "mirna_driver"):
+        if conditions.get(name) and getattr(item, name, "not_stated") == "not_stated":
+            update[name] = conditions[name]
+    if conditions.get("joint_layers") and item.omics_layers == 0:
+        update["omics_layers"] = int(conditions["joint_layers"])
+    if conditions.get("samples_matched") and update.get("omics_layers", item.omics_layers) >= 2:
         update["samples_matched"] = conditions["samples_matched"]
     return item.model_copy(update=update) if update else item
 
@@ -348,12 +336,28 @@ def _fitting(keys: list[str], item) -> list[str]:
         return []  # Log 402: overlapping groups, dynamics or spatial neighbours
     wanted = set(item.regulator_kinds)
     # Log 412: a multi-omic entry models layers measured on the same samples (its inputs: "same samples").
-    unmatched = getattr(item, "samples_matched", None) == "different_samples"
+    unmatched = any(getattr(item, name, None) == "different_samples" for name in ("samples_matched", "sample_alignment"))
     keys = [k for k in keys
             if (known[k].layers is None or (item.omics_layers <= known[k].layers and not unmatched))
             and (known[k].regulators is None or wanted <= known[k].regulators)
             and not (item.needs_sign and known[k].signed is False)
             and (known[k].input_network is None or getattr(item, "input_network", "none") in ("none", known[k].input_network))]
+    from workflow_registry import ACTION_DEFINITIONS
+    def data_fits(key):
+        definition = ACTION_DEFINITIONS.get(known[key].action)
+        modalities = definition.output_capability.accepted_input_modalities if definition and definition.output_capability else ()
+        if "somatic_mutation" in modalities and getattr(item, "mutation_origin", None) == "germline":
+            return False
+        if "multi_omic_continuous" in modalities and getattr(item, "value_type", None) == "binary":
+            return False
+        if known[key].regulators and "mirna" in known[key].regulators and getattr(item, "mirna_driver", None) == "measured_expression":
+            return False
+        samples = getattr(item, "fact_sample_count", None)
+        if samples is not None:
+            method = {**getattr(item, "_method", {}), "samples": samples}
+            return bool(method_fitting(method, [key])[0])
+        return True
+    keys = [key for key in keys if data_fits(key)]
     want = {"per_sample": "sample_specific", "whole_cohort": "aggregate"}.get(item.scale)
     return [k for k in keys if want is None or want in known[k].granularity]
 
@@ -381,6 +385,8 @@ def build_capability_check(
     known = sheet_entries()
     rejected, spans, asks, other = [], [], {}, {}
     conditions = verified_conditions(task, proposal)
+    unknown_scopes = verified_unknown_scopes(task, proposal)
+    unknown_domains = verified_unknown_domains(task, proposal)
     form_spans = form_condition_spans(task, proposal, conditions)  # M2: conditions on the result's form
     unknowns = verified_unknowns(task, proposal)
     whole = request_method(task, proposal)
@@ -419,7 +425,10 @@ def build_capability_check(
     requirements = []
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
+        applicable = applicable_unknowns(unknowns, unknown_scopes, unknown_domains, task[span[0]:span[1]])
         methods = [verified_method(task, item) for item in items]
+        if any(about == "sample_count" for about, _said, _domain in applicable):
+            methods = [{key: value for key, value in method.items() if key != "samples"} for method in methods]
         if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
             methods = [with_request_method(method, whole) for method in methods]
         elif whole:  # M2: with several results, only what names a workflow a result is credited to
@@ -451,15 +460,13 @@ def build_capability_check(
         read = method_fitting(method, list(dict.fromkeys(k for item in items for k in item.delivered_by
                                                          if known.get(k) and known[k].kind == "produces")))[0]
         fit_attrs = {name: getattr(items[0], name) for name in (*_TYPED, "samples_matched") if hasattr(items[0], name)}
-        for about, said in unknowns:
-            if (outcomes := decisive_outcomes(_fitting, read, fit_attrs, about)) is not None:
-                if file_checked(about, outcomes):  # item 5: the input check settles it from the files
-                    waiting = {"file_checked": about, "unknown_quote": said}
-                    continue
-                status = "needs_fact"
-                delivered = list(dict.fromkeys(k for keys in outcomes.values() for k in keys))
-                waiting = {"depends_on": about, "outcomes": outcomes, "unknown_quote": said}
-                break
+        fit_attrs["_method"] = method
+        if applicable:
+            possible, analyses = resolve_unknowns(_fitting, read, fit_attrs, applicable)
+            update = fact_update(possible, analyses, _status)
+            if update is not None:
+                status, delivered = update.pop("status"), update.pop("delivered_by")
+                waiting = update
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
@@ -490,7 +497,7 @@ def build_capability_check(
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, unchecked)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
-                           conditions=conditions, unknowns=[list(item) for item in unknowns]), rejected
+                           conditions=conditions, unknowns=[list(item) for item in unknowns], unknown_scopes=unknown_scopes, unknown_domains=unknown_domains), rejected
 
 
 def _names(names: list[str]) -> str:
@@ -702,7 +709,7 @@ def whole_check_result(state, reply) -> dict | None:
         return held
     decision = TaskDecision.model_validate(state["decision"])
     check = decision.capability_check
-    if decision.action != "no_tool" or check is None or check.unconfirmed() or not check.needed_facts():
+    if decision.action != "no_tool" or check is None or not check.needed_facts():
         return None
     return reply(needed_fact_reply(check, understanding_paragraph(check) or ""), "needs_fact")
 
@@ -874,8 +881,12 @@ def _pairs(check: CapabilityCheck, actions_for) -> list[tuple[int, str, list[str
             produces = [key for key, item in known.items() if item.kind == "produces" and item.action == action]
             # M1: never a workflow outside the named method or one that cannot take the data; one that lacks only a
             # stated setting is asked about, and credited as itself with its own settings (m1b MX05).
-            kept, _limits, _instead, own = method_fitting(
-                requirement.method, _fitting(produces, SimpleNamespace(**requirement.attrs)))
+            applicable = applicable_unknowns(check.unknowns, check.unknown_scopes, check.unknown_domains,
+                                              requirement.quote)
+            potential = (resolve_unknowns(_fitting, produces, {**requirement.attrs, "_method": requirement.method},
+                                          applicable)[0] if applicable else
+                         _fitting(produces, SimpleNamespace(**requirement.attrs)))
+            kept, _limits, _instead, own = method_fitting(requirement.method, list(dict.fromkeys(potential)))
             fitting = kept or own
             if fitting:
                 pairs.append((index, action, fitting))
@@ -904,7 +915,12 @@ def apply_second_opinion(check: CapabilityCheck, pairs: list[tuple[int, str, lis
         item = requirements[index]
         # A workflow that delivers the whole requirement replaces a partial reading of it.
         previous = item.delivered_by if item.status != "partial" else []
-        kept, limits, _instead, own = method_fitting(item.method, keys)
+        from types import SimpleNamespace
+        # Revalidate at the credit boundary, even if a caller supplied stale/unfiltered pairs.
+        candidate = list(dict.fromkeys([*previous, *keys]))
+        candidate = _fitting(candidate, SimpleNamespace(**item.attrs)) if item.attrs else []
+        kept, limits, _instead, own = method_fitting(item.method, candidate)
+        previous = []
         delivered = list(dict.fromkeys([*previous, *kept]))
         requirements[index] = item.model_copy(update={
             "delivered_by": delivered, "status": _status(delivered), "second_opinion": True,

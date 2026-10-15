@@ -17,12 +17,27 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from ..capability_sheet import entry
+from .request_spans import _span
 
 __all__ = ["DIMENSIONS", "FILE_CHECKED", "decisive_outcomes", "fact_line", "fact_questions", "file_checked",
            "file_checked_note", "needed_fact_reply", "waiting_decision"]
 
 # dimension: (what it is about, the question, ((value, label), ...)); a value is set on the ask's typed attributes.
 DIMENSIONS = {
+    "sample_count": ("how many independent samples are available",
+                     "How many independent biological samples are available for this result?", ()),
+    "mutation_origin": ("whether the variants are somatic or germline",
+                        "Are these acquired somatic mutations, or inherited germline variants?",
+                        (("somatic", "somatic mutations"), ("germline", "germline variants"))),
+    "value_type": ("whether the measurements are continuous or binary",
+                   "Are the omics measurements continuous values, or binary indicators?",
+                   (("continuous", "continuous measurements"), ("binary", "binary indicators"))),
+    "mirna_driver": ("what must drive the miRNA links",
+                     "Should miRNA links use a target prior and miRNA list, or must they be estimated from measured miRNA expression?",
+                     (("target_prior", "a target prior and miRNA list"), ("measured_expression", "measured miRNA expression"))),
+    "sample_alignment": ("whether the tables' sample IDs align",
+                         "Do both tables identify the same biological samples with matching sample IDs?",
+                         (("same_samples", "matching sample IDs"), ("different_samples", "different sample IDs"))),
     "data_unit": ("whether each unit of your data is a single cell or a bulk sample",
                   "Is each sample in your data a single cell, or a bulk sample (a tissue, a patient, a cell line, or "
                   "cells pooled into a pseudo-bulk profile)?",
@@ -46,12 +61,12 @@ DIMENSIONS = {
 
 
 FILE_CHECKED = {
-    "samples_matched": ("same_samples", frozenset({"run_dragon", "run_lioness_dragon"}),
+    "sample_alignment": ("same_samples", frozenset({"run_dragon", "run_lioness_dragon"}),
                         "before it runs, {names} checks that both tables list exactly the same sample IDs and pairs their "
-                        "rows by ID, so their order does not matter; if they are not the same samples, that check stops "
-                        "it and lists the IDs that differ"),
+                        "rows by ID, so their order does not matter; unequal IDs stop the check. Matching IDs do not "
+                        "establish biological identity: the tables must actually describe the same samples"),
 }
-"""Item 5 (2026-10-14): an unknown fact a workflow's own input check settles from the files is said, not asked.
+"""File alignment can be checked; biological identity cannot be inferred from matching identifiers.
 
 dimension: (the value the check confirms, the workflows whose input check settles it, what the reply says). Every
 multi-omic workflow loads its layers with `data.dragon.load_and_align_dragon_layers`, which requires exactly the same
@@ -81,25 +96,57 @@ def file_checked_note(item) -> str:
 def _typed(about: str, value: str):
     if about == "regulator_kinds":
         return list(value.split("+"))
-    if about == "omics_layers":
+    if about in ("omics_layers", "sample_count"):
         return int(value)
     return value
 
 
-def decisive_outcomes(fitting, keys: list[str], attrs: dict, about: str) -> dict[str, list[str]] | None:
-    """For each value of `about`, the entries that give the result; None when every value gives the same ones."""
+def decisive_outcomes(fitting, keys: list[str], attrs: dict, about: str, quote: str = "", domain: dict | None = None, *, include_uniform: bool = False) -> dict[str, list[str]] | None:
+    """Different fits require a question; uniformly empty fits rule the result out; uniform positive fits need none."""
     if about not in DIMENSIONS or not keys:
         return None
     if about == "regulator_kinds" and not attrs.get("regulator_kinds"):
         return None  # a result with no regulators (co-expression, communities) cannot depend on which they are
     outcomes = {}
-    for value, _label in DIMENSIONS[about][2]:
+    values = DIMENSIONS[about][2]
+    if about == "sample_count":
+        from ..workflow_conditions import conditions_for, stated_numbers
+        method = attrs.get("_method", {})
+        thresholds = set()
+        for key in keys:
+            if not (found := conditions_for(entry(key).action)):
+                continue
+            if found.min_samples:
+                thresholds.add(found.min_samples)
+            for setting in method.get("settings", []):
+                if setting["name"] == f"{found.workflow}.kmax":
+                    thresholds.update(int(n) for n in stated_numbers(setting.get("value", "")) if n >= 1 and n == int(n))
+            features = method.get("features")
+            if features and found.max_values and found.size:
+                per_sample = found.size(1, features)
+                if per_sample > 0:
+                    thresholds.add(found.max_values // per_sample + 1)
+        if not thresholds:
+            return None
+        values = [(str(n), str(n)) for n in sorted({1, *thresholds, *(n - 1 for n in thresholds if n > 1)})]
+    if about in ("omics_layers", "sample_count") and quote:
+        from ..workflow_conditions import stated_numbers
+        stated = (domain["values"] if domain else
+                  sorted({int(n) for n in stated_numbers(quote) if n >= 1 and n == int(n)}))
+        if domain and domain["kind"] == "choices":
+            values = [(str(n), str(n)) for n in stated]
+        elif len(stated) >= 2:
+            # Range endpoints alone can both fail while interior counts fit. Legacy readings without
+            # a typed domain conservatively retain internal runtime boundaries rather than inventing a gap.
+            probes = {*stated, *(int(value) for value, _label in values if min(stated) <= int(value) <= max(stated))}
+            values = [(str(n), str(n)) for n in sorted(probes)]
+    for value, _label in values:
         typed = _typed(about, value)
         if about == "regulator_kinds":
             typed = sorted({*(kind for kind in attrs["regulator_kinds"] if kind != "mirna"), *typed})
-        item = SimpleNamespace(**{**attrs, about: typed})
+        item = SimpleNamespace(**{**attrs, ({"sample_count": "fact_sample_count"}.get(about, about)): typed})
         outcomes[value] = fitting(list(keys), item)
-    return outcomes if len({frozenset(found) for found in outcomes.values()}) > 1 else None
+    return outcomes if include_uniform or not any(outcomes.values()) or len({frozenset(found) for found in outcomes.values()}) > 1 else None
 
 
 def _workflows(keys: list[str]) -> str:
@@ -115,6 +162,10 @@ def fact_line(item) -> str:
         answers = "; ".join(f'if "{option}": {_workflows(keys)}' for option, keys in item.outcomes.items())
         return f'"{item.quote}" -- you have not chosen which result you want: {answers}.'
     about, _question, values = DIMENSIONS[item.depends_on]
+    if item.depends_on == "omics_layers":
+        values = [(value, f"{value} layers") for value in item.outcomes]
+    if item.depends_on == "sample_count":
+        values = [(value, f"{value} samples") for value in item.outcomes]
     said = f' ("{item.unknown_quote}")' if item.unknown_quote else ""
     answers = "; ".join(f"if {label}: {_workflows(item.outcomes.get(value, []))}" for value, label in values)
     return f'"{item.quote}" -- depends on {about}, which you said you do not know{said}: {answers}.'
@@ -151,3 +202,118 @@ def needed_fact_reply(check, understanding: str) -> str:
            "Before I choose a workflow, please tell me:\n" + "\n".join(f"- {question}" for question in questions))
     return "\n\n".join([understanding, ask, "No workflow has been selected and nothing runs before you answer.",
                         "No files were inspected and no analysis ran."])
+
+
+def resolve_unknowns(fitting, keys: list[str], attrs: dict, unknowns: list[tuple]):
+    """Counterfactuals share the same possible workflows, independent of unknown ordering.
+
+    Each dimension is a conjunctive workflow constraint. Remove guesses for all unresolved dimensions,
+    fit each one's possible values, then intersect the workflows possible under every other dimension.
+    A uniformly empty one-dimensional probe is definitive only after the other guesses were removed.
+    """
+    neutral = dict(attrs)
+    permissive = {"data_unit": "not_stated", "input_network": "none", "samples_matched": "not_stated",
+                  "sample_alignment": "not_stated", "omics_layers": 0, "scale": "unstated",
+                  "mutation_origin": "not_stated", "value_type": "not_stated", "mirna_driver": "not_stated"}
+    for about, _quote, _domain in unknowns:
+        if about in permissive:
+            neutral[about] = permissive[about]
+        elif about == "regulator_kinds":
+            neutral[about] = [kind for kind in attrs.get(about, []) if kind != "mirna"]
+        elif about == "sample_count":
+            neutral["_method"] = {k: v for k, v in attrs.get("_method", {}).items() if k != "samples"}
+    baseline = fitting(keys, SimpleNamespace(**neutral))
+    analyses = []
+    for about, quote, domain in unknowns:
+        current = dict(neutral)
+        if about == "regulator_kinds":
+            current[about] = attrs.get(about, [])  # preserve whether this result has regulators at all
+        outcomes = decisive_outcomes(fitting, baseline, current, about, quote, domain, include_uniform=True)
+        if outcomes is not None:
+            analyses.append((about, quote, outcomes))
+    possible = set(baseline)
+    for _about, _quote, outcomes in analyses:
+        possible.intersection_update(key for found in outcomes.values() for key in found)
+    adjusted = []
+    for index, (about, quote, outcomes) in enumerate(analyses):
+        other_possible = set(baseline)
+        for other_index, (_other, _said, other) in enumerate(analyses):
+            if other_index != index:
+                other_possible.intersection_update(key for found in other.values() for key in found)
+        adjusted.append((about, quote, {value: [k for k in found if k in other_possible]
+                                        for value, found in outcomes.items()}))
+    return [key for key in baseline if key in possible], adjusted
+
+
+def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
+    """Verdict layer step 2: (dimension, the user's words) for each unknown fact whose words are in the request.
+
+    Words that also state a result choice are that choice (step 2b), not a second unknown: pre-measure F37 ("I have
+    not decided whether edges should mean TF regulation or gene-gene coexpression") was read as a choice and as an
+    unknown omics-layer count, which would have asked how many omics data types the user has.
+    """
+    conditions = getattr(proposal, "conditions", None)
+    chosen = [span for choice in getattr(conditions, "open_choices", None) or () if choice.differs_in == "result"
+              for words in (choice.quote, *(option.quote for option in choice.options))
+              if (span := _span(task, words)) is not None]
+    found = []
+    for fact in getattr(conditions, "unknown_facts", None) or ():
+        span = _span(task, fact.quote)
+        if (span is None or (fact.about, task[span[0]:span[1]]) in found
+                or getattr(fact, "applies_to", None) == []
+                or (getattr(fact, "applies_to", None) is not None
+                    and not any(_span(task, words) is not None for words in fact.applies_to if words.strip()))
+                or any(span[0] < end and start < span[1] for start, end in chosen)):
+            continue
+        found.append((fact.about, task[span[0]:span[1]]))
+    return found
+
+
+def verified_unknown_scopes(task: str, proposal) -> dict[str, list[str]]:
+    scopes = {}
+    for fact in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
+        applies = getattr(fact, "applies_to", None)
+        where = _span(task, fact.quote)
+        if applies is not None and where is not None:
+            scopes[task[where[0]:where[1]]] = [task[a:b] for words in applies if words.strip()
+                                            if (placed := _span(task, words)) is not None for a, b in [placed]]
+    return scopes
+
+
+def verified_unknown_domains(task: str, proposal) -> dict[str, dict]:
+    from ..workflow_conditions import stated_numbers
+    domains = {}
+    for fact in getattr(getattr(proposal, "conditions", None), "unknown_facts", None) or ():
+        kind, values = getattr(fact, "count_kind", "unspecified"), getattr(fact, "count_values", [])
+        where = _span(task, fact.quote)
+        if (fact.about in ("sample_count", "omics_layers") and where is not None
+                and kind in ("choices", "range") and values and (kind != "range" or len(values) == 2)
+                and all(n > 0 and n in stated_numbers(fact.quote) for n in values)):
+            domains[task[where[0]:where[1]]] = {"kind": kind, "values": sorted(set(values))}
+    return domains
+
+
+def _unknown_applies(scopes, said: str, result: str) -> bool:
+    return said not in scopes or any(_span(result, quote) is not None or _span(quote, result) is not None
+                                     for quote in scopes[said])
+
+
+def applicable_unknowns(unknowns, scopes, domains, quote):
+    return [(about, said, domains.get(said)) for about, said in unknowns if _unknown_applies(scopes, said, quote)]
+
+
+def fact_update(possible, analyses, status_for):
+    if not analyses:
+        return None
+    if not possible:
+        return {"status": "not_available", "delivered_by": [], "file_checked": None}
+    checked = {}
+    for about, said, outcomes in analyses:
+        if len({frozenset(found) for found in outcomes.values()}) < 2:
+            continue
+        if file_checked(about, outcomes):
+            checked = {"file_checked": about, "unknown_quote": said}
+            continue
+        return {"status": "needs_fact", "depends_on": about, "outcomes": outcomes, "unknown_quote": said,
+                "file_checked": None, "delivered_by": possible}
+    return {"status": status_for(possible), "delivered_by": possible, **checked}

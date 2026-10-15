@@ -13,13 +13,14 @@ from ..capability_sheet import entry, sheet_entries
 from ..contracts.capability_check import CheckedRequirement
 from ..method_names import LIONESS_FAMILY, registered_workflows
 from ..workflow_conditions import (
-    UNREGISTERED, StatedSetting, combination_issues, conditions_for, data_issue, named_workflows, setting_issue,
+    UNREGISTERED, StatedSetting, boolean_value, combination_issues, conditions_for, data_issue, enum_value,
+    named_workflows, setting_issue,
     stated_numbers,
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "verified_controls",
-           "verified_method", "with_request_method"]
+__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "unbound_settings",
+           "verified_controls", "verified_method", "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -226,8 +227,9 @@ def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
                               instead=instead, defaults=defaults)
 
 
-def _control_value(limit, words: str):
-    """A stated value as the control takes it: a number in range, or the one allowed choice the words name."""
+def _control_value(limit, words: str, quote: str = ""):
+    """A stated value as the control takes it: a number in range, the one allowed choice the words name, or a
+    boolean the value words -- or, given none, the words naming it -- settle."""
     if limit.control_type in ("number", "integer"):
         numbers = stated_numbers(words)
         if not numbers:
@@ -237,10 +239,10 @@ def _control_value(limit, words: str):
             return int(number) if number == int(number) else None
         return number
     if limit.control_type == "enum":
-        folded = _folded(words)
-        chosen = [item for item in limit.allowed_values if (key := _folded(str(item))) and key in folded]
-        return chosen[0] if len(chosen) == 1 else None
-    return None  # booleans, names and lists are not read from prose
+        return enum_value(limit, words)
+    if limit.control_type == "boolean":
+        return boolean_value(words, quote)
+    return None  # names and lists are not read from prose
 
 
 def verified_controls(check, action: str) -> dict[str, object]:
@@ -248,7 +250,7 @@ def verified_controls(check, action: str) -> dict[str, object]:
 
     a24b K06 "Please give it to me as an edge list, with fixed lambdas of 0.2 and 0.6" and K09 "just use single
     precision" were checked but never reached the run: controls were bound only from name=value text, so DRAGON
-    would have estimated its own lambdas. Only numbers and allowed choices are taken; every value already passed the
+    would have estimated its own lambdas. Numbers, allowed choices and explicit booleans are taken; every value passed the
     control's range and the runtime's limits, or the check would not have approved the run.
     """
     conditions = conditions_for(action)
@@ -258,9 +260,40 @@ def verified_controls(check, action: str) -> dict[str, object]:
     for item in check.results():
         if action not in {entry(key).action for key in item.delivered_by}:
             continue
-        for setting in item.method.get("settings", []):
-            limit = conditions.settings.get(setting["name"].split(".", 1)[-1]) if setting["name"] != UNREGISTERED else None
-            if limit is not None and limit.wired and (value := _control_value(limit, setting.get("value", ""))) is not None:
+        for setting, limit in _run_settings(item, conditions):
+            if (value := _control_value(limit, setting.get("value", ""), setting.get("quote", ""))) is not None:
                 found[limit.name] = value
     return found
+
+
+def _run_settings(item, conditions):
+    for setting in item.method.get("settings", []):
+        limit = conditions.settings.get(setting["name"].split(".", 1)[-1]) if setting["name"] != UNREGISTERED else None
+        if limit is not None and limit.wired:
+            yield setting, limit
+
+
+def unbound_settings(check, action: str, set_by_request=lambda name: False) -> list[str]:
+    """The words of each stated setting of a run's workflow whose value cannot be passed to the run (M3 review).
+
+    The user's review of M2 (OTTER "precision=half"): a stated setting the check accepted never reached the run when
+    its value was not one the run binding reads -- a value without a number, a name or list control, a boolean
+    stated in other words -- so the run was approved and ran on the package default. A run carries every stated
+    setting or waits: these words are not verified, as a sentence the check did not read. A setting the request gave
+    as name=value (`set_by_request`) is already the run's; one stated with no value and no on/off meaning ("with
+    fixed lambdas") gives nothing to pass.
+    """
+    conditions = conditions_for(action)
+    if check is None or conditions is None:
+        return []
+    found = []
+    for item in check.results():
+        if action not in {entry(key).action for key in item.delivered_by}:
+            continue
+        for setting, limit in _run_settings(item, conditions):
+            if set_by_request(limit.name) or (not setting.get("value", "").strip() and limit.control_type != "boolean"):
+                continue
+            if _control_value(limit, setting.get("value", ""), setting.get("quote", "")) is None:
+                found.append(setting["quote"])
+    return list(dict.fromkeys(found))
 

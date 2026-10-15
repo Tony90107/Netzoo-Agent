@@ -47,7 +47,7 @@ from ..interpretation.capability_check import (
     build_capability_check, condition_pairs, implied_actions, redirect_pairs, second_opinion_pairs, stated_requirements,
     wait_on_asked, workflow_description,
 )
-from ..interpretation.method_conditions import verified_controls
+from ..interpretation.method_conditions import unbound_settings, verified_controls
 from ..interpretation.requirement_split import apply_own_sentence_answers
 from .data_facts_call import invoke_data_facts
 from ..interpretation.run_check import run_check_verdict, run_verdict
@@ -376,6 +376,12 @@ def _on_run_verdict(context, state, user_task: str, result: _RouterInvocation, c
     """
     decision = result.decision
     named = decision.match_basis in _USER_CHOSEN or named_workflow_action(user_task) == decision.action
+    unbound = unbound_settings(check, decision.action, lambda name: getattr(decision, name, None) not in (
+        None, _control_default(decision.action, name)))
+    if unbound:
+        # M3 review: a setting the run cannot carry is not verified for it; the run waits, as for an unread sentence.
+        record_event(context, state, "routing.run_settings_unbound", "classify", {"quotes": unbound})
+        check = check.model_copy(update={"unchecked": list(dict.fromkeys([*check.unchecked, *unbound]))})
     verdict = run_verdict(check, decision.action, check_status=check_status, named=named)
     if verdict.verdict in APPROVING_RUN_VERDICTS:
         # M2: the settings the check verified are the run's, unless the request set the control as name=value.
@@ -475,6 +481,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
                  else _not_checked(check, pairs_to_check))
         if own_answers is not None:
             check = apply_own_sentence_answers(check, own_pairs, own_answers)
+        else:
+            check = _not_checked(check, own_pairs)
         offered = [*decision.matched_actions, *decision.hypothesis_actions, *decision.recommended_actions]
         redirect = redirect_pairs(check, list(dict.fromkeys(offered))[:4]) if answers is not None else []
         redirected = None
@@ -512,23 +520,27 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
                  for index, _action, keys in pairs]
         answers = None
         if pairs:  # typed attributes may leave nothing to ask
-            situation = tuple(item.quote for item in check.requirements if item.kind == "context")
+            situation = (user_task,)  # A second opinion sees all context and constraints, not only the short result quote.
             answers, usage, warnings = request_second_opinion(context, state, shown, usage, warnings, situation)
         if answers is not None:
             # Verdict layer step 2: what the user said they do not know can decide among the workflows weighed here.
             check = wait_on_asked(apply_second_opinion(check, pairs, answers), pairs)
             late = [pair for pair in condition_pairs(check, stated) if check.requirements[pair[0]].second_opinion]
-            if late:
+            late_own = [pair for pair in condition_pairs(check, own) if check.requirements[pair[0]].second_opinion]
+            if late or late_own:
                 # Items 4-5 c3 (heldout19 UN3): the first reading credited nothing, the second opinion credited SAMBAR,
                 # and "the clustering has to be k-means" was never checked -- the condition check ran before it. A
                 # workflow the second opinion credits is held to the stated requirements like any other (Log 414).
                 late_answers, usage, warnings = request_condition_check(
-                    context, state, _condition_shown(check, late), usage, warnings)
-                check = (apply_condition_answers(check, late, late_answers) if late_answers is not None
+                    context, state, _condition_shown(check, late + late_own), usage, warnings)
+                check = (apply_condition_answers(check, late, late_answers[:len(late)]) if late_answers is not None
                          else _not_checked(check, late))
+                check = (apply_own_sentence_answers(check, late_own, late_answers[len(late):]) if late_answers is not None
+                         else _not_checked(check, late_own))
                 record_event(context, state, "routing.capability_condition_check", "classify", {
                     "stated": stated, "pairs": [[index, action, keys, quote] for index, action, keys, quote in late],
-                    "answers": late_answers, "after_second_opinion": True, "full_gap": check.full_gap})
+                    "answers": late_answers, "own_sentence": late_own,
+                    "after_second_opinion": True, "full_gap": check.full_gap})
         elif pairs and check.full_gap and has_check_model(context):
             # Log 403: the second opinion was owed and could not answer (budget, provider), so the
             # gap is unconfirmed: said as such, and routing's offer stays (as for Log 401's backup).
@@ -543,7 +555,7 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # routing's offer in place (Log 400: its three false gaps on heldout9 cleared real workflows).
         record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
         check = check.model_copy(update={"full_gap": False, "provisional": True})
-    if check.needed_facts() and not check.unconfirmed():
+    if check.needed_facts():
         # Verdict layer step 2: a result waits on a fact the user said they do not know -- on a guidance turn or a
         # run, nothing is selected, refused or run before it is known.
         if shadow_status is not None:
