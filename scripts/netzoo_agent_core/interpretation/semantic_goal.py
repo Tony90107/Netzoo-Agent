@@ -40,7 +40,9 @@ def classification_progress_detail(
     else:
         outcome_label = outcome.artifact_type.replace("_", " ")
     match_status = decision.capability_match_status or semantic_goal.get("match_status")
-    show_candidates = not (
+    # Core decision phase 1 (round p1 C19): a turn that asks its goal names no workflow, not even routing's candidates.
+    clarifying = decision.core is not None and decision.core.kind == "CLARIFY"
+    show_candidates = not clarifying and not (
         semantic_goal.get("request_mode") == "guidance"
         and match_status != "exact"
     )
