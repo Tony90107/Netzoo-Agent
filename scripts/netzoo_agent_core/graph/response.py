@@ -43,7 +43,7 @@ from ..interpretation.study_purpose_notes import with_study_purpose_reply
 from ..interpretation.registry_guidance import should_expand_guidance_catalog
 from ..llm import append_llm_usage, build_response_messages, latest_user_task
 from ..presentation import strip_cli_owned_guidance_tail
-from .context import _GraphContext, preflight_budget, record_event
+from .context import _GraphContext, preflight_budget, record_core_view, record_event
 from .response_context import validated_workflow_context
 from .response_payload import trusted_response_context
 from ..interpretation.verified_guidance import render_verified_guidance
@@ -87,7 +87,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
     result = with_study_purpose_reply(with_outside_steps_reply(result, state, _reply), state, _reply)
     # Logs 383, 387: the data-needs plan, then what was understood to be asked for.
     result = with_capability_check_reply(with_data_plan_reply(result, state, _reply), state, _reply)
-    return with_run_choice_reply(result, state, _reply)  # Verdict layer step 1: a tied run asks which to run
+    return record_core_view(context, state, with_run_choice_reply(result, state, _reply))  # tied run; core view
 
 
 def _respond(context: _GraphContext, state: AgentState) -> dict:
