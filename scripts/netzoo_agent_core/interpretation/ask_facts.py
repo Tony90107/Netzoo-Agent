@@ -26,7 +26,8 @@ def ask_reply(core) -> str:
     for fact in asked:
         workflow = fact.workflows[0] if fact.workflows else "the workflow"
         lines.append(f"- {fact.question}\n  If yes: {_lead(fact.if_yes, workflow)}. If no: {_lead(fact.if_no, workflow)}. "
-                     f"(You wrote: \"{fact.user_quote}\". {workflow}'s contract: \"{fact.contract_quote}\")")
+                     f"(You wrote: \"{fact.user_quote.rstrip('. ')}\". {workflow}'s contract: "
+                     f"\"{fact.contract_quote.rstrip('. ')}\".)")
     return "\n\n".join([
         "Before I choose a workflow, please tell me:\n" + "\n".join(lines),
         "No workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no "
