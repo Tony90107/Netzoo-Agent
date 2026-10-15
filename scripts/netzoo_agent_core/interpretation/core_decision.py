@@ -8,8 +8,9 @@ itself here; this phase gives the baseline the 56-item bench is scored from.
 
 Rules, in the spec's order of precedence:
 
-1. UNCHECKED -- routing failed closed with nothing routed, the check could not confirm what it read, or the run was
-   held because the check could not confirm or read it.
+1. UNCHECKED -- routing failed closed with nothing routed (unless the check confirmed a full gap, which the reply
+   still gives: round p0 C10, C22, C37, C49), the check could not confirm what it read, or the run was held because
+   the check could not confirm or read it.
 2. ASK -- a result waits on a fact the user said they do not know (`needs_fact`), or the run was held for it.
 3. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
    unsupported with nothing read, or the request names a method combination no workflow implements.
@@ -97,7 +98,8 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     def call(kind, basis, **fields) -> CoreDecision:
         return CoreDecision(kind=kind, basis=basis, evidence=evidence, **fields)
 
-    if _failed_closed(decision, reason_code):
+    confirmed_gap = check is not None and check.full_gap and not check.unconfirmed()
+    if _failed_closed(decision, reason_code) and not confirmed_gap:  # p0: a confirmed gap is still answered
         return call("UNCHECKED", "routing_failed")
     if verdict is not None and verdict.held and verdict.verdict in _UNCHECKED_HOLDS:
         return call("UNCHECKED", f"run_held_{verdict.verdict}", workflows=_routed(decision))
