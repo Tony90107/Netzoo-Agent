@@ -8,6 +8,8 @@ one question. It is the whole reply: nothing understood-as-asked, no workflow ca
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import ACTION_DEFINITIONS
 
 from ..capability_sheet import produced_text
@@ -21,7 +23,7 @@ _ARTIFACT_NAMES = {"expression_matrix": "expression data", "mutation_matrix": "s
 
 
 def _first_sentence(text: str) -> str:
-    head = text.split(". ")[0].strip().rstrip(".")
+    head = re.split(r"(?<!\be\.g)(?<!\bi\.e)\.\s", text)[0].strip().rstrip(".")
     return head if len(head) <= 160 else head[:157].rstrip() + "..."
 
 
@@ -37,7 +39,7 @@ def clarify_reply(core) -> str:
             "The registered workflows give these results:")
     return "\n\n".join([
         "I can't tell yet which result you want, so I have not chosen a workflow.",
-        lead + "\n" + "\n".join(lines[:10]),
+        lead + "\n" + "\n".join(lines),
         need.question,
         "Nothing was selected and nothing runs before you answer.\n\nNo files were inspected and no analysis ran.",
     ])
