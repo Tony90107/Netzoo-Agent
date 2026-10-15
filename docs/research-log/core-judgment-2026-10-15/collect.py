@@ -5,7 +5,7 @@ import json
 import random
 import re
 from pathlib import Path
-from plan import HERE, SEED, digest, jobs, load_items, session_id, write_json
+from plan import DOTENV, HERE, SEED, digest, jobs, load_items, session_id, write_json
 from run_live import environment
 
 WAITING = 2  # a non-interactive turn stopped at the input wizard (m3 deviation 1)
@@ -86,7 +86,7 @@ def collect_session(folder, item, rep, meta, secrets=()):
 def main():
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('tag')
     p.add_argument('--dataset', type=Path, default=HERE / 'items.json')
-    p.add_argument('--dotenv', type=Path, default=HERE.parents[2] / '.env')
+    p.add_argument('--dotenv', type=Path, default=DOTENV)
     a = p.parse_args(); items = load_items(a.dataset); live = HERE / 'live' / a.tag
     meta = json.loads((live / 'round.json').read_text())
     if meta['dataset_sha256'] != digest(a.dataset) or meta['jobs'] != [list(j) for j in jobs(items)]:

@@ -7,7 +7,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-WORKTREE = ROOT.parent / '.worktrees' / 'netzoo-core-p0'  # cj1 (stopped) ran netzoo-core-score
+_WORKTREES = ROOT.parent if ROOT.parent.name == '.worktrees' else ROOT.parent / '.worktrees'
+WORKTREE = _WORKTREES / 'netzoo-core-p0-run'  # clean run worktree at the phase-0 commit; cj1 ran netzoo-core-score
+DOTENV = _WORKTREES.parent / 'netzoo_agent' / '.env'  # the main checkout's; worktrees carry none
 PYTHON = '/opt/anaconda3/bin/python'
 SEED = 1015
 CLASSES = ('do', 'dont', 'ask', 'vague')

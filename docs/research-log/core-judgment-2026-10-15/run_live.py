@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
-from plan import HERE, ROOT, WORKTREE, PYTHON, digest, jobs, load_items, session_id, write_json
+from plan import DOTENV, HERE, ROOT, WORKTREE, PYTHON, digest, jobs, load_items, session_id, write_json
 
 # Observe the card returned by the actual CLI, rather than regenerating it later.
 BOOTSTRAP = r'''
@@ -120,7 +120,7 @@ def main():
     p.add_argument('--dataset', type=Path, default=HERE / 'items.json')
     p.add_argument('--worktree', type=Path, default=WORKTREE)
     p.add_argument('--code-manifest', type=Path, required=True)
-    p.add_argument('--dotenv', type=Path, default=ROOT / '.env')
+    p.add_argument('--dotenv', type=Path, default=DOTENV)
     p.add_argument('--resume-unstarted', action='store_true')
     p.add_argument('--workers', type=int, default=5); p.add_argument('--timeout', type=int, default=900)
     a = p.parse_args()
