@@ -165,7 +165,7 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     if not read and not running and decision.capability_match_status == "unsupported":
         return call("DECLINE", "routing_unsupported")
     if not read and not running and not _routed(decision):
-        return call("CLARIFY", "no_result_read", clarify=ClarifyNeed())
+        return call("CLARIFY", "no_result_read", clarify=_clarify_need(decision, check))  # p1 C41, C48: one view
     given = [row for row in read if row.status in _GIVEN]
     if read and not given:
         return call("DECLINE", "all_results_not_available", declined=_declined(results))

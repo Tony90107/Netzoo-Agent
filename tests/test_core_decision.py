@@ -59,9 +59,11 @@ def test_a_result_waiting_on_a_fact_is_ask_with_the_question():
     assert fact.question.startswith("Does your network link regulators")
 
 
-def test_nothing_read_nothing_routed_is_clarify():
+def test_nothing_read_nothing_routed_is_clarify_with_the_same_question():
+    """Round p1 C41, C48: a CLARIFY with no question fell through to the budget-exhausted fallback reply."""
     core = decide_core(_decision(rows=[_row("not_checked", kind="context")], capability_match_status="ambiguous"))
     assert (core.kind, core.basis) == ("CLARIFY", "no_result_read")
+    assert core.clarify.question.startswith("Which of these results do you want")
 
 
 def test_a_methods_question_with_a_named_workflow_is_do_as_the_reply_gives_it():
@@ -211,3 +213,16 @@ def test_the_clarify_reply_lists_every_candidate_and_keeps_abbreviations_whole()
     core = decide_core(decision)
     from netzoo_agent_core.interpretation.clarify_goal import clarify_reply
     assert all(f"({name})" in clarify_reply(core) for name in core.clarify.candidates)
+
+
+def test_a_clarify_turn_shows_no_workflow_in_its_progress_line():
+    """Round p1 C19: the CLARIFY reply was headed "Matched workflows -- PUMA" from routing's candidates."""
+    from netzoo_agent_core.interpretation.core_decision import with_core
+    from netzoo_agent_core.interpretation.semantic_goal import classification_progress_detail
+
+    decision = _with_check(_goal_check("purpose_only", "do whatever makes sense"), matched_actions=["run_puma"])
+    goal = {"candidates": ["run_puma"], "request_mode": "execute"}
+    assert classification_progress_detail(goal, decision)["workflows"] == ["PUMA"]
+    held = with_core(decision, decide_core(decision))
+    detail = classification_progress_detail(goal, held)
+    assert (detail["workflows"], detail["workflow_path"]) == ([], [])
