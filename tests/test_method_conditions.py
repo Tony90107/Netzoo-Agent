@@ -353,17 +353,34 @@ def test_an_unmapped_request_offers_the_workflow_that_runs_with_its_own_settings
     from netzoo_agent_core.interpretation.unmapped_routes import unmapped_reply
 
     task = "Go ahead and run OTTER on the 110 lung samples on the GPU so it finishes faster."
+
+    def reply_for(check):
+        decision = TaskDecision.model_validate({
+            "action": "no_tool", "in_scope": True, "should_execute": False, "confidence": 1.0, "reason": "unmapped",
+            "match_basis": "semantic", "capability_check": check.model_dump(),
+            "requested_outcome": {"operation": "unknown", "input_artifacts": ["expression_matrix"],
+                                  "artifact_type": "unknown", "entity_types": [], "regulator_types": [],
+                                  "target_types": [], "granularity": "unknown"}})
+        return unmapped_reply(decision, ProjectPolicyLoader(Path(__file__).parents[1]).load())
+
+    # The GPU joined to the ask's words: the result is asked so, and OTTER is offered with its own settings.
     check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
                               settings=[("OTTER.computing", "on the GPU", "GPU")]))
-    decision = TaskDecision.model_validate({
-        "action": "no_tool", "in_scope": True, "should_execute": False, "confidence": 1.0, "reason": "unmapped",
-        "match_basis": "semantic", "capability_check": check.model_dump(),
-        "requested_outcome": {"operation": "unknown", "input_artifacts": ["expression_matrix"],
-                              "artifact_type": "unknown", "entity_types": [], "regulator_types": [],
-                              "target_types": [], "granularity": "unknown"}})
-    reply = unmapped_reply(decision, ProjectPolicyLoader(Path(__file__).parents[1]).load())
+    reply = reply_for(check)
     assert "**OTTER**" in reply and "with its own settings instead" in reply
     assert "no workflow is offered" not in reply
+    # Round m3: a24b's own wording sets the GPU apart by a clause boundary, and its gold judged it apart ("run OTTER on
+    # the 110 lung samples" supported, "on the GPU so it finishes faster" not); OTTER is offered for the network, and
+    # the GPU line says why it is not available.
+    task = ("Go ahead and run OTTER on the 110 lung samples (motif, PPI and expression attached) on the GPU so it "
+            "finishes faster.")
+    check = _check(task, _ask("run OTTER", ["otter.tf_gene_network"], named="OTTER", named_quote="OTTER",
+                              settings=[("OTTER.computing", "on the GPU", "GPU")]))
+    network, gpu = check.results()
+    assert (network.status, gpu.quote, gpu.status) == ("available", "on the GPU", "not_available")
+    assert "computing=gpu is not enabled" in gpu.limits[0]
+    assert '**OTTER** — for "run OTTER"' in reply_for(check)
+    assert '"on the GPU" -- not available here as asked.' in understanding_paragraph(check)
 
 
 # --- live m1a: the request's own method and settings, and what each setting means ----------------------------------
@@ -396,9 +413,17 @@ def test_an_unregistered_method_asked_to_run_is_not_given():
 
 def test_the_request_method_applies_to_its_one_result_but_not_across_two():
     task = "Run OTTER with an L1 sparsity penalty of 0.1 on our 64 samples."
+    whole = ("OTTER", "OTTER", [("unregistered", "an L1 sparsity penalty of 0.1", "0.1")])
     one = _check(task, _ask("Run OTTER", ["otter.tf_gene_network"], scale="whole_cohort", regulator_kinds=["tf"]),
-                 whole=("OTTER", "OTTER", [("unregistered", "an L1 sparsity penalty of 0.1", "0.1")]))
+                 whole=whole)
     assert _result(one).status == "not_available" and _result(one).defaults == ["otter.tf_gene_network"]
+    # Round m3: stated in a clause of its own, the penalty is a requirement of its own and the run is still held.
+    task = "Run OTTER on our 64 samples, and use an L1 sparsity penalty of 0.1."
+    apart = _check(task, _ask("Run OTTER", ["otter.tf_gene_network"], scale="whole_cohort", regulator_kinds=["tf"]),
+                   whole=whole)
+    assert [(item.quote, item.status) for item in apart.results()] == [
+        ("Run OTTER", "available"), ("an L1 sparsity penalty of 0.1", "not_available")]
+    assert run_check_verdict(apart, "run_otter")["verdict"] == "partial_gap"
     task = "Build a PANDA network with its alpha at 0.25, then find communities in it."
     two = _check(task, _ask("Build a PANDA network", ["panda.tf_gene_network"], scale="whole_cohort",
                             regulator_kinds=["tf"]),

@@ -19,8 +19,8 @@ from ..workflow_conditions import (
 )
 from .request_spans import _span
 
-__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "unbound_settings",
-           "verified_controls", "verified_method", "with_request_method"]
+__all__ = ["method_fitting", "request_method", "request_method_for", "request_method_limit", "settings_apart",
+           "typed_setting", "unbound_settings", "verified_controls", "verified_method", "with_request_method"]
 
 
 def _folded(text: str) -> str:
@@ -132,22 +132,28 @@ def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str],
 
 
 def request_method(task: str, proposal) -> dict:
-    """The method and settings the request names as a whole (live m1a F1), verified like an ask's."""
+    """The method, settings and data size the request names as a whole (live m1a F1; round m3: the data size),
+    verified like an ask's."""
     found = verified_method(task, getattr(proposal, "conditions", None))
-    return {key: value for key, value in found.items() if key in ("named", "named_quote", "settings")}
+    return {key: value for key, value in found.items()
+            if key in ("named", "named_quote", "settings", "samples", "samples_quote", "features")}
 
 
 def with_request_method(method: dict, whole: dict) -> dict:
-    """An ask's method with the request's named method and settings where it states none of its own.
+    """An ask's method with the request's named method, settings and data size where it states none of its own.
 
     Applied only when the request asks for one result: with two, a setting given for one workflow would hold the other
-    to it ("run PANDA ..., then CONDOR on it").
+    to it ("run PANDA ..., then CONDOR on it"), and a count could be another dataset's.
     """
     merged = dict(method)
     if "named" not in merged and "named" in whole:
         merged.update(named=whole["named"], named_quote=whole["named_quote"])
     if settings := _latest([*merged.get("settings", []), *whole.get("settings", [])]):
         merged["settings"] = settings
+    if "samples" not in merged and "samples" in whole:  # round m3 N26: "100 samples and 1000 total features"
+        merged.update(samples=whole["samples"], samples_quote=whole["samples_quote"])
+    if "features" not in merged and "features" in whole:
+        merged["features"] = whole["features"]
     return merged
 
 
@@ -198,12 +204,14 @@ def _ruled_out_by_data(keys: list[str], conditions: dict[str, str], quotes: dict
 
 
 def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
-                         quotes: dict[str, str] | None = None) -> CheckedRequirement | None:
+                         quotes: dict[str, str] | None = None, task: str = "") -> CheckedRequirement | None:
     """A result for a request that asks for none but names a method it cannot have as asked (live m1a F1).
 
     "Can you run PANDA with its alpha update rate set to 0.25 ...?" was read as a question about the methods only, so
-    the run was approved with nothing asked. The named workflow's own results are held to the stated settings; an
-    unregistered method gives none. Nothing is added when the request names no method or the method can run as asked.
+    the run was approved with nothing asked. The named workflow's own results are held to the stated settings, the
+    rules they must meet together and the data size the request states (round m3: "Can LIONESS-PANDA run for exactly
+    two expression samples ...?" got the workflow's card); an unregistered method gives none. Nothing is added when
+    the request names no method or the method can run as asked.
     """
     named = whole.get("named")
     if not named:
@@ -221,10 +229,122 @@ def request_method_limit(whole: dict, conditions: dict[str, str] | None = None,
         defaults = [key for key in defaults if key not in ruled]
     if not limits or kept:
         return None
-    quote = (whole["settings"][0]["quote"] if whole.get("settings") and named != UNREGISTERED and not ruled
-             else said if ruled and said else whole["named_quote"])
+    quote = (said if ruled and said else whole["named_quote"] if named == UNREGISTERED
+             else _limit_words(task, whole, workflows) or whole["named_quote"])
     return CheckedRequirement(quote=quote, kind="result", status="not_available", method=whole, limits=limits,
                               instead=instead, defaults=defaults)
+
+
+def _setting_words(task: str, setting: dict) -> tuple[int, int]:
+    """Where a verified setting's words are, with its value when the value is within them or follows them in the
+    same sentence ("learning rate of 0.009"). `verified_method` keeps the value's first place in the request, which
+    can be another turn's (round m3 K05: "true" of the previous goal's "sparsify=true")."""
+    start, end = setting.get("span") or (setting.get("at", 0), setting.get("at", 0))
+    value = setting.get("value", "")
+    at = task.find(value, start) if value else -1
+    if at < 0 or (at >= end and re.search(r"[.!?\n]", task[end:at])):
+        return start, end
+    return start, max(end, at + len(value))
+
+
+def _limit_words(task: str, whole: dict, workflows: set[str]) -> str:
+    """The request's words for what the named workflow cannot take: a setting it cannot apply ("its alpha update
+    rate"), else every stated setting and count from the first to the last when they cannot go together ("kmin=2
+    and kmax=9 on exactly six mutation samples"), else the data size ("exactly two expression samples")."""
+    found = [conditions for name in workflows if (conditions := conditions_for(name)) is not None]
+    settings = whole.get("settings", [])
+    stated = [StatedSetting(item["name"], item["quote"], item.get("value", "")) for item in settings]
+    for item, setting in zip(settings, stated):
+        if any(setting_issue(conditions, setting) for conditions in found):
+            return item["quote"]
+    samples, features = whole.get("samples"), whole.get("features")
+    if any(combination_issues(conditions, stated, samples) for conditions in found):
+        spans = [_setting_words(task, item) for item in settings if item.get("span")]
+        if samples is not None and (counted := _span(task, whole.get("samples_quote", ""))) is not None:
+            spans.append(counted)
+        if task and spans:
+            return task[min(a for a, _ in spans):max(b for _, b in spans)]
+    if any(data_issue(conditions, samples, features) for conditions in found):
+        return whole.get("samples_quote", "")
+    return ""
+
+
+_CLAUSE_BOUNDARY = re.compile(r"[,;:()\[\]\n]|[.!?](?=\s|$)|\s[-\u2013\u2014]+\s")
+
+
+def settings_apart(task: str, method: dict, keys: list[str], asked: list[tuple[int, int]]) -> tuple[dict, list]:
+    """An ask's method without the stated settings no credited workflow can use that are stated in a clause of their
+    own, and each of those as a not-available result of its own (round m3).
+
+    m3 MX12 "Run GIRAFFE ... to produce signed R and sample-varying TFA, and use an exposed custom optimizer learning
+    rate of 0.009": the learning rate, which GIRAFFE cannot take, made both results not available as asked, though
+    the request asks for them apart from it -- the gold judges the two separately, as a24b's did for MX04 ("run OTTER
+    on the 110 lung samples (motif, PPI and expression attached) on the GPU so it finishes faster") and MX05 ("fit
+    GIRAFFE to our 45 pancreatic islet samples ..., but set its regularisation lambda to 0.5"). A setting within an
+    ask's words, or joined to them with no clause boundary between, is how that result is asked and still limits it:
+    a24b N11 "Run OTTER with an L1 sparsity penalty of 0.1 so that ...", m1b F6 "LIONESS-PANDA networks for our 40
+    liver samples with an edge sparsity threshold of 0.3 applied inside the method" (both judged whole). So does a
+    setting some credited workflow can use, and any rule settings break together. Only the workflows the named method
+    allows are weighed: a setting of an unregistered method ("the TIGER Bayesian model and an L1 penalty of 0.1") is
+    that method's, not a credited workflow's.
+    """
+    named = method.get("named")
+    allowed = named_workflows(named) if named else None
+    workflows = list(dict.fromkeys(entry(key).workflow for key in keys if entry(key).workflow
+                                   and (allowed is None or entry(key).workflow in allowed)))
+    found = [conditions_for(name) for name in workflows]
+    if not found or None in found or not method.get("settings"):
+        return method, []
+    kept, apart = [], []
+    for item in method["settings"]:
+        where = _setting_words(task, item)
+        setting = StatedSetting(item["name"], item["quote"], item.get("value", ""))
+        issues = [setting_issue(conditions, setting) for conditions in found]
+        if all(issues) and all(_own_clause(task, where, ask) for ask in asked):
+            words = task[where[0]:where[1]].strip().rstrip(" .;,!?")
+            apart.append(CheckedRequirement(quote=words, kind="result", status="not_available",
+                                            method={"settings": [item]}, limits=list(dict.fromkeys(issues))))
+        else:
+            kept.append(item)
+    if not apart:
+        return method, []
+    return ({**method, "settings": kept} if kept else {k: v for k, v in method.items() if k != "settings"}), apart
+
+
+def _own_clause(task: str, words: tuple[int, int], ask: tuple[int, int]) -> bool:
+    """Whether a clause boundary -- a comma, semicolon, colon, bracket, dash or sentence end -- separates the words
+    from an ask's words; words within or overlapping them are the ask's."""
+    if words[0] < ask[1] and ask[0] < words[1]:
+        return False
+    between = task[ask[1]:words[0]] if ask[1] <= words[0] else task[words[1]:ask[0]]
+    return bool(_CLAUSE_BOUNDARY.search(between))
+
+
+def typed_setting(method: dict, workflow: str, quote: str) -> bool:
+    """Whether the words of a stated requirement are a setting the check already verified for this workflow, so the
+    free-text condition check is not asked about them again (round m3 P08: "set cluster=false" was read as
+    SAMBAR.cluster=false, a legal wired value, then answered "violates" for SAMBAR, and the supported scores refused).
+
+    The setting must be the workflow's own, usable as stated, and its words -- name and value -- must lie within the
+    requirement's words and make at least half of them; more than that ("set cluster=false and keep only TP53-mutant
+    samples") is still checked.
+    """
+    conditions = conditions_for(workflow)
+    words = re.findall(r"[0-9a-z]+", (quote or "").casefold())
+    if conditions is None or not words:
+        return False
+    for item in method.get("settings", []):
+        name = item["name"]
+        if name == UNREGISTERED or name.split(".", 1)[0] != conditions.workflow:
+            continue
+        if setting_issue(conditions, StatedSetting(name, item["quote"], item.get("value", ""))) is not None:
+            continue
+        if (item["quote"] or "").strip().casefold() not in quote.casefold():
+            continue
+        own = set(re.findall(r"[0-9a-z]+", f'{item["quote"]} {item.get("value", "")}'.casefold()))
+        if 2 * sum(1 for word in words if word in own) >= len(words):
+            return True
+    return False
 
 
 def _control_value(limit, words: str, quote: str = ""):

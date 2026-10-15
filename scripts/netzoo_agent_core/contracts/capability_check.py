@@ -284,6 +284,19 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
     fields["settings"] = (method["settings"][0], Field(default_factory=list, description=(
         "Each setting of a method the request gives anywhere -- a parameter, penalty, threshold, precision, output "
         "format or hardware -- one item per setting; empty when it gives none. Not the input data.")))
+    # Round m3 (2026-10-15): "Can LIONESS-PANDA run for exactly two expression samples ...?", "Can BONOBO run on
+    # exactly two total samples ...?" and "Can SAMBAR run with kmin=2 and kmax=9 on exactly six mutation samples ...?"
+    # were questions about a method with no ask, so the data size they state had no field: the sample minimums, the
+    # clustering limit and the LIONESS-DRAGON cap were never applied and each was answered as if it could run. The
+    # data size is read for the request too, as its method and settings are.
+    fields["sample_count"] = (method["sample_count"][0], Field(default=None, description=(
+        "How many samples, patients or profiles the request says the user's data has, anywhere in it; null when it "
+        "does not say.")))
+    fields["sample_count_quote"] = (str, Field(default="", description=(
+        "Exact words of the request stating that number; empty when it is null.")))
+    fields["feature_counts"] = (method["feature_counts"][0], Field(default_factory=list, description=(
+        "Each number of genes, proteins or other features the request says the user's data has, one item per data "
+        "type; empty when none is stated.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -292,7 +305,8 @@ def unstated_conditions() -> dict:
     return {**{key: value for name, (values, _rules_out, _description) in CONDITIONS.items()
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
             "other_requirements": [], "unknown_facts": [], "open_choices": [],
-            "named_method": "none", "named_method_quote": "", "settings": []}
+            "named_method": "none", "named_method_quote": "", "settings": [],
+            "sample_count": None, "sample_count_quote": "", "feature_counts": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
