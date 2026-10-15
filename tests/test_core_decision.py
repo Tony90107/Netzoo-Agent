@@ -201,3 +201,13 @@ def test_the_clarify_card_is_a_clarification_with_the_question():
     decision = with_core(decision, decide_core(decision))
     card = _core_card("clarify_goal", decision, None, "")
     assert (card.kind, card.points) == ("clarification", [decision.clarification_question])
+
+
+def test_the_clarify_reply_lists_every_candidate_and_keeps_abbreviations_whole():
+    from netzoo_agent_core.interpretation.clarify_goal import _first_sentence
+
+    assert _first_sentence("Covariates (e.g. group, batch) shape it. More text.") == "Covariates (e.g. group, batch) shape it"
+    decision = _with_check(_goal_check("purpose_only", "see how genes are connected"))
+    core = decide_core(decision)
+    from netzoo_agent_core.interpretation.clarify_goal import clarify_reply
+    assert all(f"({name})" in clarify_reply(core) for name in core.clarify.candidates)
