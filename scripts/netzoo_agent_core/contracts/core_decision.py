@@ -1,8 +1,9 @@
 """The turn's core decision (spec docs/superpowers/specs/2026-10-15-core-decision-design.md).
 
 One four-way call per turn -- clarify the goal, ask a deciding fact, decline, or do -- produced by
-`interpretation.core_decision.decide_core` and nowhere else. Phase 0 records it in shadow: it is written on the
-decision and in the trace (`core.decision`), and nothing reads it yet.
+`interpretation.core_decision.decide_core` and nowhere else. It is written on the decision and in the trace
+(`core.decision`). Phase 1 acts on a CLARIFY call (`with_core`, the CLARIFY reply); the other kinds are still
+recorded in shadow.
 """
 
 from __future__ import annotations
@@ -49,6 +50,11 @@ class ClarifyNeed(BaseModel):
     missing: Literal["result", "data", "both"] = "result"
     candidates: list[str] = Field(default_factory=list)
     """Workflows whose results the reply may list as possible -- never as fitting."""
+    inputs: list[str] = Field(default_factory=list)
+    """The input artifact types the request states (the candidates are those that take one of them)."""
+    question: str = ""
+    goal_quote: str = ""
+    """The request's words the reading gave for its aim (or for a result no requirement reads)."""
 
 
 class CoreDecision(BaseModel):

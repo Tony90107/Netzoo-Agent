@@ -1,36 +1,38 @@
-"""The core decision (spec docs/superpowers/specs/2026-10-15-core-decision-design.md), phase 0: shadow.
+"""The core decision (spec docs/superpowers/specs/2026-10-15-core-decision-design.md).
 
 `decide_core` reads the turn's final `TaskDecision` -- the routing reading, the capability check and the run
-verdict -- and names the call the turn already makes: clarify the goal, ask a deciding fact, decline, or do. It
-makes no model call and changes nothing; `classify_task` writes it on the decision and in the trace
-(`core.decision`), and `respond` records which reply answered beside it (`core.view`). Later phases move the call
-itself here; this phase gives the baseline the 56-item bench is scored from.
+verdict -- and makes the turn's four-way call: clarify the goal, ask a deciding fact, decline, or do. It makes no
+model call; `classify_task` writes it on the decision and in the trace (`core.decision`), and `respond` records
+which reply answered beside it (`core.view`). Phase 1 acts on CLARIFY (`with_core` holds the turn, and the CLARIFY
+reply answers it); the other kinds still mirror today's replies (phase 0, shadow).
 
 Rules, in the spec's order of precedence:
 
 1. UNCHECKED -- routing failed closed with nothing routed (unless the check confirmed a full gap, which the reply
    still gives: round p0 C10, C22, C37, C49), the check could not confirm what it read, or the run was held because
    the check could not confirm or read it.
-2. ASK -- a result waits on a fact the user said they do not know (`needs_fact`), or the run was held for it.
-3. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
+2. CLARIFY (phase 1, spec section 5) -- the check's confirmed reading says the request names no result
+   (`purpose_only`), or the result it names is in no requirement the check read; a tool request is never held.
+3. ASK -- a result waits on a fact the user said they do not know (`needs_fact`), or the run was held for it.
+4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
    unsupported with nothing read, or the request names a method combination no workflow implements.
-4. CLARIFY -- no result was read, nothing is run and routing offered no workflow (the "which result" question).
-5. DO -- otherwise: a run, a workflow the check or routing gives, or several to choose from; `partial` when some
+5. CLARIFY (phase 0) -- no result was read, nothing is run and routing offered no workflow.
+6. DO -- otherwise: a run, a workflow the check or routing gives, or several to choose from; `partial` when some
    results are declined, `run_allowed` only for a run the verdict approves.
 
-Phase 0 mirrors the replies as they are; m3's labelled sessions were the offline check (research log).
+Phase 0 mirrored the replies as they were; m3's labelled sessions were its offline check (research log).
 """
 
 from __future__ import annotations
 
-from workflow_registry import workflow_name
+from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 
-from ..capability_sheet import entry
+from ..capability_sheet import entry, produced_text
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
 from .needed_facts import _question
 
-__all__ = ["decide_core"]
+__all__ = ["decide_core", "with_core"]
 
 _FAILED_BASES = frozenset({"semantic_validation_recovery", "provider_unavailable"})
 _TOOL_ACTIONS = frozenset({"download_string", "web_search", "query_context7"})
@@ -78,8 +80,51 @@ def _facts(check) -> list[FactQuestion]:
             for row in rows]
 
 
+def _overlaps(a: str, b: str) -> bool:
+    a, b = a.casefold().strip(), b.casefold().strip()
+    return bool(a and b) and (a in b or b in a)
+
+
+def _goal_unclear(check) -> bool:
+    """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words."""
+    if check is None or check.unconfirmed() or not check.goal_quote:
+        return False
+    if check.goal == "purpose_only":
+        return True
+    asked = [row.quote for row in check.requirements if row.kind in ("result", "about_methods")]
+    return check.goal == "result_named" and not any(_overlaps(check.goal_quote, quote) for quote in asked)
+
+
+def _clarify_need(decision, check) -> ClarifyNeed:
+    """The results the request's stated data can give -- listed as possible, never as fitting."""
+    stated = {*decision.guidance_input_artifacts,
+              *(artifact for hypothesis in decision.outcome_hypotheses
+                for artifact in hypothesis.outcome.input_artifacts)} - {"unknown"}
+    actions = [action for action, capability in OUTPUT_CAPABILITIES.items()
+               if not stated or capability.input_artifacts & stated]
+    actions = [action for action in actions if produced_text(action)] or list(OUTPUT_CAPABILITIES)
+    question = "Which of these results do you want, or what question should the analysis answer?"
+    if not stated:
+        question += (" And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, "
+                     "or a second omics layer)?")
+    return ClarifyNeed(missing="result" if stated else "both", candidates=[workflow_name(a) for a in actions],
+                       inputs=sorted(stated), question=question, goal_quote=check.goal_quote if check else "")
+
+
+def with_core(decision, core: CoreDecision):
+    """The decision a phase-1 call leaves: CLARIFY selects, refuses and runs nothing; the other kinds change nothing."""
+    if core.kind != "CLARIFY":
+        return decision.model_copy(update={"core": core})
+    return decision.model_copy(update={
+        "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
+        "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],
+        "hypothesis_actions": [], "alternative_actions": [], "capability_match_status": "ambiguous",
+        "clarification_question": core.clarify.question if core.clarify else None,
+        "reason": "The request names no result yet; the goal is asked before any workflow is chosen."})
+
+
 def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecision:
-    """The turn's four-way call, read from its final decision (phase 0: shadow, recorded only)."""
+    """The turn's four-way call, read from its final decision."""
     from ..routing.method_rejections import unsupported_algorithm_request
 
     check = decision.capability_check
@@ -92,6 +137,7 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         "artifact_type": getattr(outcome, "artifact_type", None), "reason_code": reason_code,
         "rows": [[row.kind, row.status] for row in (check.requirements if check is not None else [])],
         "check_unconfirmed": bool(check is not None and check.unconfirmed()),
+        "goal": [check.goal, check.goal_quote] if check is not None else None,
         "run_verdict": None if verdict is None else {"verdict": verdict.verdict, "held": verdict.held},
     }
 
@@ -105,6 +151,8 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("UNCHECKED", f"run_held_{verdict.verdict}", workflows=_routed(decision))
     if decision.action in _TOOL_ACTIONS:
         return call("DO", "tool", workflows=[workflow_name(decision.action)])
+    if _goal_unclear(check):
+        return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check))
     if not decision.stated_hypotheses and unsupported_algorithm_request(task):
         return call("DECLINE", "algorithm_boundary")
     if (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":

@@ -87,6 +87,14 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
     return found
 
 
+def verified_goal(task: str, proposal) -> tuple[str, str]:
+    """Core decision spec, phase 1: the reading's goal and its words, kept only when the words are in the request."""
+    conditions = getattr(proposal, "conditions", None)
+    goal, quote = getattr(conditions, "goal", ""), (getattr(conditions, "goal_quote", "") or "").strip()
+    span = _span(task, quote) if goal and quote else None
+    return ("", "") if span is None else (goal, task[span[0]:span[1]])
+
+
 def _open_choices(task: str, proposal, conditions, place) -> tuple[list[CheckedRequirement], set]:
     """Verdict layer step 2b: each result choice whose options, fitted to the sheet, lead to different workflows.
 
@@ -510,8 +518,10 @@ def build_capability_check(
                  if index not in read and not any(a < e and s < b for a, b in spans)]
     results = [item for item in requirements if item.kind == "result"]
     full_gap = _full_gap(results, unchecked)
+    goal, goal_quote = verified_goal(task, proposal)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
-                           conditions=conditions, unknowns=[list(item) for item in unknowns], unknown_scopes=unknown_scopes, unknown_domains=unknown_domains), rejected
+                           conditions=conditions, unknowns=[list(item) for item in unknowns], unknown_scopes=unknown_scopes,
+                           unknown_domains=unknown_domains, goal=goal, goal_quote=goal_quote), rejected
 
 
 def _names(names: list[str]) -> str:
@@ -715,8 +725,11 @@ def whole_check_result(state, reply) -> dict | None:
     """The whole reply when the check alone answers the turn: a full gap (Log 387), a run it did not approve (items
     1-2, `run_hold`), or results waiting on facts the user said they do not know (verdict layer step 2)."""
     from ..contracts import TaskDecision
+    from .clarify_goal import clarify_result
     from .run_hold import held_run_result
 
+    if (clarify := clarify_result(state, reply)) is not None:  # core decision phase 1: the goal comes first
+        return clarify
     if (gap := full_gap_result(state, reply)) is not None:
         return gap
     if (held := held_run_result(state, reply, understanding_paragraph)) is not None:

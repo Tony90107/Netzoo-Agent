@@ -297,6 +297,20 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
     fields["feature_counts"] = (method["feature_counts"][0], Field(default_factory=list, description=(
         "Each number of genes, proteins or other features the request says the user's data has, one item per data "
         "type; empty when none is stated.")))
+    # Core decision spec, phase 1 (2026-10-15): whether the request names the result it wants. Round p0: 9 of 14
+    # requests that named none ("send me the results", "tell me what you find", "Should I go with BONOBO or
+    # LIONESS ...?") were read as asks, matched nothing and were answered "no registered workflow produces this".
+    fields["goal"] = (Literal["result_named", "method_named", "purpose_only"], Field(default="result_named", description=(
+        "What the request says it wants produced. result_named: it names the kind of result it wants (for example "
+        "one network for the whole cohort, a network per sample, communities, subtypes, TF activities, a co-expression "
+        "matrix, or a comparison between groups), even when it also asks which method gives it. method_named: it asks "
+        "to run, or asks about, a named method for that method's own output, or asks how methods work or differ. "
+        "purpose_only: it gives only a topic or an aim, its data or files, or leaves the choice of analysis to the "
+        "assistant, without naming the kind of result -- including asking which of several methods to use without "
+        "saying what it wants from them.")))
+    fields["goal_quote"] = (str, Field(default="", description=(
+        "Exact words of the request that name the result (result_named) or the method (method_named), or that state "
+        "the aim (purpose_only).")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -306,7 +320,8 @@ def unstated_conditions() -> dict:
                for key, value in ((name, values[-1]), (f"{name}_quote", ""))},
             "other_requirements": [], "unknown_facts": [], "open_choices": [],
             "named_method": "none", "named_method_quote": "", "settings": [],
-            "sample_count": None, "sample_count_quote": "", "feature_counts": []}
+            "sample_count": None, "sample_count_quote": "", "feature_counts": [],
+            "goal": "result_named", "goal_quote": ""}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
@@ -527,6 +542,10 @@ class CapabilityCheck(BaseModel):
     """Log 403: a full gap the second opinion was owed but could not give (its budget spent, or the
     model failed), so, as for the backup model, the gap is reported unconfirmed and clears nothing
     (traces: 11 second opinions blocked by the turn budget on h8-h9, o10, f10)."""
+    goal: str = ""
+    """Core decision spec, phase 1: result_named, method_named or purpose_only, kept only when its words are in the
+    request (`interpretation.capability_check.verified_goal`); empty when unread or unverified."""
+    goal_quote: str = ""
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]

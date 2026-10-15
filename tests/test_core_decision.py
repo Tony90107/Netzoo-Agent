@@ -108,3 +108,96 @@ def test_a_confirmed_full_gap_is_decline_even_when_routing_failed_closed():
     unconfirmed = _decision(rows=[_row("not_available")], full_gap=True, provisional=True, confidence=0.0,
                             match_basis="provider_unavailable")
     assert decide_core(unconfirmed, reason_code="semantic_fallback").kind == "UNCHECKED"
+
+
+# Phase 1 (spec section 5): a request that names no result is CLARIFY, asked before any workflow is chosen.
+
+def _goal_check(goal, quote, rows=None, **extra):
+    return CapabilityCheck(requirements=rows if rows is not None else [_row("not_available")], goal=goal,
+                           goal_quote=quote, **extra)
+
+
+def _with_check(check, **extra):
+    fields = {"confidence": 0.9, **extra}
+    return TaskDecision(action=fields.pop("action", "no_tool"), in_scope=True, should_execute=False, reason="r",
+                        capability_check=check, **fields)
+
+
+def test_a_purpose_only_reading_is_clarify_even_over_a_full_gap():
+    check = _goal_check("purpose_only", "see how genes are connected", full_gap=True)
+    core = decide_core(_with_check(check))
+    assert (core.kind, core.basis) == ("CLARIFY", "goal_unclear")
+    assert core.clarify.question.startswith("Which of these results do you want")
+    assert core.clarify.missing == "both" and "PANDA" in core.clarify.candidates
+
+
+def test_a_named_result_no_requirement_reads_is_clarify_and_one_a_requirement_reads_is_not():
+    rows = [_row("not_available")]  # the requirement's quote is "a network"
+    assert decide_core(_with_check(_goal_check("result_named", "the analysis", rows))).kind == "CLARIFY"
+    assert decide_core(_with_check(_goal_check("result_named", "a network", rows))).kind == "DECLINE"
+
+
+def test_a_named_method_or_an_unconfirmed_reading_never_clarifies():
+    assert decide_core(_with_check(_goal_check("method_named", "BONOBO", [_row("available", ["bonobo.per_sample_networks"])]))).kind == "DO"
+    unconfirmed = _goal_check("purpose_only", "help me", [_row("available", ["panda.tf_gene_network"])], provisional=True)
+    assert decide_core(_with_check(unconfirmed)).kind == "UNCHECKED"
+
+
+def test_clarify_lists_the_results_the_stated_data_can_give():
+    from netzoo_agent_core.contracts.outcomes import OutcomeHypothesis
+
+    hypothesis = OutcomeHypothesis.model_validate({
+        "outcome": {"operation": "infer", "input_artifacts": ["mutation_matrix"], "artifact_type": "unknown",
+                    "granularity": "unknown"},
+        "confidence": 0.5, "evidence": [], "assumptions": []})
+    core = decide_core(_with_check(_goal_check("purpose_only", "tell me what you see"), outcome_hypotheses=[hypothesis]))
+    assert (core.clarify.inputs, core.clarify.candidates, core.clarify.missing) == (["mutation_matrix"], ["SAMBAR"], "result")
+
+
+def test_with_core_holds_a_clarify_turn_and_leaves_other_calls_alone():
+    from netzoo_agent_core.interpretation.core_decision import with_core
+
+    run = _with_check(_goal_check("purpose_only", "do whatever makes sense"), action="run_panda",
+                      matched_actions=["run_panda"], recommended_actions=["run_panda"])
+    held = with_core(run, decide_core(run))
+    assert (held.action, held.should_execute, held.matched_actions, held.recommended_actions) == ("no_tool", False, [], [])
+    assert held.clarification_question == held.core.clarify.question
+    done = _decision(rows=[_row("available", ["panda.tf_gene_network"])], matched_actions=["run_panda"])
+    kept = with_core(done, decide_core(done))
+    assert (kept.matched_actions, kept.core.kind) == (["run_panda"], "DO")
+
+
+def test_the_goal_is_kept_only_when_its_words_are_in_the_request():
+    from types import SimpleNamespace
+    from netzoo_agent_core.interpretation.capability_check import verified_goal
+
+    task = "Please run the network analysis on expr.tsv and send me the results."
+    said = SimpleNamespace(conditions=SimpleNamespace(goal="purpose_only", goal_quote="run the network analysis"))
+    invented = SimpleNamespace(conditions=SimpleNamespace(goal="purpose_only", goal_quote="understand regulation"))
+    assert verified_goal(task, said) == ("purpose_only", "run the network analysis")
+    assert verified_goal(task, invented) == ("", "")
+
+
+def test_the_clarify_reply_lists_possible_results_asks_once_and_selects_nothing():
+    from netzoo_agent_core.interpretation.capability_check import whole_check_result
+    from netzoo_agent_core.interpretation.core_decision import with_core
+
+    decision = _with_check(_goal_check("purpose_only", "see how genes are connected", full_gap=True))
+    decision = with_core(decision, decide_core(decision))
+    result = whole_check_result({"decision": decision.model_dump(), "messages": []},
+                                lambda text, kind: {"text": text, "reply_kind": kind})
+    assert result["reply_kind"] == "clarify_goal"
+    text = result["text"]
+    assert text.startswith("I can't tell yet which result you want")
+    assert "(PANDA)" in text and text.count("?") == 2  # the result question and the data question
+    assert "fits" not in text and "available from" not in text and "No registered workflow" not in text
+
+
+def test_the_clarify_card_is_a_clarification_with_the_question():
+    from netzoo_agent_core.interpretation.core_decision import with_core
+    from netzoo_agent_core.reply_cards.builder import _core_card
+
+    decision = _with_check(_goal_check("purpose_only", "see how genes are connected"))
+    decision = with_core(decision, decide_core(decision))
+    card = _core_card("clarify_goal", decision, None, "")
+    assert (card.kind, card.points) == ("clarification", [decision.clarification_question])
