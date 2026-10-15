@@ -3,8 +3,8 @@
 `decide_core` reads the turn's final `TaskDecision` -- the routing reading, the capability check and the run
 verdict -- and makes the turn's four-way call: clarify the goal, ask a deciding fact, decline, or do. It makes no
 model call; `classify_task` writes it on the decision and in the trace (`core.decision`), and `respond` records
-which reply answered beside it (`core.view`). Phase 1 acts on CLARIFY (`with_core` holds the turn, and the CLARIFY
-reply answers it); the other kinds still mirror today's replies (phase 0, shadow).
+which reply answered beside it (`core.view`). Phase 1 acts on CLARIFY and phase 2 on the fact agent's ASK (`with_core`
+holds the turn; their replies answer it); the other kinds still mirror today's replies (phase 0, shadow).
 
 Rules, in the spec's order of precedence:
 
@@ -13,7 +13,8 @@ Rules, in the spec's order of precedence:
    the check could not confirm or read it.
 2. CLARIFY (phase 1, spec section 5) -- the check's confirmed reading says the request names no result
    (`purpose_only`), or the result it names is in no requirement the check read; a tool request is never held.
-3. ASK -- a result waits on a fact the user said they do not know (`needs_fact`), or the run was held for it.
+3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
+   (`needs_fact`, or a run held for it) only when the agent did not run, and recorded as shadow when it did.
 4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
    unsupported with nothing read, or the request names a method combination no workflow implements.
 5. CLARIFY (phase 0) -- no result was read, nothing is run and routing offered no workflow.
@@ -32,7 +33,7 @@ from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
 from .needed_facts import _question
 
-__all__ = ["decide_core", "with_core"]
+__all__ = ["decide_core", "goal_unclear", "with_core"]
 
 _FAILED_BASES = frozenset({"semantic_validation_recovery", "provider_unavailable"})
 _TOOL_ACTIONS = frozenset({"download_string", "web_search", "query_context7"})
@@ -85,7 +86,7 @@ def _overlaps(a: str, b: str) -> bool:
     return bool(a and b) and (a in b or b in a)
 
 
-def _goal_unclear(check) -> bool:
+def goal_unclear(check) -> bool:
     """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words."""
     if check is None or check.unconfirmed() or not check.goal_quote:
         return False
@@ -112,7 +113,16 @@ def _clarify_need(decision, check) -> ClarifyNeed:
 
 
 def with_core(decision, core: CoreDecision):
-    """The decision a phase-1 call leaves: CLARIFY selects, refuses and runs nothing; the other kinds change nothing."""
+    """The decision a call leaves: CLARIFY (phase 1) and an agent's ASK (phase 2) select, refuse and run nothing;
+    the other kinds change nothing yet."""
+    if core.kind == "ASK" and core.basis == "fact_agent":
+        asked = [fact.question for fact in core.facts if not fact.settled_by_input_check]
+        return decision.model_copy(update={
+            "core": core, "action": "no_tool", "should_execute": False, "execution_requested": False,
+            "intent_type": "answer_question", "matched_actions": [], "recommended_actions": [],
+            "hypothesis_actions": [], "alternative_actions": [], "capability_match_status": "ambiguous",
+            "clarification_question": " ".join(asked)[:300],
+            "reason": "A fact the user is unsure of decides the request; it is asked before any workflow is chosen."})
     if core.kind != "CLARIFY":
         return decision.model_copy(update={"core": core})
     return decision.model_copy(update={
@@ -151,11 +161,18 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("UNCHECKED", f"run_held_{verdict.verdict}", workflows=_routed(decision))
     if decision.action in _TOOL_ACTIONS:
         return call("DO", "tool", workflows=[workflow_name(decision.action)])
-    if _goal_unclear(check):
+    if goal_unclear(check):
         return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check))
     if not decision.stated_hypotheses and unsupported_algorithm_request(task):
         return call("DECLINE", "algorithm_boundary")
-    if (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
+    agent = getattr(decision, "fact_check", None)
+    if agent is not None and agent.status == "checked":
+        evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
+        asked = [fact for fact in agent.accepted if not fact.settled_by_input_check]
+        if asked:
+            return call("ASK", "fact_agent", facts=agent.accepted,
+                        workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
+    elif (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
     if read and check.unconfirmed():
         return call("UNCHECKED", "check_unconfirmed", workflows=_routed(decision))
@@ -166,7 +183,8 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("DECLINE", "routing_unsupported")
     if not read and not running and not _routed(decision):
         return call("CLARIFY", "no_result_read", clarify=_clarify_need(decision, check))  # p1 C41, C48: one view
-    given = [row for row in read if row.status in _GIVEN]
+    shadow = agent is not None and agent.status == "checked"  # phase 2: a legacy wait gives what it could give
+    given = [row for row in read if row.status in _GIVEN or shadow and row.status == "needs_fact"]
     if read and not given:
         return call("DECLINE", "all_results_not_available", declined=_declined(results))
     workflows = _names(key for row in given for key in row.delivered_by) or _routed(decision)
@@ -174,5 +192,6 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     approved = (running and verdict is not None and not verdict.held and verdict.verdict in APPROVING_RUN_VERDICTS)
     held = verdict is not None and verdict.held
     basis = "run_held" if held else "run" if running else "results_given" if given else "routed"
+    settled = [fact for fact in agent.accepted if fact.settled_by_input_check] if agent is not None else []
     return call("DO", basis, workflows=workflows, partial=bool(declined and given), declined=declined,
-                run_allowed=approved)
+                run_allowed=approved, facts=settled)

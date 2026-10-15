@@ -198,7 +198,10 @@ def _recorded_about(value):
 
 
 UnknownAbout = Literal["data_unit", "input_network", "samples_matched", "sample_alignment", "regulator_kinds",
-                       "omics_layers", "scale", "sample_count", "mutation_origin", "value_type", "mirna_driver"]
+                       "omics_layers", "scale", "sample_count", "mutation_origin", "value_type", "mirna_driver",
+                       "other"]
+"""Core decision phase 2: `other` keeps any other uncertainty with its words -- the second reader that rule R1 asks
+the fact agent's words to agree with (the fixed dimensions above still drive only the legacy asks)."""
 
 
 @lru_cache(maxsize=2)
@@ -255,7 +258,8 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
             "miRNAs. omics_layers: how many omics data types there are. scale: one result for all samples together "
             "or one per sample. sample_count: how many independent samples there are. mutation_origin: somatic "
             "or germline mutations. value_type: continuous measurements or binary indicators. mirna_driver: whether "
-            "miRNA links must use a target prior or measured miRNA expression."))))
+            "miRNA links must use a target prior or measured miRNA expression. other: anything else about the "
+            "user's data or the wanted result that the user says they do not know or have not decided."))))
     fields["unknown_facts"] = (list[unknown], Field(default_factory=list, description=(
         "Each property of the user's data or of the wanted result that the user says they do not know or have not "
         "decided; empty when there is none.")))
@@ -546,6 +550,12 @@ class CapabilityCheck(BaseModel):
     """Core decision spec, phase 1: result_named, method_named or purpose_only, kept only when its words are in the
     request (`interpretation.capability_check.verified_goal`); empty when unread or unverified."""
     goal_quote: str = ""
+    uncertain_quotes: list[str] = Field(default_factory=list)
+    """Phase 2 R1: the request's words the check read as the user not knowing or not having decided something (any
+    unknown fact, any open choice); the fact agent's words must agree with one of them."""
+    stated_quotes: list[str] = Field(default_factory=list)
+    """Phase 2 R4: the request's words for each condition, method and setting the reading typed with a definite
+    value; a fact proposed from inside them is stated, not uncertain."""
 
     def results(self) -> list[CheckedRequirement]:
         return [item for item in self.requirements if item.kind == "result"]

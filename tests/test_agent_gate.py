@@ -3881,11 +3881,12 @@ class LangGraphHarnessIntegrationTests(unittest.TestCase):
         # The episode assertion moved with the episode: there is none to check.
         # Log 355: + the study-purpose call after routing; verdict layer step 1: + the run's capability check.
         # Review of 474a83c: the words before the quoted workflow ("請幫我跑一次") are read again too.
-        self.assertEqual(len(result["token_usage"]["calls"]), 6)
+        # Core decision phase 2: + the fact agent's call once the check is read (its goal is clear).
+        self.assertEqual(len(result["token_usage"]["calls"]), 7)
         self.assertEqual(
             [call["role"] for call in result["token_usage"]["calls"]],
             ["semantic_interpreter", "semantic_reviewer", "intent_router", "capability_check", "study_purpose",
-             "capability_reread"],
+             "capability_reread", "fact_check"],
         )
         self.assertLessEqual(
             result["token_usage"]["total_tokens"],

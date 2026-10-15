@@ -269,6 +269,14 @@ class ProjectPolicyLoader:
                 raise ProjectPolicyError(
                     f"Every convention in {path} must contain 1-400 characters."
                 )
+        from .contract_text import contract_text, normalized
+
+        text = normalized(contract_text(spec))
+        for check in spec.input_checks:
+            if not check.strip() or normalized(check) not in text:
+                raise ProjectPolicyError(
+                    f"Every input_checks entry in {path} must quote the workflow's own contract: {check!r}."
+                )
         return spec
 
     @staticmethod
