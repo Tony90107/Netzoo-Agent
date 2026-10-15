@@ -17,3 +17,13 @@
   - G4 every fact-agent ASK reply and every input-check note checked by me: the question is there, no workflow is
     chosen as fitting, no run is planned; a note matches the call.
 - Budget announced: 56 sessions; nemotron about 60–170 calls (the check), gpt-4o-mini about US/bin/zsh.12.
+
+## Round p2 result and the G4 rerun (declared before p2b)
+
+- p2: G1 ask 7/15 (pass), G2 no do item ASK (pass), G3 do 10, dont 7, vague 9 (pass).
+- **G4 failed** on C31: its header said "Matched workflows -- GIRAFFE" (the stated-hypotheses branch of the progress
+  line), and its no-outcome read "GIRAFFE does it instead of GIRAFFE".
+- Fixed within the phase-2 design (`f6fa41cd72f002ecb22c9c41ec9dad59c9fd003f`): no workflow on any branch of the progress line of an asking turn; R3's
+  legal values need other_workflow to name a different listed workflow.
+- Rerun p2b: the 9 items whose p2 call was ASK (C06 C20 C21 C31 C36 C39 C45 C50 C56), one run each,
+  `freeze-p2b.json`, about US$0.02, announced. G4 is judged on every ASK reply of p2b; p2's counts stand for G1–G3.
