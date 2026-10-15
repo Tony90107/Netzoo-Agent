@@ -1,0 +1,66 @@
+"""The turn's core decision (spec docs/superpowers/specs/2026-10-15-core-decision-design.md).
+
+One four-way call per turn -- clarify the goal, ask a deciding fact, decline, or do -- produced by
+`interpretation.core_decision.decide_core` and nowhere else. Phase 0 records it in shadow: it is written on the
+decision and in the trace (`core.decision`), and nothing reads it yet.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+CoreKind = Literal["CLARIFY", "ASK", "DECLINE", "DO", "UNCHECKED"]
+
+
+class FactQuestion(BaseModel):
+    """A fact the user is unsure of whose answer changes the call (spec section 6)."""
+
+    model_config = ConfigDict(extra="forbid")
+    question: str
+    user_quote: str = ""
+    """The request's own words saying the fact is unknown."""
+    workflows: list[str] = Field(default_factory=list)
+    """The workflows whose call depends on it."""
+    contract_quote: str = ""
+    """The workflow contract's words that make it matter (empty for a legacy `needed_facts` dimension)."""
+    depends_on: str = ""
+    """Legacy (phase 0): the `needed_facts.DIMENSIONS` key or `choice` the question came from."""
+    outcomes: dict[str, list[str]] = Field(default_factory=dict)
+    """Each answer and the workflows it leads to."""
+    settled_by_input_check: bool = False
+
+
+class DeclinedPart(BaseModel):
+    """A requirement that cannot be done as asked."""
+
+    model_config = ConfigDict(extra="forbid")
+    quote: str
+    reasons: list[str] = Field(default_factory=list)
+    alternatives: list[str] = Field(default_factory=list)
+    """Workflows offered after the denial, never as the result asked for."""
+
+
+class ClarifyNeed(BaseModel):
+    """What must be clarified before any workflow is chosen (spec section 5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    missing: Literal["result", "data", "both"] = "result"
+    candidates: list[str] = Field(default_factory=list)
+    """Workflows whose results the reply may list as possible -- never as fitting."""
+
+
+class CoreDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: CoreKind
+    partial: bool = False
+    """DO only: some requirements are declined; a subset is never run on its own."""
+    workflows: list[str] = Field(default_factory=list)
+    declined: list[DeclinedPart] = Field(default_factory=list)
+    facts: list[FactQuestion] = Field(default_factory=list)
+    clarify: ClarifyNeed | None = None
+    run_allowed: bool = False
+    basis: str = ""
+    """The rule of `decide_core` that made the call, for the trace and tests."""
+    evidence: dict[str, Any] = Field(default_factory=dict)

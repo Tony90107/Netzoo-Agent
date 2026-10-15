@@ -63,6 +63,15 @@ def record_event(
     context.recorder.append(state.get("run_id"), event_type, node, payload)
 
 
+def record_core_view(context: _GraphContext, state: AgentState, result: dict) -> dict:
+    """Core decision spec, phase 0: record the reply that answered beside the turn's core call (`core.view`)."""
+    if getattr(context, "recorder", None) is not None:  # reply-only test contexts carry no recorder
+        core = (state.get("decision") or {}).get("core") or {}
+        record_event(context, state, "core.view", "respond", {
+            "reply_kind": result.get("reply_kind") or "", "core_kind": core.get("kind"), "basis": core.get("basis")})
+    return result
+
+
 def preflight_budget(
     context: _GraphContext,
     state: AgentState,

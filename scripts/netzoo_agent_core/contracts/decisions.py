@@ -10,6 +10,7 @@ from workflow_registry import ActionName, ArtifactType, IntentType, PreferenceKe
 from .applicability import CandidateApplicability
 from .authorization import OperationAuthorization
 from .capability_check import CapabilityCheck, RunVerdict
+from .core_decision import CoreDecision
 from .data_plan import DataPlan
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
@@ -186,6 +187,9 @@ class TaskDecision(BaseModel):
     # and request; the Plan Evaluator and the executor gate refuse a run it does not approve. Code-owned;
     # omitted while unset.
     run_verdict: RunVerdict | None = Field(default=None, exclude_if=lambda value: value is None)
+    # Core decision spec (2026-10-15): the turn's four-way call (`interpretation.core_decision.decide_core`).
+    # Phase 0 records it in shadow; nothing reads it. Code-owned; omitted while unset.
+    core: CoreDecision | None = Field(default=None, exclude_if=lambda value: value is None)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None
