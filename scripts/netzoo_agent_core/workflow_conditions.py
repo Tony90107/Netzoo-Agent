@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Mapping
 
-from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
+from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS, resolve_conditional_output
 
 from .data import bonobo, cobra, dragon, giraffe, inspection, lioness_dragon, otter, sambar
 from .method_names import LIONESS_FAMILY, UNREGISTERED, method_names, named_workflows, setting_names
@@ -258,8 +258,9 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
     """Why the settings cannot be used together, from the rules the executors apply (M2; was M1's open item).
 
     DRAGON and LIONESS-DRAGON take both lambdas or neither; SAMBAR needs kmin <= kmax and, clustering, at least
-    kmax samples; BONOBO with sparsify needs delta above 0 and below 1/3. A value the words do not state is never
-    judged; a setting the words name without a value is taken as stated (sparsify, a lambda).
+    kmax samples; BONOBO with sparsify needs delta above 0 and below 1/3; and no combination the registry marks
+    invalid among its conditional outputs (BONOBO's save_pvals without sparsify). A value the words do not state is
+    never judged; a setting the words name without a value is taken as stated (sparsify, a lambda).
     """
     stated = {item.name.split(".", 1)[1]: item for item in settings
               if item.name != UNREGISTERED and item.name.split(".", 1)[1] in conditions.settings}
@@ -290,5 +291,45 @@ def combination_issues(conditions: WorkflowConditions, settings: list[StatedSett
     if conditions.action == "run_bonobo" and enabled("sparsify") is True and (delta := number("delta")) is not None:
         if error := bonobo.bonobo_delta(delta, True)[1]:
             found.append(f"BONOBO: {error.split(':')[0]}")
+    if error := _invalid_output(conditions, stated):
+        found.append(f"{conditions.workflow}: {error}")
     return found
+
+
+def _invalid_output(conditions: WorkflowConditions, stated: dict[str, StatedSetting]) -> str | None:
+    """The registry's reason when the stated values pick a conditional output it marks invalid -- the rule the
+    executor applies before it runs (`execution_bonobo`: `resolve_conditional_output`, BONOBO_PVALUES_REQUIRE_SPARSIFY).
+
+    Round m3 K05 ("keep save_pvals=true but set sparsify=false"): the request-level settings were read and each was
+    legal alone, so the methods question was answered as if BONOBO could run so. Judged only when the request states one
+    of the controls the rules govern and the words settle each one it states; the others keep their defaults.
+    """
+    definition = ACTION_DEFINITIONS.get(conditions.action)
+    capability = getattr(definition, "output_capability", None)
+    rules = tuple(getattr(capability, "conditional_outputs", ()) or ())
+    governed = [name for name in dict.fromkeys(name for rule in rules for name in rule.when)
+                if name in conditions.settings]
+    if not governed or not stated.keys() & set(governed):
+        return None
+    values = {}
+    for name in governed:
+        limit, said = conditions.settings[name], stated.get(name)
+        if said is None:
+            values[name] = limit.default
+            continue
+        if limit.control_type == "boolean":
+            value = boolean_value(said.value, said.quote)
+        elif limit.control_type == "enum":
+            value = enum_value(limit, said.value)
+        elif limit.control_type in ("number", "integer"):
+            value = next(iter(stated_numbers(said.value)), None)
+        else:
+            value = None
+        if value is None:
+            return None  # words that do not settle a value are never judged
+        values[name] = value
+    rule = resolve_conditional_output(conditions.action, values, registry=ACTION_DEFINITIONS)
+    if rule is None or getattr(rule, "valid", True):
+        return None
+    return re.sub(r"^invalid:\s*", "", rule.semantics).rstrip(".")
 

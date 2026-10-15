@@ -28,7 +28,8 @@ from .needed_facts import (
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .method_conditions import (
-    method_fitting, request_method, request_method_for, request_method_limit, verified_method, with_request_method,
+    method_fitting, request_method, request_method_for, request_method_limit, settings_apart, typed_setting,
+    verified_method, with_request_method,
 )
 from .requirement_split import (
     ask_conditions, condition_requirements, delivery_requirements, form_condition_spans, split_additions,
@@ -187,6 +188,9 @@ def condition_pairs(check: CapabilityCheck, stated: list[str]) -> list[tuple[int
     The workflow is shown with all of its produces entries that fit the ask's typed attributes, not only the
     credited one: a stated "each edge needs an adjusted p-value" beside a network credited to DRAGON's network
     entry is met by DRAGON's p-value entry, and showing the network alone would invite a false "violates".
+
+    Round m3 (P08): words that are a setting the check already verified for that workflow are not asked about again
+    (`method_conditions.typed_setting`); the setting's own rules judged them.
     """
     from types import SimpleNamespace
 
@@ -198,7 +202,9 @@ def condition_pairs(check: CapabilityCheck, stated: list[str]) -> list[tuple[int
         for action in dict.fromkeys(entry(key).action for key in item.delivered_by):
             produces = [key for key, found in known.items() if found.kind == "produces" and found.action == action]
             keys = (_fitting(produces, SimpleNamespace(**item.attrs)) if item.attrs else produces) or produces
-            pairs += [(index, action, keys, quote) for quote in stated]
+            workflow = entry(keys[0]).workflow
+            pairs += [(index, action, keys, quote) for quote in stated
+                      if not typed_setting(item.method, workflow, quote)]
     return pairs
 
 
@@ -422,19 +428,25 @@ def build_capability_check(
                 kept, item = ask_conditions(item, conditions, form_spans, asked)
                 asks.setdefault(span, []).append(_with_conditions(item, kept))
     asks, additions = split_additions(task, asks, request_sentences(task))  # M2: what an ask adds to a result
-    requirements = []
+    requirements, apart = [], {}
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
         applicable = applicable_unknowns(unknowns, unknown_scopes, unknown_domains, task[span[0]:span[1]])
         methods = [verified_method(task, item) for item in items]
-        if any(about == "sample_count" for about, _said, _domain in applicable):
-            methods = [{key: value for key, value in method.items() if key != "samples"} for method in methods]
         if len(asks) == 1 and whole:  # live m1a F1: the request's own method and settings, for its one result
             methods = [with_request_method(method, whole) for method in methods]
         elif whole:  # M2: with several results, only what names a workflow a result is credited to
             methods = [with_request_method(method, request_method_for(
                 whole, {known[k].workflow for k in item.delivered_by if known.get(k)})) for method, item in
                 zip(methods, items)]
+        if any(about == "sample_count" for about, _said, _domain in applicable):
+            methods = [{key: value for key, value in method.items() if key != "samples"} for method in methods]
+        # Round m3 (MX12): a setting no credited workflow can use, stated apart from every asked result, is a
+        # requirement of its own; the result is read without it.
+        for index, (item, method) in enumerate(zip(items, methods)):
+            credited = [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"]
+            methods[index], found = settings_apart(task, method, credited, list(asks))
+            apart.update((row.quote, row) for row in found)
         fitted = [method_fitting(method, _fitting(
             [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item))
             for item, method in zip(items, methods)]
@@ -471,6 +483,8 @@ def build_capability_check(
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
                                                defaults=defaults, **waiting))
+    requirements += list(apart.values())
+    spans += [found for item in apart.values() if (found := _span(task, item.quote)) is not None]
     choices, option_spans = _open_choices(task, proposal, conditions, place)
     requirements = [item for item in requirements if _span(task, item.quote) not in option_spans] + choices
     requirements += [CheckedRequirement(quote=task[span[0]:span[1]], kind=kind, status="not_checked")
@@ -480,7 +494,7 @@ def build_capability_check(
         said = {name: task[found[0]:found[1]] for name in conditions
                 if (quote := (getattr(stated, f"{name}_quote", "") or "").strip())
                 and (found := _span(task, quote)) is not None}
-        requirements += [found] if (found := request_method_limit(whole, conditions, said)) is not None else []
+        requirements += [found] if (found := request_method_limit(whole, conditions, said, task)) is not None else []
     covered = [*asks, *(found for item in additions if (found := _span(task, item.quote)) is not None)]
     requirements += additions + condition_requirements(task, conditions, form_spans, covered)
     spans += [span for span in form_spans.values() if not any(a <= span[0] and span[1] <= b for a, b in asks)]
