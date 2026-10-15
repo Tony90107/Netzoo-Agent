@@ -99,3 +99,12 @@ def test_the_core_call_is_recorded_on_the_decision_dump_only_when_set():
     assert "core" not in decision.model_dump()
     with_core = decision.model_copy(update={"core": decide_core(decision)})
     assert TaskDecision.model_validate(with_core.model_dump()).core.kind == "CLARIFY"
+
+
+def test_a_confirmed_full_gap_is_decline_even_when_routing_failed_closed():
+    """Round p0 C10, C22, C37, C49: semantic routing failed, the check confirmed a gap, and the reply declined."""
+    decision = _decision(rows=[_row("not_available")], full_gap=True, confidence=0.0, match_basis="provider_unavailable")
+    assert decide_core(decision, reason_code="semantic_fallback").kind == "DECLINE"
+    unconfirmed = _decision(rows=[_row("not_available")], full_gap=True, provisional=True, confidence=0.0,
+                            match_basis="provider_unavailable")
+    assert decide_core(unconfirmed, reason_code="semantic_fallback").kind == "UNCHECKED"

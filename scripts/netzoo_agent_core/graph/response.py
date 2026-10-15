@@ -81,7 +81,7 @@ def _reply(content: str, kind: str) -> dict:
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
     if (whole := whole_check_result(state, _reply)) is not None:  # Log 387, verdict step 2: the check answers it
-        return whole
+        return record_core_view(context, state, whole)
     result = checked_body_result(context, state, _reply) or _respond(context, state)  # Log 403: the check decides
     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
     result = with_study_purpose_reply(with_outside_steps_reply(result, state, _reply), state, _reply)
