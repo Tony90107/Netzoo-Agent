@@ -163,6 +163,8 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # Optional code-owned evidence only; older sessions default to empty maps.
 # 2026-10-15 (core decision spec, phase 0): optional code-owned TaskDecision.core, the turn's four-way call,
 # recorded in shadow; omitted from dumps while unset, so older sessions load unchanged.
+# Phase 1: optional code-owned capability_check.goal / goal_quote (verified goal reading) and the CLARIFY need's
+# inputs, question and goal quote; older sessions load unchanged.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -181,7 +183,7 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "1020025713259271f098877d5dee155bd183a6a4fd1f2fd7525937a081bdcf02",
+    "TaskDecision": "9b77c0708eb1c65ad84c0153f6102d1e2ea671d7ce47d60284f560510f9aebb4",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

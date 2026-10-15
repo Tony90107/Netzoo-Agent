@@ -10,7 +10,7 @@ from ..contracts import (
     _trace,
     _ui_text,
 )
-from ..interpretation.core_decision import decide_core
+from ..interpretation.core_decision import decide_core, with_core
 from ..interpretation.request_requirements import read_request_requirements, with_routing
 from ..interpretation.semantic_goal import publish_routing_progress
 from ..llm import latest_user_message, latest_user_task
@@ -45,9 +45,9 @@ def classify_task(context: _GraphContext, state: AgentState) -> dict:
         # Items 1-2: the verdict holds for this request only; a plan evaluated against another one fails.
         decision = decision.model_copy(update={"run_verdict": decision.run_verdict.model_copy(
             update={"request_sha256": requirements.source_sha256})})
-    # Core decision spec, phase 0: the turn's four-way call, recorded in shadow (nothing reads it yet).
+    # Core decision spec: the turn's four-way call; phase 1 acts on CLARIFY (nothing selected or run), the rest shadow.
     core = decide_core(decision, user_task, reason_code=invocation.reason_code)
-    decision = decision.model_copy(update={"core": core})
+    decision = with_core(decision, core)
     record_event(context, state, "core.decision", "classify", core.model_dump(mode="json"))
     usage = invocation.usage
     routing_state = invocation.routing_state
