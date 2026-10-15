@@ -69,6 +69,7 @@ def test_words_the_check_did_not_read_as_unsure_are_not_asked(policy):
     ({"contract_quote": "BONOBO always log-transforms its input"}, "R2 contract words"),
     ({"no_outcome": "supported"}, "R3"),
     ({"no_outcome": "other_workflow", "no_workflow": "NOT-A-WORKFLOW"}, "R3"),
+    ({"no_outcome": "other_workflow", "no_workflow": "BONOBO"}, "R3"),  # round p2 C31: "BONOBO instead of BONOBO"
 ])
 def test_a_proposal_that_breaks_a_rule_is_rejected_with_it(policy, change, rule):
     check = _kept(policy, _proposal(**change))
@@ -172,3 +173,16 @@ def test_the_contract_quotes_input_checks_must_be_the_contracts_own_words(policy
     bad.write_text(source.replace('  - "at least three total samples"', '  - "at least four total samples"'))
     with pytest.raises(ProjectPolicyError, match="input_checks"):
         Loader._load_workflow_spec(bad)
+
+
+def test_an_asking_turn_on_the_hypothesis_path_names_no_workflow_in_its_progress_line(policy):
+    """Round p2 C31: a research-guidance turn that the agent made ASK was headed "Matched workflows -- GIRAFFE"."""
+    from netzoo_agent_core.contracts.outcomes import StatedHypothesis
+    from netzoo_agent_core.interpretation.semantic_goal import classification_progress_detail
+
+    decision = _decision().model_copy(update={"stated_hypotheses": [StatedHypothesis.model_validate({
+        "axis": "unclear_goal", "basis": "run_bonobo", "target_artifact": "coexpression_network",
+        "target_granularity": "sample_specific", "text_span": "Run BONOBO"})]})
+    decision = decision.model_copy(update={"fact_check": _kept(policy, _proposal())})
+    held = with_core(decision, decide_core(decision, TASK))
+    assert classification_progress_detail({}, held)["workflows"] == []

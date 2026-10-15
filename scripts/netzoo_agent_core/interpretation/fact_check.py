@@ -71,10 +71,10 @@ def fact_messages_text(task: str, actions: list[str], policy) -> str:
     return f"REQUEST:\n{task}\n\nCONTRACTS OF THE WORKFLOWS THAT MAY ANSWER IT:\n{contracts}"
 
 
-def _outcome(kind: str, other: str, names: set[str]) -> str | None:
-    if kind == "other_workflow":
+def _outcome(kind: str, other: str, names: set[str], own: str) -> str | None:
+    if kind == "other_workflow":  # R3: a legal value names another listed workflow (round p2 C31: "GIRAFFE instead of GIRAFFE")
         name = other.strip().upper()
-        return f"other_workflow:{name}" if name in names else None
+        return f"other_workflow:{name}" if name in names and name != own.strip().upper() else None
     return kind
 
 
@@ -119,8 +119,8 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
         if not proposal.contract_quote.strip() or normalized(proposal.contract_quote) not in normalized(contract_text(spec)):
             reject("R2 contract words not in its contract")
             continue
-        yes = _outcome(proposal.yes_outcome, proposal.yes_workflow, names)
-        no = _outcome(proposal.no_outcome, proposal.no_workflow, names)
+        yes = _outcome(proposal.yes_outcome, proposal.yes_workflow, names, spec.workflow)
+        no = _outcome(proposal.no_outcome, proposal.no_workflow, names, spec.workflow)
         if yes is None or no is None or yes == no:
             reject("R3 yes and no do not lead to different outcomes")
             continue

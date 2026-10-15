@@ -60,7 +60,8 @@ def classification_progress_detail(
             "outcome": ("Comparing biological hypotheses and required inputs"
                         if len({h.basis for h in decision.stated_hypotheses if h.basis != "unsupported"}) >= 2
                         else "Explaining the method and its scientific assumptions"),
-            "workflows": list(dict.fromkeys(
+            # Core decision phase 2 (round p2 C31): a turn that asks names no workflow on this path either.
+            "workflows": [] if clarifying else list(dict.fromkeys(
                 workflow_name(h.basis) for h in decision.stated_hypotheses
                 if h.basis != "unsupported"
             )),
