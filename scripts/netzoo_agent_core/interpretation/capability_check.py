@@ -87,6 +87,34 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
     return found
 
 
+_INDEFINITE = {"", "not_stated", "none", None}
+
+
+def stated_quotes(task: str, proposal) -> list[str]:
+    """Phase 2 R4: the request's words for each condition, method and setting the reading typed definitely."""
+    conditions = getattr(proposal, "conditions", None)
+    found = []
+    for name in [*CONDITIONS, "named_method"]:
+        quote = (getattr(conditions, f"{name}_quote", "") or "").strip()
+        if getattr(conditions, name, None) not in _INDEFINITE and quote and (span := _span(task, quote)) is not None:
+            found.append(task[span[0]:span[1]])
+    for setting in getattr(conditions, "settings", None) or []:
+        for quote in (getattr(setting, "quote", ""), getattr(setting, "value_quote", "")):
+            if quote and quote.strip() and (span := _span(task, quote.strip())) is not None:
+                found.append(task[span[0]:span[1]])
+    return list(dict.fromkeys(found))
+
+
+def uncertain_quotes(task: str, proposal) -> list[str]:
+    """Phase 2 R1: the words of every unknown fact and open choice the reading found in the request."""
+    conditions = getattr(proposal, "conditions", None)
+    quotes = [fact.quote for fact in getattr(conditions, "unknown_facts", None) or ()]
+    quotes += [choice.quote for choice in getattr(conditions, "open_choices", None) or ()]
+    found = [task[span[0]:span[1]] for quote in quotes if quote and quote.strip()
+             and (span := _span(task, quote.strip())) is not None]
+    return list(dict.fromkeys(found))
+
+
 def verified_goal(task: str, proposal) -> tuple[str, str]:
     """Core decision spec, phase 1: the reading's goal and its words, kept only when the words are in the request."""
     conditions = getattr(proposal, "conditions", None)
@@ -521,7 +549,9 @@ def build_capability_check(
     goal, goal_quote = verified_goal(task, proposal)
     return CapabilityCheck(requirements=requirements, unchecked=unchecked, full_gap=full_gap,
                            conditions=conditions, unknowns=[list(item) for item in unknowns], unknown_scopes=unknown_scopes,
-                           unknown_domains=unknown_domains, goal=goal, goal_quote=goal_quote), rejected
+                           unknown_domains=unknown_domains, goal=goal, goal_quote=goal_quote,
+                           stated_quotes=stated_quotes(task, proposal),
+                           uncertain_quotes=uncertain_quotes(task, proposal)), rejected
 
 
 def _names(names: list[str]) -> str:
@@ -725,11 +755,14 @@ def whole_check_result(state, reply) -> dict | None:
     """The whole reply when the check alone answers the turn: a full gap (Log 387), a run it did not approve (items
     1-2, `run_hold`), or results waiting on facts the user said they do not know (verdict layer step 2)."""
     from ..contracts import TaskDecision
+    from .ask_facts import ask_result
     from .clarify_goal import clarify_result
     from .run_hold import held_run_result
 
     if (clarify := clarify_result(state, reply)) is not None:  # core decision phase 1: the goal comes first
         return clarify
+    if (asked := ask_result(state, reply)) is not None:  # core decision phase 2: the fact agent's questions
+        return asked
     if (gap := full_gap_result(state, reply)) is not None:
         return gap
     if (held := held_run_result(state, reply, understanding_paragraph)) is not None:
@@ -744,6 +777,9 @@ def whole_check_result(state, reply) -> dict | None:
 def with_capability_check_reply(result: dict, state, reply) -> dict:
     """Open any other reply with what was understood (the full gap has its own reply)."""
     from ..contracts import TaskDecision
+    from .ask_facts import with_settled_notes
+
+    result = with_settled_notes(result, state, reply)  # core decision phase 2 (R5): said, never asked
 
     decision = TaskDecision.model_validate(state["decision"])
     check = decision.capability_check

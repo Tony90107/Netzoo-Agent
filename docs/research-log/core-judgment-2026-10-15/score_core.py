@@ -40,6 +40,11 @@ def outcome(item, core, right_fact=None):
     if kind == EXPECTED[cls]:
         if cls == 'ask' and right_fact is not True: return 'wrong_fact', 1
         return 'correct', 0
+    # Phase 2 (declared before p2; GOLD-REVIEW file_checkable): a run that says its input check settles the deciding
+    # fact before anything runs is asking it.
+    settled = any(fact.get('settled_by_input_check') for fact in core.get('facts') or [])
+    if cls == 'ask' and kind == 'DO' and item.get('file_checkable') and settled and right_fact is True:
+        return 'correct', 0
     if kind in ('ASK', 'CLARIFY'): return 'wrong_question_kind', 1
     if kind == 'UNCHECKED': return 'unchecked', 1
     return ('committed_without_asking' if kind == 'DO' else 'refused_without_asking'), 2
@@ -51,7 +56,8 @@ def load(tag):
 
 def review(tag):
     live, rows, items = load(tag)
-    facts = [k for k, r in rows.items() if items[k]['class'] == 'ask' and (r['core'] or {}).get('kind') == 'ASK']
+    facts = [k for k, r in rows.items() if items[k]['class'] == 'ask' and ((r['core'] or {}).get('kind') == 'ASK'
+             or items[k].get('file_checkable') and any(f.get('settled_by_input_check') for f in (r['core'] or {}).get('facts') or []))]
     off = [k for k, r in rows.items() if outcome(items[k], r['core'] or {'kind': 'NONE'}, True)[1] > 0
            or (r['core'] or {}).get('kind') != 'DO']
     rest = sorted(set(rows) - set(off))
@@ -59,7 +65,8 @@ def review(tag):
     out = ['# Review sheet', '', '## ASK facts to check (facts-checked.json)', '']
     for k in sorted(facts):
         out += [f'- {k} gold: {items[k]["deciding_fact"]}',
-                *(f'  - asked: {f["question"]} (user: "{f["user_quote"]}")' for f in rows[k]['core']['facts'])]
+                *(f'  - {"said" if f.get("settled_by_input_check") else "asked"}: {f["question"]} (user: "{f["user_quote"]}"; '
+                  f'contract: "{f.get("contract_quote", "")}")' for f in rows[k]['core']['facts'])]
     out += ['', '## Replies to spot-check (faithful-checked.json)', '']
     for k in sample:
         r, it = rows[k], items[k]
@@ -75,7 +82,8 @@ def score(tag):
     facts = json.loads((live / 'facts-checked.json').read_text())
     faithful_path = live / 'faithful-checked.json'
     faithful = json.loads(faithful_path.read_text()) if faithful_path.exists() else {}
-    need = {k for k, r in rows.items() if items[k]['class'] == 'ask' and (r['core'] or {}).get('kind') == 'ASK'}
+    need = {k for k, r in rows.items() if items[k]['class'] == 'ask' and ((r['core'] or {}).get('kind') == 'ASK'
+            or items[k].get('file_checkable') and any(f.get('settled_by_input_check') for f in (r['core'] or {}).get('facts') or []))}
     if need - set(facts): raise ValueError(f'facts-checked.json lacks {sorted(need - set(facts))}')
     confusion = {c: Counter() for c in CLASSES}; outcomes = {c: Counter() for c in CLASSES}
     cost = Counter(); n = Counter(); per_item = {}; views = defaultdict(Counter); missing = []

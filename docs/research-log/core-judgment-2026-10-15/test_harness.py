@@ -57,6 +57,14 @@ class CoreScoring(unittest.TestCase):
         self.assertEqual(core(vague, {'kind': 'CLARIFY'}), ('correct', 0))
         self.assertEqual(core(vague, {'kind': 'DO', 'workflows': ['PANDA']}), ('committed_without_asking', 2))
 
+    def test_a_file_checkable_ask_settled_by_the_input_check_is_correct(self):
+        from score_core import outcome as core
+        checkable = {**item('ask'), 'file_checkable': True}
+        settled = {'kind': 'DO', 'workflows': ['OTTER'], 'facts': [{'settled_by_input_check': True}]}
+        self.assertEqual(core(checkable, settled, True), ('correct', 0))
+        self.assertEqual(core(checkable, settled, False), ('committed_without_asking', 2))
+        self.assertEqual(core(item('ask'), settled, True), ('committed_without_asking', 2))
+
     def test_bench_excludes_the_seen_items(self):
         from plan import DEV, jobs
         self.assertEqual([k for k, _ in jobs({k: {} for k in ('C01', 'C04', 'C05')})], ['C04'])

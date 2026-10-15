@@ -11,6 +11,7 @@ from .applicability import CandidateApplicability
 from .authorization import OperationAuthorization
 from .capability_check import CapabilityCheck, RunVerdict
 from .core_decision import CoreDecision
+from .fact_check import FactCheck
 from .data_plan import DataPlan
 from .outcomes import (
     RUNNABLE_CAPABILITY_COUNT,
@@ -190,6 +191,8 @@ class TaskDecision(BaseModel):
     # Core decision spec (2026-10-15): the turn's four-way call (`interpretation.core_decision.decide_core`).
     # Phase 0 records it in shadow; nothing reads it. Code-owned; omitted while unset.
     core: CoreDecision | None = Field(default=None, exclude_if=lambda value: value is None)
+    # Core decision spec, phase 2: the fact agent's kept and rejected proposals (R1-R6). Code-owned; omitted unset.
+    fact_check: FactCheck | None = Field(default=None, exclude_if=lambda value: value is None)
     missing_inputs: list[str] = Field(default_factory=list)
     expression_file: str | None = None
     design_file: str | None = None

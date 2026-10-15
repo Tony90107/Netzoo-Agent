@@ -1477,7 +1477,9 @@ ppi_file=/work/manual_tests/input_identification/correct_names_invalid_content/p
 
     result = app.invoke({"messages": [HumanMessage(content=task)], "run_id": str(run_id)})
 
-    assert router.calls == 3  # Log 355: + the study-purpose call (the capability check is answered beside it)
+    # Log 355: + the study-purpose call (the capability check is answered beside it); core decision phase 2: + the
+    # fact agent's call.
+    assert router.calls == 4
     assert result["decision"]["action"] == "run_panda"
     assert result["decision"]["match_basis"] == "workflow_name"
     assert result["decision"]["expression_file"].endswith("/expression.tsv")

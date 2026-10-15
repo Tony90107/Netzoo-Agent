@@ -258,6 +258,8 @@ def verified_unknowns(task: str, proposal) -> list[tuple[str, str]]:
               if (span := _span(task, words)) is not None]
     found = []
     for fact in getattr(conditions, "unknown_facts", None) or ():
+        if fact.about == "other":  # core decision phase 2: the agent's witness, never a fixed dimension
+            continue
         span = _span(task, fact.quote)
         if (span is None or (fact.about, task[span[0]:span[1]]) in found
                 or getattr(fact, "applies_to", None) == []

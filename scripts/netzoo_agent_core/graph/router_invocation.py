@@ -25,6 +25,7 @@ from ..routing.capability import (
 from ..routing.named_labels import named_registered_action
 from ..routing.outcome_matching import match_semantic_request
 from .context import _GraphContext, record_event
+from .fact_check_call import apply_fact_check
 from .continuation_invocation import compare_workflows, continue_workflow
 from .intent_invocation import _invoke_intent_router
 from .invocation_types import RouterInvocation as _RouterInvocation
@@ -555,6 +556,8 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         # routing's offer in place (Log 400: its three false gaps on heldout9 cleared real workflows).
         record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
         check = check.model_copy(update={"full_gap": False, "provisional": True})
+    # Core decision phase 2: the fact agent asks; the fixed dimensions below stand only when it did not run.
+    result, decision, check = apply_fact_check(context, state, user_task, result, decision, check)
     if check.needed_facts():
         # Verdict layer step 2: a result waits on a fact the user said they do not know -- on a guidance turn or a
         # run, nothing is selected, refused or run before it is known.

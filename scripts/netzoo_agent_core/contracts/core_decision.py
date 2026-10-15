@@ -31,6 +31,12 @@ class FactQuestion(BaseModel):
     outcomes: dict[str, list[str]] = Field(default_factory=dict)
     """Each answer and the workflows it leads to."""
     settled_by_input_check: bool = False
+    """Phase 2 R5: the workflow's own input check settles it before a run on the named files; said, never asked."""
+    uncertainty: str = ""
+    """Phase 2: said_unknown, two_versions or two_readings (the fact agent's reading of the user's words)."""
+    if_yes: str = ""
+    if_no: str = ""
+    """Phase 2: what each answer leads to -- supported, not_supported, or other_workflow:<NAME>."""
 
 
 class DeclinedPart(BaseModel):

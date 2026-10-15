@@ -534,6 +534,10 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return ReplyCard(kind="clarification",
                          headline="I need one more detail before choosing a workflow.",
                          points=[clip(decision.clarification_question, 300)])
+    if kind == "ask_facts" and decision.core is not None:  # core decision phase 2
+        asked = [fact.question for fact in decision.core.facts if not fact.settled_by_input_check]
+        return ReplyCard(kind="clarification", headline="One fact decides your request; please tell me first.",
+                         points=[clip(question, 300) for question in asked][:6])
     if kind == "clarify_goal" and decision.clarification_question:  # core decision phase 1
         return ReplyCard(kind="clarification",
                          headline="I need to know which result you want before choosing a workflow.",
@@ -698,7 +702,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _core_card(kind, decision, policy, task)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
         card = _with_input_alternative(card, decision, policy, task, result)
-    if card is not None and kind not in {"execution", "capability_check_gap", "clarify_goal"}:
+    if card is not None and kind not in {"execution", "capability_check_gap", "clarify_goal", "ask_facts"}:
         card = _with_outside_steps(card, decision, task)
         card = _with_study_purpose(card, kind, decision, policy, task, result)
         card = card.model_copy(update={"unavailable": [*_capability_rows(decision), *card.unavailable][:8]})

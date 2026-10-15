@@ -164,6 +164,9 @@ class WorkflowPolicySpec(BaseModel):
     ]
     output_capability: WorkflowOutputCapabilitySpec
     conventions: list[str] = Field(default_factory=list, max_length=20)
+    # Core decision spec, phase 2 (R5): contract words for what this workflow's own input check verifies before a
+    # run (each must appear in this file's text); a fact they cover is said, never asked.
+    input_checks: list[str] = Field(default_factory=list, max_length=12)
 
 class ProjectPolicySnapshot(BaseModel):
     policy_version: Literal[2]

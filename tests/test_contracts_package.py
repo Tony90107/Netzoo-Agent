@@ -165,6 +165,9 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # recorded in shadow; omitted from dumps while unset, so older sessions load unchanged.
 # Phase 1: optional code-owned capability_check.goal / goal_quote (verified goal reading) and the CLARIFY need's
 # inputs, question and goal quote; older sessions load unchanged.
+# Phase 2: optional code-owned TaskDecision.fact_check (the fact agent's kept/rejected facts), the check's
+# uncertain/stated quotes, FactQuestion's outcomes; WorkflowPolicySpec.input_checks (contract words for what the
+# input check verifies) reaches ProjectPolicySnapshot. Older sessions and specs load unchanged.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -183,7 +186,7 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "9b77c0708eb1c65ad84c0153f6102d1e2ea671d7ce47d60284f560510f9aebb4",
+    "TaskDecision": "e4d26e62d45b42bc9d773eccc3994417c60822a72ed6bfa6acd3886bfbe1266f",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",
@@ -192,7 +195,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "a9c603b3bad0ef133c74160c7c81a9b9bca96fc35f661fdaac31c13dfc460cd0",
+    "ProjectPolicySnapshot": "41681cf7f66ae724385590ab77b892eb8dcb766676cc24d57de3445af2da0bc1",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.
