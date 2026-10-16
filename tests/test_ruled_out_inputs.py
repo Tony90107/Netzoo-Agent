@@ -71,3 +71,13 @@ def test_two_step_routes_skip_a_producer_the_user_cannot_run():
     stated = frozenset({"expression_matrix"})
     assert ("run_panda", "run_condor") in _handoff_routes(reading, stated, policy)
     assert _handoff_routes(reading, stated, policy, NO_PRIORS) == []
+
+
+def test_stated_inputs_without_a_network_make_the_network_absent():
+    """Smoke S1: "I only have expr_liver.tsv; we have no motif prior and no PPI network" typed the CONDOR ask's
+    input_network as regulator_gene (the kind CONDOR takes); the routing reading's stated inputs hold no network."""
+    check = CapabilityCheck(requirements=[_condor_row("regulator_gene")], ruled_out=NO_PRIORS)
+    assert without_ruled_out(check, frozenset({"expression_matrix"})).results()[0].status == "not_available"
+    assert without_ruled_out(check, frozenset({"expression_matrix", "regulatory_network"})).results()[0].delivered_by == [
+        "condor.communities"]
+    assert without_ruled_out(check, frozenset()).results()[0].delivered_by == ["condor.communities"]  # unknown inputs

@@ -72,10 +72,19 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
     return None
 
 
-def without_ruled_out(check):
-    """The check with every credit the user's ruled-out inputs make impossible taken off, with its reason."""
+_NETWORKS = frozenset({"regulatory_network", "coexpression_network"})
+
+
+def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
+    """The check with every credit the user's ruled-out inputs make impossible taken off, with its reason.
+
+    A network is absent when the row reads no existing network, or when the routing reading's stated inputs are known
+    and hold none (smoke S1: "I only have expr_liver.tsv" typed the CONDOR ask's input_network as regulator_gene, the
+    kind CONDOR takes, not one the user has).
+    """
     if check is None or not check.ruled_out:
         return check
+    no_network = bool(stated_inputs) and not stated_inputs & _NETWORKS
     from .capability_check import _full_gap
 
     rows = []
@@ -83,7 +92,8 @@ def without_ruled_out(check):
         if row.kind != "result" or row.status not in ("available", "with_step", "partial", "needs_fact"):
             rows.append(row)
             continue
-        lacking = frozenset({"network"}) if row.attrs.get("input_network") in ("none", None) else frozenset()
+        lacking = (frozenset({"network"}) if no_network or row.attrs.get("input_network") in ("none", None)
+                   else frozenset())
         kept, limits = [], []
         for key in row.delivered_by:
             try:
