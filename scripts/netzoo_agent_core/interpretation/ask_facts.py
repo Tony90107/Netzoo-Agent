@@ -1,7 +1,7 @@
 """Core decision spec, phase 2: the replies for the fact agent's facts (section 6).
 
-An ASK call is the whole turn: each kept question, what each answer leads to, and the contract words that make it
-decide; nothing is selected or run before the answer. A fact the workflow's own input check settles (R5) is never
+An ASK call is the whole turn: each kept question, with the user's words and the contract words that make it
+decide (open item 1: not what each answer leads to); nothing is selected or run before the answer. A fact the workflow's own input check settles (R5) is never
 asked: a DO reply says the check will settle it before anything runs.
 """
 
@@ -12,22 +12,19 @@ __all__ = ["ASK_KIND", "ask_result", "with_settled_notes"]
 ASK_KIND = "ask_facts"
 
 
-def _lead(outcome: str, workflow: str) -> str:
-    if outcome == "supported":
-        return f"{workflow} can do what you asked"
-    if outcome.startswith("other_workflow:"):
-        return f"{outcome.split(':', 1)[1]} does it instead of {workflow}"
-    return "no registered workflow does it as you asked"
-
-
 def ask_reply(core) -> str:
+    """Each kept question with the user's words and the contract's words that make it matter.
+
+    Open item 1 (2026-10-16, spec change log): what a yes or a no leads to is not said. The agent writes those
+    outcomes and code cannot check their direction in general (p2b C06 "If no: PUMA does it instead", C36 "If no:
+    no registered workflow"; p2 C31 had the yes-branch inverted). They stay on the fact for R3 and the trace.
+    """
     asked = [fact for fact in core.facts if not fact.settled_by_input_check]
     lines = []
     for fact in asked:
         workflow = fact.workflows[0] if fact.workflows else "the workflow"
-        lines.append(f"- {fact.question}\n  If yes: {_lead(fact.if_yes, workflow)}. If no: {_lead(fact.if_no, workflow)}. "
-                     f"(You wrote: \"{fact.user_quote.rstrip('. ')}\". {workflow}'s contract: "
-                     f"\"{fact.contract_quote.rstrip('. ')}\".)")
+        lines.append(f"- {fact.question}\n  You wrote: \"{fact.user_quote.rstrip('. ')}\". "
+                     f"{workflow}'s contract: \"{fact.contract_quote.rstrip('. ')}\".")
     return "\n\n".join([
         "Before I choose a workflow, please tell me:\n" + "\n".join(lines),
         "No workflow has been selected and nothing runs before you answer.\n\nNo files were inspected and no "
