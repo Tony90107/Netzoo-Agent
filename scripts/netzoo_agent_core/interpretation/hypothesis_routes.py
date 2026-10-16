@@ -29,6 +29,7 @@ from .scientific_guidance import method_paragraphs
 from .inspected_answers import with_inspection_footer
 from .tie_guidance import method_families
 from .capability_check import checked_route_lines, delivering_actions, requirement_for
+from .ruled_out import route_available
 
 __all__ = ["render_hypothesis_routes", "reading_verdict", "checked_actions", "checked_route"]
 
@@ -282,7 +283,8 @@ def _stated_inputs(readings, task: str) -> frozenset[str]:
     return frozenset(stated & _MEASURED_INPUTS)
 
 
-def _handoff_routes(reading, stated: frozenset[str], policy: ProjectPolicySnapshot) -> list[tuple[str, str]]:
+def _handoff_routes(reading, stated: frozenset[str], policy: ProjectPolicySnapshot,
+                    ruled_out: dict[str, str] | None = None) -> list[tuple[str, str]]:
     """Registered producer -> consumer handoffs that reach a reading's result from the stated inputs.
 
     A result no single workflow produces from those inputs can still be one
@@ -311,6 +313,8 @@ def _handoff_routes(reading, stated: frozenset[str], policy: ProjectPolicySnapsh
         if not stated & set(capability.input_artifacts):
             continue
         if "mirna" in capability.regulator_types and "mirna" not in requested:
+            continue
+        if ruled_out and route_available(producer, ruled_out) is not None:  # phase 4b: a step that cannot run
             continue
         for consumer in capability.handoff_targets:
             consumer_spec = policy.workflows.get(consumer)
@@ -464,7 +468,8 @@ def render_hypothesis_routes(
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
     splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
     stated = _stated_inputs(readings, task)
-    handoffs = [_handoff_routes(reading, stated, policy) if not actions and not split else []
+    ruled_out = decision.capability_check.ruled_out if decision.capability_check is not None else {}
+    handoffs = [_handoff_routes(reading, stated, policy, ruled_out) if not actions and not split else []
                 for (reading, actions), split in zip(routes, splits)]
     # Log 403: a reading routing gave no workflow takes the capability check's verdict on its
     # words -- the workflows the check found, or their output plus the named outside step.
