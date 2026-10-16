@@ -170,7 +170,8 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # input check verifies) reaches ProjectPolicySnapshot. Older sessions and specs load unchanged.
 # Phase 3: optional DeclinedPart.line (the DECLINE view renders from the call alone); older sessions load unchanged.
 # Phase 4a: an input_checks entry may be an InputCheckSpec (text, scope, limit); plain strings still load as scope file.
-# Phase 4b: optional code-owned CapabilityCheck.ruled_out (inputs the user says they do not have, verified words).
+# Phase 4b: optional code-owned CapabilityCheck.ruled_out (inputs the user says they do not have, verified words)
+# and only_inputs / only_inputs_quote (the inputs the user says are all they have).
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -189,7 +190,7 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "099458c6847957d077edc6d4c7f9e88ccabd42981317eb5cf2a1409cf1d9780e",
+    "TaskDecision": "bbe5aa4813cb4e36f6552ed601aedc6ba223da37fb6118cc5b2a1c22e8cad071",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

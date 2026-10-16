@@ -27,7 +27,7 @@ from .needed_facts import (
 )
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
-from .request_readings import ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
+from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
     method_fitting, request_method, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
@@ -517,7 +517,8 @@ def build_capability_check(
                            unknown_domains=unknown_domains, goal=goal, goal_quote=goal_quote,
                            stated_quotes=stated_quotes(task, proposal),
                            uncertain_quotes=uncertain_quotes(task, proposal),
-                           ruled_out=ruled_out_inputs(task, proposal)), rejected
+                           ruled_out=ruled_out_inputs(task, proposal),
+                           **dict(zip(("only_inputs", "only_inputs_quote"), only_inputs(task, proposal)))), rejected
 
 
 def _names(names: list[str]) -> str:

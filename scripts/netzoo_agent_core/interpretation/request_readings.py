@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..contracts.capability_check import CONDITIONS
 from .request_spans import _span
 
-__all__ = ["ruled_out_inputs", "stated_quotes", "uncertain_quotes", "verified_goal"]
+__all__ = ["only_inputs", "ruled_out_inputs", "stated_quotes", "uncertain_quotes", "verified_goal"]
 
 
 _INDEFINITE = {"", "not_stated", "none", None}
@@ -56,3 +56,12 @@ def verified_goal(task: str, proposal) -> tuple[str, str]:
     goal, quote = getattr(conditions, "goal", ""), (getattr(conditions, "goal_quote", "") or "").strip()
     span = _span(task, quote) if goal and quote else None
     return ("", "") if span is None else (goal, task[span[0]:span[1]])
+
+
+def only_inputs(task: str, proposal) -> tuple[list[str], str]:
+    """Phase 4b: the kinds the user says are their only inputs, kept only when the words are in the request."""
+    conditions = getattr(proposal, "conditions", None)
+    kinds = list(dict.fromkeys(getattr(conditions, "only_inputs", None) or []))
+    quote = (getattr(conditions, "only_inputs_quote", "") or "").strip()
+    span = _span(task, quote) if kinds and quote else None
+    return ([], "") if span is None else (kinds, task[span[0]:span[1]])

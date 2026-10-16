@@ -26,10 +26,10 @@ def _condor_row(network="none"):
 
 
 def test_a_ruled_out_input_no_registered_route_provides_makes_the_workflow_unavailable():
-    assert "PANDA needs it" in route_available("run_panda", NO_PRIORS)
+    assert "PANDA needs a TF motif prior and no registered workflow or tool provides it" in route_available("run_panda", NO_PRIORS)
     assert route_available("run_panda", {"ppi": "no PPI"}) is None  # a PPI network can be downloaded from STRING
     assert route_available("run_lioness_coexpression", NO_PRIORS) is None  # it needs neither
-    assert "COBRA needs it" in route_available("run_cobra", {"covariates": "we have no covariate table"})
+    assert "COBRA needs a covariate table" in route_available("run_cobra", {"covariates": "we have no covariate table"})
     assert route_available("run_otter", {"expression": "no expression"}) is None  # it can take co-expression instead
 
 
@@ -81,3 +81,27 @@ def test_stated_inputs_without_a_network_make_the_network_absent():
     assert without_ruled_out(check, frozenset({"expression_matrix", "regulatory_network"})).results()[0].delivered_by == [
         "condor.communities"]
     assert without_ruled_out(check, frozenset()).results()[0].delivered_by == ["condor.communities"]  # unknown inputs
+
+
+def test_only_these_inputs_rule_out_the_rest_in_the_users_words():
+    """Smoke S1 ("I only have expr_liver.tsv; we have no motif prior"): no network was typed absent by any reading."""
+    check = CapabilityCheck(requirements=[_condor_row("regulator_gene")], ruled_out={"motif_prior": "we have no motif prior"},
+                            only_inputs=["expression"], only_inputs_quote="I only have expr_liver.tsv")
+    (row,) = without_ruled_out(check).results()
+    assert row.status == "not_available"
+    assert row.limits[0].startswith('You said "I only have expr_liver.tsv"; CONDOR needs a regulator-gene network; '
+                                    "every registered route to one (OTTER, PANDA, PUMA) needs an input you do not have")
+    coexpression = CheckedRequirement(quote="one co-expression network per donor", kind="result", status="available",
+                                      delivered_by=["lioness_coexpression.per_sample_networks"])
+    only_expression = CapabilityCheck(requirements=[coexpression], only_inputs=["expression"],
+                                      only_inputs_quote="I only have the expression")
+    assert without_ruled_out(only_expression).results()[0].status == "available"
+
+
+def test_only_inputs_are_kept_only_when_their_words_are_in_the_request():
+    from netzoo_agent_core.interpretation.request_readings import only_inputs
+
+    said = SimpleNamespace(conditions=SimpleNamespace(only_inputs=["expression"], only_inputs_quote="just this table"))
+    invented = SimpleNamespace(conditions=SimpleNamespace(only_inputs=["expression"], only_inputs_quote="only expression"))
+    assert only_inputs(TASK, said) == (["expression"], "just this table")
+    assert only_inputs(TASK, invented) == ([], "")
