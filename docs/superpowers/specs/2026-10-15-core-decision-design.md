@@ -194,6 +194,7 @@ class CoreDecision(BaseModel):
 | 1 目標不明 | goal 欄位、第 5 節規則、CLARIFY view；`decide_core` 對 CLARIFY 生效 | vague 題改為先釐清 | 單元測試；題庫 1 次；vague ↑、do 的多餘釐清 ≤ 1 |
 | 2 追問 | fact agent、R1–R6、YAML `input_checks:`；先離線比較模型，再讓 ASK 生效 | 追問來源改變 | 離線 fact agent 對 ask 和 do 的請求文字；題庫 1 次；ask ↑、do 的多餘追問 ≤ 1 |
 | 3 收斂 | 盤點並改寫分類階段的判定改寫點；回覆依 kind 分派；boundary renderer 改成證據；執行閘讀 core；移除被取代的路徑 | 回覆路徑收斂 | 先離線重放錄製讀取，再跑題庫 1 次；最終門檻與 0 矛盾 |
+| 4 合約限制（2026-10-16 加入，第 12 節） | 4a：`workflow_conditions` 的關係限制、YAML `input_checks` 的 `scope` 標記與完整性測試；4b：能力檢查讀取的 `ruled_out_inputs`，與路線上的必要輸入 | dont 的誤承諾減少 | 4a 用錄製資料離線重算；4b 跑題庫 1 次；第 12.4 節的門檻 |
 
 - 每個階段在獨立 worktree 分支上完成，全部測試通過才提交（主樹有其他 session 在改）。
 - 推送前經使用者同意，push 到 `netzoo-agent` 遠端，fast-forward only。
@@ -225,3 +226,72 @@ class CoreDecision(BaseModel):
 - 2026-10-16（第 2 階段實作，R1 的驗證方式，不是設計變更）：R1 要求使用者「表示不確定」，但程式不能用字詞清單判斷。開發集 m3（54 題英文）離線結果：只靠 fact agent 自己標註時，「該做」的題目被多問 20/27（gpt-4o-mini）與 10/27（nemotron）。改為兩個讀取者都同意：能力檢查的 `unknown_facts` 加上 `other` 類別，記錄任何不確定之處的引文（`uncertain_quotes`；`other` 不進舊的 11 種 dimension），fact agent 的引文必須與其中一段重疊。結果多問降到 1/27 與 0/27，該追問題處理對 17/24 與 15/24。依此選 gpt-4o-mini 當 fact agent（`NETZOO_FACT_MODEL=router`，預設）。R5 的 `input_checks` 每條都必須逐字出現在該 workflow 的合約內，由 policy loader 驗證。
 - 2026-10-16（第 3 階段實作方式，偏離第 7 節字面；**使用者 2026-10-16 已接受**）：沒有把分類階段約 25 個判定改寫點逐一改成「只寫證據欄位」，改為在兩個出口強制：回覆由 `core_views.core_view` 依 kind 分派（非 DO 的 kind 只有一個入口），執行閘 `run_approval_failures` 要求 `core.run_allowed`。上游改寫因此只能成為 `decide_core` 的輸入；`core.view` 事件的 `mismatch` 量測「回覆 renderer 不屬於該判定」（p2 錄製為 4，以第 3 階段程式重放為 0）。盤點表見 research log `INVENTORY-P3.md`。
 - 2026-10-16（待決事項 1，**設計變更，使用者已同意**）：fact agent 的 ASK 回覆不再列出 if yes／if no 的結果，只保留問題、使用者原話與合約原文。理由：這兩個結果是模型寫的，程式通常無法驗證方向。實測中有錯誤的例子，例如 p2b C06「If no: PUMA does it instead」、C36「If no: no registered workflow」，p2 C31 連 yes 分支都寫反。R3 仍要求兩個結果不同且合法，用來篩掉不會改變判定的提案；結果記錄在 `FactQuestion.if_yes/if_no` 與 trace。舊的 11 種 dimension 的 needs_fact 回覆不受影響：它的各分支由程式依 sheet 反事實比對算出，是經過驗證的。
+
+- 2026-10-16（**新增第 4 階段，設計變更，使用者已同意**）：合約限制在請求層一定被檢查，見第 12 節。4a 採精簡版：在 `workflow_conditions` 加數量關係限制，數值讀自輸入檢查器的共用函式；YAML `input_checks` 加 `scope`／`limit` 標記，並加完整性測試。4b 採 B1：能力檢查讀取加 `ruled_out_inputs`，再用 `route_available` 判斷路線上的必要輸入。讀取變異另案處理。
+
+## 12. 第 4 階段：合約限制在請求層一定被檢查（2026-10-16 加入，使用者已同意）
+
+### 12.1 問題（錄製資料 p0–p3）
+
+| 題目 | 四輪結果 | 原因 | 第 4 階段 |
+|---|---|---|---|
+| C57 COBRA 48 基因、600 樣本 | 4/4 誤承諾 | 讀取正確讀到 features=48、samples=600，但請求層沒有「基因數須多於樣本數」；這條只寫在輸入檢查器（`data/cobra.py`） | 4a |
+| C18 只有表現量，要直接跑 CONDOR | 3/4 誤承諾 | 「使用者沒有 motif／PPI」在這類回合沒被型別化（data-facts 讀取只在平手時才跑），PANDA→CONDOR 路線因此仍被提出 | 4b |
+| C30 SAMBAR kmax 8、5 樣本；C17 只固定一個 lambda | 2/4、2/4 | 規則已存在，是讀取有時漏掉設定 | 不處理（另案） |
+
+YAML 23 條 `input_checks` 的盤點：
+
+- 可由請求內容判斷的數量限制（最少樣本、LIONESS-DRAGON 上限、SAMBAR kmax、DRAGON 兩層、OTTER 樣本數、設定範圍），請求層的 `workflow_conditions` 都已經處理，且都讀自輸入檢查器或 executor 的常數。唯一缺的是 COBRA 的「基因多於樣本」。
+- 其餘條目只能從檔案判斷（ID 是否對齊、header、矩陣是否對稱、值的型別），第 2 階段的 R5 已讓它們「說明、不追問」。
+
+### 12.2 4a：數量關係限制、`scope` 標記、完整性測試
+
+- **共用的檢查函式**：在 `data/cobra.py` 新增一個函式，供輸入檢查器（`load_cobra_inputs`）與請求層共用，判斷基因數是否多於樣本數（同 `sambar.kmax_sample_error` 的做法）。數值與規則只寫在這一個地方。
+- **`workflow_conditions`**：
+  - `WorkflowConditions` 加一種「兩個數量的關係」限制，內容讀自上述共用函式，模組本身仍不存任何數值。
+  - `data_issue` 加上這種關係的判斷。只有在請求**逐字說出**樣本數，而且**只說出一個**特徵數（也就是基因數沒有歧義）時才判斷；數量沒被說出、或有多個資料型別的特徵數時不判斷，絕不推測。
+  - 違反時，照 M1 既有的流程移除該 workflow 的可做判定，理由寫明合約與請求各自的數字。之後交給 `decide_core` 判 DECLINE 或 partial。
+- **YAML `scope` 標記**：
+  - `input_checks` 每一條改為 `{text, scope, limit}`。`scope` 是 `request`（請求內容可以判斷）或 `file`（只有檔案能判斷）；`limit` 只在 `scope: request` 時填，指向 `workflow_conditions` 的一條限制（例如 `min_samples`、`max_values`、`omics_layers`、`relation:features>samples`、`setting:kmax<=samples`）。
+  - 純字串條目讀成 `scope: file`，與現有寫法相容，不升 `policy_version`。
+  - policy loader 驗證三件事：`text` 逐字出現在該 workflow 的合約內（現有規則）、`scope` 的值合法、`limit` 的名稱合法。
+- **完整性測試**：每條 `scope: request` 的條目，都必須對應到 `workflow_conditions` 中該 workflow 一條確實存在、且非空的限制，否則測試失敗。日後在合約加入新的請求層限制時，測試會逼著補上對應的程式限制。
+- **一致性測試**：用邊界大小的合成表格去跑 COBRA 真正的輸入檢查器（例如 5 個基因 × 6 個樣本要被拒，7 × 6 要通過），確認與請求層的判斷一致。
+
+### 12.3 4b：使用者說沒有的輸入（`ruled_out_inputs`）
+
+- **讀取**：能力檢查的 `RequestConditions` 加一個欄位 `ruled_out_inputs: list[{kind, quote}]`。
+  - `kind` 的值：`motif_prior`、`ppi`、`mirna_list`、`covariates`、`second_omics`、`mutations`、`network`、`expression`。
+  - 欄位說明要寫清楚：只收使用者說自己「沒有、拿不到」的輸入；「還沒上傳、之後再給、在同事那裡」不算。
+  - 引文必須逐字驗證，驗證通過的才存成 `CapabilityCheck.ruled_out`（kind → 引文）。
+- **對照必要輸入**：直接用 registry 既有的 `required_inputs`，不另外寫進 YAML。對照表：`motif_file`→`motif_prior`、`ppi_file`→`ppi`、`mirna_file`→`mirna_list`、`design_file`→`covariates`、`omics_layer_2`→`second_omics`、`mutation_file`→`mutations`、`network_file`→`network`、`expression_file`→`expression`。
+- **什麼算致命**：
+  - 被排除的輸入若有已登錄的工具或 workflow 能產生，就不算致命：
+    - `ppi` 可由 STRING 下載產生。
+    - `network` 可由 PANDA、PUMA、OTTER 透過已登錄的交接產生，但這條路線的 workflow 本身也要能用使用者現有的輸入跑。
+  - 沒有登錄來源的（例如 `motif_prior`）就是致命的。
+- **共用判斷**：寫一個函式 `route_available(workflow, available, ruled_out)`，給兩個地方用：
+  - 能力檢查的可做判定：一個 workflow 的必要輸入被致命排除時移除，理由引用使用者原話。
+  - 兩步驟路線的回覆（`hypothesis_routes`、composition）：路線中任何一步不可行，就不提出這條路線。
+
+  C18 的情況：CONDOR 需要網路，網路得先由 PANDA 或 OTTER 產生，而這兩者都需要 motif prior，使用者說沒有，因此不提出這條路線。
+- **成本**：能力檢查的輸出會多一個小欄位。上限已調到 16k，但要繼續量測解碼失敗率。
+
+### 12.4 驗收
+
+- **4a（離線，不呼叫模型）**：
+  - 用錄製的 p0–p3 能力檢查列（列中有 `method` 的 samples/features），對每個可做判定的 workflow 重算 `data_issue`。
+  - 預期：C57 在四輪都被新規則移除可做判定；所有錄製的 do、ask 題目，新規則造成的移除為 0。
+  - 另外跑單元測試、一致性測試、完整性測試。
+- **4b（題庫實測 1 次，56 題，約 US$0.12，跑前報備）**：
+  - G1：dont 的誤承諾（含部分承諾）比 p3 的 4 題少。
+  - G2：do 的誤拒不增加（p3 為 1），而且沒有任何 do 題因 `ruled_out_inputs` 被移除。
+  - G3：其他類別最多比 p3 少 1 題。
+  - G4：判定與回覆路徑 0 不一致。
+  - G5：能力檢查解碼失敗率不高於 p3（6/56），並記錄被預算擋下的呼叫數。
+- **預期**：dont 誤承諾 4 → 約 2。spec 第 8 節要求 ≤ 1，可能仍差一點，剩下的是讀取變異（C30、C17），另案處理。
+
+### 12.5 不在第 4 階段
+
+- **讀取變異**（C30、C17：規則已存在，讀取漏掉設定）。可能的方向是對設定也用第二讀取者確認，另案提出。
+- 把既有的最少樣本等常數改成由 YAML 宣告。現在的做法（讀自輸入檢查器的常數，再加完整性測試）已能避免規則出現兩份。
