@@ -79,9 +79,10 @@ def count_update(task: str, alternatives: list[dict], method: dict, keys: list[s
     """The result's wait on a candidate count, or its gap when every candidate rules it out; None when no candidate
     changes what can run.
 
-    `keys`: the result's credited entries before the data size is judged. With several results, a count applies to
-    one only when its words overlap that result's words (a count could be another dataset's). Returns the fields to
-    set: status, delivered_by, method (without the unsettled count), limits, and for a wait the outcomes.
+    `keys`: the result's credited entries before the data size is judged. With several credited results
+    (`single_result` False), a count applies to one only when its words overlap that result's words (a count could be
+    another dataset's); a result no workflow is credited with does not make several. Returns the fields to set:
+    status, delivered_by, method (without the unsettled count), limits, and for a wait the outcomes.
     """
     where = _span(task, quote)
     for alternative in alternatives:

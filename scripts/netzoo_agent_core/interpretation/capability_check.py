@@ -431,6 +431,10 @@ def build_capability_check(
                 kept, item = ask_conditions(item, conditions, form_spans, asked)
                 asks.setdefault(span, []).append(_with_conditions(item, kept))
     asks, additions = split_additions(task, asks, request_sentences(task))  # M2: what an ask adds to a result
+    # Phase 5b (m3 U12 trace): only results some workflow is credited with count as several; an uncredited row
+    # ("I need a capability judgment that waits for the size fact") kept the count off the one real result.
+    credited_results = sum(any(known.get(k) and known[k].kind == "produces" for item in items
+                               for k in item.delivered_by) for items in asks.values())
     requirements, apart = [], {}
     for span, items in asks.items():
         # M1: each reading is held to the method, settings and data size it states.
@@ -483,7 +487,7 @@ def build_capability_check(
                 status, delivered = update.pop("status"), update.pop("delivered_by")
                 waiting = update
         if alternatives and (found := count_update(task, alternatives, method, list(dict.fromkeys(
-                k for keys in pre for k in keys)), task[span[0]:span[1]], len(asks) == 1)) is not None:
+                k for keys in pre for k in keys)), task[span[0]:span[1]], credited_results <= 1)) is not None:
             method, limits = found.pop("method"), found.pop("limits")  # phase 5b: each candidate judged in code
             status, delivered, waiting = found.pop("status"), found.pop("delivered_by"), found
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
