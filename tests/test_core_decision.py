@@ -14,7 +14,7 @@ from netzoo_agent_core.contracts import TaskDecision  # noqa: E402
 from netzoo_agent_core.contracts.capability_check import (  # noqa: E402
     CapabilityCheck, CheckedRequirement, RunVerdict,
 )
-from netzoo_agent_core.interpretation.core_decision import decide_core  # noqa: E402
+from netzoo_agent_core.interpretation.core_decision import decide_core, with_core  # noqa: E402
 
 
 def _row(status, delivered=(), kind="result", **extra):
@@ -226,3 +226,73 @@ def test_a_clarify_turn_shows_no_workflow_in_its_progress_line():
     held = with_core(decision, decide_core(decision))
     detail = classification_progress_detail(goal, held)
     assert (detail["workflows"], detail["workflow_path"]) == ([], [])
+
+
+# Phase 3 (sections 4.3, 7): a call that is not DO is answered by its one view; the gates read the call.
+
+def _view(decision):
+    from netzoo_agent_core.interpretation.core_views import core_view
+
+    decision = with_core(decision, decide_core(decision, decision.reason if decision.reason != "r" else ""))
+    return core_view(None, {"decision": decision.model_dump(), "messages": []},
+                     lambda text, kind: {"text": text, "reply_kind": kind})
+
+
+def test_a_decline_is_answered_by_the_decline_view_with_its_reason():
+    from netzoo_agent_core.interpretation.core_views import core_view
+
+    decision = _decision(rows=[_row("not_available", limits=["LIONESS needs at least 3 samples; the request has 2"])])
+    decision = with_core(decision, decide_core(decision))
+    assert decision.core.declined[0].line.startswith('"a network" -- not available here as asked.')
+    result = core_view(None, {"decision": decision.model_dump(), "messages": []},
+                       lambda text, kind: {"text": text, "reply_kind": kind})
+    assert result["reply_kind"] == "decline"
+    assert "LIONESS needs at least 3 samples" in result["text"] and "none is offered as asked" in result["text"]
+
+
+def test_the_text_boundaries_are_decline_evidence_not_replies_of_their_own():
+    task = "Use graphical lasso with Bayesian optimization to tune the penalty for my network."
+    core = decide_core(_decision(rows=[_row("available", ["panda.tf_gene_network"])]), task)
+    assert (core.kind, core.basis) == ("DECLINE", "algorithm_boundary")
+    assert "Graphical Lasso" in core.declined[0].line
+
+
+def test_an_unconfirmed_guidance_turn_is_unchecked_and_answered_as_such():
+    decision = _decision(rows=[], provisional=True, matched_actions=["run_panda"])
+    core = decide_core(decision)
+    assert (core.kind, core.basis, core.workflows) == ("UNCHECKED", "check_unconfirmed", ["PANDA"])
+    from netzoo_agent_core.interpretation.core_views import unchecked_reply
+    assert "nothing was selected and nothing runs" in unchecked_reply(core)
+
+
+def test_do_keeps_its_renderers_and_every_reply_kind_belongs_to_one_call():
+    from netzoo_agent_core.interpretation.core_views import ALLOWED, core_view
+
+    done = _decision(rows=[_row("available", ["panda.tf_gene_network"])])
+    done = with_core(done, decide_core(done))
+    assert core_view(None, {"decision": done.model_dump(), "messages": []}, lambda t, k: (t, k)) is None
+    assert ALLOWED["DECLINE"].isdisjoint(ALLOWED["DO"]) and ALLOWED["CLARIFY"].isdisjoint(ALLOWED["DO"])
+
+
+def test_the_view_record_marks_a_reply_that_is_not_its_calls():
+    from types import SimpleNamespace
+    from netzoo_agent_core.graph.context import record_core_view
+
+    events = []
+    context = SimpleNamespace(recorder=SimpleNamespace(append=lambda run, kind, node, payload: events.append(payload)))
+    state = {"decision": {"core": {"kind": "DO", "basis": "routed"}}}
+    record_core_view(context, state, {"reply_kind": "capability_check_gap"})
+    record_core_view(context, state, {"reply_kind": "verified_guidance"})
+    assert [event["mismatch"] for event in events] == [True, False]
+
+
+def test_the_run_gates_read_the_call():
+    from netzoo_agent_core.interpretation.run_check import run_approval_failures, request_sha256
+
+    message = "Run COBRA on expr.tsv"
+    verdict = RunVerdict(action="run_cobra", verdict="agrees", request_sha256=request_sha256(message))
+    run = _decision(action="run_cobra", rows=[], matched_actions=["run_cobra"], run_verdict=verdict)
+    allowed = run.model_copy(update={"core": decide_core(run)})
+    assert allowed.core.run_allowed and run_approval_failures(allowed, message) == []
+    held = allowed.model_copy(update={"core": allowed.core.model_copy(update={"run_allowed": False})})
+    assert run_approval_failures(held, message) == ["the turn's call (DO, run) does not allow a run"]

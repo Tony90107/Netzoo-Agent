@@ -47,6 +47,8 @@ class DeclinedPart(BaseModel):
     reasons: list[str] = Field(default_factory=list)
     alternatives: list[str] = Field(default_factory=list)
     """Workflows offered after the denial, never as the result asked for."""
+    line: str = ""
+    """Phase 3: the reply line for it, rendered once from the check (the DECLINE view renders from the call alone)."""
 
 
 class ClarifyNeed(BaseModel):
