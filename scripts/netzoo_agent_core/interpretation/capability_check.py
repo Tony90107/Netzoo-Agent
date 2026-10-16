@@ -639,7 +639,10 @@ def _status_line(item: CheckedRequirement, provisional: bool = False, gap_unconf
     if item.status == "needs_fact":
         return fact_line(item)
     if item.status == "available":
-        return f"{quote} -- available from {_workflows([k for k in item.delivered_by if entry(k).level == 'direct'])}."
+        names = _workflows([k for k in item.delivered_by if entry(k).level == 'direct'])
+        if provisional:  # phase 3 (round p3 C42, C43): what only the backup read is never said as available
+            return f"{quote} -- the backup check matched {names} to this (not confirmed)."
+        return f"{quote} -- available from {names}."
     if item.status == "partial":
         return (f"{quote} -- partly available: {_workflows(item.delivered_by)} gives part of it; no registered "
                 "workflow produces the rest.")
