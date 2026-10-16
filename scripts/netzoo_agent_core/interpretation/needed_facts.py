@@ -158,6 +158,10 @@ def _workflows(keys: list[str]) -> str:
 
 def fact_line(item) -> str:
     """The understanding line of a result waiting on a fact."""
+    if getattr(item, "by_code", False):  # phase 5b: a count given as candidates, each judged in code
+        from .count_alternatives import count_line
+
+        return count_line(item)
     if item.depends_on == "choice":
         answers = "; ".join(f'if "{option}": {_workflows(keys)}' for option, keys in item.outcomes.items())
         return f'"{item.quote}" -- you have not chosen which result you want: {answers}.'
@@ -176,6 +180,10 @@ def fact_questions(check) -> list[str]:
 
 
 def _question(item) -> str:
+    if getattr(item, "by_code", False):
+        from .count_alternatives import count_question
+
+        return count_question(item)
     if item.depends_on == "choice":
         options = [f'"{option}"' for option in item.outcomes]
         listed = options[0] if len(options) == 1 else ", ".join(options[:-1]) + " or " + options[-1]

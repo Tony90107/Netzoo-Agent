@@ -338,6 +338,20 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
     fields["goal_quote"] = (str, Field(default="", description=(
         "Exact words of the request that name the result (result_named) or the method (method_named), or that state "
         "the aim (purpose_only).")))
+    # Core decision phase 5b (spec 13.3): a count the user gives as candidates (p2-p4c C45: "I don't remember whether
+    # the proteomics we got back is the 200-protein targeted panel or the 2,000-protein discovery panel" -- the
+    # LIONESS-DRAGON size limit decides it, and code can judge each number).
+    alternative = create_model(
+        "CountAlternative", __config__=ConfigDict(extra="forbid"),
+        of=(Literal["samples", "features"], Field(description=(
+            "samples: the number of samples, patients or profiles. features: the number of genes, proteins or other "
+            "features of one data type."))),
+        quote=(str, Field(description="Exact words of the request giving the candidate numbers.")),
+        values=(list[int], Field(description="Each candidate number, as the quote states it.")))
+    fields["count_alternatives"] = (list[alternative], Field(default_factory=list, description=(
+        "Each count the user gives as two or more candidate numbers and cannot say which is right (\"the 200-protein "
+        "panel or the 2,000-protein panel\", \"either 100 or 1000 features\"). Not a range, and not a count the "
+        "request states; empty when there is none.")))
     return create_model("RequestConditions", __config__=ConfigDict(extra="forbid"), **fields)
 
 
@@ -349,7 +363,7 @@ def unstated_conditions() -> dict:
             "named_method": "none", "named_method_quote": "", "settings": [],
             "sample_count": None, "sample_count_quote": "", "feature_counts": [],
             "goal": "result_named", "goal_quote": "", "ruled_out_inputs": [], "only_inputs": [],
-            "only_inputs_quote": ""}
+            "only_inputs_quote": "", "count_alternatives": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
@@ -538,6 +552,11 @@ class CheckedRequirement(BaseModel):
     defaults: list[str] = Field(default_factory=list)
     """M1: produces entries of workflows that give the result with their own settings, only not with the stated ones;
     the workflow is offered as that (a run of it is held for the user), so the result is not a full gap."""
+    by_code: bool = False
+    """Phase 5b (spec 13.3): the wait is on a count the user gave as candidates, and code judged each candidate
+    (`interpretation.count_alternatives`); a code-verified fact, never a legacy dimension's shadow."""
+    outcome_notes: dict[str, str] = Field(default_factory=dict)
+    """Phase 5b: for a candidate count whose workflows lose a credit, the contract limit that removes it."""
 
 
 class CapabilityCheck(BaseModel):
@@ -579,6 +598,8 @@ class CapabilityCheck(BaseModel):
     only_inputs: list[str] = Field(default_factory=list)
     only_inputs_quote: str = ""
     """Phase 4b: the input kinds the user says are all they have, with their verified words (the rest are absent)."""
+    count_alternatives: list[dict[str, Any]] = Field(default_factory=list)
+    """Phase 5b: each count the user gave as candidates ({of, quote, values}), its words and numbers verified."""
     uncertain_quotes: list[str] = Field(default_factory=list)
     """Phase 2 R1: the request's words the check read as the user not knowing or not having decided something (any
     unknown fact, any open choice); the fact agent's words must agree with one of them."""

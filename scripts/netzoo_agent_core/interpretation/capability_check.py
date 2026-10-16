@@ -26,6 +26,7 @@ from .needed_facts import (
     verified_unknown_domains, verified_unknown_scopes, verified_unknowns,
 )
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
+from .count_alternatives import count_update, verified_count_alternatives
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
 from .request_readings import only_inputs, ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
@@ -397,6 +398,7 @@ def build_capability_check(
     form_spans = form_condition_spans(task, proposal, conditions)  # M2: conditions on the result's form
     unknowns = verified_unknowns(task, proposal)
     whole = request_method(task, proposal)
+    alternatives = verified_count_alternatives(task, proposal)  # phase 5b: a count given as candidates
 
     def place(quote: str):
         span = _span(task, quote)
@@ -448,9 +450,9 @@ def build_capability_check(
             credited = [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"]
             methods[index], found = settings_apart(task, method, credited, list(asks))
             apart.update((row.quote, row) for row in found)
-        fitted = [method_fitting(method, _fitting(
-            [k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item))
-            for item, method in zip(items, methods)]
+        pre = [_fitting([k for k in item.delivered_by if known.get(k) and known[k].kind == "produces"], item)
+               for item in items]  # the credits before the data size is judged
+        fitted = [method_fitting(method, keys) for method, keys in zip(methods, pre)]
         readings = [keys for keys, *_rest in fitted]
         limits = list(dict.fromkeys(reason for _keys, reasons, *_rest in fitted for reason in reasons))
         instead = list(dict.fromkeys(key for _keys, _limits, others, _defaults in fitted for key in others))
@@ -480,6 +482,10 @@ def build_capability_check(
             if update is not None:
                 status, delivered = update.pop("status"), update.pop("delivered_by")
                 waiting = update
+        if alternatives and (found := count_update(task, alternatives, method, list(dict.fromkeys(
+                k for keys in pre for k in keys)), task[span[0]:span[1]], len(asks) == 1)) is not None:
+            method, limits = found.pop("method"), found.pop("limits")  # phase 5b: each candidate judged in code
+            status, delivered, waiting = found.pop("status"), found.pop("delivered_by"), found
         requirements.append(CheckedRequirement(quote=task[span[0]:span[1]], kind="result", status=status,
                                                delivered_by=delivered, not_by=not_by, attrs=attrs, blank=blank,
                                                asked_as=asked_as, method=method, limits=limits, instead=instead,
@@ -518,6 +524,7 @@ def build_capability_check(
                            stated_quotes=stated_quotes(task, proposal),
                            uncertain_quotes=uncertain_quotes(task, proposal),
                            ruled_out=ruled_out_inputs(task, proposal),
+                           count_alternatives=[{k: v for k, v in item.items() if k != "span"} for item in alternatives],
                            **dict(zip(("only_inputs", "only_inputs_quote"), only_inputs(task, proposal)))), rejected
 
 

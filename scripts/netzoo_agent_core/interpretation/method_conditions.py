@@ -73,6 +73,7 @@ def verified_method(task: str, item) -> dict:
     if features:
         found["features"] = sum(features.values())
         found["feature_counts"] = len(features)  # phase 4a: a relation is judged on one stated count only
+        found["feature_items"] = [[*span, count] for span, count in features.items()]  # 5b: where each count is
     return found
 
 
@@ -144,7 +145,8 @@ def request_method(task: str, proposal) -> dict:
     verified like an ask's."""
     found = verified_method(task, getattr(proposal, "conditions", None))
     return {key: value for key, value in found.items()
-            if key in ("named", "named_quote", "settings", "samples", "samples_quote", "features")}
+            if key in ("named", "named_quote", "settings", "samples", "samples_quote", "features", "feature_counts",
+                       "feature_items")}
 
 
 def with_request_method(method: dict, whole: dict) -> dict:
@@ -161,7 +163,9 @@ def with_request_method(method: dict, whole: dict) -> dict:
     if "samples" not in merged and "samples" in whole:  # round m3 N26: "100 samples and 1000 total features"
         merged.update(samples=whole["samples"], samples_quote=whole["samples_quote"])
     if "features" not in merged and "features" in whole:
-        merged["features"] = whole["features"]
+        # Phase 5b review: with the count of data types too -- without it `_single` read a sum over the request's
+        # data types as one count, so a phase 4a relation could be judged on it.
+        merged.update({key: whole[key] for key in ("features", "feature_counts", "feature_items") if key in whole})
     return merged
 
 
