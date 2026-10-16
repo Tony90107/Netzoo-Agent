@@ -135,7 +135,10 @@ def _check_model(context):
         # seen sets), so the check's own model gets its own cap rather than the router's 1,200.
         # Log 414: on the 7 requests whose check came back undecodable, nemotron had spent the whole 6,000-token
         # cap on reasoning (finish "length"); with 9,000 all 7 decoded (largest 6,749), the live schema too.
-        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "9000")))
+        # Core decision follow-up (2026-10-16): the phase 1-2 fields grew the reply (median 5,580, p90 7,788, max 8,977
+        # of 9,000 on the bench rounds) and 27 of 249 calls were undecodable (156-285 s each). Re-read with 16,000,
+        # all 27 decoded (8 needed more than 9,000 tokens, largest 12,906); research log offline_cap_check.py.
+        model, llm = own, _own_llm(own, int(os.environ.get("OPENROUTER_CAPABILITY_MAX_TOKENS", "16000")))
     return model, llm
 
 
