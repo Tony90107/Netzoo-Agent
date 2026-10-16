@@ -72,6 +72,7 @@ def verified_method(task: str, item) -> dict:
             features.setdefault(_span(task, stated.quote), stated.count)
     if features:
         found["features"] = sum(features.values())
+        found["feature_counts"] = len(features)  # phase 4a: a relation is judged on one stated count only
     return found
 
 
@@ -92,6 +93,11 @@ def _unregistered_lioness(said: str) -> str | None:
     bases = [name for name in known if not name.startswith(f"{LIONESS_FAMILY}-") and name not in per_sample
              and _folded(name) in folded]
     return UNREGISTERED if bases and all(f"{LIONESS_FAMILY}-{name}" not in known for name in bases) else None
+
+
+def _single(method: dict) -> int | None:
+    """Phase 4a: the one stated feature count (a recording from before 4a has one when it has any)."""
+    return method.get("features") if method.get("feature_counts", 1) == 1 else None
 
 
 def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str], list[str], list[str]]:
@@ -121,7 +127,8 @@ def method_fitting(method: dict, keys: list[str]) -> tuple[list[str], list[str],
         unset = [] if conditions is None else [
             *(issue for setting in settings if (issue := setting_issue(conditions, setting))),
             *combination_issues(conditions, settings, samples)]
-        too_much = data_issue(conditions, samples, features) if conditions is not None else None
+        too_much = (data_issue(conditions, samples, features, _single(method)) if conditions is not None
+                    else None)
         limits.extend([*unset, *filter(None, [too_much])])
         if unset and not too_much:
             defaults.append(key)
@@ -305,7 +312,7 @@ def _limit_words(task: str, whole: dict, workflows: set[str]) -> str:
         if task and places:
             start, end = _closest(places)
             return task[start:end]
-    if any(data_issue(conditions, samples, features) for conditions in found):
+    if any(data_issue(conditions, samples, features, _single(whole)) for conditions in found):
         return whole.get("samples_quote", "")
     return ""
 

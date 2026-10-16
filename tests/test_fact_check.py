@@ -170,7 +170,7 @@ def test_the_contract_quotes_input_checks_must_be_the_contracts_own_words(policy
 
     source = (Path(__file__).parents[1] / "workflows" / "bonobo.yaml").read_text()
     bad = tmp_path / "bonobo.yaml"
-    bad.write_text(source.replace('  - "at least three total samples"', '  - "at least four total samples"'))
+    bad.write_text(source.replace('text: "at least three total samples"', 'text: "at least four total samples"'))
     with pytest.raises(ProjectPolicyError, match="input_checks"):
         Loader._load_workflow_spec(bad)
 

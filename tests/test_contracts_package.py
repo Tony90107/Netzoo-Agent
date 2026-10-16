@@ -169,6 +169,7 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # uncertain/stated quotes, FactQuestion's outcomes; WorkflowPolicySpec.input_checks (contract words for what the
 # input check verifies) reaches ProjectPolicySnapshot. Older sessions and specs load unchanged.
 # Phase 3: optional DeclinedPart.line (the DECLINE view renders from the call alone); older sessions load unchanged.
+# Phase 4a: an input_checks entry may be an InputCheckSpec (text, scope, limit); plain strings still load as scope file.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -196,7 +197,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "41681cf7f66ae724385590ab77b892eb8dcb766676cc24d57de3445af2da0bc1",
+    "ProjectPolicySnapshot": "08605e06f21ce91dfdeb0d8ffe901539a77a9b2892c60416782f7965b8222477",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.

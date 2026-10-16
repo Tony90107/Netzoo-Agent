@@ -56,8 +56,15 @@ conventions:
   - output_file is the labeled symmetric all-sample partial-correlation matrix; lioness_output is an edge-by-sample table with source, target and one column per sample, the upper triangle of each sample's matrix in DRAGON edge-list order.
   - The per-sample table holds one value per feature pair per sample; runs above 20,000,000 values are refused before they start.
   - Sample-specific networks are relative to the cohort they were built from; partial correlations are conditional associations, not causal relationships.
-# Core decision spec, phase 2 (R5): what the input check verifies before a run, in this file's own words.
+# Core decision spec, phase 2 (R5) and phase 4a: what the input check verifies before a run, in this file's own
+# words; scope request names the request-level limit (workflow_conditions) that decides it, scope file only
+# the files can.
 input_checks:
-  - "Require at least three samples."
-  - "runs above 20,000,000 values are refused before they start"
-  - "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven."
+  - text: "Require at least three samples."
+    scope: request
+    limit: "min_samples"
+  - text: "runs above 20,000,000 values are refused before they start"
+    scope: request
+    limit: "max_values"
+  - text: "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven."
+    scope: file
