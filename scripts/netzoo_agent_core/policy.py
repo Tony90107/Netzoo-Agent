@@ -37,6 +37,9 @@ __all__ = [
 ]
 
 
+_LIMIT_NAME = re.compile(r"min_samples|max_values|omics_layers|relation:[a-z_]+[<>]=?[a-z_]+|setting:[a-z_]+(<=|>=|<|>)samples")
+
+
 class ProjectPolicyError(RuntimeError):
     """Raised when project policy is missing, malformed, or conflicts with code."""
 
@@ -269,13 +272,20 @@ class ProjectPolicyLoader:
                 raise ProjectPolicyError(
                     f"Every convention in {path} must contain 1-400 characters."
                 )
-        from .contract_text import contract_text, normalized
+        from .contract_text import check_limit, check_scope, check_text, contract_text, normalized
 
         text = normalized(contract_text(spec))
         for check in spec.input_checks:
-            if not check.strip() or normalized(check) not in text:
+            words = check_text(check)
+            if not words.strip() or normalized(words) not in text:
                 raise ProjectPolicyError(
-                    f"Every input_checks entry in {path} must quote the workflow's own contract: {check!r}."
+                    f"Every input_checks entry in {path} must quote the workflow's own contract: {words!r}."
+                )
+            # Phase 4a: a request-scope entry names the request-level limit that decides it; a file one names none.
+            if (check_scope(check) == "request") != bool(check_limit(check)) or (
+                    check_limit(check) and not _LIMIT_NAME.fullmatch(check_limit(check))):
+                raise ProjectPolicyError(
+                    f"An input_checks entry in {path} with scope request names its limit, and only then: {words!r}."
                 )
         return spec
 

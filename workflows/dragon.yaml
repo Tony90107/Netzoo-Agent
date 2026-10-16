@@ -65,7 +65,11 @@ conventions:
   - output_format=matrix writes a labeled symmetric partial-correlation matrix. output_format=edge_list writes one undirected row per pair with source, target, partial_correlation, and precision.
   - DRAGON output is aggregate, not sample-specific. Its partial correlations and precision values represent conditional associations, not causal relationships.
   - Direct handoffs to PANDA, PUMA, LIONESS, CONDOR, BONOBO, and OTTER are illegal because their verified input contracts differ. A future pairwise/chained workflow requires an explicit conversion artifact and user confirmation.
-# Core decision spec, phase 2 (R5): what the input check verifies before a run, in this file's own words.
+# Core decision spec, phase 2 (R5) and phase 4a: what the input check verifies before a run, in this file's own
+# words; scope request names the request-level limit (workflow_conditions) that decides it, scope file only
+# the files can.
 input_checks:
-  - "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven."
-  - "Missing values, non-numeric fields, duplicate sample IDs, and duplicate feature IDs are rejected"
+  - text: "Layer 2 is reordered to layer 1 only after exact sample-ID set equality is proven."
+    scope: file
+  - text: "Missing values, non-numeric fields, duplicate sample IDs, and duplicate feature IDs are rejected"
+    scope: file

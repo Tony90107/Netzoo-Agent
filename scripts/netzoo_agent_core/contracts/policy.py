@@ -110,6 +110,16 @@ class WorkflowOutputCapabilitySpec(BaseModel):
         return values
 
 
+class InputCheckSpec(BaseModel):
+    """Core decision phase 4a: one thing the input check verifies, in the contract's own words, and whether a
+    request's stated facts can decide it (`request`, mapped to its `workflow_conditions` limit) or only the files can."""
+
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=400)
+    scope: Literal["request", "file"] = "file"
+    limit: str = Field(default="", max_length=80)
+
+
 class WorkflowPolicySpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -166,7 +176,8 @@ class WorkflowPolicySpec(BaseModel):
     conventions: list[str] = Field(default_factory=list, max_length=20)
     # Core decision spec, phase 2 (R5): contract words for what this workflow's own input check verifies before a
     # run (each must appear in this file's text); a fact they cover is said, never asked.
-    input_checks: list[str] = Field(default_factory=list, max_length=12)
+    # Phase 4a: an entry is the contract text (read as scope "file") or an InputCheckSpec with its scope and limit.
+    input_checks: list[str | InputCheckSpec] = Field(default_factory=list, max_length=12)
 
 class ProjectPolicySnapshot(BaseModel):
     policy_version: Literal[2]

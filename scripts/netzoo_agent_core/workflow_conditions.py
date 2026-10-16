@@ -41,6 +41,10 @@ _MIN_SAMPLES: Mapping[str, Callable[[], int]] = MappingProxyType({
     "run_giraffe": lambda: giraffe.GIRAFFE_MIN_SAMPLES,
     "run_otter": lambda: otter.OTTER_MIN_EXPRESSION_SAMPLES,
 })
+# Core decision phase 4a: a relation between two stated counts, read from the function the input check itself calls.
+_RELATIONS: Mapping[str, Callable[[], tuple[str, Callable[[int, int], str | None]]]] = MappingProxyType({
+    "run_cobra": lambda: ("features>samples", cobra.gene_sample_error),
+})
 _MAX_VALUES: Mapping[str, Callable[[], tuple[int, Callable[[int, int], int], str]]] = MappingProxyType({
     "run_lioness_dragon": lambda: (lioness_dragon.LIONESS_DRAGON_MAX_VALUES, lioness_dragon.lioness_dragon_size,
                                    "features x (features - 1) / 2 x samples"),
@@ -76,6 +80,9 @@ class WorkflowConditions:
     size_formula: str = ""
     omics_layers: int = 0
     """Paired omics tables the workflow joins; they must hold exactly the same sample IDs."""
+    relation_name: str = ""
+    relation: Callable[[int, int], str | None] | None = None
+    """Phase 4a: (features, samples) -> why one data type of this size cannot run (COBRA: more genes than samples)."""
 
 
 def _settings(action: str) -> Mapping[str, SettingLimit]:
@@ -100,11 +107,13 @@ def all_conditions() -> dict[str, WorkflowConditions]:
     for action in sorted(RUN_ACTIONS):
         definition = ACTION_DEFINITIONS[action]
         cap = _MAX_VALUES[action]() if action in _MAX_VALUES else None
+        relation = _RELATIONS[action]() if action in _RELATIONS else None
         found[definition.workflow] = WorkflowConditions(
             action=action, workflow=definition.workflow, settings=_settings(action),
             min_samples=_MIN_SAMPLES[action]() if action in _MIN_SAMPLES else None,
             max_values=cap[0] if cap else None, size=cap[1] if cap else None, size_formula=cap[2] if cap else "",
-            omics_layers=sum(1 for name in definition.required_inputs if name.startswith("omics_layer_")))
+            omics_layers=sum(1 for name in definition.required_inputs if name.startswith("omics_layer_")),
+            relation_name=relation[0] if relation else "", relation=relation[1] if relation else None)
     return found
 
 
@@ -237,14 +246,19 @@ def setting_issue(conditions: WorkflowConditions, setting: StatedSetting) -> str
     return None
 
 
-def data_issue(conditions: WorkflowConditions, samples: int | None, features: int | None) -> str | None:
+def data_issue(conditions: WorkflowConditions, samples: int | None, features: int | None,
+               single_features: int | None = None) -> str | None:
     """Why the workflow cannot take data of this size, or None when it can or the request does not say.
 
     A count the request does not state is never assumed. A partial feature count is a lower bound, and the size
-    only grows with it, so a cap it already exceeds is exceeded.
+    only grows with it, so a cap it already exceeds is exceeded. A relation between counts (phase 4a) is judged only
+    on `single_features` -- the request states exactly one feature count -- so it is never a sum over data types.
     """
     if samples is not None and conditions.min_samples is not None and samples < conditions.min_samples:
         return f"{conditions.workflow} needs at least {conditions.min_samples} samples; the request has {samples}"
+    if (samples is not None and single_features is not None and conditions.relation is not None
+            and (problem := conditions.relation(single_features, samples)) is not None):
+        return f"{problem}; the request has {single_features:,} genes and {samples:,} samples"
     if samples and features and conditions.max_values is not None and conditions.size is not None:
         size = conditions.size(samples, features)
         if size > conditions.max_values:

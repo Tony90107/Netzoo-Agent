@@ -13,11 +13,18 @@ COBRA_MIN_SAMPLES = 2
 
 __all__ = [
     "COBRA_MIN_SAMPLES",
+    "gene_sample_error",
     "cobra_artifact_paths",
     "cobra_input_output_collisions",
     "inspect_cobra_inputs_impl",
     "load_cobra_inputs",
 ]
+
+
+def gene_sample_error(genes: int, samples: int) -> str | None:
+    """COBRA's covariance decomposition needs more genes than samples; shared by `load_cobra_inputs` and the
+    request-level check (`workflow_conditions`, core decision phase 4a), so the rule lives in one place."""
+    return "COBRA requires more genes than samples" if genes <= samples else None
 
 
 _COBRA_ARTIFACT_NAMES = (
@@ -85,8 +92,8 @@ def load_cobra_inputs(expression_file: str, design_file: str) -> tuple[pd.DataFr
         errors.append("expression values must all be numeric")
     if design_values.isna().any().any():
         errors.append("design covariate values must all be numeric; encode categories first")
-    if expression_values.shape[0] <= expression_values.shape[1]:
-        errors.append("COBRA requires more genes than samples")
+    if (error := gene_sample_error(*expression_values.shape)) is not None:
+        errors.append(error)
     if expression_values.shape[1] < COBRA_MIN_SAMPLES:
         errors.append("COBRA requires at least two samples")
     if errors:

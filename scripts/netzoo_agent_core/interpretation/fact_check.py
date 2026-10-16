@@ -21,7 +21,7 @@ from __future__ import annotations
 from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 
 from ..capability_sheet import entry
-from ..contract_text import contract_text, normalized
+from ..contract_text import check_text, contract_text, normalized
 from ..contracts.core_decision import FactQuestion
 from ..contracts.fact_check import FactCheck, RejectedFact
 from .request_spans import _span
@@ -131,8 +131,8 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
             reject("R6 the same words already ask a fact")
             continue
         seen.add(span)
-        settled = running and any(normalized(item) in normalized(proposal.contract_quote)
-                                  or normalized(proposal.contract_quote) in normalized(item)
+        settled = running and any(normalized(check_text(item)) in normalized(proposal.contract_quote)
+                                  or normalized(proposal.contract_quote) in normalized(check_text(item))
                                   for item in spec.input_checks)
         workflows = [spec.workflow, *(o.split(":", 1)[1] for o in (yes, no) if o.startswith("other_workflow:"))]
         kept.append((span[0], FactQuestion(

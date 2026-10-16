@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-__all__ = ["contract_text", "normalized"]
+__all__ = ["check_limit", "check_scope", "check_text", "contract_text", "normalized"]
 
 
 def normalized(text: str) -> str:
@@ -31,3 +31,16 @@ def contract_text(spec) -> str:
     if capability.handoff_contract:
         lines.append(f"- {capability.handoff_contract}")
     return "\n".join(lines)
+
+
+def check_text(item) -> str:
+    """An `input_checks` entry's contract words (a plain string, or an InputCheckSpec)."""
+    return item if isinstance(item, str) else item.text
+
+
+def check_scope(item) -> str:
+    return "file" if isinstance(item, str) else item.scope
+
+
+def check_limit(item) -> str:
+    return "" if isinstance(item, str) else item.limit
