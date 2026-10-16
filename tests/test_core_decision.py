@@ -311,3 +311,15 @@ def test_an_unchecked_turn_names_no_workflow_and_never_says_available():
     held = with_core(decision, decide_core(decision))
     assert held.core.kind == "UNCHECKED"
     assert classification_progress_detail({"candidates": ["run_panda"], "request_mode": "execute"}, held)["workflows"] == []
+
+
+def test_an_unchecked_exact_match_names_no_workflow_path_either():
+    """Phase 4b smoke S1b: an UNCHECKED turn whose routing matched CONDOR exactly was headed "Workflow -- CONDOR"."""
+    from netzoo_agent_core.interpretation.semantic_goal import classification_progress_detail
+
+    decision = _decision(rows=[], provisional=True, matched_actions=["run_condor"], recommended_actions=["run_condor"],
+                         capability_match_status="exact")
+    held = with_core(decision, decide_core(decision))
+    assert held.core.kind == "UNCHECKED"
+    detail = classification_progress_detail({"candidates": ["run_condor"]}, held)
+    assert (detail["workflows"], detail["workflow_path"]) == ([], [])

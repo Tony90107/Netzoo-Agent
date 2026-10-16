@@ -73,7 +73,7 @@ def classification_progress_detail(
     if match_status == "fallback":
         outcome_label = "Fallback recommendation (not an exact semantic match)"
         workflow_scope = "fallback"
-    if match_status == "exact":
+    if match_status == "exact" and not clarifying:  # smoke S1b: an UNCHECKED turn was headed "Workflow -- CONDOR"
         if policy is not None:
             workflow_records = [
                 {
