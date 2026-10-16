@@ -296,3 +296,18 @@ def test_the_run_gates_read_the_call():
     assert allowed.core.run_allowed and run_approval_failures(allowed, message) == []
     held = allowed.model_copy(update={"core": allowed.core.model_copy(update={"run_allowed": False})})
     assert run_approval_failures(held, message) == ["the turn's call (DO, run) does not allow a run"]
+
+
+def test_an_unchecked_turn_names_no_workflow_and_never_says_available():
+    """Round p3 C42, C43: a run held as unconfirmed was headed 'Workflow -- DRAGON' over 'available from DRAGON'."""
+    from netzoo_agent_core.interpretation.capability_check import understanding_paragraph
+    from netzoo_agent_core.interpretation.semantic_goal import classification_progress_detail
+
+    check = CapabilityCheck(requirements=[_row("available", ["panda.tf_gene_network"])], provisional=True)
+    line = understanding_paragraph(check)
+    assert "available from" not in line and "the backup check matched PANDA to this (not confirmed)" in line
+    decision = _decision(rows=[_row("available", ["panda.tf_gene_network"])], provisional=True,
+                         matched_actions=["run_panda"])
+    held = with_core(decision, decide_core(decision))
+    assert held.core.kind == "UNCHECKED"
+    assert classification_progress_detail({"candidates": ["run_panda"], "request_mode": "execute"}, held)["workflows"] == []
