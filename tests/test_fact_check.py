@@ -34,7 +34,7 @@ def policy():
 def _proposal(**extra):
     fields = dict(user_quote=UNSURE, uncertainty="said_unknown", workflow="BONOBO", contract_quote=CONTRACT,
                   question="Were the values log-transformed before they were centered?", yes_outcome="supported",
-                  yes_workflow="", no_outcome="not_supported", no_workflow="")
+                  yes_workflow="", no_outcome="not_supported", no_workflow="", about="user_data", alternatives=[])
     return FactProposal(**{**fields, **extra})
 
 
@@ -198,3 +198,55 @@ def test_the_method_the_goal_words_name_is_a_candidate_first(policy):
     assert fact_candidates(decision, policy) == ["run_dragon"]
     assert fact_candidates(decision.model_copy(update={"hypothesis_actions": ["run_lioness_dragon"]}), policy) == [
         "run_dragon", "run_lioness_dragon"]
+
+
+# Phase 5c (spec 13.4) R7: a wanted result the user is unsure of is a fact only with two options named.
+
+RESULT_TASK = ("Run BONOBO on lesions.tsv for my 9 biopsies. I'm not sure whether I need one network per biopsy or "
+               "one network for all biopsies together.")
+RESULT_UNSURE = "I'm not sure whether I need one network per biopsy or one network for all biopsies together"
+OPEN_TASK = "Run BONOBO on lesions.tsv for my 9 biopsies. Honestly I don't know what kind of network they expect."
+OPEN_UNSURE = "Honestly I don't know what kind of network they expect"
+
+
+def _result_fact(quote, alternatives):
+    return _proposal(user_quote=quote, about="wanted_result", alternatives=list(alternatives),
+                     question="Do you need one network per biopsy?")
+
+
+def test_a_wanted_result_with_two_named_options_is_a_fact_to_ask(policy):
+    """Rounds p3/p4b C11, C31, C34, C36: each names both results in its own words, and is asked."""
+    proposal = _result_fact(RESULT_UNSURE, ["one network per biopsy", "one network for all biopsies together"])
+    check = kept_facts(RESULT_TASK, FactProposals(facts=[proposal]), _decision(uncertain=(RESULT_UNSURE,)), policy)
+    assert [fact.user_quote for fact in check.accepted] == [RESULT_UNSURE] and check.open_results == []
+
+
+@pytest.mark.parametrize("alternatives", [[], ["a network"], ["one network per biopsy", "network per biopsy"]])
+def test_a_wanted_result_with_fewer_than_two_named_options_is_a_goal_to_clarify(policy, alternatives):
+    """Rounds p4b/p4c C24 ("Honestly I don't know what kind of network they expect") were asked as a fact."""
+    task = OPEN_TASK if not alternatives or alternatives == ["a network"] else RESULT_TASK
+    quote = OPEN_UNSURE if task == OPEN_TASK else RESULT_UNSURE
+    check = kept_facts(task, FactProposals(facts=[_result_fact(quote, alternatives)]), _decision(uncertain=(quote,)),
+                       policy)
+    assert (check.accepted, check.open_results) == ([], [quote])
+
+
+def test_an_open_result_still_needs_the_users_unsure_words_and_the_contracts(policy):
+    unread = kept_facts(OPEN_TASK, FactProposals(facts=[_result_fact(OPEN_UNSURE, [])]), _decision(uncertain=()), policy)
+    assert unread.open_results == [] and unread.rejected[0].rule.startswith("R1")
+    invented = _proposal(user_quote=OPEN_UNSURE, about="wanted_result", alternatives=[], contract_quote="any network")
+    uncontracted = kept_facts(OPEN_TASK, FactProposals(facts=[invented]), _decision(uncertain=(OPEN_UNSURE,)), policy)
+    assert uncontracted.open_results == [] and uncontracted.rejected[0].rule.startswith("R2")
+
+
+def test_an_open_result_is_clarify_before_any_question_about_the_data(policy):
+    data = _proposal()  # the log-transform fact of the phase 2 tests, on its own words
+    task = f"{TASK} {OPEN_UNSURE}."
+    facts = kept_facts(task, FactProposals(facts=[data, _result_fact(OPEN_UNSURE, [])]),
+                       _decision(uncertain=(UNSURE, OPEN_UNSURE)), policy)
+    assert len(facts.accepted) == 1 and facts.open_results == [OPEN_UNSURE]
+    decision = _decision(uncertain=(UNSURE, OPEN_UNSURE), fact_check=facts)
+    core = decide_core(decision, task)
+    assert (core.kind, core.basis, core.clarify.goal_quote) == ("CLARIFY", "result_open", OPEN_UNSURE)
+    held = with_core(decision, core)
+    assert (held.action, held.matched_actions, held.should_execute) == ("no_tool", [], False)

@@ -11,7 +11,10 @@ readings) could not be asked at all. The agent may propose any fact, but code ke
 - R3 a yes and a no lead to different outcomes;
 - R4 the reading did not type it as stated (its words are not inside a definite condition, method or setting);
 - R5 when the workflow's own input check covers it and the turn runs on named files, it is said, not asked;
-- R6 at most two are asked, in the request's order.
+- R6 at most two are asked, in the request's order;
+- R7 (phase 5c, spec 13.4) a fact about the wanted result is asked only when the request names at least two options
+  in its own words; with fewer it is a goal to clarify (`FactCheck.open_results`; rounds p4b/p4c C24: "I don't know
+  what kind of network they expect" was asked as a fact) -- it still needs R1, R2 and R4.
 
 A fact is never asked because a contract field exists (spec boundary 1): only what the user shows they are unsure of.
 """
@@ -96,6 +99,14 @@ def _inside(quote: str, outer: list[str]) -> bool:
     return any(q and q in normalized(item) for item in outer)
 
 
+def _named_options(task: str, alternatives) -> list[tuple[int, int]]:
+    """R7: the options a wanted-result fact names in the request's own words -- placed, and none inside another."""
+    spans = list(dict.fromkeys(span for words in alternatives or () if (words or "").strip()
+                               and (span := _span(task, words.strip())) is not None))
+    return [span for span in spans
+            if not any(other != span and other[0] <= span[0] and span[1] <= other[1] for other in spans)]
+
+
 def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> FactCheck:
     """R1-R6 over the agent's proposals; what is kept is what the turn may ask (or say, R5)."""
     actions = fact_candidates(decision, policy)
@@ -105,7 +116,7 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
     stated = list(getattr(check, "stated_quotes", []) or [])
     uncertain = list(getattr(check, "uncertain_quotes", []) or [])
     running = decision.action.startswith("run_") or bool(getattr(decision, "execution_requested", False))
-    kept, rejected, seen = [], [], set()
+    kept, rejected, seen, open_results = [], [], set(), []
     for proposal in getattr(proposals, "facts", None) or []:
         raw = proposal.model_dump()
 
@@ -126,6 +137,13 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
         spec = policy.workflows[action]
         if not proposal.contract_quote.strip() or normalized(proposal.contract_quote) not in normalized(contract_text(spec)):
             reject("R2 contract words not in its contract")
+            continue
+        if proposal.about == "wanted_result" and len(_named_options(task, proposal.alternatives)) < 2:
+            # R7 (phase 5c): a result the user is unsure of, with fewer than two options named, is a goal to clarify
+            if _inside(proposal.user_quote, stated):
+                reject("R4 the reading typed it as stated")
+            elif (words := task[span[0]:span[1]]) not in open_results:
+                open_results.append(words)
             continue
         yes = _outcome(proposal.yes_outcome, proposal.yes_workflow, names, spec.workflow)
         no = _outcome(proposal.no_outcome, proposal.no_workflow, names, spec.workflow)
@@ -153,4 +171,4 @@ def kept_facts(task: str, proposals, decision, policy, *, model: str = "") -> Fa
     for fact in asked[MAX_ASKED:]:
         rejected.append(RejectedFact(rule="R6 more than two questions", proposal=fact.model_dump()))
     return FactCheck(status="checked", model=model, candidates=[workflow_name(a) for a in actions],
-                     accepted=[*asked[:MAX_ASKED], *said], rejected=rejected)
+                     accepted=[*asked[:MAX_ASKED], *said], rejected=rejected, open_results=open_results)
