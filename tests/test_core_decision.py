@@ -360,3 +360,28 @@ def test_only_the_registered_spelling_names_a_method():
     assert workflows_in("Should I be using COBRA or CONDOR on our cohort?") == ["COBRA", "CONDOR"]
     assert workflows_in("PANDA or LIONESS or something; LIONESS-PUMA per sample") == ["PANDA", "LIONESS", "LIONESS-PUMA"]
     assert workflows_in("the panda cohort, LIONESS-OTTER networks") == []
+
+
+# Phase 5a (spec 13.2): routing that found no research choice does not hide a confirmed unclear goal.
+
+def _failed(check):
+    return _with_check(check, confidence=0.0, match_basis="provider_unavailable", capability_match_status="ambiguous")
+
+
+def test_a_confirmed_unclear_goal_is_clarify_even_when_routing_failed_closed():
+    """p2-p4c C10 ("Should I be using COBRA or CONDOR ...?"): no call failed, yet the turn was UNCHECKED."""
+    rows = [_row("not_checked", kind="context"), _row("not_checked", kind="about_methods")]
+    for check in (_goal_check("purpose_only", "I'm not sure what either would give me.", rows),
+                  _goal_check("method_named", "COBRA or CONDOR", rows)):
+        core = decide_core(_failed(check), reason_code="research_choices_unavailable")
+        assert (core.kind, core.basis) == ("CLARIFY", "goal_unclear")
+        assert core.clarify.question.startswith("Which of these results do you want")
+
+
+def test_routing_that_failed_closed_stays_unchecked_unless_the_check_confirmed_the_unclear_goal():
+    rows = [_row("not_available")]
+    backup = _goal_check("purpose_only", "Which of these should we apply", rows, provisional=True)  # p3 C37
+    named = _goal_check("result_named", "a network", rows)  # the check read a named result
+    for check in (backup, named):
+        core = decide_core(_failed(check), reason_code="research_choices_unavailable")
+        assert (core.kind, core.basis) == ("UNCHECKED", "routing_failed")
