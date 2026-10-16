@@ -6,10 +6,12 @@ registry alone; the limits each workflow is held to are `workflow_conditions`'.
 
 from __future__ import annotations
 
+import re
+
 from workflow_registry import ACTION_DEFINITIONS, RUN_ACTIONS
 
 __all__ = ["LIONESS_FAMILY", "UNREGISTERED", "method_names", "named_workflows", "registered_workflows",
-           "setting_meanings", "setting_names"]
+           "setting_meanings", "setting_names", "workflows_in"]
 
 LIONESS_FAMILY = "LIONESS"
 """A named method that stands for every registered LIONESS-X workflow."""
@@ -40,6 +42,18 @@ def named_workflows(method: str) -> frozenset[str]:
     if method not in known:
         return frozenset()
     return frozenset(name for name in (method, f"{LIONESS_FAMILY}-{method}") if name in known)
+
+
+def workflows_in(words: str) -> list[str]:
+    """The methods the words name, as the registry spells them (case and all), in the order they appear.
+
+    Core decision spec section 5: "Should I use COBRA or CONDOR?" names two, "Can PUMA model ..." one. Only the
+    registered spelling counts -- the names are animals too, and "the panda cohort" names no method. A LIONESS
+    version the registry does not have ("LIONESS-OTTER") names none.
+    """
+    names = sorted(method_names(), key=len, reverse=True)
+    pattern = re.compile(r"(?<![A-Za-z0-9_-])(" + "|".join(map(re.escape, names)) + r")(?![A-Za-z0-9_-])")
+    return list(dict.fromkeys(pattern.findall(words or "")))
 
 
 def setting_names() -> tuple[str, ...]:

@@ -115,3 +115,31 @@ def test_the_loader_holds_scope_and_limit(tmp_path, entry, ok):
     else:
         with pytest.raises(ProjectPolicyError, match="scope request"):
             ProjectPolicyLoader._load_workflow_spec(path)
+
+
+def test_an_enum_value_is_named_by_its_spelling_or_the_contracts_other_name_for_it():
+    """p3-p4c C52: "saved as HDF5" named neither .h5 nor .hdf, so BONOBO was declined for its own default format."""
+    from netzoo_agent_core.workflow_conditions import enum_value, setting_issue
+
+    conditions = conditions_for("BONOBO")
+    limit = conditions.settings["bonobo_output_format"]
+    assert [enum_value(limit, words) for words in ("HDF5", ".hdf", "csv", "HDF5 or CSV")] == [".h5", ".hdf", ".csv", None]
+    assert setting_issue(conditions, StatedSetting("BONOBO.bonobo_output_format", "saved as HDF5", "HDF5")) is None
+
+
+def test_the_loader_holds_value_names_to_allowed_values(tmp_path):
+    """Even where the registry and the YAML agree, another name must name an allowed value."""
+    from dataclasses import replace
+
+    from netzoo_agent_core.contracts import TaskDecision
+    from netzoo_agent_core.policy import _control_from_spec, _validate_controls
+    from workflow_registry import ACTION_DEFINITIONS
+
+    source = (ROOT / "workflows" / "bonobo.yaml").read_text()
+    assert "      HDF5: .h5\n" in source
+    path = tmp_path / "bonobo.yaml"
+    path.write_text(source.replace("      HDF5: .h5\n", "      HDF5: .hdf5\n"))
+    spec = ProjectPolicyLoader._load_workflow_spec(path)
+    definition = replace(ACTION_DEFINITIONS["run_bonobo"], controls=tuple(map(_control_from_spec, spec.controls)))
+    with pytest.raises(ProjectPolicyError, match="value_names must name allowed enum values"):
+        _validate_controls("run_bonobo", spec, definition, set(TaskDecision.model_fields))

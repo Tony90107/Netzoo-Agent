@@ -323,3 +323,40 @@ def test_an_unchecked_exact_match_names_no_workflow_path_either():
     assert held.core.kind == "UNCHECKED"
     detail = classification_progress_detail({"candidates": ["run_condor"]}, held)
     assert (detail["workflows"], detail["workflow_path"]) == ([], [])
+
+
+# Rounds p4b and p4c: the calls both rounds got wrong (research log RESULTS-BOTH-WRONG.md).
+
+def test_a_run_names_the_workflow_it_runs_not_routings_other_picks():
+    """p4b/p4c C59: a LIONESS-PUMA run was recorded as DO for LIONESS-PUMA and PUMA (routing recommended both)."""
+    decision = _decision(action="run_lioness_puma", rows=[], matched_actions=["run_lioness_puma"],
+                         recommended_actions=["run_puma", "run_lioness_puma"],
+                         run_verdict=RunVerdict(action="run_lioness_puma", verdict="agrees"))
+    core = decide_core(decision)
+    assert (core.kind, core.workflows, core.run_allowed) == ("DO", ["LIONESS-PUMA"], True)
+
+
+def test_one_method_the_goal_words_name_is_the_goal():
+    """p4b/p4c C39 ("Can PUMA model the small RNAs ...?") and p1 C32 were read purpose_only."""
+    rows = [_row("not_checked", kind="about_methods")]
+    check = _goal_check("purpose_only", "Can PUMA model the small RNAs from our mouse testis small-RNA-seq", rows)
+    assert decide_core(_with_check(check, matched_actions=["run_puma"])).kind == "DO"
+    assert decide_core(_with_check(_goal_check("purpose_only", "Can LIONESS-PUMA do it", rows),
+                                   matched_actions=["run_lioness_puma"])).kind == "DO"
+
+
+def test_two_methods_named_as_the_choice_with_no_result_is_clarify():
+    """Spec section 5 ("BONOBO or LIONESS?"); p4b C10 read "COBRA or CONDOR" as method_named."""
+    rows = [_row("not_checked", kind="context"), _row("not_checked", kind="about_methods")]
+    core = decide_core(_with_check(_goal_check("method_named", "COBRA or CONDOR", rows), matched_actions=["run_cobra"]))
+    assert (core.kind, core.basis) == ("CLARIFY", "goal_unclear")
+    named_result = [_row("available", ["puma.tf_gene_network"])]  # the reading read a result: the choice is a tie
+    assert decide_core(_with_check(_goal_check("method_named", "PANDA or PUMA", named_result))).kind == "DO"
+
+
+def test_only_the_registered_spelling_names_a_method():
+    from netzoo_agent_core.method_names import workflows_in
+
+    assert workflows_in("Should I be using COBRA or CONDOR on our cohort?") == ["COBRA", "CONDOR"]
+    assert workflows_in("PANDA or LIONESS or something; LIONESS-PUMA per sample") == ["PANDA", "LIONESS", "LIONESS-PUMA"]
+    assert workflows_in("the panda cohort, LIONESS-OTTER networks") == []

@@ -1248,6 +1248,8 @@ class WorkflowControlDefinition:
     selection_tags: frozenset[str] = frozenset()
     executor_argument: str | None = None
     description: str = ""
+    value_names: tuple[tuple[str, Any], ...] = ()
+    """An enum's other names for its allowed values, as its description gives them ("HDF5" -> ".h5")."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -2196,6 +2198,7 @@ def _control(
     nullable: bool = False,
     selection_tags: frozenset[str] = frozenset(),
     description: str = "",
+    value_names: tuple[tuple[str, Any], ...] = (),
 ) -> WorkflowControlDefinition:
     return WorkflowControlDefinition(
         name=name,
@@ -2208,6 +2211,7 @@ def _control(
         selection_tags=selection_tags,
         executor_argument=name,
         description=description,
+        value_names=value_names,
     )
 
 
@@ -2347,6 +2351,7 @@ WORKFLOW_CONTROLS: dict[ActionName, tuple[WorkflowControlDefinition, ...]] = {
             "bonobo_output_format", "enum", ".h5",
             allowed_values=(".h5", ".hdf", ".txt", ".csv"),
             description='File type of the per-sample matrices: .h5 or .hdf (HDF5), .txt or .csv.',
+            value_names=(("HDF5", ".h5"),),
         ),
         _control(
             "sample_names", "string_list", [],
