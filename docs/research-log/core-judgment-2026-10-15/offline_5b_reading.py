@@ -5,7 +5,8 @@ Dev set: m3's U06 ("20 or 200 genes"), U12 ("either 100 or 1000 total features")
 the 56-item bench. Each request is read once by the check's model with the schema of the checkout the script runs
 from (--scripts DIR: an older checkout, the control), then `build_capability_check` verifies the reading in code.
 
-Usage: offline_5b_reading.py OUT_TAG ARM [--scripts DIR]   -> live/OUT_TAG/reading-ARM.json
+Usage: offline_5b_reading.py OUT_TAG ARM [--scripts DIR] [--only ID,ID,...]   -> live/OUT_TAG/reading-ARM.json
+       (--only: just these items, repeats allowed -- the U12 trace read it twice)
        offline_5b_reading.py gates OUT_TAG                    -> B1-B4 from reading-new.json and reading-control.json
 """
 from __future__ import annotations
@@ -16,6 +17,11 @@ import sys
 import time
 
 ARGS = sys.argv[1:]
+ONLY = None
+if '--only' in ARGS:
+    at = ARGS.index('--only')
+    ONLY = ARGS[at + 1].split(',')
+    del ARGS[at:at + 2]
 if '--scripts' in ARGS:
     at = ARGS.index('--scripts')
     sys.path.insert(0, ARGS[at + 1])
@@ -31,6 +37,9 @@ TARGETS = ('U06', 'U12', 'U14')
 
 def dev_items():
     items = json.loads((M3 / 'heldout.json').read_text())['items']
+    if ONLY:
+        by_id = {i['id']: i for i in items}
+        return [by_id[name] for name in ONLY]
     return [i for i in items if i['id'] in TARGETS or i['family'] == 'P' and not CJK.search(i['prompt'])]
 
 
