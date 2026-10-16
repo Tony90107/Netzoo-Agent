@@ -11,7 +11,10 @@ A recorded decision is the one the turn left: CLARIFY and fact-agent ASK turns h
 The dev set m3 (TAG `m3`, its 150 recorded sessions in the main checkout) is replayed the same way, unscored: its
 items are not the bench's, and the changes are read by hand.
 
-Usage: offline_both_wrong.py calls OUT.json [--scripts DIR] TAG [TAG ...]
+`--no-rejudge` skips the enum re-judging, so a later fix that acts only in `decide_core` (phase 5a) is compared
+on the very same rows by both checkouts.
+
+Usage: offline_both_wrong.py calls OUT.json [--scripts DIR] [--no-rejudge] TAG [TAG ...]
        offline_both_wrong.py compare BEFORE.json AFTER.json
 """
 from __future__ import annotations
@@ -20,6 +23,8 @@ import re
 import sys
 
 ARGS = sys.argv[1:]
+REJUDGE = '--no-rejudge' not in ARGS
+ARGS = [arg for arg in ARGS if arg != '--no-rejudge']
 if ARGS and ARGS[0] == 'calls' and '--scripts' in ARGS:
     at = ARGS.index('--scripts')
     sys.path.insert(0, ARGS[at + 1])
@@ -86,7 +91,7 @@ def _sessions(tag):
 
 
 def calls(out, tags):
-    new_code = '--scripts' not in sys.argv
+    new_code = '--scripts' not in sys.argv and REJUDGE
     found = {}
     for tag in tags:
         for sid, item, turn, recorded, reason in _sessions(tag):
