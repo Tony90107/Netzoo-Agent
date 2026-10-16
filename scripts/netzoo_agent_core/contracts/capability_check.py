@@ -323,6 +323,15 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
             "a second omics data type measured on the samples. mutations: somatic mutation calls. network: an "
             "existing regulator-gene or gene-gene network. expression: gene expression data."))),
         quote=(str, Field(description="Exact words of the request saying the user does not have it.")))
+    # Phase 4b smoke S1 ("I only have expr_liver.tsv"; C18 "just this expression table"): saying these are the only
+    # inputs rules out the rest, without naming each one.
+    kinds = Literal["motif_prior", "ppi", "mirna_list", "covariates", "second_omics", "mutations", "network",
+                    "expression"]
+    fields["only_inputs"] = (list[kinds], Field(default_factory=list, description=(  # type: ignore[valid-type]
+        "When the request says these are the only inputs the user has (they 'only have' them, it is 'just' this "
+        "table), each of their kinds, as listed for ruled_out_inputs; empty otherwise.")))
+    fields["only_inputs_quote"] = (str, Field(default="", description=(
+        "Exact words of the request saying those are the only inputs; empty when only_inputs is empty.")))
     fields["ruled_out_inputs"] = (list[ruled_out], Field(default_factory=list, description=(
         "Each input the user says they do not have and cannot get. Not one they have not uploaded yet, will send "
         "later, or that someone else has; empty when there is none.")))
@@ -339,7 +348,8 @@ def unstated_conditions() -> dict:
             "other_requirements": [], "unknown_facts": [], "open_choices": [],
             "named_method": "none", "named_method_quote": "", "settings": [],
             "sample_count": None, "sample_count_quote": "", "feature_counts": [],
-            "goal": "result_named", "goal_quote": "", "ruled_out_inputs": []}
+            "goal": "result_named", "goal_quote": "", "ruled_out_inputs": [], "only_inputs": [],
+            "only_inputs_quote": ""}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
@@ -566,6 +576,9 @@ class CapabilityCheck(BaseModel):
     goal_quote: str = ""
     ruled_out: dict[str, str] = Field(default_factory=dict)
     """Phase 4b: each input kind the user says they do not have, with their verified words."""
+    only_inputs: list[str] = Field(default_factory=list)
+    only_inputs_quote: str = ""
+    """Phase 4b: the input kinds the user says are all they have, with their verified words (the rest are absent)."""
     uncertain_quotes: list[str] = Field(default_factory=list)
     """Phase 2 R1: the request's words the check read as the user not knowing or not having decided something (any
     unknown fact, any open choice); the fact agent's words must agree with one of them."""

@@ -42,9 +42,10 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
                     depth: int = 0) -> str | None:
     """Why the workflow cannot run on what the user has, or None when it can.
 
-    `ruled_out`: input kind -> the user's words saying they do not have it. `lacking`: kinds the request reads as
-    absent without ruling them out (a result computed from no existing network); either must be provided by a
-    registered tool, or by a registered workflow that can itself run (one handoff, never a guessed chain).
+    `ruled_out`: input kind -> the user's words saying they do not have it (an "only these" statement rules out
+    every other kind with its own words). `lacking`: kinds the request reads as absent without the user saying so
+    (a result computed from no existing network). Either must be provided by a registered tool, or by a registered
+    workflow that can itself run on the same inputs (one handoff, never a guessed chain).
     """
     definition = ACTION_DEFINITIONS.get(action)
     if definition is None:
@@ -56,19 +57,20 @@ def route_available(action: str, ruled_out: dict[str, str], lacking: frozenset[s
             continue
         if kind in _TOOLS:
             continue
-        producers = [producer for producer in _producers(kind, action)
-                     if depth == 0 and route_available(producer, ruled_out, frozenset(), depth + 1) is None]
-        if producers:
+        producers = _producers(kind, action)
+        if depth == 0 and any(route_available(producer, ruled_out, lacking - {kind}, depth + 1) is None
+                              for producer in producers):
             continue
         name = definition.workflow
-        if kind in ruled_out:
-            return (f'You said you do not have {_LABEL[kind]} ("{ruled_out[kind]}"); {name} needs it and no registered '
-                    "workflow or tool provides it")
-        blocked = sorted({workflow_name(producer) for producer in _producers(kind, action)})
-        reasons = sorted({route_available(producer, ruled_out, frozenset(), depth + 1) or "" for producer in
-                          _producers(kind, action)} - {""})
-        return (f"{name} needs {_LABEL[kind]}; every registered route to one ({', '.join(blocked)}) needs an input "
-                f"you do not have" + (f": {reasons[0][0].lower()}{reasons[0][1:]}" if reasons else ""))
+        if kind in ruled_out and not producers:
+            return (f'You said "{ruled_out[kind]}"; {name} needs {_LABEL[kind]} and no registered workflow or tool '
+                    "provides it")
+        said = f'You said "{ruled_out[kind]}"; ' if kind in ruled_out else ""
+        blocked = sorted({workflow_name(producer) for producer in producers})
+        reasons = sorted({route_available(producer, ruled_out, lacking - {kind}, depth + 1) or ""
+                          for producer in producers} - {""})
+        return (f"{said}{name} needs {_LABEL[kind]}; every registered route to one ({', '.join(blocked)}) needs an "
+                f"input you do not have" + (f": {reasons[0][0].lower()}{reasons[0][1:]}" if reasons else ""))
     return None
 
 
@@ -82,8 +84,11 @@ def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
     and hold none (smoke S1: "I only have expr_liver.tsv" typed the CONDOR ask's input_network as regulator_gene, the
     kind CONDOR takes, not one the user has).
     """
-    if check is None or not check.ruled_out:
+    only = set(getattr(check, "only_inputs", []) or []) if check is not None else set()
+    if check is None or not (check.ruled_out or only):
         return check
+    # "I only have expr_liver.tsv": every kind not among them is ruled out, in the user's own words.
+    ruled_out = {**{kind: check.only_inputs_quote for kind in _LABEL if only and kind not in only}, **check.ruled_out}
     no_network = bool(stated_inputs) and not stated_inputs & _NETWORKS
     from .capability_check import _full_gap
 
@@ -100,7 +105,7 @@ def without_ruled_out(check, stated_inputs: frozenset[str] = frozenset()):
                 action = entry(key).action
             except KeyError:
                 action = None
-            reason = route_available(action, check.ruled_out, lacking) if action else None
+            reason = route_available(action, ruled_out, lacking) if action else None
             (limits if reason else kept).append(reason or key)
         if limits:
             row = row.model_copy(update={"delivered_by": kept, "limits": [*row.limits, *dict.fromkeys(limits)],

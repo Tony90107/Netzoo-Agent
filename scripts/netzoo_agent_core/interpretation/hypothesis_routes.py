@@ -29,7 +29,7 @@ from .scientific_guidance import method_paragraphs
 from .inspected_answers import with_inspection_footer
 from .tie_guidance import method_families
 from .capability_check import checked_route_lines, delivering_actions, requirement_for
-from .ruled_out import route_available
+from .ruled_out import _LABEL as INPUT_LABELS, route_available
 
 __all__ = ["render_hypothesis_routes", "reading_verdict", "checked_actions", "checked_route"]
 
@@ -468,7 +468,10 @@ def render_hypothesis_routes(
     routes = [(reading, _candidates(task, reading, "guidance")) for reading in readings]
     splits = [_splits(task, reading) if not actions else [] for reading, actions in routes]
     stated = _stated_inputs(readings, task)
-    ruled_out = decision.capability_check.ruled_out if decision.capability_check is not None else {}
+    check = decision.capability_check
+    only = set(check.only_inputs) if check is not None else set()
+    ruled_out = ({**{kind: check.only_inputs_quote for kind in INPUT_LABELS if only and kind not in only},
+                  **check.ruled_out} if check is not None else {})
     handoffs = [_handoff_routes(reading, stated, policy, ruled_out) if not actions and not split else []
                 for (reading, actions), split in zip(routes, splits)]
     # Log 403: a reading routing gave no workflow takes the capability check's verdict on its
