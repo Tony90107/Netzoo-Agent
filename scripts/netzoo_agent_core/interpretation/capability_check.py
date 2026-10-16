@@ -27,6 +27,7 @@ from .needed_facts import (
 )
 from ..contracts.capability_check import CONDITIONS, CapabilityCheck, CheckedRequirement, proposal_sentences
 from .request_spans import _locate_tokens, _span  # noqa: F401 -- research tools import _span here
+from .request_readings import ruled_out_inputs, stated_quotes, uncertain_quotes, verified_goal  # noqa: F401
 from .method_conditions import (
     method_fitting, request_method, request_method_for, request_method_limit, settings_apart, typed_setting,
     verified_method, with_request_method,
@@ -85,42 +86,6 @@ def verified_conditions(task: str, proposal) -> dict[str, str]:
     if count is not None and count > 0 and quote and _span(task, quote) is not None and count in stated_numbers(quote):
         found["joint_layers"] = str(count)
     return found
-
-
-_INDEFINITE = {"", "not_stated", "none", None}
-
-
-def stated_quotes(task: str, proposal) -> list[str]:
-    """Phase 2 R4: the request's words for each condition, method and setting the reading typed definitely."""
-    conditions = getattr(proposal, "conditions", None)
-    found = []
-    for name in [*CONDITIONS, "named_method"]:
-        quote = (getattr(conditions, f"{name}_quote", "") or "").strip()
-        if getattr(conditions, name, None) not in _INDEFINITE and quote and (span := _span(task, quote)) is not None:
-            found.append(task[span[0]:span[1]])
-    for setting in getattr(conditions, "settings", None) or []:
-        for quote in (getattr(setting, "quote", ""), getattr(setting, "value_quote", "")):
-            if quote and quote.strip() and (span := _span(task, quote.strip())) is not None:
-                found.append(task[span[0]:span[1]])
-    return list(dict.fromkeys(found))
-
-
-def uncertain_quotes(task: str, proposal) -> list[str]:
-    """Phase 2 R1: the words of every unknown fact and open choice the reading found in the request."""
-    conditions = getattr(proposal, "conditions", None)
-    quotes = [fact.quote for fact in getattr(conditions, "unknown_facts", None) or ()]
-    quotes += [choice.quote for choice in getattr(conditions, "open_choices", None) or ()]
-    found = [task[span[0]:span[1]] for quote in quotes if quote and quote.strip()
-             and (span := _span(task, quote.strip())) is not None]
-    return list(dict.fromkeys(found))
-
-
-def verified_goal(task: str, proposal) -> tuple[str, str]:
-    """Core decision spec, phase 1: the reading's goal and its words, kept only when the words are in the request."""
-    conditions = getattr(proposal, "conditions", None)
-    goal, quote = getattr(conditions, "goal", ""), (getattr(conditions, "goal_quote", "") or "").strip()
-    span = _span(task, quote) if goal and quote else None
-    return ("", "") if span is None else (goal, task[span[0]:span[1]])
 
 
 def _open_choices(task: str, proposal, conditions, place) -> tuple[list[CheckedRequirement], set]:
@@ -551,7 +516,8 @@ def build_capability_check(
                            conditions=conditions, unknowns=[list(item) for item in unknowns], unknown_scopes=unknown_scopes,
                            unknown_domains=unknown_domains, goal=goal, goal_quote=goal_quote,
                            stated_quotes=stated_quotes(task, proposal),
-                           uncertain_quotes=uncertain_quotes(task, proposal)), rejected
+                           uncertain_quotes=uncertain_quotes(task, proposal),
+                           ruled_out=ruled_out_inputs(task, proposal)), rejected
 
 
 def _names(names: list[str]) -> str:

@@ -312,6 +312,20 @@ def conditions_model(compact: bool = False) -> type[BaseModel]:
         "purpose_only: it gives only a topic or an aim, its data or files, or leaves the choice of analysis to the "
         "assistant, without naming the kind of result -- including asking which of several methods to use without "
         "saying what it wants from them.")))
+    # Core decision phase 4b (spec 12.3): an input the user says they do not have (round p0-p3 C18: "I don't have any
+    # motif or PPI files, just this expression table" -- CONDOR was offered through PANDA, which needs both).
+    ruled_out = create_model(
+        "RuledOutInput", __config__=ConfigDict(extra="forbid"),
+        kind=(Literal["motif_prior", "ppi", "mirna_list", "covariates", "second_omics", "mutations", "network",
+                      "expression"], Field(description=(
+            "motif_prior: a TF motif or binding prior. ppi: a protein-interaction network. mirna_list: miRNA "
+            "identifiers or miRNA-target predictions. covariates: a sample covariate or design table. second_omics: "
+            "a second omics data type measured on the samples. mutations: somatic mutation calls. network: an "
+            "existing regulator-gene or gene-gene network. expression: gene expression data."))),
+        quote=(str, Field(description="Exact words of the request saying the user does not have it.")))
+    fields["ruled_out_inputs"] = (list[ruled_out], Field(default_factory=list, description=(
+        "Each input the user says they do not have and cannot get. Not one they have not uploaded yet, will send "
+        "later, or that someone else has; empty when there is none.")))
     fields["goal_quote"] = (str, Field(default="", description=(
         "Exact words of the request that name the result (result_named) or the method (method_named), or that state "
         "the aim (purpose_only).")))
@@ -325,7 +339,7 @@ def unstated_conditions() -> dict:
             "other_requirements": [], "unknown_facts": [], "open_choices": [],
             "named_method": "none", "named_method_quote": "", "settings": [],
             "sample_count": None, "sample_count_quote": "", "feature_counts": [],
-            "goal": "result_named", "goal_quote": ""}
+            "goal": "result_named", "goal_quote": "", "ruled_out_inputs": []}
 
 
 ConditionAnswer = Literal["satisfies", "violates", "unrelated", "not_about_results"]
@@ -550,6 +564,8 @@ class CapabilityCheck(BaseModel):
     """Core decision spec, phase 1: result_named, method_named or purpose_only, kept only when its words are in the
     request (`interpretation.capability_check.verified_goal`); empty when unread or unverified."""
     goal_quote: str = ""
+    ruled_out: dict[str, str] = Field(default_factory=dict)
+    """Phase 4b: each input kind the user says they do not have, with their verified words."""
     uncertain_quotes: list[str] = Field(default_factory=list)
     """Phase 2 R1: the request's words the check read as the user not knowing or not having decided something (any
     unknown fact, any open choice); the fact agent's words must agree with one of them."""
