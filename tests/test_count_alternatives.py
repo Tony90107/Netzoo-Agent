@@ -117,6 +117,20 @@ def test_with_several_results_a_count_applies_only_to_the_result_its_words_touch
     assert [row.by_code for row in check.results()] == [False, False]  # the panels are in another sentence
 
 
+def test_a_result_no_workflow_is_credited_with_does_not_make_the_request_several_results():
+    """m3 U12 trace (read 2): "I need a capability judgment that waits for the size fact" was read as an uncredited
+    result, so the count, in another sentence, was kept off the one credited result."""
+    task = ("I need a capability judgment that waits for the size fact. Can LIONESS-DRAGON process all feature pairs "
+            "for our 100 participants? There are either 100 or 1000 total features across the two layers.")
+    meta = _ask("I need a capability judgment that waits for the size fact")
+    question = _ask("Can LIONESS-DRAGON process all feature pairs for our 100 participants", [KEY], samples=100,
+                    samples_quote="100 participants", omics_layers=2, asked_as="question")
+    quote = "There are either 100 or 1000 total features across the two layers"
+    rows = _check(task, meta, question, count_alternatives=[_alternative(quote, (100, 1000))]).results()
+    assert [(row.status, row.by_code) for row in rows] == [("not_available", False), ("needs_fact", True)]
+    assert rows[1].outcomes == {"100": [KEY], "1000": []} and "49,950,000" in rows[1].outcome_notes["1000"]
+
+
 def _waiting_check():
     return _check(TASK, _networks(features=[(300, "300 serum miRNAs")]), count_alternatives=[_alternative()])
 
