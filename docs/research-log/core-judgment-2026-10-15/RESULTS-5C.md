@@ -49,3 +49,22 @@ fact agent 在 9 題中提出了「關於想要的結果」的提案：
 ## 費用
 
 gpt-4o-mini 47 次呼叫，約 US$0.03。
+
+## 同日對照組（5c 之前的 schema，`4c727b92`，同樣 47 題、同樣條件，`live/f5c-control`）
+
+| | U 類追問或說明 | P 類多問 |
+|---|---|---|
+| 第 2 階段（`f2w`） | 17/24 | P14 |
+| 對照組（同日，舊 schema） | 17/24 | P14 |
+| 5c（新 schema） | 16/24 | 無 |
+
+- 對照組和第 2 階段在 47 題上逐題完全相同。gpt-4o-mini 在舊 schema 下很穩定，所以 C2 的差異**是 schema 造成的，不是變異**。
+- 5c 改變的剛好是 2 題，兩題都是「關於資料」的提問被 R3 擋下：fact agent 在新 schema 下把 yes 和 no 的結果寫成一樣。
+  - **U11**（該追問）：少問了「at least three paired samples」→ 召回 −1。
+  - **P14**（該做）：少問了不必要的「Have you uploaded the expression matrix and the required priors?」→ 精確度 +1。
+- 兩題都和 R7 本身無關（都是 `about = user_data`）。這是欄位變多後，模型寫結果的方式改變了，和先前記錄過的「提示長度效應」一致。
+- 在開發集上淨效果持平（−1 召回、+1 精確度）。U11 是「2 或 10 個樣本」的候選數量，實際對話中由 5b 的程式處理，不靠 fact agent。
+- C2 按門檻仍然**沒有通過**，要不要接受 5c，由使用者決定。
+
+對照組費用：gpt-4o-mini 47 次，約 US$0.03。
+

@@ -7,6 +7,9 @@ reader from the check readings recorded in f2w. Each request is asked once; R1-R
 Gates: C1 no U item gives an open result; C2 U items asked or said a fact >= 17/24 (phase 2); C3 P items asked or
 with an open result <= 1.
 
+The control arm runs the same script from a checkout before 5c (no about/alternatives, no open_results), copied
+there with `live/f2w`.
+
 Usage: offline_5c_facts.py OUT_TAG   -> live/OUT_TAG/facts.json
 """
 from __future__ import annotations
@@ -52,7 +55,7 @@ def main(tag):
         return {**row, 'status': 'checked', 'proposals': [p.model_dump() for p in proposals.facts],
                 'asked': [f.model_dump() for f in kept.accepted if not f.settled_by_input_check],
                 'said': [f.model_dump() for f in kept.accepted if f.settled_by_input_check],
-                'open_results': kept.open_results, 'rejected': [r.rule for r in kept.rejected]}
+                'open_results': getattr(kept, 'open_results', []), 'rejected': [r.rule for r in kept.rejected]}
 
     with ThreadPoolExecutor(6) as pool:
         rows = list(pool.map(run, sorted(witnesses)))
@@ -67,8 +70,8 @@ def main(tag):
         'C2 U items asked or said a fact (>= 17/24)': f"{sum(bool(r.get('asked') or r.get('said')) for r in U)}/{len(U)}",
         'C3 P items asked or with an open result (<= 1)': [r['item'] for r in P if r.get('asked') or r.get('open_results')],
         'wanted_result proposals': {r['item']: [(p['user_quote'][:60], p['alternatives']) for p in r.get('proposals', [])
-                                                if p['about'] == 'wanted_result'] for r in rows
-                                    if any(p['about'] == 'wanted_result' for p in r.get('proposals', []))},
+                                                if p.get('about') == 'wanted_result'] for r in rows
+                                    if any(p.get('about') == 'wanted_result' for p in r.get('proposals', []))},
     }, indent=1, ensure_ascii=False))
 
 
