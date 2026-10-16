@@ -558,7 +558,9 @@ def _with_capability_check(context, state, user_task: str, result: _RouterInvoca
         record_event(context, state, "routing.capability_check_provisional", "classify", {"full_gap": check.full_gap})
         check = check.model_copy(update={"full_gap": False, "provisional": True})
     # Core decision phase 4b: credits the user's ruled-out inputs make impossible come off, after every other step.
-    if (lifted := without_ruled_out(check)) is not check:
+    stated = frozenset(value for item in decision.outcome_hypotheses for value in item.outcome.input_artifacts
+                       if value != "unknown") | frozenset(decision.guidance_input_artifacts)
+    if (lifted := without_ruled_out(check, stated)) is not check:
         record_event(context, state, "core.ruled_out_applied", "classify", {
             "ruled_out": check.ruled_out, "limits": [row.limits for row in lifted.results()]})
         check = lifted
