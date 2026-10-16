@@ -534,6 +534,14 @@ def _core_card(kind: str, decision: TaskDecision, policy, task: str) -> ReplyCar
         return ReplyCard(kind="clarification",
                          headline="I need one more detail before choosing a workflow.",
                          points=[clip(decision.clarification_question, 300)])
+    if kind == "decline" and decision.core is not None:  # core decision phase 3: the DECLINE view's card
+        parts = decision.core.declined
+        return ReplyCard(kind="capability_gap",
+                         headline="This cannot be done as you asked, so no workflow is offered for it.",
+                         points=[clip(part.line, 300) for part in parts if part.line][:4])
+    if kind == "unchecked" and decision.core is not None:  # core decision phase 3: the UNCHECKED view's card
+        return ReplyCard(kind="unresolved", headline="I could not judge this request this turn, so nothing was selected.",
+                         points=["Asking again re-runs the check; restating the result you want usually helps."])
     if kind == "ask_facts" and decision.core is not None:  # core decision phase 2
         asked = [fact.question for fact in decision.core.facts if not fact.settled_by_input_check]
         return ReplyCard(kind="clarification", headline="One fact decides your request; please tell me first.",
@@ -702,7 +710,7 @@ def build_reply_card(result: dict, prompt: NextTurnPrompt, policy, *, task: str)
         card = _core_card(kind, decision, policy, task)
     if card is not None and card.kind in _INPUT_ALTERNATIVE_CARDS:
         card = _with_input_alternative(card, decision, policy, task, result)
-    if card is not None and kind not in {"execution", "capability_check_gap", "clarify_goal", "ask_facts"}:
+    if card is not None and kind not in {"execution", "capability_check_gap", "clarify_goal", "ask_facts", "decline", "unchecked"}:
         card = _with_outside_steps(card, decision, task)
         card = _with_study_purpose(card, kind, decision, policy, task, result)
         card = card.model_copy(update={"unavailable": [*_capability_rows(decision), *card.unavailable][:8]})

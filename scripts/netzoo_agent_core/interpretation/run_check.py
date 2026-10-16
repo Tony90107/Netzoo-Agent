@@ -93,4 +93,8 @@ def run_approval_failures(decision, user_message: str) -> list[str]:
         return []
     if decision.run_verdict is None:
         return ["no capability verdict was given for this run"]
-    return decision.run_verdict.run_failures(decision.action, request_sha256(user_message))
+    failures = decision.run_verdict.run_failures(decision.action, request_sha256(user_message))
+    core = getattr(decision, "core", None)
+    if core is not None and not core.run_allowed:  # core decision phase 3: the gates read the turn's call too
+        failures.append(f"the turn's call ({core.kind}, {core.basis}) does not allow a run")
+    return failures

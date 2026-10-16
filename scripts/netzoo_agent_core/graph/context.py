@@ -66,9 +66,14 @@ def record_event(
 def record_core_view(context: _GraphContext, state: AgentState, result: dict) -> dict:
     """Core decision spec, phase 0: record the reply that answered beside the turn's core call (`core.view`)."""
     if getattr(context, "recorder", None) is not None:  # reply-only test contexts carry no recorder
+        from ..interpretation.core_views import ALLOWED
+
         core = (state.get("decision") or {}).get("core") or {}
+        kind = result.get("reply_kind") or ""
         record_event(context, state, "core.view", "respond", {
-            "reply_kind": result.get("reply_kind") or "", "core_kind": core.get("kind"), "basis": core.get("basis")})
+            "reply_kind": kind, "core_kind": core.get("kind"), "basis": core.get("basis"),
+            # Phase 3: the convergence check -- a renderer that is not one of its call's.
+            "mismatch": bool(core.get("kind")) and kind not in ALLOWED.get(core.get("kind"), frozenset())})
     return result
 
 

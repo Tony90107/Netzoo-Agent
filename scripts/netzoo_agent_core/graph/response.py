@@ -25,14 +25,12 @@ from ..evaluation import (
 from ..evaluation.rendering import render_authority_search_response, render_retrieval_failure_response
 from ..interpretation import _is_fatal_exception
 from ..interpretation.concept_answers import (
-    render_cobra_expression_boundary,
     render_capability_gap,
     render_outcome_clarification,
     render_registered_workflow_contract_answer,
     render_sample_specific_coexpression_handoff_boundary,
     render_registered_handoff_script_guidance,
     render_workflow_composition_guidance,
-    render_unsupported_algorithm_boundary,
 )
 from ..interpretation.hypothesis_routes import render_hypothesis_routes
 from ..interpretation.research_choices import render_research_choices
@@ -48,6 +46,7 @@ from .response_context import validated_workflow_context
 from .response_payload import trusted_response_context
 from ..interpretation.verified_guidance import render_verified_guidance
 from ..interpretation.data_plan import with_data_plan_reply
+from ..interpretation.core_views import core_view
 from ..interpretation.capability_check import checked_body_result, whole_check_result, with_capability_check_reply
 from ..interpretation.unresolved_router_fallback import render_unresolved_router_fallback as _render_unresolved_router_fallback
 from ..interpretation.run_choice import with_run_choice_reply
@@ -80,7 +79,8 @@ def _reply(content: str, kind: str) -> dict:
 
 
 def respond(context: _GraphContext, state: AgentState) -> dict:
-    if (whole := whole_check_result(state, _reply)) is not None:  # Log 387, verdict step 2: the check answers it
+    # Core decision phase 3: a call that is not DO is answered by its one view; DO by the renderers below.
+    if (whole := core_view(context, state, _reply) or whole_check_result(state, _reply)) is not None:
         return record_core_view(context, state, whole)
     result = checked_body_result(context, state, _reply) or _respond(context, state)  # Log 403: the check decides
     result = with_input_alternative_reply(result, state, getattr(context, "project_policy", None), _reply)
@@ -93,13 +93,7 @@ def respond(context: _GraphContext, state: AgentState) -> dict:
 def _respond(context: _GraphContext, state: AgentState) -> dict:
     decision = TaskDecision.model_validate(state["decision"])
     task = latest_user_task(state["messages"])
-    if not decision.stated_hypotheses:
-        cobra_boundary = render_cobra_expression_boundary(task)
-        if cobra_boundary is not None:
-            return _reply(cobra_boundary, "cobra_boundary")
-        algorithm_boundary = render_unsupported_algorithm_boundary(task)
-        if algorithm_boundary is not None:
-            return _reply(algorithm_boundary, "algorithm_boundary")
+    # Core decision phase 3: the COBRA and algorithm boundaries are DECLINE evidence (`decide_core`), not replies.
     workflow_context = validated_workflow_context(
         decision, context.project_policy,
         include_all=should_expand_guidance_catalog(decision, task), task=task,

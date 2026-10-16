@@ -67,10 +67,26 @@ def _failed_closed(decision, reason_code: str) -> bool:
         or decision.confidence <= 0.0 and decision.match_basis in _FAILED_BASES)
 
 
-def _declined(rows) -> list[DeclinedPart]:
+def _declined(rows, check=None) -> list[DeclinedPart]:
+    from .capability_check import _status_line
+
+    provisional = bool(check is not None and check.provisional)
     return [DeclinedPart(quote=row.quote, reasons=[*row.limits, *row.violations],
-                         alternatives=_names([*row.instead, *row.defaults]))
+                         alternatives=_names([*row.instead, *row.defaults]), line=_status_line(row, provisional))
             for row in rows if row.status == "not_available"]
+
+
+def _boundary(decision, task: str) -> tuple[str, str] | None:
+    """Phase 3: the two text boundaries are evidence for DECLINE, no longer replies of their own."""
+    from .concept_answers import render_cobra_expression_boundary, render_unsupported_algorithm_boundary
+
+    if decision.stated_hypotheses or not task:
+        return None
+    if (text := render_unsupported_algorithm_boundary(task)) is not None:
+        return "algorithm_boundary", text
+    if (text := render_cobra_expression_boundary(task)) is not None:
+        return "cobra_boundary", text
+    return None
 
 
 def _facts(check) -> list[FactQuestion]:
@@ -135,8 +151,6 @@ def with_core(decision, core: CoreDecision):
 
 def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecision:
     """The turn's four-way call, read from its final decision."""
-    from ..routing.method_rejections import unsupported_algorithm_request
-
     check = decision.capability_check
     verdict = decision.run_verdict
     results = check.results() if check is not None else []
@@ -163,8 +177,6 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
         return call("DO", "tool", workflows=[workflow_name(decision.action)])
     if goal_unclear(check):
         return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check))
-    if not decision.stated_hypotheses and unsupported_algorithm_request(task):
-        return call("DECLINE", "algorithm_boundary")
     agent = getattr(decision, "fact_check", None)
     if agent is not None and agent.status == "checked":
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
@@ -174,11 +186,13 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
                         workflows=list(dict.fromkeys(name for fact in asked for name in fact.workflows)))
     elif (facts := _facts(check)) or verdict is not None and verdict.held and verdict.verdict == "needs_fact":
         return call("ASK", "needs_fact", facts=facts, workflows=_names(k for f in facts for k in f.workflows))
-    if read and check.unconfirmed():
-        return call("UNCHECKED", "check_unconfirmed", workflows=_routed(decision))
-    if check is not None and check.full_gap or verdict is not None and verdict.held and verdict.verdict == "gap":
-        return call("DECLINE", "full_gap", declined=_declined(results))
     running = decision.action.startswith("run_")
+    if check is not None and check.unconfirmed() and (read or not running):  # p3: an unconfirmed guidance turn too
+        return call("UNCHECKED", "check_unconfirmed", workflows=_routed(decision))
+    if (boundary := _boundary(decision, task)) is not None:
+        return call("DECLINE", boundary[0], declined=[DeclinedPart(quote="", line=boundary[1])])
+    if check is not None and check.full_gap or verdict is not None and verdict.held and verdict.verdict == "gap":
+        return call("DECLINE", "full_gap", declined=_declined(results, check))
     if not read and not running and decision.capability_match_status == "unsupported":
         return call("DECLINE", "routing_unsupported")
     if not read and not running and not _routed(decision):
@@ -186,9 +200,9 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     shadow = agent is not None and agent.status == "checked"  # phase 2: a legacy wait gives what it could give
     given = [row for row in read if row.status in _GIVEN or shadow and row.status == "needs_fact"]
     if read and not given:
-        return call("DECLINE", "all_results_not_available", declined=_declined(results))
+        return call("DECLINE", "all_results_not_available", declined=_declined(results, check))
     workflows = _names(key for row in given for key in row.delivered_by) or _routed(decision)
-    declined = _declined(results)
+    declined = _declined(results, check)
     approved = (running and verdict is not None and not verdict.held and verdict.verdict in APPROVING_RUN_VERDICTS)
     held = verdict is not None and verdict.held
     basis = "run_held" if held else "run" if running else "results_given" if given else "routed"
