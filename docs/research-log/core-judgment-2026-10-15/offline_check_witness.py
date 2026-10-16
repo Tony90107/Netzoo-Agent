@@ -25,6 +25,10 @@ from netzoo_agent_core.llm import build_llm, validate_router_model
 from netzoo_agent_core.policy import ProjectPolicyLoader
 
 
+_BEFORE_R7 = {'about': 'user_data', 'alternatives': []}
+"""Phase 5c added `about` and `alternatives`; the phase 2 recordings predate them (every fact read as user_data)."""
+
+
 def _from_fact(f):
     """A kept FactQuestion back to the agent's proposal (f2 stored the kept facts, not the raw ones)."""
     def split(outcome):
@@ -34,14 +38,14 @@ def _from_fact(f):
     no, no_name = split(f['if_no'])
     return FactProposal(user_quote=f['user_quote'], uncertainty=f['uncertainty'], workflow=f['workflows'][0],
                         contract_quote=f['contract_quote'], question=f['question'], yes_outcome=yes,
-                        yes_workflow=yes_name, no_outcome=no, no_workflow=no_name)
+                        yes_workflow=yes_name, no_outcome=no, no_workflow=no_name, **_BEFORE_R7)
 
 
 def proposals_of(r):
     found = [_from_fact(f) for f in r.get('asked', []) + r.get('said', [])]
     for x in r.get('rejected', []):
         p = x['proposal']
-        found.append(FactProposal(**p) if 'yes_outcome' in p else _from_fact(p))
+        found.append(FactProposal(**{**_BEFORE_R7, **p}) if 'yes_outcome' in p else _from_fact(p))
     return FactProposals(facts=found[:3])
 
 

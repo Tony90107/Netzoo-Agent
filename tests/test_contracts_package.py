@@ -176,6 +176,8 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # "HDF5" -> ".h5"); specs without it load unchanged.
 # Phase 5b (spec 13.3): optional code-owned CapabilityCheck.count_alternatives, CheckedRequirement.by_code and
 # outcome_notes, FactQuestion.by_code and notes (a count given as candidates, each judged in code); older sessions load.
+# Phase 5c (spec 13.4): optional code-owned FactCheck.open_results (a wanted result the user is unsure of with fewer
+# than two options named: CLARIFY, never a fact); older sessions load unchanged.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -194,7 +196,7 @@ SCHEMA_DIGESTS = {
     # 2026-10-14 (item 5): optional code-owned file_checked on each checked requirement; reply only.
     # 2026-10-14 (M1): optional code-owned method, limits, instead and defaults on each checked requirement (the
     # ask's verified method, settings and data size, and what they rule out); they can only withhold a result.
-    "TaskDecision": "70b1b26976c2092e93e8a0fffb332e8df4cd89df89d084d9a16452d5f6f89dad",
+    "TaskDecision": "958475f82b0ec226a151a13397037fc0ac492d47980fd0d65822d13a76e6adc0",
     "RouterDecision": "e3d115c92b6ed1ad2adb50bd5a9e2e0fcbb314fead002814b27a2c3badc75ae6",
     "RequestedOutcome": "7ad03175bf93392e5664b574108c104fd569d3c5a8a0d257176bbb9c967bf5aa",
     "OutcomeEvidence": "0b014a1f66f97681cbd4359aa7c00a9e8ed1edaf762b53a9bb70fe40c4662e6f",

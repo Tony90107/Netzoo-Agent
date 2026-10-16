@@ -38,6 +38,14 @@ class FactProposal(BaseModel):
     yes_workflow: str = Field(description="For other_workflow, that workflow; otherwise empty.")
     no_outcome: Outcome = Field(description="What a no answer means, as for yes_outcome.")
     no_workflow: str = Field(description="For other_workflow, that workflow; otherwise empty.")
+    # Core decision phase 5c (spec 13.4): rounds p4b/p4c C24 ("Honestly I don't know what kind of network they
+    # expect") were asked as a fact; the requests whose wanted result is a fact name each option in their own words.
+    about: Literal["user_data", "wanted_result"] = Field(description=(
+        "user_data: a property of the user's data -- what it is, how it was made or processed, how much there is, "
+        "which samples it covers. wanted_result: which result the user wants the analysis to produce."))
+    alternatives: list[str] = Field(description=(
+        "For wanted_result: the exact words of the request naming each result the user is choosing between, one "
+        "item per result; empty when the request names none, or for user_data."))
 
 
 class FactProposals(BaseModel):
@@ -64,3 +72,6 @@ class FactCheck(BaseModel):
     rejected: list[RejectedFact] = Field(default_factory=list)
     legacy: list[FactQuestion] = Field(default_factory=list)
     """What the fixed `needed_facts` dimensions would have asked this turn -- shadow only while the agent runs."""
+    open_results: list[str] = Field(default_factory=list)
+    """Phase 5c R7: the user's words for a wanted result they are unsure of with fewer than two options named --
+    not a fact to ask but a goal to clarify (`decide_core` makes it CLARIFY, basis result_open)."""

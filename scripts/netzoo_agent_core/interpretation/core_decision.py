@@ -14,6 +14,8 @@ Rules, in the spec's order of precedence:
 2. CLARIFY (phase 1, spec section 5) -- the check's confirmed reading says the request names no result
    (`purpose_only`), or the result it names is in no requirement the check read, or its goal words name two
    registered methods as the choice and no result; one named method is never unclear; a tool request is never held.
+   Phase 5c: also when the fact agent read a wanted result the user is unsure of with fewer than two options named
+   (R7, `result_open`) -- before any ASK, so the turn's data facts wait for the goal.
 3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
    (`needs_fact`, or a run held for it) only when the agent did not run, and recorded as shadow when it did.
    Phase 5b: a count the user gave as candidates, each judged in code, is asked whether or not the agent ran
@@ -139,8 +141,9 @@ def goal_unclear(check) -> bool:
     return check.goal == "result_named" and not any(_overlaps(check.goal_quote, quote) for quote in asked)
 
 
-def _clarify_need(decision, check) -> ClarifyNeed:
-    """The results the request's stated data can give -- listed as possible, never as fitting."""
+def _clarify_need(decision, check, goal_quote: str = "") -> ClarifyNeed:
+    """The results the request's stated data can give -- listed as possible, never as fitting. `goal_quote`: the
+    user's words for the open result (phase 5c), else the check's goal words."""
     stated = {*decision.guidance_input_artifacts,
               *(artifact for hypothesis in decision.outcome_hypotheses
                 for artifact in hypothesis.outcome.input_artifacts)} - {"unknown"}
@@ -152,7 +155,8 @@ def _clarify_need(decision, check) -> ClarifyNeed:
         question += (" And what data do you have (for example expression, motif and PPI priors, miRNAs, mutations, "
                      "or a second omics layer)?")
     return ClarifyNeed(missing="result" if stated else "both", candidates=[workflow_name(a) for a in actions],
-                       inputs=sorted(stated), question=question, goal_quote=check.goal_quote if check else "")
+                       inputs=sorted(stated), question=question,
+                       goal_quote=goal_quote or (check.goal_quote if check else ""))
 
 
 def with_core(decision, core: CoreDecision):
@@ -207,6 +211,8 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     if goal_unclear(check):
         return call("CLARIFY", "goal_unclear", clarify=_clarify_need(decision, check))
     agent = getattr(decision, "fact_check", None)
+    if agent is not None and agent.status == "checked" and agent.open_results:  # phase 5c R7: before any ASK
+        return call("CLARIFY", "result_open", clarify=_clarify_need(decision, check, agent.open_results[0]))
     if agent is not None and agent.status == "checked":
         evidence["legacy_facts"] = [fact.question for fact in agent.legacy]  # phase 2: shadow
         # Phase 5b (spec 13.3): a count code judged is asked first, beside the agent's (the code's on the same words).
