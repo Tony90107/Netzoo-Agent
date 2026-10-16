@@ -43,7 +43,7 @@
 | kind | 意思 | 回覆要做到 | 不能做 |
 |---|---|---|---|
 | `CLARIFY` | 讀不出使用者要什麼結果 | 一句理解；依使用者已說的資料，列出可能得到的結果類型；**一個**關於目標的問題（資料不明時，再加問有什麼資料） | 選 workflow、說「X 可做／適合」、規劃 run |
-| `ASK` | 目標明確，但一個未知前提會改變判定 | 說明是哪個前提、兩種答案各導向什麼；問該事實（最多 2 個問題） | 規劃 run；把判定說成已確定 |
+| `ASK` | 目標明確，但一個未知前提會改變判定 | 問該事實（最多 2 個問題），附上使用者原話與使它重要的合約原文（2026-10-16 起不再列兩種答案各導向什麼，見變更紀錄） | 規劃 run；把判定說成已確定；未經驗證就說某個答案導向哪個 workflow |
 | `DECLINE` | 照所問的做不到 | 說做不到與理由（引合約）；之後可提替代結果 | 把被拒的需求說成可做 |
 | `DO` | 可以做 | 給 workflow（平手時可列選項）；run 請求進入既有的輸入與 run 閘 | — |
 
@@ -142,7 +142,7 @@ class CoreDecision(BaseModel):
 - **程式規則**（不通過就丟棄並記錄 `core.fact_rejected` 與原因）：
   - R1：`user_quote` 逐字出現在請求中，而且是使用者表示不確定的話：說不知道、給了兩個互相矛盾的版本，或同一句話有兩種讀法。只是「沒提到」不算（界線 1）。
   - R2：`contract_quote` 逐字出現在該 workflow 的 YAML 中。
-  - R3：`if_yes != if_no`，而且都屬於合法值。換句話說，兩種答案必須導向不同的判定。
+  - R3：`if_yes != if_no`，而且都屬於合法值。換句話說，兩種答案必須導向不同的判定。（R3 仍用來篩選提案；這兩個結果只記在 trace，不出現在回覆中，見變更紀錄 2026-10-16。）
   - R4：請求的已讀欄位（能力檢查的 typed attrs、設定、計數）已經陳述這個事實時，不追問。
   - R5：條文屬於該 workflow 在 YAML 新增的 `input_checks:` 清單（輸入檢查會驗的項目），而且請求是對具名檔案的 run 時，設 `settled_by_input_check`：回覆說明檢查會先確認這一點，不追問。現有程式內的 `FILE_CHECKED` 搬到 YAML。
   - R6：最多問 2 個，依請求中的出現順序。
@@ -224,3 +224,4 @@ class CoreDecision(BaseModel):
 - 2026-10-15（第 1 階段實作位置，不是設計變更）：goal 欄位放在能力檢查讀取（`RequestConditions.goal`、`goal_quote`；與能力檢查同一次呼叫，不另外加呼叫），而不是路由的語意讀取。理由：第 0 階段的 9 題模糊請求被判「做不到」，就是因為能力檢查把沒說結果的句子讀成需求；由同一個讀取者判斷「有沒有說出結果」最一致。另外，語意讀取有多段重試／修補的 schema，欄位會在中途遺失。程式規則照第 5 節：引文須逐字驗證；`result_named` 的引文若沒有和任何 result／about_methods 需求重疊，就視為不明；讀取未確認（備援模型）時不判 CLARIFY。
 - 2026-10-16（第 2 階段實作，R1 的驗證方式，不是設計變更）：R1 要求使用者「表示不確定」，但程式不能用字詞清單判斷。開發集 m3（54 題英文）離線結果：只靠 fact agent 自己標註時，「該做」的題目被多問 20/27（gpt-4o-mini）與 10/27（nemotron）。改為兩個讀取者都同意：能力檢查的 `unknown_facts` 加上 `other` 類別，記錄任何不確定之處的引文（`uncertain_quotes`；`other` 不進舊的 11 種 dimension），fact agent 的引文必須與其中一段重疊。結果多問降到 1/27 與 0/27，該追問題處理對 17/24 與 15/24。依此選 gpt-4o-mini 當 fact agent（`NETZOO_FACT_MODEL=router`，預設）。R5 的 `input_checks` 每條都必須逐字出現在該 workflow 的合約內，由 policy loader 驗證。
 - 2026-10-16（第 3 階段實作方式，偏離第 7 節字面；**使用者 2026-10-16 已接受**）：沒有把分類階段約 25 個判定改寫點逐一改成「只寫證據欄位」，改為在兩個出口強制：回覆由 `core_views.core_view` 依 kind 分派（非 DO 的 kind 只有一個入口），執行閘 `run_approval_failures` 要求 `core.run_allowed`。上游改寫因此只能成為 `decide_core` 的輸入；`core.view` 事件的 `mismatch` 量測「回覆 renderer 不屬於該判定」（p2 錄製為 4，以第 3 階段程式重放為 0）。盤點表見 research log `INVENTORY-P3.md`。
+- 2026-10-16（待決事項 1，**設計變更，使用者已同意**）：fact agent 的 ASK 回覆不再列出 if yes／if no 的結果，只保留問題、使用者原話與合約原文。理由：這兩個結果是模型寫的，程式通常無法驗證方向。實測中有錯誤的例子，例如 p2b C06「If no: PUMA does it instead」、C36「If no: no registered workflow」，p2 C31 連 yes 分支都寫反。R3 仍要求兩個結果不同且合法，用來篩掉不會改變判定的提案；結果記錄在 `FactQuestion.if_yes/if_no` 與 trace。舊的 11 種 dimension 的 needs_fact 回覆不受影響：它的各分支由程式依 sheet 反事實比對算出，是經過驗證的。

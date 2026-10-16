@@ -144,7 +144,7 @@ def test_the_ask_reply_and_card_carry_the_question_outcomes_and_both_quotes(poli
     assert result["reply_kind"] == "ask_facts"
     text = result["text"]
     assert "Were the values log-transformed" in text and UNSURE in text and CONTRACT in text
-    assert "If yes: BONOBO can do what you asked. If no: no registered workflow does it as you asked." in text
+    assert "If yes" not in text and "If no" not in text  # open item 1: outcomes are not said, only kept for R3
     card = _core_card("ask_facts", decision, None, "")
     assert (card.kind, card.points) == ("clarification", ["Were the values log-transformed before they were centered?"])
 
