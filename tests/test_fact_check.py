@@ -186,3 +186,15 @@ def test_an_asking_turn_on_the_hypothesis_path_names_no_workflow_in_its_progress
     decision = decision.model_copy(update={"fact_check": _kept(policy, _proposal())})
     held = with_core(decision, decide_core(decision, TASK))
     assert classification_progress_detail({}, held)["workflows"] == []
+
+
+def test_the_method_the_goal_words_name_is_a_candidate_first(policy):
+    """p4c C48: only a methods question was read and the decision carried no routed action, so the agent never ran."""
+    quote = "Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics"
+    check = CapabilityCheck(requirements=[CheckedRequirement(quote=quote, kind="about_methods", status="not_checked")],
+                            goal="method_named", goal_quote=quote)
+    decision = TaskDecision(action="no_tool", in_scope=True, should_execute=False, confidence=0.9, reason="r",
+                            capability_check=check)
+    assert fact_candidates(decision, policy) == ["run_dragon"]
+    assert fact_candidates(decision.model_copy(update={"hypothesis_actions": ["run_lioness_dragon"]}), policy) == [
+        "run_dragon", "run_lioness_dragon"]

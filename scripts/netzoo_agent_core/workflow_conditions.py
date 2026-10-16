@@ -66,6 +66,8 @@ class SettingLimit:
     unavailable_values: frozenset[str] = frozenset()
     """Values the current runtime cannot honour (`runtime_constraints`)."""
     unavailable_message: str = ""
+    value_names: tuple = ()
+    """Other names for allowed values, from the contract ("HDF5" -> ".h5")."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,7 +99,8 @@ def _settings(action: str) -> Mapping[str, SettingLimit]:
             minimum=control.minimum, maximum=control.maximum,
             wired=control.executor_argument in definition.executor_fields,
             unavailable_values=blocked.unavailable_values if blocked else frozenset(),
-            unavailable_message=blocked.message if blocked else "")
+            unavailable_message=blocked.message if blocked else "",
+            value_names=tuple(control.value_names))
     return MappingProxyType(limits)
 
 
@@ -167,10 +170,15 @@ def _names(values) -> str:
 
 
 def enum_value(limit: SettingLimit, words: str):
-    """The single allowed choice named by the value, shared by validation and run binding."""
+    """The single allowed choice named by the value, shared by validation and run binding.
+
+    A value is named by its own spelling or by the contract's other name for it (p3-p4c C52: "saved as HDF5" named
+    neither ".h5" nor ".hdf", so BONOBO was declined for its own default format); words naming two stay unresolved.
+    """
     folded = _fold(words)
-    chosen = [item for item in limit.allowed_values
-              if (key := _fold(str(item))) and f"_{key}_" in f"_{folded}_"]
+    names = [*((item, item) for item in limit.allowed_values), *limit.value_names]
+    chosen = list(dict.fromkeys(value for name, value in names
+                                if (key := _fold(str(name))) and f"_{key}_" in f"_{folded}_"))
     return chosen[0] if len(chosen) == 1 else None
 
 

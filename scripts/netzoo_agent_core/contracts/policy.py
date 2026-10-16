@@ -43,6 +43,8 @@ class WorkflowControlSpec(BaseModel):
     selection_tags: list[str] = Field(default_factory=list, max_length=8)
     executor_argument: str = Field(min_length=1, max_length=80)
     description: str = Field(default="", max_length=400)
+    value_names: dict[str, Any] = Field(default_factory=dict, max_length=8)
+    """An enum's other names for its allowed values ("HDF5" -> ".h5"); each must be an allowed value."""
 
     @property
     def type(self) -> ControlType:

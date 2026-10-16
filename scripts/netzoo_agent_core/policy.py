@@ -56,6 +56,7 @@ def _control_from_spec(spec: WorkflowControlSpec) -> WorkflowControlDefinition:
         selection_tags=frozenset(spec.selection_tags),
         executor_argument=spec.executor_argument,
         description=spec.description,
+        value_names=tuple(spec.value_names.items()),
     )
 
 
@@ -191,6 +192,9 @@ def _validate_controls(
             )
         for allowed in item.allowed_values:
             _validate_control_value(action, item, allowed, "allowed value", adapter)
+        if item.value_names and (item.control_type != "enum"
+                                 or any(value not in item.allowed_values for value in item.value_names.values())):
+            raise ProjectPolicyError(f"{action} control {item.name} value_names must name allowed enum values.")
         if (
             (item.minimum is not None or item.maximum is not None)
             and item.control_type not in {"integer", "number"}

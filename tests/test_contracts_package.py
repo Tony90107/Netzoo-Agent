@@ -172,6 +172,8 @@ def test_default_task_budget_covers_the_full_semantic_repair_route():
 # Phase 4a: an input_checks entry may be an InputCheckSpec (text, scope, limit); plain strings still load as scope file.
 # Phase 4b: optional code-owned CapabilityCheck.ruled_out (inputs the user says they do not have, verified words)
 # and only_inputs / only_inputs_quote (the inputs the user says are all they have).
+# 2026-10-16 (p4b/p4c both-wrong items): an enum control may give value_names (another name for an allowed value,
+# "HDF5" -> ".h5"); specs without it load unchanged.
 SCHEMA_DIGESTS = {
     # 2026-09-27: optional advisory philosophy rationale, quotes, assumptions and capability gap;
     # existing condition recommendations remain valid. Execution fields unchanged.
@@ -199,7 +201,7 @@ SCHEMA_DIGESTS = {
     "WorkflowPlan": "60754a779e0ad46bd409619063be6793cb9c68268fb23fe5bc61d2469777113c",
     "InputEvidence": "a02eac4efb7237a0a54188b6648f36300a35b555574554a2fccd0450bd804cda",
     "ToolExecutionResult": "5dc1715aafa8d1f284c7d7fb42ece1869317ea1af9ee7fd43cf5863360faebbc",
-    "ProjectPolicySnapshot": "08605e06f21ce91dfdeb0d8ffe901539a77a9b2892c60416782f7965b8222477",
+    "ProjectPolicySnapshot": "5612b4a6e53f12e9641b51170efc73531acfd0f804c79f0ea2443702ac5dda4f",
     "UserProfile": "f1a5487412da7e287b7d64e0e37cc6e8d46af0940711af25294624e3f51bf72b",
     # Updated deliberately on 2026-09-10: episodes retain the typed scientific
     # outcome used for semantic memory retrieval.

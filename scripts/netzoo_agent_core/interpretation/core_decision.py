@@ -12,7 +12,8 @@ Rules, in the spec's order of precedence:
    still gives: round p0 C10, C22, C37, C49), the check could not confirm what it read, or the run was held because
    the check could not confirm or read it.
 2. CLARIFY (phase 1, spec section 5) -- the check's confirmed reading says the request names no result
-   (`purpose_only`), or the result it names is in no requirement the check read; a tool request is never held.
+   (`purpose_only`), or the result it names is in no requirement the check read, or its goal words name two
+   registered methods as the choice and no result; one named method is never unclear; a tool request is never held.
 3. ASK -- phase 2: the fact agent's kept questions (R1-R6, `interpretation.fact_check`); the fixed dimensions
    (`needs_fact`, or a run held for it) only when the agent did not run, and recorded as shadow when it did.
 4. DECLINE -- every result read is not available (a full gap), a run was held on a gap, routing found the request
@@ -31,6 +32,7 @@ from workflow_registry import OUTPUT_CAPABILITIES, workflow_name
 from ..capability_sheet import entry, produced_text
 from ..contracts.capability_check import APPROVING_RUN_VERDICTS
 from ..contracts.core_decision import ClarifyNeed, CoreDecision, DeclinedPart, FactQuestion
+from ..method_names import workflows_in
 from .needed_facts import _question
 
 __all__ = ["decide_core", "goal_unclear", "with_core"]
@@ -103,9 +105,19 @@ def _overlaps(a: str, b: str) -> bool:
 
 
 def goal_unclear(check) -> bool:
-    """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words."""
+    """Spec section 5: the request names no result, by the check's own confirmed reading and its verified words.
+
+    The methods the goal's words name are the registry's to count (`workflows_in`): one named method is the goal --
+    a question about it (p1 C32, p2-p3 C51, p4b-p4c C39 were read purpose_only); two named as the choice with no
+    result read is no goal ("Should I use COBRA or CONDOR?", p4b C10 was read method_named).
+    """
     if check is None or check.unconfirmed() or not check.goal_quote:
         return False
+    named = workflows_in(check.goal_quote)
+    if len(named) == 1:
+        return False
+    if len(named) > 1 and check.goal == "method_named" and not any(row.kind == "result" for row in check.requirements):
+        return True
     if check.goal == "purpose_only":
         return True
     asked = [row.quote for row in check.requirements if row.kind in ("result", "about_methods")]
@@ -201,7 +213,9 @@ def decide_core(decision, task: str = "", *, reason_code: str = "") -> CoreDecis
     given = [row for row in read if row.status in _GIVEN or shadow and row.status == "needs_fact"]
     if read and not given:
         return call("DECLINE", "all_results_not_available", declined=_declined(results, check))
-    workflows = _names(key for row in given for key in row.delivered_by) or _routed(decision)
+    # p4b/p4c C59: a run is the workflow it runs, never routing's other picks beside it
+    workflows = ([workflow_name(decision.action)] if running
+                 else _names(key for row in given for key in row.delivered_by) or _routed(decision))
     declined = _declined(results, check)
     approved = (running and verdict is not None and not verdict.held and verdict.verdict in APPROVING_RUN_VERDICTS)
     held = verdict is not None and verdict.held

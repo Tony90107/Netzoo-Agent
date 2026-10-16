@@ -24,6 +24,7 @@ from ..capability_sheet import entry
 from ..contract_text import check_text, contract_text, normalized
 from ..contracts.core_decision import FactQuestion
 from ..contracts.fact_check import FactCheck, RejectedFact
+from ..method_names import registered_workflows, workflows_in
 from .request_spans import _span
 
 __all__ = ["FACT_INSTRUCTIONS", "fact_candidates", "fact_messages_text", "kept_facts"]
@@ -50,11 +51,18 @@ def _workflow_actions(policy) -> dict[str, str]:
 
 
 def fact_candidates(decision, policy) -> list[str]:
-    """The run actions that may answer the request: the check's credited ones, then routing's (at most four)."""
+    """The run actions that may answer the request: the methods its goal's words name, the check's credited ones,
+    then routing's (at most four).
+
+    p4c C48 ("Is DRAGON able to link fecal metabolomics with colon-biopsy transcriptomics ...?"): the check read only
+    a methods question and the turn's decision carried no routed action, so the agent had no contract to read and
+    the deciding fact (the same 58 people or not) was never asked; in p3 and p4b it was.
+    """
     check = decision.capability_check
     keys = [key for row in (check.requirements if check is not None else [])
             for key in [*row.delivered_by, *(k for found in row.outcomes.values() for k in found)]]
-    actions = []
+    known = registered_workflows()
+    actions = [known[name] for name in workflows_in(check.goal_quote if check is not None else "") if name in known]
     for key in keys:
         try:
             actions.append(entry(key).action)

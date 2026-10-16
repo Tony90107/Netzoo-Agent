@@ -228,6 +228,12 @@ class CoreDecision(BaseModel):
 - 2026-10-16（待決事項 1，**設計變更，使用者已同意**）：fact agent 的 ASK 回覆不再列出 if yes／if no 的結果，只保留問題、使用者原話與合約原文。理由：這兩個結果是模型寫的，程式通常無法驗證方向。實測中有錯誤的例子，例如 p2b C06「If no: PUMA does it instead」、C36「If no: no registered workflow」，p2 C31 連 yes 分支都寫反。R3 仍要求兩個結果不同且合法，用來篩掉不會改變判定的提案；結果記錄在 `FactQuestion.if_yes/if_no` 與 trace。舊的 11 種 dimension 的 needs_fact 回覆不受影響：它的各分支由程式依 sheet 反事實比對算出，是經過驗證的。
 
 - 2026-10-16（**新增第 4 階段，設計變更，使用者已同意**）：合約限制在請求層一定被檢查，見第 12 節。4a 採精簡版：在 `workflow_conditions` 加數量關係限制，數值讀自輸入檢查器的共用函式；YAML `input_checks` 加 `scope`／`limit` 標記，並加完整性測試。4b 採 B1：能力檢查讀取加 `ruled_out_inputs`，再用 `route_available` 判斷路線上的必要輸入。讀取變異另案處理。
+- 2026-10-16（p4b、p4c 兩輪都錯的題目，實作補充，**不是設計變更**；research log `RESULTS-BOTH-WRONG.md`）：
+  - 第 5 節的程式規則：goal 引文點名幾個 workflow，由 registry 名稱計算（`method_names.workflows_in`，只認 registry 的拼法，不用字詞清單）。恰好點名一個 workflow 時，目標就是那個方法，不判 CLARIFY；點名兩個以上、讀取為 `method_named` 且沒有讀到任何結果列時，判 CLARIFY（第 5 節「該用 BONOBO 還是 LIONESS？」）。
+  - 第 6 節的候選：goal 引文點名的 workflow 排在 fact agent 候選的最前面（它就是「可能回答請求的 workflow」）。
+  - 第 4.1 節 DO 的 `workflows`：run 的判定只寫它要跑的 workflow，不再把路由的其他候選一起列入。
+  - 合約欄位：enum 控制項可宣告 `value_names`（同一個允許值的其他稱呼，例如 BONOBO 的 `HDF5 → .h5`，取自該控制項說明的「.h5 or .hdf (HDF5)」）。registry 與 YAML 兩邊都要宣告，loader 要求每個稱呼都對到允許值；同時對到兩個值的說法仍視為無法確定。
+  - 不在此項：routing 失敗時 UNCHECKED 先於 CLARIFY 的順序（C10、C37），以及 C24、C45 的兩個設計變更，等使用者決定。
 
 ## 12. 第 4 階段：合約限制在請求層一定被檢查（2026-10-16 加入，使用者已同意）
 
