@@ -104,6 +104,8 @@ class CoreDecision(BaseModel):
 4. 每個結果需求依能力檢查與方法條件的狀態分類：`not_available` 為拒；`available` / `with_step` 為可做；`needs_fact` 已在第 3 步處理。全部被拒 → `DECLINE`；部分被拒 → `DO`（partial）；其餘 → `DO`。
 5. `run_allowed` 等於 `kind == DO`、不是 partial、有 run 請求、且 `RunVerdict` 為核准的那幾種。
 
+第 5 階段（第 13 節）修改第 1–3 步：已確認的目標不明，即使 routing 失敗也判 CLARIFY；結果沒定、也沒列出選項時判 CLARIFY；程式算出分支的數量事實判 ASK，排在 fact agent 的提問前面。
+
 ### 4.3 回覆分派
 
 `_respond` 第一步依 `kind` 分派。現有分支歸到下列 kind，成為該 kind 的呈現細節，不再自己判斷要不要接手。第 3 階段會先盤點確認這份對照：
@@ -195,6 +197,7 @@ class CoreDecision(BaseModel):
 | 2 追問 | fact agent、R1–R6、YAML `input_checks:`；先離線比較模型，再讓 ASK 生效 | 追問來源改變 | 離線 fact agent 對 ask 和 do 的請求文字；題庫 1 次；ask ↑、do 的多餘追問 ≤ 1 |
 | 3 收斂 | 盤點並改寫分類階段的判定改寫點；回覆依 kind 分派；boundary renderer 改成證據；執行閘讀 core；移除被取代的路徑 | 回覆路徑收斂 | 先離線重放錄製讀取，再跑題庫 1 次；最終門檻與 0 矛盾 |
 | 4 合約限制（2026-10-16 加入，第 12 節） | 4a：`workflow_conditions` 的關係限制、YAML `input_checks` 的 `scope` 標記與完整性測試；4b：能力檢查讀取的 `ruled_out_inputs`，與路線上的必要輸入 | dont 的誤承諾減少 | 4a 用錄製資料離線重算；4b 跑題庫 1 次；第 12.4 節的門檻 |
+| 5 目標與事實的邊界（2026-10-16 加入，第 13 節） | 5a：routing 失敗時，已確認的目標不明判 CLARIFY；5b：能力檢查讀取的 `count_alternatives`，由程式算出各候選值的判定；5c：`FactProposal` 的 `about`／`alternatives` 與 R7 | 太模糊類多釐清、ask 類問到數量事實 | 5a 離線重放；5b 單元測試與離線讀取；5c 離線 fact agent；三項通過後題庫跑 1 次；第 13.5 節的門檻 |
 
 - 每個階段在獨立 worktree 分支上完成，全部測試通過才提交（主樹有其他 session 在改）。
 - 推送前經使用者同意，push 到 `netzoo-agent` 遠端，fast-forward only。
@@ -234,6 +237,11 @@ class CoreDecision(BaseModel):
   - 第 4.1 節 DO 的 `workflows`：run 的判定只寫它要跑的 workflow，不再把路由的其他候選一起列入。
   - 合約欄位：enum 控制項可宣告 `value_names`（同一個允許值的其他稱呼，例如 BONOBO 的 `HDF5 → .h5`，取自該控制項說明的「.h5 or .hdf (HDF5)」）。registry 與 YAML 兩邊都要宣告，loader 要求每個稱呼都對到允許值；同時對到兩個值的說法仍視為無法確定。
   - 不在此項：routing 失敗時 UNCHECKED 先於 CLARIFY 的順序（C10、C37），以及 C24、C45 的兩個設計變更，等使用者決定。
+- 2026-10-16（**新增第 5 階段，設計變更，使用者已同意**）：目標與事實的邊界，見第 13 節。
+  - 5a：routing 失敗時，已確認的目標不明判 CLARIFY（修改第 4.2 節第 1 步）。
+  - 5b：數量的候選值由程式算出各自的判定，先只做數量。由程式算出分支的數量事實，即使 fact agent 有跑也生效，第 6 節「取代」一段因此有例外。
+  - 5c：`FactProposal` 加 `about`／`alternatives` 與 R7。結果沒定、也沒列出選項時判 CLARIFY（第 5 節的 ASK／CLARIFY 界線）。
+  - 實作順序 5a → 5b → 5c。
 
 ## 12. 第 4 階段：合約限制在請求層一定被檢查（2026-10-16 加入，使用者已同意）
 
@@ -301,3 +309,120 @@ YAML 23 條 `input_checks` 的盤點：
 
 - **讀取變異**（C30、C17：規則已存在，讀取漏掉設定）。可能的方向是對設定也用第二讀取者確認，另案提出。
 - 把既有的最少樣本等常數改成由 YAML 宣告。現在的做法（讀自輸入檢查器的常數，再加完整性測試）已能避免規則出現兩份。
+
+## 13. 第 5 階段：目標與事實的邊界（2026-10-16 加入，使用者已同意）
+
+### 13.1 問題（錄製資料 p1–p4c；p4b、p4c 兩輪都錯）
+
+| 題目 | 錄製結果 | 原因 | 第 5 階段 |
+|---|---|---|---|
+| C10「該用 COBRA 還是 CONDOR？」 | p2、p3、p4b、p4c 都是 UNCHECKED | 沒有任何呼叫失敗。研究假設讀取讀到 `question_mode: unclear_goal` 但沒有可用的假設，程式把 `match_basis` 設成 `unverified_evidence`，`router_invocation` 再標成 `research_choices_unavailable`，`decide_core` 因此判成 routing 失敗。能力檢查也已確認目標不明，但 UNCHECKED 排在 CLARIFY 前面 | 5a |
+| C45「200 還是 2,000 個蛋白質」 | p2、p4b、p4c 問成「資料格式對不對」，只有 p3 問到「是不是 200-protein 那一組」 | 能力檢查只記到 300 個 miRNA。這個事實由程式就能判斷：500 個特徵沒超過限制，2,300 個特徵是 132,192,500 個值，超過 2,000 萬的上限。但讀取沒有型別化「一個數量的兩個候選值」，fact agent 也看不到數量 | 5b |
+| C24「審稿人要網路分析，我不知道要哪種」 | p4b、p4c 都是 ASK | fact agent 把「使用者不知道要什麼結果」當成可追問的事實。其他被採用的結果類提問（C11、C31、C34、C36，金標都是 ASK）都在請求中逐字列出兩個選項，C24 沒有列。單靠 `uncertainty` 分不出來（p3 的 C34 也標成 `said_unknown`） | 5c |
+
+p1–p4c 共 6 個「routing 失敗」回合：5 個是上述「讀到 unclear_goal、沒有呼叫失敗」（C10 ×4、C37 ×1，都是太模糊類），1 個是真的語意讀取失敗（C47）。
+
+### 13.2 5a：routing 失敗時，已確認的目標不明先判 CLARIFY
+
+- **規則**：`decide_core` 第一條（routing 失敗、沒有任何路由結果 → UNCHECKED）的例外，從一種擴大成兩種：
+  - 能力檢查已確認完全缺口（現有）；
+  - `goal_unclear(check)` 為真 → 判 CLARIFY，basis `goal_unclear`，回覆走 CLARIFY 的同一個 view。
+- `goal_unclear` 本身已要求能力檢查是確認過的讀取（非備援），而且引文經過逐字驗證，所以未確認的讀取仍判 UNCHECKED（p3 C37）。
+- **不做**：在源頭把「讀到 unclear_goal」改成另一個 reason code。這比較精確，但會改到路由輸出與 m3 的回覆，範圍大得多。
+- **已知限制**：routing 沒讀到輸入時，`ClarifyNeed` 的 `inputs` 是空的，回覆會列出所有結果，並再問一次資料（C37 的使用者其實已經說了有哪些資料）。
+- **評分上的性質**：在非太模糊類，CLARIFY 與 UNCHECKED 的成本相同（do、dont、ask 都是 1），所以這條規則在題庫上不會讓任何一類的成本增加。
+
+### 13.3 5b：數量給了兩個以上的候選值時，由程式算出各自的判定
+
+只處理數量（樣本數、特徵數），不處理設定值（見 13.6）。
+
+- **讀取**：能力檢查的 `RequestConditions` 加一個欄位 `count_alternatives: list[{of, quote, values}]`。
+  - `of` 是 `samples` 或 `features`。
+  - `quote` 是請求中給出候選值的原文，`values` 是各個候選數字。
+  - 欄位說明要寫清楚：只收使用者給了兩個以上候選值、自己無法確定是哪一個的數量（「200-protein targeted panel or the 2,000-protein discovery panel」「either 100 or 1000 features」）；範圍（「100–200 個樣本」）與已確定的數量不算。
+- **程式驗證**（不通過就丟棄）：
+  - `quote` 逐字出現在請求中；
+  - `values` 的每個數字都在 `quote` 裡（`stated_numbers`）；
+  - 至少兩個不同的值。
+
+  通過的存成 `CapabilityCheck.count_alternatives`。
+- **已記錄的數量**：列的 `method` 中，引文落在 `quote` 之內的樣本數或特徵數，其實沒有被確定，先移除。
+- **反事實判斷**（共用 `method_fitting`，數值規則只在 `workflow_conditions` 一處）：
+  - 對每個有可做判定的結果列（`available`、`with_step`、`partial`），依每個候選值重算：
+    - `samples`：樣本數換成候選值；
+    - `features`：候選值是另一個資料型別的特徵數，總特徵數 = 其他已記錄的特徵數 + 候選值，`feature_counts` 加 1。只有這一個特徵數時，第 4a 節的關係限制也會判斷（U06：COBRA，40 個樣本，「20 or 200 genes」）。
+  - 各候選值留下的 workflow 不同 → 這列改為 `needs_fact`：
+    - `depends_on` 為 `sample_count` 或 `feature_count`；
+    - `unknown_quote` 為 `quote`；
+    - `outcomes` 為「候選值 → 留下的 sheet keys」；
+    - 各分支被移除的理由取自 `data_issue`；
+    - 新欄位 `by_code = True`，表示分支由程式算出。
+  - 所有候選值都留下同樣的 workflow → 不追問，這列不變。
+  - 所有候選值都讓 workflow 被移除 → 這列改為 `not_available`，理由列出每個候選值的限制（之後由 `decide_core` 判 DECLINE 或 partial）。
+- **與 fact agent 的關係**：
+  - `by_code` 的列不是舊 dimension 的 shadow：`without_legacy_waits` 不解除它，fact agent 有跑也保留。
+  - 第 6 節「取代」一段因此改為：舊的 11 種 dimension 是 shadow，但由程式算出分支的數量事實仍然生效。
+- **`decide_core`**：
+  - CLARIFY（目標不明）之後，有 `by_code` 的事實時判 ASK，basis `count_fact`。
+  - 程式事實排在 fact agent 的提問前面。fact agent 提問的 `user_quote` 與程式事實的 `quote` 重疊時，保留程式的那一題。合計最多 2 題（R6）。
+  - `with_core` 對 `count_fact` 的 ASK 和 fact agent 的 ASK 一樣保留這一輪：不選 workflow、不執行。
+- **回覆**：
+  - 問題由程式產生：引用使用者原話，問是哪一個候選值。
+  - 列出程式算出的各分支，例如「200：LIONESS-DRAGON 可以做；2,000：LIONESS-DRAGON 最多寫 20,000,000 個值，2,300 個特徵與 50 個樣本會有 132,192,500 個」。
+  - 待決事項 1（2026-10-16）只拿掉模型寫的分支；程式算出的分支經過驗證，照舊顯示。
+- **成本**：能力檢查的輸出多一個小欄位，要量測解碼失敗率。
+
+### 13.4 5c：結果沒定、也沒列出選項時判 CLARIFY
+
+- **schema**：`FactProposal` 加兩個欄位（只加欄位說明，不改 `FACT_INSTRUCTIONS` 的既有句子）：
+  - `about`：`user_data`（使用者的資料）或 `wanted_result`（想要的結果）。
+  - `alternatives: list[str]`：事實是關於想要的結果時，請求中點名每個候選結果的原文；請求沒點名、或事實是關於資料時為空。
+- **R7**（程式判斷，只用於 `about = wanted_result`）：
+  - 驗證過的選項：逐字出現在請求中、不為空、彼此不包含。
+  - 至少 2 個 → 照舊經過 R1–R6，可以成為 ASK（第 5 節：列出兩個以上的結果、只是不確定要哪個，屬於 ASK）。
+  - 少於 2 個 → 不追問，記成「結果沒定」（`FactCheck.open_results`，存 `user_quote`）。這種提問仍須通過 R1（兩個讀取者都同意使用者不確定）、R2（合約引文逐字）與 R4（不在已陳述的引文內）；R3、R5、R6 不適用，因為它不會被問。
+- **`decide_core`**：
+  - 在 goal 的 CLARIFY 之後、任何 ASK 之前：fact agent 有跑而且 `open_results` 不為空 → 判 CLARIFY，basis `result_open`。`ClarifyNeed.goal_quote` 用該提問的 `user_quote`。
+  - 同一輪的資料類提問（包括 5b 的程式事實）這一輪不問（第 3 節：釐清目標先於選 workflow）。
+- **`user_data`** 的提問完全不變。
+
+### 13.5 驗收
+
+- **5a（離線，不呼叫模型）**：
+  - 用錄製的 p1–p4c 與 m3 重放 `decide_core`。
+  - 預期：只有 C10 的 4 個回合（p2、p3、p4b、p4c）由 UNCHECKED 改為 CLARIFY，其他判定 0 改變，m3 0 改變。
+  - 單元測試三種情況：routing 失敗加已確認的目標不明 → CLARIFY；加備援讀取的目標不明 → UNCHECKED；加讀到具名結果 → UNCHECKED。
+- **5b（單元測試加離線讀取）**：
+  - **單元測試**：
+    - C45 型：300 + {200, 2000} 個特徵、50 個樣本，判 ASK，分支由程式算出；
+    - U06 型：單一特徵數 {20, 200}、40 個樣本，COBRA；
+    - 所有候選值都超過限制，判 DECLINE；
+    - 候選值不影響結果時，不追問；
+    - 數字不在引文內時丟棄；
+    - 引文內已記錄的數量被移除。
+  - **離線讀取**：用能力檢查自己的模型（nemotron，免費額度）以新 schema 讀取 m3 的 U06、U12、U14 與 P 類 27 題英文。同一天也用現行 schema 讀同一批題目作為對照，共約 60 次。
+    - B1：U06、U12 至少 1 題讀出正確的候選值。
+    - B2：P 類 0 題有 `count_alternatives`。
+    - B3：U14（設定值「0.3 or 3.0」）不被讀成數量。
+    - B4：解碼失敗不多於對照組。
+- **5c（離線 fact agent）**：
+  - 用 gpt-4o-mini 以新 schema 對 m3 開發集英文 U（27）與 P（27）各呼叫一次，約 US$0.04。R1 的第二讀取者沿用第 2 階段 `live/f2w` 的錄製讀取，與第 2 階段同條件。
+    - C1：U 類 0 題產生 `open_results`。
+    - C2：U 類追問處理對 ≥ 17/24（第 2 階段的數字）。
+    - C3：P 類「追問或結果沒定」合計 ≤ 1。
+  - m3 沒有「太模糊」類的題目，所以 5c 對 C24 型的召回只能在題庫實測時看到。
+- **題庫實測**（5a–5c 都通過離線門檻後，56 題跑 1 次，約 US$0.11，跑前報備）：
+  - G1：各類正確題數不低於 p4b、p4c 兩輪中較差那一輪減 1（do ≥ 9、dont ≥ 10、ask ≥ 7、vague ≥ 9）。
+  - G2：do 與 ask 類被判 `result_open` 的 CLARIFY ≤ 1。
+  - G3：請求沒有給候選數量的題目，0 題出現 `count_fact`。
+  - G4：判定與回覆路徑 0 不一致。
+  - G5：能力檢查解碼失敗 ≤ 3/56。
+  - 另外逐題報告 C10、C24、C45 的結果。同一份程式兩輪曾相差約 ±5 分，所以總分只作參考，不單憑一輪宣稱達到第 8 節的最終門檻。
+
+### 13.6 不在第 5 階段
+
+- 設定值的候選（U14「lam 0.3 or 3.0」用 `setting_issue` 判斷）：同樣的機制可以延伸，5b 通過後另案提出。
+- 研究假設讀取把 `unclear_goal` 標成失敗的源頭標籤。
+- 讀取變異：C17，以及 goal 讀取的誤判。
+- C39：fact agent 問成「有沒有 miRNA ID 清單」，而不是「是 miRNA 還是 piRNA」。
+- C52 在 p4c 被條件檢查判成 BONOBO 不符「log2-transformed and centered」。
